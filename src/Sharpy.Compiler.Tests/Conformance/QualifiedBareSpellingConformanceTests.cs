@@ -73,6 +73,14 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// for <c>inSourceSet</c> cells: an outside-the-source-set module has no compilation unit, so
 /// emission fails on the missing namespace and would drown the semantic answer.</para>
 ///
+/// <para><b>The refusal outside the source set (#2234, R-EQ).</b> A project refuses every import
+/// of a module it does not compile with SPY0313, one per import statement as SPY0300 is, and the
+/// refused import still binds <c>ModuleLoader</c>'s extraction. So an <c>outsideSourceSet</c> cell
+/// checks each spelling's SPY0313 count against its own import statements (the spellings' statement
+/// counts differ by construction), compares the remaining codes between spellings, and requires the
+/// probe to equal the <c>inSourceSet</c> twin's: the arrangement keeps measuring the representation
+/// the extraction produces, which is what it measured before the refusal existed.</para>
+///
 /// <para><b>Ratchet.</b> <c>Conformance/qualified-bare-allowlist.txt</c>, per
 /// <c>docs/design/gap-discovery-contracts.md</c>: a divergent cell whose key is not listed fails the
 /// suite, every listed key cites the issue that will drain it, and a listed cell that has started
@@ -490,12 +498,19 @@ def main() -> None:
                 ? (QualifiedInner, BareInner)
                 : (Qualified, Bare);
 
+            (Measurement Q, Measurement B)? compiled = null;
             foreach (var sourceSet in SourceSets)
             {
                 var key = $"{scenario.Position}::{scenario.Shape}::{sourceSet}";
                 var q = Measure(key, scenario, qualified, sourceSet);
                 var b = Measure(key, scenario, bare, sourceSet);
-                results.Add(Compare(key, q, b));
+                var cell = Compare(key, q, b);
+                // SourceSets lists inSourceSet first, so the outside cell has its compiled twin.
+                if (compiled is { } twin)
+                    cell = cell with { Divergences = cell.Divergences.Concat(CompareToCompiledTwin(twin, q, b)).ToList() };
+                else
+                    compiled = (q, b);
+                results.Add(cell);
             }
         }
 
@@ -520,6 +535,10 @@ def main() -> None:
                 + "the position's structural probe, and stdout.",
                 "Execution runs for inSourceSet cells only: an outside-the-source-set module is not a "
                 + "compilation unit, so emission fails on the missing namespace.",
+                "outsideSourceSet: every import of the uncompiled module is refused with SPY0313 (R-EQ, "
+                + "#2234), one per import statement as SPY0300 is; the refusals are checked per statement "
+                + "against each program and left out of the code comparison, and the import still binds "
+                + "the extraction, so the probe must equal the inSourceSet twin's.",
                 "declSiteAnnotation varies the spelling inside the IMPORTED module — the only place "
                 + "ModuleLoader.ConvertTypeAnnotationToSemanticType (ModuleLoader.cs:723) is reachable.",
             },
@@ -745,7 +764,9 @@ def main() -> None:
         IReadOnlyList<string> Codes,
         string Probe,
         string Stdout,
-        string Program);
+        string Program,
+        int Refusals,
+        int ExpectedRefusals);
 
     private Measurement Measure(string key, Scenario scenario, Spelling spelling, string sourceSet)
     {
@@ -784,6 +805,21 @@ def main() -> None:
             .OrderBy(c => c, StringComparer.Ordinal)
             .ToList();
 
+        // R-EQ (#2234): an import of a module that is not a compilation unit is refused with SPY0313,
+        // one per import statement — the SPY0300 convention (measured: `from missing import a` and
+        // `from missing import b` are two SPY0300). The two spellings differ in statement count by
+        // construction (`import lib` against one `from lib import X` per name), so the refusal is
+        // checked against each program's own import statements and the remaining codes are what the
+        // spellings are compared on. The refused import still binds the module's extraction, which
+        // is what the probe below reads, as it did before the refusal existed.
+        var main = files.Single(f => f.Name == "main.spy").Source;
+        var uncompiled = sourceSet == "outsideSourceSet"
+            ? files.Where(f => f.Name != "main.spy").Select(f => Path.GetFileNameWithoutExtension(f.Name)).ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+        var expectedRefusals = CountImportsOf(main, uncompiled);
+        var refusals = codes.Count(c => c == "E:SPY0313");
+        codes = codes.Where(c => c != "E:SPY0313").ToList();
+
         var probe = "n/a";
         if (scenario.Probe != null)
         {
@@ -801,12 +837,47 @@ def main() -> None:
                 : "<compile failed> " + string.Join("; ", execution.CompilationErrors);
         }
 
-        return new Measurement(spelling.Name, codes, probe, stdout, files[0].Source);
+        return new Measurement(spelling.Name, codes, probe, stdout, main, refusals, expectedRefusals);
+    }
+
+    /// <summary>
+    /// The import statements (one per name of a plain <c>import a, b</c>) in <paramref name="source"/>
+    /// whose module's first segment is in <paramref name="modules"/>.
+    /// </summary>
+    private static int CountImportsOf(string source, IReadOnlySet<string> modules)
+    {
+        var count = 0;
+        foreach (var raw in source.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("from ", StringComparison.Ordinal))
+            {
+                var module = line["from ".Length..].Split(' ')[0];
+                if (modules.Contains(module.Split('.')[0]))
+                    count++;
+            }
+            else if (line.StartsWith("import ", StringComparison.Ordinal))
+            {
+                count += line["import ".Length..].Split(',')
+                    .Count(alias => modules.Contains(alias.Trim().Split(' ')[0].Split('.')[0]));
+            }
+        }
+        return count;
     }
 
     private static CellResult Compare(string key, Measurement qualified, Measurement bare)
     {
         var divergences = new List<string>();
+
+        foreach (var m in new[] { qualified, bare })
+        {
+            if (m.Refusals != m.ExpectedRefusals)
+            {
+                divergences.Add(
+                    $"refusal — {m.Spelling}: {m.Refusals} SPY0313 for {m.ExpectedRefusals} import(s) of an "
+                    + "uncompiled module (R-EQ: exactly one per import)");
+            }
+        }
 
         if (!qualified.Codes.SequenceEqual(bare.Codes, StringComparer.Ordinal))
         {
@@ -827,6 +898,23 @@ def main() -> None:
         return new CellResult(key, qualified, bare, divergences);
     }
 
+    /// <summary>
+    /// An outsideSourceSet cell against its inSourceSet twin, per spelling: the refused import still
+    /// binds the module's extraction (#2234 follow-up), so the representation is the compiled one.
+    /// Measured equal for every cell before the refusal existed (746004125) and after it; a refusal
+    /// that bound an error-recovery symbol instead would leave both spellings agreeing with each other
+    /// on nothing at all, which the qualified/bare comparison alone cannot see.
+    /// </summary>
+    private static IEnumerable<string> CompareToCompiledTwin(
+        (Measurement Q, Measurement B) compiled, Measurement qualified, Measurement bare)
+    {
+        foreach (var (inside, outside) in new[] { (compiled.Q, qualified), (compiled.B, bare) })
+        {
+            if (inside.Probe != outside.Probe)
+                yield return $"binding — {outside.Spelling}: {outside.Probe}  inSourceSet twin: {inside.Probe}";
+        }
+    }
+
     private sealed record CellResult(
         string Key, Measurement Qualified, Measurement Bare, IReadOnlyList<string> Divergences)
     {
@@ -844,8 +932,8 @@ def main() -> None:
             agrees = Divergences.Count == 0,
             allowlisted = allowlist.Contains(Key),
             divergences = Divergences,
-            qualified = new { codes = Qualified.Codes, probe = Qualified.Probe, stdout = Qualified.Stdout },
-            bare = new { codes = Bare.Codes, probe = Bare.Probe, stdout = Bare.Stdout },
+            qualified = new { codes = Qualified.Codes, refusals = Qualified.Refusals, probe = Qualified.Probe, stdout = Qualified.Stdout },
+            bare = new { codes = Bare.Codes, refusals = Bare.Refusals, probe = Bare.Probe, stdout = Bare.Stdout },
         };
     }
 
