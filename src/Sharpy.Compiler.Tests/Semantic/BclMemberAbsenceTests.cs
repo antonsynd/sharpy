@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// a strictness regression here would silently break .NET interop the compiler cannot see.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class BclMemberAbsenceTests : IntegrationTestBase
 {
     public BclMemberAbsenceTests(ITestOutputHelper output) : base(output) { }

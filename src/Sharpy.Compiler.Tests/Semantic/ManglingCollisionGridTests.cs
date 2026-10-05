@@ -45,7 +45,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// one C# spelling still share a scope and are still refused (<see cref="SameScopePairs"/>).
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class ManglingCollisionGridTests : IntegrationTestBase
 {
     private readonly ITestOutputHelper _output;

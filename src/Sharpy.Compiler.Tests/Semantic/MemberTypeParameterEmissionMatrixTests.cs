@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// missing feature. The cure is a refusal by name (SPY0705) that steers to the class-level
 /// spelling, i.e. to this matrix's other column.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class MemberTypeParameterEmissionMatrixTests : IntegrationTestBase
 {
     private const int MemberKindCount = 8;

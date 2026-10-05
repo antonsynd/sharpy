@@ -27,7 +27,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>const</c> / <c>static readonly</c>, and does every consumer read it); this file owns the
 /// ROSTER question (is it an instance field at all).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ConstInstanceFieldRosterTests : IntegrationTestBase
 {
     public ConstInstanceFieldRosterTests(ITestOutputHelper output) : base(output) { }

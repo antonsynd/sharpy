@@ -33,7 +33,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// spelling: that is the contract. A callee-specific expectation would be a matrix that had already
 /// conceded the defect.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class OverloadBindingFailureMatrixTests : IntegrationTestBase
 {
     private const int KindCount = 3;

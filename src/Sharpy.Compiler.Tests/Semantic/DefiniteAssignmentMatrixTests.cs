@@ -10,7 +10,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// DA position x node-kind matrix (#1635): for each representative expression kind, an
 /// unassigned read must produce SPY0600 and an assigned read must succeed.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class DefiniteAssignmentMatrixTests : IntegrationTestBase
 {
     public DefiniteAssignmentMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -43,7 +43,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// spelling both fail this way). <c>as!</c> has no such restriction — it accepts a bracketed generic
 /// interface target and keeps its own runtime CLR test, untouched by #1865 (Design Decision 2).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ConstructedGenericHostAssignabilityMatrixTests : IntegrationTestBase
 {
     public ConstructedGenericHostAssignabilityMatrixTests(ITestOutputHelper output) : base(output) { }

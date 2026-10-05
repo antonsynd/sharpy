@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><see cref="Cells_CoverEveryAxis_AnchoredToLiterals"/> anchors every axis size to a LITERAL,
 /// not to the array it names, so the coverage claim cannot be vacuous.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class BuiltinCaseReservationMatrixTests : IntegrationTestBase
 {
     public BuiltinCaseReservationMatrixTests(ITestOutputHelper output) : base(output) { }

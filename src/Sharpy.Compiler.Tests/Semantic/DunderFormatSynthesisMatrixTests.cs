@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// F.__format__") → runs. The collision programs were SPY0414 → SPY0522; <c>spec: int</c> SPY0414 →
 /// SPY0320.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class DunderFormatSynthesisMatrixTests : IntegrationTestBase
 {
     public DunderFormatSynthesisMatrixTests(ITestOutputHelper output) : base(output) { }

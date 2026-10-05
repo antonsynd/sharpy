@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para>Before the fix every refused call-route cell compiled and raised the ValueError/TypeError
 /// only at runtime (measured by <c>run</c> at the pre-fix commit — see the commit body).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
 {
     public FormatSpecStaticTwinRouteTests(ITestOutputHelper output) : base(output) { }

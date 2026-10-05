@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// forced to return <c>false</c>, the float-first cells of the order-independence theories fail
 /// (they print "float") while the control cells stay green.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class OverloadResolutionContextualLiteralTests : StdlibAwareIntegrationTestBase
 {
     public OverloadResolutionContextualLiteralTests(ITestOutputHelper output) : base(output) { }

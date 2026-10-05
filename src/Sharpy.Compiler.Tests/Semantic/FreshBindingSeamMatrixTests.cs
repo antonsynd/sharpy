@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// reason. There is deliberately no "this whole position is N/A" predicate: the one this file used
 /// to carry made 33 cells disappear without a line of evidence.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FreshBindingSeamMatrixTests : IntegrationTestBase
 {
     public FreshBindingSeamMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// The matrix exercises <c>GetMemberIterableKeyPositions</c> (the iterable-projection ring for
 /// method calls): tuple, str, and dict-keys RHS shapes require the projection to compile.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class MutatorIterableArgumentMatrixTests : IntegrationTestBase
 {
     public MutatorIterableArgumentMatrixTests(ITestOutputHelper output) : base(output) { }

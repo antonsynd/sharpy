@@ -21,7 +21,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// roster is falsifiable.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class PatternHeadChainMatrixTests : IntegrationTestBase
 {
     public PatternHeadChainMatrixTests(ITestOutputHelper output) : base(output) { }

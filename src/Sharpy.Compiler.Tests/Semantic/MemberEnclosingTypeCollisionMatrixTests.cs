@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// stays CS1061 behind SPY0908 — the closed #478 contract (an access site reads its own escape
 /// flag), documented as ONE asserted cell, not a matrix row.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class MemberEnclosingTypeCollisionMatrixTests : IntegrationTestBase
 {
     public MemberEnclosingTypeCollisionMatrixTests(ITestOutputHelper output) : base(output) { }

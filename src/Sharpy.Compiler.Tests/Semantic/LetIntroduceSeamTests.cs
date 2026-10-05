@@ -19,7 +19,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </list>
 /// Every run cell prints a value the other reading would not.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class LetIntroduceSeamTests : IntegrationTestBase
 {
     public LetIntroduceSeamTests(ITestOutputHelper output) : base(output) { }

@@ -27,7 +27,6 @@ namespace Sharpy.Compiler.Tests.Semantic.Validation;
 /// argument, nested function parameter default, match guard -- must not warn SPY0451.
 /// Positive control: a local never used at all DOES warn.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class UnusedVariableMatrixTests : IntegrationTestBase
 {
     public UnusedVariableMatrixTests(ITestOutputHelper output) : base(output) { }

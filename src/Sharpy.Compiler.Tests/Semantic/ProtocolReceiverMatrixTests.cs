@@ -32,7 +32,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// CS1503 / CS1579 / CS1929 behind SPY0908 while the reference payloads passed — the whole class
 /// lived in one column of this matrix.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ProtocolReceiverMatrixTests : IntegrationTestBase
 {
     public ProtocolReceiverMatrixTests(ITestOutputHelper output) : base(output) { }

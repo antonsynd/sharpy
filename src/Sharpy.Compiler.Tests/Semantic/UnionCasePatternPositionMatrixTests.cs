@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// plan (Phase 3 close).
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class UnionCasePatternPositionMatrixTests : IntegrationTestBase
 {
     public UnionCasePatternPositionMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// with the fact recorded and unapplied — which is the exact defect (the checker says float32, the
 /// emitter prints an unsuffixed double) — so the assertion is always on stdout.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StorePositionReachTests : IntegrationTestBase
 {
     public StorePositionReachTests(ITestOutputHelper output) : base(output) { }

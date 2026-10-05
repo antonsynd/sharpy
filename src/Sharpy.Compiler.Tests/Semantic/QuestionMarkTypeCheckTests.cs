@@ -8,7 +8,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <summary>
 /// Semantic tests for the postfix ? operator (early return on Result/Optional).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class QuestionMarkTypeCheckTests : IntegrationTestBase
 {
     public QuestionMarkTypeCheckTests(ITestOutputHelper output) : base(output)

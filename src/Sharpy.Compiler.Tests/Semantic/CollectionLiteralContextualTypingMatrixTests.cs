@@ -41,7 +41,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// would pass with the bug present. The element is therefore a <c>list[...]</c>, for which no
 /// such conversion exists.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
 {
     public CollectionLiteralContextualTypingMatrixTests(ITestOutputHelper output) : base(output) { }

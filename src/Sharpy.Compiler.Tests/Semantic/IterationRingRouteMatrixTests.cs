@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// currently null is passed at argument positions); range membership (Phase 2, #1778);
 /// <c>class-mix</c> via <c>(Dog(), Animal())</c> (arm-2 with user classes).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class IterationRingRouteMatrixTests : IntegrationTestBase
 {
     public IterationRingRouteMatrixTests(ITestOutputHelper output) : base(output) { }

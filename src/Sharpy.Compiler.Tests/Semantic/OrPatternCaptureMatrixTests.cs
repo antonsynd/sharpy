@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>SemanticInfo</c> records one type per AST node; the refusal names the rule and steers.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class OrPatternCaptureMatrixTests : IntegrationTestBase
 {
     public OrPatternCaptureMatrixTests(ITestOutputHelper output) : base(output) { }

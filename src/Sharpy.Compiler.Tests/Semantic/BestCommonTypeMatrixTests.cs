@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>Every runnable cell asserts stdout.</b> A join that compiles with the wrong type is
 /// the defect these issues are about; only a value comparison catches it (contract §4).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class BestCommonTypeMatrixTests : IntegrationTestBase
 {
     public BestCommonTypeMatrixTests(ITestOutputHelper output) : base(output) { }

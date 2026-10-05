@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// in the TypeChecker, so exactly-once is the only thing standing between a staged call and
 /// duplicated errors.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StagedExtensionExactlyOnceTests : IntegrationTestBase
 {
     public StagedExtensionExactlyOnceTests(ITestOutputHelper output) : base(output) { }

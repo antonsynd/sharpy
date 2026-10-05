@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// (<c>IntegrationTestBase</c>), so a cell that regresses to SPY0908 loses its diagnostic and the cell
 /// goes red. An acceptance cell asserts stdout, which no diagnostic-level check can fake.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class GenericArgumentVarianceMatrixTests : IntegrationTestBase
 {
     public GenericArgumentVarianceMatrixTests(ITestOutputHelper output) : base(output) { }

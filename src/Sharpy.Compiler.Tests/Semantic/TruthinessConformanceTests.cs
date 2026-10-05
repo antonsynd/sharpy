@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// Each cell asserts either accepted (truth-testable) or refused (SPY0220/SPY0241).
 /// Adding a new truth position or type without updating this matrix is a loud failure.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class TruthinessConformanceTests : StdlibAwareIntegrationTestBase
 {
     public TruthinessConformanceTests(ITestOutputHelper output) : base(output) { }

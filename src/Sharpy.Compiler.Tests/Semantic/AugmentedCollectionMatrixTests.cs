@@ -12,7 +12,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// Dimensions: 8 operators x 5 targets x 3 alias observations (N/A cells declared).
 /// Each cell's expected output is verified against CPython 3.12.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class AugmentedCollectionMatrixTests : IntegrationTestBase
 {
     public AugmentedCollectionMatrixTests(ITestOutputHelper output) : base(output) { }

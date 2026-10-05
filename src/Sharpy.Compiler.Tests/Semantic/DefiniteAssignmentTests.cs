@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// Programmatic tests for definite-assignment analysis (#1559).
 /// Covers bare declarations (<c>x: int</c>) and SPY0600 use-before-assign detection.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class DefiniteAssignmentTests : IntegrationTestBase
 {
     public DefiniteAssignmentTests(ITestOutputHelper output) : base(output) { }

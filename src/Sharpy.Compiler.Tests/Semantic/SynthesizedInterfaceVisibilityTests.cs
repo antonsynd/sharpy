@@ -32,7 +32,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// rather than worked around here.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SynthesizedInterfaceVisibilityTests : IntegrationTestBase
 {
     public SynthesizedInterfaceVisibilityTests(ITestOutputHelper output) : base(output) { }

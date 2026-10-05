@@ -18,7 +18,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// Union and enum bodies are ranged separately: their grammars admit only cases/methods and members,
 /// so a <c>let</c> there is the parser's single refusal before semantic analysis runs.
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class LetPositionRefusalTests : IntegrationTestBase
 {
     public LetPositionRefusalTests(ITestOutputHelper output) : base(output) { }

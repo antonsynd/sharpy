@@ -21,7 +21,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// interop, and the non-sequence refusals str / tuple → SPY0220).
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SequencePatternSubjectMatrixTests : IntegrationTestBase
 {
     public SequencePatternSubjectMatrixTests(ITestOutputHelper output) : base(output) { }

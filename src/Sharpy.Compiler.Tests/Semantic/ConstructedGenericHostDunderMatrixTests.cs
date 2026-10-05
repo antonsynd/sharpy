@@ -65,7 +65,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>b11</c>/<c>b14</c> in this plan's probe ledger. Adding it here would only ever be a red column;
 /// Phase 3's own constructor matrix is where it is un-N/A'd.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
 {
     public ConstructedGenericHostDunderMatrixTests(ITestOutputHelper output) : base(output) { }

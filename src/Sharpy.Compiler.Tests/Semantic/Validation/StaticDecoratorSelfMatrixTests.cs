@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Semantic.Validation;
 /// <c>self</c> that is not first is not this rule's business (it is #2051's CS1501/CS0026 behind
 /// SPY0908). No decorator, and '@static' without <c>self</c>, run.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StaticDecoratorSelfMatrixTests : IntegrationTestBase
 {
     public StaticDecoratorSelfMatrixTests(ITestOutputHelper output) : base(output) { }
