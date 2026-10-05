@@ -12,8 +12,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// every test in a testhost, so a test that changes one must sit in an xUnit collection with
 /// <c>DisableParallelization = true</c> — and that collection must be DEFINED in the test's own
 /// project, because xUnit v2 reads <c>[CollectionDefinition]</c> only from the test assembly: a
-/// definition anywhere else (HeavyCompilation's, in Sharpy.TestInfrastructure) leaves the
-/// collection an ordinary parallel one.
+/// definition anywhere else (as HeavyCompilation's was, in Sharpy.TestInfrastructure, from #679 until
+/// #2179) leaves the collection an ordinary parallel one.
 ///
 /// <para><b>What it scans.</b> A Roslyn walk over every <c>.cs</c> file of the five test projects
 /// and Sharpy.TestInfrastructure (bin/obj and the uncompiled <c>Integration/TestFixtures</c>
