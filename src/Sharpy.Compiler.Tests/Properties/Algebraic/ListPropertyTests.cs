@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Properties.Algebraic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class ListPropertyTests : AlgebraicTestBase
 {
     public ListPropertyTests(ITestOutputHelper output) : base(output) { }

@@ -19,7 +19,7 @@ namespace Sharpy.Compiler.Tests.Properties.Algebraic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class MapZipPropertyTests : AlgebraicTestBase
 {
     public MapZipPropertyTests(ITestOutputHelper output) : base(output) { }

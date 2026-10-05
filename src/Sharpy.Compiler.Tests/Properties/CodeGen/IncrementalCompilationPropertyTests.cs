@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Tests.Properties.CodeGen;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class IncrementalCompilationPropertyTests
 {
     private readonly ITestOutputHelper _output;

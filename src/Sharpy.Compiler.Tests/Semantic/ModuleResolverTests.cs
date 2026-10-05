@@ -7,6 +7,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <summary>
 /// Tests for ModuleResolver - validates module path resolution logic
 /// </summary>
+[Collection("ProcessCwd")]
 public class ModuleResolverTests : IDisposable
 {
     private readonly string _testDir;

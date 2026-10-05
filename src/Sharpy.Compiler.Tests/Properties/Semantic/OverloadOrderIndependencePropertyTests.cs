@@ -22,7 +22,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class OverloadOrderIndependencePropertyTests
 {
     private readonly ITestOutputHelper _output;

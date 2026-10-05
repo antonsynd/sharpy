@@ -31,7 +31,7 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class MetamorphicCorpusInvarianceTests : IntegrationTestBase
 {
     /// <summary>

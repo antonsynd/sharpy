@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class BuiltinShadowingPropertyTests : IntegrationTestBase
 {
     public BuiltinShadowingPropertyTests(ITestOutputHelper output) : base(output) { }

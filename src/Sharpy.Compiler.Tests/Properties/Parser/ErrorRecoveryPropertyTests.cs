@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Tests.Properties.Parser;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class ErrorRecoveryPropertyTests
 {
     private readonly ITestOutputHelper _output;
