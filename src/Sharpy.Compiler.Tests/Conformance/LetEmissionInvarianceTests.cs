@@ -11,8 +11,13 @@ using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
+using static Sharpy.Compiler.Tests.Conformance.LetEmissionInvarianceTests.Instrument;
 
-namespace Sharpy.Compiler.Tests.Conformance;
+// The instrument runs as ShardCount classes Shard0..Shard7 plus one Controls class, all in a NAMESPACE
+// named LetEmissionInvarianceTests, so `~LetEmissionInvarianceTests` and the Conformance CI shard select
+// every row unchanged (#2179). One class would serialise the corpus Theory: xUnit v2 never runs two
+// rows of one class concurrently, and as one class it was the suite's longest pole (576 s at one thread).
+namespace Sharpy.Compiler.Tests.Conformance.LetEmissionInvarianceTests;
 
 /// <summary>
 /// Differential instrument for #1974 Stage 1 (P21a Phase 6), and the acceptance oracle 21b's codemod
@@ -52,100 +57,21 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <para>Not in scope: multi-file fixtures (the twin rule is single-file, driven by one file's
 /// <c>SemanticInfo</c>) and fixtures with an <c>.error</c> sidecar (they do not compile). Both are
 /// excluded at discovery; see <see cref="Census_DiscoveryExclusionsAreCountedAndStated"/>.</para>
+///
+/// <para><b>Layout.</b> The corpus Theory <c>LetTwin_EmitsByteIdenticalCSharp</c> is sharded over
+/// <see cref="LetTwinShard"/>'s subclasses by the fixture-shard function
+/// (<see cref="FileBasedIntegrationTestsBase.ShardOf"/>); this class holds the controls and the census,
+/// which run once. The per-row ratchet checks (an allowlisted stem with no site, or whose twin is
+/// identical again) run in the one shard that owns the row; the stale-entry check is the census's,
+/// here.</para>
 /// </summary>
-public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
+public class Controls : FileBasedIntegrationTestsBase
 {
-    private const string AllowlistFileName = "let-emission-invariance-allowlist.txt";
-    private const string ControlFixture = "type_shorthand/list_shorthand";
-
-    private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;
-
     protected override string FixturesPath => FixturesPathValue;
 
-    public LetEmissionInvarianceTests(ITestOutputHelper output) : base(output)
+    public Controls(ITestOutputHelper output) : base(output)
     {
     }
-
-    // ================================================================
-    // Corpus
-    // ================================================================
-
-    private static IEnumerable<TestFixtureInfo> AllFixtures()
-        => FixtureDiscoveryHelper.DiscoverFixtures(FixturesPathValue);
-
-    /// <summary>Single-file fixtures without an <c>.error</c> sidecar: every one is expected to compile.</summary>
-    private static IEnumerable<TestFixtureInfo> ComparableFixtures()
-        => AllFixtures().Where(f => !f.IsMultiFile && f.ErrorFile == null);
-
-    public static IEnumerable<object[]> ComparableFixtureNames()
-        => ComparableFixtures().Select(f => new object[] { f.TestName });
-
-    private static TestFixtureInfo FixtureByName(string testName)
-        => ComparableFixtures().Single(f => f.TestName == testName);
-
-    // ================================================================
-    // The instrument
-    // ================================================================
-
-    [Theory]
-    [MemberData(nameof(ComparableFixtureNames))]
-    public void LetTwin_EmitsByteIdenticalCSharp(string testName)
-    {
-        var fixture = FixtureByName(testName);
-        var source = File.ReadAllText(fixture.SpyFilePath);
-        var fileName = Path.GetFileName(fixture.SpyFilePath);
-        var features = FeaturesOf(fixture);
-
-        var original = Compile(source, fileName, features);
-        original.Success.Should().BeTrue(
-            $"{testName} has no .error sidecar, so the instrument expects it to compile. A fixture that "
-            + $"does not compile here is an instrument fault, not a skipped cell:\n{Errors(original)}");
-        original.GeneratedCSharp.Should().NotBeNull(testName);
-        original.Ast.Should().NotBeNull(testName);
-        original.SemanticInfo.Should().NotBeNull(testName);
-
-        var sites = TwinSites(original.Ast!, original.SemanticInfo!);
-        var allowlisted = LoadAllowlist().TryGetValue(testName, out var cite);
-        if (sites.Count == 0)
-        {
-            Output.WriteLine($"LETINV {testName} no-site");
-            allowlisted.Should().BeFalse($"{testName} is allowlisted ({cite}) but has no let site: delete its entry");
-            return;
-        }
-
-        var twin = InsertLet(source, sites);
-        AssertTwinParsesAsIntended(testName, source, twin, sites.Count);
-
-        var twinResult = Compile(twin, fileName, features);
-        var verdict = twinResult.Success && twinResult.GeneratedCSharp != null
-            && Comparable(twinResult.GeneratedCSharp) == Comparable(original.GeneratedCSharp!)
-            ? "identical"
-            : "differs";
-        Output.WriteLine($"LETINV {testName} {verdict} sites={sites.Count}");
-
-        if (verdict == "identical")
-        {
-            allowlisted.Should().BeFalse(
-                $"{testName}'s let twin now emits identical C# — {cite} is fixed for it: delete its line from "
-                + $"Conformance/{AllowlistFileName}");
-            return;
-        }
-
-        if (allowlisted)
-            return;
-
-        var detail = twinResult.Success
-            ? FirstDifference(Comparable(original.GeneratedCSharp!), Comparable(twinResult.GeneratedCSharp!))
-            : "the twin does not compile:\n" + Errors(twinResult);
-        Assert.Fail(
-            $"{testName}: prefixing `let` at {sites.Count} declaring store(s) "
-            + $"({string.Join(", ", sites.Select(s => $"L{s.Line}:C{s.Column} {s.Kind}"))}) changed the emitted C#. "
-            + $"A declaring store and its let twin must reach the same emitter arm. {detail}");
-    }
-
-    // ================================================================
-    // Controls
-    // ================================================================
 
     /// <summary>
     /// The comparison can see a difference: <c>let</c> forced at a WRITE-THROUGH site (the loop
@@ -238,19 +164,222 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
         LoadAllowlist().Keys.Should().OnlyContain(k => comparable.Contains(k),
             "every allowlist entry must name a comparable fixture");
     }
+}
+
+/// <summary>
+/// The corpus cell of the instrument (see <see cref="Controls"/>). Deliberately NOT a
+/// <see cref="FileBasedIntegrationTestsBase"/>: that base declares a <c>[Fact]</c>, which every shard
+/// class would replicate.
+/// </summary>
+public abstract class LetTwinShard
+{
+    protected readonly ITestOutputHelper Output;
+
+    protected LetTwinShard(ITestOutputHelper output)
+    {
+        Output = output;
+    }
+
+    protected void RunCell(string testName)
+    {
+        var fixture = FixtureByName(testName);
+        var source = File.ReadAllText(fixture.SpyFilePath);
+        var fileName = Path.GetFileName(fixture.SpyFilePath);
+        var features = FeaturesOf(fixture);
+
+        var original = Compile(source, fileName, features);
+        original.Success.Should().BeTrue(
+            $"{testName} has no .error sidecar, so the instrument expects it to compile. A fixture that "
+            + $"does not compile here is an instrument fault, not a skipped cell:\n{Errors(original)}");
+        original.GeneratedCSharp.Should().NotBeNull(testName);
+        original.Ast.Should().NotBeNull(testName);
+        original.SemanticInfo.Should().NotBeNull(testName);
+
+        var sites = TwinSites(original.Ast!, original.SemanticInfo!);
+        var allowlisted = LoadAllowlist().TryGetValue(testName, out var cite);
+        if (sites.Count == 0)
+        {
+            Output.WriteLine($"LETINV {testName} no-site");
+            allowlisted.Should().BeFalse($"{testName} is allowlisted ({cite}) but has no let site: delete its entry");
+            return;
+        }
+
+        var twin = InsertLet(source, sites);
+        AssertTwinParsesAsIntended(testName, source, twin, sites.Count);
+
+        var twinResult = Compile(twin, fileName, features);
+        var verdict = twinResult.Success && twinResult.GeneratedCSharp != null
+            && Comparable(twinResult.GeneratedCSharp) == Comparable(original.GeneratedCSharp!)
+            ? "identical"
+            : "differs";
+        Output.WriteLine($"LETINV {testName} {verdict} sites={sites.Count}");
+
+        if (verdict == "identical")
+        {
+            allowlisted.Should().BeFalse(
+                $"{testName}'s let twin now emits identical C# — {cite} is fixed for it: delete its line from "
+                + $"Conformance/{AllowlistFileName}");
+            return;
+        }
+
+        if (allowlisted)
+            return;
+
+        var detail = twinResult.Success
+            ? FirstDifference(Comparable(original.GeneratedCSharp!), Comparable(twinResult.GeneratedCSharp!))
+            : "the twin does not compile:\n" + Errors(twinResult);
+        Assert.Fail(
+            $"{testName}: prefixing `let` at {sites.Count} declaring store(s) "
+            + $"({string.Join(", ", sites.Select(s => $"L{s.Line}:C{s.Column} {s.Kind}"))}) changed the emitted C#. "
+            + $"A declaring store and its let twin must reach the same emitter arm. {detail}");
+    }
+}
+
+public class Shard0 : LetTwinShard
+{
+    public Shard0(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(0);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard1 : LetTwinShard
+{
+    public Shard1(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(1);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard2 : LetTwinShard
+{
+    public Shard2(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(2);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard3 : LetTwinShard
+{
+    public Shard3(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(3);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard4 : LetTwinShard
+{
+    public Shard4(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(4);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard5 : LetTwinShard
+{
+    public Shard5(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(5);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard6 : LetTwinShard
+{
+    public Shard6(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(6);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+public class Shard7 : LetTwinShard
+{
+    public Shard7(ITestOutputHelper output) : base(output) { }
+
+    public static IEnumerable<object[]> GetTestFixtures() => CellsOfShard(7);
+
+    [Theory]
+    [MemberData(nameof(GetTestFixtures))]
+    public void LetTwin_EmitsByteIdenticalCSharp(string testName) => RunCell(testName);
+}
+
+/// <summary>Corpus, site finding, twin construction, compilation and the allowlist, shared by <see cref="Controls"/> and the shards.</summary>
+internal static class Instrument
+{
+    /// <summary>
+    /// K. As one class the Theory took 576 s at one thread @ 116c6e29d, the suite's longest pole once
+    /// the fixture corpus was sharded 8 ways (101 s at N=4); 8 shards match that corpus, so neither
+    /// bounds an N=8 run. Adding a shard means adding a ShardN class; the totality test pins the count.
+    /// </summary>
+    internal const int ShardCount = 8;
+
+    internal const string AllowlistFileName = "let-emission-invariance-allowlist.txt";
+    internal const string ControlFixture = "type_shorthand/list_shorthand";
+
+    internal static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;
+
+    // ================================================================
+    // Corpus
+    // ================================================================
+
+    internal static IEnumerable<TestFixtureInfo> AllFixtures()
+        => FixtureDiscoveryHelper.DiscoverFixtures(FixturesPathValue);
+
+    /// <summary>Single-file fixtures without an <c>.error</c> sidecar: every one is expected to compile. A fresh walk.</summary>
+    internal static IEnumerable<TestFixtureInfo> ComparableFixtures()
+        => AllFixtures().Where(f => !f.IsMultiFile && f.ErrorFile == null);
+
+    /// <summary>The unsharded corpus (a fresh walk): the totality test's independent side.</summary>
+    internal static IEnumerable<object[]> ComparableFixtureNames()
+        => ComparableFixtures().Select(f => new object[] { f.TestName });
+
+    /// <summary>
+    /// One walk shared by every shard's discovery and every cell's fixture lookup; a cell used to
+    /// re-walk the whole corpus to find its own fixture.
+    /// </summary>
+    private static readonly Lazy<TestFixtureInfo[]> CachedComparable = new(() => ComparableFixtures().ToArray());
+
+    internal static IEnumerable<object[]> CellsOfShard(int shard)
+        => CachedComparable.Value
+            .Where(f => FileBasedIntegrationTestsBase.ShardOf(
+                Path.GetRelativePath(FixturesPathValue, f.SpyFilePath).Replace('\\', '/'), ShardCount) == shard)
+            .Select(f => new object[] { f.TestName });
+
+    internal static TestFixtureInfo FixtureByName(string testName)
+        => CachedComparable.Value.Single(f => f.TestName == testName);
 
     // ================================================================
     // Site finding and twin construction
     // ================================================================
 
-    private sealed record Site(int Line, int Column, string Kind);
+    internal sealed record Site(int Line, int Column, string Kind);
 
     /// <summary>
     /// The statement stores in a function scope: bodies of functions, property and event accessors,
     /// and every block nested inside them — not module level, not a type body (a class declared
     /// inside a function has a type body again; its methods are function scopes).
     /// </summary>
-    private static IEnumerable<Statement> FunctionScopeStores(Module module)
+    internal static IEnumerable<Statement> FunctionScopeStores(Module module)
     {
         var stores = new List<Statement>();
         Walk(module, inFunction: false);
@@ -275,7 +404,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
         }
     }
 
-    private static List<Site> TwinSites(Module module, SemanticInfo info)
+    internal static List<Site> TwinSites(Module module, SemanticInfo info)
     {
         var sites = new List<Site>();
         foreach (var store in FunctionScopeStores(module))
@@ -304,7 +433,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
     }
 
     /// <summary>The identifiers under a store target, or false when the target is not names-only (a member or index target cannot take <c>let</c>).</summary>
-    private static bool TargetNames(Expression target, List<Identifier> names)
+    internal static bool TargetNames(Expression target, List<Identifier> names)
     {
         switch (target)
         {
@@ -320,7 +449,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
         }
     }
 
-    private static string InsertLet(string source, IEnumerable<Site> sites)
+    internal static string InsertLet(string source, IEnumerable<Site> sites)
     {
         var lines = source.Split('\n');
         foreach (var site in sites.OrderByDescending(s => s.Line).ThenByDescending(s => s.Column))
@@ -342,7 +471,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
     }
 
     /// <summary>The twin re-parses with exactly <paramref name="insertions"/> more <c>let</c> store nodes than the original.</summary>
-    private static void AssertTwinParsesAsIntended(string testName, string source, string twin, int insertions)
+    internal static void AssertTwinParsesAsIntended(string testName, string source, string twin, int insertions)
     {
         var before = LetStoreCount(source);
         var after = LetStoreCount(twin);
@@ -351,7 +480,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
             + "not a finding, if it does not");
     }
 
-    private static int LetStoreCount(string source)
+    internal static int LetStoreCount(string source)
     {
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var parser = new global::Sharpy.Compiler.Parser.Parser(lexer.TokenizeAll(), NullLogger.Instance);
@@ -359,7 +488,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
         return Descendants(module).Count(n => n is Assignment { IsLet: true } or VariableDeclaration { IsLet: true });
     }
 
-    private static IEnumerable<Node> Descendants(Node node)
+    internal static IEnumerable<Node> Descendants(Node node)
     {
         foreach (var child in node.GetChildNodes())
         {
@@ -373,14 +502,14 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
     // Compilation, allowlist, reporting
     // ================================================================
 
-    private static FeatureFlags FeaturesOf(TestFixtureInfo fixture)
+    internal static FeatureFlags FeaturesOf(TestFixtureInfo fixture)
         => fixture.Features.Count == 0 ? FeatureFlags.None : FeatureFlags.None.Enable(fixture.Features);
 
     /// <summary>
     /// The production single-file path (<c>CompilerApi.Compile</c>, a synthetic project of one file),
     /// with the options the integration harness uses, stopping after code generation.
     /// </summary>
-    private static CompileResult Compile(string source, string fileName, FeatureFlags features)
+    internal static CompileResult Compile(string source, string fileName, FeatureFlags features)
     {
         var dir = Path.Combine(Path.GetTempPath(), $"sharpy_letinv_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
@@ -410,12 +539,12 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
         }
     }
 
-    private static string Errors(CompileResult result)
+    internal static string Errors(CompileResult result)
         => string.Join("\n", result.Diagnostics
             .Where(d => d.Severity == global::Sharpy.Compiler.Diagnostics.CompilerDiagnosticSeverity.Error)
             .Select(d => $"{d.Code} L{d.Line}: {d.Message}"));
 
-    private static readonly System.Text.RegularExpressions.Regex LineSpanColumns = new(
+    internal static readonly System.Text.RegularExpressions.Regex LineSpanColumns = new(
         @"^(\s*#line\s*)\((\d+),\s*\d+\)\s*-\s*\((\d+),\s*\d+\)",
         System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
@@ -427,10 +556,10 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
     /// columns are position metadata of a different text, not an emission decision (measured: without
     /// this, every twin differed at the statement's end column alone).
     /// </summary>
-    private static string Comparable(string csharp)
-        => LineSpanColumns.Replace(NormalizeCSharp(csharp), "$1($2) - ($3)");
+    internal static string Comparable(string csharp)
+        => LineSpanColumns.Replace(FileBasedIntegrationTestsBase.NormalizeCSharp(csharp), "$1($2) - ($3)");
 
-    private static string FirstDifference(string expected, string actual)
+    internal static string FirstDifference(string expected, string actual)
     {
         var a = expected.Split('\n');
         var b = actual.Split('\n');
@@ -446,7 +575,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
     }
 
     /// <summary>Stem → cited reason. <c>#</c> starts a comment only after whitespace, so the cite stays readable.</summary>
-    private static Dictionary<string, string> LoadAllowlist()
+    internal static Dictionary<string, string> LoadAllowlist()
     {
         var path = FindAllowlistPath()
             ?? throw new InvalidOperationException(
@@ -468,7 +597,7 @@ public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
         return entries;
     }
 
-    private static string? FindAllowlistPath()
+    internal static string? FindAllowlistPath()
     {
         var current = AppContext.BaseDirectory;
         while (current != null)

@@ -502,7 +502,7 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         throw new InvalidOperationException($"No .spy files found in {projectDir}");
     }
 
-    protected static string NormalizeCSharp(string csharpCode)
+    public static string NormalizeCSharp(string csharpCode)
     {
         var normalizedInput = csharpCode.Replace("\r\n", "\n", StringComparison.Ordinal);
         var tree = CSharpSyntaxTree.ParseText(normalizedInput);
