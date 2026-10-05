@@ -351,14 +351,35 @@ internal partial class TypeChecker
         return expectation;
     }
 
+    /// <summary>
+    /// Types a generator expression as <c>Iterator[T]</c>, or refuses it when it is ASYNC
+    /// (deviation <c>no-async-generator-expressions</c>, #2235): a generator expression lowers to a
+    /// deferred LINQ chain over <c>IEnumerable&lt;T&gt;</c>, which has no asynchronous counterpart, so
+    /// every async one reached code generation as SPY0599/SPY0908. The refusal is raised here rather
+    /// than in a validator because it must replace the diagnostics the type checker would otherwise
+    /// produce for the same construct: the body is checked as its own async scope (CPython runs an
+    /// async generator expression as an async generator function, so its <c>await</c>/<c>async
+    /// for</c> are legal even in a sync <c>def</c>), and the expression is typed Unknown so its use
+    /// site (<c>list(...)</c>, <c>for</c>) reports nothing further.
+    /// </summary>
     private SemanticType CheckGeneratorExpression(GeneratorExpression genExpr)
     {
-        if (FindAsyncGeneratorMarker(genExpr) is { } asyncMarker)
-            return RefuseAsyncGeneratorExpression(genExpr, asyncMarker);
+        var asyncMarker = AsyncGeneratorMarkerFinder.Find(genExpr);
+        if (asyncMarker != null)
+        {
+            var reason = asyncMarker is ForClause ? "an 'async for' clause" : "an 'await'";
+            AddError(
+                $"Async generator expressions are not supported (this generator expression contains {reason}); " +
+                "use an async comprehension instead, e.g. '[x async for x in source]'",
+                genExpr.LineStart, genExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnsupportedFeature,
+                span: genExpr.Span);
+        }
 
         _symbolTable.EnterScope("generator-expression");
 
         SemanticType elementType;
+        using (ScopedValue.Push(ref _currentFunctionIsAsync, _currentFunctionIsAsync || asyncMarker != null))
         using (ClearExpectation(null))
         {
             CheckComprehensionClauses(genExpr.Clauses);
@@ -366,6 +387,13 @@ internal partial class TypeChecker
         }
 
         _symbolTable.ExitScope();
+
+        if (asyncMarker != null)
+        {
+            MarkExpressionAsErrorRecovery(genExpr,
+                ErrorRecoveryReason.AlreadyReported("SPY0358 async generator expression"));
+            return SemanticType.Unknown;
+        }
 
         return new GenericType
         {
@@ -375,87 +403,61 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Refuses an async generator expression (deviation <c>no-async-generator-expressions</c>,
-    /// #2235): a generator expression lowers to a deferred LINQ chain over <c>IEnumerable&lt;T&gt;</c>,
-    /// which has no asynchronous counterpart, so every such expression reached code generation as
-    /// SPY0599/SPY0908. The refusal is raised here rather than in a validator because it must
-    /// replace the diagnostics the type checker would otherwise produce for the same construct: the
-    /// body is checked as its own async scope (CPython runs an async generator expression as an
-    /// async generator function, so its <c>await</c>/<c>async for</c> are legal even in a sync
-    /// <c>def</c>), and the expression is typed Unknown so its use site (<c>list(...)</c>,
-    /// <c>sum(...)</c>, <c>for</c>) reports nothing further.
+    /// Finds the clause or <c>await</c> that makes a generator expression ASYNC, or <c>null</c> when
+    /// it is synchronous. CPython 3.12's rule (measured): an <c>async for</c> clause anywhere in it,
+    /// or an <c>await</c> in its element, a filter, or any for-clause iterator but the first — the
+    /// first iterator is evaluated in the enclosing scope. A nested list/set/dict comprehension is
+    /// inlined into the generator's scope, so its <c>async for</c>/<c>await</c> count; a nested
+    /// lambda or generator expression is its own scope (only a nested generator's first iterator is
+    /// evaluated in this one). Every other node kind is descended through
+    /// <see cref="AstVisitor.DefaultVisit"/>, so the walk is total by construction.
     /// </summary>
-    private SemanticType RefuseAsyncGeneratorExpression(GeneratorExpression genExpr, Node asyncMarker)
+    private sealed class AsyncGeneratorMarkerFinder : AstVisitor
     {
-        var reason = asyncMarker is ForClause ? "an 'async for' clause" : "an 'await'";
-        AddError(
-            $"Async generator expressions are not supported (this generator expression contains {reason}); " +
-            "use an async comprehension instead, e.g. '[x async for x in source]'",
-            genExpr.LineStart, genExpr.ColumnStart,
-            code: DiagnosticCodes.Semantic.UnsupportedFeature,
-            span: genExpr.Span);
+        private Node? _marker;
 
-        _symbolTable.EnterScope("generator-expression");
-        using (ScopedValue.Push(ref _currentFunctionIsAsync, true))
-        using (ClearExpectation(null))
+        public static Node? Find(GeneratorExpression genExpr)
         {
-            CheckComprehensionClauses(genExpr.Clauses);
-            CheckExpression(genExpr.Element);
-        }
-
-        _symbolTable.ExitScope();
-
-        MarkExpressionAsErrorRecovery(genExpr,
-            ErrorRecoveryReason.AlreadyReported("SPY0358 async generator expression"));
-        return SemanticType.Unknown;
-    }
-
-    /// <summary>
-    /// The clause or <c>await</c> that makes <paramref name="genExpr"/> an ASYNC generator
-    /// expression, or <c>null</c> when it is synchronous. CPython 3.12's rule (measured): an
-    /// <c>async for</c> clause anywhere in it, or an <c>await</c> in its element, a filter, or any
-    /// for-clause iterator but the first — the first iterator is evaluated in the enclosing scope.
-    /// A nested list/set/dict comprehension is inlined into the generator's scope, so its
-    /// <c>async for</c>/<c>await</c> count; a nested lambda or generator expression is its own
-    /// scope (only a nested generator's first iterator is evaluated in this one).
-    /// </summary>
-    private static Node? FindAsyncGeneratorMarker(GeneratorExpression genExpr)
-    {
-        for (int i = 0; i < genExpr.Clauses.Length; i++)
-        {
-            var marker = genExpr.Clauses[i] switch
+            var finder = new AsyncGeneratorMarkerFinder();
+            for (int i = 0; i < genExpr.Clauses.Length; i++)
             {
-                ForClause { IsAsync: true } asyncFor => asyncFor,
-                ForClause forClause when i == 0 => FindAsyncMarkerInScope(forClause.Target),
-                var clause => FindAsyncMarkerInScope(clause),
-            };
-            if (marker != null)
-                return marker;
+                if (i == 0 && genExpr.Clauses[0] is ForClause outermost && !outermost.IsAsync)
+                    finder.Visit(outermost.Target);
+                else
+                    finder.Visit(genExpr.Clauses[i]);
+            }
+
+            finder.Visit(genExpr.Element);
+            return finder._marker;
         }
 
-        return FindAsyncMarkerInScope(genExpr.Element);
-    }
-
-    private static Node? FindAsyncMarkerInScope(Node node)
-    {
-        switch (node)
+        public override void Visit(Node node)
         {
-            case AwaitExpression:
-            case ForClause { IsAsync: true }:
-                return node;
-            case LambdaExpression:
-                return null;
-            case GeneratorExpression { Clauses: [ForClause outermost, ..] }:
-                return FindAsyncMarkerInScope(outermost.Iterator);
+            if (_marker == null)
+                base.Visit(node);
         }
 
-        foreach (var child in node.GetChildNodes())
+        public override void VisitAwaitExpression(AwaitExpression node) => _marker = node;
+
+        public override void VisitForClause(ForClause node)
         {
-            if (FindAsyncMarkerInScope(child) is { } marker)
-                return marker;
+            if (node.IsAsync)
+                _marker = node;
+            else
+                base.VisitForClause(node);
         }
 
-        return null;
+        public override void VisitLambdaExpression(LambdaExpression node)
+        {
+            // A lambda is its own function scope: an await in its body does not make the
+            // enclosing generator async (and is refused on its own, SPY0273).
+        }
+
+        public override void VisitGeneratorExpression(GeneratorExpression node)
+        {
+            if (node.Clauses.Length > 0 && node.Clauses[0] is ForClause outermost)
+                Visit(outermost.Iterator);
+        }
     }
 
     private SemanticType CheckListComprehension(ListComprehension listComp)
