@@ -81,7 +81,9 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// by the lexer's width rule, is not its depth in Q.</item>
 /// </list>
 /// <c>refusedWork</c> — a range cell with a non-empty <c>selected</c> whose T is D — is census, not a
-/// failure.</para>
+/// failure of its cell; its RATE per range kind (over the cells whose <c>selected</c> changes D) is pinned
+/// on the <c>identity</c> and <c>comment</c> twins as a ceiling (<see cref="RefusalCeilingPercent"/>), and
+/// the census prints beside it how far applied selections reach outside their lines.</para>
 ///
 /// <para><b>Ratchet.</b> <c>Conformance/formatting-route-parity-allowlist.txt</c> lists
 /// <c>stem twin route state bucket # #issue</c> (the bucket meanings are in its header); a row covers every cell of that route and state
@@ -244,6 +246,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         private readonly Lazy<IReadOnlyList<LineHunk>> _hunks;
         private readonly Lazy<bool> _netAcceptsSelf;
         private readonly Lazy<bool> _netAcceptsFormatted;
+        private readonly Lazy<bool> _unmatchedEqualLine;
 
         /// <summary>An unparseable document: no AST, no <c>Format(D)</c>; its oracles read <paramref name="truth"/>.</summary>
         public SweepDocument(string text, string state, GroundTruth truth)
@@ -267,6 +270,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             _hunks = new(() => LineDiff.Hunks(Text, Formatted));
             _netAcceptsSelf = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Text) == null);
             _netAcceptsFormatted = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Formatted) == null);
+            _unmatchedEqualLine = new(ComputeUnmatchedEqualLine);
         }
 
         public string Text { get; }
@@ -295,6 +299,29 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         public bool IsCrlf { get; }
 
         public IReadOnlyList<LineHunk> Hunks => _hunks.Value;
+
+        /// <summary>
+        /// Whether some non-blank line is both deleted (a source line inside a hunk) and inserted (a hunk's
+        /// new line) VERBATIM: the diff left an equal pair unmatched — the D17 shape ("delete line 1,
+        /// re-insert <c>x: int = 1</c> below"). An upper bound on LCS ties resolved against a non-blank line:
+        /// it also counts a pair no LCS could match (one that crosses a matched line).
+        /// </summary>
+        public bool HasUnmatchedEqualLine => _unmatchedEqualLine.Value;
+
+        private bool ComputeUnmatchedEqualLine()
+        {
+            var deleted = new SCG.HashSet<string>(StringComparer.Ordinal);
+            foreach (var h in Hunks)
+            {
+                for (var i = h.Start; i < h.End; i++)
+                {
+                    if (!string.IsNullOrWhiteSpace(Lines[i]))
+                        deleted.Add(Lines[i]);
+                }
+            }
+
+            return Hunks.Any(h => h.NewLines.Any(deleted.Contains));
+        }
 
         /// <summary>
         /// The test's own <c>CheckMeaningPreserved(D, ast(D), T)</c>, memoized for the two applied texts
@@ -672,6 +699,18 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal sealed record CellVerdict(SCG.List<(string Bucket, string Detail)> Failures, bool RefusedWork)
     {
         public bool Changed { get; init; }
+
+        /// <summary>A range cell of a parseable document whose <c>selected</c> hunks change D — the refusal rate's denominator.</summary>
+        public bool WithWork { get; init; }
+
+        /// <summary>For a range cell with work: the lines <c>[s, e]</c> it selects.</summary>
+        public int SelectedLineCount { get; init; }
+
+        /// <summary>For a range cell with work: the source lines its <c>selected</c> hunks replace or delete that lie outside <c>[s, e]</c>.</summary>
+        public int OutsideLineCount { get; init; }
+
+        /// <summary>A <c>refusedWork</c> cell whose document <see cref="SweepDocument.HasUnmatchedEqualLine"/> (census input for a later LCS tie-break).</summary>
+        public bool RefusedOnUnmatchedEqualLine { get; init; }
     }
 
     /// <summary>Runs <paramref name="apply"/>; a strict-applier refusal is <c>edits</c> and nothing else is judged.</summary>
@@ -773,6 +812,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     {
         var failures = new SCG.List<(string, string)>();
         var refusedWork = false;
+        var withWork = false;
+        int selectedLineCount = 0, outsideLineCount = 0;
         var route = request.Route;
 
         if (d.NetRefusal(applied) is { } refusal)
@@ -794,13 +835,20 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             var (s, e) = SelectedLines(request.Range!, d.Lines);
             var selected = d.Hunks.Where(h => Selects(h, s, e, d.Lines.Count)).ToList();
+            withWork = selected.Count > 0 && LineDiff.Apply(d.Text, selected) != d.Text;
+            if (withWork)
+            {
+                selectedLineCount = e - s + 1;
+                outsideLineCount = selected.Sum(h => OutsideLines(h, s, e));
+            }
+
             if (applied != d.Text)
             {
                 var expected = LineDiff.Apply(d.Text, selected);
                 if (applied != expected)
                     failures.Add((Local, $"{request} selects lines {s}..{e}: {FirstDifference(expected, applied, "Apply(D, selected)", "T")}"));
             }
-            else if (selected.Count > 0 && LineDiff.Apply(d.Text, selected) != d.Text)
+            else if (withWork)
             {
                 refusedWork = true;
             }
@@ -812,8 +860,18 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         if (route == OnType && WithoutLeadingWhitespace(applied, request.Line) != WithoutLeadingWhitespace(d.Text, request.Line))
             failures.Add((OnTypeShape, $"{request}: {FirstDifference(d.Text, applied, "D", "T")}"));
 
-        return new CellVerdict(failures, refusedWork);
+        return new CellVerdict(failures, refusedWork)
+        {
+            RefusedOnUnmatchedEqualLine = refusedWork && d.HasUnmatchedEqualLine,
+            WithWork = withWork,
+            SelectedLineCount = selectedLineCount,
+            OutsideLineCount = outsideLineCount,
+        };
     }
+
+    /// <summary>The source lines <c>[a, b)</c> a hunk replaces or deletes that lie outside <c>[s, e]</c> (an insertion has none).</summary>
+    internal static int OutsideLines(LineHunk hunk, int s, int e)
+        => Math.Max(0, Math.Min(hunk.End, s) - hunk.Start) + Math.Max(0, hunk.End - Math.Max(hunk.Start, e + 1));
 
     /// <summary>
     /// Plan P22e decision 2's selected lines <c>[s, e]</c>, RESTATED (never called from production):
@@ -924,12 +982,24 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         public int Cells;
         public int RefusedWork;
         public int Changed;
+
+        /// <summary>Range cells whose <c>selected</c> hunks change D (<see cref="CellVerdict.WithWork"/>).</summary>
+        public int WithWork;
+
+        /// <summary><c>refusedWork</c> cells whose document has an unmatched equal line (<see cref="SweepDocument.HasUnmatchedEqualLine"/>).</summary>
+        public int RefusedOnUnmatchedEqualLine;
+
+        /// <summary>Over the range cells with work that APPLIED their hunks: lines selected, hunk lines outside them, and the cells with any.</summary>
+        public long AppliedSelectedLines;
+        public long AppliedOutsideLines;
+        public int AppliedStraddling;
         public readonly SortedDictionary<string, (int Count, string First)> Failures = new(StringComparer.Ordinal);
     }
 
     /// <summary>Everything the census reads from the theories that ran in this process.</summary>
     private static readonly ConcurrentDictionary<(string Route, string State, string Twin), int> s_cellsRun = new();
-    private static readonly ConcurrentDictionary<(string Route, string Twin), int> s_refusedWork = new();
+    private static readonly ConcurrentDictionary<(string Route, string Twin, string Measure), long> s_rangeCensus = new();
+    private static readonly ConcurrentDictionary<string, int> s_stemsRun = new(StringComparer.Ordinal);
     private static readonly ConcurrentDictionary<(string Stem, string Twin), bool> s_declined = new();
 
     /// <summary>Census tallies (<see cref="Tallies"/>): cells per (unparseable state, literal kind) and <c>ontype</c> cells per continuation shape.</summary>
@@ -953,9 +1023,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             s_cellsRun.AddOrUpdate((route, state, twin), group.Cells, (_, n) => n + group.Cells);
             if (group.Changed > 0)
                 s_tallies.AddOrUpdate(ChangedTally(route, state), group.Changed, (_, n) => n + group.Changed);
-            if (group.RefusedWork > 0)
-                s_refusedWork.AddOrUpdate((route, twin), group.RefusedWork, (_, n) => n + group.RefusedWork);
+            foreach (var (measure, n) in RangeMeasures(group))
+            {
+                if (n > 0)
+                    s_rangeCensus.AddOrUpdate((route, twin, measure), n, (_, m) => m + n);
+            }
         }
+
+        s_stemsRun.AddOrUpdate(twin, 1, (_, n) => n + 1);
 
         var problems = Ratchet(stem, twin, groups, sampledIn, AllowlistByCell.Value[(stem, twin)]);
 
@@ -1007,6 +1082,19 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                     item.Group.Changed++;
                 if (verdict.RefusedWork)
                     item.Group.RefusedWork++;
+                if (verdict.RefusedOnUnmatchedEqualLine)
+                    item.Group.RefusedOnUnmatchedEqualLine++;
+                if (verdict.WithWork)
+                {
+                    item.Group.WithWork++;
+                    if (!verdict.RefusedWork)
+                    {
+                        item.Group.AppliedSelectedLines += verdict.SelectedLineCount;
+                        item.Group.AppliedOutsideLines += verdict.OutsideLineCount;
+                        if (verdict.OutsideLineCount > 0)
+                            item.Group.AppliedStraddling++;
+                    }
+                }
                 foreach (var (bucket, detail) in verdict.Failures)
                 {
                     item.Group.Failures[bucket] = item.Group.Failures.TryGetValue(bucket, out var seen)
@@ -1033,6 +1121,24 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     }
 
     private static string KindTally(string state, string kind) => $"kind {state} {kind}";
+
+    // ---- the range census's measures (s_rangeCensus) ----
+    private const string WithWorkMeasure = "withWork";
+    private const string RefusedMeasure = "refused";
+    private const string RefusedTieMeasure = "refusedOnUnmatchedEqualLine";
+    private const string AppliedSelectedMeasure = "appliedSelectedLines";
+    private const string AppliedOutsideMeasure = "appliedOutsideLines";
+    private const string StraddlingMeasure = "appliedStraddling";
+
+    private static IEnumerable<(string Measure, long N)> RangeMeasures(Group group)
+    {
+        yield return (WithWorkMeasure, group.WithWork);
+        yield return (RefusedMeasure, group.RefusedWork);
+        yield return (RefusedTieMeasure, group.RefusedOnUnmatchedEqualLine);
+        yield return (AppliedSelectedMeasure, group.AppliedSelectedLines);
+        yield return (AppliedOutsideMeasure, group.AppliedOutsideLines);
+        yield return (StraddlingMeasure, group.AppliedStraddling);
+    }
 
     private static string ChangedTally(string route, string state) => $"changed {route} {state}";
 
@@ -1504,7 +1610,22 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         foreach (var route in Routes.Where(RangeRoutes.Contains))
         {
             _output.WriteLine($"FMTROUTE-CENSUS refusedWork {route} "
-                + string.Join(" ", Twins.Select(t => $"{t}={s_refusedWork.GetValueOrDefault((route, t))}")));
+                + string.Join(" ", Twins.Select(t => $"{t}={Measure(route, t, RefusedMeasure)}/{Measure(route, t, WithWorkMeasure)}"
+                    + $" ({Percent(Measure(route, t, RefusedMeasure), Measure(route, t, WithWorkMeasure))})")));
+        }
+
+        foreach (var route in Routes.Where(RangeRoutes.Contains))
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS overReach {route} "
+                + string.Join(" ", Twins.Select(t => $"{t}={Measure(route, t, AppliedOutsideMeasure)}/{Measure(route, t, AppliedSelectedMeasure)}"
+                    + $" ({Percent(Measure(route, t, AppliedOutsideMeasure), Measure(route, t, AppliedSelectedMeasure))})"
+                    + $" straddling={Measure(route, t, StraddlingMeasure)}/{Measure(route, t, WithWorkMeasure) - Measure(route, t, RefusedMeasure)}")));
+        }
+
+        foreach (var route in Routes.Where(RangeRoutes.Contains))
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS refusedOnUnmatchedEqualLine {route} "
+                + string.Join(" ", Twins.Select(t => $"{t}={Measure(route, t, RefusedTieMeasure)}/{Measure(route, t, RefusedMeasure)}")));
         }
 
         var kinds = TripleQuotedKinds.Concat(tallies.Keys.Where(k => k.StartsWith("kind ", StringComparison.Ordinal)).Select(k => k.Split(' ', 3)[2]))
@@ -1564,7 +1685,81 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
 
         rows.Should().OnlyContain(r => corpus.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
+
+        AssertRefusalCeilings(corpus.Corpus.Count);
     }
+
+    /// <summary>
+    /// The refusal ceilings of plan P22e Phase 2 Task 4 (owner ruling R-DK, option (a) kept): per range kind,
+    /// on the <c>identity</c> and <c>comment</c> twins, the percentage of cells with work
+    /// (<see cref="CellVerdict.WithWork"/>) that Format Selection declines (<c>refusedWork</c>), measured in
+    /// full mode @ ec673074f and rounded UP to the next whole percent above it (a measured 0.00% pins 1%:
+    /// a <c>range-whole</c> refusal is also a <c>whole</c> failure, judged cell by cell). A change that makes
+    /// selections refuse more often is red. The <c>wide</c> twin refuses by construction (a blank or comment line splits a
+    /// block's re-indent into hunks, and a partial re-indent fails the net) and the <c>crlf</c> twin is
+    /// <c>identity</c>'s line breaks: both are printed, not judged.
+    /// </summary>
+    internal static readonly SCG.IReadOnlyDictionary<(string Route, string Twin), int> RefusalCeilingPercent =
+        new SCG.Dictionary<(string Route, string Twin), int>
+        {
+            [(RangeWhole, Identity)] = 1,      // 0/2389 (0.00%)
+            [(RangeStatement, Identity)] = 1,  // 1/1443 (0.07%)
+            [(RangeBlock, Identity)] = 1,      // 6/2721 (0.22%)
+            [(RangeLine, Identity)] = 3,       // 28/1070 (2.62%)
+            [(RangeWhole, Comment)] = 1,       // 0/3284 (0.00%)
+            [(RangeStatement, Comment)] = 1,   // 0/1184 (0.00%)
+            [(RangeBlock, Comment)] = 1,       // 4/2854 (0.14%)
+            [(RangeLine, Comment)] = 12,       // 46/402 (11.44%)
+        };
+
+    /// <summary>
+    /// <c>range-line</c> on S1/S2 is a SAMPLED route, so the default (sampled) mode measures it over the
+    /// stem sample (<see cref="SampledStride"/>, a fixed FNV bucket) and is judged against its own ceiling,
+    /// measured the same way @ ec673074f (rounded up as above); the other range kinds run every cell in both modes and share
+    /// <see cref="RefusalCeilingPercent"/>.
+    /// </summary>
+    internal static readonly SCG.IReadOnlyDictionary<string, int> SampledRangeLineCeilingPercent =
+        new SCG.Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [Identity] = 9,  // 12/138 (8.70%)
+            [Comment] = 6,   // 2/34 (5.88%)
+        };
+
+    /// <summary>
+    /// Asserts <see cref="RefusalCeilingPercent"/> for each judged twin whose theory ran over EVERY corpus stem
+    /// in this process — a filter that ran a subset (or the census alone) measures another population, and
+    /// that twin's ceilings are skipped and printed as such.
+    /// </summary>
+    private void AssertRefusalCeilings(int corpusCount)
+    {
+        foreach (var twin in new[] { Identity, Comment })
+        {
+            var stems = s_stemsRun.GetValueOrDefault(twin);
+            if (stems != corpusCount)
+            {
+                _output.WriteLine($"FMTROUTE-CENSUS refusal-ceiling {twin} skipped: its theory ran {stems} of {corpusCount} stems in this process");
+                continue;
+            }
+
+            foreach (var route in Routes.Where(RangeRoutes.Contains))
+            {
+                var ceiling = route == RangeLine && !FullMode
+                    ? SampledRangeLineCeilingPercent[twin]
+                    : RefusalCeilingPercent[(route, twin)];
+                var refused = Measure(route, twin, RefusedMeasure);
+                var withWork = Measure(route, twin, WithWorkMeasure);
+                _output.WriteLine($"FMTROUTE-CENSUS refusal-ceiling {route} {twin} {refused}/{withWork} ({Percent(refused, withWork)}) ceiling={ceiling}%"
+                    + (route == RangeLine && !FullMode ? " (sampled)" : ""));
+                (refused * 100).Should().BeLessThanOrEqualTo(ceiling * withWork,
+                    $"Format Selection ({route}, {twin} twin) declined {refused} of {withWork} selections with work — more than the {ceiling}% ceiling measured @ ec673074f");
+            }
+        }
+    }
+
+    private static long Measure(string route, string twin, string measure) => s_rangeCensus.GetValueOrDefault((route, twin, measure));
+
+    private static string Percent(long n, long d)
+        => d == 0 ? "-" : (100.0 * n / d).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
 
     private static (SCG.Dictionary<(string, string, string), int> Cells, SCG.Dictionary<string, int> Tallies) Enumerate(int stride)
     {
