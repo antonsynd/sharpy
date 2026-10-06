@@ -1099,12 +1099,55 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
+    /// One execute arm's timing coverage over a set of recorded calls (#2259): the sum of the
+    /// per-call component times against the sum of the per-call totals. A component whose
+    /// recording is dropped leaves its time unattributed, so <see cref="Ratio"/> falls short of 1.
+    /// </summary>
+    public sealed record TimingCoverage(string Arm, int Calls, double ComponentSumMs, double TotalSumMs)
+    {
+        public double Ratio => TotalSumMs > 0 ? ComponentSumMs / TotalSumMs : 0;
+
+        /// <summary>The report's <c>within_5pct</c> verdict.</summary>
+        public bool WithinFivePercent => Math.Abs(1 - Ratio) <= 0.05;
+    }
+
+    /// <summary>
+    /// Records the per-call timing of every execute-arm call made on the current async flow until
+    /// disposed, whether or not <c>SHARPY_TEST_TIMING</c> is set — the in-process seam that lets a
+    /// test hold the instrument to its own coverage check (#2259) without setting a process-wide
+    /// environment variable or waiting for the testhost-exit report.
+    /// </summary>
+    protected static CallTimingCapture CaptureCallTiming() => new();
+
+    /// <summary>An open per-flow timing capture; see <see cref="CaptureCallTiming"/>.</summary>
+    public sealed class CallTimingCapture : IDisposable
+    {
+        private readonly ConcurrentQueue<CallTiming> _calls = new();
+        private readonly CallTimingCapture? _outer;
+
+        internal CallTimingCapture()
+        {
+            _outer = CallTiming.ActiveCapture.Value;
+            CallTiming.ActiveCapture.Value = this;
+        }
+
+        internal void Record(CallTiming call) => _calls.Enqueue(call);
+
+        /// <summary>Per-arm coverage of the calls recorded so far, ordered by arm name — the
+        /// numbers the testhost-exit report prints on its coverage rows.</summary>
+        public IReadOnlyList<TimingCoverage> Coverage() => CallTiming.CoverageByArm(_calls.ToArray());
+
+        public void Dispose() => CallTiming.ActiveCapture.Value = _outer;
+    }
+
+    /// <summary>
     /// Opt-in per-call cost breakdown of the three execute arms (#2180). Off unless
-    /// <c>SHARPY_TEST_TIMING=&lt;path&gt;</c> is set, in which case <see cref="Begin"/> returns
-    /// <see langword="null"/>, every <c>timing?.</c> call is skipped and <see cref="Start"/> reads
-    /// no clock. On, each call records how long it spent in each <see cref="Component"/> and its
-    /// own total wall (excluding the GC <see cref="CompileAndExecuteWithGC"/> adds after it), and
-    /// the testhost appends per-arm aggregates to the path at exit.
+    /// <c>SHARPY_TEST_TIMING=&lt;path&gt;</c> is set or a <see cref="CallTimingCapture"/> is open on
+    /// the calling flow; off, <see cref="Begin"/> returns <see langword="null"/>, every
+    /// <c>timing?.</c> call is skipped and <see cref="Start"/> reads no clock. On, each call records
+    /// how long it spent in each <see cref="Component"/> and its own total wall (excluding the GC
+    /// <see cref="CompileAndExecuteWithGC"/> adds after it); with the variable set the testhost
+    /// appends per-arm aggregates to the path at exit, and an open capture receives the call.
     ///
     /// <para>Components are timed independently, not as laps, so time outside every component is
     /// left unattributed and shows up in the report's coverage row. That row is the instrument's
@@ -1112,9 +1155,10 @@ public abstract class IntegrationTestBase
     /// instead of being silently folded into its neighbour. "pipeline" is the whole Sharpy
     /// compile (lex → semantic → validation → C# generation) because the compiler API does not
     /// expose the C#-generation seam; "emit" is Roslyn parse + compile to an in-memory
-    /// assembly.</para>
+    /// assembly. The check is asserted, not only printed, by Compiler.Tests'
+    /// <c>CallTimingCoverageTests</c> (#2259).</para>
     /// </summary>
-    private sealed class CallTiming
+    internal sealed class CallTiming
     {
         internal enum Component { Pipeline, Emit, WriteCopy, Process, Cleanup }
 
@@ -1124,13 +1168,22 @@ public abstract class IntegrationTestBase
         private static readonly string? ReportPath = ReadReportPath();
         private static readonly ConcurrentQueue<CallTiming> Completed = new();
 
+        /// <summary>The capture open on the current async flow, if any (per-flow, so a capture
+        /// in one test never records another concurrently running test's calls).</summary>
+        internal static readonly AsyncLocal<CallTimingCapture?> ActiveCapture = new();
+
         private readonly string _arm;
+        private readonly CallTimingCapture? _capture;
         private readonly long _start = Stopwatch.GetTimestamp();
         // -1 = the call never reached the component (e.g. no emit after a Sharpy compile error).
         private readonly long[] _ticks = { -1, -1, -1, -1, -1 };
         private long _totalTicks;
 
-        private CallTiming(string arm) => _arm = arm;
+        private CallTiming(string arm, CallTimingCapture? capture)
+        {
+            _arm = arm;
+            _capture = capture;
+        }
 
         private static string? ReadReportPath()
         {
@@ -1142,7 +1195,11 @@ public abstract class IntegrationTestBase
         }
 
         /// <summary>A per-call recorder for <paramref name="arm"/>, or null when timing is off.</summary>
-        public static CallTiming? Begin(string arm) => ReportPath is null ? null : new CallTiming(arm);
+        public static CallTiming? Begin(string arm)
+        {
+            var capture = ActiveCapture.Value;
+            return ReportPath is null && capture is null ? null : new CallTiming(arm, capture);
+        }
 
         /// <summary>The clock now, or 0 when timing is off (the value is then never read).</summary>
         public static long Start(CallTiming? timing) => timing is null ? 0 : Stopwatch.GetTimestamp();
@@ -1157,10 +1214,27 @@ public abstract class IntegrationTestBase
         public void End()
         {
             _totalTicks = Stopwatch.GetTimestamp() - _start;
-            Completed.Enqueue(this);
+            if (ReportPath is not null)
+                Completed.Enqueue(this);
+            _capture?.Record(this);
         }
 
         private static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
+
+        /// <summary>Per-arm coverage of <paramref name="calls"/>, ordered by arm name (ordinal).</summary>
+        internal static IReadOnlyList<TimingCoverage> CoverageByArm(CallTiming[] calls)
+        {
+            var coverage = new List<TimingCoverage>();
+            foreach (var arm in calls.Select(c => c._arm).Distinct().OrderBy(a => a, StringComparer.Ordinal))
+            {
+                var armCalls = calls.Where(c => c._arm == arm).ToArray();
+                double componentSum = 0;
+                for (var i = 0; i < ComponentNames.Length; i++)
+                    componentSum += armCalls.Where(c => c._ticks[i] >= 0).Sum(c => Ms(c._ticks[i]));
+                coverage.Add(new TimingCoverage(arm, armCalls.Length, componentSum, armCalls.Sum(c => Ms(c._totalTicks))));
+            }
+            return coverage;
+        }
 
         private static void WriteReport()
         {
@@ -1174,26 +1248,22 @@ public abstract class IntegrationTestBase
                     "pid={0} # sharpy test timing at {1:O}: {2} calls; ms; n = calls that reached the component",
                     pid, DateTime.UtcNow, calls.Length));
 
-                foreach (var arm in calls.Select(c => c._arm).Distinct().OrderBy(a => a, StringComparer.Ordinal))
+                foreach (var coverage in CoverageByArm(calls))
                 {
+                    var arm = coverage.Arm;
                     var armCalls = calls.Where(c => c._arm == arm).ToArray();
-                    double componentSum = 0;
                     for (var i = 0; i < ComponentNames.Length; i++)
                     {
                         var values = armCalls.Where(c => c._ticks[i] >= 0).Select(c => Ms(c._ticks[i])).ToArray();
-                        componentSum += values.Sum();
                         AppendRow(sb, ci, pid, arm, ComponentNames[i], values);
                     }
 
-                    var totals = armCalls.Select(c => Ms(c._totalTicks)).ToArray();
-                    AppendRow(sb, ci, pid, arm, "total", totals);
+                    AppendRow(sb, ci, pid, arm, "total", armCalls.Select(c => Ms(c._totalTicks)).ToArray());
 
-                    var totalSum = totals.Sum();
-                    var ratio = totalSum > 0 ? componentSum / totalSum : 0;
                     sb.AppendLine(string.Format(ci,
                         "pid={0} arm={1} coverage sum_components={2:F1} sum_total={3:F1} unattributed={4:F1} ratio={5:F4} within_5pct={6}",
-                        pid, arm, componentSum, totalSum, totalSum - componentSum, ratio,
-                        Math.Abs(1 - ratio) <= 0.05 ? "yes" : "no"));
+                        pid, arm, coverage.ComponentSumMs, coverage.TotalSumMs, coverage.TotalSumMs - coverage.ComponentSumMs,
+                        coverage.Ratio, coverage.WithinFivePercent ? "yes" : "no"));
                 }
 
                 File.AppendAllText(ReportPath!, sb.ToString());
