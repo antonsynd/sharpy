@@ -4,6 +4,7 @@ using CsCheck;
 using FluentAssertions;
 using Sharpy.Compiler.Formatting;
 using Sharpy.Compiler.Tests.Conformance;
+using Sharpy.TestInfrastructure.Formatting;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -36,12 +37,12 @@ public class LineDiffTests
 
     internal const string IdentityTwin = "identity";
     internal const string CrlfTwin = "crlf";
+    internal const string CommentTwin = "comment";
+    internal const string WideTwin = "wide";
 
     /// <summary>
-    /// The twins of a corpus fixture that property (i) formats. <c>identity</c> and <c>crlf</c> are
-    /// built here; the plan's <c>comment</c> and <c>wide</c> twins come from <c>FormatterTwins</c>,
-    /// which moves to <c>Sharpy.TestInfrastructure/Formatting/</c> in a concurrent P22e task, so they
-    /// are added to this table after that move lands (a reference here would not survive the merge).
+    /// The twins of a corpus fixture that property (i) formats — the four the route-parity sweep
+    /// drives: <c>identity</c>, <c>crlf</c>, and <c>FormatterTwins</c>' <c>comment</c> and <c>wide</c>.
     /// <c>Crlf</c> marks a twin whose comparison is modulo line breaks.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, (Func<string, string> Make, bool Crlf)> TwinTransforms =
@@ -49,6 +50,8 @@ public class LineDiffTests
         {
             [IdentityTwin] = (source => source, false),
             [CrlfTwin] = (ToCrlf, true),
+            [CommentTwin] = (source => FormatterTwins.CommentInjected(source).Text, false),
+            [WideTwin] = (FormatterTwins.WideIndented, false),
         };
 
     public static IEnumerable<object[]> TwinNames() => TwinTransforms.Keys.Select(name => new object[] { name });
