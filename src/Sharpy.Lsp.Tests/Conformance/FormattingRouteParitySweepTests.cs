@@ -77,7 +77,7 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// failure.</para>
 ///
 /// <para><b>Ratchet.</b> <c>Conformance/formatting-route-parity-allowlist.txt</c> lists
-/// <c>stem twin route state bucket # #issue reason</c>; a row covers every cell of that route and state
+/// <c>stem twin route state bucket # #issue</c> (the bucket meanings are in its header); a row covers every cell of that route and state
 /// on that stem and twin. A failing (route, state, bucket) must be listed; a listed one whose
 /// (route, state) RAN in this mode and holds is stale (drain on fix), and so is one whose cell no longer
 /// exists. <c>cli</c> and <c>full</c> rows on S1/S2 are refused by the loader: those routes apply
@@ -751,7 +751,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     private static readonly Lazy<ILookup<(string Stem, string Twin), Row>> AllowlistByCell =
         new(() => Allowlist.Value.ToLookup(row => (row.Stem, row.Twin)));
 
-    /// <summary><c>stem twin route state bucket # #issue reason</c>; <c>#</c> starts the cite only after whitespace.</summary>
+    /// <summary><c>stem twin route state bucket # #issue</c> (a reason after the cite is allowed); <c>#</c> starts the cite only after whitespace.</summary>
     internal static IReadOnlyList<Row> ParseAllowlist(IEnumerable<string> lines)
     {
         var rows = new SCG.List<Row>();
@@ -767,7 +767,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             if (fields.Length != 5 || !Twins.Contains(fields[1]) || !Routes.Contains(fields[2])
                 || !States.Contains(fields[3]) || !Buckets.Contains(fields[4]))
             {
-                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' must read `stem twin route state bucket # #issue reason` "
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' must read `stem twin route state bucket # #issue` "
                     + $"with twin in {{{string.Join(", ", Twins)}}}, route in {{{string.Join(", ", Routes)}}}, state in {{{string.Join(", ", States)}}} "
                     + $"and bucket in {{{string.Join(", ", Buckets)}}}.");
             }
