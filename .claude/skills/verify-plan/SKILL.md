@@ -126,7 +126,7 @@ Flag as warning per guard, with the mutation named. Flag as error: a plan whose 
 `verification-contract.md` §5–§7:
 
 - **Sweeps named** — the plan lists which of `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, `FrontEndParityTests` (LSP), `InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution`, and the warm/cold harness its changes reach (anything in `Semantic/` or `CodeGen/` reaches all of them)
-- **Whole-solution gate named** — `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` across all projects as the commit gate; filtered runs only as the edit loop; counts reported `@ sha (measured)`; a red attributed only after a control run at the base sha
+- **Whole-solution gate named** — `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` across all projects as the commit gate; filtered runs only as the edit loop; counts reported `@ sha (measured)`; a red attributed only after a control run at the base sha
 - **Regen scheduled early** — spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger regenerated right after the first codegen-touching task, not at push time
 - **Generated artifacts listed** — which of the above the plan's changes will touch
 - **Allowlist deltas** — entries the fix drains (deleted in the same commit); no entry added without an issue

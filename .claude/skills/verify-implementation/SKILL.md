@@ -51,7 +51,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 ### 3. Establish the baseline @ HEAD
 
 - `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed. If it fails, **stop and report** (the implementation is broken; nothing downstream can be measured).
-- `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` — run in the **background** and continue with the read-only steps; record `passed/failed/skipped @ HEAD (measured)` when it returns. This is the commit gate (contract §6); a filtered run is never a substitute.
+- `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` — run in the **background** and continue with the read-only steps; record `passed/failed/skipped @ HEAD (measured)` when it returns. This is the commit gate (contract §6); a filtered run is never a substitute.
 - `dotnet format whitespace --verify-no-changes` — record whether formatting is clean.
 - If the working tree is dirty with a peer's work, do the build and gate in a `git worktree add ../sharpy.worktrees/wt-head HEAD` instead of the shared tree.
 
@@ -138,7 +138,7 @@ with `dangerouslyDisableSandbox: true`.
 1. Whole-solution gate at HEAD, in a worktree so peers' edits cannot move under you:
    `git worktree add ../sharpy.worktrees/wt-verify-head $HEAD` then, inside it,
    `.claude/scripts/dotnet-serialized build sharpy.sln` and
-   `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"`.
+   `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`.
    A filtered run is not the gate. A log whose binaries predate the build is not a green.
    (If the lead's background gate already produced a log for $HEAD, read it — but confirm the
    `Test run for` lines and timestamps belong to $HEAD.)
@@ -407,7 +407,7 @@ After all fixes are committed (`FINAL=<sha>`):
 
 1. `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed
 2. Regeneration is clean: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger produce no diff at `$FINAL` (the `/push` staleness gates)
-3. `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` — whole solution, `@ $FINAL (measured)`; no red that was green at `$BASE`; pass count ≥ the `$HEAD` baseline minus any tests deliberately removed (say which)
+3. `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` — whole solution, `@ $FINAL (measured)`; no red that was green at `$BASE`; pass count ≥ the `$HEAD` baseline minus any tests deliberately removed (say which)
 4. The blast-radius sweeps Agent 2 ran (`FrontEndParityTests`, `InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution` as the plan names them) — re-run those the fixes reach
 5. `dotnet format whitespace --verify-no-changes` — clean
 6. Every spec example the plan promised executes at `$FINAL` with the documented output

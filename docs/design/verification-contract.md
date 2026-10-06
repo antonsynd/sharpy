@@ -143,7 +143,7 @@ that stopped before running its independent steps.
 
 ## 6. The commit gate is the whole solution
 
-The gate is `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` across **all**
+The gate is `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` across **all**
 test projects, run in the background while doing read-only work; a filtered run is the edit
 loop, never the gate. Ask what a change can **reach**, not which file it lives in: anything in
 `Semantic/` or `CodeGen/` surfaces in every project that compiles Sharpy source —

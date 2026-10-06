@@ -64,6 +64,14 @@ TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-4500}"  # 75 minutes
 # writes — the header, two SKIP notices at t+577s, and the summary at t+883s. Any threshold
 # under ~10 minutes kills healthy suites. Do NOT tighten this without re-measuring; the gap is a
 # property of how little dotnet says when nothing is wrong, not of how fast the machine is.
+#
+# Re-measured after P41 (#2257), whole solution @ 8a15ce512, 2026-10-06: at DEFAULT verbosity the
+# longest silence of a green gate is 1566 s (from t+249 s, inside Compiler.Tests; wall 1815 s),
+# so a default-verbosity gate clears 1728 by only 162 s. The 3x rule would put the window at
+# 4698 s, past the waiters' 4500 s TIMEOUT, so the cure is the documented gate command instead:
+# it carries --logger "console;verbosity=normal", which prints a line per test, and its longest
+# silence is 78 s (the #2256 harness run @ a823001a6, 3 s sampling) -- 22x inside 1728. A test run
+# without a console logger is outside the documented command and can trip this window.
 STALL_SECONDS="${DOTNET_SERIALIZED_STALL_SECONDS:-1728}"
 WATCHDOG_POLL="${DOTNET_SERIALIZED_WATCHDOG_POLL:-30}"
 WATCHDOG_GRACE="${DOTNET_SERIALIZED_WATCHDOG_GRACE:-10}"

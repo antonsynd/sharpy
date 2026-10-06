@@ -14,7 +14,7 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 **Standing round rules** (from CLAUDE.md / verification-contract.md — restate in every plan):
 - Fix the class, not the cell (Rule 11); every batch names its violated contract and cell matrix.
 - Every new guard is mutation-tested with red/green recorded in the commit body (Rule 12); absence assertions need a positive control; refusals are verified by direction with `run`.
-- Commit gate = whole solution via `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"`; every fixer's pre-report filter includes the source-scanning rosters, FrontEndParity and the three GapDiscovery sweeps.
+- Commit gate = whole solution via `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`; every fixer's pre-report filter includes the source-scanning rosters, FrontEndParity and the three GapDiscovery sweeps.
 - Verify Python behavior first with `python3 -c` (3.12). Spec is authoritative; spec edits ship with executed examples. New SPY codes need `DiagnosticExplanations` entries.
 - Regen generated artifacts EARLY; the `check_*_staleness.sh` scripts are the gate.
 - New node-keyed `SemanticInfo` dictionaries join `MergeFrom`; new symbol-keyed facts freeze at `MaterializeCodeGenInfo`.

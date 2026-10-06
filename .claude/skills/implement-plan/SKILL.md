@@ -47,7 +47,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
 ### 5. Establish the baseline (measured, background)
 - `.claude/scripts/dotnet-serialized build sharpy.sln` (`dangerouslyDisableSandbox: true`) — if it fails, stop and report the build error
 - Start the whole-solution gate **in the background** and continue with read-only setup while it runs (~30 min):
-  `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` (`dangerouslyDisableSandbox: true`, `run_in_background: true`)
+  `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` (`dangerouslyDisableSandbox: true`, `run_in_background: true`)
 - Record it as **`passed/failed/skipped @ <sha> (measured)`** — never a derived number. Read the counts from `.claude/tmp/dotnet-serialized-{0,1,2}.log` (the `-latest.log` symlink can rotate to a peer's run; verify the log's `Test run for` lines name this run).
 - If red: **triage before attributing** — check the parent round plan's open-class list (ILCompiles fresh seeds re-roll open classes) and the pre-existing allowlist reds; label each red as `pre-existing (#NNN)` or `unexplained`. Warn the user and ask whether to proceed.
 
@@ -175,7 +175,7 @@ After each task is completed by an agent:
 After all implementation tasks are complete, the lead runs the gate and spawns `verification-expert` standalone (pass `model` explicitly; it refutes, it does not confirm):
 
 1. `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed
-2. **Whole-solution gate** in the background: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --no-build` — compare against the baseline `@ <sha> (measured)`; every new red gets a **control run** at the plan's base sha (a `git worktree` there) before it is attributed
+2. **Whole-solution gate** in the background: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal" --no-build` — compare against the baseline `@ <sha> (measured)`; every new red gets a **control run** at the plan's base sha (a `git worktree` there) before it is attributed
 3. **Blast-radius sweeps** the plan named: `FrontEndParityTests` (LSP parity), and the GapDiscovery sweeps CI runs as separate steps — `--filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"`, `~MetamorphicCorpus`, `~DifferentialExecution` — for any change under `Semantic/`, `Lowering/`, or `CodeGen/`
 4. **Staleness gates**: run `/push`'s generated-artifact gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) — a diff here is a finding, not noise
 5. **Spec examples**: execute every example the plan promised in `docs/language_specification/` or `DiagnosticExplanations` (`/spy-run`); outputs must discriminate
