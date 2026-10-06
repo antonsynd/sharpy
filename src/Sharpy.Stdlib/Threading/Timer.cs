@@ -3,16 +3,17 @@ using System;
 namespace Sharpy
 {
     /// <summary>
-    /// A timer that executes a function after a specified interval,
-    /// similar to Python's <c>threading.Timer</c>.
+    /// A thread that executes a function after a specified interval,
+    /// similar to Python's <c>threading.Timer</c>. A <c>Timer</c> is a <see cref="Thread"/>:
+    /// <c>start()</c> starts it, <c>join()</c> waits for it, and <c>cancel()</c> stops it
+    /// from calling the function while it is still waiting.
     /// </summary>
     [SharpyModuleType("threading", "Timer")]
-    public sealed class Timer : IDisposable
+    public sealed class Timer : Thread
     {
         private readonly double _interval;
         private readonly Action _function;
-        private System.Threading.Timer? _timer;
-        private volatile bool _finished;
+        private readonly Event _finished = new Event();
 
         public Timer(double interval, Action function)
         {
@@ -20,30 +21,26 @@ namespace Sharpy
             _function = function ?? throw new ValueError("function must not be null");
         }
 
-        public bool IsAlive => _timer != null && !_finished;
-
-        public void Start()
-        {
-            if (_timer != null)
-            {
-                throw new RuntimeError("timer can only be started once");
-            }
-            _timer = new System.Threading.Timer(_ =>
-            {
-                _finished = true;
-                _function();
-            }, null, System.TimeSpan.FromSeconds(_interval), System.Threading.Timeout.InfiniteTimeSpan);
-        }
-
+        /// <summary>
+        /// Stop the timer, and cancel the execution of the timer's action. This only works
+        /// if the timer is still in its waiting stage.
+        /// </summary>
         public void Cancel()
         {
-            _timer?.Dispose();
-            _finished = true;
+            _finished.Set();
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Wait for the interval (or until cancelled), then call the function unless cancelled.
+        /// </summary>
+        public override void Run()
         {
-            _timer?.Dispose();
+            _finished.Wait(_interval);
+            if (!_finished.IsSet())
+            {
+                _function();
+            }
+            _finished.Set();
         }
     }
 }

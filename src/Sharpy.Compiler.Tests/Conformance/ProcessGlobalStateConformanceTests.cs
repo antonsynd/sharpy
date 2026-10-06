@@ -372,11 +372,6 @@ public class ProcessGlobalStateConformanceTests
                 "Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests.LoggingModuleTestsModuleTests",
                 "Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests.LoggingCompleteTestsModuleTests",
             }),
-        ("Sharpy.Stdlib.Tests", "WallClockWindow",
-            "test_timer_fires_after_interval (threading_module_tests.spy:323-330) gives a 50 ms Timer a fixed 200 ms window; " +
-            "the callback runs on a thread-pool timer (Threading/Timer.cs:31) and starves under parallel load (red at N=8); " +
-            "the row drains with #2251",
-            new[] { "Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests.ThreadingModuleTestsModuleTests" }),
         ("Sharpy.Stdlib.Tests", "HostTimeZone",
             "sets TZ and clears the TimeZoneInfo cache, which time/datetime tests and child processes read",
             new[] { "Sharpy.Stdlib.Tests.StrftimeHostTimeZoneTests" }),
@@ -386,10 +381,10 @@ public class ProcessGlobalStateConformanceTests
     };
 
     /// <summary>Positive control: roster size counted by hand from the P2/P4/P5 audit (not from the array).</summary>
-    private const int ExpectedSerialCollections = 8;
+    private const int ExpectedSerialCollections = 7;
 
-    /// <summary>1 + 1 + 44 (Compiler) + 1 + 3 + 1 + 1 (Stdlib) + 1 (Core), counted by hand; +1 WallClockWindow (#2179 P5.1).</summary>
-    private const int ExpectedSerialMembers = 53;
+    /// <summary>1 + 1 + 44 (Compiler) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
+    private const int ExpectedSerialMembers = 52;
 
     [Fact]
     public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()

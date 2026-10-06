@@ -151,15 +151,16 @@ Override this method when subclassing Thread instead of passing a target callabl
 
 ## Timer
 
-A timer that executes a function after a specified interval,
-similar to Python's `threading.Timer`.
-
-### Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `is_alive` | `bool` |  |
-
-### `start()`
+A thread that executes a function after a specified interval,
+similar to Python's `threading.Timer`. A `Timer` is a `Thread`:
+`start()` starts it, `join()` waits for it, and `cancel()` stops it
+from calling the function while it is still waiting.
 
 ### `cancel()`
+
+Stop the timer, and cancel the execution of the timer's action. This only works
+if the timer is still in its waiting stage.
+
+### `run()`
+
+Wait for the interval (or until cancelled), then call the function unless cancelled.
