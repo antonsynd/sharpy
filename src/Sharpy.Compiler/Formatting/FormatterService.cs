@@ -41,8 +41,81 @@ public static class FormatterService
     }
 
     public static FormatterResult Format(string source, FormatOptions? options = null, string? filePath = null)
+        => FormatChecked(source, options, filePath, out _);
+
+    /// <summary>
+    /// Format Selection (P22e decision 1, #2168): the hunks of the checked whole-document output
+    /// (<see cref="Format"/>) that <paramref name="selection"/> touches (<see cref="FormatSelection.Selects"/>),
+    /// applied to a copy of <paramref name="source"/>, and the net (<see cref="CheckMeaningPreserved"/>)
+    /// run on THAT text — the whole-document output passing the net says nothing about a subset of its
+    /// hunks. A refused subset returns no hunks and the SPY0912; there is no retry with a wider or
+    /// narrower selection. A source that does not lex or parse returns its diagnostics and no hunks
+    /// (<see cref="FormatRangeResult.SourceParses"/> is false — the caller takes its indent-only fallback).
+    /// </summary>
+    internal static FormatRangeResult FormatRange(string source, FormatSelection selection, FormatOptions? options = null, string? filePath = null)
     {
-        var result = FormatUnchecked(source, options, filePath, out var sourceAst);
+        var whole = FormatChecked(source, options, filePath, out var sourceAst);
+        if (sourceAst == null || whole.Diagnostics.Count > 0)
+        {
+            return new FormatRangeResult
+            {
+                AppliedText = source,
+                Diagnostics = whole.Diagnostics,
+                SourceParses = sourceAst != null
+            };
+        }
+
+        var formatted = whole.FormattedText;
+        var lines = LineDiff.Split(source).Lines;
+        var (s, e) = selection.SelectedLines(lines);
+        var selected = LineDiff.Hunks(source, formatted)
+            .Where(h => FormatSelection.Selects(h, s, e, lines.Count))
+            .ToList();
+        if (selected.Count == 0)
+            return new FormatRangeResult { AppliedText = source, SourceParses = true };
+
+        var applied = LineDiff.Apply(source, selected);
+
+        // When the selected hunks reproduce the checked output exactly (every hunk selected, no `\r` in
+        // the source), the net has already accepted this text — do not check it twice.
+        if (!string.Equals(applied, formatted, StringComparison.Ordinal))
+        {
+            var declined = CheckMeaningPreserved(source, sourceAst, applied);
+            if (declined != null)
+            {
+                return new FormatRangeResult
+                {
+                    AppliedText = source,
+                    Diagnostics = new[] { declined with { FilePath = filePath } },
+                    SourceParses = true
+                };
+            }
+        }
+
+        return new FormatRangeResult { Hunks = selected, AppliedText = applied, SourceParses = true };
+    }
+
+    /// <summary>
+    /// The net (<see cref="CheckMeaningPreserved"/>) on an edit's <paramref name="applied"/> text, for
+    /// a caller that produced the edit itself. When <paramref name="source"/> does not lex or parse there
+    /// is no AST to compare with: <paramref name="sourceParses"/> is false, the result is null, and the
+    /// caller must use its own check.
+    /// </summary>
+    internal static CompilerDiagnostic? CheckApplied(string source, string applied, out bool sourceParses)
+    {
+        var sourceAst = TryParse(source, filePath: null, out _, out _);
+        sourceParses = sourceAst != null;
+        return sourceAst == null ? null : CheckMeaningPreserved(source, sourceAst, applied);
+    }
+
+    /// <summary>
+    /// <see cref="Format"/>'s body, shared with <see cref="FormatRange"/> so the source is lexed and
+    /// parsed once: the unchecked output, then the net on it. <paramref name="sourceAst"/> is null when
+    /// the source does not lex or parse; a declined output is the source with the SPY0912.
+    /// </summary>
+    private static FormatterResult FormatChecked(string source, FormatOptions? options, string? filePath, out Module? sourceAst)
+    {
+        var result = FormatUnchecked(source, options, filePath, out sourceAst);
         if (sourceAst == null)
             return result;
 
@@ -76,30 +149,16 @@ public static class FormatterService
     private static FormatterResult FormatUnchecked(string source, FormatOptions? options, string? filePath, out Module? sourceAst)
     {
         options ??= FormatOptions.Default;
+
+        var module = TryParse(source, filePath, out var tokens, out var errors);
         sourceAst = null;
-
-        var sourceText = new SourceText(source, filePath ?? "<format>");
-        var logger = NullLogger.Instance;
-
-        var lexResult = FileCompilationPipeline.Lex(sourceText, logger, preserveTrivia: true);
-        if (lexResult.HasErrors)
+        if (module == null)
         {
             return new FormatterResult
             {
                 FormattedText = source,
                 HasChanges = false,
-                Diagnostics = lexResult.Diagnostics.GetAll()
-            };
-        }
-
-        var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, logger);
-        if (parseResult.HasErrors || parseResult.Module == null)
-        {
-            return new FormatterResult
-            {
-                FormattedText = source,
-                HasChanges = false,
-                Diagnostics = parseResult.Diagnostics.GetAll()
+                Diagnostics = errors
             };
         }
 
@@ -113,7 +172,7 @@ public static class FormatterService
             // The trivia cursor reads every comment from the token stream the module was parsed
             // from, and writes each at its anchor (P22b, #2077).
             SourceText = source,
-            SourceTokens = lexResult.Tokens,
+            SourceTokens = tokens,
             Formatting = new Pretty.FormatOptions
             {
                 BlankLinesAroundTopLevelDefs = options.BlankLinesAroundTopLevelDefs,
@@ -122,15 +181,41 @@ public static class FormatterService
             }
         };
 
-        var raw = Unparser.Unparse(parseResult.Module, unparseOptions);
+        var raw = Unparser.Unparse(module, unparseOptions);
         var formatted = StripTrailingWhitespace(raw, options);
-        sourceAst = parseResult.Module;
+        sourceAst = module;
 
         return new FormatterResult
         {
             FormattedText = formatted,
             HasChanges = formatted != source
         };
+    }
+
+    /// <summary>
+    /// Lexes (with trivia) and parses <paramref name="source"/>; null when either fails, with that
+    /// phase's diagnostics in <paramref name="errors"/>.
+    /// </summary>
+    private static Module? TryParse(string source, string? filePath, out IReadOnlyList<Token> tokens, out IReadOnlyList<CompilerDiagnostic> errors)
+    {
+        var logger = NullLogger.Instance;
+        var lexResult = FileCompilationPipeline.Lex(new SourceText(source, filePath ?? "<format>"), logger, preserveTrivia: true);
+        tokens = lexResult.Tokens;
+        if (lexResult.HasErrors)
+        {
+            errors = lexResult.Diagnostics.GetAll();
+            return null;
+        }
+
+        var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, logger);
+        if (parseResult.HasErrors || parseResult.Module == null)
+        {
+            errors = parseResult.Diagnostics.GetAll();
+            return null;
+        }
+
+        errors = Array.Empty<CompilerDiagnostic>();
+        return parseResult.Module;
     }
 
     /// <summary>

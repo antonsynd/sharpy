@@ -394,5 +394,194 @@ public class FormatterServiceTests
         commentLine.TrimStart().Should().StartWith(commentLinePrefix);
         commentLine.Should().EndWith("# c");
     }
+
+    // ----- FormatRange: Format Selection's seam (P22e decisions 1–2, #2168) -----
+    // Documents and cell numbers are plan P22e's. Each expected text is Format(D) restricted to the
+    // hunks the selection touches; AssertRange also checks it is LineDiff.Apply of hunks of Format(D).
+
+    private const string D1 = "def helper() -> int:\n    return 2\ndef main():\n    x   =   helper()\n    print(x)\n";
+    private const string D1Formatted = "def helper() -> int:\n    return 2\n\n\ndef main():\n    x = helper()\n    print(x)\n";
+    private const string D1BodyOnly = "def helper() -> int:\n    return 2\ndef main():\n    x = helper()\n    print(x)\n";
+    private const string D2 = "def main():\n    xs = [1,\n          2]\n    # keep me\n    y = 3\n    print(xs, y)\n";
+    private const string D2Formatted = "def main():\n    xs = [1, 2]\n    # keep me\n    y = 3\n    print(xs, y)\n";
+    private const string D3 = "def f(): ...\ndef main():\n    x   =  1\n    print(x)\n";
+    private const string D4 = "def main():\n    x = 1 + \\\n        2\n    y   =  3\n    print(x, y)\n";
+    private const string D9 = "# top\ndef a():\n    return 1  # one\n# between\ndef b():\n    # inside\n    return 2\n# tail\n";
+    private const string D11 = "def main():\n        if False:\n                print(1)\n                print(2)\n";
+    private const string D16 = "def main():\n        x = 1\n\n        y = 2\n        print(x, y)\n";
+    private const string D17 = "import os\nx: int = 1\n\n\n\n\n\ndef main():\n    print(x)\n";
+
+    /// <summary>A selection of whole lines <c>s..e</c> ending inside line <c>e</c> (not at column 0).</summary>
+    private static FormatSelection Lines(int s, int e) => new(s, e, EndCharacter: 1);
+
+    private static FormatRangeResult AssertRange(string source, FormatSelection selection, string expectedApplied)
+    {
+        var result = FormatterService.FormatRange(source, selection);
+
+        result.Diagnostics.Should().BeEmpty();
+        result.SourceParses.Should().BeTrue();
+        result.AppliedText.Should().Be(expectedApplied);
+        LineDiff.Apply(source, result.Hunks).Should().Be(result.AppliedText);
+        FormatterService.CheckApplied(source, result.AppliedText, out var sourceParses).Should().BeNull("the applied text parses and passes the net");
+        sourceParses.Should().BeTrue();
+        var all = LineDiff.Hunks(source, FormatterService.Format(source).FormattedText);
+        foreach (var hunk in result.Hunks)
+        {
+            all.Should().Contain(h => h.Start == hunk.Start && h.End == hunk.End && h.NewLines.SequenceEqual(hunk.NewLines),
+                "every returned hunk is a hunk of the checked whole-document output");
+        }
+
+        return result;
+    }
+
+    private static void AssertRefused(string source, FormatSelection selection)
+    {
+        var result = FormatterService.FormatRange(source, selection);
+
+        result.SourceParses.Should().BeTrue();
+        result.Hunks.Should().BeEmpty();
+        result.AppliedText.Should().Be(source);
+        result.Diagnostics.Should().ContainSingle().Which.Code.Should().Be(DiagnosticCodes.Infrastructure.FormatterDeclined);
+        FormatterService.Format(source).Diagnostics.Should().BeEmpty("the whole-document output passes the net — only the selected subset is refused");
+    }
+
+    [Fact]
+    public void FormatRange_Cell1_MainsBody_RespacesLine3_AddsNoBlankLinesAboveDef()
+        => AssertRange(D1, Lines(3, 4), D1BodyOnly).Hunks.Should().ContainSingle().Which.Start.Should().Be(3);
+
+    [Fact]
+    public void FormatRange_Cell2_D2Lines1To4_IsFormatDocument()
+        => AssertRange(D2, Lines(1, 4), D2Formatted);
+
+    [Fact]
+    public void FormatRange_Cell3_D2Lines2To3_AppliesTheListJoinWhole()
+        => AssertRange(D2, Lines(2, 3), D2Formatted);
+
+    [Fact]
+    public void FormatRange_Cell4_D1WholeDocument_IsFormatDocument()
+    {
+        AssertRange(D1, Lines(0, 5), D1Formatted);
+        AssertRange(D1, new FormatSelection(0, 5, EndCharacter: 0), D1Formatted);
+        AssertRange(D1, Lines(0, 4), D1Formatted).Hunks.Should().HaveCount(2, "the last line selected takes the empty final line too");
+    }
+
+    [Fact]
+    public void FormatRange_Cell5_D9WholeDocument_IsFormatDocument_KeepsTheTailComment()
+        => AssertRange(D9, Lines(0, 8),
+            "# top\ndef a():\n    return 1  # one\n\n\n# between\ndef b():\n    # inside\n    return 2\n\n\n# tail\n");
+
+    [Fact]
+    public void FormatRange_Cell6_D3Line2_RespacesOnlyLine2()
+        => AssertRange(D3, Lines(2, 2), "def f(): ...\ndef main():\n    x = 1\n    print(x)\n");
+
+    /// <summary>
+    /// Plan cell 7 expects "line 3 re-spaced"; the backslash join of lines 1–2 and the re-spacing of
+    /// line 3 have no unchanged line between them, so they are ONE hunk (lines are compared by content)
+    /// and selecting line 3 applies both — Format(D4), never a duplicated line.
+    /// </summary>
+    [Fact]
+    public void FormatRange_Cell7_D4Line3_TakesTheWholeHunkItTouches()
+        => AssertRange(D4, Lines(3, 3), "def main():\n    x = 1 + 2\n    y = 3\n    print(x, y)\n");
+
+    [Fact]
+    public void FormatRange_Cell8_D17Lines7To8_Unchanged()
+        => AssertRange(D17, Lines(7, 8), D17).Hunks.Should().BeEmpty();
+
+    /// <summary>
+    /// Plan cell 9 (D16, line 1). Format deletes the blank line inside main, so lines 1–4 differ with no
+    /// unchanged line between them: one hunk, and selecting line 1 takes the whole re-indent — which
+    /// passes the net. (At 7a034b81d this request wrote `x` at 4 and left `y` at 8.)
+    /// </summary>
+    [Fact]
+    public void FormatRange_Cell9_D16Line1_TakesTheWholeReindentHunk()
+    {
+        var hunk = AssertRange(D16, Lines(1, 1), "def main():\n    x = 1\n    y = 2\n    print(x, y)\n").Hunks.Should().ContainSingle().Subject;
+        (hunk.Start, hunk.End).Should().Be((1, 5));
+    }
+
+    /// <summary>Plan cell 10 (D11, line 3): one hunk over lines 1–3, so "the whole re-indent".</summary>
+    [Fact]
+    public void FormatRange_Cell10_D11Line3_TakesTheWholeReindentHunk()
+        => AssertRange(D11, Lines(3, 3), "def main():\n    if False:\n        print(1)\n        print(2)\n");
+
+    /// <summary>
+    /// A selected subset the net refuses: D17's hunks are "delete line 1" and "replace lines 3–4 with
+    /// `x: int = 1`" (the LCS pairs the blank line, not the declaration). Selecting line 1 alone would
+    /// delete the declaration — the whole-document output passes the net, the applied text does not.
+    /// </summary>
+    [Fact]
+    public void FormatRange_D17Line1_SubsetDeletesTheDeclaration_Refused()
+        => AssertRefused(D17, Lines(1, 1));
+
+    /// <summary>A selected subset that does not re-parse: line 1 re-indented to 4, `print(s)` left at 8 (the string's lines are unchanged).</summary>
+    [Fact]
+    public void FormatRange_SubsetThatDoesNotReparse_Refused()
+        => AssertRefused("def main():\n        s = \"\"\"\nabc\n\"\"\"\n        print(s)\n", Lines(1, 1));
+
+    [Fact]
+    public void FormatRange_SelectionEndingAtColumn0_ExcludesThatLine()
+    {
+        // (2,0)–(3,0) selects line 2 only: neither the re-spacing of line 3 nor the insertion before line 2.
+        AssertRange(D1, new FormatSelection(2, 3, EndCharacter: 0), D1).Hunks.Should().BeEmpty();
+        // Ending inside line 3 takes it.
+        AssertRange(D1, Lines(2, 3), D1BodyOnly);
+        // (3,0)–(4,0) is line 3.
+        AssertRange(D1, new FormatSelection(3, 4, EndCharacter: 0), D1BodyOnly);
+    }
+
+    [Fact]
+    public void FormatRange_InsertionNeedsBothNeighboursSelected()
+    {
+        // Lines 1..2 hold both neighbours of the insertion before line 2 — the blank lines are added, line 3 is not touched.
+        AssertRange(D1, Lines(1, 2), "def helper() -> int:\n    return 2\n\n\ndef main():\n    x   =   helper()\n    print(x)\n");
+        // Line 2 alone holds only one neighbour.
+        AssertRange(D1, Lines(2, 2), D1).Hunks.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FormatRange_CrlfDocument_StaysCrlf()
+    {
+        var crlf = D1.Replace("\n", "\r\n");
+        AssertRange(crlf, Lines(3, 4), D1BodyOnly.Replace("\n", "\r\n"));
+        AssertRange(crlf, Lines(0, 5), D1Formatted.Replace("\n", "\r\n"));
+    }
+
+    [Fact]
+    public void FormatRange_SourceDoesNotParse_NoHunks_ReturnsTheErrors()
+    {
+        var source = D11 + "        x = (\n";
+        var result = FormatterService.FormatRange(source, Lines(0, 4));
+
+        result.SourceParses.Should().BeFalse();
+        result.Hunks.Should().BeEmpty();
+        result.AppliedText.Should().Be(source);
+        result.Diagnostics.Should().NotBeEmpty();
+        result.Diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined);
+    }
+
+    [Fact]
+    public void CheckApplied_SourceParses_RunsTheNetOnTheAppliedText()
+    {
+        FormatterService.CheckApplied(D1, D1BodyOnly, out var parses).Should().BeNull();
+        parses.Should().BeTrue();
+
+        var deleted = "import os\n\n\n\n\n\ndef main():\n    print(x)\n";
+        var verdict = FormatterService.CheckApplied(D17, deleted, out parses);
+        parses.Should().BeTrue();
+        verdict.Should().NotBeNull();
+        verdict!.Code.Should().Be(DiagnosticCodes.Infrastructure.FormatterDeclined);
+    }
+
+    [Fact]
+    public void CheckApplied_SourceDoesNotParse_ReturnsNull_CallerChecks()
+    {
+        var source = D11 + "        x = (\n";
+        FormatterService.CheckApplied(source, "garbage (\n", out var parses).Should().BeNull();
+        parses.Should().BeFalse();
+
+        // Positive control: the same applied text against a source that parses is refused.
+        FormatterService.CheckApplied(D11, "garbage (\n", out parses).Should().NotBeNull();
+        parses.Should().BeTrue();
+    }
 }
 
