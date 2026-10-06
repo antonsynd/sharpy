@@ -27,4 +27,8 @@
     <ProjectReference Include="..\Sharpy.TestInfrastructure\Sharpy.TestInfrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
