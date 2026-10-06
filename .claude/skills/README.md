@@ -4,7 +4,7 @@ All skills are invoked with `/{skill-name}`; sources live in `.claude/skills/<na
 
 ## dotnet execution and logs
 
-Every skill that runs `dotnet` goes through `.claude/scripts/dotnet-serialized` (exclusive lock — concurrent test runs OOM the machine; a PreToolUse hook blocks unwrapped `dotnet` build/test/run; the wrapper needs `dangerouslyDisableSandbox: true`). The wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation) with `.claude/tmp/dotnet-serialized-latest.log` symlinked to the newest run. Read those logs instead of re-running a suite (~22 min wall clock); note `-latest.log` can rotate to a peer's run.
+Every skill that runs `dotnet` goes through `.claude/scripts/dotnet-serialized` (exclusive lock — concurrent test runs OOM the machine; a PreToolUse hook blocks unwrapped `dotnet` build/test/run; the wrapper needs `dangerouslyDisableSandbox: true`). The wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation) with `.claude/tmp/dotnet-serialized-latest.log` symlinked to the newest run. Read those logs instead of re-running a suite (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901); note `-latest.log` can rotate to a peer's run.
 
 ## Build & Test
 
