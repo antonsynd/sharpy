@@ -19,7 +19,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// and Sharpy.TestInfrastructure (bin/obj and the uncompiled <c>Integration/TestFixtures</c>
 /// excluded; <c>Spy/generated</c> included). A <i>mutation site</i> is a syntax match against a
 /// LITERAL roster: an invocation of a BCL setter or of a product entry point that changes a global
-/// when called in-process (<see cref="InvokedMutators"/>), a construction of such a product type
+/// when called in-process (<see cref="InvokedMutators"/>; <see cref="ReceiverInvokedMutators"/> when
+/// the member name alone is too common — a forced <c>GC.Collect</c> stalls every concurrently
+/// running test, so it is held to the same rule, #2254), a construction of such a product type
 /// (<see cref="ConstructedMutators"/>), or an assignment to a global property
 /// (<see cref="AssignedMutators"/>). Strings and comments never match. Each site is attributed to
 /// its outermost enclosing type, whose <c>[Collection]</c> is read from every partial declaration
@@ -69,6 +71,16 @@ public class ProcessGlobalStateConformanceTests
         ["SetEnvironmentVariable"] = "environment (Environment.SetEnvironmentVariable)",
         ["Putenv"] = "environment (os.putenv -> OsModuleModule.Putenv)",
         ["ClearCachedData"] = "time-zone cache (TimeZoneInfo.ClearCachedData)",
+        ["CompileAndExecuteWithGC"] = "every test thread (IntegrationTestBase.CompileAndExecuteWithGC forces a blocking Gen2 GC per call, #2254)",
+    };
+
+    /// <summary>
+    /// Invoked members that are a process-wide effect only on a specific receiver type — the member
+    /// name alone is too common to match: (receiver type, member, global).
+    /// </summary>
+    private static readonly (string Receiver, string Member, string Global)[] ReceiverInvokedMutators =
+    {
+        ("GC", "Collect", "every test thread (GC.Collect: a forced collection stalls the concurrently running tests, #2254)"),
     };
 
     /// <summary>Product types whose construction (and use) mutates a process global in-process.</summary>
@@ -116,6 +128,14 @@ public class ProcessGlobalStateConformanceTests
             "redirected inside TestHelpers.ConsoleLock; every other Compiler.Tests console redirector (ReplSessionTests) runs alone in ConsoleCapture"),
         new("src/Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs", "Sharpy.Lsp.Tests.Conformance.FrontEndParityTests", "SweepSingleFileAsync", "ReplSession", null,
             "calls only ReplSession.ProbeFrontEndDiagnostics, which never reaches ExecuteAssembly's Console.SetOut"),
+        new("src/Sharpy.TestInfrastructure/Integration/IntegrationTestBase.cs", "Sharpy.TestInfrastructure.Integration.IntegrationTestBase", "CompileAndExecuteWithGC", "Collect", null,
+            "the opt-in helper itself: each of its callers is a CompileAndExecuteWithGC site, which this scan holds to a run-alone collection"),
+        new("src/Sharpy.Compiler.Tests/Properties/Algebraic/AlgebraicTestBase.cs", "Sharpy.Compiler.Tests.Properties.Algebraic.AlgebraicTestBase", "RunAndCapture", "Collect", null,
+            "abstract base of the nine Properties.Algebraic.* classes, each a PropertySerial member in SerialCollectionRoster"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedProgram", "Collect", null,
+            "a CsCheck Gen filter called only from Properties.* classes, each a PropertySerial member in SerialCollectionRoster"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProgram", "Collect", null,
+            "a CsCheck Gen filter called only from Properties.* classes, each a PropertySerial member in SerialCollectionRoster"),
     };
 
     /// <summary>
@@ -134,6 +154,8 @@ public class ProcessGlobalStateConformanceTests
         ("src/Sharpy.Stdlib.Tests/StrftimeDirectiveTests.cs", "Sharpy.Stdlib.Tests.StrftimeHostTimeZoneTests", "ClearCachedData"),
         ("src/Sharpy.Stdlib.Tests/UnittestCapturedOutputTests.cs", "Sharpy.Core.Tests.UnittestCapturedOutputTests", "CapturedOutput"),
         ("src/Sharpy.Core.Tests/PrintTests.cs", "Sharpy.Core.Tests.Print_Tests", "SetOut"),
+        ("src/Sharpy.Compiler.Tests/Properties/Metamorphic/MetamorphicPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Metamorphic.MetamorphicPropertyTests", "CompileAndExecuteWithGC"),
+        ("src/Sharpy.Compiler.Tests/Properties/Semantic/TypeSoundnessPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Semantic.TypeSoundnessPropertyTests", "CompileAndExecuteWithGC"),
     };
 
     private static readonly Lazy<Analysis> RepositoryAnalysis = new(() => Analyze(ReadScannedFiles()));
@@ -192,6 +214,8 @@ public class ProcessGlobalStateConformanceTests
             yield return new object[] { token, $"var instance = new {token}();" };
         foreach (var (receiver, property, _) in AssignedMutators)
             yield return new object[] { property, $"System.{receiver}.{property} = value;" };
+        foreach (var (receiver, member, _) in ReceiverInvokedMutators)
+            yield return new object[] { member, $"System.{receiver}.{member}(argument);" };
     }
 
     /// <summary>Every roster entry is matched by the walk — a family whose matcher broke would otherwise pass as "no sites".</summary>
@@ -225,6 +249,8 @@ public class ProcessGlobalStateConformanceTests
                         var c = System.Globalization.CultureInfo.DefaultThreadCurrentCulture;
                         System.Globalization.CultureInfo.CurrentCulture = null;
                         Options.CurrentDirectory = d;
+                        items.Collect(d);
+                        // GC.Collect(); CompileAndExecuteWithGC(source);
                     }
                 }
                 """),
@@ -713,7 +739,18 @@ public class ProcessGlobalStateConformanceTests
                         SimpleNameSyntax simple => simple.Identifier.Text,
                         _ => null,
                     };
-                    return name != null && InvokedMutators.TryGetValue(name, out var global) ? (name, global) : null;
+                    if (name != null && InvokedMutators.TryGetValue(name, out var global))
+                        return (name, global);
+                    if (invocation.Expression is MemberAccessExpressionSyntax receiverAccess)
+                    {
+                        var receiver = ReceiverName(receiverAccess.Expression);
+                        foreach (var (type, member, receiverGlobal) in ReceiverInvokedMutators)
+                        {
+                            if (receiver == type && name == member)
+                                return (member, receiverGlobal);
+                        }
+                    }
+                    return null;
                 }
             case ObjectCreationExpressionSyntax creation:
                 {
@@ -722,12 +759,7 @@ public class ProcessGlobalStateConformanceTests
                 }
             case AssignmentExpressionSyntax { Left: MemberAccessExpressionSyntax target }:
                 {
-                    var receiver = target.Expression switch
-                    {
-                        MemberAccessExpressionSyntax access => access.Name.Identifier.Text,
-                        SimpleNameSyntax simple => simple.Identifier.Text,
-                        _ => null,
-                    };
+                    var receiver = ReceiverName(target.Expression);
                     foreach (var (type, property, global) in AssignedMutators)
                     {
                         if (receiver == type && target.Name.Identifier.Text == property)
@@ -739,6 +771,14 @@ public class ProcessGlobalStateConformanceTests
                 return null;
         }
     }
+
+    /// <summary>The last identifier of a receiver expression (<c>GC</c> and <c>System.GC</c> both read <c>GC</c>).</summary>
+    private static string? ReceiverName(ExpressionSyntax receiver) => receiver switch
+    {
+        MemberAccessExpressionSyntax access => access.Name.Identifier.Text,
+        SimpleNameSyntax simple => simple.Identifier.Text,
+        _ => null,
+    };
 
     private static string SimpleName(NameSyntax name) => name switch
     {

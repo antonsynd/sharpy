@@ -130,8 +130,8 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [MemberData(nameof(TwinCells))]
     public void TwinColumns_ProduceIdenticalOutput(string name, Cell cell)
     {
-        var strResult = CompileAndExecuteWithGC(cell.StrSource);
-        var litResult = CompileAndExecuteWithGC(cell.LiteralStringSource);
+        var strResult = CompileAndExecute(cell.StrSource);
+        var litResult = CompileAndExecute(cell.LiteralStringSource);
 
         if (cell.ExpectsRefusal)
         {
@@ -190,13 +190,13 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void IdentifierRead_IsLiteralDerived_ConcatIntoLiteralStringSlot()
     {
-        var accepted = CompileAndExecuteWithGC(
+        var accepted = CompileAndExecute(
             "def main() -> None:\n    x: LiteralString = \"a\"\n    z: LiteralString = x + \"b\"\n    w: LiteralString = (x + \"b\") + x\n    print(z, w)\n");
         accepted.Success.Should().BeTrue(
             $"x + \"b\" on a LiteralString read is literal-derived; got: {string.Join(" | ", accepted.CompilationErrors)}");
         accepted.StandardOutput.Should().Be("ab aba\n");
 
-        var refused = CompileAndExecuteWithGC(
+        var refused = CompileAndExecute(
             "def main() -> None:\n    x: LiteralString = \"a\"\n    s: str = \"b\"\n    z: LiteralString = x + s\n    print(z)\n");
         refused.Success.Should().BeFalse("x + s (s: str) is not literal-derived — R-P");
         refused.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch);
@@ -217,12 +217,12 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     x += s
     print(x)
 ";
-        var strResult = CompileAndExecuteWithGC(strSource);
+        var strResult = CompileAndExecute(strSource);
         strResult.Success.Should().BeTrue(
             "str += str must succeed. Errors:\n" + string.Join("\n", strResult.CompilationErrors));
         strResult.StandardOutput.Should().Be("hello world\n");
 
-        var litResult = CompileAndExecuteWithGC(litSource);
+        var litResult = CompileAndExecute(litSource);
         litResult.Success.Should().BeFalse(
             "LiteralString += str must be REFUSED (store seam, R-P control)");
         litResult.RawDiagnostics.Should().Contain(
@@ -240,7 +240,7 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void LiteralStringOptional_SomeValue_Prints()
     {
-        var result = CompileAndExecuteWithGC(
+        var result = CompileAndExecute(
             "def main() -> None:\n" +
             "    x: LiteralString? = Some(\"a\")\n" +
             "    print(x)\n");
@@ -257,7 +257,7 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void LiteralStringOptional_NarrowedRead_PrintsUppercase()
     {
-        var result = CompileAndExecuteWithGC(
+        var result = CompileAndExecute(
             "def main() -> None:\n" +
             "    x: LiteralString? = Some(\"a\")\n" +
             "    if x is not None:\n" +
@@ -274,7 +274,7 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void LiteralStringNullable_Value_Prints()
     {
-        var result = CompileAndExecuteWithGC(
+        var result = CompileAndExecute(
             "def main() -> None:\n" +
             "    x: LiteralString | None = \"a\"\n" +
             "    print(x)\n");
@@ -290,7 +290,7 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void LiteralStringNullable_NarrowedRead_PrintsUppercase()
     {
-        var result = CompileAndExecuteWithGC(
+        var result = CompileAndExecute(
             "def main() -> None:\n" +
             "    x: LiteralString | None = \"a\"\n" +
             "    if x is not None:\n" +
@@ -307,7 +307,7 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void TemplateOptional_None_Runs()
     {
-        var result = CompileAndExecuteWithGC(
+        var result = CompileAndExecute(
             "def main() -> None:\n" +
             "    x: Template? = None()\n" +
             "    print(x)\n");
@@ -322,7 +322,7 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     [Fact]
     public void TemplateNullable_None_Runs()
     {
-        var result = CompileAndExecuteWithGC(
+        var result = CompileAndExecute(
             "def main() -> None:\n" +
             "    x: Template | None = None\n" +
             "    print(x)\n");
@@ -572,7 +572,7 @@ def main() -> None:
     [MemberData(nameof(FormCells))]
     public void FormAxis_ProducesMeasuredOutcome(string name, FormCell cell)
     {
-        var result = CompileAndExecuteWithGC(cell.Source);
+        var result = CompileAndExecute(cell.Source);
 
         if (cell.ExpectsAcceptance)
         {
