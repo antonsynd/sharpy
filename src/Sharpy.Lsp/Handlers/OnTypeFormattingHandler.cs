@@ -8,9 +8,11 @@ namespace Sharpy.Lsp.Handlers;
 /// <summary>
 /// Handles textDocument/onTypeFormatting requests.
 /// Triggers on newline (auto-indent the new line) and on ':' (re-indent the
-/// current line, e.g. for dedented 'else:' / 'elif x:' / 'except:').
+/// current line). The indent map has no keyword rule, so an 'else:' typed at its body's width is not dedented.
 /// Uses <see cref="IndentationService"/>'s lexer-based indent map; this works
-/// even when the file is mid-edit and not yet parseable.
+/// even when the file is mid-edit and not yet parseable. Only a line that starts a logical line,
+/// outside any literal, is re-indented, and only when <see cref="FormattingEdits.CheckedIndentOnly"/>
+/// passes (P22e decision 6, #2168).
 /// </summary>
 internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHandlerBase
 {
@@ -44,7 +46,7 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
 
         // Always use the lexer-based indent map here — the file is being typed
         // and is usually not parseable until the user finishes the line.
-        var lineIndentLevels = IndentationService.BuildIndentMap(text).LineIndent;
+        var map = IndentationService.BuildIndentMap(text);
 
         var lines = text.Split('\n');
         if (line < 0 || line >= lines.Length)
@@ -57,8 +59,16 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
         if (trimmed.Length == 0)
             return Task.FromResult<TextEditContainer?>(null);
 
-        // 1-based for the indent map.
-        var level = lineIndentLevels.TryGetValue(line + 1, out var l) ? l : 0;
+        // P22e decision 6 (#2168), all 1-based for the map: when the lexer lost a literal that can span
+        // lines, which lines are string content is unknown; a line that starts inside a literal is string
+        // content; and the map's level is a block level, which is only a logical line's FIRST line's
+        // indentation — a bracket or backslash continuation line (or a comment line) is not re-indented.
+        if (map.LiteralStateUnknown
+            || map.LiteralLines.Contains(line + 1)
+            || !map.LogicalLineStarts.Contains(line + 1))
+            return Task.FromResult<TextEditContainer?>(null);
+
+        var level = map.LineIndent.TryGetValue(line + 1, out var l) ? l : 0;
         var desiredIndent = string.Concat(Enumerable.Repeat(indentStr, level));
         var existingIndent = currentLine.Substring(0, currentLine.Length - trimmed.Length);
 
@@ -73,7 +83,13 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
             NewText = desiredIndent
         };
 
-        return Task.FromResult<TextEditContainer?>(new TextEditContainer(new[] { edit }));
+        // The re-indent is applied only when the indent-only check passes (decision 8): it changes a width,
+        // never a string and never the block the lexer reads any line in — the requested line's included.
+        var checkedEdits = FormattingEdits.CheckedIndentOnly(text, new[] { edit });
+        if (checkedEdits.Count == 0)
+            return Task.FromResult<TextEditContainer?>(null);
+
+        return Task.FromResult<TextEditContainer?>(new TextEditContainer(checkedEdits));
     }
 
     protected override DocumentOnTypeFormattingRegistrationOptions CreateRegistrationOptions(

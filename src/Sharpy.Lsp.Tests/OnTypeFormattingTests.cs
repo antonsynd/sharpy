@@ -173,6 +173,163 @@ public class OnTypeFormattingTests : IDisposable
         edits.Should().BeNull();
     }
 
+    // ---- P22e decision 6 (#2168): on-type edits only a line that starts a logical line, outside any
+    // literal, and only when the indent-only check passes. Each cell states what the handler applied
+    // before (@ d97821ff2); now it applies nothing.
+
+    [Fact]
+    public async Task Cell11_ReindentThatMovesAStatementOutOfItsBlock_NoEditAsync()
+    {
+        // Before: `print(2)` 16 → 8 spaces, out of `if False:` — the program then printed 2.
+        var source = "def main():\n        if False:\n                print(1)\n                print(2)\n";
+        var edits = await OnTypeAsync(source, line: 3, character: 24, ch: "\n");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell12_LineInsideAClosedTripleQuotedString_NoEditAsync()
+    {
+        // Before: the string line lost its 8 spaces — the string's value changed.
+        var source = "s = \"\"\"\n        key: value\n\"\"\"\nprint(s)\n";
+        var edits = await OnTypeAsync(source, line: 1, character: 11, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell13_LineInsideAnUnterminatedTripleQuotedString_NoEditAsync()
+    {
+        // Before: the string line 8 → 4 spaces.
+        var source = "def main():\n    s = \"\"\"\n        key: value\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 11, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell17_BracketContinuationLineOfAFormattedDocument_NoEditAsync()
+    {
+        // Before: `2]` snapped from column 10 to column 4 on a document that is Format's fixed point.
+        var source = "def main():\n    xs = [1,  # one\n          2]\n    print(xs)\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 12, ch: "\n");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell18_MultiLineFStringHoleLine_NoEditAsync()
+    {
+        // Before: the hole's `n` line snapped to the block's level.
+        var source = "def main():\n    n = 3\n    s = f\"\"\"a{\n            n\n    }b\"\"\"\n    print(s)\n";
+        var edits = await OnTypeAsync(source, line: 3, character: 12, ch: "\n");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell18_BackslashContinuationLine_NoEditAsync()
+    {
+        // Before: `2` snapped from column 12 to the block's level.
+        var source = "def main():\n    x = 1 + \\\n            2\n    print(x)\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 12, ch: "\n");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell18_DictLiteralEntryLine_NoEditAsync()
+    {
+        // Before: the `"a": 1,` entry snapped from column 12 to the block's level.
+        var source = "def main():\n    d = {\n            \"a\": 1,\n    }\n    print(d)\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 16, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell19_DocstringOpenedAboveAMultiLineString_NoEditAsync()
+    {
+        // The new `"""` in `f` pairs with `g`'s opener: `g`'s string content lexes as code. Before:
+        // `        key: value` → `    key: value`, so `g`'s string lost 4 spaces once the docstring was closed.
+        var source = "def f() -> int:\n    \"\"\"\n    return 1\ndef g() -> str:\n    s = \"\"\"\n        key: value\n    \"\"\"\n    return s\n";
+        var edits = await OnTypeAsync(source, line: 5, character: 11, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("f", "}")]
+    [InlineData("b", "é")]
+    public async Task Cell20_LexerAbortsInsideAClosedLiteral_NoEditAsync(string prefix, string abortLine)
+    {
+        // The lexer aborts INSIDE the literal (`Unmatched '}'`; non-ASCII in a byte string) and resumes on the
+        // next line as code. Before: `        key: value` re-indented 8 → 4.
+        var source = $"def main():\n    s = {prefix}\"\"\"\n        {abortLine}\n        key: value\n    \"\"\"\n    print(s)\n";
+        var edits = await OnTypeAsync(source, line: 3, character: 11, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cell21_BlockOpenerMovedBetweenTwoWidths_NoEditAsync()
+    {
+        // Before: `if a == 1:` 8 → 4 while `a = 1` stays at 8 — the lexer then reports SPY0014.
+        var source = "def main():\n        a = 1\n        if a == 1:\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 18, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task OverIndentedElse_WouldLeaveTheBlockTheLexerOpened_NoEditAsync()
+    {
+        // A typed `else:` deeper than the line above it: the lexer opens a block for it, the colon rule does
+        // not. Before: 12 → 8 spaces, a block change (lexer depth 3 → 2). Lead ruling at P3T3 (option a):
+        // the indent-only routes never re-nest, on-type's own line included. An `else:` typed AT the `if`
+        // body's width is not dedented, here or before (@ d97821ff2): the indent map has no keyword rule.
+        var source = "def main():\n    x = True\n    if x:\n        print(1)\n            else:\n";
+        var edits = await OnTypeAsync(source, line: 4, character: 17, ch: ":");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UnexpectedIndentOnTheRequestedLine_NoEditAsync()
+    {
+        // The document does not parse and `y = 2` is an unexpected indent (the lexer opens a block for it).
+        // Before: 8 → 4 spaces, a block change (lexer depth 2 → 1). Lead ruling at P3T3 (option a): no edit.
+        var source = "def main():\n    x = 1\n        y = 2\n    print(x, y)\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 13, ch: "\n");
+
+        edits.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UnparseableDocument_WidthAtConstantDepth_IsReindentedAsync()
+    {
+        // Positive control for the indent-only check's arm: the document does not parse (`y = (` is open),
+        // and the re-indent changes a width, not a block — the check does not refuse everything.
+        var source = "def foo():\n        x: int = 1\ny = (\n";
+        var edits = await OnTypeAsync(source, line: 1, character: 9, ch: "\n");
+
+        edits.Should().NotBeNull();
+        edits!.Should().ContainSingle();
+        edits.First().NewText.Should().Be("    ");
+    }
+
+    [Fact]
+    public async Task MisIndentedSoleLineOfANestedBlock_ParseableDocument_IsReindentedAsync()
+    {
+        // Positive control for the net's arm: the document parses, the re-indent keeps its AST.
+        var source = "def main():\n    if True:\n                print(1)\n    print(2)\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 24, ch: "\n");
+
+        edits.Should().NotBeNull();
+        edits!.Should().ContainSingle();
+        edits.First().NewText.Should().Be("        ");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

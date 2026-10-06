@@ -1686,6 +1686,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         rows.Should().OnlyContain(r => corpus.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
 
+        // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). The literal anchors
+        // it: re-populating the allowlist is a visible decision — change this 0 in the same commit and say why.
+        rows.Count.Should().Be(0, "the formatting route-parity allowlist is empty since P22e Phase 3 Task 3");
+
         AssertRefusalCeilings(corpus.Corpus.Count);
     }
 
