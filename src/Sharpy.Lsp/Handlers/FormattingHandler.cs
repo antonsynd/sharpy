@@ -56,27 +56,34 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
         if (formatResult.Diagnostics.Any(d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined))
             return Task.FromResult<TextEditContainer?>(null);
 
-        string formattedText;
         if (formatResult.Diagnostics.Count == 0)
         {
             if (!formatResult.HasChanges)
                 return Task.FromResult<TextEditContainer?>(null);
 
-            formattedText = formatResult.FormattedText;
-        }
-        else
-        {
-            // Fall back to indent-only formatting for unparseable files.
-            formattedText = FormattingFallback.ReindentDocument(text);
-            if (formattedText == text)
-                return Task.FromResult<TextEditContainer?>(null);
+            return Task.FromResult<TextEditContainer?>(new TextEditContainer(WholeDocumentEdit(text, formatResult.FormattedText)));
         }
 
+        // Fall back to indent-only formatting for unparseable files: applied only when the text it
+        // produces passes the indent-only check (P22e decision 8, #2168).
+        var formattedText = FormattingFallback.ReindentDocument(text);
+        if (formattedText == text)
+            return Task.FromResult<TextEditContainer?>(null);
+
+        var edits = FormattingEdits.CheckedIndentOnly(text, WholeDocumentEdit(text, formattedText));
+        if (edits.Count == 0)
+            return Task.FromResult<TextEditContainer?>(null);
+
+        return Task.FromResult<TextEditContainer?>(new TextEditContainer(edits));
+    }
+
+    private static List<TextEdit> WholeDocumentEdit(string text, string formattedText)
+    {
         var lines = text.Split('\n');
         var lastLine = lines.Length - 1;
         var lastCol = lines[lastLine].TrimEnd('\r').Length;
 
-        var edits = new List<TextEdit>
+        return new List<TextEdit>
         {
             new()
             {
@@ -86,8 +93,6 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
                 NewText = formattedText
             }
         };
-
-        return Task.FromResult<TextEditContainer?>(new TextEditContainer(edits));
     }
 
     protected override DocumentFormattingRegistrationOptions CreateRegistrationOptions(

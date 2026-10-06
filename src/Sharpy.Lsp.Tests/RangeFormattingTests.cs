@@ -57,7 +57,9 @@ public class RangeFormattingTests : IDisposable
     [Fact]
     public async Task SingleMisIndentedLine_FixedAsync()
     {
-        // Source with 8-space indent where 4 is expected (valid to lexer as multiple of 4)
+        // Source with 8-space indent where 4 is expected. It does not lex — `return x` dedents to a
+        // width no enclosing block used (SPY0014) — so this exercises the indent-only fallback, which
+        // re-indents line 1 and repairs the document (SPY0014 1 → 0; P22e decision 8, #2168).
         var source = "def foo():\n        x: int = 1\n    return x";
         // Format only line 1 (the over-indented line)
         var edits = await FormatRangeAsync(source, 1, 0, 1, 20);

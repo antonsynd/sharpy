@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 
 namespace Sharpy.Lsp;
@@ -8,9 +9,15 @@ internal static class IndentationService
     /// The indent level of every physical line, the tokens it was computed from, and the lexer's
     /// <see cref="Compiler.Lexer.Lexer.LiteralStateUnknown"/>: when true the lexer lost a literal that
     /// can span lines, so which lines are string content (and hence which lines the map may re-indent)
-    /// is unknown for the whole document.
+    /// is unknown for the whole document. Also the facts the indent-only check reads
+    /// (<c>FormattingFallback.IndentOnlyPreserved</c>, P22e decision 8, #2168), all 1-based lines:
+    /// the lines that start a logical line (the block level is defined only there), the lines that
+    /// start inside a literal — never re-indented, stripped or blanked: a triple-quoted string's inner
+    /// lines, a multi-line replacement field's continuation lines (#2022, #2062; the spans are
+    /// <see cref="LiteralSpans"/>, the definition <c>FormatterService</c> uses) — and how many indentation diagnostics (SPY0013, SPY0014) the lexer reported.
     /// </summary>
-    internal static (Dictionary<int, int> LineIndent, List<Token> Tokens, bool LiteralStateUnknown) BuildIndentMap(string source)
+    internal static (Dictionary<int, int> LineIndent, List<Token> Tokens, bool LiteralStateUnknown,
+        HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics) BuildIndentMap(string source)
     {
         var lexer = new Compiler.Lexer.Lexer(source);
         List<Token> tokens;
@@ -20,7 +27,8 @@ internal static class IndentationService
         }
         catch (Exception)
         {
-            return (new Dictionary<int, int>(), new List<Token>(), true);   // no tokens: no literal is known
+            // no tokens: no literal is known
+            return (new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0);
         }
 
         // Levels come from the WIDTH stack of each logical line's leading whitespace, in physical
@@ -65,6 +73,7 @@ internal static class IndentationService
 
         var literalLines = LiteralSpans.LinesStartingInside(source, LiteralSpans.Of(tokens));
         var lineIndent = new Dictionary<int, int>();
+        var logicalLineStarts = new HashSet<int>();
         var widths = new List<int> { 0 };
         var previousOpensBlock = false;
         for (var line = 1; line <= sourceLines.Length; line++)
@@ -88,6 +97,7 @@ internal static class IndentationService
 
             if (startsLogicalLine)
             {
+                logicalLineStarts.Add(line);
                 var width = LeadingWhitespaceWidth(sourceLines, line);
                 if (width > widths[^1])
                 {
@@ -110,7 +120,9 @@ internal static class IndentationService
             lineIndent[line] = widths.Count - 1;
         }
 
-        return (lineIndent, tokens, lexer.LiteralStateUnknown);
+        var indentationDiagnostics = lexer.Diagnostics.GetAll().Count(d =>
+            d.Code is DiagnosticCodes.Lexer.InvalidIndentation or DiagnosticCodes.Lexer.IndentationMismatch);
+        return (lineIndent, tokens, lexer.LiteralStateUnknown, logicalLineStarts, literalLines, indentationDiagnostics);
     }
 
     private static int LeadingWhitespaceWidth(string[] sourceLines, int line)
@@ -123,14 +135,4 @@ internal static class IndentationService
             width++;
         return width;
     }
-
-    /// <summary>
-    /// The 1-based lines whose text must not be re-indented, stripped or blanked: every line that
-    /// starts inside a string literal or an f-/t-string (a triple-quoted string's inner lines, a
-    /// multi-line replacement field's continuation lines — re-indenting a hole changes a t-string's
-    /// <c>Interpolation.expression</c>, #2022). The spans come from the one shared definition
-    /// (<see cref="LiteralSpans"/>, #2062) that <c>FormatterService</c> uses.
-    /// </summary>
-    internal static HashSet<int> FindMultiLineStringLines(List<Token> tokens, string source) =>
-        LiteralSpans.LinesStartingInside(source, LiteralSpans.Of(tokens));
 }

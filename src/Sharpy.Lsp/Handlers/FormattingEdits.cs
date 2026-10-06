@@ -1,3 +1,4 @@
+using System.Text;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Formatting;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
@@ -63,5 +64,74 @@ internal static class FormattingEdits
         return edits;
 
         Position EndOf(int line) => new(line, lines[line].Length);
+    }
+
+    /// <summary>
+    /// The funnel's second arm (P22e decision 8, #2168): the edits of an indent-only candidate — the
+    /// on-type alignment or the full and range fallbacks — when the text they produce passes the check,
+    /// else none. When the lexer lost a literal that can span lines (decision 7,
+    /// <see cref="Compiler.Lexer.Lexer.LiteralStateUnknown"/>) which lines are string content is unknown,
+    /// so nothing is edited and nothing else runs. Otherwise the applied text is checked: when the
+    /// source parses, by the SPY0912 net (<see cref="FormatterService.CheckApplied"/>); when it does
+    /// not, by <see cref="FormattingFallback.IndentOnlyPreserved"/>.
+    /// </summary>
+    public static List<TextEdit> CheckedIndentOnly(string source, IReadOnlyList<TextEdit> candidate)
+    {
+        if (candidate.Count == 0 || IndentationService.BuildIndentMap(source).LiteralStateUnknown)
+            return new List<TextEdit>();
+
+        var applied = Apply(source, candidate);
+        if (applied == null)
+            return new List<TextEdit>();
+
+        var declined = FormatterService.CheckApplied(source, applied, out var sourceParses);
+        var preserved = sourceParses ? declined == null : FormattingFallback.IndentOnlyPreserved(source, applied);
+        return preserved ? candidate.ToList() : new List<TextEdit>();
+    }
+
+    /// <summary>
+    /// <paramref name="edits"/> applied to <paramref name="source"/>; null when an edit lies outside the
+    /// document or two overlap (never for a candidate this server built — refused, not guessed at).
+    /// </summary>
+    private static string? Apply(string source, IReadOnlyList<TextEdit> edits)
+    {
+        var lineStarts = new List<int> { 0 };
+        for (var i = 0; i < source.Length; i++)
+        {
+            if (source[i] == '\n')
+                lineStarts.Add(i + 1);
+        }
+
+        var spans = new List<(int Start, int End, string NewText)>(edits.Count);
+        foreach (var edit in edits)
+        {
+            var start = Offset(edit.Range.Start);
+            var end = Offset(edit.Range.End);
+            if (start < 0 || end < start)
+                return null;
+            spans.Add((start, end, edit.NewText ?? string.Empty));
+        }
+
+        spans.Sort((x, y) => x.Start != y.Start ? x.Start.CompareTo(y.Start) : x.End.CompareTo(y.End));
+        var sb = new StringBuilder(source.Length);
+        var cursor = 0;
+        foreach (var (start, end, newText) in spans)
+        {
+            if (start < cursor)
+                return null;
+            sb.Append(source, cursor, start - cursor).Append(newText);
+            cursor = end;
+        }
+
+        return sb.Append(source, cursor, source.Length - cursor).ToString();
+
+        int Offset(Position position)
+        {
+            if (position.Line < 0 || position.Line >= lineStarts.Count || position.Character < 0)
+                return -1;
+            var lineEnd = position.Line + 1 < lineStarts.Count ? lineStarts[position.Line + 1] - 1 : source.Length;
+            var offset = lineStarts[position.Line] + position.Character;
+            return offset > lineEnd ? -1 : offset;
+        }
     }
 }

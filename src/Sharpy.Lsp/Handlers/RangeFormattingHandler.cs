@@ -15,7 +15,8 @@ namespace Sharpy.Lsp.Handlers;
 /// by <see cref="FormattingEdits.ToTextEdits"/>, so the client applies exactly that checked text: a
 /// hunk that adds or removes lines is applied whole, never cut to the lines it shares with the source.
 /// A document that parses but whose selected hunks the formatter declines (SPY0912) gets no edits.
-/// Fallback: when the document fails to lex or parse, indent-only formatting of the selected lines.
+/// Fallback: when the document fails to lex or parse, indent-only formatting of the selected lines,
+/// through <see cref="FormattingEdits.CheckedIndentOnly"/>.
 /// </summary>
 internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHandlerBase
 {
@@ -59,20 +60,22 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
             return Task.FromResult(new TextEditContainer(FormattingEdits.ToTextEdits(text, result.Hunks)));
         }
 
-        // Fallback: indent-only formatting per line.
+        // Fallback: indent-only formatting per line, applied only when the text it produces passes the
+        // indent-only check (P22e decision 8, #2168).
         var lines = text.Split('\n');
         var startLine = request.Range.Start.Line;
         var endLine = System.Math.Min(request.Range.End.Line, lines.Length - 1);
         var fallbackEdits = ComputeIndentOnlyRangeEdits(text, startLine, endLine);
-        return Task.FromResult(new TextEditContainer(fallbackEdits));
+        return Task.FromResult(new TextEditContainer(FormattingEdits.CheckedIndentOnly(text, fallbackEdits)));
     }
 
-    private static List<TextEdit> ComputeIndentOnlyRangeEdits(string text, int startLine, int endLine)
+    internal static List<TextEdit> ComputeIndentOnlyRangeEdits(string text, int startLine, int endLine)
     {
         var indentStr = new string(' ', Compiler.Lexer.Lexer.IndentWidth);
 
-        var (lineIndentLevels, tokens, _) = IndentationService.BuildIndentMap(text);
-        var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens, text);
+        var map = IndentationService.BuildIndentMap(text);
+        var lineIndentLevels = map.LineIndent;
+        var multiLineStringLines = map.LiteralLines;
 
         var lines = text.Split('\n');
         endLine = System.Math.Min(endLine, lines.Length - 1);
