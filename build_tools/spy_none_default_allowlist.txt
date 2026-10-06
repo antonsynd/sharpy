@@ -1,0 +1,14 @@
+# spy_none_default_allowlist.txt — spy-sourced `= None` parameter defaults whose CPython default
+# is NOT None (a sentinel object or another value), so an explicit `None` and an omitted argument
+# mean different things in CPython but the same thing in Sharpy.
+# Checked by build_tools/tests/test_spy_none_default_audit.py (build_tools/spy_none_default_audit.py).
+# Each entry: <module>::<Callable>::<param>  # #issue  CPython default
+# Cure (owner ruling R-EV): an overload WITHOUT the parameter, in the spy source (rung 1).
+# Ratchet: a new unlisted finding fails; a row that is no longer a finding fails (drain on fix).
+
+re::Pattern.findall::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.finditer::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.fullmatch::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.match::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.search::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
+socket::create_connection::timeout  # #2236 CPython default _GLOBAL_DEFAULT_TIMEOUT sentinel; explicit None = blocking
