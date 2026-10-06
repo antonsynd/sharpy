@@ -6,6 +6,12 @@ Thread-based concurrency primitives.
 import threading
 ```
 
+## Constants
+
+| Name | Type | Description |
+|------|------|-------------|
+| `timeout_max` | `float` | The largest timeout, in seconds, that a blocking call accepts; a larger one raises OverflowError. A wait longer than about 24.8 days is cut short at 24.8 days. |
+
 ## Functions
 
 ### `threading.current_thread() -> Thread`
@@ -54,7 +60,7 @@ A barrier synchronization primitive, similar to Python's `threading.Barrier`.
 A bounded semaphore that checks that the counter never exceeds its initial value,
 similar to Python's `threading.BoundedSemaphore`.
 
-### `acquire(blocking: bool = True, timeout: float = -1) -> bool`
+### `acquire(blocking: bool = True, timeout: float | None = None) -> bool`
 
 ### `release()`
 
@@ -77,6 +83,10 @@ A thread synchronization event, similar to Python's `threading.Event`.
 ### `is_set() -> bool`
 
 ### `wait(timeout: float | None = None) -> bool`
+
+Wait until the flag is set, or until *timeout* seconds pass, and return
+the flag. A set flag returns `True` whatever the timeout; a timeout at or below zero
+does not wait.
 
 ## Lock
 
@@ -117,7 +127,7 @@ The same thread may acquire it multiple times without deadlocking.
 
 A counting semaphore, similar to Python's `threading.Semaphore`.
 
-### `acquire(blocking: bool = True, timeout: float = -1) -> bool`
+### `acquire(blocking: bool = True, timeout: float | None = None) -> bool`
 
 ### `release()`
 

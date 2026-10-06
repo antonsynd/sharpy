@@ -1,0 +1,101 @@
+Popen.wait running -1 -> TimeoutExpired
+Popen.communicate running pipe=False -1 -> TimeoutExpired
+Popen.communicate running pipe=True -1 -> TimeoutExpired
+Popen.wait exited -1 -> 0
+Popen.communicate exited pipe=False -1 -> None
+Popen.communicate exited pipe=True -1 -> TimeoutExpired
+run -1 -> TimeoutExpired
+check_call -1 -> TimeoutExpired
+run(capture_output=True) -1 -> TimeoutExpired
+check_output -1 -> TimeoutExpired
+Popen.wait running -1e10 -> TimeoutExpired
+Popen.communicate running pipe=False -1e10 -> TimeoutExpired
+Popen.communicate running pipe=True -1e10 -> TimeoutExpired
+Popen.wait exited -1e10 -> 0
+Popen.communicate exited pipe=False -1e10 -> None
+Popen.communicate exited pipe=True -1e10 -> TimeoutExpired
+run -1e10 -> TimeoutExpired
+check_call -1e10 -> TimeoutExpired
+run(capture_output=True) -1e10 -> TimeoutExpired
+check_output -1e10 -> TimeoutExpired
+Popen.wait running -2.0 -> TimeoutExpired
+Popen.communicate running pipe=False -2.0 -> TimeoutExpired
+Popen.communicate running pipe=True -2.0 -> TimeoutExpired
+Popen.wait exited -2.0 -> 0
+Popen.communicate exited pipe=False -2.0 -> None
+Popen.communicate exited pipe=True -2.0 -> TimeoutExpired
+run -2.0 -> TimeoutExpired
+check_call -2.0 -> TimeoutExpired
+run(capture_output=True) -2.0 -> TimeoutExpired
+check_output -2.0 -> TimeoutExpired
+Popen.wait running -0.5 -> TimeoutExpired
+Popen.communicate running pipe=False -0.5 -> TimeoutExpired
+Popen.communicate running pipe=True -0.5 -> TimeoutExpired
+Popen.wait exited -0.5 -> 0
+Popen.communicate exited pipe=False -0.5 -> None
+Popen.communicate exited pipe=True -0.5 -> TimeoutExpired
+run -0.5 -> TimeoutExpired
+check_call -0.5 -> TimeoutExpired
+run(capture_output=True) -0.5 -> TimeoutExpired
+check_output -0.5 -> TimeoutExpired
+Popen.wait running -0.001 -> TimeoutExpired
+Popen.communicate running pipe=False -0.001 -> TimeoutExpired
+Popen.communicate running pipe=True -0.001 -> TimeoutExpired
+Popen.wait exited -0.001 -> 0
+Popen.communicate exited pipe=False -0.001 -> None
+Popen.communicate exited pipe=True -0.001 -> TimeoutExpired
+run -0.001 -> TimeoutExpired
+check_call -0.001 -> TimeoutExpired
+run(capture_output=True) -0.001 -> TimeoutExpired
+check_output -0.001 -> TimeoutExpired
+Popen.wait running -0.0005 -> TimeoutExpired
+Popen.communicate running pipe=False -0.0005 -> TimeoutExpired
+Popen.communicate running pipe=True -0.0005 -> TimeoutExpired
+Popen.wait exited -0.0005 -> 0
+Popen.communicate exited pipe=False -0.0005 -> None
+Popen.communicate exited pipe=True -0.0005 -> TimeoutExpired
+run -0.0005 -> TimeoutExpired
+check_call -0.0005 -> TimeoutExpired
+run(capture_output=True) -0.0005 -> TimeoutExpired
+check_output -0.0005 -> TimeoutExpired
+Popen.wait running 0 -> TimeoutExpired
+Popen.communicate running pipe=False 0 -> TimeoutExpired
+Popen.communicate running pipe=True 0 -> TimeoutExpired
+Popen.wait exited 0 -> 0
+Popen.communicate exited pipe=False 0 -> None
+Popen.communicate exited pipe=True 0 -> TimeoutExpired
+run 0 -> TimeoutExpired
+check_call 0 -> TimeoutExpired
+run(capture_output=True) 0 -> TimeoutExpired
+check_output 0 -> TimeoutExpired
+Popen.wait running 0.01 -> TimeoutExpired
+Popen.communicate running pipe=False 0.01 -> TimeoutExpired
+Popen.communicate running pipe=True 0.01 -> TimeoutExpired
+Popen.wait exited 0.01 -> 0
+Popen.communicate exited pipe=False 0.01 -> None
+Popen.communicate exited pipe=True 0.01 -> x
+run 0.01 -> TimeoutExpired
+check_call 0.01 -> TimeoutExpired
+run(capture_output=True) 0.01 -> TimeoutExpired
+check_output 0.01 -> TimeoutExpired
+Popen.wait exited 2147483.647 -> 0
+Popen.communicate exited pipe=False 2147483.647 -> None
+Popen.communicate exited pipe=True 2147483.647 -> x
+Popen.communicate running pipe=True 2147483.648 -> OverflowError
+Popen.wait exited 2147483.648 -> 0
+Popen.communicate exited pipe=False 2147483.648 -> None
+Popen.communicate exited pipe=True 2147483.648 -> OverflowError
+run(capture_output=True) 2147483.648 -> OverflowError
+check_output 2147483.648 -> OverflowError
+Popen.communicate running pipe=True 3e6 -> OverflowError
+Popen.wait exited 3e6 -> 0
+Popen.communicate exited pipe=False 3e6 -> None
+Popen.communicate exited pipe=True 3e6 -> OverflowError
+run(capture_output=True) 3e6 -> OverflowError
+check_output 3e6 -> OverflowError
+Popen.communicate running pipe=True 1e10 -> OverflowError
+Popen.wait exited 1e10 -> 0
+Popen.communicate exited pipe=False 1e10 -> None
+Popen.communicate exited pipe=True 1e10 -> OverflowError
+run(capture_output=True) 1e10 -> OverflowError
+check_output 1e10 -> OverflowError

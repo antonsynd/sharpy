@@ -21,6 +21,9 @@ namespace Sharpy
         // Sharpy `except` clause names (#2261). The current_thread() wrapper is created started.
         private int _started;
         private bool _daemon;
+        // Set once a join or is_alive() has observed the thread end — python's _is_stopped. A timed
+        // join after that returns without reading its timeout (#2263).
+        private volatile bool _stopped;
 
         internal Thread(SysThread thread)
         {
@@ -72,7 +75,12 @@ namespace Sharpy
 
         public bool IsAlive()
         {
-            return _thread.IsAlive;
+            bool alive = _thread.IsAlive;
+            if (!alive && SysVolatile.Read(ref _started) != 0)
+            {
+                _stopped = true;
+            }
+            return alive;
         }
 
         public int Ident => _thread.ManagedThreadId;
@@ -99,11 +107,20 @@ namespace Sharpy
             if (timeout == null)
             {
                 _thread.Join();
+                _stopped = true;
+                return;
             }
-            else
+            // python joins with max(timeout, 0). Once a join or is_alive() has seen the thread end,
+            // python holds no lock to wait on and returns without converting the timeout; before
+            // that a timeout it cannot represent raises, even for a thread that has ended (#2263).
+            if (_stopped)
             {
-                int ms = (int)(timeout.Value * 1000);
-                _thread.Join(ms);
+                return;
+            }
+            WaitTimeout.CheckRepresentable(Math.Max(timeout.Value, 0));
+            if (_thread.Join(WaitTimeout.ToMilliseconds(timeout.Value)))
+            {
+                _stopped = true;
             }
         }
 

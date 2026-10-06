@@ -51,19 +51,14 @@ namespace Sharpy
         /// </example>
         public static void Sleep(double secs)
         {
+            // python converts before it checks the sign, so -1e10 is OverflowError, not ValueError (#2263).
+            WaitTimeout.CheckRepresentable(secs);
             if (secs < 0)
             {
                 throw new ValueError("sleep length must be non-negative");
             }
 
-            // Clamp to avoid int overflow (int.MaxValue ms ≈ 24.8 days)
-            long ms = (long)(secs * 1000);
-            if (ms > int.MaxValue)
-            {
-                ms = int.MaxValue;
-            }
-
-            System.Threading.Thread.Sleep((int)ms);
+            System.Threading.Thread.Sleep(WaitTimeout.ToMilliseconds(secs));
         }
 
         /// <summary>

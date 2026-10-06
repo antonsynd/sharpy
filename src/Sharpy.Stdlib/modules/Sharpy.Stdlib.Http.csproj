@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <Compile Include="../Http/**/*.cs" />
+    <!-- python timeout seconds -> .NET wait, one conversion shared by threading, subprocess,
+         time, http and requests (#2263); in the combined Sharpy.Stdlib assembly it is a sibling file. -->
+    <Compile Include="../WaitTimeout.cs" />
   </ItemGroup>
 
 </Project>

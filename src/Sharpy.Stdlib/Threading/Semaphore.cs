@@ -20,21 +20,42 @@ namespace Sharpy
             _semaphore = new SemaphoreSlim(value, int.MaxValue);
         }
 
-        public bool Acquire(bool blocking = true, double timeout = -1)
+        public bool Acquire(bool blocking = true, double? timeout = null)
         {
-            if (!blocking)
-            {
-                return _semaphore.Wait(0);
-            }
+            return AcquireSlim(_semaphore, blocking, timeout);
+        }
 
-            if (timeout < 0)
+        /// <summary>
+        /// python's <c>Semaphore.acquire</c>, which <c>BoundedSemaphore</c> inherits there: a timeout
+        /// on a non-blocking call is <see cref="ValueError"/>; a free slot is taken whatever the
+        /// timeout; otherwise a timeout at or below zero gives up at once, and python converts the
+        /// timeout only when it waits, so a value it cannot represent raises only then (#2263).
+        /// </summary>
+        internal static bool AcquireSlim(SemaphoreSlim semaphore, bool blocking, double? timeout)
+        {
+            if (!blocking && timeout != null)
             {
-                _semaphore.Wait();
+                throw new ValueError("can't specify timeout for non-blocking acquire");
+            }
+            if (semaphore.Wait(0))
+            {
                 return true;
             }
-
-            int ms = (int)(timeout * 1000);
-            return _semaphore.Wait(ms);
+            if (!blocking)
+            {
+                return false;
+            }
+            if (timeout == null)
+            {
+                semaphore.Wait();
+                return true;
+            }
+            if (timeout.Value <= 0)
+            {
+                return false;
+            }
+            WaitTimeout.CheckRepresentable(timeout.Value);
+            return semaphore.Wait(WaitTimeout.ToMilliseconds(timeout.Value));
         }
 
         public void Release()

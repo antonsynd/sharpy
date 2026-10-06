@@ -57,8 +57,20 @@ namespace Sharpy
                 }
                 else
                 {
-                    int ms = (int)(timeout.Value * 1000);
-                    bool signaled = _barrier.SignalAndWait(System.TimeSpan.FromMilliseconds(ms));
+                    // python's last party completes the barrier without waiting and never reads the
+                    // timeout. Any other party gives up at once on a timeout at or below zero, which
+                    // breaks the barrier; a timeout python cannot represent raises before the party
+                    // arrives, so it leaves the barrier as it was (#2263).
+                    int ms = 0;
+                    if (timeout.Value > 0)
+                    {
+                        if (_barrier.ParticipantsRemaining > 1)
+                        {
+                            WaitTimeout.CheckRepresentable(timeout.Value);
+                        }
+                        ms = WaitTimeout.ToMilliseconds(timeout.Value);
+                    }
+                    bool signaled = _barrier.SignalAndWait(ms);
                     if (!signaled)
                     {
                         _broken = true;

@@ -182,6 +182,9 @@ namespace Sharpy
                     new RequestException("url cannot be None"));
             }
 
+            // Checked before any client is created, so a raised timeout error leaks nothing.
+            int? timeoutMs = timeout.HasValue ? SendTimeoutMilliseconds(timeout.Value) : (int?)null;
+
             // Determine if we need a one-off client because the shared default cannot honor
             // these per-request configuration knobs (which live on the HttpClientHandler).
             bool needsCustomHandler = client == null
@@ -322,9 +325,9 @@ namespace Sharpy
                 try
                 {
                     CancellationToken token = CancellationToken.None;
-                    if (timeout.HasValue)
+                    if (timeoutMs.HasValue)
                     {
-                        cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout.Value));
+                        cts = new CancellationTokenSource(timeoutMs.Value);
                         token = cts.Token;
                     }
 
@@ -389,6 +392,19 @@ namespace Sharpy
                     cts?.Dispose();
                 }
             }
+        }
+
+        // requests (urllib3's Timeout) refuses a timeout at or below zero before it connects; the
+        // socket then converts it, so a value it cannot represent raises. Both are programming
+        // errors, raised, not a RequestException result (#2263).
+        private static int SendTimeoutMilliseconds(double timeout)
+        {
+            if (timeout <= 0)
+            {
+                throw new ValueError("Attempted to set connect timeout, but the timeout cannot be set to a value less than or equal to 0.");
+            }
+            WaitTimeout.CheckRepresentable(timeout);
+            return WaitTimeout.ToMilliseconds(timeout);
         }
 
         private static string AppendQueryParams(string url, Dict<string, string>? params_)

@@ -1,0 +1,85 @@
+# The python twin of timeout_matrix_subprocess.spy: the same program with python's spellings (text=True where a pipe is read: Sharpy's subprocess is text-only).
+# Its output is timeout_matrix_subprocess.expected; regenerate it from this directory with
+#     python3 -I timeout_matrix_subprocess.py > timeout_matrix_subprocess.expected
+# (python3 3.12.13 on macOS, 2026-10-06; no cell touches the network). #2263.
+
+import subprocess
+
+
+def start(running: bool, pipe: bool) -> subprocess.Popen:
+    cmd = ["sleep", "5"] if running else (["echo", "x"] if pipe else ["true"])
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True) if pipe else subprocess.Popen(cmd)
+    if not running:
+        p.wait()
+    return p
+
+
+def try_wait(p: subprocess.Popen, v: float) -> str:
+    try:
+        return str(p.wait(v))
+    except subprocess.TimeoutExpired:
+        return "TimeoutExpired"
+    except OverflowError:
+        return "OverflowError"
+    except Exception as e:
+        return "other " + type(e).__name__
+
+
+def try_communicate(p: subprocess.Popen, v: float) -> str:
+    try:
+        out = p.communicate(timeout=v)
+        return "None" if out[0] is None else out[0].strip()
+    except subprocess.TimeoutExpired:
+        return "TimeoutExpired"
+    except OverflowError:
+        return "OverflowError"
+    except Exception as e:
+        return "other " + type(e).__name__
+
+
+def popen_cell(method: str, running: bool, pipe: bool, v: float) -> str:
+    p = start(running, pipe)
+    r = try_wait(p, v) if method == "wait" else try_communicate(p, v)
+    p.kill()
+    p.wait()
+    return r
+
+
+def run_cell(fn: str, v: float) -> str:
+    try:
+        if fn == "run":
+            return str(subprocess.run(["sleep", "5"], timeout=v).returncode)
+        if fn == "run(capture_output=True)":
+            return str(subprocess.run(["sleep", "5"], capture_output=True, timeout=v).returncode)
+        if fn == "check_output":
+            return subprocess.check_output(["sleep", "5"], text=True, timeout=v).strip()
+        return str(subprocess.check_call(["sleep", "5"], timeout=v))
+    except subprocess.TimeoutExpired:
+        return "TimeoutExpired"
+    except OverflowError:
+        return "OverflowError"
+    except Exception as e:
+        return "other " + type(e).__name__
+
+
+def main() -> None:
+    labels = ["-1", "-1e10", "-2.0", "-0.5", "-0.001", "-0.0005", "0", "0.01", "2147483.647", "2147483.648", "3e6", "1e10"]
+    values = [-1.0, -1e10, -2.0, -0.5, -0.001, -0.0005, 0.0, 0.01, 2147483.647, 2147483.648, 3e6, 1e10]
+    for i in range(len(values)):
+        lab = labels[i]
+        v = values[i]
+        waits = lab == "2147483.647" or lab == "2147483.648" or lab == "3e6" or lab == "1e10"
+        for running in [True, False]:
+            st = "running" if running else "exited"
+            if not (running and waits):
+                print(f"Popen.wait {st} {lab} -> {popen_cell('wait', running, False, v)}")
+            for pipe in [False, True]:
+                if not (running and waits and (not pipe or lab == "2147483.647")):
+                    print(f"Popen.communicate {st} pipe={pipe} {lab} -> {popen_cell('communicate', running, pipe, v)}")
+        for fn in ["run", "check_call", "run(capture_output=True)", "check_output"]:
+            captures = fn == "run(capture_output=True)" or fn == "check_output"
+            if not (waits and (not captures or lab == "2147483.647")):
+                print(f"{fn} {lab} -> {run_cell(fn, v)}")
+
+
+main()

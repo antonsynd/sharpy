@@ -2126,6 +2126,30 @@ deviations:
             print(s.gettimeout())   # 9200000000.0 — the wait itself is capped at ~24.8 days
             s.close()
 
+  - id: stdlib-timeout-wait-saturates
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "A timeout in seconds up to about 9.22e9 (`threading.TIMEOUT_MAX`, the int64 nanosecond range) is waited in full by `threading`'s `Lock`/`RLock`/`Semaphore`/`BoundedSemaphore` `.acquire`, `Event.wait`, `Barrier.wait`, `Thread.join` and `Timer`, by `time.sleep`, by `subprocess`'s `Popen.wait` and a pipe-less `communicate`/`run`/`call`, and by `http.client` and `requests`; past that range the calls that convert the timeout raise OverflowError (`subprocess`'s polling wait never does)."
+    sharpy_behavior: "The same values are accepted, and past the int64 range the same calls raise OverflowError, but a .NET wait is a 32-bit millisecond count, so a wait longer than `int.MaxValue` ms (about 24.8 days) SATURATES there (R-FH, #2263 — before, `threading` cast the timeout to an int and could hang or escape `ArgumentOutOfRangeException`). Not affected: `communicate`/`run`/`check_output` with a pipe, where python's own `poll()` takes 32-bit milliseconds, so both raise OverflowError past 24.8 days."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import threading
+        e = threading.Event()
+        threading.Timer(0.1, e.set).start()
+        print(e.wait(3e6))   # True — would wait up to 3e6 s (about 35 days)
+      sharpy: |
+        import threading
+
+        def main():
+            e = threading.Event()
+            threading.Timer(0.1, lambda: e.set()).start()
+            print(e.wait(3e6))   # True — the wait itself is capped at ~24.8 days
+
   - id: no-thread-args-kwargs
     code: SPY0234
     category: stdlib

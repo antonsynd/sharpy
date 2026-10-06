@@ -13,19 +13,37 @@ namespace Sharpy
 
         public bool Acquire(bool blocking = true, double timeout = -1)
         {
+            return _semaphore.Wait(AcquireMilliseconds(blocking, timeout));
+        }
+
+        /// <summary>
+        /// python's argument check for <c>Lock.acquire</c> and <c>RLock.acquire</c> (CPython's
+        /// <c>lock_acquire_parse_args</c>), as the milliseconds to wait: <c>-1</c> (wait forever) for a
+        /// blocking call with the default <c>timeout=-1</c>, <c>0</c> for a non-blocking call. python
+        /// converts the timeout first, so a value it cannot represent raises even on a non-blocking
+        /// call; then a timeout on a non-blocking call, and a negative timeout other than <c>-1</c>,
+        /// are <see cref="ValueError"/> (#2263).
+        /// </summary>
+        internal static int AcquireMilliseconds(bool blocking, double timeout)
+        {
+            WaitTimeout.CheckRepresentable(timeout);
             if (!blocking)
             {
-                return _semaphore.Wait(0);
+                if (timeout != -1)
+                {
+                    throw new ValueError("can't specify a timeout for a non-blocking call");
+                }
+                return 0;
             }
-
+            if (timeout == -1)
+            {
+                return System.Threading.Timeout.Infinite;
+            }
             if (timeout < 0)
             {
-                _semaphore.Wait();
-                return true;
+                throw new ValueError("timeout value must be positive");
             }
-
-            int ms = (int)(timeout * 1000);
-            return _semaphore.Wait(ms);
+            return WaitTimeout.ToMilliseconds(timeout);
         }
 
         public void Release()

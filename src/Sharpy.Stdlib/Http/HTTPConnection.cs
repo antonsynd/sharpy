@@ -113,7 +113,7 @@ namespace Sharpy
                 CancellationToken token = CancellationToken.None;
                 if (_timeout.HasValue)
                 {
-                    cts = new CancellationTokenSource(TimeSpan.FromSeconds(_timeout.Value));
+                    cts = new CancellationTokenSource(ConnectTimeoutMilliseconds(_timeout.Value));
                     token = cts.Token;
                 }
 
@@ -147,6 +147,18 @@ namespace Sharpy
             {
                 cts?.Dispose();
             }
+        }
+
+        // python sets the timeout on the socket when request() connects: a value it cannot
+        // represent raises first, then a negative one is ValueError (#2263).
+        private static int ConnectTimeoutMilliseconds(double timeout)
+        {
+            WaitTimeout.CheckRepresentable(timeout);
+            if (timeout < 0)
+            {
+                throw new ValueError("Timeout value out of range");
+            }
+            return WaitTimeout.ToMilliseconds(timeout);
         }
 
         public HTTPResponse Getresponse()

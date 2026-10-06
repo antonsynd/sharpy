@@ -135,6 +135,24 @@ namespace Sharpy
         /// <summary>Sends optional input, waits for completion, and returns captured output.</summary>
         public (string? stdout, string? stderr) Communicate(string? input = null, double? timeout = null)
         {
+            // python's communicate selects on its open pipes. With one open, a timeout at or below
+            // zero runs out before anything is read — even for a process that has already exited —
+            // and the selector is poll(), which takes int32 milliseconds, so a timeout past about
+            // 24.8 days is OverflowError rather than a long wait. With none open it waits for the
+            // process as wait() does (#2263).
+            if (timeout.HasValue && HasSelectablePipe(input))
+            {
+                if (!(timeout.Value > 0))
+                {
+                    Kill();
+                    throw new TimeoutExpired(_args, timeout.Value);
+                }
+                if (!(Math.Ceiling(timeout.Value * 1000.0) <= int.MaxValue))
+                {
+                    throw new OverflowError("timeout is too large");
+                }
+            }
+
             if (input != null && _process.StartInfo.RedirectStandardInput)
             {
                 _process.StandardInput.Write(input);
@@ -160,8 +178,7 @@ namespace Sharpy
 
             if (timeout.HasValue)
             {
-                int timeoutMs = (int)(timeout.Value * 1000);
-                if (!_process.WaitForExit(timeoutMs))
+                if (!_process.WaitForExit(WaitTimeout.ToMilliseconds(timeout.Value)))
                 {
                     Kill();
                     string? partialOut = stdoutTask != null && stdoutTask.IsCompleted ? stdoutTask.Result : null;
@@ -183,10 +200,11 @@ namespace Sharpy
         /// <summary>Waits for the process to exit and returns its exit code.</summary>
         public int Wait(double? timeout = null)
         {
+            // python polls the process, so no timeout is too large for it, and one at or below zero
+            // still returns the exit code of a process that has already exited (#2263).
             if (timeout.HasValue)
             {
-                int timeoutMs = (int)(timeout.Value * 1000);
-                if (!_process.WaitForExit(timeoutMs))
+                if (!_process.WaitForExit(WaitTimeout.ToMilliseconds(timeout.Value)))
                 {
                     throw new TimeoutExpired(_args, timeout.Value);
                 }
@@ -197,6 +215,16 @@ namespace Sharpy
             }
 
             return _process.ExitCode;
+        }
+
+        // The pipes python's communicate selects on: a piped stdout or stderr (DEVNULL here is a
+        // drained redirect, python's is a file), and a piped stdin only when there is input to send
+        // (python closes an empty stdin before it selects).
+        private bool HasSelectablePipe(string? input)
+        {
+            return (_process.StartInfo.RedirectStandardOutput && _devnullStdoutDrain == null)
+                || (_process.StartInfo.RedirectStandardError && _devnullStderrDrain == null)
+                || (_process.StartInfo.RedirectStandardInput && !string.IsNullOrEmpty(input));
         }
 
         /// <summary>Checks whether the process has exited without blocking.</summary>

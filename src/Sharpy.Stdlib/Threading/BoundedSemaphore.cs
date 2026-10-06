@@ -26,23 +26,9 @@ namespace Sharpy
             _semaphore = new SemaphoreSlim(value, value);
         }
 
-        public bool Acquire(bool blocking = true, double timeout = -1)
+        public bool Acquire(bool blocking = true, double? timeout = null)
         {
-            bool acquired;
-            if (!blocking)
-            {
-                acquired = _semaphore.Wait(0);
-            }
-            else if (timeout < 0)
-            {
-                _semaphore.Wait();
-                acquired = true;
-            }
-            else
-            {
-                acquired = _semaphore.Wait((int)(timeout * 1000));
-            }
-
+            bool acquired = Semaphore.AcquireSlim(_semaphore, blocking, timeout);
             if (acquired)
             {
                 Interlocked.Decrement(ref _currentValue);

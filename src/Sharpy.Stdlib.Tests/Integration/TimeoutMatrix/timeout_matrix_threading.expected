@@ -1,0 +1,251 @@
+TIMEOUT_MAX 9223372036.0
+Lock free blocking=True -1 -> True
+Lock free blocking=False -1 -> True
+Lock held blocking=False -1 -> False
+RLock free blocking=True -1 -> True
+RLock free blocking=False -1 -> True
+RLock owned blocking=True -1 -> True
+RLock owned blocking=False -1 -> True
+RLock held blocking=False -1 -> False
+Semaphore free blocking=True -1 -> True
+Semaphore free blocking=False -1 -> ValueError
+Semaphore held blocking=True -1 -> False
+Semaphore held blocking=False -1 -> ValueError
+BoundedSemaphore free blocking=True -1 -> True
+BoundedSemaphore free blocking=False -1 -> ValueError
+BoundedSemaphore held blocking=True -1 -> False
+BoundedSemaphore held blocking=False -1 -> ValueError
+Event unset -1 -> False
+Event set -1 -> True
+Barrier(2) -1 -> BrokenBarrierError broken=True
+Barrier(1) -1 -> returned broken=False
+join alive -1 -> None alive=True
+join released -1 -> None
+join joined -1 -> None
+Timer -1 -> ran=1
+Lock free blocking=True -1e10 -> OverflowError
+Lock free blocking=False -1e10 -> OverflowError
+Lock held blocking=True -1e10 -> OverflowError
+Lock held blocking=False -1e10 -> OverflowError
+RLock free blocking=True -1e10 -> OverflowError
+RLock free blocking=False -1e10 -> OverflowError
+RLock owned blocking=True -1e10 -> OverflowError
+RLock owned blocking=False -1e10 -> OverflowError
+RLock held blocking=True -1e10 -> OverflowError
+RLock held blocking=False -1e10 -> OverflowError
+Semaphore free blocking=True -1e10 -> True
+Semaphore free blocking=False -1e10 -> ValueError
+Semaphore held blocking=True -1e10 -> False
+Semaphore held blocking=False -1e10 -> ValueError
+BoundedSemaphore free blocking=True -1e10 -> True
+BoundedSemaphore free blocking=False -1e10 -> ValueError
+BoundedSemaphore held blocking=True -1e10 -> False
+BoundedSemaphore held blocking=False -1e10 -> ValueError
+Event unset -1e10 -> False
+Event set -1e10 -> True
+Barrier(2) -1e10 -> BrokenBarrierError broken=True
+Barrier(1) -1e10 -> returned broken=False
+join alive -1e10 -> None alive=True
+join released -1e10 -> None
+join joined -1e10 -> None
+Timer -1e10 -> ran=1
+Lock free blocking=True -2.0 -> ValueError
+Lock free blocking=False -2.0 -> ValueError
+Lock held blocking=True -2.0 -> ValueError
+Lock held blocking=False -2.0 -> ValueError
+RLock free blocking=True -2.0 -> ValueError
+RLock free blocking=False -2.0 -> ValueError
+RLock owned blocking=True -2.0 -> ValueError
+RLock owned blocking=False -2.0 -> ValueError
+RLock held blocking=True -2.0 -> ValueError
+RLock held blocking=False -2.0 -> ValueError
+Semaphore free blocking=True -2.0 -> True
+Semaphore free blocking=False -2.0 -> ValueError
+Semaphore held blocking=True -2.0 -> False
+Semaphore held blocking=False -2.0 -> ValueError
+BoundedSemaphore free blocking=True -2.0 -> True
+BoundedSemaphore free blocking=False -2.0 -> ValueError
+BoundedSemaphore held blocking=True -2.0 -> False
+BoundedSemaphore held blocking=False -2.0 -> ValueError
+Event unset -2.0 -> False
+Event set -2.0 -> True
+Barrier(2) -2.0 -> BrokenBarrierError broken=True
+Barrier(1) -2.0 -> returned broken=False
+join alive -2.0 -> None alive=True
+join released -2.0 -> None
+join joined -2.0 -> None
+Timer -2.0 -> ran=1
+Lock free blocking=True -0.5 -> ValueError
+Lock free blocking=False -0.5 -> ValueError
+Lock held blocking=True -0.5 -> ValueError
+Lock held blocking=False -0.5 -> ValueError
+RLock free blocking=True -0.5 -> ValueError
+RLock free blocking=False -0.5 -> ValueError
+RLock owned blocking=True -0.5 -> ValueError
+RLock owned blocking=False -0.5 -> ValueError
+RLock held blocking=True -0.5 -> ValueError
+RLock held blocking=False -0.5 -> ValueError
+Semaphore free blocking=True -0.5 -> True
+Semaphore free blocking=False -0.5 -> ValueError
+Semaphore held blocking=True -0.5 -> False
+Semaphore held blocking=False -0.5 -> ValueError
+BoundedSemaphore free blocking=True -0.5 -> True
+BoundedSemaphore free blocking=False -0.5 -> ValueError
+BoundedSemaphore held blocking=True -0.5 -> False
+BoundedSemaphore held blocking=False -0.5 -> ValueError
+Event unset -0.5 -> False
+Event set -0.5 -> True
+Barrier(2) -0.5 -> BrokenBarrierError broken=True
+Barrier(1) -0.5 -> returned broken=False
+join alive -0.5 -> None alive=True
+join released -0.5 -> None
+join joined -0.5 -> None
+Timer -0.5 -> ran=1
+Lock free blocking=True -0.001 -> ValueError
+Lock free blocking=False -0.001 -> ValueError
+Lock held blocking=True -0.001 -> ValueError
+Lock held blocking=False -0.001 -> ValueError
+RLock free blocking=True -0.001 -> ValueError
+RLock free blocking=False -0.001 -> ValueError
+RLock owned blocking=True -0.001 -> ValueError
+RLock owned blocking=False -0.001 -> ValueError
+RLock held blocking=True -0.001 -> ValueError
+RLock held blocking=False -0.001 -> ValueError
+Semaphore free blocking=True -0.001 -> True
+Semaphore free blocking=False -0.001 -> ValueError
+Semaphore held blocking=True -0.001 -> False
+Semaphore held blocking=False -0.001 -> ValueError
+BoundedSemaphore free blocking=True -0.001 -> True
+BoundedSemaphore free blocking=False -0.001 -> ValueError
+BoundedSemaphore held blocking=True -0.001 -> False
+BoundedSemaphore held blocking=False -0.001 -> ValueError
+Event unset -0.001 -> False
+Event set -0.001 -> True
+Barrier(2) -0.001 -> BrokenBarrierError broken=True
+Barrier(1) -0.001 -> returned broken=False
+join alive -0.001 -> None alive=True
+join released -0.001 -> None
+join joined -0.001 -> None
+Timer -0.001 -> ran=1
+Lock free blocking=True -0.0005 -> ValueError
+Lock free blocking=False -0.0005 -> ValueError
+Lock held blocking=True -0.0005 -> ValueError
+Lock held blocking=False -0.0005 -> ValueError
+RLock free blocking=True -0.0005 -> ValueError
+RLock free blocking=False -0.0005 -> ValueError
+RLock owned blocking=True -0.0005 -> ValueError
+RLock owned blocking=False -0.0005 -> ValueError
+RLock held blocking=True -0.0005 -> ValueError
+RLock held blocking=False -0.0005 -> ValueError
+Semaphore free blocking=True -0.0005 -> True
+Semaphore free blocking=False -0.0005 -> ValueError
+Semaphore held blocking=True -0.0005 -> False
+Semaphore held blocking=False -0.0005 -> ValueError
+BoundedSemaphore free blocking=True -0.0005 -> True
+BoundedSemaphore free blocking=False -0.0005 -> ValueError
+BoundedSemaphore held blocking=True -0.0005 -> False
+BoundedSemaphore held blocking=False -0.0005 -> ValueError
+Event unset -0.0005 -> False
+Event set -0.0005 -> True
+Barrier(2) -0.0005 -> BrokenBarrierError broken=True
+Barrier(1) -0.0005 -> returned broken=False
+join alive -0.0005 -> None alive=True
+join released -0.0005 -> None
+join joined -0.0005 -> None
+Timer -0.0005 -> ran=1
+Lock free blocking=True 0 -> True
+Lock free blocking=False 0 -> ValueError
+Lock held blocking=True 0 -> False
+Lock held blocking=False 0 -> ValueError
+RLock free blocking=True 0 -> True
+RLock free blocking=False 0 -> ValueError
+RLock owned blocking=True 0 -> True
+RLock owned blocking=False 0 -> ValueError
+RLock held blocking=True 0 -> False
+RLock held blocking=False 0 -> ValueError
+Semaphore free blocking=True 0 -> True
+Semaphore free blocking=False 0 -> ValueError
+Semaphore held blocking=True 0 -> False
+Semaphore held blocking=False 0 -> ValueError
+BoundedSemaphore free blocking=True 0 -> True
+BoundedSemaphore free blocking=False 0 -> ValueError
+BoundedSemaphore held blocking=True 0 -> False
+BoundedSemaphore held blocking=False 0 -> ValueError
+Event unset 0 -> False
+Event set 0 -> True
+Barrier(2) 0 -> BrokenBarrierError broken=True
+Barrier(1) 0 -> returned broken=False
+join alive 0 -> None alive=True
+join released 0 -> None
+join joined 0 -> None
+Timer 0 -> ran=1
+Lock free blocking=True 0.01 -> True
+Lock free blocking=False 0.01 -> ValueError
+Lock held blocking=True 0.01 -> False
+Lock held blocking=False 0.01 -> ValueError
+RLock free blocking=True 0.01 -> True
+RLock free blocking=False 0.01 -> ValueError
+RLock owned blocking=True 0.01 -> True
+RLock owned blocking=False 0.01 -> ValueError
+RLock held blocking=True 0.01 -> False
+RLock held blocking=False 0.01 -> ValueError
+Semaphore free blocking=True 0.01 -> True
+Semaphore free blocking=False 0.01 -> ValueError
+Semaphore held blocking=True 0.01 -> False
+Semaphore held blocking=False 0.01 -> ValueError
+BoundedSemaphore free blocking=True 0.01 -> True
+BoundedSemaphore free blocking=False 0.01 -> ValueError
+BoundedSemaphore held blocking=True 0.01 -> False
+BoundedSemaphore held blocking=False 0.01 -> ValueError
+Event unset 0.01 -> False
+Event set 0.01 -> True
+Barrier(2) 0.01 -> BrokenBarrierError broken=True
+Barrier(1) 0.01 -> returned broken=False
+join alive 0.01 -> None alive=True
+join released 0.01 -> None
+join joined 0.01 -> None
+Timer 0.01 -> ran=1
+Lock free blocking=True 3e6 -> True
+Lock free blocking=False 3e6 -> ValueError
+Lock held blocking=False 3e6 -> ValueError
+RLock free blocking=True 3e6 -> True
+RLock free blocking=False 3e6 -> ValueError
+RLock owned blocking=True 3e6 -> True
+RLock owned blocking=False 3e6 -> ValueError
+RLock held blocking=False 3e6 -> ValueError
+Semaphore free blocking=True 3e6 -> True
+Semaphore free blocking=False 3e6 -> ValueError
+Semaphore held blocking=False 3e6 -> ValueError
+BoundedSemaphore free blocking=True 3e6 -> True
+BoundedSemaphore free blocking=False 3e6 -> ValueError
+BoundedSemaphore held blocking=False 3e6 -> ValueError
+Event set 3e6 -> True
+Barrier(1) 3e6 -> returned broken=False
+join released 3e6 -> None
+join joined 3e6 -> None
+Timer 3e6 -> ran=0
+Lock free blocking=True 1e10 -> OverflowError
+Lock free blocking=False 1e10 -> OverflowError
+Lock held blocking=True 1e10 -> OverflowError
+Lock held blocking=False 1e10 -> OverflowError
+RLock free blocking=True 1e10 -> OverflowError
+RLock free blocking=False 1e10 -> OverflowError
+RLock owned blocking=True 1e10 -> OverflowError
+RLock owned blocking=False 1e10 -> OverflowError
+RLock held blocking=True 1e10 -> OverflowError
+RLock held blocking=False 1e10 -> OverflowError
+Semaphore free blocking=True 1e10 -> True
+Semaphore free blocking=False 1e10 -> ValueError
+Semaphore held blocking=True 1e10 -> OverflowError
+Semaphore held blocking=False 1e10 -> ValueError
+BoundedSemaphore free blocking=True 1e10 -> True
+BoundedSemaphore free blocking=False 1e10 -> ValueError
+BoundedSemaphore held blocking=True 1e10 -> OverflowError
+BoundedSemaphore held blocking=False 1e10 -> ValueError
+Event unset 1e10 -> OverflowError
+Event set 1e10 -> True
+Barrier(2) 1e10 -> OverflowError broken=False
+Barrier(1) 1e10 -> returned broken=False
+join alive 1e10 -> OverflowError
+join released 1e10 -> OverflowError
+join joined 1e10 -> None

@@ -9,6 +9,9 @@
     <!-- python's strftime is one formatter shared by datetime's strftime/__format__ and
          time.strftime; in the combined Sharpy.Stdlib assembly it is a sibling file. -->
     <Compile Include="../Strftime.cs" />
+    <!-- python timeout seconds -> .NET wait, one conversion shared by threading, subprocess,
+         time, http and requests (#2263); in the combined Sharpy.Stdlib assembly it is a sibling file. -->
+    <Compile Include="../WaitTimeout.cs" />
   </ItemGroup>
 
 </Project>

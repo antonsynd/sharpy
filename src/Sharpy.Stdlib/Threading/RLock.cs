@@ -17,32 +17,13 @@ namespace Sharpy
 
         public bool Acquire(bool blocking = true, double timeout = -1)
         {
-            int currentId = SysThread.CurrentThread.ManagedThreadId;
-
-            if (!blocking)
-            {
-                bool entered = Monitor.TryEnter(_lock, 0);
-                if (entered)
-                {
-                    _owner = currentId;
-                    _count++;
-                }
-                return entered;
-            }
-
-            if (timeout < 0)
-            {
-                Monitor.Enter(_lock);
-                _owner = currentId;
-                _count++;
-                return true;
-            }
-
-            int ms = (int)(timeout * 1000);
+            // python checks the arguments before it looks at the owner, so the owning thread's
+            // re-entrant acquire refuses a bad timeout too.
+            int ms = Lock.AcquireMilliseconds(blocking, timeout);
             bool acquired = Monitor.TryEnter(_lock, ms);
             if (acquired)
             {
-                _owner = currentId;
+                _owner = SysThread.CurrentThread.ManagedThreadId;
                 _count++;
             }
             return acquired;
