@@ -28,7 +28,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 ///
 /// <para>A site is <b>isolated</b> when that collection is defined in the same project with
 /// <c>DisableParallelization = true</c>; <b>exempt</b> when it is a row of <see cref="Exemptions"/>
-/// (a row matching no site is stale and fails); otherwise a <b>violation</b>. Sites in
+/// — keyed on the enclosing member and, for a lock-based reason, on the lock the token must sit in
+/// lexically, so one justified site never exempts a later use of the same token elsewhere in the
+/// type (#2258); a row matching no site is stale and fails — otherwise a <b>violation</b>. Sites in
 /// Sharpy.TestInfrastructure can only be exempt — no one collection isolates a shared library.
 /// The positive control pins the known sites by name and requires each to be found and isolated;
 /// the synthetic controls run the same classifier on in-memory sources, one per roster entry and
@@ -87,20 +89,32 @@ public class ProcessGlobalStateConformanceTests
     };
 
     /// <summary>
-    /// Sites that mutate a global outside a run-alone collection on purpose: (path, enclosing type,
-    /// roster token, why it is safe). Each row must match at least one site.
+    /// A site that mutates a global outside a run-alone collection on purpose, scoped to ONE site
+    /// (#2258): the file, the outermost type, the enclosing MEMBER (method, constructor, property —
+    /// by name; a lambda or local function belongs to the member around it), the roster token,
+    /// and — when the reason is a lock — the lock expression, spelled as in source, that must
+    /// enclose the token lexically (a lambda or local function body is a boundary: code there runs
+    /// whenever it is invoked, not under the lock it is written in). A new use of the token in
+    /// another member, or outside the lock in the same member, is not exempt.
     /// </summary>
-    private static readonly (string Path, string Type, string Token, string Reason)[] Exemptions =
+    private sealed record Exemption(string Path, string Type, string Member, string Token, string? Lock, string Reason);
+
+    /// <summary>The exempt sites, each with why it is safe. Each row must match at least one site.</summary>
+    private static readonly Exemption[] Exemptions =
     {
-        ("src/Sharpy.Cli.Tests/CliTestHarness.cs", "Sharpy.Cli.Tests.CliTestHarness", "SetOut",
+        new("src/Sharpy.Cli.Tests/CliTestHarness.cs", "Sharpy.Cli.Tests.CliTestHarness", "Invoke", "SetOut", "ConsoleLock",
             "every Cli.Tests console redirection happens inside CliTestHarness's private lock; any other Cli.Tests redirector is a violation here"),
-        ("src/Sharpy.Cli.Tests/CliTestHarness.cs", "Sharpy.Cli.Tests.CliTestHarness", "SetError",
+        new("src/Sharpy.Cli.Tests/CliTestHarness.cs", "Sharpy.Cli.Tests.CliTestHarness", "Invoke", "SetError", "ConsoleLock",
             "every Cli.Tests console redirection happens inside CliTestHarness's private lock; any other Cli.Tests redirector is a violation here"),
-        ("src/Sharpy.Compiler.Tests/Helpers/ProjectCompilationHelper.cs", "Sharpy.Compiler.Tests.Helpers.ProjectCompilationHelper", "SetOut",
+        new("src/Sharpy.Cli.Tests/CliTestHarness.cs", "Sharpy.Cli.Tests.CliTestHarness", "CaptureConsole", "SetOut", "ConsoleLock",
+            "every Cli.Tests console redirection happens inside CliTestHarness's private lock; any other Cli.Tests redirector is a violation here"),
+        new("src/Sharpy.Cli.Tests/CliTestHarness.cs", "Sharpy.Cli.Tests.CliTestHarness", "CaptureConsole", "SetError", "ConsoleLock",
+            "every Cli.Tests console redirection happens inside CliTestHarness's private lock; any other Cli.Tests redirector is a violation here"),
+        new("src/Sharpy.Compiler.Tests/Helpers/ProjectCompilationHelper.cs", "Sharpy.Compiler.Tests.Helpers.ProjectCompilationHelper", "ExecuteAssembly", "SetOut", "TestHelpers.ConsoleLock",
             "redirected inside TestHelpers.ConsoleLock; every other Compiler.Tests console redirector (ReplSessionTests) runs alone in ConsoleCapture"),
-        ("src/Sharpy.Compiler.Tests/Helpers/ProjectCompilationHelper.cs", "Sharpy.Compiler.Tests.Helpers.ProjectCompilationHelper", "SetError",
+        new("src/Sharpy.Compiler.Tests/Helpers/ProjectCompilationHelper.cs", "Sharpy.Compiler.Tests.Helpers.ProjectCompilationHelper", "ExecuteAssembly", "SetError", "TestHelpers.ConsoleLock",
             "redirected inside TestHelpers.ConsoleLock; every other Compiler.Tests console redirector (ReplSessionTests) runs alone in ConsoleCapture"),
-        ("src/Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs", "Sharpy.Lsp.Tests.Conformance.FrontEndParityTests", "ReplSession",
+        new("src/Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs", "Sharpy.Lsp.Tests.Conformance.FrontEndParityTests", "SweepSingleFileAsync", "ReplSession", null,
             "calls only ReplSession.ProbeFrontEndDiagnostics, which never reaches ExecuteAssembly's Console.SetOut"),
     };
 
@@ -163,8 +177,8 @@ public class ProcessGlobalStateConformanceTests
         var analysis = RepositoryAnalysis.Value;
 
         var stale = Exemptions
-            .Where(e => !analysis.Sites.Any(s => s.Path == e.Path && s.Type == e.Type && s.Token == e.Token))
-            .Select(e => $"  {e.Path} {e.Type} {e.Token}")
+            .Where(e => !analysis.Sites.Any(s => Exempts(e, s)))
+            .Select(e => $"  {e.Path} {e.Type}.{e.Member} {e.Token}" + (e.Lock == null ? "" : $" inside lock ({e.Lock})"))
             .ToList();
 
         Assert.True(stale.Count == 0, "stale exemption(s) match no mutation site:\n" + string.Join("\n", stale));
@@ -312,6 +326,55 @@ public class ProcessGlobalStateConformanceTests
         });
 
         Assert.Contains("shared test library", analysis.Violation(Assert.Single(analysis.Sites)));
+    }
+
+    /// <summary>
+    /// #2258: an exemption covers its own member, and — when it names a lock — only the uses
+    /// lexically inside that lock. The same token in another member, after the lock in the same
+    /// member, under a different lock, or in a lambda written inside the lock is not exempt; a
+    /// lock-free row covers its whole member.
+    /// </summary>
+    [Fact]
+    public void Synthetic_ExemptionIsScopedToItsMemberAndItsLock()
+    {
+        var analysis = Analyze(new[]
+        {
+            Source("Sharpy.Fake.Tests", "A.cs", """
+                namespace N;
+                public class T
+                {
+                    void Guarded()
+                    {
+                        lock (Gate.ConsoleLock) { System.Console.SetOut(inside); }
+                        System.Console.SetOut(after);
+                        lock (OtherLock) { System.Console.SetOut(wrongLock); }
+                        lock (Gate.ConsoleLock) { System.Action a = () => System.Console.SetOut(deferred); }
+                    }
+                    void Elsewhere() { lock (Gate.ConsoleLock) { System.Console.SetOut(otherMember); } }
+                    void Unlocked() { System.Console.SetError(anyway); }
+                }
+                """),
+        });
+        var exemptions = new[]
+        {
+            new Exemption("src/Sharpy.Fake.Tests/A.cs", "N.T", "Guarded", "SetOut", "Gate.ConsoleLock", "test"),
+            new Exemption("src/Sharpy.Fake.Tests/A.cs", "N.T", "Unlocked", "SetError", null, "test"),
+        };
+
+        var verdicts = analysis.Sites
+            .OrderBy(s => s.Line)
+            .Select(s => (s.Member, Exempt: IsExempt(s, exemptions)))
+            .ToList();
+
+        Assert.Equal(new[]
+        {
+            ("Guarded", true),    // inside the named lock
+            ("Guarded", false),   // after it
+            ("Guarded", false),   // under another lock
+            ("Guarded", false),   // in a lambda written inside the lock
+            ("Elsewhere", false), // same token and lock, another member
+            ("Unlocked", true),   // lock-free row: the member is the scope
+        }, verdicts);
     }
 
     // ── serial-collection roster ─────────────────────────────────────────────
@@ -464,7 +527,11 @@ public class ProcessGlobalStateConformanceTests
 
     private sealed record SourceFile(string Project, string Path, string Text);
 
-    private sealed record Site(string Project, string Path, int Line, string Type, string Token, string Global);
+    /// <param name="Member">The enclosing member's name (see <see cref="EnclosingMember"/>).</param>
+    /// <param name="Locks">The expressions of the <c>lock</c> statements lexically enclosing the site,
+    /// innermost first, up to the nearest lambda or local function.</param>
+    private sealed record Site(string Project, string Path, int Line, string Type, string Member,
+        IReadOnlyList<string> Locks, string Token, string Global);
 
     private sealed class Analysis
     {
@@ -496,8 +563,15 @@ public class ProcessGlobalStateConformanceTests
         }
     }
 
-    private static bool IsExempt(Site site)
-        => Exemptions.Any(e => e.Path == site.Path && e.Type == site.Type && e.Token == site.Token);
+    private static bool IsExempt(Site site, IEnumerable<Exemption>? exemptions = null)
+        => (exemptions ?? Exemptions).Any(e => Exempts(e, site));
+
+    private static bool Exempts(Exemption exemption, Site site)
+        => exemption.Path == site.Path
+           && exemption.Type == site.Type
+           && exemption.Member == site.Member
+           && exemption.Token == site.Token
+           && (exemption.Lock == null || site.Locks.Contains(exemption.Lock));
 
     private static SourceFile Source(string project, string relativePath, string text)
         => new(project, $"src/{project}/{relativePath}", text);
@@ -576,12 +650,54 @@ public class ProcessGlobalStateConformanceTests
                     file.Path,
                     tree.GetLineSpan(node.Span).StartLinePosition.Line + 1,
                     outermost == null ? "<no type>" : FullName(outermost),
+                    EnclosingMember(node),
+                    EnclosingLocks(node),
                     match.Value.Token,
                     match.Value.Global));
             }
         }
 
         return new Analysis { Sites = sites, Memberships = memberships, Definitions = definitions };
+    }
+
+    /// <summary>
+    /// The name of the member declaring the site: a method, constructor, operator, property,
+    /// indexer, event or field initializer. A lambda or local function belongs to the member that
+    /// contains it.
+    /// </summary>
+    private static string EnclosingMember(SyntaxNode node)
+    {
+        var member = node.Ancestors().OfType<MemberDeclarationSyntax>()
+            .FirstOrDefault(m => m is not BaseTypeDeclarationSyntax and not BaseNamespaceDeclarationSyntax);
+        return member switch
+        {
+            MethodDeclarationSyntax method => method.Identifier.Text,
+            ConstructorDeclarationSyntax constructor => constructor.Identifier.Text,
+            DestructorDeclarationSyntax destructor => "~" + destructor.Identifier.Text,
+            PropertyDeclarationSyntax property => property.Identifier.Text,
+            EventDeclarationSyntax @event => @event.Identifier.Text,
+            BaseFieldDeclarationSyntax field => string.Join(",", field.Declaration.Variables.Select(v => v.Identifier.Text)),
+            null => "<no member>",
+            _ => member.Kind().ToString(),
+        };
+    }
+
+    /// <summary>
+    /// The <c>lock</c> expressions enclosing <paramref name="node"/>, innermost first. A lambda or
+    /// local function stops the walk: its body runs when it is invoked, not under the lock it is
+    /// written in.
+    /// </summary>
+    private static IReadOnlyList<string> EnclosingLocks(SyntaxNode node)
+    {
+        var locks = new List<string>();
+        foreach (var ancestor in node.Ancestors())
+        {
+            if (ancestor is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax or MemberDeclarationSyntax)
+                break;
+            if (ancestor is LockStatementSyntax lockStatement)
+                locks.Add(lockStatement.Expression.ToString());
+        }
+        return locks;
     }
 
     private static (string Token, string Global)? MatchMutation(SyntaxNode node)
