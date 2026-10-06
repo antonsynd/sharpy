@@ -64,7 +64,12 @@ internal static class FormattingFallback
     /// an 8-space block moves it out of the block (cell 16);</item>
     /// <item>no more lexer indentation diagnostics (SPY0013, SPY0014) than the source — a dedent between
     /// two widths of the stack keeps its level in the map, which opens a block at the unseen width, while
-    /// the lexer reports the line (cell 21).</item>
+    /// the lexer reports the line (cell 21);</item>
+    /// <item>the lexer's block depth (<see cref="BlockDepths"/>) of every logical-line-start line whose
+    /// source width is on its enclosing stack unchanged — the map opens a block only after a line ending
+    /// in <c>:</c> and compares with itself, so it accepts a property-observer block re-indented one level
+    /// too shallow, or a block re-nested to column 0 by triple quotes that re-pair without a lexer error.
+    /// A line the lexer drops (<see cref="BlockDepths"/>) is the misindentation the fallback repairs and is exempt.</item>
     /// </list>
     /// Lines are compared without their line breaks.
     /// </summary>
@@ -101,8 +106,57 @@ internal static class FormattingFallback
                 return false;
         }
 
-        return after.IndentationDiagnostics <= before.IndentationDiagnostics;
+        if (after.IndentationDiagnostics > before.IndentationDiagnostics)
+            return false;
+
+        var appliedDepths = BlockDepths(appliedLines, after.LogicalLineStarts);
+        foreach (var (line, depth) in BlockDepths(sourceLines, before.LogicalLineStarts))
+        {
+            if (depth >= 0 && appliedDepths[line] != depth)
+                return false;
+        }
+
+        return true;
 
         static string[] Lines(string text) => text.Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
+    }
+
+    /// <summary>
+    /// The block depth of each logical-line-start line by the lexer's width rule: a width stack over the
+    /// lines' leading whitespace, in line order — a wider line pushes; a narrower line pops to an EQUAL
+    /// width. Unlike the indent map, a deeper line opens a block whatever ends the line above it, and a
+    /// dedent between two widths opens nothing. A line the lexer reports and drops has no depth (-1), and
+    /// so is exempt from the comparison: a width on no enclosing level (SPY0014) leaves the stack as it
+    /// was; a width that is not a multiple of <see cref="Compiler.Lexer.Lexer.IndentWidth"/> (SPY0013) or
+    /// is indented with a tab still moves it — a 2-space document's nesting is the structure its re-indent
+    /// to 4 spaces must keep.
+    /// </summary>
+    private static Dictionary<int, int> BlockDepths(string[] lines, HashSet<int> logicalLineStarts)
+    {
+        var depths = new Dictionary<int, int>();
+        var widths = new List<int> { 0 };
+        foreach (var line in logicalLineStarts.OrderBy(l => l))
+        {
+            var text = lines[line - 1];
+            var indent = text.Substring(0, text.Length - text.TrimStart(' ', '\t').Length);
+            var width = indent.Length;
+            int depth;
+            if (width > widths[^1])
+            {
+                widths.Add(width);
+                depth = widths.Count - 1;
+            }
+            else
+            {
+                depth = widths.IndexOf(width);
+                if (depth >= 0)
+                    widths.RemoveRange(depth + 1, widths.Count - depth - 1);
+            }
+
+            var dropped = width % Compiler.Lexer.Lexer.IndentWidth != 0 || indent.Contains('\t', StringComparison.Ordinal);
+            depths[line] = dropped ? -1 : depth;
+        }
+
+        return depths;
     }
 }

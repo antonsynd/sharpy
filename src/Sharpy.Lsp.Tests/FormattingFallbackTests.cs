@@ -94,7 +94,9 @@ public sealed class FormattingFallbackTests : IDisposable
     {
         IndentationService.BuildIndentMap(ClosedLiteral).LiteralLines.Should().BeEquivalentTo(new[] { 3, 4 });
         FormattingFallback.IndentOnlyPreserved(ClosedLiteral, WithLine(ClosedLiteral, 2, "    key: value")).Should().BeFalse();
-        FormattingFallback.IndentOnlyPreserved(ClosedLiteral, WithLine(ClosedLiteral, 4, "    if s:")).Should().BeTrue();
+        // The code line after the closer at another width that keeps its block depth (moving it to 4
+        // spaces is a re-nest: UnexpectedIndent_FullFallback_GetsNoEdits).
+        FormattingFallback.IndentOnlyPreserved(ClosedLiteral, WithLine(ClosedLiteral, 4, "            if s:")).Should().BeTrue();
     }
 
     // ---- clause 4: the level of every logical-line-start line ----
@@ -121,6 +123,69 @@ public sealed class FormattingFallbackTests : IDisposable
         FormattingFallback.IndentOnlyPreserved(TwoSpace, "def main():\n    x: int = 1\n  print(x)\n").Should().BeTrue();
     }
 
+    // ---- clause 6: the lexer's block depth of every logical-line-start line on its enclosing stack ----
+
+    /// <summary>
+    /// A property-observer block (<c>experimental/property_observers_*</c>, <c>Formatting/member_line_comments</c>)
+    /// cut after it at a block opener with no body: the indent map opens a block only after a line ending
+    /// in <c>:</c>, so it does not see the property line open one.
+    /// </summary>
+    private const string Observers =
+        "class Character:\n    property health: int = 100\n        before_set(new_value):\n            print(new_value)\n    def heal(self) -> None:\n";
+
+    /// <summary>
+    /// <c>strings/d_string_trailing_newline</c> with <c>"""</c> inserted as line 0: it pairs with the
+    /// <c>"""</c> in line 2's comment, the later quotes re-pair, and the lexer reports nothing.
+    /// </summary>
+    private const string DStringRepaired =
+        "\"\"\"\ndef main():\n    # A blank line before the closing \"\"\" becomes a trailing newline\n    msg: str = d\"\"\"\n        hello\n\n        \"\"\"\n    print(repr(msg))\n";
+
+    /// <summary>
+    /// An unexpected indent (<c>y</c>: the lexer pushes a level, the map does not) above a line at a
+    /// width between two levels of the stack (<c>z</c>: on no enclosing level, SPY0014 — exempt).
+    /// </summary>
+    private const string BetweenWidths = "def main():\n    x = 1\n            y = 2\n        z = 3\n";
+
+    [Fact]
+    public void Depth_AnObserverBlockReindentedOneLevelShallow_IsRefused_A2SpaceTwinReindentedTo4IsNot()
+    {
+        var shallow = WithLine(Observers, 2, "    before_set(new_value):");
+        IndentationService.BuildIndentMap(shallow).LineIndent[3].Should().Be(IndentationService.BuildIndentMap(Observers).LineIndent[3],
+            "the map's level of the observer line is the same before and after — clause 4 alone accepts it");
+        FormattingFallback.IndentOnlyPreserved(Observers, shallow).Should().BeFalse();
+
+        const string twoSpace =
+            "class Character:\n  property health: int = 100\n    before_set(new_value):\n      print(new_value)\n  def heal(self) -> None:\n";
+        FormattingFallback.IndentOnlyPreserved(twoSpace, Observers).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Depth_ABlockReNestedByTriplesThatRePair_IsRefused()
+    {
+        IndentationService.BuildIndentMap(DStringRepaired).LiteralStateUnknown.Should().BeFalse("the re-pairing is lexically consistent");
+        var flattened = WithLine(WithLine(DStringRepaired, 3, "msg: str = d\"\"\""), 7, "print(repr(msg))");
+        FormattingFallback.IndentOnlyPreserved(DStringRepaired, flattened).Should().BeFalse();
+
+        // Twin: the same two lines widened instead — another width, the same depth.
+        var widened = WithLine(WithLine(DStringRepaired, 3, "        msg: str = d\"\"\""), 7, "        print(repr(msg))");
+        FormattingFallback.IndentOnlyPreserved(DStringRepaired, widened).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Depth_ALineOnNoEnclosingLevel_IsExempt_ItsNeighbourIsNot()
+    {
+        // `z` repaired to the function's level: the line the fallback exists to repair.
+        var repaired = WithLine(BetweenWidths, 3, "    z = 3");
+        FormattingFallback.IndentOnlyPreserved(BetweenWidths, repaired).Should().BeTrue();
+
+        // The same repair, and its neighbour `y` moved out of the level the lexer pushed for it: the
+        // map gives `y` level 1 before and after, and the lexer reports no more than before.
+        var neighbour = WithLine(repaired, 2, "    y = 2");
+        IndentationService.BuildIndentMap(neighbour).LineIndent[3].Should().Be(IndentationService.BuildIndentMap(BetweenWidths).LineIndent[3]);
+        IndentationService.BuildIndentMap(neighbour).IndentationDiagnostics.Should().BeLessThanOrEqualTo(IndentationService.BuildIndentMap(BetweenWidths).IndentationDiagnostics);
+        FormattingFallback.IndentOnlyPreserved(BetweenWidths, neighbour).Should().BeFalse();
+    }
+
     // ---- the funnel ----
 
     [Fact]
@@ -138,9 +203,27 @@ public sealed class FormattingFallbackTests : IDisposable
     [Fact]
     public void Funnel_AnUnparseableRepair_KeepsItsEdits()
     {
-        var (edits, applied) = _driver.Full(TwoSpace + "    if x:\n");
+        var (edits, applied) = _driver.Full(TwoSpace + "  if x:\n");
         edits.Should().NotBeEmpty();
         applied.Should().Be("def main():\n    x: int = 1\n    print(x)\n    if x:\n");
+    }
+
+    /// <summary>
+    /// The restriction clause 6 accepts (lead ruling, P22e decision 8): a line deeper than the logical
+    /// line above it, where that line does not end in <c>:</c>, opens a block for the lexer — the lexer
+    /// cannot tell an unexpected indent from a colon-less block opener (a property line opening its
+    /// observers), so the indent-only routes leave it where it is. By direction: @ aef9c0816 the full
+    /// fallback moved <c>if x:</c> to the body's level — right when the over-indent was a typo, silent-wrong
+    /// when it was a property's observer block; now both get no edits.
+    /// </summary>
+    [Fact]
+    public void UnexpectedIndent_FullFallback_GetsNoEdits()
+    {
+        const string overIndented = TwoSpace + "    if x:\n";
+        FormattingFallback.ReindentDocument(overIndented).Should().Be("def main():\n    x: int = 1\n    print(x)\n    if x:\n");
+        _driver.Full(overIndented).Edits.Should().BeEmpty();
+
+        FormattingFallback.IndentOnlyPreserved(ClosedLiteral, WithLine(ClosedLiteral, 4, "    if s:")).Should().BeFalse();
     }
 
     // ---- Current State cells, by direction ----
@@ -192,6 +275,27 @@ public sealed class FormattingFallbackTests : IDisposable
     {
         RangeCandidate(D21, 2).Should().Be(WithLine(D21, 2, "    if a == 1:"));
         _driver.Range(D21, LineRange(D21, 2)).Edits.Should().BeEmpty();
+    }
+
+    /// <summary>S3 <c>depth</c>: the fallbacks moved the observer block one level shallow @ aef9c0816.</summary>
+    [Fact]
+    public void S3_ObserverBlock_FullAndRangeFallbacks_GetNoEdits()
+    {
+        FormattingFallback.ReindentDocument(Observers)
+            .Should().Be(WithLine(WithLine(Observers, 2, "    before_set(new_value):"), 3, "        print(new_value)"));
+        RangeCandidate(Observers, 2).Should().Be(WithLine(Observers, 2, "    before_set(new_value):"));
+
+        _driver.Full(Observers).Edits.Should().BeEmpty();
+        _driver.Range(Observers, LineRange(Observers, 2)).Edits.Should().BeEmpty();
+    }
+
+    /// <summary>S5 <c>depth</c>: the full fallback moved <c>main</c>'s body to column 0 @ aef9c0816.</summary>
+    [Fact]
+    public void S5_TriplesThatRePair_FullFallback_GetsNoEdits()
+    {
+        FormattingFallback.ReindentDocument(DStringRepaired)
+            .Should().Be(WithLine(WithLine(DStringRepaired, 3, "msg: str = d\"\"\""), 7, "print(repr(msg))"));
+        _driver.Full(DStringRepaired).Edits.Should().BeEmpty();
     }
 
     /// <summary>
