@@ -6,8 +6,8 @@
 # Cure (owner ruling R-EV): an overload WITHOUT the parameter, in the spy source (rung 1).
 # Ratchet: a new unlisted finding fails; a row that is no longer a finding fails (drain on fix).
 
-re::Pattern.findall::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
-re::Pattern.finditer::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
-re::Pattern.fullmatch::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
-re::Pattern.match::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
-re::Pattern.search::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.findall::endpos  # #2260 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.finditer::endpos  # #2260 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.fullmatch::endpos  # #2260 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.match::endpos  # #2260 CPython default sys.maxsize; explicit None is a TypeError
+re::Pattern.search::endpos  # #2260 CPython default sys.maxsize; explicit None is a TypeError
