@@ -3,6 +3,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Pretty;
 using Sharpy.TestInfrastructure.Formatting;
 using Xunit;
+using Xunit.Abstractions;
 using SLexer = Sharpy.Compiler.Lexer.Lexer;
 using SModule = Sharpy.Compiler.Parser.Ast.Module;
 using SParser = Sharpy.Compiler.Parser.Parser;
@@ -15,6 +16,10 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </summary>
 public class FormatterTwinsTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public FormatterTwinsTests(ITestOutputHelper output) => _output = output;
+
     private const string Snippet =
         "def f(a: int, b: int) -> list[int]:\n"
         + "    if a > b:\n"
@@ -344,6 +349,235 @@ public class FormatterTwinsTests
     public void EscapedNames_IsTheSortedMultisetOfEscapedIdentifiers()
     {
         FormatterTwins.EscapedNames("`b` = `a` + `b` + c\n").Should().Equal("a", "b", "b");
+    }
+
+    // ================================================================
+    // Layout twins: wide-indent and CRLF (P22e, #2168)
+    // ================================================================
+
+    private const string Layout =
+        "# top\n"
+        + "def f(a: int,\n"
+        + "      b: int) -> int:\n"
+        + "    # inside\n"
+        + "    s = \"\"\"x\n"
+        + "    y\"\"\"\n"
+        + "\n"
+        + "    if a:\n"
+        + "        t = [1,\n"
+        + "             2]\n"
+        + "        u = 1 + \\\n"
+        + "            2\n"
+        + "      # shallow\n"
+        + "    return a\n";
+
+    /// <summary>
+    /// Pinned literally — the positive control that the twin differs from its source: logical-line
+    /// starts and comment-only lines (<c># inside</c>, the off-level <c># shallow</c>) are doubled;
+    /// the bracket continuations of <c>def f(</c> (first line unindented, so nothing added) and of
+    /// <c>t = [</c>, and the backslash continuation of <c>u = 1 + \</c>, get their statement's
+    /// added 8 spaces; the literal-interior line <c>    y"""</c> and the blank line are untouched.
+    /// </summary>
+    [Fact]
+    public void WideIndented_Snippet_DoublesLineStartsShiftsContinuationsAndLeavesLiteralsAlone()
+    {
+        var text = FormatterTwins.WideIndented(Layout);
+
+        // The AST first: a doubled literal-interior line changes the string's value.
+        Parse(text, out var errors);
+        errors.Should().BeFalse(text);
+        SameAst(Layout, text).Should().BeTrue(text);
+        text.Should().Be(Lines(
+            "# top",
+            "def f(a: int,",
+            "      b: int) -> int:",
+            "        # inside",
+            "        s = \"\"\"x",
+            "    y\"\"\"",
+            "",
+            "        if a:",
+            "                t = [1,",
+            "                     2]",
+            "                u = 1 + \\",
+            "                    2",
+            "            # shallow",
+            "        return a",
+            ""));
+        text.Should().NotBe(Layout);
+    }
+
+    /// <summary>The wide twin keeps a CRLF source's breaks; the CRLF twin writes every break — <c>\n</c> or <c>\r\n</c>, in a literal too — as <c>\r\n</c>, and parses to the same AST.</summary>
+    [Fact]
+    public void WideIndented_KeepsCrlfBreaks_AndCrlf_RewritesEveryBreak()
+    {
+        FormatterTwins.WideIndented("if x:\r\n    f(1,\r\n      2)\r\n").Should().Be("if x:\r\n        f(1,\r\n          2)\r\n");
+
+        const string mixed = "a = 1\nb = \"\"\"x\r\ny\nz\"\"\"\r\nc = 2";
+        var crlf = FormatterTwins.Crlf(mixed);
+
+        crlf.Should().Be("a = 1\r\nb = \"\"\"x\r\ny\r\nz\"\"\"\r\nc = 2");
+        Parse(crlf, out var errors);
+        errors.Should().BeFalse(crlf);
+        SameAst(mixed, crlf).Should().BeTrue(crlf);
+    }
+
+    /// <summary>
+    /// Instrument check over the formatter sweep's corpus (every single-file fixture that parses):
+    /// the wide twin parses to the source's AST, keeps every line's number, and leaves every line
+    /// starting inside a literal byte-identical — two counts, because the AST alone misses a
+    /// uniformly re-indented d-string (its dedent absorbs it). Positive controls: the twin differs
+    /// from the source on most fixtures, and literal-interior lines with leading whitespace — the
+    /// lines a re-indent would damage — are in the corpus and checked.
+    /// </summary>
+    [Fact]
+    public void WideIndented_Corpus_ParsesToTheSourceAst_AndKeepsLiteralLinesByteIdentical()
+    {
+        var corpus = FormatterMeaningPreservationSweepTests.CorpusCensus.Value.Corpus;
+        var astFailures = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var literalFailures = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var widened = 0;
+        var literalLinesChecked = 0;
+        var indentedLiteralLinesChecked = 0;
+        Parallel.ForEach(corpus.Values, fixture =>
+        {
+            var source = fixture.Source;
+            var wide = FormatterTwins.WideIndented(source);
+            if (wide != source)
+                Interlocked.Increment(ref widened);
+
+            Parse(wide, out var errors);
+            if (errors)
+                astFailures.Add($"{fixture.Name}: the wide twin does not parse");
+            else if (!SameAst(source, wide))
+                astFailures.Add($"{fixture.Name}: the wide twin parses to a different AST");
+
+            var sourceLines = SplitLines(source);
+            var wideLines = SplitLines(wide);
+            if (sourceLines.Count != wideLines.Count)
+            {
+                literalFailures.Add($"{fixture.Name}: the wide twin has {wideLines.Count} lines, the source {sourceLines.Count}");
+                return;
+            }
+
+            var literalLines = Sharpy.Compiler.Lexer.LiteralSpans.LinesStartingInside(
+                source, Sharpy.Compiler.Lexer.LiteralSpans.Of(FormatterTwins.Lex(source, out _)));
+            foreach (var line in literalLines)
+            {
+                Interlocked.Increment(ref literalLinesChecked);
+                if (sourceLines[line - 1].Length > 0 && sourceLines[line - 1][0] is ' ' or '\t')
+                    Interlocked.Increment(ref indentedLiteralLinesChecked);
+                if (wideLines[line - 1] != sourceLines[line - 1])
+                    literalFailures.Add($"{fixture.Name}: literal line {line} changed");
+            }
+        });
+
+        _output.WriteLine($"corpus={corpus.Count} widened={widened} literal-lines={literalLinesChecked} indented-literal-lines={indentedLiteralLinesChecked} ast-failures={astFailures.Count} literal-line-failures={literalFailures.Count}");
+        foreach (var failure in astFailures.Concat(literalFailures).OrderBy(f => f, StringComparer.Ordinal))
+            _output.WriteLine($"  {failure}");
+        astFailures.Should().BeEmpty();
+        literalFailures.Should().BeEmpty();
+        widened.Should().BeGreaterThan(corpus.Count / 2, "most fixtures have an indented block, so the twin differs from them");
+        indentedLiteralLinesChecked.Should().BeGreaterThan(0, "the corpus holds literal-interior lines with leading whitespace");
+    }
+
+    /// <summary>Instrument check over the corpus: the CRLF twin parses to the source's AST and has no line break but <c>\r\n</c>. Positive control: it differs from the source on every fixture with a line break.</summary>
+    [Fact]
+    public void Crlf_Corpus_ParsesToTheSourceAst()
+    {
+        var corpus = FormatterMeaningPreservationSweepTests.CorpusCensus.Value.Corpus;
+        var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var changed = 0;
+        Parallel.ForEach(corpus.Values, fixture =>
+        {
+            var source = fixture.Source;
+            var crlf = FormatterTwins.Crlf(source);
+            if (crlf != source)
+                Interlocked.Increment(ref changed);
+            if (HasNonCrlfBreak(crlf))
+                failures.Add($"{fixture.Name}: a line break is not \\r\\n");
+
+            Parse(crlf, out var errors);
+            if (errors)
+                failures.Add($"{fixture.Name}: the CRLF twin does not parse");
+            else if (!SameAst(source, crlf))
+                failures.Add($"{fixture.Name}: the CRLF twin parses to a different AST");
+        });
+
+        _output.WriteLine($"corpus={corpus.Count} changed={changed} failures={failures.Count}");
+        failures.Should().BeEmpty();
+        changed.Should().Be(corpus.Values.Count(f => HasNonCrlfBreak(f.Source)));
+        changed.Should().BeGreaterThan(corpus.Count / 2, "the corpus is written with \\n breaks");
+    }
+
+    /// <summary>
+    /// The stems on which <c>Format(Wide(P)) != Format(P)</c>, skipped by the check below and
+    /// counted — the twin is not weakened for them. Each has an own-line comment inside the brackets
+    /// of a statement: the twin doubles that comment-only line's leading whitespace while the
+    /// bracket's other continuation lines get only their statement's added width, and a statement
+    /// with a comment inside its brackets is written verbatim (P22b Decision 5), so the comment's
+    /// moved column survives formatting. The set is exact both ways: a new stem or a drained one is
+    /// red (#2168).
+    /// </summary>
+    private static readonly IReadOnlySet<string> WideFormatDiffers = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "Formatting/inner_comments_verbatim",
+        "imports/from_import_parenthesized",
+    };
+
+    /// <summary>
+    /// Instrument check over the corpus: the formatter reads the wide twin as the same layout —
+    /// <c>Format(Wide(P)) == Format(P)</c>, except on the counted <see cref="WideFormatDiffers"/>
+    /// stems. Positive control: on the fixtures where the twin differs from the source, the
+    /// formatter output is compared, not the input.
+    /// </summary>
+    [Fact]
+    public void WideIndented_Corpus_FormatsToTheSourceFormat()
+    {
+        var corpus = FormatterMeaningPreservationSweepTests.CorpusCensus.Value.Corpus;
+        var differing = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var compared = 0;
+        Parallel.ForEach(corpus.Values, fixture =>
+        {
+            var source = fixture.Source;
+            var wide = FormatterTwins.WideIndented(source);
+            if (wide == source)
+                return;
+            Interlocked.Increment(ref compared);
+            var expected = Sharpy.Compiler.Formatting.FormatterService.Format(source).FormattedText;
+            var actual = Sharpy.Compiler.Formatting.FormatterService.Format(wide).FormattedText;
+            if (actual != expected)
+                differing.Add(fixture.Name);
+        });
+
+        var stems = differing.OrderBy(s => s, StringComparer.Ordinal).ToList();
+        _output.WriteLine($"corpus={corpus.Count} compared={compared} format-differs={stems.Count} skipped-stems={stems.Count(WideFormatDiffers.Contains)}");
+        foreach (var stem in stems)
+            _output.WriteLine($"  {stem}");
+        compared.Should().BeGreaterThan(corpus.Count / 2);
+        stems.Should().BeEquivalentTo(WideFormatDiffers, "a stem outside the counted set is a new layout difference; a counted stem that formats equal is drained");
+    }
+
+    private static bool HasNonCrlfBreak(string text)
+        => text.Replace("\r\n", "", StringComparison.Ordinal).IndexOfAny(new[] { '\r', '\n' }) >= 0;
+
+    /// <summary>The lines of a text split at <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as in the lexer.</summary>
+    private static List<string> SplitLines(string text)
+    {
+        var lines = new List<string>();
+        var start = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (c != '\n' && c != '\r')
+                continue;
+            lines.Add(text[start..i]);
+            if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+                i++;
+            start = i + 1;
+        }
+
+        lines.Add(text[start..]);
+        return lines;
     }
 
     private static string Lines(params string[] lines) => string.Join("\n", lines);

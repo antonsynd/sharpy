@@ -204,6 +204,99 @@ public static class FormatterTwins
         => t.Type == TokenType.Identifier && !t.IsBacktickEscaped && t.Position >= 0;
 
     // ================================================================
+    // Layout twins: wide-indent and CRLF (P22e, #2168)
+    // ================================================================
+
+    /// <summary>
+    /// The wide-indent twin: the same program with every indentation level written twice as wide —
+    /// the shape in which a partial re-indent changes structure (#2168). Text is only inserted at
+    /// line starts, so every line keeps its number:
+    /// <list type="bullet">
+    /// <item>a line whose first token starts a logical line (the token before it, past any
+    /// <c>Indent</c>/<c>Dedent</c>, is a <c>Newline</c> or nothing), and a comment-only line, gets its
+    /// leading whitespace doubled;</item>
+    /// <item>a continuation line — its first token continues a bracketed or backslash-continued
+    /// logical line — gets the same text prepended as its logical line's first line, so its layout
+    /// relative to that line is kept;</item>
+    /// <item>a line whose first character lies inside a literal (<see cref="LiteralSpans"/>) is
+    /// untouched (its leading whitespace is literal content), and so is a blank line.</item>
+    /// </list>
+    /// "Starts a logical line" is read from the lexer's tokens, never from keywords.
+    /// </summary>
+    public static string WideIndented(string source)
+    {
+        var tokens = Lex(source, out _);
+        var lineStarts = LineStarts(source);
+        var literalLines = LiteralSpans.LinesStartingInside(source, LiteralSpans.Of(tokens));
+
+        // The first code token starting on each line, and whether it starts a logical line.
+        var firstOnLine = new Dictionary<int, bool>();
+        var previousSignificant = TokenType.Newline;
+        foreach (var token in tokens)
+        {
+            if (token.Type is TokenType.Indent or TokenType.Dedent)
+                continue;
+            if (token.Type is TokenType.Newline or TokenType.Eof || token.Position < 0)
+            {
+                previousSignificant = token.Type == TokenType.Eof ? previousSignificant : TokenType.Newline;
+                continue;
+            }
+
+            if (IsFirstOnLine(source, lineStarts, token))
+                firstOnLine.TryAdd(LineOf(lineStarts, token.Position), previousSignificant == TokenType.Newline);
+            previousSignificant = token.Type;
+        }
+
+        var text = new StringBuilder(source.Length * 2);
+        var statementAdded = "";
+        for (var line = 1; line <= lineStarts.Count; line++)
+        {
+            var start = lineStarts[line - 1];
+            var end = line < lineStarts.Count ? lineStarts[line] : source.Length;
+            var content = LineContentEnd(source, lineStarts, line);
+            var indentEnd = start;
+            while (indentEnd < content && source[indentEnd] is ' ' or '\t' or '\f')
+                indentEnd++;
+            var indent = source.Substring(start, indentEnd - start);
+
+            string added;
+            if (literalLines.Contains(line) || indentEnd == content)
+                added = "";
+            else if (source[indentEnd] == '#')
+                added = indent;
+            else if (firstOnLine.TryGetValue(line, out var startsLogicalLine) && startsLogicalLine)
+                added = statementAdded = indent;
+            else
+                added = statementAdded;
+
+            text.Append(added).Append(source, start, end - start);
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>The CRLF twin: every line break (<c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as in the lexer) written <c>\r\n</c> — literal interiors included, as a CRLF editor buffer holds them.</summary>
+    public static string Crlf(string source)
+    {
+        var text = new StringBuilder(source.Length + (source.Length / 16));
+        for (var i = 0; i < source.Length; i++)
+        {
+            var c = source[i];
+            if (c == '\r' && i + 1 < source.Length && source[i + 1] == '\n')
+                i++;
+            else if (c != '\n' && c != '\r')
+            {
+                text.Append(c);
+                continue;
+            }
+
+            text.Append("\r\n");
+        }
+
+        return text.ToString();
+    }
+
+    // ================================================================
     // T1
     // ================================================================
 
