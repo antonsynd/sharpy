@@ -11,6 +11,7 @@ public partial class Lexer
         public bool IsTriple { get; set; }
         public int DedentAmount { get; set; }   // PEP 822: number of whitespace chars to strip after each \n (0 = no dedent)
         public bool IsTString { get; set; }     // PEP 750: template string (t"...") — same scanning, different AST
+        public int StartLine { get; set; }      // line of the FStringStart token (see LiteralStateUnknown)
 
         /// <summary>The string kind every hole diagnostic spells (CPython: <c>t-string: unmatched ')'</c>).</summary>
         public string Kind => IsTString ? "t-string" : "f-string";
@@ -86,6 +87,7 @@ public partial class Lexer
         {
             QuoteChar = quote,
             IsTriple = isTriple,
+            StartLine = startLine,
         });
 
         return CreateToken(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn, startPosition);
@@ -121,6 +123,7 @@ public partial class Lexer
         {
             QuoteChar = quote,
             IsTriple = isTriple,
+            StartLine = startLine,
             IsTString = true
         });
 
@@ -180,6 +183,7 @@ public partial class Lexer
         {
             QuoteChar = quote,
             IsTriple = isTriple,
+            StartLine = startLine,
             DedentAmount = dedentAmount
         });
 

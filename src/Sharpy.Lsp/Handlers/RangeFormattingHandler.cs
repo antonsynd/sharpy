@@ -101,7 +101,7 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
     {
         var indentStr = new string(' ', Compiler.Lexer.Lexer.IndentWidth);
 
-        var (lineIndentLevels, tokens) = IndentationService.BuildIndentMap(text);
+        var (lineIndentLevels, tokens, _) = IndentationService.BuildIndentMap(text);
         var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens, text);
 
         var lines = text.Split('\n');

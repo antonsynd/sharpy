@@ -25,6 +25,13 @@ public partial class Lexer
     /// </summary>
     private LexerAbortException ReportError(string message, int line, int column, string code)
     {
+        // Every abort passes through here, so this is the one place that can tell whether recovery
+        // (which resumes on the line after _line as code) is about to lose a literal that spans lines.
+        // _line is that line: for an unclosed replacement field ReportUnclosedField has moved it to the
+        // field's bracket, so a single-line `f"{x` being typed sets nothing.
+        if (_multiLineLiteralReads > 0 || _fstringStack.Any(c => c.IsTriple || c.StartLine < _line))
+            LiteralStateUnknown = true;
+
         // Compute a TextSpan from line/column using SourceText if available,
         // otherwise fall back to the current _position with a length of 1.
         TextSpan? span = null;
@@ -60,11 +67,42 @@ public partial class Lexer
     private List<Trivia>? _pendingTrivia;
     private int _pendingBlankLineCount;
     private int? _resumeAfterUnclosedField;  // see ReportUnclosedField
+    private int _multiLineLiteralReads;      // see MultiLineLiteralRead
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;
+
+    /// <summary>
+    /// True once the lexer aborted while reading a literal that can span lines: inside a
+    /// triple-quoted plain, <c>d</c>, <c>r</c>, <c>dr</c> or <c>b</c> string (unterminated, or a
+    /// mid-literal error such as a non-ASCII byte), or inside an f-/t-string that is triple-quoted
+    /// or has already crossed a line break (a multi-line replacement field). Error recovery then
+    /// resumes on the next line as code, so the token stream's map of which lines are string
+    /// content is a guess from that point — and, because every later delimiter may pair the other
+    /// way round, for the whole document. A single-quoted literal ends at its line and never sets
+    /// this. Recorded in <see cref="ReportError"/>; it changes no token or diagnostic.
+    /// </summary>
+    public bool LiteralStateUnknown { get; private set; }
+
+    /// <summary>
+    /// The scope of a triple-quoted plain/raw/byte read: while one is open, an abort through
+    /// <see cref="ReportError"/> sets <see cref="LiteralStateUnknown"/>. Entered by each
+    /// triple-quoted arm with <c>using var _ = new MultiLineLiteralRead(this);</c>.
+    /// </summary>
+    private readonly ref struct MultiLineLiteralRead
+    {
+        private readonly Lexer _lexer;
+
+        public MultiLineLiteralRead(Lexer lexer)
+        {
+            _lexer = lexer;
+            _lexer._multiLineLiteralReads++;
+        }
+
+        public void Dispose() => _lexer._multiLineLiteralReads--;
+    }
 
     /// <summary>
     /// The SourceText being lexed, if one was provided.

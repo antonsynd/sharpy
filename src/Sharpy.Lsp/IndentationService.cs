@@ -4,7 +4,13 @@ namespace Sharpy.Lsp;
 
 internal static class IndentationService
 {
-    internal static (Dictionary<int, int> LineIndent, List<Token> Tokens) BuildIndentMap(string source)
+    /// <summary>
+    /// The indent level of every physical line, the tokens it was computed from, and the lexer's
+    /// <see cref="Compiler.Lexer.Lexer.LiteralStateUnknown"/>: when true the lexer lost a literal that
+    /// can span lines, so which lines are string content (and hence which lines the map may re-indent)
+    /// is unknown for the whole document.
+    /// </summary>
+    internal static (Dictionary<int, int> LineIndent, List<Token> Tokens, bool LiteralStateUnknown) BuildIndentMap(string source)
     {
         var lexer = new Compiler.Lexer.Lexer(source);
         List<Token> tokens;
@@ -14,7 +20,7 @@ internal static class IndentationService
         }
         catch (Exception)
         {
-            return (new Dictionary<int, int>(), new List<Token>());
+            return (new Dictionary<int, int>(), new List<Token>(), true);   // no tokens: no literal is known
         }
 
         // Levels come from the WIDTH stack of each logical line's leading whitespace, in physical
@@ -104,7 +110,7 @@ internal static class IndentationService
             lineIndent[line] = widths.Count - 1;
         }
 
-        return (lineIndent, tokens);
+        return (lineIndent, tokens, lexer.LiteralStateUnknown);
     }
 
     private static int LeadingWhitespaceWidth(string[] sourceLines, int line)

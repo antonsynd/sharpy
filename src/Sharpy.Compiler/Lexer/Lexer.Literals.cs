@@ -71,6 +71,7 @@ public partial class Lexer
 
     private Token ReadTripleQuotedString(char quote, int startLine, int startColumn, int startPosition)
     {
+        using var multiLine = new MultiLineLiteralRead(this);
         var sb = new StringBuilder();
 
         while (_position < _source.Length)
@@ -218,6 +219,7 @@ public partial class Lexer
             _position += 2;
             _column += 2;
 
+            using var multiLine = new MultiLineLiteralRead(this);
             var sb = new StringBuilder();
             while (_position < _source.Length)
             {
@@ -398,6 +400,7 @@ public partial class Lexer
             _position += 2;
             _column += 2;
 
+            using var multiLine = new MultiLineLiteralRead(this);
             var sb = new StringBuilder();
             while (_position < _source.Length)
             {
@@ -522,6 +525,7 @@ public partial class Lexer
 
     private Token ReadTripleQuotedByteString(char quote, int startLine, int startColumn, int startPosition)
     {
+        using var multiLine = new MultiLineLiteralRead(this);
         var sb = new StringBuilder();
 
         while (_position < _source.Length)

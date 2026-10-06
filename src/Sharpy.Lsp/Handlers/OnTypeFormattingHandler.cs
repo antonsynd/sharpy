@@ -44,7 +44,7 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
 
         // Always use the lexer-based indent map here — the file is being typed
         // and is usually not parseable until the user finishes the line.
-        var (lineIndentLevels, _) = IndentationService.BuildIndentMap(text);
+        var (lineIndentLevels, _, _) = IndentationService.BuildIndentMap(text);
 
         var lines = text.Split('\n');
         if (line < 0 || line >= lines.Length)
