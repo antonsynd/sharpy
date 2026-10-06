@@ -133,13 +133,17 @@ A counting semaphore, similar to Python's `threading.Semaphore`.
 
 Represents a thread of control, similar to Python's `threading.Thread`.
 Unlike CPython, .NET has no GIL — threads run with True parallelism.
+Misuse that depends on the thread's state raises `RuntimeError`, as in python:
+`start()` twice, `join()` before `start()` or on the current thread, and setting
+`daemon` once started.
 
 ### Properties
 
 | Name | Type | Description |
 |------|------|-------------|
-| `is_alive` | `bool` |  |
 | `ident` | `int` |  |
+
+### `is_alive() -> bool`
 
 ### `start()`
 

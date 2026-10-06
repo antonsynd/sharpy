@@ -557,6 +557,14 @@ deviations:
   spec_ref: docs/language_specification/builtin_functions.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: no-thread-args-kwargs
+  category: stdlib
+  audience: python
+  severity: error
+  code: SPY0234
+  spec_ref: null
+  existing_diagnostic: SPY0234
+  planned_diagnostic: null
 - id: no-variable-arity-tuple-from-iterable
   category: types
   audience: python
@@ -716,6 +724,14 @@ deviations:
   code: SPY0284
   spec_ref: docs/language_specification/inheritance.md
   existing_diagnostic: SPY0284
+  planned_diagnostic: null
+- id: thread-ident-before-start
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: tuple-immutability-typed
   category: types

@@ -64,7 +64,7 @@ def test_thread_join_with_timeout():
     t = threading.Thread(sleeper)
     t.start()
     t.join(timeout=5.0)
-    assert not t.is_alive
+    assert not t.is_alive()
 
 
 @test
@@ -340,7 +340,7 @@ def test_timer_fires_after_interval():
     timer.start()
     assert fired.wait(timeout=5.0)
     timer.join(timeout=5.0)
-    assert not timer.is_alive
+    assert not timer.is_alive()
 
 
 @test
@@ -358,7 +358,7 @@ def test_timer_join_waits_for_function():
     timer.start()
     timer.join()
     assert fired_flag[0]
-    assert not timer.is_alive
+    assert not timer.is_alive()
 
 
 @test
@@ -368,7 +368,7 @@ def test_timer_cancel_prevents_firing():
     timer.start()
     timer.cancel()
     join_thread(timer)
-    assert not timer.is_alive
+    assert not timer.is_alive()
     assert not fired_flag[0]
 
 

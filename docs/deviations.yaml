@@ -2125,3 +2125,65 @@ deviations:
             s.settimeout(9.2e9)
             print(s.gettimeout())   # 9200000000.0 — the wait itself is capped at ~24.8 days
             s.close()
+
+  - id: no-thread-args-kwargs
+    code: SPY0234
+    category: stdlib
+    audience: python
+    severity: error
+    python_behavior: "`threading.Thread(target=g, args=(3,), kwargs={...})` passes the arguments to `g` when the thread runs."
+    sharpy_behavior: "`Thread` takes `target` as a zero-argument callable and has no `args`/`kwargs` parameters: `args=` and `kwargs=` are each refused with SPY0234 (unknown keyword argument). Bind the arguments in a lambda instead — `threading.Thread(target=lambda: g(3))` — which is statically typed where a tuple of arguments would be checked only at run time (R-FC, #2261)."
+    spec_ref: null
+    existing_diagnostic: SPY0234
+    planned_diagnostic: null
+    example:
+      python: |
+        import threading
+        def g(n): print(n)
+        t = threading.Thread(target=g, args=(3,))
+        t.start(); t.join()   # 3
+      sharpy: |
+        import threading
+
+
+        def g(n: int) -> None:
+            print(n)
+
+
+        def main():
+            t = threading.Thread(target=lambda: g(3))
+            t.start()
+            t.join()   # 3
+            # threading.Thread(target=g, args=(3,))   # error SPY0234: Unknown keyword argument 'args'
+
+  - id: thread-ident-before-start
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`Thread.ident` is `None` until the thread has started, then a positive int."
+    sharpy_behavior: "`ident` is an `int` at every point: before `start()` it is the id .NET has already assigned to the thread, so `t.ident is None` is `False`. After `start()` it is a positive int, as in python. A thread id's value is an implementation detail (NOT COMPARED); making it `int | None` would put a narrowing at every use (R-FE, #2261)."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import threading
+        t = threading.Thread(target=lambda: None)
+        print(t.ident is None)   # True
+        t.start(); t.join()
+        print(t.ident > 0)       # True
+      sharpy: |
+        import threading
+
+
+        def g() -> None:
+            pass
+
+
+        def main():
+            t = threading.Thread(target=g)
+            print(t.ident is None)   # False — an int before start()
+            t.start()
+            t.join()
+            print(t.ident > 0)       # True

@@ -108,8 +108,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
             t.Start();
 #line (66, 5) - (66, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
             t.Join(timeout: 5.0d);
-#line (67, 5) - (67, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-            Xunit.Assert.False(t.IsAlive);
+#line (67, 5) - (67, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+            Xunit.Assert.False(t.IsAlive());
 #line hidden
         }
 
@@ -681,8 +681,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
             Xunit.Assert.True(fired.Wait(timeout: 5.0d));
 #line (342, 5) - (342, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
             timer.Join(timeout: 5.0d);
-#line (343, 5) - (343, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-            Xunit.Assert.False(timer.IsAlive);
+#line (343, 5) - (343, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+            Xunit.Assert.False(timer.IsAlive());
 #line hidden
         }
 
@@ -713,8 +713,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
             timer.Join();
 #line (360, 5) - (360, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
             Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests.ThreadingModuleTestsModule.FiredFlag.GetItemUnchecked(0));
-#line (361, 5) - (361, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-            Xunit.Assert.False(timer.IsAlive);
+#line (361, 5) - (361, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+            Xunit.Assert.False(timer.IsAlive());
 #line hidden
         }
 
@@ -731,8 +731,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
             timer.Cancel();
 #line (370, 5) - (370, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests.ThreadingModuleTestsModule.JoinThread(timer);
-#line (371, 5) - (371, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-            Xunit.Assert.False(timer.IsAlive);
+#line (371, 5) - (371, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+            Xunit.Assert.False(timer.IsAlive());
 #line (372, 5) - (372, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
             Xunit.Assert.False(global::Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests.ThreadingModuleTestsModule.FiredFlag.GetItemUnchecked(0));
 #line hidden
