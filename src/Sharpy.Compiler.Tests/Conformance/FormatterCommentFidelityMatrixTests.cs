@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Formatting;
+using Sharpy.TestInfrastructure.Formatting;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;

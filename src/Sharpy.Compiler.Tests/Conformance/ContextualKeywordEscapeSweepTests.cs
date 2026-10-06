@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
+using Sharpy.TestInfrastructure.Formatting;
 using Xunit;
 using Xunit.Abstractions;
 using Oracle = Sharpy.Compiler.Tests.Conformance.ContextualKeywordEscapeOracle;

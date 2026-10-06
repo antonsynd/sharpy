@@ -1,6 +1,7 @@
 using System.Text;
 using FluentAssertions;
 using Sharpy.Compiler.Pretty;
+using Sharpy.TestInfrastructure.Formatting;
 using Xunit;
 using SLexer = Sharpy.Compiler.Lexer.Lexer;
 using SModule = Sharpy.Compiler.Parser.Ast.Module;

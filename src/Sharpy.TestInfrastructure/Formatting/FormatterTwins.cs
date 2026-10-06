@@ -2,7 +2,7 @@ using System.Text;
 using Sharpy.Compiler.Lexer;
 using SLexer = Sharpy.Compiler.Lexer.Lexer;
 
-namespace Sharpy.Compiler.Tests.Conformance;
+namespace Sharpy.TestInfrastructure.Formatting;
 
 /// <summary>
 /// The kinds of <c># cN</c> comment <see cref="FormatterTwins.CommentInjected"/> injects. Each is a

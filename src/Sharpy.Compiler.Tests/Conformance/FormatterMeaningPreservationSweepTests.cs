@@ -4,6 +4,7 @@ using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Pretty;
 using Sharpy.Compiler.Text;
+using Sharpy.TestInfrastructure.Formatting;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
