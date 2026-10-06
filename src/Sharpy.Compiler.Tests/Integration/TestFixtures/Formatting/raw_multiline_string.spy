@@ -1,0 +1,7 @@
+def main():
+    pattern = r"""
+        \d+ items
+    \n stays two characters
+"""
+    print(pattern)
+    print(len(pattern))

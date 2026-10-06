@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using FluentAssertions;
+using FluentAssertions.Execution;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Formatting;
@@ -54,9 +55,11 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// entry as whole lines <c>(a,0)–(b+1,0)</c>), <c>range-block</c> (each lexer <c>Indent…Dedent</c> line
 /// span, <c>(a,0)–(b,len)</c>), <c>range-line</c> and <c>ontype</c> (each non-blank line);
 /// S1 — <c>full</c>, <c>range-whole</c>, <c>range-statement</c>, <c>range-block</c>, <c>ontype</c>.
-/// Part B of the task adds the unparseable states (S3 cut after a block opener, S4 cut inside a
-/// multi-line literal, S5 an unmatched triple quote inserted) as more <see cref="SweepDocument"/>s and
-/// their oracles beside <see cref="ParseableOracles"/>.</para>
+/// The documents that do not parse (<see cref="UnparseableDocuments"/>, from each twin Q): S3 — Q cut after
+/// a block opener; S4 — Q cut after the first interior line of a multi-line literal (the literal is open);
+/// S5 — an unmatched triple quote inserted as line 0 (every later literal of that quote character flips).
+/// Each gets <c>full</c>, <c>range-whole</c>, and <c>range-line</c>/<c>ontype</c> on its last line (S3,
+/// S4) or on every line that starts inside a literal in Q (S5); none of them is sampled.</para>
 ///
 /// <para><b>Oracles (buckets)</b>, <c>D</c> the document and <c>T</c> the applied text:
 /// <list type="bullet">
@@ -71,7 +74,11 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// RESTATED here) keeps;</item>
 /// <item><c>fixedPoint</c> — S1: <c>T != D</c> on any route;</item>
 /// <item><c>ontypeShape</c> — <c>ontype</c>: T differs from D other than in the requested line's leading
-/// whitespace.</item>
+/// whitespace;</item>
+/// <item>an unparseable D (<see cref="UnparseableOracles"/>, ground truth from the parent Q's clean lex):
+/// <c>content</c> — a line lost, gained, or changed beyond its leading whitespace; <c>literal</c> — a line
+/// that starts inside a literal in Q is not identical; <c>depth</c> — a logical line's block depth in T,
+/// by the lexer's width rule, is not its depth in Q.</item>
 /// </list>
 /// <c>refusedWork</c> — a range cell with a non-empty <c>selected</c> whose T is D — is census, not a
 /// failure.</para>
@@ -83,7 +90,7 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// exists. <c>cli</c> and <c>full</c> rows on S1/S2 are refused by the loader: those routes apply
 /// <c>Format</c>'s checked output whole, and a failure there is outside P22e's cure.</para>
 ///
-/// <para><b>Budget.</b> <c>range-line</c> and <c>ontype</c> — the cells proportional to line count — run
+/// <para><b>Budget.</b> <c>range-line</c> and <c>ontype</c> on S1/S2 — the cells proportional to line count — run
 /// for a STEM sample (<see cref="StableBucket"/>, stride <see cref="SampledStride"/>); every other cell
 /// always runs. <c>SHARPY_ROUTE_SWEEP_FULL=1</c> runs every stem; the allowlist is populated from a
 /// full run, and a row of a sampled-out stem's <c>range-line</c>/<c>ontype</c> is not judged.</para>
@@ -121,26 +128,46 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>The routes whose cell count is proportional to line count — the only sampled ones.</summary>
     private static readonly SCG.HashSet<string> SampledRoutes = new(StringComparer.Ordinal) { RangeLine, OnType };
 
-    // ---- states (part B adds S3, S4, S5) ----
+    // ---- states ----
     internal const string S1 = "S1";
     internal const string S2 = "S2";
-    internal static readonly string[] States = { S1, S2 };
+    internal const string S3 = "S3";
+    internal const string S4 = "S4";
+    internal const string S5 = "S5";
+    internal static readonly string[] States = { S1, S2, S3, S4, S5 };
 
     /// <summary>The routes swept per state.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string[]> RoutesByState = new SCG.Dictionary<string, string[]>(StringComparer.Ordinal)
     {
         [S1] = new[] { Full, RangeWhole, RangeStatement, RangeBlock, OnType },
         [S2] = new[] { Cli, Full, RangeWhole, RangeStatement, RangeBlock, RangeLine, OnType },
+        [S3] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S4] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S5] = new[] { Full, RangeWhole, RangeLine, OnType },
     };
 
-    // ---- buckets (part B adds content, literal, depth) ----
+    /// <summary>Whether a cell of <paramref name="route"/> in <paramref name="state"/> is sampled: the line-proportional routes on a parseable document. S3–S5 cells always run.</summary>
+    internal static bool IsSampledCell(string route, string state) => SampledRoutes.Contains(route) && state is S1 or S2;
+
+    /// <summary>
+    /// The lexer's read paths for a literal that can span lines — the S4/S5 census floors: plain and
+    /// <c>d"""</c> (<c>ReadTripleQuotedString</c>), <c>r"""</c>, <c>dr"""</c>, <c>b"""</c>, <c>f"""</c>,
+    /// <c>t"""</c>, <c>df"""</c>. A kind is spelled by <see cref="LiteralKind"/>.
+    /// </summary>
+    internal static readonly string[] TripleQuotedKinds =
+        { "\"\"\"", "d\"\"\"", "r\"\"\"", "dr\"\"\"", "b\"\"\"", "f\"\"\"", "t\"\"\"", "df\"\"\"" };
+
+    // ---- buckets ----
     internal const string Edits = "edits";
     internal const string Net = "net";
     internal const string Whole = "whole";
     internal const string Local = "local";
     internal const string FixedPoint = "fixedPoint";
     internal const string OnTypeShape = "ontypeShape";
-    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape };
+    internal const string Content = "content";
+    internal const string Literal = "literal";
+    internal const string Depth = "depth";
+    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth };
 
     private readonly ITestOutputHelper _output;
     private readonly LspFormattingDriver _driver = new();
@@ -207,9 +234,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     // ================================================================
 
     /// <summary>
-    /// One document a route is driven over: its text, observed state, and what the parseable oracles
-    /// read (its AST, <c>Format(D)</c>, the hunks between them). Part B adds unparseable documents,
-    /// whose ground truth is the parent twin's clean lex.
+    /// One document a route is driven over: its text, observed state, and what the oracles read — for a
+    /// parseable document its AST, <c>Format(D)</c>, the hunks between them and its own lex
+    /// (<see cref="Facts"/>); for an unparseable one (S3–S5) the <see cref="Truth"/> taken from the
+    /// parent twin <c>Q</c>'s clean lex.
     /// </summary>
     internal sealed class SweepDocument
     {
@@ -217,9 +245,16 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         private readonly Lazy<bool> _netAcceptsSelf;
         private readonly Lazy<bool> _netAcceptsFormatted;
 
+        /// <summary>An unparseable document: no AST, no <c>Format(D)</c>; its oracles read <paramref name="truth"/>.</summary>
+        public SweepDocument(string text, string state, GroundTruth truth)
+            : this(text, state, null, text, false, Array.Empty<(int, int)>(), Array.Empty<(int, int)>())
+            => Truth = truth;
+
         public SweepDocument(string text, string state, SModule? ast, string formatted, bool formatDeclined,
-            IReadOnlyList<(int First, int Last)> statementLines, IReadOnlyList<(int First, int Last)> blockLines)
+            IReadOnlyList<(int First, int Last)> statementLines, IReadOnlyList<(int First, int Last)> blockLines,
+            LexFacts? facts = null)
         {
+            Facts = facts;
             Text = text;
             State = state;
             Ast = ast;
@@ -237,6 +272,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         public string Text { get; }
         public string State { get; }
         public SModule? Ast { get; }
+
+        /// <summary>A parseable document's own clean lex (the parent facts of its cut documents).</summary>
+        public LexFacts? Facts { get; }
+
+        /// <summary>An unparseable document's ground truth, from its parent <c>Q</c>; null when D parses.</summary>
+        public GroundTruth? Truth { get; }
 
         /// <summary><c>Format(D).FormattedText</c> — D itself when <c>Format</c> declines.</summary>
         public string Formatted { get; }
@@ -306,7 +347,181 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var declined = format.Diagnostics.Count > 0;
         var state = !declined && format.FormattedText == text ? S1 : S2;
         return new SweepDocument(text, state, module, format.FormattedText, declined,
-            StatementLines(module), BlockLines(tokens));
+            StatementLines(module), BlockLines(tokens), Analyze(text, tokens));
+    }
+
+    /// <summary>
+    /// What the unparseable states read from a document's CLEAN lex — the ground truth of every document
+    /// cut from or inserted into it. Lines are 0-based.
+    /// </summary>
+    internal sealed record LexFacts(
+        int[] LineStarts,
+        SCG.IReadOnlySet<int> InsideLines,
+        IReadOnlyList<(int Line, int Depth)> LogicalStarts,
+        IReadOnlyList<int> OpenerLines,
+        IReadOnlyList<(int Start, int End)> MultiLineLiterals,
+        SCG.IReadOnlyDictionary<int, string> Continuations)
+    {
+        /// <summary>The 0-based line holding source offset <paramref name="offset"/>.</summary>
+        public int LineOf(int offset)
+        {
+            var i = Array.BinarySearch(LineStarts, offset);
+            return i >= 0 ? i : ~i - 1;
+        }
+    }
+
+    /// <summary>
+    /// An unparseable document's ground truth, from its parent <c>Q</c>'s clean lex mapped to D's lines:
+    /// the lines that start inside a literal, each logical line's first line with its block depth
+    /// (<c>Indent</c> minus <c>Dedent</c> tokens before it), the lines <c>range-line</c>/<c>ontype</c> are
+    /// requested on, and the literal kind whose state the document loses (S4, S5).
+    /// </summary>
+    internal sealed record GroundTruth(
+        SCG.IReadOnlySet<int> LiteralLines,
+        IReadOnlyList<(int Line, int Depth)> LogicalStarts,
+        IReadOnlyList<int> TargetLines,
+        string? Kind);
+
+    internal const string BracketContinuation = "bracket";
+    internal const string BackslashContinuation = "backslash";
+
+    /// <summary>
+    /// Reads <see cref="LexFacts"/> off a clean token stream: a logical line starts at the first token
+    /// after a <c>Newline</c> (or the first token); a block opener is a <c>Colon</c> directly followed by
+    /// <c>Newline</c> (the lexer emits no <c>Newline</c> inside brackets, so the colon is at bracket depth
+    /// 0); a continuation line is a later line of a logical line that does not start inside a literal —
+    /// a bracket continuation when a bracket is open before its first token, a backslash one otherwise.
+    /// </summary>
+    internal static LexFacts Analyze(string text, IReadOnlyList<Token> tokens)
+    {
+        var (lines, breaks) = LineDiff.Split(text);
+        var starts = new int[lines.Count];
+        for (var i = 1; i < lines.Count; i++)
+            starts[i] = starts[i - 1] + lines[i - 1].Length + breaks[i - 1].Length;
+
+        var spans = LiteralSpans.Of(tokens);
+        var inside = LiteralSpans.LinesStartingInside(text, spans).Select(l => l - 1).ToHashSet();
+        var logical = new SCG.List<(int, int)>();
+        var openers = new SCG.List<int>();
+        var continuations = new SCG.Dictionary<int, string>();
+        int depth = 0, brackets = 0, maxLine = -1;
+        var atStart = true;
+        for (var i = 0; i < tokens.Count && tokens[i].Type != TokenType.Eof; i++)
+        {
+            var token = tokens[i];
+            switch (token.Type)
+            {
+                case TokenType.Indent:
+                    depth++;
+                    continue;
+                case TokenType.Dedent:
+                    depth--;
+                    continue;
+                case TokenType.Newline:
+                    if (i > 0 && tokens[i - 1].Type == TokenType.Colon)
+                        openers.Add(tokens[i - 1].Line - 1);
+                    atStart = true;
+                    continue;
+            }
+
+            var line = token.Line - 1;
+            if (atStart)
+                logical.Add((line, depth));
+            else if (line > maxLine && !inside.Contains(line))
+                continuations[line] = brackets > 0 ? BracketContinuation : BackslashContinuation;
+            atStart = false;
+            maxLine = Math.Max(maxLine, line);
+            if (token.Type is TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace)
+                brackets++;
+            else if (token.Type is TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace)
+                brackets--;
+        }
+
+        var facts = new LexFacts(starts, inside, logical, openers, Array.Empty<(int, int)>(), continuations);
+        return facts with { MultiLineLiterals = spans.Where(s => facts.LineOf(s.Start) < facts.LineOf(s.End - 1)).ToArray() };
+    }
+
+    /// <summary>
+    /// A literal's kind: its prefix letters, lower-cased and sorted (<c>rd</c> is <c>dr</c>), and <c>"""</c>
+    /// when triple-quoted (either quote character), <c>"</c> otherwise.
+    /// </summary>
+    internal static string LiteralKind(string text, int start)
+    {
+        var i = start;
+        while (i < text.Length && char.IsLetter(text[i]))
+            i++;
+        var prefix = new string(text[start..i].ToLowerInvariant().OrderBy(c => c).ToArray());
+        var triple = i + 2 < text.Length && text[i + 1] == text[i] && text[i + 2] == text[i];
+        return prefix + (triple ? "\"\"\"" : "\"");
+    }
+
+    private static char QuoteCharacter(string text, int start)
+    {
+        var i = start;
+        while (i < text.Length && char.IsLetter(text[i]))
+            i++;
+        return text[i];
+    }
+
+    /// <summary>
+    /// The unparseable documents of a parseable twin <paramref name="q"/> (plan Task 3):
+    /// <list type="bullet">
+    /// <item>S3 — Q cut after each block-opener line (the lines up to it and its line break);</item>
+    /// <item>S4 — Q cut after the first interior line of each literal spanning ≥ 2 lines, when the literal
+    /// is still open after the cut (a two-line literal's second line holds its closer: no interior line);</item>
+    /// <item>S5 — when Q has a literal spanning ≥ 2 lines, Q with a line holding only the triple quote of its
+    /// FIRST such literal's quote character inserted as line 0.</item>
+    /// </list>
+    /// The state is observed: a document that parses is <see cref="ObserveParseable"/>'s S1/S2 document.
+    /// </summary>
+    internal static IEnumerable<SweepDocument> UnparseableDocuments(string q, LexFacts facts)
+    {
+        foreach (var line in facts.OpenerLines.Distinct())
+        {
+            if (line + 1 < facts.LineStarts.Length)
+                yield return Cut(q, facts, line, S3, null);
+        }
+
+        foreach (var (start, end) in facts.MultiLineLiterals)
+        {
+            var interior = facts.LineOf(start) + 1;
+            if (interior + 1 < facts.LineStarts.Length && facts.LineStarts[interior + 1] < end)
+                yield return Cut(q, facts, interior, S4, LiteralKind(q, start));
+        }
+
+        if (facts.MultiLineLiterals.Count > 0)
+        {
+            var first = facts.MultiLineLiterals[0].Start;
+            yield return Inserted(q, facts, 0, new string(QuoteCharacter(q, first), 3), S5, LiteralKind(q, first));
+        }
+    }
+
+    /// <summary><paramref name="q"/>'s lines up to <paramref name="line"/> and its line break; ground truth is Q's lex of those lines.</summary>
+    internal static SweepDocument Cut(string q, LexFacts facts, int line, string state, string? kind)
+    {
+        var text = q[..facts.LineStarts[line + 1]];
+        return ObserveParseable(text) ?? new SweepDocument(text, state, new GroundTruth(
+            facts.InsideLines.Where(l => l <= line).ToHashSet(),
+            facts.LogicalStarts.Where(s => s.Line <= line).ToArray(),
+            new[] { line },
+            kind));
+    }
+
+    /// <summary>
+    /// <paramref name="q"/> with <paramref name="lineText"/> inserted as line <paramref name="at"/> (Q's own
+    /// line break); ground truth is Q's lex, shifted past the insertion. <c>range-line</c>/<c>ontype</c> are
+    /// requested on every line that starts inside a literal in Q.
+    /// </summary>
+    internal static SweepDocument Inserted(string q, LexFacts facts, int at, string lineText, string state, string? kind)
+    {
+        var text = q[..facts.LineStarts[at]] + lineText + LineDiff.DocumentLineBreak(q) + q[facts.LineStarts[at]..];
+        int Shift(int l) => l >= at ? l + 1 : l;
+        var inside = facts.InsideLines.Select(Shift).Order().ToArray();
+        return ObserveParseable(text) ?? new SweepDocument(text, state, new GroundTruth(
+            inside.ToHashSet(),
+            facts.LogicalStarts.Select(s => (Shift(s.Line), s.Depth)).ToArray(),
+            inside,
+            kind));
     }
 
     private static (IReadOnlyList<Token> Tokens, SModule? Module) Parse(string text)
@@ -357,7 +572,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     /// <summary>
     /// The documents of one (stem, twin): <c>Q</c> and, when <c>Format</c> accepts and changes it,
-    /// <c>F = Format(Q)</c>; each dropped when an earlier twin (in <see cref="Twins"/> order) already has a
+    /// <c>F = Format(Q)</c>, and Q's <see cref="UnparseableDocuments"/>; each dropped when an earlier twin (in <see cref="Twins"/> order) already has a
     /// document with the same content. <paramref name="declined"/> reports a declined <c>Format(Q)</c>.
     /// Throws when Q or F does not parse: the corpus parses, and the twins and the net preserve that.
     /// </summary>
@@ -389,6 +604,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 ?? throw new InvalidOperationException($"instrument: Format accepted an output of the {twin} twin that does not parse"));
         }
 
+        docs.AddRange(UnparseableDocuments(q, qDoc.Facts!));
         return docs;
     }
 
@@ -419,11 +635,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                         yield return new CellRequest(route, R(a, 0, b, d.Lines[b].Length), 0);
                     break;
                 case RangeLine:
-                    foreach (var l in NonBlankLines(d))
+                    foreach (var l in LineTargets(d))
                         yield return new CellRequest(route, R(l, 0, l, d.Lines[l].Length), l);
                     break;
                 case OnType:
-                    foreach (var l in NonBlankLines(d))
+                    foreach (var l in LineTargets(d))
                         yield return new CellRequest(route, null, l);
                     break;
                 default:
@@ -432,8 +648,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
     }
 
-    private static IEnumerable<int> NonBlankLines(SweepDocument d)
-        => Enumerable.Range(0, d.Lines.Count).Where(l => !string.IsNullOrWhiteSpace(d.Lines[l]));
+    /// <summary>The lines <c>range-line</c> and <c>ontype</c> are requested on: an unparseable document's targets, else each non-blank line.</summary>
+    private static IEnumerable<int> LineTargets(SweepDocument d)
+        => d.Truth?.TargetLines ?? Enumerable.Range(0, d.Lines.Count).Where(l => !string.IsNullOrWhiteSpace(d.Lines[l]));
 
     private static LspRange R(int startLine, int startChar, int endLine, int endChar)
         => new(new Position(startLine, startChar), new Position(endLine, endChar));
@@ -451,8 +668,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         _ => driver.Range(text, request.Range!).Applied,
     };
 
-    /// <summary>One cell's verdict: its failing buckets and whether it is a <c>refusedWork</c> census cell.</summary>
-    internal sealed record CellVerdict(SCG.List<(string Bucket, string Detail)> Failures, bool RefusedWork);
+    /// <summary>One cell's verdict: its failing buckets, whether it is a <c>refusedWork</c> census cell, and whether T differs from D.</summary>
+    internal sealed record CellVerdict(SCG.List<(string Bucket, string Detail)> Failures, bool RefusedWork)
+    {
+        public bool Changed { get; init; }
+    }
 
     /// <summary>Runs <paramref name="apply"/>; a strict-applier refusal is <c>edits</c> and nothing else is judged.</summary>
     internal static CellVerdict Judge(SweepDocument d, CellRequest request, Func<string> apply)
@@ -467,7 +687,85 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             return new CellVerdict(new() { (Edits, $"{request}: {e.Message}") }, false);
         }
 
-        return ParseableOracles(d, request, applied);
+        var verdict = d.Ast == null ? UnparseableOracles(d, request, applied) : ParseableOracles(d, request, applied);
+        return verdict with { Changed = applied != d.Text };
+    }
+
+    /// <summary>
+    /// The oracles of a document that does not parse (S3–S5) over the applied text <paramref name="applied"/>,
+    /// ground truth from the parent Q (<see cref="SweepDocument.Truth"/>). Lines compare by content, terminators
+    /// excluded (the full fallback joins with <c>\n</c>).
+    /// <list type="bullet">
+    /// <item><c>content</c> — the line count differs, or a line differs after its leading whitespace (a
+    /// whitespace-only line may become empty);</item>
+    /// <item><c>literal</c> — a line that starts inside a literal in Q is not identical;</item>
+    /// <item><c>depth</c> — a line that starts a logical line in Q has another block depth in T
+    /// (<see cref="FirstDepthDifference"/>) than in Q.</item>
+    /// </list>
+    /// <c>literal</c> and <c>depth</c> map lines by index, so they are judged only when the line count holds.
+    /// </summary>
+    internal static CellVerdict UnparseableOracles(SweepDocument d, CellRequest request, string applied)
+    {
+        var failures = new SCG.List<(string, string)>();
+        var truth = d.Truth ?? throw new InvalidOperationException("instrument: an unparseable document without ground truth");
+        var x = d.Lines;
+        var t = LineDiff.Split(applied).Lines;
+        if (t.Count != x.Count)
+        {
+            failures.Add((Content, $"{request}: {FirstDifference(d.Text, applied, "D", "T")}"));
+            return new CellVerdict(failures, false);
+        }
+
+        var content = Enumerable.Range(0, x.Count).FirstOrDefault(i => x[i].TrimStart(' ', '\t') != t[i].TrimStart(' ', '\t'), -1);
+        if (content >= 0)
+            failures.Add((Content, $"{request}: line {content}: D '{Clip(x[content])}' vs T '{Clip(t[content])}'"));
+
+        var literal = truth.LiteralLines.Order().FirstOrDefault(l => x[l] != t[l], -1);
+        if (literal >= 0)
+            failures.Add((Literal, $"{request}: line {literal} starts inside a literal: D '{Clip(x[literal])}' vs T '{Clip(t[literal])}'"));
+
+        if (FirstDepthDifference(t, truth.LogicalStarts) is { } depth)
+        {
+            failures.Add((Depth, $"{request}: line {depth.Line} '{Clip(t[depth.Line])}' is at depth "
+                + (depth.Actual < 0 ? "<a width on no enclosing level>" : depth.Actual.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                + $" in T, {depth.Expected} in Q"));
+        }
+
+        return new CellVerdict(failures, false);
+    }
+
+    /// <summary>
+    /// The first logical line of <paramref name="lines"/> whose block depth — by a width stack over the
+    /// lines' leading whitespace, in the LEXER's rule — differs from its depth in Q: a wider line pushes; a
+    /// narrower line pops to an EQUAL width; a width on no enclosing level is a difference
+    /// (<c>Actual = -1</c>), never a level of its own. <c>IndentationService</c>'s indent map opens a level
+    /// for a dedent between widths and is deliberately not mirrored (cell 21).
+    /// </summary>
+    internal static (int Line, int Actual, int Expected)? FirstDepthDifference(IReadOnlyList<string> lines, IReadOnlyList<(int Line, int Depth)> logicalStarts)
+    {
+        var stack = new Stack<int>();
+        stack.Push(0);
+        foreach (var (line, expected) in logicalStarts)
+        {
+            var text = lines[line];
+            var width = text.Length - text.TrimStart(' ', '\t').Length;
+            if (width > stack.Peek())
+            {
+                stack.Push(width);
+            }
+            else
+            {
+                while (stack.Count > 1 && stack.Peek() > width)
+                    stack.Pop();
+                if (stack.Peek() != width)
+                    return (line, -1, expected);
+            }
+
+            if (stack.Count - 1 != expected)
+                return (line, stack.Count - 1, expected);
+        }
+
+        return null;
     }
 
     /// <summary>The oracles of a document that parses (S1, S2) over the applied text <paramref name="applied"/>.</summary>
@@ -625,6 +923,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     {
         public int Cells;
         public int RefusedWork;
+        public int Changed;
         public readonly SortedDictionary<string, (int Count, string First)> Failures = new(StringComparer.Ordinal);
     }
 
@@ -632,6 +931,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     private static readonly ConcurrentDictionary<(string Route, string State, string Twin), int> s_cellsRun = new();
     private static readonly ConcurrentDictionary<(string Route, string Twin), int> s_refusedWork = new();
     private static readonly ConcurrentDictionary<(string Stem, string Twin), bool> s_declined = new();
+
+    /// <summary>Census tallies (<see cref="Tallies"/>): cells per (unparseable state, literal kind) and <c>ontype</c> cells per continuation shape.</summary>
+    private static readonly ConcurrentDictionary<string, int> s_tallies = new(StringComparer.Ordinal);
     private static long s_sweepTicks;
 
     private void Sweep(string stem, string twin)
@@ -639,13 +941,18 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var clock = Stopwatch.StartNew();
         var stride = Stride;
         var sampledIn = IsSampledIn(stem, stride);
-        var groups = RunCells(_driver, stem, twin, sampledIn, out var declined);
+        var tallies = new SCG.Dictionary<string, int>(StringComparer.Ordinal);
+        var groups = RunCells(_driver, stem, twin, sampledIn, tallies, out var declined);
         Interlocked.Add(ref s_sweepTicks, clock.Elapsed.Ticks);
+        foreach (var (key, n) in tallies)
+            s_tallies.AddOrUpdate(key, n, (_, m) => m + n);
         if (declined)
             s_declined[(stem, twin)] = true;
         foreach (var ((route, state), group) in groups)
         {
             s_cellsRun.AddOrUpdate((route, state, twin), group.Cells, (_, n) => n + group.Cells);
+            if (group.Changed > 0)
+                s_tallies.AddOrUpdate(ChangedTally(route, state), group.Changed, (_, n) => n + group.Changed);
             if (group.RefusedWork > 0)
                 s_refusedWork.AddOrUpdate((route, twin), group.RefusedWork, (_, n) => n + group.RefusedWork);
         }
@@ -665,9 +972,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
     }
 
-    /// <summary>Runs every cell of (stem, twin) — the sampled routes only when <paramref name="sampledIn"/> — grouped by (route, state).</summary>
+    /// <summary>
+    /// Runs every cell of (stem, twin) — the sampled cells only when <paramref name="sampledIn"/> — grouped by
+    /// (route, state); adds each cell's <see cref="Tallies"/> to <paramref name="tallies"/>.
+    /// </summary>
     internal static SortedDictionary<(string Route, string State), Group> RunCells(
-        LspFormattingDriver driver, string stem, string twin, bool sampledIn, out bool declined)
+        LspFormattingDriver driver, string stem, string twin, bool sampledIn, SCG.Dictionary<string, int> tallies, out bool declined)
     {
         var docs = Documents(stem, twin, out declined);
         var groups = new SortedDictionary<(string Route, string State), Group>();
@@ -676,7 +986,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             foreach (var request in Cells(doc))
             {
-                if (SampledRoutes.Contains(request.Route) && !sampledIn)
+                foreach (var tally in Tallies(doc, request))
+                    tallies[tally] = tallies.GetValueOrDefault(tally) + 1;
+                if (IsSampledCell(request.Route, doc.State) && !sampledIn)
                     continue;
                 var key = (request.Route, doc.State);
                 if (!groups.TryGetValue(key, out var group))
@@ -691,6 +1003,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             lock (item.Group)
             {
                 item.Group.Cells++;
+                if (verdict.Changed)
+                    item.Group.Changed++;
                 if (verdict.RefusedWork)
                     item.Group.RefusedWork++;
                 foreach (var (bucket, detail) in verdict.Failures)
@@ -703,6 +1017,24 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         });
         return groups;
     }
+
+    /// <summary>
+    /// The census keys of one cell, counted whether or not a sampled cell runs (they count the full-mode
+    /// cells): <c>kind S4 r"""</c> for a cell of an unparseable document that loses a literal of that kind,
+    /// and <c>ontype-bracket</c>/<c>ontype-backslash</c> for an <c>ontype</c> cell on a continuation line of a
+    /// parseable document.
+    /// </summary>
+    internal static IEnumerable<string> Tallies(SweepDocument doc, CellRequest request)
+    {
+        if (doc.Truth?.Kind is { } kind)
+            yield return KindTally(doc.State, kind);
+        if (request.Route == OnType && doc.Facts?.Continuations.TryGetValue(request.Line, out var shape) == true)
+            yield return $"ontype-{shape}";
+    }
+
+    private static string KindTally(string state, string kind) => $"kind {state} {kind}";
+
+    private static string ChangedTally(string route, string state) => $"changed {route} {state}";
 
     /// <summary>
     /// The allowlist ratchet for one (stem, twin): every failing (route, state, bucket) is listed; a listed
@@ -731,7 +1063,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 if (!group.Failures.ContainsKey(bucket))
                     problems.Add($"{route} {state} {bucket} holds now on all {group.Cells} cells — {cite} is fixed for this cell group: {drain}");
             }
-            else if (!(SampledRoutes.Contains(route) && !sampledIn))
+            else if (!(IsSampledCell(route, state) && !sampledIn))
             {
                 problems.Add($"{route} {state} has no cell on this stem and twin — {drain}");
             }
@@ -990,6 +1322,96 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         ParseableOracles(d1, line3, D1.Replace("x   =   helper()", "x = helper()")).RefusedWork.Should().BeFalse();
     }
 
+    // ---- the unparseable states: documents built by the sweep's own generators from a parseable parent ----
+
+    /// <summary>D5u's parent: D5 inside <c>main</c>. Its S4 cut after the string's first interior line is D5u.</summary>
+    private const string Q5 = "def main():\n    s = \"\"\"\n        key: value\n\"\"\"\n    print(s)\n";
+    private const string D5u = "def main():\n    s = \"\"\"\n        key: value\n";
+
+    /// <summary>D19's parent: D19 without the docstring opener <c>f</c>'s line 1 holds.</summary>
+    private const string Q19 = "def f() -> int:\n    return 1\ndef g() -> str:\n    s = \"\"\"\n        key: value\n    \"\"\"\n    return s\n";
+    private const string D19 = "def f() -> int:\n    \"\"\"\n    return 1\ndef g() -> str:\n    s = \"\"\"\n        key: value\n    \"\"\"\n    return s\n";
+
+    /// <summary>D12 = D11 + <c>x = (</c>; its parent closes the bracket on the next line.</summary>
+    private const string D11 = "def main():\n        if False:\n                print(1)\n                print(2)\n";
+    private const string Q12 = D11 + "        x = (\n            1)\n";
+    private const string D12 = D11 + "        x = (\n";
+
+    /// <summary>D21's parent: D21 with the block's body typed. Its S3 cut after <c>if a == 1:</c> is D21.</summary>
+    private const string Q21 = "def main():\n        a = 1\n        if a == 1:\n                print(a)\n";
+    private const string D21 = "def main():\n        a = 1\n        if a == 1:\n";
+
+    private static string[] UnparseableBucketsOf(SweepDocument d, CellRequest request, string applied)
+        => UnparseableOracles(d, request, applied).Failures.Select(f => f.Bucket).ToArray();
+
+    private static SweepDocument Generated(string q, string text, string state)
+    {
+        var d = UnparseableDocuments(q, Doc(q).Facts!).Should().ContainSingle(g => g.Text == text).Subject;
+        d.State.Should().Be(state);
+        d.Ast.Should().BeNull("the document must not parse");
+        return d;
+    }
+
+    /// <summary>
+    /// <c>literal</c>: cell 13 (on-type line 2 of D5u — the open string's line 8 → 4 spaces) and cell 19
+    /// (Format Document's fallback on D19 — <c>g</c>'s string line 8 → 4 spaces). Clean: no edits.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Literal_SeesCells13And19ReindentStringContent()
+    {
+        var d5u = Generated(Q5, D5u, S4);
+        d5u.Truth!.Kind.Should().Be("\"\"\"");
+        var onType = new CellRequest(OnType, null, 2);
+        var cell13 = "def main():\n    s = \"\"\"\n    key: value\n";
+        UnparseableBucketsOf(d5u, onType, cell13).Should().Equal(Literal);
+        UnparseableBucketsOf(d5u, onType, D5u).Should().BeEmpty();
+
+        var d19 = Inserted(Q19, Doc(Q19).Facts!, 1, "    \"\"\"", S5, null);
+        d19.Text.Should().Be(D19);
+        d19.Ast.Should().BeNull();
+        var cell19 = D19.Replace("        key: value", "    key: value");
+        UnparseableBucketsOf(d19, new CellRequest(Full, null, 0), cell19).Should().Equal(Literal);
+        UnparseableBucketsOf(d19, new CellRequest(Full, null, 0), D19).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// <c>depth</c>: cell 16 (on-type line 3 of D12 — <c>print(2)</c> moves out of <c>if False:</c>) and cell 21
+    /// (on-type line 2 of D21 — <c>if a == 1:</c> moved 8 → 4 while <c>a = 1</c> stays at 8: a width between
+    /// the enclosing levels, which an indent map that opens a level there would accept). Clean: no edits.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Depth_SeesCells16And21MoveALineAcrossABlock()
+    {
+        var d12 = Cut(Q12, Doc(Q12).Facts!, 4, S3, null);
+        d12.Text.Should().Be(D12);
+        d12.Ast.Should().BeNull();
+        var cell16 = D12.Replace("                print(2)", "        print(2)");
+        UnparseableBucketsOf(d12, new CellRequest(OnType, null, 3), cell16).Should().Equal(Depth);
+        UnparseableBucketsOf(d12, new CellRequest(OnType, null, 3), D12).Should().BeEmpty();
+
+        var d21 = Generated(Q21, D21, S3);
+        d21.Truth!.TargetLines.Should().Equal(2);
+        var cell21 = "def main():\n        a = 1\n    if a == 1:\n";
+        UnparseableBucketsOf(d21, new CellRequest(OnType, null, 2), cell21).Should().Equal(Depth);
+        UnparseableBucketsOf(d21, new CellRequest(OnType, null, 2), D21).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// <c>content</c>: a fallback result on D21 that drops a character, and one that drops a line. Clean: no
+    /// edits, and cell 21's re-indent (a whitespace change is not content).
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Content_SeesADroppedCharacterAndLine()
+    {
+        var d21 = Generated(Q21, D21, S3);
+        var full = new CellRequest(Full, null, 0);
+
+        UnparseableBucketsOf(d21, full, "def main():\n        a = \n        if a == 1:\n").Should().Equal(Content);
+        UnparseableBucketsOf(d21, full, "def main():\n        if a == 1:\n").Should().Equal(Content);
+        UnparseableBucketsOf(d21, full, D21).Should().BeEmpty();
+        UnparseableBucketsOf(d21, full, "def main():\n        a = 1\n    if a == 1:\n").Should().NotContain(Content);
+    }
+
     // ================================================================
     // Ratchet and sampling mechanics
     // ================================================================
@@ -1045,7 +1467,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>
     /// Ordered after the theories (<see cref="RouteParitySweepOrderer"/>): prints the cells that ran per
     /// route × state × twin, <c>refusedWork</c> per range kind and twin, the F-declined stems, the wall time
-    /// and the stride. Floor: every route of every state has ≥ 1 cell. When the theories did not run in this
+    /// and the stride, the S4/S5 cells per literal kind, the <c>ontype</c> cells on continuation lines, and per
+    /// route the S3 cells whose applied text differs from the document. Floors: every route of every state
+    /// has ≥ 1 cell; S4 and S5 have ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; the backslash and
+    /// bracket continuation shapes have ≥ 1 <c>ontype</c> cell; each S3 route edits ≥ 1 document (when the
+    /// theories ran — "no edits" passes every unparseable oracle). When the theories did not run in this
     /// process (a filter selected the census alone), the cells are ENUMERATED instead — documents and
     /// requests, no handler call. Every allowlist row names a corpus stem.
     /// </summary>
@@ -1058,7 +1484,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             + $"stride={stride} mode={(FullMode ? "full" : "sampled")} sampled-in-stems={corpus.Corpus.Keys.Count(k => IsSampledIn(k, stride))}");
 
         var measured = !s_cellsRun.IsEmpty;
-        var cells = measured ? new SCG.Dictionary<(string, string, string), int>(s_cellsRun) : Enumerate(stride);
+        var (cells, tallies) = measured
+            ? (new SCG.Dictionary<(string, string, string), int>(s_cellsRun), new SCG.Dictionary<string, int>(s_tallies, StringComparer.Ordinal))
+            : Enumerate(stride);
         _output.WriteLine($"FMTROUTE-CENSUS source={(measured ? "run" : "enumerated (the theories did not run in this process)")} "
             + $"sweep-time={TimeSpan.FromTicks(Interlocked.Read(ref s_sweepTicks)).TotalSeconds:F1}s declined={s_declined.Count}");
         foreach (var (stem, twin) in s_declined.Keys.OrderBy(k => k.Stem, StringComparer.Ordinal).ThenBy(k => k.Twin, StringComparer.Ordinal))
@@ -1079,10 +1507,27 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 + string.Join(" ", Twins.Select(t => $"{t}={s_refusedWork.GetValueOrDefault((route, t))}")));
         }
 
+        var kinds = TripleQuotedKinds.Concat(tallies.Keys.Where(k => k.StartsWith("kind ", StringComparison.Ordinal)).Select(k => k.Split(' ', 3)[2]))
+            .Distinct(StringComparer.Ordinal).ToArray();
+        foreach (var state in new[] { S4, S5 })
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS literal-kind {state} "
+                + string.Join(" ", kinds.Select(k => $"{k}={tallies.GetValueOrDefault(KindTally(state, k))}")));
+        }
+
+        _output.WriteLine($"FMTROUTE-CENSUS continuation ontype (full-mode cells) {BackslashContinuation}={tallies.GetValueOrDefault($"ontype-{BackslashContinuation}")} "
+            + $"{BracketContinuation}={tallies.GetValueOrDefault($"ontype-{BracketContinuation}")}");
+        if (measured)
+        {
+            _output.WriteLine("FMTROUTE-CENSUS S3 applied-differs " + string.Join(" ", RoutesByState[S3].Select(r => $"{r}={tallies.GetValueOrDefault(ChangedTally(r, S3))}")));
+        }
+
         var rows = Allowlist.Value;
         foreach (var bucket in Buckets)
             _output.WriteLine($"FMTROUTE-CENSUS allowlist {bucket}={rows.Count(r => r.Bucket == bucket)}");
 
+        // Every floor is reported, not the first one that fails.
+        using var scope = new AssertionScope();
         foreach (var state in States)
         {
             foreach (var route in RoutesByState[state])
@@ -1092,12 +1537,39 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             }
         }
 
+        foreach (var state in new[] { S4, S5 })
+        {
+            foreach (var kind in TripleQuotedKinds)
+            {
+                tallies.GetValueOrDefault(KindTally(state, kind)).Should()
+                    .BeGreaterThanOrEqualTo(1, $"state {state} must have a cell that loses a {kind} literal (the lexer's read path for it)");
+            }
+        }
+
+        foreach (var shape in new[] { BackslashContinuation, BracketContinuation })
+        {
+            tallies.GetValueOrDefault($"ontype-{shape}").Should()
+                .BeGreaterThanOrEqualTo(1, $"an ontype cell must sit on a {shape} continuation line");
+        }
+
+        // "No edits" passes every S3-S5 oracle; that some cell of each route DOES edit an S3 document is
+        // what keeps a route that always declines (a lexer flag that is always set) from passing unseen.
+        if (measured)
+        {
+            foreach (var route in RoutesByState[S3])
+            {
+                tallies.GetValueOrDefault(ChangedTally(route, S3)).Should()
+                    .BeGreaterThanOrEqualTo(1, $"some {route} cell must apply a text that differs from its S3 document");
+            }
+        }
+
         rows.Should().OnlyContain(r => corpus.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
     }
 
-    private static SCG.Dictionary<(string, string, string), int> Enumerate(int stride)
+    private static (SCG.Dictionary<(string, string, string), int> Cells, SCG.Dictionary<string, int> Tallies) Enumerate(int stride)
     {
         var counts = new ConcurrentDictionary<(string, string, string), int>();
+        var tallies = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
         Parallel.ForEach(Corpus.Value.Corpus.Keys, stem =>
         {
             var sampledIn = IsSampledIn(stem, stride);
@@ -1107,14 +1579,16 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 {
                     foreach (var request in Cells(doc))
                     {
-                        if (SampledRoutes.Contains(request.Route) && !sampledIn)
+                        foreach (var key in Tallies(doc, request))
+                            tallies.AddOrUpdate(key, 1, (_, n) => n + 1);
+                        if (IsSampledCell(request.Route, doc.State) && !sampledIn)
                             continue;
                         counts.AddOrUpdate((request.Route, doc.State, twin), 1, (_, n) => n + 1);
                     }
                 }
             }
         });
-        return new SCG.Dictionary<(string, string, string), int>(counts);
+        return (new SCG.Dictionary<(string, string, string), int>(counts), new SCG.Dictionary<string, int>(tallies, StringComparer.Ordinal));
     }
 }
 

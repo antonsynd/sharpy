@@ -1,0 +1,8 @@
+def main():
+    data = b"""
+        key: value
+    end
+"""
+    print(len(data))
+    print(data[0])
+    print(data[8])
