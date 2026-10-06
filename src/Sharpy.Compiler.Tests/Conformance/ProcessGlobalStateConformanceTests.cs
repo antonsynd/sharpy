@@ -33,7 +33,16 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// — keyed on the enclosing member and, for a lock-based reason, on the lock the token must sit in
 /// lexically, so one justified site never exempts a later use of the same token elsewhere in the
 /// type (#2258); a row matching no site is stale and fails — otherwise a <b>violation</b>. Sites in
-/// Sharpy.TestInfrastructure can only be exempt — no one collection isolates a shared library.
+/// Sharpy.TestInfrastructure can only be exempt — no one collection isolates a shared library.</para>
+///
+/// <para><b>Helpers.</b> A site in a helper that runs inside its callers' tests (a base-class method,
+/// a generator filter) is a row of <see cref="Helpers"/>, not an exemption: the helper's own site is
+/// not judged, and instead every reference to the helper's NAME — a call, an inherited call, a method
+/// group — is a site in the member that holds the reference, judged by the same rule (#2262). So
+/// "the callers run alone" is a checked fact, not a reason in prose, and a new caller in a parallel
+/// class is a violation. The match is by name, so a caller of ANY overload is held to the rule
+/// (an overload that never reaches the site is over-covered, never under-covered), and a reference
+/// from inside a helper row's own member is that helper's business, so chains of helpers resolve.
 /// The positive control pins the known sites by name and requires each to be found and isolated;
 /// the synthetic controls run the same classifier on in-memory sources, one per roster entry and
 /// one per verdict.</para>
@@ -71,7 +80,6 @@ public class ProcessGlobalStateConformanceTests
         ["SetEnvironmentVariable"] = "environment (Environment.SetEnvironmentVariable)",
         ["Putenv"] = "environment (os.putenv -> OsModuleModule.Putenv)",
         ["ClearCachedData"] = "time-zone cache (TimeZoneInfo.ClearCachedData)",
-        ["CompileAndExecuteWithGC"] = "every test thread (IntegrationTestBase.CompileAndExecuteWithGC forces a blocking Gen2 GC per call, #2254)",
     };
 
     /// <summary>
@@ -128,14 +136,25 @@ public class ProcessGlobalStateConformanceTests
             "redirected inside TestHelpers.ConsoleLock; every other Compiler.Tests console redirector (ReplSessionTests) runs alone in ConsoleCapture"),
         new("src/Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs", "Sharpy.Lsp.Tests.Conformance.FrontEndParityTests", "SweepSingleFileAsync", "ReplSession", null,
             "calls only ReplSession.ProbeFrontEndDiagnostics, which never reaches ExecuteAssembly's Console.SetOut"),
-        new("src/Sharpy.TestInfrastructure/Integration/IntegrationTestBase.cs", "Sharpy.TestInfrastructure.Integration.IntegrationTestBase", "CompileAndExecuteWithGC", "Collect", null,
-            "the opt-in helper itself: each of its callers is a CompileAndExecuteWithGC site, which this scan holds to a run-alone collection"),
-        new("src/Sharpy.Compiler.Tests/Properties/Algebraic/AlgebraicTestBase.cs", "Sharpy.Compiler.Tests.Properties.Algebraic.AlgebraicTestBase", "RunAndCapture", "Collect", null,
-            "abstract base of the nine Properties.Algebraic.* classes, each a PropertySerial member in SerialCollectionRoster"),
-        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedProgram", "Collect", null,
-            "a CsCheck Gen filter called only from Properties.* classes, each a PropertySerial member in SerialCollectionRoster"),
-        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProgram", "Collect", null,
-            "a CsCheck Gen filter called only from Properties.* classes, each a PropertySerial member in SerialCollectionRoster"),
+    };
+
+    /// <summary>
+    /// A site in a helper that runs inside its callers' tests: the file, the outermost type, the
+    /// member (by name, so every overload) and the roster token. The site itself is not judged;
+    /// every reference to <c>Member</c> is a site in its referencing member instead (#2262).
+    /// </summary>
+    private sealed record Helper(string Path, string Type, string Member, string Token);
+
+    /// <summary>The helpers. Each row must match at least one site, like an exemption.</summary>
+    private static readonly Helper[] Helpers =
+    {
+        // Opt-in forced GC after each compile-and-run, for property loops (#2254).
+        new("src/Sharpy.TestInfrastructure/Integration/IntegrationTestBase.cs", "Sharpy.TestInfrastructure.Integration.IntegrationTestBase", "CompileAndExecuteWithGC", "Collect"),
+        // Both overloads force a GC; the nine Properties.Algebraic.* classes call them.
+        new("src/Sharpy.Compiler.Tests/Properties/Algebraic/AlgebraicTestBase.cs", "Sharpy.Compiler.Tests.Properties.Algebraic.AlgebraicTestBase", "RunAndCapture", "Collect"),
+        // CsCheck Gen filters: the forced GC runs whenever the caller's property samples.
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedProgram", "Collect"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProgram", "Collect"),
     };
 
     /// <summary>
@@ -156,6 +175,10 @@ public class ProcessGlobalStateConformanceTests
         ("src/Sharpy.Core.Tests/PrintTests.cs", "Sharpy.Core.Tests.Print_Tests", "SetOut"),
         ("src/Sharpy.Compiler.Tests/Properties/Metamorphic/MetamorphicPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Metamorphic.MetamorphicPropertyTests", "CompileAndExecuteWithGC"),
         ("src/Sharpy.Compiler.Tests/Properties/Semantic/TypeSoundnessPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Semantic.TypeSoundnessPropertyTests", "CompileAndExecuteWithGC"),
+        ("src/Sharpy.Compiler.Tests/Properties/Algebraic/ArithmeticPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Algebraic.ArithmeticPropertyTests", "RunAndCapture"),
+        ("src/Sharpy.Compiler.Tests/Properties/Algebraic/MapZipPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Algebraic.MapZipPropertyTests", "RunAndCapture"),
+        ("src/Sharpy.Compiler.Tests/Properties/Semantic/SemanticInfoConsistencyTests.cs", "Sharpy.Compiler.Tests.Properties.Semantic.SemanticInfoConsistencyTests", "WellTypedProgram"),
+        ("src/Sharpy.Compiler.Tests/Properties/Semantic/DeterminismPropertyTests.cs", "Sharpy.Compiler.Tests.Properties.Semantic.DeterminismPropertyTests", "CompilableProgram"),
     };
 
     private static readonly Lazy<Analysis> RepositoryAnalysis = new(() => Analyze(ReadScannedFiles()));
@@ -166,7 +189,7 @@ public class ProcessGlobalStateConformanceTests
         var analysis = RepositoryAnalysis.Value;
 
         var violations = analysis.Sites
-            .Where(site => !IsExempt(site))
+            .Where(site => !IsExempt(site) && !IsDeferredToCallers(site))
             .Select(site => (Site: site, Reason: analysis.Violation(site)))
             .Where(v => v.Reason != null)
             .Select(v => $"  {v.Site.Path}:{v.Site.Line} {v.Site.Token} [{v.Site.Global}] in {v.Site.Type}: {v.Reason}")
@@ -176,7 +199,8 @@ public class ProcessGlobalStateConformanceTests
             $"{violations.Count} process-global mutation(s) can run concurrently with other tests:\n" +
             string.Join("\n", violations) +
             "\nPut the class in a collection defined in ITS OWN test project with DisableParallelization = true " +
-            "(spy-generated classes: a partial twin in Spy/SpyTestCollections.cs), or add an exemption with a reason.");
+            "(spy-generated classes: a partial twin in Spy/SpyTestCollections.cs), or add an exemption with a reason " +
+            "(a site in a helper its callers run: a Helpers row, which judges every caller instead).");
     }
 
     [Fact]
@@ -201,9 +225,12 @@ public class ProcessGlobalStateConformanceTests
         var stale = Exemptions
             .Where(e => !analysis.Sites.Any(s => Exempts(e, s)))
             .Select(e => $"  {e.Path} {e.Type}.{e.Member} {e.Token}" + (e.Lock == null ? "" : $" inside lock ({e.Lock})"))
+            .Concat(Helpers
+                .Where(h => !analysis.Sites.Any(s => Covers(h, s)))
+                .Select(h => $"  helper {h.Path} {h.Type}.{h.Member} {h.Token}"))
             .ToList();
 
-        Assert.True(stale.Count == 0, "stale exemption(s) match no mutation site:\n" + string.Join("\n", stale));
+        Assert.True(stale.Count == 0, "stale exemption(s) or helper(s) match no mutation site:\n" + string.Join("\n", stale));
     }
 
     public static IEnumerable<object[]> RosterSnippets()
@@ -403,6 +430,61 @@ public class ProcessGlobalStateConformanceTests
         }, verdicts);
     }
 
+    /// <summary>
+    /// #2262: a helper's site is judged at its callers. Every reference to the helper's name — an
+    /// inherited call, a call of either overload, a method group — is a site in the referencing
+    /// member; a reference from inside the helper's own member (one overload calling the other) is
+    /// not; and a helper reached only through another helper row resolves to that row's callers.
+    /// </summary>
+    [Fact]
+    public void Synthetic_HelperSite_IsJudgedAtEveryCaller()
+    {
+        var helpers = new[]
+        {
+            new Helper("src/Sharpy.Fake.Tests/H.cs", "N.Base", "Run", "Collect"),
+            new Helper("src/Sharpy.Fake.Tests/H.cs", "N.Base", "Inner", "Collect"),
+            new Helper("src/Sharpy.Fake.Tests/H.cs", "N.Base", "Outer", "Inner"),
+        };
+        var analysis = Analyze(new[]
+        {
+            Source("Sharpy.Fake.Tests", "H.cs", """
+                namespace N;
+                public abstract class Base
+                {
+                    protected void Run(int n) { System.GC.Collect(); }
+                    protected void Run(string s) { Run(s.Length); }
+                    protected void Outer() { Inner(); }
+                    private void Inner() { System.GC.Collect(); }
+                }
+                """),
+            Source("Sharpy.Fake.Tests", "A.cs", """
+                namespace N;
+                [Collection("Alone")]
+                public class Isolated : Base { void M() { Run(1); Outer(); } }
+                public class Parallel : Base { void M() { Run("x"); } }
+                public class Grouped { void M() { Use(Base.Run); } }
+                public class Chained : Base { void M() { Outer(); } }
+                """),
+            Source("Sharpy.Fake.Tests", "C.cs", Definition("Alone", disableParallelization: true)),
+        }, helpers);
+
+        var judged = analysis.Sites
+            .Where(s => !IsDeferredToCallers(s, helpers))
+            .Select(s => (s.Type, s.Token, Violation: analysis.Violation(s) != null))
+            .OrderBy(v => v.Type, StringComparer.Ordinal).ThenBy(v => v.Token, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(new[]
+        {
+            ("N.Chained", "Outer", true),    // reaches Inner's GC through the Outer row
+            ("N.Grouped", "Run", true),      // a method group is a reference
+            ("N.Isolated", "Outer", false),  // run-alone collection
+            ("N.Isolated", "Run", false),
+            ("N.Parallel", "Run", true),     // the other overload's caller is held to the rule too
+        }, judged);
+        Assert.Equal(3, analysis.Sites.Count(s => IsDeferredToCallers(s, helpers)));
+    }
+
     // ── serial-collection roster ─────────────────────────────────────────────
 
     private const string PropertiesNs = "Sharpy.Compiler.Tests.Properties.";
@@ -592,6 +674,15 @@ public class ProcessGlobalStateConformanceTests
     private static bool IsExempt(Site site, IEnumerable<Exemption>? exemptions = null)
         => (exemptions ?? Exemptions).Any(e => Exempts(e, site));
 
+    private static bool IsDeferredToCallers(Site site, IEnumerable<Helper>? helpers = null)
+        => (helpers ?? Helpers).Any(h => Covers(h, site));
+
+    private static bool Covers(Helper helper, Site site)
+        => helper.Path == site.Path
+           && helper.Type == site.Type
+           && helper.Member == site.Member
+           && helper.Token == site.Token;
+
     private static bool Exempts(Exemption exemption, Site site)
         => exemption.Path == site.Path
            && exemption.Type == site.Type
@@ -630,8 +721,12 @@ public class ProcessGlobalStateConformanceTests
         return files;
     }
 
-    private static Analysis Analyze(IEnumerable<SourceFile> files)
+    /// <param name="helpers">The helper rows whose callers become sites (default <see cref="Helpers"/>).</param>
+    private static Analysis Analyze(IEnumerable<SourceFile> files, IReadOnlyList<Helper>? helpers = null)
     {
+        helpers ??= Helpers;
+        var helperNames = helpers.Select(h => h.Member).ToHashSet(StringComparer.Ordinal);
+        var references = new List<Site>();
         var options = CSharpParseOptions.Default
             .WithLanguageVersion(LanguageVersion.Latest)
             .WithPreprocessorSymbols("NET", "NET10_0", "NET10_0_OR_GREATER");
@@ -667,23 +762,56 @@ public class ProcessGlobalStateConformanceTests
 
             foreach (var node in root.DescendantNodes())
             {
+                // A reference to a helper by name: a call, an inherited call or a method group. The
+                // global is filled in when the helper's row is triggered.
+                if (node is IdentifierNameSyntax reference && helperNames.Contains(reference.Identifier.Text))
+                    references.Add(SiteAt(file, tree, node, reference.Identifier.Text, ""));
+
                 var match = MatchMutation(node);
-                if (match == null)
+                if (match != null)
+                    sites.Add(SiteAt(file, tree, node, match.Value.Token, match.Value.Global));
+            }
+        }
+
+        // A helper row triggered by a site makes every reference to its member a site in the
+        // referencing member, except references from inside the row's own member (an overload
+        // calling another). Repeat until no row is newly triggered, so a helper called only from
+        // another helper row resolves to the outer helper's callers.
+        var triggered = new HashSet<Helper>();
+        for (var changed = true; changed;)
+        {
+            changed = false;
+            foreach (var helper in helpers)
+            {
+                if (triggered.Contains(helper))
                     continue;
-                var outermost = node.Ancestors().OfType<BaseTypeDeclarationSyntax>().LastOrDefault();
-                sites.Add(new Site(
-                    file.Project,
-                    file.Path,
-                    tree.GetLineSpan(node.Span).StartLinePosition.Line + 1,
-                    outermost == null ? "<no type>" : FullName(outermost),
-                    EnclosingMember(node),
-                    EnclosingLocks(node),
-                    match.Value.Token,
-                    match.Value.Global));
+                var site = sites.FirstOrDefault(s => Covers(helper, s));
+                if (site == null)
+                    continue;
+                triggered.Add(helper);
+                changed = true;
+                var shortType = helper.Type[(helper.Type.LastIndexOf('.') + 1)..];
+                sites.AddRange(references
+                    .Where(r => r.Token == helper.Member && !(r.Type == helper.Type && r.Member == helper.Member))
+                    .Select(r => r with { Global = $"{site.Global} — via {shortType}.{helper.Member}" }));
             }
         }
 
         return new Analysis { Sites = sites, Memberships = memberships, Definitions = definitions };
+    }
+
+    private static Site SiteAt(SourceFile file, SyntaxTree tree, SyntaxNode node, string token, string global)
+    {
+        var outermost = node.Ancestors().OfType<BaseTypeDeclarationSyntax>().LastOrDefault();
+        return new Site(
+            file.Project,
+            file.Path,
+            tree.GetLineSpan(node.Span).StartLinePosition.Line + 1,
+            outermost == null ? "<no type>" : FullName(outermost),
+            EnclosingMember(node),
+            EnclosingLocks(node),
+            token,
+            global);
     }
 
     /// <summary>
