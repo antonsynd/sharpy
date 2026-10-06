@@ -438,15 +438,29 @@ def setdefaulttimeout(timeout: float | None) -> None:
 
 # ---- Connection helper ----
 
-def create_connection(address: tuple[host: str, port: int], timeout: float | None = None) -> socket:
-    """Connect to a TCP (host, port) address and return the connected socket."""
+# python3's `timeout` default is a private sentinel (_GLOBAL_DEFAULT_TIMEOUT), so an
+# omitted timeout and an explicit None differ: omitted takes getdefaulttimeout(),
+# None means blocking. One `= None` default cannot tell them apart, so the omitted
+# call is its own overload (#2236, R-EV).
+
+def create_connection(address: tuple[host: str, port: int]) -> socket:
+    """Connect to a TCP (host, port) address and return the connected socket.
+
+    The socket takes the global default timeout (getdefaulttimeout()).
+    """
+    return create_connection(address, _default_timeout)
+
+def create_connection(address: tuple[host: str, port: int], timeout: float | None) -> socket:
+    """Connect to a TCP (host, port) address with the given timeout and return the connected socket.
+
+    None means blocking mode, regardless of the global default timeout.
+    """
     # A refused timeout raises before any socket is created (the same rule
     # settimeout applies).
     _check_timeout(timeout)
     sock: socket = socket(AF_INET, SOCK_STREAM, 0)
     try:
-        if timeout is not None:
-            sock.settimeout(timeout)
+        sock.settimeout(timeout)
         sock.connect(address)
         return sock
     except Exception:

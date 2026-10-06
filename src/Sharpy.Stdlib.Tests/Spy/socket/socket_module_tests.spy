@@ -401,6 +401,54 @@ def test_create_connection_invalid_address_raises():
     assert elapsed < 5.0
     assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
 
+@test
+def test_create_connection_timeout_omitted_none_and_value():
+    # python3's timeout default is a sentinel, not None (#2236): an omitted
+    # timeout takes getdefaulttimeout(), an explicit None (positional or
+    # keyword) is blocking, a value is applied as-is. python3 with
+    # setdefaulttimeout(5.0) prints 5.0 / None / None / 2.0 / 2.0.
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", 0))
+    server.listen(8)
+    port = server.getsockname()[1]
+    socket.setdefaulttimeout(5.0)
+    try:
+        omitted: socket.socket = socket.create_connection(("127.0.0.1", port))
+        none_positional: socket.socket = socket.create_connection(("127.0.0.1", port), None)
+        none_keyword: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=None)
+        value_positional: socket.socket = socket.create_connection(("127.0.0.1", port), 2.0)
+        value_keyword: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=2.0)
+
+        assert omitted.gettimeout() == 5.0
+        assert none_positional.gettimeout() is None
+        assert none_keyword.gettimeout() is None
+        assert value_positional.gettimeout() == 2.0
+        assert value_keyword.gettimeout() == 2.0
+
+        omitted.close()
+        none_positional.close()
+        none_keyword.close()
+        value_positional.close()
+        value_keyword.close()
+    finally:
+        socket.setdefaulttimeout(None)
+        server.close()
+
+@test
+def test_create_connection_omitted_timeout_without_default_is_blocking():
+    # With no global default, the omitted call is blocking (python3: None).
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+    socket.setdefaulttimeout(None)
+    client: socket.socket = socket.create_connection(("127.0.0.1", port))
+    assert client.gettimeout() is None
+    client.close()
+    server.close()
+
 # ---- settimeout governs every blocking operation (#2177) ----
 #
 # Cells: operation {connect, create_connection, accept, send, recv} x timeout

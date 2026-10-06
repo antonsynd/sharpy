@@ -21,206 +21,206 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
     {
         internal static double _ElapsedSince(double start)
         {
-#line (413, 5) - (413, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (461, 5) - (461, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             return time.Monotonic() - start;
 #line hidden
         }
 
         internal static string _TimeoutOutcome(global::System.Exception e)
         {
-#line (612, 5) - (613, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (660, 5) - (661, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if ((object?)e is global::Sharpy.OverflowError)
 #line hidden
             {
-#line (613, 9) - (613, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (661, 9) - (661, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 return "OverflowError";
 #line hidden
             }
 
-#line (614, 5) - (615, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (662, 5) - (663, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if ((object?)e is global::Sharpy.ValueError)
 #line hidden
             {
-#line (615, 9) - (615, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (663, 9) - (663, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 return "ValueError";
 #line hidden
             }
 
-#line (616, 5) - (617, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (664, 5) - (665, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if ((object?)e is global::Sharpy.SocketModule.Error)
 #line hidden
             {
-#line (617, 9) - (617, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (665, 9) - (665, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 return "socket.error";
 #line hidden
             }
 
-#line (618, 5) - (618, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (666, 5) - (666, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             return "other";
 #line hidden
         }
 
         internal static bool _SameTimeout(double? actual, double? expected)
         {
-#line (621, 5) - (622, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (669, 5) - (670, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if (actual is null || expected is null)
 #line hidden
             {
-#line (622, 9) - (622, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (670, 9) - (670, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 return actual is null && expected is null;
 #line hidden
             }
 
-#line (623, 5) - (623, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (671, 5) - (671, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double a = actual.Value;
-#line (624, 5) - (624, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (672, 5) - (672, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double b = expected.Value;
-#line (625, 5) - (625, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (673, 5) - (673, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             return a == b;
 #line hidden
         }
 
         internal static int _ClosedLoopbackPort()
         {
-#line (628, 5) - (628, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (676, 5) - (676, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var probe = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (629, 5) - (629, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (677, 5) - (677, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             probe.Bind(("127.0.0.1", 0));
-#line (630, 5) - (630, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (678, 5) - (678, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             int port = probe.Getsockname().Item2;
-#line (631, 5) - (631, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (679, 5) - (679, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             probe.Close();
-#line (632, 5) - (632, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (680, 5) - (680, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             return port;
 #line hidden
         }
 
         internal static void _AssertTimeoutRule(double? value, string expected)
         {
-#line (638, 5) - (638, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (686, 5) - (686, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double? survivor = 2.0d;
-#line (639, 5) - (640, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (687, 5) - (688, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if (expected == "accepted")
 #line hidden
             {
-#line (640, 9) - (640, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (688, 9) - (688, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 survivor = value;
 #line hidden
             }
 
-#line (641, 5) - (641, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (689, 5) - (689, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             string outcome = "accepted";
-#line (642, 5) - (642, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (690, 5) - (690, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             socket.Setdefaulttimeout(2.0d);
-#line (643, 5) - (655, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (691, 5) - (703, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (644, 9) - (647, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (692, 9) - (695, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 try
 #line hidden
                 {
-#line (645, 13) - (645, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (693, 13) - (693, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                     socket.Setdefaulttimeout(value);
 #line hidden
                 }
                 catch (global::System.Exception e)
                 {
-#line (647, 13) - (647, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (695, 13) - (695, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                     outcome = global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._TimeoutOutcome(e);
 #line hidden
                 }
 
-#line (648, 9) - (648, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (696, 9) - (696, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (!(outcome == expected))
 #line hidden
                 {
                     throw new global::Sharpy.AssertionError();
                 }
 
-#line (649, 9) - (649, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (697, 9) - (697, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (!(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._SameTimeout(socket.Getdefaulttimeout(), survivor)))
 #line hidden
                 {
                     throw new global::Sharpy.AssertionError();
                 }
 
-#line (650, 9) - (650, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (698, 9) - (698, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 var fresh = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (651, 9) - (651, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (699, 9) - (699, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (!(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._SameTimeout(fresh.Gettimeout(), survivor)))
 #line hidden
                 {
                     throw new global::Sharpy.AssertionError();
                 }
 
-#line (652, 9) - (652, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (700, 9) - (700, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 fresh.Close();
 #line hidden
             }
             finally
             {
-#line (655, 9) - (655, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (703, 9) - (703, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 socket.Setdefaulttimeout(null);
 #line hidden
             }
 
-#line (658, 5) - (658, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (706, 5) - (706, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (659, 5) - (659, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (707, 5) - (707, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Settimeout(2.0d);
-#line (660, 5) - (660, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (708, 5) - (708, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             outcome = "accepted";
-#line (661, 5) - (664, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (709, 5) - (712, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (662, 9) - (662, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (710, 9) - (710, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Settimeout(value);
 #line hidden
             }
             catch (global::System.Exception e_1)
             {
-#line (664, 9) - (664, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (712, 9) - (712, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 outcome = global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._TimeoutOutcome(e_1);
 #line hidden
             }
 
-#line (665, 5) - (665, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (713, 5) - (713, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if (!(outcome == expected))
 #line hidden
             {
                 throw new global::Sharpy.AssertionError();
             }
 
-#line (666, 5) - (666, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (714, 5) - (714, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if (!(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._SameTimeout(s.Gettimeout(), survivor)))
 #line hidden
             {
                 throw new global::Sharpy.AssertionError();
             }
 
-#line (667, 5) - (667, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (715, 5) - (715, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
-#line (672, 5) - (672, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (720, 5) - (720, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             int port = global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ClosedLoopbackPort();
-#line (673, 5) - (673, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (721, 5) - (721, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             outcome = "accepted";
-#line (674, 5) - (679, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (722, 5) - (727, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (675, 9) - (675, 89) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (723, 9) - (723, 89) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 global::Sharpy.SocketModule.Socket c = socket.CreateConnection(("127.0.0.1", port), timeout: value);
-#line (676, 9) - (676, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (724, 9) - (724, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 c.Close();
 #line hidden
             }
             catch (global::System.Exception e_2)
             {
-#line (678, 9) - (678, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (726, 9) - (726, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 outcome = global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._TimeoutOutcome(e_2);
-#line (679, 9) - (679, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (727, 9) - (727, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (!(!((object?)e_2 is global::Sharpy.SocketModule.Timeout)))
 #line hidden
                 {
@@ -228,11 +228,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
                 }
             }
 
-#line (680, 5) - (683, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (728, 5) - (731, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             if (expected == "accepted")
 #line hidden
             {
-#line (681, 9) - (681, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (729, 9) - (729, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (!(outcome == "socket.error"))
 #line hidden
                 {
@@ -241,7 +241,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
             }
             else
             {
-#line (683, 9) - (683, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (731, 9) - (731, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (!(outcome == expected))
 #line hidden
                 {
@@ -909,24 +909,111 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         }
 
         [Xunit.FactAttribute]
+        public void TestCreateConnectionTimeoutOmittedNoneAndValue()
+        {
+#line (410, 5) - (410, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
+#line (411, 5) - (411, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Setsockopt(global::Sharpy.SocketModule.SocketModuleModule.SOL_SOCKET, global::Sharpy.SocketModule.SocketModuleModule.SO_REUSEADDR, 1);
+#line (412, 5) - (412, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Bind(("127.0.0.1", 0));
+#line (413, 5) - (413, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Listen(8);
+#line (414, 5) - (414, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            var port = server.Getsockname().Item2;
+#line (415, 5) - (415, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            socket.Setdefaulttimeout(5.0d);
+#line (416, 5) - (436, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            try
+#line hidden
+            {
+#line (417, 9) - (417, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                global::Sharpy.SocketModule.Socket omitted = socket.CreateConnection(("127.0.0.1", port));
+#line (418, 9) - (418, 94) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                global::Sharpy.SocketModule.Socket nonePositional = socket.CreateConnection(("127.0.0.1", port), null);
+#line (419, 9) - (419, 99) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                global::Sharpy.SocketModule.Socket noneKeyword = socket.CreateConnection(("127.0.0.1", port), timeout: null);
+#line (420, 9) - (420, 94) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                global::Sharpy.SocketModule.Socket valuePositional = socket.CreateConnection(("127.0.0.1", port), 2.0d);
+#line (421, 9) - (421, 99) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                global::Sharpy.SocketModule.Socket valueKeyword = socket.CreateConnection(("127.0.0.1", port), timeout: 2.0d);
+#line (423, 9) - (423, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                Xunit.Assert.Equal(5.0d, omitted.Gettimeout());
+#line (424, 9) - (424, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                Xunit.Assert.Null(nonePositional.Gettimeout());
+#line (425, 9) - (425, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                Xunit.Assert.Null(noneKeyword.Gettimeout());
+#line (426, 9) - (426, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                Xunit.Assert.Equal(2.0d, valuePositional.Gettimeout());
+#line (427, 9) - (427, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                Xunit.Assert.Equal(2.0d, valueKeyword.Gettimeout());
+#line (429, 9) - (429, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                omitted.Close();
+#line (430, 9) - (430, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                nonePositional.Close();
+#line (431, 9) - (431, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                noneKeyword.Close();
+#line (432, 9) - (432, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                valuePositional.Close();
+#line (433, 9) - (433, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                valueKeyword.Close();
+#line hidden
+            }
+            finally
+            {
+#line (435, 9) - (435, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                socket.Setdefaulttimeout(null);
+#line (436, 9) - (436, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+                server.Close();
+#line hidden
+            }
+        }
+
+        [Xunit.FactAttribute]
+        public void TestCreateConnectionOmittedTimeoutWithoutDefaultIsBlocking()
+        {
+#line (441, 5) - (441, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
+#line (442, 5) - (442, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Setsockopt(global::Sharpy.SocketModule.SocketModuleModule.SOL_SOCKET, global::Sharpy.SocketModule.SocketModuleModule.SO_REUSEADDR, 1);
+#line (443, 5) - (443, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Bind(("127.0.0.1", 0));
+#line (444, 5) - (444, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Listen(1);
+#line (445, 5) - (445, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            var port = server.Getsockname().Item2;
+#line (446, 5) - (446, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            socket.Setdefaulttimeout(null);
+#line (447, 5) - (447, 75) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            global::Sharpy.SocketModule.Socket client = socket.CreateConnection(("127.0.0.1", port));
+#line (448, 5) - (448, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            Xunit.Assert.Null(client.Gettimeout());
+#line (449, 5) - (449, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            client.Close();
+#line (450, 5) - (450, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+            server.Close();
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
         public void TestAcceptWithTimeoutRaisesTimeout()
         {
-#line (417, 5) - (417, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (465, 5) - (465, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (418, 5) - (418, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (466, 5) - (466, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (419, 5) - (419, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (467, 5) - (467, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (420, 5) - (420, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (468, 5) - (468, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Settimeout(1.0d);
-#line (421, 5) - (421, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (469, 5) - (469, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double start = time.Monotonic();
-#line (422, 5) - (423, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (470, 5) - (471, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool __raised_1 = false;
 #line hidden
             try
             {
-#line (423, 9) - (423, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (471, 9) - (471, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Accept();
 #line hidden
             }
@@ -937,13 +1024,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 
             if (!__raised_1)
                 throw new global::Sharpy.AssertionError("Expected timeout to be raised, but no exception was raised");
-#line (424, 5) - (424, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (472, 5) - (472, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double elapsed = global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start);
-#line (425, 5) - (425, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (473, 5) - (473, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(elapsed >= 0.5d);
-#line (426, 5) - (426, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (474, 5) - (474, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(elapsed < 5.0d);
-#line (427, 5) - (427, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (475, 5) - (475, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -951,29 +1038,29 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestAcceptWithTimeoutReturnsPendingConnection()
         {
-#line (431, 5) - (431, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (479, 5) - (479, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (432, 5) - (432, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (480, 5) - (480, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (433, 5) - (433, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (481, 5) - (481, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (434, 5) - (434, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (482, 5) - (482, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Settimeout(1.0d);
-#line (435, 5) - (435, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (483, 5) - (483, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (436, 5) - (436, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (484, 5) - (484, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (437, 5) - (437, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (485, 5) - (485, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
-#line (438, 5) - (438, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (486, 5) - (486, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, addr) = server.Accept();
-#line (439, 5) - (439, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (487, 5) - (487, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal("127.0.0.1", addr.Item1);
-#line (440, 5) - (440, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (488, 5) - (488, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (441, 5) - (441, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (489, 5) - (489, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (442, 5) - (442, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (490, 5) - (490, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -981,22 +1068,22 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestAcceptWithSubMillisecondTimeoutRaisesTimeout()
         {
-#line (447, 5) - (447, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (495, 5) - (495, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (448, 5) - (448, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (496, 5) - (496, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (449, 5) - (449, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (497, 5) - (497, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (450, 5) - (450, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (498, 5) - (498, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Settimeout(0.0001d);
-#line (451, 5) - (451, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (499, 5) - (499, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double start = time.Monotonic();
-#line (452, 5) - (453, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (500, 5) - (501, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool __raised_2 = false;
 #line hidden
             try
             {
-#line (453, 9) - (453, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (501, 9) - (501, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Accept();
 #line hidden
             }
@@ -1007,9 +1094,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 
             if (!__raised_2)
                 throw new global::Sharpy.AssertionError("Expected timeout to be raised, but no exception was raised");
-#line (454, 5) - (454, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (502, 5) - (502, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start) < 5.0d);
-#line (455, 5) - (455, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (503, 5) - (503, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1017,44 +1104,44 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestAcceptNonBlockingRaisesErrorImmediately()
         {
-#line (459, 5) - (459, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (507, 5) - (507, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (460, 5) - (460, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (508, 5) - (508, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (461, 5) - (461, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (509, 5) - (509, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (462, 5) - (462, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (510, 5) - (510, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Settimeout(0.0d);
-#line (463, 5) - (463, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (511, 5) - (511, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool caught = false;
-#line (464, 5) - (464, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (512, 5) - (512, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool isTimeout = false;
-#line (465, 5) - (465, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (513, 5) - (513, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double start = time.Monotonic();
-#line (466, 5) - (470, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (514, 5) - (518, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (467, 9) - (467, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (515, 9) - (515, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Accept();
 #line hidden
             }
             catch (global::System.Exception e)
             {
-#line (469, 9) - (469, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (517, 9) - (517, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 caught = (object?)e is global::Sharpy.SocketModule.Error;
-#line (470, 9) - (470, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (518, 9) - (518, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 isTimeout = (object?)e is global::Sharpy.SocketModule.Timeout;
 #line hidden
             }
 
-#line (471, 5) - (471, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (519, 5) - (519, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(caught);
-#line (472, 5) - (472, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (520, 5) - (520, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.False(isTimeout);
-#line (473, 5) - (473, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (521, 5) - (521, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start) < 0.5d);
-#line (474, 5) - (474, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (522, 5) - (522, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1062,40 +1149,40 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestConnectNonBlockingRaisesErrorImmediately()
         {
-#line (478, 5) - (478, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (526, 5) - (526, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (479, 5) - (479, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (527, 5) - (527, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Settimeout(0.0d);
-#line (480, 5) - (480, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (528, 5) - (528, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool caught = false;
-#line (481, 5) - (481, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (529, 5) - (529, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool isTimeout = false;
-#line (482, 5) - (482, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (530, 5) - (530, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double start = time.Monotonic();
-#line (483, 5) - (487, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (531, 5) - (535, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (484, 9) - (484, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (532, 9) - (532, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Connect(("192.0.2.1", 1));
 #line hidden
             }
             catch (global::System.Exception e)
             {
-#line (486, 9) - (486, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (534, 9) - (534, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 caught = (object?)e is global::Sharpy.SocketModule.Error;
-#line (487, 9) - (487, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (535, 9) - (535, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 isTimeout = (object?)e is global::Sharpy.SocketModule.Timeout;
 #line hidden
             }
 
-#line (488, 5) - (488, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (536, 5) - (536, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(caught);
-#line (489, 5) - (489, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (537, 5) - (537, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.False(isTimeout);
-#line (490, 5) - (490, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (538, 5) - (538, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start) < 0.5d);
-#line (491, 5) - (491, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (539, 5) - (539, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden
         }
@@ -1103,39 +1190,39 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestConnectWithTimeoutSucceedsToListeningServer()
         {
-#line (495, 5) - (495, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (543, 5) - (543, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (496, 5) - (496, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (544, 5) - (544, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (497, 5) - (497, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (545, 5) - (545, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (498, 5) - (498, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (546, 5) - (546, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (499, 5) - (499, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (547, 5) - (547, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (500, 5) - (500, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (548, 5) - (548, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Settimeout(1.0d);
-#line (501, 5) - (501, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (549, 5) - (549, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
-#line (502, 5) - (502, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (550, 5) - (550, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::System.ValueTuple<string, int> peer = client.Getpeername();
-#line (503, 5) - (503, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (551, 5) - (551, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal("127.0.0.1", peer.Item1);
-#line (504, 5) - (504, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (552, 5) - (552, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(port, peer.Item2);
-#line (505, 5) - (505, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (553, 5) - (553, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, __spy_underscore) = server.Accept();
-#line (506, 5) - (506, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (554, 5) - (554, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Sendall(new Sharpy.Bytes(new byte[] { 112, 105, 110, 103 }));
-#line (507, 5) - (507, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (555, 5) - (555, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Sharpy.Bytes received = conn.Recv(16);
-#line (508, 5) - (508, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (556, 5) - (556, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(new Sharpy.Bytes(new byte[] { 112, 105, 110, 103 }), received);
-#line (509, 5) - (509, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (557, 5) - (557, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (510, 5) - (510, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (558, 5) - (558, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (511, 5) - (511, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (559, 5) - (559, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1143,27 +1230,27 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestCreateConnectionWithTimeoutSucceedsToListeningServer()
         {
-#line (515, 5) - (515, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (563, 5) - (563, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (516, 5) - (516, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (564, 5) - (564, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (517, 5) - (517, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (565, 5) - (565, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (518, 5) - (518, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (566, 5) - (566, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (519, 5) - (519, 88) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (567, 5) - (567, 88) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.SocketModule.Socket client = socket.CreateConnection(("127.0.0.1", port), timeout: 1.0d);
-#line (520, 5) - (520, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (568, 5) - (568, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::System.ValueTuple<string, int> peer = client.Getpeername();
-#line (521, 5) - (521, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (569, 5) - (569, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(port, peer.Item2);
-#line (522, 5) - (522, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (570, 5) - (570, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, __spy_underscore) = server.Accept();
-#line (523, 5) - (523, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (571, 5) - (571, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (524, 5) - (524, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (572, 5) - (572, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (525, 5) - (525, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (573, 5) - (573, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1171,44 +1258,44 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestConnectWithTimeoutRefusedRaisesErrorNotTimeout()
         {
-#line (530, 5) - (530, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (578, 5) - (578, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var probe = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (531, 5) - (531, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (579, 5) - (579, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             probe.Bind(("127.0.0.1", 0));
-#line (532, 5) - (532, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (580, 5) - (580, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = probe.Getsockname().Item2;
-#line (533, 5) - (533, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (581, 5) - (581, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             probe.Close();
-#line (534, 5) - (534, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (582, 5) - (582, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (535, 5) - (535, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (583, 5) - (583, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Settimeout(1.0d);
-#line (536, 5) - (536, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (584, 5) - (584, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool caught = false;
-#line (537, 5) - (537, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (585, 5) - (585, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool isTimeout = false;
-#line (538, 5) - (542, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (586, 5) - (590, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (539, 9) - (539, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (587, 9) - (587, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Connect(("127.0.0.1", port));
 #line hidden
             }
             catch (global::System.Exception e)
             {
-#line (541, 9) - (541, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (589, 9) - (589, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 caught = (object?)e is global::Sharpy.SocketModule.Error;
-#line (542, 9) - (542, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (590, 9) - (590, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 isTimeout = (object?)e is global::Sharpy.SocketModule.Timeout;
 #line hidden
             }
 
-#line (543, 5) - (543, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (591, 5) - (591, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(caught);
-#line (544, 5) - (544, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (592, 5) - (592, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.False(isTimeout);
-#line (545, 5) - (545, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (593, 5) - (593, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden
         }
@@ -1216,30 +1303,30 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestRecvWithTimeoutRaisesTimeout()
         {
-#line (549, 5) - (549, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (597, 5) - (597, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (550, 5) - (550, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (598, 5) - (598, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (551, 5) - (551, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (599, 5) - (599, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (552, 5) - (552, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (600, 5) - (600, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (553, 5) - (553, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (601, 5) - (601, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (554, 5) - (554, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (602, 5) - (602, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
-#line (555, 5) - (555, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (603, 5) - (603, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, __spy_underscore) = server.Accept();
-#line (556, 5) - (556, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (604, 5) - (604, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Settimeout(1.0d);
-#line (557, 5) - (557, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (605, 5) - (605, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double start = time.Monotonic();
-#line (558, 5) - (559, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (606, 5) - (607, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool __raised_3 = false;
 #line hidden
             try
             {
-#line (559, 9) - (559, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (607, 9) - (607, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 client.Recv(16);
 #line hidden
             }
@@ -1250,17 +1337,17 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 
             if (!__raised_3)
                 throw new global::Sharpy.AssertionError("Expected timeout to be raised, but no exception was raised");
-#line (560, 5) - (560, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (608, 5) - (608, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double elapsed = global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start);
-#line (561, 5) - (561, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (609, 5) - (609, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(elapsed >= 0.5d);
-#line (562, 5) - (562, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (610, 5) - (610, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(elapsed < 5.0d);
-#line (563, 5) - (563, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (611, 5) - (611, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (564, 5) - (564, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (612, 5) - (612, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (565, 5) - (565, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (613, 5) - (613, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1268,57 +1355,57 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestSendWithTimeoutRaisesTimeoutWhenPeerDoesNotRead()
         {
-#line (569, 5) - (569, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (617, 5) - (617, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (570, 5) - (570, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (618, 5) - (618, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (571, 5) - (571, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (619, 5) - (619, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (572, 5) - (572, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (620, 5) - (620, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (573, 5) - (573, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (621, 5) - (621, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (574, 5) - (574, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (622, 5) - (622, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
-#line (575, 5) - (575, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (623, 5) - (623, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, __spy_underscore) = server.Accept();
-#line (576, 5) - (576, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (624, 5) - (624, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Settimeout(1.0d);
-#line (577, 5) - (577, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (625, 5) - (625, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Sharpy.Bytes chunk = new Sharpy.Bytes(new byte[] { 120 }) * 65536;
-#line (578, 5) - (578, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (626, 5) - (626, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool isTimeout = false;
-#line (579, 5) - (579, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (627, 5) - (627, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             double start = time.Monotonic();
-#line (580, 5) - (584, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (628, 5) - (632, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             try
 #line hidden
             {
-#line (581, 9) - (582, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (629, 9) - (630, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 while (global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start) < 10.0d)
 #line hidden
                 {
-#line (582, 13) - (582, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (630, 13) - (630, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                     client.Send(chunk);
 #line hidden
                 }
             }
             catch (global::System.Exception e)
             {
-#line (584, 9) - (584, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (632, 9) - (632, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 isTimeout = (object?)e is global::Sharpy.SocketModule.Timeout;
 #line hidden
             }
 
-#line (585, 5) - (585, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (633, 5) - (633, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(isTimeout);
-#line (586, 5) - (586, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (634, 5) - (634, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._ElapsedSince(start) < 5.0d);
-#line (587, 5) - (587, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (635, 5) - (635, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (588, 5) - (588, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (636, 5) - (636, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (589, 5) - (589, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (637, 5) - (637, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1326,14 +1413,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestSettimeoutNegativeRaisesValueError()
         {
-#line (593, 5) - (593, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (641, 5) - (641, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (594, 5) - (595, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (642, 5) - (643, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             bool __raised_4 = false;
 #line hidden
             try
             {
-#line (595, 9) - (595, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (643, 9) - (643, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Settimeout(-1.0d);
 #line hidden
             }
@@ -1344,9 +1431,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 
             if (!__raised_4)
                 throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
-#line (596, 5) - (596, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (644, 5) - (644, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Null(s.Gettimeout());
-#line (597, 5) - (597, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (645, 5) - (645, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden
         }
@@ -1354,13 +1441,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestTimeoutRuleAcceptsNoneZeroAndPositive()
         {
-#line (687, 5) - (687, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (735, 5) - (735, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(null, "accepted");
-#line (688, 5) - (688, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (736, 5) - (736, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(0.0d, "accepted");
-#line (689, 5) - (689, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (737, 5) - (737, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(-0.0d, "accepted");
-#line (690, 5) - (690, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (738, 5) - (738, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(1.5d, "accepted");
 #line hidden
         }
@@ -1368,9 +1455,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestTimeoutRuleAcceptsVeryLargeWithinInt64Nanoseconds()
         {
-#line (694, 5) - (694, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (742, 5) - (742, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(1e6d, "accepted");
-#line (695, 5) - (695, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (743, 5) - (743, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(9.2e9d, "accepted");
 #line hidden
         }
@@ -1378,9 +1465,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestTimeoutRuleRefusesNegativeWithValueError()
         {
-#line (699, 5) - (699, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (747, 5) - (747, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(-1.0d, "ValueError");
-#line (700, 5) - (700, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (748, 5) - (748, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(-1e-10d, "ValueError");
 #line hidden
         }
@@ -1388,7 +1475,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestTimeoutRuleRefusesNanWithValueError()
         {
-#line (704, 5) - (704, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (752, 5) - (752, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(global::Sharpy.Builtins.Float("nan"), "ValueError");
 #line hidden
         }
@@ -1396,15 +1483,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestTimeoutRuleRefusesInt64NanosecondOverflowWithOverflowError()
         {
-#line (708, 5) - (708, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (756, 5) - (756, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(global::Sharpy.Builtins.Float("inf"), "OverflowError");
-#line (709, 5) - (709, 57) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (757, 5) - (757, 57) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(global::Sharpy.Builtins.Float("-inf"), "OverflowError");
-#line (710, 5) - (710, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (758, 5) - (758, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(9.3e9d, "OverflowError");
-#line (711, 5) - (711, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (759, 5) - (759, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(1e300d, "OverflowError");
-#line (712, 5) - (712, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (760, 5) - (760, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests.SocketModuleTestsModule._AssertTimeoutRule(-1e300d, "OverflowError");
 #line hidden
         }
@@ -1412,37 +1499,37 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestVeryLargeTimeoutStillGovernsLoopbackConnectAndRecv()
         {
-#line (718, 5) - (718, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (766, 5) - (766, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (719, 5) - (719, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (767, 5) - (767, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (720, 5) - (720, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (768, 5) - (768, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (721, 5) - (721, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (769, 5) - (769, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (722, 5) - (722, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (770, 5) - (770, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (723, 5) - (723, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (771, 5) - (771, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Settimeout(9.2e9d);
-#line (724, 5) - (724, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (772, 5) - (772, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
-#line (725, 5) - (725, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (773, 5) - (773, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, __spy_underscore) = server.Accept();
-#line (726, 5) - (726, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (774, 5) - (774, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Settimeout(9.2e9d);
-#line (727, 5) - (727, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (775, 5) - (775, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             int sent = client.Send(new Sharpy.Bytes(new byte[] { 112, 105, 110, 103 }));
-#line (728, 5) - (728, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (776, 5) - (776, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(4, sent);
-#line (729, 5) - (729, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (777, 5) - (777, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Sharpy.Bytes received = conn.Recv(16);
-#line (730, 5) - (730, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (778, 5) - (778, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(new Sharpy.Bytes(new byte[] { 112, 105, 110, 103 }), received);
-#line (731, 5) - (731, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (779, 5) - (779, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (732, 5) - (732, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (780, 5) - (780, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (733, 5) - (733, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (781, 5) - (781, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1450,17 +1537,17 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestStrContainsSocketInfo()
         {
-#line (739, 5) - (739, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (787, 5) - (787, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (740, 5) - (740, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (788, 5) - (788, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             string text = global::Sharpy.Builtins.Str(s);
-#line (741, 5) - (741, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (789, 5) - (789, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(text.Contains("socket"));
-#line (742, 5) - (742, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (790, 5) - (790, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(text.Contains("family="));
-#line (743, 5) - (743, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (791, 5) - (791, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(text.Contains("type="));
-#line (744, 5) - (744, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (792, 5) - (792, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden
         }
@@ -1468,33 +1555,33 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestGetpeernameAfterConnectReturnsRemoteAddr()
         {
-#line (750, 5) - (750, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (798, 5) - (798, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (751, 5) - (751, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (799, 5) - (799, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Setsockopt(global::Sharpy.SocketModule.SocketModuleModule.SOL_SOCKET, global::Sharpy.SocketModule.SocketModuleModule.SO_REUSEADDR, 1);
-#line (752, 5) - (752, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (800, 5) - (800, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Bind(("127.0.0.1", 0));
-#line (753, 5) - (753, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (801, 5) - (801, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Listen(1);
-#line (754, 5) - (754, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (802, 5) - (802, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var port = server.Getsockname().Item2;
-#line (756, 5) - (756, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (804, 5) - (804, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (757, 5) - (757, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (805, 5) - (805, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
-#line (759, 5) - (759, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (807, 5) - (807, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             global::System.ValueTuple<string, int> peer = client.Getpeername();
-#line (760, 5) - (760, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (808, 5) - (808, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal("127.0.0.1", peer.Item1);
-#line (761, 5) - (761, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (809, 5) - (809, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(port, peer.Item2);
-#line (763, 5) - (763, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (811, 5) - (811, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (conn, __spy_underscore) = server.Accept();
-#line (764, 5) - (764, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (812, 5) - (812, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
-#line (765, 5) - (765, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (813, 5) - (813, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Close();
-#line (766, 5) - (766, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (814, 5) - (814, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             server.Close();
 #line hidden
         }
@@ -1502,13 +1589,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestSetblockingFalseSetsNonBlocking()
         {
-#line (772, 5) - (772, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (820, 5) - (820, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (773, 5) - (773, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (821, 5) - (821, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Setblocking(false);
-#line (774, 5) - (774, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (822, 5) - (822, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.False(s.Getblocking());
-#line (775, 5) - (775, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (823, 5) - (823, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden
         }
@@ -1516,15 +1603,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestSetblockingTrueSetsBlocking()
         {
-#line (779, 5) - (779, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (827, 5) - (827, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM);
-#line (780, 5) - (780, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (828, 5) - (828, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Setblocking(false);
-#line (781, 5) - (781, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (829, 5) - (829, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Setblocking(true);
-#line (782, 5) - (782, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (830, 5) - (830, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.True(s.Getblocking());
-#line (783, 5) - (783, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (831, 5) - (831, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden
         }
@@ -1532,11 +1619,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
         [Xunit.FactAttribute]
         public void TestGetnameinfoLocalhostReturnsHostAndService()
         {
-#line (789, 5) - (789, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (837, 5) - (837, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             var (host, service) = socket.Getnameinfo(("127.0.0.1", 80));
-#line (790, 5) - (790, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (838, 5) - (838, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.NotEqual("", host);
-#line (791, 5) - (791, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (839, 5) - (839, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal("80", service);
 #line hidden
         }

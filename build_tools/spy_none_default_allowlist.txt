@@ -11,4 +11,3 @@ re::Pattern.finditer::endpos  # #2236 CPython default sys.maxsize; explicit None
 re::Pattern.fullmatch::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
 re::Pattern.match::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
 re::Pattern.search::endpos  # #2236 CPython default sys.maxsize; explicit None is a TypeError
-socket::create_connection::timeout  # #2236 CPython default _GLOBAL_DEFAULT_TIMEOUT sentinel; explicit None = blocking

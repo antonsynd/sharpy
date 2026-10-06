@@ -88,18 +88,24 @@ namespace Sharpy.SocketModule
 
         /// <summary>
         /// Connect to a TCP (host, port) address and return the connected socket.
+        /// The socket takes the global default timeout (getdefaulttimeout()).
         /// </summary>
-        public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address, double? timeout = null)
+        public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address)
+        {
+            return global::Sharpy.SocketModule.SocketModuleModule.CreateConnection(address, global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout);
+        }
+
+        /// <summary>
+        /// Connect to a TCP (host, port) address with the given timeout and return the connected socket.
+        /// None means blocking mode, regardless of the global default timeout.
+        /// </summary>
+        public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address, double? timeout)
         {
             global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
             global::Sharpy.SocketModule.Socket sock = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM, 0);
             try
             {
-                if (timeout is not null)
-                {
-                    sock.Settimeout(timeout.Value);
-                }
-
+                sock.Settimeout(timeout);
                 sock.Connect(address);
                 return sock;
             }
