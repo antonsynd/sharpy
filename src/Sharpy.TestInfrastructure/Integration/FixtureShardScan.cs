@@ -34,9 +34,12 @@ public static class FixtureShardScan
     /// concrete shard class must declare <paramref name="testMethodName"/> with exactly one
     /// <c>[Theory]</c> whose <c>Skip</c> is empty, exactly one <c>[MemberData]</c> naming that class's
     /// own <c>GetTestFixtures</c>, and no trait — on the method or the class — that the shard base
-    /// does not carry. A <c>Skip</c> collapses a shard's rows to one skipped row; a
-    /// <c>[Trait("Category", …)]</c> lets a CI filter (the main filter excludes GapDiscovery and
-    /// Benchmark) drop one shard; either leaves the row totality green (#2179).
+    /// does not carry, and no <c>[Collection]</c> on the class or any base. A <c>Skip</c> collapses a
+    /// shard's rows to one skipped row; a <c>[Trait("Category", …)]</c> lets a CI filter (the main
+    /// filter excludes GapDiscovery and Benchmark) drop one shard; either leaves the row totality
+    /// green (#2179). A <c>[Collection]</c> shared by the shards puts them back into one collection,
+    /// which xUnit v2 runs serially — the corpus is re-serialised with every row still present, so
+    /// totality stays green while the sharding is inert.
     /// </summary>
     /// <returns>The number of shard classes checked and the violations (empty = clean).</returns>
     public static (int Checked, IReadOnlyList<string> Violations) ShardMethodViolations(Type shardBase, string testMethodName)
@@ -78,6 +81,16 @@ public static class FixtureShardScan
                 .ToList();
             if (extra.Count > 0)
                 violations.Add($"{shard.Name}: trait(s) the shard base does not carry: {string.Join(", ", extra)}");
+
+            for (var t = shard; t != null; t = t.BaseType)
+            {
+                foreach (var collection in CustomAttributeData.GetCustomAttributes(t)
+                    .Where(d => d.AttributeType == typeof(CollectionAttribute)))
+                {
+                    violations.Add($"{shard.Name}: [Collection({string.Join(", ", collection.ConstructorArguments.Select(c => c.Value))})] on {t.Name} "
+                        + "(a shard runs in its own per-class collection, or the shards serialise again)");
+                }
+            }
         }
 
         return (shards.Count, violations);
