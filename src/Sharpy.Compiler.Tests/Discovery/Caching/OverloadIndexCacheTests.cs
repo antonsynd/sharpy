@@ -322,4 +322,54 @@ public class OverloadIndexCacheTests : IDisposable
         // Assert
         Assert.Null(loaded);
     }
+
+    /// <summary>
+    /// #2253: <c>ClearAll</c> on <c>…/cache</c> evicts only the memo entries UNDER that directory —
+    /// not those of a sibling whose path merely starts with the same characters (<c>…/cache2</c>).
+    /// The sibling's disk file is deleted before the clear, so a surviving <c>TryLoad</c> can only
+    /// be the process-lifetime memo (same instance); an over-eviction falls through to a missing
+    /// file and returns null. The positive control is the cleared cache's own entry, which must
+    /// be gone. Run with and without a trailing separator on the cleared directory, because the
+    /// containment prefix must mirror Path.Combine's "add a separator only if absent" rule.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ClearAll_LeavesASiblingDirectorysMemoWhoseNameExtendsThisOne(bool trailingSeparator)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+        var clearedDir = Path.Combine(root, "cache");
+        var siblingDir = Path.Combine(root, "cache2");
+        try
+        {
+            var cleared = new OverloadIndexCache(trailingSeparator ? clearedDir + Path.DirectorySeparatorChar : clearedDir);
+            var sibling = new OverloadIndexCache(siblingDir);
+            var clearedIdentity = MakeIdentity("ClearedDirAssembly", "v-2253");
+            var siblingIdentity = MakeIdentity("SiblingDirAssembly", "v-2253");
+            var clearedIndex = MakeIndex(clearedIdentity, "cleared_module");
+            var siblingIndex = MakeIndex(siblingIdentity, "sibling_module");
+            cleared.Save(clearedIndex);
+            sibling.Save(siblingIndex);
+            foreach (var file in Directory.GetFiles(siblingDir, "*.json.gz"))
+                File.Delete(file);
+
+            cleared.ClearAll();
+
+            Assert.Same(siblingIndex, sibling.TryLoad(siblingIdentity));
+            Assert.Null(cleared.TryLoad(clearedIdentity));
+        }
+        finally
+        {
+            new OverloadIndexCache(siblingDir).ClearAll();
+            new OverloadIndexCache(clearedDir).ClearAll();
+            try
+            {
+                Directory.Delete(root, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
 }

@@ -232,9 +232,16 @@ internal class OverloadIndexCache
     {
         // Evict this directory's process-lifetime entries too, so a caller that clears the cache
         // to force a fresh reflection build is not silently served the in-memory copy (#1049).
+        // Containment is against the directory WITH its trailing separator: a bare prefix test on
+        // `/x/cache` also matches `/x/cache2/...` and evicts a sibling cache's memo (#2253). Keys
+        // are Path.Combine(_cacheDirectory, cacheKey), which adds a separator only when the
+        // directory does not already end in one, so the prefix mirrors that rule.
+        var directoryPrefix = Path.EndsInDirectorySeparator(_cacheDirectory)
+            ? _cacheDirectory
+            : _cacheDirectory + Path.DirectorySeparatorChar;
         foreach (var key in s_inMemoryIndices.Keys)
         {
-            if (key.StartsWith(_cacheDirectory, StringComparison.Ordinal))
+            if (key.StartsWith(directoryPrefix, StringComparison.Ordinal))
             {
                 s_inMemoryIndices.TryRemove(key, out _);
             }
