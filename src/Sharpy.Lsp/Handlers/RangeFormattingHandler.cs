@@ -9,12 +9,13 @@ using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
-/// Handles textDocument/rangeFormatting requests.
-/// Primary path: format the whole document with <see cref="FormatterService"/>,
-/// then emit per-line edits only for lines that intersect the requested range.
-/// Fallback: when the document fails to parse, fall back to indent-only
-/// formatting (the previous behaviour). A document that parses but whose
-/// formatting the formatter declines (SPY0912) gets no edits.
+/// Handles textDocument/rangeFormatting (Format Selection, P22e #2168).
+/// Primary path: <see cref="FormatterService.FormatRange"/> — the hunks of the checked whole-document
+/// output that the selection touches, with the net run on the text they produce — turned into edits
+/// by <see cref="FormattingEdits.ToTextEdits"/>, so the client applies exactly that checked text: a
+/// hunk that adds or removes lines is applied whole, never cut to the lines it shares with the source.
+/// A document that parses but whose selected hunks the formatter declines (SPY0912) gets no edits.
+/// Fallback: when the document fails to lex or parse, indent-only formatting of the selected lines.
 /// </summary>
 internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHandlerBase
 {
@@ -40,59 +41,28 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         // Lexer.IndentWidth spaces per level, no tabs (indentation.md; owner ruling 2026-09-30, P22b) —
         // a 2-space or tab re-indent would leave a file that does not lex.
 
-        var lines = text.Split('\n');
-        var startLine = request.Range.Start.Line;
-        var endLine = System.Math.Min(request.Range.End.Line, lines.Length - 1);
-
-        // Primary path: run the full formatter, then narrow to per-line edits
-        // for lines that intersect the requested range.
         var options = new LspFormatOptions
         {
             LineEnding = "\n"
         };
+        var selection = new FormatSelection(request.Range.Start.Line, request.Range.End.Line, request.Range.End.Character);
+        var result = FormatterService.FormatRange(text, selection, options);
 
-        var formatResult = FormatterService.Format(text, options);
-
-        // SPY0912: the document parsed, but the formatter refused its own output because it would
-        // change what the file says. No edits — the indent-only fallback is for documents that fail
-        // to parse and must not re-indent a parseable one (P22b).
-        if (formatResult.Diagnostics.Any(d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined))
-            return Task.FromResult(new TextEditContainer());
-
-        if (formatResult.Diagnostics.Count == 0)
+        if (result.SourceParses)
         {
-            if (!formatResult.HasChanges)
+            // SPY0912: the document parsed, but the formatter refused the text the selected hunks
+            // produce because it would change what the file says. No edits — the indent-only fallback
+            // is for documents that fail to parse and must not re-indent a parseable one (P22b).
+            if (result.Diagnostics.Any(d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined))
                 return Task.FromResult(new TextEditContainer());
 
-            var formattedLines = formatResult.FormattedText.Split('\n');
-            var edits = new List<TextEdit>();
-
-            // Only emit edits for lines that already exist in the original
-            // document and intersect the requested range. Added/removed lines
-            // (e.g., blank-line normalization) are intentionally skipped — range
-            // formatting must not affect text outside the requested range.
-            for (var i = startLine; i <= endLine; i++)
-            {
-                if (i >= formattedLines.Length)
-                    break;
-
-                var original = lines[i].TrimEnd('\r');
-                var replacement = formattedLines[i].TrimEnd('\r');
-
-                if (replacement != original)
-                {
-                    edits.Add(new TextEdit
-                    {
-                        Range = new LspRange(new Position(i, 0), new Position(i, lines[i].Length)),
-                        NewText = replacement
-                    });
-                }
-            }
-
-            return Task.FromResult(new TextEditContainer(edits));
+            return Task.FromResult(new TextEditContainer(FormattingEdits.ToTextEdits(text, result.Hunks)));
         }
 
         // Fallback: indent-only formatting per line.
+        var lines = text.Split('\n');
+        var startLine = request.Range.Start.Line;
+        var endLine = System.Math.Min(request.Range.End.Line, lines.Length - 1);
         var fallbackEdits = ComputeIndentOnlyRangeEdits(text, startLine, endLine);
         return Task.FromResult(new TextEditContainer(fallbackEdits));
     }

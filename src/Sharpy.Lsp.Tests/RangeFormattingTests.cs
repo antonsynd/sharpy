@@ -2,7 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Formatting;
 using Sharpy.Lsp.Handlers;
+using Sharpy.Lsp.Tests.Conformance;
 using Xunit;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
@@ -43,6 +45,15 @@ public class RangeFormattingTests : IDisposable
         return await _handler.Handle(request, CancellationToken.None);
     }
 
+    /// <summary>The text the range edits produce, applied the way a client must (<see cref="LspFormattingDriver.ApplyStrict"/>).</summary>
+    private async Task<string> ApplyRangeAsync(
+        string source, int startLine, int startChar, int endLine, int endChar,
+        int tabSize = 4, bool insertSpaces = true)
+    {
+        var edits = await FormatRangeAsync(source, startLine, startChar, endLine, endChar, tabSize, insertSpaces);
+        return LspFormattingDriver.ApplyStrict(source, edits.ToList());
+    }
+
     [Fact]
     public async Task SingleMisIndentedLine_FixedAsync()
     {
@@ -62,20 +73,26 @@ public class RangeFormattingTests : IDisposable
         // Over-indented source, editor tabSize=2: lines 1-2 are re-indented to 4 spaces.
         // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
         // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        // The body's three lines and the missing final line break are ONE hunk of Format(source), so
+        // selecting lines 1-2 applies all of it: re-indenting only lines 1-2 leaves `return x` at 8
+        // spaces under a 4-space block, a text that does not parse (P22e, #2168).
         var source = "def foo():\n        x: int = 1\n        y: int = 2\n        return x";
-        var edits = await FormatRangeAsync(source, 1, 0, 2, 20, tabSize: 2);
+        var applied = await ApplyRangeAsync(source, 1, 0, 2, 20, tabSize: 2);
 
-        edits.Select(e => e.NewText).Should().Equal("    x: int = 1", "    y: int = 2");
+        applied.Should().Be("def foo():\n    x: int = 1\n    y: int = 2\n    return x\n")
+            .And.Be(FormatterService.Format(source).FormattedText);
     }
 
     [Fact]
     public async Task RangeInsideMultiLineString_NoChangesAsync()
     {
         var source = "x: str = \"\"\"line1\n  indented\n    more\n\"\"\"";
-        // Format all lines (multi-line string interior should be preserved)
-        var edits = await FormatRangeAsync(source, 0, 0, 3, 3);
+        // Format all lines: a whole-document selection applies what Format Document applies (P22e
+        // cell 4, #2168) — here only the final line break — and the string's interior is untouched.
+        var applied = await ApplyRangeAsync(source, 0, 0, 3, 3);
 
-        edits.Should().BeEmpty();
+        applied.Should().Be(FormatterService.Format(source).FormattedText);
+        applied.Split('\n')[1..4].Should().Equal("  indented", "    more", "\"\"\"");
     }
 
     [Fact]
@@ -84,10 +101,12 @@ public class RangeFormattingTests : IDisposable
         // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
         // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
         var source = "def foo():\n    x: int = 1\n    return x";
+        // A whole-document selection applies what Format Document applies (P22e cell 4, #2168): the
+        // indentation is kept at 4 spaces, and the missing final line break is added.
         var lines = source.Split('\n');
-        var edits = await FormatRangeAsync(source, 0, 0, lines.Length - 1, lines[^1].Length, tabSize: 2);
+        var applied = await ApplyRangeAsync(source, 0, 0, lines.Length - 1, lines[^1].Length, tabSize: 2);
 
-        edits.Should().BeEmpty();
+        applied.Should().Be(source + "\n").And.Be(FormatterService.Format(source).FormattedText);
     }
 
     [Fact]
@@ -268,11 +287,14 @@ public class RangeFormattingTests : IDisposable
         // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
         var source = "def foo():\n        x: int = 1\n        return x";
         var lines = source.Split('\n');
+        // The body's two lines and the missing final line break are ONE hunk of Format(source), so
+        // selecting the last line applies all of it: re-indenting only `return x` leaves it dedented
+        // below `x: int = 1`'s 8 spaces, a text that does not lex (P22e, #2168).
         var lastLine = lines.Length - 1;
-        var edits = await FormatRangeAsync(source, lastLine, 0, lastLine, lines[lastLine].Length, tabSize: 2);
+        var applied = await ApplyRangeAsync(source, lastLine, 0, lastLine, lines[lastLine].Length, tabSize: 2);
 
-        edits.Should().ContainSingle();
-        edits.First().NewText.Should().Be("    return x");
+        applied.Should().Be("def foo():\n    x: int = 1\n    return x\n")
+            .And.Be(FormatterService.Format(source).FormattedText);
     }
 
     [Fact]
@@ -280,11 +302,11 @@ public class RangeFormattingTests : IDisposable
     {
         // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
         // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        // The last line's selection takes the missing final line break with it (P22e decision 2, #2168).
         var source = "def foo():\n        x: int = 1";
-        var edits = await FormatRangeAsync(source, 1, 0, 1, 20, insertSpaces: false);
+        var applied = await ApplyRangeAsync(source, 1, 0, 1, 20, insertSpaces: false);
 
-        edits.Should().ContainSingle();
-        edits.First().NewText.Should().Be("    x: int = 1");
+        applied.Should().Be("def foo():\n    x: int = 1\n");
     }
 
     [Fact]
