@@ -538,14 +538,26 @@ public partial class Lexer
             : ('{', field.OpenLine, field.OpenColumn, field.ExprStartPosition - 1);
         var code = field.InFormatSpec ? DiagnosticCodes.Lexer.UnterminatedFormatSpec : DiagnosticCodes.Lexer.UnterminatedFStringExpression;
 
+        // The diagnostic's span is the bracket. ReportError asks whether the context crossed a line
+        // break at _line (LiteralStateUnknown): with a bracket open inside the hole's expression the
+        // lines after it are that expression's (implicit line joining), so _line stays where the abort
+        // was detected; with only the field's own '{' open the field may be the one being typed, and
+        // recovery resumes on the line after it as code, so _line is the brace's line.
         var (endPosition, endLine, endColumn) = (_position, _line, _column);
-        (_position, _line, _column) = (position, line, column);   // the diagnostic's span is the bracket
+        _position = position;
+        if (field.Openers.Count == 0)
+            (_line, _column) = (line, column);
         var error = ReportError($"'{opener}' was never closed", line, column, code);
 
         if (_fstringStack.Any(c => c.IsTriple))
+        {
             (_position, _line, _column) = (endPosition, endLine, endColumn);
+        }
         else
+        {
+            (_line, _column) = (line, column);
             _resumeAfterUnclosedField = position;
+        }
         return error;
     }
 

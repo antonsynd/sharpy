@@ -27,8 +27,10 @@ public partial class Lexer
     {
         // Every abort passes through here, so this is the one place that can tell whether recovery
         // (which resumes on the line after _line as code) is about to lose a literal that spans lines.
-        // _line is that line: for an unclosed replacement field ReportUnclosedField has moved it to the
-        // field's bracket, so a single-line `f"{x` being typed sets nothing.
+        // _line is that line: for an unclosed replacement field whose innermost open bracket is its own
+        // '{', ReportUnclosedField has moved it to that brace, so a single-line `f"{x` being typed sets
+        // nothing; with a bracket open inside the hole it is where the abort was detected, so a hole
+        // that crossed a line break inside `f"{', '.join(` sets it.
         if (_multiLineLiteralReads > 0 || _fstringStack.Any(c => c.IsTriple || c.StartLine < _line))
             LiteralStateUnknown = true;
 

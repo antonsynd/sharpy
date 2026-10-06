@@ -158,6 +158,28 @@ public class LiteralStateTests
         lexer.LiteralStateUnknown.Should().BeFalse(Errors(lexer));
     }
 
+    /// <summary>
+    /// <c>fstrings/multiline_hole_2022</c> cut after <c>names</c>: the hole's innermost open bracket is
+    /// the <c>(</c> of <c>join(</c>, on the string's start line, and the hole crossed a line break inside
+    /// it before the source ended — the line after the bracket is the hole's, not code: set. Control,
+    /// same prefix: the field's own <c>{</c> is the innermost bracket (the field being typed), nothing.
+    /// </summary>
+    [Theory]
+    [InlineData("f")]
+    [InlineData("t")]
+    [InlineData("df")]
+    public void SingleQuotedHoleThatCrossedALineInsideABracketOnItsStartLine_SetsTheFact(string prefix)
+    {
+        var lexer = Lex($"def main():\n    print({prefix}\"{{', '.join(\n        names\n");
+
+        Errors(lexer).Should().Contain("'(' was never closed @2:");
+        lexer.LiteralStateUnknown.Should().BeTrue(Errors(lexer));
+
+        var control = Lex($"def main():\n    x = {prefix}\"{{a\n    y = 1\n");
+        Errors(control).Should().Contain("'{' was never closed @2:");
+        control.LiteralStateUnknown.Should().BeFalse(Errors(control));
+    }
+
     /// <summary>A single-quoted f-string whose field crossed a line break (PEP 701) before the abort: set.</summary>
     [Fact]
     public void SingleQuotedFStringThatCrossedALineBreak_SetsTheFact()
