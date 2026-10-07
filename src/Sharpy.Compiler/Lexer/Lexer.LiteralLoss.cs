@@ -63,104 +63,221 @@ public partial class Lexer
     /// Whether <paramref name="text"/> holds a literal that can span lines (#2271, P22f decision 2): the
     /// ONE test behind <see cref="LiteralLoss.DroppedOpener"/> (the text error recovery skips) and
     /// <see cref="LiteralLoss.UnreadRemainder"/> (the source left when the error budget stops the lexer).
-    /// Walks the text the way the lexer would read it from its start: a <c>#</c> outside a literal skips to
-    /// the end of its line; at a quote character, with the prefix letters immediately before it —
+    /// Walks the text the way the lexer would read it from its start, reading on past an error as if it were
+    /// mended where it stands (<c>"\q" + """</c> holds an opener): a <c>#</c> outside a literal skips to the
+    /// end of its line; at a quote character, with the prefix letters immediately before it, a literal opens
+    /// and is read to its closer. A line break (or the end of the text) inside a literal → true when that
+    /// literal is triple-quoted or a replacement field is open in it or around it (a field may span lines);
+    /// otherwise the literal ends at its line (a short string, an f-/t-string with no open field) and the walk
+    /// continues after the line break. Inside an <c>f</c>/<c>t</c>/<c>df</c> literal, as
+    /// <see cref="NextFStringToken"/> reads it:
     /// <list type="bullet">
-    /// <item>a triple opener whose closer is absent from the text or lies on a later line → true (a closer
-    /// on the same line closes it; the walk continues after it);</item>
-    /// <item>a single-quoted literal is skipped to its closing quote on the same line; if the line ends
-    /// first with a replacement field of an <c>f</c>/<c>t</c>/<c>df</c>-prefixed one still open → true (a
-    /// replacement field may span lines; <c>{{</c>/<c>}}</c> in its text are escaped braces, a closed
-    /// <c>{x}</c> opens nothing), otherwise → the walk continues after the line break (a short string, and an
-    /// f-/t-string with no open field, ends at its line).</item>
+    /// <item>in its text, <c>{{</c>/<c>}}</c> are escaped braces and <c>{</c> opens a replacement field;</item>
+    /// <item>in a field's expression, braces and brackets nest, <c>}</c> at its top level closes it and <c>:</c>
+    /// at its top level starts its format spec; a <c>#</c> is a comment to the end of the line (the field
+    /// stays open past it); a backtick-delimited name is opaque; a quote opens a NESTED literal read by these
+    /// same rules, so its quotes and braces are not the enclosing literal's (<c>f"{'"'}"</c>,
+    /// <c>f"{'{'}"</c>, <c>f"{"""a"""}"</c>, <c>f"{f'{x}'}"</c>) — except the enclosing single-quoted
+    /// literal's own quote when no literal opened there closes on its line: that quote is its closer
+    /// (<c>f"{x" + 'z'</c>, the lexer's <c>expecting '}'</c>);</item>
+    /// <item>in a format spec, <c>{{</c> is an escaped brace, <c>{</c> opens a nested field, <c>}</c> closes
+    /// the field, the literal's own quote closes the literal and any other quote is spec text.</item>
     /// </list>
     /// Backslash escapes are honoured except in <c>r</c>/<c>dr</c> literals, as the lexer reads them. A
     /// short string holding a triple (<c>'"""'</c>) or a closed triple on its line (<c>"""abc"""</c>)
-    /// opens nothing that spans lines: a dropped line holding one keeps its repair. Known limits
-    /// (#2271): a nested quote inside a replacement field (<c>f"{'"""'}"</c>), and an opener swallowed
-    /// by an unterminated short string on its line (<c>x = 'abc """</c> → false).
+    /// opens nothing that spans lines: a dropped line holding one keeps its repair. Known limit (#2271): an
+    /// opener swallowed by an unterminated short string on its line (<c>x = 'abc """</c> → false).
     /// </summary>
     internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text)
     {
+        var open = new List<OpenLiteral>();     // the literals open at i, outermost first
         var i = 0;
         while (i < text.Length)
         {
             var c = text[i];
-            if (c == '#')
+            if (open.Count == 0)
             {
-                while (i < text.Length && !IsLineBreak(text[i]))
+                if (c == '#')
+                {
+                    while (i < text.Length && !IsLineBreak(text[i]))
+                        i++;
+                }
+                else if (c is '"' or '\'')
+                    open.Add(OpenLiteral.At(text, ref i));
+                else
                     i++;
                 continue;
             }
-            if (c is not ('"' or '\''))
+
+            var literal = open[^1];
+            var field = literal.Fields is { Count: > 0 } fields ? fields[^1] : null;
+            if (IsLineBreak(c))
             {
+                if (SpansTheLineBreak(open))
+                    return true;
+                open.Clear();       // a short string ends at its line, and so does an f-/t-string with no open field
+                continue;
+            }
+
+            if (field is not { InSpec: false })
+            {
+                // the literal's text, or a format spec
+                if (c == '\\' && field != null)
+                {
+                    // spec text: only an escaped closing quote is two characters (f"{x:\">4}")
+                    i += i + 1 < text.Length && text[i + 1] == literal.Quote ? 2 : 1;
+                    continue;
+                }
+                if (c == '\\' && !literal.Raw)
+                {
+                    i += i + 1 < text.Length && !IsLineBreak(text[i + 1]) ? 2 : 1;
+                    continue;
+                }
+                if (c == literal.Quote && (!literal.Triple || IsTripleAt(text, i)))
+                {
+                    i += literal.Triple ? 3 : 1;
+                    open.RemoveAt(open.Count - 1);
+                    continue;
+                }
+                if (literal.Formatted && c == '{')
+                {
+                    // `{{` is an escaped brace in the text and in a spec; `{` opens a (nested) field
+                    if (i + 1 < text.Length && text[i + 1] == '{')
+                        i++;
+                    else
+                        (literal.Fields ??= new List<OpenField>()).Add(new OpenField());
+                }
+                else if (literal.Formatted && c == '}')
+                {
+                    // in a spec `}` ends the spec and closes its field; in the text `}}` is an escaped brace
+                    if (field != null)
+                        literal.CloseInnermostField();
+                    else if (i + 1 < text.Length && text[i + 1] == '}')
+                        i++;
+                }
                 i++;
                 continue;
             }
 
-            var prefix = PrefixBefore(text, i);
-            var raw = prefix is "r" or "dr";
-            if (i + 2 < text.Length && text[i + 1] == c && text[i + 2] == c)
+            // a replacement field's expression
+            switch (c)
             {
-                var k = i + 3;
-                while (true)
-                {
-                    if (k >= text.Length || IsLineBreak(text[k]))
-                        return true;    // the closer is absent or on a later line
-                    if (text[k] == '\\' && !raw)
-                    {
-                        k += k + 1 < text.Length && !IsLineBreak(text[k + 1]) ? 2 : 1;
-                        continue;
-                    }
-                    if (text[k] == c && k + 2 < text.Length && text[k + 1] == c && text[k + 2] == c)
-                        break;
-                    k++;
-                }
-                i = k + 3;
-                continue;
-            }
-
-            var j = i + 1;
-            var closed = false;
-            var formatted = prefix is "f" or "t" or "df";
-            var openFields = 0;     // replacement fields (and the braces nested in them) open at j
-            while (j < text.Length && !IsLineBreak(text[j]))
-            {
-                if (text[j] == '\\' && !raw)
-                {
-                    j += j + 1 < text.Length && !IsLineBreak(text[j + 1]) ? 2 : 1;
-                    continue;
-                }
-                if (text[j] == c)
-                {
-                    closed = true;
+                case '#':
+                    return true;    // a comment runs to the end of the line, and the field stays open past it
+                case '{':
+                    field.Braces++;
                     break;
-                }
-                if (formatted && text[j] is '{' or '}')
-                {
-                    // In the literal text `{{` and `}}` are escaped braces; inside a field every brace nests.
-                    if (openFields == 0 && j + 1 < text.Length && text[j + 1] == text[j])
+                case '}' when field.Braces == 0:
+                    literal.CloseInnermostField();
+                    break;
+                case '}':
+                    field.Braces--;
+                    break;
+                case '(' or '[':
+                    field.Brackets++;
+                    break;
+                case ')' or ']' when field.Brackets > 0:
+                    field.Brackets--;
+                    break;
+                case ':' when field.Braces == 0 && field.Brackets == 0:
+                    field.InSpec = true;
+                    break;
+                case '`':
+                    // a backtick-delimited name ends at its backtick or at the line break
+                    i++;
+                    while (i < text.Length && text[i] != '`' && !IsLineBreak(text[i]))
+                        i++;
+                    if (i < text.Length && text[i] == '`')
+                        i++;
+                    continue;
+                case '"' or '\'':
+                    if (c == literal.Quote && !literal.Triple && !IsTripleAt(text, i) && !ClosesOnItsLine(text, i))
                     {
-                        j += 2;
-                        continue;
+                        i++;
+                        open.RemoveAt(open.Count - 1);
                     }
-                    if (text[j] == '{')
-                        openFields++;
-                    else if (openFields > 0)
-                        openFields--;
-                }
+                    else
+                        open.Add(OpenLiteral.At(text, ref i));
+                    continue;
+            }
+            i++;
+        }
+        return open.Count > 0 && SpansTheLineBreak(open);
+    }
+
+    /// <summary>
+    /// The text reached a line break (or its end) with the <paramref name="open"/> literals unclosed: a
+    /// triple-quoted one, or one with a replacement field open (a literal nested in a field has a field open
+    /// around it), continues on the next line.
+    /// </summary>
+    private static bool SpansTheLineBreak(List<OpenLiteral> open)
+        => open.Count > 1 || open[^1].Triple || open[^1].Fields is { Count: > 0 };
+
+    /// <summary>
+    /// <see cref="SkipStringLiteralInPrescan(int, out bool)"/> over <paramref name="text"/> for the
+    /// single-quoted literal whose quote is at <paramref name="quoteAt"/>: a backslash skips the next
+    /// character; a line break before the closing quote → false.
+    /// </summary>
+    private static bool ClosesOnItsLine(ReadOnlySpan<char> text, int quoteAt)
+    {
+        var j = quoteAt + 1;
+        while (j < text.Length)
+        {
+            if (text[j] == '\\')
+                j += 2;
+            else if (text[j] == text[quoteAt])
+                return true;
+            else if (IsLineBreak(text[j]))
+                return false;
+            else
                 j++;
-            }
-            if (closed)
-            {
-                i = j + 1;
-                continue;
-            }
-            if (openFields > 0)
-                return true;    // a replacement field left open at the line break may span lines
-            i = j;              // a short string ends at its line, and so does an f-/t-string with no open field
         }
         return false;
+    }
+
+    private static bool IsTripleAt(ReadOnlySpan<char> text, int quoteAt)
+        => quoteAt + 2 < text.Length && text[quoteAt + 1] == text[quoteAt] && text[quoteAt + 2] == text[quoteAt];
+
+    /// <summary>A literal <see cref="HoldsALiteralSpanningLines"/> has read the opener of and not yet closed.</summary>
+    private sealed class OpenLiteral
+    {
+        public char Quote { get; private init; }
+        public bool Triple { get; private init; }
+        public bool Raw { get; private init; }
+        public bool Formatted { get; private init; }
+
+        /// <summary>The replacement fields open in this literal, innermost last (an f-/t-/df-string only).</summary>
+        public List<OpenField>? Fields { get; set; }
+
+        /// <summary>Closes the innermost open replacement field.</summary>
+        public void CloseInnermostField()
+        {
+            var fields = Fields!;
+            fields.RemoveAt(fields.Count - 1);
+        }
+
+        /// <summary>Opens the literal whose quote is at <paramref name="i"/> and moves past its opening quotes.</summary>
+        public static OpenLiteral At(ReadOnlySpan<char> text, ref int i)
+        {
+            var prefix = PrefixBefore(text, i);
+            var literal = new OpenLiteral
+            {
+                Quote = text[i],
+                Triple = IsTripleAt(text, i),
+                Raw = prefix is "r" or "dr",
+                Formatted = prefix is "f" or "t" or "df",
+            };
+            i += literal.Triple ? 3 : 1;
+            return literal;
+        }
+    }
+
+    /// <summary>A replacement field <see cref="HoldsALiteralSpanningLines"/> has read the <c>{</c> of and not yet closed.</summary>
+    private sealed class OpenField
+    {
+        public bool InSpec { get; set; }      // past the ':' that starts its format spec
+        public int Braces { get; set; }       // {} nesting within its expression
+        public int Brackets { get; set; }     // ()/[] nesting within its expression
     }
 
     private static bool IsLineBreak(char c) => c is '\n' or '\r';

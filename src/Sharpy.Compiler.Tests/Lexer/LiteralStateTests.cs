@@ -313,6 +313,54 @@ public class LiteralStateTests
         lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
     }
 
+    /// <summary>
+    /// A string nested in a replacement field, on a dropped line (the second verification of P22f @
+    /// 37e5c1d02): the dropped span is read the way the lexer reads a hole. E1par2/E1par (a nested quote)
+    /// and L4close4 (a nested <c>}</c>) hold a literal that spans lines; W12 (a nested <c>{</c>), M17 (the
+    /// same, after a mid-line abort) and M16 (a closed nested triple) hold none, each beside a positive twin
+    /// on the same shape (the field left open, or an opener after the f-string).
+    /// </summary>
+    [Theory]
+    [InlineData("E1par2", "def main():\n    x = f\"{'\"'}\\q\" + \"\"\"\n        key: value\n        f\"{'\"'}\\q\" + \"\"\"\n    print(x)\n", "SPY0004", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("E1par", "def main():\n    x = f\"{\"\\\"\"}\\q\" + \"\"\"\n        key: value\n        f\"{\"\\\"\"}\\q\" + \"\"\"\n    print(x)\n", "SPY0004", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("L4close4", "def main():\n    y = \"\\q\" + f\"{d['}'] +\n            x}\"  # \"\n    print(y)\n", "SPY0004", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("W12", "def main():\n  x: int = 1\n  y = f\"{'{'}\n  print(x)\n", "SPY0013", LexerNs.LiteralLoss.None)]
+    [InlineData("W12, the field left open", "def main():\n  x: int = 1\n  y = f\"{'}'\n  print(x)\n", "SPY0013", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("M17", "y = \"\\q\" + f\"{'{'}\\q\ndef main():\n  x: int = 1\n  print(x)\n", "SPY0004", LexerNs.LiteralLoss.None)]
+    [InlineData("M17nestbrace", "y = f\"{'{'}\\q\ndef main():\n  x: int = 1\n  print(x)\n", "SPY0004", LexerNs.LiteralLoss.None)]
+    [InlineData("M17, the field left open", "y = \"\\q\" + f\"{'}'\\q\ndef main():\n  x: int = 1\n  print(x)\n", "SPY0004", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("M16", "y = f\"{\"\"\"a\"\"\"}\\q\" + 'z'\ndef main():\n  x: int = 1\n  print(x)\n", "SPY0004", LexerNs.LiteralLoss.None)]
+    [InlineData("M16, an opener after it", "y = f\"{\"\"\"a\"\"\"}\\q\" + \"\"\"z\ndef main():\n  x: int = 1\n  print(x)\n", "SPY0004", LexerNs.LiteralLoss.DroppedOpener)]
+    public void StringNestedInAReplacementField_OnADroppedLine(string name, string source, string code, LexerNs.LiteralLoss expected)
+    {
+        var lexer = Lex(source);
+
+        Errors(lexer).Should().Contain($"{code} ", name);
+        lexer.LiteralLoss.Should().Be(expected, "{0}: {1}", name, Errors(lexer));
+    }
+
+    /// <summary>
+    /// The two conditions under which the dropped span is read from the start of the token being read
+    /// (<c>_tokenStart</c>) instead of from the abort. (a) No line break between them: an abort on a later
+    /// line of a literal that spans lines reads from the abort, so that literal's own opener is not a dropped
+    /// one (its loss is <see cref="LexerNs.LiteralLoss.AbortInsideLiteral"/> alone) — without (a) the first
+    /// two rows also set DroppedOpener. (b) The token is a string literal: a backtick-delimited name holding a
+    /// triple opens nothing — without (b) the third row sets DroppedOpener. The fourth row is its positive
+    /// twin: a string token reads from its start.
+    /// </summary>
+    [Theory]
+    [InlineData("s = \"\"\"\n\\xZZ\n\"\"\"\nprint(s)\n", "SPY0005", LexerNs.LiteralLoss.AbortInsideLiteral)]
+    [InlineData("def main():\n    x = f\"{a +\n        b}\\q\"\n    print(x)\n", "SPY0004", LexerNs.LiteralLoss.AbortInsideLiteral)]
+    [InlineData("def main():\n    x = `a\"\"\"b\n    print(x)\n", "SPY0018", LexerNs.LiteralLoss.None)]
+    [InlineData("def main():\n    x = \"\\q\" + \"\"\"b\n    print(x)\n", "SPY0004", LexerNs.LiteralLoss.DroppedOpener)]
+    public void DroppedSpanReadFromTheTokenStart_OnlyForAStringBegunOnTheAbortsLine(string source, string code, LexerNs.LiteralLoss expected)
+    {
+        var lexer = Lex(source);
+
+        Errors(lexer).Should().Contain($"{code} ");
+        lexer.LiteralLoss.Should().Be(expected, Errors(lexer));
+    }
+
     /// <summary>N4f: a single-quoted f-/t-string whose replacement field continues on the next line, on a dropped line.</summary>
     [Theory]
     [InlineData("f")]

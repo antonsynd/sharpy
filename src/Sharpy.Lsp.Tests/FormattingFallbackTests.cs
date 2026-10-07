@@ -486,6 +486,40 @@ public sealed class FormattingFallbackTests : IDisposable
             ("block range-line", _driver.Range(C1Block, LineRange(C1Block, 2)).Edits)).Should().BeEmpty();
     }
 
+    /// <summary>
+    /// E1par2 (second verification @ 37e5c1d02): C1Block's shape with the aborting string an f-string whose
+    /// replacement field holds a string of the f-string's own quote character. Read the way the lexer reads
+    /// a hole, the dropped span holds the opener; read flat (@ 37e5c1d02), the nested <c>"</c> closed the
+    /// f-string, the opener paired away, and the range fallback rewrote <c>        key: value</c>.
+    /// </summary>
+    internal const string E1par2 = "def main():\n    x = f\"{'\"'}\\q\" + \"\"\"\n        key: value\n        f\"{'\"'}\\q\" + \"\"\"\n    print(x)\n";
+
+    [Fact]
+    public void E1par2_OpenerDroppedAfterAStringNestedInAReplacementField_RangeFallback_GetsNoEdits()
+    {
+        RangeCandidate(E1par2, 2).Should().Be(WithLine(E1par2, 2, "    key: value"));
+
+        RoutesThatEdit(
+            ("full", _driver.Full(E1par2).Edits),
+            ("range-whole", _driver.Range(E1par2, Lines(0, 5)).Edits),
+            ("range-line", _driver.Range(E1par2, LineRange(E1par2, 2)).Edits)).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// W12 (second verification @ 37e5c1d02): the dropped 2-space line <c>y = f"{'{'}</c> closes its
+    /// replacement field — the <c>{</c> is inside a nested string — so it ends at its line and the line
+    /// routes keep the 4-space repair they applied @ 3c70ea492 (refused @ 37e5c1d02).
+    /// </summary>
+    [Fact]
+    public void DirectionControl_BraceInAStringNestedInAClosedField_LineRoutesKeepTheirRepair()
+    {
+        const string document = "def main():\n  x: int = 1\n  y = f\"{'{'}\n  print(x)\n";
+
+        _driver.Range(document, LineRange(document, 1)).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
+        _driver.OnType(document, 1).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
+        _driver.Range(document, LineRange(document, 3)).Applied.Should().Be(WithLine(document, 3, "    print(x)"));
+    }
+
     /// <summary>The owner's 2-space document (<see cref="TwoSpace"/>) repaired to 4 spaces.</summary>
     private const string TwoSpaceRepaired = "def main():\n    x: int = 1\n    print(x)\n";
 
@@ -504,6 +538,10 @@ public sealed class FormattingFallbackTests : IDisposable
         // the dropped span read from INSIDE the aborted "\q" paired its quotes the wrong way and saw an opener
         // in the closed """abc""" (DroppedOpener @ 4b7428567); repaired @ 3c70ea492 (the p22e-lead proxy)
         { "Dq_closed", "x = \"\\q\" + \"\"\"abc\"\"\"\n" + TwoSpace, "x = \"\\q\" + \"\"\"abc\"\"\"\n" + TwoSpaceRepaired },
+        // second verification @ 37e5c1d02: a string nested in a replacement field was read flat — a closed
+        // nested triple as an opener (M16), a '{' in a nested string as an open field (M17); repaired @ 3c70ea492
+        { "M16", "y = f\"{\"\"\"a\"\"\"}\\q\" + 'z'\n" + TwoSpace, "y = f\"{\"\"\"a\"\"\"}\\q\" + 'z'\n" + TwoSpaceRepaired },
+        { "M17", "y = f\"{'{'}\\q\n" + TwoSpace, "y = f\"{'{'}\\q\n" + TwoSpaceRepaired },
     };
 
     /// <summary>

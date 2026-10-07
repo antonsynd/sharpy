@@ -60,4 +60,46 @@ public class LiteralLossScannerTests
     {
         LexerNs.Lexer.HoldsALiteralSpanningLines(text).Should().Be(expected, text);
     }
+
+    /// <summary>
+    /// Inside a replacement field a quote opens a NESTED literal, read by the same rules as the lexer's hole
+    /// reading (<c>NextFStringToken</c>): its quotes and braces are not the enclosing literal's. The second
+    /// verification of P22f @ 37e5c1d02 measured E1par/E1par2 and L4close4 (content rewritten: a nested quote
+    /// closed the f-string, a nested <c>}</c> closed the field) and W12/M17/M16 (repair lost: a nested
+    /// <c>{</c> opened a field, a closed nested triple read as an opener).
+    /// </summary>
+    [Theory]
+    // the enclosing literal closes after its nested ones, then an opener: true
+    [InlineData("x = f\"{'\"'}\\q\" + \"\"\"", true)]            // E1par2's span (it starts at f")
+    [InlineData("x = f\"{\"\\\"\"}\" + \"\"\"", true)]            // E1par: a nested string in the enclosing quote
+    [InlineData("x = f\"{\"\\q\"}\" + \"\"\"", true)]             // E1hole
+    [InlineData("x = f\"{'#'}\" + \"\"\"", true)]                 // a '#' in a nested string is not a comment
+    [InlineData("x = f\"{f'{x}'}\" + \"\"\"", true)]              // a nested f-string with its own field
+    // a field still open at the line break: true
+    [InlineData("y = f\"{'}'", true)]                             // a '}' in a nested string closes nothing
+    [InlineData("y = f\"{d['}'] +", true)]                        // L4close4's span
+    [InlineData("y = t\"{d[\"}\"] +", true)]
+    [InlineData("y = f\"{f'{x'", true)]                           // the nested f-string ends at its own quote
+    [InlineData("y = f\"{'abc", true)]                            // the nested short string ends at its line
+    [InlineData("y = f\"{x # }\" + 'z'", true)]                   // a comment in a field runs to the end of the line
+    [InlineData("y = f\"{x:{'}'}", true)]                         // a nested field in a format spec
+    // a nested triple left open, or a triple f-string whose field holds its quotes: true
+    [InlineData("y = f\"{\"\"\"a", true)]
+    [InlineData("y = f\"\"\"{'\"\"\"'}", true)]
+    // every literal closed on the line: false
+    [InlineData("y = f\"{'{'}", false)]                           // W12: a '{' in a nested string opens nothing
+    [InlineData("y = \"\\q\" + f\"{'{'}\\q", false)]              // M17's span
+    [InlineData("y = df\"{'{'}\"", false)]
+    [InlineData("y = f\"{\"\"\"a\"\"\"}\\q\" + 'z'", false)]      // M16: a closed nested triple
+    [InlineData("y = f\"{f'{x}'}\"", false)]
+    [InlineData("y = f\"{x!r:>{w}}\"", false)]                   // a nested field in a format spec
+    [InlineData("y = f\"{x:'}\" + 'z'", false)]                   // a quote in a format spec is spec text
+    [InlineData("y = f\"{`a}'`}\" + 'z'", false)]                 // a backtick-delimited name is opaque
+    [InlineData("y = f\"{x\" + 'z'", false)]                      // the lexer's `expecting '}'`: the enclosing quote closes it
+    [InlineData("y = f\"\"\"{'\"\"\"'}\"\"\"", false)]
+    [InlineData("y = f\"{'a' 'b'}\" + 'c'", false)]
+    public void HoldsALiteralSpanningLines_ReadsALiteralNestedInAReplacementField(string text, bool expected)
+    {
+        LexerNs.Lexer.HoldsALiteralSpanningLines(text).Should().Be(expected, text);
+    }
 }
