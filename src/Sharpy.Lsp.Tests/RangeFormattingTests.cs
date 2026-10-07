@@ -149,6 +149,24 @@ public class RangeFormattingTests : IDisposable
     }
 
     [Fact]
+    public async Task ParseErrorFallback_WholeLineSelectionEndingAtColumnZero_LeavesTheNextLineAloneAsync()
+    {
+        // Decision 2's selection rule holds on the fallback arm as on the primary one: an editor's
+        // whole-line selection of line 1 ends at (2,0), and line 2 is NOT selected. Found at
+        // /verify-implementation of P22e @ 92af80222 (the fallback passed the raw End.Line).
+        var source = "def main():\n  x = 1\n  y = 2\n  z = (\n";
+        var edits = await FormatRangeAsync(source, 1, 0, 2, 0);
+
+        edits.Should().ContainSingle();
+        edits.First().Range.Start.Line.Should().Be(1);
+        edits.First().NewText.Should().Be("    x = 1");
+
+        // Positive control: a selection that reaches into line 2 edits both lines.
+        var both = await FormatRangeAsync(source, 1, 0, 2, 7);
+        both.Select(e => e.Range.Start.Line).Should().Equal(1, 2);
+    }
+
+    [Fact]
     public async Task ParseError_FallsBackToIndentOnlyAsync()
     {
         // Document has a syntax error (missing body) — should fall back to

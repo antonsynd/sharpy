@@ -61,9 +61,10 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         }
 
         // Fallback: indent-only formatting per line, applied only when the text it produces passes the
-        // indent-only check (P22e decision 8, #2168).
-        var startLine = request.Range.Start.Line;
-        var endLine = request.Range.End.Line;
+        // indent-only check (P22e decision 8, #2168). The selected lines are decision 2's, the same
+        // rule as the primary path: an editor's whole-line selection ends at column 0 of the NEXT
+        // line, which is not selected.
+        var (startLine, endLine) = selection.SelectedLines(LineDiff.Split(text).Lines);
         var fallbackEdits = ComputeIndentOnlyRangeEdits(text, startLine, endLine);
         return Task.FromResult(new TextEditContainer(FormattingEdits.CheckedIndentOnly(text, fallbackEdits)));
     }

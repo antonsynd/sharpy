@@ -68,7 +68,9 @@ internal static class FormattingFallback
     /// an 8-space block moves it out of the block (cell 16);</item>
     /// <item>no more lexer indentation diagnostics (SPY0013, SPY0014) than the source — a dedent between
     /// two widths of the stack keeps its level in the map, which opens a block at the unseen width, while
-    /// the lexer reports the line (cell 21);</item>
+    /// the lexer reports the line (cell 21). A backstop since clause 6 landed: measured @ 92af80222, every
+    /// text this clause refuses clause 6 refuses too (dropped alone, the sweep and every formatting test
+    /// stay green), while with clause 6 dropped it still refuses cell 21;</item>
     /// <item>the lexer's block depth (<see cref="BlockDepths"/>) of every logical-line-start line whose
     /// source width is on its enclosing stack unchanged — the map opens a block only after a line ending
     /// in <c>:</c> and compares with itself, so it accepts a property-observer block re-indented one level
