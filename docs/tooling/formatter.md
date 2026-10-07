@@ -225,7 +225,7 @@ def main():
   print(s)
 ```
 
-A file with more than 25 lexer errors above a triple-quoted string is treated the same way: the editor does not re-indent it until enough of the errors are fixed. `sharpyc emit diagnostics --max-errors N` lists the errors past the first 25.
+A file with 25 or more lexer errors above a triple-quoted string is treated the same way: the editor does not re-indent it until enough of the errors are fixed. `sharpyc emit diagnostics --max-errors N` lists the errors past the first 25.
 
 ## Reporting a problem
 
