@@ -122,7 +122,7 @@ SPY0912 always means a formatter bug: your file is valid and its meaning is safe
 - **Format Selection** formats the whole file and applies only the changes the selection touches. A change the selection touches is applied whole, so it can reach past the selection in either direction, to both ends of its run of changed lines, because part of a change can be wrong on its own. The text it would produce is checked the same way as the formatter's own output: if it would not parse, or would change the program, Format Selection applies **nothing**. The file keeps its line endings: a line outside a change keeps its own, the last line of a change keeps the ending it had, and every other line break a change writes is the file's first one — so a file with one kind of line ending keeps it, and a file that mixes them may see a changed line's ending become the file's first kind.
 - **Format on type** aligns the first line of a statement to its block's indentation, and nothing else: never a line that continues a statement (inside brackets, or after `\`), a comment line, or a line inside a string. It changes how far the line is indented, never which block it is in, so it leaves an unexpected indent alone and does not dedent an `else:` typed at its body's indentation. It applies the new indentation only if the file stays the same program; while the file does not parse, the indentation-only check below decides instead.
 - If the document **does not parse**, for example in the middle of typing, Format Document and Format Selection fall back to an indentation-only pass. It re-indents lines to four-space levels and changes nothing else. It applies its result only if every line keeps its text, every line inside a string is unchanged, every statement stays in the block it was in, and no new indentation error appears; otherwise it applies nothing. A line that belongs to no block, because it is indented with a tab or to a width no enclosing block uses, is the mistake the pass repairs: it moves to the level the editor guesses for it, which may not be the block you meant. This fallback is used only for documents that fail to parse, never for a document the formatter declined.
-- While a triple-quoted string is unfinished, or cannot be read as a string, the editor cannot tell which lines are code. Format on type and the indentation-only pass change nothing until the string is closed.
+- While a triple-quoted string is unfinished, or cannot be read as a string, the editor cannot tell which lines are code. A string cannot be read as one when a stray `"""` above it has paired with its opening quotes, when its opening `"""` sits on a line the lexer could not read at all (a line indented with a tab, or to a width no enclosing block uses), or when the lexer stopped at its limit of 25 errors before reaching it. Format on type and the indentation-only pass change nothing until the string can be read again.
 
 Selecting the body of `main` (lines 4–5) in
 
@@ -200,6 +200,32 @@ def g() -> str:
     """
     return s
 ```
+
+Here a stray `"""` at the top of the file pairs with the one that opens `s`, so `key: value` is read as code, and the string's closing `"""` pairs with the quotes inside `'"""'`. Format Document, Format Selection of line 4 and format on type on line 4 all apply **nothing**:
+
+<!-- editor-example: document, selection 4-4, on-type 4; unchanged -->
+```python
+"""
+def main():
+    s = """
+      key: value
+    """
+    t = '"""'
+    print(s, t)
+```
+
+Here the line that opens the string is indented two spaces, a width no block in the file uses, so the lexer skips the whole line and never sees its `"""`. Format Document, Format Selection of line 3 and format on type on line 3 all apply **nothing**, so `key: value` keeps its eight spaces:
+
+<!-- editor-example: document, selection 3-3, on-type 3; unchanged -->
+```python
+def main():
+  s = """
+        key: value
+  """
+  print(s)
+```
+
+A file with more than 25 lexer errors above a triple-quoted string is treated the same way: the editor does not re-indent it until enough of the errors are fixed. `sharpyc emit diagnostics --max-errors N` lists the errors past the first 25.
 
 ## Reporting a problem
 
