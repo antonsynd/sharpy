@@ -61,7 +61,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// S5 — an unmatched triple quote inserted as line 0 (every later literal of that quote character flips);
 /// S6 — a literal lost WITHOUT a lexer abort inside its read (P22f, #2271): the error budget spent above Q,
 /// a stray triple re-paired into a short string (or a comment) below, a delimiter line dropped whole at an
-/// indentation error or a mid-line unexpected character (<see cref="FormatterTwins.LiteralLossShapes"/>).
+/// indentation error, a mid-line unexpected character or a short string aborting mid-line before each
+/// delimiter (<see cref="FormatterTwins.LiteralLossShapes"/>).
 /// Each gets <c>full</c>, <c>range-whole</c>, and <c>range-line</c>/<c>ontype</c> on its last line (S3,
 /// S4) or on every line that starts inside a literal in Q (S5, S6); none of them is sampled.</para>
 ///
@@ -573,7 +574,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// FIRST such literal's quote character inserted as line 0;</item>
     /// <item>S6 — the literal-loss shapes WITHOUT a lexer abort (P22f, #2271), built by the one recipe the
     /// lexer's tests share (<see cref="FormatterTwins.LiteralLossShapes"/>: the error budget spent above Q, a
-    /// re-paired triple closed by a short string or a comment, a delimiter line dropped at SPY0011–SPY0015;
+    /// re-paired triple closed by a short string or a comment, a delimiter line dropped at SPY0011–SPY0015 or SPY0004;
     /// SPY0014 only on the <c>wide</c> twin, <paramref name="includeMismatch"/>) and wrapped with Q's
     /// ground truth by <see cref="Shaped"/>.</item>
     /// </list>

@@ -31,8 +31,15 @@ public static partial class FormatterTwins
     /// <summary>S6c: a literal's delimiter line dropped whole by error recovery — <c>dropped-</c> and the code that drops it.</summary>
     public const string DroppedShapePrefix = "dropped-";
 
-    /// <summary>The codes S6c drops a delimiter line at: mixed tabs and spaces, a tab, a width not a multiple of 4, a dedent to no enclosing width, an unexpected character before the opener.</summary>
-    public static readonly IReadOnlyList<string> DroppedCodes = new[] { "SPY0011", "SPY0012", "SPY0013", "SPY0014", "SPY0015" };
+    /// <summary>
+    /// The codes S6c drops a delimiter line at: mixed tabs and spaces, a tab, a width not a multiple of 4, a
+    /// dedent to no enclosing width, an unexpected character before the opener, and a short string before each
+    /// delimiter that aborts mid-line (an invalid escape — the abort leaves the lexer INSIDE that string).
+    /// </summary>
+    public static readonly IReadOnlyList<string> DroppedCodes = new[] { "SPY0011", "SPY0012", "SPY0013", "SPY0014", "SPY0015", "SPY0004" };
+
+    /// <summary>A short string that aborts mid-line at SPY0004 (an invalid escape) with the lexer inside it, and the <c>+</c> after it.</summary>
+    private const string AbortingShortString = "\"\\q\" + ";
 
     /// <summary>Every shape <see cref="LiteralLossShapes"/> builds.</summary>
     public static readonly IReadOnlyList<string> LiteralLossShapeNames =
@@ -55,8 +62,13 @@ public static partial class FormatterTwins
     /// (its first non-whitespace character is the literal's quote character): the leading whitespace of the
     /// opener and closer line replaced by the opener's + 2 spaces (SPY0013), a tab (SPY0012), a tab and a
     /// space (SPY0011), and — only when <paramref name="includeMismatch"/> (the wide twin, every level a
-    /// multiple of 8) and the opener is at width ≥ 8 — 4 spaces (SPY0014); and a <c>$</c> inserted right
-    /// before the opener's prefix (SPY0015, the rest of the line dropped mid-line, nothing rewritten).</item>
+    /// multiple of 8) and the opener is at width ≥ 8 — 4 spaces (SPY0014); a <c>$</c> inserted right
+    /// before the opener's prefix (SPY0015, the rest of the line dropped mid-line, nothing rewritten); and
+    /// <c>"\q" + </c> inserted there AND before the closer's delimiter (SPY0004, an invalid escape: the short
+    /// string aborts with the lexer inside it, so the dropped rest of each line starts mid-literal — on the
+    /// closer line too, since a bare closer line dropped whole at an indentation error is itself a dropped
+    /// opener; abort-free when the closer sits at a width the content left on the indent stack: a module-level
+    /// literal, or one whose content is at the closer's width).</item>
     /// </list>
     /// Which documents are abort-free is OBSERVED by the consumers, never assumed.
     /// </summary>
@@ -100,6 +112,9 @@ public static partial class FormatterTwins
             if (includeMismatch && indent.Length >= 8)
                 shapes.Add(new LiteralLossShape(DroppedShapePrefix + "SPY0014", Reindent(q, lines, "    "), kind, 0, lines));
             shapes.Add(new LiteralLossShape(DroppedShapePrefix + "SPY0015", q.Insert(start, "$"), kind, 0, Array.Empty<int>()));
+            var closerDelimiter = lineStarts[closer] + LeadingWhitespace(q, lineStarts, closer).Length;
+            shapes.Add(new LiteralLossShape(DroppedShapePrefix + "SPY0004",
+                q.Insert(closerDelimiter, AbortingShortString).Insert(start, AbortingShortString), kind, 0, Array.Empty<int>()));
         }
 
         return shapes;

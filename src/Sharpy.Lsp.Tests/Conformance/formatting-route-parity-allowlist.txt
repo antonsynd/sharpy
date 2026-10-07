@@ -20,7 +20,7 @@
 # The S6 family (P22f) loses a literal WITHOUT a lexer abort inside its read, every document derived from Q by
 # FormatterTwins.LiteralLossShapes; the label (FormattingRouteParitySweepTests.LossState) fixes the cite:
 #   S6    the budget spent above a Q holding a multi-line literal, a stray triple re-paired into a short string,
-#         a delimiter line dropped at SPY0011-SPY0015                                               — cite issue 2271
+#         a delimiter line dropped at SPY0011-SPY0015 or SPY0004 (a short string aborting mid-line) — cite issue 2271
 #   S6n   the budget spent above a Q holding NO multi-line literal (the cure's direction control)   — cite issue 2273
 #   S6k   the stray triple re-paired into a comment (a known limit of any lexer fact)               — cite issue 2274
 # On every unparseable document (S3-S6n; not S6k), the lexer's literal-loss fact itself:
