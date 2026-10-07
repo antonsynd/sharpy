@@ -1,0 +1,4 @@
+'\n        key: value\n    '
+'\n        key: value\n    '
+'\n        n: 2\n    '
+Template(strings=('\n        n: ', '\n    '), interpolations=(Interpolation(2, 'n', None, ''),))

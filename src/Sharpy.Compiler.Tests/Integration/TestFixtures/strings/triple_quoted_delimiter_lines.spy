@@ -1,0 +1,20 @@
+# Multi-line triple-quoted literals whose closer sits alone on its own line, at the opener's width, with
+# the content one level deeper — the layout of a Python program. Every interior line keeps its indent.
+def main() -> None:
+    n: int = 2
+    plain: str = """
+        key: value
+    """
+    print(repr(plain))
+    single: str = '''
+        key: value
+    '''
+    print(repr(single))
+    formatted: str = f"""
+        n: {n}
+    """
+    print(repr(formatted))
+    template = t"""
+        n: {n}
+    """
+    print(repr(template))
