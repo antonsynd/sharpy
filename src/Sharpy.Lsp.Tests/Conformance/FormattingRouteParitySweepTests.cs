@@ -292,6 +292,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         private readonly Lazy<bool> _netAcceptsFormatted;
         private readonly Lazy<bool> _unmatchedEqualLine;
         private Lazy<(bool FactSet, SCG.IReadOnlySet<int> LostLiteralLines)> _literalState;
+        private readonly Lazy<LiteralLoss> _lexerLiteralLoss;
 
         /// <summary>An unparseable document: no AST, no <c>Format(D)</c>; its oracles read <paramref name="truth"/>.</summary>
         public SweepDocument(string text, string state, GroundTruth truth)
@@ -317,6 +318,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             _netAcceptsFormatted = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Formatted) == null);
             _unmatchedEqualLine = new(ComputeUnmatchedEqualLine);
             _literalState = new(ComputeLiteralState);
+            _lexerLiteralLoss = new(() =>
+            {
+                var lexer = new Sharpy.Compiler.Lexer.Lexer(Text);
+                lexer.TokenizeAll();
+                return lexer.LiteralLoss;
+            });
         }
 
         public string Text { get; }
@@ -362,6 +369,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             var map = IndentationService.BuildIndentMap(Text);
             return (map.LiteralStateUnknown, Truth.LiteralLines.Where(l => !map.LiteralLines.Contains(l + 1)).ToHashSet());
         }
+
+        /// <summary>
+        /// Which mechanisms set the fact (<see cref="Sharpy.Compiler.Lexer.Lexer.LiteralLoss"/>), read from a lexer
+        /// constructed as <see cref="IndentationService.BuildIndentMap"/> constructs its own (source only, no
+        /// trivia) — the map exposes the boolean alone, and the routes read nothing else.
+        /// </summary>
+        public LiteralLoss LexerLiteralLoss => _lexerLiteralLoss.Value;
 
         /// <summary>The test seam of the fact buckets' positive controls: this unparseable document with its <see cref="LiteralState"/> forced.</summary>
         public SweepDocument WithLexFacts(bool factSet, IEnumerable<int> lostLiteralLines)
@@ -1284,10 +1298,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     /// <summary>
     /// Whether the lexer read <paramref name="d"/> without aborting inside a literal — what makes an S6
-    /// document a literal loss the abort fact cannot see. At P22f Phase 1 the abort is the fact's only
-    /// producer, so this is the fact itself; Phase 2 reads the abort's own <c>LiteralLoss</c> flag here.
+    /// document a literal loss the abort fact cannot see: the abort's own flag, since the fact now has four
+    /// producers (#2271).
     /// </summary>
-    internal static bool IsAbortFree(SweepDocument d) => !d.LiteralState.FactSet;
+    internal static bool IsAbortFree(SweepDocument d) => (d.LexerLiteralLoss & LiteralLoss.AbortInsideLiteral) == 0;
 
     /// <summary>
     /// The census keys of one S6-family document (not of its cells): <c>documents S6 budget</c> and, when
@@ -2024,9 +2038,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). P22f Phase 1 Task 4
         // re-populated it from a FULL-mode run with the S5/S6 rows its Phase 2 drains (#2271: 454) and the
-        // S6n (#2273: 334) and S6k (#2274: 20) rows of their own trackers. The literal anchors it: changing
+        // S6n (#2273: 334) and S6k (#2274: 20) rows of their own trackers; Phase 2 Task 5 drained the 454
+        // (the lexer's fact covers every abort-free mechanism). The literal anchors it: changing
         // the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(808, "P22f Phase 1 Task 4 listed 808 rows: S5+S6 454 (#2271), S6n 334 (#2273), S6k 20 (#2274)");
+        rows.Count.Should().Be(354, "P22f Phase 2 Task 5 drained the 454 #2271 rows; S6n 334 (#2273) and S6k 20 (#2274) remain");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }

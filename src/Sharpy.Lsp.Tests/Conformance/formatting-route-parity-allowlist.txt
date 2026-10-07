@@ -3,8 +3,8 @@
 # A row covers every cell of that route and state on that stem and twin. A row whose (route, state) ran
 # and now holds, or has no cell, fails the sweep: delete it (drain on fix). Populated from a FULL-mode run
 # (SHARPY_ROUTE_SWEEP_FULL=1, the FMTROUTE-ROW lines of the test output). cli and full rows on S1/S2 are
-# refused by the loader. Phases 2-3 of P22e drained this file to empty; P22f (issue 2271) re-populates it with the
-# S5/S6 cells its Phase 2 drains and the S6n/S6k cells of their own trackers.
+# refused by the loader. Phases 2-3 of P22e drained this file to empty; P22f (issue 2271) re-populated it with the
+# S5/S6 cells its Phase 2 drained and the S6n/S6k cells of their own trackers, which remain.
 # Buckets (T = the applied text, D = the document):
 #   edits        the edit list is not legal for D (the strict applier threw)
 #   net          CheckMeaningPreserved(D, ast(D), T) refuses T: the applied text changes the program
@@ -203,168 +203,36 @@ events/event_unpaired_accessor_error_0001 comment full S6n depth # #2273 budget
 events/event_unpaired_accessor_error_0001 comment range-whole S6n depth # #2273 budget
 expressions/walrus_shortcircuit_unbound_b5_22 comment full S6n depth # #2273 budget
 expressions/walrus_shortcircuit_unbound_b5_22 comment range-whole S6n depth # #2273 budget
-Formatting/byte_multiline_string comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string comment ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 repair
 Formatting/byte_multiline_string comment ontype S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string comment range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 repair
 Formatting/byte_multiline_string comment range-line S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string cr ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string cr ontype S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string cr range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string cr range-line S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string crlf ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string crlf ontype S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string crlf range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string crlf range-line S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string identity ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string identity ontype S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string identity range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string identity range-line S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string wide ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string wide ontype S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/byte_multiline_string wide range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/byte_multiline_string wide range-line S6k literal # #2274 repair-comment
-Formatting/byte_multiline_string wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/class_members comment full S6n depth # #2273 budget
 Formatting/class_members comment range-whole S6n depth # #2273 budget
 Formatting/deeply_nested comment full S6n depth # #2273 budget
 Formatting/deeply_nested comment range-whole S6n depth # #2273 budget
-Formatting/inner_comments_verbatim comment full S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim comment ontype S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim comment range-line S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim comment range-whole S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim cr full S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim cr ontype S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim cr range-line S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim cr range-whole S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim crlf full S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim crlf ontype S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim crlf range-line S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim crlf range-whole S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim identity full S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim identity ontype S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim identity range-line S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim identity range-whole S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim wide full S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim wide ontype S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim wide ontype S6 literal # #2271 budget
-Formatting/inner_comments_verbatim wide range-line S6 factMissing # #2271 budget repair
-Formatting/inner_comments_verbatim wide range-line S6 literal # #2271 budget
-Formatting/inner_comments_verbatim wide range-whole S6 factMissing # #2271 budget repair
 Formatting/mixed_definitions comment full S6n depth # #2273 budget
 Formatting/mixed_definitions comment range-whole S6n depth # #2273 budget
-Formatting/multiline_strings comment full S6 factMissing # #2271 budget repair
-Formatting/multiline_strings comment ontype S6 factMissing # #2271 budget repair
-Formatting/multiline_strings comment range-line S6 factMissing # #2271 budget repair
-Formatting/multiline_strings comment range-whole S6 factMissing # #2271 budget repair
-Formatting/multiline_strings cr full S6 factMissing # #2271 budget repair
-Formatting/multiline_strings cr ontype S6 factMissing # #2271 budget repair
-Formatting/multiline_strings cr range-line S6 factMissing # #2271 budget repair
-Formatting/multiline_strings cr range-whole S6 factMissing # #2271 budget repair
-Formatting/multiline_strings crlf full S6 factMissing # #2271 budget repair
-Formatting/multiline_strings crlf ontype S6 factMissing # #2271 budget repair
-Formatting/multiline_strings crlf range-line S6 factMissing # #2271 budget repair
-Formatting/multiline_strings crlf range-whole S6 factMissing # #2271 budget repair
-Formatting/multiline_strings identity full S6 factMissing # #2271 budget repair
-Formatting/multiline_strings identity ontype S6 factMissing # #2271 budget repair
-Formatting/multiline_strings identity range-line S6 factMissing # #2271 budget repair
-Formatting/multiline_strings identity range-whole S6 factMissing # #2271 budget repair
-Formatting/multiline_strings wide full S6 factMissing # #2271 budget repair
-Formatting/multiline_strings wide ontype S6 factMissing # #2271 budget repair
-Formatting/multiline_strings wide range-line S6 factMissing # #2271 budget repair
-Formatting/multiline_strings wide range-whole S6 factMissing # #2271 budget repair
 Formatting/nested comment full S6n depth # #2273 budget
 Formatting/nested comment range-whole S6n depth # #2273 budget
-Formatting/raw_multiline_string comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string comment ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 repair
 Formatting/raw_multiline_string comment ontype S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string comment range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 repair
 Formatting/raw_multiline_string comment range-line S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string cr ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string cr ontype S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string cr range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string cr range-line S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string crlf ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string crlf ontype S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string crlf range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string crlf range-line S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string identity ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string identity ontype S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string identity range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string identity range-line S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string wide ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string wide ontype S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-Formatting/raw_multiline_string wide range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 Formatting/raw_multiline_string wide range-line S6k literal # #2274 repair-comment
-Formatting/raw_multiline_string wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
 fstrings/fstring_paren_walrus_1726 comment full S6n depth # #2273 budget
 fstrings/fstring_paren_walrus_1726 comment range-whole S6n depth # #2273 budget
-fstrings/multiline_hole_2022 comment full S6 factMissing # #2271 budget
-fstrings/multiline_hole_2022 comment ontype S6 factMissing # #2271 budget
-fstrings/multiline_hole_2022 comment ontype S6 literal # #2271 budget
-fstrings/multiline_hole_2022 comment range-line S6 factMissing # #2271 budget
-fstrings/multiline_hole_2022 comment range-line S6 literal # #2271 budget
-fstrings/multiline_hole_2022 comment range-whole S6 factMissing # #2271 budget
-fstrings/multiline_hole_2022 cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 cr ontype S6 literal # #2271 dropped-SPY0013
-fstrings/multiline_hole_2022 cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 cr range-line S6 literal # #2271 dropped-SPY0013
-fstrings/multiline_hole_2022 cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 crlf ontype S6 literal # #2271 dropped-SPY0013
-fstrings/multiline_hole_2022 crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 crlf range-line S6 literal # #2271 dropped-SPY0013
-fstrings/multiline_hole_2022 crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 identity ontype S6 literal # #2271 dropped-SPY0013
-fstrings/multiline_hole_2022 identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 identity range-line S6 literal # #2271 dropped-SPY0013
-fstrings/multiline_hole_2022 identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-fstrings/multiline_hole_2022 wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014
-fstrings/multiline_hole_2022 wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014
-fstrings/multiline_hole_2022 wide ontype S6 literal # #2271 budget dropped-SPY0013
-fstrings/multiline_hole_2022 wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014
-fstrings/multiline_hole_2022 wide range-line S6 literal # #2271 budget dropped-SPY0013
-fstrings/multiline_hole_2022 wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014
 generators/bare_tuple_yield comment full S6n depth # #2273 budget
 generators/bare_tuple_yield comment range-whole S6n depth # #2273 budget
 generators/generator_basic_0008 comment full S6n depth # #2273 budget
@@ -487,332 +355,10 @@ self_type/self_type_in_static_interface comment full S6n depth # #2273 budget
 self_type/self_type_in_static_interface comment range-whole S6n depth # #2273 budget
 self_type/self_type_interface_return comment full S6n depth # #2273 budget
 self_type/self_type_interface_return comment range-whole S6n depth # #2273 budget
-strings/d_string_basic comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic comment ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic comment range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic cr ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic cr range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic crlf ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic crlf range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic identity ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic identity range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_basic wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_basic wide full S6 literal # #2271 budget
-strings/d_string_basic wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_basic wide ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_basic wide range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_basic wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_basic wide range-whole S6 literal # #2271 budget
-strings/d_string_fstring comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring comment ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring comment range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring cr ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring cr range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring crlf ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring crlf range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring identity ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring identity range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring wide full S6 literal # #2271 budget
-strings/d_string_fstring wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring wide ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring wide range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring wide range-whole S6 literal # #2271 budget
-strings/d_string_fstring_mixed comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed comment ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed comment range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed cr ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed cr range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed crlf ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed crlf range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed identity ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed identity range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_mixed wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_mixed wide full S6 literal # #2271 budget
-strings/d_string_fstring_mixed wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_mixed wide ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_mixed wide range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_mixed wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_mixed wide range-whole S6 literal # #2271 budget
-strings/d_string_fstring_multiline comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline comment ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline comment range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline cr ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline cr range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline crlf ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline crlf range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline identity ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline identity range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_fstring_multiline wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_multiline wide full S6 literal # #2271 budget
-strings/d_string_fstring_multiline wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_multiline wide ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_multiline wide range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_fstring_multiline wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 repair
-strings/d_string_fstring_multiline wide range-whole S6 literal # #2271 budget
-strings/d_string_raw comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw comment ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw comment range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw cr ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw cr range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw crlf ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw crlf range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw identity ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw identity range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw wide full S6 literal # #2271 budget
-strings/d_string_raw wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw wide ontype S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw wide range-line S6 literal # #2271 dropped-SPY0013
-strings/d_string_raw wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 repair
-strings/d_string_raw wide range-whole S6 literal # #2271 budget
-strings/d_string_trailing_newline comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline comment ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline comment range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline cr ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline cr range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline crlf ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline crlf range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline identity ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline identity range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide full S6 literal # #2271 budget
-strings/d_string_trailing_newline wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide ontype S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide range-line S6 literal # #2271 dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013
-strings/d_string_trailing_newline wide range-whole S6 literal # #2271 budget
-strings/f_string_multiline_triple comment full S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple comment ontype S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple comment range-line S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple comment range-whole S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple cr full S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple cr ontype S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple cr range-line S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple cr range-whole S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple crlf full S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple crlf ontype S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple crlf range-line S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple crlf range-whole S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple identity full S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple identity ontype S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple identity range-line S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple identity range-whole S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple wide full S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple wide ontype S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple wide range-line S6 factMissing # #2271 budget repair
-strings/f_string_multiline_triple wide range-whole S6 factMissing # #2271 budget repair
-strings/triple_quoted_delimiter_lines comment full S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines comment full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines comment full S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines comment ontype S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines comment ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines comment ontype S6 literal # #2271 dropped-SPY0013
-strings/triple_quoted_delimiter_lines comment range-line S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines comment range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines comment range-line S6 literal # #2271 dropped-SPY0013 dropped-SPY0015
-strings/triple_quoted_delimiter_lines comment range-whole S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines comment range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines comment range-whole S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines cr full S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines cr full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines cr full S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines cr ontype S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines cr ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines cr ontype S6 literal # #2271 dropped-SPY0013
-strings/triple_quoted_delimiter_lines cr range-line S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines cr range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines cr range-line S6 literal # #2271 dropped-SPY0013 dropped-SPY0015
-strings/triple_quoted_delimiter_lines cr range-whole S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines cr range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines cr range-whole S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines crlf full S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines crlf full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines crlf full S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines crlf ontype S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines crlf ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines crlf ontype S6 literal # #2271 dropped-SPY0013
-strings/triple_quoted_delimiter_lines crlf range-line S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines crlf range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines crlf range-line S6 literal # #2271 dropped-SPY0013 dropped-SPY0015
-strings/triple_quoted_delimiter_lines crlf range-whole S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines crlf range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines crlf range-whole S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines identity full S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines identity full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines identity full S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines identity ontype S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines identity ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines identity ontype S6 literal # #2271 dropped-SPY0013
-strings/triple_quoted_delimiter_lines identity range-line S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines identity range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines identity range-line S6 literal # #2271 dropped-SPY0013 dropped-SPY0015
-strings/triple_quoted_delimiter_lines identity range-whole S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines identity range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines identity range-whole S6 literal # #2271 dropped-SPY0015
-strings/triple_quoted_delimiter_lines wide full S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines wide full S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines wide full S6 literal # #2271 budget dropped-SPY0015
-strings/triple_quoted_delimiter_lines wide ontype S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines wide ontype S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines wide ontype S6 literal # #2271 dropped-SPY0013
-strings/triple_quoted_delimiter_lines wide range-line S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines wide range-line S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines wide range-line S6 literal # #2271 dropped-SPY0013 dropped-SPY0015
-strings/triple_quoted_delimiter_lines wide range-whole S5 factMissing # #2271 dropped delimiter reached from S5
-strings/triple_quoted_delimiter_lines wide range-whole S6 factMissing # #2271 budget dropped-SPY0011 dropped-SPY0012 dropped-SPY0013 dropped-SPY0014 dropped-SPY0015 repair
-strings/triple_quoted_delimiter_lines wide range-whole S6 literal # #2271 budget dropped-SPY0015
-strings/triple_quoted_string comment full S6 factMissing # #2271 budget repair
-strings/triple_quoted_string comment ontype S6 factMissing # #2271 budget repair
-strings/triple_quoted_string comment range-line S6 factMissing # #2271 budget repair
-strings/triple_quoted_string comment range-whole S6 factMissing # #2271 budget repair
-strings/triple_quoted_string cr full S6 factMissing # #2271 budget repair
-strings/triple_quoted_string cr ontype S6 factMissing # #2271 budget repair
-strings/triple_quoted_string cr range-line S6 factMissing # #2271 budget repair
-strings/triple_quoted_string cr range-whole S6 factMissing # #2271 budget repair
-strings/triple_quoted_string crlf full S6 factMissing # #2271 budget repair
-strings/triple_quoted_string crlf ontype S6 factMissing # #2271 budget repair
-strings/triple_quoted_string crlf range-line S6 factMissing # #2271 budget repair
-strings/triple_quoted_string crlf range-whole S6 factMissing # #2271 budget repair
-strings/triple_quoted_string identity full S6 factMissing # #2271 budget repair
-strings/triple_quoted_string identity ontype S6 factMissing # #2271 budget repair
-strings/triple_quoted_string identity range-line S6 factMissing # #2271 budget repair
-strings/triple_quoted_string identity range-whole S6 factMissing # #2271 budget repair
-strings/triple_quoted_string wide full S6 factMissing # #2271 budget repair
-strings/triple_quoted_string wide ontype S6 factMissing # #2271 budget repair
-strings/triple_quoted_string wide range-line S6 factMissing # #2271 budget repair
-strings/triple_quoted_string wide range-whole S6 factMissing # #2271 budget repair
 transition/transition_no_classmethod comment full S6n depth # #2273 budget
 transition/transition_no_classmethod comment range-whole S6n depth # #2273 budget
 transition/transition_static_decorator_unnecessary comment full S6n depth # #2273 budget
 transition/transition_static_decorator_unnecessary comment range-whole S6n depth # #2273 budget
-tstrings/t_string_multiline_hole_2022 comment full S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 comment ontype S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 comment ontype S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 comment range-line S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 comment range-line S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 comment range-whole S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 cr full S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 cr ontype S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 cr ontype S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 cr range-line S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 cr range-line S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 cr range-whole S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 crlf full S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 crlf ontype S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 crlf ontype S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 crlf range-line S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 crlf range-line S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 crlf range-whole S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 identity full S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 identity ontype S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 identity ontype S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 identity range-line S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 identity range-line S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 identity range-whole S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 wide full S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 wide ontype S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 wide ontype S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 wide range-line S6 factMissing # #2271 budget
-tstrings/t_string_multiline_hole_2022 wide range-line S6 literal # #2271 budget
-tstrings/t_string_multiline_hole_2022 wide range-whole S6 factMissing # #2271 budget
 tuple_unpacking/none_element_with_as comment full S6n depth # #2273 budget
 tuple_unpacking/none_element_with_as comment range-whole S6n depth # #2273 budget
 tuples/for_tuple_heterogeneous_refused comment full S6n depth # #2273 budget
