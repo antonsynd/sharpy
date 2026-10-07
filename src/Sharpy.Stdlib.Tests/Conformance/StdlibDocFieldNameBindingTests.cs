@@ -25,7 +25,7 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// the functions, and 22 zipfile/zlib module properties (<c>zlib.z_best_speed</c>) were the same
 /// rule on a static property. <c>sharpy_field_name</c> in <c>build_tools/generate_stdlib_docs.py</c>
 /// mirrors the compiler's rule; this test is what keeps that copy honest.</para>
-/// <para>Allowlisted rows are the generator's OTHER mechanism, ownership: an un-annotated public
+/// <para>Allowlisted rows (#2272) are the generator's OTHER mechanism, ownership: an un-annotated public
 /// class's members render at module level although the compiler's module surface is the
 /// <c>[SharpyModule]</c> class only (<c>numpy.start</c> is <c>SliceSpec.start</c>). Rows drain on fix;
 /// a stale row fails. Not covered: function and method headings (the Method rule) and type-level
@@ -41,13 +41,13 @@ public class StdlibDocFieldNameBindingTests : StdlibIntegrationTestBase
     private static readonly Dictionary<string, string> KnownUnbound = new()
     {
         // Instance and static members of the un-annotated SliceSpec rendered as module members.
-        ["numpy.start"] = "#2264",
-        ["numpy.stop"] = "#2264",
-        ["numpy.step"] = "#2264",
-        ["numpy.is_squeeze"] = "#2264",
-        ["numpy.all"] = "#2264",
+        ["numpy.start"] = "#2272",
+        ["numpy.stop"] = "#2272",
+        ["numpy.step"] = "#2272",
+        ["numpy.is_squeeze"] = "#2272",
+        ["numpy.all"] = "#2272",
         // TmpPathFixture.Value (an un-annotated fixture class) rendered as a module member.
-        ["unittest.value"] = "#2264",
+        ["unittest.value"] = "#2272",
     };
 
     /// <summary>One documented field: the spelling a reader copies, its Type column, its owner.</summary>
