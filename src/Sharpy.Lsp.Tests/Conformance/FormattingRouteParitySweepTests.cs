@@ -1198,6 +1198,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var work = new SCG.List<(SweepDocument Doc, CellRequest Request, Group Group)>();
         foreach (var doc in docs)
         {
+            foreach (var tally in DocumentTallies(doc))
+                tallies[tally] = tallies.GetValueOrDefault(tally) + 1;
             foreach (var request in Cells(doc))
             {
                 foreach (var tally in Tallies(doc, request))
@@ -1280,6 +1282,37 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string ShapeTally(string state, string shape, string route) => $"shape {state} {shape} {route}";
 
+    /// <summary>
+    /// Whether the lexer read <paramref name="d"/> without aborting inside a literal — what makes an S6
+    /// document a literal loss the abort fact cannot see. At P22f Phase 1 the abort is the fact's only
+    /// producer, so this is the fact itself; Phase 2 reads the abort's own <c>LiteralLoss</c> flag here.
+    /// </summary>
+    internal static bool IsAbortFree(SweepDocument d) => !d.LiteralState.FactSet;
+
+    /// <summary>
+    /// The census keys of one S6-family document (not of its cells): <c>documents S6 budget</c> and, when
+    /// <see cref="IsAbortFree"/>, <c>abort-free S6 budget</c>. An <see cref="S6"/> document counts only when Q
+    /// has a literal line for it to lose; an <see cref="S6n"/> one (nothing to lose) and an
+    /// <see cref="S6k"/> one always.
+    /// </summary>
+    internal static IEnumerable<string> DocumentTallies(SweepDocument d)
+    {
+        if (d.Truth is not { Shape: { } shape } truth || (d.State == S6 && truth.LiteralLines.Count == 0))
+            yield break;
+        yield return LossDocumentTally(d.State, shape);
+        if (IsAbortFree(d))
+            yield return AbortFreeTally(d.State, shape);
+    }
+
+    private static string LossDocumentTally(string state, string shape) => $"documents {state} {shape}";
+
+    private static string AbortFreeTally(string state, string shape) => $"abort-free {state} {shape}";
+
+    /// <summary>The (state, shape) pairs <see cref="LossState"/> can produce, in census order.</summary>
+    private static IEnumerable<(string State, string Shape)> LossStateShapes()
+        => FormatterTwins.LiteralLossShapeNames
+            .Select(shape => (State: shape == FormatterTwins.RepairCommentShape ? S6k : S6, Shape: shape))
+            .Append((S6n, FormatterTwins.BudgetShape));
 
     // ---- the range census's measures (s_rangeCensus) ----
     private const string WithWorkMeasure = "withWork";
@@ -1832,9 +1865,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>
     /// Ordered after the theories (<see cref="RouteParitySweepOrderer"/>): prints the cells that ran per
     /// route × state × twin, <c>refusedWork</c> per range kind and twin, the F-declined stems, the wall time
-    /// and the stride, the S4/S5 cells per literal kind, the <c>ontype</c> cells on continuation lines, and per
+    /// and the stride, the S4–S6 cells per literal kind, the S6 cells per shape and route and its abort-free
+    /// documents per shape (<see cref="DocumentTallies"/>), the <c>ontype</c> cells on continuation lines, and per
     /// route and twin the S3 cells whose applied text differs from the document. Floors: every route of every state
-    /// has ≥ 1 cell; S4 and S5 have ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; the backslash and
+    /// has ≥ 1 cell; S4 and S5 have ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; every S6 shape but the
+    /// comment re-pair has ≥ 1 abort-free document with a literal line to lose (the comment re-pair: ≥ 1 cell per
+    /// route), and S6's dropped-delimiter shapes ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; the backslash and
     /// bracket continuation shapes have ≥ 1 <c>ontype</c> cell; each S3 route edits ≥ 1 document of each twin
     /// whose theory ran over every stem ("no edits" passes every unparseable oracle, and a route that counts
     /// lines differently from the client declines a whole twin's documents silently — the lone-<c>\r</c> twin's
@@ -1891,10 +1927,17 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         var kinds = TripleQuotedKinds.Concat(tallies.Keys.Where(k => k.StartsWith("kind ", StringComparison.Ordinal)).Select(k => k.Split(' ', 3)[2]))
             .Distinct(StringComparer.Ordinal).ToArray();
-        foreach (var state in new[] { S4, S5 })
+        foreach (var state in new[] { S4, S5, S6, S6Dropped })
         {
             _output.WriteLine($"FMTROUTE-CENSUS literal-kind {state} "
                 + string.Join(" ", kinds.Select(k => $"{k}={tallies.GetValueOrDefault(KindTally(state, k))}")));
+        }
+
+        foreach (var (state, shape) in LossStateShapes())
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS shape {state} {shape}={RoutesByState[state].Sum(r => tallies.GetValueOrDefault(ShapeTally(state, shape, r)))} "
+                + string.Join(" ", RoutesByState[state].Select(r => $"{r}={tallies.GetValueOrDefault(ShapeTally(state, shape, r))}"))
+                + $" abort-free documents={tallies.GetValueOrDefault(AbortFreeTally(state, shape))}/{tallies.GetValueOrDefault(LossDocumentTally(state, shape))}");
         }
 
         _output.WriteLine($"FMTROUTE-CENSUS continuation ontype (full-mode cells) {BackslashContinuation}={tallies.GetValueOrDefault($"ontype-{BackslashContinuation}")} "
@@ -1936,6 +1979,31 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             tallies.GetValueOrDefault($"ontype-{shape}").Should()
                 .BeGreaterThanOrEqualTo(1, $"an ontype cell must sit on a {shape} continuation line");
+        }
+
+        // S6 (P22f, #2271): every shape builds a document that loses a literal WITHOUT an abort inside its
+        // read — else it is S5 again and proves nothing about the other mechanisms. S6n (#2273) is the cure's
+        // direction control: it must have an abort-free document too. S6k (#2274, the comment re-pair) is a
+        // route-only guard: the per-route cell floor above is its floor.
+        foreach (var (state, shape) in LossStateShapes().Where(p => p.State != S6k))
+        {
+            tallies.GetValueOrDefault(AbortFreeTally(state, shape)).Should()
+                .BeGreaterThanOrEqualTo(1, $"{state} shape {shape} must build an abort-free document"
+                    + (state == S6 ? " that has a literal line to lose" : ""));
+        }
+
+        // The short-string re-pair's appended `_ = '"""'` line is what keeps the triple count even; a Q that
+        // already holds a triple inside a short string (N2's own shape) is abort-free without it, so "≥ 1"
+        // cannot see the line go missing. More than half its documents are abort-free: 65/75 in FULL mode
+        // @ 3c70ea492 (the corpus with strings/triple_quoted_delimiter_lines), 10/75 without the line.
+        (2 * tallies.GetValueOrDefault(AbortFreeTally(S6, FormatterTwins.RepairShape))).Should()
+            .BeGreaterThan(tallies.GetValueOrDefault(LossDocumentTally(S6, FormatterTwins.RepairShape)),
+                "most S6 repair documents must be abort-free — the appended short string closes the last re-paired run");
+
+        foreach (var kind in TripleQuotedKinds)
+        {
+            tallies.GetValueOrDefault(KindTally(S6Dropped, kind)).Should()
+                .BeGreaterThanOrEqualTo(1, $"S6's dropped-delimiter shapes must have a cell that loses a {kind} literal");
         }
 
         // "No edits" passes every S3-S5 oracle; that some cell of each route DOES edit an S3 document is
@@ -2044,6 +2112,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 foreach (var doc in Documents(stem, twin, out _))
                 {
+                    foreach (var key in DocumentTallies(doc))
+                        tallies.AddOrUpdate(key, 1, (_, n) => n + 1);
                     foreach (var request in Cells(doc))
                     {
                         foreach (var key in Tallies(doc, request))
