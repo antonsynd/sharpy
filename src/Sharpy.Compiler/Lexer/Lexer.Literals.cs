@@ -84,6 +84,7 @@ public partial class Lexer
             {
                 _position += 3;
                 _column += 3;
+                NoteMultiLineLiteralClosed(startLine);
                 var sourceLength = _position - startPosition;
                 return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
             }
@@ -230,6 +231,7 @@ public partial class Lexer
                 {
                     _position += 3;
                     _column += 3;
+                    NoteMultiLineLiteralClosed(startLine);
                     var sourceLength = _position - startPosition;
                     var dedented = ApplyDedentation(sb.ToString(), startLine, startColumn);
                     return CreateToken(TokenType.RawString, dedented, startLine, startColumn, startPosition, sourceLength);
@@ -411,6 +413,7 @@ public partial class Lexer
                 {
                     _position += 3;
                     _column += 3;
+                    NoteMultiLineLiteralClosed(startLine);
                     var sourceLength = _position - startPosition;
                     return CreateToken(TokenType.RawString, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
                 }
@@ -538,6 +541,7 @@ public partial class Lexer
             {
                 _position += 3;
                 _column += 3;
+                NoteMultiLineLiteralClosed(startLine);
                 var sourceLength = _position - startPosition;
                 return CreateToken(TokenType.ByteString, sb.ToString(), startLine, startColumn, startPosition, sourceLength);
             }

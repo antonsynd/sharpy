@@ -2,6 +2,46 @@ namespace Sharpy.Compiler.Lexer;
 
 public partial class Lexer
 {
+    private int _lastMultiLineCloseLine = -1;   // see NoteMultiLineLiteralClosed
+
+    /// <summary>
+    /// Error recovery is about to skip the rest of the current line (<see cref="RecoverFromError"/>):
+    /// <see cref="LiteralLoss.DroppedOpener"/> when that text holds a literal that can span lines. At an
+    /// indentation error (SPY0011–SPY0014) <see cref="_position"/> is the line start
+    /// (<see cref="HandleLineStartIndentation"/> restores it before measuring), so the span is the whole
+    /// line; after a mid-line abort it is the rest of the line (<c>x = $"""</c>). An unterminated short
+    /// string aborts on the line break: the span is empty.
+    /// </summary>
+    private void NoteDroppedSpan()
+    {
+        var end = _position;
+        while (end < _source.Length && !IsLineBreak(_source[end]))
+            end++;
+        if (HoldsALiteralSpanningLines(_source.AsSpan(_position, end - _position)))
+            LiteralLoss |= LiteralLoss.DroppedOpener;
+    }
+
+    /// <summary>
+    /// Called by the five arms that close a triple-quoted literal (<see cref="ReadTripleQuotedString"/>
+    /// for plain and <c>d</c>, <see cref="ReadTripleQuotedByteString"/>, the triple arms of
+    /// <see cref="ReadRawString"/> and <see cref="ReadDedentedRawString"/>, and the f-/t-/df-string
+    /// <c>FStringEnd</c> triple arm) with <see cref="_position"/> just past the closer and the line the
+    /// literal started on. Records the closer's context for <see cref="LiteralLoss.RePairedCloser"/>:
+    /// (a) the closer is immediately followed by a quote character — implicit concatenation is not Sharpy
+    /// syntax, so this never occurs in a program that parses: the closer re-paired with a quote inside a
+    /// short string (<c>t = '"""'</c> below a stray <c>"""</c>); (b) the close line, when the literal
+    /// spanned lines, so that <see cref="ReportError"/> can tell an unterminated short string reported on
+    /// it (<c>t = '""" '</c>). A literal closed on its own line cannot have lost multi-line content, so
+    /// <c>x = """a""" + 'b</c> being typed records nothing (owner ruling 2026-10-07).
+    /// </summary>
+    private void NoteMultiLineLiteralClosed(int startLine)
+    {
+        if (startLine < _line)
+            _lastMultiLineCloseLine = _line;
+        if (_position < _source.Length && _source[_position] is '"' or '\'')
+            LiteralLoss |= LiteralLoss.RePairedCloser;
+    }
+
     /// <summary>
     /// Whether <paramref name="text"/> holds a literal that can span lines (#2271, P22f decision 2): the
     /// ONE test behind <see cref="LiteralLoss.DroppedOpener"/> (the text error recovery skips) and

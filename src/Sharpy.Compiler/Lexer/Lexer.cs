@@ -57,6 +57,14 @@ public partial class Lexer
         if (_multiLineLiteralReads > 0 || _fstringStack.Any(c => c.IsTriple || c.StartLine < _line))
             LiteralLoss |= LiteralLoss.AbortInsideLiteral;
 
+        // An unterminated short string on the line where a literal that spanned lines closed: its opening
+        // quote is an orphan the closer re-paired with (`t = '""" '` below a stray `"""`), see
+        // NoteMultiLineLiteralClosed.
+        if (line == _lastMultiLineCloseLine
+            && code is DiagnosticCodes.Lexer.UnterminatedString or DiagnosticCodes.Lexer.UnterminatedFString
+                or DiagnosticCodes.Lexer.UnterminatedRawString or DiagnosticCodes.Lexer.UnterminatedByteString)
+            LiteralLoss |= LiteralLoss.RePairedCloser;
+
         // Compute a TextSpan from line/column using SourceText if available,
         // otherwise fall back to the current _position with a length of 1.
         TextSpan? span = null;
@@ -333,6 +341,10 @@ public partial class Lexer
                 {
                     if (_diagnostics.ErrorCount >= MaxErrors)
                     {
+                        // The rest of the source gets no token: a literal that can span lines in it is
+                        // lost even when it is closed (its lines read as dropped code lines).
+                        if (_position < _source.Length && HoldsALiteralSpanningLines(_source.AsSpan(_position)))
+                            LiteralLoss |= LiteralLoss.UnreadRemainder;
                         _diagnostics.AddWarning(
                             $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
                             _line, _column,
@@ -343,6 +355,7 @@ public partial class Lexer
                     break;
                 }
 
+                NoteDroppedSpan();
                 RecoverFromError();
                 continue;
             }

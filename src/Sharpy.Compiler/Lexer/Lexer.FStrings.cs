@@ -830,6 +830,7 @@ public partial class Lexer
                         _position += 3;
                         _column += 3;
                         _fstringStack.Pop();
+                        NoteMultiLineLiteralClosed(context.StartLine);
                         return CreateToken(TokenType.FStringEnd, new string(context.QuoteChar, 3), startLine, startColumn, startPosition);
                     }
                     // Not end of triple-quote, treat as regular character
