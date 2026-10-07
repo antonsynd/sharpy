@@ -10,9 +10,9 @@ import subprocess
 
 | Name | Type | Description |
 |------|------|-------------|
-| `pipe` | `int` | Requests that a standard stream be redirected through a pipe. |
-| `stdout` | `int` | Requests that stderr be merged into stdout. |
-| `devnull` | `int` | Requests that a standard stream be redirected to the null device. |
+| `PIPE` | `int` | Requests that a standard stream be redirected through a pipe. |
+| `STDOUT` | `int` | Requests that stderr be merged into stdout. |
+| `DEVNULL` | `int` | Requests that a standard stream be redirected to the null device. |
 
 ## Functions
 

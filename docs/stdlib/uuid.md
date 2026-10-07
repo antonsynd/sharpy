@@ -10,10 +10,10 @@ import uuid
 
 | Name | Type | Description |
 |------|------|-------------|
-| `namespace_dns` | `UUID` | The namespace UUID for fully qualified domain names. |
-| `namespace_url` | `UUID` | The namespace UUID for URLs. |
-| `namespace_oid` | `UUID` | The namespace UUID for ISO object identifiers. |
-| `namespace_x500` | `UUID` | The namespace UUID for X.500 distinguished names. |
+| `NAMESPACE_DNS` | `UUID` | The namespace UUID for fully qualified domain names. |
+| `NAMESPACE_URL` | `UUID` | The namespace UUID for URLs. |
+| `NAMESPACE_OID` | `UUID` | The namespace UUID for ISO object identifiers. |
+| `NAMESPACE_X500` | `UUID` | The namespace UUID for X.500 distinguished names. |
 
 ## Functions
 

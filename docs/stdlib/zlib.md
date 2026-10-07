@@ -10,26 +10,26 @@ import zlib
 
 | Name | Type | Description |
 |------|------|-------------|
-| `max_wbits` | `int` | Gets the largest supported window size. |
-| `deflated` | `int` | Gets the DEFLATE compression method identifier. |
-| `def_mem_level` | `int` | Gets the default memory level for compression. |
-| `def_buf_size` | `int` | Gets the default buffer size used by zlib helpers. |
-| `z_default_compression` | `int` | Gets the default compression level sentinel. |
-| `z_no_compression` | `int` | Gets the constant for no compression. |
-| `z_best_speed` | `int` | Gets the fastest compression level constant. |
-| `z_best_compression` | `int` | Gets the best compression level constant. |
-| `z_default_strategy` | `int` | Gets the default compression strategy constant. |
-| `z_filtered` | `int` | Gets the filtered compression strategy constant. |
-| `z_huffman_only` | `int` | Gets the Huffman-only compression strategy constant. |
-| `z_rle` | `int` | Gets the run-length encoding strategy constant. |
-| `z_fixed` | `int` | Gets the fixed-Huffman compression strategy constant. |
-| `z_no_flush` | `int` | Gets the constant for no flush. |
-| `z_partial_flush` | `int` | Gets the constant for partial flush. |
-| `z_sync_flush` | `int` | Gets the constant for synchronous flush. |
-| `z_full_flush` | `int` | Gets the constant for full flush. |
-| `z_finish` | `int` | Gets the constant for finishing a stream. |
-| `z_block` | `int` | Gets the constant for block flush mode. |
-| `z_trees` | `int` | Gets the constant for tree flush mode. |
+| `MAX_WBITS` | `int` | Gets the largest supported window size. |
+| `DEFLATED` | `int` | Gets the DEFLATE compression method identifier. |
+| `DEF_MEM_LEVEL` | `int` | Gets the default memory level for compression. |
+| `DEF_BUF_SIZE` | `int` | Gets the default buffer size used by zlib helpers. |
+| `Z_DEFAULT_COMPRESSION` | `int` | Gets the default compression level sentinel. |
+| `Z_NO_COMPRESSION` | `int` | Gets the constant for no compression. |
+| `Z_BEST_SPEED` | `int` | Gets the fastest compression level constant. |
+| `Z_BEST_COMPRESSION` | `int` | Gets the best compression level constant. |
+| `Z_DEFAULT_STRATEGY` | `int` | Gets the default compression strategy constant. |
+| `Z_FILTERED` | `int` | Gets the filtered compression strategy constant. |
+| `Z_HUFFMAN_ONLY` | `int` | Gets the Huffman-only compression strategy constant. |
+| `Z_RLE` | `int` | Gets the run-length encoding strategy constant. |
+| `Z_FIXED` | `int` | Gets the fixed-Huffman compression strategy constant. |
+| `Z_NO_FLUSH` | `int` | Gets the constant for no flush. |
+| `Z_PARTIAL_FLUSH` | `int` | Gets the constant for partial flush. |
+| `Z_SYNC_FLUSH` | `int` | Gets the constant for synchronous flush. |
+| `Z_FULL_FLUSH` | `int` | Gets the constant for full flush. |
+| `Z_FINISH` | `int` | Gets the constant for finishing a stream. |
+| `Z_BLOCK` | `int` | Gets the constant for block flush mode. |
+| `Z_TREES` | `int` | Gets the constant for tree flush mode. |
 
 ## Functions
 

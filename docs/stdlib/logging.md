@@ -10,11 +10,11 @@ import logging
 
 | Name | Type | Description |
 |------|------|-------------|
-| `debug` | `int` | Detailed information, typically of interest only when diagnosing problems. |
-| `info` | `int` | Confirmation that things are working as expected. |
-| `warning` | `int` | An indication that something unexpected happened. |
-| `error` | `int` | Due to a more serious problem, the software has not been able to perform some function. |
-| `critical` | `int` | A serious error, indicating that the program itself may be unable to continue running. |
+| `DEBUG` | `int` | Detailed information, typically of interest only when diagnosing problems. |
+| `INFO` | `int` | Confirmation that things are working as expected. |
+| `WARNING` | `int` | An indication that something unexpected happened. |
+| `ERROR` | `int` | Due to a more serious problem, the software has not been able to perform some function. |
+| `CRITICAL` | `int` | A serious error, indicating that the program itself may be unable to continue running. |
 
 ## Functions
 

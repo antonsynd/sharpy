@@ -10,10 +10,10 @@ import tarfile
 
 | Name | Type | Description |
 |------|------|-------------|
-| `regtype` | `int` |  |
-| `dirtype` | `int` |  |
-| `symtype` | `int` |  |
-| `lnktype` | `int` |  |
+| `REGTYPE` | `int` |  |
+| `DIRTYPE` | `int` |  |
+| `SYMTYPE` | `int` |  |
+| `LNKTYPE` | `int` |  |
 
 ## Functions
 

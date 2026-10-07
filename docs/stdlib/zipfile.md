@@ -10,8 +10,8 @@ import zipfile
 
 | Name | Type | Description |
 |------|------|-------------|
-| `zip_stored` | `int` | Stores entries without compression. |
-| `zip_deflated` | `int` | Compresses entries with the deflate method. |
+| `ZIP_STORED` | `int` | Stores entries without compression. |
+| `ZIP_DEFLATED` | `int` | Compresses entries with the deflate method. |
 
 ## Functions
 

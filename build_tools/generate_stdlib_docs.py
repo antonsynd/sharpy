@@ -110,6 +110,31 @@ def pascal_to_snake(name: str) -> str:
     return result.lower()
 
 
+_SHARPY_FIELD_NAME_RE = re.compile(r'\bSharpyFieldName(?:Attribute)?\(\s*"([^"]+)"\s*\)')
+
+
+def sharpy_field_name(cs_name: str, attr_lines: Optional[list] = None) -> str:
+    """The name the compiler binds a static FIELD or static PROPERTY under (#2264).
+
+    Mirrors the module-member discovery in ``OverloadIndexBuilder`` (the type-collision branch is
+    applied by ``discover_modules``, which knows the module's type names): a recorded
+    ``[SharpyFieldName("x")]`` wins; otherwise ``NameMangler.ToSharpyName(name,
+    ReverseNameContext.Field)`` — a CONSTANT_CASE name of more than one character
+    (``NameFormDetector.IsConstantCaseName``: upper-case letters, digits and ``_``, at least one
+    letter) is kept as written, anything else is snake-cased. ``pascal_to_snake`` alone turned
+    ``PIPE`` into ``pipe``, a member that does not exist. ``StdlibDocFieldNameBindingTests`` compiles
+    every documented field against the real compiler, so this copy cannot drift silently.
+    """
+    for line in attr_lines or ():
+        recorded = _SHARPY_FIELD_NAME_RE.search(line)
+        if recorded:
+            return recorded.group(1)
+    is_constant_case = any(c.isupper() for c in cs_name) and all(
+        c.isupper() or c.isdigit() or c == "_" for c in cs_name
+    )
+    return cs_name if is_constant_case and len(cs_name) > 1 else pascal_to_snake(cs_name)
+
+
 # ---------------------------------------------------------------------------
 # Type mapping: C# -> Sharpy
 # ---------------------------------------------------------------------------
@@ -1560,12 +1585,13 @@ def _parse_cs_text(
         if const_match:
             ctype, cname, cval = const_match.groups()
             doc_lines = _collect_doc_lines(lines, i)
-            if not _is_skippable(cname, doc_lines) and not _is_hidden_from_surface(_collect_attribute_lines(lines, i)):
+            attr_lines = _collect_attribute_lines(lines, i)
+            if not _is_skippable(cname, doc_lines) and not _is_hidden_from_surface(attr_lines):
                 doc = _parse_xml_doc(doc_lines)
                 members.append(
                     DocMember(
                         kind="constant",
-                        name=pascal_to_snake(cname),
+                        name=sharpy_field_name(cname, attr_lines),
                         cs_name=cname,
                         signature="",
                         summary=doc.get("summary", ""),
@@ -1692,12 +1718,20 @@ def _parse_cs_text(
             if prop_match:
                 modifiers, ptype, pname = prop_match.groups()
                 doc_lines = _collect_doc_lines(lines, i)
-                if not _is_skippable(pname, doc_lines) and not _is_hidden_from_surface(_collect_attribute_lines(lines, i)):
+                attr_lines = _collect_attribute_lines(lines, i)
+                if not _is_skippable(pname, doc_lines) and not _is_hidden_from_surface(attr_lines):
                     doc = _parse_xml_doc(doc_lines)
                     members.append(
                         DocMember(
                             kind="property",
-                            name=pascal_to_snake(pname),
+                            # A STATIC property is bound by the field rule, as a static field is
+                            # (OverloadIndexBuilder discovers both into one table, #2264); an
+                            # instance property is snake-cased.
+                            name=(
+                                sharpy_field_name(pname, attr_lines)
+                                if "static" in modifiers
+                                else pascal_to_snake(pname)
+                            ),
                             cs_name=pname,
                             signature="",
                             summary=doc.get("summary", ""),
@@ -1924,6 +1958,14 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             types_by_class[name].members.extend(
                 parse_cs_file(cs_file, line_range=(start, end), exclude_ranges=nested)
             )
+
+        # A module FIELD named like one of the module's types keeps its CLR name — the compiler's
+        # deliberate type/field collision (`sqlite3.Row` is both the row type and the factory
+        # assigned to `row_factory`; OverloadIndexBuilder's `hasTypeCollision`, #2264).
+        type_names = {t.name for t in all_types}
+        for member in all_members:
+            if member.kind == "constant" and member.cs_name in type_names:
+                member.name = member.cs_name
 
         modules.append(
             DocModule(

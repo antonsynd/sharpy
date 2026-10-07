@@ -10,7 +10,7 @@ import threading
 
 | Name | Type | Description |
 |------|------|-------------|
-| `timeout_max` | `float` | The largest timeout, in seconds, that a blocking call accepts; a larger one raises OverflowError. A wait longer than about 24.8 days is cut short at 24.8 days. |
+| `TIMEOUT_MAX` | `float` | The largest timeout, in seconds, that a blocking call accepts; a larger one raises OverflowError. A wait longer than about 24.8 days is cut short at 24.8 days. |
 
 ## Functions
 

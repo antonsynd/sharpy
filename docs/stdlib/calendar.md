@@ -8,13 +8,13 @@ import calendar
 
 | Name | Type | Description |
 |------|------|-------------|
-| `monday` | `int` |  |
-| `tuesday` | `int` |  |
-| `wednesday` | `int` |  |
-| `thursday` | `int` |  |
-| `friday` | `int` |  |
-| `saturday` | `int` |  |
-| `sunday` | `int` |  |
+| `MONDAY` | `int` |  |
+| `TUESDAY` | `int` |  |
+| `WEDNESDAY` | `int` |  |
+| `THURSDAY` | `int` |  |
+| `FRIDAY` | `int` |  |
+| `SATURDAY` | `int` |  |
+| `SUNDAY` | `int` |  |
 | `day_name` | `list[str]` |  |
 | `day_abbr` | `list[str]` |  |
 | `month_name` | `list[str]` |  |

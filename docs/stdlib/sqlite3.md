@@ -10,7 +10,7 @@ import sqlite3
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row` | `(Cursor, array[object \| None]) -> object` | A factory function that returns \`Row\` objects for query results. |
+| `Row` | `(Cursor, array[object \| None]) -> object` | A factory function that returns \`Row\` objects for query results. |
 
 ## Functions
 

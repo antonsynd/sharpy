@@ -33,6 +33,7 @@ from build_tools.generate_stdlib_docs import (
     pascal_to_snake,
     render_index_page,
     render_module_page,
+    sharpy_field_name,
     update_mkdocs_nav,
 )
 
@@ -104,6 +105,77 @@ class TestPascalToSnake:
 
     def test_trailing_digits(self):
         assert pascal_to_snake("GetItem2") == "get_item2"
+
+
+class TestSharpyFieldName:
+    """The compiler's static-field rule (#2264): a recorded name wins, CONSTANT_CASE longer than one
+    character is kept, anything else is snake-cased."""
+
+    @pytest.mark.parametrize(
+        "cs, sharpy",
+        [
+            ("PIPE", "PIPE"),
+            ("TIMEOUT_MAX", "TIMEOUT_MAX"),
+            ("Z_BEST_SPEED", "Z_BEST_SPEED"),
+            ("NAMESPACE_X500", "NAMESPACE_X500"),
+            ("Utc", "utc"),
+            ("DayName", "day_name"),
+            ("E", "e"),  # one character is never CONSTANT_CASE (math.e)
+            ("Pi", "pi"),
+        ],
+    )
+    def test_field_rule(self, cs: str, sharpy: str):
+        assert sharpy_field_name(cs) == sharpy
+
+    def test_recorded_name_wins(self):
+        assert sharpy_field_name("I", ['[SharpyFieldName("i")]']) == "i"
+        assert sharpy_field_name("Row", ['[SharpyFieldNameAttribute("row_factory")]']) == "row_factory"
+
+    def test_other_attributes_do_not_rename(self):
+        assert sharpy_field_name("PIPE", ["[Obsolete]"]) == "PIPE"
+
+    def test_discovery_applies_the_field_rule_and_the_type_collision(self, tmp_path: Path):
+        """A module const, a static property and a field named like a module type, through discovery."""
+        sub = tmp_path / "Demo"
+        sub.mkdir()
+        (sub / "__Init__.cs").write_text(
+            textwrap.dedent(
+                """\
+                using Sharpy.Core.Shared;
+                namespace Sharpy.Core.Demo;
+
+                [SharpyModule("demo")]
+                public static partial class DemoModule
+                {
+                    /// <summary>A pipe.</summary>
+                    public const int PIPE = -1;
+                    /// <summary>A level.</summary>
+                    public static int Z_BEST_SPEED => 1;
+                    /// <summary>A day list.</summary>
+                    public static readonly int DayCount = 7;
+                    /// <summary>The row factory.</summary>
+                    public static readonly int Row = 0;
+                }
+                """
+            )
+        )
+        (sub / "Row.cs").write_text(
+            textwrap.dedent(
+                """\
+                using Sharpy.Core.Shared;
+                namespace Sharpy.Core.Demo;
+
+                [SharpyModuleType("demo")]
+                public sealed class Row
+                {
+                }
+                """
+            )
+        )
+        (module,) = discover_modules(tmp_path)
+        names = {m.name for m in module.members}
+        assert {"PIPE", "Z_BEST_SPEED", "day_count", "Row"} <= names
+        assert not {"pipe", "z_best_speed", "row"} & names
 
 
 # ---------------------------------------------------------------------------
