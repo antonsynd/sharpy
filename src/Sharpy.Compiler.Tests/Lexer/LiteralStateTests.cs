@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.TestInfrastructure.Formatting;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -451,6 +452,80 @@ public class LiteralStateTests
         failures.Should().BeEmpty();
         clean.Should().BeGreaterThan(100, "the corpus is the compiler's fixture tree");
         cutsByKind.Keys.Should().Contain(new[] { "", "f" }, "the positive control must reach the plain and f-string read paths");
+    }
+
+    /// <summary>
+    /// The abort-free loss mechanisms over the corpus (P22f, #2271), with the SAME documents the route-parity
+    /// sweep's S6 drives through the LSP (<see cref="FormatterTwins.LiteralLossShapes"/>, one recipe), built from
+    /// every clean fixture and its wide twin (the SPY0014 shape needs every level a multiple of 8). A document
+    /// the lexer reads without aborting inside a literal, and in which some line that starts inside a literal in
+    /// the fixture no longer does, sets the fact (<c>LiteralLoss</c> is not <c>None</c>) — by whichever mechanism
+    /// lost it: a re-paired run whose closer line is dropped first is a <c>DroppedOpener</c> loss
+    /// (<c>strings/triple_quoted_delimiter_lines</c>). Each shape has ≥ 1 such document that sets ITS mechanism's
+    /// flag: budget → <c>UnreadRemainder</c>, repair → <c>RePairedCloser</c>, every dropped-delimiter code →
+    /// <c>DroppedOpener</c>. Direction control: the budget document of a fixture with NO literal spanning lines loses
+    /// nothing and sets nothing. The comment re-pair is not asserted: no lexer fact can see it (#2274).
+    /// </summary>
+    [Fact]
+    public void Corpus_EveryAbortFreeLossShape_SetsItsMechanismsFlag()
+    {
+        var root = FixtureRoots.CompilerTests.Path;
+        var files = Directory.EnumerateFiles(root, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !Sharpy.Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(root, f)))
+            .OrderBy(f => f, StringComparer.Ordinal).ToList();
+        var expected = FormatterTwins.DroppedCodes.ToDictionary(c => FormatterTwins.DroppedShapePrefix + c, _ => LexerNs.LiteralLoss.DroppedOpener);
+        expected[FormatterTwins.BudgetShape] = LexerNs.LiteralLoss.UnreadRemainder;
+        expected[FormatterTwins.RepairShape] = LexerNs.LiteralLoss.RePairedCloser;
+        var asserted = expected.Keys.ToDictionary(k => k, _ => 0);
+        var ownFlag = expected.Keys.ToDictionary(k => k, _ => 0);
+        var directionControls = 0;
+        var failures = new List<string>();
+
+        foreach (var file in files)
+        {
+            var name = Path.GetRelativePath(root, file);
+            var source = File.ReadAllText(file);
+            foreach (var (q, wide) in new[] { (source, false), (FormatterTwins.WideIndented(source), true) })
+            {
+                var parent = new LexerNs.Lexer(q);
+                var qLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(q, LexerNs.LiteralSpans.Of(parent.TokenizeAll()));
+                if (parent.Diagnostics.HasErrors)
+                    continue;
+
+                foreach (var shape in FormatterTwins.LiteralLossShapes(q, includeMismatch: wide))
+                {
+                    var lexer = new LexerNs.Lexer(shape.Text);
+                    var dLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(shape.Text, LexerNs.LiteralSpans.Of(lexer.TokenizeAll()));
+                    var where = $"{name}{(wide ? " (wide)" : "")} {shape.Shape}";
+                    if (shape.Shape == FormatterTwins.BudgetShape && shape.Kind == null)
+                    {
+                        directionControls++;
+                        if (lexer.LiteralLoss != LexerNs.LiteralLoss.None)
+                            failures.Add($"{where}: no literal spans lines, yet LiteralLoss is {lexer.LiteralLoss} ({Errors(lexer)})");
+                        continue;
+                    }
+
+                    if (!expected.TryGetValue(shape.Shape, out var flag)
+                        || (lexer.LiteralLoss & LexerNs.LiteralLoss.AbortInsideLiteral) != 0
+                        || qLiteralLines.All(l => dLiteralLines.Contains(l + shape.LineShift)))
+                    {
+                        continue;   // the comment re-pair, an abort (S5's subject), or nothing lost
+                    }
+
+                    asserted[shape.Shape]++;
+                    if (lexer.LiteralLoss.HasFlag(flag))
+                        ownFlag[shape.Shape]++;
+                    else if (lexer.LiteralLoss == LexerNs.LiteralLoss.None)
+                        failures.Add($"{where}: a literal line is lost without an abort, but LiteralLoss is None ({Errors(lexer)})");
+                }
+            }
+        }
+
+        _output.WriteLine($"lost without an abort / with the shape's own flag: {string.Join(", ", asserted.Select(a => $"{a.Key}={a.Value}/{ownFlag[a.Key]}"))}; "
+            + $"direction controls (budget, no literal) {directionControls}");
+        failures.Should().BeEmpty();
+        ownFlag.Where(a => a.Value == 0).Select(a => a.Key).Should().BeEmpty("every loss shape must reach the lexer with a lost literal line, no abort, and its own mechanism's flag");
+        directionControls.Should().BeGreaterThan(100, "most fixtures hold no literal spanning lines");
     }
 
     /// <summary>(prefix, opener offset, offset of the closing delimiter) of every triple-quoted literal.</summary>
