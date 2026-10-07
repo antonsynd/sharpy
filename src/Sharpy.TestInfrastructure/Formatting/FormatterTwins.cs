@@ -75,7 +75,7 @@ public sealed class InjectedCommentCounts
 /// for T1 (the replacement-field hole is P22's contract); T2 escapes hole identifiers too (the hole
 /// is written verbatim, so the escape must survive).
 /// </summary>
-public static class FormatterTwins
+public static partial class FormatterTwins
 {
     private const string ContextualBeforeSet = "before_set";
     private const string ContextualAfterSet = "after_set";

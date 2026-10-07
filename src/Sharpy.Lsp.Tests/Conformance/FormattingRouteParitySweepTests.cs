@@ -58,9 +58,12 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// S1 — <c>full</c>, <c>range-whole</c>, <c>range-statement</c>, <c>range-block</c>, <c>ontype</c>.
 /// The documents that do not parse (<see cref="UnparseableDocuments"/>, from each twin Q): S3 — Q cut after
 /// a block opener; S4 — Q cut after the first interior line of a multi-line literal (the literal is open);
-/// S5 — an unmatched triple quote inserted as line 0 (every later literal of that quote character flips).
+/// S5 — an unmatched triple quote inserted as line 0 (every later literal of that quote character flips);
+/// S6 — a literal lost WITHOUT a lexer abort inside its read (P22f, #2271): the error budget spent above Q,
+/// a stray triple re-paired into a short string (or a comment) below, a delimiter line dropped whole at an
+/// indentation error or a mid-line unexpected character (<see cref="FormatterTwins.LiteralLossShapes"/>).
 /// Each gets <c>full</c>, <c>range-whole</c>, and <c>range-line</c>/<c>ontype</c> on its last line (S3,
-/// S4) or on every line that starts inside a literal in Q (S5); none of them is sampled.</para>
+/// S4) or on every line that starts inside a literal in Q (S5, S6); none of them is sampled.</para>
 ///
 /// <para><b>Oracles (buckets)</b>, <c>D</c> the document and <c>T</c> the applied text:
 /// <list type="bullet">
@@ -140,7 +143,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string S3 = "S3";
     internal const string S4 = "S4";
     internal const string S5 = "S5";
-    internal static readonly string[] States = { S1, S2, S3, S4, S5 };
+    internal const string S6 = "S6";
+    internal const string S6n = "S6n";
+    internal const string S6k = "S6k";
+    internal static readonly string[] States = { S1, S2, S3, S4, S5, S6, S6n, S6k };
 
     /// <summary>The routes swept per state.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string[]> RoutesByState = new SCG.Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -150,10 +156,42 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         [S3] = new[] { Full, RangeWhole, RangeLine, OnType },
         [S4] = new[] { Full, RangeWhole, RangeLine, OnType },
         [S5] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S6] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S6n] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S6k] = new[] { Full, RangeWhole, RangeLine, OnType },
     };
 
-    /// <summary>Whether a cell of <paramref name="route"/> in <paramref name="state"/> is sampled: the line-proportional routes on a parseable document. S3–S5 cells always run.</summary>
+    /// <summary>Whether a cell of <paramref name="route"/> in <paramref name="state"/> is sampled: the line-proportional routes on a parseable document. S3–S6 cells always run.</summary>
     internal static bool IsSampledCell(string route, string state) => SampledRoutes.Contains(route) && state is S1 or S2;
+
+    /// <summary>
+    /// The state label of an S6-family document — chosen HERE only, so each label is one class with one
+    /// allowlist cite (<see cref="StateIssue"/>):
+    /// <list type="bullet">
+    /// <item><see cref="S6"/> — a literal lost without a lexer abort (#2271): the budget shape when Q holds a
+    /// literal spanning lines, the short-string re-pair and every dropped-delimiter shape. Every S6 row
+    /// drains when the lexer's fact covers the mechanism.</item>
+    /// <item><see cref="S6n"/> — the budget shape when Q holds NO literal spanning lines: nothing can be lost,
+    /// so its fact buckets are the direction control of the cure (a <c>factSpurious</c> row here is a finding,
+    /// never a row) and its route rows are the indent map's reading of an unread remainder (#2273).</item>
+    /// <item><see cref="S6k"/> — the comment re-pair, a known limit of any lexer-level fact (#2274): route
+    /// buckets only.</item>
+    /// </list>
+    /// </summary>
+    internal static string LossState(LiteralLossShape shape, LexFacts facts) => shape.Shape switch
+    {
+        FormatterTwins.RepairCommentShape => S6k,
+        FormatterTwins.BudgetShape when facts.MultiLineLiterals.Count == 0 => S6n,
+        _ => S6,
+    };
+
+    /// <summary>The issue an allowlist row of an S6-family state must cite first (<see cref="LossState"/>).</summary>
+    internal static readonly SCG.IReadOnlyDictionary<string, string> StateIssue = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [S6] = "#2271",
+        [S6n] = "#2273",
+        [S6k] = "#2274",
+    };
 
     /// <summary>
     /// The lexer's read paths for a literal that can span lines — the S4/S5 census floors: plain and
@@ -407,13 +445,15 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// An unparseable document's ground truth, from its parent <c>Q</c>'s clean lex mapped to D's lines:
     /// the lines that start inside a literal, each logical line's first line with its block depth
     /// (<c>Indent</c> minus <c>Dedent</c> tokens before it), the lines <c>range-line</c>/<c>ontype</c> are
-    /// requested on, and the literal kind whose state the document loses (S4, S5).
+    /// requested on, the literal kind whose state the document loses (S4–S6), and the S6 shape that built it
+    /// (<see cref="FormatterTwins.LiteralLossShapeNames"/>).
     /// </summary>
     internal sealed record GroundTruth(
         SCG.IReadOnlySet<int> LiteralLines,
         IReadOnlyList<(int Line, int Depth)> LogicalStarts,
         IReadOnlyList<int> TargetLines,
-        string? Kind);
+        string? Kind,
+        string? Shape = null);
 
     internal const string BracketContinuation = "bracket";
     internal const string BackslashContinuation = "backslash";
@@ -474,27 +514,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         return facts with { MultiLineLiterals = spans.Where(s => facts.LineOf(s.Start) < facts.LineOf(s.End - 1)).ToArray() };
     }
 
-    /// <summary>
-    /// A literal's kind: its prefix letters, lower-cased and sorted (<c>rd</c> is <c>dr</c>), and <c>"""</c>
-    /// when triple-quoted (either quote character), <c>"</c> otherwise.
-    /// </summary>
-    internal static string LiteralKind(string text, int start)
-    {
-        var i = start;
-        while (i < text.Length && char.IsLetter(text[i]))
-            i++;
-        var prefix = new string(text[start..i].ToLowerInvariant().OrderBy(c => c).ToArray());
-        var triple = i + 2 < text.Length && text[i + 1] == text[i] && text[i + 2] == text[i];
-        return prefix + (triple ? "\"\"\"" : "\"");
-    }
+    /// <summary>A literal's kind (<see cref="FormatterTwins.LiteralKind"/>, shared with the S6 recipe).</summary>
+    internal static string LiteralKind(string text, int start) => FormatterTwins.LiteralKind(text, start);
 
-    private static char QuoteCharacter(string text, int start)
-    {
-        var i = start;
-        while (i < text.Length && char.IsLetter(text[i]))
-            i++;
-        return text[i];
-    }
+    private static char QuoteCharacter(string text, int start) => FormatterTwins.QuoteCharacter(text, start);
 
     /// <summary>
     /// The unparseable documents of a parseable twin <paramref name="q"/> (plan Task 3):
@@ -503,11 +526,16 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <item>S4 — Q cut after the first interior line of each literal spanning ≥ 2 lines, when the literal
     /// is still open after the cut (a two-line literal's second line holds its closer: no interior line);</item>
     /// <item>S5 — when Q has a literal spanning ≥ 2 lines, Q with a line holding only the triple quote of its
-    /// FIRST such literal's quote character inserted as line 0.</item>
+    /// FIRST such literal's quote character inserted as line 0;</item>
+    /// <item>S6 — the literal-loss shapes WITHOUT a lexer abort (P22f, #2271), built by the one recipe the
+    /// lexer's tests share (<see cref="FormatterTwins.LiteralLossShapes"/>: the error budget spent above Q, a
+    /// re-paired triple closed by a short string or a comment, a delimiter line dropped at SPY0011–SPY0015;
+    /// SPY0014 only on the <c>wide</c> twin, <paramref name="includeMismatch"/>) and wrapped with Q's
+    /// ground truth by <see cref="Shaped"/>.</item>
     /// </list>
     /// The state is observed: a document that parses is <see cref="ObserveParseable"/>'s S1/S2 document.
     /// </summary>
-    internal static IEnumerable<SweepDocument> UnparseableDocuments(string q, LexFacts facts)
+    internal static IEnumerable<SweepDocument> UnparseableDocuments(string q, LexFacts facts, bool includeMismatch = false)
     {
         foreach (var line in facts.OpenerLines.Distinct())
         {
@@ -527,7 +555,45 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             var first = facts.MultiLineLiterals[0].Start;
             yield return Inserted(q, facts, 0, new string(QuoteCharacter(q, first), 3), S5, LiteralKind(q, first));
         }
+
+        foreach (var shape in FormatterTwins.LiteralLossShapes(q, includeMismatch))
+            yield return Shaped(q, facts, shape);
     }
+
+    /// <summary>
+    /// An S6-family document (<see cref="LossState"/>): <paramref name="shape"/>'s text, ground truth Q's lex
+    /// shifted by its <see cref="LiteralLossShape.LineShift"/> (the lines it inserts above Q; a line it appends
+    /// is no line of Q), the lines it re-indents removed from the logical starts (their depth may legitimately
+    /// change — the repair) and the literal lines kept as they are. <c>range-line</c>/<c>ontype</c> are
+    /// requested on every line that starts inside a literal in Q. An <see cref="S6n"/> document has none, and
+    /// its line routes are requested on ONE line: Q's first logical line inside a block (depth ≥ 1). Its route
+    /// rows are one class (#2273, the indent map reading an unread remainder), which <c>full</c> and
+    /// <c>range-whole</c> already show on every stem it reaches; one line per document gives each route a cell
+    /// without a row per logical line of the corpus.
+    /// </summary>
+    internal static SweepDocument Shaped(string q, LexFacts facts, LiteralLossShape shape)
+    {
+        int Shift(int l) => l + shape.LineShift;
+        var reindented = shape.ReindentedLines.ToHashSet();
+        var inside = facts.InsideLines.Select(Shift).Order().ToArray();
+        var logical = facts.LogicalStarts.Where(s => !reindented.Contains(s.Line)).Select(s => (Shift(s.Line), s.Depth)).ToArray();
+        var state = LossState(shape, facts);
+        return ObserveParseable(shape.Text) ?? new SweepDocument(shape.Text, state, new GroundTruth(
+            inside.ToHashSet(),
+            logical,
+            state == S6n ? logical.Where(s => s.Item2 >= 1).Select(s => s.Item1).Take(1).ToArray() : inside,
+            shape.Kind,
+            shape.Shape));
+    }
+
+    /// <summary>
+    /// <paramref name="q"/> with the leading whitespace of the 0-based <paramref name="lines"/> replaced by
+    /// <paramref name="whitespace"/> (<see cref="FormatterTwins.Reindent"/>) as an S6 document of
+    /// <paramref name="shape"/> — the hand-built twin of a <c>dropped-</c> shape.
+    /// </summary>
+    internal static SweepDocument Reindented(string q, LexFacts facts, int[] lines, string whitespace, string shape)
+        => Shaped(q, facts, new LiteralLossShape(shape, FormatterTwins.Reindent(q, lines, whitespace),
+            facts.MultiLineLiterals.Select(m => LiteralKind(q, m.Start)).FirstOrDefault(), 0, lines));
 
     /// <summary><paramref name="q"/>'s lines up to <paramref name="line"/> and its line break; ground truth is Q's lex of those lines.</summary>
     internal static SweepDocument Cut(string q, LexFacts facts, int line, string state, string? kind)
@@ -637,7 +703,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 ?? throw new InvalidOperationException($"instrument: Format accepted an output of the {twin} twin that does not parse"));
         }
 
-        docs.AddRange(UnparseableDocuments(q, qDoc.Facts!));
+        docs.AddRange(UnparseableDocuments(q, qDoc.Facts!, includeMismatch: twin == Wide));
         return docs;
     }
 
@@ -1004,6 +1070,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         public long AppliedOutsideLines;
         public int AppliedStraddling;
         public readonly SortedDictionary<string, (int Count, string First)> Failures = new(StringComparer.Ordinal);
+
+        /// <summary>Per failing bucket, the S6 shapes of the documents whose cells failed it (the reason an allowlist row records).</summary>
+        public readonly SortedDictionary<string, SortedSet<string>> FailureShapes = new(StringComparer.Ordinal);
     }
 
     /// <summary>Everything the census reads from the theories that ran in this process.</summary>
@@ -1044,11 +1113,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         var problems = Ratchet(stem, twin, groups, sampledIn, AllowlistByCell.Value[(stem, twin)]);
 
-        var failing = groups.SelectMany(g => g.Value.Failures.Keys.Select(b => (g.Key.Route, g.Key.State, Bucket: b))).ToList();
+        var failing = groups.SelectMany(g => g.Value.Failures.Keys.Select(b => (g.Key.Route, g.Key.State, Bucket: b,
+            Shapes: g.Value.FailureShapes.TryGetValue(b, out var shapes) ? " " + string.Join(' ', shapes) : ""))).ToList();
         _output.WriteLine($"FMTROUTE {stem} {twin} cells={groups.Values.Sum(g => g.Cells)} sampled={(sampledIn ? "in" : "out")} "
             + (failing.Count == 0 ? "ok" : $"rows={failing.Count}"));
-        foreach (var (route, state, bucket) in failing)
-            _output.WriteLine($"FMTROUTE-ROW {stem} {twin} {route} {state} {bucket}");
+        foreach (var (route, state, bucket, shapes) in failing)
+            _output.WriteLine($"FMTROUTE-ROW {stem} {twin} {route} {state} {bucket}{shapes}");
 
         if (problems.Count > 0)
         {
@@ -1110,6 +1180,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                     item.Group.Failures[bucket] = item.Group.Failures.TryGetValue(bucket, out var seen)
                         ? (seen.Count + 1, seen.First)
                         : (1, detail);
+                    if (item.Doc.Truth?.Shape is { } lossShape)
+                    {
+                        if (!item.Group.FailureShapes.TryGetValue(bucket, out var shapes))
+                            item.Group.FailureShapes[bucket] = shapes = new SortedSet<string>(StringComparer.Ordinal);
+                        shapes.Add(lossShape);
+                    }
                 }
             }
         });
@@ -1119,18 +1195,32 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>
     /// The census keys of one cell, counted whether or not a sampled cell runs (they count the full-mode
     /// cells): <c>kind S4 r"""</c> for a cell of an unparseable document that loses a literal of that kind,
-    /// and <c>ontype-bracket</c>/<c>ontype-backslash</c> for an <c>ontype</c> cell on a continuation line of a
-    /// parseable document.
+    /// <c>shape S6 dropped-SPY0013 ontype</c> for a cell of an S6 document of that shape and route (and
+    /// <c>kind S6c r"""</c> when the shape is a <c>dropped-</c> one), and <c>ontype-bracket</c>/<c>ontype-backslash</c>
+    /// for an <c>ontype</c> cell on a continuation line of a parseable document.
     /// </summary>
     internal static IEnumerable<string> Tallies(SweepDocument doc, CellRequest request)
     {
         if (doc.Truth?.Kind is { } kind)
             yield return KindTally(doc.State, kind);
+        if (doc.Truth?.Shape is { } lossShape)
+        {
+            yield return ShapeTally(doc.State, lossShape, request.Route);
+            if (lossShape.StartsWith(FormatterTwins.DroppedShapePrefix, StringComparison.Ordinal) && doc.Truth.Kind is { } droppedKind)
+                yield return KindTally(S6Dropped, droppedKind);
+        }
+
         if (request.Route == OnType && doc.Facts?.Continuations.TryGetValue(request.Line, out var shape) == true)
             yield return $"ontype-{shape}";
     }
 
     private static string KindTally(string state, string kind) => $"kind {state} {kind}";
+
+    /// <summary>The kind tallies' key for S6's <c>dropped-</c> shapes alone (the per-kind floor reads it).</summary>
+    private const string S6Dropped = "S6c";
+
+    private static string ShapeTally(string state, string shape, string route) => $"shape {state} {shape} {route}";
+
 
     // ---- the range census's measures (s_rangeCensus) ----
     private const string WithWorkMeasure = "withWork";
@@ -1228,6 +1318,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
             if (!Regex.IsMatch(cite, @"^#\d+\b"))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' must cite an issue first (# #N reason).");
+            if (StateIssue.TryGetValue(fields[3], out var issue) && !Regex.IsMatch(cite, $@"^{issue}\b"))
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — a {fields[3]} row cites {issue}, the one class that state holds (LossState).");
             if (!keys.Add(string.Join(' ', fields)))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' is listed twice.");
             rows.Add(new Row(fields[0], fields[1], fields[2], fields[3], fields[4], cite));
@@ -1594,7 +1686,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         Ratchet("a/b", Identity, failingGroups, sampledIn: true, Array.Empty<Row>()).Should().ContainSingle().Which.Should().Contain("ontypeShape");
     }
 
-    /// <summary>The loader refuses a <c>cli</c>/<c>full</c> row on a parseable state, an unknown field, a missing cite and a duplicate.</summary>
+    /// <summary>The loader refuses a <c>cli</c>/<c>full</c> row on a parseable state, an unknown field, a missing cite, an S6-family row citing another state's issue, and a duplicate.</summary>
     [Fact]
     public void Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows()
     {
@@ -1605,6 +1697,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             "a/b nope ontype S2 net # #2168 r",
             "a/b identity ontype S9 net # #2168 r",
             "a/b identity ontype S2 net # no cite",
+            "a/b identity ontype S6 literal # #2273 the S6n issue on an S6 row",
+            "a/b identity full S6k literal # #2271 the S6 issue on an S6k row",
         })
         {
             FluentActions.Invoking(() => ParseAllowlist(new[] { bad })).Should().Throw<InvalidOperationException>(bad);
@@ -1613,6 +1707,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         FluentActions.Invoking(() => ParseAllowlist(new[] { "a/b identity ontype S2 net # #2168 r", "a/b identity ontype S2 net # #2168 r" }))
             .Should().Throw<InvalidOperationException>();
         ParseAllowlist(new[] { "a/b identity range-line S2 local # #2168 r" }).Should().ContainSingle();
+        ParseAllowlist(new[] { "a/b identity full S6 literal # #2271 r", "a/b identity full S6n depth # #2273 r", "a/b identity full S6k literal # #2274 r" })
+            .Should().HaveCount(3);
     }
 
     // ================================================================
