@@ -2039,15 +2039,20 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// a <c>range-whole</c> refusal is also a <c>whole</c> failure, judged cell by cell). A change that makes
     /// selections refuse more often is red. The <c>wide</c> twin refuses by construction (a blank or comment line splits a
     /// block's re-indent into hunks, and a partial re-indent fails the net) and the <c>crlf</c> and <c>cr</c> twins
-    /// are <c>identity</c>'s line breaks: all three are printed, not judged.
+    /// are <c>identity</c>'s line breaks: all three are printed, not judged. A re-pin states its measurement, the
+    /// old pin and the cause, and is kept tight: the smallest one-decimal percentage that holds.
     /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<(string Route, string Twin), int> RefusalCeilingPercent =
-        new SCG.Dictionary<(string Route, string Twin), int>
+    internal static readonly SCG.IReadOnlyDictionary<(string Route, string Twin), decimal> RefusalCeilingPercent =
+        new SCG.Dictionary<(string Route, string Twin), decimal>
         {
             [(RangeWhole, Identity)] = 1,      // 0/2389 (0.00%)
             [(RangeStatement, Identity)] = 1,  // 1/1443 (0.07%)
             [(RangeBlock, Identity)] = 1,      // 6/2721 (0.22%)
-            [(RangeLine, Identity)] = 3,       // 28/1070 (2.62%)
+            // Re-pinned @ 843abc9c1 (was 3 @ ec673074f, 28/1070 (2.62%)): 33/1078 (3.06%) — the corpus fixture
+            // strings/triple_quoted_delimiter_lines holds multi-line f"""/t""" literals, which Format rewrites to
+            // single-quoted strings, so Format Selection refuses the cross-line hunk (existing behaviour, the
+            // safe direction; 5 of its 8 selections with work). The sampled pin below is unmoved: 12/138.
+            [(RangeLine, Identity)] = 3.1m,
             [(RangeWhole, Comment)] = 1,       // 0/3284 (0.00%)
             [(RangeStatement, Comment)] = 1,   // 0/1184 (0.00%)
             [(RangeBlock, Comment)] = 1,       // 4/2854 (0.14%)
@@ -2092,8 +2097,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 var withWork = Measure(route, twin, WithWorkMeasure);
                 _output.WriteLine($"FMTROUTE-CENSUS refusal-ceiling {route} {twin} {refused}/{withWork} ({Percent(refused, withWork)}) ceiling={ceiling}%"
                     + (route == RangeLine && !FullMode ? " (sampled)" : ""));
-                (refused * 100).Should().BeLessThanOrEqualTo(ceiling * withWork,
-                    $"Format Selection ({route}, {twin} twin) declined {refused} of {withWork} selections with work — more than the {ceiling}% ceiling measured @ ec673074f");
+                (refused * 100m).Should().BeLessThanOrEqualTo(ceiling * withWork,
+                    $"Format Selection ({route}, {twin} twin) declined {refused} of {withWork} selections with work — more than its pinned {ceiling}% ceiling");
             }
         }
     }
