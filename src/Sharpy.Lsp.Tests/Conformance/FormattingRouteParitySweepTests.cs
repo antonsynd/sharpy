@@ -37,7 +37,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// census lives in <c>Sharpy.Compiler.Tests</c>; this one is rebuilt from the same discovery helper).
 /// One theory per twin <c>Q</c> (<see cref="FormatterTwins"/>): <c>identity</c>, <c>comment</c>
 /// (comments before, inside and after every range), <c>wide</c> (8 spaces per level — the shape in
-/// which a partial re-indent changes structure) and <c>crlf</c>. The backtick and line-trailing twins
+/// which a partial re-indent changes structure), <c>crlf</c> and <c>cr</c> (every line break a lone <c>\r</c> — a
+/// line break to the lexer, <c>LineDiff</c> and the LSP spec, missed by a <c>\n</c>-only split). The backtick and line-trailing twins
 /// are NOT swept: their subject is the unparser, which the CLI-route sweep owns; this sweep's subject is
 /// the mapping from <c>Format(P)</c> to edits.</para>
 ///
@@ -46,7 +47,7 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// counted, and the F-dependent cells skipped). The state is OBSERVED, never assumed: a document that
 /// parses and is <c>Format</c>'s fixed point is <c>S1</c>, one that parses otherwise is <c>S2</c> — so an
 /// already formatted fixture's <c>Q</c> is S1. Documents are de-duplicated by CONTENT across twins in
-/// twin order (<c>Format(Wide(P))</c> is <c>Format(P)</c> on all but two stems, and the crlf twin's
+/// twin order (<c>Format(Wide(P))</c> is <c>Format(P)</c> on all but two stems, and the crlf and cr twins'
 /// <c>F</c> is written with <c>\n</c>): a later twin skips a document an earlier twin already swept —
 /// equal text, equal state, equal cells.</para>
 ///
@@ -68,7 +69,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// THIS test on the applied text whatever the handler did;</item>
 /// <item><c>whole</c> — <c>cli</c>: <c>T != Format(D)</c>; <c>full</c>: the same modulo line breaks (the
 /// handler documents writing <c>\n</c>, so on a CRLF document it is judged on content); <c>range-whole</c>:
-/// <c>T != Format(D)</c>, and on a CRLF document equal modulo line breaks with no bare <c>\n</c> in T;</item>
+/// <c>T != Format(D)</c>, and on a document whose line break is not <c>\n</c> (crlf, cr) equal modulo line breaks
+/// with no other line break in T;</item>
 /// <item><c>local</c> — range kinds: <c>T ∉ {D, Apply(D, selected)}</c>, <c>selected</c> the hunks of
 /// <c>LineDiff.Hunks(D, Format(D))</c> the selection rule (<see cref="Selects"/>, plan decision 2,
 /// RESTATED here) keeps;</item>
@@ -76,7 +78,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// <item><c>ontypeShape</c> — <c>ontype</c>: T differs from D other than in the requested line's leading
 /// whitespace;</item>
 /// <item>an unparseable D (<see cref="UnparseableOracles"/>, ground truth from the parent Q's clean lex):
-/// <c>content</c> — a line lost, gained, or changed beyond its leading whitespace; <c>literal</c> — a line
+/// <c>content</c> — a line lost, gained, or changed beyond its leading whitespace, or its line break changed (an
+/// indent-only pass keeps each line's own break, byte-exact); <c>literal</c> — a line
 /// that starts inside a literal in Q is not identical; <c>depth</c> — a logical line's block depth in T,
 /// by the lexer's width rule, is not its depth in Q.</item>
 /// </list>
@@ -114,7 +117,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string Comment = "comment";
     internal const string Wide = "wide";
     internal const string Crlf = "crlf";
-    internal static readonly string[] Twins = { Identity, Comment, Wide, Crlf };
+    internal const string Cr = "cr";
+    internal static readonly string[] Twins = { Identity, Comment, Wide, Crlf, Cr };
 
     // ---- routes ----
     internal const string Cli = "cli";
@@ -266,7 +270,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             StatementLines = statementLines;
             BlockLines = blockLines;
             Lines = LineDiff.Split(text).Lines;
-            IsCrlf = LineDiff.DocumentLineBreak(text) == "\r\n";
+            LineBreak = LineDiff.DocumentLineBreak(text);
             _hunks = new(() => LineDiff.Hunks(Text, Formatted));
             _netAcceptsSelf = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Text) == null);
             _netAcceptsFormatted = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Formatted) == null);
@@ -296,7 +300,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         /// <summary>Line contents (<see cref="LineDiff.Split"/>), terminators excluded.</summary>
         public IReadOnlyList<string> Lines { get; }
 
-        public bool IsCrlf { get; }
+        /// <summary>The document's first line break (<see cref="LineDiff.DocumentLineBreak(string)"/>; <c>\n</c> when it has none).</summary>
+        public string LineBreak { get; }
 
         public IReadOnlyList<LineHunk> Hunks => _hunks.Value;
 
@@ -358,6 +363,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         Comment => FormatterTwins.CommentInjected(source).Text,
         Wide => FormatterTwins.WideIndented(source),
         Crlf => FormatterTwins.Crlf(source),
+        Cr => FormatterTwins.Cr(source),
         _ => throw new ArgumentOutOfRangeException(nameof(twin), twin, null),
     };
 
@@ -732,11 +738,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     /// <summary>
     /// The oracles of a document that does not parse (S3–S5) over the applied text <paramref name="applied"/>,
-    /// ground truth from the parent Q (<see cref="SweepDocument.Truth"/>). Lines compare by content, terminators
-    /// excluded (the full fallback joins with <c>\n</c>).
+    /// ground truth from the parent Q (<see cref="SweepDocument.Truth"/>). Every route on such a document is an
+    /// indent-only pass, so it changes leading whitespace and nothing else — line breaks included.
     /// <list type="bullet">
     /// <item><c>content</c> — the line count differs, or a line differs after its leading whitespace (a
-    /// whitespace-only line may become empty);</item>
+    /// whitespace-only line may become empty), or a line's break differs (a CRLF or lone-<c>\r</c> document
+    /// keeps its breaks);</item>
     /// <item><c>literal</c> — a line that starts inside a literal in Q is not identical;</item>
     /// <item><c>depth</c> — a line that starts a logical line in Q has another block depth in T
     /// (<see cref="FirstDepthDifference"/>) than in Q.</item>
@@ -748,7 +755,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var failures = new SCG.List<(string, string)>();
         var truth = d.Truth ?? throw new InvalidOperationException("instrument: an unparseable document without ground truth");
         var x = d.Lines;
-        var t = LineDiff.Split(applied).Lines;
+        var (t, tBreaks) = LineDiff.Split(applied);
         if (t.Count != x.Count)
         {
             failures.Add((Content, $"{request}: {FirstDifference(d.Text, applied, "D", "T")}"));
@@ -756,8 +763,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
 
         var content = Enumerable.Range(0, x.Count).FirstOrDefault(i => x[i].TrimStart(' ', '\t') != t[i].TrimStart(' ', '\t'), -1);
+        var xBreaks = LineDiff.Split(d.Text).Breaks;
+        var lineBreak = Enumerable.Range(0, xBreaks.Count).FirstOrDefault(i => xBreaks[i] != tBreaks[i], -1);
         if (content >= 0)
             failures.Add((Content, $"{request}: line {content}: D '{Clip(x[content])}' vs T '{Clip(t[content])}'"));
+        else if (lineBreak >= 0)
+            failures.Add((Content, $"{request}: line {lineBreak}'s line break: D {EscapeBreak(xBreaks[lineBreak])} vs T {EscapeBreak(tBreaks[lineBreak])}"));
 
         var literal = truth.LiteralLines.Order().FirstOrDefault(l => x[l] != t[l], -1);
         if (literal >= 0)
@@ -823,8 +834,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             Cli => applied != d.Formatted,
             Full => NormalizeLineBreaks(applied) != NormalizeLineBreaks(d.Formatted),
-            RangeWhole => d.IsCrlf
-                ? NormalizeLineBreaks(applied) != NormalizeLineBreaks(d.Formatted) || HasBareLineFeed(applied)
+            RangeWhole => d.LineBreak != "\n"
+                ? NormalizeLineBreaks(applied) != NormalizeLineBreaks(d.Formatted) || HasOtherLineBreak(applied, d.LineBreak)
                 : applied != d.Formatted,
             _ => false,
         };
@@ -911,16 +922,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     internal static string NormalizeLineBreaks(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
 
-    private static bool HasBareLineFeed(string text)
-    {
-        for (var i = 0; i < text.Length; i++)
-        {
-            if (text[i] == '\n' && (i == 0 || text[i - 1] != '\r'))
-                return true;
-        }
-
-        return false;
-    }
+    /// <summary>Whether <paramref name="text"/> has a line break other than <paramref name="lineBreak"/>.</summary>
+    private static bool HasOtherLineBreak(string text, string lineBreak)
+        => LineDiff.Split(text).Breaks.Any(b => b != lineBreak);
 
     /// <summary><paramref name="text"/> with line <paramref name="line"/>'s leading spaces and tabs removed, terminators kept.</summary>
     internal static string WithoutLeadingWhitespace(string text, int line)
@@ -954,6 +958,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         return $"{expectedName} and {actualName} differ only in line breaks";
     }
 
+    private static string EscapeBreak(string lineBreak) => lineBreak.Replace("\r", "\\r").Replace("\n", "\\n");
+
     private static string Clip(string text) => text.Length > 120 ? text[..120] + "…" : text;
 
     // ================================================================
@@ -975,6 +981,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     [Theory]
     [MemberData(nameof(CorpusNames))]
     public void Crlf_EveryRouteAppliesACheckedText(string stem) => Sweep(stem, Crlf);
+
+    [Theory]
+    [MemberData(nameof(CorpusNames))]
+    public void Cr_EveryRouteAppliesACheckedText(string stem) => Sweep(stem, Cr);
 
     /// <summary>The cells of one (route, state) group of a (stem, twin): counts and the first detail per failing bucket.</summary>
     internal sealed class Group
@@ -1022,7 +1032,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             s_cellsRun.AddOrUpdate((route, state, twin), group.Cells, (_, n) => n + group.Cells);
             if (group.Changed > 0)
-                s_tallies.AddOrUpdate(ChangedTally(route, state), group.Changed, (_, n) => n + group.Changed);
+                s_tallies.AddOrUpdate(ChangedTally(route, state, twin), group.Changed, (_, n) => n + group.Changed);
             foreach (var (measure, n) in RangeMeasures(group))
             {
                 if (n > 0)
@@ -1140,7 +1150,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         yield return (StraddlingMeasure, group.AppliedStraddling);
     }
 
-    private static string ChangedTally(string route, string state) => $"changed {route} {state}";
+    private static string ChangedTally(string route, string state, string twin) => $"changed {route} {state} {twin}";
 
     /// <summary>
     /// The allowlist ratchet for one (stem, twin): every failing (route, state, bucket) is listed; a listed
@@ -1311,11 +1321,29 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     public void PositiveControl_Whole_OnACrlfDocument_RangeWholeKeepsCrlf()
     {
         var d = Doc(FormatterTwins.Crlf(D1));
-        d.IsCrlf.Should().BeTrue();
+        d.LineBreak.Should().Be("\r\n");
         var whole = new CellRequest(RangeWhole, R(0, 0, d.Lines.Count - 1, 0), 0);
 
         BucketsOf(d, whole, D1Formatted).Should().Contain(Whole);
         BucketsOf(d, whole, D1Formatted.Replace("\n", "\r\n")).Should().NotContain(Whole).And.NotContain(Local);
+        BucketsOf(d, new CellRequest(Full, null, 0), D1Formatted).Should().NotContain(Whole);
+    }
+
+    /// <summary>
+    /// <c>whole</c> on a lone-<c>\r</c> document, <c>range-whole</c>: <c>Format(D)</c> written with <c>\n</c> or with
+    /// <c>\r\n</c> fails; the same text with lone <c>\r</c> passes. <c>full</c> is judged modulo line breaks.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Whole_OnACrDocument_RangeWholeKeepsCr()
+    {
+        var d = Doc(FormatterTwins.Cr(D1));
+        d.LineBreak.Should().Be("\r");
+        d.Lines.Should().HaveCount(6);
+        var whole = new CellRequest(RangeWhole, R(0, 0, d.Lines.Count - 1, 0), 0);
+
+        BucketsOf(d, whole, D1Formatted).Should().Contain(Whole);
+        BucketsOf(d, whole, FormatterTwins.Crlf(D1Formatted)).Should().Contain(Whole);
+        BucketsOf(d, whole, FormatterTwins.Cr(D1Formatted)).Should().NotContain(Whole).And.NotContain(Local);
         BucketsOf(d, new CellRequest(Full, null, 0), D1Formatted).Should().NotContain(Whole);
     }
 
@@ -1518,6 +1546,27 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         UnparseableBucketsOf(d21, full, "def main():\n        a = 1\n    if a == 1:\n").Should().NotContain(Content);
     }
 
+    /// <summary>
+    /// <c>content</c> sees a changed line break: the CRLF and CR twins of D21 with their breaks rewritten to
+    /// <c>\n</c> (the full fallback's CRLF → LF, A6), and one break of the CR twin changed. Clean: no edits, and
+    /// a re-indent that keeps every break.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Content_SeesAChangedLineBreak()
+    {
+        var full = new CellRequest(Full, null, 0);
+        foreach (var twin in new Func<string, string>[] { FormatterTwins.Crlf, FormatterTwins.Cr })
+        {
+            var d21 = Generated(twin(Q21), twin(D21), S3);
+            UnparseableBucketsOf(d21, full, D21).Should().Equal(Content);
+            UnparseableBucketsOf(d21, full, d21.Text).Should().BeEmpty();
+            UnparseableBucketsOf(d21, full, twin("def main():\n        a = 1\n    if a == 1:\n")).Should().NotContain(Content);
+        }
+
+        var cr = Generated(FormatterTwins.Cr(Q21), FormatterTwins.Cr(D21), S3);
+        UnparseableBucketsOf(cr, full, "def main():\r        a = 1\r\n        if a == 1:\r").Should().Equal(Content);
+    }
+
     // ================================================================
     // Ratchet and sampling mechanics
     // ================================================================
@@ -1574,10 +1623,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// Ordered after the theories (<see cref="RouteParitySweepOrderer"/>): prints the cells that ran per
     /// route × state × twin, <c>refusedWork</c> per range kind and twin, the F-declined stems, the wall time
     /// and the stride, the S4/S5 cells per literal kind, the <c>ontype</c> cells on continuation lines, and per
-    /// route the S3 cells whose applied text differs from the document. Floors: every route of every state
+    /// route and twin the S3 cells whose applied text differs from the document. Floors: every route of every state
     /// has ≥ 1 cell; S4 and S5 have ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; the backslash and
-    /// bracket continuation shapes have ≥ 1 <c>ontype</c> cell; each S3 route edits ≥ 1 document (when the
-    /// theories ran — "no edits" passes every unparseable oracle). When the theories did not run in this
+    /// bracket continuation shapes have ≥ 1 <c>ontype</c> cell; each S3 route edits ≥ 1 document of each twin
+    /// whose theory ran over every stem ("no edits" passes every unparseable oracle, and a route that counts
+    /// lines differently from the client declines a whole twin's documents silently — the lone-<c>\r</c> twin's
+    /// on-type and range fallback @ 88345108f, #2168). When the theories did not run in this
     /// process (a filter selected the census alone), the cells are ENUMERATED instead — documents and
     /// requests, no handler call. Every allowlist row names a corpus stem.
     /// </summary>
@@ -1640,7 +1691,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             + $"{BracketContinuation}={tallies.GetValueOrDefault($"ontype-{BracketContinuation}")}");
         if (measured)
         {
-            _output.WriteLine("FMTROUTE-CENSUS S3 applied-differs " + string.Join(" ", RoutesByState[S3].Select(r => $"{r}={tallies.GetValueOrDefault(ChangedTally(r, S3))}")));
+            foreach (var route in RoutesByState[S3])
+            {
+                _output.WriteLine($"FMTROUTE-CENSUS S3 applied-differs {route} "
+                    + string.Join(" ", Twins.Select(t => $"{t}={tallies.GetValueOrDefault(ChangedTally(route, S3, t))}")));
+            }
         }
 
         var rows = Allowlist.Value;
@@ -1677,10 +1732,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // what keeps a route that always declines (a lexer flag that is always set) from passing unseen.
         if (measured)
         {
-            foreach (var route in RoutesByState[S3])
+            foreach (var twin in Twins.Where(t => s_stemsRun.GetValueOrDefault(t) == corpus.Corpus.Count))
             {
-                tallies.GetValueOrDefault(ChangedTally(route, S3)).Should()
-                    .BeGreaterThanOrEqualTo(1, $"some {route} cell must apply a text that differs from its S3 document");
+                foreach (var route in RoutesByState[S3])
+                {
+                    tallies.GetValueOrDefault(ChangedTally(route, S3, twin)).Should()
+                        .BeGreaterThanOrEqualTo(1, $"some {route} cell must apply a text that differs from its S3 document on the {twin} twin");
+                }
             }
         }
 
@@ -1700,8 +1758,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// full mode @ ec673074f and rounded UP to the next whole percent above it (a measured 0.00% pins 1%:
     /// a <c>range-whole</c> refusal is also a <c>whole</c> failure, judged cell by cell). A change that makes
     /// selections refuse more often is red. The <c>wide</c> twin refuses by construction (a blank or comment line splits a
-    /// block's re-indent into hunks, and a partial re-indent fails the net) and the <c>crlf</c> twin is
-    /// <c>identity</c>'s line breaks: both are printed, not judged.
+    /// block's re-indent into hunks, and a partial re-indent fails the net) and the <c>crlf</c> and <c>cr</c> twins
+    /// are <c>identity</c>'s line breaks: all three are printed, not judged.
     /// </summary>
     internal static readonly SCG.IReadOnlyDictionary<(string Route, string Twin), int> RefusalCeilingPercent =
         new SCG.Dictionary<(string Route, string Twin), int>
@@ -1809,7 +1867,8 @@ public sealed class RouteParitySweepOrderer : ITestCaseOrderer
         _ when method.StartsWith("CommentInjected_", StringComparison.Ordinal) => 1,
         _ when method.StartsWith("WideIndented_", StringComparison.Ordinal) => 2,
         _ when method.StartsWith("Crlf_", StringComparison.Ordinal) => 3,
-        _ when method.StartsWith("Census_", StringComparison.Ordinal) => 5,
-        _ => 4,
+        _ when method.StartsWith("Cr_", StringComparison.Ordinal) => 4,
+        _ when method.StartsWith("Census_", StringComparison.Ordinal) => 6,
+        _ => 5,
     };
 }

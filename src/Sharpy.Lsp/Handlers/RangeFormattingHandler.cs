@@ -62,13 +62,17 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
 
         // Fallback: indent-only formatting per line, applied only when the text it produces passes the
         // indent-only check (P22e decision 8, #2168).
-        var lines = text.Split('\n');
         var startLine = request.Range.Start.Line;
-        var endLine = System.Math.Min(request.Range.End.Line, lines.Length - 1);
+        var endLine = request.Range.End.Line;
         var fallbackEdits = ComputeIndentOnlyRangeEdits(text, startLine, endLine);
         return Task.FromResult(new TextEditContainer(FormattingEdits.CheckedIndentOnly(text, fallbackEdits)));
     }
 
+    /// <summary>
+    /// The indent-only candidate for lines <paramref name="startLine"/>..<paramref name="endLine"/>: one edit per
+    /// line whose leading whitespace changes, over the line's content only — its line break is never in the
+    /// range. Lines are the client's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>).
+    /// </summary>
     internal static List<TextEdit> ComputeIndentOnlyRangeEdits(string text, int startLine, int endLine)
     {
         var indentStr = new string(' ', Compiler.Lexer.Lexer.IndentWidth);
@@ -77,14 +81,14 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         var lineIndentLevels = map.LineIndent;
         var multiLineStringLines = map.LiteralLines;
 
-        var lines = text.Split('\n');
-        endLine = System.Math.Min(endLine, lines.Length - 1);
+        var lines = LineDiff.Split(text).Lines;
+        endLine = System.Math.Min(endLine, lines.Count - 1);
 
         var edits = new List<TextEdit>();
 
         for (var i = startLine; i <= endLine; i++)
         {
-            var line = lines[i].TrimEnd('\r');
+            var line = lines[i];
             var trimmed = line.TrimStart();
 
             // A line that starts inside a string literal is its data — never re-indented or blanked,

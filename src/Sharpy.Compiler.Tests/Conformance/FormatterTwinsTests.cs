@@ -482,7 +482,26 @@ public class FormatterTwinsTests
 
     /// <summary>Instrument check over the corpus: the CRLF twin parses to the source's AST and has no line break but <c>\r\n</c>. Positive control: it differs from the source on every fixture with a line break.</summary>
     [Fact]
-    public void Crlf_Corpus_ParsesToTheSourceAst()
+    public void Crlf_Corpus_ParsesToTheSourceAst() => LineBreakTwin_Corpus_ParsesToTheSourceAst(FormatterTwins.Crlf, "\r\n");
+
+    /// <summary>Instrument check over the corpus: the CR twin parses to the source's AST and has no line break but a lone <c>\r</c>. Positive control: it differs from the source on every fixture with a line break.</summary>
+    [Fact]
+    public void Cr_Corpus_ParsesToTheSourceAst() => LineBreakTwin_Corpus_ParsesToTheSourceAst(FormatterTwins.Cr, "\r");
+
+    /// <summary>The CR twin writes every break — <c>\n</c> or <c>\r\n</c>, in a literal too — as a lone <c>\r</c>, and parses to the same AST.</summary>
+    [Fact]
+    public void Cr_RewritesEveryBreak()
+    {
+        const string mixed = "a = 1\nb = \"\"\"x\r\ny\nz\"\"\"\r\nc = 2";
+        var cr = FormatterTwins.Cr(mixed);
+
+        cr.Should().Be("a = 1\rb = \"\"\"x\ry\rz\"\"\"\rc = 2");
+        Parse(cr, out var errors);
+        errors.Should().BeFalse(cr);
+        SameAst(mixed, cr).Should().BeTrue(cr);
+    }
+
+    private void LineBreakTwin_Corpus_ParsesToTheSourceAst(Func<string, string> twin, string lineBreak)
     {
         var corpus = FormatterMeaningPreservationSweepTests.CorpusCensus.Value.Corpus;
         var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
@@ -490,23 +509,25 @@ public class FormatterTwinsTests
         Parallel.ForEach(corpus.Values, fixture =>
         {
             var source = fixture.Source;
-            var crlf = FormatterTwins.Crlf(source);
-            if (crlf != source)
+            var text = twin(source);
+            if (text != source)
                 Interlocked.Increment(ref changed);
-            if (HasNonCrlfBreak(crlf))
-                failures.Add($"{fixture.Name}: a line break is not \\r\\n");
+            if (HasOtherBreak(text, lineBreak))
+                failures.Add($"{fixture.Name}: a line break is not {Escape(lineBreak)}");
 
-            Parse(crlf, out var errors);
+            Parse(text, out var errors);
             if (errors)
-                failures.Add($"{fixture.Name}: the CRLF twin does not parse");
-            else if (!SameAst(source, crlf))
-                failures.Add($"{fixture.Name}: the CRLF twin parses to a different AST");
+                failures.Add($"{fixture.Name}: the {Escape(lineBreak)} twin does not parse");
+            else if (!SameAst(source, text))
+                failures.Add($"{fixture.Name}: the {Escape(lineBreak)} twin parses to a different AST");
         });
 
         _output.WriteLine($"corpus={corpus.Count} changed={changed} failures={failures.Count}");
         failures.Should().BeEmpty();
-        changed.Should().Be(corpus.Values.Count(f => HasNonCrlfBreak(f.Source)));
+        changed.Should().Be(corpus.Values.Count(f => HasOtherBreak(f.Source, lineBreak)));
         changed.Should().BeGreaterThan(corpus.Count / 2, "the corpus is written with \\n breaks");
+
+        static string Escape(string s) => s.Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -557,8 +578,24 @@ public class FormatterTwinsTests
         stems.Should().BeEquivalentTo(WideFormatDiffers, "a stem outside the counted set is a new layout difference; a counted stem that formats equal is drained");
     }
 
-    private static bool HasNonCrlfBreak(string text)
-        => text.Replace("\r\n", "", StringComparison.Ordinal).IndexOfAny(new[] { '\r', '\n' }) >= 0;
+    /// <summary>Whether <paramref name="text"/> has a line break (<c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>) other than <paramref name="lineBreak"/>.</summary>
+    private static bool HasOtherBreak(string text, string lineBreak)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (c != '\n' && c != '\r')
+                continue;
+            var crlf = c == '\r' && i + 1 < text.Length && text[i + 1] == '\n';
+            var found = crlf ? "\r\n" : c == '\n' ? "\n" : "\r";
+            if (found != lineBreak)
+                return true;
+            if (crlf)
+                i++;
+        }
+
+        return false;
+    }
 
     /// <summary>The lines of a text split at <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as in the lexer.</summary>
     private static List<string> SplitLines(string text)

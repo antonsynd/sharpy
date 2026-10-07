@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Formatting;
 using Sharpy.Compiler.Lexer;
 
 namespace Sharpy.Lsp;
@@ -41,7 +42,9 @@ internal static class IndentationService
         // A deeper line opens a level only after a block opener (a logical line ending in ':'),
         // so an unexpected indent stays at the current level. For a valid document this agrees with
         // the lexer: INDENT/DEDENT are emitted exactly where the width stack pushes and pops.
-        var sourceLines = source.Split('\n');
+        // The lexer's lines: \r\n, \n and a lone \r each end one (LineDiff.Split, #2168), so sourceLines[line - 1]
+        // is the line a token's 1-based Line names.
+        var sourceLines = LineDiff.Split(source).Lines;
         var logicalStart = new Dictionary<int, bool>();
         var opensBlock = new Dictionary<int, bool>(); // keyed by the logical line's first line
         var atLogicalLineStart = true;
@@ -76,7 +79,7 @@ internal static class IndentationService
         var logicalLineStarts = new HashSet<int>();
         var widths = new List<int> { 0 };
         var previousOpensBlock = false;
-        for (var line = 1; line <= sourceLines.Length; line++)
+        for (var line = 1; line <= sourceLines.Count; line++)
         {
             bool startsLogicalLine;
             bool lineOpensBlock;
@@ -125,9 +128,9 @@ internal static class IndentationService
         return (lineIndent, tokens, lexer.LiteralStateUnknown, logicalLineStarts, literalLines, indentationDiagnostics);
     }
 
-    private static int LeadingWhitespaceWidth(string[] sourceLines, int line)
+    private static int LeadingWhitespaceWidth(IReadOnlyList<string> sourceLines, int line)
     {
-        if (line < 1 || line > sourceLines.Length)
+        if (line < 1 || line > sourceLines.Count)
             return 0;
         var text = sourceLines[line - 1];
         var width = 0;

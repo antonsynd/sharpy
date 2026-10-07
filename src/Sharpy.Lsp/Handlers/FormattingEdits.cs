@@ -90,17 +90,17 @@ internal static class FormattingEdits
     }
 
     /// <summary>
-    /// <paramref name="edits"/> applied to <paramref name="source"/>; null when an edit lies outside the
-    /// document or two overlap (never for a candidate this server built — refused, not guessed at).
+    /// <paramref name="edits"/> applied to <paramref name="source"/> the way the client applies them — lines
+    /// ended by <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c> (<see cref="LineDiff.Split"/>), a position within its
+    /// line's content; null when an edit lies outside the document or two overlap (never for a candidate this
+    /// server built — refused, not guessed at).
     /// </summary>
     private static string? Apply(string source, IReadOnlyList<TextEdit> edits)
     {
-        var lineStarts = new List<int> { 0 };
-        for (var i = 0; i < source.Length; i++)
-        {
-            if (source[i] == '\n')
-                lineStarts.Add(i + 1);
-        }
+        var (lines, breaks) = LineDiff.Split(source);
+        var lineStarts = new int[lines.Count];
+        for (var i = 1; i < lines.Count; i++)
+            lineStarts[i] = lineStarts[i - 1] + lines[i - 1].Length + breaks[i - 1].Length;
 
         var spans = new List<(int Start, int End, string NewText)>(edits.Count);
         foreach (var edit in edits)
@@ -127,11 +127,10 @@ internal static class FormattingEdits
 
         int Offset(Position position)
         {
-            if (position.Line < 0 || position.Line >= lineStarts.Count || position.Character < 0)
+            if (position.Line < 0 || position.Line >= lines.Count
+                || position.Character < 0 || position.Character > lines[position.Line].Length)
                 return -1;
-            var lineEnd = position.Line + 1 < lineStarts.Count ? lineStarts[position.Line + 1] - 1 : source.Length;
-            var offset = lineStarts[position.Line] + position.Character;
-            return offset > lineEnd ? -1 : offset;
+            return lineStarts[position.Line] + position.Character;
         }
     }
 }

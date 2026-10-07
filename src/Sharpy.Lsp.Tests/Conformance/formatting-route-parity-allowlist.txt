@@ -7,12 +7,12 @@
 # Buckets (T = the applied text, D = the document):
 #   edits        the edit list is not legal for D (the strict applier threw)
 #   net          CheckMeaningPreserved(D, ast(D), T) refuses T: the applied text changes the program
-#   whole        cli/full/range-whole: T differs from Format(D) (full modulo line breaks; CRLF kept on range-whole)
+#   whole        cli/full/range-whole: T differs from Format(D) (full modulo line breaks; CRLF and CR kept on range-whole)
 #   local        range kinds: T is neither D nor D with the selection's hunks applied
 #   fixedPoint   S1: a route edits a document that is already Format's fixed point
 #   ontypeShape  ontype: T differs from D other than in the requested line's leading whitespace
 # Unparseable documents (S3 cut after a block opener, S4 cut inside a multi-line literal, S5 an unmatched
 # triple quote inserted as line 0), ground truth from the parent twin's clean lex:
-#   content      a line is lost or gained, or changed beyond its leading whitespace
+#   content      a line is lost or gained, or changed beyond its leading whitespace, or its line break changed
 #   literal      a line that starts inside a literal is not identical
 #   depth        a logical line's block depth in T (the lexer's width rule) differs from its depth in the parent

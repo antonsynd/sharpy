@@ -1,3 +1,6 @@
+using System.Text;
+using Sharpy.Compiler.Formatting;
+
 namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
@@ -12,8 +15,10 @@ internal static class FormattingFallback
     /// <summary>
     /// Re-indents the entire document using the lexer-based indent map, at the language's one
     /// indentation unit (<see cref="Compiler.Lexer.Lexer.IndentWidth"/> spaces — never the editor's
-    /// tabSize/insertSpaces, indentation.md). Returns the formatted text; equal to the input if no
-    /// changes are needed.
+    /// tabSize/insertSpaces, indentation.md). Only leading whitespace changes: each line keeps its own
+    /// line break (<see cref="LineDiff.Split"/> — <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as the lexer and the
+    /// client count lines), so a CRLF document stays CRLF (#2168). Returns the formatted text; equal to the
+    /// input if no changes are needed.
     /// </summary>
     internal static string ReindentDocument(string text)
     {
@@ -23,33 +28,32 @@ internal static class FormattingFallback
         var lineIndentLevels = map.LineIndent;
         var multiLineStringLines = map.LiteralLines;
 
-        var lines = text.Split('\n');
-        var formatted = new List<string>(lines.Length);
+        var (lines, breaks) = LineDiff.Split(text);
+        var formatted = new StringBuilder(text.Length);
 
-        for (var i = 0; i < lines.Length; i++)
+        for (var i = 0; i < lines.Count; i++)
         {
-            var line = lines[i].TrimEnd('\r');
-            var trimmed = line.TrimStart();
-
-            // A line that starts inside a string literal is its data — kept verbatim, whitespace-only
-            // lines included (#2062).
-            if (multiLineStringLines.Contains(i + 1)) // tokens use 1-based lines
-            {
-                formatted.Add(line);
-                continue;
-            }
-
-            if (trimmed.Length == 0)
-            {
-                formatted.Add("");
-                continue;
-            }
-
-            var level = lineIndentLevels.TryGetValue(i + 1, out var l) ? l : 0;
-            formatted.Add(string.Concat(Enumerable.Repeat(indentStr, level)) + trimmed);
+            formatted.Append(Reindent(lines[i], i + 1)); // tokens use 1-based lines
+            if (i < breaks.Count)
+                formatted.Append(breaks[i]);
         }
 
-        return string.Join("\n", formatted);
+        return formatted.ToString();
+
+        string Reindent(string line, int number)
+        {
+            // A line that starts inside a string literal is its data — kept verbatim, whitespace-only
+            // lines included (#2062).
+            if (multiLineStringLines.Contains(number))
+                return line;
+
+            var trimmed = line.TrimStart();
+            if (trimmed.Length == 0)
+                return "";
+
+            var level = lineIndentLevels.TryGetValue(number, out var l) ? l : 0;
+            return string.Concat(Enumerable.Repeat(indentStr, level)) + trimmed;
+        }
     }
 
     /// <summary>
@@ -57,7 +61,7 @@ internal static class FormattingFallback
     /// decision 8, #2168) — the parseable case is the SPY0912 net's. True iff <paramref name="applied"/>
     /// differs from <paramref name="source"/> only in what indentation means nothing to the lexer:
     /// <list type="number">
-    /// <item>the same number of lines;</item>
+    /// <item>the same number of lines, each ending in the same line break;</item>
     /// <item>each line's content after its leading whitespace unchanged (a whitespace-only line may become empty);</item>
     /// <item>the same lines start inside a literal, and each of them is byte-identical;</item>
     /// <item>the indent map's level of every logical-line-start line unchanged — re-indenting ONE line of
@@ -71,16 +75,17 @@ internal static class FormattingFallback
     /// too shallow, or a block re-nested to column 0 by triple quotes that re-pair without a lexer error.
     /// A line the lexer drops (<see cref="BlockDepths"/>) is the misindentation the fallback repairs and is exempt.</item>
     /// </list>
-    /// Lines are compared without their line breaks.
+    /// Lines are the client's and the lexer's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone
+    /// <c>\r</c>), so the text judged is the text the client applies (#2168).
     /// </summary>
     internal static bool IndentOnlyPreserved(string source, string applied)
     {
-        var sourceLines = Lines(source);
-        var appliedLines = Lines(applied);
-        if (sourceLines.Length != appliedLines.Length)
+        var (sourceLines, sourceBreaks) = LineDiff.Split(source);
+        var (appliedLines, appliedBreaks) = LineDiff.Split(applied);
+        if (sourceLines.Count != appliedLines.Count || !sourceBreaks.SequenceEqual(appliedBreaks, StringComparer.Ordinal))
             return false;
 
-        for (var i = 0; i < sourceLines.Length; i++)
+        for (var i = 0; i < sourceLines.Count; i++)
         {
             if (!string.Equals(sourceLines[i].TrimStart(), appliedLines[i].TrimStart(), StringComparison.Ordinal))
                 return false;
@@ -117,8 +122,6 @@ internal static class FormattingFallback
         }
 
         return true;
-
-        static string[] Lines(string text) => text.Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
     }
 
     /// <summary>
@@ -131,7 +134,7 @@ internal static class FormattingFallback
     /// is indented with a tab still moves it — a 2-space document's nesting is the structure its re-indent
     /// to 4 spaces must keep.
     /// </summary>
-    private static Dictionary<int, int> BlockDepths(string[] lines, HashSet<int> logicalLineStarts)
+    private static Dictionary<int, int> BlockDepths(IReadOnlyList<string> lines, HashSet<int> logicalLineStarts)
     {
         var depths = new Dictionary<int, int>();
         var widths = new List<int> { 0 };

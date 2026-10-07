@@ -1,6 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Formatting;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -48,11 +49,12 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
         // and is usually not parseable until the user finishes the line.
         var map = IndentationService.BuildIndentMap(text);
 
-        var lines = text.Split('\n');
-        if (line < 0 || line >= lines.Length)
+        // The request's line as the client counts lines: \r\n, \n or a lone \r (#2168).
+        var lines = LineDiff.Split(text).Lines;
+        if (line < 0 || line >= lines.Count)
             return Task.FromResult<TextEditContainer?>(null);
 
-        var currentLine = lines[line].TrimEnd('\r');
+        var currentLine = lines[line];
         var trimmed = currentLine.TrimStart();
 
         // Blank lines have nothing to align.

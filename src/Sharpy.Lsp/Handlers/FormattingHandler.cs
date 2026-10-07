@@ -77,11 +77,16 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
         return Task.FromResult<TextEditContainer?>(new TextEditContainer(edits));
     }
 
+    /// <summary>
+    /// One edit replacing the whole document, <c>(0,0)</c> to the end of its last line — lines counted as
+    /// the client counts them (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>), so the
+    /// range covers every character (#2168).
+    /// </summary>
     private static List<TextEdit> WholeDocumentEdit(string text, string formattedText)
     {
-        var lines = text.Split('\n');
-        var lastLine = lines.Length - 1;
-        var lastCol = lines[lastLine].TrimEnd('\r').Length;
+        var lines = LineDiff.Split(text).Lines;
+        var lastLine = lines.Count - 1;
+        var lastCol = lines[lastLine].Length;
 
         return new List<TextEdit>
         {

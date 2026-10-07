@@ -204,7 +204,7 @@ public static class FormatterTwins
         => t.Type == TokenType.Identifier && !t.IsBacktickEscaped && t.Position >= 0;
 
     // ================================================================
-    // Layout twins: wide-indent and CRLF (P22e, #2168)
+    // Layout twins: wide-indent, CRLF and CR (P22e, #2168)
     // ================================================================
 
     /// <summary>
@@ -276,7 +276,12 @@ public static class FormatterTwins
     }
 
     /// <summary>The CRLF twin: every line break (<c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as in the lexer) written <c>\r\n</c> — literal interiors included, as a CRLF editor buffer holds them.</summary>
-    public static string Crlf(string source)
+    public static string Crlf(string source) => WithLineBreaks(source, "\r\n");
+
+    /// <summary>The CR twin: every line break written as a lone <c>\r</c> — a line break to the lexer, <c>LineDiff</c> and the LSP spec alike, and the one a <c>\n</c>-only line split misses (#2168).</summary>
+    public static string Cr(string source) => WithLineBreaks(source, "\r");
+
+    private static string WithLineBreaks(string source, string lineBreak)
     {
         var text = new StringBuilder(source.Length + (source.Length / 16));
         for (var i = 0; i < source.Length; i++)
@@ -290,7 +295,7 @@ public static class FormatterTwins
                 continue;
             }
 
-            text.Append("\r\n");
+            text.Append(lineBreak);
         }
 
         return text.ToString();
