@@ -1,7 +1,13 @@
 using System.Text.Json.Nodes;
 using FluentAssertions;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Formatting;
+using Sharpy.Lsp.Tests.Conformance;
 using Xunit;
 using Xunit.Abstractions;
+// The enclosing `Sharpy` namespace exposes Sharpy.List<T>; SCG-qualify the concrete list built here.
+using SCG = System.Collections.Generic;
+using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Tests.E2E;
 
@@ -387,6 +393,162 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
         var edits = result!.AsArray();
         edits!.Count.Should().Be(0,
             "already-formatted source within the range should produce no edits");
+    }
+
+    // ------------------------------------------------------------------
+    // The formatting routes over the wire (#2168, plan P22e Phase 4 Task 3)
+    //
+    // One end-to-end cell per route, through a real server over stdio. Each asserts the APPLIED text:
+    // the returned edits applied strictly (LspFormattingDriver.ApplyStrict — a position outside the
+    // document or two overlapping edits throw). Each expected text is pinned as a literal AND equals
+    // what the in-process driver applies, so the wire (serialisation, registration, request routing)
+    // is the one thing these cells add over FormattingRouteParitySweepTests.
+    // ------------------------------------------------------------------
+
+    /// <summary>D1 (plan P22e): two functions with no blank line between them, `x   =   helper()` mis-spaced.</summary>
+    private const string RouteDocD1 =
+        "def helper() -> int:\n    return 2\ndef main():\n    x   =   helper()\n    print(x)\n";
+
+    /// <summary>D2: a bracket continuation the formatter joins, a comment line, then two statements.</summary>
+    private const string RouteDocD2 =
+        "def main():\n    xs = [1,\n          2]\n    # keep me\n    y = 3\n    print(xs, y)\n";
+
+    /// <summary>D5: a closed triple-quoted string whose interior line is indented 8 spaces.</summary>
+    private const string RouteDocD5 = "s = \"\"\"\n        key: value\n\"\"\"\nprint(s)\n";
+
+    [Fact]
+    public async Task FormattingRoute_Full_D1_AppliesSharpycFormatOutput()
+    {
+        const string expected =
+            "def helper() -> int:\n    return 2\n\n\ndef main():\n    x = helper()\n    print(x)\n";
+
+        var applied = await ApplyOverWireAsync("file:///route_full_d1.spy", RouteDocD1, "textDocument/formatting",
+            new JsonObject());
+
+        applied.Should().Be(expected);
+        applied.Should().Be(FormatterService.Format(RouteDocD1).FormattedText,
+            "Format Document applies exactly what `sharpyc format` writes");
+        using var driver = new LspFormattingDriver();
+        applied.Should().Be(driver.Full(RouteDocD1).Applied);
+    }
+
+    [Fact]
+    public async Task FormattingRoute_Range_Cell1_D1MainBody_ReSpacesOnlyTheSelectedStatement()
+    {
+        // Before #2168: `def main():` twice, `x = helper()` and `print(x)` gone. The formatter's blank-line
+        // hunk between the functions lies outside the selection, so it is not applied.
+        const string expected =
+            "def helper() -> int:\n    return 2\ndef main():\n    x = helper()\n    print(x)\n";
+        var range = Range(3, 0, 4, "    print(x)".Length);
+
+        var applied = await ApplyOverWireAsync("file:///route_range_cell1.spy", RouteDocD1,
+            "textDocument/rangeFormatting", new JsonObject { ["range"] = range.Json });
+
+        applied.Should().Be(expected);
+        using var driver = new LspFormattingDriver();
+        applied.Should().Be(driver.Range(RouteDocD1, range.Lsp).Applied);
+    }
+
+    [Fact]
+    public async Task FormattingRoute_Range_Cell2_D2Lines1To4_AppliesFormatOnce()
+    {
+        // Before #2168: `print(xs, y)` twice — the program printed twice, with no diagnostic.
+        const string expected =
+            "def main():\n    xs = [1, 2]\n    # keep me\n    y = 3\n    print(xs, y)\n";
+        var range = Range(1, 0, 4, "    y = 3".Length);
+
+        var applied = await ApplyOverWireAsync("file:///route_range_cell2.spy", RouteDocD2,
+            "textDocument/rangeFormatting", new JsonObject { ["range"] = range.Json });
+
+        applied.Should().Be(expected);
+        applied.Should().Be(FormatterService.Format(RouteDocD2).FormattedText);
+        using var driver = new LspFormattingDriver();
+        applied.Should().Be(driver.Range(RouteDocD2, range.Lsp).Applied);
+    }
+
+    [Fact]
+    public async Task FormattingRoute_OnType_Cell12_LineInsideAClosedString_NoEdit()
+    {
+        // Before #2168: the string line lost its 8 spaces — the string's value changed.
+        var (edits, applied) = await OnTypeOverWireAsync("file:///route_ontype_cell12.spy", RouteDocD5,
+            line: 1, character: "        key:".Length, ch: ":");
+
+        edits.Should().BeEmpty("format on type never edits inside a string");
+        applied.Should().Be(RouteDocD5);
+        using var driver = new LspFormattingDriver();
+        driver.OnType(RouteDocD5, 1).Applied.Should().Be(RouteDocD5);
+    }
+
+    [Fact]
+    public async Task FormattingRoute_OnType_PositiveControl_OverIndentedFirstStatementLine_ReIndents()
+    {
+        // The positive control for the cell-12 absence assertion: the same route, the same trigger character,
+        // over the same wire DOES edit when a statement's first line is over-indented.
+        const string source = "def foo():\n        x: int = 1\n";
+        const string expected = "def foo():\n    x: int = 1\n";
+
+        var (edits, applied) = await OnTypeOverWireAsync("file:///route_ontype_control.spy", source,
+            line: 1, character: "        x:".Length, ch: ":");
+
+        edits.Should().NotBeEmpty();
+        applied.Should().Be(expected);
+        using var driver = new LspFormattingDriver();
+        applied.Should().Be(driver.OnType(source, 1).Applied);
+    }
+
+    private static (JsonObject Json, LspRange Lsp) Range(int startLine, int startChar, int endLine, int endChar)
+        => (new JsonObject
+        {
+            ["start"] = new JsonObject { ["line"] = startLine, ["character"] = startChar },
+            ["end"] = new JsonObject { ["line"] = endLine, ["character"] = endChar },
+        },
+            new LspRange(new Position(startLine, startChar), new Position(endLine, endChar)));
+
+    /// <summary>Opens <paramref name="text"/>, sends <paramref name="method"/>, and returns the strictly applied text.</summary>
+    private async Task<string> ApplyOverWireAsync(string uri, string text, string method, JsonObject extra)
+        => (await RequestEditsAsync(uri, text, method, extra)).Applied;
+
+    private Task<(IReadOnlyList<TextEdit> Edits, string Applied)> OnTypeOverWireAsync(
+        string uri, string text, int line, int character, string ch)
+        => RequestEditsAsync(uri, text, "textDocument/onTypeFormatting", new JsonObject
+        {
+            ["position"] = new JsonObject { ["line"] = line, ["character"] = character },
+            ["ch"] = ch,
+        });
+
+    private async Task<(IReadOnlyList<TextEdit> Edits, string Applied)> RequestEditsAsync(
+        string uri, string text, string method, JsonObject extra)
+    {
+        await _client.InitializeAsync();
+        await _client.DidOpenAsync(uri, text);
+        await _client.WaitForNotificationAsync("textDocument/publishDiagnostics", TimeSpan.FromSeconds(15));
+
+        var @params = new JsonObject
+        {
+            ["textDocument"] = new JsonObject { ["uri"] = uri },
+            ["options"] = new JsonObject { ["tabSize"] = 4, ["insertSpaces"] = true },
+        };
+        foreach (var (key, value) in extra.ToList())
+        {
+            extra.Remove(key);
+            @params[key] = value;
+        }
+
+        var result = await _client.SendRequestAsync(method, @params);
+        var edits = result is null
+            ? new SCG.List<TextEdit>()
+            : result.AsArray().Select(e => new TextEdit
+            {
+                Range = new LspRange(
+                    new Position(
+                        e!["range"]!["start"]!["line"]!.GetValue<int>(),
+                        e["range"]!["start"]!["character"]!.GetValue<int>()),
+                    new Position(
+                        e["range"]!["end"]!["line"]!.GetValue<int>(),
+                        e["range"]!["end"]!["character"]!.GetValue<int>())),
+                NewText = e["newText"]!.GetValue<string>(),
+            }).ToList();
+        return (edits, LspFormattingDriver.ApplyStrict(text, edits));
     }
 
     // ------------------------------------------------------------------
