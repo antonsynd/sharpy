@@ -330,6 +330,48 @@ public class OnTypeFormattingTests : IDisposable
         edits.First().NewText.Should().Be("        ");
     }
 
+    // ---- P22f (#2271): a literal lost WITHOUT a lexer abort. By direction: the unchecked candidate (the
+    // indent map's level for the line, the handler's own computation before its checks) is the damaged
+    // text the handler applied @ 3c70ea492 (.claude/tmp/p22f-probes/out2.json); now it applies nothing.
+    // The documents are FormattingFallbackTests' constants.
+
+    /// <summary>The on-type handler's unchecked candidate: <paramref name="line"/> (0-based) at the indent map's level, applied.</summary>
+    private static string OnTypeCandidate(string text, int line)
+    {
+        var lines = text.Split('\n');
+        var level = IndentationService.BuildIndentMap(text).LineIndent[line + 1];
+        lines[line] = new string(' ', level * Compiler.Lexer.Lexer.IndentWidth) + lines[line].TrimStart();
+        return string.Join("\n", lines);
+    }
+
+    private static string WithLine(string text, int line, string newLine)
+    {
+        var lines = text.Split('\n');
+        lines[line] = newLine;
+        return string.Join("\n", lines);
+    }
+
+    public static TheoryData<string, string, int, string> LiteralLostWithoutAnAbort => new()
+    {
+        { "N1", FormattingFallbackTests.N1, FormattingFallbackTests.N1SubLine, "        sub: 1" },
+        { "N1t", FormattingFallbackTests.N1t, 32, "    key" },
+        { "N4", FormattingFallbackTests.N4, 2, "    key: value" },
+        { "N4tab", FormattingFallbackTests.N4tab, 2, "    key: value" },
+        { "N4f", FormattingFallbackTests.N4f, 2, "    names" },
+    };
+
+    [Theory]
+    [MemberData(nameof(LiteralLostWithoutAnAbort))]
+    public async Task LiteralLostWithoutAnAbort_StringLine_NoEditAsync(string name, string source, int line, string damagedLine)
+    {
+        _ = name;
+        OnTypeCandidate(source, line).Should().Be(WithLine(source, line, damagedLine));
+
+        var edits = await OnTypeAsync(source, line, source.Split('\n')[line].Length, "\n");
+
+        edits.Should().BeNull();
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

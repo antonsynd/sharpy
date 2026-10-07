@@ -311,4 +311,173 @@ public sealed class FormattingFallbackTests : IDisposable
         _driver.Full(s4).Edits.Should().BeEmpty();
         _driver.Range(s4, LineRange(s4, 1)).Edits.Should().BeEmpty();
     }
+
+    // ---- P22f (#2271): a literal lost WITHOUT a lexer abort — the error budget, a re-paired closer, a
+    // dropped delimiter line. By direction: each unchecked candidate is the damaged text the handler
+    // applied @ 3c70ea492 (driven over stdio, .claude/tmp/p22f-probes/out2.json and xout.json); the
+    // handler now returns no edits. The direction controls below are documents that lose NO literal
+    // and keep the repair they got @ 3c70ea492 byte for byte. The constants are shared with
+    // OnTypeFormattingTests and IndentationServiceLiteralStateTests.
+
+    /// <summary>The lexer's error budget (<c>Lexer.MaxErrors</c>, 25 @ 3c70ea492 — N1's bytes are those of that budget).</summary>
+    internal static readonly int Budget = new Compiler.Lexer.Lexer("").MaxErrors;
+
+    /// <summary>
+    /// N1: the budget's worth of unterminated short strings above <c>main</c>; the lexer stops at its budget
+    /// with <c>main</c>'s closed triple-quoted string unread, so the string's lines read as dropped code.
+    /// </summary>
+    internal static readonly string N1 =
+        string.Concat(Enumerable.Repeat("x = \"abc\n", Budget))
+        + "def main():\n    s = \"\"\"\n    key:\n      sub: 1\n    \"\"\"\n    print(s)\n";
+
+    /// <summary>N1's string line at width 6 (0-based).</summary>
+    internal static readonly int N1SubLine = Budget + 3;
+
+    /// <summary>N1t: a 2-space body past the budget, a 2-space string at its end.</summary>
+    internal static readonly string N1t =
+        "def main():\n" + string.Concat(Enumerable.Repeat("  x = 1\n", 30)) + "  s = \"\"\"\n      key\n  \"\"\"\n  print(s)\n";
+
+    /// <summary>N1c: a 2-space body past the budget, no literal (direction control).</summary>
+    internal static readonly string N1c = "def main():\n" + string.Concat(Enumerable.Repeat("  x = 1\n", 30));
+
+    /// <summary>N1s: a 2-space body of short strings past the budget (direction control).</summary>
+    internal static readonly string N1s = "def main():\n" + string.Concat(Enumerable.Repeat("  print(\"hi\")\n", 30));
+
+    /// <summary>N2 (#2271's document): a stray <c>"""</c> pairs with <c>s</c>'s opener; <c>s</c>'s closer re-pairs into <c>'"""'</c>.</summary>
+    internal const string N2 = "\"\"\"\ndef main():\n    s = \"\"\"\n      key: value\n    \"\"\"\n    t = '\"\"\"'\n    print(s, t)\n";
+
+    /// <summary>N2c: N2 with the orphan quote swallowed by the comment's apostrophe — no SPY0001.</summary>
+    internal const string N2c = "\"\"\"\ndef main():\n    s = \"\"\"\n      key: value\n    \"\"\"\n    t = '\"\"\"'  # don't\n    print(s, t)\n";
+
+    /// <summary>N2w: N2's quote characters swapped — a stray <c>'''</c> above a <c>"""</c> docstring.</summary>
+    internal const string N2w = "'''\ndef f():\n    \"\"\"\n    doc\n    \"\"\"\n    x = \"'''\"\n    return x\n";
+
+    /// <summary>N4 (#2271's document): the opener and closer lines at 2 spaces are dropped whole (SPY0013).</summary>
+    internal const string N4 = "def main():\n  s = \"\"\"\n        key: value\n  \"\"\"\n  print(s)\n";
+
+    /// <summary>N4tab: N4's delimiter lines tab-indented (SPY0012).</summary>
+    internal const string N4tab = "def main():\n\ts = \"\"\"\n        key: value\n\t\"\"\"\n\tprint(s)\n";
+
+    /// <summary>N4f: a single-quoted f-string whose replacement field spans lines, on a dropped line.</summary>
+    internal const string N4f = "def main():\n  x = f\"{', '.join(\n        names\n      )}\"\n  print(x)\n";
+
+    /// <summary>X6: an unexpected character before the opener drops the rest of its line (SPY0015); the closer drops at SPY0014.</summary>
+    internal const string X6 = "def main():\n    x = $\"\"\"\n        key: value\n    \"\"\"\n    print(x)\n";
+
+    /// <summary>N4q: a dropped line holding a short string (direction control).</summary>
+    internal const string N4q = "def main():\n  x = \"hi\"\n  print(x)\n";
+
+    /// <summary>N4t: a dropped line holding a triple inside a short string (direction control).</summary>
+    internal const string N4t = "def main():\n  t = '\"\"\"'\n  print(t)\n";
+
+    /// <summary>X4: a dropped line holding a triple-quoted literal closed on its own line (direction control).</summary>
+    internal const string X4 = "def main():\n  s = \"\"\"abc\"\"\"\n  print(s)\n";
+
+    /// <summary>The names of the routes whose request returned edits (every route named, not only the first).</summary>
+    private static string[] RoutesThatEdit(params (string Route, IReadOnlyList<TextEdit> Edits)[] cells) =>
+        cells.Where(c => c.Edits.Count > 0).Select(c => c.Route).ToArray();
+
+    private static LspRange Lines(int start, int end) => new(new Position(start, 0), new Position(end, 0));
+
+    /// <summary>The range fallback's unchecked candidate for <paramref name="range"/>, the handler's selected lines, applied.</summary>
+    private static string RangeCandidate(string text, LspRange range)
+    {
+        var (start, end) = new Compiler.Formatting.FormatSelection(range.Start.Line, range.End.Line, range.End.Character)
+            .SelectedLines(Compiler.Formatting.LineDiff.Split(text).Lines);
+        return LspFormattingDriver.ApplyStrict(text, SharpyRangeFormattingHandler.ComputeIndentOnlyRangeEdits(text, start, end));
+    }
+
+    [Fact]
+    public void N1_BudgetStopWithAStringLeftUnread_FullAndRangeFallbacks_GetNoEdits()
+    {
+        var damaged = WithLine(N1, N1SubLine, "        sub: 1");
+        FormattingFallback.ReindentDocument(N1).Should().Be(damaged);
+        RangeCandidate(N1, N1SubLine).Should().Be(damaged);
+
+        RoutesThatEdit(
+            ("full", _driver.Full(N1).Edits),
+            ("range-line", _driver.Range(N1, LineRange(N1, N1SubLine)).Edits)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void N1t_BudgetStopAbove2SpaceString_RangeFallback_GetsNoEdits()
+    {
+        RangeCandidate(N1t, 32).Should().Be(WithLine(N1t, 32, "    key"));
+        _driver.Range(N1t, LineRange(N1t, 32)).Edits.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(N2)]
+    [InlineData(N2c)]
+    public void N2_ClosedStringRePairedIntoAShortString_FullAndRangeFallbacks_GetNoEdits(string document)
+    {
+        FormattingFallback.ReindentDocument(document)
+            .Should().Be(WithLine(WithLine(WithLine(document, 3, "key: value"), 4, "\"\"\""), 6, "print(s, t)"));
+        RangeCandidate(document, 3).Should().Be(WithLine(document, 3, "key: value"));
+
+        RoutesThatEdit(
+            ("full", _driver.Full(document).Edits),
+            ("range-line", _driver.Range(document, LineRange(document, 3)).Edits)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void N2w_SwappedQuoteCharacters_FullFallback_GetsNoEdits()
+    {
+        FormattingFallback.ReindentDocument(N2w).Should().Be(WithLine(N2w, 6, "return x"));
+        _driver.Full(N2w).Edits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void N4_DroppedDelimiterLines_RangeFallback_GetsNoEdits()
+    {
+        // Full and range-whole were refused @ 3c70ea492 already (clause 3); the selections inside were not.
+        var damaged = WithLine(N4, 2, "    key: value");
+        RangeCandidate(N4, 2).Should().Be(damaged);
+        RangeCandidate(N4, Lines(2, 3)).Should().Be(damaged);
+        RangeCandidate(N4, Lines(2, 4)).Should().Be(WithLine(damaged, 3, "    \"\"\""));
+
+        RoutesThatEdit(
+            ("range-line", _driver.Range(N4, LineRange(N4, 2)).Edits),
+            ("range (2,0)-(3,0)", _driver.Range(N4, Lines(2, 3)).Edits),
+            ("range (2,0)-(4,0)", _driver.Range(N4, Lines(2, 4)).Edits)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void N4f_DroppedLineOpeningAMultiLineHole_RangeFallback_GetsNoEdits()
+    {
+        RangeCandidate(N4f, 2).Should().Be(WithLine(N4f, 2, "    names"));
+        _driver.Range(N4f, LineRange(N4f, 2)).Edits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void X6_OpenerDroppedAtAnUnexpectedCharacter_FullAndRangeFallbacks_GetNoEdits()
+    {
+        var damaged = WithLine(X6, 2, "    key: value");
+        FormattingFallback.ReindentDocument(X6).Should().Be(damaged);
+        RangeCandidate(X6, Lines(2, 3)).Should().Be(damaged);
+
+        RoutesThatEdit(
+            ("full", _driver.Full(X6).Edits),
+            ("range-line", _driver.Range(X6, Lines(2, 3)).Edits)).Should().BeEmpty();
+    }
+
+    public static TheoryData<string, string, string> NoLiteralLost => new()
+    {
+        { "N1c", N1c, "def main():\n" + string.Concat(Enumerable.Repeat("    x = 1\n", 30)) },
+        { "N1s", N1s, "def main():\n" + string.Concat(Enumerable.Repeat("    print(\"hi\")\n", 30)) },
+        { "N4q", N4q, "def main():\n    x = \"hi\"\n    print(x)\n" },
+        { "N4t", N4t, "def main():\n    t = '\"\"\"'\n    print(t)\n" },
+        { "X4", X4, "def main():\n    s = \"\"\"abc\"\"\"\n    print(s)\n" },
+    };
+
+    /// <summary>
+    /// Direction controls: a lex that stops at its budget or drops a line holding a string that does not
+    /// span lines lost no literal — the full fallback keeps the 4-space repair it applied @ 3c70ea492.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NoLiteralLost))]
+    public void DirectionControl_NoLiteralLost_FullFallbackKeepsItsRepair(string name, string document, string repaired)
+    {
+        _driver.Full(document).Applied.Should().Be(repaired, "{0} lost no literal; @ 3c70ea492 the full fallback repaired it to this text", name);
+    }
 }
