@@ -191,7 +191,7 @@ public class LiteralStateTests
         lexer.LiteralStateUnknown.Should().BeTrue(Errors(lexer));
     }
 
-    /// <summary>An abort outside every literal sets nothing.</summary>
+    /// <summary>An abort outside every literal sets nothing (the rest of its line, dropped, holds no literal either).</summary>
     [Fact]
     public void AbortOutsideAnyLiteral_SetsNothing()
     {
@@ -199,6 +199,209 @@ public class LiteralStateTests
 
         Errors(lexer).Should().Contain("consecutive underscores");
         lexer.LiteralStateUnknown.Should().BeFalse(Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None);
+    }
+
+    // ---------------------------------------------------------------- abort-free loss (P22f, #2271)
+    //
+    // Each mechanism loses a literal without any abort inside its read: the flag that names the mechanism
+    // is the one set (Be, not HaveFlag — AbortInsideLiteral and the other two stay clear), over every
+    // triple-quoted prefix and both quote characters.
+
+    /// <summary>The leading whitespace that drops a line at an indentation error, and the code it raises.</summary>
+    private static readonly (string Whitespace, string Code)[] IndentationErrors =
+    {
+        ("  ", "SPY0013"),     // width not a multiple of 4
+        ("\t", "SPY0012"),     // a tab
+        ("\t ", "SPY0011"),    // mixed tabs and spaces
+    };
+
+    public static IEnumerable<object[]> PrefixByTripleQuoteByIndentationError()
+        => PrefixByTripleQuote().SelectMany(row => IndentationErrors.Select(e => new object[] { row[0], row[1], e.Whitespace, e.Code }));
+
+    private static readonly string[] OrphanPlacements = { "adjacent", "spaced", "comment" };
+
+    public static IEnumerable<object[]> PrefixByTripleQuoteByOrphan()
+        => PrefixByTripleQuote().SelectMany(row => OrphanPlacements.Select(p => new object[] { row[0], row[1], p }));
+
+    /// <summary>
+    /// The short string that re-pairs a triple: <c>'"""'</c> (adjacent — the closer is followed by a quote,
+    /// arm a), <c>'""" '</c> (spaced — an unterminated short string on the close line, arm b),
+    /// <c>'"""'  # don't</c> (comment — the orphan quote pairs with the comment's apostrophe: only arm a
+    /// sees it). The orphan quote is the other quote character.
+    /// </summary>
+    private static string Orphan(string quotes, string placement)
+    {
+        var o = quotes[0] == '"' ? '\'' : '"';
+        return placement switch
+        {
+            "adjacent" => $"{o}{quotes}{o}",
+            "spaced" => $"{o}{quotes} {o}",
+            "comment" => $"{o}{quotes}{o}  # don{o}t",
+            _ => throw new ArgumentOutOfRangeException(nameof(placement)),
+        };
+    }
+
+    /// <summary>
+    /// N4 (and its SPY0012/SPY0011 siblings): the opener and closer lines of a literal are dropped whole at an
+    /// indentation error (the abort happens before any token of the line is read), so the pair is never read
+    /// and the content lexes as code. Positive twin of the N4q/N4t/X4 controls below.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuoteByIndentationError))]
+    public void OpenerLineDroppedAtAnIndentationError_SetsDroppedOpener(string prefix, string quotes, string whitespace, string code)
+    {
+        var lexer = Lex($"def main():\n{whitespace}s = {prefix}{quotes}\n        key: value\n{whitespace}{quotes}\n{whitespace}print(s)\n");
+
+        Errors(lexer).Should().Contain($"{code} ");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
+    /// <summary>N4m: a wide body, the delimiter lines at width 4 under it (SPY0014 — on no enclosing level).</summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuote))]
+    public void OpenerLineDroppedAtAnIndentationMismatch_SetsDroppedOpener(string prefix, string quotes)
+    {
+        var lexer = Lex($"def main():\n        x = 1\n    s = {prefix}{quotes}\n        key: value\n    {quotes}\n    print(s)\n");
+
+        Errors(lexer).Should().Contain("SPY0014 ");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
+    /// <summary>
+    /// X6: an unexpected character before the opener on a valid-width line drops the rest of the line,
+    /// opener included (the closer line then drops at SPY0014 under the content's width).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuote))]
+    public void OpenerLineDroppedAtAMidLineUnexpectedCharacter_SetsDroppedOpener(string prefix, string quotes)
+    {
+        var lexer = Lex($"def main():\n    x = ${prefix}{quotes}\n        key: value\n    {quotes}\n    print(x)\n");
+
+        Errors(lexer).Should().Contain("SPY0015 ");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
+    /// <summary>N4f: a single-quoted f-/t-string whose replacement field continues on the next line, on a dropped line.</summary>
+    [Theory]
+    [InlineData("f")]
+    [InlineData("t")]
+    [InlineData("df")]
+    public void SingleQuotedHoleOpenedOnADroppedLine_SetsDroppedOpener(string prefix)
+    {
+        var lexer = Lex($"def main():\n  x = {prefix}\"{{', '.join(\n        names\n      )}}\"\n  print(x)\n");
+
+        Errors(lexer).Should().Contain("SPY0013 ");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
+    /// <summary>
+    /// N1: the error budget stops the lexer above a CLOSED literal; the rest of the source gets no token, so
+    /// its interior lines read as dropped code lines. The 25 unterminated short strings above it each abort
+    /// on their line break and drop nothing.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuote))]
+    public void BudgetStopWithALiteralLeft_SetsUnreadRemainder(string prefix, string quotes)
+    {
+        var maxErrors = new LexerNs.Lexer("").MaxErrors;
+        var lexer = Lex(string.Concat(Enumerable.Repeat("x = \"abc\n", maxErrors))
+            + $"def main():\n    s = {prefix}{quotes}\n        key: value\n    {quotes}\n    print(s)\n");
+
+        lexer.Diagnostics.ErrorCount.Should().Be(maxErrors);
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.UnreadRemainder, Errors(lexer));
+    }
+
+    /// <summary>
+    /// N2 (adjacent), X8 (spaced), N2c (comment), and N2w (the quote characters swapped): a stray triple
+    /// above a closed literal pairs with its opener; the literal's closer then opens a run that a short
+    /// string holding the same triple closes mid-line. The triple count is even, so no read aborts.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuoteByOrphan))]
+    public void ClosedLiteralRePairedIntoAShortString_SetsRePairedCloser(string prefix, string quotes, string placement)
+    {
+        var lexer = Lex($"{quotes}\ndef main():\n    s = {prefix}{quotes}\n      key: value\n    {quotes}\n    t = {Orphan(quotes, placement)}\n    print(s, t)\n");
+
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    /// <summary>
+    /// The prefixed twin of the re-pair: in the N2 shape the run that closes inside the short string is
+    /// always opened by the literal's BARE closer line, so it reaches only the plain close arm. Here the
+    /// prefixed opener's own run closes there — every one of the five close arms (plain and <c>d</c>,
+    /// <c>b</c>, <c>r</c>, <c>dr</c>, <c>f</c>/<c>t</c>/<c>df</c>) records the closer's context.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuoteByOrphan))]
+    public void PrefixedOpenerRePairedIntoAShortString_SetsRePairedCloser(string prefix, string quotes, string placement)
+    {
+        var lexer = Lex($"def main():\n    s = {prefix}{quotes}\n        key: value\n    t = {Orphan(quotes, placement)}\n    print(s, t)\n");
+
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    // ---------------------------------------------------------------- the direction controls: nothing lost, nothing set
+
+    /// <summary>
+    /// Dropped or re-paired text that opens nothing multi-line keeps the fact clear, so the indent-only
+    /// routes keep their repairs: TWO (the owner's 2-space document), N4q (a dropped line holding a short
+    /// string), N4t (a short string holding a triple), X4 (a triple closed on its own dropped line), and a
+    /// triple run closed on its own line followed by an unterminated short string (the RULED (b)
+    /// restriction — a single-line run cannot have lost multi-line content). Each lexes with errors (the
+    /// hooks run); the theories above are their positive twins.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n  x: int = 1\n  print(x)\n")]
+    [InlineData("def main():\n  x = \"hi\"\n  print(x)\n")]
+    [InlineData("def main():\n  t = '\"\"\"'\n  print(t)\n")]
+    [InlineData("def main():\n  s = \"\"\"abc\"\"\"\n  print(s)\n")]
+    [InlineData("x = \"\"\"a\"\"\" + 'b\n")]
+    public void DroppedOrRePairedTextThatOpensNothingMultiLine_SetsNothing(string source)
+    {
+        var lexer = Lex(source);
+
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
+    /// <summary>The RULED (b) control's multi-line twin (N2typ): the same keystroke on a run that spanned lines sets it.</summary>
+    [Fact]
+    public void UnterminatedShortStringOnTheCloseLineOfARunThatSpannedLines_SetsRePairedCloser()
+    {
+        var lexer = Lex("def main():\n    s = \"\"\"abc\n    def\"\"\" + \"typing\n        x = 1\n");
+
+        Errors(lexer).Should().Contain("SPY0001 ");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    /// <summary>
+    /// N1c / N1s: a budget stop whose remainder holds no literal that spans lines — the fallback's main use
+    /// case (a 2-space body) keeps its repair. Positive twin: <see cref="BudgetStopWithALiteralLeft_SetsUnreadRemainder"/>.
+    /// </summary>
+    [Theory]
+    [InlineData("  x = 1\n")]
+    [InlineData("  print(\"hi\")\n")]
+    public void BudgetStopWithNoLiteralLeft_SetsNothing(string bodyLine)
+    {
+        var lexer = Lex("def main():\n" + string.Concat(Enumerable.Repeat(bodyLine, 30)));
+
+        lexer.Diagnostics.GetWarnings().Should().Contain(d => d.Code == "SPY0905", "the budget stopped the lexer with source left");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
+    /// <summary>
+    /// <c>strings/d_string_trailing_newline</c> with <c>"""</c> inserted as line 0 (FormattingFallbackTests'
+    /// <c>DStringRepaired</c>): it re-pairs into a comment, every closer is followed by a line break and the
+    /// lex reports nothing — no lexer fact separates it from the known-limit cells of #2271, and it loses nothing.
+    /// </summary>
+    [Fact]
+    public void TriplesRePairedThroughAComment_SetNothing()
+    {
+        var lexer = Lex("\"\"\"\ndef main():\n    # A blank line before the closing \"\"\" becomes a trailing newline\n    msg: str = d\"\"\"\n        hello\n\n        \"\"\"\n    print(repr(msg))\n");
+
+        lexer.Diagnostics.HasErrors.Should().BeFalse(Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None);
     }
 
     // ---------------------------------------------------------------- the corpus
