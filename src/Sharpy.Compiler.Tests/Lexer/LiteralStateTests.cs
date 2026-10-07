@@ -283,6 +283,36 @@ public class LiteralStateTests
         lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
     }
 
+    /// <summary>The short strings that abort mid-line with the lexer INSIDE them, and the code each raises.</summary>
+    private static readonly (string ShortString, string Code)[] MidStringAborts =
+    {
+        ("\"\\q\"", "SPY0004"),         // an invalid escape
+        ("\"\\x4\"", "SPY0005"),        // a hex escape short of two digits
+        ("\"\\u12\"", "SPY0006"),       // a unicode escape short of four digits
+        ("b\"\u00e9\"", "SPY0028"),     // a non-ASCII character in a b string
+        ("f\"a}b\"", "SPY0021"),        // a lone '}' in an f-string's text
+    };
+
+    public static IEnumerable<object[]> PrefixByTripleQuoteByMidStringAbort()
+        => PrefixByTripleQuote().SelectMany(row => MidStringAborts.Select(a => new object[] { row[0], row[1], a.ShortString, a.Code }));
+
+    /// <summary>
+    /// A short string before the opener aborts mid-line with the lexer inside it; recovery drops the rest of
+    /// the line, opener included — and the same on the closer's line, so the triple count stays even and the
+    /// lex is abort-free (the verifier's C1 cell, @ 4b7428567 the full fallback rewrote <c>    key: value</c>).
+    /// The dropped span starts at the aborted string's prefix, not inside it, where its quotes would pair
+    /// the wrong way.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixByTripleQuoteByMidStringAbort))]
+    public void OpenerLineDroppedMidStringAbort_SetsDroppedOpener(string prefix, string quotes, string shortString, string code)
+    {
+        var lexer = Lex($"x = {shortString} + {prefix}{quotes}\n    key: value\n{shortString} + {quotes}\nprint(x)\n");
+
+        Errors(lexer).Should().Contain($"{code} ");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
     /// <summary>N4f: a single-quoted f-/t-string whose replacement field continues on the next line, on a dropped line.</summary>
     [Theory]
     [InlineData("f")]
@@ -349,8 +379,10 @@ public class LiteralStateTests
     /// routes keep their repairs: TWO (the owner's 2-space document), N4q (a dropped line holding a short
     /// string), N4t (a short string holding a triple), X4 (a triple closed on its own dropped line), and a
     /// triple run closed on its own line followed by an unterminated short string (the RULED (b)
-    /// restriction — a single-line run cannot have lost multi-line content). Each lexes with errors (the
-    /// hooks run); the theories above are their positive twins.
+    /// restriction — a single-line run cannot have lost multi-line content) or by a quote (arm (a), the same
+    /// restriction), an unterminated f-string whose replacement fields are closed (only an OPEN field can
+    /// span lines), and a short string aborting mid-line before a triple closed on its line. Each lexes with
+    /// errors (the hooks run); the theories above are their positive twins.
     /// </summary>
     [Theory]
     [InlineData("def main():\n  x: int = 1\n  print(x)\n")]
@@ -358,6 +390,15 @@ public class LiteralStateTests
     [InlineData("def main():\n  t = '\"\"\"'\n  print(t)\n")]
     [InlineData("def main():\n  s = \"\"\"abc\"\"\"\n  print(s)\n")]
     [InlineData("x = \"\"\"a\"\"\" + 'b\n")]
+    // an unterminated f-string with no OPEN replacement field, on a dropped line: it ends at its line
+    [InlineData("def main():\n  x: int = 1\n  print(f\"total: {x}\n  print(x)\n")]
+    [InlineData("def main():\n  x: int = 1\n  y = f\"hello\n  print(x)\n")]
+    // a triple run closed on the line it opened on, its closer followed by a quote (arm a's single-line control)
+    [InlineData("z = \"\"\"a\"\"\"\"\ndef main():\n  x: int = 1\n  print(x)\n")]
+    [InlineData("z = \"\"\"a\"\"\"'b\ndef main():\n  x: int = 1\n  print(x)\n")]
+    [InlineData("z = \"\"\"\"\"\"\"\ndef main():\n  x: int = 1\n  print(x)\n")]
+    // a mid-line abort inside a short string whose dropped rest of the line holds a triple closed on it
+    [InlineData("def main():\n    x = \"\\q\" + \"\"\"abc\"\"\"\n    print(x)\n")]
     public void DroppedOrRePairedTextThatOpensNothingMultiLine_SetsNothing(string source)
     {
         var lexer = Lex(source);
@@ -381,11 +422,12 @@ public class LiteralStateTests
     /// case (a 2-space body) keeps its repair. Positive twin: <see cref="BudgetStopWithALiteralLeft_SetsUnreadRemainder"/>.
     /// </summary>
     [Theory]
-    [InlineData("  x = 1\n")]
-    [InlineData("  print(\"hi\")\n")]
-    public void BudgetStopWithNoLiteralLeft_SetsNothing(string bodyLine)
+    [InlineData("  x = 1\n", "")]
+    [InlineData("  print(\"hi\")\n", "")]
+    [InlineData("  x = 1\n", "  y = f\"x\n")]     // an unterminated f-string with no open field ends at its line
+    public void BudgetStopWithNoLiteralLeft_SetsNothing(string bodyLine, string lastLine)
     {
-        var lexer = Lex("def main():\n" + string.Concat(Enumerable.Repeat(bodyLine, 30)));
+        var lexer = Lex("def main():\n" + string.Concat(Enumerable.Repeat(bodyLine, 30)) + lastLine);
 
         lexer.Diagnostics.GetWarnings().Should().Contain(d => d.Code == "SPY0905", "the budget stopped the lexer with source left");
         lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));

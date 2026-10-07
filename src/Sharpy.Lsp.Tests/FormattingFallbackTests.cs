@@ -461,6 +461,34 @@ public sealed class FormattingFallbackTests : IDisposable
             ("range-line", _driver.Range(X6, Lines(2, 3)).Edits)).Should().BeEmpty();
     }
 
+    /// <summary>
+    /// C1 (final verification @ 4b7428567): a short string aborting mid-line (SPY0004, an invalid escape)
+    /// before the opener drops the rest of its line with the lexer INSIDE that string; the same on the
+    /// closer's line keeps the triple count even, so no read aborts. Module level.
+    /// </summary>
+    internal const string C1 = "x = \"\\d+\" + \"\"\"\n    key: value\n\"\\d+\" + \"\"\"\nprint(x)\n";
+
+    /// <summary>C1's block-level twin: the content and the closer at width 8.</summary>
+    internal const string C1Block = "def main():\n    x = \"\\q\" + \"\"\"\n        key: value\n        \"\\q\" + \"\"\"\n    print(x)\n";
+
+    [Fact]
+    public void C1_OpenerDroppedByAShortStringAbortingMidLine_FullAndRangeFallbacks_GetNoEdits()
+    {
+        var damaged = WithLine(C1, 1, "key: value");
+        FormattingFallback.ReindentDocument(C1).Should().Be(damaged);
+        RangeCandidate(C1, 1).Should().Be(damaged);
+        RangeCandidate(C1Block, 2).Should().Be(WithLine(C1Block, 2, "    key: value"));
+
+        RoutesThatEdit(
+            ("full", _driver.Full(C1).Edits),
+            ("range-whole", _driver.Range(C1, Lines(0, 4)).Edits),
+            ("range-line", _driver.Range(C1, LineRange(C1, 1)).Edits),
+            ("block range-line", _driver.Range(C1Block, LineRange(C1Block, 2)).Edits)).Should().BeEmpty();
+    }
+
+    /// <summary>The owner's 2-space document (<see cref="TwoSpace"/>) repaired to 4 spaces.</summary>
+    private const string TwoSpaceRepaired = "def main():\n    x: int = 1\n    print(x)\n";
+
     public static TheoryData<string, string, string> NoLiteralLost => new()
     {
         { "N1c", N1c, "def main():\n" + string.Concat(Enumerable.Repeat("    x = 1\n", 30)) },
@@ -468,16 +496,43 @@ public sealed class FormattingFallbackTests : IDisposable
         { "N4q", N4q, "def main():\n    x = \"hi\"\n    print(x)\n" },
         { "N4t", N4t, "def main():\n    t = '\"\"\"'\n    print(t)\n" },
         { "X4", X4, "def main():\n    s = \"\"\"abc\"\"\"\n    print(s)\n" },
+        // final verification @ 4b7428567: repaired @ 3c70ea492 (the verifier's base outputs), refused @ 4b7428567
+        { "Dbud_f", N1c + "  y = f\"x\n", "def main():\n" + string.Concat(Enumerable.Repeat("    x = 1\n", 30)) + "    y = f\"x\n" },
+        { "Da1", "z = \"\"\"a\"\"\"\"\n" + TwoSpace, "z = \"\"\"a\"\"\"\"\n" + TwoSpaceRepaired },
+        { "Da2", "z = \"\"\"a\"\"\"'b\n" + TwoSpace, "z = \"\"\"a\"\"\"'b\n" + TwoSpaceRepaired },
+        { "Da3", "z = \"\"\"\"\"\"\" \n" + TwoSpace, "z = \"\"\"\"\"\"\" \n" + TwoSpaceRepaired },
+        // the dropped span read from INSIDE the aborted "\q" paired its quotes the wrong way and saw an opener
+        // in the closed """abc""" (DroppedOpener @ 4b7428567); repaired @ 3c70ea492 (the p22e-lead proxy)
+        { "Dq_closed", "x = \"\\q\" + \"\"\"abc\"\"\"\n" + TwoSpace, "x = \"\\q\" + \"\"\"abc\"\"\"\n" + TwoSpaceRepaired },
     };
 
     /// <summary>
-    /// Direction controls: a lex that stops at its budget or drops a line holding a string that does not
-    /// span lines lost no literal — the full fallback keeps the 4-space repair it applied @ 3c70ea492.
+    /// Direction controls: a lex that stops at its budget, drops a line holding a string that does not
+    /// span lines, or closes a triple run on the line it opened on lost no literal — the full fallback keeps
+    /// the 4-space repair it applied @ 3c70ea492. <c>Dbud_f</c>: the unread remainder's unterminated
+    /// <c>f"x</c> has no open replacement field. <c>Da1</c>–<c>Da3</c>: a single-line <c>"""a"""</c> run
+    /// followed by a quote (arm (a) of the re-pair fact, restricted to runs that spanned lines).
+    /// <c>Dq_closed</c>: a short string aborting mid-line before a triple closed on its line.
     /// </summary>
     [Theory]
     [MemberData(nameof(NoLiteralLost))]
     public void DirectionControl_NoLiteralLost_FullFallbackKeepsItsRepair(string name, string document, string repaired)
     {
         _driver.Full(document).Applied.Should().Be(repaired, "{0} lost no literal; @ 3c70ea492 the full fallback repaired it to this text", name);
+    }
+
+    /// <summary>
+    /// Dfprint (final verification @ 4b7428567): the dropped 2-space line <c>print(f"total: {x}</c> is an
+    /// unterminated f-string whose replacement field is closed — it ends at its line, as its plain-string
+    /// twin does — so the line routes keep the 4-space repair they applied @ 3c70ea492 (refused @ 4b7428567).
+    /// </summary>
+    [Fact]
+    public void DirectionControl_UnterminatedFStringWithNoOpenField_LineRoutesKeepTheirRepair()
+    {
+        const string document = "def main():\n  x: int = 1\n  print(f\"total: {x}\n  print(x)\n";
+
+        _driver.Range(document, LineRange(document, 1)).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
+        _driver.OnType(document, 1).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
+        _driver.Range(document, LineRange(document, 3)).Applied.Should().Be(WithLine(document, 3, "    print(x)"));
     }
 }

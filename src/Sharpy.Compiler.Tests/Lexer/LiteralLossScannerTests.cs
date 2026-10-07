@@ -34,12 +34,21 @@ public class LiteralLossScannerTests
     // comments
     [InlineData("# s = \"\"\"", false)]
     [InlineData("x = 1  # \"\"\"", false)]
-    // an f-/t-string whose replacement field is left open on its line
+    // an f-/t-string whose replacement field is left open at the line break
     [InlineData("x = f\"{', '.join(", true)]
     [InlineData("x = f\"{a", true)]
     [InlineData("x = t\"{a", true)]
     [InlineData("x = df\"{a", true)]
     [InlineData("x = f\"{a}\" + \"b", false)]               // a closed hole, then an unterminated short string
+    [InlineData("x = f\"{x", true)]
+    [InlineData("x = f\"{{{x", true)]                        // an escaped brace, then an open field
+    // an unterminated f-/t-string with no OPEN field ends at its line like any short string
+    [InlineData("x = f\"hello", false)]
+    [InlineData("x = t\"hello", false)]
+    [InlineData("x = df\"hello", false)]
+    [InlineData("x = f\"{x}", false)]                        // the field is closed
+    [InlineData("x = f\"total: {x}", false)]
+    [InlineData("x = f\"{{", false)]                         // an escaped brace opens no field
     // any other unterminated short string ends at its line
     [InlineData("x = r\"abc", false)]
     [InlineData("x = d\"abc", false)]

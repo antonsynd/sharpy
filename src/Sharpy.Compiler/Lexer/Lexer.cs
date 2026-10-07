@@ -101,6 +101,7 @@ public partial class Lexer
     private int _pendingBlankLineCount;
     private int? _resumeAfterUnclosedField;  // see ReportUnclosedField
     private int _multiLineLiteralReads;      // see MultiLineLiteralRead
+    private int _tokenStart;                 // start of the token NextToken's main loop is reading; see NoteDroppedSpan
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
@@ -329,6 +330,7 @@ public partial class Lexer
             catch (LexerAbortException)
             {
                 // Error already recorded in _diagnostics by ReportError()
+                var resumesAfterUnclosedField = _resumeAfterUnclosedField != null;
                 if (_resumeAfterUnclosedField is { } bracket)
                 {
                     // An unclosed replacement field swallowed the rest of the source: drop what was
@@ -355,7 +357,7 @@ public partial class Lexer
                     break;
                 }
 
-                NoteDroppedSpan();
+                NoteDroppedSpan(fromTheAbortedLiteral: !resumesAfterUnclosedField);
                 RecoverFromError();
                 continue;
             }
@@ -549,6 +551,7 @@ public partial class Lexer
             var startColumn = _column;
             var startPosition = _position;
             var current = _source[_position];
+            _tokenStart = startPosition;
 
             // Comments — skip and loop (no recursion)
             if (current == '#')
@@ -723,11 +726,13 @@ public partial class Lexer
         return -1;
     }
 
-    private bool IsStringLiteralStart(string prefix)
+    private bool IsStringLiteralStart(string prefix) => IsStringLiteralStartAt(prefix, _position);
+
+    private bool IsStringLiteralStartAt(string prefix, int at)
     {
-        var quoteAt = _position + prefix.Length;
+        var quoteAt = at + prefix.Length;
         return quoteAt < _source.Length && (_source[quoteAt] == '"' || _source[quoteAt] == '\'')
-            && string.CompareOrdinal(_source, _position, prefix, 0, prefix.Length) == 0;
+            && string.CompareOrdinal(_source, at, prefix, 0, prefix.Length) == 0;
     }
 
     /// <summary>

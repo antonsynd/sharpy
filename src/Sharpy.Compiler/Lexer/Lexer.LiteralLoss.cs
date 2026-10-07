@@ -9,15 +9,30 @@ public partial class Lexer
     /// <see cref="LiteralLoss.DroppedOpener"/> when that text holds a literal that can span lines. At an
     /// indentation error (SPY0011–SPY0014) <see cref="_position"/> is the line start
     /// (<see cref="HandleLineStartIndentation"/> restores it before measuring), so the span is the whole
-    /// line; after a mid-line abort it is the rest of the line (<c>x = $"""</c>). An unterminated short
-    /// string aborts on the line break: the span is empty.
+    /// line; after a mid-line abort it is the rest of the line (<c>x = $"""</c>). A mid-line abort INSIDE a
+    /// string literal (an invalid escape, non-ASCII in a <c>b</c> string, a lone <c>}</c> in an f-string)
+    /// leaves <see cref="_position"/> inside it, where the scanner would pair the quotes the wrong way
+    /// (<c>"\q" + """</c> read from the <c>q</c> is <c>" + "</c> then <c>""</c>): when <paramref name="fromTheAbortedLiteral"/>
+    /// and the token being read (<see cref="_tokenStart"/>) is a string literal that began on this line, the
+    /// span starts at its prefix instead. An unterminated short string is then the whole span up to its line
+    /// break, which the scanner skips (a short string ends at its line). After an unclosed replacement field
+    /// (<see cref="ReportUnclosedField"/>, single-quoted strings only) the lexer itself has ruled that the field
+    /// was being typed and the line after its bracket is code: the span stays at the bracket.
     /// </summary>
-    private void NoteDroppedSpan()
+    private void NoteDroppedSpan(bool fromTheAbortedLiteral)
     {
+        var start = _position;
+        if (fromTheAbortedLiteral && _tokenStart < _position
+            && _source.AsSpan(_tokenStart, _position - _tokenStart).IndexOfAny('\n', '\r') < 0
+            && StringLiteralStarts.Any(s => IsStringLiteralStartAt(s.Prefix, _tokenStart)))
+        {
+            start = _tokenStart;
+        }
+
         var end = _position;
         while (end < _source.Length && !IsLineBreak(_source[end]))
             end++;
-        if (HoldsALiteralSpanningLines(_source.AsSpan(_position, end - _position)))
+        if (HoldsALiteralSpanningLines(_source.AsSpan(start, end - start)))
             LiteralLoss |= LiteralLoss.DroppedOpener;
     }
 
@@ -26,18 +41,20 @@ public partial class Lexer
     /// for plain and <c>d</c>, <see cref="ReadTripleQuotedByteString"/>, the triple arms of
     /// <see cref="ReadRawString"/> and <see cref="ReadDedentedRawString"/>, and the f-/t-/df-string
     /// <c>FStringEnd</c> triple arm) with <see cref="_position"/> just past the closer and the line the
-    /// literal started on. Records the closer's context for <see cref="LiteralLoss.RePairedCloser"/>:
-    /// (a) the closer is immediately followed by a quote character — implicit concatenation is not Sharpy
-    /// syntax, so this never occurs in a program that parses: the closer re-paired with a quote inside a
-    /// short string (<c>t = '"""'</c> below a stray <c>"""</c>); (b) the close line, when the literal
-    /// spanned lines, so that <see cref="ReportError"/> can tell an unterminated short string reported on
-    /// it (<c>t = '""" '</c>). A literal closed on its own line cannot have lost multi-line content, so
-    /// <c>x = """a""" + 'b</c> being typed records nothing (owner ruling 2026-10-07).
+    /// literal started on. When the literal spanned lines, records the closer's context for
+    /// <see cref="LiteralLoss.RePairedCloser"/>: (a) the closer is immediately followed by a quote character —
+    /// implicit concatenation is not Sharpy syntax, so this never occurs in a program that parses: the closer
+    /// re-paired with a quote inside a short string (<c>t = '"""'</c> below a stray <c>"""</c>); (b) the close
+    /// line, so that <see cref="ReportError"/> can tell an unterminated short string reported on it
+    /// (<c>t = '""" '</c>). A literal closed on the line it opened on cannot have lost multi-line content (the
+    /// stray and the opener would share a line), so neither arm records it: <c>x = """a""" + 'b</c> (owner
+    /// ruling 2026-10-07, arm b) and <c>z = """a""""</c> (arm a, by the same rationale) being typed record nothing.
     /// </summary>
     private void NoteMultiLineLiteralClosed(int startLine)
     {
-        if (startLine < _line)
-            _lastMultiLineCloseLine = _line;
+        if (startLine >= _line)
+            return;
+        _lastMultiLineCloseLine = _line;
         if (_position < _source.Length && _source[_position] is '"' or '\'')
             LiteralLoss |= LiteralLoss.RePairedCloser;
     }
@@ -52,8 +69,10 @@ public partial class Lexer
     /// <item>a triple opener whose closer is absent from the text or lies on a later line → true (a closer
     /// on the same line closes it; the walk continues after it);</item>
     /// <item>a single-quoted literal is skipped to its closing quote on the same line; if the line ends
-    /// first, an <c>f</c>/<c>t</c>/<c>df</c>-prefixed one → true (a replacement field may span lines),
-    /// any other prefix → the walk continues after the line break (a short string ends at its line).</item>
+    /// first with a replacement field of an <c>f</c>/<c>t</c>/<c>df</c>-prefixed one still open → true (a
+    /// replacement field may span lines; <c>{{</c>/<c>}}</c> in its text are escaped braces, a closed
+    /// <c>{x}</c> opens nothing), otherwise → the walk continues after the line break (a short string, and an
+    /// f-/t-string with no open field, ends at its line).</item>
     /// </list>
     /// Backslash escapes are honoured except in <c>r</c>/<c>dr</c> literals, as the lexer reads them. A
     /// short string holding a triple (<c>'"""'</c>) or a closed triple on its line (<c>"""abc"""</c>)
@@ -103,6 +122,8 @@ public partial class Lexer
 
             var j = i + 1;
             var closed = false;
+            var formatted = prefix is "f" or "t" or "df";
+            var openFields = 0;     // replacement fields (and the braces nested in them) open at j
             while (j < text.Length && !IsLineBreak(text[j]))
             {
                 if (text[j] == '\\' && !raw)
@@ -115,6 +136,19 @@ public partial class Lexer
                     closed = true;
                     break;
                 }
+                if (formatted && text[j] is '{' or '}')
+                {
+                    // In the literal text `{{` and `}}` are escaped braces; inside a field every brace nests.
+                    if (openFields == 0 && j + 1 < text.Length && text[j + 1] == text[j])
+                    {
+                        j += 2;
+                        continue;
+                    }
+                    if (text[j] == '{')
+                        openFields++;
+                    else if (openFields > 0)
+                        openFields--;
+                }
                 j++;
             }
             if (closed)
@@ -122,9 +156,9 @@ public partial class Lexer
                 i = j + 1;
                 continue;
             }
-            if (prefix is "f" or "t" or "df")
-                return true;    // a replacement field left open on its line may span lines
-            i = j;              // a short string ends at its line
+            if (openFields > 0)
+                return true;    // a replacement field left open at the line break may span lines
+            i = j;              // a short string ends at its line, and so does an f-/t-string with no open field
         }
         return false;
     }
