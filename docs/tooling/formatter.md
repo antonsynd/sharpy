@@ -1,6 +1,6 @@
 # The Sharpy Formatter
 
-`sharpyc format` and the LSP's *Format Document* / *Format Selection* rewrite a file into one canonical layout. Both use the same formatter, so they produce the same text. This page states what formatting guarantees, and what it does when it cannot keep a guarantee.
+`sharpyc format` and the LSP's *Format Document* rewrite a file into one canonical layout. Both use the same formatter, so they produce the same text; *Format Selection* applies part of that text (see [In the editor](#in-the-editor-lsp)). This page states what formatting guarantees, and what it does when it cannot keep a guarantee.
 
 ## Usage
 
@@ -118,9 +118,88 @@ SPY0912 always means a formatter bug: your file is valid and its meaning is safe
 ## In the editor (LSP)
 
 - **Format Document** uses the same formatter as `sharpyc format` and produces the same text.
-- **Format Selection** and **format on type** do not yet carry these guarantees (#2168). Format Selection runs the same formatter, but it maps the result back onto the selection line by line. When formatting adds or removes a line (for example the two blank lines between top-level definitions), it can duplicate or drop lines. Format on type can re-indent a line inside a multi-line string. Until #2168 is fixed, use Format Document.
 - If the formatter declines (SPY0912), the editor receives **no edits** and the document is unchanged, as with the CLI.
-- If the document **does not parse**, for example in the middle of typing, the server falls back to an indentation-only pass. It re-indents lines to four-space levels and leaves everything else alone, including the inside of strings. This fallback is used only for documents that fail to parse, never for a document the formatter declined.
+- **Format Selection** formats the whole file and applies only the changes the selection touches. A change can reach past the selection, to the end of the run of changed lines it starts in, because part of a change can be wrong on its own. The text it would produce is checked the same way as the formatter's own output: if it would not parse, or would change the program, Format Selection applies **nothing**. The file keeps its line endings: a file with `\r\n` line endings keeps them.
+- **Format on type** re-indents the first line of a statement, and nothing else: never a line that continues a statement (inside brackets, or after `\`), a comment line, or a line inside a string. It applies the new indentation only if the file stays the same program; while the file does not parse, the indentation-only check below decides instead.
+- If the document **does not parse**, for example in the middle of typing, Format Document and Format Selection fall back to an indentation-only pass. It re-indents lines to four-space levels and changes nothing else. It applies its result only if every line keeps its text, every line inside a string is unchanged, every statement stays in the block it was in, and no new indentation error appears; otherwise it applies nothing. This fallback is used only for documents that fail to parse, never for a document the formatter declined.
+- While a triple-quoted string is unfinished, or cannot be read as a string, the editor cannot tell which lines are code. Format on type and the indentation-only pass change nothing until the string is closed.
+
+Selecting the body of `main` (lines 4–5) in
+
+<!-- editor-example: selection 4-5 -->
+```python
+def helper() -> int:
+    return 2
+def main():
+    x   =   helper()
+    print(x)
+```
+
+applies only the change inside the selection:
+
+```python
+def helper() -> int:
+    return 2
+def main():
+    x = helper()
+    print(x)
+```
+
+Format Document would also add two blank lines before `def main():`. They are outside the selection, so Format Selection does not add them.
+
+In this file, formatting re-indents both statements of `main`. Selecting line 2 alone applies **nothing**: re-indenting `s = """` without `print(s)` would leave a file that does not parse, and the change `print(s)` needs lies past the string.
+
+<!-- editor-example: selection 2-2; unchanged -->
+```python
+def main():
+        s = """
+abc
+"""
+        print(s)
+```
+
+Format on type on line 4 of
+
+<!-- editor-example: on-type 4 -->
+```python
+def main():
+    x = 1
+    if x > 0:
+            print(x)
+```
+
+re-indents that line:
+
+```python
+def main():
+    x = 1
+    if x > 0:
+        print(x)
+```
+
+In this file, indented 8 spaces per level, format on type on line 4 applies **nothing**: re-indenting `print(2)` alone would move it out of the `if` block, and the program would print `2`.
+
+<!-- editor-example: on-type 4; unchanged -->
+```python
+def main():
+        if False:
+                print(1)
+                print(2)
+```
+
+Here a docstring has been opened in `f` but not closed yet. Its `"""` pairs with the one that opens `s` in `g`, so `key: value` is read as code. Format Document, Format Selection of line 6 and format on type on line 6 all apply **nothing**: the file stays exactly as written until the docstring is closed.
+
+<!-- editor-example: document, selection 6-6, on-type 6; unchanged -->
+```python
+def f() -> int:
+    """
+    return 1
+def g() -> str:
+    s = """
+        key: value
+    """
+    return s
+```
 
 ## Reporting a problem
 
@@ -130,4 +209,4 @@ If formatting declines a file (SPY0912), changes what a program prints, or moves
 2. the `sharpyc format` output (the SPY0912 message, or the `-o` result),
 3. `sharpyc --version`.
 
-Open formatter issues are tracked on [#2169](https://github.com/antonsynd/sharpy/issues/2169) (constructs the formatter declines) and [#2168](https://github.com/antonsynd/sharpy/issues/2168) (editor formatting routes). The guarantees on this page were established by [#2062](https://github.com/antonsynd/sharpy/issues/2062).
+Open formatter issues are tracked on [#2169](https://github.com/antonsynd/sharpy/issues/2169) (constructs the formatter declines). The guarantees on this page were established by [#2062](https://github.com/antonsynd/sharpy/issues/2062).
