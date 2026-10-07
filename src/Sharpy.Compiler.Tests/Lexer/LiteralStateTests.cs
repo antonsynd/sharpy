@@ -340,6 +340,23 @@ public class LiteralStateTests
     }
 
     /// <summary>
+    /// A backtick-delimited name on a dropped line is opaque outside a literal as well as inside a replacement
+    /// field (wave-5 sibling @ 390d701d7): read flat, the apostrophe in <c>`it's`</c> opened a short string that
+    /// swallowed the opener after it. The control keeps the same line with no opener after the name.
+    /// </summary>
+    [Theory]
+    [InlineData("x = $`it's` + \"\"\"\n    key: value\n$`it's` + \"\"\"\nprint(x)\n", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("x = $`a#b` + \"\"\"\n    key: value\n$`a#b` + \"\"\"\nprint(x)\n", LexerNs.LiteralLoss.DroppedOpener)]
+    [InlineData("x = $`it's` + 'z'\ndef main():\n  x: int = 1\n  print(x)\n", LexerNs.LiteralLoss.None)]
+    public void BacktickNameOnADroppedLine_IsOpaque(string source, LexerNs.LiteralLoss expected)
+    {
+        var lexer = Lex(source);
+
+        Errors(lexer).Should().Contain("SPY0015 ");
+        lexer.LiteralLoss.Should().Be(expected, Errors(lexer));
+    }
+
+    /// <summary>
     /// The two conditions under which the dropped span is read from the start of the token being read
     /// (<c>_tokenStart</c>) instead of from the abort. (a) No line break between them: an abort on a later
     /// line of a literal that spans lines reads from the abort, so that literal's own opener is not a dropped

@@ -59,13 +59,23 @@ public partial class Lexer
             LiteralLoss |= LiteralLoss.RePairedCloser;
     }
 
+    /// <summary>A backtick-delimited name, read as the lexer reads one: it ends at its backtick or at the line break.</summary>
+    private static void SkipBacktickName(ReadOnlySpan<char> text, ref int i)
+    {
+        i++;
+        while (i < text.Length && text[i] != '`' && !IsLineBreak(text[i]))
+            i++;
+        if (i < text.Length && text[i] == '`')
+            i++;
+    }
+
     /// <summary>
     /// Whether <paramref name="text"/> holds a literal that can span lines (#2271, P22f decision 2): the
     /// ONE test behind <see cref="LiteralLoss.DroppedOpener"/> (the text error recovery skips) and
     /// <see cref="LiteralLoss.UnreadRemainder"/> (the source left when the error budget stops the lexer).
     /// Walks the text the way the lexer would read it from its start, reading on past an error as if it were
     /// mended where it stands (<c>"\q" + """</c> holds an opener): a <c>#</c> outside a literal skips to the
-    /// end of its line; at a quote character, with the prefix letters immediately before it, a literal opens
+    /// end of its line; a backtick-delimited name is opaque (<c>`it's`</c> holds no quote); at a quote character, with the prefix letters immediately before it, a literal opens
     /// and is read to its closer. A line break (or the end of the text) inside a literal → true when that
     /// literal is triple-quoted or a replacement field is open in it or around it (a field may span lines);
     /// otherwise the literal ends at its line (a short string, an f-/t-string with no open field) and the walk
@@ -85,7 +95,7 @@ public partial class Lexer
     /// </list>
     /// Backslash escapes are honoured except in <c>r</c>/<c>dr</c> literals, as the lexer reads them. A
     /// short string holding a triple (<c>'"""'</c>) or a closed triple on its line (<c>"""abc"""</c>)
-    /// opens nothing that spans lines: a dropped line holding one keeps its repair. Known limit (#2271): an
+    /// opens nothing that spans lines: a dropped line holding one keeps its repair. Known limit (#2274): an
     /// opener swallowed by an unterminated short string on its line (<c>x = 'abc """</c> → false).
     /// </summary>
     internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text)
@@ -104,6 +114,8 @@ public partial class Lexer
                 }
                 else if (c is '"' or '\'')
                     open.Add(OpenLiteral.At(text, ref i));
+                else if (c == '`')
+                    SkipBacktickName(text, ref i);  // `it's` or `a#b` holds no quote and no comment
                 else
                     i++;
                 continue;
@@ -183,12 +195,7 @@ public partial class Lexer
                     field.InSpec = true;
                     break;
                 case '`':
-                    // a backtick-delimited name ends at its backtick or at the line break
-                    i++;
-                    while (i < text.Length && text[i] != '`' && !IsLineBreak(text[i]))
-                        i++;
-                    if (i < text.Length && text[i] == '`')
-                        i++;
+                    SkipBacktickName(text, ref i);
                     continue;
                 case '"' or '\'':
                     if (c == literal.Quote && !literal.Triple && !IsTripleAt(text, i) && !ClosesOnItsLine(text, i))

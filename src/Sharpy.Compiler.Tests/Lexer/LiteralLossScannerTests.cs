@@ -22,6 +22,9 @@ public class LiteralLossScannerTests
     [InlineData("s = \"\"\"\r\n", true)]
     [InlineData("s = \"\"\"abc\"\"\" + \"\"\"", true)]       // a closed triple, then an opener on the same line
     [InlineData("x = $\"\"\"", true)]                        // the X6 span (SPY0015 drops the rest of the line)
+    [InlineData("x = `it's` + \"\"\"", true)]                     // a backtick-delimited name is opaque (`it's` opens no string)
+    [InlineData("x = `a#b` + \"\"\"", true)]
+    [InlineData("x = `a\"\"\"b`", false)]
     [InlineData("x = \"#\" + \"\"\"", true)]                 // a '#' inside a short string is not a comment
     [InlineData("x = r\"\\\" + \"\"\"", true)]               // r"\" closes at its second quote: no escape in a raw literal
     // a triple closed on its own line, or held by a short string, opens nothing

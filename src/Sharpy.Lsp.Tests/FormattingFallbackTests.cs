@@ -487,6 +487,26 @@ public sealed class FormattingFallbackTests : IDisposable
     }
 
     /// <summary>
+    /// XBT (wave-5 sibling @ 390d701d7): C1's shape with the abort an unexpected character before a
+    /// backtick-delimited name holding an apostrophe. Read flat, the apostrophe opened a short string that
+    /// swallowed the opener, and Format Document rewrote <c>    key: value</c>.
+    /// </summary>
+    internal const string Xbt = "x = $`it's` + \"\"\"\n    key: value\n$`it's` + \"\"\"\nprint(x)\n";
+
+    [Fact]
+    public void Xbt_OpenerDroppedAfterABacktickName_FullAndRangeFallbacks_GetNoEdits()
+    {
+        var damaged = WithLine(Xbt, 1, "key: value");
+        FormattingFallback.ReindentDocument(Xbt).Should().Be(damaged);
+        RangeCandidate(Xbt, 1).Should().Be(damaged);
+
+        RoutesThatEdit(
+            ("full", _driver.Full(Xbt).Edits),
+            ("range-whole", _driver.Range(Xbt, Lines(0, 4)).Edits),
+            ("range-line", _driver.Range(Xbt, LineRange(Xbt, 1)).Edits)).Should().BeEmpty();
+    }
+
+    /// <summary>
     /// E1par2 (second verification @ 37e5c1d02): C1Block's shape with the aborting string an f-string whose
     /// replacement field holds a string of the f-string's own quote character. Read the way the lexer reads
     /// a hole, the dropped span holds the opener; read flat (@ 37e5c1d02), the nested <c>"</c> closed the
