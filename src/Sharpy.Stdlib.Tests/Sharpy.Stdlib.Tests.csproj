@@ -46,6 +46,7 @@
     <!-- StdlibTimeoutMatrixTests' programs, python twins and expected output (#2263); a sibling of
          TestFixtures, not inside it, so the fixture runner (no execution bound) never picks them up. -->
     <None Include="Integration\TimeoutMatrix\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TimeoutMatrix" />
+    <None Include="Integration\BarrierMatrix\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\BarrierMatrix" />
   </ItemGroup>
 
   <!-- Spy test sources (.spy) and project file — not C# compilation targets -->

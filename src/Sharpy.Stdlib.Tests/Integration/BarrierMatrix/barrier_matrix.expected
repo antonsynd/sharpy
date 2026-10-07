@@ -1,0 +1,16 @@
+parties=1 phase=1: p=0
+parties=1 phase=2: p=0
+parties=2 phase=1: p=0 p=1
+parties=2 phase=2: p=0 p=1
+parties=3 phase=1: p=0 p=1 p=2
+parties=3 phase=2: p=0 p=1 p=2
+arrival order: first=0 last=1
+Barrier(1).wait(0.5) -> 0
+n_waiting with one waiter: 1
+reset with a waiter: waiter=BrokenBarrierError broken=False
+after reset: p=0 p=1
+abort with a waiter: waiter=BrokenBarrierError later=BrokenBarrierError broken=True
+timeout with a waiter: timed=BrokenBarrierError untimed=BrokenBarrierError broken=True
+action calls after two phases: 2
+constructor timeout: default-timeout=BrokenBarrierError broken=True
+failing action: releaser=ValueError waiter=BrokenBarrierError broken=True

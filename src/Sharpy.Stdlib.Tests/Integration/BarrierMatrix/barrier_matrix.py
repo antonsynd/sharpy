@@ -1,0 +1,132 @@
+import threading
+import time
+
+
+def party(b: threading.Barrier, out: list, lk: threading.Lock, label: str, timeout: float) -> None:
+    try:
+        if timeout < 0:
+            r = b.wait()
+        else:
+            r = b.wait(timeout)
+        s = str(r)
+    except threading.BrokenBarrierError:
+        s = "BrokenBarrierError"
+    with lk:
+        out.append(label + "=" + s)
+
+
+def fail() -> None:
+    raise ValueError("action failed")
+
+
+def wait_for_waiting(b: threading.Barrier, n: int) -> None:
+    deadline = time.monotonic() + 5.0
+    while b.n_waiting < n and time.monotonic() < deadline:
+        time.sleep(0.005)
+
+
+def phase_indices(b: threading.Barrier, parties: int) -> str:
+    out = []
+    lk = threading.Lock()
+    ts = []
+    for k in range(parties):
+        t = threading.Thread(target=lambda: party(b, out, lk, "p", -1.0))
+        ts.append(t)
+        t.start()
+    for t in ts:
+        t.join()
+    return " ".join(sorted(out))
+
+
+def main() -> None:
+    # 1. parties x phase: the multiset of returned indices is 0..parties-1 in every phase
+    for parties in [1, 2, 3]:
+        b = threading.Barrier(parties)
+        for phase in [1, 2]:
+            print(f"parties={parties} phase={phase}: {phase_indices(b, parties)}")
+
+    # 2. the index is the arrival order: a party that arrives first gets 0, the last parties-1
+    b = threading.Barrier(2)
+    out = []
+    lk = threading.Lock()
+    w = threading.Thread(target=lambda: party(b, out, lk, "first", -1.0))
+    w.start()
+    wait_for_waiting(b, 1)
+    party(b, out, lk, "last", -1.0)
+    w.join()
+    print("arrival order: " + " ".join(sorted(out)))
+
+    # 3. a timed wait that completes returns the index too
+    print(f"Barrier(1).wait(0.5) -> {threading.Barrier(1).wait(0.5)}")
+
+    # 4. n_waiting counts the parties blocked in the current phase
+    b = threading.Barrier(3)
+    out = []
+    w = threading.Thread(target=lambda: party(b, out, lk, "w", -1.0))
+    w.start()
+    wait_for_waiting(b, 1)
+    print(f"n_waiting with one waiter: {b.n_waiting}")
+    b.abort()
+    w.join()
+
+    # 5. reset() with a waiter: the waiter raises; afterwards a full phase indexes from 0 again
+    b = threading.Barrier(2)
+    out = []
+    w = threading.Thread(target=lambda: party(b, out, lk, "waiter", -1.0))
+    w.start()
+    wait_for_waiting(b, 1)
+    b.reset()
+    w.join()
+    print(f"reset with a waiter: {' '.join(out)} broken={b.broken}")
+    print(f"after reset: {phase_indices(b, 2)}")
+
+    # 6. abort() with a waiter: the waiter raises, the barrier stays broken, a later wait raises
+    b = threading.Barrier(2)
+    out = []
+    w = threading.Thread(target=lambda: party(b, out, lk, "waiter", -1.0))
+    w.start()
+    wait_for_waiting(b, 1)
+    b.abort()
+    w.join()
+    party(b, out, lk, "later", -1.0)
+    print(f"abort with a waiter: {' '.join(out)} broken={b.broken}")
+
+    # 7. a party times out while another waits: BOTH raise and the barrier is broken
+    b = threading.Barrier(3)
+    out = []
+    w = threading.Thread(target=lambda: party(b, out, lk, "untimed", -1.0))
+    w.start()
+    wait_for_waiting(b, 1)
+    party(b, out, lk, "timed", 0.1)
+    w.join()
+    print(f"timeout with a waiter: {' '.join(sorted(out))} broken={b.broken}")
+
+    # 8. the action runs once per phase, in one party, before any party is released
+    count = [0]
+    b = threading.Barrier(2, action=lambda: count.__setitem__(0, count[0] + 1))
+    phase_indices(b, 2)
+    phase_indices(b, 2)
+    print(f"action calls after two phases: {count[0]}")
+
+    # 9. the constructor's timeout is the default of every wait() that gives none
+    b = threading.Barrier(2, timeout=0.05)
+    out = []
+    party(b, out, lk, "default-timeout", -1.0)
+    print(f"constructor timeout: {' '.join(out)} broken={b.broken}")
+
+    # 10. an action that raises: its party gets the exception, a waiting party BrokenBarrierError
+    b = threading.Barrier(2, action=lambda: fail())
+    out = []
+    w = threading.Thread(target=lambda: party(b, out, lk, "waiter", -1.0))
+    w.start()
+    wait_for_waiting(b, 1)
+    try:
+        b.wait()
+        out.append("releaser=returned")
+    except ValueError:
+        out.append("releaser=ValueError")
+    w.join()
+    print(f"failing action: {' '.join(sorted(out))} broken={b.broken}")
+
+
+main()

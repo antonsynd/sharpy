@@ -32,7 +32,7 @@ import threading
 
 ### `threading.bounded_semaphore(value: int = 1) -> BoundedSemaphore`
 
-### `threading.barrier(parties: int) -> Barrier`
+### `threading.barrier(parties: int, action: (() -> None) | None = None, timeout: float | None = None) -> Barrier`
 
 ### `threading.timer(interval: float, function: () -> None) -> Timer`
 
@@ -46,14 +46,26 @@ A barrier synchronization primitive, similar to Python's `threading.Barrier`.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `parties` | `int` |  |
-| `broken` | `bool` |  |
+| `parties` | `int` | The number of threads required to pass the barrier. |
+| `n_waiting` | `int` | The number of threads currently waiting at the barrier. |
+| `broken` | `bool` | True when the barrier is broken. |
 
 ### `wait(timeout: float | None = None) -> int`
 
+Wait until all parties have called `wait()`, and return this party's arrival index in
+the phase, from 0 to `parties - 1`.
+
+**Parameters:**
+
+- `timeout` (float | None) -- Seconds to wait; the barrier's own timeout when omitted.
+
 ### `reset()`
 
+Return the barrier to its initial state; any thread waiting raises `BrokenBarrierError`.
+
 ### `abort()`
+
+Put the barrier into the broken state; any waiting or later `wait()` raises.
 
 ## BoundedSemaphore
 

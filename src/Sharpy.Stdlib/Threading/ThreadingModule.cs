@@ -66,9 +66,9 @@ namespace Sharpy
             return new BoundedSemaphore(value);
         }
 
-        public static Barrier Barrier(int parties)
+        public static Barrier Barrier(int parties, Action? action = null, double? timeout = null)
         {
-            return new Barrier(parties);
+            return new Barrier(parties, action, timeout);
         }
 
         public static Timer Timer(double interval, Action function)
