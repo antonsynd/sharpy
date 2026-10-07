@@ -8,6 +8,29 @@ using Sharpy.Compiler.Text;
 namespace Sharpy.Compiler.Lexer;
 
 /// <summary>
+/// The mechanisms by which a lex loses track of a literal that can span lines (<see cref="Lexer.LiteralLoss"/>,
+/// #2271). Any flag makes <see cref="Lexer.LiteralStateUnknown"/> true.
+/// </summary>
+[Flags]
+public enum LiteralLoss
+{
+    /// <summary>The token stream's map of string lines is exact.</summary>
+    None = 0,
+
+    /// <summary>The lexer aborted inside the read of a literal that can span lines.</summary>
+    AbortInsideLiteral = 1,
+
+    /// <summary>Error recovery dropped text holding a literal that can span lines (its opener is never read).</summary>
+    DroppedOpener = 2,
+
+    /// <summary>The error budget stopped the lexer with a literal that can span lines left unread.</summary>
+    UnreadRemainder = 4,
+
+    /// <summary>A triple-quoted closer re-paired into a short string (a stray delimiter above it).</summary>
+    RePairedCloser = 8,
+}
+
+/// <summary>
 /// Tokenizes Sharpy source code into a stream of tokens.
 /// Implements indentation-based syntax with INDENT/DEDENT tokens.
 /// </summary>
@@ -32,7 +55,7 @@ public partial class Lexer
         // nothing; with a bracket open inside the hole it is where the abort was detected, so a hole
         // that crossed a line break inside `f"{', '.join(` sets it.
         if (_multiLineLiteralReads > 0 || _fstringStack.Any(c => c.IsTriple || c.StartLine < _line))
-            LiteralStateUnknown = true;
+            LiteralLoss |= LiteralLoss.AbortInsideLiteral;
 
         // Compute a TextSpan from line/column using SourceText if available,
         // otherwise fall back to the current _position with a length of 1.
@@ -77,20 +100,38 @@ public partial class Lexer
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
-    /// True once the lexer aborted while reading a literal that can span lines: inside a
-    /// triple-quoted plain, <c>d</c>, <c>r</c>, <c>dr</c> or <c>b</c> string (unterminated, or a
-    /// mid-literal error such as a non-ASCII byte), or inside an f-/t-string that is triple-quoted
-    /// or has already crossed a line break (a multi-line replacement field). Error recovery then
-    /// resumes on the next line as code, so the token stream's map of which lines are string
-    /// content is a guess from that point — and, because every later delimiter may pair the other
-    /// way round, for the whole document. A single-quoted literal ends at its line and never sets
-    /// this. Recorded in <see cref="ReportError"/>; it changes no token or diagnostic.
+    /// How the lexer lost track of a literal that can span lines, if it did (<see cref="Lexer.LiteralLoss"/>
+    /// flags; <see cref="LiteralLoss.None"/> while the token stream's map of string lines is exact).
+    /// Four producers, one consumer contract (<see cref="LiteralStateUnknown"/>):
+    /// <list type="bullet">
+    /// <item><see cref="LiteralLoss.AbortInsideLiteral"/> — an abort inside the read of such a literal
+    /// (<see cref="ReportError"/>).</item>
+    /// <item><see cref="LiteralLoss.DroppedOpener"/> — error recovery dropped text that holds one
+    /// (an opener line skipped at an indentation error, or the rest of a line after a mid-line abort).</item>
+    /// <item><see cref="LiteralLoss.UnreadRemainder"/> — the error budget stopped the lexer with one left unread.</item>
+    /// <item><see cref="LiteralLoss.RePairedCloser"/> — a triple-quoted closer re-paired into a short
+    /// string: it is immediately followed by a quote character, or an unterminated short string is
+    /// reported on the line where a literal that spanned lines closed.</item>
+    /// </list>
+    /// Recording a flag changes no token, span, trivia or diagnostic.
     /// </summary>
-    public bool LiteralStateUnknown { get; private set; }
+    public LiteralLoss LiteralLoss { get; private set; }
+
+    /// <summary>
+    /// True once the lexer has lost a literal that can span lines (<see cref="LiteralLoss"/> is not
+    /// <see cref="LiteralLoss.None"/>): a triple-quoted plain, <c>d</c>, <c>r</c>, <c>dr</c>, <c>b</c>,
+    /// <c>f</c>, <c>t</c> or <c>df</c> string, or a single-quoted f-/t-string whose replacement field
+    /// crossed a line break. Error recovery resumes on the next line as code, an error budget stop leaves
+    /// the rest of the source without tokens, and a re-paired closer turns string content into code, so
+    /// the token stream's map of which lines are string content is a guess from that point — and,
+    /// because every later delimiter may pair the other way round, for the whole document. A
+    /// single-quoted literal that ends at its line sets nothing. It changes no token or diagnostic.
+    /// </summary>
+    public bool LiteralStateUnknown => LiteralLoss != LiteralLoss.None;
 
     /// <summary>
     /// The scope of a triple-quoted plain/raw/byte read: while one is open, an abort through
-    /// <see cref="ReportError"/> sets <see cref="LiteralStateUnknown"/>. Entered by each
+    /// <see cref="ReportError"/> sets <see cref="LiteralLoss.AbortInsideLiteral"/>. Entered by each
     /// triple-quoted arm with <c>using var _ = new MultiLineLiteralRead(this);</c>.
     /// </summary>
     private readonly ref struct MultiLineLiteralRead

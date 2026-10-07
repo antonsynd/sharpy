@@ -58,6 +58,7 @@ public class LiteralStateTests
 
         lexer.Diagnostics.HasErrors.Should().BeTrue();
         lexer.LiteralStateUnknown.Should().BeTrue(Errors(lexer));
+        lexer.LiteralLoss.Should().HaveFlag(LexerNs.LiteralLoss.AbortInsideLiteral, "the abort happened inside the read");
     }
 
     /// <summary>
