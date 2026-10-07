@@ -211,7 +211,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string Content = "content";
     internal const string Literal = "literal";
     internal const string Depth = "depth";
-    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth };
+    internal const string FactMissing = "factMissing";
+    internal const string FactSpurious = "factSpurious";
+    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth, FactMissing, FactSpurious };
 
     private readonly ITestOutputHelper _output;
     private readonly LspFormattingDriver _driver = new();
@@ -289,6 +291,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         private readonly Lazy<bool> _netAcceptsSelf;
         private readonly Lazy<bool> _netAcceptsFormatted;
         private readonly Lazy<bool> _unmatchedEqualLine;
+        private Lazy<(bool FactSet, SCG.IReadOnlySet<int> LostLiteralLines)> _literalState;
 
         /// <summary>An unparseable document: no AST, no <c>Format(D)</c>; its oracles read <paramref name="truth"/>.</summary>
         public SweepDocument(string text, string state, GroundTruth truth)
@@ -313,6 +316,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             _netAcceptsSelf = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Text) == null);
             _netAcceptsFormatted = new(() => Ast == null || FormatterService.CheckMeaningPreserved(Text, Ast, Formatted) == null);
             _unmatchedEqualLine = new(ComputeUnmatchedEqualLine);
+            _literalState = new(ComputeLiteralState);
         }
 
         public string Text { get; }
@@ -342,6 +346,32 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         public string LineBreak { get; }
 
         public IReadOnlyList<LineHunk> Hunks => _hunks.Value;
+
+        /// <summary>
+        /// An unparseable document's literal-loss fact as every indent-only route reads it — the lexer's
+        /// <c>LiteralStateUnknown</c> through <see cref="IndentationService.BuildIndentMap"/> — and the 0-based
+        /// lines that start inside a literal in Q (<see cref="GroundTruth.LiteralLines"/>) but not in D's own lex
+        /// (the same call's literal lines): the literal lines D lost. Both empty/false for a parseable document.
+        /// </summary>
+        public (bool FactSet, SCG.IReadOnlySet<int> LostLiteralLines) LiteralState => _literalState.Value;
+
+        private (bool, SCG.IReadOnlySet<int>) ComputeLiteralState()
+        {
+            if (Truth == null)
+                return (false, new SCG.HashSet<int>());
+            var map = IndentationService.BuildIndentMap(Text);
+            return (map.LiteralStateUnknown, Truth.LiteralLines.Where(l => !map.LiteralLines.Contains(l + 1)).ToHashSet());
+        }
+
+        /// <summary>The test seam of the fact buckets' positive controls: this unparseable document with its <see cref="LiteralState"/> forced.</summary>
+        public SweepDocument WithLexFacts(bool factSet, IEnumerable<int> lostLiteralLines)
+        {
+            var forced = (factSet, (SCG.IReadOnlySet<int>)lostLiteralLines.ToHashSet());
+            return new SweepDocument(Text, State, Truth ?? throw new InvalidOperationException("instrument: the fact seam is for an unparseable document"))
+            {
+                _literalState = new(() => forced),
+            };
+        }
 
         /// <summary>
         /// Whether some non-blank line is both deleted (a source line inside a hunk) and inserted (a hunk's
@@ -795,7 +825,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
         catch (StrictEditApplicationException e)
         {
-            return new CellVerdict(new() { (Edits, $"{request}: {e.Message}") }, false);
+            var failures = new SCG.List<(string, string)> { (Edits, $"{request}: {e.Message}") };
+            if (d.Ast == null)
+                failures.AddRange(FactOracles(d, request));
+            return new CellVerdict(failures, false);
         }
 
         var verdict = d.Ast == null ? UnparseableOracles(d, request, applied) : ParseableOracles(d, request, applied);
@@ -815,11 +848,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// (<see cref="FirstDepthDifference"/>) than in Q.</item>
     /// </list>
     /// <c>literal</c> and <c>depth</c> map lines by index, so they are judged only when the line count holds.
+    /// The lexer's literal-loss fact is judged on every cell too (<see cref="FactOracles"/>).
     /// </summary>
     internal static CellVerdict UnparseableOracles(SweepDocument d, CellRequest request, string applied)
     {
         var failures = new SCG.List<(string, string)>();
         var truth = d.Truth ?? throw new InvalidOperationException("instrument: an unparseable document without ground truth");
+        failures.AddRange(FactOracles(d, request));
         var x = d.Lines;
         var (t, tBreaks) = LineDiff.Split(applied);
         if (t.Count != x.Count)
@@ -848,6 +883,30 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
 
         return new CellVerdict(failures, false);
+    }
+
+    /// <summary>
+    /// The lexer's literal-loss fact itself (P22f, #2271), judged per DOCUMENT and reported on each of its
+    /// cells so a row keeps its <c>stem twin route state bucket</c> shape: <c>factMissing</c> — the fact is
+    /// false while some line that starts inside a literal in Q does not start inside one in D's lex (the
+    /// routes would treat string content as code); <c>factSpurious</c> — the fact is true while no such line
+    /// is lost (a route is switched off for nothing). The route buckets see only what a route did; these see
+    /// the INPUT every indent-only route reads, so a fact that is wrong where every route happens to refuse
+    /// for another reason (N4m) is still a row.
+    /// </summary>
+    internal static IEnumerable<(string Bucket, string Detail)> FactOracles(SweepDocument d, CellRequest request)
+    {
+        // The comment re-pair (S6k) is exempt from the FACT buckets only: its lexer signature is
+        // DStringRepaired's (a closer re-paired into a comment), which loses nothing, so no lexer fact can
+        // tell them apart (#2271's known limit, tracked by #2274; owner ruling at /verify-plan 2026-10-07).
+        // Its route buckets are judged.
+        if (d.State == S6k)
+            yield break;
+        var (factSet, lost) = d.LiteralState;
+        if (!factSet && lost.Count > 0)
+            yield return (FactMissing, $"{request}: the lexer's literal state is known, but line {lost.Min()} no longer starts inside a literal");
+        else if (factSet && lost.Count == 0)
+            yield return (FactSpurious, $"{request}: the lexer's literal state is unknown, but every line that starts inside a literal in Q still does");
     }
 
     /// <summary>
@@ -1657,6 +1716,61 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         var cr = Generated(FormatterTwins.Cr(Q21), FormatterTwins.Cr(D21), S3);
         UnparseableBucketsOf(cr, full, "def main():\r        a = 1\r\n        if a == 1:\r").Should().Equal(Content);
+    }
+
+    /// <summary>#2271's N4: <see cref="Q4"/> with the string's opener and closer line and the body's last line at 2 spaces — abort-free @ 3c70ea492.</summary>
+    private const string Q4 = "def main():\n    s = \"\"\"\n        key: value\n    \"\"\"\n    print(s)\n";
+    private const string N4 = "def main():\n  s = \"\"\"\n        key: value\n  \"\"\"\n  print(s)\n";
+
+    /// <summary>
+    /// <c>factMissing</c>: the issue's N4, built from its 4-space parent by the S6 builder — D's own lex
+    /// loses the content line 2 (no token starts it inside a literal), and the bucket fires whenever the fact
+    /// is false for such a document. Clean: the same lost lines with the fact set. By direction: on the
+    /// handler's real on-type result for line 2, <c>factMissing</c> and <c>literal</c> fire together or not at
+    /// all — a missing fact is exactly what lets a route rewrite the string's content.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_FactMissing_FiresOnTheIssuesN4Document()
+    {
+        var n4 = Reindented(Q4, Doc(Q4).Facts!, new[] { 1, 3, 4 }, "  ", FormatterTwins.DroppedShapePrefix + "SPY0013");
+        n4.Text.Should().Be(N4);
+        n4.State.Should().Be(S6);
+        n4.Ast.Should().BeNull("the document must not parse");
+        n4.Truth!.LiteralLines.Should().BeEquivalentTo(new[] { 2, 3 });
+        n4.LiteralState.LostLiteralLines.Should().Contain(2, "D's lex reads the content line as code");
+
+        var onType = new CellRequest(OnType, null, 2);
+        var lost = n4.LiteralState.LostLiteralLines;
+        UnparseableBucketsOf(n4.WithLexFacts(false, lost), onType, N4).Should().Equal(FactMissing);
+        UnparseableBucketsOf(n4.WithLexFacts(true, lost), onType, N4).Should().BeEmpty();
+
+        var applied = _driver.OnType(N4, 2).Applied;
+        var buckets = UnparseableBucketsOf(n4, onType, applied);
+        buckets.Contains(FactMissing).Should().Be(buckets.Contains(Literal),
+            $"a missing fact must be what lets on-type rewrite line 2 — applied:\n{applied}");
+    }
+
+    /// <summary>
+    /// <c>factSpurious</c>: D21 (an S3 cut, no literal) with its fact forced true through the test seam — the
+    /// fact switches the routes off while no literal line is lost. Clean: D21's real fact (false) and D19's
+    /// (true, and lines are lost).
+    /// </summary>
+    [Fact]
+    public void PositiveControl_FactSpurious_FiresOnAStubbedFact()
+    {
+        var d21 = Generated(Q21, D21, S3);
+        d21.Truth!.LiteralLines.Should().BeEmpty();
+        var full = new CellRequest(Full, null, 0);
+
+        UnparseableBucketsOf(d21.WithLexFacts(true, Array.Empty<int>()), full, D21).Should().Equal(FactSpurious);
+        UnparseableBucketsOf(d21.WithLexFacts(false, Array.Empty<int>()), full, D21).Should().BeEmpty();
+        d21.LiteralState.FactSet.Should().BeFalse();
+        UnparseableBucketsOf(d21, full, D21).Should().BeEmpty();
+
+        var d19 = Inserted(Q19, Doc(Q19).Facts!, 1, "    \"\"\"", S5, null);
+        d19.LiteralState.FactSet.Should().BeTrue();
+        d19.LiteralState.LostLiteralLines.Should().NotBeEmpty();
+        UnparseableBucketsOf(d19, full, D19).Should().BeEmpty();
     }
 
     // ================================================================

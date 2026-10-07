@@ -3,7 +3,8 @@
 # A row covers every cell of that route and state on that stem and twin. A row whose (route, state) ran
 # and now holds, or has no cell, fails the sweep: delete it (drain on fix). Populated from a FULL-mode run
 # (SHARPY_ROUTE_SWEEP_FULL=1, the FMTROUTE-ROW lines of the test output). cli and full rows on S1/S2 are
-# refused by the loader. Phases 2-3 of P22e drain this file to empty.
+# refused by the loader. Phases 2-3 of P22e drained this file to empty; P22f (issue 2271) re-populates it with the
+# S5/S6 cells its Phase 2 drains and the S6n/S6k cells of their own trackers.
 # Buckets (T = the applied text, D = the document):
 #   edits        the edit list is not legal for D (the strict applier threw)
 #   net          CheckMeaningPreserved(D, ast(D), T) refuses T: the applied text changes the program
@@ -16,3 +17,13 @@
 #   content      a line is lost or gained, or changed beyond its leading whitespace, or its line break changed
 #   literal      a line that starts inside a literal is not identical
 #   depth        a logical line's block depth in T (the lexer's width rule) differs from its depth in the parent
+# The S6 family (P22f) loses a literal WITHOUT a lexer abort inside its read, every document derived from Q by
+# FormatterTwins.LiteralLossShapes; the label (FormattingRouteParitySweepTests.LossState) fixes the cite:
+#   S6    the budget spent above a Q holding a multi-line literal, a stray triple re-paired into a short string,
+#         a delimiter line dropped at SPY0011-SPY0015                                               — cite issue 2271
+#   S6n   the budget spent above a Q holding NO multi-line literal (the cure's direction control)   — cite issue 2273
+#   S6k   the stray triple re-paired into a comment (a known limit of any lexer fact)               — cite issue 2274
+# On every unparseable document (S3-S6n; not S6k), the lexer's literal-loss fact itself:
+#   factMissing  Lexer.LiteralStateUnknown is false while a line that starts inside a literal in Q does not in D
+#   factSpurious Lexer.LiteralStateUnknown is true while no such line is lost (never a row on S6n: a finding)
+# The reason after an S-family cite lists the shapes whose documents fail the bucket.
