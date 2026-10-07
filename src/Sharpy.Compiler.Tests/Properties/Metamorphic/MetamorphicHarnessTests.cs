@@ -484,6 +484,19 @@ public class MetamorphicHarnessTests
     }
 
     [Fact]
+    public void MaskedSource_TracksBackslashContinuationLines()
+    {
+        // Formatting/backslash_continuation: ParensWrap once turned `total = x \` + `+ 10` into
+        // `total = x \` + `(+ 10)`, a call of x (SPY0230). Positive control: the joined statement's
+        // first line, and the statement after it, still start statements.
+        var masked = MaskedSource.Of("def main():\n    total = x \\\n        + 10\n    print(total)  # \\\n    print(1)\n");
+        Assert.True(masked.StartsStatement(1));
+        Assert.False(masked.StartsStatement(2), "a line after an explicit line join is a continuation");
+        Assert.True(masked.StartsStatement(3));
+        Assert.True(masked.StartsStatement(4), "a backslash inside a comment is not a line join");
+    }
+
+    [Fact]
     public void MaskedSource_ClassifiesTheEnclosingBlock()
     {
         var masked = MaskedSource.Of(

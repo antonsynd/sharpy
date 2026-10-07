@@ -210,7 +210,9 @@ public class LiteralStateTests
     [Fact]
     public void Corpus_CleanFixturesSetNothing_AndEveryCutMultiLineLiteralSetsTheFact()
     {
-        var files = Directory.EnumerateFiles(FixtureRoots.CompilerTests.Path, "*.spy", SearchOption.AllDirectories)
+        var root = FixtureRoots.CompilerTests.Path;
+        var files = Directory.EnumerateFiles(root, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !Sharpy.Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(root, f)))
             .OrderBy(f => f, StringComparer.Ordinal).ToList();
         var clean = 0;
         var cutsByKind = new SortedDictionary<string, int>(StringComparer.Ordinal);

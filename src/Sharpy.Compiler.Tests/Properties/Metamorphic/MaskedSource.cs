@@ -128,6 +128,11 @@ internal sealed class MaskedSource
     {
         if (DepthAtLineStart(lineIndex) != 0)
             return false;
+        // A line after an explicit line join (code ending in `\`) continues that statement: wrapping
+        // it, or inserting a statement before it, changes the joined statement (`x \` + `(+ 10)` is
+        // a call). Comments and strings are masked, so only a code backslash counts.
+        if (lineIndex > 0 && MaskedLines[lineIndex - 1].TrimEnd().EndsWith('\\'))
+            return false;
         var line = Lines[lineIndex];
         var maskedLine = MaskedLines[lineIndex];
         var codeStart = FirstNonSpace(maskedLine);
