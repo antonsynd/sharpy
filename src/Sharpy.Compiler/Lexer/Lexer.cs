@@ -386,7 +386,13 @@ public partial class Lexer
                 }
 
                 NoteDroppedSpan(fromTheAbortedLiteral: !resumesAfterUnclosedField);
-                RecoverFromError();
+                // The text recovery skips, read from where the lexer gave the line up (the aborted literal's own
+                // start, so that it is skipped as the literal it is; past an unclosed field's own bracket, which
+                // is the field's, not a bracket of the line).
+                var droppedFrom = UnreadTextStart(fromTheAbortedLiteral: !resumesAfterUnclosedField);
+                if (resumesAfterUnclosedField && droppedFrom < _source.Length && _source[droppedFrom] == '{')
+                    droppedFrom++;
+                RecoverFromError(droppedFrom);
                 continue;
             }
 
@@ -474,22 +480,19 @@ public partial class Lexer
     /// Resets indentation and bracket state to avoid cascading errors from
     /// the corrupted line.
     /// </summary>
-    private void RecoverFromError()
+    private void RecoverFromError(int droppedFrom)
     {
-        // Whether the dropped line continues on the next (RecoveryResumesAfterAContinuedLine): read before the
-        // brackets are reset below, and from the text skipped here.
-        var continues = _bracketDepth > 0;
-        var lastSkipped = '\0';
+        // Whether the dropped line continues on the next (RecoveryResumesAfterAContinuedLine): judged from the
+        // line's END state — the bracket depth where the lexer gave up plus the brackets of the text it gave up,
+        // read before the depth is reset below.
+        var continues = DroppedLineContinues(_source.AsSpan(droppedFrom), _bracketDepth);
 
         // Skip to the next newline character (\n or \r)
         while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
         {
-            if (_source[_position] is not (' ' or '\t'))
-                lastSkipped = _source[_position];
             _position++;
             _column++;
         }
-        continues |= lastSkipped == '\\';
 
         // Advance past the newline if present (handle \n, \r\n, and bare \r)
         if (_position < _source.Length)

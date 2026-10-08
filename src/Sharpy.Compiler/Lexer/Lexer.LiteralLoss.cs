@@ -97,6 +97,70 @@ public partial class Lexer
             LiteralLoss |= LiteralLoss.RePairedCloser;
     }
 
+    /// <summary>
+    /// Whether a dropped line continues on the next (<see cref="RecoveryResumesAfterAContinuedLine"/>): a bracket is
+    /// still open at its END, or it ends in a backslash outside a comment. Judged from the line's end state — the
+    /// lexer's bracket depth where it gave the line up (<paramref name="bracketDepth"/>) plus the brackets in the
+    /// text it gave up (<paramref name="given"/>, read from the aborted literal's own start), with a short string,
+    /// a backtick name and a comment read as the lexer reads them — never from the depth at the abort alone:
+    /// <c>if foo($):</c> closes its bracket in the given-up text and does not continue (the next line is the body,
+    /// whose block the indent-only check must judge); <c>x = $ foo(1,</c> opens one there and does (the next line
+    /// is the user's continuation, which the fallback aligns). A literal that opens in the given-up text and does
+    /// not close on the line is content to the line end, as the lexer would read it; a bracket in a string or a
+    /// comment is text. (P22g verify round: the first spelling read <c>_bracketDepth > 0</c> at the abort and the
+    /// last skipped character, so a closed bracket counted, an opened one did not, and <c># C:\</c> continued.)
+    /// </summary>
+    private static bool DroppedLineContinues(ReadOnlySpan<char> given, int bracketDepth)
+    {
+        var depth = bracketDepth;
+        var endsInBackslash = false;
+        var i = 0;
+        while (i < given.Length && !IsLineBreak(given[i]))
+        {
+            var c = given[i];
+            if (c == '#')
+                break;
+            if (c is ' ' or '\t')
+            {
+                i++;
+                continue;
+            }
+
+            endsInBackslash = c == '\\';
+            if (c is '"' or '\'')
+            {
+                var literal = OpenLiteral.At(given, ref i);
+                while (i < given.Length && !IsLineBreak(given[i]))
+                {
+                    if (given[i] == '\\' && !literal.Raw && i + 1 < given.Length && !IsLineBreak(given[i + 1]))
+                    {
+                        i += 2;
+                        continue;
+                    }
+                    if (given[i] == literal.Quote && (!literal.Triple || IsTripleAt(given, i)))
+                    {
+                        i += literal.Triple ? 3 : 1;
+                        break;
+                    }
+                    i++;
+                }
+                continue;
+            }
+            if (c == '`')
+            {
+                SkipBacktickName(given, ref i);
+                continue;
+            }
+
+            if (c is '(' or '[' or '{')
+                depth++;
+            else if (c is (')' or ']' or '}') && depth > 0)
+                depth--;
+            i++;
+        }
+        return depth > 0 || endsInBackslash;
+    }
+
     /// <summary>A backtick-delimited name, read as the lexer reads one: it ends at its backtick or at the line break.</summary>
     private static void SkipBacktickName(ReadOnlySpan<char> text, ref int i)
     {

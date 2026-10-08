@@ -710,6 +710,8 @@ public sealed class FormattingFallbackTests : IDisposable
         { "call string", "    x = foo(\"abc,\n        a)\n    print(x)\n" },
         { "list $", "    xs = [1, 2, $\n        3]\n    print(xs)\n" },
         { "backslash", "    y = 1 + $ \\\n        2\n    print(y)\n" },
+        { "bracket opened after the abort", "    x = $ foo(1,\n        2)\n    print(x)\n" },
+        { "bracket opened after a closed short string that aborted", "    x = foo(\"\\q\", [1,\n        2])\n    print(x)\n" },
     };
 
     [Theory]
@@ -721,6 +723,86 @@ public sealed class FormattingFallbackTests : IDisposable
         var repaired = WithLine(WithLine(document, 1, "    return 1"), 5, "    " + lines[5].TrimStart());
         _driver.Full(document).Applied.Should().Be(repaired, name);
         _driver.Range(document, Lines(0, lines.Length - 1)).Applied.Should().Be(repaired, name);
+    }
+
+    /// <summary>
+    /// The sibling of <see cref="ContinuedLineDroppedByRecovery"/> (P22g verify round, the prober's and reviewer's
+    /// cells): a dropped line whose bracket the given-up text CLOSES — a header <c>if foo($):</c>, a signature
+    /// <c>def method(self, $) -> None:</c>, a call that closes on its line — does not continue, and neither does one
+    /// ending in a backslash inside a comment: the next line is the user's body or next statement, hidden from the
+    /// logical lines (no Newline follows a recovery) and depth-judged. The unchecked candidate moves it a block out
+    /// (@ 926670989 and @ c08cf1f03 every route applied that: the body left its <c>if</c>, <c>...</c> left
+    /// <c>method</c>); the routes refuse. Positive control: <see cref="DirectionControl_AContinuedLineDroppedByRecovery_FullAndRangeWholeKeepTheirRepair"/>
+    /// keeps the repair when the bracket IS open at the line's end.
+    /// </summary>
+    public static TheoryData<string, string, int> BracketClosedOnTheDroppedLine => new()
+    {
+        { "if call", "def main():\n    if foo($):\n        y = 1\n    z = 2\n  w = 3\n", 2 },
+        { "for range", "def main():\n    for i in range($):\n        y = 1\n    z = 2\n  w = 3\n", 2 },
+        { "with open", "def main():\n    with open($) as h:\n        y = 1\n    z = 2\n  w = 3\n", 2 },
+        { "list in if", "def main():\n    if x in [1, $]:\n        y = 1\n    z = 2\n  w = 3\n", 2 },
+        { "signature", "class Foo:\n    def method(self, $) -> None:\n        ...\n  x = 1\n", 2 },
+    };
+
+    [Theory]
+    [MemberData(nameof(BracketClosedOnTheDroppedLine))]
+    public void ABracketClosedOnTheDroppedLine_TheNextLineKeepsItsBlock_EveryRouteRefuses(string name, string document, int bodyLine)
+    {
+        var lines = document.Split('\n');
+        FormattingFallback.ReindentDocument(document).Split('\n')[bodyLine].Should().NotBe(lines[bodyLine],
+            $"{name}: the unchecked candidate moves the line after the dropped one out of its block");
+        RoutesThatEdit(
+            ("full", _driver.Full(document).Edits),
+            ("range-whole", _driver.Range(document, Lines(0, lines.Length - 1)).Edits),
+            ($"range-line {bodyLine - 1}", _driver.Range(document, LineRange(document, bodyLine - 1)).Edits),
+            ($"ontype@{bodyLine - 1}", _driver.OnType(document, bodyLine - 1).Edits)).Should().BeEmpty(name);
+    }
+
+    /// <summary>
+    /// The 8-space twins (the reviewer's cells): the line after the dropped one is depth-judged, so re-indenting the
+    /// statement's first line ALONE (on-type, range-line on <c>x = foo(</c>, <c>d = {</c>) would leave the line after
+    /// the dropped one a block deeper and is refused (re-indenting a continuation line alone is an alignment, not
+    /// a block move, and stays allowed); the full and range-whole fallbacks re-indent every line to 4 spaces and keep
+    /// their repair (direction).
+    /// </summary>
+    public static TheoryData<string, string, int> WideBracketClosedOnTheDroppedLine => new()
+    {
+        { "wide call closed", "def main():\n        x = foo($)\n        print(x)\n", 1 },
+        { "wide call closed on its continuation", "def main():\n        x = foo(\n            1, $)\n        print(x)\n", 1 },
+        { "wide dict closed", "def main():\n        d = {\n            'a': $}\n        print(d)\n", 1 },
+        { "backslash in a comment", "def main():\n        x = $  # path C:\\\n        print(x)\n", 1 },
+    };
+
+    [Theory]
+    [MemberData(nameof(WideBracketClosedOnTheDroppedLine))]
+    public void AWideBracketClosedOnTheDroppedLine_PartialReindentsAreRefused_FullKeepsItsRepair(string name, string document, int firstLine)
+    {
+        var lines = document.Split('\n');
+        RoutesThatEdit(
+            ($"range-line {firstLine}", _driver.Range(document, LineRange(document, firstLine)).Edits),
+            ($"ontype@{firstLine}", _driver.OnType(document, firstLine).Edits)).Should().BeEmpty(
+            $"{name}: re-indenting the statement's first line alone moves the line after the dropped one a block deeper (@ 926670989 and @ c08cf1f03 it did)");
+        var repaired = string.Join('\n', lines.Select((l, i) => i == 0 || l.Length == 0 ? l : "    " + l.TrimStart()));
+        _driver.Full(document).Applied.Should().Be(repaired, $"{name}: direction — the full fallback re-indents every line and keeps its repair");
+        _driver.Range(document, Lines(0, lines.Length - 1)).Applied.Should().Be(repaired, name);
+    }
+
+    /// <summary>
+    /// The budget twin of <see cref="BracketClosedOnTheDroppedLine"/>'s signature row (the prober's R9b): past 24
+    /// error lines, #2273's program with the abort on the continuation line. @ 926670989 the budget refused it;
+    /// after R-FP the indent map reads it, and the first continued-line spelling moved <c>...</c> to class level.
+    /// </summary>
+    [Fact]
+    public void ABracketClosedOnTheDroppedLine_PastTheBudget_FullAndRangeWholeRefuse()
+    {
+        var document = string.Concat(Enumerable.Repeat("x = \"abc\n", Budget - 1))
+            + "class Foo:\n    def method(  # c1\nself, $) -> None:\n        ...\n";
+        var lines = document.Split('\n');
+        FormattingFallback.ReindentDocument(document).Split('\n')[Budget + 2].Should().NotBe(lines[Budget + 2],
+            "the unchecked candidate moves ... out of method");
+        RoutesThatEdit(
+            ("full", _driver.Full(document).Edits),
+            ("range-whole", _driver.Range(document, Lines(0, lines.Length - 1)).Edits)).Should().BeEmpty();
     }
 
     /// <summary>

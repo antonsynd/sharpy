@@ -883,16 +883,32 @@ public class LiteralStateTests
 
     /// <summary>
     /// The recovery points whose dropped line continues on the next (<see cref="LexerNs.Lexer.RecoveryResumesAfterAContinuedLine"/>):
-    /// a bracket left open (an abort inside a call or a list, an unterminated string inside one) or a trailing backslash.
-    /// A dropped line that ends its statement — <c>""" + $</c> on a closer line, <c>x = $</c> — is not one.
+    /// a bracket left open AT THE LINE'S END (an abort inside a call or a list, an unterminated string inside one, a
+    /// bracket opened in the text the lexer gave up) or a trailing backslash outside a comment. A dropped line that
+    /// ends its statement — <c>""" + $</c> on a closer line, <c>x = $</c>, a header whose bracket the given-up text
+    /// closes (<c>if foo($):</c>: the next line is its BODY), a backslash inside a comment, a bracket inside a string
+    /// or a comment — is not one. (P22g verify round: the first spelling read the depth at the abort, so
+    /// <c>if foo($):</c> continued and <c>x = $ foo(1,</c> did not.)
     /// </summary>
     [Theory]
     [InlineData("def main():\n    x = foo($,\n        a)\n", true)]
     [InlineData("def main():\n    x = foo(\"abc,\n        a)\n", true)]
     [InlineData("def main():\n    xs = [1, 2, $\n        3]\n", true)]
     [InlineData("def main():\n    y = 1 + $ \\\n        2\n", true)]
+    [InlineData("def main():\n    x = $ foo(1,\n        2)\n", true)]
+    [InlineData("def main():\n    x = foo(\"\\q\", [1,\n        2])\n", true)]
+    [InlineData("def main():\n    d = {\n        'a': $, 'b': {\n        }}\n", true)]
     [InlineData("def main():\n    s = \"\"\"\n    a\n    \"\"\" + $\n    print(s)\n", false)]
     [InlineData("def main():\n    x = $\n    y = 1\n", false)]
+    [InlineData("def main():\n    if foo($):\n        y = 1\n", false)]
+    [InlineData("def main():\n    if x in [1, $]:\n        y = 1\n", false)]
+    [InlineData("class Foo:\n    def method(self, $) -> None:\n        ...\n", false)]
+    [InlineData("def main():\n    x = foo(\"\\q\", 1)\n    y = 1\n", false)]
+    [InlineData("def main():\n    x = $  # path C:\\\n    y = 1\n", false)]
+    [InlineData("def main():\n    x = $ \"(\"\n    y = 1\n", false)]
+    [InlineData("def main():\n    x = foo(1, $)  # (\n    y = 1\n", false)]
+    [InlineData("def main():\n    x = $ `(`\n    y = 1\n", false)]
+    [InlineData("def main():\n    x = (1, f\"{x:\" + 2)\n    y = 1\n", false)]
     public void ARecoveryPoint_KnowsWhetherTheDroppedLineContinues(string source, bool continues)
     {
         var lexer = Lex(source);
