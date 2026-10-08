@@ -879,6 +879,24 @@ public sealed class FormattingFallbackTests : IDisposable
     }
 
     /// <summary>
+    /// M3 (#2274, a known limit of any lexer fact): a backtick name swallows the opener (<c>x = `abc + """</c>) and the
+    /// lexer loses nothing it can see. Plan P22g (plan-d923d3) recorded "M3 stays" (the routes rewrite
+    /// <c>key: value</c>) — but the line after the erroring one is hidden from the logical lines and depth-judged
+    /// (e16e323eb), so full, range-line and on-type refuse it: an incidental gain, pinned here so that a later change
+    /// that reopens the rewrite is a visible shrink of the known limit. The unchecked candidate is the positive control.
+    /// </summary>
+    [Fact]
+    public void KnownLimit2274_M3_BacktickSwallowsTheOpener_RefusedByTheHiddenLineJudgment()
+    {
+        const string document = "def main():\n    x = `abc + \"\"\"\n        key: value\n    \"\"\"  # \"\"\"\n    print(x)\n";
+        FormattingFallback.ReindentDocument(document).Split('\n')[2].Should().Be("    key: value", "the unchecked candidate rewrites the string line");
+        RoutesThatEdit(
+            ("full", _driver.Full(document).Edits),
+            ("range-line 2", _driver.Range(document, LineRange(document, 2)).Edits),
+            ("ontype@2", _driver.OnType(document, 2).Edits)).Should().BeEmpty();
+    }
+
+    /// <summary>
     /// #2275's direction control (R-FR): no stray; the closer line aborts at each close-line code and drops no
     /// quote, so nothing is lost and on-type keeps its repair of a 6-space line — one clean line below the close
     /// line, since the line right after an error is read as a continuation (plan-d923d3 Current State).
@@ -905,8 +923,11 @@ public sealed class FormattingFallbackTests : IDisposable
 
     /// <summary>
     /// SQ2 / SQ3: @ 926670989 range-line and full rewrote the string line <c>key: value</c> (the scanner closed the
-    /// f-string at the spec's quote and never saw the opener). Now the lexer records <c>DroppedOpener</c> and the
-    /// routes apply nothing; the unchecked candidate shows what they would have done.
+    /// f-string at the spec's quote and never saw the opener). The routes apply nothing; the unchecked candidate
+    /// shows what they would have done. NOTE (verify round): this cell does NOT discriminate #2276's arm — the string
+    /// line is the line right after the erroring one, hidden from the logical lines and depth-judged (e16e323eb), so
+    /// the routes refuse it with the arm reverted too. The cell that reads the <c>DroppedOpener</c> fact is
+    /// <see cref="SQ_SpecQuoteAbortBeforeAnOpener_TheStringLinePastTheHiddenLine_GetsNoEdits"/> (SQ2b/SQ3b).
     /// </summary>
     [Fact]
     public void SQ_SpecQuoteAbortBeforeAnOpener_FullAndRangeLine_GetNoEdits()

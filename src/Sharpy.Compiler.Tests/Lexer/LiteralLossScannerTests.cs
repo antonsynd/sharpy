@@ -141,6 +141,8 @@ public class LiteralLossScannerTests
     [InlineData("x = f\"}\" + \"\"\"", true)]                         // SPY0021
     [InlineData("x = f\"{x}}\" + \"\"\"", true)]
     [InlineData("x = f\"}\" + 'z'", false)]
+    [InlineData("x = f\"{x}}\"", false)]                           // the SPY0021 twin with a clean close after it
+    [InlineData("x = f\"{x\" + \"\"\"", true)]                      // not SPY0020: the lexer's prescan reads `" + "` as a nested string, then `""`, and reports SPY0022 at the bracket — the hole is left open on its line, which the scanner reads as a loss (the lexer's dropped span starts AT the bracket, outside the literal, and holds no opener: LiteralStateTests)
     [InlineData("x = f\"{x!q}\" + \"\"\"", true)]                      // SPY0030
     [InlineData("x = f\"{x!q}\" + 'z'", false)]
     public void HoldsALiteralSpanningLines_TheOtherMidLiteralAborts_AgreeWithTheLexer(string text, bool expected)
@@ -155,10 +157,11 @@ public class LiteralLossScannerTests
     [Fact]
     public void HoldsALiteralSpanningLines_ManySpecQuoteAborts_StaysBounded()
     {
-        var line = "x = " + string.Concat(Enumerable.Repeat("f\"{x:\">}\" + ", 40)) + "1";
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        LexerNs.Lexer.HoldsALiteralSpanningLines(line).Should().BeFalse();
-        LexerNs.Lexer.HoldsALiteralSpanningLines(line + " + \"\"\"").Should().BeTrue();
-        clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1), "two fresh walks per abort start, memoized — not 2^40");
+        const int aborts = 40;
+        var line = "x = " + string.Concat(Enumerable.Repeat("f\"{x:\">}\" + ", aborts)) + "1";
+        LexerNs.Lexer.HoldsALiteralSpanningLines(line, out var walks).Should().BeFalse();
+        walks.Should().BeInRange(aborts, 2 * aborts, "two fresh walks per abort start, memoized — not 2^40 (a clock would read the runner's load, #2278)");
+        LexerNs.Lexer.HoldsALiteralSpanningLines(line + " + \"\"\"", out walks).Should().BeTrue();
+        walks.Should().BeInRange(1, 2 * aborts, "the opener is found on the first walk that reaches it");
     }
 }

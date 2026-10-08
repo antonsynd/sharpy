@@ -207,10 +207,19 @@ public partial class Lexer
     /// opens nothing that spans lines: a dropped line holding one keeps its repair. Known limit (#2274): an
     /// opener swallowed by an unterminated short string on its line (<c>x = 'abc """</c> → false).
     /// </summary>
-    internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text)
+    internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text) => HoldsALiteralSpanningLines(text, out _);
+
+    /// <summary>
+    /// <see cref="HoldsALiteralSpanningLines(ReadOnlySpan{char})"/>, reporting how many fresh walks the spec-quote
+    /// aborts started (<paramref name="freshWalks"/>): at most two per abort position, memoized — the bound the
+    /// complexity guard asserts, not a clock.
+    /// </summary>
+    internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text, out int freshWalks)
     {
         Dictionary<int, bool>? walks = null;
-        return WalkFrom(text, 0, ref walks);
+        var holds = WalkFrom(text, 0, ref walks);
+        freshWalks = walks?.Count ?? 0;
+        return holds;
     }
 
     /// <summary>
@@ -223,7 +232,7 @@ public partial class Lexer
         if (walks.TryGetValue(start, out var known))
             return known;
         var holds = WalkFrom(text, start, ref walks);
-        (walks ??= new Dictionary<int, bool>())[start] = holds;
+        walks![start] = holds;  // the recursive walk never clears the memo it was handed
         return holds;
     }
 
