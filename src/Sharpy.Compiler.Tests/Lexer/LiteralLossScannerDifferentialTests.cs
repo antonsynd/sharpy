@@ -86,7 +86,9 @@ public class LiteralLossScannerDifferentialTests
     public void Corpus_ScannerAgreesWithTheLexerOnEveryCleanDocument()
     {
         var root = FixtureRoots.CompilerTests.Path;
-        var files = Directory.EnumerateFiles(root, "*.spy", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal).ToList();
+        var files = Directory.EnumerateFiles(root, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !Sharpy.Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(root, f)))
+            .OrderBy(f => f, StringComparer.Ordinal).ToList();
         var disagreements = new List<string>();
         var clean = 0;
         foreach (var file in files)
