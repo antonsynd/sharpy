@@ -57,7 +57,7 @@ public class LiteralLossScannerTests
     [InlineData("x = d\"abc", false)]
     [InlineData("x = b\"abc", false)]
     [InlineData("x = xf\"{a", false)]                        // xf is an identifier: a plain string follows
-    // the known limit, pinned so the choice is recorded (#2271): the opener is swallowed by a short string
+    // the known limit, pinned so the choice is recorded (#2274): the opener is swallowed by a short string
     [InlineData("x = 'abc \"\"\"", false)]
     public void HoldsALiteralSpanningLines(string text, bool expected)
     {

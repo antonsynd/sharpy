@@ -2109,7 +2109,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 _output.WriteLine($"FMTROUTE-CENSUS refusal-ceiling {route} {twin} {refused}/{withWork} ({Percent(refused, withWork)}) ceiling={ceiling}%"
                     + (route == RangeLine && !FullMode ? " (sampled)" : ""));
                 (refused * 100).Should().BeLessThanOrEqualTo(ceiling * withWork,
-                    $"Format Selection ({route}, {twin} twin) declined {refused} of {withWork} selections with work — more than the {ceiling}% ceiling measured @ ec673074f");
+                    $"Format Selection ({route}, {twin} twin) declined {refused} of {withWork} selections with work — more than the {ceiling}% ceiling pinned in RefusalCeilings (its table names the measuring sha)");
             }
         }
     }
