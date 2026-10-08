@@ -922,6 +922,10 @@ class DocType:
     members: list[DocMember] = field(default_factory=list)
     # The declaring class's generic parameters (`class Gadget<T>` -> ["T"]) (#2163).
     type_params: list[str] = field(default_factory=list)
+    # Non-empty for a public class the compiler does NOT export (no `[SharpyModuleType]`, not nested
+    # in the module class): it is not importable by name and is documented only because a documented
+    # member returns a value of it; this is that member's spelling (#2272).
+    returned_by: str = ""
 
 
 @dataclass
@@ -938,6 +942,9 @@ class DocModule:
     # The `[SharpyModule]` class a module page documents; its partial declarations in any file
     # are the module's functions (#2163).
     module_class: str = ""
+    # The `[SharpyModule("<name>.<sub>")]` classes in this module's directory (`numpy.fft`,
+    # `os.path`), each rendered as its own section of the parent page (#2272).
+    submodules: list["DocModule"] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -949,6 +956,10 @@ _EXTENSION_THIS_RE = re.compile(r"^this\s+\S+\s+\w+")
 # are compiler-facing metadata, never part of the Python signature, and an attribute argument can
 # itself contain `=` or `,` — so they are stripped before the default/type split (#1980 class).
 _PARAM_ATTRIBUTES_RE = re.compile(r'^(?:\s*\[(?:[^\]"]|"[^"]*")*\])+\s*')
+
+# The first sentence under a type section the compiler does not export: a reader (and
+# `StdlibDocFieldNameBindingTests`) must not write `from <module> import <Type>` for it (#2272).
+NOT_IMPORTABLE_NOTE = "*Not importable by name.*"
 
 # The description prefix of the `__str__` row a `ToString` override renders as (#1980).
 _TOSTRING_REPR_NOTE = "`repr()` uses the same method."
@@ -1841,8 +1852,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
 
         for cs_file in sorted(subdir.glob("*.cs")):
             if cs_file.name == "__Init__.cs":
-                members = parse_cs_file(cs_file)
-                all_members.extend(_module_level(members))
+                all_members.extend(parse_cs_file(cs_file))
                 continue
 
             # Check if this file contains SharpyModuleType-annotated classes.
@@ -1925,20 +1935,21 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             # continued in `NdArray.Shape.cs` / `ConfigParser.IO.cs` — is that type's surface, not
             # the module's (#2163): the owner is the declared type, not the file. Resolved after the
             # loop because the annotated declaration may sort later (`NdArray.Shape.cs` <
-            # `NdArray.cs`). Any other un-annotated public type stays module-level (#1980).
+            # `NdArray.cs`). Any other public type is placed by `_partition_by_owner` (#2272).
             public_ranges = _find_public_class_ranges(file_lines)
             for name, start, end in public_ranges:
                 top_level = not any(ps < start and end <= pe for _, ps, pe in public_ranges)
                 if top_level and name in module_type_classes and (start, end) not in owned:
                     pending_types.append((cs_file, name, start, end))
                     owned.append((start, end))
-            all_members.extend(_module_level(parse_cs_file(cs_file, exclude_ranges=owned)))
+            all_members.extend(parse_cs_file(cs_file, exclude_ranges=owned))
 
         # A static class of extension methods on one of this module's types is that type's
         # instance surface (#2055): `NdArrayReductionExtensions.Sum(this NdArray<double> a)` is
         # `arr.sum()`, so it renders under the type with the receiver dropped. Resolved after the
         # loop because the extended type's file may sort after the extension file. An extension of
-        # anything else stays module-level (its receiver rendered as an ordinary parameter).
+        # anything else sits on a static class that is not the module class, which
+        # `_partition_by_owner` refuses (#2272).
         for cs_file, (receiver, start, end) in pending_extensions:
             owner = types_by_class.get(receiver)
             if owner is not None:
@@ -1946,9 +1957,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                     parse_cs_file(cs_file, is_extension=True, line_range=(start, end))
                 )
             else:
-                all_members.extend(
-                    _module_level(parse_cs_file(cs_file, line_range=(start, end)))
-                )
+                all_members.extend(parse_cs_file(cs_file, line_range=(start, end)))
 
         # A partial declaration of an annotated type in a second file renders under the type's
         # section (#2163), as its annotated file's members do.
@@ -1958,6 +1967,10 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             types_by_class[name].members.extend(
                 parse_cs_file(cs_file, line_range=(start, end), exclude_ranges=nested)
             )
+
+        all_members, submodules = _partition_by_owner(
+            subdir, mod_name, module_class, all_members, all_types
+        )
 
         # A module FIELD named like one of the module's types keeps its CLR name — the compiler's
         # deliberate type/field collision (`sqlite3.Row` is both the row type and the factory
@@ -1975,11 +1988,133 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 members=all_members,
                 types=all_types,
                 module_class=module_class,
+                submodules=submodules,
             )
         )
 
     _CURRENT_MODULE = None
     return modules
+
+
+_SUBMODULE_ANNOTATION_RE = re.compile(r'\[(?:global::Sharpy\.)?SharpyModule\("([^"]+\.[^"]+)"\)\]')
+_CLASS_NAME_RE = re.compile(r"\b(?:class|struct|record)\s+(\w+)")
+
+
+def _partition_by_owner(
+    subdir: Path,
+    mod_name: str,
+    module_class: str,
+    members: list[DocMember],
+    types: list[DocType],
+) -> tuple[list[DocMember], list[DocModule]]:
+    """Split a module directory's un-owned members by the class the COMPILER binds them on (#2272).
+
+    The compiler's rules, each read from the place it is decided:
+
+    - module functions and fields come from the `[SharpyModule]` classes only
+      (`OverloadIndexBuilder.DiscoverModuleFunctions` over the export types): the module's own class
+      renders at module level, and a `[SharpyModule("<module>.<sub>")]` class is the submodule
+      `<module>.<sub>`, reached as `import numpy.fft` then `numpy.fft.fft(...)`;
+    - a module's TYPES are the `[SharpyModuleType]` classes and the types nested in the module class
+      (`CachedModuleDiscovery`, `IsModuleType`). Any other public class is not importable by name
+      (SPY0301), but a member on a VALUE of it binds, so it is documented (instance members only)
+      exactly when a documented member returns it;
+    - a static class that is none of these binds nothing, and is refused here rather than rendered.
+
+    Returns the module-level members (`ToString` dropped there, `_module_level`) and the submodule
+    pages; the un-annotated types a documented member returns are appended to *types*.
+    """
+    submodule_classes: dict[str, str] = {}
+    class_decls: dict[str, tuple[list[str], int]] = {}
+    for cs_file in sorted(subdir.glob("*.cs")):
+        text = cs_file.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        for name, start, _ in _find_public_class_ranges(lines):
+            class_decls.setdefault(name, (lines, start))
+        if cs_file.name == "__Init__.cs":
+            continue
+        for annotation in _SUBMODULE_ANNOTATION_RE.finditer(text):
+            cm = _CLASS_NAME_RE.search(text[annotation.end() :])
+            sub_name = annotation.group(1)
+            if cm is None or not sub_name.startswith(mod_name + "."):
+                raise ValueError(
+                    f'{cs_file}: [SharpyModule("{sub_name}")] is not a submodule of {mod_name!r}'
+                )
+            submodule_classes[cm.group(1)] = sub_name
+
+    module_level: list[DocMember] = []
+    by_submodule: dict[str, list[DocMember]] = {}
+    by_value_type: dict[str, list[DocMember]] = {}
+    for m in members:
+        owner = m.declaring_type
+        if owner == module_class:
+            module_level.append(m)
+        elif owner in submodule_classes:
+            by_submodule.setdefault(owner, []).append(m)
+        elif m.declaring_static:
+            raise ValueError(
+                f"{mod_name}: {m.cs_name} is declared on the static class {owner}, which is neither "
+                f"the module class {module_class} nor a [SharpyModule] submodule; the compiler binds "
+                "it nowhere (#2272)"
+            )
+        else:
+            by_value_type.setdefault(owner, []).append(m)
+
+    submodules = []
+    for class_name, sub_name in sorted(submodule_classes.items(), key=lambda kv: kv[1]):
+        sub_members = _module_level(by_submodule.get(class_name, []))
+        if not sub_members:
+            continue
+        summary = ""
+        if class_name in class_decls:
+            lines, start = class_decls[class_name]
+            summary = _get_class_doc(lines, start).get("summary", "")
+        submodules.append(
+            DocModule(
+                name=sub_name,
+                kind="module",
+                summary=summary,
+                members=sub_members,
+                module_class=class_name,
+            )
+        )
+
+    # A value type is reachable when a documented member RETURNS it, to a fixpoint: a reachable
+    # type's own members may return another. A parameter type hands the reader no value.
+    module_level = _module_level(module_level)
+    documented: list[tuple[str, DocMember]] = [(f"{mod_name}.", m) for m in module_level]
+    documented += [(f"{sub.name}.", m) for sub in submodules for m in sub.members]
+    documented += [(f"{t.name}.", m) for t in types for m in t.members]
+    pending = dict(by_value_type)
+    while True:
+        found = None
+        for prefix, member in documented:
+            for class_name in pending:
+                if re.search(rf"\b{re.escape(class_name)}\b", member.return_type):
+                    found = (class_name, f"{prefix}{member.name}()")
+                    break
+            if found:
+                break
+        if found is None:
+            break
+        class_name, returned_by = found
+        instance_members = [m for m in pending.pop(class_name) if not m.is_static]
+        lines, start = class_decls[class_name]
+        doc = _get_class_doc(lines, start)
+        types.append(
+            DocType(
+                name=class_name,
+                cs_name=class_name,
+                summary=doc.get("summary", ""),
+                remarks=doc.get("remarks", ""),
+                members=instance_members,
+                type_params=_class_type_params(lines[start]),
+                returned_by=returned_by,
+            )
+        )
+        documented += [(f"{class_name}.", m) for m in instance_members]
+
+    return module_level, submodules
 
 
 def discover_core_types(core_dir: Path) -> list[DocModule]:
@@ -2232,12 +2367,44 @@ def render_module_page(module: DocModule) -> str:
         for m in methods:
             lines.append(_render_member(m, prefix=prefix))
 
+    # Submodules (`numpy.fft`, `os.path`): each its own section with its import line, its functions
+    # written with the submodule's dotted prefix, the spelling that binds (#2272).
+    for sub in module.submodules:
+        lines.append(f"## {sub.name}")
+        lines.append("")
+        if sub.summary:
+            lines.append(_fixup_prose(sub.summary))
+            lines.append("")
+        lines.append("```python")
+        lines.append(f"import {sub.name}")
+        lines.append("```")
+        lines.append("")
+        sub_constants = [m for m in sub.members if m.kind == "constant"]
+        if sub_constants:
+            lines.append("#" + _render_constants_table(sub_constants))
+        sub_properties = [m for m in sub.members if m.kind == "property"]
+        if sub_properties:
+            lines.append("### Properties")
+            lines.append("")
+            lines.append("| Name | Type | Description |")
+            lines.append("|------|------|-------------|")
+            for p in sub_properties:
+                lines.append(
+                    f"| `{p.name}` | `{_type_cell(p.return_type)}` | {_escape_table_cell(p.summary)} |"
+                )
+            lines.append("")
+        for m in (m for m in sub.members if m.kind == "method"):
+            lines.append(_render_member(m, prefix=f"{sub.name}."))
+
     # Module types (e.g., ArgumentParser in argparse, ChainMap/Deque/Counter
     # in collections). Each type gets its own H2 section containing its
     # constants, properties, and methods.
     for doc_type in module.types:
         lines.append(f"## {doc_type.name}")
         lines.append("")
+        if doc_type.returned_by:
+            lines.append(f"{NOT_IMPORTABLE_NOTE} A value of it is returned by `{doc_type.returned_by}`.")
+            lines.append("")
         if doc_type.summary:
             lines.append(_fixup_prose(doc_type.summary))
             lines.append("")

@@ -7,21 +7,7 @@ transforms into xUnit test infrastructure during code generation.
 import unittest
 ```
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `value` | `str` | The absolute path to this fixture's unique temporary directory. |
-
 ## Functions
-
-### `unittest.getvalue() -> str`
-
-Return the text captured so far, mirroring `io.StringIO.getvalue()`.
-
-### `unittest.getvalue() -> str`
-
-Return the text captured so far, mirroring `io.StringIO.getvalue()`.
 
 ### `unittest.assert_raises(exception_type: Type, match: str | None = None) -> AssertRaisesMarker`
 
@@ -175,3 +161,41 @@ inheritance from TestCase and synthesizes xUnit lifecycle code:
     This is a marker type with no xUnit dependency. The compiler handles all
     xUnit integration during code generation. TestCase itself is a minimal
     base class that user test classes inherit from.
+
+## CapturedOutput
+
+*Not importable by name.* A value of it is returned by `unittest.captured_output()`.
+
+A context manager that captures everything written to the console while it
+is active, mirroring Python's `contextlib.redirect_stdout(io.StringIO())`
+idiom used in unit tests.
+
+!!! note
+    On construction the current `System.Console.Out` writer is saved
+    and replaced with an internal `StringWriter`. Disposing
+    restores the original writer. Because `System.Console.Out` is
+    process-global, captures nest in LIFO order and must not be shared across
+    tests that run in parallel.
+
+### `getvalue() -> str`
+
+Return the text captured so far, mirroring `io.StringIO.getvalue()`.
+
+## CapturedStderr
+
+*Not importable by name.* A value of it is returned by `unittest.captured_stderr()`.
+
+A context manager that captures everything written to the standard error
+stream while it is active, mirroring Python's
+`contextlib.redirect_stderr(io.StringIO())` idiom used in unit tests.
+
+!!! note
+    On construction the current `System.Console.Error` writer is saved
+    and replaced with an internal `StringWriter`. Disposing
+    restores the original writer. Because `System.Console.Error` is
+    process-global, captures nest in LIFO order and must not be shared across
+    tests that run in parallel.
+
+### `getvalue() -> str`
+
+Return the text captured so far, mirroring `io.StringIO.getvalue()`.

@@ -6,29 +6,7 @@ Numerical computing with multi-dimensional arrays and mathematical operations.
 import numpy
 ```
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `start` | `int \| None` | Inclusive start index. \`null\` means "from the beginning". |
-| `stop` | `int \| None` | Exclusive stop index. \`null\` means "to the end". |
-| `step` | `int \| None` | Step between successive indices. \`null\` defaults to 1. Cannot be 0. |
-| `is_squeeze` | `bool` | True when this spec was created by \`at\` and the axis should be removed from the result shape. |
-| `all` | `SliceSpec` | Sentinel slice representing \`:\` — take every element along this axis. |
-
 ## Functions
-
-### `numpy.at(index: int) -> SliceSpec`
-
-Create a single-index spec that squeezes (removes) the axis from the result.
-
-### `numpy.range(start: int, stop: int) -> SliceSpec`
-
-Create a slice of the form `start:stop`.
-
-### `numpy.range(start: int, stop: int, step: int) -> SliceSpec`
-
-Create a slice of the form `start:stop:step`.
 
 ### `numpy.equal(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
@@ -504,7 +482,16 @@ Matrix product — top-level alias for `matmul`.
 - `a` (ndarray[float]) -- Left operand.
 - `b` (ndarray[float]) -- Right operand.
 
-### `numpy.fft(a: ndarray[float]) -> ndarray[system.numerics.Complex]`
+## numpy.fft
+
+NumPy-equivalent `numpy.fft` submodule. Provides 1-D discrete Fourier
+transforms backed by Math.NET's `Fourier` implementation.
+
+```python
+import numpy.fft
+```
+
+### `numpy.fft.fft(a: ndarray[float]) -> ndarray[system.numerics.Complex]`
 
 Compute the 1-D discrete Fourier transform of a real-valued ndarray.
 
@@ -519,11 +506,11 @@ Compute the 1-D discrete Fourier transform of a real-valued ndarray.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 1-dimensional.
 
-### `numpy.fft(a: ndarray[system.numerics.Complex]) -> ndarray[system.numerics.Complex]`
+### `numpy.fft.fft(a: ndarray[system.numerics.Complex]) -> ndarray[system.numerics.Complex]`
 
 Compute the 1-D discrete Fourier transform of a complex-valued ndarray.
 
-### `numpy.ifft(a: ndarray[system.numerics.Complex]) -> ndarray[system.numerics.Complex]`
+### `numpy.fft.ifft(a: ndarray[system.numerics.Complex]) -> ndarray[system.numerics.Complex]`
 
 Compute the 1-D inverse discrete Fourier transform of a complex-valued ndarray.
 
@@ -538,7 +525,7 @@ Compute the 1-D inverse discrete Fourier transform of a complex-valued ndarray.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 1-dimensional.
 
-### `numpy.fftfreq(n: int, d: float = 1.0) -> ndarray[float]`
+### `numpy.fft.fftfreq(n: int, d: float = 1.0) -> ndarray[float]`
 
 Return the discrete Fourier transform sample frequencies for a transform of length *n*.
 
@@ -555,7 +542,16 @@ or `[0, 1, ..., (n-1)/2, -(n-1)/2, ..., -1] / (d*n)` for odd n.
 
 - `ValueError` -- Thrown when *n* is negative.
 
-### `numpy.dot(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
+## numpy.linalg
+
+Linear-algebra submodule mirroring `numpy.linalg`. Delegates to Math.NET Numerics
+for matrix multiplication, decomposition, and inversion primitives.
+
+```python
+import numpy.linalg
+```
+
+### `numpy.linalg.dot(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
 Dot product of two arrays.
   * 1-D × 1-D — inner product (scalar) returned as a 0-D ndarray.
@@ -573,7 +569,7 @@ Dot product of two arrays.
 - `ArgumentNullException` -- Thrown when *a* or *b* is null.
 - `ValueError` -- Thrown when shapes are incompatible or rank is unsupported.
 
-### `numpy.matmul(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
+### `numpy.linalg.matmul(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
 Matrix product. For 1-D and 2-D inputs this is equivalent to `dot`.
 
@@ -582,7 +578,7 @@ Matrix product. For 1-D and 2-D inputs this is equivalent to `dot`.
 - `a` (ndarray[float]) -- Left operand.
 - `b` (ndarray[float]) -- Right operand.
 
-### `numpy.inv(a: ndarray[float]) -> ndarray[float]`
+### `numpy.linalg.inv(a: ndarray[float]) -> ndarray[float]`
 
 Compute the (multiplicative) inverse of a square matrix.
 
@@ -595,7 +591,7 @@ Compute the (multiplicative) inverse of a square matrix.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D, not square, or is singular.
 
-### `numpy.det(a: ndarray[float]) -> float`
+### `numpy.linalg.det(a: ndarray[float]) -> float`
 
 Compute the determinant of a square 2-D array.
 
@@ -608,7 +604,7 @@ Compute the determinant of a square 2-D array.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D or not square.
 
-### `numpy.eig(a: ndarray[float]) -> tuple[ndarray[float], ndarray[float]]`
+### `numpy.linalg.eig(a: ndarray[float]) -> tuple[ndarray[float], ndarray[float]]`
 
 Compute the eigenvalues and (right) eigenvectors of a square 2-D array.
 
@@ -625,7 +621,7 @@ of complex eigenvalues are dropped — only the real component is returned.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D or not square.
 
-### `numpy.svd(a: ndarray[float]) -> tuple[ndarray[float], ndarray[float], ndarray[float]]`
+### `numpy.linalg.svd(a: ndarray[float]) -> tuple[ndarray[float], ndarray[float], ndarray[float]]`
 
 Singular value decomposition. Returns `(U, S, Vh)` such that `A = U · diag(S) · Vh`.
 
@@ -641,7 +637,7 @@ is a 1-D ndarray of singular values in descending order.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D.
 
-### `numpy.solve(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
+### `numpy.linalg.solve(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
 Solve the linear system `A x = b` for `x`.
 
@@ -658,7 +654,7 @@ is 1-D, 2-D ndarray otherwise).
 - `ArgumentNullException` -- Thrown when *a* or *b* is null.
 - `ValueError` -- Thrown when shapes are incompatible, the matrix is singular, or the rank is unsupported.
 
-### `numpy.norm(a: ndarray[float]) -> float`
+### `numpy.linalg.norm(a: ndarray[float]) -> float`
 
 Compute the L2 (Frobenius) norm of an array.
   * 1-D — Euclidean (L2) norm.
@@ -673,7 +669,16 @@ Compute the L2 (Frobenius) norm of an array.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 1-D or 2-D.
 
-### `numpy.seed(seed: int)`
+## numpy.random
+
+NumPy-equivalent `numpy.random` submodule. Provides pseudo-random number
+generation backed by `System.Random` and Math.NET Numerics distributions.
+
+```python
+import numpy.random
+```
+
+### `numpy.random.seed(seed: int)`
 
 Seed the thread-local random number generator with *seed*.
 
@@ -681,7 +686,7 @@ Seed the thread-local random number generator with *seed*.
 
 - `seed` (int) -- Seed value for the underlying `System.Random`.
 
-### `numpy.rand(*shape: int) -> ndarray[float]`
+### `numpy.random.rand(*shape: int) -> ndarray[float]`
 
 Random samples from a uniform distribution over `[0, 1)`.
 
@@ -689,7 +694,7 @@ Random samples from a uniform distribution over `[0, 1)`.
 
 - `shape` (*int) -- Shape of the result. May be empty (returns a 0-D scalar array).
 
-### `numpy.randn(*shape: int) -> ndarray[float]`
+### `numpy.random.randn(*shape: int) -> ndarray[float]`
 
 Random samples from the standard normal distribution (mean 0, stddev 1).
 
@@ -697,7 +702,7 @@ Random samples from the standard normal distribution (mean 0, stddev 1).
 
 - `shape` (*int) -- Shape of the result.
 
-### `numpy.randint(low: int, high: int, shape: array[int]) -> ndarray[int]`
+### `numpy.random.randint(low: int, high: int, shape: array[int]) -> ndarray[int]`
 
 Random integers from the half-open interval `[low, high)`.
 
@@ -711,7 +716,7 @@ Random integers from the half-open interval `[low, high)`.
 
 - `ValueError` -- Thrown when *high* is not greater than *low*.
 
-### `numpy.normal(loc: float, scale: float, shape: array[int]) -> ndarray[float]`
+### `numpy.random.normal(loc: float, scale: float, shape: array[int]) -> ndarray[float]`
 
 Random samples from a normal (Gaussian) distribution with the given mean and standard deviation.
 
@@ -725,7 +730,7 @@ Random samples from a normal (Gaussian) distribution with the given mean and sta
 
 - `ValueError` -- Thrown when *scale* is negative.
 
-### `numpy.uniform(low: float, high: float, shape: array[int]) -> ndarray[float]`
+### `numpy.random.uniform(low: float, high: float, shape: array[int]) -> ndarray[float]`
 
 Random samples from a continuous uniform distribution over `[low, high)`.
 
@@ -739,7 +744,7 @@ Random samples from a continuous uniform distribution over `[low, high)`.
 
 - `ValueError` -- Thrown when *high* is less than *low*.
 
-### `numpy.choice(a: ndarray[T], size: int, replace: bool = True) -> ndarray[T]`
+### `numpy.random.choice(a: ndarray[T], size: int, replace: bool = True) -> ndarray[T]`
 
 Draw *size* random samples from a 1-D ndarray *a*.
 
@@ -756,7 +761,7 @@ When `False`, *size* must not exceed `a.Size`.
 when *a* is empty and *size* > 0, or when sampling without replacement and
 *size* exceeds the source length.
 
-### `numpy.shuffle(a: ndarray[T])`
+### `numpy.random.shuffle(a: ndarray[T])`
 
 Shuffle the contents of *a* in place along its first axis.
 

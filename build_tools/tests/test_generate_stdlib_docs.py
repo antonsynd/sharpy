@@ -971,8 +971,16 @@ class TestDiscoverModulesTypeAnnotations:
     """Discovery of SharpyModuleType-annotated classes (1-arg and 2-arg forms)."""
 
     def _write_module(
-        self, tmp_path: Path, mod_dir: str, mod_name: str, filename: str, body: str
+        self,
+        tmp_path: Path,
+        mod_dir: str,
+        mod_name: str,
+        filename: str,
+        body: str,
+        module_class: "str | None" = None,
     ) -> Path:
+        # A module's functions are the `[SharpyModule]` class's, in whichever file declares a partial
+        # of it (#2272): a fixture whose body declares the module's functions names that class.
         subdir = tmp_path / mod_dir
         subdir.mkdir(parents=True, exist_ok=True)
         (subdir / "__Init__.cs").write_text(
@@ -982,7 +990,7 @@ class TestDiscoverModulesTypeAnnotations:
                 namespace Sharpy.Core.{mod_dir};
 
                 [SharpyModule("{mod_name}")]
-                public static class {mod_dir}Module {{ }}
+                public static partial class {module_class or mod_dir + "Module"} {{ }}
                 """
             ),
             encoding="utf-8",
@@ -1113,7 +1121,9 @@ class TestDiscoverModulesTypeAnnotations:
             }
             """
         )
-        self._write_module(tmp_path, "Socket", "socket", "SocketModule.cs", body)
+        self._write_module(
+            tmp_path, "Socket", "socket", "SocketModule.cs", body, module_class="SocketModuleModule"
+        )
         modules = discover_modules(tmp_path)
         assert len(modules) == 1
         assert [t.name for t in modules[0].types] == ["error"]
@@ -2042,7 +2052,7 @@ class TestDeclaringTypeAttribution:
     """A member's owner is a parse fact (the brace range it is declared in), not a file position."""
 
     # Shaped like src/Sharpy.Stdlib/Collections/Collections.cs: three annotated classes, each with
-    # its own summary, then an UN-annotated module-exports class trailing the last annotated one.
+    # its own summary, then a partial of the module class trailing the last annotated one.
     _MULTI = textwrap.dedent(
         """\
         using System;
@@ -2107,7 +2117,8 @@ class TestDeclaringTypeAttribution:
 
     def _module(self, tmp_path: Path) -> DocModule:
         TestDiscoverModulesTypeAnnotations._write_module(
-            None, tmp_path, "Collections", "collections", "Collections.cs", self._MULTI
+            None, tmp_path, "Collections", "collections", "Collections.cs", self._MULTI,
+            module_class="Collections",
         )
         modules = discover_modules(tmp_path)
         assert len(modules) == 1
@@ -2151,7 +2162,7 @@ class TestDeclaringTypeAttribution:
         assert self._type(module, "Counter").summary == "A dict subclass for counting hashable objects."
         assert self._type(module, "DefaultDict").summary == "A dict that calls a factory for missing keys."
 
-    def test_unannotated_trailing_class_is_module_level_not_folded(self, tmp_path: Path):
+    def test_trailing_module_class_partial_is_module_level_not_folded(self, tmp_path: Path):
         module = self._module(tmp_path)
         default_dict = self._type(module, "DefaultDict")
         assert [m.name for m in default_dict.members] == ["default_factory"]
@@ -2261,55 +2272,146 @@ class TestDeclaringTypeAttribution:
         assert map_type("(Bytes data, (string host, int port) addr)") == "tuple[bytes, tuple[str, int]]"
         assert map_type("(T, int)") == "tuple[T, int]"
 
-    def test_module_level_tostring_is_not_a_module_function(self, tmp_path: Path):
-        """An un-annotated class's members render at module level; its ToString must not become
-        `mod.__str__()`. The annotated class's ToString in the same file is the positive control."""
+    # --- ownership: a member renders where the COMPILER binds it (#2272) -------------------------
+
+    _EMAIL = textwrap.dedent(
+        """\
+        namespace Sharpy
+        {
+            /// <summary>The email module.</summary>
+            public static partial class EmailModule
+            {
+                /// <summary>Attach a file.</summary>
+                public static Attachment Attach(string name) => new Attachment();
+            }
+
+            /// <summary>A message.</summary>
+            [SharpyModuleType("email", "EmailMessage")]
+            public class EmailMessage
+            {
+                /// <summary>Message repr.</summary>
+                public override string ToString() => "";
+            }
+
+            /// <summary>An attachment.</summary>
+            public class Attachment
+            {
+                /// <summary>The file name.</summary>
+                public string Filename { get; }
+
+                /// <summary>Attachment repr.</summary>
+                public override string ToString() => "";
+
+                /// <summary>A static factory no Sharpy spelling reaches.</summary>
+                public static Attachment Empty() => new Attachment();
+            }
+
+            /// <summary>A policy no documented member returns.</summary>
+            public class Policy
+            {
+                /// <summary>Clone.</summary>
+                public Policy Clone() => this;
+            }
+        }
+        """
+    )
+
+    def _email(self, tmp_path: Path, body: str) -> DocModule:
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Email", "email", "EmailMessage.cs", body, module_class="EmailModule"
+        )
+        (module,) = discover_modules(tmp_path)
+        return module
+
+    def test_unexported_type_is_documented_only_when_a_member_returns_it(self, tmp_path: Path):
+        """An un-annotated public class is not importable (SPY0301) but a member on a value of it
+        binds: it renders as a section — instance members only, its ToString as `__str__` — when a
+        documented member returns it, and not at all otherwise. Never at module level."""
+        module = self._email(tmp_path, self._EMAIL)
+        assert [m.name for m in module.members] == ["attach"]
+        assert [t.name for t in module.types] == ["EmailMessage", "Attachment"]
+        attachment = self._type(module, "Attachment")
+        assert attachment.returned_by == "email.attach()"
+        assert [m.name for m in attachment.members] == ["filename", "__str__"]
+        page = render_module_page(module)
+        assert (
+            "## Attachment\n\n*Not importable by name.* A value of it is returned by `email.attach()`.\n"
+        ) in page
+        assert "Policy" not in page and "clone" not in page and "empty" not in page
+        # Positive control: the annotated type gets no note.
+        assert "## EmailMessage\n\nA message.\n" in page
+
+    def test_unexported_type_no_member_returns_is_not_documented(self, tmp_path: Path):
+        # Positive control for the reachability arm: the same source without the returning member.
+        body = self._EMAIL.replace(
+            "public static Attachment Attach(string name) => new Attachment();",
+            "public static int Count() => 0;",
+        )
+        module = self._email(tmp_path, body)
+        assert [m.name for m in module.members] == ["count"]
+        assert [t.name for t in module.types] == ["EmailMessage"]
+
+    def test_submodule_class_renders_as_its_own_section(self, tmp_path: Path):
+        """A `[SharpyModule("<module>.<sub>")]` class in the module's directory is the submodule:
+        `import numpy.fft` then `numpy.fft.fft(...)` binds, `numpy.fft(...)` does not."""
         body = textwrap.dedent(
             """\
             namespace Sharpy
             {
-                /// <summary>A message.</summary>
-                [SharpyModuleType("email", "EmailMessage")]
-                public class EmailMessage
+                /// <summary>The probe module.</summary>
+                public static partial class ProbeModule
                 {
-                    /// <summary>Message repr.</summary>
-                    public override string ToString() => "";
+                    /// <summary>Top.</summary>
+                    public static int Top() => 0;
                 }
 
-                /// <summary>An attachment.</summary>
-                public class Attachment
+                /// <summary>The fft submodule.</summary>
+                [SharpyModule("probe.fft")]
+                public static class ProbeFft
                 {
-                    /// <summary>The file name.</summary>
-                    public string Filename { get; }
-
-                    /// <summary>Attachment repr.</summary>
-                    public override string ToString() => "";
+                    /// <summary>Transform.</summary>
+                    public static int Fft(int n) => n;
                 }
             }
             """
         )
-        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Email", "email", "EmailMessage.cs", body)
-        (tmp_path / "Email" / "Plain.cs").write_text(
-            textwrap.dedent(
-                """\
-                namespace Sharpy
-                {
-                    public class Policy
-                    {
-                        /// <summary>Policy repr.</summary>
-                        public override string ToString() => "";
-
-                        /// <summary>Clone.</summary>
-                        public Policy Clone() => this;
-                    }
-                }
-                """
-            ),
-            encoding="utf-8",
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Probe", "probe", "Probe.cs", body, module_class="ProbeModule"
         )
-        module = discover_modules(tmp_path)[0]
-        assert [m.name for m in module.types[0].members] == ["__str__"]
-        assert sorted(m.name for m in module.members) == ["clone", "filename"]
+        (module,) = discover_modules(tmp_path)
+        assert [m.name for m in module.members] == ["top"]
+        (sub,) = module.submodules
+        assert (sub.name, sub.summary, [m.name for m in sub.members]) == (
+            "probe.fft", "The fft submodule.", ["fft"]
+        )
+        page = render_module_page(module)
+        assert "## probe.fft\n\nThe fft submodule.\n\n```python\nimport probe.fft\n```\n" in page
+        assert "### `probe.fft.fft(n: int) -> int`" in page
+        assert "### `probe.fft(" not in page
+        assert "### `probe.top() -> int`" in page
+
+    def test_a_static_class_the_compiler_binds_nowhere_is_refused(self, tmp_path: Path):
+        body = textwrap.dedent(
+            """\
+            namespace Sharpy
+            {
+                public static class Helpers
+                {
+                    /// <summary>Help.</summary>
+                    public static int Help() => 0;
+                }
+            }
+            """
+        )
+        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Probe", "probe", "Helpers.cs", body)
+        with pytest.raises(ValueError, match=r"static class Helpers.*#2272"):
+            discover_modules(tmp_path)
+
+    def test_a_submodule_of_another_module_is_refused(self, tmp_path: Path):
+        body = '[SharpyModule("other.fft")]\npublic static class OtherFft\n{\n    public static int F() => 0;\n}\n'
+        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Probe", "probe", "Other.cs", body)
+        with pytest.raises(ValueError, match=r"not a submodule of 'probe'"):
+            discover_modules(tmp_path)
 
     def test_core_type_page_excludes_a_nested_enumerator(self, tmp_path: Path):
         from build_tools.generate_stdlib_docs import discover_core_types
@@ -2616,6 +2718,13 @@ class TestCSharpSpellingScan:
         monkeypatch.setattr(generator, "_render_cref", lambda cref: cref)
         monkeypatch.setattr(generator, "_extension_class_ranges", lambda lines: [])
         monkeypatch.setattr(generator, "_drop_receiver_modifier", lambda part: part)
+        # With the extension rule off the receiver's class is a static class the module does not
+        # own; the ownership rule (#2272) is switched off with it so the leak renders at module level.
+        monkeypatch.setattr(
+            generator,
+            "_partition_by_owner",
+            lambda subdir, mod_name, module_class, members, types: (generator._module_level(members), []),
+        )
         hits = _csharp_spelling_hits("probe.md", _render_synthetic(tmp_path))
         assert _hit_labels(hits) == set(_CSHARP_SPELLINGS) - _FROZEN_PAGE_ROWS, hits
 
@@ -2922,7 +3031,7 @@ def _rendered_type_positions(pages: list[DocModule]):
     for page in pages:
         owners = [(page.members, page.type_params, "")] + [
             (t.members, t.type_params, f"{t.name}.") for t in page.types
-        ]
+        ] + [(sub.members, [], f"{sub.name}.") for sub in page.submodules]
         for members, owner_params, owner in owners:
             for m in members:
                 scope = set(owner_params) | set(m.type_params) | set(m.declaring_type_params)
@@ -3055,6 +3164,12 @@ class TestRenderedTypeRoster:
             prefix = f"{page.name}." if page.kind == "module" else ""
             walked = [f"### `{prefix}{m.signature}`" for m in page.members if m.kind == "method"]
             walked += [f"### `{m.signature}`" for t in page.types for m in t.members if m.kind == "method"]
+            walked += [
+                f"### `{sub.name}.{m.signature}`"
+                for sub in page.submodules
+                for m in sub.members
+                if m.kind == "method"
+            ]
             headings = [line for line in rendered[page.name].splitlines() if line.startswith("### `")]
             assert sorted(headings) == sorted(walked), page.name
 
@@ -3235,15 +3350,18 @@ class TestRenderedNameProseAndLayout:
 
     @staticmethod
     def _misattributed(pages: list[DocModule]) -> list[str]:
-        # A module function is declared by the module's own class or a static class; a type
-        # section's member by that type (or by a static extension class on it, #2055). A member of
-        # an ANNOTATED type rendered anywhere else is misattributed.
+        # A module function is declared by the module's own class, a submodule's by the submodule's
+        # class (#2272); a type section's member by that type (or by a static extension class on it,
+        # #2055). A member rendered anywhere else is misattributed.
         bad = []
         for page in (p for p in pages if p.kind == "module"):
-            annotated = {t.cs_name for t in page.types}
             for m in page.members:
-                if m.declaring_type in annotated:
+                if m.declaring_type != page.module_class:
                     bad.append(f"{page.name}.{m.name} (declared by {m.declaring_type})")
+            for sub in page.submodules:
+                for m in sub.members:
+                    if m.declaring_type != sub.module_class:
+                        bad.append(f"{sub.name}.{m.name} (declared by {m.declaring_type})")
             for t in page.types:
                 for m in t.members:
                     if m.declaring_type != t.cs_name and not m.declaring_static:

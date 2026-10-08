@@ -68,67 +68,75 @@ Perform the equivalent of a stat() system call on the given path.
 
 Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top.
 
-### `os.join(a: str, b: str) -> str`
+## os.path
+
+Common pathname manipulations (os.path equivalent).
+
+```python
+import os.path
+```
+
+### `os.path.join(a: str, b: str) -> str`
 
 Join two pathname components, inserting '/' as needed.
 
-### `os.join(a: str, b: str, c: str) -> str`
+### `os.path.join(a: str, b: str, c: str) -> str`
 
 Join three pathname components, inserting '/' as needed.
 
-### `os.join(a: str, b: str, c: str, d: str) -> str`
+### `os.path.join(a: str, b: str, c: str, d: str) -> str`
 
 Join four pathname components, inserting '/' as needed.
 
-### `os.normpath(path: str) -> str`
+### `os.path.normpath(path: str) -> str`
 
 Normalize a pathname, eliminating double slashes and resolving '.'/'..' references.
 
-### `os.exists(path: str) -> bool`
+### `os.path.exists(path: str) -> bool`
 
 Test whether a path exists.
 
-### `os.isfile(path: str) -> bool`
+### `os.path.isfile(path: str) -> bool`
 
 Test whether a path is a regular file.
 
-### `os.isdir(path: str) -> bool`
+### `os.path.isdir(path: str) -> bool`
 
 Return True if the pathname refers to an existing directory.
 
-### `os.isabs(path: str) -> bool`
+### `os.path.isabs(path: str) -> bool`
 
 Test whether a path is absolute.
 
-### `os.basename(path: str) -> str`
+### `os.path.basename(path: str) -> str`
 
 Return the final component of a pathname.
 
-### `os.dirname(path: str) -> str`
+### `os.path.dirname(path: str) -> str`
 
 Return the directory component of a pathname.
 
-### `os.split(path: str) -> tuple[str, str]`
+### `os.path.split(path: str) -> tuple[str, str]`
 
 Split a pathname. Return tuple (head, tail) where tail is everything after the final slash.
 
-### `os.splitext(path: str) -> tuple[str, str]`
+### `os.path.splitext(path: str) -> tuple[str, str]`
 
 Split the extension from a pathname.
 
-### `os.abspath(path: str) -> str`
+### `os.path.abspath(path: str) -> str`
 
 Return an absolute path.
 
-### `os.realpath(path: str) -> str`
+### `os.path.realpath(path: str) -> str`
 
 Return the canonical path of the specified filename, eliminating any symbolic links.
 
-### `os.getsize(path: str) -> int64`
+### `os.path.getsize(path: str) -> int64`
 
 Return the size of a file, reported by os.stat().
 
-### `os.expanduser(path: str) -> str`
+### `os.path.expanduser(path: str) -> str`
 
 Expand ~ and ~user constructions.
 
