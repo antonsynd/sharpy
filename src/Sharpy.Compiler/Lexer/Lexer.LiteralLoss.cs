@@ -21,19 +21,32 @@ public partial class Lexer
     /// </summary>
     private void NoteDroppedSpan(bool fromTheAbortedLiteral)
     {
-        var start = _position;
-        if (fromTheAbortedLiteral && _tokenStart < _position
-            && _source.AsSpan(_tokenStart, _position - _tokenStart).IndexOfAny('\n', '\r') < 0
-            && StringLiteralStarts.Any(s => IsStringLiteralStartAt(s.Prefix, _tokenStart)))
-        {
-            start = _tokenStart;
-        }
-
+        var start = UnreadTextStart(fromTheAbortedLiteral);
         var end = _position;
         while (end < _source.Length && !IsLineBreak(_source[end]))
             end++;
         if (HoldsALiteralSpanningLines(_source.AsSpan(start, end - start)))
             LiteralLoss |= LiteralLoss.DroppedOpener;
+    }
+
+    /// <summary>
+    /// Where the text the lexer will not read starts, for <see cref="NoteDroppedSpan"/> (the rest of the
+    /// line error recovery skips) and for the error-budget stop in <see cref="TokenizeAll"/> (the rest of
+    /// the source): <see cref="_position"/>, or — when <paramref name="fromTheAbortedLiteral"/> and the token
+    /// being read is a string literal that began on this line — that literal's prefix, so that the scanner
+    /// pairs its quotes the way the lexer did (<c>"\q" + """abc"""</c> read from the <c>q</c> is
+    /// <c>" + "</c> then an opener). The ONE start both hooks read: the budget stop landing inside an
+    /// aborted short string (B1, BS-esc) is the same shape as the dropped line.
+    /// </summary>
+    private int UnreadTextStart(bool fromTheAbortedLiteral)
+    {
+        if (fromTheAbortedLiteral && _tokenStart < _position
+            && _source.AsSpan(_tokenStart, _position - _tokenStart).IndexOfAny('\n', '\r') < 0
+            && StringLiteralStarts.Any(s => IsStringLiteralStartAt(s.Prefix, _tokenStart)))
+        {
+            return _tokenStart;
+        }
+        return _position;
     }
 
     /// <summary>

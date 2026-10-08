@@ -337,6 +337,23 @@ public sealed class FormattingFallbackTests : IDisposable
     internal static readonly string N1t =
         "def main():\n" + string.Concat(Enumerable.Repeat("  x = 1\n", 30)) + "  s = \"\"\"\n      key\n  \"\"\"\n  print(s)\n";
 
+    /// <summary>
+    /// BSesc (verify round @ 5c8d81f28): the 25th error is a short string aborting mid-line before an opener,
+    /// so the budget stop lands INSIDE the aborted <c>"\q"</c>; read from the <c>q</c>, the remainder paired
+    /// its quotes the wrong way and saw no opener — the routes re-indented <c>sub: 1</c>.
+    /// </summary>
+    internal static readonly string BSesc =
+        string.Concat(Enumerable.Repeat("x = \"abc\n", Budget - 1))
+        + "def main():\n    s = \"\\q\" + \"\"\"\n    key:\n      sub: 1\n    \"\"\" + '\"\"\"'\n    print(s)\n";
+
+    /// <summary>BSesc's string line at width 6 (0-based).</summary>
+    internal static readonly int BSescSubLine = Budget + 2;
+
+    /// <summary>B1 (verify round @ 5c8d81f28): BSesc's twin whose triple is closed on its line — nothing is lost (direction control).</summary>
+    internal static readonly string B1 =
+        string.Concat(Enumerable.Repeat("x = \"abc\n", Budget - 1)) + "y = \"\\q\" + \"\"\"abc\"\"\"\n"
+        + "def main():\n" + string.Concat(Enumerable.Repeat("  x = 1\n", 30));   // N1c's text (declared below: a static initializer runs in textual order)
+
     /// <summary>N1c: a 2-space body past the budget, no literal (direction control).</summary>
     internal static readonly string N1c = "def main():\n" + string.Concat(Enumerable.Repeat("  x = 1\n", 30));
 
@@ -385,6 +402,18 @@ public sealed class FormattingFallbackTests : IDisposable
         var (start, end) = new Compiler.Formatting.FormatSelection(range.Start.Line, range.End.Line, range.End.Character)
             .SelectedLines(Compiler.Formatting.LineDiff.Split(text).Lines);
         return LspFormattingDriver.ApplyStrict(text, SharpyRangeFormattingHandler.ComputeIndentOnlyRangeEdits(text, start, end));
+    }
+
+    [Fact]
+    public void BSesc_BudgetStopInsideAnAbortedShortString_FullAndRangeFallbacks_GetNoEdits()
+    {
+        var damaged = WithLine(BSesc, BSescSubLine, "        sub: 1");
+        FormattingFallback.ReindentDocument(BSesc).Should().Be(damaged);
+        RangeCandidate(BSesc, BSescSubLine).Should().Be(damaged);
+
+        RoutesThatEdit(
+            ("full", _driver.Full(BSesc).Edits),
+            ("range-line", _driver.Range(BSesc, LineRange(BSesc, BSescSubLine)).Edits)).Should().BeEmpty();
     }
 
     [Fact]
@@ -510,7 +539,9 @@ public sealed class FormattingFallbackTests : IDisposable
     /// E1par2 (second verification @ 37e5c1d02): C1Block's shape with the aborting string an f-string whose
     /// replacement field holds a string of the f-string's own quote character. Read the way the lexer reads
     /// a hole, the dropped span holds the opener; read flat (@ 37e5c1d02), the nested <c>"</c> closed the
-    /// f-string, the opener paired away, and the range fallback rewrote <c>        key: value</c>.
+    /// f-string, the opener paired away, and the range fallback rewrote <c>        key: value</c>. Only the
+    /// range-line route is a cell of the fact: Format Document and the whole-document selection are refused
+    /// for another clause with the hooks reverted too (verify round @ 5c8d81f28), so they discriminate nothing.
     /// </summary>
     internal const string E1par2 = "def main():\n    x = f\"{'\"'}\\q\" + \"\"\"\n        key: value\n        f\"{'\"'}\\q\" + \"\"\"\n    print(x)\n";
 
@@ -520,8 +551,6 @@ public sealed class FormattingFallbackTests : IDisposable
         RangeCandidate(E1par2, 2).Should().Be(WithLine(E1par2, 2, "    key: value"));
 
         RoutesThatEdit(
-            ("full", _driver.Full(E1par2).Edits),
-            ("range-whole", _driver.Range(E1par2, Lines(0, 5)).Edits),
             ("range-line", _driver.Range(E1par2, LineRange(E1par2, 2)).Edits)).Should().BeEmpty();
     }
 
@@ -546,6 +575,9 @@ public sealed class FormattingFallbackTests : IDisposable
     public static TheoryData<string, string, string> NoLiteralLost => new()
     {
         { "N1c", N1c, "def main():\n" + string.Concat(Enumerable.Repeat("    x = 1\n", 30)) },
+        // verify round @ 5c8d81f28: the budget stop inside an aborted "\q" before a triple closed on its line — read
+        // from the `q` the remainder saw an opener (UnreadRemainder @ 5c8d81f28); repaired @ 3c70ea492
+        { "B1", B1, string.Concat(Enumerable.Repeat("x = \"abc\n", Budget - 1)) + "y = \"\\q\" + \"\"\"abc\"\"\"\n" + "def main():\n" + string.Concat(Enumerable.Repeat("    x = 1\n", 30)) },
         { "N1s", N1s, "def main():\n" + string.Concat(Enumerable.Repeat("    print(\"hi\")\n", 30)) },
         { "N4q", N4q, "def main():\n    x = \"hi\"\n    print(x)\n" },
         { "N4t", N4t, "def main():\n    t = '\"\"\"'\n    print(t)\n" },

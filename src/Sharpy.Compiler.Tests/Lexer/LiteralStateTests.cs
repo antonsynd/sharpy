@@ -499,6 +499,27 @@ public class LiteralStateTests
     }
 
     /// <summary>
+    /// The budget stop landing INSIDE an aborted short string (verify round @ 5c8d81f28, B1 / BS-esc): the
+    /// remainder is read from that literal's own start, as a dropped span is (<c>UnreadTextStart</c>) —
+    /// read from inside <c>"\q"</c>, <c>" + """abc"""</c> pairs as <c>" + "</c> then an opener. A triple
+    /// closed on its line sets nothing (the 2-space body below keeps its repair); an opener left unread,
+    /// after a plain, f- or byte-string abort, sets <c>UnreadRemainder</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("y = \"\\q\" + \"\"\"abc\"\"\"\n", LexerNs.LiteralLoss.None)]
+    [InlineData("y = \"\\q\" + \"\"\"\n    key: value\n    \"\"\" + '\"\"\"'\n", LexerNs.LiteralLoss.UnreadRemainder)]
+    [InlineData("y = f\"{a $ b}\" + \"\"\"\n    key: value\n    \"\"\" + '\"\"\"'\n", LexerNs.LiteralLoss.UnreadRemainder)]
+    [InlineData("y = b\"\u00e9\" + \"\"\"\n    key: value\n    \"\"\" + '\"\"\"'\n", LexerNs.LiteralLoss.UnreadRemainder)]
+    public void BudgetStopInsideAnAbortedShortString_ReadsTheRemainderFromTheLiteral(string twentyFifthErrorLine, LexerNs.LiteralLoss expected)
+    {
+        var maxErrors = new LexerNs.Lexer("").MaxErrors;
+        var lexer = Lex(string.Concat(Enumerable.Repeat("x = \"abc\n", maxErrors - 1)) + twentyFifthErrorLine + "def main():\n  x = 1\n");
+
+        lexer.Diagnostics.GetWarnings().Should().Contain(d => d.Code == "SPY0905", "the budget stopped the lexer with source left");
+        lexer.LiteralLoss.Should().Be(expected, Errors(lexer));
+    }
+
+    /// <summary>
     /// <c>strings/d_string_trailing_newline</c> with <c>"""</c> inserted as line 0 (FormattingFallbackTests'
     /// <c>DStringRepaired</c>): it re-pairs into a comment, every closer is followed by a line break and the
     /// lex reports nothing — no lexer fact separates it from the known-limit cells of #2271, and it loses nothing.

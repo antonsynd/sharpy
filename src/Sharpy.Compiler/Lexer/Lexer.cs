@@ -344,8 +344,10 @@ public partial class Lexer
                     if (_diagnostics.ErrorCount >= MaxErrors)
                     {
                         // The rest of the source gets no token: a literal that can span lines in it is
-                        // lost even when it is closed (its lines read as dropped code lines).
-                        if (_position < _source.Length && HoldsALiteralSpanningLines(_source.AsSpan(_position)))
+                        // lost even when it is closed (its lines read as dropped code lines). Read from the
+                        // aborted literal's own start when the stop landed inside one (UnreadTextStart).
+                        var unreadFrom = UnreadTextStart(fromTheAbortedLiteral: !resumesAfterUnclosedField);
+                        if (_position < _source.Length && HoldsALiteralSpanningLines(_source.AsSpan(unreadFrom)))
                             LiteralLoss |= LiteralLoss.UnreadRemainder;
                         _diagnostics.AddWarning(
                             $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
