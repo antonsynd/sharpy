@@ -323,12 +323,28 @@ public sealed class FormattingFallbackTests : IDisposable
     internal static readonly int Budget = new Compiler.Lexer.Lexer("").MaxErrors;
 
     /// <summary>
-    /// N1: the budget's worth of unterminated short strings above <c>main</c>; the lexer stops at its budget
-    /// with <c>main</c>'s closed triple-quoted string unread, so the string's lines read as dropped code.
+    /// N1: the budget's worth of unterminated short strings above <c>main</c>; the compiler's lexer stops at its
+    /// budget with <c>main</c>'s closed triple-quoted string unread (<c>UnreadRemainder</c>). The editor's indent map
+    /// lexes past the budget (R-FP, #2273): the string is read and its lines are literal lines.
     /// </summary>
     internal static readonly string N1 =
         string.Concat(Enumerable.Repeat("x = \"abc\n", Budget))
         + "def main():\n    s = \"\"\"\n    key:\n      sub: 1\n    \"\"\"\n    print(s)\n";
+
+    /// <summary>N1r: N1 with its <c>print(s)</c> at 2 spaces — past the budget, a code line to repair below a string the map reads (R-FP).</summary>
+    internal static readonly string N1r = N1.Replace("    print(s)", "  print(s)", StringComparison.Ordinal);
+
+    /// <summary>
+    /// #2273's program: the budget's worth of unterminated short strings, then a method whose signature continues a
+    /// bracket at column 0. @ 926670989 every line past the stop read as a dropped code line that starts a logical
+    /// line; the column-0 continuation popped every block and Format Document moved <c>        ...</c> out of
+    /// <c>method</c>. <see cref="P2273Under"/> is the same program one error under the budget.
+    /// </summary>
+    internal static readonly string P2273 =
+        string.Concat(Enumerable.Repeat("x = \"abc\n", Budget)) + "class Foo:\n    def method(  # c1\nself) -> None:\n        ...\n";
+
+    /// <summary><see cref="P2273"/> with one error line fewer: the lexer reads every line (the twin the plan measured @ 729bf1e7d).</summary>
+    internal static readonly string P2273Under = P2273.Substring("x = \"abc\n".Length);
 
     /// <summary>N1's string line at width 6 (0-based).</summary>
     internal static readonly int N1SubLine = Budget + 3;
@@ -340,7 +356,9 @@ public sealed class FormattingFallbackTests : IDisposable
     /// <summary>
     /// BSesc (verify round @ 5c8d81f28): the 25th error is a short string aborting mid-line before an opener,
     /// so the budget stop lands INSIDE the aborted <c>"\q"</c>; read from the <c>q</c>, the remainder paired
-    /// its quotes the wrong way and saw no opener — the routes re-indented <c>sub: 1</c>.
+    /// its quotes the wrong way and saw no opener — the routes re-indented <c>sub: 1</c>. Past R-FP (#2273) the map's
+    /// lexer has no budget: the 25th error is an ordinary mid-line abort whose dropped span <c>"\q" + """</c> holds the
+    /// opener — <c>DroppedOpener</c>, a refusal still.
     /// </summary>
     internal static readonly string BSesc =
         string.Concat(Enumerable.Repeat("x = \"abc\n", Budget - 1))
@@ -416,18 +434,47 @@ public sealed class FormattingFallbackTests : IDisposable
             ("range-line", _driver.Range(BSesc, LineRange(BSesc, BSescSubLine)).Edits)).Should().BeEmpty();
     }
 
+    /// <summary>
+    /// R-FP (#2273): past the compiler's error budget the indent map still reads the string, so its lines are
+    /// literal lines — the candidate leaves <c>      sub: 1</c> byte-identical (@ 926670989 it re-indented it and the
+    /// fact refused the whole document) — and a misindented code line below it is repaired (N1r; @ 926670989 no
+    /// edits). The compiler's own lexer still records <c>UnreadRemainder</c> (IndentationServiceLiteralStateTests).
+    /// </summary>
     [Fact]
-    public void N1_BudgetStopWithAStringLeftUnread_FullAndRangeFallbacks_GetNoEdits()
+    public void N1_PastTheBudget_TheStringIsRead_ItsLinesAreUntouched_AndCodeBelowIsRepaired()
     {
-        var damaged = WithLine(N1, N1SubLine, "        sub: 1");
-        FormattingFallback.ReindentDocument(N1).Should().Be(damaged);
-        RangeCandidate(N1, N1SubLine).Should().Be(damaged);
-
+        FormattingFallback.ReindentDocument(N1).Should().Be(N1);
+        RangeCandidate(N1, N1SubLine).Should().Be(N1);
         RoutesThatEdit(
             ("full", _driver.Full(N1).Edits),
-            ("range-line", _driver.Range(N1, LineRange(N1, N1SubLine)).Edits)).Should().BeEmpty();
+            ("range-line", _driver.Range(N1, LineRange(N1, N1SubLine)).Edits)).Should().BeEmpty("N1 is already indented: nothing to repair");
+
+        var repaired = N1r.Replace("  print(s)", "    print(s)", StringComparison.Ordinal);
+        _driver.Full(N1r).Applied.Should().Be(repaired, "the string's lines are kept, the 2-space code line is repaired");
+        _driver.Range(N1r, LineRange(N1r, N1SubLine + 2)).Applied.Should().Be(repaired);
     }
 
+    /// <summary>
+    /// #2273 (R-FP): past the budget the column-0 continuation of <c>method</c>'s signature is read as one, so the
+    /// fallback applies exactly what it applies one error under the budget: the continuation line re-indented to
+    /// 4 spaces and <c>        ...</c> kept at its depth (@ 926670989 full and range-whole moved it to 4 spaces).
+    /// </summary>
+    [Fact]
+    public void P22g_BracketContinuationPastTheBudget_FullAndRangeWhole_KeepTheBody()
+    {
+        var keptUnder = P2273Under.Replace("\nself) -> None:", "\n    self) -> None:", StringComparison.Ordinal);
+        var kept = P2273.Replace("\nself) -> None:", "\n    self) -> None:", StringComparison.Ordinal);
+        _driver.Full(P2273Under).Applied.Should().Be(keptUnder, "the control one error under the budget");
+        _driver.Full(P2273).Applied.Should().Be(kept);
+        _driver.Range(P2273, Lines(0, Budget + 4)).Applied.Should().Be(kept);
+    }
+
+    /// <summary>
+    /// N1t: a 2-space body of 30 lines (each a SPY0013 that error recovery drops) and a 2-space string at its end.
+    /// Past the budget the map now reads every line (R-FP), and the string's opener line <c>  s = """</c> is itself
+    /// a 2-space line recovery drops whole: <c>DroppedOpener</c> — a refusal still, by the dropped line, no longer by
+    /// the budget.
+    /// </summary>
     [Fact]
     public void N1t_BudgetStopAbove2SpaceString_RangeFallback_GetsNoEdits()
     {

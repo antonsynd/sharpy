@@ -342,7 +342,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             _literalState = new(ComputeLiteralState);
             _lexerLiteralLoss = new(() =>
             {
-                var lexer = new Sharpy.Compiler.Lexer.Lexer(Text);
+                var lexer = IndentationService.StructureLexer(Text);
                 lexer.TokenizeAll();
                 return lexer.LiteralLoss;
             });
@@ -393,9 +393,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
 
         /// <summary>
-        /// Which mechanisms set the fact (<see cref="Sharpy.Compiler.Lexer.Lexer.LiteralLoss"/>), read from a lexer
-        /// constructed as <see cref="IndentationService.BuildIndentMap"/> constructs its own (source only, no
-        /// trivia) — the map exposes the boolean alone, and the routes read nothing else.
+        /// Which mechanisms set the fact (<see cref="Sharpy.Compiler.Lexer.Lexer.LiteralLoss"/>), read from the lexer
+        /// <see cref="IndentationService.BuildIndentMap"/> reads (<see cref="IndentationService.StructureLexer"/>: no
+        /// error budget, R-FP) — the map exposes the boolean alone, and the routes read nothing else.
         /// </summary>
         public LiteralLoss LexerLiteralLoss => _lexerLiteralLoss.Value;
 
@@ -2134,9 +2134,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // (the lexer's fact covers every abort-free mechanism). P22g Phase 1 (plan-d923d3) replaced the 20 S6k rows
         // with KnownLimitPin and re-populated the file from a FULL-mode run with the 334 S6n rows of the four
         // budget-stop positions (#2273, the same (stem, twin, route) keys) and 240 S6r rows (#2275) its Phases 2-3
-        // drain. The literal anchors it: changing the allowlist is a visible decision — change this count in the same
-        // commit and say why.
-        rows.Count.Should().Be(574, "P22g Phase 1: S6n 334 (#2273) and S6r 240 (#2275); the 20 S6k rows became KnownLimitPin (#2274)");
+        // drain; Phase 2 drained the 334 S6n rows (the indent map lexes past the error budget, R-FP). The literal
+        // anchors it: changing the allowlist is a visible decision — change this count in the same commit and say why.
+        rows.Count.Should().Be(240, "P22g Phase 2 drained the 334 S6n rows (#2273, R-FP); S6r 240 (#2275) remain; the 20 S6k rows became KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }

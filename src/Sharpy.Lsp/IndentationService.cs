@@ -7,6 +7,18 @@ namespace Sharpy.Lsp;
 internal static class IndentationService
 {
     /// <summary>
+    /// The lexer every indent-only route reads, through <see cref="BuildIndentMap"/> (#2273, owner ruling R-FP):
+    /// the compiler's lexer stops at its error budget (<see cref="Compiler.Lexer.Lexer.MaxErrors"/>, 25) and leaves
+    /// the rest of the source without a token, so every later line read as a dropped code line that starts a
+    /// logical line — a bracket continuation at column 0 then popped every block and Format Document moved a method
+    /// body out of its method. The budget caps the compiler's diagnostics, not the editor's structure: this lexer
+    /// reads every line, and a dropped code line is only one the lexer's error recovery dropped. The ONE place the
+    /// map's lexer is built; the route-parity sweep's mechanism read builds its lexer here too. A pasted file of N
+    /// error lines costs N diagnostics in a bag nothing reads — linear, as lexing N clean lines is.
+    /// </summary>
+    internal static Compiler.Lexer.Lexer StructureLexer(string source) => new(source) { MaxErrors = int.MaxValue };
+
+    /// <summary>
     /// The indent level of every physical line, the tokens it was computed from, and the lexer's
     /// <see cref="Compiler.Lexer.Lexer.LiteralStateUnknown"/>: when true the lexer lost a literal that
     /// can span lines, so which lines are string content (and hence which lines the map may re-indent)
@@ -25,7 +37,7 @@ internal static class IndentationService
     internal static (Dictionary<int, int> LineIndent, List<Token> Tokens, bool LiteralStateUnknown,
         HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics, HashSet<int> HiddenAfterRecovery) BuildIndentMap(string source)
     {
-        var lexer = new Compiler.Lexer.Lexer(source);
+        var lexer = StructureLexer(source);
         List<Token> tokens;
         try
         {
@@ -43,7 +55,8 @@ internal static class IndentationService
         // indent-only fallback exists to repair) the lexer reports SPY0013 on each such line and its
         // error recovery drops the line's tokens, so a token-counted map read every line as level 0
         // and the fallback flattened the whole program to column 0. A code line with no tokens (not
-        // blank, not a comment, not inside a literal) is therefore a logical line the lexer dropped.
+        // blank, not a comment, not inside a literal) is therefore a logical line the lexer's error recovery
+        // dropped — never a line past an error-budget stop: StructureLexer reads every line (R-FP, #2273).
         // A deeper line opens a level only after a block opener (a logical line ending in ':'),
         // so an unexpected indent stays at the current level. For a valid document this agrees with
         // the lexer: INDENT/DEDENT are emitted exactly where the width stack pushes and pops.

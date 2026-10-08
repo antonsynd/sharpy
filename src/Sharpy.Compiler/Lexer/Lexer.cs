@@ -23,7 +23,10 @@ public enum LiteralLoss
     /// <summary>Error recovery dropped text holding a literal that can span lines (its opener is never read).</summary>
     DroppedOpener = 2,
 
-    /// <summary>The error budget stopped the lexer with a literal that can span lines left unread.</summary>
+    /// <summary>
+    /// The error budget stopped the lexer with a literal that can span lines left unread. The compiler's lexer
+    /// still stops; the editor's indent map lexes without a budget and never sees this flag (R-FP, #2273).
+    /// </summary>
     UnreadRemainder = 4,
 
     /// <summary>A triple-quoted closer re-paired into a short string (a stray delimiter above it).</summary>
@@ -145,7 +148,9 @@ public partial class Lexer
     /// the rest of the source without tokens, and a re-paired closer turns string content into code, so
     /// the token stream's map of which lines are string content is a guess from that point — and,
     /// because every later delimiter may pair the other way round, for the whole document. A
-    /// single-quoted literal that ends at its line sets nothing. It changes no token or diagnostic.
+    /// single-quoted literal that ends at its line sets nothing. It changes no token or diagnostic. (The editor's
+    /// indent map lexes without a budget — <c>IndentationService.StructureLexer</c>, R-FP — so a budget stop is
+    /// never what it reads.)
     /// </summary>
     public bool LiteralStateUnknown => LiteralLoss != LiteralLoss.None;
 

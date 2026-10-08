@@ -353,7 +353,6 @@ public class OnTypeFormattingTests : IDisposable
 
     public static TheoryData<string, string, int, string> LiteralLostWithoutAnAbort => new()
     {
-        { "N1", FormattingFallbackTests.N1, FormattingFallbackTests.N1SubLine, "        sub: 1" },
         { "N1t", FormattingFallbackTests.N1t, 32, "    key" },
         { "N4", FormattingFallbackTests.N4, 2, "    key: value" },
         { "N4tab", FormattingFallbackTests.N4tab, 2, "    key: value" },
@@ -369,6 +368,19 @@ public class OnTypeFormattingTests : IDisposable
 
         var edits = await OnTypeAsync(source, line, source.Split('\n')[line].Length, "\n");
 
+        edits.Should().BeNull();
+    }
+
+    /// <summary>
+    /// R-FP (#2273): past the compiler's error budget the indent map reads N1's string, so its line is a literal
+    /// line and on-type leaves it alone (@ 926670989: refused by the budget's fact instead).
+    /// </summary>
+    [Fact]
+    public async Task N1_PastTheBudget_TheStringLine_IsALiteralLine_NoEditAsync()
+    {
+        var line = FormattingFallbackTests.N1SubLine;
+        IndentationService.BuildIndentMap(FormattingFallbackTests.N1).LiteralLines.Should().Contain(line + 1);
+        var edits = await OnTypeAsync(FormattingFallbackTests.N1, line, FormattingFallbackTests.N1.Split('\n')[line].Length, "\n");
         edits.Should().BeNull();
     }
 

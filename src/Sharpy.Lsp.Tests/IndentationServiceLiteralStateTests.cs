@@ -30,7 +30,6 @@ public class IndentationServiceLiteralStateTests
 
     public static TheoryData<string, string, LiteralLoss> LiteralLostWithoutAnAbort => new()
     {
-        { "N1", FormattingFallbackTests.N1, LiteralLoss.UnreadRemainder },
         { "N2", FormattingFallbackTests.N2, LiteralLoss.RePairedCloser },
         { "N4", FormattingFallbackTests.N4, LiteralLoss.DroppedOpener },
         { "X6", FormattingFallbackTests.X6, LiteralLoss.DroppedOpener },
@@ -45,6 +44,45 @@ public class IndentationServiceLiteralStateTests
         var lexer = new Lexer(document);
         lexer.TokenizeAll();
         lexer.LiteralLoss.Should().Be(mechanism, "{0} loses its literal by that mechanism alone, without an abort inside a read", name);
+    }
+
+    /// <summary>
+    /// R-FP (#2273): the compiler's lexer stops at its budget above N1's string (<c>UnreadRemainder</c>); the indent
+    /// map's lexer (<see cref="IndentationService.StructureLexer"/>) reads past it, so the map knows the string.
+    /// </summary>
+    [Fact]
+    public void BuildIndentMap_PastTheBudget_ReadsTheString_WhileTheCompilersLexerStops()
+    {
+        var map = IndentationService.BuildIndentMap(FormattingFallbackTests.N1);
+        map.LiteralStateUnknown.Should().BeFalse("the map's lexer has no error budget");
+        map.LiteralLines.Should().Contain(FormattingFallbackTests.N1SubLine + 1, "N1's string line is a literal line");
+
+        var lexer = new Lexer(FormattingFallbackTests.N1);
+        lexer.TokenizeAll();
+        lexer.LiteralLoss.Should().Be(LiteralLoss.UnreadRemainder, "the compiler's lexer still stops at its budget");
+    }
+
+    /// <summary>
+    /// The map's lexer reads every line of a document with more errors than the compiler's budget: one error per
+    /// line, no SPY0905 (the budget's warning), a token on the last line. Positive control: the compiler's lexer on
+    /// the same text stops at 25 errors, warns SPY0905, and leaves the last line without a token.
+    /// </summary>
+    [Fact]
+    public void StructureLexer_ReadsPastTheBudget()
+    {
+        var source = string.Concat(Enumerable.Repeat("x = \"abc\n", 30)) + "y = 1\n";
+
+        var structure = IndentationService.StructureLexer(source);
+        var tokens = structure.TokenizeAll();
+        structure.Diagnostics.ErrorCount.Should().Be(30);
+        structure.Diagnostics.GetWarnings().Should().NotContain(d => d.Code == "SPY0905");
+        tokens.Should().Contain(t => t.Line == 31 && t.Type == TokenType.Identifier);
+
+        var compiler = new Lexer(source);
+        var compilerTokens = compiler.TokenizeAll();
+        compiler.Diagnostics.ErrorCount.Should().Be(compiler.MaxErrors);
+        compiler.Diagnostics.GetWarnings().Should().Contain(d => d.Code == "SPY0905");
+        compilerTokens.Should().NotContain(t => t.Line == 31 && t.Type == TokenType.Identifier);
     }
 
     public static TheoryData<string, string> NoLiteralLost => new()
