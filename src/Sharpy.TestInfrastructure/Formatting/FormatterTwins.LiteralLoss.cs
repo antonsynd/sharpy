@@ -22,6 +22,25 @@ public static partial class FormatterTwins
     /// <summary>S6a: the lexer's error budget is spent above the parent, which is left unread.</summary>
     public const string BudgetShape = "budget";
 
+    /// <summary>
+    /// Where the error that spends the budget lands within its line (#2273's axis): the shape name and its line,
+    /// below <c>MaxErrors - 1</c> lines of <c>x = "abc</c>. At the line end of an unterminated short string (the
+    /// <see cref="BudgetShape"/> itself: every line is <c>x = "abc</c>), inside a short string aborting mid-line at
+    /// an invalid escape (SPY0004), at an unexpected character inside a replacement field (SPY0015), and at an
+    /// indentation error that drops the line whole (SPY0013) — codes measured with <c>sharpyc emit diagnostics</c>
+    /// @ 729bf1e7d.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Shape, string Line)> BudgetStopLines = new[]
+    {
+        (BudgetShape, "x = \"abc"),
+        (BudgetShape + "-midstring", "x = \"\\q\" + 1"),
+        (BudgetShape + "-field", "x = f\"{a $ b}\""),
+        (BudgetShape + "-indent", "  x = 1"),
+    };
+
+    /// <summary>Whether <paramref name="shape"/> is one of <see cref="BudgetStopLines"/>' shapes.</summary>
+    public static bool IsBudgetShape(string shape) => BudgetStopLines.Any(b => b.Shape == shape);
+
     /// <summary>S6b: a stray triple quote above re-pairs every triple of that quote character; a short string holding the triple closes the last run.</summary>
     public const string RepairShape = "repair";
 
@@ -41,9 +60,59 @@ public static partial class FormatterTwins
     /// <summary>A short string that aborts mid-line at SPY0004 (an invalid escape) with the lexer inside it, and the <c>+</c> after it.</summary>
     private const string AbortingShortString = "\"\\q\" + ";
 
+    /// <summary>
+    /// S6r: the short-string re-pair whose orphan line aborts right after the re-paired closer — <c>repair-</c> and
+    /// the code it aborts at (#2275): the orphan's closing quote is never read as one.
+    /// </summary>
+    public const string RepairCloseLinePrefix = "repair-";
+
+    /// <summary>
+    /// S6x: NO stray — the closer line of the first literal spanning lines gets a tail that aborts there and drops
+    /// no quote character: <c>closeline-</c> and the code. Nothing is lost (#2275's direction control).
+    /// </summary>
+    public const string CloseLinePrefix = "closeline-";
+
+    /// <summary>
+    /// One abort on the close line of a literal spanning lines (#2275): the <see cref="Code"/> it reports, the
+    /// <see cref="OrphanTail"/> that follows the re-paired triple on the orphan line of the <c>repair-</c> shape
+    /// (<c>{o}</c> the quote character other than the literal's, <c>{q}</c> the literal's), and the
+    /// <see cref="ControlTail"/> appended after <c> + </c> on a closer line that re-paired nothing.
+    /// </summary>
+    public sealed record CloseLineCode(string Code, string OrphanTail, string ControlTail)
+    {
+        /// <summary><see cref="OrphanTail"/> for a literal whose quote character is <paramref name="quote"/>.</summary>
+        public string OrphanTailFor(char quote)
+        {
+            var other = quote == '"' ? '\'' : '"';
+            return OrphanTail.Replace("{o}", other.ToString(), StringComparison.Ordinal).Replace("{q}", quote.ToString(), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// The close-line abort axis (#2275, measured with <c>sharpyc emit diagnostics</c> @ 729bf1e7d): an unexpected
+    /// character, a backtick-delimited name left open at its line end, a number with consecutive underscores, a hex
+    /// literal with no digits, and an f-string whose format spec runs to the line end.
+    /// </summary>
+    public static readonly IReadOnlyList<CloseLineCode> CloseLineCodes = new[]
+    {
+        new CloseLineCode("SPY0015", "${o}", "$"),
+        new CloseLineCode("SPY0018", "`{o}", "`x"),
+        new CloseLineCode("SPY0007", "1__2{o}", "1__2"),
+        new CloseLineCode("SPY0008", "0x{o}", "0x"),
+        new CloseLineCode("SPY0022", "f{o} + {q}{x:{q} + str(y)", "f\"{x:"),
+    };
+
+    /// <summary>Whether <paramref name="shape"/> is a <see cref="RepairCloseLinePrefix"/> shape (exactly; <see cref="RepairCommentShape"/> shares the prefix and is not one).</summary>
+    public static bool IsRepairCloseLineShape(string shape) => CloseLineCodes.Any(c => RepairCloseLinePrefix + c.Code == shape);
+
+    /// <summary>Whether <paramref name="shape"/> is a <see cref="CloseLinePrefix"/> shape.</summary>
+    public static bool IsCloseLineShape(string shape) => CloseLineCodes.Any(c => CloseLinePrefix + c.Code == shape);
+
     /// <summary>Every shape <see cref="LiteralLossShapes"/> builds.</summary>
     public static readonly IReadOnlyList<string> LiteralLossShapeNames =
-        new[] { BudgetShape, RepairShape, RepairCommentShape }.Concat(DroppedCodes.Select(c => DroppedShapePrefix + c)).ToArray();
+        BudgetStopLines.Select(b => b.Shape).Concat(new[] { RepairShape, RepairCommentShape }).Concat(DroppedCodes.Select(c => DroppedShapePrefix + c))
+            .Concat(CloseLineCodes.Select(c => RepairCloseLinePrefix + c.Code))
+            .Concat(CloseLineCodes.Select(c => CloseLinePrefix + c.Code)).ToArray();
 
     /// <summary>
     /// The documents in which a CLEAN parent <paramref name="q"/> loses a literal that can span lines WITHOUT
@@ -51,13 +120,20 @@ public static partial class FormatterTwins
     /// literal-state tests derive their documents from. Each keeps Q's text and line breaks byte-for-byte
     /// outside the lines it inserts or rewrites:
     /// <list type="bullet">
-    /// <item><see cref="BudgetShape"/> — for EVERY Q (one without a literal spanning lines is the direction
-    /// control): <see cref="SLexer.MaxErrors"/> lines of <c>x = "abc</c> (an unterminated short string each)
-    /// inserted above line 0;</item>
+    /// <item><see cref="BudgetShape"/> and the other <see cref="BudgetStopLines"/> shapes — for EVERY Q (one without
+    /// a literal spanning lines is the direction control): <see cref="SLexer.MaxErrors"/> lines inserted above line 0,
+    /// <c>MaxErrors - 1</c> of <c>x = "abc</c> (an unterminated short string each) and the shape's own last line;</item>
     /// <item><see cref="RepairShape"/> and <see cref="RepairCommentShape"/> — when Q has a literal spanning
     /// lines: a line holding only the triple of its FIRST such literal's quote character inserted as line 0,
     /// and as the last line <c>_ = '"""'</c> (the triple inside a short string of the other quote character)
     /// or <c># """</c>, so the count of that triple stays even and no read is left open;</item>
+    /// <item><c>repair-SPY00NN</c> — the same stray, the last line <c>_ = '"""</c> followed by
+    /// <see cref="CloseLineCode.OrphanTail"/> in place of the closing quote, so the line aborts right after the
+    /// re-paired closer and the orphan's closing quote sits in the text recovery drops (#2275);</item>
+    /// <item><c>closeline-SPY00NN</c> — no stray: the closer line of Q's FIRST literal spanning lines gets
+    /// <c> + </c> and <see cref="CloseLineCode.ControlTail"/> appended at its end, which aborts and drops no quote
+    /// character — nothing is lost (#2275's direction control). Not built when that line holds a <c>#</c> or ends in
+    /// a <c>\</c> after the closer (the tail would be a comment or a continuation);</item>
     /// <item><c>dropped-SPY00NN</c> — for each literal spanning lines whose closer line is a delimiter line
     /// (its first non-whitespace character is the literal's quote character): the leading whitespace of the
     /// opener and closer line replaced by the opener's + 2 spaces (SPY0013), a tab (SPY0012), a tab and a
@@ -83,7 +159,11 @@ public static partial class FormatterTwins
         var shapes = new List<LiteralLossShape>();
 
         var maxErrors = new SLexer("").MaxErrors;
-        shapes.Add(new LiteralLossShape(BudgetShape, Prepend(q, Enumerable.Repeat("x = \"abc", maxErrors).ToArray()), firstKind, maxErrors, Array.Empty<int>()));
+        foreach (var (shape, line) in BudgetStopLines)
+        {
+            var lines = Enumerable.Repeat("x = \"abc", maxErrors - 1).Append(line).ToArray();
+            shapes.Add(new LiteralLossShape(shape, Prepend(q, lines), firstKind, maxErrors, Array.Empty<int>()));
+        }
 
         if (multiLine.Count > 0)
         {
@@ -93,6 +173,20 @@ public static partial class FormatterTwins
             var stray = Prepend(q, triple);
             shapes.Add(new LiteralLossShape(RepairShape, Append(stray, $"_ = {other}{triple}{other}"), firstKind, 1, Array.Empty<int>()));
             shapes.Add(new LiteralLossShape(RepairCommentShape, Append(stray, $"# {triple}"), firstKind, 1, Array.Empty<int>()));
+            foreach (var code in CloseLineCodes)
+            {
+                shapes.Add(new LiteralLossShape(RepairCloseLinePrefix + code.Code,
+                    Append(stray, $"_ = {other}{triple}{code.OrphanTailFor(quote)}"), firstKind, 1, Array.Empty<int>()));
+            }
+
+            var closerLine = LineOf(lineStarts, multiLine[0].End - 1);
+            var closerEnd = LineContentEnd(q, lineStarts, closerLine);
+            var afterCloser = q.AsSpan(multiLine[0].End, closerEnd - multiLine[0].End);
+            if (afterCloser.IndexOf('#') < 0 && !afterCloser.TrimEnd(" \t").EndsWith("\\"))
+            {
+                foreach (var code in CloseLineCodes)
+                    shapes.Add(new LiteralLossShape(CloseLinePrefix + code.Code, q.Insert(closerEnd, " + " + code.ControlTail), firstKind, 0, Array.Empty<int>()));
+            }
         }
 
         foreach (var (start, end) in multiLine)
