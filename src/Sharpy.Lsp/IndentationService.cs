@@ -16,9 +16,14 @@ internal static class IndentationService
     /// start inside a literal — never re-indented, stripped or blanked: a triple-quoted string's inner
     /// lines, a multi-line replacement field's continuation lines (#2022, #2062; the spans are
     /// <see cref="LiteralSpans"/>, the definition <c>FormatterService</c> uses) — and how many indentation diagnostics (SPY0013, SPY0014) the lexer reported.
+    /// <c>HiddenAfterRecovery</c>: the lines whose first token follows a point where the lexer's error recovery
+    /// resumed (<see cref="Compiler.Lexer.Lexer.RecoveryResumes"/>) and that the token walk read as a continuation —
+    /// recovery emits no <c>Newline</c>, so the line after a dropped one never starts a logical line here. The map
+    /// leaves them as continuations; the indent-only check judges their block depth too, so a re-indent that moves
+    /// one is refused (P22g: an on-type re-indent of the line above an erroring closer line moved the line after it).
     /// </summary>
     internal static (Dictionary<int, int> LineIndent, List<Token> Tokens, bool LiteralStateUnknown,
-        HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics) BuildIndentMap(string source)
+        HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics, HashSet<int> HiddenAfterRecovery) BuildIndentMap(string source)
     {
         var lexer = new Compiler.Lexer.Lexer(source);
         List<Token> tokens;
@@ -29,7 +34,7 @@ internal static class IndentationService
         catch (Exception)
         {
             // no tokens: no literal is known
-            return (new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0);
+            return (new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0, new HashSet<int>());
         }
 
         // Levels come from the WIDTH stack of each logical line's leading whitespace, in physical
@@ -74,7 +79,23 @@ internal static class IndentationService
             }
         }
 
-        var literalLines = LiteralSpans.LinesStartingInside(source, LiteralSpans.Of(tokens));
+        var resumes = lexer.RecoveryResumes;
+        var literalLines = LiteralSpans.LinesStartingInside(source, LiteralSpans.Of(tokens, resumes));
+
+        var hiddenAfterRecovery = new HashSet<int>();
+        var resume = 0;
+        foreach (var token in tokens)
+        {
+            if (resume == resumes.Count)
+                break;
+            if (token.Position < 0 || token.Type is TokenType.Indent or TokenType.Dedent or TokenType.Newline or TokenType.Eof
+                || token.Position < resumes[resume])
+                continue;
+            while (resume < resumes.Count && resumes[resume] <= token.Position)
+                resume++;
+            if (logicalStart.TryGetValue(token.Line, out var startsLine) && !startsLine && !literalLines.Contains(token.Line))
+                hiddenAfterRecovery.Add(token.Line);
+        }
         var lineIndent = new Dictionary<int, int>();
         var logicalLineStarts = new HashSet<int>();
         var widths = new List<int> { 0 };
@@ -125,7 +146,7 @@ internal static class IndentationService
 
         var indentationDiagnostics = lexer.Diagnostics.GetAll().Count(d =>
             d.Code is DiagnosticCodes.Lexer.InvalidIndentation or DiagnosticCodes.Lexer.IndentationMismatch);
-        return (lineIndent, tokens, lexer.LiteralStateUnknown, logicalLineStarts, literalLines, indentationDiagnostics);
+        return (lineIndent, tokens, lexer.LiteralStateUnknown, logicalLineStarts, literalLines, indentationDiagnostics, hiddenAfterRecovery);
     }
 
     private static int LeadingWhitespaceWidth(IReadOnlyList<string> sourceLines, int line)

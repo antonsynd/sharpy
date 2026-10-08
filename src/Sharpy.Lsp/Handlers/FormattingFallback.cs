@@ -116,10 +116,12 @@ internal static class FormattingFallback
         if (after.IndentationDiagnostics > before.IndentationDiagnostics)
             return false;
 
-        var appliedDepths = BlockDepths(appliedLines, after.LogicalLineStarts);
-        foreach (var (line, depth) in BlockDepths(sourceLines, before.LogicalLineStarts))
+        // The lines the map reads as continuations only because no Newline follows an error recovery
+        // (HiddenAfterRecovery) are judged with the logical lines: a re-indent may not move one either (P22g).
+        var appliedDepths = BlockDepths(appliedLines, DepthJudgedLines(after));
+        foreach (var (line, depth) in BlockDepths(sourceLines, DepthJudgedLines(before)))
         {
-            if (depth >= 0 && appliedDepths[line] != depth)
+            if (depth >= 0 && (!appliedDepths.TryGetValue(line, out var appliedDepth) || appliedDepth != depth))
                 return false;
         }
 
@@ -136,6 +138,14 @@ internal static class FormattingFallback
     /// is indented with a tab still moves it — a 2-space document's nesting is the structure its re-indent
     /// to 4 spaces must keep.
     /// </summary>
+    private static HashSet<int> DepthJudgedLines((Dictionary<int, int> LineIndent, List<Compiler.Lexer.Token> Tokens, bool LiteralStateUnknown,
+        HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics, HashSet<int> HiddenAfterRecovery) map)
+    {
+        var lines = new HashSet<int>(map.LogicalLineStarts);
+        lines.UnionWith(map.HiddenAfterRecovery);
+        return lines;
+    }
+
     private static Dictionary<int, int> BlockDepths(IReadOnlyList<string> lines, HashSet<int> logicalLineStarts)
     {
         var depths = new Dictionary<int, int>();

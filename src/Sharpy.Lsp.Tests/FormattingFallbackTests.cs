@@ -625,4 +625,47 @@ public sealed class FormattingFallbackTests : IDisposable
         _driver.OnType(document, 1).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
         _driver.Range(document, LineRange(document, 3)).Applied.Should().Be(WithLine(document, 3, "    print(x)"));
     }
+
+    // ---- P22g (found by the route-parity sweep's S6x direction control): error recovery emits no Newline, so the
+    // line after an error read as a continuation of the dropped one. The lexer now records where recovery resumed
+    // (Lexer.RecoveryResumes); LiteralSpans resets there, and the indent-only check judges the hidden line's depth.
+
+    /// <summary>
+    /// An f-string abandoned while its format spec is typed (<c>a = f"{x:</c>), right above a triple f-string whose
+    /// replacement field spans lines, and a 2-space line to repair at the end. @ 926670989 LiteralSpans paired the
+    /// abandoned start with the triple's end, so the field's line <c>        x * 2</c> read as code: full and
+    /// range-whole rewrote it to 4 spaces, and range-line 3 too.
+    /// </summary>
+    internal const string AbandonedFStringAboveAField =
+        "def main():\n    a = f\"{x:\n    print(f\"\"\"total: {\n        x * 2\n    }\"\"\")\n    b = 1\n  c = 2\n";
+
+    [Fact]
+    public void AnFStringAbandonedByRecovery_TheNextLiteralsFieldLine_IsUntouched_AndTheCodeIsRepaired()
+    {
+        const string d = AbandonedFStringAboveAField;
+        var repaired = WithLine(d, 6, "    c = 2");
+        _driver.Full(d).Applied.Should().Be(repaired, "the field line is string content; c = 2 is the repair (@ 926670989 x * 2 moved to 4 spaces)");
+        _driver.Range(d, Lines(0, 7)).Applied.Should().Be(repaired);
+        _driver.Range(d, LineRange(d, 3)).Edits.Should().BeEmpty("line 3 starts inside the triple f-string's replacement field");
+        _driver.OnType(d, 6).Applied.Should().Be(repaired, "direction: the code line after the literal keeps its on-type repair");
+    }
+
+    /// <summary>
+    /// An 8-space document whose <c>dr"""</c> closer line aborts (<c>""" + $</c>): the line after it is hidden from
+    /// the logical lines. @ 926670989 on-type and range-line 1 re-indented line 1 alone to 4 spaces and left
+    /// <c>print(s)</c> at 8 — one block deeper than its sibling. Full re-indents both and keeps its repair.
+    /// </summary>
+    internal const string WideCloserLineAbort =
+        "def main():\n        s: str = dr\"\"\"\n        \\d+\n        \\s+\n        \"\"\" + $\n        print(s)\n";
+
+    [Fact]
+    public void ALineHiddenAfterRecovery_KeepsItsBlock_PartialReindentsAreRefused()
+    {
+        const string d = WideCloserLineAbort;
+        RoutesThatEdit(
+            ("ontype@1", _driver.OnType(d, 1).Edits),
+            ("range-line 1", _driver.Range(d, LineRange(d, 1)).Edits)).Should().BeEmpty("re-indenting line 1 alone moves line 5 into a deeper block");
+        _driver.Full(d).Applied.Should().Be(WithLine(WithLine(d, 1, "    s: str = dr\"\"\""), 5, "    print(s)"),
+            "direction: the full fallback re-indents both lines and keeps its repair");
+    }
 }

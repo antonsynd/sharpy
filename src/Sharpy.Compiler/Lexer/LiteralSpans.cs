@@ -9,16 +9,28 @@ namespace Sharpy.Compiler.Lexer;
 /// </summary>
 internal static class LiteralSpans
 {
-    /// <summary>The [start, end) spans, in source order, non-overlapping.</summary>
-    public static List<(int Start, int End)> Of(IReadOnlyList<Token> tokens)
+    /// <summary>
+    /// The [start, end) spans, in source order, non-overlapping. <paramref name="recoveryResumes"/> — the lexer's
+    /// <see cref="Lexer.RecoveryResumes"/> for a source that did not lex clean — are where error recovery abandoned
+    /// any f-string still open: no token marks them, and an abandoned f-string's start would otherwise pair with
+    /// the NEXT f-string's end and leave that literal (and every line inside it) without a span (P22g).
+    /// </summary>
+    public static List<(int Start, int End)> Of(IReadOnlyList<Token> tokens, IReadOnlyList<int>? recoveryResumes = null)
     {
         var spans = new List<(int, int)>();
         var fstringDepth = 0;
         var fstringStart = -1;
+        var resume = 0;
         foreach (var token in tokens)
         {
             if (token.Position < 0)
                 continue;
+            while (recoveryResumes != null && resume < recoveryResumes.Count && recoveryResumes[resume] <= token.Position)
+            {
+                fstringDepth = 0;   // recovery clears the lexer's f-string stack (RecoverFromError)
+                resume++;
+            }
+
             switch (token.Type)
             {
                 // An f-string never contains a Newline token (in-hole newlines are trivia); one here

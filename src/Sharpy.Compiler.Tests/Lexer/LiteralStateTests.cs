@@ -623,7 +623,7 @@ public class LiteralStateTests
                 foreach (var shape in FormatterTwins.LiteralLossShapes(q, includeMismatch: wide))
                 {
                     var lexer = new LexerNs.Lexer(shape.Text);
-                    var dLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(shape.Text, LexerNs.LiteralSpans.Of(lexer.TokenizeAll()));
+                    var dLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(shape.Text, LexerNs.LiteralSpans.Of(lexer.TokenizeAll(), lexer.RecoveryResumes));
                     var where = $"{name}{(wide ? " (wide)" : "")} {shape.Shape}";
                     if (shape.Shape == FormatterTwins.BudgetShape && shape.Kind == null)
                     {
@@ -654,6 +654,37 @@ public class LiteralStateTests
         failures.Should().BeEmpty();
         ownFlag.Where(a => a.Value == 0).Select(a => a.Key).Should().BeEmpty("every loss shape must reach the lexer with a lost literal line, no abort, and its own mechanism's flag");
         directionControls.Should().BeGreaterThan(100, "most fixtures hold no literal spanning lines");
+    }
+
+    /// <summary>
+    /// P22g: error recovery resumes on the next line without a <c>Newline</c> token, so the lexer records where
+    /// (<see cref="LexerNs.Lexer.RecoveryResumes"/>). An f-string abandoned while its format spec is typed keeps its
+    /// <c>FStringStart</c> in the stream; <see cref="LexerNs.LiteralSpans.Of"/> resets at the recovery point, so the
+    /// next line's triple f-string — whose replacement field spans lines — keeps its span. The lexer lost nothing:
+    /// the fact stays <c>None</c>. Positive control: the same tokens without the recovery points lose the span.
+    /// </summary>
+    [Fact]
+    public void AnFStringAbandonedByRecovery_DoesNotSwallowTheNextLiteralsSpan()
+    {
+        const string source = "def main():\n    a = f\"{x:\n    print(f\"\"\"total: {\n        x * 2\n    }\"\"\")\n";
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+
+        lexer.RecoveryResumes.Should().Equal(new[] { source.IndexOf("    print", StringComparison.Ordinal) }, "recovery resumes at the start of the line after the dropped one");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+        LexerNs.LiteralSpans.LinesStartingInside(source, LexerNs.LiteralSpans.Of(tokens, lexer.RecoveryResumes))
+            .Should().BeEquivalentTo(new[] { 4, 5 }, "the triple f-string's field and closer lines are literal");
+        LexerNs.LiteralSpans.LinesStartingInside(source, LexerNs.LiteralSpans.Of(tokens))
+            .Should().BeEmpty("positive control: without the recovery points the abandoned start pairs with the triple's end");
+    }
+
+    /// <summary>A lex that recovers from nothing resumes nowhere.</summary>
+    [Fact]
+    public void ACleanLex_RecordsNoRecoveryPoint()
+    {
+        var lexer = new LexerNs.Lexer("def main():\n    a = f\"{x}\"\n    print(a)\n");
+        lexer.TokenizeAll();
+        lexer.RecoveryResumes.Should().BeEmpty();
     }
 
     /// <summary>(prefix, opener offset, offset of the closing delimiter) of every triple-quoted literal.</summary>

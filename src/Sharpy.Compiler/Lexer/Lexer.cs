@@ -102,6 +102,17 @@ public partial class Lexer
     private int? _resumeAfterUnclosedField;  // see ReportUnclosedField
     private int _multiLineLiteralReads;      // see MultiLineLiteralRead
     private int _tokenStart;                 // start of the token NextToken's main loop is reading; see NoteDroppedSpan
+    private readonly List<int> _recoveryResumes = new();     // see RecoveryResumes
+
+    /// <summary>
+    /// The source offsets where error recovery resumed, ascending: the start of the line after the text
+    /// <see cref="RecoverFromError"/> skipped. No token marks the point — recovery consumes the dropped line's
+    /// break without a <c>Newline</c> — so a token consumer that resets per-line state at a <c>Newline</c> reads
+    /// the line after an error as a continuation of the dropped one: an f-string abandoned by recovery pairs
+    /// with the next f-string's end (<see cref="LiteralSpans.Of"/>), and the indent map's next line starts no
+    /// logical line (P22g). Recording it changes no token, span, trivia or diagnostic.
+    /// </summary>
+    internal IReadOnlyList<int> RecoveryResumes => _recoveryResumes;
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
@@ -492,6 +503,8 @@ public partial class Lexer
 
         // Clear f-string state — unterminated f-strings shouldn't affect recovery
         _fstringStack.Clear();
+
+        _recoveryResumes.Add(_position);
     }
 
     /// <summary>
