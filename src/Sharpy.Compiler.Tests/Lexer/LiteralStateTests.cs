@@ -881,6 +881,26 @@ public class LiteralStateTests
             .Should().BeEmpty("positive control: without the recovery points the abandoned start pairs with the triple's end");
     }
 
+    /// <summary>
+    /// The recovery points whose dropped line continues on the next (<see cref="LexerNs.Lexer.RecoveryResumesAfterAContinuedLine"/>):
+    /// a bracket left open (an abort inside a call or a list, an unterminated string inside one) or a trailing backslash.
+    /// A dropped line that ends its statement — <c>""" + $</c> on a closer line, <c>x = $</c> — is not one.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x = foo($,\n        a)\n", true)]
+    [InlineData("def main():\n    x = foo(\"abc,\n        a)\n", true)]
+    [InlineData("def main():\n    xs = [1, 2, $\n        3]\n", true)]
+    [InlineData("def main():\n    y = 1 + $ \\\n        2\n", true)]
+    [InlineData("def main():\n    s = \"\"\"\n    a\n    \"\"\" + $\n    print(s)\n", false)]
+    [InlineData("def main():\n    x = $\n    y = 1\n", false)]
+    public void ARecoveryPoint_KnowsWhetherTheDroppedLineContinues(string source, bool continues)
+    {
+        var lexer = Lex(source);
+
+        lexer.RecoveryResumes.Should().ContainSingle(Errors(lexer));
+        lexer.RecoveryResumesAfterAContinuedLine.Contains(lexer.RecoveryResumes[0]).Should().Be(continues, source);
+    }
+
     /// <summary>A lex that recovers from nothing resumes nowhere.</summary>
     [Fact]
     public void ACleanLex_RecordsNoRecoveryPoint()

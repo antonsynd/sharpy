@@ -33,6 +33,8 @@ internal static class IndentationService
     /// recovery emits no <c>Newline</c>, so the line after a dropped one never starts a logical line here. The map
     /// leaves them as continuations; the indent-only check judges their block depth too, so a re-indent that moves
     /// one is refused (P22g: an on-type re-indent of the line above an erroring closer line moved the line after it).
+    /// Not when the dropped line itself continues (<see cref="Compiler.Lexer.Lexer.RecoveryResumesAfterAContinuedLine"/>):
+    /// the next line is the user's continuation, which the fallback aligns to its block.
     /// </summary>
     internal static (Dictionary<int, int> LineIndent, List<Token> Tokens, bool LiteralStateUnknown,
         HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics, HashSet<int> HiddenAfterRecovery) BuildIndentMap(string source)
@@ -104,9 +106,13 @@ internal static class IndentationService
             if (token.Position < 0 || token.Type is TokenType.Indent or TokenType.Dedent or TokenType.Newline or TokenType.Eof
                 || token.Position < resumes[resume])
                 continue;
+            var resumedAt = resumes[resume];
             while (resume < resumes.Count && resumes[resume] <= token.Position)
-                resume++;
-            if (logicalStart.TryGetValue(token.Line, out var startsLine) && !startsLine && !literalLines.Contains(token.Line))
+                resumedAt = resumes[resume++];
+            // A dropped line that continues (a bracket left open, a trailing backslash) is followed by the user's
+            // continuation line: the fallback aligns it as one, and judging its depth would refuse the whole repair.
+            if (!lexer.RecoveryResumesAfterAContinuedLine.Contains(resumedAt)
+                && logicalStart.TryGetValue(token.Line, out var startsLine) && !startsLine && !literalLines.Contains(token.Line))
                 hiddenAfterRecovery.Add(token.Line);
         }
         var lineIndent = new Dictionary<int, int>();

@@ -112,6 +112,17 @@ public partial class Lexer
     /// </summary>
     internal IReadOnlyList<int> RecoveryResumes => _recoveryResumes;
 
+    private readonly HashSet<int> _recoveryResumesAfterAContinuedLine = new();
+
+    /// <summary>
+    /// The <see cref="RecoveryResumes"/> whose dropped line continues on the next: a bracket was still open when the
+    /// lexer gave up (<c>x = foo($,</c>) or the dropped text ends in a backslash (<c>y = 1 + $ \</c>). The line after
+    /// such a recovery is the user's continuation line, not a statement, even though recovery resets the brackets —
+    /// the indent map keeps it out of the lines whose block depth the indent-only check judges (P22g; the verify
+    /// round's lost repair).
+    /// </summary>
+    internal IReadOnlySet<int> RecoveryResumesAfterAContinuedLine => _recoveryResumesAfterAContinuedLine;
+
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
     /// </summary>
@@ -465,12 +476,20 @@ public partial class Lexer
     /// </summary>
     private void RecoverFromError()
     {
+        // Whether the dropped line continues on the next (RecoveryResumesAfterAContinuedLine): read before the
+        // brackets are reset below, and from the text skipped here.
+        var continues = _bracketDepth > 0;
+        var lastSkipped = '\0';
+
         // Skip to the next newline character (\n or \r)
         while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
         {
+            if (_source[_position] is not (' ' or '\t'))
+                lastSkipped = _source[_position];
             _position++;
             _column++;
         }
+        continues |= lastSkipped == '\\';
 
         // Advance past the newline if present (handle \n, \r\n, and bare \r)
         if (_position < _source.Length)
@@ -509,6 +528,8 @@ public partial class Lexer
         _fstringStack.Clear();
 
         _recoveryResumes.Add(_position);
+        if (continues)
+            _recoveryResumesAfterAContinuedLine.Add(_position);
     }
 
     /// <summary>

@@ -698,6 +698,32 @@ public sealed class FormattingFallbackTests : IDisposable
     }
 
     /// <summary>
+    /// The verify round's lost repair (P22g, found by the refuting verifier @ 9202e3b83): when the line error recovery
+    /// drops CONTINUES — a bracket left open, a trailing backslash — the next line is the user's continuation line, and
+    /// the fallback aligns it to its block as it does every continuation. Judging its depth (HiddenAfterRecovery) refused
+    /// the whole repair; @ 926670989 these were repaired to exactly this text. The dropped line's continuation is now
+    /// recorded by the lexer (RecoveryResumesAfterAContinuedLine) and such a line is not depth-judged.
+    /// </summary>
+    public static TheoryData<string, string> ContinuedLineDroppedByRecovery => new()
+    {
+        { "call $", "    x = foo($,\n        a)\n    print(x)\n" },
+        { "call string", "    x = foo(\"abc,\n        a)\n    print(x)\n" },
+        { "list $", "    xs = [1, 2, $\n        3]\n    print(xs)\n" },
+        { "backslash", "    y = 1 + $ \\\n        2\n    print(y)\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ContinuedLineDroppedByRecovery))]
+    public void DirectionControl_AContinuedLineDroppedByRecovery_FullAndRangeWholeKeepTheirRepair(string name, string body)
+    {
+        var document = "def f():\n  return 1\n\ndef main():\n" + body;
+        var lines = document.Split('\n');
+        var repaired = WithLine(WithLine(document, 1, "    return 1"), 5, "    " + lines[5].TrimStart());
+        _driver.Full(document).Applied.Should().Be(repaired, name);
+        _driver.Range(document, Lines(0, lines.Length - 1)).Applied.Should().Be(repaired, name);
+    }
+
+    /// <summary>
     /// An 8-space document whose <c>dr"""</c> closer line aborts (<c>""" + $</c>): the line after it is hidden from
     /// the logical lines. @ 926670989 on-type and range-line 1 re-indented line 1 alone to 4 spaces and left
     /// <c>print(s)</c> at 8 — one block deeper than its sibling. Full re-indents both and keeps its repair.
