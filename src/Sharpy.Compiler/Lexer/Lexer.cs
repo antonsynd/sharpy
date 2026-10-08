@@ -60,13 +60,8 @@ public partial class Lexer
         if (_multiLineLiteralReads > 0 || _fstringStack.Any(c => c.IsTriple || c.StartLine < _line))
             LiteralLoss |= LiteralLoss.AbortInsideLiteral;
 
-        // An unterminated short string on the line where a literal that spanned lines closed: its opening
-        // quote is an orphan the closer re-paired with (`t = '""" '` below a stray `"""`), see
-        // NoteMultiLineLiteralClosed.
-        if (line == _lastMultiLineCloseLine
-            && code is DiagnosticCodes.Lexer.UnterminatedString or DiagnosticCodes.Lexer.UnterminatedFString
-                or DiagnosticCodes.Lexer.UnterminatedRawString or DiagnosticCodes.Lexer.UnterminatedByteString)
-            LiteralLoss |= LiteralLoss.RePairedCloser;
+        // An abort on the line where a literal that spanned lines closed is read where the lexer gives up the
+        // rest of that line (NoteUnreadLine, R-FR), not by its code here.
 
         // Compute a TextSpan from line/column using SourceText if available,
         // otherwise fall back to the current _position with a length of 1.
@@ -133,8 +128,9 @@ public partial class Lexer
     /// (an opener line skipped at an indentation error, or the rest of a line after a mid-line abort).</item>
     /// <item><see cref="LiteralLoss.UnreadRemainder"/> — the error budget stopped the lexer with one left unread.</item>
     /// <item><see cref="LiteralLoss.RePairedCloser"/> — a triple-quoted closer re-paired into a short
-    /// string: it is immediately followed by a quote character, or an unterminated short string is
-    /// reported on the line where a literal that spanned lines closed.</item>
+    /// string: it is immediately followed by a quote character, or the lexer gives up the rest of the line
+    /// where a literal that spanned lines closed and that text holds a quote character — whatever the abort's
+    /// code (<see cref="NoteUnreadLine"/>, R-FR).</item>
     /// </list>
     /// Recording a flag changes no token, span, trivia or diagnostic.
     /// </summary>
@@ -357,12 +353,15 @@ public partial class Lexer
                 }
                 if (_diagnostics.ErrorCount >= MaxErrors || _position >= _source.Length)
                 {
+                    // Neither stop runs recovery, so the rest of this line is given up here: the close-line
+                    // rule reads it as NoteDroppedSpan does (one NoteUnreadLine for every hook). Read from the
+                    // aborted literal's own start when the abort landed inside one (UnreadTextStart).
+                    var unreadFrom = UnreadTextStart(fromTheAbortedLiteral: !resumesAfterUnclosedField);
+                    NoteUnreadLine(unreadFrom);
                     if (_diagnostics.ErrorCount >= MaxErrors)
                     {
                         // The rest of the source gets no token: a literal that can span lines in it is
-                        // lost even when it is closed (its lines read as dropped code lines). Read from the
-                        // aborted literal's own start when the stop landed inside one (UnreadTextStart).
-                        var unreadFrom = UnreadTextStart(fromTheAbortedLiteral: !resumesAfterUnclosedField);
+                        // lost even when it is closed (its lines read as dropped code lines).
                         if (_position < _source.Length && HoldsALiteralSpanningLines(_source.AsSpan(unreadFrom)))
                             LiteralLoss |= LiteralLoss.UnreadRemainder;
                         _diagnostics.AddWarning(

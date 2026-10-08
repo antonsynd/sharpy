@@ -482,6 +482,135 @@ public class LiteralStateTests
         lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
     }
 
+    // ---------------------------------------------------------------- P22g (#2275, R-FR): any abort on the close line
+
+    public static IEnumerable<object[]> CloseLineCodeByTripleQuote()
+        => FormatterTwins.CloseLineCodes.SelectMany(c => new[] { "\"\"\"", "'''" }.Select(q => new object[] { c.Code, q }));
+
+    /// <summary>The close line of the N2 shape, line 6: a stray triple, a closed block, and the orphan line.</summary>
+    private static string N2Shape(string quotes, string orphanLine)
+        => $"{quotes}\ndef main():\n    s = {quotes}\n      key: value\n    {quotes}\n    {orphanLine}\n    print(s)\n";
+
+    private static string?[] CodesOnLine(LexerNs.Lexer lexer, int line)
+        => lexer.Diagnostics.GetErrors().Where(d => d.Line == line).Select(d => d.Code).ToArray();
+
+    /// <summary>
+    /// #2275: the N2 shape whose orphan line aborts right after the re-paired closer, at each code of
+    /// <see cref="FormatterTwins.CloseLineCodes"/> (the recipe's own tails) — the orphan's closing quote sits in the
+    /// text the lexer gives up, so arm (b) records <c>RePairedCloser</c> whatever the code (R-FR). The close line's
+    /// code is asserted first: a row that reports another code is a test defect. Before P22g only the four
+    /// unterminated-string codes reached arm (b).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CloseLineCodeByTripleQuote))]
+    public void AbortOnTheCloseLineWithAQuoteInTheDroppedSpan_SetsRePairedCloser(string code, string quotes)
+    {
+        var o = quotes[0] == '"' ? '\'' : '"';
+        var tail = FormatterTwins.CloseLineCodes.Single(c => c.Code == code).OrphanTailFor(quotes[0]);
+        var lexer = Lex(N2Shape(quotes, $"t = {o}{quotes}{tail}"));
+
+        CodesOnLine(lexer, 6).Should().Equal(new[] { code }, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    /// <summary>
+    /// #2275's other orphan spellings: the dropped span after the abort holds the orphan's quote — after the abort
+    /// (<c>$5'</c>, <c> $ '</c>), and inside a backtick-delimited name the lexer reads to its line end before it
+    /// reports SPY0018 (<c>`'</c>, <c> see `x'</c>, <c>`x'</c>): the span starts at the name (UnreadTextStart), else it
+    /// would be empty and the quote never seen.
+    /// </summary>
+    [Theory]
+    [InlineData("t = '\"\"\" costs $5'", "SPY0015")]
+    [InlineData("t = '\"\"\" $ '", "SPY0015")]
+    [InlineData("t = '\"\"\"`'", "SPY0018")]
+    [InlineData("t = '\"\"\" see `x'", "SPY0018")]
+    [InlineData("t = '\"\"\"`x'", "SPY0018")]
+    public void OrphanQuoteInTheTextTheLexerGivesUp_SetsRePairedCloser(string orphanLine, string code)
+    {
+        var lexer = Lex(N2Shape("\"\"\"", orphanLine));
+
+        CodesOnLine(lexer, 6).Should().Equal(new[] { code }, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    /// <summary>
+    /// The known limit of #2274 that R-FR (b) cannot reach (R-btname): the orphan quote is READ — it opens the short
+    /// string <c>' + `it'</c>, closed by the apostrophe inside a later backtick name — and the aborting backtick's
+    /// text holds no quote: the lexer signature of <c>""" + `x</c> on a close line, which loses nothing. Pinned so a
+    /// later cure is a visible change.
+    /// </summary>
+    [Fact]
+    public void OrphanQuoteReadAsAShortString_RBtname_SetsNothing_KnownLimit2274()
+    {
+        var lexer = Lex(N2Shape("\"\"\"", "t = '\"\"\"x' + `it's`"));
+
+        CodesOnLine(lexer, 6).Should().Equal(new[] { "SPY0018" }, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
+    /// <summary>
+    /// #2275's direction control: no stray, a closer line that aborts and drops no quote (<c>""" + 1__2</c>,
+    /// <c>""" + $</c>, a backtick name, <c>0x</c>, an f-string spec) lost nothing and records nothing. With the
+    /// quote condition dropped (R-FR's rejected option (a)) these go red.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CloseLineCodeByTripleQuote))]
+    public void AbortOnTheCloseLineWithNoQuote_SetsNothing(string code, string quotes)
+    {
+        var tail = FormatterTwins.CloseLineCodes.Single(c => c.Code == code).ControlTail;
+        var lexer = Lex($"def main():\n    s = {quotes}\n      a\n    {quotes} + {tail}\n    print(s)\n");
+
+        CodesOnLine(lexer, 4).Should().Equal(new[] { code }, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
+    /// <summary>
+    /// The budget stop landing ON the close line: 23 errors above the N2 shape, whose <c>key: value</c> line is the
+    /// 24th (SPY0013) and the orphan's abort the 25th. The stop runs no recovery, so it reads the close-line rule
+    /// itself (one NoteUnreadLine for every hook).
+    /// </summary>
+    [Fact]
+    public void BudgetStopOnTheCloseLine_SetsRePairedCloser()
+    {
+        var lexer = Lex(string.Concat(Enumerable.Repeat("x = \"abc\n", 23)) + N2Shape("\"\"\"", "t = '\"\"\"$'"));
+
+        lexer.Diagnostics.GetWarnings().Should().Contain(d => d.Code == "SPY0905", "the 25th error stops the lexer");
+        CodesOnLine(lexer, 23 + 6).Should().Equal(new[] { "SPY0015" }, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    /// <summary>
+    /// The end-of-source stop on the close line: the orphan line is the document's last, with no line break, so the
+    /// unterminated short string (SPY0001) aborts at the end of the source and no recovery runs — the stop reads the
+    /// close-line rule itself, as the budget stop does (the four-code arm in ReportError used to cover it).
+    /// </summary>
+    [Theory]
+    [InlineData("t = '\"\"\" '")]
+    [InlineData("t = '\"\"\" f'{x}")]
+    public void AbortAtTheEndOfTheSourceOnTheCloseLine_SetsRePairedCloser(string orphanLine)
+    {
+        var lexer = Lex(N2Shape("\"\"\"", orphanLine).Replace("\n    print(s)\n", "", StringComparison.Ordinal));
+
+        lexer.Diagnostics.GetErrors().Should().Contain(d => d.Line == 6, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
+    }
+
+    /// <summary>
+    /// A report that drops no text records nothing (R-FR: "a code that reports without dropping loses nothing"):
+    /// the two dedented-string indentation errors are reported without an abort, on a literal that spans lines.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    s = d\"\"\"\n        a\n      b\n        \"\"\"\n    print(s)\n")]
+    [InlineData("def main():\n    s = d\"\"\"\n        a\"\"\"\n    print(s)\n")]
+    public void DedentedStringReport_DropsNothing_SetsNothing(string source)
+    {
+        var lexer = Lex(source);
+
+        lexer.Diagnostics.GetErrors().Should().OnlyContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Lexer.DedentedStringIndentationError, Errors(lexer));
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
     /// <summary>
     /// N1c / N1s: a budget stop whose remainder holds no literal that spans lines — the fallback's main use
     /// case (a 2-space body) keeps its repair. Positive twin: <see cref="BudgetStopWithALiteralLeft_SetsUnreadRemainder"/>.
@@ -595,8 +724,8 @@ public class LiteralStateTests
     /// dropped-delimiter code → <c>DroppedOpener</c>. Direction controls: a budget document of a fixture with NO
     /// literal spanning lines, and a <c>closeline-</c> document (a closer line that aborts and drops no quote, #2275)
     /// that loses no literal line, set nothing. The comment re-pair is not asserted: no lexer fact can see it
-    /// (#2274). The <c>repair-SPY00NN</c> shapes join at P22g Phase 3 (their rows live in the route-parity sweep's
-    /// allowlist until then).
+    /// (#2274). The <c>repair-SPY00NN</c> shapes (an orphan line that aborts after the re-paired closer, #2275) →
+    /// <c>RePairedCloser</c> through the close-line rule (P22g Phase 3, R-FR).
     /// </summary>
     [Fact]
     public void Corpus_EveryAbortFreeLossShape_SetsItsMechanismsFlag()
@@ -609,6 +738,8 @@ public class LiteralStateTests
         foreach (var (budget, _) in FormatterTwins.BudgetStopLines)
             expected[budget] = LexerNs.LiteralLoss.UnreadRemainder;
         expected[FormatterTwins.RepairShape] = LexerNs.LiteralLoss.RePairedCloser;
+        foreach (var code in FormatterTwins.CloseLineCodes)
+            expected[FormatterTwins.RepairCloseLinePrefix + code.Code] = LexerNs.LiteralLoss.RePairedCloser;
         var asserted = expected.Keys.ToDictionary(k => k, _ => 0);
         var ownFlag = expected.Keys.ToDictionary(k => k, _ => 0);
         var directionControls = 0;

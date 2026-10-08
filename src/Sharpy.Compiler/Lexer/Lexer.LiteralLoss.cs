@@ -22,11 +22,33 @@ public partial class Lexer
     private void NoteDroppedSpan(bool fromTheAbortedLiteral)
     {
         var start = UnreadTextStart(fromTheAbortedLiteral);
+        var end = NoteUnreadLine(start);
+        if (HoldsALiteralSpanningLines(_source.AsSpan(start, end - start)))
+            LiteralLoss |= LiteralLoss.DroppedOpener;
+    }
+
+    /// <summary>
+    /// The lexer gives up the text from <paramref name="start"/> (<see cref="UnreadTextStart"/>) to the end of the
+    /// current line: error recovery skips it (<see cref="NoteDroppedSpan"/>), or a stop in <see cref="TokenizeAll"/>
+    /// (the error budget, the end of the source) reads no further. The ONE close-line rule every such hook calls —
+    /// arm (b) of <see cref="LiteralLoss.RePairedCloser"/> (owner ruling R-FR, #2275): on the line where a literal
+    /// that spanned lines closed (<see cref="NoteMultiLineLiteralClosed"/>), text the lexer never reads that holds a
+    /// quote character is an orphan quote the closer may have re-paired with (<c>t = '"""$'</c>,
+    /// <c>t = '"""`'</c>, <c>t = '""" '</c> below a stray <c>"""</c>) — R-FK's rule for dropped lines, applied at the
+    /// close line, whatever the abort's code. A close line whose given-up text holds no quote (<c>""" + 1__2</c>)
+    /// lost nothing and records nothing; a report that drops no text (the dedented-string indentation errors) never
+    /// reaches here. <see cref="_line"/> is the abort's line: <see cref="ReportUnclosedField"/> moves it back to
+    /// the field's bracket for a single-quoted literal, and with a bracket open inside a triple-quoted one the abort
+    /// is inside a literal anyway (<see cref="LiteralLoss.AbortInsideLiteral"/>). Returns the end of the line.
+    /// </summary>
+    private int NoteUnreadLine(int start)
+    {
         var end = _position;
         while (end < _source.Length && !IsLineBreak(_source[end]))
             end++;
-        if (HoldsALiteralSpanningLines(_source.AsSpan(start, end - start)))
-            LiteralLoss |= LiteralLoss.DroppedOpener;
+        if (_line == _lastMultiLineCloseLine && _source.AsSpan(start, end - start).IndexOfAny('"', '\'') >= 0)
+            LiteralLoss |= LiteralLoss.RePairedCloser;
+        return end;
     }
 
     /// <summary>
@@ -36,13 +58,16 @@ public partial class Lexer
     /// being read is a string literal that began on this line — that literal's prefix, so that the scanner
     /// pairs its quotes the way the lexer did (<c>"\q" + """abc"""</c> read from the <c>q</c> is
     /// <c>" + "</c> then an opener). The ONE start both hooks read: the budget stop landing inside an
-    /// aborted short string (B1, BS-esc) is the same shape as the dropped line.
+    /// aborted short string (B1, BS-esc) is the same shape as the dropped line. A backtick-delimited name that
+    /// began on this line starts the text the same way (P22g, R-FR): the lexer reads it to the line end before it
+    /// reports SPY0018, so from <see cref="_position"/> the text would be EMPTY and an orphan quote inside the name
+    /// (<c>t = '"""`'</c>) would never be seen; the scanner reads the name as opaque either way.
     /// </summary>
     private int UnreadTextStart(bool fromTheAbortedLiteral)
     {
         if (fromTheAbortedLiteral && _tokenStart < _position
             && _source.AsSpan(_tokenStart, _position - _tokenStart).IndexOfAny('\n', '\r') < 0
-            && StringLiteralStarts.Any(s => IsStringLiteralStartAt(s.Prefix, _tokenStart)))
+            && (_source[_tokenStart] == '`' || StringLiteralStarts.Any(s => IsStringLiteralStartAt(s.Prefix, _tokenStart))))
         {
             return _tokenStart;
         }
@@ -58,8 +83,8 @@ public partial class Lexer
     /// <see cref="LiteralLoss.RePairedCloser"/>: (a) the closer is immediately followed by a quote character —
     /// implicit concatenation is not Sharpy syntax, so this never occurs in a program that parses: the closer
     /// re-paired with a quote inside a short string (<c>t = '"""'</c> below a stray <c>"""</c>); (b) the close
-    /// line, so that <see cref="ReportError"/> can tell an unterminated short string reported on it
-    /// (<c>t = '""" '</c>). A literal closed on the line it opened on cannot have lost multi-line content (the
+    /// line, so that <see cref="NoteUnreadLine"/> can tell text the lexer gives up on it that holds a quote
+    /// character (<c>t = '""" '</c>, <c>t = '"""$'</c>; R-FR). A literal closed on the line it opened on cannot have lost multi-line content (the
     /// stray and the opener would share a line), so neither arm records it: <c>x = """a""" + 'b</c> (owner
     /// ruling 2026-10-07, arm b) and <c>z = """a""""</c> (arm a, by the same rationale) being typed record nothing.
     /// </summary>

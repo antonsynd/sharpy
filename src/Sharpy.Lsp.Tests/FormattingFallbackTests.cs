@@ -715,4 +715,75 @@ public sealed class FormattingFallbackTests : IDisposable
         _driver.Full(d).Applied.Should().Be(WithLine(WithLine(d, 1, "    s: str = dr\"\"\""), 5, "    print(s)"),
             "direction: the full fallback re-indents both lines and keeps its repair");
     }
+
+    // ---- P22g Phase 3 (#2275, R-FR): an abort on the close line of a re-paired run, whatever its code.
+
+    /// <summary>N2's shape (a stray triple, a closed block, the orphan line 5): its close line is line 5, its string line 3.</summary>
+    private static string CloseLineN2(string orphanLine) =>
+        "\"\"\"\ndef main():\n    s = \"\"\"\n      key: value\n    \"\"\"\n    " + orphanLine + "\n    print(s)\n";
+
+    /// <summary>
+    /// #2275's documents (its cell names): the orphan line aborts after the re-paired closer at SPY0015, SPY0018,
+    /// SPY0007, SPY0008 or SPY0022, and the orphan's quote lies in the text the lexer gives up. @ 926670989 full,
+    /// range-line 3 and on-type 3 each rewrote <c>      key: value</c> (string content); IB-bt is the stray inside the
+    /// block. R-btname is not here: <see cref="KnownLimit_RBtname_StillEdits_SeeIssue2274"/>.
+    /// </summary>
+    public static TheoryData<string, string> CloseLineAbortDocuments => new()
+    {
+        { "R3-dollar", CloseLineN2("t = '\"\"\"$'") },
+        { "R1", CloseLineN2("t = '\"\"\" costs $5'") },
+        { "R3-dollar-sp", CloseLineN2("t = '\"\"\" $ '") },
+        { "R-bt", CloseLineN2("t = '\"\"\"`'") },
+        { "R2", CloseLineN2("t = '\"\"\" see `x'") },
+        { "R2-bt-mid", CloseLineN2("t = '\"\"\"`x'") },
+        { "R3-num__", CloseLineN2("t = '\"\"\"1__2'") },
+        { "R3-hex", CloseLineN2("t = '\"\"\"0x'") },
+        { "R4-fspec", CloseLineN2("t = '\"\"\"f' + \"{x:\" + str(y)") },
+        { "IB-bt", "def main():\n    \"\"\"\n    s = \"\"\"\n      key: value\n    \"\"\"\n    t = '\"\"\"`'\n    print(s)\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(CloseLineAbortDocuments))]
+    public void R_CloseLineAbort_FullRangeLineAndOnType_GetNoEdits(string name, string document)
+    {
+        // The unchecked candidate rewrites the string line: the refusal is what keeps it.
+        FormattingFallback.ReindentDocument(document).Split('\n')[3].Should().NotBe(document.Split('\n')[3], name);
+
+        RoutesThatEdit(
+            ("full", _driver.Full(document).Edits),
+            ("range-line 3", _driver.Range(document, LineRange(document, 3)).Edits),
+            ("ontype@3", _driver.OnType(document, 3).Edits)).Should().BeEmpty(name);
+    }
+
+    /// <summary>
+    /// R-btname (#2274's known limit, not #2275's cure): <c>t = '"""x' + `it's`</c> — the orphan quote is READ as the
+    /// opener of <c>' + `it'</c>, and the aborting backtick's text holds no quote; the lexer signature is that of a
+    /// close line that lost nothing. Pinned: the routes still rewrite the string line (a cure would turn this red —
+    /// record it on #2274).
+    /// </summary>
+    [Fact]
+    public void KnownLimit_RBtname_StillEdits_SeeIssue2274()
+    {
+        var document = CloseLineN2("t = '\"\"\"x' + `it's`");
+        _driver.Full(document).Applied.Split('\n')[3].Should().Be("key: value");
+        _driver.Range(document, LineRange(document, 3)).Edits.Should().NotBeEmpty();
+        _driver.OnType(document, 3).Edits.Should().NotBeEmpty();
+    }
+
+    /// <summary>
+    /// #2275's direction control (R-FR): no stray; the closer line aborts at each close-line code and drops no
+    /// quote, so nothing is lost and on-type keeps its repair of a 6-space line — one clean line below the close
+    /// line, since the line right after an error is read as a continuation (plan-d923d3 Current State).
+    /// </summary>
+    [Theory]
+    [InlineData("$")]
+    [InlineData("`x")]
+    [InlineData("1__2")]
+    [InlineData("0x")]
+    [InlineData("f\"{x:")]
+    public void DirectionControl_CloseLineAbortThenACleanLine_OnTypeKeepsItsRepair(string tail)
+    {
+        var document = "def main():\n    s = \"\"\"\n      a\n    \"\"\" + " + tail + "\n    q = 1\n      print(s)\n";
+        _driver.OnType(document, 5).Applied.Should().Be(WithLine(document, 5, "    print(s)"));
+    }
 }
