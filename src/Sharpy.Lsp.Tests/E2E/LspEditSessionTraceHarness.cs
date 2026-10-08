@@ -78,7 +78,7 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
         // edit rather than to document open. It also carries the server's verdict on the input, so
         // it doubles as this trace's proof that what follows times a complete analysis (#1224).
         var openPublish = await _client.WaitForNotificationAsync("textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(30));
+            LspTestClient.ArrivalTimeout);
         AssertNoErrorsPublished(openPublish);
 
         var samples = new SCG.List<double>();
@@ -94,7 +94,7 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
             var sw = Stopwatch.StartNew();
             await _client.DidChangeAsync(uri, EditedSource(i), ++version);
             await _client.WaitForNotificationAsync("textDocument/publishDiagnostics",
-                TimeSpan.FromSeconds(30), pollInterval: TimeSpan.FromMilliseconds(1));
+                LspTestClient.ArrivalTimeout, pollInterval: TimeSpan.FromMilliseconds(1));
             sw.Stop();
 
             samples.Add(sw.Elapsed.TotalMilliseconds);

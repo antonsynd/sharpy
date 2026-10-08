@@ -72,7 +72,7 @@ public class MultiFileTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Line 4, just after the '.' of `helpers.compute()`. The source parses: a file mid-edit
         // with a bare trailing dot does not analyse at all, so completion returns nothing there —
@@ -113,7 +113,7 @@ public class MultiFileTests : IAsyncLifetime
         // Wait for diagnostics on the main file
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         notification.Should().NotBeNull();
 
@@ -131,7 +131,7 @@ public class MultiFileTests : IAsyncLifetime
 
         var libNotification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var libDiagnostics = libNotification["diagnostics"]?.AsArray();
         libDiagnostics.Should().NotBeNull();
@@ -152,7 +152,7 @@ public class MultiFileTests : IAsyncLifetime
 
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         notification.Should().NotBeNull();
 
@@ -178,7 +178,7 @@ public class MultiFileTests : IAsyncLifetime
 
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         notification.Should().NotBeNull();
 
@@ -205,7 +205,7 @@ public class MultiFileTests : IAsyncLifetime
 
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var diagnostics = notification["diagnostics"]?.AsArray();
         diagnostics.Should().NotBeNull();
@@ -232,7 +232,7 @@ public class MultiFileTests : IAsyncLifetime
         // the expected result (skipping any stale or duplicate notifications).
         var firstDiag = await WaitForDiagnosticsMatchingAsync(
             n => n["diagnostics"]!.AsArray()!.Count == 0,
-            TimeSpan.FromSeconds(15),
+            LspTestClient.ArrivalTimeout,
             "initial valid code should have no diagnostics");
 
         // Introduce a type error
@@ -242,7 +242,7 @@ public class MultiFileTests : IAsyncLifetime
         // didOpen) and wait for the notification with actual error diagnostics.
         var secondDiag = await WaitForDiagnosticsMatchingAsync(
             n => n["diagnostics"]!.AsArray()!.Count > 0,
-            TimeSpan.FromSeconds(15),
+            LspTestClient.ArrivalTimeout,
             "type error should produce diagnostics");
 
         // Fix the error
@@ -250,7 +250,7 @@ public class MultiFileTests : IAsyncLifetime
 
         var thirdDiag = await WaitForDiagnosticsMatchingAsync(
             n => n["diagnostics"]!.AsArray()!.Count == 0,
-            TimeSpan.FromSeconds(15),
+            LspTestClient.ArrivalTimeout,
             "fixed code should clear diagnostics");
     }
 
@@ -271,13 +271,13 @@ public class MultiFileTests : IAsyncLifetime
         // Wait for initial didOpen diagnostics
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Poll hover until background indexing completes and project-level analysis
         // resolves the imported symbol. Single-file analysis returns null for cross-file
         // symbols, but once project indexing finishes, the cached result includes imports.
         JsonNode? hover = null;
-        var timeout = TimeSpan.FromSeconds(30);
+        var timeout = LspTestClient.ArrivalTimeout;
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < timeout)
         {
@@ -324,12 +324,12 @@ public class MultiFileTests : IAsyncLifetime
         // Wait for initial diagnostics from both files
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Poll for call hierarchy — background indexing may need time
         JsonNode? prepareResult = null;
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        while (sw.Elapsed < TimeSpan.FromSeconds(30))
+        while (sw.Elapsed < LspTestClient.ArrivalTimeout)
         {
             // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
@@ -367,7 +367,7 @@ public class MultiFileTests : IAsyncLifetime
         // Now request incoming calls
         JsonNode? incomingResult = null;
         sw.Restart();
-        while (sw.Elapsed < TimeSpan.FromSeconds(30))
+        while (sw.Elapsed < LspTestClient.ArrivalTimeout)
         {
             // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
@@ -435,7 +435,7 @@ public class MultiFileTests : IAsyncLifetime
         {
             await _client.WaitForNotificationAsync(
                 "textDocument/publishDiagnostics",
-                TimeSpan.FromSeconds(15));
+                LspTestClient.ArrivalTimeout);
         }
         catch (TimeoutException)
         {
@@ -446,7 +446,7 @@ public class MultiFileTests : IAsyncLifetime
         // time before the cross-file symbol table is available.
         JsonNode? implResult = null;
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        while (sw.Elapsed < TimeSpan.FromSeconds(30))
+        while (sw.Elapsed < LspTestClient.ArrivalTimeout)
         {
             // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
@@ -532,12 +532,12 @@ public class MultiFileTests : IAsyncLifetime
         // Wait for initial diagnostics
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Poll for workspace symbols — background indexing may need time
         JsonNode? symbolResult = null;
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        while (sw.Elapsed < TimeSpan.FromSeconds(30))
+        while (sw.Elapsed < LspTestClient.ArrivalTimeout)
         {
             // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try

@@ -112,7 +112,7 @@ public class ServerLoggingTests
         // A comment-only edit: the same AST, so an incremental fast path serves it without calling
         // the compiler. It still publishes, so it still logs a latency line.
         await client.DidChangeAsync(Uri, Source + "# a comment\n", 2);
-        await client.WaitForNotificationAsync("textDocument/publishDiagnostics", TimeSpan.FromSeconds(30));
+        await client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
         await WaitForAsync(() => Count(client, AnalysisLatencyLog.Marker) > latencyLinesBefore);
 
         Count(client, AnalysisLatencyLog.StagesMarker).Should().Be(stageLinesBefore,
@@ -148,7 +148,7 @@ public class ServerLoggingTests
     private static async Task AnalyseAsync(LspTestClient client)
     {
         await client.DidOpenAsync(Uri, Source);
-        await client.WaitForNotificationAsync("textDocument/publishDiagnostics", TimeSpan.FromSeconds(30));
+        await client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ public class ServerLoggingTests
         Func<bool> condition,
         [CallerArgumentExpression(nameof(condition))] string? description = null)
     {
-        var timeout = TimeSpan.FromSeconds(15);
+        var timeout = LspTestClient.ArrivalTimeout;
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {

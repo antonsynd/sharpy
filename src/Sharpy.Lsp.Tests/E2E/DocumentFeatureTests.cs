@@ -54,7 +54,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/semanticTokens/full",
@@ -84,7 +84,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/semanticTokens/full",
@@ -110,7 +110,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/semanticTokens/full",
@@ -141,7 +141,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/foldingRange",
@@ -177,7 +177,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/foldingRange",
@@ -210,7 +210,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Position cursor on 'x' inside print(x) on line 2.
         // Line 2: "    print(x)" — char 10 is the 'x' identifier usage.
@@ -247,7 +247,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Position over whitespace at the start of line 0
         var result = await _client.SendRequestAsync(
@@ -283,7 +283,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/inlayHint",
@@ -322,7 +322,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/inlayHint",
@@ -356,7 +356,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/inlayHint",
@@ -391,7 +391,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Position on the literal '1' inside '1 + 2'.
         // Line 1: "    x: int = 1 + 2"
@@ -425,7 +425,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Request a position well beyond the end of the file.
         var result = await _client.SendRequestAsync(
@@ -460,7 +460,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Position cursor on the first `name` inside the f-string at line 2.
         // Line 2: "    print(f\"{name} and {name}\")"
@@ -499,7 +499,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Cursor on plain identifier 'x' (not in an f-string).
         var result = await _client.SendRequestAsync(
@@ -524,7 +524,7 @@ public class DocumentFeatureTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/linkedEditingRange",

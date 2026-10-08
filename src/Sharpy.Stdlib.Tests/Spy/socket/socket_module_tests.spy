@@ -329,7 +329,7 @@ def test_connect_invalid_address_raises_error():
     # socket.timeout, where an un-timed connect waited the OS default (~75 s on
     # macOS). A host whose network refuses 192.0.2.1 outright raises a plain
     # socket.error before the timeout can elapse; python3 does the same.
-    assert elapsed < 5.0
+    assert elapsed < 30.0
     assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
     s.close()
 
@@ -398,7 +398,7 @@ def test_create_connection_invalid_address_raises():
     assert caught
     # The timeout= argument governs the connect (#2177); see
     # test_connect_invalid_address_raises_error for the two admissible outcomes.
-    assert elapsed < 5.0
+    assert elapsed < 30.0
     assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
 
 @test
@@ -457,6 +457,12 @@ def test_create_connection_omitted_timeout_without_default_is_blocking():
 # its cells are the successful loopback tests above. Each pair of a listener and a
 # connected client is loopback-only.
 
+# Deadlines in these tests (#2278): an operation that must complete (a loopback
+# connect, accept or refusal) gets a 10 s timeout. It answers in milliseconds when
+# healthy, but a loaded CI runner has turned a 1 s timeout into a false
+# socket.timeout. A test whose subject IS the timeout keeps its short timeout, and
+# its elapsed upper bound is 30 s: loose enough for a slow runner, still well
+# under the OS's un-timed connect wait (~75 s macOS, ~127 s Linux).
 def _elapsed_since(start: float) -> float:
     return time.monotonic() - start
 
@@ -471,7 +477,7 @@ def test_accept_with_timeout_raises_timeout():
         server.accept()
     elapsed: float = _elapsed_since(start)
     assert elapsed >= 0.5
-    assert elapsed < 5.0
+    assert elapsed < 30.0
     server.close()
 
 @test
@@ -479,7 +485,7 @@ def test_accept_with_timeout_returns_pending_connection():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("127.0.0.1", 0))
     server.listen(1)
-    server.settimeout(1.0)
+    server.settimeout(10.0)
     port = server.getsockname()[1]
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(("127.0.0.1", port))
@@ -499,7 +505,7 @@ def test_accept_with_sub_millisecond_timeout_raises_timeout():
     start: float = time.monotonic()
     with assert_raises(socket.timeout):
         server.accept()
-    assert _elapsed_since(start) < 5.0
+    assert _elapsed_since(start) < 30.0
     server.close()
 
 @test
@@ -545,7 +551,7 @@ def test_connect_with_timeout_succeeds_to_listening_server():
     server.listen(1)
     port = server.getsockname()[1]
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.settimeout(1.0)
+    client.settimeout(10.0)
     client.connect(("127.0.0.1", port))
     peer = client.getpeername()
     assert peer[0] == "127.0.0.1"
@@ -564,7 +570,7 @@ def test_create_connection_with_timeout_succeeds_to_listening_server():
     server.bind(("127.0.0.1", 0))
     server.listen(1)
     port = server.getsockname()[1]
-    client: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=1.0)
+    client: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=10.0)
     peer = client.getpeername()
     assert peer[1] == port
     conn, _ = server.accept()
@@ -580,7 +586,7 @@ def test_connect_with_timeout_refused_raises_error_not_timeout():
     port = probe.getsockname()[1]
     probe.close()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1.0)
+    s.settimeout(10.0)
     caught: bool = False
     is_timeout: bool = False
     try:
@@ -607,7 +613,7 @@ def test_recv_with_timeout_raises_timeout():
         client.recv(16)
     elapsed: float = _elapsed_since(start)
     assert elapsed >= 0.5
-    assert elapsed < 5.0
+    assert elapsed < 30.0
     conn.close()
     client.close()
     server.close()
@@ -626,12 +632,12 @@ def test_send_with_timeout_raises_timeout_when_peer_does_not_read():
     is_timeout: bool = False
     start: float = time.monotonic()
     try:
-        while _elapsed_since(start) < 10.0:
+        while _elapsed_since(start) < 30.0:
             client.send(chunk)
     except Exception as e:
         is_timeout = isinstance(e, socket.timeout)
     assert is_timeout
-    assert _elapsed_since(start) < 5.0
+    assert _elapsed_since(start) < 30.0
     conn.close()
     client.close()
     server.close()

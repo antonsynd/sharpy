@@ -60,7 +60,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/codeLens",
@@ -93,7 +93,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/codeLens",
@@ -121,7 +121,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/codeLens",
@@ -149,7 +149,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/codeLens",
@@ -184,7 +184,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/formatting",
@@ -225,7 +225,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/formatting",
@@ -259,7 +259,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Server must accept insertSpaces=false (tab-based indentation) without error
         var result = await _client.SendRequestAsync(
@@ -293,7 +293,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/formatting",
@@ -331,7 +331,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Format only lines 1-2 (the body)
         var result = await _client.SendRequestAsync(
@@ -369,7 +369,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         var result = await _client.SendRequestAsync(
             "textDocument/rangeFormatting",
@@ -521,7 +521,7 @@ public class WorkspaceAndFormattingTests : IAsyncLifetime
     {
         await _client.InitializeAsync();
         await _client.DidOpenAsync(uri, text);
-        await _client.WaitForNotificationAsync("textDocument/publishDiagnostics", TimeSpan.FromSeconds(15));
+        await _client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
 
         var @params = new JsonObject
         {

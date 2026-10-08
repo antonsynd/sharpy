@@ -108,7 +108,7 @@ public class ProtocolTests : IAsyncLifetime
 
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         notification.Should().NotBeNull();
 
@@ -130,7 +130,7 @@ public class ProtocolTests : IAsyncLifetime
 
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         notification.Should().NotBeNull();
 
@@ -150,7 +150,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Hover over 'greet' at line 3, character 4 (inside "greet" call in main)
         var hover = await _client.HoverAsync(uri, 3, 4);
@@ -176,7 +176,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for analysis
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Request completions at the end of line 2
         var completion = await _client.CompletionAsync(uri, 2, 4);
@@ -208,7 +208,7 @@ public class ProtocolTests : IAsyncLifetime
         await _client.DidOpenAsync(uri, "x: int = \"bad\"");
         var firstDiag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         var firstCount = firstDiag["diagnostics"]?.AsArray()?.Count ?? 0;
         firstCount.Should().BeGreaterThan(0, "invalid code should have diagnostics");
 
@@ -216,7 +216,7 @@ public class ProtocolTests : IAsyncLifetime
         await _client.DidChangeAsync(uri, "def main():\n    x: int = 42\n    print(x)", 2);
         var secondDiag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         var secondCount = secondDiag["diagnostics"]?.AsArray()?.Count ?? 0;
         secondCount.Should().Be(0, "fixed code should have no diagnostics");
     }
@@ -234,7 +234,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for initial diagnostics
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Send rapid successive changes — only the final state matters
         for (var i = 2; i <= 5; i++)
@@ -250,7 +250,7 @@ public class ProtocolTests : IAsyncLifetime
         // 5 s waiter gave up).
         JsonNode? lastNotification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(30));
+            LspTestClient.ArrivalTimeout);
         while (true)
         {
             try
@@ -282,7 +282,7 @@ public class ProtocolTests : IAsyncLifetime
         await _client.DidOpenAsync(uri, "x: int = \"bad\"");
         var firstDiag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         firstDiag["diagnostics"]!.AsArray()!.Count.Should().BeGreaterThan(0,
             "invalid code should have diagnostics");
 
@@ -296,7 +296,7 @@ public class ProtocolTests : IAsyncLifetime
 
         var secondDiag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         secondDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
             "fixed code should have no diagnostics");
     }
@@ -312,7 +312,7 @@ public class ProtocolTests : IAsyncLifetime
         await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
         var firstDiag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         firstDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
             "valid code should have no diagnostics");
 
@@ -325,7 +325,7 @@ public class ProtocolTests : IAsyncLifetime
 
         var secondDiag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         secondDiag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
             "small edit should preserve validity");
     }
@@ -341,7 +341,7 @@ public class ProtocolTests : IAsyncLifetime
         await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Send multiple rapid incremental changes
         // Line 1: "    x: int = 1" — char 13 is the digit
@@ -359,7 +359,7 @@ public class ProtocolTests : IAsyncLifetime
         // loudly if nothing arrives; the short timeout only ends the drain.
         JsonNode? lastNotification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(30));
+            LspTestClient.ArrivalTimeout);
         while (true)
         {
             try
@@ -390,14 +390,14 @@ public class ProtocolTests : IAsyncLifetime
         await _client.DidOpenAsync(uri, "def main():\n    x: int = 1\n    print(x)");
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Send a full-content change (no range) — this is the fallback path
         await _client.DidChangeAsync(uri, "def main():\n    y: str = \"hello\"\n    print(y)", 2);
 
         var diag = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
         diag["diagnostics"]!.AsArray()!.Count.Should().Be(0,
             "full-sync fallback should work correctly");
     }
@@ -413,7 +413,7 @@ public class ProtocolTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Prepare call hierarchy on the call to "foo" at line 3, char 11
         // Source layout:
@@ -451,7 +451,7 @@ public class ProtocolTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Prepare call hierarchy on the call to "foo" at line 3, char 11
         var prepareParams = new JsonObject
@@ -492,7 +492,7 @@ public class ProtocolTests : IAsyncLifetime
 
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Prepare call hierarchy on the call to "bar" at line 5, char 4 (inside main's body)
         var prepareParams = new JsonObject
@@ -641,7 +641,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Request code actions for the range covering "1 + 2 + 3" (line 1, chars 13-22)
         var codeActionParams = new JsonObject
@@ -686,7 +686,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Request code actions at the class definition line (line 3, char 6 — inside "HelloGreeter")
         var codeActionParams = new JsonObject
@@ -730,7 +730,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Request code actions at line 0 (the first import)
         var codeActionParams = new JsonObject
@@ -773,7 +773,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics — should include SPY0451 for unused variable 'x'
         var notification = await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         notification.Should().NotBeNull();
         var diagnostics = notification["diagnostics"]?.AsArray();
@@ -848,7 +848,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Request implementation at IGreeter (line 0, char 10)
         var result = await _client.SendRequestAsync("textDocument/implementation", new JsonObject
@@ -893,7 +893,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Query workspace symbols for "animal"
         var result = await _client.SendRequestAsync("workspace/symbol", new JsonObject
@@ -926,7 +926,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Hover over '__aenter__' on line 4 (0-based), character 14 (0-based)
         // Source line 5 (1-based): "    async def __aenter__(self) -> AsyncResource:"
@@ -968,7 +968,7 @@ public class ProtocolTests : IAsyncLifetime
         // Wait for diagnostics to ensure analysis is complete
         await _client.WaitForNotificationAsync(
             "textDocument/publishDiagnostics",
-            TimeSpan.FromSeconds(15));
+            LspTestClient.ArrivalTimeout);
 
         // Hover over 'return' on line 1 (0-based), character 4 (0-based)
         // Source line 2 (1-based): "    return \"hello\""

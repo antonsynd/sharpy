@@ -24,7 +24,14 @@ public sealed class LspTestClient : IAsyncDisposable
     private int _nextId;
     private bool _disposed;
 
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
+    /// <summary>
+    /// How long a test waits for something it expects to arrive (a response, a notification, a
+    /// state the server must reach). It is a ceiling for "this is broken", not a latency budget:
+    /// a healthy server answers in well under a second, but a loaded CI runner has stretched that
+    /// past 15s (#2278), so every must-arrive wait shares this one deadline instead of a per-site
+    /// literal. Drain windows, whose expiry means "nothing more is coming", stay short.
+    /// </summary>
+    public static readonly TimeSpan ArrivalTimeout = TimeSpan.FromSeconds(60);
 
     private LspTestClient(Process process, ITestOutputHelper? output)
     {
@@ -215,7 +222,7 @@ public sealed class LspTestClient : IAsyncDisposable
         await WriteMessageAsync(message, ct);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(DefaultTimeout);
+        timeoutCts.CancelAfter(ArrivalTimeout);
 
         try
         {
@@ -223,7 +230,7 @@ public sealed class LspTestClient : IAsyncDisposable
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            throw new TimeoutException($"LSP request '{method}' (id={id}) timed out after {DefaultTimeout.TotalSeconds}s");
+            throw new TimeoutException($"LSP request '{method}' (id={id}) timed out after {ArrivalTimeout.TotalSeconds}s");
         }
     }
 
@@ -266,7 +273,7 @@ public sealed class LspTestClient : IAsyncDisposable
         CancellationToken ct = default,
         TimeSpan? pollInterval = null)
     {
-        var deadline = timeout ?? DefaultTimeout;
+        var deadline = timeout ?? ArrivalTimeout;
         var poll = pollInterval ?? TimeSpan.FromMilliseconds(50);
         var queue = _notifications.GetOrAdd(method, _ => new ConcurrentQueue<JsonNode>());
 
