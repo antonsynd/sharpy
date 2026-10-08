@@ -786,4 +786,59 @@ public sealed class FormattingFallbackTests : IDisposable
         var document = "def main():\n    s = \"\"\"\n      a\n    \"\"\" + " + tail + "\n    q = 1\n      print(s)\n";
         _driver.OnType(document, 5).Applied.Should().Be(WithLine(document, 5, "    print(s)"));
     }
+
+    // ---- P22g Phase 4 (#2276): the literal's own quote inside a format spec.
+
+    /// <summary>SQ2 (#2276): <c>x = f"{x:">}" + """</c> in a block; the lexer aborts at the spec's quote and drops the opener.</summary>
+    internal const string SQ2 = "def main():\n    x = f\"{x:\">}\" + \"\"\"\n        key: value\n        f\"{x:\">}\" + \"\"\"\n    print(x)\n";
+
+    /// <summary>SQ3 (#2276): SQ2 at module level, its closer line at column 0.</summary>
+    internal const string SQ3 = "x = f\"{x:\">}\" + \"\"\"\n    key: value\nf\"{x:\">}\" + \"\"\"\nprint(x)\n";
+
+    /// <summary>
+    /// SQ2 / SQ3: @ 926670989 range-line and full rewrote the string line <c>key: value</c> (the scanner closed the
+    /// f-string at the spec's quote and never saw the opener). Now the lexer records <c>DroppedOpener</c> and the
+    /// routes apply nothing; the unchecked candidate shows what they would have done.
+    /// </summary>
+    [Fact]
+    public void SQ_SpecQuoteAbortBeforeAnOpener_FullAndRangeLine_GetNoEdits()
+    {
+        FormattingFallback.ReindentDocument(SQ2).Split('\n')[2].Should().NotBe(SQ2.Split('\n')[2]);
+        FormattingFallback.ReindentDocument(SQ3).Split('\n')[1].Should().NotBe(SQ3.Split('\n')[1]);
+        RoutesThatEdit(
+            ("SQ2 full", _driver.Full(SQ2).Edits),
+            ("SQ2 range-line 2", _driver.Range(SQ2, LineRange(SQ2, 2)).Edits),
+            ("SQ3 full", _driver.Full(SQ3).Edits),
+            ("SQ3 range-line 1", _driver.Range(SQ3, LineRange(SQ3, 1)).Edits)).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// The cells that discriminate #2276's arm at the routes: SQ2/SQ3's string line is the line right after the
+    /// erroring line, which the indent-only check judges for depth since e16e323eb, so they are refused with or without
+    /// the arm. Here the first string line after the abort keeps its depth and the next one is the damage —
+    /// @ 926670989 (and with the arm removed) SQ2b full and range-line 3 rewrote <c>      key: value</c>, SQ3b full and
+    /// range-line 2 rewrote <c>  key: value</c>; with the arm the lexer records <c>DroppedOpener</c> and nothing applies.
+    /// </summary>
+    [Fact]
+    public void SQ_SpecQuoteAbortBeforeAnOpener_TheStringLinePastTheHiddenLine_GetsNoEdits()
+    {
+        const string sq2b = "def main():\n    x = f\"{x:\">}\" + \"\"\"\n    first\n      key: value\n    f\"{x:\">}\" + \"\"\"\n    print(x)\n";
+        const string sq3b = "x = f\"{x:\">}\" + \"\"\"\nfirst\n  key: value\nf\"{x:\">}\" + \"\"\"\nprint(x)\n";
+        RoutesThatEdit(
+            ("SQ2b full", _driver.Full(sq2b).Edits),
+            ("SQ2b range-line 3", _driver.Range(sq2b, LineRange(sq2b, 3)).Edits),
+            ("SQ3b full", _driver.Full(sq3b).Edits),
+            ("SQ3b range-line 2", _driver.Range(sq3b, LineRange(sq3b, 2)).Edits)).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// The spec-quote abort's direction control: a closed spec whose quote opens no literal loses nothing, so the
+    /// fallback keeps repairing a 2-space line below it (one clean line after the erroring line).
+    /// </summary>
+    [Fact]
+    public void DirectionControl_SpecQuoteAbortWithNoOpener_FullKeepsItsRepair()
+    {
+        const string document = "def main():\n    x = f\"{x:\">}\"\n    q = 1\n  y = 1\n";
+        _driver.Full(document).Applied.Should().Be(WithLine(document, 3, "    y = 1"));
+    }
 }

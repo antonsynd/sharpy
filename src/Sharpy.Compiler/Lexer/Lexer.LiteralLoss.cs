@@ -129,7 +129,14 @@ public partial class Lexer
     /// literal's own quote when no literal opened there closes on its line: that quote is its closer
     /// (<c>f"{x" + 'z'</c>, the lexer's <c>expecting '}'</c>);</item>
     /// <item>in a format spec, <c>{{</c> is an escaped brace, <c>{</c> opens a nested field, <c>}</c> closes
-    /// the field, the literal's own quote closes the literal and any other quote is spec text.</item>
+    /// the field and any other quote is spec text; the literal's own quote (a triple at a triple, for a
+    /// triple-quoted literal) is where the lexer aborts (SPY0022, <c>expecting '}'</c>) and reads nothing more on
+    /// the line (#2276) — the quote's role is unknown, so every open literal is abandoned there and the rest of
+    /// the text is walked afresh twice: with the quote opening a literal (<c>">}" + """</c>: a closed short string,
+    /// then an opener) and with the quote closing the literal (<c>>}" + """</c>: <c>" + "</c>, then <c>""</c>) — true
+    /// when EITHER walk holds a literal spanning lines (a missing fact is a silent wrong edit, a spurious one a
+    /// lost repair). <c>x = f"{x:"</c> being typed holds none (both walks read a short string that ends at its line).
+    /// The fresh walks are memoized per start, so a line with k such quotes costs at most two walks each.</item>
     /// </list>
     /// Backslash escapes are honoured except in <c>r</c>/<c>dr</c> literals, as the lexer reads them. A
     /// short string holding a triple (<c>'"""'</c>) or a closed triple on its line (<c>"""abc"""</c>)
@@ -138,8 +145,29 @@ public partial class Lexer
     /// </summary>
     internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text)
     {
+        Dictionary<int, bool>? walks = null;
+        return WalkFrom(text, 0, ref walks);
+    }
+
+    /// <summary>
+    /// <see cref="WalkFrom"/> from <paramref name="start"/>, memoized in <paramref name="walks"/>: a fresh walk is a
+    /// pure function of where it starts (no literal is open there).
+    /// </summary>
+    private static bool FreshWalk(ReadOnlySpan<char> text, int start, ref Dictionary<int, bool>? walks)
+    {
+        walks ??= new Dictionary<int, bool>();
+        if (walks.TryGetValue(start, out var known))
+            return known;
+        var holds = WalkFrom(text, start, ref walks);
+        (walks ??= new Dictionary<int, bool>())[start] = holds;
+        return holds;
+    }
+
+    /// <summary>The walk of <see cref="HoldsALiteralSpanningLines"/> from <paramref name="start"/>, with no literal open there.</summary>
+    private static bool WalkFrom(ReadOnlySpan<char> text, int start, ref Dictionary<int, bool>? walks)
+    {
         var open = new List<OpenLiteral>();     // the literals open at i, outermost first
-        var i = 0;
+        var i = start;
         while (i < text.Length)
         {
             var c = text[i];
@@ -185,7 +213,14 @@ public partial class Lexer
                 }
                 if (c == literal.Quote && (!literal.Triple || IsTripleAt(text, i)))
                 {
-                    i += literal.Triple ? 3 : 1;
+                    var quoteLength = literal.Triple ? 3 : 1;
+                    if (field != null)
+                    {
+                        // the literal's own quote in a format spec: the lexer's abort (#2276) — the quote's role is unknown
+                        return FreshWalk(text, i, ref walks) || FreshWalk(text, i + quoteLength, ref walks);
+                    }
+
+                    i += quoteLength;
                     open.RemoveAt(open.Count - 1);
                     continue;
                 }

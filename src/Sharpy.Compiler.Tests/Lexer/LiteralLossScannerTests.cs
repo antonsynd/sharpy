@@ -105,4 +105,60 @@ public class LiteralLossScannerTests
     {
         LexerNs.Lexer.HoldsALiteralSpanningLines(text).Should().Be(expected, text);
     }
+
+    /// <summary>
+    /// #2276: at the literal's own quote inside a format spec the lexer aborts (SPY0022, <c>expecting '}'</c>) and reads
+    /// nothing more on the line; the scanner walks the rest afresh with the quote in either role and holds a literal
+    /// spanning lines when either walk does. SQ2/SQ3's span (<c>f"{x:">}" + """</c>) was false @ 926670989 — the
+    /// scanner closed the f-string at the quote and paired <c>" + "</c>, then <c>""</c>, swallowing the triple. The
+    /// typing control (<c>f"{x:"</c>), the closed spec, a trailing comment or short string hold none; no spec text
+    /// before the quote (<c>f"{x:" + """</c>, the walk past the quote) holds one; t-, df- and triple twins.
+    /// </summary>
+    [Theory]
+    [InlineData("x = f\"{x:\">}\" + \"\"\"", true)]               // SQ2 / SQ3: the walk from the quote
+    [InlineData("x = f\"{x:\" + \"\"\"", true)]                    // the walk from past the quote
+    [InlineData("x = t\"{x:\">}\" + \"\"\"", true)]
+    [InlineData("x = df\"{x:\">}\" + \"\"\"", true)]
+    [InlineData("x = f\"\"\"{x:\"\"\"", true)]                      // the triple twin (also an abort inside the literal)
+    [InlineData("x = f\"{x:\"", false)]                              // being typed: no on-type refusal
+    [InlineData("x = f\"{x:\">}\"", false)]
+    [InlineData("x = f\"{x:\">}\"  # \"\"\"", false)]
+    [InlineData("x = f\"{x:\">}\" + 'z'", false)]
+    [InlineData("y = f\"{x:'}\" + 'z'", false)]                  // the OTHER quote is spec text (unchanged)
+    public void HoldsALiteralSpanningLines_AtTheLexersSpecQuoteAbort(string text, bool expected)
+    {
+        LexerNs.Lexer.HoldsALiteralSpanningLines(text).Should().Be(expected, text);
+    }
+
+    /// <summary>
+    /// #2276's sibling axis — the other aborts inside an f-string the scanner reads as structure — already agree with
+    /// the lexer (controls): SPY0020 (the enclosing quote ends an open field: the scanner's ClosesOnItsLine rule),
+    /// SPY0021 (an unmatched <c>}</c>), SPY0030 (an invalid conversion); each with its clean-close twin.
+    /// </summary>
+    [Theory]
+    [InlineData("x = f\"{x\" + '''", true)]                        // SPY0020
+    [InlineData("x = f\"{x\" + 'z'", false)]
+    [InlineData("x = f\"}\" + \"\"\"", true)]                         // SPY0021
+    [InlineData("x = f\"{x}}\" + \"\"\"", true)]
+    [InlineData("x = f\"}\" + 'z'", false)]
+    [InlineData("x = f\"{x!q}\" + \"\"\"", true)]                      // SPY0030
+    [InlineData("x = f\"{x!q}\" + 'z'", false)]
+    public void HoldsALiteralSpanningLines_TheOtherMidLiteralAborts_AgreeWithTheLexer(string text, bool expected)
+    {
+        LexerNs.Lexer.HoldsALiteralSpanningLines(text).Should().Be(expected, text);
+    }
+
+    /// <summary>
+    /// The complexity control: a line of 40 spec-quote aborts walks each start at most once (memoized), and its
+    /// twin with a triple at the end still sees it.
+    /// </summary>
+    [Fact]
+    public void HoldsALiteralSpanningLines_ManySpecQuoteAborts_StaysBounded()
+    {
+        var line = "x = " + string.Concat(Enumerable.Repeat("f\"{x:\">}\" + ", 40)) + "1";
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        LexerNs.Lexer.HoldsALiteralSpanningLines(line).Should().BeFalse();
+        LexerNs.Lexer.HoldsALiteralSpanningLines(line + " + \"\"\"").Should().BeTrue();
+        clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1), "two fresh walks per abort start, memoized — not 2^40");
+    }
 }

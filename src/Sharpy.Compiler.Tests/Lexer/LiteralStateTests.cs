@@ -595,6 +595,58 @@ public class LiteralStateTests
         lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
     }
 
+    // ---------------------------------------------------------------- P22g (#2276): the spec-quote abort
+
+    /// <summary>
+    /// #2276 through the real lexer: at the literal's own quote in a format spec the lexer aborts (SPY0022) and drops
+    /// the rest of the line — here an opener — so the dropped span (read from the f-string's prefix) holds a literal
+    /// spanning lines: <c>DroppedOpener</c>. SQ2 (in a block) and SQ3 (module level, the closer line at column 0);
+    /// no spec text before the quote; the t-string twin. @ 926670989 the fact was None.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x = f\"{x:\">}\" + \"\"\"\n        key: value\n        f\"{x:\">}\" + \"\"\"\n    print(x)\n")]
+    [InlineData("x = f\"{x:\">}\" + \"\"\"\n    key: value\nf\"{x:\">}\" + \"\"\"\nprint(x)\n")]
+    [InlineData("def main():\n    x = f\"{x:\" + \"\"\"\n        key: value\n        \"\"\"\n    print(x)\n")]
+    [InlineData("def main():\n    x = t\"{x:\">}\" + \"\"\"\n        key: value\n        t\"{x:\">}\" + \"\"\"\n    print(x)\n")]
+    public void SpecQuoteAbortBeforeAnOpener_SetsDroppedOpener(string source)
+    {
+        var lexer = Lex(source);
+
+        lexer.Diagnostics.GetErrors().First().Code.Should().Be("SPY0022", Errors(lexer));
+        lexer.LiteralLoss.Should().HaveFlag(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
+    /// <summary>
+    /// The spec-quote abort's direction controls: a spec being typed (<c>f"{x:"</c>) and a spec whose quote is
+    /// followed by no opener lose nothing and record nothing — on-type keeps working while a spec is typed.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x = f\"{x:\"\n    y = 1\n")]
+    [InlineData("def main():\n    x = f\"{x:\">}\"\n    y = 1\n")]
+    [InlineData("def main():\n    x = f\"{x:\">}\" + 'z'\n    y = 1\n")]
+    public void SpecQuoteAbortWithNoOpener_SetsNothing(string source)
+    {
+        var lexer = Lex(source);
+
+        lexer.Diagnostics.GetErrors().First().Code.Should().Be("SPY0022", Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
+    /// <summary>
+    /// #2276's sibling aborts through the real lexer (controls — the scanner already agreed): an unmatched <c>}</c>
+    /// (SPY0021) and an invalid conversion (SPY0030) before an opener set <c>DroppedOpener</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x = f\"}\" + \"\"\"\n        key\n        \"\"\"\n    print(x)\n", "SPY0021")]
+    [InlineData("def main():\n    x = f\"{x!q}\" + \"\"\"\n        key\n        \"\"\"\n    print(x)\n", "SPY0030")]
+    public void OtherMidLiteralAbortBeforeAnOpener_SetsDroppedOpener(string source, string code)
+    {
+        var lexer = Lex(source);
+
+        lexer.Diagnostics.GetErrors().First().Code.Should().Be(code, Errors(lexer));
+        lexer.LiteralLoss.Should().HaveFlag(LexerNs.LiteralLoss.DroppedOpener, Errors(lexer));
+    }
+
     /// <summary>
     /// A report that drops no text records nothing (R-FR: "a code that reports without dropping loses nothing"):
     /// the two dedented-string indentation errors are reported without an abort, on a literal that spans lines.
