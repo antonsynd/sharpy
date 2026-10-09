@@ -917,6 +917,189 @@ public class LiteralStateTests
         lexer.RecoveryResumesAfterAContinuedLine.Contains(lexer.RecoveryResumes[0]).Should().Be(continues, source);
     }
 
+    /// <summary>
+    /// The seam-1 matrix of #2279 (plan-f92797 P22h, R-FU): <see cref="LexerNs.Lexer.BracketLeftOpenAtLine"/> is the
+    /// 1-based line of the OPENER of the outermost bracket the lexer never saw closed, recorded at the FIRST of the
+    /// end of the source with a bracket open and a recovery whose dropped line has a bracket open at its END — a real
+    /// bracket (on the statement's first line or a continuation line), one "closed" inside an unterminated string or
+    /// backtick name (open to the lexer), one opened before the abort or in the given-up text, one opened on an
+    /// EARLIER line and abandoned on a dropped continuation line (the opener's line, not the dropped one). Positive
+    /// controls that record NOTHING: a bracket the given-up text closes (A8, the five
+    /// <c>BracketClosedOnTheDroppedLine</c> rows of the LSP tests), a backslash-continued dropped line (A9 — it
+    /// continues, but leaves no bracket open), a bracket in a string, a comment or a closed backtick name on the
+    /// dropped line (<see cref="ARecoveryPoint_KnowsWhetherTheDroppedLineContinues"/>'s rows), a bracket inside an
+    /// unclosed f-string field (<c>ReportUnclosedField</c>'s shape, not this fact), and clean documents.
+    /// </summary>
+    public static TheoryData<string, string, int?> BracketLeftOpen => new()
+    {
+        // The end of the source with a bracket open.
+        { "eof: opened on the statement's first line (A1)", "def main():\n    xs = [1,\n    y = 2\n    if y:\n        print(y)\n", 2 },
+        { "eof: the statement's continuation line is the last", "def main():\n    x = foo(\n        1,\n", 2 },
+        { "eof: opened on a backslash continuation line", "def main():\n    x = 1 + \\\n        foo(\n            1,\n", 3 },
+        { "eof: nested, the outermost opener", "def main():\n    x = foo(1,\n        [2,\n", 2 },
+        { "eof: above a class (A11)", "x = (\nclass Foo:\n    def m(self):\n        pass\n", 1 },
+        { "eof: a decorator (A2)", "@[foo\nclass Bar:\n    pass\n", 1 },
+        { "eof: after a recovery that leaves none open", "def main():\n    x = $\n    y = [1,\n", 3 },
+        { "eof: CRLF", "def main():\r\n    xs = [1,\r\n    y = 2\r\n", 2 },
+        { "eof: abort on the last line, opened before it", "def main():\n    x = foo(1,\n        \"abc", 2 },
+        { "eof: abort on the last line, opened in the given-up text", "def main():\n    x = $ foo(1,", 2 },
+        // A recovery whose dropped line has a bracket open at its END.
+        { "closed inside an unterminated string (A3)", "def main():\n    if foo(\"abc):\n        y = 1\n    z = 2\n  w = 3\n", 2 },
+        { "closed inside an unterminated backtick name (A4)", "def main():\n    if foo(`x):\n        y = 1\n    z = 2\n  w = 3\n", 2 },
+        { "opened before the abort (A5)", "def main():\n    x = foo($,\ndef g():\n  return 1\n", 2 },
+        { "opened in the given-up text (A7)", "def main():\n    x = $ foo(1,\n          2)\n  y = 1\n", 2 },
+        { "opened in the given-up text below a clean line", "def main():\n    q = 1\n    x = $ foo(1,\n          2)\n", 3 },
+        { "opened on an earlier line, abandoned on a dropped continuation line", "def main():\n    x = foo(1,\n        $, 2\n    y = 1\n", 2 },
+        { "closed and re-opened in the given-up text of a continuation line", "def main():\n    x = foo(1,\n        $) + bar(2,\n    y = 1\n", 3 },
+        { "around an unclosed f-string field", "def main():\n    print(f\"{x\n    y = 1\n", 2 },
+        { "CR line breaks", "def main():\r    x = foo($,\r    y = 1\r", 2 },
+        // Two events: the first.
+        { "two recoveries: the first", "def main():\n    x = foo($,\n    y = bar($,\n    z = 1\n", 2 },
+        { "a recovery, then the end of the source: the first", "def main():\n    x = foo($,\n    y = [1,\n", 2 },
+        // Positive controls: nothing is left open.
+        { "closed in the given-up text (A8)", "def main():\n    if foo($):\n          y = 1\n", null },
+        { "BracketClosedOnTheDroppedLine: if call", "def main():\n    if foo($):\n        y = 1\n    z = 2\n  w = 3\n", null },
+        { "BracketClosedOnTheDroppedLine: for range", "def main():\n    for i in range($):\n        y = 1\n    z = 2\n  w = 3\n", null },
+        { "BracketClosedOnTheDroppedLine: with open", "def main():\n    with open($) as h:\n        y = 1\n    z = 2\n  w = 3\n", null },
+        { "BracketClosedOnTheDroppedLine: list in if", "def main():\n    if x in [1, $]:\n        y = 1\n    z = 2\n  w = 3\n", null },
+        { "BracketClosedOnTheDroppedLine: signature", "class Foo:\n    def method(self, $) -> None:\n        ...\n  x = 1\n", null },
+        { "closed on its dropped continuation line", "def main():\n        x = foo(\n            1, $)\n        print(x)\n", null },
+        { "backslash-continued (A9)", "def main():\n    y = 1 + $ \\\n          2\n  z = 1\n", null },
+        { "a backslash in a comment", "def main():\n    x = $  # path C:\\\n    y = 1\n", null },
+        { "a bracket in a string", "def main():\n    x = $ \"(\"\n    y = 1\n", null },
+        { "a bracket in a comment", "def main():\n    x = foo(1, $)  # (\n    y = 1\n", null },
+        { "a bracket in a closed backtick name", "def main():\n    x = $ `(`\n    y = 1\n", null },
+        { "closed after an f-string's spec abort", "def main():\n    x = (1, f\"{x:\" + 2)\n    y = 1\n", null },
+        { "a bracket inside an unclosed f-string field", "def main():\n    x = f\"{foo(1,\n    y = 1\n", null },
+        { "an unclosed f-string field's own brace", "def main():\n    x = f\"{x\n    y = 1\n", null },
+        { "a recovery with no bracket", "def main():\n    x = $\n    y = 1\n", null },
+        { "eof: abort on the last line, closed", "def main():\n    x = foo($)", null },
+        { "clean: a bracket closed on a later line", "def main():\n    xs = [1,\n        2]\n    print(xs)\n", null },
+        { "clean: no bracket spans a line", "def main():\n    print(1)\n", null },
+    };
+
+    [Theory]
+    [MemberData(nameof(BracketLeftOpen))]
+    public void ARecoveryPointOrTheEndOfTheSource_RecordsTheOpenerLineOfABracketLeftOpen(string name, string source, int? openerLine)
+    {
+        var lexer = Lex(source);
+
+        lexer.BracketLeftOpenAtLine.Should().Be(openerLine, $"{name} ({Errors(lexer)})");
+    }
+
+    /// <summary>
+    /// The continuation shapes over the corpus (plan-f92797 Design 6), with the SAME documents the route-parity sweep's
+    /// S7 drives through the LSP (<see cref="FormatterTwins.ContinuationShapes"/>, one recipe), built from every clean
+    /// fixture, its wide twin and its lone-CR twin. A bracket shape records
+    /// <see cref="LexerNs.Lexer.BracketLeftOpenAtLine"/> at the injected line — the first event of the document (Q is
+    /// clean above it), whether the lexer follows the bracket to the end of the source (<c>bracket-eof</c>) or a
+    /// recovery abandons it (<c>bracket-string</c>, <c>bracket-backtick</c>, <c>bracket-dropped</c>). A
+    /// <c>recovery*</c> shape resumes at the line after the injected one, does NOT continue (no bracket, no
+    /// backslash), and records no bracket at the injected line (a LATER event may — an indentation error that drops a
+    /// line opening a bracket, or a bracket of Q's own left open to the end of the source — counted). A document that keeps every literal line of Q loses no literal
+    /// (<c>LiteralLoss.None</c>); only <c>recovery-misindented</c> may lose one — its re-indented line, at a width on no
+    /// level, is dropped (SPY0013), and when it opens a literal that spans lines the fact must be set (S6's subject,
+    /// counted). Each shape is counted and must build ≥ 1 document.
+    /// </summary>
+    [Fact]
+    public void Corpus_EveryContinuationShape_RecordsItsFactAndLosesNoLiteral()
+    {
+        var root = FixtureRoots.CompilerTests.Path;
+        var files = Directory.EnumerateFiles(root, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !Sharpy.Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(root, f)))
+            .OrderBy(f => f, StringComparer.Ordinal).ToList();
+        var bracketShapes = new[] { FormatterTwins.BracketEofShape, FormatterTwins.BracketStringShape, FormatterTwins.BracketBacktickShape, FormatterTwins.BracketDroppedShape };
+        var documents = FormatterTwins.ContinuationShapeNames.ToDictionary(s => s, _ => 0);
+        var laterFacts = FormatterTwins.ContinuationShapeNames.ToDictionary(s => s, _ => 0);
+        var lostLiteralLine = FormatterTwins.ContinuationShapeNames.ToDictionary(s => s, _ => 0);
+        var samples = new List<string>();
+        var failures = new List<string>();
+
+        foreach (var file in files)
+        {
+            var name = Path.GetRelativePath(root, file);
+            var source = File.ReadAllText(file);
+            foreach (var (q, twin) in new[] { (source, ""), (FormatterTwins.WideIndented(source), " (wide)"), (FormatterTwins.Cr(source), " (cr)") })
+            {
+                var parent = new LexerNs.Lexer(q);
+                var qLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(q, LexerNs.LiteralSpans.Of(parent.TokenizeAll()));
+                if (parent.Diagnostics.HasErrors)
+                    continue;
+
+                foreach (var shape in FormatterTwins.ContinuationShapes(q))
+                {
+                    var lexer = new LexerNs.Lexer(shape.Text);
+                    var dLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(shape.Text, LexerNs.LiteralSpans.Of(lexer.TokenizeAll(), lexer.RecoveryResumes));
+                    var where = $"{name}{twin} {shape.Shape}";
+                    documents[shape.Shape]++;
+                    if (qLiteralLines.All(l => dLiteralLines.Contains(l < shape.InsertedAt ? l : l + 1)))
+                    {
+                        if (lexer.LiteralLoss != LexerNs.LiteralLoss.None)
+                            failures.Add($"{where}: no literal line is lost, yet LiteralLoss is {lexer.LiteralLoss} ({Errors(lexer)})");
+                    }
+                    else if (shape.Shape != FormatterTwins.RecoveryMisindentedShape)
+                    {
+                        failures.Add($"{where}: the shape loses a literal line ({Errors(lexer)})");
+                    }
+                    else
+                    {
+                        // The line re-indented to a width on no level is dropped (SPY0013); when it opens a literal
+                        // that spans lines, that literal is lost — S6's subject, so the fact must say so.
+                        lostLiteralLine[shape.Shape]++;
+                        if (lexer.LiteralLoss == LexerNs.LiteralLoss.None)
+                            failures.Add($"{where}: a literal line is lost, yet LiteralLoss is None ({Errors(lexer)})");
+                    }
+
+                    var injected = shape.InsertedAt + 1;
+                    if (bracketShapes.Contains(shape.Shape))
+                    {
+                        if (lexer.BracketLeftOpenAtLine != injected)
+                            failures.Add($"{where}: the bracket opens on line {injected}, yet BracketLeftOpenAtLine is {lexer.BracketLeftOpenAtLine?.ToString() ?? "null"} ({Errors(lexer)})");
+                        continue;
+                    }
+
+                    var resume = LineStart(shape.Text, shape.InsertedAt + 1);
+                    if (!lexer.RecoveryResumes.Contains(resume))
+                        failures.Add($"{where}: no recovery resumes at the line after the injected one (offset {resume}; resumes {string.Join(", ", lexer.RecoveryResumes)})");
+                    else if (lexer.RecoveryResumesAfterAContinuedLine.Contains(resume))
+                        failures.Add($"{where}: the injected line ends its statement, yet its recovery point is a continued one");
+                    if (lexer.BracketLeftOpenAtLine is { } line)
+                    {
+                        if (line <= injected)
+                            failures.Add($"{where}: no bracket opens at or above line {injected}, yet BracketLeftOpenAtLine is {line} ({Errors(lexer)})");
+                        else
+                        {
+                            laterFacts[shape.Shape]++;
+                            if (laterFacts[shape.Shape] <= 2)
+                                samples.Add($"{where}: line {line} ({Errors(lexer)})");
+                        }
+                    }
+                }
+            }
+        }
+
+        _output.WriteLine($"documents per shape: {string.Join(", ", documents.Select(d => $"{d.Key}={d.Value}"))}; "
+            + $"a literal line lost by the dropped misindented line: {string.Join(", ", lostLiteralLine.Where(d => d.Value > 0).Select(d => $"{d.Key}={d.Value}"))}; "
+            + $"a bracket left open by a LATER event: {string.Join(", ", laterFacts.Select(d => $"{d.Key}={d.Value}"))}; e.g. {string.Join(" || ", samples)}");
+        failures.Should().BeEmpty();
+        documents.Where(d => d.Value == 0).Select(d => d.Key).Should().BeEmpty("every continuation shape must build ≥ 1 document from the corpus");
+    }
+
+    /// <summary>The offset where 0-based <paramref name="line"/> of <paramref name="text"/> starts (<c>\r\n</c>, <c>\r</c> and <c>\n</c> each end a line).</summary>
+    private static int LineStart(string text, int line)
+    {
+        var i = 0;
+        for (var l = 0; l < line && i < text.Length; l++)
+        {
+            while (i < text.Length && text[i] is not ('\n' or '\r'))
+                i++;
+            if (i < text.Length && text[i] == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+                i++;
+            i++;
+        }
+        return i;
+    }
+
     /// <summary>A lex that recovers from nothing resumes nowhere.</summary>
     [Fact]
     public void ACleanLex_RecordsNoRecoveryPoint()

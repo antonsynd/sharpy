@@ -109,10 +109,12 @@ public partial class Lexer
     /// not close on the line is content to the line end, as the lexer would read it; a bracket in a string or a
     /// comment is text. (P22g verify round: the first spelling read <c>_bracketDepth > 0</c> at the abort and the
     /// last skipped character, so a closed bracket counted, an opened one did not, and <c># C:\</c> continued.)
+    /// The two arms are told apart (<see cref="LineEnd"/>): only an open bracket is <see cref="BracketLeftOpenAtLine"/>.
     /// </summary>
-    private static bool DroppedLineContinues(ReadOnlySpan<char> given, int bracketDepth)
+    private static LineEnd DroppedLineContinues(ReadOnlySpan<char> given, int bracketDepth)
     {
         var depth = bracketDepth;
+        var openedInGivenUpText = false;
         var endsInBackslash = false;
         var i = 0;
         while (i < given.Length && !IsLineBreak(given[i]))
@@ -153,13 +155,25 @@ public partial class Lexer
             }
 
             if (c is '(' or '[' or '{')
-                depth++;
+            {
+                if (depth++ == 0)
+                    openedInGivenUpText = true;
+            }
             else if (c is (')' or ']' or '}') && depth > 0)
                 depth--;
             i++;
         }
-        return depth > 0 || endsInBackslash;
+        return new LineEnd(BracketOpen: depth > 0, Backslash: endsInBackslash, OpenedInGivenUpText: depth > 0 && openedInGivenUpText);
     }
+
+    /// <summary>
+    /// The END state of a line the lexer gives up (<see cref="DroppedLineContinues"/>): a bracket still open
+    /// (<c>BracketOpen</c>; <c>OpenedInGivenUpText</c> when the outermost one left open was
+    /// opened in the given-up text — <c>x = $ foo(1,</c>, or <c>$) + bar(2,</c> after the bracket open at the abort
+    /// closed — rather than before the abort), and a trailing backslash outside a comment
+    /// (<c>Backslash</c>). Either continues the line on the next; only the bracket is left open.
+    /// </summary>
+    private readonly record struct LineEnd(bool BracketOpen, bool Backslash, bool OpenedInGivenUpText);
 
     /// <summary>A backtick-delimited name, read as the lexer reads one: it ends at its backtick or at the line break.</summary>
     private static void SkipBacktickName(ReadOnlySpan<char> text, ref int i)
