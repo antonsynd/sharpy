@@ -328,9 +328,13 @@ def test_connect_invalid_address_raises_error():
     # settimeout governs connect (#2177): the 1 s timeout elapses and raises
     # socket.timeout, where an un-timed connect waited the OS default (~75 s on
     # macOS). A host whose network refuses 192.0.2.1 outright raises a plain
-    # socket.error before the timeout can elapse; python3 does the same.
+    # socket.error before the timeout can elapse; python3 does the same. The
+    # refusal branch is bounded by the timeout itself, not a shorter "prompt"
+    # threshold (#2278): a timeout cannot fire before 1 s, so a plain error
+    # raised sooner is a refusal, and a refusal a loaded runner slows past 1 s
+    # loses the race to the timeout and takes the other branch.
     assert elapsed < 30.0
-    assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
+    assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 1.0)
     s.close()
 
 
@@ -399,7 +403,7 @@ def test_create_connection_invalid_address_raises():
     # The timeout= argument governs the connect (#2177); see
     # test_connect_invalid_address_raises_error for the two admissible outcomes.
     assert elapsed < 30.0
-    assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
+    assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 1.0)
 
 @test
 def test_create_connection_timeout_omitted_none_and_value():
@@ -462,7 +466,9 @@ def test_create_connection_omitted_timeout_without_default_is_blocking():
 # healthy, but a loaded CI runner has turned a 1 s timeout into a false
 # socket.timeout. A test whose subject IS the timeout keeps its short timeout, and
 # its elapsed upper bound is 30 s: loose enough for a slow runner, still well
-# under the OS's un-timed connect wait (~75 s macOS, ~127 s Linux).
+# under the OS's un-timed connect wait (~75 s macOS, ~127 s Linux). A
+# non-blocking (0.0) call answers at once when healthy; its bound is 10 s, the
+# must-complete value, which still catches a call that blocks for the OS wait.
 def _elapsed_since(start: float) -> float:
     return time.monotonic() - start
 
@@ -524,7 +530,7 @@ def test_accept_non_blocking_raises_error_immediately():
         is_timeout = isinstance(e, socket.timeout)
     assert caught
     assert not is_timeout
-    assert _elapsed_since(start) < 0.5
+    assert _elapsed_since(start) < 10.0
     server.close()
 
 @test
@@ -541,7 +547,7 @@ def test_connect_non_blocking_raises_error_immediately():
         is_timeout = isinstance(e, socket.timeout)
     assert caught
     assert not is_timeout
-    assert _elapsed_since(start) < 0.5
+    assert _elapsed_since(start) < 10.0
     s.close()
 
 @test
@@ -654,13 +660,16 @@ def test_settimeout_negative_raises_value_error():
 #
 # Cells: entry point {setdefaulttimeout, settimeout, create_connection(timeout=)}
 # x value, each measured against python3 3.12:
-#   None, 0.0, -0.0, 1.5, 1e6, 9.2e9 (int64 ns fits)   accepted
+#   None, 0.0, -0.0, 10.5, 1e6, 9.2e9 (int64 ns fits)  accepted
 #   -1.0, -1e-10 (negative)                            ValueError
 #   nan                                                ValueError
 #   inf, -inf, 9.3e9, 1e300, -1e300 (int64 ns overflow) OverflowError
 # The refusal is raised AT the call (setdefaulttimeout used to store the value
 # and let the next socket() construction raise), and a refused call leaves the
 # previous timeout / default unchanged.
+# The positive cell is 10.5, not a short value (#2278): create_connection with
+# an accepted timeout must reach the closed port's refusal, and a short timeout
+# lets a loaded runner turn that refusal into socket.timeout.
 
 def _timeout_outcome(e: Exception) -> str:
     if isinstance(e, OverflowError):
@@ -741,7 +750,7 @@ def test_timeout_rule_accepts_none_zero_and_positive():
     _assert_timeout_rule(None, "accepted")
     _assert_timeout_rule(0.0, "accepted")
     _assert_timeout_rule(-0.0, "accepted")
-    _assert_timeout_rule(1.5, "accepted")
+    _assert_timeout_rule(10.5, "accepted")
 
 @test
 def test_timeout_rule_accepts_very_large_within_int64_nanoseconds():

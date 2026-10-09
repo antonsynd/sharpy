@@ -16,9 +16,13 @@ public class SemanticPropertyTests
     private readonly ITestOutputHelper _output;
 
     /// <summary>
-    /// Timeout per fuzz iteration (2 seconds).
+    /// Ceiling per compile (30 seconds): past it the compiler is stuck, not slow (#2278).
+    /// A healthy compile takes well under a second, but a loaded runner has pushed a pair's
+    /// second compile past the former 2 s budget. A cancelled compile records SPY0901
+    /// (<see cref="DiagnosticCodes.Infrastructure.CompilationCancelled"/>) rather than throwing,
+    /// so the pair properties skip a pair with a cancelled side (<see cref="WasCancelled"/>).
     /// </summary>
-    private const int FuzzIterationTimeoutMs = 2000;
+    private const int FuzzIterationTimeoutMs = 30_000;
 
     public SemanticPropertyTests(ITestOutputHelper output)
     {
@@ -104,6 +108,7 @@ public class SemanticPropertyTests
     {
         var fuzzer = new SharpyFuzzer(seed);
         var failures = new List<string>();
+        var compared = 0;
 
         for (int i = 0; i < 50; i++)
         {
@@ -118,6 +123,9 @@ public class SemanticPropertyTests
 
                 var result1 = compiler1.Compile(source, "fuzz_det.spy", cts1.Token);
                 var result2 = compiler2.Compile(source, "fuzz_det.spy", cts2.Token);
+                if (WasCancelled(result1) || WasCancelled(result2))
+                    continue;
+                compared++;
 
                 var diags1 = result1.Diagnostics.GetAll();
                 var diags2 = result2.Diagnostics.GetAll();
@@ -144,10 +152,6 @@ public class SemanticPropertyTests
                     }
                 }
             }
-            catch (OperationCanceledException)
-            {
-                // Timeouts are OK
-            }
             catch (Exception)
             {
                 // Crashes are tested elsewhere
@@ -160,6 +164,7 @@ public class SemanticPropertyTests
                 _output.WriteLine(f);
         }
 
+        Assert.True(compared > 0, $"Seed {seed}: every pair had a cancelled side; nothing was compared");
         Assert.Empty(failures);
     }
 
@@ -177,6 +182,7 @@ public class SemanticPropertyTests
     {
         var fuzzer = new SharpyFuzzer(seed);
         var failures = new List<string>();
+        var compared = 0;
 
         for (int i = 0; i < 50; i++)
         {
@@ -196,6 +202,9 @@ public class SemanticPropertyTests
 
                 var result1 = compiler1.Compile(trimmed, "fuzz_nl.spy", cts1.Token);
                 var result2 = compiler2.Compile(withNewline, "fuzz_nl.spy", cts2.Token);
+                if (WasCancelled(result1) || WasCancelled(result2))
+                    continue;
+                compared++;
 
                 // Extract error codes (ignore warnings since newlines may affect warning positions)
                 var errorCodes1 = result1.Diagnostics.GetErrors()
@@ -228,10 +237,6 @@ public class SemanticPropertyTests
                     }
                 }
             }
-            catch (OperationCanceledException)
-            {
-                // Timeouts OK
-            }
             catch (Exception)
             {
                 // Crashes tested elsewhere
@@ -244,8 +249,16 @@ public class SemanticPropertyTests
                 _output.WriteLine(f);
         }
 
+        Assert.True(compared > 0, $"Seed {seed}: every pair had a cancelled side; nothing was compared");
         Assert.Empty(failures);
     }
+
+    /// <summary>
+    /// A cancelled compile is a skipped iteration, never one side of a disagreement: its error
+    /// list is SPY0901 alone, whatever the source.
+    /// </summary>
+    private static bool WasCancelled(CompilationResult result) =>
+        result.Diagnostics.GetAll().Any(d => d.Code == DiagnosticCodes.Infrastructure.CompilationCancelled);
 
     private static string Truncate(string s, int maxLen = 200)
     {

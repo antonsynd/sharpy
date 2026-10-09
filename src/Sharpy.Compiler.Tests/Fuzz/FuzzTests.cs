@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Xunit;
 using Xunit.Abstractions;
@@ -19,12 +20,14 @@ public class FuzzTests
     private readonly ITestOutputHelper _output;
 
     /// <summary>
-    /// Timeout per fuzz iteration (2 seconds). If the compiler takes longer
-    /// than this, it's likely stuck in an infinite loop. Most compilations
-    /// complete in under 100ms, so 2 seconds is generous while keeping the
-    /// total suite runtime reasonable.
+    /// Ceiling per compile (30 seconds): past it the compiler is stuck in a loop, not slow
+    /// (#2278). Most compilations finish in under 100 ms, but a loaded runner stretches that
+    /// several-fold, so a tighter budget would read the machine's load. A cancelled compile
+    /// records SPY0901 rather than throwing, so the hang detectors read the result
+    /// (<see cref="WasCancelled"/>); an <see cref="OperationCanceledException"/> catch alone
+    /// never fires.
     /// </summary>
-    private const int FuzzIterationTimeoutMs = 2000;
+    private const int FuzzIterationTimeoutMs = 30_000;
 
     public FuzzTests(ITestOutputHelper output)
     {
@@ -133,6 +136,8 @@ public class FuzzTests
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
                 var result = compiler.Compile(input, "fuzz_test.spy", cts.Token);
+                if (WasCancelled(result))
+                    timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
                 // Success or failure with diagnostics are both fine.
                 // We only care that it doesn't throw.
             }
@@ -188,6 +193,8 @@ public class FuzzTests
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
                 var result = compiler.Compile(input, "fuzz_error.spy", cts.Token);
+                if (WasCancelled(result))
+                    timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
                 // Most of these should fail - that's expected
             }
             catch (OperationCanceledException)
@@ -243,6 +250,8 @@ public class FuzzTests
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
                 var result = compiler.Compile(input, "fuzz_random.spy", cts.Token);
+                if (WasCancelled(result))
+                    timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (OperationCanceledException)
             {
@@ -576,6 +585,9 @@ public class FuzzTests
 
         Assert.Empty(failures);
     }
+
+    private static bool WasCancelled(CompilationResult result) =>
+        result.Diagnostics.GetAll().Any(d => d.Code == DiagnosticCodes.Infrastructure.CompilationCancelled);
 
     private static string Truncate(string s, int maxLen = 200)
     {
