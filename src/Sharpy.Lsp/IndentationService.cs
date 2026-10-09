@@ -50,7 +50,8 @@ internal static class IndentationService
         catch (Exception)
         {
             // no tokens: no literal is known
-            return new IndentMap(new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0, null, new Dictionary<int, (int, int)>());
+            return new IndentMap(new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0, null, null,
+                new Dictionary<int, RecoveryLine>(), new HashSet<int>(), new HashSet<int>());
         }
 
         // Levels come from the WIDTH stack of each logical line's leading whitespace, in physical
@@ -72,6 +73,7 @@ internal static class IndentationService
         var resumes = lexer.RecoveryResumes;
         var resume = 0;
         var partiallyRead = new HashSet<int>(); // logical lines error recovery dropped after reading part of them
+        var possibleHeaders = new HashSet<int>(); // those of them that could open a block (lead ruling L8)
         var atLogicalLineStart = true;
         var currentStart = 0;
         Token? previous = null;
@@ -89,7 +91,11 @@ internal static class IndentationService
                     for (; resume < resumes.Count && resumes[resume] <= token.Position; resume++)
                     {
                         if (!lexer.RecoveryResumesAfterAContinuedLine.Contains(resumes[resume]) && !atLogicalLineStart && currentStart > 0)
+                        {
                             partiallyRead.Add(currentStart);
+                            if (lexer.RecoveryResumesAfterAPossibleHeader.Contains(resumes[resume]))
+                                possibleHeaders.Add(currentStart);
+                        }
                     }
                     break;
                 case TokenType.Indent:
@@ -104,7 +110,11 @@ internal static class IndentationService
                         if (!lexer.RecoveryResumesAfterAContinuedLine.Contains(resumes[resume]))
                         {
                             if (!atLogicalLineStart && currentStart > 0)
+                            {
                                 partiallyRead.Add(currentStart);
+                                if (lexer.RecoveryResumesAfterAPossibleHeader.Contains(resumes[resume]))
+                                    possibleHeaders.Add(currentStart);
+                            }
                             atLogicalLineStart = true;
                         }
                     }
@@ -126,7 +136,10 @@ internal static class IndentationService
         var widths = new List<int> { 0 };
         var previousOpensBlock = false;
         var previousStart = 0;
-        var recoveryLines = new Dictionary<int, (int DroppedLine, int DroppedWidth)>();
+        var recoveryLines = new Dictionary<int, RecoveryLine>();
+        var blockOpeners = new HashSet<int>();
+        var unplaced = new HashSet<int>();
+        int? putativeBodyAbove = null; // the column width of a possible header whose putative body is being read (L8)
         for (var line = 1; line <= sourceLines.Count; line++)
         {
             bool startsLogicalLine;
@@ -149,10 +162,30 @@ internal static class IndentationService
             if (startsLogicalLine)
             {
                 logicalLineStarts.Add(line);
+                if (lineOpensBlock)
+                    blockOpeners.Add(line);
                 var width = LeadingWhitespaceWidth(sourceLines, line);
-                // The first logical line after a partially read dropped one: the recovery line (R-FU, lead ruling L6).
+                var columns = IndentColumns(sourceLines[line - 1]);
+                if (putativeBodyAbove is { } headerColumns && columns <= headerColumns)
+                    putativeBodyAbove = null;
+                // The first logical line after a partially read dropped one: the recovery line (R-FU). Its level is
+                // unknown when the dropped line could open a block and it is deeper — it and every deeper line after it
+                // are that block's putative body (L8) — or when it is a level or more deeper than any dropped line (L6).
                 if (partiallyRead.Contains(previousStart))
-                    recoveryLines[line] = (previousStart, LeadingWhitespaceWidth(sourceLines, previousStart));
+                {
+                    var recovery = new RecoveryLine(previousStart, IndentColumns(sourceLines[previousStart - 1]), possibleHeaders.Contains(previousStart));
+                    recoveryLines[line] = recovery;
+                    if (recovery.PossibleHeader && columns > recovery.DroppedColumns)
+                    {
+                        unplaced.Add(recovery.DroppedLine);
+                        putativeBodyAbove = recovery.DroppedColumns;
+                    }
+                    else if (columns >= recovery.DroppedColumns + Compiler.Lexer.Lexer.IndentWidth)
+                    {
+                        unplaced.Add(recovery.DroppedLine);
+                        unplaced.Add(line);
+                    }
+                }
                 if (width > widths[^1])
                 {
                     if (previousOpensBlock)
@@ -173,13 +206,47 @@ internal static class IndentationService
 
             // Continuation lines (inside brackets) take the current block's level, as before.
             lineIndent[line] = widths.Count - 1;
+            if (putativeBodyAbove != null && !literalLines.Contains(line))
+                unplaced.Add(line);
         }
+
+        // While a bracket left open freezes a non-blank tail, the opener line is part of the statement the tail
+        // continues and is frozen with it (lead ruling L9); an opener on the last line freezes nothing.
+        int? frozenFrom = lexer.BracketLeftOpenAtLine is { } opener
+            ? sourceLines.Skip(opener).Any(l => l.Trim().Length > 0) ? opener : opener + 1
+            : null;
 
         var indentationDiagnostics = lexer.Diagnostics.GetAll().Count(d =>
             d.Code is DiagnosticCodes.Lexer.InvalidIndentation or DiagnosticCodes.Lexer.IndentationMismatch);
         return new IndentMap(lineIndent, tokens, lexer.LiteralStateUnknown, logicalLineStarts, literalLines, indentationDiagnostics,
-            lexer.BracketLeftOpenAtLine, recoveryLines);
+            lexer.BracketLeftOpenAtLine, frozenFrom, recoveryLines, unplaced, blockOpeners);
     }
+
+    /// <summary>
+    /// The columns of <paramref name="text"/>'s leading whitespace, a tab advancing to the next multiple of
+    /// <see cref="TabStop"/> as Python's tokenizer reads it: the width the recovery-line rules compare (lead rulings L6,
+    /// L8), so two tabs are not two columns (verifier 1b). The lexer refuses tab indentation (SPY0012), so a tab's width
+    /// is a convention; the widest one in use keeps a tab-indented body deeper than the space-indented header above it
+    /// (<c>    if foo($):</c> / <c>\ty = 1</c>), which refuses rather than repairs. Never the editor's tabSize (P22b).
+    /// </summary>
+    internal static int IndentColumns(string text)
+    {
+        var columns = 0;
+        foreach (var c in text)
+        {
+            if (c == ' ')
+                columns++;
+            else if (c == '\t')
+                columns += TabStop - columns % TabStop;
+            else
+                break;
+        }
+
+        return columns;
+    }
+
+    /// <summary>Python's tab stop (<c>tokenize</c>): a tab advances to the next multiple of 8 columns.</summary>
+    private const int TabStop = 8;
 
     private static int LeadingWhitespaceWidth(IReadOnlyList<string> sourceLines, int line)
     {
@@ -194,15 +261,30 @@ internal static class IndentationService
 }
 
 /// <summary>
+/// A recovery line's dropped line (<see cref="IndentMap.RecoveryLines"/>): its first line, its leading columns
+/// (<see cref="IndentationService.IndentColumns"/>), and whether it could open a block — the lexer read a <c>:</c> at
+/// bracket depth 0 in it (<see cref="Compiler.Lexer.Lexer.RecoveryResumesAfterAPossibleHeader"/>, lead ruling L8).
+/// </summary>
+internal readonly record struct RecoveryLine(int DroppedLine, int DroppedColumns, bool PossibleHeader);
+
+/// <summary>
 /// <see cref="IndentationService.BuildIndentMap"/>'s result (lines 1-based). <see cref="OpenBracketLine"/> is the lexer's
 /// <see cref="Compiler.Lexer.Lexer.BracketLeftOpenAtLine"/> (P22h, R-FU, #2279): the line of the opener of a bracket the
 /// lexer never saw closed — open to the end of the source (<c>xs = [1,</c>), or open at the END of a line its error
-/// recovery dropped (<c>if foo("abc):</c>, <c>x = foo($,</c>) — or null. Every line strictly below it is the bracket's
-/// to the lexer, whatever the user meant: no indent-only route edits one (the builders return it verbatim, on-type
-/// refuses it, and <c>FormattingFallback.IndentOnlyPreserved</c> refuses an applied text that changes it); the lines at
-/// or above it keep their repairs. <see cref="RecoveryLines"/>: each recovery line — the first logical line after a line
-/// error recovery dropped AFTER reading part of it (a resume that does not continue) — with that dropped logical line's
-/// first line and its leading-whitespace width (P22h, lead ruling L6; <see cref="IsRecoveryLineALevelDeeper"/>).
+/// recovery dropped (<c>if foo("abc):</c>, <c>x = foo($,</c>) — or null. Every line from <see cref="FrozenFrom"/> on is the
+/// bracket's statement to the lexer, whatever the user meant: no indent-only route edits one (the builders return it
+/// verbatim and <c>FormattingFallback.IndentOnlyPreserved</c> refuses an applied text that changes it); the lines above
+/// keep their repairs. <see cref="FrozenFrom"/> is the opener line itself while a line below it holds text (lead ruling
+/// L9: the opener moves only with its tail) and the line after it otherwise.
+/// <see cref="RecoveryLines"/>: each recovery line — the first logical line after a line error recovery dropped AFTER
+/// reading part of it (a resume that does not continue) — with its dropped line (<see cref="RecoveryLine"/>).
+/// <see cref="UnplacedLines"/>: the lines whose level is unknown, which no route may edit (clause 6c): below a dropped line
+/// that could open a block, the recovery line and every later line deeper than that header, with the header itself
+/// (lead ruling L8 — the dropped colon's block, whatever width its body has); below any other dropped line, a recovery
+/// line one indentation unit or more deeper, with the dropped line (lead ruling L6). Enforced by the check alone: a
+/// builder skip would also leave the string lines of a lost literal (X6, C1) unedited and make the literal-loss refusals
+/// of those documents unobservable. <see cref="BlockOpeners"/>: the logical-line starts the map reads as ending in
+/// <c>:</c> (clause 6b's landing test).
 /// </summary>
 internal sealed record IndentMap(
     Dictionary<int, int> LineIndent,
@@ -212,21 +294,11 @@ internal sealed record IndentMap(
     HashSet<int> LiteralLines,
     int IndentationDiagnostics,
     int? OpenBracketLine,
-    IReadOnlyDictionary<int, (int DroppedLine, int DroppedWidth)> RecoveryLines)
+    int? FrozenFrom,
+    IReadOnlyDictionary<int, RecoveryLine> RecoveryLines,
+    IReadOnlySet<int> UnplacedLines,
+    IReadOnlySet<int> BlockOpeners)
 {
-    /// <summary>Whether no indent-only route may edit the 1-based <paramref name="line"/>: it lies strictly below <see cref="OpenBracketLine"/>.</summary>
-    internal bool IsBelowOpenBracket(int line) => OpenBracketLine is { } opener && line > opener;
-
-    /// <summary>
-    /// Whether the 1-based <paramref name="line"/>, whose text is <paramref name="text"/>, is a recovery line
-    /// (<see cref="RecoveryLines"/>) at least one indentation unit (<see cref="Compiler.Lexer.Lexer.IndentWidth"/>, the
-    /// language's 4 spaces — never the editor's tabSize, P22b) deeper than its dropped line: whether the dropped line
-    /// opens a block is unknown (<c>    if foo($):</c> / <c>          y = 1</c>, A8), and R-FU forbids the colon guess, so
-    /// the line's level is unknown and it is not a repair target (lead ruling L6). Enforced by the check alone
-    /// (<c>FormattingFallback.IndentOnlyPreserved</c> clause 6c): a builder skip would also leave the string lines of a
-    /// lost literal (X6, C1) unedited and make the literal-loss refusals of those documents unobservable.
-    /// </summary>
-    internal bool IsRecoveryLineALevelDeeper(int line, string text) =>
-        RecoveryLines.TryGetValue(line, out var dropped)
-        && text.Length - text.TrimStart(' ', '\t').Length >= dropped.DroppedWidth + Compiler.Lexer.Lexer.IndentWidth;
+    /// <summary>Whether no indent-only route may edit the 1-based <paramref name="line"/>: it is at or below <see cref="FrozenFrom"/>.</summary>
+    internal bool IsFrozenByOpenBracket(int line) => FrozenFrom is { } from && line >= from;
 }

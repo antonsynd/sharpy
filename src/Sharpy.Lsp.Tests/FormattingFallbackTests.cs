@@ -1050,13 +1050,22 @@ public sealed class FormattingFallbackTests : IDisposable
     /// <summary>F1 (P2.2, lead ruling L5): an 8-space document with a bracket open to the end above two statements.</summary>
     internal const string F1 = "def main():\n        _ = [1,\n        x = 1\n        print(x)\n";
 
+    /// <summary>Verifier 1a: the recovery line two spaces deeper than a dropped block header (lead ruling L8).</summary>
+    internal const string Verifier1a = "def main():\n    if foo($):\n      y = 1\n";
+
+    /// <summary>Verifier 1c: a misindented line above an opener left open, its tail at the opener's 8 (lead ruling L9).</summary>
+    internal const string Verifier1c = "def main():\n          q = 1\n        _ = [1,\n        x = 1\n";
+
+    /// <summary>Verifier 1d: a call inside a replacement field abandoned at <c>$</c>, the field and the string closed (lead ruling L10).</summary>
+    internal const string Verifier1d = "def main():\n    if c:\n        x = f\"{foo($)}\"\n    print(x)\n";
+
     /// <summary>A8: a block header whose colon is in the text the lexer gives up, its body at width 10 (lead ruling L6).</summary>
     internal const string A8 = "def main():\n    if foo($):\n          y = 1\n";
 
     /// <summary>
     /// A8 with an UNRELATED misindented line above the header (lead ruling L6's arbiter row): clause 6c is check-only, so
     /// the full candidate moves <c>y</c> with <c>q</c> and is refused whole — the unrelated repair is withheld (no edit
-    /// @ ac3235c2a too). A builder skip would keep it, at the cost of the literal-loss guards (see IndentMap.IsRecoveryLineALevelDeeper).
+    /// @ ac3235c2a too). A builder skip would keep it, at the cost of the literal-loss guards (see IndentMap.UnplacedLines).
     /// </summary>
     internal const string A8q = "def main():\n      q = 1\n    if foo($):\n          y = 1\n";
 
@@ -1154,8 +1163,8 @@ public sealed class FormattingFallbackTests : IDisposable
         { "W2", WideCloserLineAbort, "ontype 5", WithLine(WideCloserLineAbort, 5, "    print(s)") },
         // W3: the recovery line repaired with a deeper line below it — clause 6 (print(x) depth 3 → 2; no edit @ ac3235c2a and now).
         { "W3", W3, "ontype 2", WithLine(W3, 2, "    y = 1") },
-        // F1 (lead ruling L5): @ ac3235c2a full / range-whole aligned all three lines to 4 (lines below the opener included);
-        // the frozen tail now stays at 8 and the opener alone at 4 would leave it a block deeper — clause 7b (alignment → no edit).
+        // F1 (lead rulings L5, L9): @ ac3235c2a full / range-whole aligned all three lines to 4 (lines below the opener
+        // included); the frozen tail now stays at 8 and the opener moves only with it — clause 7 (alignment → no edit).
         { "F1", F1, "full", WithLine(F1, 1, "    _ = [1,") },
         { "F1", F1, "range-whole", WithLine(F1, 1, "    _ = [1,") },
         // A8 (lead ruling L6): the recovery line a level or more deeper than its dropped header — its level is unknown
@@ -1277,22 +1286,56 @@ public sealed class FormattingFallbackTests : IDisposable
     }
 
     /// <summary>
-    /// Clause 7b at the check seam (lead ruling L5): a hand-applied text that moves a line ON its level above an opener
-    /// whose frozen tail holds text (F1's opener to 4 spaces alone) is refused; every other clause accepts it, so it
-    /// discriminates clause 7b alone.
+    /// The opener moves only with its tail (lead ruling L9; L5's clause 7b case): F1's opener moved to 4 spaces alone,
+    /// its tail left at 8, is refused — the opener line is frozen with a non-blank tail (clause 7).
     /// </summary>
     [Fact]
-    public void IndentOnlyPreserved_AnOnLevelLineAboveAFrozenTailMoved_IsRefused()
+    public void IndentOnlyPreserved_AFrozenOpenerMoved_IsRefused()
     {
+        IndentationService.BuildIndentMap(F1).FrozenFrom.Should().Be(2);
         FormattingFallback.IndentOnlyPreserved(F1, WithLine(F1, 1, "    _ = [1,")).Should().BeFalse();
     }
 
-    /// <summary>Clause 7b's accepting twin: above the same kind of opener, a line on NO level (width 10, SPY0013) is repaired to 8.</summary>
+    /// <summary>
+    /// Verifier 1c (lead ruling L9) at the check seam: <c>q</c> at width 10 repaired to 4 above an opener frozen at 8
+    /// strands the opener one block deeper than <c>q</c> once the bracket closes. Clause 6 exempts the opener (its
+    /// source width reads on no level: the width rule pushed 10) and clause 7 sees it unchanged; clause 6b judges the
+    /// frozen opener and refuses its new push after a line that opens no block — it discriminates that test alone.
+    /// </summary>
     [Fact]
-    public void IndentOnlyPreserved_ALineOnNoLevelAboveAFrozenTailRepaired_IsAccepted()
+    public void IndentOnlyPreserved_ALineAboveAFrozenOpenerRepairedSoTheOpenerIsStranded_IsRefused()
     {
-        const string document = "def main():\n          q = 1\n        _ = [1,\n        x = 1\n";
-        FormattingFallback.IndentOnlyPreserved(document, WithLine(document, 1, "        q = 1")).Should().BeTrue();
+        FormattingFallback.IndentOnlyPreserved(Verifier1c, WithLine(Verifier1c, 1, "    q = 1")).Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Its accepting twin (the verifier's G3: re-spelled so it also asserts what the routes apply): <c>q</c> repaired to
+    /// the opener's 8 lands on the opener's level — accepted. No route builds that text (the map's level for <c>q</c>
+    /// is 4 spaces), and every route applies nothing to 1c.
+    /// </summary>
+    [Fact]
+    public void IndentOnlyPreserved_ALineAboveAFrozenOpenerRepairedToItsLevel_IsAccepted_TheRoutesApplyNothing()
+    {
+        FormattingFallback.IndentOnlyPreserved(Verifier1c, WithLine(Verifier1c, 1, "        q = 1")).Should().BeTrue();
+        foreach (var route in new[] { "full", "range-whole", "ontype 1", "range-line 1" })
+            RouteEdits(Verifier1c, route).Should().BeEmpty(route);
+    }
+
+    /// <summary>
+    /// Clause 6c's L8 arm at the check seam: 1a's putative body moved to its header's width is refused (the dropped
+    /// <c>if foo($):</c> could open a block — the lexer read a depth-0 <c>:</c>); the accepting twin is A6, whose dropped
+    /// <c>x = $</c> could not, and whose recovery line keeps its repair.
+    /// </summary>
+    [Fact]
+    public void IndentOnlyPreserved_APutativeBodyBelowAPossibleHeaderMoved_IsRefused()
+    {
+        var map = IndentationService.BuildIndentMap(Verifier1a);
+        map.RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be(new RecoveryLine(2, 4, PossibleHeader: true));
+        map.UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3 });
+        FormattingFallback.IndentOnlyPreserved(Verifier1a, WithLine(Verifier1a, 2, "    y = 1")).Should().BeFalse();
+
+        IndentationService.BuildIndentMap(A6).UnplacedLines.Should().BeEmpty();
+        FormattingFallback.IndentOnlyPreserved(A6, WithLine(A6, 2, "    y = 1")).Should().BeTrue();
     }
 
     /// <summary>
@@ -1303,7 +1346,7 @@ public sealed class FormattingFallbackTests : IDisposable
     [Fact]
     public void IndentOnlyPreserved_ARecoveryLineALevelDeeperMoved_IsRefused()
     {
-        IndentationService.BuildIndentMap(A8).RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be((2, 4));
+        IndentationService.BuildIndentMap(A8).RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be(new RecoveryLine(2, 4, PossibleHeader: true));
         FormattingFallback.IndentOnlyPreserved(A8, WithLine(A8, 2, "    y = 1")).Should().BeFalse();
 
         // the 8-space twin's header moved to 4 alone, its body left at 18: the pair's relation changes the same way
@@ -1315,7 +1358,7 @@ public sealed class FormattingFallbackTests : IDisposable
     [Fact]
     public void IndentOnlyPreserved_ARecoveryLineLessThanALevelDeeperRepaired_IsAccepted()
     {
-        IndentationService.BuildIndentMap(A6).RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be((2, 4));
+        IndentationService.BuildIndentMap(A6).RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be(new RecoveryLine(2, 4, PossibleHeader: false));
         FormattingFallback.IndentOnlyPreserved(A6, WithLine(A6, 2, "    y = 1")).Should().BeTrue();
     }
 
@@ -1491,5 +1534,125 @@ public sealed class FormattingFallbackTests : IDisposable
         }
 
         RouteCell(document, route).Applied.Should().Be(applied, "{0} {1}", name, route);
+    }
+
+    // ---- P22h remediation R2 (the standalone verifier's 1a–1e, lead rulings L8–L10). Measured over stdio, base LSP
+    // (4562b1d01) vs HEAD (f4b149467 + this change): .claude/tmp/p22h-impl/r2/out_base.txt, out_head.txt.
+
+    /// <summary>
+    /// The verifier's documents, each with the base behaviour its rows record by direction. 1a and siblings (L8): the
+    /// recovery line below a dropped line that could open a block — base no edit, HEAD before L8 moved the body out of its
+    /// block on every route; no edit now. 1a-wide: base on-type 1 / range-line 1 re-indented the header alone (8 → 4)
+    /// off its body — no edit now. 1b (L8, two tabs) and 1b-nohdr (L6 measured in columns: a string swallowed the colon,
+    /// two tabs are 16 columns): base no edit. 1c and its abandoned twin (L9): base aligned every line (full / range-whole)
+    /// or re-indented one alone (on-type, range-line); no edit now — the opener moves only with its tail and no repair of
+    /// <c>q</c> leaves it on a level. 1d (L10): base moved <c>print(x)</c> into the <c>if</c> on full, range-whole and
+    /// range-line 3; no edit now — the line after the dropped one starts a logical line and is judged.
+    /// </summary>
+    public static readonly Dictionary<string, string> R2NoEditDocuments = new()
+    {
+        ["1a@5"] = "def main():\n    if foo($):\n     y = 1\n",
+        ["1a@6"] = Verifier1a,
+        ["1a@7"] = "def main():\n    if foo($):\n       y = 1\n",
+        ["1a tab"] = "def main():\n    if foo($):\n\ty = 1\n",
+        ["1a CRLF"] = "def main():\r\n    if foo($):\r\n      y = 1\r\n",
+        ["1a while"] = "def main():\n    while $:\n      y = 1\n",
+        ["1a elif"] = "def main():\n    if a:\n        x = 1\n    elif foo($):\n      y = 1\n",
+        ["1a for"] = "def main():\n    for i in range($):\n      a = i\n      b = a\n    print(b)\n",
+        ["1a def m"] = "class C:\n    def m(self, $):\n      return 1\n",
+        ["1a module if"] = "if foo($):\n  y = 1\n",
+        ["1a if x: $"] = "def main():\n    if x: $\n      y = 1\n",
+        ["1a wide"] = "def main():\n        if foo($):\n          y = 1\n",
+        ["1b"] = "def main():\n    if foo($):\n\t\ty = 1\n    z = 2\n",
+        ["1b no header"] = "def main():\n    x = \"abc:\n\t\ty = 1\n    z = 2\n",
+        ["1c"] = Verifier1c,
+        ["1c abandoned"] = "def main():\n          q = 1\n        _ = foo($,\n        if q:\n            print(q)\n",
+        ["1d"] = Verifier1d,
+        ["1d list"] = "def main():\n    if c:\n        x = f\"{[$]}\"\n    print(x)\n",
+        ["1e (R-FU direction: repaired at base)"] = "def main():\n    x = 1\n      foo(1,\n          2)\n    if x:\n          y = 2\n",
+    };
+
+    /// <summary>
+    /// 1d's full / range-whole text at base (measured): <c>print(x)</c> moved into the <c>if</c>. HEAD's builder makes no
+    /// candidate there (the line is now a judged logical line at its level), so the base text is the one the check refuses.
+    /// </summary>
+    private static readonly Dictionary<string, string> R2BaseFullText = new()
+    {
+        ["1d"] = WithLine(Verifier1d, 3, "        print(x)"),
+        ["1d list"] = WithLine("def main():\n    if c:\n        x = f\"{[$]}\"\n    print(x)\n", 3, "        print(x)"),
+    };
+
+    /// <summary>
+    /// The cells of <see cref="R2NoEditDocuments"/> with an edit to refuse: full and range-whole when the full builder's
+    /// candidate is an edit (or base applied one, <see cref="R2BaseFullText"/>), and on-type / range-line on every line
+    /// the range builder would re-indent.
+    /// </summary>
+    public static TheoryData<string, string> R2NoEditCells()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var (name, document) in R2NoEditDocuments)
+        {
+            if (FormattingFallback.ReindentDocument(document) != document || R2BaseFullText.ContainsKey(name))
+            {
+                data.Add(name, "full");
+                data.Add(name, "range-whole");
+            }
+            var lines = Compiler.Formatting.LineDiff.Split(document).Lines;
+            for (var l = 0; l < lines.Count; l++)
+            {
+                if (RangeCandidate(document, l) != document)
+                {
+                    data.Add(name, $"ontype {l}");
+                    data.Add(name, $"range-line {l}");
+                }
+            }
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// Every cell of the verifier's documents applies nothing, while the text the route would apply without its refusal
+    /// is an edit the check refuses. 1e is R-FU's accepted loss (a bracket opened on an SPY0013-dropped line and closed
+    /// later in the text still freezes the rest of the file: base repaired <c>          y = 2</c> on on-type 5 and
+    /// range-line 5, and <c>      foo(1,</c> on on-type 3 / range-line 3) — recorded, posted on #2279, not cured.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(R2NoEditCells))]
+    public void P22hR2_TheVerifiersCells_ApplyNothing_AndTheCheckRefusesWhatTheyWouldApply(string name, string route)
+    {
+        var document = R2NoEditDocuments[name];
+        RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
+        var candidate = route is "full" or "range-whole"
+            ? R2BaseFullText.GetValueOrDefault(name) ?? FormattingFallback.ReindentDocument(document)
+            : RangeCandidate(document, int.Parse(route.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture));
+        candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
+        FormattingFallback.IndentOnlyPreserved(document, candidate).Should().BeFalse("{0} {1}: the check refuses the candidate", name, route);
+    }
+
+    /// <summary>
+    /// The map's facts behind the cells (lead rulings L8–L10): 1a's dropped header and its putative body are unplaced;
+    /// in 1a-for both body lines are; 1d's <c>print(x)</c> starts a logical line (L10: the dropped line does not
+    /// continue — the field's paren is the field's) and is judged; 1c's opener is frozen with its tail.
+    /// </summary>
+    [Fact]
+    public void P22hR2_TheMapReadsThePossibleHeader_ThePutativeBody_TheJudgedLine_AndTheFrozenOpener()
+    {
+        IndentationService.BuildIndentMap(R2NoEditDocuments["1a for"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3, 4 });
+        IndentationService.BuildIndentMap(R2NoEditDocuments["1a wide"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3 });
+        IndentationService.BuildIndentMap(R2NoEditDocuments["1b"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3 });
+        IndentationService.BuildIndentMap(R2NoEditDocuments["1b no header"]).RecoveryLines.Should().ContainKey(3)
+            .WhoseValue.Should().Be(new RecoveryLine(2, 4, PossibleHeader: false));
+        IndentationService.BuildIndentMap(R2NoEditDocuments["1b no header"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3 },
+            "two tabs are 16 columns, a level and more deeper than the dropped line (L6, measured in columns)");
+        IndentationService.IndentColumns("\t\ty").Should().Be(16);
+        IndentationService.IndentColumns("    \ty").Should().Be(8);
+
+        var d = IndentationService.BuildIndentMap(Verifier1d);
+        d.LogicalLineStarts.Should().Contain(4, "print(x) starts a logical line");
+        d.OpenBracketLine.Should().BeNull();
+
+        IndentationService.BuildIndentMap(Verifier1c).FrozenFrom.Should().Be(3);
+        IndentationService.BuildIndentMap("def main():\n        x = 1\n        y = (\n").FrozenFrom.Should().Be(4, "an opener on the last line freezes nothing");
     }
 }

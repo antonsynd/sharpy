@@ -269,9 +269,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string Content = "content";
     internal const string Literal = "literal";
     internal const string Depth = "depth";
+
+    /// <summary>A <c>recovery-header-*</c> document's (lead ruling L8) target line is not byte-identical in T.</summary>
+    internal const string Moved = "moved";
     internal const string FactMissing = "factMissing";
     internal const string FactSpurious = "factSpurious";
-    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth, FactMissing, FactSpurious };
+    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth, Moved, FactMissing, FactSpurious };
 
     private readonly ITestOutputHelper _output;
     private readonly LspFormattingDriver _driver = new();
@@ -556,7 +559,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         IReadOnlyList<int> TargetLines,
         string? Kind,
         string? Shape = null,
-        ParityTwin? CleanTwin = null);
+        ParityTwin? CleanTwin = null,
+        int? UnmovedLine = null);
 
     /// <summary>
     /// The CLEAN twin of a <c>recovery-misindented</c> document (lead ruling L7): its text with the injected erroring
@@ -736,7 +740,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             targets,
             null,
             shape.Shape,
-            shape.Shape == FormatterTwins.RecoveryMisindentedShape ? CleanTwinOf(shape.Text, at) : null));
+            shape.Shape == FormatterTwins.RecoveryMisindentedShape ? CleanTwinOf(shape.Text, at) : null,
+            FormatterTwins.IsRecoveryHeaderShape(shape.Shape) ? at + 1 : null));
     }
 
     /// <summary>The <see cref="ParityTwin"/> of a <c>recovery-misindented</c> document whose injected line is the 0-based <paramref name="at"/>.</summary>
@@ -758,27 +763,34 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     /// <summary>
     /// Clean-twin parity (lead ruling L7, plan-f92797): a <c>recovery-misindented</c> cell whose <c>depth</c> failure is a
-    /// LOST repair (the route made no edit) is exempt when the same route does not repair the misindented line of the
-    /// document's <see cref="ParityTwin"/> either — the line after a clean statement, so a pre-existing lost repair, not
+    /// LOST repair — the first depth difference is the misindented line itself and the route left that line where it
+    /// was (<paramref name="applied"/>) — is exempt when the same route leaves the misindented line of the document's
+    /// <see cref="ParityTwin"/> where it was too: the line after a clean statement, so a pre-existing lost repair, not
     /// #2279's: a misindented block header with its body below (P2.2-F3), a line continuing past its end (F4), the
-    /// colon-less observer restriction (F5), a dropped literal opener (L4). A cell that made an edit is never exempt.
-    /// Counted per (twin, route) and pinned (<see cref="S7ParityExemptPin"/>).
+    /// colon-less observer restriction (F5), a dropped literal opener (L4). A cell that moved the line, or whose first depth
+    /// difference is another line, is never exempt; edits to other lines (the full fallback's comment lines) are judged by
+    /// the other buckets. Counted per (twin, route) and pinned (<see cref="S7ParityExemptPin"/>).
     /// </summary>
-    internal static bool ParityExempt(LspFormattingDriver driver, SweepDocument d, CellRequest request, CellVerdict verdict)
+    internal static bool ParityExempt(LspFormattingDriver driver, SweepDocument d, CellRequest request, CellVerdict verdict, string? applied)
     {
-        if (d.Truth?.CleanTwin is not { } clean || verdict.Changed || !verdict.Failures.Any(f => f.Bucket == Depth))
+        if (d.Truth?.CleanTwin is not { } clean || applied == null || !verdict.Failures.Any(f => f.Bucket == Depth))
             return false;
-        string applied;
+        var appliedLines = LineDiff.Split(applied).Lines;
+        if (appliedLines.Count != d.Lines.Count
+            || !string.Equals(appliedLines[clean.Line], d.Lines[clean.Line], StringComparison.Ordinal)
+            || FirstDepthDifference(appliedLines, d.Truth.LogicalStarts)?.Line != clean.Line)
+            return false;
+        string cleanApplied;
         try
         {
-            applied = Apply(driver, clean.Text, request);
+            cleanApplied = Apply(driver, clean.Text, request);
         }
         catch (StrictEditApplicationException)
         {
             return false;
         }
 
-        return string.Equals(LineDiff.Split(applied).Lines[clean.Line], LineDiff.Split(clean.Text).Lines[clean.Line], StringComparison.Ordinal);
+        return string.Equals(LineDiff.Split(cleanApplied).Lines[clean.Line], LineDiff.Split(clean.Text).Lines[clean.Line], StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1050,7 +1062,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         if (literal >= 0 && !knownLimit)
             failures.Add((Literal, $"{request}: line {literal} starts inside a literal: D '{Clip(x[literal])}' vs T '{Clip(t[literal])}'"));
 
-        if (FirstDepthDifference(t, truth.LogicalStarts) is { } depth)
+        // A recovery-header document (lead ruling L8): a dropped header claims a block Q does not have, so Q's layout
+        // cannot judge it — its target line, of unknown level, is byte-identical in T instead (moved).
+        if (truth.UnmovedLine is { } unmoved)
+        {
+            if (x[unmoved] != t[unmoved])
+                failures.Add((Moved, $"{request}: line {unmoved} below a dropped header moved: D '{Clip(x[unmoved])}' vs T '{Clip(t[unmoved])}'"));
+        }
+        else if (FirstDepthDifference(t, truth.LogicalStarts) is { } depth)
         {
             failures.Add((Depth, $"{request}: line {depth.Line} '{Clip(t[depth.Line])}' is at depth "
                 + (depth.Actual < 0 ? "<a width on no enclosing level>" : depth.Actual.ToString(System.Globalization.CultureInfo.InvariantCulture))
@@ -1429,8 +1448,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         Parallel.ForEach(work, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, item =>
         {
-            var verdict = Judge(item.Doc, item.Request, () => Apply(driver, item.Doc.Text, item.Request));
-            var exempt = ParityExempt(driver, item.Doc, item.Request, verdict);
+            string? applied = null;
+            var verdict = Judge(item.Doc, item.Request, () => applied = Apply(driver, item.Doc.Text, item.Request));
+            var exempt = ParityExempt(driver, item.Doc, item.Request, verdict, applied);
             if (exempt)
                 verdict.Failures.RemoveAll(f => f.Bucket == Depth);
             lock (item.Group)
@@ -2173,8 +2193,31 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// misindented line opens a literal spanning lines — L4's shape) loses its on-type repair, and so does its clean twin
     /// (<c>_ = 0</c>: the 6-space opener line is dropped whole with its literal), so the cell is exempt. A plain Q's
     /// document with the same lost repair (as if the route had applied nothing) is NOT exempt: its clean twin is repaired.
-    /// A cell that made an edit is never exempt.
+    /// A cell that moved the misindented line (to column 0 here) is never exempt.
     /// </summary>
+    /// <summary>
+    /// <c>moved</c> on a <c>recovery-header-*</c> document (lead ruling L8): the recipe's <c>recovery-header-2</c> document
+    /// of a plain Q — <c>if _($):</c> injected at the opener's width, the body line 2 spaces deeper. Left as it is,
+    /// nothing fails (no <c>depth</c>: Q's layout cannot judge a block Q lacks); with the target line moved to the header's
+    /// width (verifier 1a's wrong edit) <c>moved</c> fires.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Moved_SeesARecoveryLineBelowADroppedHeaderMoved()
+    {
+        const string plain = "def main():\n    q = 1\n    print(q)\n";
+        var docs = UnparseableDocuments(plain, Doc(plain).Facts!).ToList();
+        var d = docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderPrefix + "2");
+        d.Text.Should().Be("def main():\nif _($):\n  q = 1\n    print(q)\n");
+        d.Truth!.UnmovedLine.Should().Be(2);
+        d.Truth.TargetLines.Should().Equal(2);
+        var onType = new CellRequest(OnType, null, 2);
+        UnparseableBucketsOf(d, onType, d.Text).Should().BeEmpty();
+        UnparseableBucketsOf(d, onType, d.Text.Replace("\n  q = ", "\nq = ", StringComparison.Ordinal)).Should().Equal(Moved);
+        foreach (var shape in FormatterTwins.RecoveryHeaderShapes)
+            docs.Should().ContainSingle(g => g.Truth != null && g.Truth.Shape == shape.Shape);
+        docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderPrefix + "tab").Text.Should().Contain("\n\tq = 1\n");
+    }
+
     [Fact]
     public void PositiveControl_ParityExempt_OnlyALostRepairTheCleanTwinLosesToo()
     {
@@ -2184,14 +2227,15 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var onType = new CellRequest(OnType, null, 2);
         var lost = UnparseableOracles(own, onType, own.Text);
         lost.Failures.Select(f => f.Bucket).Should().Contain(Depth);
-        ParityExempt(_driver, own, onType, lost).Should().BeTrue("the clean twin's opener line is withheld too (L4)");
-        ParityExempt(_driver, own, onType, lost with { Changed = true }).Should().BeFalse("a cell that made an edit is never exempt");
+        ParityExempt(_driver, own, onType, lost, own.Text).Should().BeTrue("the clean twin's opener line is withheld too (L4)");
+        var moved = own.Text.Replace("\n      s = ", "\ns = ", StringComparison.Ordinal);
+        ParityExempt(_driver, own, onType, UnparseableOracles(own, onType, moved), moved).Should().BeFalse("a cell that moved its line is never exempt");
 
         const string plain = "def main():\n    q = 1\n    print(q)\n";
         var d = UnparseableDocuments(plain, Doc(plain).Facts!).Single(g => g.Truth?.Shape == FormatterTwins.RecoveryMisindentedShape);
         var unrepaired = UnparseableOracles(d, onType, d.Text);
         unrepaired.Failures.Select(f => f.Bucket).Should().Contain(Depth);
-        ParityExempt(_driver, d, onType, unrepaired).Should().BeFalse("the clean twin's line is repaired: the lost repair is #2279's");
+        ParityExempt(_driver, d, onType, unrepaired, d.Text).Should().BeFalse("the clean twin's line is repaired: the lost repair is #2279's");
     }
 
     [Fact]

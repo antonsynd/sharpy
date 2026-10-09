@@ -1169,14 +1169,15 @@ public class LiteralStateTests
                         if (lexer.LiteralLoss != LexerNs.LiteralLoss.None)
                             failures.Add($"{where}: no literal line is lost, yet LiteralLoss is {lexer.LiteralLoss} ({Errors(lexer)})");
                     }
-                    else if (shape.Shape != FormatterTwins.RecoveryMisindentedShape)
+                    else if (shape.Shape != FormatterTwins.RecoveryMisindentedShape && !FormatterTwins.IsRecoveryHeaderShape(shape.Shape))
                     {
                         failures.Add($"{where}: the shape loses a literal line ({Errors(lexer)})");
                     }
                     else
                     {
-                        // The line re-indented to a width on no level is dropped (SPY0013); when it opens a literal
-                        // that spans lines, that literal is lost — S6's subject, so the fact must say so.
+                        // The line re-indented to a width on no level is dropped (SPY0013, or SPY0011/SPY0012 for the
+                        // recovery-header-tab shape); when it opens a literal that spans lines, that literal is lost — S6's
+                        // subject, so the fact must say so (recovery-misindented and the recovery-header-* shapes, L8).
                         lostLiteralLine[shape.Shape]++;
                         if (lexer.LiteralLoss == LexerNs.LiteralLoss.None)
                             failures.Add($"{where}: a literal line is lost, yet LiteralLoss is None ({Errors(lexer)})");

@@ -25,6 +25,9 @@
 #   content      a line is lost or gained, or changed beyond its leading whitespace, or its line break changed
 #   literal      a line that starts inside a literal is not identical
 #   depth        a logical line's block depth in T (the lexer's width rule) differs from its depth in the parent
+#   moved        S7 recovery-header-* (lead ruling L8): the line after the injected `if _($):` is not byte-identical in
+#                T — its level is unknown (the dropped header may open a block Q lacks), so no route may move it; a moved
+#                row is a finding, never a row (judged instead of depth on those documents)
 # The S6 family (P22f, P22g) loses a literal WITHOUT a lexer abort inside its read, every document derived from Q by
 # FormatterTwins.LiteralLossShapes; the label (FormattingRouteParitySweepTests.LossState) fixes the cite:
 #   S6    the budget spent above a Q holding a multi-line literal (at any of FormatterTwins.BudgetStopLines), a stray
@@ -48,6 +51,8 @@
 # recovery-misindented with the line after it 2 spaces deeper); judged by depth against the parent's layout, its line
 # routes on the line after the injection (recovery-misindented's skip the wide twin). bracket-string,
 # bracket-backtick and bracket-dropped sit at the block opener's width (lead ruling L3), the others at the body's.
+# recovery-header-2/-4/-6/-tab (lead ruling L8) inject `if _($):` at the opener's width with the line after it 2, 4, 6
+# spaces or a tab deeper, and are judged by moved instead of depth.
 # An S7 row cites issue 2279. A recovery-misindented cell whose lost repair the CLEAN twin (the erroring line made
 # `_ = 0`) loses too is exempt from depth and counted in the pinned census count S7ParityExemptPin (lead ruling L7: a
 # pre-existing lost repair, not issue 2279's); S7 loses no literal, so an S7 factSpurious or factMissing cell is a finding

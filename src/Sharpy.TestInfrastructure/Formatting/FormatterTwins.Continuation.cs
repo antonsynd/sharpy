@@ -37,6 +37,28 @@ public static partial class FormatterTwins
     public const string RecoveryMisindentedShape = "recovery-misindented";
 
     /// <summary>
+    /// The prefix of the <c>recovery-header-*</c> shapes (P22h lead ruling L8, the standalone verifier's 1a/1b): a block
+    /// header that errors before its colon is read (<c>if _($):</c>) injected at the first block opener's width, the line
+    /// after it — Q's first body line — re-indented deeper than the header by 2, 4 or 6 spaces or one tab
+    /// (<see cref="RecoveryHeaderShapes"/>). The dropped line could open a block, so the line's level is unknown and no
+    /// route may move it: Q's layout cannot judge that (it has no such block), so these shapes are judged by their own
+    /// oracle — the target line byte-identical.
+    /// </summary>
+    public const string RecoveryHeaderPrefix = "recovery-header-";
+
+    /// <summary>The <c>recovery-header-*</c> shapes and the whitespace each adds after the header's own leading whitespace on the line after it.</summary>
+    public static readonly IReadOnlyList<(string Shape, string Deeper)> RecoveryHeaderShapes = new[]
+    {
+        (RecoveryHeaderPrefix + "2", "  "),
+        (RecoveryHeaderPrefix + "4", "    "),
+        (RecoveryHeaderPrefix + "6", "      "),
+        (RecoveryHeaderPrefix + "tab", "\t"),
+    };
+
+    /// <summary>Whether <paramref name="shape"/> is a <c>recovery-header-*</c> shape (<see cref="RecoveryHeaderPrefix"/>).</summary>
+    public static bool IsRecoveryHeaderShape(string shape) => shape.StartsWith(RecoveryHeaderPrefix, StringComparison.Ordinal);
+
+    /// <summary>
     /// The injected line of each shape (spellings of plan-f92797 Design 5) and whether it sits at the block opener's
     /// width. Each is a statement a user leaves unfinished; the bracket shapes leave a bracket the lexer never sees
     /// closed. The three ABANDONED brackets (an abort on their line resets the lexer's bracket depth) sit at the
@@ -62,6 +84,7 @@ public static partial class FormatterTwins
     public static readonly IReadOnlyList<string> ContinuationShapeNames = new[]
     {
         BracketEofShape, BracketStringShape, BracketBacktickShape, BracketDroppedShape, RecoveryShape, RecoveryMisindentedShape,
+        RecoveryHeaderPrefix + "2", RecoveryHeaderPrefix + "4", RecoveryHeaderPrefix + "6", RecoveryHeaderPrefix + "tab",
     };
 
     /// <summary>The spaces <see cref="RecoveryMisindentedShape"/> adds to the line after its injected line: a width on no level of a 4- or 8-space document.</summary>
@@ -74,7 +97,9 @@ public static partial class FormatterTwins
     /// opener and any comment or blank lines below it, so the line after the injection is the body's first statement
     /// on every twin — at that body line's own leading whitespace, or at the leading whitespace of the opener's first
     /// line for a shape at the opener's width; ended by Q's line break.
-    /// <see cref="RecoveryMisindentedShape"/> also re-indents that body line by <see cref="MisindentBy"/>. Q's text
+    /// <see cref="RecoveryMisindentedShape"/> also re-indents that body line by <see cref="MisindentBy"/>; the
+    /// <c>recovery-header-*</c> shapes inject <c>if _($):</c> at the opener's width and re-indent the body line deeper
+    /// than it (<see cref="RecoveryHeaderShapes"/>). Q's text
     /// and line breaks are kept byte-for-byte outside the injected line (and the re-indented one). None is built
     /// when Q has no block.
     /// </summary>
@@ -95,6 +120,12 @@ public static partial class FormatterTwins
         {
             var parent = shape == RecoveryMisindentedShape ? Reindent(q, new[] { body }, indent + MisindentBy) : q;
             shapes.Add(new ContinuationShape(shape, parent.Insert(injectAt, (atOpener ? openerIndent : indent) + line + lineBreak), body, atOpener));
+        }
+
+        foreach (var (shape, deeper) in RecoveryHeaderShapes)
+        {
+            var parent = Reindent(q, new[] { body }, openerIndent + deeper);
+            shapes.Add(new ContinuationShape(shape, parent.Insert(injectAt, openerIndent + "if _($):" + lineBreak), body, AtOpenerWidth: true));
         }
 
         return shapes;
