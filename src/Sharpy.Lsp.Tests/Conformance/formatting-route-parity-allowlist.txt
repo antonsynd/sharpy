@@ -32,7 +32,16 @@
 #   S6r   the short-string re-pair whose orphan line aborts right after the closer (repair-SPY00NN) — cite issue 2275
 #   S6x   a closer line that aborts and drops no quote, no stray (closeline-SPY00NN): nothing is lost, the direction
 #         control of issue 2275 — cite issue 2275; any S6x row is a finding, never a row
-# On every unparseable document (S3-S6x; not S6k), the lexer's literal-loss fact itself:
+#   S6o   the own-quote close-line tails (P22h): closeline-own-NAME, a closer line whose tail aborts inside a literal
+#         of its own (no stray: nothing is lost, its rows are factSpurious), and repair-own-NAME, the same tail after a
+#         re-paired closer followed by the orphan's closing quote (a literal IS lost: a factMissing row there is a
+#         finding, never a row) — cite issue 2280
+# S7 (P22h, FormatterTwins.ContinuationShapes) injects a line as the first body line of the parent's first block: an
+# unclosed bracket (bracket-eof, bracket-string, bracket-backtick, bracket-dropped) or an erroring line (recovery, and
+# recovery-misindented with the line after it 2 spaces deeper); judged by depth against the parent's layout, its line
+# routes on the line after the injection (recovery-misindented's skip the wide twin) — cite issue 2279; S7 loses no
+# literal, so an S7 factSpurious or factMissing row is a finding, never a row
+# On every unparseable document (S3-S7; not S6k), the lexer's literal-loss fact itself:
 #   factMissing  Lexer.LiteralStateUnknown is false while a line that starts inside a literal in Q does not in D
 #   factSpurious Lexer.LiteralStateUnknown is true while no such line is lost (never a row on S6n or S6x: a finding)
 # The reason after an S-family cite lists the shapes whose documents fail the bucket.

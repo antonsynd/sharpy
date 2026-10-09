@@ -64,9 +64,13 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// indentation error, a mid-line unexpected character or a short string aborting mid-line before each
 /// delimiter (<see cref="FormatterTwins.LiteralLossShapes"/>); P22g (#2273, #2275) adds where within its line the
 /// error that spends the budget lands, a re-paired orphan whose line aborts right after the closer (S6r), and a
-/// closer line that aborts and loses nothing (S6x, the direction control).
+/// closer line that aborts and loses nothing (S6x, the direction control). P22h (#2279, #2280) adds the own-quote
+/// close-line tails without and with a stray (S6o), and S7 — a bracket the lexer never sees closed, or an erroring line,
+/// injected as the first body line of Q's first block (<see cref="FormatterTwins.ContinuationShapes"/>), judged by
+/// <c>depth</c> against Q's layout.
 /// Each gets <c>full</c>, <c>range-whole</c>, and <c>range-line</c>/<c>ontype</c> on its last line (S3,
-/// S4) or on every line that starts inside a literal in Q (S5, S6); none of them is sampled.</para>
+/// S4), on every line that starts inside a literal in Q (S5, S6), or on the line after the injection (S7); none of
+/// them is sampled.</para>
 ///
 /// <para><b>Oracles (buckets)</b>, <c>D</c> the document and <c>T</c> the applied text:
 /// <list type="bullet">
@@ -151,7 +155,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string S6k = "S6k";
     internal const string S6r = "S6r";
     internal const string S6x = "S6x";
-    internal static readonly string[] States = { S1, S2, S3, S4, S5, S6, S6n, S6k, S6r, S6x };
+    internal const string S6o = "S6o";
+    internal const string S7 = "S7";
+    internal static readonly string[] States = { S1, S2, S3, S4, S5, S6, S6n, S6k, S6r, S6x, S6o, S7 };
 
     /// <summary>The routes swept per state.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string[]> RoutesByState = new SCG.Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -166,7 +172,20 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         [S6k] = new[] { Full, RangeWhole, RangeLine, OnType },
         [S6r] = new[] { Full, RangeWhole, RangeLine, OnType },
         [S6x] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S6o] = new[] { Full, RangeWhole, RangeLine, OnType },
+
+        // S7's line routes skip the wide twin's recovery-misindented documents (SkipsLineRoutesOnTheWideTwin).
+        [S7] = new[] { Full, RangeWhole, RangeLine, OnType },
     };
+
+    /// <summary>
+    /// Whether an <see cref="S7"/> shape's <c>range-line</c>/<c>ontype</c> cells are skipped on the <c>wide</c> twin
+    /// (plan-f92797 Design 5): <c>recovery-misindented</c> asks for a lone-line repair at the language's 4-space unit
+    /// in an 8-space document, which has no correct width (P22b: never the editor's tabSize) — clause 6b refuses it, so
+    /// its own <c>depth</c> row could never drain. That axis is the generator's stated limit, covered by the W1 hand
+    /// rows of <c>FormattingFallbackTests</c>; every other S7 shape runs every route on every twin.
+    /// </summary>
+    internal static bool SkipsLineRoutesOnTheWideTwin(string shape) => shape == FormatterTwins.RecoveryMisindentedShape;
 
     /// <summary>Whether a cell of <paramref name="route"/> in <paramref name="state"/> is sampled: the line-proportional routes on a parseable document. S3–S6 cells always run.</summary>
     internal static bool IsSampledCell(string route, string state) => SampledRoutes.Contains(route) && state is S1 or S2;
@@ -188,6 +207,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <item><see cref="S6x"/> — #2275's direction control (<c>closeline-SPY00NN</c>): a closer line that aborts and
     /// drops no quote, with no stray — nothing is lost, so its only possible row is <c>factSpurious</c> (a finding,
     /// never a row), and its line routes sit on ONE line as <see cref="S6n"/>'s do.</item>
+    /// <item><see cref="S6o"/> — the own-quote axis of the close-line rule (#2280): <c>closeline-own-NAME</c> (no stray; the
+    /// tail aborts inside a literal of its own, so the given-up text holds that literal's own delimiter and nothing is
+    /// lost — its legitimate row is <c>factSpurious</c>, and its line routes sit on ONE line as <see cref="S6x"/>'s do)
+    /// and <c>repair-own-NAME</c> (the same tail after a re-paired closer, then the orphan's closing quote — a literal
+    /// line IS lost, so its only possible fact row, <c>factMissing</c>, is a finding, never a row). Tested BEFORE the
+    /// S6r/S6x arms, whose prefixes it shares.</item>
     /// </list>
     /// The budget-stop positions (<see cref="FormatterTwins.BudgetStopLines"/>) keep the budget states: S6 when Q holds
     /// a literal spanning lines, S6n otherwise.
@@ -201,11 +226,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>The state a shape's documents take when Q holds a literal spanning lines (<see cref="LossState"/>).</summary>
     private static string StateOfShape(string shape)
         => shape == FormatterTwins.RepairCommentShape ? S6k
+            : FormatterTwins.IsOwnQuoteShape(shape) ? S6o
             : FormatterTwins.IsRepairCloseLineShape(shape) ? S6r
             : FormatterTwins.IsCloseLineShape(shape) ? S6x
             : S6;
 
-    /// <summary>The issue an allowlist row of an S6-family state must cite first (<see cref="LossState"/>).</summary>
+    /// <summary>The issue an allowlist row of an S6-family state (<see cref="LossState"/>) or of <see cref="S7"/> (<see cref="Continuation"/>) must cite first.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string> StateIssue = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
     {
         [S6] = "#2271",
@@ -213,6 +239,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         [S6k] = "#2274",
         [S6r] = "#2275",
         [S6x] = "#2275",
+        [S6o] = "#2280",
+        [S7] = "#2279",
     };
 
     /// <summary>
@@ -597,10 +625,15 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// lexer's tests share (<see cref="FormatterTwins.LiteralLossShapes"/>: the error budget spent above Q, a
     /// re-paired triple closed by a short string or a comment, a delimiter line dropped at SPY0011–SPY0015 or SPY0004;
     /// SPY0014 only on the <c>wide</c> twin, <paramref name="includeMismatch"/>; the budget-stop positions, the
-    /// re-pair whose orphan line aborts after the closer, the closer line that aborts and loses nothing) and wrapped with Q's
-    /// ground truth by <see cref="Shaped"/>.</item>
+    /// re-pair whose orphan line aborts after the closer, the closer line that aborts and loses nothing, and the
+    /// own-quote close-line tails without and with a stray, S6o) and wrapped with Q's ground truth by <see cref="Shaped"/>;</item>
+    /// <item>S7 — the continuation shapes (P22h, #2279; <see cref="FormatterTwins.ContinuationShapes"/>: an unclosed
+    /// bracket and an erroring line injected as the first body line of Q's first block), wrapped by
+    /// <see cref="Continuation"/>.</item>
     /// </list>
-    /// The state is observed: a document that parses is <see cref="ObserveParseable"/>'s S1/S2 document.
+    /// <paramref name="includeMismatch"/> is the <c>wide</c> twin: it also skips the line routes
+    /// <see cref="SkipsLineRoutesOnTheWideTwin"/> names. The state is observed: a document that parses is
+    /// <see cref="ObserveParseable"/>'s S1/S2 document.
     /// </summary>
     internal static IEnumerable<SweepDocument> UnparseableDocuments(string q, LexFacts facts, bool includeMismatch = false)
     {
@@ -625,6 +658,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         foreach (var shape in FormatterTwins.LiteralLossShapes(q, includeMismatch))
             yield return Shaped(q, facts, shape);
+
+        foreach (var shape in FormatterTwins.ContinuationShapes(q))
+            yield return Continuation(q, facts, shape, wide: includeMismatch);
     }
 
     /// <summary>
@@ -634,7 +670,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// change — the repair) and the literal lines kept as they are. <c>range-line</c>/<c>ontype</c> are
     /// requested on every line that starts inside a literal in Q. An <see cref="S6n"/> document has none, and
     /// its line routes are requested on ONE line: Q's first logical line inside a block (depth ≥ 1); so are an
-    /// <see cref="S6x"/> document's, which loses nothing (its literal lines are the fact oracles' subject). Its route
+    /// <see cref="S6x"/> document's and a <c>closeline-own-</c> (<see cref="S6o"/>) one's, which lose nothing (their literal
+    /// lines are the fact oracles' subject). Its route
     /// rows are one class (#2273, the indent map reading an unread remainder), which <c>full</c> and
     /// <c>range-whole</c> already show on every stem it reaches; one line per document gives each route a cell
     /// without a row per logical line of the corpus.
@@ -649,8 +686,38 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         return ObserveParseable(shape.Text) ?? new SweepDocument(shape.Text, state, new GroundTruth(
             inside.ToHashSet(),
             logical,
-            state is S6n or S6x ? logical.Where(s => s.Item2 >= 1).Select(s => s.Item1).Take(1).ToArray() : inside,
+            state is S6n or S6x || FormatterTwins.IsCloseLineOwnShape(shape.Shape)
+                ? logical.Where(s => s.Item2 >= 1).Select(s => s.Item1).Take(1).ToArray()
+                : inside,
             shape.Kind,
+            shape.Shape));
+    }
+
+    /// <summary>
+    /// An <see cref="S7"/> document (#2279): <paramref name="shape"/>'s text, ground truth Q's lex with every line at or
+    /// below the injection shifted by one (as <see cref="Inserted"/> shifts; NOT <see cref="Shaped"/>, whose
+    /// <c>LineShift</c> shifts every line). The logical starts are Q's, none excluded — the body line
+    /// <c>recovery-misindented</c> re-indents keeps its depth in Q, so a LOST repair is a <c>depth</c> row — plus the
+    /// injected line itself at the depth of the body line it was injected above (a statement the user wrote at its
+    /// block's width; judging it is what makes the next line's misindent a depth difference even when the block has one
+    /// statement). Q's literal lines are kept (an S7 document loses none: its only fact row, <c>factSpurious</c>, is a
+    /// finding). <c>range-line</c>/<c>ontype</c> are requested on the line after the injection — none on the
+    /// <paramref name="wide"/> twin for a shape <see cref="SkipsLineRoutesOnTheWideTwin"/> names.
+    /// </summary>
+    internal static SweepDocument Continuation(string q, LexFacts facts, ContinuationShape shape, bool wide = false)
+    {
+        var at = shape.InsertedAt;
+        int Shift(int l) => l >= at ? l + 1 : l;
+        var bodyDepth = facts.LogicalStarts.Where(s => s.Line == at).Select(s => (int?)s.Depth).FirstOrDefault()
+            ?? throw new InvalidOperationException($"instrument: the {shape.Shape} shape's line {at} starts no logical line in Q");
+        var logical = facts.LogicalStarts.Select(s => (Line: Shift(s.Line), s.Depth)).Append((Line: at, Depth: bodyDepth))
+            .OrderBy(s => s.Line).ToArray();
+        var targets = wide && SkipsLineRoutesOnTheWideTwin(shape.Shape) ? Array.Empty<int>() : new[] { at + 1 };
+        return ObserveParseable(shape.Text) ?? new SweepDocument(shape.Text, S7, new GroundTruth(
+            facts.InsideLines.Select(Shift).ToHashSet(),
+            logical,
+            targets,
+            null,
             shape.Shape));
     }
 
@@ -1350,10 +1417,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal static bool IsAbortFree(SweepDocument d) => (d.LexerLiteralLoss & LiteralLoss.AbortInsideLiteral) == 0;
 
     /// <summary>
-    /// The census keys of one S6-family document (not of its cells): <c>documents S6 budget</c> and, when
-    /// <see cref="IsAbortFree"/>, <c>abort-free S6 budget</c>. An <see cref="S6"/> document counts only when Q
-    /// has a literal line for it to lose; an <see cref="S6n"/> one (nothing to lose) and an
-    /// <see cref="S6k"/> one always.
+    /// The census keys of one S6-family or <see cref="S7"/> document (not of its cells): <c>documents S6 budget</c> and,
+    /// when <see cref="IsAbortFree"/>, <c>abort-free S6 budget</c>. An <see cref="S6"/> document counts only when Q
+    /// has a literal line for it to lose; an <see cref="S6n"/> one (nothing to lose), an <see cref="S6k"/> one, an
+    /// <see cref="S6o"/> one (built only when Q has a literal spanning lines) and an <see cref="S7"/> one always.
     /// </summary>
     internal static IEnumerable<string> DocumentTallies(SweepDocument d)
     {
@@ -1368,11 +1435,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string AbortFreeTally(string state, string shape) => $"abort-free {state} {shape}";
 
-    /// <summary>The (state, shape) pairs <see cref="LossState"/> can produce, in census order.</summary>
+    /// <summary>The (state, shape) pairs <see cref="LossState"/> and <see cref="Continuation"/> can produce, in census order.</summary>
     private static IEnumerable<(string State, string Shape)> LossStateShapes()
         => FormatterTwins.LiteralLossShapeNames
             .Select(shape => (State: StateOfShape(shape), Shape: shape))
-            .Concat(FormatterTwins.BudgetStopLines.Select(b => (State: S6n, b.Shape)));
+            .Concat(FormatterTwins.BudgetStopLines.Select(b => (State: S6n, b.Shape)))
+            .Concat(FormatterTwins.ContinuationShapeNames.Select(shape => (State: S7, Shape: shape)));
 
     // ---- the range census's measures (s_rangeCensus) ----
     private const string WithWorkMeasure = "withWork";
@@ -1887,6 +1955,69 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         UnparseableBucketsOf(d19, full, D19).Should().BeEmpty();
     }
 
+    /// <summary>A clean parent with one block whose body holds a triple-quoted literal, then a second statement.</summary>
+    private const string QOwn = "def main():\n    s = \"\"\"\n      a\n    \"\"\"\n    q = 1\n    print(s)\n";
+
+    /// <summary>
+    /// <c>factSpurious</c> on the S6o axis (#2280): the recipe's <c>closeline-own-dq</c> document of <see cref="QOwn"/>
+    /// (<c>    """ + "\q"</c> — the tail aborts inside its own short string and loses nothing) with its fact forced
+    /// through the test seam: true → <c>factSpurious</c>, false → clean. Its <c>repair-own-dq</c> twin (the stray above,
+    /// the orphan closed after the tail) is the other direction on the REAL lex: lines are lost and the fact is set, so
+    /// neither fact bucket fires — the positive control R-FV requires of every own-quote tail.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_FactSpurious_FiresOnAStubbedOwnQuoteCloseLine()
+    {
+        var docs = UnparseableDocuments(QOwn, Doc(QOwn).Facts!).ToList();
+        var closeLine = docs.Should().ContainSingle(d => d.Truth != null && d.Truth.Shape == FormatterTwins.CloseLineOwnPrefix + "dq").Subject;
+        closeLine.Text.Should().Be("def main():\n    s = \"\"\"\n      a\n    \"\"\" + \"\\q\"\n    q = 1\n    print(s)\n");
+        closeLine.State.Should().Be(S6o);
+        closeLine.Truth!.TargetLines.Should().Equal(new[] { 1 }, "a closeline-own document's line routes sit on one line, as S6x's do");
+        var full = new CellRequest(Full, null, 0);
+
+        UnparseableBucketsOf(closeLine.WithLexFacts(true, Array.Empty<int>()), full, closeLine.Text).Should().Equal(FactSpurious);
+        UnparseableBucketsOf(closeLine.WithLexFacts(false, Array.Empty<int>()), full, closeLine.Text).Should().BeEmpty();
+
+        var repair = docs.Should().ContainSingle(d => d.Truth != null && d.Truth.Shape == FormatterTwins.RepairOwnPrefix + "dq").Subject;
+        repair.Text.Should().Be("\"\"\"\n" + QOwn + "_ = '\"\"\" + \"\\q\"'\n");
+        repair.State.Should().Be(S6o);
+        repair.LiteralState.FactSet.Should().BeTrue();
+        repair.LiteralState.LostLiteralLines.Should().NotBeEmpty();
+        UnparseableBucketsOf(repair, full, repair.Text).Should().NotContain(new[] { FactMissing, FactSpurious });
+    }
+
+    /// <summary>
+    /// <c>depth</c> on S7's lost repair (#2279 seam 2): the recipe's <c>recovery-misindented</c> document of
+    /// <see cref="QOwn"/> — <c>_ = $</c> injected above the body, the line after it at width 6. Left as it is (the
+    /// route applied no edits: the lost repair), the line is deeper than the injected statement at the body's width,
+    /// so <c>depth</c> fires at it; with that line put back at Q's width (the repair) <c>depth</c> is clean. The
+    /// <c>recovery</c> twin, already at its block's width, is clean with no edits. The wide twin skips the line routes.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Depth_SeesTheRecoveryLinesLostRepair()
+    {
+        var docs = UnparseableDocuments(QOwn, Doc(QOwn).Facts!).ToList();
+        var d = docs.Should().ContainSingle(g => g.Truth != null && g.Truth.Shape == FormatterTwins.RecoveryMisindentedShape).Subject;
+        d.Text.Should().Be("def main():\n    _ = $\n      s = \"\"\"\n      a\n    \"\"\"\n    q = 1\n    print(s)\n");
+        d.State.Should().Be(S7);
+        d.Truth!.TargetLines.Should().Equal(2);
+        d.Truth.LiteralLines.Should().BeEquivalentTo(new[] { 3, 4 });
+        var onType = new CellRequest(OnType, null, 2);
+
+        var lost = UnparseableOracles(d, onType, d.Text).Failures;
+        lost.Select(f => f.Bucket).Should().Equal(Depth);
+        lost.Single().Detail.Should().Contain("line 2");
+        var repaired = d.Text.Replace("\n      s = ", "\n    s = ", StringComparison.Ordinal);
+        UnparseableBucketsOf(d, onType, repaired).Should().BeEmpty();
+
+        var recovery = docs.Should().ContainSingle(g => g.Truth != null && g.Truth.Shape == FormatterTwins.RecoveryShape).Subject;
+        UnparseableBucketsOf(recovery, onType, recovery.Text).Should().BeEmpty();
+
+        var wide = FormatterTwins.WideIndented(QOwn);
+        UnparseableDocuments(wide, Doc(wide).Facts!, includeMismatch: true)
+            .Single(g => g.Truth != null && g.Truth.Shape == FormatterTwins.RecoveryMisindentedShape).Truth!.TargetLines.Should().BeEmpty();
+    }
+
     // ================================================================
     // Ratchet and sampling mechanics
     // ================================================================
@@ -1929,6 +2060,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             "a/b identity full S6k literal # #2271 the S6 issue on an S6k row",
             "a/b identity full S6r literal # #2273 the S6n issue on an S6r row",
             "a/b identity ontype S6x factSpurious # #2271 the S6 issue on an S6x row",
+            "a/b identity full S7 depth # #2280 the S6o issue on an S7 row",
+            "a/b identity ontype S6o factSpurious # #2279 the S7 issue on an S6o row",
+            "a/b identity range-line S6o factSpurious # #2275 the S6x issue on an S6o row",
         })
         {
             FluentActions.Invoking(() => ParseAllowlist(new[] { bad })).Should().Throw<InvalidOperationException>(bad);
@@ -1941,8 +2075,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 "a/b identity full S6 literal # #2271 r", "a/b identity full S6n depth # #2273 r", "a/b identity full S6k literal # #2274 r",
                 "a/b identity full S6r literal # #2275 r", "a/b identity full S6x literal # #2275 r",
+                "a/b identity full S7 depth # #2279 r", "a/b identity ontype S6o factSpurious # #2280 r",
             })
-            .Should().HaveCount(5);
+            .Should().HaveCount(7);
     }
 
     // ================================================================
