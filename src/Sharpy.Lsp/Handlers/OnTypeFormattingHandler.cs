@@ -55,7 +55,7 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
             return Task.FromResult<TextEditContainer?>(null);
 
         var currentLine = lines[line];
-        var trimmed = currentLine.TrimStart();
+        var trimmed = currentLine.TrimStart(' ', '\t');
 
         // Blank lines have nothing to align.
         if (trimmed.Length == 0)

@@ -560,7 +560,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         string? Kind,
         string? Shape = null,
         ParityTwin? CleanTwin = null,
-        int? UnmovedLine = null);
+        IReadOnlyList<int>? UnmovedLines = null);
 
     /// <summary>
     /// The CLEAN twin of a <c>recovery-misindented</c> document (lead ruling L7): its text with the injected erroring
@@ -727,13 +727,15 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal static SweepDocument Continuation(string q, LexFacts facts, ContinuationShape shape, bool wide = false)
     {
         var at = shape.InsertedAt;
-        int Shift(int l) => l >= at ? l + 1 : l;
+        int Shift(int l) => shape.DocLineOf(l);
         var bodyDepth = facts.LogicalStarts.Where(s => s.Line == at).Select(s => (int?)s.Depth).FirstOrDefault()
             ?? throw new InvalidOperationException($"instrument: the {shape.Shape} shape's line {at} starts no logical line in Q");
         var injectedDepth = shape.AtOpenerWidth ? bodyDepth - 1 : bodyDepth;
         var logical = facts.LogicalStarts.Select(s => (Line: Shift(s.Line), s.Depth)).Append((Line: at, Depth: injectedDepth))
             .OrderBy(s => s.Line).ToArray();
-        var targets = wide && SkipsLineRoutesOnTheWideTwin(shape.Shape) ? Array.Empty<int>() : new[] { at + 1 };
+        var targets = wide && SkipsLineRoutesOnTheWideTwin(shape.Shape) ? Array.Empty<int>()
+            : shape.SecondTarget is { } second ? new[] { Shift(at), Shift(second) }
+            : new[] { Shift(at) };
         return ObserveParseable(shape.Text) ?? new SweepDocument(shape.Text, S7, new GroundTruth(
             facts.InsideLines.Select(Shift).ToHashSet(),
             logical,
@@ -741,7 +743,29 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             null,
             shape.Shape,
             shape.Shape == FormatterTwins.RecoveryMisindentedShape ? CleanTwinOf(shape.Text, at) : null,
-            FormatterTwins.IsRecoveryHeaderShape(shape.Shape) ? at + 1 : null));
+            FormatterTwins.IsRecoveryHeaderShape(shape.Shape) ? PutativeBodyBelow(shape.Text, at) : null));
+    }
+
+    /// <summary>
+    /// The putative body of the dropped header on the 0-based line <paramref name="header"/> (lead rulings L8, L11): every
+    /// later non-blank line deeper than the header, in columns (<see cref="IndentationService.IndentColumns"/>), down to the
+    /// first line at or above its width — the lines a <c>recovery-header-*</c> document's <c>moved</c> oracle holds in place.
+    /// </summary>
+    internal static int[] PutativeBodyBelow(string text, int header)
+    {
+        var lines = LineDiff.Split(text).Lines;
+        var bound = IndentationService.IndentColumns(lines[header]);
+        var body = new SCG.List<int>();
+        for (var l = header + 1; l < lines.Count; l++)
+        {
+            if (lines[l].Trim(' ', '\t').Length == 0)
+                continue;
+            if (IndentationService.IndentColumns(lines[l]) <= bound)
+                break;
+            body.Add(l);
+        }
+
+        return body.ToArray();
     }
 
     /// <summary>The <see cref="ParityTwin"/> of a <c>recovery-misindented</c> document whose injected line is the 0-based <paramref name="at"/>.</summary>
@@ -1064,9 +1088,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         // A recovery-header document (lead ruling L8): a dropped header claims a block Q does not have, so Q's layout
         // cannot judge it — its target line, of unknown level, is byte-identical in T instead (moved).
-        if (truth.UnmovedLine is { } unmoved)
+        if (truth.UnmovedLines is { } body)
         {
-            if (x[unmoved] != t[unmoved])
+            var unmoved = body.FirstOrDefault(l => x[l] != t[l], -1);
+            if (unmoved >= 0)
                 failures.Add((Moved, $"{request}: line {unmoved} below a dropped header moved: D '{Clip(x[unmoved])}' vs T '{Clip(t[unmoved])}'"));
         }
         else if (FirstDepthDifference(t, truth.LogicalStarts) is { } depth)
@@ -2208,7 +2233,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var docs = UnparseableDocuments(plain, Doc(plain).Facts!).ToList();
         var d = docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderPrefix + "2");
         d.Text.Should().Be("def main():\nif _($):\n  q = 1\n    print(q)\n");
-        d.Truth!.UnmovedLine.Should().Be(2);
+        d.Truth!.UnmovedLines.Should().Equal(2, 3);
         d.Truth.TargetLines.Should().Equal(2);
         var onType = new CellRequest(OnType, null, 2);
         UnparseableBucketsOf(d, onType, d.Text).Should().BeEmpty();
@@ -2216,6 +2241,24 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         foreach (var shape in FormatterTwins.RecoveryHeaderShapes)
             docs.Should().ContainSingle(g => g.Truth != null && g.Truth.Shape == shape.Shape);
         docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderPrefix + "tab").Text.Should().Contain("\n\tq = 1\n");
+
+        // The sibling shape (L6-SIB): both body lines re-indented 6 deeper, line routes on both.
+        var sibling = docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderSiblingShape);
+        sibling.Text.Should().Be("def main():\nif _ == \"a:\n      q = 1\n      print(q)\n");
+        sibling.Truth!.TargetLines.Should().Equal(2, 3);
+        UnparseableBucketsOf(sibling, new CellRequest(OnType, null, 3), sibling.Text.Replace("\n      print", "\nprint", StringComparison.Ordinal))
+            .Should().Equal(Moved);
+
+        // moved covers EVERY line of the putative body (L11): the nested shape's dedented line (Q's body line, the target)
+        // and the line below the inner header both judged.
+        var nested = docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderNestedShape);
+        nested.Text.Should().Be("def main():\nif _($):\n    if _($):\n        _ = 0\n    q = 1\n    print(q)\n");
+        nested.Truth!.TargetLines.Should().Equal(4);
+        nested.Truth.UnmovedLines.Should().Equal(2, 3, 4, 5);
+        var nestedOnType = new CellRequest(OnType, null, 4);
+        UnparseableBucketsOf(nested, nestedOnType, nested.Text).Should().BeEmpty();
+        UnparseableBucketsOf(nested, nestedOnType, nested.Text.Replace("\n        _ = 0", "\n    _ = 0", StringComparison.Ordinal)).Should().Equal(new[] { Moved },
+            "a line of the putative body that is not the target moved");
     }
 
     [Fact]

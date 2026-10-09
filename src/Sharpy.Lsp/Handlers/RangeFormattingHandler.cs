@@ -92,7 +92,7 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         for (var i = startLine; i <= endLine; i++)
         {
             var line = lines[i];
-            var trimmed = line.TrimStart();
+            var trimmed = line.TrimStart(' ', '\t');
 
             // A line that starts inside a string literal is its data — never re-indented or blanked,
             // whitespace-only lines included (#2062).
@@ -100,7 +100,7 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
                 continue;
 
             // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
-            if (map.IsFrozenByOpenBracket(i + 1))
+            if (!map.IsReindentable(i + 1))
                 continue;
 
             if (trimmed.Length == 0)

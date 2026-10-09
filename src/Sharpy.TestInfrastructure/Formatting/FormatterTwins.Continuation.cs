@@ -10,7 +10,11 @@ namespace Sharpy.TestInfrastructure.Formatting;
 /// block OPENER's width (<see cref="AtOpenerWidth"/>; at the body's width otherwise). The line after the injected one
 /// is Q's first body line of its first block (re-indented by <c>recovery-misindented</c>; untouched otherwise).
 /// </summary>
-public sealed record ContinuationShape(string Shape, string Text, int InsertedAt, bool AtOpenerWidth);
+public sealed record ContinuationShape(string Shape, string Text, int InsertedAt, bool AtOpenerWidth, int InsertedCount = 1, int? SecondTarget = null)
+{
+    /// <summary>The 0-based line of <see cref="Text"/> that holds Q's 0-based <paramref name="qLine"/>: <see cref="InsertedCount"/> lines are injected at <see cref="InsertedAt"/>.</summary>
+    public int DocLineOf(int qLine) => qLine < InsertedAt ? qLine : qLine + InsertedCount;
+}
 
 public static partial class FormatterTwins
 {
@@ -46,14 +50,36 @@ public static partial class FormatterTwins
     /// </summary>
     public const string RecoveryHeaderPrefix = "recovery-header-";
 
-    /// <summary>The <c>recovery-header-*</c> shapes and the whitespace each adds after the header's own leading whitespace on the line after it.</summary>
-    public static readonly IReadOnlyList<(string Shape, string Deeper)> RecoveryHeaderShapes = new[]
+    /// <summary>
+    /// The <c>recovery-header-*</c> shapes, the header each injects and the whitespace each adds after the header's own
+    /// leading whitespace on the line after it. <c>-string</c> and <c>-backtick</c> (lead ruling L11): a header whose colon
+    /// lies inside an unterminated short string or backtick name — the lexer cannot read the line's end.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Shape, string Header, string Deeper)> RecoveryHeaderShapes = new[]
     {
-        (RecoveryHeaderPrefix + "2", "  "),
-        (RecoveryHeaderPrefix + "4", "    "),
-        (RecoveryHeaderPrefix + "6", "      "),
-        (RecoveryHeaderPrefix + "tab", "\t"),
+        (RecoveryHeaderPrefix + "2", "if _($):", "  "),
+        (RecoveryHeaderPrefix + "4", "if _($):", "    "),
+        (RecoveryHeaderPrefix + "6", "if _($):", "      "),
+        (RecoveryHeaderPrefix + "tab", "if _($):", "\t"),
+        (RecoveryHeaderPrefix + "string", "if _ == \"a:", "  "),
+        (RecoveryHeaderPrefix + "backtick", "if `a:", "  "),
     };
+
+    /// <summary>
+    /// A putative body nested in a putative body (lead ruling L11): <c>if _($):</c> at the opener's width, an inner
+    /// <c>if _($):</c> as its first body line (+4), a line at +4 below that, then Q's first body line dedented to the
+    /// outer body (+4) — below the inner header's width, still inside the outer header's putative body.
+    /// </summary>
+    public const string RecoveryHeaderNestedShape = RecoveryHeaderPrefix + "nested";
+
+    /// <summary>
+    /// The second verifier's L6-SIB as a shape (lead ruling L11): <c>if _ == "a:</c> at the opener's width and Q's first
+    /// TWO body lines (the first a one-line statement, the second the next code line at the same width) re-indented 6
+    /// deeper — a width the lexer drops, so the depth judgment exempts the second line and only the putative body keeps it
+    /// in place. Built only when Q has such a pair; its line routes are requested on both lines
+    /// (<see cref="ContinuationShape.SecondTarget"/>).
+    /// </summary>
+    public const string RecoveryHeaderSiblingShape = RecoveryHeaderPrefix + "sibling";
 
     /// <summary>Whether <paramref name="shape"/> is a <c>recovery-header-*</c> shape (<see cref="RecoveryHeaderPrefix"/>).</summary>
     public static bool IsRecoveryHeaderShape(string shape) => shape.StartsWith(RecoveryHeaderPrefix, StringComparison.Ordinal);
@@ -85,6 +111,7 @@ public static partial class FormatterTwins
     {
         BracketEofShape, BracketStringShape, BracketBacktickShape, BracketDroppedShape, RecoveryShape, RecoveryMisindentedShape,
         RecoveryHeaderPrefix + "2", RecoveryHeaderPrefix + "4", RecoveryHeaderPrefix + "6", RecoveryHeaderPrefix + "tab",
+        RecoveryHeaderPrefix + "string", RecoveryHeaderPrefix + "backtick", RecoveryHeaderNestedShape, RecoveryHeaderSiblingShape,
     };
 
     /// <summary>The spaces <see cref="RecoveryMisindentedShape"/> adds to the line after its injected line: a width on no level of a 4- or 8-space document.</summary>
@@ -122,13 +149,46 @@ public static partial class FormatterTwins
             shapes.Add(new ContinuationShape(shape, parent.Insert(injectAt, (atOpener ? openerIndent : indent) + line + lineBreak), body, atOpener));
         }
 
-        foreach (var (shape, deeper) in RecoveryHeaderShapes)
+        foreach (var (shape, header, deeper) in RecoveryHeaderShapes)
         {
             var parent = Reindent(q, new[] { body }, openerIndent + deeper);
-            shapes.Add(new ContinuationShape(shape, parent.Insert(injectAt, openerIndent + "if _($):" + lineBreak), body, AtOpenerWidth: true));
+            shapes.Add(new ContinuationShape(shape, parent.Insert(injectAt, openerIndent + header + lineBreak), body, AtOpenerWidth: true));
         }
 
+        if (SiblingOf(tokens, q, lineStarts, body, indent) is { } sibling)
+        {
+            var parent = Reindent(q, new[] { body, sibling }, openerIndent + "      ");
+            shapes.Add(new ContinuationShape(RecoveryHeaderSiblingShape, parent.Insert(injectAt, openerIndent + "if _ == \"a:" + lineBreak), body,
+                AtOpenerWidth: true, SecondTarget: sibling));
+        }
+
+        var nested = Reindent(q, new[] { body }, openerIndent + "    ");
+        shapes.Add(new ContinuationShape(RecoveryHeaderNestedShape,
+            nested.Insert(injectAt, openerIndent + "if _($):" + lineBreak + openerIndent + "    if _($):" + lineBreak + openerIndent + "        _ = 0" + lineBreak),
+            body, AtOpenerWidth: true, InsertedCount: 3));
+
         return shapes;
+    }
+
+    /// <summary>
+    /// The 0-based line of the code line after the one-line statement on <paramref name="body"/>, when it starts at the same
+    /// leading whitespace <paramref name="indent"/> (the next statement of the same block), else null.
+    /// </summary>
+    private static int? SiblingOf(IReadOnlyList<Token> tokens, string q, List<int> lineStarts, int body, string indent)
+    {
+        var first = tokens.Select((t, i) => (t, i)).First(p => p.t.Line - 1 == body && p.t.Type is not (TokenType.Indent or TokenType.Dedent)).i;
+        var newline = first;
+        while (newline < tokens.Count && tokens[newline].Type is not (TokenType.Newline or TokenType.Eof))
+            newline++;
+        if (newline >= tokens.Count || tokens[newline].Type != TokenType.Newline || tokens[newline].Line - 1 != body)
+            return null;
+        var next = newline + 1;
+        while (next < tokens.Count && tokens[next].Type is TokenType.Newline)
+            next++;
+        if (next >= tokens.Count || tokens[next].Type is TokenType.Indent or TokenType.Dedent or TokenType.Eof)
+            return null;
+        var line = tokens[next].Line - 1;
+        return LeadingWhitespace(q, lineStarts, line) == indent ? line : null;
     }
 
     /// <summary>

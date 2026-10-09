@@ -1543,8 +1543,8 @@ public sealed class FormattingFallbackTests : IDisposable
     /// The verifier's documents, each with the base behaviour its rows record by direction. 1a and siblings (L8): the
     /// recovery line below a dropped line that could open a block — base no edit, HEAD before L8 moved the body out of its
     /// block on every route; no edit now. 1a-wide: base on-type 1 / range-line 1 re-indented the header alone (8 → 4)
-    /// off its body — no edit now. 1b (L8, two tabs) and 1b-nohdr (L6 measured in columns: a string swallowed the colon,
-    /// two tabs are 16 columns): base no edit. 1c and its abandoned twin (L9): base aligned every line (full / range-whole)
+    /// off its body — no edit now. 1b (L8, two tabs) and 1b-nohdr (L6 measured in columns: a dropped line with no
+    /// colon, two tabs are 16 columns): base no edit. 1c and its abandoned twin (L9): base aligned every line (full / range-whole)
     /// or re-indented one alone (on-type, range-line); no edit now — the opener moves only with its tail and no repair of
     /// <c>q</c> leaves it on a level. 1d (L10): base moved <c>print(x)</c> into the <c>if</c> on full, range-whole and
     /// range-line 3; no edit now — the line after the dropped one starts a logical line and is judged.
@@ -1564,12 +1564,46 @@ public sealed class FormattingFallbackTests : IDisposable
         ["1a if x: $"] = "def main():\n    if x: $\n      y = 1\n",
         ["1a wide"] = "def main():\n        if foo($):\n          y = 1\n",
         ["1b"] = "def main():\n    if foo($):\n\t\ty = 1\n    z = 2\n",
-        ["1b no header"] = "def main():\n    x = \"abc:\n\t\ty = 1\n    z = 2\n",
+        ["1b no header"] = "def main():\n    x = $\n\t\ty = 1\n    z = 2\n",
         ["1c"] = Verifier1c,
         ["1c abandoned"] = "def main():\n          q = 1\n        _ = foo($,\n        if q:\n            print(q)\n",
         ["1d"] = Verifier1d,
         ["1d list"] = "def main():\n    if c:\n        x = f\"{[$]}\"\n    print(x)\n",
         ["1e (R-FU direction: repaired at base)"] = "def main():\n    x = 1\n      foo(1,\n          2)\n    if x:\n          y = 2\n",
+
+        // R5 (the second verifier, lead ruling L11). L6-SIB: the line after the recovery line, a level deeper than a
+        // dropped line whose colon an unterminated string swallowed — base no edit; 158a02acd on-type 3 / range-line 3
+        // moved it out of the block; no edit now (the putative body runs to the first line at or above the dropped width).
+        ["L6-SIB"] = "def main():\n    if x == \"abc:\n          y = 1\n          z = 2\n    w = 3\n",
+        ["L6-SIB CRLF"] = "def main():\r\n    if x == \"abc:\r\n          y = 1\r\n          z = 2\r\n    w = 3\r\n",
+        ["L6-SIB for"] = "def main():\n    for c in \"abc:\n          print(c)\n          print(c)\n    w = 3\n",
+        // L6-PLUS2: the same header with its body at +2 — base no edit; 158a02acd moved it on every route; no edit now
+        // (L11(a): a dropped line whose end the lexer cannot read is a possible header).
+        ["L6-PLUS2"] = "def main():\n    if x == \"abc:\n      y = 1\n      z = 2\n    w = 3\n",
+        ["L6-PLUS2 f-string"] = "def main():\n    if f\"{x == y:\n      y = 1\n      z = 2\n    w = 3\n",
+        // N-NEST: an inner dropped header deeper than the outer's body, then a line dedented to the outer body — base AND
+        // 158a02acd moved `z = 2` out of the outer `if` (on-type / range-line); no edit now (the shallowest bound).
+        ["N-NEST"] = "def main():\n    if foo($):\n            if bar($):\n                y = 1\n        z = 2\n    w = 3\n",
+        ["N-NEST module"] = "if foo($):\n        if bar($):\n            y = 1\n    z = 2\nw = 3\n",
+        // FF: a recovery line indented with a form feed (a vertical tab, a no-break space) — base no edit; 158a02acd
+        // deleted the character and put `y = 1` at column 0 on every route. Its clean twin did so on base too.
+        ["FF"] = "def main():\n    if foo($):\n\f      y = 1\n",
+        ["FF vertical tab"] = "def main():\n    if foo($):\n\v      y = 1\n",
+        ["FF no-break space"] = "def main():\n    if foo($):\n\u00a0      y = 1\n",
+        ["FF clean twin (wrong edit at base)"] = "def main():\n    if c:\n\f        y = 1\n",
+    };
+
+    /// <summary>
+    /// The text a line route applied at base or @ 158a02acd where the builders no longer make one: FF's lines indented
+    /// with a character other than a space or a tab are never re-indented now (L11), so the candidate the check must
+    /// refuse is the one those trees applied — the character deleted and <c>y = 1</c> at column 0.
+    /// </summary>
+    private static readonly Dictionary<string, string> R5MovedLineText = new()
+    {
+        ["FF"] = "def main():\n    if foo($):\ny = 1\n",
+        ["FF vertical tab"] = "def main():\n    if foo($):\ny = 1\n",
+        ["FF no-break space"] = "def main():\n    if foo($):\ny = 1\n",
+        ["FF clean twin (wrong edit at base)"] = "def main():\n    if c:\ny = 1\n",
     };
 
     /// <summary>
@@ -1592,7 +1626,7 @@ public sealed class FormattingFallbackTests : IDisposable
         var data = new TheoryData<string, string>();
         foreach (var (name, document) in R2NoEditDocuments)
         {
-            if (FormattingFallback.ReindentDocument(document) != document || R2BaseFullText.ContainsKey(name))
+            if (FormattingFallback.ReindentDocument(document) != document || R2BaseFullText.ContainsKey(name) || R5MovedLineText.ContainsKey(name))
             {
                 data.Add(name, "full");
                 data.Add(name, "range-whole");
@@ -1600,7 +1634,7 @@ public sealed class FormattingFallbackTests : IDisposable
             var lines = Compiler.Formatting.LineDiff.Split(document).Lines;
             for (var l = 0; l < lines.Count; l++)
             {
-                if (RangeCandidate(document, l) != document)
+                if (RangeCandidate(document, l) != document || (R5MovedLineText.ContainsKey(name) && l == 2))
                 {
                     data.Add(name, $"ontype {l}");
                     data.Add(name, $"range-line {l}");
@@ -1623,9 +1657,9 @@ public sealed class FormattingFallbackTests : IDisposable
     {
         var document = R2NoEditDocuments[name];
         RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
-        var candidate = route is "full" or "range-whole"
+        var candidate = R5MovedLineText.GetValueOrDefault(name) ?? (route is "full" or "range-whole"
             ? R2BaseFullText.GetValueOrDefault(name) ?? FormattingFallback.ReindentDocument(document)
-            : RangeCandidate(document, int.Parse(route.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture));
+            : RangeCandidate(document, int.Parse(route.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture)));
         candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
         FormattingFallback.IndentOnlyPreserved(document, candidate).Should().BeFalse("{0} {1}: the check refuses the candidate", name, route);
     }
@@ -1635,6 +1669,24 @@ public sealed class FormattingFallbackTests : IDisposable
     /// in 1a-for both body lines are; 1d's <c>print(x)</c> starts a logical line (L10: the dropped line does not
     /// continue — the field's paren is the field's) and is judged; 1c's opener is frozen with its tail.
     /// </summary>
+    /// <summary>
+    /// The map's L11 facts: L6-SIB's putative body runs from the recovery line to the line before <c>w = 3</c>; N-NEST's
+    /// body keeps the outer header's bound, so the dedented <c>z = 2</c> is in it; FF's form-feed line is never re-indented
+    /// (<see cref="IndentMap.OtherWhitespaceLines"/>, <see cref="IndentationService.HasOtherLeadingWhitespace"/>).
+    /// </summary>
+    [Fact]
+    public void P22hR5_TheMapReadsThePutativeBodyToItsShallowestBound_AndOtherWhitespace()
+    {
+        IndentationService.BuildIndentMap(R2NoEditDocuments["L6-SIB"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3, 4 });
+        IndentationService.BuildIndentMap(R2NoEditDocuments["N-NEST"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3, 4, 5 });
+        var ff = IndentationService.BuildIndentMap(R2NoEditDocuments["FF"]);
+        ff.OtherWhitespaceLines.Should().Equal(3);
+        IndentationService.HasOtherLeadingWhitespace("\f  y").Should().BeTrue();
+        IndentationService.HasOtherLeadingWhitespace("  \u00a0y").Should().BeTrue();
+        IndentationService.HasOtherLeadingWhitespace(" \t y").Should().BeFalse();
+        FormattingFallback.ReindentDocument(R2NoEditDocuments["FF clean twin (wrong edit at base)"]).Should().Be(R2NoEditDocuments["FF clean twin (wrong edit at base)"]);
+    }
+
     [Fact]
     public void P22hR2_TheMapReadsThePossibleHeader_ThePutativeBody_TheJudgedLine_AndTheFrozenOpener()
     {

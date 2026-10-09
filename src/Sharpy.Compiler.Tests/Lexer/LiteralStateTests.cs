@@ -1164,7 +1164,7 @@ public class LiteralStateTests
                     var dLiteralLines = LexerNs.LiteralSpans.LinesStartingInside(shape.Text, LexerNs.LiteralSpans.Of(lexer.TokenizeAll(), lexer.RecoveryResumes));
                     var where = $"{name}{twin} {shape.Shape}";
                     documents[shape.Shape]++;
-                    if (qLiteralLines.All(l => dLiteralLines.Contains(l < shape.InsertedAt ? l : l + 1)))
+                    if (qLiteralLines.All(l => dLiteralLines.Contains(shape.DocLineOf(l))))
                     {
                         if (lexer.LiteralLoss != LexerNs.LiteralLoss.None)
                             failures.Add($"{where}: no literal line is lost, yet LiteralLoss is {lexer.LiteralLoss} ({Errors(lexer)})");
