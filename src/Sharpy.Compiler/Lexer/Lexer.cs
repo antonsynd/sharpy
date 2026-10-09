@@ -165,8 +165,8 @@ public partial class Lexer
     /// <item><see cref="LiteralLoss.UnreadRemainder"/> — the error budget stopped the lexer with one left unread.</item>
     /// <item><see cref="LiteralLoss.RePairedCloser"/> — a triple-quoted closer re-paired into a short
     /// string: it is immediately followed by a quote character, or the lexer gives up the rest of the line
-    /// where a literal that spanned lines closed and that text holds a quote character — whatever the abort's
-    /// code (<see cref="NoteUnreadLine"/>, R-FR).</item>
+    /// where a literal that spanned lines closed and that text leaves a quote unpaired at the line's end — whatever
+    /// the abort's code (<see cref="NoteUnreadLine"/>, R-FR; the aborted literal's own delimiters pair, R-FV).</item>
     /// </list>
     /// Recording a flag changes no token, span, trivia or diagnostic.
     /// </summary>

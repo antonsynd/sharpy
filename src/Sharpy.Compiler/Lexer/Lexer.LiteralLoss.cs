@@ -31,12 +31,16 @@ public partial class Lexer
     /// The lexer gives up the text from <paramref name="start"/> (<see cref="UnreadTextStart"/>) to the end of the
     /// current line: error recovery skips it (<see cref="NoteDroppedSpan"/>), or a stop in <see cref="TokenizeAll"/>
     /// (the error budget, the end of the source) reads no further. The ONE close-line rule every such hook calls —
-    /// arm (b) of <see cref="LiteralLoss.RePairedCloser"/> (owner ruling R-FR, #2275): on the line where a literal
-    /// that spanned lines closed (<see cref="NoteMultiLineLiteralClosed"/>), text the lexer never reads that holds a
-    /// quote character is an orphan quote the closer may have re-paired with (<c>t = '"""$'</c>,
-    /// <c>t = '"""`'</c>, <c>t = '""" '</c> below a stray <c>"""</c>) — R-FK's rule for dropped lines, applied at the
-    /// close line, whatever the abort's code. A close line whose given-up text holds no quote (<c>""" + 1__2</c>)
-    /// lost nothing and records nothing; a report that drops no text (the dedented-string indentation errors) never
+    /// arm (b) of <see cref="LiteralLoss.RePairedCloser"/> (owner ruling R-FR, #2275; narrowed by R-FV, #2280): on the
+    /// line where a literal that spanned lines closed (<see cref="NoteMultiLineLiteralClosed"/>), text the lexer never
+    /// reads that leaves a quote UNPAIRED at the line's end (<see cref="LeavesAQuoteUnpairedAtLineEnd"/>) holds an
+    /// orphan quote the closer may have re-paired with (<c>t = '"""$'</c>, <c>t = '"""`'</c>, <c>t = '""" '</c> below a
+    /// stray <c>"""</c>) — R-FK's rule for dropped lines, applied at the close line, whatever the abort's code. The
+    /// aborted literal's OWN delimiters pair (<c>""" + "\q"</c>, <c>""" + f"{x!q}"</c>: the text starts at its prefix,
+    /// and its closing quote closes it), so a closer line ending in a literal that aborts inside itself lost nothing
+    /// and records nothing (#2280: before R-FV any quote in the text counted, and every route lost the repair). A
+    /// close line whose given-up text holds no quote (<c>""" + 1__2</c>) records nothing either; a report that drops
+    /// no text (the dedented-string indentation errors) never
     /// reaches here. <see cref="_line"/> is the abort's line: <see cref="ReportUnclosedField"/> moves it back to
     /// the field's bracket for a single-quoted literal, and with a bracket open inside a triple-quoted one the abort
     /// is inside a literal anyway (<see cref="LiteralLoss.AbortInsideLiteral"/>). Returns the end of the line.
@@ -46,7 +50,7 @@ public partial class Lexer
         var end = _position;
         while (end < _source.Length && !IsLineBreak(_source[end]))
             end++;
-        if (_line == _lastMultiLineCloseLine && _source.AsSpan(start, end - start).IndexOfAny('"', '\'') >= 0)
+        if (_line == _lastMultiLineCloseLine && LeavesAQuoteUnpairedAtLineEnd(_source.AsSpan(start, end - start)))
             LiteralLoss |= LiteralLoss.RePairedCloser;
         return end;
     }
@@ -57,11 +61,14 @@ public partial class Lexer
     /// the source): <see cref="_position"/>, or — when <paramref name="fromTheAbortedLiteral"/> and the token
     /// being read is a string literal that began on this line — that literal's prefix, so that the scanner
     /// pairs its quotes the way the lexer did (<c>"\q" + """abc"""</c> read from the <c>q</c> is
-    /// <c>" + "</c> then an opener). The ONE start both hooks read: the budget stop landing inside an
+    /// <c>" + "</c> then an opener), and so that the close-line walk reads the literal's own delimiters as the pair they
+    /// are (<c>"\q"</c> is a closed literal, not two orphan quotes; R-FV, #2280). The ONE start both hooks read: the
+    /// budget stop landing inside an
     /// aborted short string (B1, BS-esc) is the same shape as the dropped line. A backtick-delimited name that
     /// began on this line starts the text the same way (P22g, R-FR): the lexer reads it to the line end before it
     /// reports SPY0018, so from <see cref="_position"/> the text would be EMPTY and an orphan quote inside the name
-    /// (<c>t = '"""`'</c>) would never be seen; the scanner reads the name as opaque either way.
+    /// (<c>t = '"""`'</c>) would never be seen. The scanner reads the name as opaque; the close-line walk reads an
+    /// UNTERMINATED name's text as text it cannot pair, so a quote in it still counts (R-FV).
     /// </summary>
     private int UnreadTextStart(bool fromTheAbortedLiteral)
     {
@@ -231,44 +238,98 @@ public partial class Lexer
     internal static bool HoldsALiteralSpanningLines(ReadOnlySpan<char> text, out int freshWalks)
     {
         Dictionary<int, bool>? walks = null;
-        var holds = WalkFrom(text, 0, ref walks);
+        var holds = WalkFrom(text, 0, WalkMode.SpansLines, ref walks);
         freshWalks = walks?.Count ?? 0;
         return holds;
     }
 
     /// <summary>
-    /// <see cref="WalkFrom"/> from <paramref name="start"/>, memoized in <paramref name="walks"/>: a fresh walk is a
-    /// pure function of where it starts (no literal is open there).
+    /// Arm (b) of <see cref="LiteralLoss.RePairedCloser"/> (<see cref="NoteUnreadLine"/>; owner ruling R-FV, #2280):
+    /// whether the text the lexer gives up on a close line leaves a quote UNPAIRED at the line's end — each quote's
+    /// role read from a walk of the text (<see cref="WalkMode.CloseLine"/>), not its presence. True iff, at the line's
+    /// end (or the text's), a literal is open — short or triple: the orphan's closing quote after a re-paired closer
+    /// opens one (<c>$'</c>, <c>"\q"'</c>) — OR text the walk cannot pair holds a quote character:
+    /// <list type="bullet">
+    /// <item>the remainder after a <c>#</c> outside a literal — a comment to the lexer, but string text to a user whose
+    /// orphan swallowed it: read as a comment the walk loses <c>$  # it's'</c> (the stray-closed twin), read as text
+    /// it pairs that twin's two apostrophes and loses it again, so a quote anywhere in it counts;</item>
+    /// <item>the text of an UNTERMINATED backtick name, given up with the line (<c>`'</c>, <c>`x'</c>,
+    /// <c>`it's</c>).</item>
+    /// </list>
+    /// A TERMINATED backtick name is opaque (<c>`it's`</c>), as the lexer reads it. A closed literal contributes
+    /// nothing: the aborted literal's own delimiters pair (<c>"\q"</c>, <c>f"{x!q}"</c>, <c>f"}"</c>). At the literal's
+    /// own quote inside a format spec the fork keeps the scanner's "either walk" rule (#2276), so <c>f"{x:">}"</c> holds
+    /// one (reading the quote as the closer leaves <c>"</c> open). Known limits (#2274, lead ruling L2): with no stray
+    /// above, <c>`it's</c>, <c>f"{x:">}"</c> and <c>$  # it's</c> lost nothing yet hold a quote the walk cannot pair —
+    /// their stray-closed twins (<c>`it's'</c>, <c>f"{x:">}"'</c>, <c>$  # it's'</c>) are why.
     /// </summary>
-    private static bool FreshWalk(ReadOnlySpan<char> text, int start, ref Dictionary<int, bool>? walks)
+    internal static bool LeavesAQuoteUnpairedAtLineEnd(ReadOnlySpan<char> text)
+    {
+        Dictionary<int, bool>? walks = null;
+        return WalkFrom(text, 0, WalkMode.CloseLine, ref walks);
+    }
+
+    /// <summary>What a walk of <see cref="WalkFrom"/> answers.</summary>
+    private enum WalkMode
+    {
+        /// <summary><see cref="HoldsALiteralSpanningLines"/>: a literal open at a line break that continues past it.</summary>
+        SpansLines,
+
+        /// <summary><see cref="LeavesAQuoteUnpairedAtLineEnd"/>: a quote left unpaired at the end of the first line.</summary>
+        CloseLine,
+    }
+
+    /// <summary>
+    /// <see cref="WalkFrom"/> from <paramref name="start"/>, memoized in <paramref name="walks"/>: a fresh walk is a
+    /// pure function of where it starts (no literal is open there) and of its <paramref name="mode"/> — each entry point
+    /// starts its own memo, so one never mixes the modes.
+    /// </summary>
+    private static bool FreshWalk(ReadOnlySpan<char> text, int start, WalkMode mode, ref Dictionary<int, bool>? walks)
     {
         walks ??= new Dictionary<int, bool>();
         if (walks.TryGetValue(start, out var known))
             return known;
-        var holds = WalkFrom(text, start, ref walks);
+        var holds = WalkFrom(text, start, mode, ref walks);
         walks![start] = holds;  // the recursive walk never clears the memo it was handed
         return holds;
     }
 
-    /// <summary>The walk of <see cref="HoldsALiteralSpanningLines"/> from <paramref name="start"/>, with no literal open there.</summary>
-    private static bool WalkFrom(ReadOnlySpan<char> text, int start, ref Dictionary<int, bool>? walks)
+    /// <summary>
+    /// The walk of <see cref="HoldsALiteralSpanningLines"/> (<see cref="WalkMode.SpansLines"/>) or of
+    /// <see cref="LeavesAQuoteUnpairedAtLineEnd"/> (<see cref="WalkMode.CloseLine"/>, which reads the first line only)
+    /// from <paramref name="start"/>, with no literal open there. The literal reads are shared; the modes differ at a
+    /// <c>#</c> and an unterminated backtick name outside a literal, and in what the line's end answers.
+    /// </summary>
+    private static bool WalkFrom(ReadOnlySpan<char> text, int start, WalkMode mode, ref Dictionary<int, bool>? walks)
     {
         var open = new List<OpenLiteral>();     // the literals open at i, outermost first
         var i = start;
         while (i < text.Length)
         {
             var c = text[i];
+            if (mode == WalkMode.CloseLine && IsLineBreak(c))
+                return open.Count > 0;  // the close line's end: a literal still open there leaves its quote unpaired
             if (open.Count == 0)
             {
                 if (c == '#')
                 {
+                    var comment = i;
                     while (i < text.Length && !IsLineBreak(text[i]))
                         i++;
+                    // on a close line the remainder is a comment to the lexer and string text to the user: unpairable
+                    if (mode == WalkMode.CloseLine && text[comment..i].IndexOfAny('"', '\'') >= 0)
+                        return true;
                 }
                 else if (c is '"' or '\'')
                     open.Add(OpenLiteral.At(text, ref i));
                 else if (c == '`')
+                {
+                    var name = i;
                     SkipBacktickName(text, ref i);  // `it's` or `a#b` holds no quote and no comment
+                    // an UNTERMINATED name's text is given up with the line: a quote in it is unpairable
+                    if (mode == WalkMode.CloseLine && !(i - 1 > name && text[i - 1] == '`') && text[name..i].IndexOfAny('"', '\'') >= 0)
+                        return true;
+                }
                 else
                     i++;
                 continue;
@@ -304,7 +365,7 @@ public partial class Lexer
                     if (field != null)
                     {
                         // the literal's own quote in a format spec: the lexer's abort (#2276) — the quote's role is unknown
-                        return FreshWalk(text, i, ref walks) || FreshWalk(text, i + quoteLength, ref walks);
+                        return FreshWalk(text, i, mode, ref walks) || FreshWalk(text, i + quoteLength, mode, ref walks);
                     }
 
                     i += quoteLength;
@@ -369,7 +430,7 @@ public partial class Lexer
             }
             i++;
         }
-        return open.Count > 0 && SpansTheLineBreak(open);
+        return open.Count > 0 && (mode == WalkMode.CloseLine || SpansTheLineBreak(open));
     }
 
     /// <summary>

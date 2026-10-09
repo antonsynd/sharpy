@@ -595,6 +595,90 @@ public class LiteralStateTests
         lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, Errors(lexer));
     }
 
+    // ---------------------------------------------------------------- P22h (#2280, R-FV): the close-line walk
+
+    public static IEnumerable<object[]> OwnQuoteTailByTripleQuote()
+        => FormatterTwins.OwnQuoteTails.SelectMany(t => new[] { "\"\"\"", "'''" }.Select(q => new object[] { t.Name, q }));
+
+    private static FormatterTwins.OwnQuoteTail OwnQuoteTail(string name) => FormatterTwins.OwnQuoteTails.Single(t => t.Name == name);
+
+    /// <summary>
+    /// #2280 (R-FV): NO stray — a closer line ending in a literal that aborts INSIDE itself (<c>""" + "\q"</c>,
+    /// <c>""" + f"{x!q}"</c>, <c>""" + f"}"</c>, …) lost nothing. Arm (b) reads the quote's ROLE from a walk of the
+    /// given-up text (<c>LeavesAQuoteUnpairedAtLineEnd</c>): the aborted literal's own delimiters pair, so the six
+    /// pairing tails record nothing (before R-FV any quote counted: <c>RePairedCloser</c>, and every route lost the
+    /// repair). The three tails the walk cannot pair — <c>`it's</c> (an unterminated backtick name holding a quote),
+    /// <c>f"{x:">}"</c> (the own quote in a spec: "either walk", #2276), <c>$  # it's</c> (a quote after <c>#</c>) —
+    /// keep <c>RePairedCloser</c>: the known limits of #2274 (lead ruling L2), pinned by name; their stray-closed twins
+    /// in <see cref="CloseLineOwnQuoteTail_StrayClosed_SetsRePairedCloser"/> are why. The close line must abort.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OwnQuoteTailByTripleQuote))]
+    public void CloseLineOwnQuoteTail_NoStray_SetsNothing_ExceptTheThreeLimits(string tail, string quotes)
+    {
+        var own = OwnQuoteTail(tail);
+        var lexer = Lex($"def main():\n    s = {quotes}\n      a\n    {quotes} + {own.TailFor(quotes[0])}\n    print(s)\n");
+
+        CodesOnLine(lexer, 4).Should().NotBeEmpty("the tail must abort on the close line");
+        lexer.LiteralLoss.Should().Be(own.WalkCannotPair ? LexerNs.LiteralLoss.RePairedCloser : LexerNs.LiteralLoss.None,
+            $"{tail}: {(own.WalkCannotPair ? "a known limit of #2274 — the walk cannot pair its quote" : "the aborted literal's own delimiters pair")} ({Errors(lexer)})");
+    }
+
+    /// <summary>
+    /// R-FV's positive control for every new tail: the N2 shape whose orphan is CLOSED after the tail
+    /// (<c>_ = '""" + &lt;tail&gt;'</c> below a stray triple) — the closer re-paired with the orphan, the orphan's
+    /// closing quote is in the text the lexer gives up AFTER the tail's own delimiters, so it is unpaired at the line's
+    /// end (for <c>`it's'</c> and <c>$  # it's'</c> inside text the walk cannot pair) — <c>RePairedCloser</c> on all
+    /// nine. A walk that "repairs" a limit tail by pairing more (reading <c>#</c> as text or as a comment, an
+    /// unterminated backtick name as opaque) loses one of these.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OwnQuoteTailByTripleQuote))]
+    public void CloseLineOwnQuoteTail_StrayClosed_SetsRePairedCloser(string tail, string quotes)
+    {
+        var o = quotes[0] == '"' ? '\'' : '"';
+        var lexer = Lex(N2Shape(quotes, $"_ = {o}{quotes} + {OwnQuoteTail(tail).TailFor(quotes[0])}{o}"));
+
+        CodesOnLine(lexer, 6).Should().NotBeEmpty("the tail must abort on the re-paired close line");
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.RePairedCloser, $"{tail} ({Errors(lexer)})");
+    }
+
+    /// <summary>
+    /// The orphan still being typed (<c>_ = '""" + &lt;tail&gt;</c>, its closing quote not yet typed, below a stray
+    /// triple): once the tail's own delimiters pair, the given-up text leaves no quote unpaired — the lexer signature of
+    /// the no-stray tail, which loses nothing. Pinned as #2274's class (R-FQ: a shape with no lexer signature but the
+    /// stray), the accepted trade of R-FV (a): the six pairing tails record nothing; the three the walk cannot pair still
+    /// record <c>RePairedCloser</c>. The quote-free <c>$</c> row is the class's pre-existing member.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OwnQuoteTailByTripleQuote))]
+    public void OrphanBeingTypedBeforeAnOwnQuoteTail_KnownLimit2274(string tail, string quotes)
+    {
+        var o = quotes[0] == '"' ? '\'' : '"';
+        var own = OwnQuoteTail(tail);
+        var lexer = Lex(N2Shape(quotes, $"_ = {o}{quotes} + {own.TailFor(quotes[0])}"));
+
+        CodesOnLine(lexer, 6).Should().NotBeEmpty("the tail must abort on the re-paired close line");
+        lexer.LiteralLoss.Should().Be(own.WalkCannotPair ? LexerNs.LiteralLoss.RePairedCloser : LexerNs.LiteralLoss.None, $"{tail} ({Errors(lexer)})");
+    }
+
+    /// <summary>
+    /// The quote-free member of the typing-orphan class (#2274): <c>_ = '""" + $</c> below a stray triple has the
+    /// lexer signature of <c>""" + $</c> with no stray. Measured @ be1c16fcf: full / range-line 3 / on-type 3 rewrite the
+    /// string line <c>      key: value</c> — a pre-existing #2274-class wrong edit that R-FV neither causes nor cures.
+    /// </summary>
+    [Theory]
+    [InlineData("\"\"\"")]
+    [InlineData("'''")]
+    public void OrphanBeingTypedBeforeAnAbortWithNoQuote_SetsNothing_KnownLimit2274(string quotes)
+    {
+        var o = quotes[0] == '"' ? '\'' : '"';
+        var lexer = Lex(N2Shape(quotes, $"_ = {o}{quotes} + $"));
+
+        CodesOnLine(lexer, 6).Should().Equal(new[] { "SPY0015" }, Errors(lexer));
+        lexer.LiteralLoss.Should().Be(LexerNs.LiteralLoss.None, Errors(lexer));
+    }
+
     // ---------------------------------------------------------------- P22g (#2276): the spec-quote abort
 
     /// <summary>
@@ -777,7 +861,10 @@ public class LiteralStateTests
     /// literal spanning lines, and a <c>closeline-</c> document (a closer line that aborts and drops no quote, #2275)
     /// that loses no literal line, set nothing. The comment re-pair is not asserted: no lexer fact can see it
     /// (#2274). The <c>repair-SPY00NN</c> shapes (an orphan line that aborts after the re-paired closer, #2275) →
-    /// <c>RePairedCloser</c> through the close-line rule (P22g Phase 3, R-FR).
+    /// <c>RePairedCloser</c> through the close-line rule (P22g Phase 3, R-FR). The own-quote axis (#2280, R-FV): every
+    /// <c>repair-own-NAME</c> shape (the stray-closed twin, a literal line lost) → <c>RePairedCloser</c>; every
+    /// <c>closeline-own-NAME</c> document that loses nothing is a direction control → <c>None</c> for the six tails the
+    /// close-line walk pairs, <c>RePairedCloser</c> for the three it cannot (#2274's known limits, lead ruling L2).
     /// </summary>
     [Fact]
     public void Corpus_EveryAbortFreeLossShape_SetsItsMechanismsFlag()
@@ -792,6 +879,10 @@ public class LiteralStateTests
         expected[FormatterTwins.RepairShape] = LexerNs.LiteralLoss.RePairedCloser;
         foreach (var code in FormatterTwins.CloseLineCodes)
             expected[FormatterTwins.RepairCloseLinePrefix + code.Code] = LexerNs.LiteralLoss.RePairedCloser;
+        foreach (var tail in FormatterTwins.OwnQuoteTails)
+            expected[FormatterTwins.RepairOwnPrefix + tail.Name] = LexerNs.LiteralLoss.RePairedCloser;
+        var closeLineOwnControls = FormatterTwins.OwnQuoteTails.ToDictionary(t => FormatterTwins.CloseLineOwnPrefix + t.Name, t => (Tail: t, Count: 0));
+        var limitTailsArmed = 0;
         var asserted = expected.Keys.ToDictionary(k => k, _ => 0);
         var ownFlag = expected.Keys.ToDictionary(k => k, _ => 0);
         var directionControls = 0;
@@ -819,6 +910,24 @@ public class LiteralStateTests
                         directionControls++;
                         if (lexer.LiteralLoss != LexerNs.LiteralLoss.None)
                             failures.Add($"{where}: no literal spans lines, yet LiteralLoss is {lexer.LiteralLoss} ({Errors(lexer)})");
+                        continue;
+                    }
+
+                    if (closeLineOwnControls.TryGetValue(shape.Shape, out var ownControl))
+                    {
+                        // R-FV: a closer line ending in a literal that aborts inside itself loses nothing — None, except
+                        // the three tails the walk cannot pair (#2274's known limits, lead ruling L2), and those only where
+                        // arm (b) is armed: a TRIPLE-quoted literal closed on that line (a single-quoted f-string whose hole
+                        // spanned lines, fstrings/multiline_hole_2022, arms nothing — before R-FV as after).
+                        if (!qLiteralLines.All(l => dLiteralLines.Contains(l + shape.LineShift)))
+                            continue;
+                        closeLineOwnControls[shape.Shape] = (ownControl.Tail, ownControl.Count + 1);
+                        var armed = TailFollowsATripleCloser(shape.Text, ownControl.Tail);
+                        if (ownControl.Tail.WalkCannotPair && armed)
+                            limitTailsArmed++;
+                        var want = ownControl.Tail.WalkCannotPair && armed ? LexerNs.LiteralLoss.RePairedCloser : LexerNs.LiteralLoss.None;
+                        if (lexer.LiteralLoss != want)
+                            failures.Add($"{where}: nothing is lost, so LiteralLoss should be {want}, yet it is {lexer.LiteralLoss} ({Errors(lexer)})");
                         continue;
                     }
 
@@ -852,11 +961,34 @@ public class LiteralStateTests
 
         _output.WriteLine($"lost without an abort / with the shape's own flag: {string.Join(", ", asserted.Select(a => $"{a.Key}={a.Value}/{ownFlag[a.Key]}"))}; "
             + $"direction controls (budget, no literal) {directionControls}; "
-            + $"close-line direction controls (nothing lost) {string.Join(", ", closeLineControls.Select(c => $"{c.Key}={c.Value}"))}");
+            + $"close-line direction controls (nothing lost) {string.Join(", ", closeLineControls.Select(c => $"{c.Key}={c.Value}"))}; "
+            + $"own-quote close-line controls (nothing lost) {string.Join(", ", closeLineOwnControls.Select(c => $"{c.Key}={c.Value.Count}"))}, "
+            + $"limit tails after a triple closer {limitTailsArmed}");
         failures.Should().BeEmpty();
         ownFlag.Where(a => a.Value == 0).Select(a => a.Key).Should().BeEmpty("every loss shape must reach the lexer with a lost literal line, no abort, and its own mechanism's flag");
         directionControls.Should().BeGreaterThan(100, "most fixtures hold no literal spanning lines");
         closeLineControls.Where(c => c.Value == 0).Select(c => c.Key).Should().BeEmpty("every close-line code must build a document that loses nothing");
+        closeLineOwnControls.Where(c => c.Value.Count == 0).Select(c => c.Key).Should().BeEmpty("every own-quote tail must build a close-line document that loses nothing");
+        limitTailsArmed.Should().BeGreaterThan(0, "the limit tails must reach arm (b) after a triple closer");
+    }
+
+    /// <summary>
+    /// Whether the <c>closeline-own-</c> tail <paramref name="tail"/> in <paramref name="text"/> sits on the closer line
+    /// of a TRIPLE-quoted literal (a triple delimiter earlier on its line: <c>""" + tail</c>, <c>}""")) + tail</c>) —
+    /// the only close line arm (b) of <c>RePairedCloser</c> is armed on (<c>NoteMultiLineLiteralClosed</c>).
+    /// </summary>
+    private static bool TailFollowsATripleCloser(string text, FormatterTwins.OwnQuoteTail tail)
+    {
+        foreach (var quote in new[] { '"', '\'' })
+        {
+            var at = text.LastIndexOf(" + " + tail.TailFor(quote), StringComparison.Ordinal);
+            if (at < 0)
+                continue;
+            var lineStart = text.LastIndexOfAny(new[] { '\n', '\r' }, at) + 1;
+            var before = text[lineStart..at];
+            return before.Contains("\"\"\"", StringComparison.Ordinal) || before.Contains("'''", StringComparison.Ordinal);
+        }
+        return false;
     }
 
     /// <summary>

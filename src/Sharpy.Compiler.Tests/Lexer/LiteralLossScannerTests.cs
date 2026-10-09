@@ -151,6 +151,59 @@ public class LiteralLossScannerTests
     }
 
     /// <summary>
+    /// <see cref="LexerNs.Lexer.LeavesAQuoteUnpairedAtLineEnd"/> (plan-f92797 Design 4, R-FV, #2280): arm (b) of
+    /// <c>RePairedCloser</c> reads each quote's ROLE in the text the lexer gives up on a close line. True iff a literal
+    /// is open at the line's end, or text the walk cannot pair — the remainder after a <c>#</c> outside a literal, the
+    /// text of an UNTERMINATED backtick name — holds a quote. A closed literal (the aborted literal's own delimiters)
+    /// and a terminated backtick name contribute nothing; the own quote in a format spec keeps "either walk".
+    /// </summary>
+    [Theory]
+    // the aborted literal's own delimiters pair: nothing is unpaired
+    [InlineData("\"\\q\"", false)]
+    [InlineData("'\\q'", false)]
+    [InlineData("b\"\\q\"", false)]
+    [InlineData("f\"{x!q}\"", false)]
+    [InlineData("t\"{x!q}\"", false)]
+    [InlineData("f\"}\"", false)]
+    [InlineData("r\"\\\"", false)]                  // r"\" closes at its second quote: no escape in a raw literal
+    [InlineData("\"\"\"abc\"\"\"", false)]
+    [InlineData("$", false)]
+    [InlineData("1__2", false)]
+    // a literal open at the line's end: the orphan's closing quote, an unterminated short or triple string
+    [InlineData("$'", true)]
+    [InlineData("\"\\q\"'", true)]
+    [InlineData("f\"}\"'", true)]
+    [InlineData("\"abc", true)]
+    [InlineData("\"a\\\"", true)]                   // "a\" — the escaped quote leaves the literal open
+    [InlineData("\"\"\"abc", true)]
+    [InlineData("f'{x}", true)]
+    [InlineData("\"abc\nx = 1", true)]              // the close line's end is the first line break
+    [InlineData("x\n'", false)]                     // a quote on a later line is not the close line's
+    // a terminated backtick name is opaque; an unterminated one is text the walk cannot pair
+    [InlineData("`it's`", false)]
+    [InlineData("`it's` + 'z'", false)]
+    [InlineData("`it's`'", true)]
+    [InlineData("`it's", true)]
+    [InlineData("`'", true)]
+    [InlineData("`x'", true)]
+    [InlineData("`x", false)]
+    // the remainder after '#' outside a literal counts any quote, paired or not
+    [InlineData("$  # it's", true)]
+    [InlineData("$  # it's'", true)]
+    [InlineData("$  # \"a\"", true)]
+    [InlineData("$  # no quote", false)]
+    [InlineData("\"#'\"", false)]                   // a '#' inside a closed string is text, not a comment
+    [InlineData("f\"{x  # it's", true)]             // a comment in a field: the literal stays open past it
+    // the literal's own quote in a format spec: either walk (#2276)
+    [InlineData("f\"{x:\">}\"", true)]
+    [InlineData("f\"{x:\">}\"'", true)]
+    [InlineData("f\"{x:>}\"", false)]
+    public void LeavesAQuoteUnpairedAtLineEnd(string text, bool expected)
+    {
+        LexerNs.Lexer.LeavesAQuoteUnpairedAtLineEnd(text).Should().Be(expected, text);
+    }
+
+    /// <summary>
     /// The complexity control: a line of 40 spec-quote aborts walks each start at most once (memoized), and its
     /// twin with a triple at the end still sees it.
     /// </summary>

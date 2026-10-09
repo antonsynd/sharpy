@@ -2507,9 +2507,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // (plan-f92797) re-populated it from a FULL-mode run with the 216 S6o factSpurious rows (#2280: the six
         // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) were a pinned count its Phase 2
         // drained to none (S7 rides this ratchet with 0 rows; its clean-twin parity exemptions are S7ParityExemptPin) and its S6ok cells
-        // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. The literal anchors it:
-        // changing the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(216, "P22h Phase 1 added the S6o (#2280) rows its Phase 3 drains; S7 (#2279) holds no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
+        // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. P22h Phase 3 drained the
+        // 216 S6o rows (arm (b) reads each quote's role from a walk of the given-up text, R-FV): EMPTY again. The literal
+        // anchors it: changing the allowlist is a visible decision — change this count in the same commit and say why.
+        rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) holds no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }
