@@ -10,8 +10,8 @@
 # drained the 334 S6n rows: the editor's indent map lexes past the error budget (R-FP). Phase 3 drained the 240 S6r
 # rows: a re-paired closer is recorded for any abort on its line whose given-up text holds a quote (R-FR). Empty.
 # P22h Phase 1 (plan-f92797) re-populated it from a FULL-mode run with the S6o factSpurious rows (issue 2280) its
-# Phase 3 drains. S7 (issue 2279) is a pinned count while it is red (S7PendingPin, lead ruling L1), never rows: the
-# loader refuses S7 rows until Phase 2 drains and deletes the pin.
+# Phase 3 drains. S7 (issue 2279) was a pinned count while it was red (lead ruling L1); P22h Phase 2 drained it and
+# deleted the pin: S7 rides this ratchet with 0 rows.
 # Buckets (T = the applied text, D = the document):
 #   edits        the edit list is not legal for D (the strict applier threw)
 #   net          CheckMeaningPreserved(D, ast(D), T) refuses T: the applied text changes the program
@@ -47,8 +47,9 @@
 # recovery-misindented with the line after it 2 spaces deeper); judged by depth against the parent's layout, its line
 # routes on the line after the injection (recovery-misindented's skip the wide twin). bracket-string,
 # bracket-backtick and bracket-dropped sit at the block opener's width (lead ruling L3), the others at the body's.
-# While S7 is red its cells are the pinned count S7PendingPin (cite issue 2279), never rows; S7 loses no literal, so
-# an S7 factSpurious or factMissing cell is a finding
+# An S7 row cites issue 2279. A recovery-misindented cell whose lost repair the CLEAN twin (the erroring line made
+# `_ = 0`) loses too is exempt from depth and counted in the pinned census count S7ParityExemptPin (lead ruling L7: a
+# pre-existing lost repair, not issue 2279's); S7 loses no literal, so an S7 factSpurious or factMissing cell is a finding
 # On every unparseable document (S3-S7; not S6k; S6ok factSpurious is pinned), the lexer's literal-loss fact itself:
 #   factMissing  Lexer.LiteralStateUnknown is false while a line that starts inside a literal in Q does not in D
 #   factSpurious Lexer.LiteralStateUnknown is true while no such line is lost (never a row on S6n or S6x: a finding)

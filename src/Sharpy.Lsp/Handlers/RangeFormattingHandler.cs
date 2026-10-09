@@ -72,7 +72,9 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
     /// <summary>
     /// The indent-only candidate for lines <paramref name="startLine"/>..<paramref name="endLine"/>: one edit per
     /// line whose leading whitespace changes, over the line's content only — its line break is never in the
-    /// range. Lines are the client's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>).
+    /// range. Lines are the client's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>). A line
+    /// strictly below a bracket the lexer never saw closed (<see cref="IndentMap.OpenBracketLine"/>, R-FU, #2279) gets
+    /// no edit, whitespace-only lines included.
     /// </summary>
     internal static List<TextEdit> ComputeIndentOnlyRangeEdits(string text, int startLine, int endLine)
     {
@@ -95,6 +97,10 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
             // A line that starts inside a string literal is its data — never re-indented or blanked,
             // whitespace-only lines included (#2062).
             if (multiLineStringLines.Contains(i + 1))
+                continue;
+
+            // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
+            if (map.IsBelowOpenBracket(i + 1))
                 continue;
 
             if (trimmed.Length == 0)

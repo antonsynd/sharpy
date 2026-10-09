@@ -17,8 +17,9 @@ internal static class FormattingFallback
     /// indentation unit (<see cref="Compiler.Lexer.Lexer.IndentWidth"/> spaces — never the editor's
     /// tabSize/insertSpaces, indentation.md). Only leading whitespace changes: each line keeps its own
     /// line break (<see cref="LineDiff.Split"/> — <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as the lexer and the
-    /// client count lines), so a CRLF document stays CRLF (#2168). Returns the formatted text; equal to the
-    /// input if no changes are needed.
+    /// client count lines), so a CRLF document stays CRLF (#2168). A line strictly below a bracket the lexer never
+    /// saw closed (<see cref="IndentMap.OpenBracketLine"/>, R-FU, #2279) is returned verbatim, whitespace-only lines
+    /// included. Returns the formatted text; equal to the input if no changes are needed.
     /// </summary>
     internal static string ReindentDocument(string text)
     {
@@ -45,6 +46,10 @@ internal static class FormattingFallback
             // A line that starts inside a string literal is its data — kept verbatim, whitespace-only
             // lines included (#2062).
             if (multiLineStringLines.Contains(number))
+                return line;
+
+            // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
+            if (map.IsBelowOpenBracket(number))
                 return line;
 
             var trimmed = line.TrimStart();
@@ -75,7 +80,26 @@ internal static class FormattingFallback
     /// source width is on its enclosing stack unchanged — the map opens a block only after a line ending
     /// in <c>:</c> and compares with itself, so it accepts a property-observer block re-indented one level
     /// too shallow, or a block re-nested to column 0 by triple quotes that re-pair without a lexer error.
-    /// A line the lexer drops (<see cref="BlockDepths"/>) is the misindentation the fallback repairs and is exempt.</item>
+    /// A line the lexer drops (<see cref="BlockDepths"/>) is the misindentation the fallback repairs and is exempt.
+    /// The line after a line error recovery dropped starts a logical line (<see cref="IndentationService.BuildIndentMap"/>,
+    /// R-FU) and is judged here like any other: a re-indent that moves it, or the line after it, a block is refused;</item>
+    /// <item>(6b, P22h) every logical-line-start line the applied text EDITS lands on a level of the applied text's
+    /// width stack — deeper than its top, or equal to a width on it. Clause 6 exempts a line whose SOURCE width is on no
+    /// level, so the line after an error repaired ALONE to 4 spaces under an 8-space body (<c>    y = 1</c> on the
+    /// stack <c>[0, 8]</c>) passed it while the lexer, whose stack restarts at <c>[0]</c> after the recovery, reads the
+    /// next 8-space line one block deeper. An unchanged line keeps its exemption: it is not this text's doing;</item>
+    /// <item>(6c, P22h, lead ruling L6) a recovery line one indentation unit or more deeper than the line error recovery
+    /// dropped before it (<see cref="IndentMap.IsRecoveryLineALevelDeeper"/>), and that dropped line, byte-identical:
+    /// whether the dropped line opens a block is unknown, so how the two relate is too (A8 <c>    if foo($):</c> /
+    /// <c>          y = 1</c>: moving the body to 4 spaces takes it out of the <c>if</c> — clause 6 exempts its SPY0013
+    /// width and 4 lands on a level; moving the header of the 8-space twin to 4 alone changes the pair the same way);</item>
+    /// <item>(7, P22h, R-FU, #2279) every line strictly below <see cref="IndentMap.OpenBracketLine"/> — a bracket the
+    /// lexer never saw closed, so every later line is the bracket's — byte-identical: the builders never edit one, and
+    /// a builder that forgets is refused here;</item>
+    /// <item>(7b, P22h, lead ruling L5) while such a bracket freezes a tail that holds text, every logical-line-start line
+    /// whose source width is on its enclosing level (clause 6's depth ≥ 0) keeps its width: re-indenting the lines above
+    /// an opener of an 8-space document to 4 spaces leaves the frozen tail at 8 — one block deeper once the bracket
+    /// closes. Only the repairs (lines on no level) move; an opener on the last line freezes nothing.</item>
     /// </list>
     /// Lines are the client's and the lexer's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone
     /// <c>\r</c>), so the text judged is the text the client applies (#2168).
@@ -95,6 +119,23 @@ internal static class FormattingFallback
 
         var before = IndentationService.BuildIndentMap(source);
         var after = IndentationService.BuildIndentMap(applied);
+
+        // Clause 7: no line below a bracket the lexer never saw closed changes (R-FU).
+        for (var line = (before.OpenBracketLine ?? sourceLines.Count) + 1; line <= sourceLines.Count; line++)
+        {
+            if (!string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal))
+                return false;
+        }
+
+        // Clause 6c: a recovery line a level or more deeper than its dropped line, and that dropped line, are not edited
+        // (lead ruling L6): how the two relate is what is unknown.
+        foreach (var (line, (dropped, _)) in before.RecoveryLines)
+        {
+            if (before.IsRecoveryLineALevelDeeper(line, sourceLines[line - 1])
+                && (!string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal)
+                    || !string.Equals(sourceLines[dropped - 1], appliedLines[dropped - 1], StringComparison.Ordinal)))
+                return false;
+        }
 
         if (!before.LiteralLines.SetEquals(after.LiteralLines))
             return false;
@@ -116,27 +157,41 @@ internal static class FormattingFallback
         if (after.IndentationDiagnostics > before.IndentationDiagnostics)
             return false;
 
-        // The lines the map reads as continuations only because no Newline follows an error recovery
-        // (HiddenAfterRecovery) are judged with the logical lines: a re-indent may not move one either (P22g).
-        var appliedDepths = BlockDepths(appliedLines, DepthJudgedLines(after));
-        foreach (var (line, depth) in BlockDepths(sourceLines, DepthJudgedLines(before)))
+        // Clause 7b applies while a line below an open bracket holds text: an opener on the last line freezes nothing.
+        var frozenTail = before.OpenBracketLine is { } opener && sourceLines.Skip(opener).Any(l => l.Trim().Length > 0);
+        var appliedDepths = BlockDepths(appliedLines, after.LogicalLineStarts);
+        foreach (var (line, depth) in BlockDepths(sourceLines, before.LogicalLineStarts))
         {
-            if (depth >= 0 && (!appliedDepths.TryGetValue(line, out var appliedDepth) || appliedDepth != depth))
+            // Clause 6: the depth of a line on its enclosing stack is kept.
+            var judged = appliedDepths.TryGetValue(line, out var appliedDepth);
+            if (depth >= 0 && (!judged || appliedDepth != depth))
+                return false;
+            // Clause 7b: while a bracket left open freezes a tail, a line on its level keeps its width (lead ruling L5).
+            if (frozenTail && depth >= 0 && !string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal))
+                return false;
+            // Clause 6b: an edited line lands on a level.
+            if (appliedDepth == OnNoLevel && !string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal))
                 return false;
         }
 
         return true;
     }
 
+    /// <summary>A <see cref="BlockDepths"/> value: a width that is a multiple of <see cref="Compiler.Lexer.Lexer.IndentWidth"/>, tab-free, on no level of the stack (SPY0014).</summary>
+    private const int OnNoLevel = -2;
+
+    /// <summary>A <see cref="BlockDepths"/> value: a width that is not a multiple of <see cref="Compiler.Lexer.Lexer.IndentWidth"/> (SPY0013) or is indented with a tab.</summary>
+    private const int Dropped = -1;
+
     /// <summary>
     /// The block depth of each logical-line-start line by the lexer's width rule: a width stack over the
     /// lines' leading whitespace, in line order — a wider line pushes; a narrower line pops to an EQUAL
     /// width. Unlike the indent map, a deeper line opens a block whatever ends the line above it, and a
-    /// dedent between two widths opens nothing. A line the lexer reports and drops has no depth (-1), and
-    /// so is exempt from the comparison: a width on no enclosing level (SPY0014) leaves the stack as it
-    /// was; a width that is not a multiple of <see cref="Compiler.Lexer.Lexer.IndentWidth"/> (SPY0013) or
-    /// is indented with a tab still moves it — a 2-space document's nesting is the structure its re-indent
-    /// to 4 spaces must keep.
+    /// dedent between two widths opens nothing. A line the lexer reports and drops has no depth (negative), and
+    /// so is exempt from clause 6's comparison: a width on no enclosing level (<see cref="OnNoLevel"/>, SPY0014)
+    /// leaves the stack as it was; a width that is not a multiple of <see cref="Compiler.Lexer.Lexer.IndentWidth"/>
+    /// (SPY0013) or is indented with a tab (<see cref="Dropped"/>) still moves it — a 2-space document's nesting is the
+    /// structure its re-indent to 4 spaces must keep.
     /// </summary>
     private static Dictionary<int, int> BlockDepths(IReadOnlyList<string> lines, HashSet<int> logicalLineStarts)
     {
@@ -161,18 +216,9 @@ internal static class FormattingFallback
             }
 
             var dropped = width % Compiler.Lexer.Lexer.IndentWidth != 0 || indent.Contains('\t', StringComparison.Ordinal);
-            depths[line] = dropped ? -1 : depth;
+            depths[line] = dropped ? Dropped : depth < 0 ? OnNoLevel : depth;
         }
 
         return depths;
-    }
-
-    /// <summary>The lines whose block depth the check judges: the logical-line starts and the lines hidden after an error recovery (P22g).</summary>
-    private static HashSet<int> DepthJudgedLines((Dictionary<int, int> LineIndent, List<Compiler.Lexer.Token> Tokens, bool LiteralStateUnknown,
-        HashSet<int> LogicalLineStarts, HashSet<int> LiteralLines, int IndentationDiagnostics, HashSet<int> HiddenAfterRecovery) map)
-    {
-        var lines = new HashSet<int>(map.LogicalLineStarts);
-        lines.UnionWith(map.HiddenAfterRecovery);
-        return lines;
     }
 }

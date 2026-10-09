@@ -660,22 +660,30 @@ public sealed class FormattingFallbackTests : IDisposable
 
     /// <summary>
     /// Dfprint (final verification @ 4b7428567): the dropped 2-space line <c>print(f"total: {x}</c> is an
-    /// unterminated f-string whose replacement field is closed — it ends at its line, as its plain-string
-    /// twin does — so the line routes keep the 4-space repair they applied @ 3c70ea492 (refused @ 4b7428567).
+    /// unterminated f-string whose replacement field is closed — it loses no literal, as its plain-string twin
+    /// does — so the line routes keep the 4-space repair they applied @ 3c70ea492 (refused @ 4b7428567) on line 1.
+    /// By direction (P22h, R-FU, #2279): the dropped line also leaves its call's <c>(</c> open at its END — a bracket
+    /// the lexer never sees closed (<c>Lexer.BracketLeftOpenAtLine</c> = 3) — so <c>  print(x)</c> below it is the
+    /// bracket's to the lexer and no route edits it: range-line 3 repaired it @ ac3235c2a and applies nothing now
+    /// (repair → no edit, by the ruling's words; the @ ac3235c2a text is refused by clause 7).
     /// </summary>
     [Fact]
-    public void DirectionControl_UnterminatedFStringWithNoOpenField_LineRoutesKeepTheirRepair()
+    public void DirectionControl_UnterminatedFStringWithNoOpenField_LineRoutesKeepTheirRepairAboveTheOpenBracket()
     {
         const string document = "def main():\n  x: int = 1\n  print(f\"total: {x}\n  print(x)\n";
 
         _driver.Range(document, LineRange(document, 1)).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
         _driver.OnType(document, 1).Applied.Should().Be(WithLine(document, 1, "    x: int = 1"));
-        _driver.Range(document, LineRange(document, 3)).Applied.Should().Be(WithLine(document, 3, "    print(x)"));
+
+        IndentationService.BuildIndentMap(document).OpenBracketLine.Should().Be(3);
+        FormattingFallback.IndentOnlyPreserved(document, WithLine(document, 3, "    print(x)")).Should().BeFalse("the @ ac3235c2a range-line 3 text edits a line below the open bracket");
+        _driver.Range(document, LineRange(document, 3)).Edits.Should().BeEmpty("direction: repaired @ ac3235c2a, below the bracket now (R-FU)");
     }
 
     // ---- P22g (found by the route-parity sweep's S6x direction control): error recovery emits no Newline, so the
     // line after an error read as a continuation of the dropped one. The lexer now records where recovery resumed
-    // (Lexer.RecoveryResumes); LiteralSpans resets there, and the indent-only check judges the hidden line's depth.
+    // (Lexer.RecoveryResumes); LiteralSpans resets there, and (P22h, R-FU) the indent map starts a logical line there
+    // unless the dropped line continues — the indent-only check judges that line like any statement.
 
     /// <summary>
     /// An f-string abandoned while its format spec is typed (<c>a = f"{x:</c>), right above a triple f-string whose
@@ -699,30 +707,46 @@ public sealed class FormattingFallbackTests : IDisposable
 
     /// <summary>
     /// The verify round's lost repair (P22g, found by the refuting verifier @ 9202e3b83): when the line error recovery
-    /// drops CONTINUES — a bracket left open, a trailing backslash — the next line is the user's continuation line, and
-    /// the fallback aligns it to its block as it does every continuation. Judging its depth (HiddenAfterRecovery) refused
-    /// the whole repair; @ 926670989 these were repaired to exactly this text. The dropped line's continuation is now
-    /// recorded by the lexer (RecoveryResumesAfterAContinuedLine) and such a line is not depth-judged.
+    /// drops CONTINUES — a bracket left open, a trailing backslash — the next line is the user's continuation line, not
+    /// a statement, and judging its depth refused the whole repair. The lexer records the continuation
+    /// (RecoveryResumesAfterAContinuedLine) and the map keeps such a line a continuation.
+    /// <para>
+    /// By direction (P22h, R-FU, #2279): @ 926670989 and @ ac3235c2a full and range-whole ALSO re-indented the line
+    /// below a bracket left open (<c>        a)</c> → <c>    a)</c>). A bracket open at the dropped line's END is one the
+    /// lexer never sees closed (<c>Lexer.BracketLeftOpenAtLine</c>), and no route edits a line below its opener: line 5
+    /// is untouched now while <c>  return 1</c> above keeps its repair (repair → no edit, the ruling's own words; the
+    /// @ ac3235c2a text is refused by clause 7). The backslash row leaves no bracket open: its continuation line is still
+    /// aligned to its block (<c>aligned</c>), and the line after it is not a logical start.
+    /// </para>
     /// </summary>
-    public static TheoryData<string, string> ContinuedLineDroppedByRecovery => new()
+    public static TheoryData<string, string, bool> ContinuedLineDroppedByRecovery => new()
     {
-        { "call $", "    x = foo($,\n        a)\n    print(x)\n" },
-        { "call string", "    x = foo(\"abc,\n        a)\n    print(x)\n" },
-        { "list $", "    xs = [1, 2, $\n        3]\n    print(xs)\n" },
-        { "backslash", "    y = 1 + $ \\\n        2\n    print(y)\n" },
-        { "bracket opened after the abort", "    x = $ foo(1,\n        2)\n    print(x)\n" },
-        { "bracket opened after a closed short string that aborted", "    x = foo(\"\\q\", [1,\n        2])\n    print(x)\n" },
+        { "call $", "    x = foo($,\n        a)\n    print(x)\n", false },
+        { "call string", "    x = foo(\"abc,\n        a)\n    print(x)\n", false },
+        { "list $", "    xs = [1, 2, $\n        3]\n    print(xs)\n", false },
+        { "backslash", "    y = 1 + $ \\\n        2\n    print(y)\n", true },
+        { "bracket opened after the abort", "    x = $ foo(1,\n        2)\n    print(x)\n", false },
+        { "bracket opened after a closed short string that aborted", "    x = foo(\"\\q\", [1,\n        2])\n    print(x)\n", false },
     };
 
     [Theory]
     [MemberData(nameof(ContinuedLineDroppedByRecovery))]
-    public void DirectionControl_AContinuedLineDroppedByRecovery_FullAndRangeWholeKeepTheirRepair(string name, string body)
+    public void DirectionChange_AContinuedLineDroppedByRecovery_TheLineAboveKeepsItsRepair_OnlyABackslashContinuationIsAligned(string name, string body, bool aligned)
     {
         var document = "def f():\n  return 1\n\ndef main():\n" + body;
         var lines = document.Split('\n');
-        var repaired = WithLine(WithLine(document, 1, "    return 1"), 5, "    " + lines[5].TrimStart());
+        var alignedText = WithLine(WithLine(document, 1, "    return 1"), 5, "    " + lines[5].TrimStart());
+        var repaired = aligned ? alignedText : WithLine(document, 1, "    return 1");
         _driver.Full(document).Applied.Should().Be(repaired, name);
         _driver.Range(document, Lines(0, lines.Length - 1)).Applied.Should().Be(repaired, name);
+
+        var map = IndentationService.BuildIndentMap(document);
+        map.LogicalLineStarts.Should().NotContain(6, "{0}: the line after a dropped line that continues is its continuation", name);
+        if (!aligned)
+        {
+            map.OpenBracketLine.Should().Be(5, name);
+            FormattingFallback.IndentOnlyPreserved(document, alignedText).Should().BeFalse("{0}: the @ ac3235c2a text edits a line below the open bracket", name);
+        }
     }
 
     /// <summary>
@@ -730,10 +754,11 @@ public sealed class FormattingFallbackTests : IDisposable
     /// cells): a dropped line whose bracket the given-up text CLOSES — a header <c>if foo($):</c>, a signature
     /// <c>def method(self, $) -> None:</c>, a call that closes on its line — does not continue, and neither does one
     /// ending in a backslash inside a comment: the next line is the user's body or next statement, hidden from the
-    /// logical lines (no Newline follows a recovery) and depth-judged. The unchecked candidate moves it a block out
-    /// (@ 926670989 and @ c08cf1f03 every route applied that: the body left its <c>if</c>, <c>...</c> left
-    /// <c>method</c>); the routes refuse. Positive control: <see cref="DirectionControl_AContinuedLineDroppedByRecovery_FullAndRangeWholeKeepTheirRepair"/>
-    /// keeps the repair when the bracket IS open at the line's end.
+    /// logical lines (no Newline follows a recovery) and depth-judged — since P22h (R-FU) a logical start of its own. The
+    /// unchecked candidate moves it a block out (@ 926670989 and @ c08cf1f03 every route applied that: the body left its
+    /// <c>if</c>, <c>...</c> left <c>method</c>); the routes refuse. Positive control:
+    /// <see cref="DirectionChange_AContinuedLineDroppedByRecovery_TheLineAboveKeepsItsRepair_OnlyABackslashContinuationIsAligned"/>
+    /// keeps the repair above when the bracket IS open at the line's end.
     /// </summary>
     public static TheoryData<string, string, int> BracketClosedOnTheDroppedLine => new()
     {
@@ -806,17 +831,20 @@ public sealed class FormattingFallbackTests : IDisposable
     }
 
     /// <summary>
-    /// An 8-space document whose <c>dr"""</c> closer line aborts (<c>""" + $</c>): the line after it is hidden from
-    /// the logical lines. @ 926670989 on-type and range-line 1 re-indented line 1 alone to 4 spaces and left
+    /// An 8-space document whose <c>dr"""</c> closer line aborts (<c>""" + $</c>): the line after it follows a
+    /// recovery. @ 926670989 on-type and range-line 1 re-indented line 1 alone to 4 spaces and left
     /// <c>print(s)</c> at 8 — one block deeper than its sibling. Full re-indents both and keeps its repair.
+    /// P22g judged the line as one "hidden after recovery"; since P22h (R-FU) it starts a logical line of its own and
+    /// clause 6 judges it as any statement (re-pointed, not re-spelled: every route's outcome is unchanged).
     /// </summary>
     internal const string WideCloserLineAbort =
         "def main():\n        s: str = dr\"\"\"\n        \\d+\n        \\s+\n        \"\"\" + $\n        print(s)\n";
 
     [Fact]
-    public void ALineHiddenAfterRecovery_KeepsItsBlock_PartialReindentsAreRefused()
+    public void ALineAfterRecovery_StartsALogicalLine_KeepsItsBlock_PartialReindentsAreRefused()
     {
         const string d = WideCloserLineAbort;
+        IndentationService.BuildIndentMap(d).LogicalLineStarts.Should().Contain(6, "print(s) follows a recovery that does not continue");
         RoutesThatEdit(
             ("ontype@1", _driver.OnType(d, 1).Edits),
             ("range-line 1", _driver.Range(d, LineRange(d, 1)).Edits)).Should().BeEmpty("re-indenting line 1 alone moves line 5 into a deeper block");
@@ -881,12 +909,12 @@ public sealed class FormattingFallbackTests : IDisposable
     /// <summary>
     /// M3 (#2274, a known limit of any lexer fact): a backtick name swallows the opener (<c>x = `abc + """</c>) and the
     /// lexer loses nothing it can see. Plan P22g (plan-d923d3) recorded "M3 stays" (the routes rewrite
-    /// <c>key: value</c>) — but the line after the erroring one is hidden from the logical lines and depth-judged
-    /// (e16e323eb), so full, range-line and on-type refuse it: an incidental gain, pinned here so that a later change
-    /// that reopens the rewrite is a visible shrink of the known limit. The unchecked candidate is the positive control.
+    /// <c>key: value</c>) — but the line after the erroring one is depth-judged (e16e323eb; since P22h, R-FU, a logical
+    /// start of its own), so full, range-line and on-type refuse it: an incidental gain, pinned here so that a later
+    /// change that reopens the rewrite is a visible shrink of the known limit. The unchecked candidate is the positive control.
     /// </summary>
     [Fact]
-    public void KnownLimit2274_M3_BacktickSwallowsTheOpener_RefusedByTheHiddenLineJudgment()
+    public void KnownLimit2274_M3_BacktickSwallowsTheOpener_RefusedByTheRecoveryLineJudgment()
     {
         const string document = "def main():\n    x = `abc + \"\"\"\n        key: value\n    \"\"\"  # \"\"\"\n    print(x)\n";
         FormattingFallback.ReindentDocument(document).Split('\n')[2].Should().Be("    key: value", "the unchecked candidate rewrites the string line");
@@ -925,7 +953,7 @@ public sealed class FormattingFallbackTests : IDisposable
     /// SQ2 / SQ3: @ 926670989 range-line and full rewrote the string line <c>key: value</c> (the scanner closed the
     /// f-string at the spec's quote and never saw the opener). The routes apply nothing; the unchecked candidate
     /// shows what they would have done. NOTE (verify round): this cell does NOT discriminate #2276's arm — the string
-    /// line is the line right after the erroring one, hidden from the logical lines and depth-judged (e16e323eb), so
+    /// line is the line right after the erroring one, depth-judged (e16e323eb; a logical start since P22h, R-FU), so
     /// the routes refuse it with the arm reverted too. The cell that reads the <c>DroppedOpener</c> fact is
     /// <see cref="SQ_SpecQuoteAbortBeforeAnOpener_TheStringLinePastTheHiddenLine_GetsNoEdits"/> (SQ2b/SQ3b).
     /// </summary>
@@ -969,5 +997,350 @@ public sealed class FormattingFallbackTests : IDisposable
     {
         const string document = "def main():\n    x = f\"{x:\">}\"\n    q = 1\n  y = 1\n";
         _driver.Full(document).Applied.Should().Be(WithLine(document, 3, "    y = 1"));
+    }
+
+    // ---- P22h (#2279, R-FU): a bracket the lexer never saw closed freezes every line below its opener; the line after
+    // an error recovery starts a logical line and is repaired. Measured over stdio @ ac3235c2a (the LSP @ base 4562b1d01
+    // = be1c16fcf's; .claude/tmp/p22h-impl/p2b/out_a.txt and the plan's Current State) and asserted by direction: every
+    // "no edits" cell names the text the route would apply without its refusal — the @ ac3235c2a text where that route
+    // applied one — and asserts that the check refuses it.
+
+    /// <summary>A1: a real bracket open to the end of the source above a block.</summary>
+    internal const string A1 = "def main():\n    xs = [1,\n    y = 2\n    if y:\n        print(y)\n";
+
+    /// <summary>A1b: A1 with a misindented line ABOVE the opener — it keeps its repair.</summary>
+    internal const string A1b = "def main():\n      x = 1\n    xs = [1,\n    y = 2\n    if y:\n        print(y)\n";
+
+    /// <summary>A2: <c>decorators/bracket_attr_missing_close.spy</c> — <c>@[foo</c> open to the end of the source.</summary>
+    internal const string A2 = "@[foo\nclass Bar:\n    pass\n\ndef main():\n    pass\n";
+
+    /// <summary>A3: a call "closed" inside an unterminated short string — open to the lexer at the line's end.</summary>
+    internal const string A3 = "def main():\n    if foo(\"abc):\n        y = 1\n    z = 2\n  w = 3\n";
+
+    /// <summary>A4: A3 with the <c>)</c> inside an unterminated backtick name.</summary>
+    internal const string A4 = "def main():\n    if foo(`x):\n        y = 1\n    z = 2\n  w = 3\n";
+
+    /// <summary>A5: a bracket opened on a dropped line before the abort, a column-0 statement below.</summary>
+    internal const string A5 = "def main():\n    x = foo($,\ndef g():\n  return 1\n";
+
+    /// <summary>A6: the line after an error recovery, misindented to a width on no level.</summary>
+    internal const string A6 = "def main():\n    x = $\n      y = 1\n";
+
+    /// <summary>A6b: A6 with a clean line between (the control).</summary>
+    internal const string A6b = "def main():\n    x = $\n    q = 1\n      y = 1\n";
+
+    /// <summary>A7: a bracket opened in the given-up text, its continuation at width 10, a misindented line below.</summary>
+    internal const string A7 = "def main():\n    x = $ foo(1,\n          2)\n  y = 1\n";
+
+    /// <summary>A9: a backslash-continued dropped line (the backslash arm; no bracket left open).</summary>
+    internal const string A9 = "def main():\n    y = 1 + $ \\\n          2\n  z = 1\n";
+
+    /// <summary>A11: a module-level bracket open to the end of the source above a class.</summary>
+    internal const string A11 = "x = (\nclass Foo:\n    def m(self):\n        pass\n";
+
+    /// <summary>A12: a bracket open to the end of the source, a misindented line below it (the lexer reads it inside the bracket).</summary>
+    internal const string A12 = "def main():\n    xs = [1,\n    y = 2\n  z = 3\n";
+
+    /// <summary>W1: the 8-space twin of A6 with a line below (verify round @ 4562b1d01).</summary>
+    internal const string W1 = "def main():\n        _ = $\n          y = 1\n        print(x)\n";
+
+    /// <summary>W3: A6 with a line one level deeper below the recovery line.</summary>
+    internal const string W3 = "def main():\n    _ = $\n      y = 1\n        print(x)\n";
+
+    /// <summary>F1 (P2.2, lead ruling L5): an 8-space document with a bracket open to the end above two statements.</summary>
+    internal const string F1 = "def main():\n        _ = [1,\n        x = 1\n        print(x)\n";
+
+    /// <summary>A8: a block header whose colon is in the text the lexer gives up, its body at width 10 (lead ruling L6).</summary>
+    internal const string A8 = "def main():\n    if foo($):\n          y = 1\n";
+
+    /// <summary>
+    /// A8 with an UNRELATED misindented line above the header (lead ruling L6's arbiter row): clause 6c is check-only, so
+    /// the full candidate moves <c>y</c> with <c>q</c> and is refused whole — the unrelated repair is withheld (no edit
+    /// @ ac3235c2a too). A builder skip would keep it, at the cost of the literal-loss guards (see IndentMap.IsRecoveryLineALevelDeeper).
+    /// </summary>
+    internal const string A8q = "def main():\n      q = 1\n    if foo($):\n          y = 1\n";
+
+    /// <summary>The edits of one route cell: <c>full</c>, <c>range-whole</c>, <c>range-line N</c> or <c>ontype N</c> (0-based N).</summary>
+    private IReadOnlyList<TextEdit> RouteEdits(string document, string route) => RouteCell(document, route).Edits;
+
+    private (IReadOnlyList<TextEdit> Edits, string Applied) RouteCell(string document, string route)
+    {
+        var lines = Compiler.Formatting.LineDiff.Split(document).Lines;
+        var parts = route.Split(' ');
+        return parts[0] switch
+        {
+            "full" => _driver.Full(document),
+            "range-whole" => _driver.Range(document, Lines(0, lines.Count - 1)),
+            "range-line" => _driver.Range(document, ClientLineRange(document, int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture))),
+            "ontype" => _driver.OnType(document, int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture)),
+            _ => throw new ArgumentOutOfRangeException(nameof(route), route, null),
+        };
+    }
+
+    /// <summary>Line <paramref name="line"/> as the client counts lines (<c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>).</summary>
+    private static LspRange ClientLineRange(string text, int line) =>
+        new(new Position(line, 0), new Position(line, Compiler.Formatting.LineDiff.Split(text).Lines[line].Length));
+
+    /// <summary><paramref name="text"/> with its 0-based <paramref name="lines"/> re-indented to <paramref name="indent"/>, line breaks kept.</summary>
+    private static string Reindented(string text, string indent, params int[] lines)
+    {
+        var (split, breaks) = Compiler.Formatting.LineDiff.Split(text);
+        var result = new System.Text.StringBuilder();
+        for (var i = 0; i < split.Count; i++)
+        {
+            result.Append(lines.Contains(i) ? indent + split[i].TrimStart() : split[i]);
+            if (i < breaks.Count)
+                result.Append(breaks[i]);
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// The cells that apply no edit, each with the text the route would apply without its refusal (the @ ac3235c2a
+    /// text where the route applied one: the direction "wrong edit → no edit" or, for a repair below an abandoned
+    /// bracket, R-FU's "repair → no edit") and the clause that refuses it. A1, A2, A11, A12 (a real bracket open to
+    /// the end) and A3, A4, A5, A7 (an abandoned one): clause 7 — every line below the opener is the bracket's. W1 on
+    /// the line routes: clause 6b; W2 (<see cref="WideCloserLineAbort"/>) and W3: clause 6. A9 (the backslash arm;
+    /// outside R-FU's bracket contract): the asymmetry that refused it @ ac3235c2a.
+    /// </summary>
+    public static TheoryData<string, string, string, string> NoEditCells => new()
+    {
+        // A1: @ ac3235c2a full / range-whole / range-line 4 moved print(y) out of its `if` (wrong edit → no edit);
+        // on-type 4 applied nothing (a continuation line), and the line is below the opener now as well.
+        { "A1", A1, "full", WithLine(A1, 4, "    print(y)") },
+        { "A1", A1, "range-whole", WithLine(A1, 4, "    print(y)") },
+        { "A1", A1, "range-line 4", WithLine(A1, 4, "    print(y)") },
+        { "A1", A1, "ontype 4", WithLine(A1, 4, "    print(y)") },
+        // A2: @ ac3235c2a full and range-whole moved both `pass` lines to column 0 (wrong edit → no edit).
+        { "A2", A2, "full", "@[foo\nclass Bar:\npass\n\ndef main():\npass\n" },
+        { "A2", A2, "range-whole", "@[foo\nclass Bar:\npass\n\ndef main():\npass\n" },
+        // A3/A4: @ ac3235c2a full / range-whole / range-line 2 moved `y = 1` out of its `if` (wrong edit → no edit);
+        // on-type 4 / range-line 4 repaired `  w = 3` below the abandoned bracket (repair → no edit, R-FU).
+        { "A3", A3, "full", WithLine(A3, 2, "    y = 1") },
+        { "A3", A3, "range-whole", WithLine(A3, 2, "    y = 1") },
+        { "A3", A3, "range-line 2", WithLine(A3, 2, "    y = 1") },
+        { "A3", A3, "ontype 2", WithLine(A3, 2, "    y = 1") },
+        { "A3", A3, "ontype 4", WithLine(A3, 4, "    w = 3") },
+        { "A3", A3, "range-line 4", WithLine(A3, 4, "    w = 3") },
+        { "A4", A4, "full", WithLine(A4, 2, "    y = 1") },
+        { "A4", A4, "range-whole", WithLine(A4, 2, "    y = 1") },
+        { "A4", A4, "range-line 2", WithLine(A4, 2, "    y = 1") },
+        { "A4", A4, "ontype 2", WithLine(A4, 2, "    y = 1") },
+        { "A4", A4, "ontype 4", WithLine(A4, 4, "    w = 3") },
+        { "A4", A4, "range-line 4", WithLine(A4, 4, "    w = 3") },
+        // A5: @ ac3235c2a full / range-whole moved `def g():` into main (wrong edit → no edit); on-type 3 repaired
+        // `  return 1` below the abandoned bracket (repair → no edit, R-FU).
+        { "A5", A5, "full", "def main():\n    x = foo($,\n    def g():\n    return 1\n" },
+        { "A5", A5, "range-whole", "def main():\n    x = foo($,\n    def g():\n    return 1\n" },
+        { "A5", A5, "ontype 3", WithLine(A5, 3, "    return 1") },
+        // A7: no edits @ ac3235c2a too (the continuation at width 10 refused the whole repair); below the opener now.
+        { "A7", A7, "full", WithLine(WithLine(A7, 2, "    2)"), 3, "    y = 1") },
+        { "A7", A7, "ontype 2", WithLine(A7, 2, "    2)") },
+        { "A7", A7, "ontype 3", WithLine(A7, 3, "    y = 1") },
+        // A9: no edits @ ac3235c2a, unchanged (the backslash arm's lost repair; ledger, plan Phase 4).
+        { "A9", A9, "full", WithLine(WithLine(A9, 2, "    2"), 3, "    z = 1") },
+        { "A9", A9, "ontype 2", WithLine(A9, 2, "    2") },
+        // A11: @ ac3235c2a full moved `def m` and `pass` to column 0 (wrong edit → no edit).
+        { "A11", A11, "full", "x = (\nclass Foo:\ndef m(self):\npass\n" },
+        // A12: @ ac3235c2a full "repaired" `  z = 3`, a line the lexer reads inside the bracket (wrong edit → no edit).
+        { "A12", A12, "full", WithLine(A12, 3, "    z = 3") },
+        { "A12", A12, "ontype 3", WithLine(A12, 3, "    z = 3") },
+        // W1: the recovery line repaired ALONE to 4 spaces under an 8-space body — no edit @ ac3235c2a and now
+        // (clause 6b: the applied width 4 is on no level of [0, 8]; the lexer reads print(x) one block deeper).
+        { "W1", W1, "ontype 2", WithLine(W1, 2, "    y = 1") },
+        { "W1", W1, "range-line 2", WithLine(W1, 2, "    y = 1") },
+        // W2: the recovery line after an 8-space closer line re-indented alone — clause 6 (no edit @ ac3235c2a and now).
+        { "W2", WideCloserLineAbort, "ontype 5", WithLine(WideCloserLineAbort, 5, "    print(s)") },
+        // W3: the recovery line repaired with a deeper line below it — clause 6 (print(x) depth 3 → 2; no edit @ ac3235c2a and now).
+        { "W3", W3, "ontype 2", WithLine(W3, 2, "    y = 1") },
+        // F1 (lead ruling L5): @ ac3235c2a full / range-whole aligned all three lines to 4 (lines below the opener included);
+        // the frozen tail now stays at 8 and the opener alone at 4 would leave it a block deeper — clause 7b (alignment → no edit).
+        { "F1", F1, "full", WithLine(F1, 1, "    _ = [1,") },
+        { "F1", F1, "range-whole", WithLine(F1, 1, "    _ = [1,") },
+        // A8 (lead ruling L6): the recovery line a level or more deeper than its dropped header — its level is unknown
+        // (the colon is in the given-up text). No edit @ ac3235c2a and now; clause 6c refuses the candidate (at width 8
+        // clause 6 does too). The 8-space twin: the header at 8, the body at 18.
+        { "A8@8", A8.Replace("          y", "        y", StringComparison.Ordinal), "full", WithLine(A8, 2, "    y = 1") },
+        { "A8@8", A8.Replace("          y", "        y", StringComparison.Ordinal), "ontype 2", WithLine(A8, 2, "    y = 1") },
+        { "A8@8", A8.Replace("          y", "        y", StringComparison.Ordinal), "range-line 2", WithLine(A8, 2, "    y = 1") },
+        { "A8@10", A8, "full", WithLine(A8, 2, "    y = 1") },
+        { "A8@10", A8, "ontype 2", WithLine(A8, 2, "    y = 1") },
+        { "A8@10", A8, "range-line 2", WithLine(A8, 2, "    y = 1") },
+        { "A8@12", A8.Replace("          y", "            y", StringComparison.Ordinal), "full", WithLine(A8, 2, "    y = 1") },
+        { "A8@12", A8.Replace("          y", "            y", StringComparison.Ordinal), "ontype 2", WithLine(A8, 2, "    y = 1") },
+        { "A8@12", A8.Replace("          y", "            y", StringComparison.Ordinal), "range-line 2", WithLine(A8, 2, "    y = 1") },
+        { "A8 wide", "def main():\n        if foo($):\n                  y = 1\n", "full", "def main():\n    if foo($):\n    y = 1\n" },
+        { "A8 wide", "def main():\n        if foo($):\n                  y = 1\n", "ontype 2", "def main():\n        if foo($):\n    y = 1\n" },
+        { "A8 wide", "def main():\n        if foo($):\n                  y = 1\n", "range-line 2", "def main():\n        if foo($):\n    y = 1\n" },
+        // A8q (L6's arbiter row): full / range-whole move `y` with the unrelated `q` — refused whole, `q`'s repair withheld.
+        { "A8q", A8q, "full", WithLine(WithLine(A8q, 1, "    q = 1"), 3, "    y = 1") },
+        { "A8q", A8q, "range-whole", WithLine(WithLine(A8q, 1, "    q = 1"), 3, "    y = 1") },
+    };
+
+    [Theory]
+    [MemberData(nameof(NoEditCells))]
+    public void P22h_TheRoutesApplyNothing_AndTheCheckRefusesWhatTheyWouldApply(string name, string document, string route, string candidate)
+    {
+        RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
+        candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
+        FormattingFallback.IndentOnlyPreserved(document, candidate).Should().BeFalse("{0} {1}: the check refuses the candidate", name, route);
+    }
+
+    /// <summary>
+    /// The cells that apply a repair, with the text each applies. A1b: the misindented line ABOVE the opener keeps its
+    /// repair on full, range-whole and on-type 1 (full @ ac3235c2a also moved print(y) — the arm that is gone). A6, W1
+    /// full: the line after an error recovery is a logical start and is repaired (no edit @ ac3235c2a → repair). A6b:
+    /// unchanged (one clean line between). A9 on-type 3: the line after the backslash continuation is a logical start in
+    /// the source and, now, in the applied text too (no edit @ ac3235c2a → repair: the asymmetry that refused it is gone).
+    /// </summary>
+    public static TheoryData<string, string, string, string> RepairCells => new()
+    {
+        { "A1b", A1b, "full", WithLine(A1b, 1, "    x = 1") },
+        { "A1b", A1b, "range-whole", WithLine(A1b, 1, "    x = 1") },
+        { "A1b", A1b, "ontype 1", WithLine(A1b, 1, "    x = 1") },
+        { "A6", A6, "full", WithLine(A6, 2, "    y = 1") },
+        { "A6", A6, "range-whole", WithLine(A6, 2, "    y = 1") },
+        { "A6", A6, "ontype 2", WithLine(A6, 2, "    y = 1") },
+        { "A6", A6, "range-line 2", WithLine(A6, 2, "    y = 1") },
+        { "A6b", A6b, "full", WithLine(A6b, 3, "    y = 1") },
+        { "A6b", A6b, "ontype 3", WithLine(A6b, 3, "    y = 1") },
+        { "A9", A9, "ontype 3", WithLine(A9, 3, "    z = 1") },
+        { "W1", W1, "full", "def main():\n    _ = $\n    y = 1\n    print(x)\n" },
+        // A8q on-type 1: the unrelated line alone is repaired (the recovery line is not in the candidate).
+        { "A8q", A8q, "ontype 1", WithLine(A8q, 1, "    q = 1") },
+    };
+
+    /// <summary>F1's 4-space twin (lead ruling L5): the bracket left open, every line already on its level — no edit before or after.</summary>
+    [Fact]
+    public void P22h_F1FourSpaceTwin_IsUnchanged()
+    {
+        const string twin = "def main():\n    _ = [1,\n    x = 1\n    print(x)\n";
+        FormattingFallback.ReindentDocument(twin).Should().Be(twin);
+        RouteEdits(twin, "full").Should().BeEmpty();
+        RouteEdits(twin, "range-whole").Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(RepairCells))]
+    public void P22h_TheRoutesApplyTheRepair(string name, string document, string route, string repaired)
+    {
+        RouteCell(document, route).Applied.Should().Be(repaired, "{0} {1}", name, route);
+    }
+
+    /// <summary>The CRLF and lone-CR twins of A1 (every route: no edits) and A6 (the recovery line repaired, its line break kept).</summary>
+    [Theory]
+    [InlineData("\r\n")]
+    [InlineData("\r")]
+    public void P22h_LineBreakTwins_A1Frozen_A6Repaired(string lineBreak)
+    {
+        var a1 = A1.Replace("\n", lineBreak, StringComparison.Ordinal);
+        FormattingFallback.IndentOnlyPreserved(a1, Reindented(a1, "    ", 4)).Should().BeFalse();
+        foreach (var route in new[] { "full", "range-whole", "range-line 4", "ontype 4" })
+            RouteEdits(a1, route).Should().BeEmpty(route);
+
+        var a6 = A6.Replace("\n", lineBreak, StringComparison.Ordinal);
+        var repaired = Reindented(a6, "    ", 2);
+        foreach (var route in new[] { "full", "range-whole", "range-line 2", "ontype 2" })
+            RouteCell(a6, route).Applied.Should().Be(repaired, route);
+    }
+
+    /// <summary>
+    /// Clause 7 at the check seam (R-FU): a text that repairs the line above the opener AND re-indents one below it
+    /// (A1b's @ ac3235c2a full text: <c>print(y)</c> moved out of its <c>if</c>) is refused; the same text with the line
+    /// below untouched is accepted. Every other clause accepts the refused text — <c>print(y)</c> is the bracket's
+    /// continuation in both maps — so it discriminates clause 7 alone.
+    /// </summary>
+    [Fact]
+    public void IndentOnlyPreserved_ALineBelowAnOpenBracket_IsRefused()
+    {
+        IndentationService.BuildIndentMap(A1b).OpenBracketLine.Should().Be(3);
+        FormattingFallback.IndentOnlyPreserved(A1b, WithLine(WithLine(A1b, 1, "    x = 1"), 5, "    print(y)")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IndentOnlyPreserved_ALineBelowAnOpenBracket_Untouched_IsAccepted()
+    {
+        FormattingFallback.IndentOnlyPreserved(A1b, WithLine(A1b, 1, "    x = 1")).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Clause 6b at the check seam: W1's line-route text — the recovery line repaired ALONE to 4 spaces under an 8-space
+    /// body — lands on no level of the applied stack <c>[0, 8]</c>, while the lexer, whose stack restarts after the
+    /// recovery, would read <c>print(x)</c> one block deeper. Clause 6 exempts the line (its source width 10 is
+    /// dropped) and every other clause accepts the text, so it discriminates clause 6b alone.
+    /// </summary>
+    [Fact]
+    public void IndentOnlyPreserved_ARepairedLineOnNoLevel_IsRefused()
+    {
+        FormattingFallback.IndentOnlyPreserved(W1, WithLine(W1, 2, "    y = 1")).Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Clause 7b at the check seam (lead ruling L5): a hand-applied text that moves a line ON its level above an opener
+    /// whose frozen tail holds text (F1's opener to 4 spaces alone) is refused; every other clause accepts it, so it
+    /// discriminates clause 7b alone.
+    /// </summary>
+    [Fact]
+    public void IndentOnlyPreserved_AnOnLevelLineAboveAFrozenTailMoved_IsRefused()
+    {
+        FormattingFallback.IndentOnlyPreserved(F1, WithLine(F1, 1, "    _ = [1,")).Should().BeFalse();
+    }
+
+    /// <summary>Clause 7b's accepting twin: above the same kind of opener, a line on NO level (width 10, SPY0013) is repaired to 8.</summary>
+    [Fact]
+    public void IndentOnlyPreserved_ALineOnNoLevelAboveAFrozenTailRepaired_IsAccepted()
+    {
+        const string document = "def main():\n          q = 1\n        _ = [1,\n        x = 1\n";
+        FormattingFallback.IndentOnlyPreserved(document, WithLine(document, 1, "        q = 1")).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Clause 6c at the check seam (lead ruling L6): A8's recovery line moved to 4 spaces — out of the <c>if</c> whose
+    /// colon the lexer never read — is refused; clause 6 exempts its SPY0013 width and 4 lands on a level, so it
+    /// discriminates clause 6c alone. The map reads the line as a recovery line of a dropped line at width 4.
+    /// </summary>
+    [Fact]
+    public void IndentOnlyPreserved_ARecoveryLineALevelDeeperMoved_IsRefused()
+    {
+        IndentationService.BuildIndentMap(A8).RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be((2, 4));
+        FormattingFallback.IndentOnlyPreserved(A8, WithLine(A8, 2, "    y = 1")).Should().BeFalse();
+
+        // the 8-space twin's header moved to 4 alone, its body left at 18: the pair's relation changes the same way
+        const string wide = "def main():\n        if foo($):\n                  y = 1\n";
+        FormattingFallback.IndentOnlyPreserved(wide, WithLine(wide, 1, "    if foo($):")).Should().BeFalse();
+    }
+
+    /// <summary>Clause 6c's accepting twin: A6's recovery line, two spaces deeper than its dropped line, is repaired.</summary>
+    [Fact]
+    public void IndentOnlyPreserved_ARecoveryLineLessThanALevelDeeperRepaired_IsAccepted()
+    {
+        IndentationService.BuildIndentMap(A6).RecoveryLines.Should().ContainKey(3).WhoseValue.Should().Be((2, 4));
+        FormattingFallback.IndentOnlyPreserved(A6, WithLine(A6, 2, "    y = 1")).Should().BeTrue();
+    }
+
+    /// <summary>Clause 6b's accepting twin: the 4-space identity text — the repaired line lands on the level 4 of <c>[0, 4]</c>.</summary>
+    [Fact]
+    public void IndentOnlyPreserved_ARepairedLineOnALevel_IsAccepted()
+    {
+        const string identity = "def main():\n    _ = $\n      y = 1\n    print(x)\n";
+        FormattingFallback.IndentOnlyPreserved(identity, WithLine(identity, 2, "    y = 1")).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Lead ruling L4: a recovery line that opens a literal spanning lines is the literal-loss family's — re-indented to a
+    /// width on no level it is dropped with its opener (SPY0013), the lexer loses the literal (<c>DroppedOpener</c>) and
+    /// every route refuses (no edits @ ac3235c2a and now): the repair of the opener line is withheld and the literal's
+    /// lines are untouched. In the route-parity sweep such a cell is exempt by clean-twin parity (lead ruling L7: with
+    /// <c>_ = 0</c> in place of <c>_ = $</c> the line is withheld too) and counted in <c>S7ParityExemptPin</c>.
+    /// </summary>
+    [Fact]
+    public void L4_ARecoveryLineOpeningALiteral_IsWithheld_TheLiteralLinesUntouched()
+    {
+        const string document = "def main():\n    _ = $\n      s = \"\"\"\n        key: value\n    \"\"\"\n    print(s)\n";
+        IndentationService.BuildIndentMap(document).LiteralStateUnknown.Should().BeTrue("the dropped line takes the literal's opener with it");
+        FormattingFallback.ReindentDocument(document).Should().NotBe(document, "the unchecked candidate re-indents the lines");
+        foreach (var route in new[] { "full", "range-whole", "range-line 2", "ontype 2", "range-line 3" })
+            RouteEdits(document, route).Should().BeEmpty(route);
     }
 }

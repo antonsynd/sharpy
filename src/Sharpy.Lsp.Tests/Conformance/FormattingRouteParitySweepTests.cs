@@ -555,7 +555,15 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         IReadOnlyList<(int Line, int Depth)> LogicalStarts,
         IReadOnlyList<int> TargetLines,
         string? Kind,
-        string? Shape = null);
+        string? Shape = null,
+        ParityTwin? CleanTwin = null);
+
+    /// <summary>
+    /// The CLEAN twin of a <c>recovery-misindented</c> document (lead ruling L7): its text with the injected erroring
+    /// line's <c>$</c> replaced by <c>0</c> (<c>_ = 0</c>, a statement that lexes clean at the same width), and the 0-based
+    /// line the shape misindents — the line whose repair parity compares (<see cref="ParityExempt"/>).
+    /// </summary>
+    internal sealed record ParityTwin(string Text, int Line);
 
     internal const string BracketContinuation = "bracket";
     internal const string BackslashContinuation = "backslash";
@@ -727,7 +735,50 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             logical,
             targets,
             null,
-            shape.Shape));
+            shape.Shape,
+            shape.Shape == FormatterTwins.RecoveryMisindentedShape ? CleanTwinOf(shape.Text, at) : null));
+    }
+
+    /// <summary>The <see cref="ParityTwin"/> of a <c>recovery-misindented</c> document whose injected line is the 0-based <paramref name="at"/>.</summary>
+    internal static ParityTwin CleanTwinOf(string text, int at)
+    {
+        var (lines, breaks) = LineDiff.Split(text);
+        if (!lines[at].EndsWith("$", StringComparison.Ordinal))
+            throw new InvalidOperationException($"instrument: line {at} of a recovery-misindented document is not the injected erroring line: '{lines[at]}'");
+        var clean = new StringBuilder(text.Length);
+        for (var i = 0; i < lines.Count; i++)
+        {
+            clean.Append(i == at ? lines[i][..^1] + "0" : lines[i]);
+            if (i < breaks.Count)
+                clean.Append(breaks[i]);
+        }
+
+        return new ParityTwin(clean.ToString(), at + 1);
+    }
+
+    /// <summary>
+    /// Clean-twin parity (lead ruling L7, plan-f92797): a <c>recovery-misindented</c> cell whose <c>depth</c> failure is a
+    /// LOST repair (the route made no edit) is exempt when the same route does not repair the misindented line of the
+    /// document's <see cref="ParityTwin"/> either — the line after a clean statement, so a pre-existing lost repair, not
+    /// #2279's: a misindented block header with its body below (P2.2-F3), a line continuing past its end (F4), the
+    /// colon-less observer restriction (F5), a dropped literal opener (L4). A cell that made an edit is never exempt.
+    /// Counted per (twin, route) and pinned (<see cref="S7ParityExemptPin"/>).
+    /// </summary>
+    internal static bool ParityExempt(LspFormattingDriver driver, SweepDocument d, CellRequest request, CellVerdict verdict)
+    {
+        if (d.Truth?.CleanTwin is not { } clean || verdict.Changed || !verdict.Failures.Any(f => f.Bucket == Depth))
+            return false;
+        string applied;
+        try
+        {
+            applied = Apply(driver, clean.Text, request);
+        }
+        catch (StrictEditApplicationException)
+        {
+            return false;
+        }
+
+        return string.Equals(LineDiff.Split(applied).Lines[clean.Line], LineDiff.Split(clean.Text).Lines[clean.Line], StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1279,6 +1330,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         /// <summary>Cells that hit the known limit of #2274 (<see cref="CellVerdict.KnownLimit"/>).</summary>
         public int KnownLimit;
+
+        /// <summary><c>recovery-misindented</c> cells exempt from <c>depth</c> by clean-twin parity (<see cref="ParityExempt"/>).</summary>
+        public int ParityExempt;
     }
 
     /// <summary>Everything the census reads from the theories that ran in this process.</summary>
@@ -1316,19 +1370,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} {KnownLimitBucket[state]} ({group.KnownLimit}/{group.Cells} cells, #2274)");
             }
 
-            if (state == S7 && S7PendingPin.Count > 0)
+            if (group.ParityExempt > 0)
             {
-                // Lead ruling L1: while S7 is red its failures are a pinned count per (shape, route, bucket) of
-                // (stem, twin) pairs (S7PendingPin), never rows; the ratchet does not see them.
-                foreach (var (bucket, shapes) in group.FailureShapes)
-                {
-                    foreach (var shape in shapes)
-                        s_tallies.AddOrUpdate(S7PendingTally(shape, route, bucket), 1, (_, n) => n + 1);
-                    _output.WriteLine($"FMTROUTE-S7-PENDING {stem} {twin} {route} {bucket} {string.Join(' ', shapes)} (#2279)");
-                }
-
-                group.Failures.Clear();
-                group.FailureShapes.Clear();
+                s_tallies.AddOrUpdate(ParityExemptTally(twin, route), group.ParityExempt, (_, n) => n + group.ParityExempt);
+                _output.WriteLine($"FMTROUTE-S7-PARITY {stem} {twin} {route} {group.ParityExempt} (lead ruling L7)");
             }
             foreach (var (measure, n) in RangeMeasures(group))
             {
@@ -1385,9 +1430,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         Parallel.ForEach(work, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, item =>
         {
             var verdict = Judge(item.Doc, item.Request, () => Apply(driver, item.Doc.Text, item.Request));
+            var exempt = ParityExempt(driver, item.Doc, item.Request, verdict);
+            if (exempt)
+                verdict.Failures.RemoveAll(f => f.Bucket == Depth);
             lock (item.Group)
             {
                 item.Group.Cells++;
+                if (exempt)
+                    item.Group.ParityExempt++;
                 if (verdict.Changed)
                     item.Group.Changed++;
                 if (verdict.RefusedWork)
@@ -1510,7 +1560,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string KnownLimitCellsTally(string state, string route) => $"known-limit-cells {state} {KnownLimitBucket[state]} {route}";
 
-    private static string S7PendingTally(string shape, string route, string bucket) => $"s7-pending {shape} {route} {bucket}";
+    private static string ParityExemptTally(string twin, string route) => $"s7-parity-exempt {twin} {route}";
 
     /// <summary>The bucket each known-limit state counts against <see cref="KnownLimitPin"/> instead of failing it.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string> KnownLimitBucket = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
@@ -1520,33 +1570,40 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     };
 
     /// <summary>
-    /// TEMPORARY (lead ruling L1, plan-f92797; Phase 2 drains it to empty and DELETES it, #2279): while S7 is red, its
-    /// failing cells are this pinned count — per (continuation shape, route, bucket), the (stem, twin) pairs with a cell
-    /// of that shape failing that bucket on that route — instead of allowlist rows (62,396 rows of one class, measured
-    /// in FULL mode @ 20d7c582a; the table below measured in FULL mode after lead ruling L3 moved the abandoned brackets
-    /// to the opener's width). EXACT, not a ceiling: a cell that starts or stops failing moves a count, so a swap is
-    /// visible. While it is non-empty the loader refuses every S7 row. S7 cells are never sampled, so the sampled suite
-    /// counts the same cells as FULL mode; asserted only when every twin's theory ran over every stem in this process.
+    /// The clean-twin parity exemptions of <see cref="S7"/> (lead ruling L7, plan-f92797; <see cref="ParityExempt"/>): per
+    /// (twin, route), the <c>recovery-misindented</c> cells whose lost repair its clean twin loses too — pre-existing lost
+    /// repairs outside R-FU, posted on #2279 at close-out: a misindented block header with its body below (P2.2-F3), a line
+    /// continuing past its end — a bracket closed on a later line or a backslash (F4), the colon-less property-observer
+    /// restriction of P22e (F5), and a dropped literal opener (L4, which the parity rule subsumes: the recipe builds those
+    /// documents again). A PERMANENT known-limit pin, EXACT, measured in FULL mode at P22h Phase 2 Task 2 (@ ac3235c2a + the
+    /// task's diff; the comment twin splits statements across lines, hence its F4 surplus): a shrink is a
+    /// repair the clean twin gained, a growth a new pre-existing lost repair — change the literal in the same commit and
+    /// say which. The wide twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
+    /// cells are never sampled; asserted only when every twin's theory ran over every stem in this process.
     /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<(string Shape, string Route, string Bucket), int> S7PendingPin =
-        new SCG.Dictionary<(string Shape, string Route, string Bucket), int>
+    internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
+        new SCG.Dictionary<(string Twin, string Route), int>
         {
-            [(FormatterTwins.BracketEofShape, Full, Depth)] = 11660,
-            [(FormatterTwins.BracketEofShape, RangeWhole, Depth)] = 11660,
-            [(FormatterTwins.BracketEofShape, RangeLine, Depth)] = 3288,
-            [(FormatterTwins.BracketStringShape, Full, Depth)] = 4780,
-            [(FormatterTwins.BracketStringShape, RangeWhole, Depth)] = 4780,
-            [(FormatterTwins.BracketStringShape, RangeLine, Depth)] = 15205,
-            [(FormatterTwins.BracketBacktickShape, Full, Depth)] = 4780,
-            [(FormatterTwins.BracketBacktickShape, RangeWhole, Depth)] = 4780,
-            [(FormatterTwins.BracketBacktickShape, RangeLine, Depth)] = 15205,
-            [(FormatterTwins.BracketDroppedShape, Full, Depth)] = 4780,
-            [(FormatterTwins.BracketDroppedShape, RangeWhole, Depth)] = 4780,
-            [(FormatterTwins.BracketDroppedShape, RangeLine, Depth)] = 15205,
-            [(FormatterTwins.RecoveryMisindentedShape, Full, Depth)] = 16420,
-            [(FormatterTwins.RecoveryMisindentedShape, RangeWhole, Depth)] = 16420,
-            [(FormatterTwins.RecoveryMisindentedShape, RangeLine, Depth)] = 13136,
-            [(FormatterTwins.RecoveryMisindentedShape, OnType, Depth)] = 13136,
+            [(Identity, Full)] = 474,
+            [(Identity, RangeWhole)] = 474,
+            [(Identity, RangeLine)] = 470,
+            [(Identity, OnType)] = 470,
+            [(Comment, Full)] = 1620,
+            [(Comment, RangeWhole)] = 1620,
+            [(Comment, RangeLine)] = 1616,
+            [(Comment, OnType)] = 1616,
+            [(Crlf, Full)] = 474,
+            [(Crlf, RangeWhole)] = 474,
+            [(Crlf, RangeLine)] = 470,
+            [(Crlf, OnType)] = 470,
+            [(Cr, Full)] = 474,
+            [(Cr, RangeWhole)] = 474,
+            [(Cr, RangeLine)] = 470,
+            [(Cr, OnType)] = 470,
+            [(Wide, Full)] = 474,
+            [(Wide, RangeWhole)] = 474,
+            [(Wide, RangeLine)] = 0,
+            [(Wide, OnType)] = 0,
         };
 
     /// <summary>
@@ -1662,12 +1719,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — `cli` and `full` on a parseable document apply "
                     + "Format's checked output whole; a failure there is a finding outside P22e's cure, never a row.");
-            }
-
-            if (fields[3] == S7 && S7PendingPin.Count > 0)
-            {
-                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — S7 is a pinned count while it is red "
-                    + "(S7PendingPin, lead ruling L1), never rows; Phase 2 deletes the pin.");
             }
 
             if (!Regex.IsMatch(cite, @"^#\d+\b"))
@@ -2117,6 +2168,32 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// so <c>depth</c> fires at it; with that line put back at Q's width (the repair) <c>depth</c> is clean. The
     /// <c>recovery</c> twin, already at its block's width, is clean with no edits. The wide twin skips the line routes.
     /// </summary>
+    /// <summary>
+    /// Clean-twin parity (lead ruling L7) on both sides: <see cref="QOwn"/>'s <c>recovery-misindented</c> document (its
+    /// misindented line opens a literal spanning lines — L4's shape) loses its on-type repair, and so does its clean twin
+    /// (<c>_ = 0</c>: the 6-space opener line is dropped whole with its literal), so the cell is exempt. A plain Q's
+    /// document with the same lost repair (as if the route had applied nothing) is NOT exempt: its clean twin is repaired.
+    /// A cell that made an edit is never exempt.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_ParityExempt_OnlyALostRepairTheCleanTwinLosesToo()
+    {
+        var own = UnparseableDocuments(QOwn, Doc(QOwn).Facts!).Single(g => g.Truth?.Shape == FormatterTwins.RecoveryMisindentedShape);
+        own.Truth!.CleanTwin!.Text.Should().Be("def main():\n    _ = 0\n      s = \"\"\"\n      a\n    \"\"\"\n    q = 1\n    print(s)\n");
+        own.Truth.CleanTwin.Line.Should().Be(2);
+        var onType = new CellRequest(OnType, null, 2);
+        var lost = UnparseableOracles(own, onType, own.Text);
+        lost.Failures.Select(f => f.Bucket).Should().Contain(Depth);
+        ParityExempt(_driver, own, onType, lost).Should().BeTrue("the clean twin's opener line is withheld too (L4)");
+        ParityExempt(_driver, own, onType, lost with { Changed = true }).Should().BeFalse("a cell that made an edit is never exempt");
+
+        const string plain = "def main():\n    q = 1\n    print(q)\n";
+        var d = UnparseableDocuments(plain, Doc(plain).Facts!).Single(g => g.Truth?.Shape == FormatterTwins.RecoveryMisindentedShape);
+        var unrepaired = UnparseableOracles(d, onType, d.Text);
+        unrepaired.Failures.Select(f => f.Bucket).Should().Contain(Depth);
+        ParityExempt(_driver, d, onType, unrepaired).Should().BeFalse("the clean twin's line is repaired: the lost repair is #2279's");
+    }
+
     [Fact]
     public void PositiveControl_Depth_SeesTheRecoveryLinesLostRepair()
     {
@@ -2177,7 +2254,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         Ratchet("a/b", Identity, failingGroups, sampledIn: true, Array.Empty<Row>()).Should().ContainSingle().Which.Should().Contain("ontypeShape");
     }
 
-    /// <summary>The loader refuses a <c>cli</c>/<c>full</c> row on a parseable state, an unknown field, a missing cite, an S6-family row citing another state's issue, any S7 row while <see cref="S7PendingPin"/> exists, and a duplicate.</summary>
+    /// <summary>The loader refuses a <c>cli</c>/<c>full</c> row on a parseable state, an unknown field, a missing cite, an S6-family row citing another state's issue, and a duplicate.</summary>
     [Fact]
     public void Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows()
     {
@@ -2196,7 +2273,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             "a/b identity ontype S6o factSpurious # #2279 the S7 issue on an S6o row",
             "a/b identity range-line S6o factSpurious # #2275 the S6x issue on an S6o row",
             "a/b identity full S6ok factSpurious # #2280 the S6o issue on an S6ok row",
-            "a/b identity full S7 depth # #2279 S7 is a pinned count while it is red (S7PendingPin)",
         })
         {
             FluentActions.Invoking(() => ParseAllowlist(new[] { bad })).Should().Throw<InvalidOperationException>(bad);
@@ -2380,7 +2456,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         // The known limits of #2274 (R-FQ; lead ruling L2): the comment re-pair's string-content edits (S6k) and the
         // unpairable own-quote tails' spurious facts (S6ok) are counted, never rows, and each count is pinned EXACTLY —
-        // only when every twin's theory ran over every stem in this process. So is S7 while it is red (lead ruling L1).
+        // only when every twin's theory ran over every stem in this process. So are S7's clean-twin parity exemptions (L7).
         foreach (var state in KnownLimitBucket.Keys)
         {
             _output.WriteLine($"FMTROUTE-CENSUS known-limit {state} {KnownLimitBucket[state]} "
@@ -2388,14 +2464,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 + " (cells: " + string.Join(" ", RoutesByState[state].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitCellsTally(state, r))}")) + ")");
         }
 
-        var s7Keys = S7PendingPin.Keys.Concat(tallies.Keys.Where(k => k.StartsWith("s7-pending ", StringComparison.Ordinal))
-                .Select(k => k.Split(' ')).Select(f => (Shape: f[1], Route: f[2], Bucket: f[3])))
-            .Distinct().OrderBy(k => k.Shape, StringComparer.Ordinal).ThenBy(k => k.Route, StringComparer.Ordinal).ThenBy(k => k.Bucket, StringComparer.Ordinal)
-            .ToList();
-        foreach (var (shape, route, bucket) in s7Keys)
+        var parityKeys = Twins.SelectMany(t => RoutesByState[S7].Select(r => (Twin: t, Route: r))).ToList();
+        foreach (var (twin, route) in parityKeys)
         {
-            _output.WriteLine($"FMTROUTE-CENSUS s7-pending {shape} {route} {bucket}={tallies.GetValueOrDefault(S7PendingTally(shape, route, bucket))} "
-                + $"pin={S7PendingPin.GetValueOrDefault((shape, route, bucket))}");
+            _output.WriteLine($"FMTROUTE-CENSUS s7-parity-exempt {twin} {route}={tallies.GetValueOrDefault(ParityExemptTally(twin, route))} "
+                + $"pin={S7ParityExemptPin.GetValueOrDefault((twin, route))}");
         }
 
         var everyTwinRan = Twins.Where(t => s_stemsRun.GetValueOrDefault(t) != corpus.Corpus.Count).ToList();
@@ -2412,15 +2485,15 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 }
             }
 
-            foreach (var (shape, route, bucket) in s7Keys)
+            foreach (var (twin, route) in parityKeys)
             {
-                tallies.GetValueOrDefault(S7PendingTally(shape, route, bucket)).Should().Be(S7PendingPin.GetValueOrDefault((shape, route, bucket)),
-                    $"S7 {shape} {route} {bucket} is pinned while #2279 is red (S7PendingPin, lead ruling L1): a shrink is a drain, a growth a new cell — change the pin and say which");
+                tallies.GetValueOrDefault(ParityExemptTally(twin, route)).Should().Be(S7ParityExemptPin.GetValueOrDefault((twin, route)),
+                    $"S7 {twin} {route}'s clean-twin parity exemptions are pinned (S7ParityExemptPin, lead ruling L7): a shrink is a repair the clean twin gained, a growth a new pre-existing lost repair — change the pin and say which");
             }
         }
         else
         {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit and s7-pending pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
+            _output.WriteLine($"FMTROUTE-CENSUS known-limit and s7-parity pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
         }
 
         // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). P22f Phase 1 Task 4
@@ -2432,10 +2505,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // drain; Phase 2 drained the 334 S6n rows (the indent map lexes past the error budget, R-FP) and Phase 3 the
         // 240 S6r rows (the close-line rule reads the text the lexer gives up, R-FR): EMPTY again. P22h Phase 1
         // (plan-f92797) re-populated it from a FULL-mode run with the 216 S6o factSpurious rows (#2280: the six
-        // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) are S7PendingPin and its S6ok cells
+        // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) were a pinned count its Phase 2
+        // drained to none (S7 rides this ratchet with 0 rows; its clean-twin parity exemptions are S7ParityExemptPin) and its S6ok cells
         // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. The literal anchors it:
         // changing the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(216, "P22h Phase 1 added the S6o (#2280) rows its Phase 3 drains; S7 is S7PendingPin (#2279) and the S6k/S6ok cells are KnownLimitPin (#2274)");
+        rows.Count.Should().Be(216, "P22h Phase 1 added the S6o (#2280) rows its Phase 3 drains; S7 (#2279) holds no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }

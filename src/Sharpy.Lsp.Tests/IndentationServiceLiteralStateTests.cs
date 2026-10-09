@@ -98,4 +98,45 @@ public class IndentationServiceLiteralStateTests
     {
         IndentationService.BuildIndentMap(document).LiteralStateUnknown.Should().BeFalse(name);
     }
+
+    // ---- P22h (#2279, R-FU): the map reads the lexer's BracketLeftOpenAtLine as OpenBracketLine, and the line after a
+    // recovery that does not continue starts a logical line.
+
+    public static TheoryData<string, string, int?, int[], int[]> RecoveryLinesAndOpenBrackets => new()
+    {
+        // the recovery line after a dropped line that holds tokens: a logical start (P22g read it as a continuation)
+        { "A6", FormattingFallbackTests.A6, null, new[] { 3 }, Array.Empty<int>() },
+        { "A6b", FormattingFallbackTests.A6b, null, new[] { 3, 4 }, Array.Empty<int>() },
+        { "W2 (8-space closer line)", FormattingFallbackTests.WideCloserLineAbort, null, new[] { 6 }, Array.Empty<int>() },
+        { "A8 (a header whose colon is given up)", "def main():\n    if foo($):\n        y = 1\n", null, new[] { 2, 3 }, Array.Empty<int>() },
+        // a backslash-continued dropped line: its next line is the user's continuation, no bracket is left open
+        { "backslash", "def main():\n    y = 1 + $ \\\n        2\n    print(y)\n", null, new[] { 4 }, new[] { 3 } },
+        // a real bracket open to the end of the source: every later line is its continuation
+        { "A1", FormattingFallbackTests.A1, 2, Array.Empty<int>(), new[] { 3, 4, 5 } },
+        { "A11", FormattingFallbackTests.A11, 1, Array.Empty<int>(), new[] { 2, 3, 4 } },
+        // an abandoned bracket: the recovery continues (the next line is its continuation), the lines after start statements
+        { "A3", FormattingFallbackTests.A3, 2, new[] { 4, 5 }, new[] { 3 } },
+        { "A4", FormattingFallbackTests.A4, 2, new[] { 4, 5 }, new[] { 3 } },
+        { "A5", FormattingFallbackTests.A5, 2, Array.Empty<int>(), new[] { 3 } },
+        // A7: the continuation at width 10 is dropped whole after the recovery reset (SPY0013) — a token-less dropped
+        // code line, which the map reads as a logical start (unchanged); it is below the opener all the same
+        { "A7 (opened in the given-up text)", FormattingFallbackTests.A7, 2, new[] { 3 }, Array.Empty<int>() },
+        // controls: a bracket the given-up text closes, a clean document
+        { "closed on the dropped line", "def main():\n    x = foo($)\n    y = 1\n", null, new[] { 3 }, Array.Empty<int>() },
+        { "clean", Clean, null, new[] { 1, 2, 3, 4, 7 }, Array.Empty<int>() },
+    };
+
+    [Theory]
+    [MemberData(nameof(RecoveryLinesAndOpenBrackets))]
+    public void BuildIndentMap_TheLineAfterARecovery_StartsALogicalLine_AndTheOpenBracketLineIsTheLexers(
+        string name, string document, int? openBracketLine, int[] logicalStarts, int[] continuations)
+    {
+        var map = IndentationService.BuildIndentMap(document);
+        var lexer = IndentationService.StructureLexer(document);
+        lexer.TokenizeAll();
+        map.OpenBracketLine.Should().Be(lexer.BracketLeftOpenAtLine, "{0}: the map reads the lexer's fact", name);
+        map.OpenBracketLine.Should().Be(openBracketLine, name);
+        logicalStarts.Except(map.LogicalLineStarts).Should().BeEmpty("{0}: these lines start logical lines", name);
+        continuations.Intersect(map.LogicalLineStarts).Should().BeEmpty("{0}: these lines continue the line above", name);
+    }
 }
