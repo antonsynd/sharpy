@@ -2270,9 +2270,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // with KnownLimitPin and re-populated the file from a FULL-mode run with the 334 S6n rows of the four
         // budget-stop positions (#2273, the same (stem, twin, route) keys) and 240 S6r rows (#2275) its Phases 2-3
         // drain; Phase 2 drained the 334 S6n rows (the indent map lexes past the error budget, R-FP) and Phase 3 the
-        // 240 S6r rows (the close-line rule reads the text the lexer gives up, R-FR): EMPTY again. The literal anchors
-        // it: changing the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(0, "P22g drained the S6n (#2273, R-FP) and S6r (#2275, R-FR) rows; the S6k cells are KnownLimitPin (#2274)");
+        // 240 S6r rows (the close-line rule reads the text the lexer gives up, R-FR): EMPTY again. P22h Phase 1
+        // (plan-f92797) re-populated it from a FULL-mode run with 62396 S7 depth rows (#2279: every (stem, twin) with
+        // a block) and 216 S6o factSpurious rows (#2280: the closeline-own tails) its Phases 2-3 drain. The literal
+        // anchors it: changing the allowlist is a visible decision — change this count in the same commit and say why.
+        rows.Count.Should().Be(62612, "P22h Phase 1 added the S7 (#2279) and S6o (#2280) rows its Phases 2-3 drain; the S6k cells are KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }
