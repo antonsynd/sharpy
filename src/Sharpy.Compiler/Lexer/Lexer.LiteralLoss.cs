@@ -117,11 +117,13 @@ public partial class Lexer
     /// comment is text. (P22g verify round: the first spelling read <c>_bracketDepth > 0</c> at the abort and the
     /// last skipped character, so a closed bracket counted, an opened one did not, and <c># C:\</c> continued.)
     /// The two arms are told apart (<see cref="LineEnd"/>): only an open bracket is <see cref="BracketLeftOpenAtLine"/>.
+    /// The same walk notes a <c>:</c> at depth 0 (not <c>:=</c>) for <see cref="RecoveryResumesAfterAPossibleHeader"/>.
     /// </summary>
     private static LineEnd DroppedLineContinues(ReadOnlySpan<char> given, int bracketDepth)
     {
         var depth = bracketDepth;
         var openedInGivenUpText = false;
+        var colonAtDepthZero = false;
         var endsInBackslash = false;
         var i = 0;
         while (i < given.Length && !IsLineBreak(given[i]))
@@ -168,9 +170,12 @@ public partial class Lexer
             }
             else if (c is (')' or ']' or '}') && depth > 0)
                 depth--;
+            else if (c == ':' && depth == 0 && (i + 1 >= given.Length || given[i + 1] != '='))
+                colonAtDepthZero = true;
             i++;
         }
-        return new LineEnd(BracketOpen: depth > 0, Backslash: endsInBackslash, OpenedInGivenUpText: depth > 0 && openedInGivenUpText);
+        return new LineEnd(BracketOpen: depth > 0, Backslash: endsInBackslash, OpenedInGivenUpText: depth > 0 && openedInGivenUpText,
+            ColonAtDepthZero: colonAtDepthZero);
     }
 
     /// <summary>
@@ -178,9 +183,11 @@ public partial class Lexer
     /// (<c>BracketOpen</c>; <c>OpenedInGivenUpText</c> when the outermost one left open was
     /// opened in the given-up text — <c>x = $ foo(1,</c>, or <c>$) + bar(2,</c> after the bracket open at the abort
     /// closed — rather than before the abort), and a trailing backslash outside a comment
-    /// (<c>Backslash</c>). Either continues the line on the next; only the bracket is left open.
+    /// (<c>Backslash</c>). Either continues the line on the next; only the bracket is left open. <c>ColonAtDepthZero</c>:
+    /// the given-up text holds a <c>:</c> outside every bracket, string, comment and backtick name (a possible block
+    /// header's colon; <c>:=</c> is not one).
     /// </summary>
-    private readonly record struct LineEnd(bool BracketOpen, bool Backslash, bool OpenedInGivenUpText);
+    private readonly record struct LineEnd(bool BracketOpen, bool Backslash, bool OpenedInGivenUpText, bool ColonAtDepthZero);
 
     /// <summary>A backtick-delimited name, read as the lexer reads one: it ends at its backtick or at the line break.</summary>
     private static void SkipBacktickName(ReadOnlySpan<char> text, ref int i)

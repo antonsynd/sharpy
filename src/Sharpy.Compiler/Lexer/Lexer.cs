@@ -102,6 +102,8 @@ public partial class Lexer
     private int _multiLineLiteralReads;      // see MultiLineLiteralRead
     private int _tokenStart;                 // start of the token NextToken's main loop is reading; see NoteDroppedSpan
     private readonly List<int> _recoveryResumes = new();     // see RecoveryResumes
+    private bool _tokenOnLogicalLine;        // a token was read since the last Newline or recovery; see RecoveryResumesAfterAPossibleHeader
+    private bool _colonOnLogicalLine;        // ... and one was a ':' at bracket depth 0 outside any f-string
 
     /// <summary>
     /// The source offsets where error recovery resumed, ascending: the start of the line after the text
@@ -120,9 +122,29 @@ public partial class Lexer
     /// lexer gave up (<c>x = foo($,</c>) or the dropped text ends in a backslash (<c>y = 1 + $ \</c>). The line after
     /// such a recovery is the user's continuation line, not a statement, even though recovery resets the brackets —
     /// the indent map keeps it out of the lines whose block depth the indent-only check judges (P22g; the verify
-    /// round's lost repair).
+    /// round's lost repair). A bracket inside an f-string's replacement field is not one: the depth is the one
+    /// <see cref="BracketLeftOpenAtLine"/> reads, the fields' brackets taken off (<see cref="GivenUpLineEnd"/>, lead
+    /// ruling L10), so <c>x = f"{foo($)}"</c> does not continue and <c>print(f"{foo($)}"</c> does.
     /// </summary>
     internal IReadOnlySet<int> RecoveryResumesAfterAContinuedLine => _recoveryResumesAfterAContinuedLine;
+
+    private readonly HashSet<int> _recoveryResumesAfterAPossibleHeader = new();
+
+    /// <summary>
+    /// The <see cref="RecoveryResumes"/> whose dropped line COULD open a block (P22h, lead ruling L8, #2279): the line,
+    /// read as the lexer reads it — the tokens of its logical line read before the abort, plus the text the lexer gave up
+    /// with strings, comments and backtick names opaque (<see cref="DroppedLineContinues"/>'s walk) — holds a <c>:</c> at
+    /// bracket depth 0, outside any f-string (<c>if foo($):</c>, <c>if x: $</c>, <c>while $:</c>,
+    /// <c>def m(self, $):</c>, <c>lambda x: $</c>; and conservatively an annotation, <c>x: int = $</c>). A colon in a
+    /// bracket, a string, a comment or a field is not one (<c>d = {a: $}</c>, <c>a[1:$]</c>, <c>s = "a:" + $</c>,
+    /// <c>x = $  # a: b</c>), and neither is <c>:=</c>. A subset of the resumes NOT in
+    /// <see cref="RecoveryResumesAfterAContinuedLine"/>: when the line continues (a bracket or a backslash open at its
+    /// end) the next line is its continuation, not a body. A dropped line from which no token was read — an indentation
+    /// error (SPY0011–SPY0014) drops the whole line before reading it — is never one. The editor's indent map leaves a
+    /// recovery line deeper than such a dropped line alone: the dropped line may be the header of the block it sits in,
+    /// and no fact says how deep that block is. Recording it changes no token, span, trivia or diagnostic.
+    /// </summary>
+    internal IReadOnlySet<int> RecoveryResumesAfterAPossibleHeader => _recoveryResumesAfterAPossibleHeader;
 
     /// <summary>
     /// The 1-based line of the OPENER of the outermost bracket the lexer left open — a bracket it never saw closed —
@@ -404,7 +426,7 @@ public partial class Lexer
                     // left open as at a recovery (BracketLeftOpenAtLine). The budget stop reads no further, so
                     // where the source's brackets end is unknown there.
                     if (_position >= _source.Length)
-                        NoteBracketLeftOpen(_source.AsSpan(droppedFrom), resumesAfterUnclosedField);
+                        NoteBracketLeftOpen(GivenUpLineEnd(_source.AsSpan(droppedFrom), resumesAfterUnclosedField));
                     if (_diagnostics.ErrorCount >= MaxErrors)
                     {
                         // The rest of the source gets no token: a literal that can span lines in it is
@@ -512,12 +534,16 @@ public partial class Lexer
     /// </summary>
     private void RecoverFromError(int droppedFrom, bool afterUnclosedField)
     {
-        // Whether the dropped line continues on the next (RecoveryResumesAfterAContinuedLine): judged from the
-        // line's END state — the bracket depth where the lexer gave up plus the brackets of the text it gave up,
-        // read before the depth is reset below. A bracket open there is left open (BracketLeftOpenAtLine); a trailing
-        // backslash continues the line but leaves no bracket.
-        var lineEnd = DroppedLineContinues(_source.AsSpan(droppedFrom), _bracketDepth);
-        NoteBracketLeftOpen(_source.AsSpan(droppedFrom), afterUnclosedField);
+        // The dropped line's END state, judged ONCE (lead ruling L10) before the depth and the f-string state are reset
+        // below: whether it continues on the next (RecoveryResumesAfterAContinuedLine — a bracket or a trailing
+        // backslash), whether a bracket is left open (BracketLeftOpenAtLine; a backslash leaves none), and whether it
+        // could open a block (RecoveryResumesAfterAPossibleHeader).
+        var lineEnd = GivenUpLineEnd(_source.AsSpan(droppedFrom), afterUnclosedField);
+        NoteBracketLeftOpen(lineEnd);
+        var continues = lineEnd.BracketOpen || lineEnd.Backslash;
+        var possibleHeader = !continues && _tokenOnLogicalLine && (_colonOnLogicalLine || lineEnd.ColonAtDepthZero);
+        _tokenOnLogicalLine = false;
+        _colonOnLogicalLine = false;
 
         // Skip to the next newline character (\n or \r)
         while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
@@ -563,36 +589,43 @@ public partial class Lexer
         _fstringStack.Clear();
 
         _recoveryResumes.Add(_position);
-        if (lineEnd.BracketOpen || lineEnd.Backslash)
+        if (continues)
             _recoveryResumesAfterAContinuedLine.Add(_position);
+        if (possibleHeader)
+            _recoveryResumesAfterAPossibleHeader.Add(_position);
     }
 
     /// <summary>
-    /// Records <see cref="BracketLeftOpenAtLine"/> (first event wins) when the line the lexer gives up
-    /// (<paramref name="given"/>) has a bracket open at its END (<see cref="DroppedLineContinues"/>): the opener's line
-    /// is <see cref="_line"/> when the outermost bracket left open was opened in the given-up text, else
-    /// <see cref="_outermostBracketLine"/> (opened before the abort — on this line or an earlier one). Called before
-    /// the depth and the f-string state are reset. Only brackets OUTSIDE f-string replacement fields count: a field's
-    /// <c>(</c>/<c>[</c> is read through <see cref="ReadOperatorOrDelimiter"/>, so <see cref="_bracketDepth"/> holds
-    /// it too, and the open fields' <see cref="FStringField.ParenDepth"/> is taken off (a bracket can open inside a
-    /// field only after every bracket around the f-string, so the outermost one left is still a real bracket's).
-    /// After an unclosed replacement field (<paramref name="afterUnclosedField"/>) the given-up text starts at the
-    /// field's innermost bracket and is the field's own expression: only a bracket open AROUND the f-string counts
-    /// there (<c>print(f"{x</c>), never the field's (<c>f"{foo(1,</c>).
+    /// The END state of the line the lexer gives up (<paramref name="given"/>, read from <see cref="UnreadTextStart"/>):
+    /// the ONE computation behind <see cref="RecoveryResumesAfterAContinuedLine"/>, <see cref="BracketLeftOpenAtLine"/>
+    /// and <see cref="RecoveryResumesAfterAPossibleHeader"/> (lead ruling L10 — the continued judgment read the raw
+    /// depth while the fact took the fields' brackets off, so <c>x = f"{foo($)}"</c> continued with no bracket left
+    /// open, and the line below it was neither frozen nor judged). Called before the depth and the f-string state are
+    /// reset. Only brackets OUTSIDE f-string replacement fields count: a field's <c>(</c>/<c>[</c> is read through
+    /// <see cref="ReadOperatorOrDelimiter"/>, so <see cref="_bracketDepth"/> holds it too, and the open fields'
+    /// <see cref="FStringField.ParenDepth"/> is taken off (a bracket can open inside a field only after every bracket
+    /// around the f-string, so the outermost one left is still a real bracket's). After an unclosed replacement field
+    /// (<paramref name="afterUnclosedField"/>) the given-up text starts at the field's innermost bracket and is the
+    /// field's own expression: only a bracket open AROUND the f-string counts there (<c>print(f"{x</c>), never the
+    /// field's (<c>f"{foo(1,</c>), and the field's text ends no line in a backslash and holds no header colon.
     /// </summary>
-    private void NoteBracketLeftOpen(ReadOnlySpan<char> given, bool afterUnclosedField)
+    private LineEnd GivenUpLineEnd(ReadOnlySpan<char> given, bool afterUnclosedField)
     {
-        if (BracketLeftOpenAtLine != null)
-            return;
         var depth = _bracketDepth - _fstringStack.Sum(context => context.Fields.Sum(field => field.ParenDepth));
-        if (afterUnclosedField)
-        {
-            if (depth > 0)
-                BracketLeftOpenAtLine = _outermostBracketLine;
-            return;
-        }
-        var lineEnd = DroppedLineContinues(given, depth);
-        if (lineEnd.BracketOpen)
+        return afterUnclosedField
+            ? new LineEnd(BracketOpen: depth > 0, Backslash: false, OpenedInGivenUpText: false, ColonAtDepthZero: false)
+            : DroppedLineContinues(given, depth);
+    }
+
+    /// <summary>
+    /// Records <see cref="BracketLeftOpenAtLine"/> (first event wins) when the line the lexer gives up has a bracket
+    /// open at its END (<see cref="GivenUpLineEnd"/>): the opener's line is <see cref="_line"/> when the outermost
+    /// bracket left open was opened in the given-up text, else <see cref="_outermostBracketLine"/> (opened before the
+    /// abort — on this line or an earlier one).
+    /// </summary>
+    private void NoteBracketLeftOpen(LineEnd lineEnd)
+    {
+        if (BracketLeftOpenAtLine == null && lineEnd.BracketOpen)
             BracketLeftOpenAtLine = lineEnd.OpenedInGivenUpText ? _line : _outermostBracketLine;
     }
 
@@ -870,6 +903,19 @@ public partial class Lexer
         int? sourceLength = null, string? fstringExpressionText = null, string? fstringRawText = null)
     {
         var token = new Token(type, value, startLine, startColumn, startPosition);
+
+        // RecoveryResumesAfterAPossibleHeader: what the logical line read so far holds (a Newline ends it)
+        if (type == TokenType.Newline)
+        {
+            _tokenOnLogicalLine = false;
+            _colonOnLogicalLine = false;
+        }
+        else if (type is not (TokenType.Indent or TokenType.Dedent or TokenType.Eof))
+        {
+            _tokenOnLogicalLine = true;
+            if (type == TokenType.Colon && _bracketDepth == 0 && _fstringStack.Count == 0)
+                _colonOnLogicalLine = true;
+        }
 
         if (sourceLength.HasValue)
             token = token with { SourceLength = sourceLength };

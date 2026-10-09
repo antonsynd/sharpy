@@ -1232,6 +1232,86 @@ public class LiteralStateTests
         return i;
     }
 
+    /// <summary>
+    /// Lead ruling L8 (verifier 1a, 1b; #2279): <see cref="LexerNs.Lexer.RecoveryResumesAfterAPossibleHeader"/> holds the
+    /// resumes whose dropped line, read as the lexer reads it (the logical line's tokens before the abort plus the
+    /// given-up text, strings, comments and backtick names opaque), holds a <c>:</c> at bracket depth 0 outside any
+    /// f-string — a line that could open a block, so the editor must not re-indent the line below it. Members: a header
+    /// whose colon is given up (<c>if foo($):</c>, <c>while $:</c>, a signature, a header spanning lines) or read before
+    /// the abort (<c>if x: $</c>), and conservatively an annotation and a lambda. Non-members: a colon in a bracket, a
+    /// string (closed or swallowing it), a comment, a field, a backtick name, a walrus; a continued line (bracket or
+    /// backslash) whose colon was read; a line dropped at an indentation error (no token read); a colon on an EARLIER
+    /// logical line (the flag ends at its Newline, and at a recovery). Line breaks LF, CRLF and lone CR; a tab-indented
+    /// recovery line (1b). <paramref name="resume"/> picks the recovery point (0 = the first).
+    /// </summary>
+    public static TheoryData<string, string, int, bool> PossibleHeader => new()
+    {
+        { "if foo($): (1a)", "def main():\n    if foo($):\n      y = 1\n", 0, true },
+        { "if foo($): body at its width", "def main():\n    if foo($):\n        y = 1\n", 0, true },
+        { "if x: $ (the colon read before the abort)", "def main():\n    if x: $\n        y = 1\n", 0, true },
+        { "while $:", "def main():\n    while $:\n        y = 1\n", 0, true },
+        { "elif foo($):", "def main():\n    if a:\n        b = 1\n    elif foo($):\n        y = 1\n", 0, true },
+        { "def m(self, $):", "class C:\n    def m(self, $):\n        return 1\n", 0, true },
+        { "for i in range($):", "def main():\n    for i in range($):\n        a = i\n        b = a\n    print(b)\n", 0, true },
+        { "module-level if foo($):", "if foo($):\n  y = 1\n", 0, true },
+        { "a header spanning lines", "def main():\n    if foo(1,\n            $):\n        y = 1\n", 0, true },
+        { "x: int = $ (an annotation, conservative)", "def main():\n    x: int = $\n    y = 1\n", 0, true },
+        { "lambda x: $", "def main():\n    f = lambda x: $\n    y = 1\n", 0, true },
+        { "CRLF", "def main():\r\n    if foo($):\r\n      y = 1\r\n", 0, true },
+        { "lone CR", "def main():\r    if foo($):\r      y = 1\r", 0, true },
+        { "a tab-indented recovery line (1b)", "def main():\n    if foo($):\n\t\ty = 1\n    z = 2\n", 0, true },
+        { "x = $ (A6)", "def main():\n    x = $\n      y = 1\n", 0, false },
+        { "a colon inside a closed brace", "def main():\n    d = {a: $}\n    y = 1\n", 0, false },
+        { "a colon inside a slice", "def main():\n    b = a[1:$]\n    y = 1\n", 0, false },
+        { "a colon in a closed string", "def main():\n    s = \"a:\" + $\n    y = 1\n", 0, false },
+        { "a colon swallowed by an unterminated string", "def main():\n    s = \"a:$\n    y = 1\n", 0, false },
+        { "a header colon swallowed by an unterminated string (L6's domain)", "def main():\n    if x == \"abc:\n        y = 1\n", 0, false },
+        { "a colon in a comment", "def main():\n    x = $  # a: b\n    y = 1\n", 0, false },
+        { "a colon in a format spec", "def main():\n    s = f\"{x:>3}\" + $\n    y = 1\n", 0, false },
+        { "a colon in a field's slice", "def main():\n    s = f\"{a[1:2]}\" + $\n    y = 1\n", 0, false },
+        { "a colon in a backtick name", "def main():\n    x = `a:b` + $\n    y = 1\n", 0, false },
+        { "a walrus", "def main():\n    y := $\n    z = 1\n", 0, false },
+        { "a colon read on a line a bracket continues", "def main():\n    if x: foo($,\n        2)\n", 0, false },
+        { "a colon read on a line a backslash continues", "def main():\n    if x: y = 1 + $ \\\n        2\n", 0, false },
+        { "an indentation drop (no token read)", "def main():\n    x = 1\n      if y:\n    z = 2\n", 0, false },
+        { "a colon on the logical line BEFORE (its Newline ends it)", "def main():\n    if x:\n        y = $\n        z = 1\n", 0, false },
+        { "a colon on the line a recovery dropped BEFORE", "def main():\n    if x: $\n    y = $\n    z = 1\n", 1, false },
+    };
+
+    [Theory]
+    [MemberData(nameof(PossibleHeader))]
+    public void ARecoveryPoint_KnowsWhetherTheDroppedLineCouldOpenABlock(string name, string source, int resume, bool possibleHeader)
+    {
+        var lexer = Lex(source);
+
+        lexer.RecoveryResumes.Count.Should().BeGreaterThan(resume, $"{name} ({Errors(lexer)})");
+        lexer.RecoveryResumesAfterAPossibleHeader.Contains(lexer.RecoveryResumes[resume]).Should().Be(possibleHeader, $"{name} ({Errors(lexer)})");
+        lexer.RecoveryResumesAfterAPossibleHeader.Should().NotIntersectWith(lexer.RecoveryResumesAfterAContinuedLine, "a continued line's next line is its continuation, never a body");
+    }
+
+    /// <summary>
+    /// Lead ruling L10 (verifier 1d, #2279): the continued-line judgment and the bracket fact read ONE depth, the fields'
+    /// brackets taken off. <c>x = f"{foo($)}"</c> (a bracket inside a field) is neither continued nor a bracket left open
+    /// — before L10 it was a continued resume with no fact, so the line below was neither frozen nor judged and moved
+    /// into the <c>if</c> above. A REAL bracket around the f-string is both (<c>print(f"{foo($)}"</c>). The unclosed-field
+    /// path agrees (<c>x = f"{foo(1,</c> neither; <c>print(f"{foo(1,</c> both).
+    /// </summary>
+    [Theory]
+    [InlineData("1d: a paren inside a field", "def main():\n    if c:\n        x = f\"{foo($)}\"\n    print(x)\n", false, null)]
+    [InlineData("1d: a bracket inside a field", "def main():\n    if c:\n        x = f\"{[$]}\"\n    print(x)\n", false, null)]
+    [InlineData("a real bracket around the f-string", "def main():\n    print(f\"{foo($)}\"\n    y = 1\n", true, 2)]
+    [InlineData("a field's bracket and a real one, both closed", "def main():\n    print(f\"{foo($)}\")\n    y = 1\n", false, null)]
+    [InlineData("an unclosed field with a bracket inside it", "def main():\n    x = f\"{foo(1,\n    y = 1\n", false, null)]
+    [InlineData("an unclosed field inside a real bracket", "def main():\n    print(f\"{foo(1,\n    y = 1\n", true, 2)]
+    public void TheContinuedJudgmentAndTheBracketFact_ReadOneDepth(string name, string source, bool continues, int? openerLine)
+    {
+        var lexer = Lex(source);
+
+        lexer.RecoveryResumes.Should().NotBeEmpty($"{name} ({Errors(lexer)})");
+        lexer.RecoveryResumesAfterAContinuedLine.Contains(lexer.RecoveryResumes[0]).Should().Be(continues, $"{name} ({Errors(lexer)})");
+        lexer.BracketLeftOpenAtLine.Should().Be(openerLine, $"{name} ({Errors(lexer)})");
+    }
+
     /// <summary>A lex that recovers from nothing resumes nowhere.</summary>
     [Fact]
     public void ACleanLex_RecordsNoRecoveryPoint()
