@@ -1343,4 +1343,153 @@ public sealed class FormattingFallbackTests : IDisposable
         foreach (var route in new[] { "full", "range-whole", "range-line 2", "ontype 2", "range-line 3" })
             RouteEdits(document, route).Should().BeEmpty(route);
     }
+
+    // ---- P22h Phase 3 (#2280, R-FV): a closer line ending in a literal that aborts inside itself. Arm (b) of the
+    // re-paired-closer fact counts a quote in the given-up text only when it leaves a literal open at the line's end (the
+    // close-line walk), so the aborted literal's OWN delimiter no longer sets the fact. Measured over stdio @ 2c60c8dee
+    // against the base LSP (4562b1d01 = be1c16fcf's; .claude/tmp/p22h-impl/p3b/out_base.txt, out_head.txt).
+
+    /// <summary>The nine own-quote tails (plan-f92797 Design 4), the three the walk cannot pair last, and the quote-free control.</summary>
+    private static readonly (string Name, string Tail)[] OwnQuoteTails =
+    {
+        ("dq", "\"\\q\""), ("oq", "'\\q'"), ("bq", "b\"\\q\""), ("fconv", "f\"{x!q}\""), ("tconv", "t\"{x!q}\""), ("fbrace", "f\"}\""),
+        ("fspec", "f\"{x:\">}\""), ("bt", "`it's"), ("cmt", "$  # it's"),
+    };
+
+    /// <summary>Why each of the three tails the close-line walk cannot pair keeps the fact set (R-FV's "(b) stacks under (a)").</summary>
+    private static readonly Dictionary<string, string> LimitReason = new()
+    {
+        ["fspec"] = "#2274 known limit: the spec-quote fork keeps 'either walk', and reading the quote as the f-string's closer leaves a quote open",
+        ["bt"] = "#2274 known limit: an unterminated backtick name's text is given up with the line, its apostrophe counts",
+        ["cmt"] = "#2274 known limit: the remainder after '#' is a comment to the lexer and string text to the user, its apostrophe counts",
+    };
+
+    private static readonly string[] Routes5 = { "full", "ontype 5", "range-line 5" };
+    private static readonly string[] Routes3 = { "full", "ontype 3", "range-line 3" };
+
+    /// <summary>B-tails: no stray; the closer line of <c>s</c> ends in <c> + tail</c>; <c>print(s)</c> at 6 spaces is the repair (line 5).</summary>
+    private static string NoStrayTail(string tail) => "def main():\n    s = \"\"\"\n      a\n    \"\"\" + " + tail + "\n    q = 1\n      print(s)\n";
+
+    /// <summary>B-stray-closed: a stray triple above re-pairs; the orphan line <c>_ = '""" + tail'</c> closes its quote (line 5).</summary>
+    private static string StrayClosedTail(string tail) => "\"\"\"\ndef main():\n    s = \"\"\"\n      key: value\n    \"\"\"\n    _ = '\"\"\" + " + tail + "'\n    print(s)\n";
+
+    /// <summary>B-stray-typing: the same orphan still being typed — its closing quote missing.</summary>
+    private static string StrayTypingTail(string tail) => "\"\"\"\ndef main():\n    s = \"\"\"\n      key: value\n    \"\"\"\n    _ = '\"\"\" + " + tail + "\n    print(s)\n";
+
+    /// <summary>The text a route would apply without its refusal: the full fallback's candidate, or the line re-indented to its map level.</summary>
+    private static string UncheckedCandidate(string document, string route)
+    {
+        var parts = route.Split(' ');
+        return parts[0] == "full"
+            ? FormattingFallback.ReindentDocument(document)
+            : RangeCandidate(document, int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static TheoryData<string, string, string, bool> CloseLineOwnQuoteTailCells()
+    {
+        var data = new TheoryData<string, string, string, bool>();
+        foreach (var (name, tail) in OwnQuoteTails)
+        {
+            var limit = LimitReason.TryGetValue(name, out var reason);
+            foreach (var route in Routes5)
+                data.Add(limit ? $"{name} — {reason}" : $"{name} — repaired (no edit @ be1c16fcf)", tail, route, !limit);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// #2280's cells: no stray; the closer line aborts inside its own short string or f-string (SPY0004, SPY0030,
+    /// SPY0021), the given-up text's quotes pair, nothing is lost — every route applies exactly the repair of line 5
+    /// (<c>      print(s)</c> → <c>    print(s)</c>; @ be1c16fcf no edits: the aborted literal's own delimiter set the
+    /// fact). The three tails the walk cannot pair keep the fact and the lost repair, pinned as #2274's known limits (the
+    /// reason is in the display name); their unchecked candidate is the repair, so the refusal is what withholds it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CloseLineOwnQuoteTailCells))]
+    public void CloseLineOwnQuoteTail_NoStray_EveryRouteRepairs_ExceptTheThreeKnownLimits(string name, string tail, string route, bool repaired)
+    {
+        var document = NoStrayTail(tail);
+        if (repaired)
+        {
+            RouteCell(document, route).Applied.Should().Be(WithLine(document, 5, "    print(s)"), "{0} {1}", name, route);
+            return;
+        }
+
+        RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
+        UncheckedCandidate(document, route).Should().Be(WithLine(document, 5, "    print(s)"), "{0} {1}: the candidate is the repair the fact withholds", name, route);
+    }
+
+    public static TheoryData<string, string, string> StrayClosedTailCells()
+    {
+        var data = new TheoryData<string, string, string>();
+        foreach (var (name, tail) in OwnQuoteTails.Append(("dollar control", "$")))
+        {
+            foreach (var route in Routes3)
+                data.Add(name, tail, route);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// The positive controls (R-FV: every new tail has its stray-bearing twin): with a stray triple above and the orphan's
+    /// closing quote typed, the orphan line's text after the re-paired closer holds an unpaired quote whatever the tail —
+    /// the fact is set and no route rewrites <c>      key: value</c> (string content). No edits @ be1c16fcf and now, for
+    /// the nine tails and the quote-free <c>$</c> control; the unchecked candidate rewrites the string line.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(StrayClosedTailCells))]
+    public void CloseLineOwnQuoteTail_StrayClosed_EveryRouteRefuses(string name, string tail, string route)
+    {
+        var document = StrayClosedTail(tail);
+        RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
+        UncheckedCandidate(document, route).Split('\n')[3].Should().NotBe(document.Split('\n')[3], "{0} {1}: the candidate rewrites the string line", name, route);
+    }
+
+    public static TheoryData<string, string, string, string?> OrphanBeingTypedCells()
+    {
+        var data = new TheoryData<string, string, string, string?>();
+        foreach (var (name, tail) in OwnQuoteTails.Append(("dollar", "$")))
+        {
+            var document = StrayTypingTail(tail);
+            var limit = LimitReason.ContainsKey(name);
+            foreach (var route in Routes3)
+            {
+                var rewritten = route == "full"
+                    ? WithLine(WithLine(WithLine(document, 3, "key: value"), 4, "\"\"\""), 6, "print(s)")
+                    : WithLine(document, 3, "key: value");
+                data.Add(limit ? $"{name} — refused (the walk cannot pair it)"
+                    : name == "dollar" ? "dollar — #2274 pre-existing wrong edit, measured @ be1c16fcf: `$` rewrote it"
+                    : $"{name} — #2274 class, no edit @ be1c16fcf → wrong edit (the tail's own quotes pair, as `$` has none)",
+                    tail, route, limit ? null : rewritten);
+            }
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// A PIN OF A KNOWN WRONG EDIT, not an endorsement (#2274, R-FQ's permanent known-limit tracker): the orphan still
+    /// being typed — <c>_ = '""" + tail</c>, its closing quote missing — has no lexer signature once the tail's own quotes
+    /// pair (the stray is the only difference, as R-FQ names), so the re-paired closer goes unrecorded and every route
+    /// rewrites <c>      key: value</c> (string content), exactly as the quote-free <c>$</c> member of the class already
+    /// did (measured @ be1c16fcf: <c>$</c> rewrote it on full, range-line 3 and on-type 3). R-FV's accepted trade: the six
+    /// pairing tails move from refused-by-accident (the old rule saw the tail's own quote) to this class. The three tails
+    /// the walk cannot pair stay refused. A change that refuses these is a fix of #2274 — record it there and update the pin.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OrphanBeingTypedCells))]
+    public void KnownLimit2274_OrphanBeingTypedBeforeAnOwnQuoteTail_RewritesTheStringLine(string name, string tail, string route, string? applied)
+    {
+        var document = StrayTypingTail(tail);
+        if (applied == null)
+        {
+            RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
+            UncheckedCandidate(document, route).Split('\n')[3].Should().NotBe(document.Split('\n')[3], "{0} {1}: the candidate rewrites the string line", name, route);
+            return;
+        }
+
+        RouteCell(document, route).Applied.Should().Be(applied, "{0} {1}", name, route);
+    }
 }
