@@ -100,7 +100,7 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
                 continue;
 
             // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
-            if (!map.IsReindentable(i + 1))
+            if (map.IsFrozenByOpenBracket(i + 1))
                 continue;
 
             if (trimmed.Length == 0)

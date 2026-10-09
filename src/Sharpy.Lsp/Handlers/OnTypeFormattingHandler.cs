@@ -69,6 +69,7 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
         // (FormattingFallback.IndentOnlyPreserved clauses 7 and 6c), which every candidate here passes through: a
         // refusal here as well would be inert (P22h mutation (d)).
         if (map.LiteralStateUnknown
+            || map.HasOtherWhitespace // lead ruling L12: a line indented with other whitespace has no level to give
             || map.LiteralLines.Contains(line + 1)
             || !map.LogicalLineStarts.Contains(line + 1))
             return Task.FromResult<TextEditContainer?>(null);

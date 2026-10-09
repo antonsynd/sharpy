@@ -1591,6 +1591,25 @@ public sealed class FormattingFallbackTests : IDisposable
         ["FF vertical tab"] = "def main():\n    if foo($):\n\v      y = 1\n",
         ["FF no-break space"] = "def main():\n    if foo($):\n\u00a0      y = 1\n",
         ["FF clean twin (wrong edit at base)"] = "def main():\n    if c:\n\f        y = 1\n",
+
+        // R7 (the third verifier's OW-LEVEL / OW-HEADER, lead ruling L12): a document with a line indented with other
+        // whitespace gets no indent-only edit. Base made no edit on W1/W2/DB2c/DB2d (cb5303f73 moved z out of its block on
+        // every route — the per-line guard let the line take its header's block); W3/FF5 on-type and range-line moved the
+        // body on base too.
+        ["W1"] = "def main():\n    if foo($):\n\f      y = 1\n      z = 2\n    w = 3\n",
+        ["W1 CRLF"] = "def main():\r\n    if foo($):\r\n\f      y = 1\r\n      z = 2\r\n    w = 3\r\n",
+        ["W1 no-break space"] = "def main():\n    if foo($):\n\u00a0     y = 1\n      z = 2\n    w = 3\n",
+        ["W2"] = "def main():\n    if c:\n\f        y = 1\n        z = 2\n    w = 3\n",
+        ["W2 CRLF"] = "def main():\r\n    if c:\r\n\f        y = 1\r\n        z = 2\r\n    w = 3\r\n",
+        ["W2 no-break space"] = "def main():\n    if c:\n\u00a0       y = 1\n        z = 2\n    w = 3\n",
+        ["W2 vertical tab"] = "def main():\n    if c:\n\v        y = 1\n        z = 2\n    w = 3\n",
+        ["W1 vertical tab"] = "def main():\n    if foo($):\n\v      y = 1\n      z = 2\n    w = 3\n",
+        ["W2b"] = "def main():\n    if c:\n\f        y = 1\n        z = 2\n",
+        ["W3 (OW-HEADER, moved at base)"] = "def main():\n    if c:\n\f        if d:\n            y = 1\n    z = 2\n",
+        ["FF5"] = "def main():\n    if c:\n\f        if foo($):\n            y = 1\n",
+        ["DB2c"] = "def main():\n    if ready($):\n\f      y = 1\n      z = 2\n    w = 3\n",
+        ["DB2d"] = "def main():\n    if ready($):\n\u00a0       y = 1\n        z = 2\n    w = 3\n",
+        ["NBSP far from the repair (L12 cost)"] = "def main():\n    x = 1\n      y = 2\n    z = 3\n    a = 4\n    b = 5\n    c = 6\n    d = 7\n\u00a0   e = 8\n",
     };
 
     /// <summary>
@@ -1661,6 +1680,15 @@ public sealed class FormattingFallbackTests : IDisposable
             ? R2BaseFullText.GetValueOrDefault(name) ?? FormattingFallback.ReindentDocument(document)
             : RangeCandidate(document, int.Parse(route.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture)));
         candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
+        if (IndentationService.BuildIndentMap(document).HasOtherWhitespace)
+        {
+            // Lead ruling L12: the refusal is the funnel's, for the whole document, before any per-line check.
+            var lines = Compiler.Formatting.LineDiff.Split(document).Lines;
+            var whole = new TextEdit { Range = new LspRange(new Position(0, 0), new Position(lines.Count - 1, lines[^1].Length)), NewText = candidate };
+            FormattingEdits.CheckedIndentOnly(document, new[] { whole }).Should().BeEmpty("{0} {1}: the funnel refuses a document indented with other whitespace", name, route);
+            return;
+        }
+
         FormattingFallback.IndentOnlyPreserved(document, candidate).Should().BeFalse("{0} {1}: the check refuses the candidate", name, route);
     }
 
@@ -1671,20 +1699,21 @@ public sealed class FormattingFallbackTests : IDisposable
     /// </summary>
     /// <summary>
     /// The map's L11 facts: L6-SIB's putative body runs from the recovery line to the line before <c>w = 3</c>; N-NEST's
-    /// body keeps the outer header's bound, so the dedented <c>z = 2</c> is in it; FF's form-feed line is never re-indented
-    /// (<see cref="IndentMap.OtherWhitespaceLines"/>, <see cref="IndentationService.HasOtherLeadingWhitespace"/>).
+    /// body keeps the outer header's bound, so the dedented <c>z = 2</c> is in it. L12: a document with a line indented
+    /// with other whitespace is marked for the whole (<see cref="IndentMap.HasOtherWhitespace"/>,
+    /// <see cref="IndentationService.HasOtherLeadingWhitespace"/>).
     /// </summary>
     [Fact]
     public void P22hR5_TheMapReadsThePutativeBodyToItsShallowestBound_AndOtherWhitespace()
     {
         IndentationService.BuildIndentMap(R2NoEditDocuments["L6-SIB"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3, 4 });
         IndentationService.BuildIndentMap(R2NoEditDocuments["N-NEST"]).UnplacedLines.Should().BeEquivalentTo(new[] { 2, 3, 4, 5 });
-        var ff = IndentationService.BuildIndentMap(R2NoEditDocuments["FF"]);
-        ff.OtherWhitespaceLines.Should().Equal(3);
+        IndentationService.BuildIndentMap(R2NoEditDocuments["FF"]).HasOtherWhitespace.Should().BeTrue();
+        IndentationService.BuildIndentMap(R2NoEditDocuments["NBSP far from the repair (L12 cost)"]).HasOtherWhitespace.Should().BeTrue();
+        IndentationService.BuildIndentMap(A6).HasOtherWhitespace.Should().BeFalse();
         IndentationService.HasOtherLeadingWhitespace("\f  y").Should().BeTrue();
         IndentationService.HasOtherLeadingWhitespace("  \u00a0y").Should().BeTrue();
         IndentationService.HasOtherLeadingWhitespace(" \t y").Should().BeFalse();
-        FormattingFallback.ReindentDocument(R2NoEditDocuments["FF clean twin (wrong edit at base)"]).Should().Be(R2NoEditDocuments["FF clean twin (wrong edit at base)"]);
     }
 
     [Fact]

@@ -71,13 +71,17 @@ internal static class FormattingEdits
     /// on-type alignment or the full and range fallbacks — when the text they produce passes the check,
     /// else none. When the lexer lost a literal that can span lines (decision 7,
     /// <see cref="Compiler.Lexer.Lexer.LiteralStateUnknown"/>) which lines are string content is unknown,
-    /// so nothing is edited and nothing else runs. Otherwise the applied text is checked: when the
+    /// so nothing is edited and nothing else runs; nor when a line is indented with whitespace other than spaces and tabs
+    /// (<see cref="IndentMap.HasOtherWhitespace"/>, lead ruling L12: the map has no structure to give such a line). Otherwise the applied text is checked: when the
     /// source parses, by the SPY0912 net (<see cref="FormatterService.CheckApplied"/>); when it does
     /// not, by <see cref="FormattingFallback.IndentOnlyPreserved"/>.
     /// </summary>
     public static List<TextEdit> CheckedIndentOnly(string source, IReadOnlyList<TextEdit> candidate)
     {
-        if (candidate.Count == 0 || IndentationService.BuildIndentMap(source).LiteralStateUnknown)
+        if (candidate.Count == 0)
+            return new List<TextEdit>();
+        var map = IndentationService.BuildIndentMap(source);
+        if (map.LiteralStateUnknown || map.HasOtherWhitespace)
             return new List<TextEdit>();
 
         var applied = Apply(source, candidate);

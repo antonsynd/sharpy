@@ -49,7 +49,7 @@ internal static class FormattingFallback
                 return line;
 
             // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
-            if (!map.IsReindentable(number))
+            if (map.IsFrozenByOpenBracket(number))
                 return line;
 
             var trimmed = line.TrimStart(' ', '\t');
@@ -93,8 +93,7 @@ internal static class FormattingFallback
     /// above a frozen opener repaired to 4 spaces (<c>q</c> 10 → 4 above an opener at 8) strands the opener one block
     /// deeper. An unchanged line keeps its exemption: it is not this text's doing;</item>
     /// <item>(6c, P22h, lead rulings L6, L8, L11) every line whose level is unknown (<see cref="IndentMap.UnplacedLines"/>)
-    /// byte-identical, and every line indented with a character other than a space or a tab
-    /// (<see cref="IndentMap.OtherWhitespaceLines"/>): below a dropped line that could open a block (the lexer read a
+    /// byte-identical: below a dropped line that could open a block (the lexer read a
     /// <c>:</c> at bracket depth 0, or could not read its end), its putative body at any width with the header itself (<c>    if foo($):</c> / <c>      y = 1</c>: moving the body
     /// to 4 spaces takes it out of the <c>if</c> — clause 6 exempts its SPY0013 width and 4 lands on a level); below any
     /// other dropped line, a recovery line one indentation unit or more deeper (A8 at width 12) and every later deeper
@@ -133,9 +132,8 @@ internal static class FormattingFallback
                 return false;
         }
 
-        // Clause 6c: no line whose level is unknown below a dropped line changes (lead rulings L6, L8, L11), and no line
-        // indented with whitespace other than spaces and tabs (L11).
-        foreach (var line in before.UnplacedLines.Concat(before.OtherWhitespaceLines))
+        // Clause 6c: no line whose level is unknown below a dropped line changes (lead rulings L6, L8, L11).
+        foreach (var line in before.UnplacedLines)
         {
             if (!string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal))
                 return false;

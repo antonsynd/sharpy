@@ -51,7 +51,7 @@ internal static class IndentationService
         {
             // no tokens: no literal is known
             return new IndentMap(new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0, null, null,
-                new Dictionary<int, RecoveryLine>(), new HashSet<int>(), new HashSet<int>(), new HashSet<int>());
+                new Dictionary<int, RecoveryLine>(), new HashSet<int>(), new HashSet<int>(), false);
         }
 
         // Levels come from the WIDTH stack of each logical line's leading whitespace, in physical
@@ -139,7 +139,7 @@ internal static class IndentationService
         var recoveryLines = new Dictionary<int, RecoveryLine>();
         var blockOpeners = new HashSet<int>();
         var unplaced = new HashSet<int>();
-        var otherWhitespace = new HashSet<int>();
+        var otherWhitespace = false;
         int? putativeBodyAbove = null; // the column width bounding the putative body being read (L8, L11): the shallowest
         for (var line = 1; line <= sourceLines.Count; line++)
         {
@@ -160,21 +160,7 @@ internal static class IndentationService
                 lineOpensBlock = (hash >= 0 ? trimmed.Substring(0, hash) : trimmed).TrimEnd().EndsWith(":", StringComparison.Ordinal);
             }
 
-            // A line whose leading whitespace holds a character other than a space or a tab (a form feed, a vertical tab,
-            // a no-break space): no indent-only route edits it, and it moves no level — its width is unknown (L11).
-            var other = HasOtherLeadingWhitespace(sourceLines[line - 1]);
-            if (other)
-                otherWhitespace.Add(line);
-
-            if (startsLogicalLine && other)
-            {
-                logicalLineStarts.Add(line);
-                if (lineOpensBlock)
-                    blockOpeners.Add(line);
-                previousOpensBlock = lineOpensBlock;
-                previousStart = line;
-            }
-            else if (startsLogicalLine)
+            if (startsLogicalLine)
             {
                 logicalLineStarts.Add(line);
                 if (lineOpensBlock)
@@ -223,6 +209,8 @@ internal static class IndentationService
                 unplaced.Add(line);
         }
 
+        otherWhitespace = sourceLines.Any(HasOtherLeadingWhitespace);
+
         // While a bracket left open freezes a non-blank tail, the opener line is part of the statement the tail
         // continues and is frozen with it (lead ruling L9); an opener on the last line freezes nothing.
         int? frozenFrom = lexer.BracketLeftOpenAtLine is { } opener
@@ -262,7 +250,8 @@ internal static class IndentationService
     /// Whether <paramref name="text"/>'s leading whitespace holds a character other than a space or a tab — a form feed,
     /// a vertical tab, a no-break space: the width functions read only spaces and tabs (the lexer's indentation), while
     /// <c>string.TrimStart()</c> strips every whitespace character, so a re-indent built that way deleted the character
-    /// and moved the line (the second verifier's FF, L11). No indent-only route edits such a line.
+    /// and moved the line (the second verifier's FF, L11). A document with such a line gets no indent-only edit
+    /// (<see cref="IndentMap.HasOtherWhitespace"/>, lead ruling L12).
     /// </summary>
     internal static bool HasOtherLeadingWhitespace(string text)
     {
@@ -316,9 +305,12 @@ internal readonly record struct RecoveryLine(int DroppedLine, int DroppedColumns
 /// builder skip would also leave the string lines of a lost literal (X6, C1) unedited and make the literal-loss refusals
 /// of those documents unobservable. A putative body runs to the first line at or above the dropped line's width, and a
 /// body nested in a body keeps the shallowest bound (L11). <see cref="BlockOpeners"/>: the logical-line starts the map
-/// reads as ending in <c>:</c> (clause 6b's landing test). <see cref="OtherWhitespaceLines"/>: the lines whose leading
-/// whitespace holds a character other than a space or a tab (<see cref="IndentationService.HasOtherLeadingWhitespace"/>):
-/// no route edits one, and none moves a level of the map (L11).
+/// reads as ending in <c>:</c> (clause 6b's landing test). <see cref="HasOtherWhitespace"/>: some line's leading whitespace
+/// holds a character other than a space or a tab (<see cref="IndentationService.HasOtherLeadingWhitespace"/>) — the
+/// lexer reads it as an unexpected character, so the map has no structure to give that line, and a level it skips or
+/// takes misplaces the lines around it (the third verifier's OW-LEVEL: <c>    if c:</c> / <c>\f        y = 1</c> /
+/// <c>        z = 2</c> levelled <c>z</c> out of the <c>if</c>). Like <see cref="LiteralStateUnknown"/>, it switches
+/// on-type and the indent-only pass off for the whole document (lead ruling L12).
 /// </summary>
 internal sealed record IndentMap(
     Dictionary<int, int> LineIndent,
@@ -332,11 +324,8 @@ internal sealed record IndentMap(
     IReadOnlyDictionary<int, RecoveryLine> RecoveryLines,
     IReadOnlySet<int> UnplacedLines,
     IReadOnlySet<int> BlockOpeners,
-    IReadOnlySet<int> OtherWhitespaceLines)
+    bool HasOtherWhitespace)
 {
-    /// <summary>Whether a builder may re-indent the 1-based <paramref name="line"/>: not frozen by an open bracket and indented with spaces and tabs only (<see cref="OtherWhitespaceLines"/>, L11).</summary>
-    internal bool IsReindentable(int line) => !IsFrozenByOpenBracket(line) && !OtherWhitespaceLines.Contains(line);
-
     /// <summary>Whether no indent-only route may edit the 1-based <paramref name="line"/>: it is at or below <see cref="FrozenFrom"/>.</summary>
     internal bool IsFrozenByOpenBracket(int line) => FrozenFrom is { } from && line >= from;
 }
