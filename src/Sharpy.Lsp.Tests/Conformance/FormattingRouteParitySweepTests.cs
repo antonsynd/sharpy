@@ -1531,7 +1531,22 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal static readonly SCG.IReadOnlyDictionary<(string Shape, string Route, string Bucket), int> S7PendingPin =
         new SCG.Dictionary<(string Shape, string Route, string Bucket), int>
         {
-            [(FormatterTwins.BracketEofShape, Full, Depth)] = -1, // placeholder: the next commit populates the table from a FULL run
+            [(FormatterTwins.BracketEofShape, Full, Depth)] = 11660,
+            [(FormatterTwins.BracketEofShape, RangeWhole, Depth)] = 11660,
+            [(FormatterTwins.BracketEofShape, RangeLine, Depth)] = 3288,
+            [(FormatterTwins.BracketStringShape, Full, Depth)] = 4780,
+            [(FormatterTwins.BracketStringShape, RangeWhole, Depth)] = 4780,
+            [(FormatterTwins.BracketStringShape, RangeLine, Depth)] = 15205,
+            [(FormatterTwins.BracketBacktickShape, Full, Depth)] = 4780,
+            [(FormatterTwins.BracketBacktickShape, RangeWhole, Depth)] = 4780,
+            [(FormatterTwins.BracketBacktickShape, RangeLine, Depth)] = 15205,
+            [(FormatterTwins.BracketDroppedShape, Full, Depth)] = 4780,
+            [(FormatterTwins.BracketDroppedShape, RangeWhole, Depth)] = 4780,
+            [(FormatterTwins.BracketDroppedShape, RangeLine, Depth)] = 15205,
+            [(FormatterTwins.RecoveryMisindentedShape, Full, Depth)] = 16420,
+            [(FormatterTwins.RecoveryMisindentedShape, RangeWhole, Depth)] = 16420,
+            [(FormatterTwins.RecoveryMisindentedShape, RangeLine, Depth)] = 13136,
+            [(FormatterTwins.RecoveryMisindentedShape, OnType, Depth)] = 13136,
         };
 
     /// <summary>
@@ -1545,17 +1560,17 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// </summary>
     /// <para>Lead ruling L2 (plan-f92797) adds <see cref="S6ok"/>: per route, the (stem, twin) pairs whose
     /// <c>closeline-own-</c> documents of the three tails R-FV's walk cannot pair have a spurious fact — measured in FULL
-    /// mode by the next commit. Phase 3 must leave these counts UNCHANGED: a walk that "fixes" them loses the stray-closed twins.</para>
+    /// mode @ 20d7c582a + the L1-L3 follow-up (54 per route; 162 cells per route). Phase 3 must leave these counts UNCHANGED: a walk that "fixes" them loses the stray-closed twins.</para>
     internal static readonly SCG.IReadOnlyDictionary<(string State, string Route), int> KnownLimitPin = new SCG.Dictionary<(string State, string Route), int>
     {
         [(S6k, Full)] = 0,
         [(S6k, RangeWhole)] = 0,
         [(S6k, RangeLine)] = 10,
         [(S6k, OnType)] = 10,
-        [(S6ok, Full)] = -1,
-        [(S6ok, RangeWhole)] = -1,
-        [(S6ok, RangeLine)] = -1,
-        [(S6ok, OnType)] = -1,
+        [(S6ok, Full)] = 54,
+        [(S6ok, RangeWhole)] = 54,
+        [(S6ok, RangeLine)] = 54,
+        [(S6ok, OnType)] = 54,
     };
 
     /// <summary>
@@ -2401,7 +2416,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) are S7PendingPin and its S6ok cells
         // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. The literal anchors it:
         // changing the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(0, "P22h Phase 1 added the S6o (#2280) rows its Phase 3 drains; S7 is S7PendingPin (#2279) and the S6k/S6ok cells are KnownLimitPin (#2274)");
+        rows.Count.Should().Be(216, "P22h Phase 1 added the S6o (#2280) rows its Phase 3 drains; S7 is S7PendingPin (#2279) and the S6k/S6ok cells are KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }
