@@ -108,11 +108,71 @@ public static partial class FormatterTwins
     /// <summary>Whether <paramref name="shape"/> is a <see cref="CloseLinePrefix"/> shape.</summary>
     public static bool IsCloseLineShape(string shape) => CloseLineCodes.Any(c => CloseLinePrefix + c.Code == shape);
 
+    /// <summary>
+    /// S6o: NO stray — the closer line of the first literal spanning lines gets <c> + </c> and an
+    /// <see cref="OwnQuoteTails"/> tail, a literal that aborts INSIDE itself: <c>closeline-own-</c> and the tail's
+    /// name. The given-up text holds the aborted literal's OWN delimiter, which is no orphan — nothing is lost (#2280).
+    /// </summary>
+    public const string CloseLineOwnPrefix = "closeline-own-";
+
+    /// <summary>
+    /// S6o: the stray triple, the last line <c>_ = {o}{triple} + </c>, the tail, and the orphan's closing quote: the
+    /// re-paired closer line aborts inside the tail, and the orphan's closing quote sits in the text recovery drops
+    /// AFTER the tail's own delimiter (#2280's positive control: a literal line IS lost).
+    /// </summary>
+    public const string RepairOwnPrefix = "repair-own-";
+
+    /// <summary>
+    /// One close-line tail whose abort lands inside a literal (or a backtick name, or a comment) of its own (#2280): its
+    /// <see cref="Name"/> and its <see cref="Tail"/>, spelled with <c>{q}</c> (the multi-line literal's quote character)
+    /// and <c>{o}</c> (the other one) as <see cref="CloseLineCode.OrphanTail"/> is.
+    /// </summary>
+    public sealed record OwnQuoteTail(string Name, string Tail)
+    {
+        /// <summary><see cref="Tail"/> next to a literal whose quote character is <paramref name="quote"/>.</summary>
+        public string TailFor(char quote) => WithQuotes(Tail, quote);
+    }
+
+    /// <summary>
+    /// The own-quote axis of #2280 (codes measured with <c>sharpyc emit diagnostics</c> on plan-f92797's B documents
+    /// @ be1c16fcf): an invalid escape in a short string of either quote character and in a bytes literal (SPY0004), an
+    /// invalid conversion in an f- and a t-string (SPY0030), a lone <c>}</c> in an f-string (SPY0021), the f-string's
+    /// own quote inside its format spec (SPY0022), a backtick name left open whose text holds the other quote (SPY0018),
+    /// and an unexpected character followed by a comment holding it (SPY0015).
+    /// </summary>
+    public static readonly IReadOnlyList<OwnQuoteTail> OwnQuoteTails = new[]
+    {
+        new OwnQuoteTail("dq", "{q}\\q{q}"),
+        new OwnQuoteTail("oq", "{o}\\q{o}"),
+        new OwnQuoteTail("bq", "b{q}\\q{q}"),
+        new OwnQuoteTail("fconv", "f{q}{x!q}{q}"),
+        new OwnQuoteTail("tconv", "t{q}{x!q}{q}"),
+        new OwnQuoteTail("fbrace", "f{q}}{q}"),
+        new OwnQuoteTail("fspec", "f{q}{x:{q}>}{q}"),
+        new OwnQuoteTail("bt", "`it{o}s"),
+        new OwnQuoteTail("cmt", "$  # it{o}s"),
+    };
+
+    /// <summary>Whether <paramref name="shape"/> is a <see cref="CloseLineOwnPrefix"/> or <see cref="RepairOwnPrefix"/> shape (exactly).</summary>
+    public static bool IsOwnQuoteShape(string shape) => IsCloseLineOwnShape(shape) || OwnQuoteTails.Any(t => RepairOwnPrefix + t.Name == shape);
+
+    /// <summary>Whether <paramref name="shape"/> is a <see cref="CloseLineOwnPrefix"/> shape (exactly).</summary>
+    public static bool IsCloseLineOwnShape(string shape) => OwnQuoteTails.Any(t => CloseLineOwnPrefix + t.Name == shape);
+
+    /// <summary><paramref name="spelling"/> with <c>{q}</c> replaced by <paramref name="quote"/> and <c>{o}</c> by the other quote character.</summary>
+    private static string WithQuotes(string spelling, char quote)
+    {
+        var other = quote == '"' ? '\'' : '"';
+        return spelling.Replace("{o}", other.ToString(), StringComparison.Ordinal).Replace("{q}", quote.ToString(), StringComparison.Ordinal);
+    }
+
     /// <summary>Every shape <see cref="LiteralLossShapes"/> builds.</summary>
     public static readonly IReadOnlyList<string> LiteralLossShapeNames =
         BudgetStopLines.Select(b => b.Shape).Concat(new[] { RepairShape, RepairCommentShape }).Concat(DroppedCodes.Select(c => DroppedShapePrefix + c))
             .Concat(CloseLineCodes.Select(c => RepairCloseLinePrefix + c.Code))
-            .Concat(CloseLineCodes.Select(c => CloseLinePrefix + c.Code)).ToArray();
+            .Concat(CloseLineCodes.Select(c => CloseLinePrefix + c.Code))
+            .Concat(OwnQuoteTails.Select(t => CloseLineOwnPrefix + t.Name))
+            .Concat(OwnQuoteTails.Select(t => RepairOwnPrefix + t.Name)).ToArray();
 
     /// <summary>
     /// The documents in which a CLEAN parent <paramref name="q"/> loses a literal that can span lines WITHOUT
@@ -145,6 +205,10 @@ public static partial class FormatterTwins
     /// closer line too, since a bare closer line dropped whole at an indentation error is itself a dropped
     /// opener; abort-free when the closer sits at a width the content left on the indent stack: a module-level
     /// literal, or one whose content is at the closer's width).</item>
+    /// <item><c>closeline-own-NAME</c> and <c>repair-own-NAME</c> (#2280), appended after every shape above — the
+    /// <see cref="OwnQuoteTails"/> axis: the <c>closeline-</c> document with an own-quote tail in place of the control
+    /// tail (same exclusions; nothing is lost), and the <c>repair-</c> document whose last line is
+    /// <c>_ = {o}{triple} + </c>, the tail and the orphan's closing quote (a literal line is lost).</item>
     /// </list>
     /// Which documents are abort-free is OBSERVED by the consumers, never assumed.
     /// </summary>
@@ -209,6 +273,29 @@ public static partial class FormatterTwins
             var closerDelimiter = lineStarts[closer] + LeadingWhitespace(q, lineStarts, closer).Length;
             shapes.Add(new LiteralLossShape(DroppedShapePrefix + "SPY0004",
                 q.Insert(closerDelimiter, AbortingShortString).Insert(start, AbortingShortString), kind, 0, Array.Empty<int>()));
+        }
+
+        // The own-quote axis (#2280), appended after every shape above so their texts and order are untouched.
+        if (multiLine.Count > 0)
+        {
+            var quote = QuoteCharacter(q, multiLine[0].Start);
+            var triple = new string(quote, 3);
+            var other = quote == '"' ? '\'' : '"';
+            var closerLine = LineOf(lineStarts, multiLine[0].End - 1);
+            var closerEnd = LineContentEnd(q, lineStarts, closerLine);
+            var afterCloser = q.AsSpan(multiLine[0].End, closerEnd - multiLine[0].End);
+            if (afterCloser.IndexOf('#') < 0 && !afterCloser.TrimEnd(" \t").EndsWith("\\"))
+            {
+                foreach (var tail in OwnQuoteTails)
+                    shapes.Add(new LiteralLossShape(CloseLineOwnPrefix + tail.Name, q.Insert(closerEnd, " + " + tail.TailFor(quote)), firstKind, 0, Array.Empty<int>()));
+            }
+
+            var stray = Prepend(q, triple);
+            foreach (var tail in OwnQuoteTails)
+            {
+                shapes.Add(new LiteralLossShape(RepairOwnPrefix + tail.Name,
+                    Append(stray, $"_ = {other}{triple} + {tail.TailFor(quote)}{other}"), firstKind, 1, Array.Empty<int>()));
+            }
         }
 
         return shapes;
