@@ -156,8 +156,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string S6r = "S6r";
     internal const string S6x = "S6x";
     internal const string S6o = "S6o";
+    internal const string S6ok = "S6ok";
     internal const string S7 = "S7";
-    internal static readonly string[] States = { S1, S2, S3, S4, S5, S6, S6n, S6k, S6r, S6x, S6o, S7 };
+    internal static readonly string[] States = { S1, S2, S3, S4, S5, S6, S6n, S6k, S6r, S6x, S6o, S6ok, S7 };
 
     /// <summary>The routes swept per state.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string[]> RoutesByState = new SCG.Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -173,6 +174,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         [S6r] = new[] { Full, RangeWhole, RangeLine, OnType },
         [S6x] = new[] { Full, RangeWhole, RangeLine, OnType },
         [S6o] = new[] { Full, RangeWhole, RangeLine, OnType },
+        [S6ok] = new[] { Full, RangeWhole, RangeLine, OnType },
 
         // S7's line routes skip the wide twin's recovery-misindented documents (SkipsLineRoutesOnTheWideTwin).
         [S7] = new[] { Full, RangeWhole, RangeLine, OnType },
@@ -213,6 +215,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// and <c>repair-own-NAME</c> (the same tail after a re-paired closer, then the orphan's closing quote — a literal
     /// line IS lost, so its only possible fact row, <c>factMissing</c>, is a finding, never a row). Tested BEFORE the
     /// S6r/S6x arms, whose prefixes it shares.</item>
+    /// <item><see cref="S6ok"/> — the <c>closeline-own-</c> documents of the three tails R-FV's walk cannot pair
+    /// (<see cref="FormatterTwins.OwnQuoteTail.WalkCannotPair"/>: <c>bt</c>, <c>fspec</c>, <c>cmt</c>; lead ruling L2):
+    /// they keep the fact set after the cure, a known limit of #2274 — their <c>factSpurious</c> cells are a pinned census
+    /// count (<see cref="KnownLimitPin"/>), never rows; their route buckets are judged.</item>
     /// </list>
     /// The budget-stop positions (<see cref="FormatterTwins.BudgetStopLines"/>) keep the budget states: S6 when Q holds
     /// a literal spanning lines, S6n otherwise.
@@ -226,6 +232,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>The state a shape's documents take when Q holds a literal spanning lines (<see cref="LossState"/>).</summary>
     private static string StateOfShape(string shape)
         => shape == FormatterTwins.RepairCommentShape ? S6k
+            : FormatterTwins.IsCloseLineOwnLimitShape(shape) ? S6ok
             : FormatterTwins.IsOwnQuoteShape(shape) ? S6o
             : FormatterTwins.IsRepairCloseLineShape(shape) ? S6r
             : FormatterTwins.IsCloseLineShape(shape) ? S6x
@@ -240,6 +247,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         [S6r] = "#2275",
         [S6x] = "#2275",
         [S6o] = "#2280",
+        [S6ok] = "#2274",
         [S7] = "#2279",
     };
 
@@ -698,9 +706,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// below the injection shifted by one (as <see cref="Inserted"/> shifts; NOT <see cref="Shaped"/>, whose
     /// <c>LineShift</c> shifts every line). The logical starts are Q's, none excluded — the body line
     /// <c>recovery-misindented</c> re-indents keeps its depth in Q, so a LOST repair is a <c>depth</c> row — plus the
-    /// injected line itself at the depth of the body line it was injected above (a statement the user wrote at its
-    /// block's width; judging it is what makes the next line's misindent a depth difference even when the block has one
-    /// statement). Q's literal lines are kept (an S7 document loses none: its only fact row, <c>factSpurious</c>, is a
+    /// injected line itself at the depth of the body line it was injected above, or the opener's depth (one less) for a
+    /// shape at the opener's width (a statement the user wrote at that width; judging it is what makes the next line's
+    /// misindent a depth difference even when the block has one statement). Q's literal lines are kept (an S7 document loses none: its only fact row, <c>factSpurious</c>, is a
     /// finding). <c>range-line</c>/<c>ontype</c> are requested on the line after the injection — none on the
     /// <paramref name="wide"/> twin for a shape <see cref="SkipsLineRoutesOnTheWideTwin"/> names.
     /// </summary>
@@ -710,7 +718,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         int Shift(int l) => l >= at ? l + 1 : l;
         var bodyDepth = facts.LogicalStarts.Where(s => s.Line == at).Select(s => (int?)s.Depth).FirstOrDefault()
             ?? throw new InvalidOperationException($"instrument: the {shape.Shape} shape's line {at} starts no logical line in Q");
-        var logical = facts.LogicalStarts.Select(s => (Line: Shift(s.Line), s.Depth)).Append((Line: at, Depth: bodyDepth))
+        var injectedDepth = shape.AtOpenerWidth ? bodyDepth - 1 : bodyDepth;
+        var logical = facts.LogicalStarts.Select(s => (Line: Shift(s.Line), s.Depth)).Append((Line: at, Depth: injectedDepth))
             .OrderBy(s => s.Line).ToArray();
         var targets = wide && SkipsLineRoutesOnTheWideTwin(shape.Shape) ? Array.Empty<int>() : new[] { at + 1 };
         return ObserveParseable(shape.Text) ?? new SweepDocument(shape.Text, S7, new GroundTruth(
@@ -920,8 +929,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         public bool RefusedOnUnmatchedEqualLine { get; init; }
 
         /// <summary>
-        /// An <see cref="S6k"/> cell whose applied text changes a line that starts inside a literal in Q: the known
-        /// limit of #2274 (R-FQ), counted against <see cref="KnownLimitPin"/> instead of failing <c>literal</c>.
+        /// An <see cref="S6k"/> cell whose applied text changes a line that starts inside a literal in Q, or an
+        /// <see cref="S6ok"/> cell whose fact is spurious: a known limit of #2274 (R-FQ; lead ruling L2), counted against
+        /// <see cref="KnownLimitPin"/> instead of failing its <see cref="KnownLimitBucket"/>.
         /// </summary>
         public bool KnownLimit { get; init; }
     }
@@ -937,9 +947,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         catch (StrictEditApplicationException e)
         {
             var failures = new SCG.List<(string, string)> { (Edits, $"{request}: {e.Message}") };
-            if (d.Ast == null)
-                failures.AddRange(FactOracles(d, request));
-            return new CellVerdict(failures, false);
+            var factLimit = d.Ast == null && AddFactOracles(failures, d, request);
+            return new CellVerdict(failures, false) { KnownLimit = factLimit };
         }
 
         var verdict = d.Ast == null ? UnparseableOracles(d, request, applied) : ParseableOracles(d, request, applied);
@@ -965,13 +974,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     {
         var failures = new SCG.List<(string, string)>();
         var truth = d.Truth ?? throw new InvalidOperationException("instrument: an unparseable document without ground truth");
-        failures.AddRange(FactOracles(d, request));
+        var factLimit = AddFactOracles(failures, d, request);
         var x = d.Lines;
         var (t, tBreaks) = LineDiff.Split(applied);
         if (t.Count != x.Count)
         {
             failures.Add((Content, $"{request}: {FirstDifference(d.Text, applied, "D", "T")}"));
-            return new CellVerdict(failures, false);
+            return new CellVerdict(failures, false) { KnownLimit = factLimit };
         }
 
         var content = Enumerable.Range(0, x.Count).FirstOrDefault(i => x[i].TrimStart(' ', '\t') != t[i].TrimStart(' ', '\t'), -1);
@@ -997,7 +1006,27 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 + $" in T, {depth.Expected} in Q"));
         }
 
-        return new CellVerdict(failures, false) { KnownLimit = knownLimit };
+        return new CellVerdict(failures, false) { KnownLimit = knownLimit || factLimit };
+    }
+
+    /// <summary>
+    /// Adds <see cref="FactOracles"/> to <paramref name="failures"/>, except the bucket a known-limit state pins
+    /// (<see cref="KnownLimitBucket"/>: an <see cref="S6ok"/> document's <c>factSpurious</c>, lead ruling L2), which is
+    /// returned as <see cref="CellVerdict.KnownLimit"/> instead — counted against <see cref="KnownLimitPin"/>.
+    /// </summary>
+    private static bool AddFactOracles(SCG.List<(string, string)> failures, SweepDocument d, CellRequest request)
+    {
+        var pinned = KnownLimitBucket.TryGetValue(d.State, out var bucket) ? bucket : null;
+        var hit = false;
+        foreach (var (b, detail) in FactOracles(d, request))
+        {
+            if (b == pinned)
+                hit = true;
+            else
+                failures.Add((b, detail));
+        }
+
+        return hit;
     }
 
     /// <summary>
@@ -1282,9 +1311,24 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             if (group.KnownLimit > 0)
             {
                 // One per (stem, twin, route) — the unit an allowlist row had — and the cells beside it.
-                s_tallies.AddOrUpdate(KnownLimitTally(route), 1, (_, n) => n + 1);
-                s_tallies.AddOrUpdate(KnownLimitCellsTally(route), group.KnownLimit, (_, n) => n + group.KnownLimit);
-                _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} literal ({group.KnownLimit}/{group.Cells} cells, #2274)");
+                s_tallies.AddOrUpdate(KnownLimitTally(state, route), 1, (_, n) => n + 1);
+                s_tallies.AddOrUpdate(KnownLimitCellsTally(state, route), group.KnownLimit, (_, n) => n + group.KnownLimit);
+                _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} {KnownLimitBucket[state]} ({group.KnownLimit}/{group.Cells} cells, #2274)");
+            }
+
+            if (state == S7 && S7PendingPin.Count > 0)
+            {
+                // Lead ruling L1: while S7 is red its failures are a pinned count per (shape, route, bucket) of
+                // (stem, twin) pairs (S7PendingPin), never rows; the ratchet does not see them.
+                foreach (var (bucket, shapes) in group.FailureShapes)
+                {
+                    foreach (var shape in shapes)
+                        s_tallies.AddOrUpdate(S7PendingTally(shape, route, bucket), 1, (_, n) => n + 1);
+                    _output.WriteLine($"FMTROUTE-S7-PENDING {stem} {twin} {route} {bucket} {string.Join(' ', shapes)} (#2279)");
+                }
+
+                group.Failures.Clear();
+                group.FailureShapes.Clear();
             }
             foreach (var (measure, n) in RangeMeasures(group))
             {
@@ -1462,9 +1506,33 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string ChangedTally(string route, string state, string twin) => $"changed {route} {state} {twin}";
 
-    private static string KnownLimitTally(string route) => $"known-limit {S6k} literal {route}";
+    private static string KnownLimitTally(string state, string route) => $"known-limit {state} {KnownLimitBucket[state]} {route}";
 
-    private static string KnownLimitCellsTally(string route) => $"known-limit-cells {S6k} literal {route}";
+    private static string KnownLimitCellsTally(string state, string route) => $"known-limit-cells {state} {KnownLimitBucket[state]} {route}";
+
+    private static string S7PendingTally(string shape, string route, string bucket) => $"s7-pending {shape} {route} {bucket}";
+
+    /// <summary>The bucket each known-limit state counts against <see cref="KnownLimitPin"/> instead of failing it.</summary>
+    internal static readonly SCG.IReadOnlyDictionary<string, string> KnownLimitBucket = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [S6k] = Literal,
+        [S6ok] = FactSpurious,
+    };
+
+    /// <summary>
+    /// TEMPORARY (lead ruling L1, plan-f92797; Phase 2 drains it to empty and DELETES it, #2279): while S7 is red, its
+    /// failing cells are this pinned count — per (continuation shape, route, bucket), the (stem, twin) pairs with a cell
+    /// of that shape failing that bucket on that route — instead of allowlist rows (62,396 rows of one class, measured
+    /// in FULL mode @ 20d7c582a; the table below measured in FULL mode after lead ruling L3 moved the abandoned brackets
+    /// to the opener's width). EXACT, not a ceiling: a cell that starts or stops failing moves a count, so a swap is
+    /// visible. While it is non-empty the loader refuses every S7 row. S7 cells are never sampled, so the sampled suite
+    /// counts the same cells as FULL mode; asserted only when every twin's theory ran over every stem in this process.
+    /// </summary>
+    internal static readonly SCG.IReadOnlyDictionary<(string Shape, string Route, string Bucket), int> S7PendingPin =
+        new SCG.Dictionary<(string Shape, string Route, string Bucket), int>
+        {
+            [(FormatterTwins.BracketEofShape, Full, Depth)] = -1, // placeholder: the next commit populates the table from a FULL run
+        };
 
     /// <summary>
     /// The known limit of #2274 (R-FQ, P22g Phase 1 Task 4): per route, the (stem, twin) pairs whose comment re-pair
@@ -1475,12 +1543,19 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// of every twin ran over every stem in this process; S6k cells are never sampled, so the sampled suite counts the
     /// same cells as FULL mode.
     /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<string, int> KnownLimitPin = new SCG.Dictionary<string, int>(StringComparer.Ordinal)
+    /// <para>Lead ruling L2 (plan-f92797) adds <see cref="S6ok"/>: per route, the (stem, twin) pairs whose
+    /// <c>closeline-own-</c> documents of the three tails R-FV's walk cannot pair have a spurious fact — measured in FULL
+    /// mode by the next commit. Phase 3 must leave these counts UNCHANGED: a walk that "fixes" them loses the stray-closed twins.</para>
+    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route), int> KnownLimitPin = new SCG.Dictionary<(string State, string Route), int>
     {
-        [Full] = 0,
-        [RangeWhole] = 0,
-        [RangeLine] = 10,
-        [OnType] = 10,
+        [(S6k, Full)] = 0,
+        [(S6k, RangeWhole)] = 0,
+        [(S6k, RangeLine)] = 10,
+        [(S6k, OnType)] = 10,
+        [(S6ok, Full)] = -1,
+        [(S6ok, RangeWhole)] = -1,
+        [(S6ok, RangeLine)] = -1,
+        [(S6ok, OnType)] = -1,
     };
 
     /// <summary>
@@ -1555,6 +1630,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — `cli` and `full` on a parseable document apply "
                     + "Format's checked output whole; a failure there is a finding outside P22e's cure, never a row.");
+            }
+
+            if (fields[3] == S7 && S7PendingPin.Count > 0)
+            {
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — S7 is a pinned count while it is red "
+                    + "(S7PendingPin, lead ruling L1), never rows; Phase 2 deletes the pin.");
             }
 
             if (!Regex.IsMatch(cite, @"^#\d+\b"))
@@ -1984,6 +2065,17 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         repair.LiteralState.FactSet.Should().BeTrue();
         repair.LiteralState.LostLiteralLines.Should().NotBeEmpty();
         UnparseableBucketsOf(repair, full, repair.Text).Should().NotContain(new[] { FactMissing, FactSpurious });
+
+        // S6ok (lead ruling L2): a tail the walk cannot pair is its own state; a spurious fact there is a known-limit
+        // count (KnownLimitPin), never a failure — and only the fact bucket is exempt.
+        var limit = docs.Should().ContainSingle(d => d.Truth != null && d.Truth.Shape == FormatterTwins.CloseLineOwnPrefix + "bt").Subject;
+        limit.State.Should().Be(S6ok);
+        var spurious = UnparseableOracles(limit.WithLexFacts(true, Array.Empty<int>()), full, limit.Text);
+        spurious.Failures.Should().BeEmpty();
+        spurious.KnownLimit.Should().BeTrue();
+        UnparseableOracles(limit.WithLexFacts(false, Array.Empty<int>()), full, limit.Text).KnownLimit.Should().BeFalse();
+        UnparseableBucketsOf(limit.WithLexFacts(false, new[] { 2 }), full, limit.Text).Should().Equal(FactMissing);
+        docs.Should().ContainSingle(d => d.Truth != null && d.Truth.Shape == FormatterTwins.RepairOwnPrefix + "bt").Which.State.Should().Be(S6o);
     }
 
     /// <summary>
@@ -2012,6 +2104,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         var recovery = docs.Should().ContainSingle(g => g.Truth != null && g.Truth.Shape == FormatterTwins.RecoveryShape).Subject;
         UnparseableBucketsOf(recovery, onType, recovery.Text).Should().BeEmpty();
+
+        // Lead ruling L3: an abandoned bracket sits at the OPENER's width, so the body line below is one level deeper
+        // (#2279's A3 shape); aligning that line to the bracket's level is a depth difference.
+        var abandoned = docs.Should().ContainSingle(g => g.Truth != null && g.Truth.Shape == FormatterTwins.BracketStringShape).Subject;
+        abandoned.Text.Should().Be("def main():\n_ = foo(\"abc,\n    s = \"\"\"\n      a\n    \"\"\"\n    q = 1\n    print(s)\n");
+        abandoned.Truth!.LogicalStarts.Should().Contain((1, 0)).And.Contain((2, 1));
+        UnparseableBucketsOf(abandoned, onType, abandoned.Text).Should().BeEmpty();
+        UnparseableBucketsOf(abandoned, onType, abandoned.Text.Replace("\n    s = ", "\ns = ", StringComparison.Ordinal)).Should().Equal(Depth);
 
         var wide = FormatterTwins.WideIndented(QOwn);
         UnparseableDocuments(wide, Doc(wide).Facts!, includeMismatch: true)
@@ -2045,7 +2145,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         Ratchet("a/b", Identity, failingGroups, sampledIn: true, Array.Empty<Row>()).Should().ContainSingle().Which.Should().Contain("ontypeShape");
     }
 
-    /// <summary>The loader refuses a <c>cli</c>/<c>full</c> row on a parseable state, an unknown field, a missing cite, an S6-family row citing another state's issue, and a duplicate.</summary>
+    /// <summary>The loader refuses a <c>cli</c>/<c>full</c> row on a parseable state, an unknown field, a missing cite, an S6-family row citing another state's issue, any S7 row while <see cref="S7PendingPin"/> exists, and a duplicate.</summary>
     [Fact]
     public void Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows()
     {
@@ -2063,6 +2163,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             "a/b identity full S7 depth # #2280 the S6o issue on an S7 row",
             "a/b identity ontype S6o factSpurious # #2279 the S7 issue on an S6o row",
             "a/b identity range-line S6o factSpurious # #2275 the S6x issue on an S6o row",
+            "a/b identity full S6ok factSpurious # #2280 the S6o issue on an S6ok row",
+            "a/b identity full S7 depth # #2279 S7 is a pinned count while it is red (S7PendingPin)",
         })
         {
             FluentActions.Invoking(() => ParseAllowlist(new[] { bad })).Should().Throw<InvalidOperationException>(bad);
@@ -2075,7 +2177,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 "a/b identity full S6 literal # #2271 r", "a/b identity full S6n depth # #2273 r", "a/b identity full S6k literal # #2274 r",
                 "a/b identity full S6r literal # #2275 r", "a/b identity full S6x literal # #2275 r",
-                "a/b identity full S7 depth # #2279 r", "a/b identity ontype S6o factSpurious # #2280 r",
+                "a/b identity full S6ok depth # #2274 r", "a/b identity ontype S6o factSpurious # #2280 r",
             })
             .Should().HaveCount(7);
     }
@@ -2244,23 +2346,47 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         rows.Should().OnlyContain(r => corpus.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
 
-        // The known limit of #2274 (R-FQ): the comment re-pair's string-content edits are counted, never rows, and the
-        // count is pinned EXACTLY — only when every twin's theory ran over every stem in this process.
-        _output.WriteLine("FMTROUTE-CENSUS known-limit S6k literal "
-            + string.Join(" ", RoutesByState[S6k].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitTally(r))}"))
-            + " (cells: " + string.Join(" ", RoutesByState[S6k].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitCellsTally(r))}")) + ")");
+        // The known limits of #2274 (R-FQ; lead ruling L2): the comment re-pair's string-content edits (S6k) and the
+        // unpairable own-quote tails' spurious facts (S6ok) are counted, never rows, and each count is pinned EXACTLY —
+        // only when every twin's theory ran over every stem in this process. So is S7 while it is red (lead ruling L1).
+        foreach (var state in KnownLimitBucket.Keys)
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS known-limit {state} {KnownLimitBucket[state]} "
+                + string.Join(" ", RoutesByState[state].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitTally(state, r))}"))
+                + " (cells: " + string.Join(" ", RoutesByState[state].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitCellsTally(state, r))}")) + ")");
+        }
+
+        var s7Keys = S7PendingPin.Keys.Concat(tallies.Keys.Where(k => k.StartsWith("s7-pending ", StringComparison.Ordinal))
+                .Select(k => k.Split(' ')).Select(f => (Shape: f[1], Route: f[2], Bucket: f[3])))
+            .Distinct().OrderBy(k => k.Shape, StringComparer.Ordinal).ThenBy(k => k.Route, StringComparer.Ordinal).ThenBy(k => k.Bucket, StringComparer.Ordinal)
+            .ToList();
+        foreach (var (shape, route, bucket) in s7Keys)
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS s7-pending {shape} {route} {bucket}={tallies.GetValueOrDefault(S7PendingTally(shape, route, bucket))} "
+                + $"pin={S7PendingPin.GetValueOrDefault((shape, route, bucket))}");
+        }
+
         var everyTwinRan = Twins.Where(t => s_stemsRun.GetValueOrDefault(t) != corpus.Corpus.Count).ToList();
         if (measured && everyTwinRan.Count == 0)
         {
-            foreach (var route in RoutesByState[S6k])
+            foreach (var state in KnownLimitBucket.Keys)
             {
-                tallies.GetValueOrDefault(KnownLimitTally(route)).Should().Be(KnownLimitPin[route],
-                    $"the S6k {route} known-limit count is pinned (#2274, R-FQ): a shrink closes a cell on #2274, a growth posts one — change KnownLimitPin and say which");
+                foreach (var route in RoutesByState[state])
+                {
+                    tallies.GetValueOrDefault(KnownLimitTally(state, route)).Should().Be(KnownLimitPin[(state, route)],
+                        $"the {state} {route} known-limit count is pinned (#2274, R-FQ): a shrink closes a cell on #2274, a growth posts one — change KnownLimitPin and say which");
+                }
+            }
+
+            foreach (var (shape, route, bucket) in s7Keys)
+            {
+                tallies.GetValueOrDefault(S7PendingTally(shape, route, bucket)).Should().Be(S7PendingPin.GetValueOrDefault((shape, route, bucket)),
+                    $"S7 {shape} {route} {bucket} is pinned while #2279 is red (S7PendingPin, lead ruling L1): a shrink is a drain, a growth a new cell — change the pin and say which");
             }
         }
         else
         {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit pin skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
+            _output.WriteLine($"FMTROUTE-CENSUS known-limit and s7-pending pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
         }
 
         // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). P22f Phase 1 Task 4
@@ -2271,10 +2397,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // budget-stop positions (#2273, the same (stem, twin, route) keys) and 240 S6r rows (#2275) its Phases 2-3
         // drain; Phase 2 drained the 334 S6n rows (the indent map lexes past the error budget, R-FP) and Phase 3 the
         // 240 S6r rows (the close-line rule reads the text the lexer gives up, R-FR): EMPTY again. P22h Phase 1
-        // (plan-f92797) re-populated it from a FULL-mode run with 62396 S7 depth rows (#2279: every (stem, twin) with
-        // a block) and 216 S6o factSpurious rows (#2280: the closeline-own tails) its Phases 2-3 drain. The literal
-        // anchors it: changing the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(62612, "P22h Phase 1 added the S7 (#2279) and S6o (#2280) rows its Phases 2-3 drain; the S6k cells are KnownLimitPin (#2274)");
+        // (plan-f92797) re-populated it from a FULL-mode run with the 216 S6o factSpurious rows (#2280: the six
+        // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) are S7PendingPin and its S6ok cells
+        // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. The literal anchors it:
+        // changing the allowlist is a visible decision — change this count in the same commit and say why.
+        rows.Count.Should().Be(0, "P22h Phase 1 added the S6o (#2280) rows its Phase 3 drains; S7 is S7PendingPin (#2279) and the S6k/S6ok cells are KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }

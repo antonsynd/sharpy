@@ -125,9 +125,12 @@ public static partial class FormatterTwins
     /// <summary>
     /// One close-line tail whose abort lands inside a literal (or a backtick name, or a comment) of its own (#2280): its
     /// <see cref="Name"/> and its <see cref="Tail"/>, spelled with <c>{q}</c> (the multi-line literal's quote character)
-    /// and <c>{o}</c> (the other one) as <see cref="CloseLineCode.OrphanTail"/> is.
+    /// and <c>{o}</c> (the other one) as <see cref="CloseLineCode.OrphanTail"/> is. <see cref="WalkCannotPair"/> marks a
+    /// tail whose given-up text holds a quote R-FV's close-line walk cannot pair (plan-f92797 Design 4's pinned limits:
+    /// an unterminated backtick name, a quote after <c>#</c>, the f-string's own quote in its spec) — its
+    /// <c>closeline-own-</c> document keeps the fact set, a known limit of #2274 (lead ruling L2).
     /// </summary>
-    public sealed record OwnQuoteTail(string Name, string Tail)
+    public sealed record OwnQuoteTail(string Name, string Tail, bool WalkCannotPair = false)
     {
         /// <summary><see cref="Tail"/> next to a literal whose quote character is <paramref name="quote"/>.</summary>
         public string TailFor(char quote) => WithQuotes(Tail, quote);
@@ -148,9 +151,9 @@ public static partial class FormatterTwins
         new OwnQuoteTail("fconv", "f{q}{x!q}{q}"),
         new OwnQuoteTail("tconv", "t{q}{x!q}{q}"),
         new OwnQuoteTail("fbrace", "f{q}}{q}"),
-        new OwnQuoteTail("fspec", "f{q}{x:{q}>}{q}"),
-        new OwnQuoteTail("bt", "`it{o}s"),
-        new OwnQuoteTail("cmt", "$  # it{o}s"),
+        new OwnQuoteTail("fspec", "f{q}{x:{q}>}{q}", WalkCannotPair: true),
+        new OwnQuoteTail("bt", "`it{o}s", WalkCannotPair: true),
+        new OwnQuoteTail("cmt", "$  # it{o}s", WalkCannotPair: true),
     };
 
     /// <summary>Whether <paramref name="shape"/> is a <see cref="CloseLineOwnPrefix"/> or <see cref="RepairOwnPrefix"/> shape (exactly).</summary>
@@ -158,6 +161,9 @@ public static partial class FormatterTwins
 
     /// <summary>Whether <paramref name="shape"/> is a <see cref="CloseLineOwnPrefix"/> shape (exactly).</summary>
     public static bool IsCloseLineOwnShape(string shape) => OwnQuoteTails.Any(t => CloseLineOwnPrefix + t.Name == shape);
+
+    /// <summary>Whether <paramref name="shape"/> is the <see cref="CloseLineOwnPrefix"/> shape of a tail the walk cannot pair (<see cref="OwnQuoteTail.WalkCannotPair"/>).</summary>
+    public static bool IsCloseLineOwnLimitShape(string shape) => OwnQuoteTails.Any(t => t.WalkCannotPair && CloseLineOwnPrefix + t.Name == shape);
 
     /// <summary><paramref name="spelling"/> with <c>{q}</c> replaced by <paramref name="quote"/> and <c>{o}</c> by the other quote character.</summary>
     private static string WithQuotes(string spelling, char quote)
