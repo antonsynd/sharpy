@@ -137,7 +137,14 @@ public partial class Lexer
     /// bracket depth 0, outside any f-string (<c>if foo($):</c>, <c>if x: $</c>, <c>while $:</c>,
     /// <c>def m(self, $):</c>, <c>lambda x: $</c>; and conservatively an annotation, <c>x: int = $</c>). A colon in a
     /// bracket, a string, a comment or a field is not one (<c>d = {a: $}</c>, <c>a[1:$]</c>, <c>s = "a:" + $</c>,
-    /// <c>x = $  # a: b</c>), and neither is <c>:=</c>. A subset of the resumes NOT in
+    /// <c>x = $  # a: b</c>), and neither is <c>:=</c>. A line whose END the lexer cannot read — it lies inside an
+    /// unterminated short string or backtick name, or an unclosed f-string field (<c>if x == "abc:</c>,
+    /// <c>for c in "abc:</c>, <c>if f"{x == y:</c>, <c>if `a:</c>) — is one too (lead ruling L11): the lexer cannot rule
+    /// out a colon it never read, the same conservative reading as a bracket "closed" inside an unterminated string
+    /// counting as open (<see cref="BracketLeftOpenAtLine"/>). The cost: an unterminated string on a line that opens no
+    /// block (<c>x = "abc</c>) is one as well, and the line below it loses its repair. A CLOSED string or backtick name
+    /// is read, and its colon is text (<c>s = "a:$"</c>, <c>`a:b`</c>), as is a comment's, even one holding a quote
+    /// (<c>x = $  # a: "b</c>). A subset of the resumes NOT in
     /// <see cref="RecoveryResumesAfterAContinuedLine"/>: when the line continues (a bracket or a backslash open at its
     /// end) the next line is its continuation, not a body. A dropped line from which no token was read — an indentation
     /// error (SPY0011–SPY0014) drops the whole line before reading it — is never one. The editor's indent map leaves a
@@ -541,7 +548,7 @@ public partial class Lexer
         var lineEnd = GivenUpLineEnd(_source.AsSpan(droppedFrom), afterUnclosedField);
         NoteBracketLeftOpen(lineEnd);
         var continues = lineEnd.BracketOpen || lineEnd.Backslash;
-        var possibleHeader = !continues && _tokenOnLogicalLine && (_colonOnLogicalLine || lineEnd.ColonAtDepthZero);
+        var possibleHeader = !continues && _tokenOnLogicalLine && (_colonOnLogicalLine || lineEnd.ColonAtDepthZero || lineEnd.EndUnreadable);
         _tokenOnLogicalLine = false;
         _colonOnLogicalLine = false;
 
@@ -613,7 +620,7 @@ public partial class Lexer
     {
         var depth = _bracketDepth - _fstringStack.Sum(context => context.Fields.Sum(field => field.ParenDepth));
         return afterUnclosedField
-            ? new LineEnd(BracketOpen: depth > 0, Backslash: false, OpenedInGivenUpText: false, ColonAtDepthZero: false)
+            ? new LineEnd(BracketOpen: depth > 0, Backslash: false, OpenedInGivenUpText: false, ColonAtDepthZero: false, EndUnreadable: true)
             : DroppedLineContinues(given, depth);
     }
 

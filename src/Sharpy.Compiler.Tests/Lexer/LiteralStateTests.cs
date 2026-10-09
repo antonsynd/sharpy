@@ -1239,8 +1239,11 @@ public class LiteralStateTests
     /// given-up text, strings, comments and backtick names opaque), holds a <c>:</c> at bracket depth 0 outside any
     /// f-string — a line that could open a block, so the editor must not re-indent the line below it. Members: a header
     /// whose colon is given up (<c>if foo($):</c>, <c>while $:</c>, a signature, a header spanning lines) or read before
-    /// the abort (<c>if x: $</c>), and conservatively an annotation and a lambda. Non-members: a colon in a bracket, a
-    /// string (closed or swallowing it), a comment, a field, a backtick name, a walrus; a continued line (bracket or
+    /// the abort (<c>if x: $</c>), and conservatively an annotation and a lambda. Lead ruling L11: a line whose END lies
+    /// inside an unterminated string, backtick name or unclosed field is a member too — the lexer cannot rule out a colon
+    /// it never read (<c>if x == "abc:</c>, <c>for c in "abc:</c>, <c>if f"{x == y:</c>, <c>if `a:</c>; and, the cost,
+    /// <c>x = "abc</c>). Non-members: a colon in a bracket, a CLOSED string or backtick name, a comment (even one holding
+    /// a quote), a field, a walrus; a continued line (bracket or
     /// backslash) whose colon was read; a line dropped at an indentation error (no token read); a colon on an EARLIER
     /// logical line (the flag ends at its Newline, and at a recovery). Line breaks LF, CRLF and lone CR; a tab-indented
     /// recovery line (1b). <paramref name="resume"/> picks the recovery point (0 = the first).
@@ -1265,8 +1268,21 @@ public class LiteralStateTests
         { "a colon inside a closed brace", "def main():\n    d = {a: $}\n    y = 1\n", 0, false },
         { "a colon inside a slice", "def main():\n    b = a[1:$]\n    y = 1\n", 0, false },
         { "a colon in a closed string", "def main():\n    s = \"a:\" + $\n    y = 1\n", 0, false },
-        { "a colon swallowed by an unterminated string", "def main():\n    s = \"a:$\n    y = 1\n", 0, false },
-        { "a header colon swallowed by an unterminated string (L6's domain)", "def main():\n    if x == \"abc:\n        y = 1\n", 0, false },
+        { "L11: a colon swallowed by an unterminated string (the end unreadable)", "def main():\n    s = \"a:$\n    y = 1\n", 0, true },
+        { "L11: if x == \"abc: (L6-PLUS2)", "def main():\n    if x == \"abc:\n      y = 1\n      z = 2\n    w = 3\n", 0, true },
+        { "L11: if x == 'abc:", "def main():\n    if x == 'abc:\n          y = 1\n          z = 2\n    w = 3\n", 0, true },
+        { "L11: for c in \"abc:", "def main():\n    for c in \"abc:\n        print(c)\n        print(c)\n", 0, true },
+        { "L11: if f\"{x == y: (an unclosed field)", "def main():\n    if f\"{x == y:\n      y = 1\n", 0, true },
+        { "L11: if `a: (an unterminated backtick name)", "def main():\n    if `a:\n      y = 1\n", 0, true },
+        { "L11: x = \"abc (no header, its end unreadable: the cost)", "def main():\n    x = \"abc\n      y = 1\n", 0, true },
+        { "L11: CRLF", "def main():\r\n    if x == \"abc:\r\n      y = 1\r\n", 0, true },
+        { "L11: lone CR", "def main():\r    if x == \"abc:\r      y = 1\r", 0, true },
+        { "a closed string holding a colon and a $", "def main():\n    s = \"a:$\" + $\n    y = 1\n", 0, false },
+        { "a closed string's colon in the given-up text", "def main():\n    x = $ \"a:b\"\n    y = 1\n", 0, false },
+        { "a closed single-quoted string's colon in the given-up text", "def main():\n    x = $ 'a: b' + 1\n    y = 1\n", 0, false },
+        { "a closed backtick name's colon in the given-up text", "def main():\n    x = $ `a:b`\n    y = 1\n", 0, false },
+        { "a closed backtick name, then an abort", "def main():\n    x = `a:b` $\n    y = 1\n", 0, false },
+        { "a comment holding a colon and a quote", "def main():\n    x = $  # a: \"b\n    y = 1\n", 0, false },
         { "a colon in a comment", "def main():\n    x = $  # a: b\n    y = 1\n", 0, false },
         { "a colon in a format spec", "def main():\n    s = f\"{x:>3}\" + $\n    y = 1\n", 0, false },
         { "a colon in a field's slice", "def main():\n    s = f\"{a[1:2]}\" + $\n    y = 1\n", 0, false },

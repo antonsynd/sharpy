@@ -124,6 +124,7 @@ public partial class Lexer
         var depth = bracketDepth;
         var openedInGivenUpText = false;
         var colonAtDepthZero = false;
+        var endUnreadable = false;
         var endsInBackslash = false;
         var i = 0;
         while (i < given.Length && !IsLineBreak(given[i]))
@@ -141,6 +142,7 @@ public partial class Lexer
             if (c is '"' or '\'')
             {
                 var literal = OpenLiteral.At(given, ref i);
+                endUnreadable = true;   // until its closing quote is read
                 while (i < given.Length && !IsLineBreak(given[i]))
                 {
                     if (given[i] == '\\' && !literal.Raw && i + 1 < given.Length && !IsLineBreak(given[i + 1]))
@@ -151,6 +153,7 @@ public partial class Lexer
                     if (given[i] == literal.Quote && (!literal.Triple || IsTripleAt(given, i)))
                     {
                         i += literal.Triple ? 3 : 1;
+                        endUnreadable = false;
                         break;
                     }
                     i++;
@@ -159,7 +162,9 @@ public partial class Lexer
             }
             if (c == '`')
             {
+                var name = i;
                 SkipBacktickName(given, ref i);
+                endUnreadable = !(i - 1 > name && given[i - 1] == '`');
                 continue;
             }
 
@@ -175,7 +180,7 @@ public partial class Lexer
             i++;
         }
         return new LineEnd(BracketOpen: depth > 0, Backslash: endsInBackslash, OpenedInGivenUpText: depth > 0 && openedInGivenUpText,
-            ColonAtDepthZero: colonAtDepthZero);
+            ColonAtDepthZero: colonAtDepthZero, EndUnreadable: endUnreadable);
     }
 
     /// <summary>
@@ -185,9 +190,10 @@ public partial class Lexer
     /// closed — rather than before the abort), and a trailing backslash outside a comment
     /// (<c>Backslash</c>). Either continues the line on the next; only the bracket is left open. <c>ColonAtDepthZero</c>:
     /// the given-up text holds a <c>:</c> outside every bracket, string, comment and backtick name (a possible block
-    /// header's colon; <c>:=</c> is not one).
+    /// header's colon; <c>:=</c> is not one). <c>EndUnreadable</c>: the line ends inside an unterminated literal or
+    /// backtick name (or an unclosed field), so a colon after the read text cannot be ruled out (lead ruling L11).
     /// </summary>
-    private readonly record struct LineEnd(bool BracketOpen, bool Backslash, bool OpenedInGivenUpText, bool ColonAtDepthZero);
+    private readonly record struct LineEnd(bool BracketOpen, bool Backslash, bool OpenedInGivenUpText, bool ColonAtDepthZero, bool EndUnreadable);
 
     /// <summary>A backtick-delimited name, read as the lexer reads one: it ends at its backtick or at the line break.</summary>
     private static void SkipBacktickName(ReadOnlySpan<char> text, ref int i)
