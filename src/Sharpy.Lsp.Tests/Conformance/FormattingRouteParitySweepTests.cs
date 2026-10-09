@@ -1574,6 +1574,23 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     };
 
     /// <summary>
+    /// The cells behind <see cref="KnownLimitPin"/>, pinned EXACTLY beside it: the pair count cannot see a tail move
+    /// between states when the remaining tails fail on the same (stem, twin) pairs, the cell count can (one S6ok tail
+    /// relabelled S6o leaves 54 pairs per route and drops 162 cells to 108). Measured with the pair counts.
+    /// </summary>
+    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route), int> KnownLimitCellsPin = new SCG.Dictionary<(string State, string Route), int>
+    {
+        [(S6k, Full)] = 0,
+        [(S6k, RangeWhole)] = 0,
+        [(S6k, RangeLine)] = 10,
+        [(S6k, OnType)] = 10,
+        [(S6ok, Full)] = 162,
+        [(S6ok, RangeWhole)] = 162,
+        [(S6ok, RangeLine)] = 162,
+        [(S6ok, OnType)] = 162,
+    };
+
+    /// <summary>
     /// The allowlist ratchet for one (stem, twin): every failing (route, state, bucket) is listed; a listed
     /// one whose (route, state) ran and holds is stale, and so is one whose (route, state) has no cell — unless
     /// it is a sampled route of a sampled-out stem, which this mode did not run.
@@ -2390,6 +2407,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 {
                     tallies.GetValueOrDefault(KnownLimitTally(state, route)).Should().Be(KnownLimitPin[(state, route)],
                         $"the {state} {route} known-limit count is pinned (#2274, R-FQ): a shrink closes a cell on #2274, a growth posts one — change KnownLimitPin and say which");
+                    tallies.GetValueOrDefault(KnownLimitCellsTally(state, route)).Should().Be(KnownLimitCellsPin[(state, route)],
+                        $"the {state} {route} known-limit cell count is pinned (#2274): a tail or a cell that moves in or out of {state} moves it — change KnownLimitCellsPin and say which");
                 }
             }
 
