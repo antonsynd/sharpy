@@ -294,10 +294,13 @@ def main():
         var assemblyPath = Path.Combine(tempDir, "SharpyLineTest.dll");
         var pdbPath = Path.Combine(tempDir, "SharpyLineTest.pdb");
 
-        // Emit WITH PDB support - this is critical for #line directives to work
+        // Emit WITH PDB support - this is critical for #line directives to work. The format is
+        // named, as AssemblyCompiler names it: Roslyn's host default is the native Windows PDB on
+        // Windows, whose writer is not shipped (CS0041, #2291).
         using var assemblyStream = new FileStream(assemblyPath, FileMode.Create);
         using var pdbStream = new FileStream(pdbPath, FileMode.Create);
-        var emitResult = compilation.Emit(assemblyStream, pdbStream);
+        var emitResult = compilation.Emit(assemblyStream, pdbStream,
+            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
 
         if (!emitResult.Success)
         {

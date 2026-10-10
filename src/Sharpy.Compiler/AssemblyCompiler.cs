@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Diagnostics;
 
@@ -25,6 +26,19 @@ internal class AssemblyCompiler
     // server, the LSP, the REPL, and the test host all benefit after the first touch.
     private static readonly ConcurrentDictionary<(string Path, DateTime ModifiedUtc), MetadataReference>
         s_referenceCache = new();
+
+    /// <summary>
+    /// The debug-information format is named, never left to Roslyn's host default (#2291). Without
+    /// <see cref="EmitOptions"/> Roslyn picks the format from the HOST: a portable PDB on macOS and
+    /// Linux (measured: the written <c>.pdb</c> starts with <c>BSJB</c> @ 2e0ef5601), the native
+    /// Windows PDB on Windows, whose writer (<c>Microsoft.DiaSymReader.Native</c>) sharpyc does not
+    /// ship — so every Debug build on Windows, i.e. the README's <c>sharpyc run hello.spy</c>, fell
+    /// back to the OS's .NET Framework <c>diasymreader.dll</c> and failed with CS0041, which the
+    /// SPY0908 net reported as a compiler bug. The portable format is the one .NET (Core) reads for
+    /// stack-trace line numbers on every platform. Guarded by <c>DebugInformationFormatTests</c>.
+    /// </summary>
+    private static readonly EmitOptions PortablePdbEmitOptions =
+        new(debugInformationFormat: DebugInformationFormat.PortablePdb);
 
     public AssemblyCompiler(ICompilerLogger? logger = null)
     {
@@ -164,7 +178,7 @@ internal class AssemblyCompiler
             var withPdb = projectConfig.Configuration == "Debug";
             using var assemblyStream = new MemoryStream();
             using var pdbStream = withPdb ? new MemoryStream() : null;
-            var emitResult = compilation.Emit(assemblyStream, pdbStream);
+            var emitResult = compilation.Emit(assemblyStream, pdbStream, options: PortablePdbEmitOptions);
             metrics.EndPhase();
 
             var mapping = MapGeneratedCodeDiagnostics(emitResult.Diagnostics, compilationAlreadyFailed);

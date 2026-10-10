@@ -23,6 +23,8 @@ on:
       - 'Directory.Build.props'
       - 'sharpy.sln'
       - '.github/workflows/dotnet10.yml'
+      - 'build_tools/smoke_hello.sh'
+      - 'README.md'
   pull_request:
     branches: [ "mainline" ]
     paths:
@@ -30,6 +32,8 @@ on:
       - 'Directory.Build.props'
       - 'sharpy.sln'
       - '.github/workflows/dotnet10.yml'
+      - 'build_tools/smoke_hello.sh'
+      - 'README.md'
 
 permissions:
   contents: read
@@ -466,10 +470,47 @@ jobs:
           exit 1
         fi
 
+  windows:
+    # #2291 (R-GH): the one host the rest of CI never runs. Roslyn's debug-information default is
+    # host-dependent (the native Windows PDB on Windows, whose writer sharpyc does not ship), so the
+    # debug-format guard runs here on every push, and the README's hello world runs on the SAME
+    # self-contained win-x64 publish the release ships. Builds from source: the ubuntu
+    # build-output tarball is not a Windows build.
+    name: Windows (debug-info guard + published hello world)
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Debug-information guard and line-directive tests
+      run: >
+        dotnet test src/Sharpy.Compiler.Tests --verbosity normal
+        --filter "FullyQualifiedName~DebugInformationFormatTests|FullyQualifiedName~LineDirectiveRuntimeTests"
+        --logger "trx;LogFileName=windows.trx" --results-directory TestResults
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: trx-windows
+        path: TestResults/*.trx
+        retention-days: 14
+        if-no-files-found: warn
+    - name: Publish sharpyc as the release does (win-x64, self-contained)
+      if: ${{ !cancelled() }}
+      run: dotnet publish src/Sharpy.Cli -c Release --self-contained -r win-x64 -o publish/cli
+    - name: README hello world on the published sharpyc
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: build_tools/smoke_hello.sh "$PWD/publish/cli/sharpyc.exe"
+
   ci-summary:
     name: CI summary
     if: ${{ always() }}
-    needs: [build, test-fast, compiler, sweep, stdlib-spy-gates, compiler-shard-partition]
+    needs: [build, test-fast, compiler, sweep, stdlib-spy-gates, compiler-shard-partition, windows]
     runs-on: ubuntu-latest
 
     steps:
@@ -493,7 +534,7 @@ jobs:
         shards = sorted(int(k[len("COMPILER_SHARD_"):]) for k in os.environ if k.startswith("COMPILER_SHARD_"))
         sweeps = ["interop-conformance", "metamorphic-corpus", "differential-execution",
                   "format-spec-differential", "formatter-emit-invariance"]
-        expected = (["cli", "core", "stdlib", "lsp"] + [f"compiler-shard-{n}" for n in shards]
+        expected = (["cli", "core", "stdlib", "lsp", "windows"] + [f"compiler-shard-{n}" for n in shards]
                     + [f"sweep-{s}" for s in sweeps])
         found = {os.path.basename(p)[:-4]: p for p in glob.glob("trx/**/*.trx", recursive=True)}
         rows, problems = [], []

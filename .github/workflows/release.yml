@@ -161,9 +161,101 @@ jobs:
           name: nuget-packages
           path: packages/*.nupkg
 
+  # #2291 (R-GH): every published artifact is RUN on its own platform before anything ships.
+  # v0.22.0's win-x64 archive was built on windows-latest and never executed; its first command,
+  # the README's `sharpyc run hello.spy`, failed (SPY0908 CS0041, the native Windows PDB writer).
+  # Each archive runs on a runner of its own OS and architecture; `release` and `nuget-push` wait
+  # for both smoke jobs, so a broken artifact is neither attached nor pushed.
+  smoke-archive:
+    name: Smoke sharpyc archive (${{ matrix.rid }})
+    needs: [build-cli]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-latest
+            archive: tar.gz
+          - rid: osx-x64
+            os: macos-15-intel
+            archive: tar.gz
+          - rid: win-x64
+            os: windows-latest
+            archive: zip
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: tar.gz
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            archive: tar.gz
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # `sharpyc run` launches the compiled program with `dotnet`: the README's prerequisite.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download archive
+        uses: actions/download-artifact@v8
+        with:
+          name: sharpyc-${{ matrix.rid }}
+
+      - name: Unpack (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        run: mkdir sharpyc && tar -xzf sharpyc-${{ matrix.rid }}.tar.gz -C sharpyc
+
+      - name: Unpack (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Expand-Archive -Path sharpyc-${{ matrix.rid }}.zip -DestinationPath sharpyc
+
+      - name: README hello world on the archive
+        shell: bash
+        run: build_tools/smoke_hello.sh "$PWD/sharpyc/sharpyc${{ runner.os == 'Windows' && '.exe' || '' }}"
+
+  smoke-tool:
+    name: Smoke sharpyc dotnet tool (${{ matrix.os }})
+    needs: [nuget-pack]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download NuGet packages
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-packages
+          path: packages/
+
+      - name: Install the packed tool (the README's `dotnet tool install` channel)
+        shell: bash
+        run: |
+          VERSION="${{ inputs.tag || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          dotnet tool install sharpyc --version "$VERSION" --add-source packages --tool-path "$RUNNER_TEMP/sharpyc-tool"
+
+      - name: README hello world on the tool
+        shell: bash
+        run: build_tools/smoke_hello.sh "$RUNNER_TEMP/sharpyc-tool/sharpyc${{ runner.os == 'Windows' && '.exe' || '' }}"
+
   nuget-push:
     name: Push to NuGet
-    needs: [nuget-pack]
+    needs: [nuget-pack, smoke-archive, smoke-tool]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
     permissions:
@@ -195,7 +287,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [build-core, build-stdlib, build-cli, nuget-pack]
+    needs: [build-core, build-stdlib, build-cli, nuget-pack, smoke-archive, smoke-tool]
     runs-on: ubuntu-latest
     steps:
       # Full history + tags: the notes are generated from the commits between

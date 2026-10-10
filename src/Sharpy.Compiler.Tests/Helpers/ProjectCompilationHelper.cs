@@ -426,7 +426,7 @@ public class ProjectCompilationHelper : IDisposable
             CreateProjectFile();
         }
 
-        var config = ProjectFileParser.Load(_projectFilePath!);
+        var config = ProjectFileParser.Load(_projectFilePath!, Options.Configuration);
 
         if (reorderSourceFiles != null)
         {
@@ -887,6 +887,12 @@ public class ProjectOptions
     public string? AssemblyName { get; set; }
     public string? EntryPoint { get; set; }
     public string? SourceFilePattern { get; set; }
+
+    /// <summary>
+    /// The build configuration handed to <c>ProjectFileParser.Load</c> (<c>sharpyc project
+    /// --configuration</c>); null keeps the parser's default, Debug.
+    /// </summary>
+    public string? Configuration { get; set; }
 
     /// <summary>
     /// Experimental feature flags to emit as a semicolon-separated &lt;Features&gt;
