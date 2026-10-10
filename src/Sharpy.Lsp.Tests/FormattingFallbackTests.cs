@@ -1830,4 +1830,222 @@ public sealed class FormattingFallbackTests : IDisposable
         IndentationService.BuildIndentMap(Verifier1c).FrozenFrom.Should().Be(3);
         IndentationService.BuildIndentMap("def main():\n        x = 1\n        y = (\n").FrozenFrom.Should().Be(4, "an opener on the last line freezes nothing");
     }
+
+    // ---- P22i: a comment-only line is left verbatim by every indent-only route (R-GD, #2290) ----
+    // Each document is named by its place in the matrix (plan-ee5544 Current State); 0-based lines. Every document but the
+    // parseable control does not parse, so every route below is an indent-only pass.
+
+    /// <summary>C1: an unterminated string above main, an indented comment in main's body (#2290's first document).</summary>
+    internal const string P22iC1 = "def f():\n    y = \"abc\n\ndef main():\n    # c1\n    b = 1\n";
+
+    /// <summary>C2: C1 with <c>$</c> for the string.</summary>
+    private const string P22iC2 = "def f():\n    y = $\n\ndef main():\n    # c1\n    b = 1\n";
+
+    /// <summary>C3: the misindent control — <c>f</c>'s body at 6 spaces (SPY0013), the comment in main's body.</summary>
+    private const string P22iC3 = "def f():\n      y = 1\n\ndef main():\n    # c1\n    b = 1\n";
+
+    /// <summary>C5: a comment deeper than its block.</summary>
+    internal const string P22iC5 = "def f():\n    y = $\n\ndef main():\n        # deep\n    b = 1\n";
+
+    /// <summary>C6: a column-0 comment inside main's body (a control: level 0 either way).</summary>
+    private const string P22iC6 = "def f():\n    y = $\n\ndef main():\n# c0\n    b = 1\n";
+
+    /// <summary>C7: a comment as the last line of a body, before a dedent.</summary>
+    private const string P22iC7 = "def f():\n    y = $\n\ndef main():\n    b = 1\n    # end\n\ndef g():\n    pass\n";
+
+    /// <summary>C8: a module-level comment between definitions (a control).</summary>
+    private const string P22iC8 = "def f():\n    y = $\n\n# between\ndef main():\n    b = 1\n";
+
+    /// <summary>C9: a comment above the first statement (a control).</summary>
+    private const string P22iC9 = "# top\ndef f():\n    y = $\n\ndef main():\n    b = 1\n";
+
+    /// <summary>C10: a comment inside a CLOSED bracket at the continuation's width.</summary>
+    private const string P22iC10 = "def f():\n    y = $\n\ndef main():\n    xs = [1,\n          # inner\n          2]\n    b = 1\n";
+
+    /// <summary>C11: a 2-space body with a comment.</summary>
+    private const string P22iC11 = "def main():\n  # c\n  x = 1\n  print(x)\n";
+
+    /// <summary>C12: an 8-space S3 cut with a comment.</summary>
+    private const string P22iC12 = "def main():\n        # c\n        x = 1\n        if x:\n";
+
+    /// <summary>C13: C1 with a backtick name for the string.</summary>
+    private const string P22iC13 = "def f():\n    y = `ab\n\ndef main():\n    # c1\n    b = 1\n";
+
+    /// <summary>C14: C1 with an unterminated f-string replacement field.</summary>
+    private const string P22iC14 = "def f():\n    y = f\"{x\n\ndef main():\n    # c1\n    b = 1\n";
+
+    /// <summary>C15: a tab-indented comment.</summary>
+    private const string P22iC15 = "def f():\n    y = $\n\ndef main():\n\t# tab\n    b = 1\n";
+
+    /// <summary>C16: a comment inside the putative body below a dropped header (L8) — in neither LineIndent nor UnplacedLines.</summary>
+    private const string P22iC16 = "def main():\n    if foo($):\n        # c\n        y = 1\n";
+
+    /// <summary>C16b: C16 with the body at 10 spaces (deeper than a level).</summary>
+    private const string P22iC16b = "def main():\n    if foo($):\n          # c\n          y = 1\n";
+
+    /// <summary>C17: a comment on the frozen tail below an open bracket (a control: clause 7 and the builders' frozen check).</summary>
+    private const string P22iC17 = "def main():\n    xs = [1,\n        # c\n        2\n";
+
+    /// <summary>The prober's axis (a'): a comment directly after a dropped line, before its recovery line.</summary>
+    private const string P22iAfterDropped = "def main():\n    y = $\n    # c\n    z = 1\n";
+
+    /// <summary>The prober's axis (b'): an indented comment-only LAST line with no line break after it.</summary>
+    private const string P22iLastNoBreak = "def f():\n    y = \"abc\n\ndef main():\n    b = 1\n    # last";
+
+    /// <summary>
+    /// The P22i cells that apply no edit, each with the text the route applied @ 53ee2d993 (the comment written at column 0:
+    /// the direction "wrong edit → no edit"), or — where the route applied nothing then either (C16 full / range-whole,
+    /// refused by clause 6c because the candidate also moves <c>y</c>; C17, frozen) — the candidate the check refuses.
+    /// On-type rows are the handler's own rule (a comment line is never a logical start): no edit before and after.
+    /// </summary>
+    public static TheoryData<string, string, string, string> P22iNoEditCells
+    {
+        get
+        {
+            var cells = new TheoryData<string, string, string, string>();
+            foreach (var (name, document, line, atZero) in new[]
+            {
+                ("C1", P22iC1, 4, "# c1"), ("C2", P22iC2, 4, "# c1"), ("C13", P22iC13, 4, "# c1"), ("C14", P22iC14, 4, "# c1"),
+                ("C5", P22iC5, 4, "# deep"), ("C7", P22iC7, 5, "# end"), ("C15", P22iC15, 4, "# tab"),
+                ("a'", P22iAfterDropped, 2, "# c"), ("b'", P22iLastNoBreak, 5, "# last"),
+            })
+            {
+                var candidate = WithLine(document, line, atZero);
+                cells.Add(name, document, "full", candidate);
+                cells.Add(name, document, "range-whole", candidate);
+                cells.Add(name, document, $"range-line {line}", candidate);
+                cells.Add(name, document, $"ontype {line}", candidate);
+            }
+
+            // C3's comment line alone (its full / range-whole rows are repairs).
+            cells.Add("C3", P22iC3, "range-line 4", WithLine(P22iC3, 4, "# c1"));
+            cells.Add("C3", P22iC3, "ontype 4", WithLine(P22iC3, 4, "# c1"));
+            // C16 / C16b range-line 2: @ 53ee2d993 the comment went to column 0 — clause 8 is the one clause that refuses it.
+            cells.Add("C16", P22iC16, "range-line 2", WithLine(P22iC16, 2, "# c"));
+            cells.Add("C16b", P22iC16b, "range-line 2", WithLine(P22iC16b, 2, "# c"));
+            cells.Add("C16", P22iC16, "ontype 2", WithLine(P22iC16, 2, "# c"));
+            // C16 full / range-whole: no edit before and after — the builder's candidate moves `y` (6c).
+            cells.Add("C16", P22iC16, "full", WithLine(P22iC16, 3, "    y = 1"));
+            cells.Add("C16", P22iC16, "range-whole", WithLine(P22iC16, 3, "    y = 1"));
+            foreach (var route in new[] { "full", "range-whole", "range-line 2", "ontype 2" })
+                cells.Add("C17", P22iC17, route, WithLine(P22iC17, 2, "    # c"));
+            return cells;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(P22iNoEditCells))]
+    public void P22i_TheRoutesLeaveTheCommentLine_AndTheCheckRefusesWhatTheyWouldApply(string name, string document, string route, string candidate)
+    {
+        RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
+        candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
+        // On-type refuses a line that does not start a logical line itself — a comment line never does. Every other route
+        // has no such rule, so the check's refusal is asserted for each of them, range-line included (clause 8).
+        if (route.StartsWith("ontype ", StringComparison.Ordinal))
+            return;
+        FormattingFallback.IndentOnlyPreserved(document, candidate).Should().BeFalse("{0} {1}: the check refuses the candidate", name, route);
+    }
+
+    /// <summary>
+    /// The P22i cells that apply a repair beside a kept comment — the positive controls that a route still repairs code
+    /// (@ 53ee2d993 each also wrote the comment at column 0; a clause-only tree, without the builder skips, refuses each
+    /// candidate whole and repairs nothing). C11 and C12 keep their comment at the old width while the code is re-indented
+    /// — the consequence of R-GD (a), stated in the docs.
+    /// </summary>
+    public static TheoryData<string, string, string, string> P22iRepairCells => new()
+    {
+        { "C3", P22iC3, "full", WithLine(P22iC3, 1, "    y = 1") },
+        { "C3", P22iC3, "range-whole", WithLine(P22iC3, 1, "    y = 1") },
+        { "C10", P22iC10, "full", WithLine(P22iC10, 6, "    2]") },
+        { "C10", P22iC10, "range-whole", WithLine(P22iC10, 6, "    2]") },
+        { "C11", P22iC11, "full", "def main():\n  # c\n    x = 1\n    print(x)\n" },
+        { "C11", P22iC11, "range-whole", "def main():\n  # c\n    x = 1\n    print(x)\n" },
+        { "C12", P22iC12, "full", "def main():\n        # c\n    x = 1\n    if x:\n" },
+        { "C12", P22iC12, "range-whole", "def main():\n        # c\n    x = 1\n    if x:\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(P22iRepairCells))]
+    public void P22i_TheRoutesRepairTheCode_AndKeepTheComment(string name, string document, string route, string repaired)
+    {
+        RouteCell(document, route).Applied.Should().Be(repaired, "{0} {1}", name, route);
+    }
+
+    /// <summary>
+    /// The controls: a column-0 comment in a body (C6), a module-level comment (C8, C9) — level 0 either way — and the
+    /// parseable twin of C1 (C4: the real formatter places the comment with its code, guarantee 2 — kept at 4).
+    /// </summary>
+    [Fact]
+    public void P22i_Controls_NoEditOnAColumn0Comment_AndTheParseableTwinKeepsItsComment()
+    {
+        foreach (var (document, line) in new[] { (P22iC6, 4), (P22iC8, 3), (P22iC9, 0) })
+        {
+            foreach (var route in new[] { "full", "range-whole", $"range-line {line}", $"ontype {line}" })
+                RouteEdits(document, route).Should().BeEmpty(route);
+        }
+
+        const string c4 = "def f():\n    y = 1\n\ndef main():\n    # c1\n    b = 1\n";
+        RouteCell(c4, "full").Applied.Should().Contain("\n    # c1\n", "the parseable document is formatted by the real formatter (guarantee 2)");
+        RouteEdits(c4, "range-line 4").Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Both builders return a comment-only line verbatim BEFORE the check — the unchecked candidate keeps every comment
+    /// line byte-identical (a builder that forgets is refused by clause 8, which then withholds the code repair beside it).
+    /// </summary>
+    [Fact]
+    public void P22i_BothBuilders_ReturnACommentLineVerbatim()
+    {
+        foreach (var document in new[] { P22iC1, P22iC3, P22iC5, P22iC7, P22iC10, P22iC11, P22iC12, P22iC15, P22iC16, P22iLastNoBreak })
+        {
+            var map = IndentationService.BuildIndentMap(document);
+            map.CommentLines.Should().NotBeEmpty(document);
+            var (source, _) = Compiler.Formatting.LineDiff.Split(document);
+            var full = Compiler.Formatting.LineDiff.Split(FormattingFallback.ReindentDocument(document)).Lines;
+            var range = Compiler.Formatting.LineDiff.Split(LspFormattingDriver.ApplyStrict(document,
+                SharpyRangeFormattingHandler.ComputeIndentOnlyRangeEdits(document, 0, source.Count - 1))).Lines;
+            foreach (var line in map.CommentLines)
+            {
+                full[line - 1].Should().Be(source[line - 1], "the full fallback's builder, line {0} of {1}", line, document);
+                range[line - 1].Should().Be(source[line - 1], "the range fallback's builder, line {0} of {1}", line, document);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clause 8 at the check seam: C3 with its comment at column 0 is refused, the code repair beside the kept comment is
+    /// accepted; C16 with its comment at column 0 and <c>y</c> unchanged is refused — the one cell no other clause refuses
+    /// (the comment is in neither <c>LineIndent</c> nor <c>UnplacedLines</c>); a <c>#</c> line inside a closed string is
+    /// string content (clause 3), never a comment line.
+    /// </summary>
+    [Fact]
+    public void Comment_ADedentedCommentLine_IsRefused_TheCodeRepairBesideItIsNot()
+    {
+        var repaired = WithLine(P22iC3, 1, "    y = 1");
+        FormattingFallback.IndentOnlyPreserved(P22iC3, WithLine(repaired, 4, "# c1")).Should().BeFalse();
+        FormattingFallback.IndentOnlyPreserved(P22iC3, repaired).Should().BeTrue();
+        FormattingFallback.IndentOnlyPreserved(P22iC16, WithLine(P22iC16, 2, "# c")).Should().BeFalse();
+        FormattingFallback.IndentOnlyPreserved(P22iC5, WithLine(P22iC5, 4, "# deep")).Should().BeFalse();
+
+        const string literal = "def main():\n    s = \"\"\"\n        # key\n    \"\"\"\n        if s:\n";
+        var map = IndentationService.BuildIndentMap(literal);
+        map.LiteralLines.Should().Contain(3);
+        map.CommentLines.Should().NotContain(3, "a # line inside a string is string content");
+        FormattingFallback.IndentOnlyPreserved(literal, WithLine(literal, 2, "    # key")).Should().BeFalse("clause 3");
+    }
+
+    [Fact]
+    public void P22i_TheMapNamesItsCommentLines()
+    {
+        IndentationService.BuildIndentMap(P22iC10).CommentLines.Should().BeEquivalentTo(new[] { 6 });
+        IndentationService.BuildIndentMap(P22iC15).CommentLines.Should().BeEquivalentTo(new[] { 5 });
+        IndentationService.BuildIndentMap(P22iC17).CommentLines.Should().BeEquivalentTo(new[] { 3 });
+        var c16 = IndentationService.BuildIndentMap(P22iC16);
+        c16.CommentLines.Should().BeEquivalentTo(new[] { 3 });
+        c16.UnplacedLines.Should().Contain(4).And.NotContain(3, "the width loop skips a comment line before 6c's set is built");
+        c16.LineIndent.Should().NotContainKey(3);
+        IndentationService.IsCommentOnlyLine(" \t # x").Should().BeTrue();
+        IndentationService.IsCommentOnlyLine("x = 1  # x").Should().BeFalse();
+        IndentationService.IsCommentOnlyLine("   ").Should().BeFalse();
+    }
 }

@@ -384,6 +384,22 @@ public class OnTypeFormattingTests : IDisposable
         edits.Should().BeNull();
     }
 
+    /// <summary>
+    /// A comment-only line is never a logical-line start, so on-type never re-indents it — a comment indented under its
+    /// block (#2290's C1) and one deeper than its block (C5): no edit before P22i and after (the control the fallbacks now
+    /// match, R-GD).
+    /// </summary>
+    [Fact]
+    public async Task CommentOnlyLine_NoEditAsync()
+    {
+        foreach (var source in new[] { FormattingFallbackTests.P22iC1, FormattingFallbackTests.P22iC5 })
+        {
+            IndentationService.BuildIndentMap(source).CommentLines.Should().Contain(5);
+            var edits = await OnTypeAsync(source, 4, source.Split('\n')[4].Length, "\n");
+            edits.Should().BeNull(source);
+        }
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
