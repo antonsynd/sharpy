@@ -2689,7 +2689,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var everyTwinRan = Twins.Where(t => s_stemsRun.GetValueOrDefault(t) != corpus.Corpus.Count).ToList();
         if (measured && everyTwinRan.Count == 0)
         {
-
             foreach (var state in KnownLimitBucket.Keys)
             {
                 foreach (var route in RoutesByState[state])
