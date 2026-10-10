@@ -46,8 +46,8 @@ public sealed class FormatterDocEditorExamplesTests : IDisposable
 
         // The instrument: the extractor found the examples the doc has (a literal, not a count of the
         // same source), and at least one changes its text — so equality is not passing on identity.
-        examples.Should().HaveCount(9);
-        examples.SelectMany(e => e.Requests).Should().HaveCount(17);
+        examples.Should().HaveCount(10);
+        examples.SelectMany(e => e.Requests).Should().HaveCount(20);
         examples.Count(e => e.After is not null && e.After != e.Before).Should().Be(3);
 
         foreach (var example in examples)

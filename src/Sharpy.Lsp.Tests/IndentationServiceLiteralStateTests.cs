@@ -118,9 +118,10 @@ public class IndentationServiceLiteralStateTests
         { "A3", FormattingFallbackTests.A3, 2, new[] { 4, 5 }, new[] { 3 } },
         { "A4", FormattingFallbackTests.A4, 2, new[] { 4, 5 }, new[] { 3 } },
         { "A5", FormattingFallbackTests.A5, 2, Array.Empty<int>(), new[] { 3 } },
-        // A7: the continuation at width 10 is dropped whole after the recovery reset (SPY0013) — a token-less dropped
-        // code line, which the map reads as a logical start (unchanged); it is below the opener all the same
-        { "A7 (opened in the given-up text)", FormattingFallbackTests.A7, 2, new[] { 3 }, Array.Empty<int>() },
+        // A7: the continuation at width 10 is dropped whole after the recovery reset (SPY0013) — the dropped physical
+        // line of a partially read logical line is that line's continuation (/verify-implementation of plan-f92797,
+        // C1; it was read as a logical start of its own at 040c79ec2); below the opener all the same (frozen)
+        { "A7 (opened in the given-up text)", FormattingFallbackTests.A7, 2, Array.Empty<int>(), new[] { 3 } },
         // controls: a bracket the given-up text closes, a clean document
         { "closed on the dropped line", "def main():\n    x = foo($)\n    y = 1\n", null, new[] { 3 }, Array.Empty<int>() },
         { "clean", Clean, null, new[] { 1, 2, 3, 4, 7 }, Array.Empty<int>() },

@@ -123,7 +123,7 @@ SPY0912 always means a formatter bug: your file is valid and its meaning is safe
 - **Format on type** aligns the first line of a statement to its block's indentation, and nothing else: never a line that continues a statement (inside brackets, or after `\`), a comment line, or a line inside a string. It changes how far the line is indented, never which block it is in, so it leaves an unexpected indent alone and does not dedent an `else:` typed at its body's indentation. It applies the new indentation only if the file stays the same program; while the file does not parse, the indentation-only check below decides instead.
 - If the document **does not parse**, for example in the middle of typing, Format Document and Format Selection fall back to an indentation-only pass. It re-indents lines to four-space levels and changes nothing else. It applies its result only if every line keeps its text, every line inside a string is unchanged, every statement stays in the block it was in, and no new indentation error appears; otherwise it applies nothing. A line that belongs to no block, because it is indented with a tab or to a width no enclosing block uses, is the mistake the pass repairs: it moves to the level the editor guesses for it, which may not be the block you meant. This fallback is used only for documents that fail to parse, never for a document the formatter declined.
 - While a bracket is left open — never closed before the end of the file, or still open at the end of a line the lexer could not read — the editor reads every line below the line that opened it as part of that bracket, so the indentation-only pass and format on type change none of them, and while any non-blank line follows the bracket they leave the line that opened it alone too. A bracket closed inside an unfinished string or backtick-delimited name counts as open, and so does a bracket opened on a line the lexer could not read, even when a later line closes it. Lines above the bracket can still be repaired or re-indented, but never in a way that puts the bracket's line in a different block, so in a file indented 8 spaces per level the block holding the bracket keeps its 8 spaces.
-- The line after a line the lexer could not read (one with a character such as `$` that is not Sharpy) starts a new statement, so it can be repaired like any other line. The unreadable line may have opened a block the editor cannot see: when it has a `:` outside brackets, strings, backtick-delimited names and comments (`if ready($):`), or it ends inside an unfinished string or backtick-delimited name (`if name == "abc:`), the lines directly below it that are indented deeper are never moved out of that block, however deep they are.
+- The line after a line the lexer could not read (one with a character such as `$` that is not Sharpy) starts a new statement, so it can be repaired like any other line. The unreadable line may have opened a block the editor cannot see: when it has a `:` outside brackets, strings, backtick-delimited names and comments (`if ready($):`), or it ends inside an unfinished string or backtick-delimited name (`if name == "abc:`), the lines directly below it that are indented deeper are never moved out of that block, however deep they are. When the unreadable line continues a statement begun above it (`for i in range(1,` and then `$):` on the next line), it is that statement's line: the lines below are measured against the statement's first line, and its own indentation is only ever aligned with the block it continues.
 - If any line of the file is indented with whitespace other than spaces and tabs (a form feed, a vertical tab or a no-break space), the lexer cannot read that line's indentation, so format on type and the indentation-only pass change nothing until it is replaced with spaces.
 - While a triple-quoted string is unfinished, or cannot be read as a string, the editor cannot tell which lines are code. A string cannot be read as one when a stray `"""` above it has paired with its opening quotes, when its opening `"""` sits on a line the lexer could not read at all (a line indented with a tab, or to a width no enclosing block uses), or when an error earlier on its opening line (an unexpected character, an invalid escape, the f-string's own quote inside a format spec) made the lexer skip the rest of that line. Format on type and the indentation-only pass change nothing until the string can be read again.
 - The editor reads the whole file, however many errors it has. The compiler stops at 25 lexer errors, but the indentation-only pass and format on type still read every later line and every string in it.
@@ -239,6 +239,17 @@ def main():
     y = 2
     if y:
         print(y)
+```
+
+Here the `for` header spans two lines and the lexer cannot read the second one (`$):`), so the editor cannot tell what block the header opens. Format Document, Format Selection of line 4 and format on type on line 4 all apply **nothing**, and `print(i)` stays in the `for` block:
+
+<!-- editor-example: document, selection 4-4, on-type 4; unchanged -->
+```python
+def main():
+    for i in range(1,
+$):
+        print(i)
+    print(0)
 ```
 
 Format on type on line 3 of

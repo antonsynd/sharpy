@@ -67,9 +67,10 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
         // indentation — a bracket or backslash continuation line (or a comment line) is not re-indented. A line below a
         // bracket the lexer never saw closed, or a recovery line of unknown level, is refused by the check
         // (FormattingFallback.IndentOnlyPreserved clauses 7 and 6c), which every candidate here passes through: a
-        // refusal here as well would be inert (P22h mutation (d)).
+        // refusal here as well would be inert (P22h mutation (d)) — as a refusal of a document indented with other
+        // whitespace was (lead ruling L12 is the funnel's, FormattingEdits.CheckedIndentOnly; its twin here went red
+        // under no mutation at /verify-implementation and was removed).
         if (map.LiteralStateUnknown
-            || map.HasOtherWhitespace // lead ruling L12: a line indented with other whitespace has no level to give
             || map.LiteralLines.Contains(line + 1)
             || !map.LogicalLineStarts.Contains(line + 1))
             return Task.FromResult<TextEditContainer?>(null);

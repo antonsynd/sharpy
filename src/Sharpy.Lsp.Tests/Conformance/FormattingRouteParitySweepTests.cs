@@ -743,15 +743,17 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             null,
             shape.Shape,
             shape.Shape == FormatterTwins.RecoveryMisindentedShape ? CleanTwinOf(shape.Text, at) : null,
-            FormatterTwins.IsRecoveryHeaderShape(shape.Shape) ? PutativeBodyBelow(shape.Text, at) : null));
+            FormatterTwins.IsRecoveryHeaderShape(shape.Shape) ? PutativeBodyBelow(shape.Text, at, shape.InsertedCount) : null));
     }
 
     /// <summary>
     /// The putative body of the dropped header on the 0-based line <paramref name="header"/> (lead rulings L8, L11): every
     /// later non-blank line deeper than the header, in columns (<see cref="IndentationService.IndentColumns"/>), down to the
     /// first line at or above its width — the lines a <c>recovery-header-*</c> document's <c>moved</c> oracle holds in place.
+    /// A shallower line among the header's own <paramref name="injected"/> lines (the <c>$):</c> continuation of
+    /// <see cref="FormatterTwins.RecoveryHeaderContShape"/> at column 0) is part of the header, not the body's end.
     /// </summary>
-    internal static int[] PutativeBodyBelow(string text, int header)
+    internal static int[] PutativeBodyBelow(string text, int header, int injected = 1)
     {
         var lines = LineDiff.Split(text).Lines;
         var bound = IndentationService.IndentColumns(lines[header]);
@@ -761,7 +763,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             if (lines[l].Trim(' ', '\t').Length == 0)
                 continue;
             if (IndentationService.IndentColumns(lines[l]) <= bound)
+            {
+                if (l < header + injected)
+                    continue;
                 break;
+            }
             body.Add(l);
         }
 
@@ -2259,6 +2265,17 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         UnparseableBucketsOf(nested, nestedOnType, nested.Text).Should().BeEmpty();
         UnparseableBucketsOf(nested, nestedOnType, nested.Text.Replace("\n        _ = 0", "\n    _ = 0", StringComparison.Ordinal)).Should().Equal(new[] { Moved },
             "a line of the putative body that is not the target moved");
+
+        // A header spanning two lines, its colon on the dropped continuation at column 0 (/verify-implementation C1): the
+        // `$):` line is the header's, not the body's end, so the body below it is held — the wrong edit at 040c79ec2
+        // (the body levelled to the header's width on every route) fires moved.
+        var cont = docs.Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderContShape);
+        cont.Text.Should().Be("def main():\nfor _ in range(1,\n$):\n    q = 1\n    print(q)\n");
+        cont.Truth!.TargetLines.Should().Equal(3);
+        cont.Truth.UnmovedLines.Should().Equal(3, 4);
+        var contOnType = new CellRequest(OnType, null, 3);
+        UnparseableBucketsOf(cont, contOnType, cont.Text).Should().BeEmpty();
+        UnparseableBucketsOf(cont, contOnType, cont.Text.Replace("\n    q = 1", "\nq = 1", StringComparison.Ordinal)).Should().Equal(Moved);
     }
 
     [Fact]

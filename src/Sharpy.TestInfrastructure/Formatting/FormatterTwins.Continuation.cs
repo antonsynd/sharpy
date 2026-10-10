@@ -9,8 +9,10 @@ namespace Sharpy.TestInfrastructure.Formatting;
 /// <see cref="Text"/> above it and line <c>l + 1</c> at or below it — and whether the injected line sits at the
 /// block OPENER's width (<see cref="AtOpenerWidth"/>; at the body's width otherwise). The line after the injected one
 /// is Q's first body line of its first block (re-indented by <c>recovery-misindented</c>; untouched otherwise).
+/// <see cref="DroppedOffset"/>: which injected line the lexer drops (0-based from <see cref="InsertedAt"/>) — the last
+/// one for a header that spans lines (<see cref="FormatterTwins.RecoveryHeaderContShape"/>), the first otherwise.
 /// </summary>
-public sealed record ContinuationShape(string Shape, string Text, int InsertedAt, bool AtOpenerWidth, int InsertedCount = 1, int? SecondTarget = null)
+public sealed record ContinuationShape(string Shape, string Text, int InsertedAt, bool AtOpenerWidth, int InsertedCount = 1, int? SecondTarget = null, int DroppedOffset = 0)
 {
     /// <summary>The 0-based line of <see cref="Text"/> that holds Q's 0-based <paramref name="qLine"/>: <see cref="InsertedCount"/> lines are injected at <see cref="InsertedAt"/>.</summary>
     public int DocLineOf(int qLine) => qLine < InsertedAt ? qLine : qLine + InsertedCount;
@@ -81,6 +83,15 @@ public static partial class FormatterTwins
     /// </summary>
     public const string RecoveryHeaderSiblingShape = RecoveryHeaderPrefix + "sibling";
 
+    /// <summary>
+    /// A header spanning two lines whose colon is on the dropped CONTINUATION line, where the lexer read no token
+    /// (/verify-implementation of plan-f92797, cell C1): <c>for _ in range(1,</c> at the opener's width, <c>$):</c> at
+    /// column 0, Q's first body line 4 deeper than the header. The dropped physical line is the logical line's
+    /// continuation, not a dropped line of its own — read as one, the body below was levelled out of its block on every
+    /// route (base refused). Judged by <c>moved</c> over the putative body; the <c>$):</c> line itself is held by no oracle.
+    /// </summary>
+    public const string RecoveryHeaderContShape = RecoveryHeaderPrefix + "cont";
+
     /// <summary>Whether <paramref name="shape"/> is a <c>recovery-header-*</c> shape (<see cref="RecoveryHeaderPrefix"/>).</summary>
     public static bool IsRecoveryHeaderShape(string shape) => shape.StartsWith(RecoveryHeaderPrefix, StringComparison.Ordinal);
 
@@ -112,6 +123,7 @@ public static partial class FormatterTwins
         BracketEofShape, BracketStringShape, BracketBacktickShape, BracketDroppedShape, RecoveryShape, RecoveryMisindentedShape,
         RecoveryHeaderPrefix + "2", RecoveryHeaderPrefix + "4", RecoveryHeaderPrefix + "6", RecoveryHeaderPrefix + "tab",
         RecoveryHeaderPrefix + "string", RecoveryHeaderPrefix + "backtick", RecoveryHeaderNestedShape, RecoveryHeaderSiblingShape,
+        RecoveryHeaderContShape,
     };
 
     /// <summary>The spaces <see cref="RecoveryMisindentedShape"/> adds to the line after its injected line: a width on no level of a 4- or 8-space document.</summary>
@@ -166,6 +178,12 @@ public static partial class FormatterTwins
         shapes.Add(new ContinuationShape(RecoveryHeaderNestedShape,
             nested.Insert(injectAt, openerIndent + "if _($):" + lineBreak + openerIndent + "    if _($):" + lineBreak + openerIndent + "        _ = 0" + lineBreak),
             body, AtOpenerWidth: true, InsertedCount: 3));
+
+        // A header spanning two lines, the colon on the dropped continuation line at column 0 (C1): the body 4 deeper
+        // than the header (the width the lexer would give its block).
+        shapes.Add(new ContinuationShape(RecoveryHeaderContShape,
+            nested.Insert(injectAt, openerIndent + "for _ in range(1," + lineBreak + "$):" + lineBreak),
+            body, AtOpenerWidth: true, InsertedCount: 2, DroppedOffset: 1));
 
         return shapes;
     }

@@ -1191,9 +1191,9 @@ public class LiteralStateTests
                         continue;
                     }
 
-                    var resume = LineStart(shape.Text, shape.InsertedAt + 1);
+                    var resume = LineStart(shape.Text, shape.InsertedAt + 1 + shape.DroppedOffset);
                     if (!lexer.RecoveryResumes.Contains(resume))
-                        failures.Add($"{where}: no recovery resumes at the line after the injected one (offset {resume}; resumes {string.Join(", ", lexer.RecoveryResumes)})");
+                        failures.Add($"{where}: no recovery resumes at the line after the dropped injected one (offset {resume}; resumes {string.Join(", ", lexer.RecoveryResumes)})");
                     else if (lexer.RecoveryResumesAfterAContinuedLine.Contains(resume))
                         failures.Add($"{where}: the injected line ends its statement, yet its recovery point is a continued one");
                     if (lexer.BracketLeftOpenAtLine is { } line)

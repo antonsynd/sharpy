@@ -1147,8 +1147,9 @@ public sealed class FormattingFallbackTests : IDisposable
         { "A7", A7, "full", WithLine(WithLine(A7, 2, "    2)"), 3, "    y = 1") },
         { "A7", A7, "ontype 2", WithLine(A7, 2, "    2)") },
         { "A7", A7, "ontype 3", WithLine(A7, 3, "    y = 1") },
-        // A9: no edits @ ac3235c2a, unchanged (the backslash arm's lost repair; ledger, plan Phase 4).
-        { "A9", A9, "full", WithLine(WithLine(A9, 2, "    2"), 3, "    z = 1") },
+        // A9 on-type 2: the backslash continuation `2` (dropped whole by SPY0013 after the continued recovery) is the
+        // dropped statement's continuation, not a logical start — the route refuses it as one (the check would align
+        // it to the block's level, as it aligns any continuation). A9 full now repairs: see RepairCells.
         { "A9", A9, "ontype 2", WithLine(A9, 2, "    2") },
         // A11: @ ac3235c2a full moved `def m` and `pass` to column 0 (wrong edit → no edit).
         { "A11", A11, "full", "x = (\nclass Foo:\ndef m(self):\npass\n" },
@@ -1193,7 +1194,22 @@ public sealed class FormattingFallbackTests : IDisposable
     {
         RouteEdits(document, route).Should().BeEmpty("{0} {1}", name, route);
         candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
+        if (RefusedAsAContinuationLine(document, route))
+            return;
         FormattingFallback.IndentOnlyPreserved(document, candidate).Should().BeFalse("{0} {1}: the check refuses the candidate", name, route);
+    }
+
+    /// <summary>
+    /// Whether a line route's refusal is the handler's own rule — the requested line is not a logical-line start (a
+    /// bracket or backslash continuation, or the dropped continuation of a partially read line) — rather than the check's:
+    /// the check aligns a continuation line to its block's level like any other, so it is not what refuses the cell.
+    /// </summary>
+    private static bool RefusedAsAContinuationLine(string document, string route)
+    {
+        if (route is "full" or "range-whole")
+            return false;
+        var line = int.Parse(route.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture);
+        return !IndentationService.BuildIndentMap(document).LogicalLineStarts.Contains(line + 1);
     }
 
     /// <summary>
@@ -1215,6 +1231,12 @@ public sealed class FormattingFallbackTests : IDisposable
         { "A6b", A6b, "full", WithLine(A6b, 3, "    y = 1") },
         { "A6b", A6b, "ontype 3", WithLine(A6b, 3, "    y = 1") },
         { "A9", A9, "ontype 3", WithLine(A9, 3, "    z = 1") },
+        // A9 full (/verify-implementation of plan-f92797): the backslash continuation `2`, dropped whole by SPY0013 after
+        // the continued recovery, is the dropped statement's continuation (the map keys the dropped physical line of a
+        // partially read logical line to that line's start) — aligned to the block's level like any continuation — and
+        // `z = 1` is repaired into main's body. No edit at 4562b1d01 and at 040c79ec2 (the plan's ledgered lost repair) →
+        // repair; no statement changes block.
+        { "A9", A9, "full", WithLine(WithLine(A9, 2, "    2"), 3, "    z = 1") },
         { "W1", W1, "full", "def main():\n    _ = $\n    y = 1\n    print(x)\n" },
         // A8q on-type 1: the unrelated line alone is repaired (the recovery line is not in the candidate).
         { "A8q", A8q, "ontype 1", WithLine(A8q, 1, "    q = 1") },
@@ -1564,6 +1586,18 @@ public sealed class FormattingFallbackTests : IDisposable
         ["1a if x: $"] = "def main():\n    if x: $\n      y = 1\n",
         ["1a wide"] = "def main():\n        if foo($):\n          y = 1\n",
         ["1b"] = "def main():\n    if foo($):\n\t\ty = 1\n    z = 2\n",
+        // /verify-implementation of plan-f92797 (C1, C2): a header spanning two lines whose colon is on the dropped
+        // CONTINUATION line, where the lexer read no token. The dropped physical line is the logical line's continuation
+        // (the recovery-line judgment keys on the logical line's start); read as a dropped line of its own, it popped the
+        // width stack and the body below was levelled out of its block on every route at 040c79ec2 (base: no edit).
+        ["C1 for header, colon on the dropped continuation at column 0"] = "def main():\n    for i in range(1,\n$):\n        print(i)\n    print(0)\n",
+        ["C1 while"] = "def main():\n    while foo(1,\n$):\n        print(1)\n    print(0)\n",
+        ["C1 CRLF"] = "def main():\r\n    for i in range(1,\r\n$):\r\n        print(i)\r\n    print(0)\r\n",
+        ["C1 wide"] = "def main():\n        for i in range(1,\n$):\n                print(i)\n        print(0)\n",
+        ["C2 if header, colon on the dropped backslash continuation"] = "def main():\n    if a and \\\n$:\n        print(1)\n    print(0)\n",
+        // The same header with `$):` at the opener's width and the body 2 deeper: 040c79ec2 "repaired" the body to 8 — a
+        // level guessed under a header the lexer could not read (base: no edit); the body is a putative body, unplaced.
+        ["C1 @4, body at 6"] = "def main():\n    for i in range(1,\n    $):\n      print(i)\n    print(0)\n",
         ["1b no header"] = "def main():\n    x = $\n\t\ty = 1\n    z = 2\n",
         ["1c"] = Verifier1c,
         ["1c abandoned"] = "def main():\n          q = 1\n        _ = foo($,\n        if q:\n            print(q)\n",
@@ -1656,7 +1690,11 @@ public sealed class FormattingFallbackTests : IDisposable
                 if (RangeCandidate(document, l) != document || (R5MovedLineText.ContainsKey(name) && l == 2))
                 {
                     data.Add(name, $"ontype {l}");
-                    data.Add(name, $"range-line {l}");
+                    // C1/C2's `$):` line (0-based 2) is the dropped statement's continuation: Format Selection aligns it
+                    // to its block's level as it aligns the token-bearing twin's `z, $):` — not a refused cell
+                    // (P22hVI_TheDroppedContinuationLine_IsAlignedLikeItsTokenBearingTwin).
+                    if (!(name.StartsWith("C1", StringComparison.Ordinal) || name.StartsWith("C2", StringComparison.Ordinal)) || l != 2)
+                        data.Add(name, $"range-line {l}");
                 }
             }
         }
@@ -1680,6 +1718,8 @@ public sealed class FormattingFallbackTests : IDisposable
             ? R2BaseFullText.GetValueOrDefault(name) ?? FormattingFallback.ReindentDocument(document)
             : RangeCandidate(document, int.Parse(route.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture)));
         candidate.Should().NotBe(document, "{0} {1}: the candidate is an edit", name, route);
+        if (RefusedAsAContinuationLine(document, route))
+            return; // C1/C2's `$):` line: the handler's rule, the check aligns a continuation
         if (IndentationService.BuildIndentMap(document).HasOtherWhitespace)
         {
             // Lead ruling L12: the refusal is the funnel's, for the whole document, before any per-line check.
@@ -1714,6 +1754,60 @@ public sealed class FormattingFallbackTests : IDisposable
         IndentationService.HasOtherLeadingWhitespace("\f  y").Should().BeTrue();
         IndentationService.HasOtherLeadingWhitespace("  \u00a0y").Should().BeTrue();
         IndentationService.HasOtherLeadingWhitespace(" \t y").Should().BeFalse();
+    }
+
+    /// <summary>
+    /// The map's fact behind C1 (/verify-implementation of plan-f92797): the dropped physical line of a partially read
+    /// logical line is that line's continuation even when the lexer read no token on it, so the recovery line below finds
+    /// the dropped line by the logical line's START and its body is unplaced — the same facts as the token-bearing twin
+    /// (<c>z, $):</c>, which 040c79ec2 already refused). Controls: a token-less line dropped WHOLE (SPY0013) after a
+    /// completed logical line is still a logical start of its own; the dropped continuation on the source's last line,
+    /// with no break after it, is still the continuation.
+    /// </summary>
+    /// <summary>
+    /// The routes treat C1's token-less dropped continuation exactly as the token-bearing twin's (<c>z, $):</c>, refused
+    /// at 040c79ec2 already): full refuses the whole candidate (the body below is unplaced, clause 6c); on-type refuses
+    /// the <c>$):</c> line (not a logical start); Format Selection on that line aligns it to its block's level, as it
+    /// aligns any continuation — no statement changes block. The parity is the point: the body is held because the
+    /// dropped line is read as the statement's continuation, not because of what the lexer happened to read on it.
+    /// </summary>
+    [Fact]
+    public void P22hVI_TheDroppedContinuationLine_IsAlignedLikeItsTokenBearingTwin()
+    {
+        var c1 = R2NoEditDocuments["C1 for header, colon on the dropped continuation at column 0"];
+        const string twin = "def main():\n    for i in range(1,\nz, $):\n        print(i)\n    print(0)\n";
+        foreach (var (name, document, aligned) in new[] { ("C1", c1, "    $):"), ("twin", twin, "    z, $):") })
+        {
+            RouteEdits(document, "full").Should().BeEmpty("{0} full: the body below the header is unplaced", name);
+            RouteEdits(document, "range-whole").Should().BeEmpty("{0} range-whole", name);
+            RouteEdits(document, "ontype 2").Should().BeEmpty("{0} on-type 2: not a logical start", name);
+            RouteEdits(document, "ontype 3").Should().BeEmpty("{0} on-type 3: unplaced", name);
+            RouteEdits(document, "range-line 3").Should().BeEmpty("{0} range-line 3: unplaced", name);
+            RouteCell(document, "range-line 2").Applied.Should().Be(WithLine(document, 2, aligned), "{0} range-line 2: a continuation aligned to its block's level", name);
+        }
+    }
+
+    [Fact]
+    public void P22hVI_ADroppedContinuationLineWithNoToken_IsItsLogicalLinesContinuation()
+    {
+        var c1 = IndentationService.BuildIndentMap(R2NoEditDocuments["C1 for header, colon on the dropped continuation at column 0"]);
+        c1.LogicalLineStarts.Should().BeEquivalentTo(new[] { 1, 2, 4, 5 }, "`$):` continues `for i in range(1,`");
+        c1.RecoveryLines.Should().ContainKey(4).WhoseValue.Should().Be(new RecoveryLine(2, 4, PossibleHeader: true));
+        c1.UnplacedLines.Should().BeEquivalentTo(new[] { 2, 4 });
+        c1.LineIndent[3].Should().Be(1, "a continuation line takes its block's level");
+
+        var twin = IndentationService.BuildIndentMap("def main():\n    for i in range(1,\nz, $):\n        print(i)\n    print(0)\n");
+        twin.LogicalLineStarts.Should().BeEquivalentTo(c1.LogicalLineStarts);
+        twin.RecoveryLines.Should().BeEquivalentTo(c1.RecoveryLines);
+        twin.UnplacedLines.Should().BeEquivalentTo(c1.UnplacedLines);
+
+        var c2 = IndentationService.BuildIndentMap(R2NoEditDocuments["C2 if header, colon on the dropped backslash continuation"]);
+        c2.LogicalLineStarts.Should().BeEquivalentTo(new[] { 1, 2, 4, 5 });
+        c2.UnplacedLines.Should().BeEquivalentTo(new[] { 2, 4 });
+
+        IndentationService.BuildIndentMap("def main():\n    x = 1\n      y = 1\n").LogicalLineStarts.Should().Contain(3, "a line dropped whole starts a logical line");
+        IndentationService.BuildIndentMap("def main():\n    for i in range(1,\n$):").LogicalLineStarts.Should().BeEquivalentTo(new[] { 1, 2 },
+            "the dropped continuation on the last line, with no break after it");
     }
 
     [Fact]

@@ -67,7 +67,10 @@ internal static class IndentationService
         // the lexer: INDENT/DEDENT are emitted exactly where the width stack pushes and pops.
         // The lexer's lines: \r\n, \n and a lone \r each end one (LineDiff.Split, #2168), so sourceLines[line - 1]
         // is the line a token's 1-based Line names.
-        var sourceLines = LineDiff.Split(source).Lines;
+        var (sourceLines, sourceBreaks) = LineDiff.Split(source);
+        var lineStarts = new int[sourceLines.Count + 1]; // lineStarts[l] is the offset of 1-based line l; [0] unused
+        for (var l = 1; l < sourceLines.Count; l++)
+            lineStarts[l + 1] = lineStarts[l] + sourceLines[l - 1].Length + sourceBreaks[l - 1].Length;
         var logicalStart = new Dictionary<int, bool>();
         var opensBlock = new Dictionary<int, bool>(); // keyed by the logical line's first line
         var resumes = lexer.RecoveryResumes;
@@ -77,6 +80,25 @@ internal static class IndentationService
         var atLogicalLineStart = true;
         var currentStart = 0;
         Token? previous = null;
+
+        // A resume that does not continue the dropped line, reached while a logical line is being read: that logical
+        // line was partially read. Its dropped physical line — the one the resume follows — is the logical line's
+        // continuation even when the lexer read no token on it (`for i in range(1,` / `$):`: the abort is the line's
+        // first token), so the width loop below must not take it for a dropped line of its own; keyed by the START of the
+        // logical line, the recovery-line judgment then finds `partiallyRead` at the line after it (the /verify-implementation
+        // round's C1: with the dropped line read as its own logical start, the body below was levelled out of its block).
+        void NotePartiallyRead(int resumePosition)
+        {
+            if (atLogicalLineStart || currentStart <= 0)
+                return;
+            partiallyRead.Add(currentStart);
+            if (lexer.RecoveryResumesAfterAPossibleHeader.Contains(resumePosition))
+                possibleHeaders.Add(currentStart);
+            var dropped = LineOf(lineStarts, Math.Max(0, resumePosition - 1));
+            if (dropped > currentStart && !logicalStart.ContainsKey(dropped))
+                logicalStart[dropped] = false;
+        }
+
         foreach (var token in tokens)
         {
             switch (token.Type)
@@ -88,13 +110,14 @@ internal static class IndentationService
                     break;
                 case TokenType.Eof:
                     // A dropped line with no token after it (A8: the line after it is dropped whole) is still partially read.
+                    // Each non-continued resume ends the logical line being read, as in the token arm below: the next
+                    // resume (A8's whole-dropped line) is then no partial read of the SAME line.
                     for (; resume < resumes.Count && resumes[resume] <= token.Position; resume++)
                     {
-                        if (!lexer.RecoveryResumesAfterAContinuedLine.Contains(resumes[resume]) && !atLogicalLineStart && currentStart > 0)
+                        if (!lexer.RecoveryResumesAfterAContinuedLine.Contains(resumes[resume]))
                         {
-                            partiallyRead.Add(currentStart);
-                            if (lexer.RecoveryResumesAfterAPossibleHeader.Contains(resumes[resume]))
-                                possibleHeaders.Add(currentStart);
+                            NotePartiallyRead(resumes[resume]);
+                            atLogicalLineStart = true;
                         }
                     }
                     break;
@@ -109,12 +132,7 @@ internal static class IndentationService
                     {
                         if (!lexer.RecoveryResumesAfterAContinuedLine.Contains(resumes[resume]))
                         {
-                            if (!atLogicalLineStart && currentStart > 0)
-                            {
-                                partiallyRead.Add(currentStart);
-                                if (lexer.RecoveryResumesAfterAPossibleHeader.Contains(resumes[resume]))
-                                    possibleHeaders.Add(currentStart);
-                            }
+                            NotePartiallyRead(resumes[resume]);
                             atLogicalLineStart = true;
                         }
                     }
@@ -244,6 +262,28 @@ internal static class IndentationService
         }
 
         return columns;
+    }
+
+    /// <summary>
+    /// The 1-based line holding the character at <paramref name="position"/>, given <paramref name="lineStarts"/>
+    /// (<c>lineStarts[l]</c> the offset of line <c>l</c>, index 0 unused): the last line that starts at or before it, so a
+    /// line's own break belongs to it and a recovery's resume (the start of the line after the dropped one) minus one lands
+    /// on the dropped line whether or not that line was the source's last.
+    /// </summary>
+    private static int LineOf(int[] lineStarts, int position)
+    {
+        var lo = 1;
+        var hi = lineStarts.Length - 1;
+        while (lo < hi)
+        {
+            var mid = (lo + hi + 1) / 2;
+            if (lineStarts[mid] <= position)
+                lo = mid;
+            else
+                hi = mid - 1;
+        }
+
+        return lo;
     }
 
     /// <summary>
