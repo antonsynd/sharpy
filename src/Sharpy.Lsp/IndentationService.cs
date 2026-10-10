@@ -171,7 +171,7 @@ internal static class IndentationService
             else
             {
                 var trimmed = sourceLines[line - 1].Trim(' ', '\t');
-                if (trimmed.Length == 0 || trimmed[0] == '#' || literalLines.Contains(line))
+                if (trimmed.Length == 0 || IsCommentOnlyLine(sourceLines[line - 1]) || literalLines.Contains(line))
                     continue;
                 startsLogicalLine = true; // a code line the lexer's error recovery dropped
                 var hash = trimmed.IndexOf('#', StringComparison.Ordinal);
@@ -262,6 +262,18 @@ internal static class IndentationService
         }
 
         return columns;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="line"/> is a comment-only line: its first character after leading spaces and tabs is
+    /// <c>#</c> — the lexer's own test at line start (<c>Lexer.Indentation</c>), which reads such a line as trivia: no
+    /// INDENT/DEDENT, no indentation diagnostic, no token. The width loop of <see cref="BuildIndentMap"/> reads it here, so
+    /// the map and every reader of comment-only lines share one spelling (R-GD, #2290).
+    /// </summary>
+    internal static bool IsCommentOnlyLine(string line)
+    {
+        var trimmed = line.TrimStart(' ', '\t');
+        return trimmed.Length > 0 && trimmed[0] == '#';
     }
 
     /// <summary>

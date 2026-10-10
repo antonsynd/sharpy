@@ -28,6 +28,11 @@
 #   moved        S7 recovery-header-* (lead ruling L8): the line after the injected `if _($):` is not byte-identical in
 #                T — its level is unknown (the dropped header may open a block Q lacks), so no route may move it; a moved
 #                row is a finding, never a row (judged instead of depth on those documents)
+#   comment      a comment-only line of D (first character after spaces and tabs `#`) that does not start inside a
+#                literal in Q is not byte-identical in T: a comment line is trivia to the lexer, so no indent-only route
+#                rewrites its leading whitespace (R-GD, issue 2290). P22i Phase 1 (plan-ee5544) counts its cells against a
+#                pinned census count (CommentPendingPin) while red — the loader refuses a comment row until Phase 2
+#                drains the count and deletes the pin
 # The S6 family (P22f, P22g) loses a literal WITHOUT a lexer abort inside its read, every document derived from Q by
 # FormatterTwins.LiteralLossShapes; the label (FormattingRouteParitySweepTests.LossState) fixes the cite:
 #   S6    the budget spent above a Q holding a multi-line literal (at any of FormatterTwins.BudgetStopLines), a stray

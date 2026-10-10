@@ -10,6 +10,7 @@ using Sharpy.Compiler;
 using Sharpy.Compiler.Formatting;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Text;
+using Sharpy.Lsp.Handlers;
 using Sharpy.TestInfrastructure.Formatting;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -69,8 +70,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// injected as the first body line of Q's first block (<see cref="FormatterTwins.ContinuationShapes"/>), judged by
 /// <c>depth</c> against Q's layout.
 /// Each gets <c>full</c>, <c>range-whole</c>, and <c>range-line</c>/<c>ontype</c> on its last line (S3,
-/// S4), on every line that starts inside a literal in Q (S5, S6), or on the line after the injection (S7); none of
-/// them is sampled.</para>
+/// S4), on every line that starts inside a literal in Q (S5, S6), or on the line after the injection (S7) — and on the
+/// first and last indented comment-only line (<see cref="CommentTargets"/>, P22i); none of them is sampled.</para>
 ///
 /// <para><b>Oracles (buckets)</b>, <c>D</c> the document and <c>T</c> the applied text:
 /// <list type="bullet">
@@ -91,7 +92,9 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// <c>content</c> — a line lost, gained, or changed beyond its leading whitespace, or its line break changed (an
 /// indent-only pass keeps each line's own break, byte-exact); <c>literal</c> — a line
 /// that starts inside a literal in Q is not identical; <c>depth</c> — a logical line's block depth in T,
-/// by the lexer's width rule, is not its depth in Q.</item>
+/// by the lexer's width rule, is not its depth in Q; <c>comment</c> — a comment-only line of D that does not start inside
+/// a literal in Q is not identical (P22i, R-GD, #2290: a comment line is trivia to the lexer, so no indent-only route
+/// rewrites its leading whitespace).</item>
 /// </list>
 /// <c>refusedWork</c> — a range cell with a non-empty <c>selected</c> whose T is D — is census, not a
 /// failure of its cell; its RATE per range kind (over the cells whose <c>selected</c> changes D) is pinned
@@ -274,7 +277,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal const string Moved = "moved";
     internal const string FactMissing = "factMissing";
     internal const string FactSpurious = "factSpurious";
-    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth, Moved, FactMissing, FactSpurious };
+
+    /// <summary>
+    /// A comment-only line of an unparseable D (<see cref="IndentationService.IsCommentOnlyLine"/>) that does not start inside a
+    /// literal in Q is not byte-identical in T (P22i, R-GD, #2290). Spelled <c>comment</c> in a row — after the twin, so
+    /// <c>stem comment range-line S7 comment</c> reads twin then bucket; the C# name differs from the twin's <see cref="Comment"/>.
+    /// </summary>
+    internal const string CommentLine = "comment";
+    internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth, Moved, CommentLine, FactMissing, FactSpurious };
 
     private readonly ITestOutputHelper _output;
     private readonly LspFormattingDriver _driver = new();
@@ -984,9 +994,32 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
     }
 
-    /// <summary>The lines <c>range-line</c> and <c>ontype</c> are requested on: an unparseable document's targets, else each non-blank line.</summary>
+    /// <summary>
+    /// The lines <c>range-line</c> and <c>ontype</c> are requested on: an unparseable document's targets and its
+    /// <see cref="CommentTargets"/>, else each non-blank line.
+    /// </summary>
     private static IEnumerable<int> LineTargets(SweepDocument d)
-        => d.Truth?.TargetLines ?? Enumerable.Range(0, d.Lines.Count).Where(l => !string.IsNullOrWhiteSpace(d.Lines[l]));
+        => d.Truth is { } truth
+            ? truth.TargetLines.Concat(CommentTargets(d, truth).Where(l => !truth.TargetLines.Contains(l)))
+            : Enumerable.Range(0, d.Lines.Count).Where(l => !string.IsNullOrWhiteSpace(d.Lines[l]));
+
+    /// <summary>
+    /// The comment-only lines of an unparseable document the line routes are also requested on (P22i, #2290): its first and
+    /// last INDENTED comment-only line (<see cref="IndentationService.IsCommentOnlyLine"/>) that does not start inside a
+    /// literal in Q — a target line is never a comment line, so without these the <c>comment</c> bucket could judge no
+    /// <c>range-line</c> on a comment (the full fallback's builder and the range fallback's are two). A column-0 comment
+    /// is at level 0 either way. Not on a <c>recovery-misindented</c> document: its D fails <c>depth</c> by construction
+    /// until the target line is repaired (<see cref="ParityExempt"/> judges only those cells).
+    /// </summary>
+    internal static IEnumerable<int> CommentTargets(SweepDocument d, GroundTruth truth)
+    {
+        if (truth.Shape == FormatterTwins.RecoveryMisindentedShape)
+            return Array.Empty<int>();
+        var comments = Enumerable.Range(0, d.Lines.Count)
+            .Where(l => IndentationService.IsCommentOnlyLine(d.Lines[l]) && d.Lines[l][0] is ' ' or '\t' && !truth.LiteralLines.Contains(l))
+            .ToList();
+        return comments.Count == 0 ? comments : new[] { comments[0], comments[^1] }.Distinct();
+    }
 
     private static LspRange R(int startLine, int startChar, int endLine, int endChar)
         => new(new Position(startLine, startChar), new Position(endLine, endChar));
@@ -1058,9 +1091,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// keeps its breaks);</item>
     /// <item><c>literal</c> — a line that starts inside a literal in Q is not identical;</item>
     /// <item><c>depth</c> — a line that starts a logical line in Q has another block depth in T
-    /// (<see cref="FirstDepthDifference"/>) than in Q.</item>
+    /// (<see cref="FirstDepthDifference"/>) than in Q;</item>
+    /// <item><c>comment</c> — a comment-only line of D (<see cref="IndentationService.IsCommentOnlyLine"/>: trivia to the
+    /// lexer) that does not start inside a literal in Q is not identical (R-GD, #2290). D's text chooses the lines — what
+    /// the routes read; Q's literal lines exclude string content, which is <c>literal</c>'s cell (S6k's re-pair).</item>
     /// </list>
-    /// <c>literal</c> and <c>depth</c> map lines by index, so they are judged only when the line count holds.
+    /// <c>literal</c>, <c>depth</c> and <c>comment</c> map lines by index, so they are judged only when the line count holds.
     /// The lexer's literal-loss fact is judged on every cell too (<see cref="FactOracles"/>).
     /// </summary>
     internal static CellVerdict UnparseableOracles(SweepDocument d, CellRequest request, string applied)
@@ -1084,6 +1120,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         else if (lineBreak >= 0)
             failures.Add((Content, $"{request}: line {lineBreak}'s line break: D {EscapeBreak(xBreaks[lineBreak])} vs T {EscapeBreak(tBreaks[lineBreak])}"));
 
+        // A comment-only line is trivia to the lexer, so no indent-only route rewrites its leading whitespace (R-GD, #2290).
+        bool IsComment(int i) => IndentationService.IsCommentOnlyLine(x[i]) && !truth.LiteralLines.Contains(i);
+        var comment = Enumerable.Range(0, x.Count).FirstOrDefault(i => IsComment(i) && x[i] != t[i], -1);
+        if (comment >= 0)
+            failures.Add((CommentLine, $"{request}: line {comment} is a comment-only line: D '{Clip(x[comment])}' vs T '{Clip(t[comment])}'"));
+
         // The comment re-pair (S6k) rewrites string content on a closer at column 0: a known limit no lexer fact can
         // see (#2274, R-FQ) — a pinned census count (KnownLimitPin), not a failure, so the allowlist trends to empty
         // while the shape stays measured. Its other buckets are judged.
@@ -1093,10 +1135,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             failures.Add((Literal, $"{request}: line {literal} starts inside a literal: D '{Clip(x[literal])}' vs T '{Clip(t[literal])}'"));
 
         // A recovery-header document (lead ruling L8): a dropped header claims a block Q does not have, so Q's layout
-        // cannot judge it — its target line, of unknown level, is byte-identical in T instead (moved).
+        // cannot judge it — its target line, of unknown level, is byte-identical in T instead (moved). A comment-only line of
+        // the putative body is comment's cell, not moved's (P22i: one defect, one bucket).
         if (truth.UnmovedLines is { } body)
         {
-            var unmoved = body.FirstOrDefault(l => x[l] != t[l], -1);
+            var unmoved = body.FirstOrDefault(l => x[l] != t[l] && !IsComment(l), -1);
             if (unmoved >= 0)
                 failures.Add((Moved, $"{request}: line {unmoved} below a dropped header moved: D '{Clip(x[unmoved])}' vs T '{Clip(t[unmoved])}'"));
         }
@@ -1383,6 +1426,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         /// <summary><c>recovery-misindented</c> cells exempt from <c>depth</c> by clean-twin parity (<see cref="ParityExempt"/>).</summary>
         public int ParityExempt;
+
+        /// <summary>Cells whose <c>comment</c> failure is counted against <see cref="CommentPendingPin"/> instead of failing.</summary>
+        public int CommentPending;
     }
 
     /// <summary>Everything the census reads from the theories that ran in this process.</summary>
@@ -1418,6 +1464,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 s_tallies.AddOrUpdate(KnownLimitTally(state, route), 1, (_, n) => n + 1);
                 s_tallies.AddOrUpdate(KnownLimitCellsTally(state, route), group.KnownLimit, (_, n) => n + group.KnownLimit);
                 _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} {KnownLimitBucket[state]} ({group.KnownLimit}/{group.Cells} cells, #2274)");
+            }
+
+            if (group.CommentPending > 0)
+            {
+                // One per (stem, twin, route) — the unit an allowlist row has — and the cells beside it.
+                s_tallies.AddOrUpdate(CommentPendingTally(twin, route), 1, (_, n) => n + 1);
+                s_tallies.AddOrUpdate(CommentPendingCellsTally(twin, route), group.CommentPending, (_, n) => n + group.CommentPending);
             }
 
             if (group.ParityExempt > 0)
@@ -1484,11 +1537,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             var exempt = ParityExempt(driver, item.Doc, item.Request, verdict, applied);
             if (exempt)
                 verdict.Failures.RemoveAll(f => f.Bucket == Depth);
+            var commentPending = CommentPendingPin.Count > 0 && verdict.Failures.RemoveAll(f => f.Bucket == CommentLine) > 0;
             lock (item.Group)
             {
                 item.Group.Cells++;
                 if (exempt)
                     item.Group.ParityExempt++;
+                if (commentPending)
+                    item.Group.CommentPending++;
                 if (verdict.Changed)
                     item.Group.Changed++;
                 if (verdict.RefusedWork)
@@ -1613,6 +1669,48 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string ParityExemptTally(string twin, string route) => $"s7-parity-exempt {twin} {route}";
 
+    private static string CommentPendingTally(string twin, string route) => $"comment-pending {twin} {route}";
+
+    private static string CommentPendingCellsTally(string twin, string route) => $"comment-pending-cells {twin} {route}";
+
+    /// <summary>
+    /// The <c>comment</c> bucket while it is red (P22i Phase 1, plan-ee5544; lead ruling L1's precedent, plan-f92797): per
+    /// (twin, route), the (stem, twin) pairs with an unparseable document whose cell of that route rewrites a comment-only
+    /// line's leading whitespace — every indent-only builder wrote such a line at level 0 (#2290). A row per pair would be
+    /// tens of thousands of rows, so while this table is non-empty a <c>comment</c> failure is counted here instead of
+    /// failing its stem, and the loader refuses a <c>comment</c> row. EXACT, not a ceiling; S3–S7 cells are never sampled,
+    /// so the regular suite counts the same cells as FULL mode, and the count is asserted only when every twin's theory
+    /// ran over every stem in this process. P22i Phase 2 drains it to zero and DELETES the table, the tally and the
+    /// loader refusal: <c>comment</c> then rides the row ratchet with 0 rows. Measured @ 53ee2d993 + Phase 1 (regular mode,
+    /// <c>.claude/tmp/p22i-impl/census-p1-red3.txt</c>); the cells beside the pairs: 4,710 full and range-whole and 17,884
+    /// range-line per non-comment twin (17,886 wide), 46,178 and 110,626 on the comment twin. On-type moves no comment line:
+    /// it re-indents only a logical line's first line.
+    /// </summary>
+    internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> CommentPendingPin =
+        new SCG.Dictionary<(string Twin, string Route), int>
+        {
+            [(Identity, Full)] = 1472,
+            [(Identity, RangeWhole)] = 1472,
+            [(Identity, RangeLine)] = 1473,
+            [(Identity, OnType)] = 0,
+            [(Comment, Full)] = 8893,
+            [(Comment, RangeWhole)] = 8893,
+            [(Comment, RangeLine)] = 8911,
+            [(Comment, OnType)] = 0,
+            [(Wide, Full)] = 1472,
+            [(Wide, RangeWhole)] = 1472,
+            [(Wide, RangeLine)] = 1473,
+            [(Wide, OnType)] = 0,
+            [(Crlf, Full)] = 1472,
+            [(Crlf, RangeWhole)] = 1472,
+            [(Crlf, RangeLine)] = 1473,
+            [(Crlf, OnType)] = 0,
+            [(Cr, Full)] = 1472,
+            [(Cr, RangeWhole)] = 1472,
+            [(Cr, RangeLine)] = 1473,
+            [(Cr, OnType)] = 0,
+        };
+
     /// <summary>The bucket each known-limit state counts against <see cref="KnownLimitPin"/> instead of failing it.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string> KnownLimitBucket = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -1684,7 +1782,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>
     /// The cells behind <see cref="KnownLimitPin"/>, pinned EXACTLY beside it: the pair count cannot see a tail move
     /// between states when the remaining tails fail on the same (stem, twin) pairs, the cell count can (one S6ok tail
-    /// relabelled S6o leaves 54 pairs per route and drops 162 cells to 108). Measured with the pair counts.
+    /// relabelled S6o leaves 54 pairs per route and drops 162 cells to 108). Measured with the pair counts. P22i Phase 1
+    /// (plan-ee5544) requests the line routes on comment-only lines too (<see cref="CommentTargets"/>): 36 more S6ok
+    /// <c>range-line</c> and <c>ontype</c> cells on the same 54 pairs (the spurious fact is the document's), 162 → 198.
     /// </summary>
     internal static readonly SCG.IReadOnlyDictionary<(string State, string Route), int> KnownLimitCellsPin = new SCG.Dictionary<(string State, string Route), int>
     {
@@ -1694,8 +1794,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         [(S6k, OnType)] = 10,
         [(S6ok, Full)] = 162,
         [(S6ok, RangeWhole)] = 162,
-        [(S6ok, RangeLine)] = 162,
-        [(S6ok, OnType)] = 162,
+        [(S6ok, RangeLine)] = 198,
+        [(S6ok, OnType)] = 198,
     };
 
     /// <summary>
@@ -1770,6 +1870,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — `cli` and `full` on a parseable document apply "
                     + "Format's checked output whole; a failure there is a finding outside P22e's cure, never a row.");
+            }
+
+            if (fields[4] == CommentLine && CommentPendingPin.Count > 0)
+            {
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — while P22i drains the comment bucket its cells "
+                    + "are a pinned count (CommentPendingPin, #2290), never rows.");
             }
 
             if (!Regex.IsMatch(cite, @"^#\d+\b"))
@@ -2054,6 +2160,69 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         var cell19 = D19.Replace("        key: value", "    key: value");
         UnparseableBucketsOf(d19, new CellRequest(Full, null, 0), cell19).Should().Equal(Literal);
         UnparseableBucketsOf(d19, new CellRequest(Full, null, 0), D19).Should().BeEmpty();
+    }
+
+    /// <summary>The comment bucket's S3 parent: a comment-only line in <c>main</c>'s body above a block opener; its cut after <c>if a == 1:</c> is <see cref="DC"/>.</summary>
+    private const string QC = "def main():\n    a = 1\n    # c1\n    if a == 1:\n        print(a)\n";
+    private const string DC = "def main():\n    a = 1\n    # c1\n    if a == 1:\n";
+
+    /// <summary><see cref="Q19"/> with a comment-looking line as <c>g</c>'s string content: in D19's twin it lexes as a comment, in Q it is string content.</summary>
+    private const string Q19C = "def f() -> int:\n    return 1\ndef g() -> str:\n    s = \"\"\"\n        # key\n    \"\"\"\n    return s\n";
+
+    /// <summary>#2290's misindent control (C3): <c>f</c>'s body at 6 spaces, a comment in <c>main</c>'s body; its clean twin has the body at 4.</summary>
+    private const string C3 = "def f():\n      y = 1\n\ndef main():\n    # c1\n    b = 1\n";
+
+    /// <summary>
+    /// <c>comment</c> (P22i, R-GD, #2290): the S3 cut <see cref="DC"/> with <c># c1</c> dedented to column 0 fails <c>comment</c> and
+    /// nothing else; D itself fails nothing; <c>a = 1</c> re-indented to 8 is <c>depth</c>'s cell, never <c>comment</c>'s (the
+    /// axis control). The literal exclusion: D19's twin of <see cref="Q19C"/>, whose <c># key</c> line lexes as a comment in D
+    /// but starts inside a literal in Q — re-indented, it is <c>literal</c>, never <c>comment</c>. By direction: #2290's
+    /// misindent control C3 (unparseable: SPY0013 at 6 spaces; truth from its clean twin) — the full fallback's own text
+    /// repairs <c>y</c> and is flagged <c>comment</c> exactly when it moves <c># c1</c>.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_Comment_SeesADedentedCommentLine()
+    {
+        var d = Generated(QC, DC, S3);
+        CommentTargets(d, d.Truth!).Should().Equal(new[] { 2 }, "the line routes are requested on the comment line too");
+        Cells(d).Where(c => c.Route == RangeLine).Select(c => c.Line).Should().Equal(3, 2);
+        var full = new CellRequest(Full, null, 0);
+        UnparseableBucketsOf(d, full, DC.Replace("    # c1", "# c1", StringComparison.Ordinal)).Should().Equal(CommentLine);
+        UnparseableBucketsOf(d, new CellRequest(RangeLine, new LspRange(new Position(2, 0), new Position(2, 8)), 2),
+            DC.Replace("    # c1", "# c1", StringComparison.Ordinal)).Should().Equal(CommentLine);
+        UnparseableBucketsOf(d, full, DC).Should().BeEmpty();
+        UnparseableBucketsOf(d, full, DC.Replace("    a = 1", "        a = 1", StringComparison.Ordinal)).Should().NotContain(CommentLine)
+            .And.Contain(Depth);
+
+        var q19c = Doc(Q19C).Facts!;
+        var d19c = Inserted(Q19C, q19c, 1, "    \"\"\"", S5, null);
+        d19c.Ast.Should().BeNull();
+        IndentationService.IsCommentOnlyLine(d19c.Lines[5]).Should().BeTrue("the string line reads as a comment in D");
+        d19c.Truth!.LiteralLines.Should().Contain(5);
+        UnparseableBucketsOf(d19c, full, d19c.Text.Replace("        # key", "    # key", StringComparison.Ordinal)).Should().Equal(Literal);
+
+        var clean = C3.Replace("      y = 1", "    y = 1", StringComparison.Ordinal);
+        var facts = Doc(clean).Facts!;
+        var c3 = new SweepDocument(C3, S7, new GroundTruth(facts.InsideLines, facts.LogicalStarts, new[] { 4 }, null));
+        Parse(C3).Module.Should().BeNull("C3 must not parse");
+        var repairedKept = C3.Replace("      y = 1", "    y = 1", StringComparison.Ordinal);
+        UnparseableBucketsOf(c3, full, repairedKept).Should().BeEmpty();
+        UnparseableBucketsOf(c3, full, repairedKept.Replace("    # c1", "# c1", StringComparison.Ordinal)).Should().Equal(CommentLine);
+        // A comment line in the putative body below a dropped header (the verifier's C16): its level is unknown, and its
+        // dedent is comment's cell, not moved's — one defect, one bucket; the line routes are requested on it.
+        const string commented = "def main():\n    q = 1\n    # c\n    print(q)\n";
+        var header = UnparseableDocuments(commented, Doc(commented).Facts!).Single(g => g.Truth?.Shape == FormatterTwins.RecoveryHeaderPrefix + "2");
+        var at = header.Lines.ToList().FindIndex(IndentationService.IsCommentOnlyLine);
+        header.Truth!.UnmovedLines.Should().Contain(at);
+        CommentTargets(header, header.Truth).Should().Equal(at);
+        var lines = header.Lines.ToArray();
+        lines[at] = lines[at].TrimStart(' ');
+        UnparseableBucketsOf(header, new CellRequest(RangeLine, R(at, 0, at, header.Lines[at].Length), at), string.Join("\n", lines))
+            .Should().Equal(CommentLine);
+
+        var fallback = FormattingFallback.ReindentDocument(C3);
+        fallback.Should().Contain("\n    y = 1\n", "the fallback repairs the misindented body");
+        UnparseableBucketsOf(c3, full, fallback).Should().Equal(new[] { CommentLine }, "@ 53ee2d993 the fallback writes # c1 at column 0 (#2290)");
     }
 
     /// <summary>
@@ -2575,9 +2744,22 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 + $"pin={S7ParityExemptPin.GetValueOrDefault((twin, route))}");
         }
 
+        var commentKeys = Twins.SelectMany(t => RoutesByState[S3].Select(r => (Twin: t, Route: r))).ToList();
+        foreach (var (twin, route) in commentKeys)
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS comment-pending {twin} {route}={tallies.GetValueOrDefault(CommentPendingTally(twin, route))} "
+                + $"(cells: {tallies.GetValueOrDefault(CommentPendingCellsTally(twin, route))}) pin={CommentPendingPin.GetValueOrDefault((twin, route))}");
+        }
+
         var everyTwinRan = Twins.Where(t => s_stemsRun.GetValueOrDefault(t) != corpus.Corpus.Count).ToList();
         if (measured && everyTwinRan.Count == 0)
         {
+            foreach (var (twin, route) in commentKeys)
+            {
+                tallies.GetValueOrDefault(CommentPendingTally(twin, route)).Should().Be(CommentPendingPin[(twin, route)],
+                    $"the {twin} {route} comment-bucket count is pinned while P22i drains it (CommentPendingPin, #2290): a shrink is a cell the cure reached, a growth a new comment-placement mechanism — change the pin and say which");
+            }
+
             foreach (var state in KnownLimitBucket.Keys)
             {
                 foreach (var route in RoutesByState[state])
@@ -2597,7 +2779,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
         else
         {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit and s7-parity pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
+            _output.WriteLine($"FMTROUTE-CENSUS known-limit, s7-parity and comment-pending pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
         }
 
         // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). P22f Phase 1 Task 4
