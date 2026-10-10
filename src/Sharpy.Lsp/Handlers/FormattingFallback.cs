@@ -19,7 +19,9 @@ internal static class FormattingFallback
     /// line break (<see cref="LineDiff.Split"/> — <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as the lexer and the
     /// client count lines), so a CRLF document stays CRLF (#2168). A line a bracket the lexer never saw closed freezes
     /// (<see cref="IndentMap.FrozenFrom"/>, R-FU, #2279; the opener line too while its tail holds text, L9) is returned
-    /// verbatim, whitespace-only lines included. Returns the formatted text; equal to the input if no changes are needed.
+    /// verbatim, whitespace-only lines included. So is a comment-only line (<see cref="IndentMap.CommentLines"/>: trivia to the
+    /// lexer, which has no level for it — R-GD, #2290), even when the code around it is re-indented. Returns the formatted
+    /// text; equal to the input if no changes are needed.
     /// </summary>
     internal static string ReindentDocument(string text)
     {
@@ -50,6 +52,10 @@ internal static class FormattingFallback
 
             // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
             if (map.IsFrozenByOpenBracket(number))
+                return line;
+
+            // A comment-only line is trivia to the lexer: written as the user wrote it (R-GD, #2290).
+            if (map.CommentLines.Contains(number))
                 return line;
 
             var trimmed = line.TrimStart(' ', '\t');
@@ -105,6 +111,9 @@ internal static class FormattingFallback
     /// frozen tail keeps its width — was retired with L9: once the opener is frozen and judged by 6b, re-indenting the
     /// lines above it either moves the opener off its level or pushes it after a line that opens no block; removing 7b
     /// left every test and the route-parity sweep green, P22h R2 mutation (i).)</item>
+    /// <item>(8, P22i, R-GD, #2290) every comment-only line (<see cref="IndentMap.CommentLines"/>) byte-identical: trivia to the
+    /// lexer, which reads no level from it — the builders return it verbatim, and a builder that forgets is refused here. A
+    /// comment in a putative body is held by this clause alone: the width loop skips it before 6c's set is built.</item>
     /// </list>
     /// Lines are the client's and the lexer's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone
     /// <c>\r</c>), so the text judged is the text the client applies (#2168).
@@ -134,6 +143,13 @@ internal static class FormattingFallback
 
         // Clause 6c: no line whose level is unknown below a dropped line changes (lead rulings L6, L8, L11).
         foreach (var line in before.UnplacedLines)
+        {
+            if (!string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal))
+                return false;
+        }
+
+        // Clause 8: no comment-only line changes — trivia to the lexer (R-GD, #2290).
+        foreach (var line in before.CommentLines)
         {
             if (!string.Equals(sourceLines[line - 1], appliedLines[line - 1], StringComparison.Ordinal))
                 return false;

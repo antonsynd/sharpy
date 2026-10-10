@@ -64,7 +64,8 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
         // P22e decision 6 (#2168), all 1-based for the map: when the lexer lost a literal that can span
         // lines, which lines are string content is unknown; a line that starts inside a literal is string
         // content; and the map's level is a block level, which is only a logical line's FIRST line's
-        // indentation — a bracket or backslash continuation line (or a comment line) is not re-indented. A line below a
+        // indentation — a bracket or backslash continuation line (or a comment-only line: trivia, never a logical start, so
+        // on-type leaves it verbatim as the fallbacks do, R-GD, #2290) is not re-indented. A line below a
         // bracket the lexer never saw closed, or a recovery line of unknown level, is refused by the check
         // (FormattingFallback.IndentOnlyPreserved clauses 7 and 6c), which every candidate here passes through: a
         // refusal here as well would be inert (P22h mutation (d)) — as a refusal of a document indented with other

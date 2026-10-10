@@ -74,7 +74,7 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
     /// line whose leading whitespace changes, over the line's content only — its line break is never in the
     /// range. Lines are the client's (<see cref="LineDiff.Split"/>: <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>). A line
     /// a bracket the lexer never saw closed freezes (<see cref="IndentMap.FrozenFrom"/>, R-FU, #2279, L9) gets no edit,
-    /// whitespace-only lines included.
+    /// whitespace-only lines included; nor does a comment-only line (<see cref="IndentMap.CommentLines"/>, R-GD, #2290).
     /// </summary>
     internal static List<TextEdit> ComputeIndentOnlyRangeEdits(string text, int startLine, int endLine)
     {
@@ -101,6 +101,10 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
 
             // A line below a bracket the lexer never saw closed is the bracket's to the lexer (R-FU, #2279).
             if (map.IsFrozenByOpenBracket(i + 1))
+                continue;
+
+            // A comment-only line is trivia to the lexer: left as the user wrote it (R-GD, #2290).
+            if (map.CommentLines.Contains(i + 1))
                 continue;
 
             if (trimmed.Length == 0)

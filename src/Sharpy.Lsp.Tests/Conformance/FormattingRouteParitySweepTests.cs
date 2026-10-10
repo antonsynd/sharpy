@@ -282,6 +282,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// A comment-only line of an unparseable D (<see cref="IndentationService.IsCommentOnlyLine"/>) that does not start inside a
     /// literal in Q is not byte-identical in T (P22i, R-GD, #2290). Spelled <c>comment</c> in a row — after the twin, so
     /// <c>stem comment range-line S7 comment</c> reads twin then bucket; the C# name differs from the twin's <see cref="Comment"/>.
+    /// P22i Phase 1 counted it against a pin while red; Phase 2 drained it to zero (both builders and clause 8 of
+    /// <c>FormattingFallback.IndentOnlyPreserved</c> read <see cref="IndentMap.CommentLines"/>) and deleted the pin.
     /// </summary>
     internal const string CommentLine = "comment";
     internal static readonly string[] Buckets = { Edits, Net, Whole, Local, FixedPoint, OnTypeShape, Content, Literal, Depth, Moved, CommentLine, FactMissing, FactSpurious };
@@ -1426,9 +1428,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         /// <summary><c>recovery-misindented</c> cells exempt from <c>depth</c> by clean-twin parity (<see cref="ParityExempt"/>).</summary>
         public int ParityExempt;
-
-        /// <summary>Cells whose <c>comment</c> failure is counted against <see cref="CommentPendingPin"/> instead of failing.</summary>
-        public int CommentPending;
     }
 
     /// <summary>Everything the census reads from the theories that ran in this process.</summary>
@@ -1464,13 +1463,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 s_tallies.AddOrUpdate(KnownLimitTally(state, route), 1, (_, n) => n + 1);
                 s_tallies.AddOrUpdate(KnownLimitCellsTally(state, route), group.KnownLimit, (_, n) => n + group.KnownLimit);
                 _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} {KnownLimitBucket[state]} ({group.KnownLimit}/{group.Cells} cells, #2274)");
-            }
-
-            if (group.CommentPending > 0)
-            {
-                // One per (stem, twin, route) — the unit an allowlist row has — and the cells beside it.
-                s_tallies.AddOrUpdate(CommentPendingTally(twin, route), 1, (_, n) => n + 1);
-                s_tallies.AddOrUpdate(CommentPendingCellsTally(twin, route), group.CommentPending, (_, n) => n + group.CommentPending);
             }
 
             if (group.ParityExempt > 0)
@@ -1537,14 +1529,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             var exempt = ParityExempt(driver, item.Doc, item.Request, verdict, applied);
             if (exempt)
                 verdict.Failures.RemoveAll(f => f.Bucket == Depth);
-            var commentPending = CommentPendingPin.Count > 0 && verdict.Failures.RemoveAll(f => f.Bucket == CommentLine) > 0;
             lock (item.Group)
             {
                 item.Group.Cells++;
                 if (exempt)
                     item.Group.ParityExempt++;
-                if (commentPending)
-                    item.Group.CommentPending++;
                 if (verdict.Changed)
                     item.Group.Changed++;
                 if (verdict.RefusedWork)
@@ -1668,48 +1657,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     private static string KnownLimitCellsTally(string state, string route) => $"known-limit-cells {state} {KnownLimitBucket[state]} {route}";
 
     private static string ParityExemptTally(string twin, string route) => $"s7-parity-exempt {twin} {route}";
-
-    private static string CommentPendingTally(string twin, string route) => $"comment-pending {twin} {route}";
-
-    private static string CommentPendingCellsTally(string twin, string route) => $"comment-pending-cells {twin} {route}";
-
-    /// <summary>
-    /// The <c>comment</c> bucket while it is red (P22i Phase 1, plan-ee5544; lead ruling L1's precedent, plan-f92797): per
-    /// (twin, route), the (stem, twin) pairs with an unparseable document whose cell of that route rewrites a comment-only
-    /// line's leading whitespace — every indent-only builder wrote such a line at level 0 (#2290). A row per pair would be
-    /// tens of thousands of rows, so while this table is non-empty a <c>comment</c> failure is counted here instead of
-    /// failing its stem, and the loader refuses a <c>comment</c> row. EXACT, not a ceiling; S3–S7 cells are never sampled,
-    /// so the regular suite counts the same cells as FULL mode, and the count is asserted only when every twin's theory
-    /// ran over every stem in this process. P22i Phase 2 drains it to zero and DELETES the table, the tally and the
-    /// loader refusal: <c>comment</c> then rides the row ratchet with 0 rows. Measured @ 53ee2d993 + Phase 1 (regular mode,
-    /// <c>.claude/tmp/p22i-impl/census-p1-red3.txt</c>); the cells beside the pairs: 4,710 full and range-whole and 17,884
-    /// range-line per non-comment twin (17,886 wide), 46,178 and 110,626 on the comment twin. On-type moves no comment line:
-    /// it re-indents only a logical line's first line.
-    /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> CommentPendingPin =
-        new SCG.Dictionary<(string Twin, string Route), int>
-        {
-            [(Identity, Full)] = 1472,
-            [(Identity, RangeWhole)] = 1472,
-            [(Identity, RangeLine)] = 1473,
-            [(Identity, OnType)] = 0,
-            [(Comment, Full)] = 8893,
-            [(Comment, RangeWhole)] = 8893,
-            [(Comment, RangeLine)] = 8911,
-            [(Comment, OnType)] = 0,
-            [(Wide, Full)] = 1472,
-            [(Wide, RangeWhole)] = 1472,
-            [(Wide, RangeLine)] = 1473,
-            [(Wide, OnType)] = 0,
-            [(Crlf, Full)] = 1472,
-            [(Crlf, RangeWhole)] = 1472,
-            [(Crlf, RangeLine)] = 1473,
-            [(Crlf, OnType)] = 0,
-            [(Cr, Full)] = 1472,
-            [(Cr, RangeWhole)] = 1472,
-            [(Cr, RangeLine)] = 1473,
-            [(Cr, OnType)] = 0,
-        };
 
     /// <summary>The bucket each known-limit state counts against <see cref="KnownLimitPin"/> instead of failing it.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string> KnownLimitBucket = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
@@ -1870,12 +1817,6 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — `cli` and `full` on a parseable document apply "
                     + "Format's checked output whole; a failure there is a finding outside P22e's cure, never a row.");
-            }
-
-            if (fields[4] == CommentLine && CommentPendingPin.Count > 0)
-            {
-                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — while P22i drains the comment bucket its cells "
-                    + "are a pinned count (CommentPendingPin, #2290), never rows.");
             }
 
             if (!Regex.IsMatch(cite, @"^#\d+\b"))
@@ -2177,8 +2118,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// nothing else; D itself fails nothing; <c>a = 1</c> re-indented to 8 is <c>depth</c>'s cell, never <c>comment</c>'s (the
     /// axis control). The literal exclusion: D19's twin of <see cref="Q19C"/>, whose <c># key</c> line lexes as a comment in D
     /// but starts inside a literal in Q — re-indented, it is <c>literal</c>, never <c>comment</c>. By direction: #2290's
-    /// misindent control C3 (unparseable: SPY0013 at 6 spaces; truth from its clean twin) — the full fallback's own text
-    /// repairs <c>y</c> and is flagged <c>comment</c> exactly when it moves <c># c1</c>.
+    /// misindent control C3 (unparseable: SPY0013 at 6 spaces; truth from its clean twin) — the full fallback's text
+    /// @ 53ee2d993 repaired <c>y</c> and moved <c># c1</c> to column 0 (<c>comment</c>); its own text now repairs <c>y</c> and
+    /// keeps the comment (no bucket).
     /// </summary>
     [Fact]
     public void PositiveControl_Comment_SeesADedentedCommentLine()
@@ -2221,8 +2163,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             .Should().Equal(CommentLine);
 
         var fallback = FormattingFallback.ReindentDocument(C3);
-        fallback.Should().Contain("\n    y = 1\n", "the fallback repairs the misindented body");
-        UnparseableBucketsOf(c3, full, fallback).Should().Equal(new[] { CommentLine }, "@ 53ee2d993 the fallback writes # c1 at column 0 (#2290)");
+        fallback.Should().Be(repairedKept, "the fallback repairs the misindented body and leaves the comment as written (R-GD)");
+        UnparseableBucketsOf(c3, full, fallback).Should().BeEmpty();
     }
 
     /// <summary>
@@ -2744,21 +2686,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 + $"pin={S7ParityExemptPin.GetValueOrDefault((twin, route))}");
         }
 
-        var commentKeys = Twins.SelectMany(t => RoutesByState[S3].Select(r => (Twin: t, Route: r))).ToList();
-        foreach (var (twin, route) in commentKeys)
-        {
-            _output.WriteLine($"FMTROUTE-CENSUS comment-pending {twin} {route}={tallies.GetValueOrDefault(CommentPendingTally(twin, route))} "
-                + $"(cells: {tallies.GetValueOrDefault(CommentPendingCellsTally(twin, route))}) pin={CommentPendingPin.GetValueOrDefault((twin, route))}");
-        }
-
         var everyTwinRan = Twins.Where(t => s_stemsRun.GetValueOrDefault(t) != corpus.Corpus.Count).ToList();
         if (measured && everyTwinRan.Count == 0)
         {
-            foreach (var (twin, route) in commentKeys)
-            {
-                tallies.GetValueOrDefault(CommentPendingTally(twin, route)).Should().Be(CommentPendingPin[(twin, route)],
-                    $"the {twin} {route} comment-bucket count is pinned while P22i drains it (CommentPendingPin, #2290): a shrink is a cell the cure reached, a growth a new comment-placement mechanism — change the pin and say which");
-            }
 
             foreach (var state in KnownLimitBucket.Keys)
             {
@@ -2779,7 +2709,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         }
         else
         {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit, s7-parity and comment-pending pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
+            _output.WriteLine($"FMTROUTE-CENSUS known-limit and s7-parity pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
         }
 
         // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). P22f Phase 1 Task 4
@@ -2794,9 +2724,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) were a pinned count its Phase 2
         // drained to none (S7 rides this ratchet with 0 rows; its clean-twin parity exemptions are S7ParityExemptPin) and its S6ok cells
         // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. P22h Phase 3 drained the
-        // 216 S6o rows (arm (b) reads each quote's role from a walk of the given-up text, R-FV): EMPTY again. The literal
-        // anchors it: changing the allowlist is a visible decision — change this count in the same commit and say why.
-        rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) holds no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
+        // 216 S6o rows (arm (b) reads each quote's role from a walk of the given-up text, R-FV): EMPTY again. P22i
+        // (plan-ee5544) added the comment bucket (R-GD, #2290) with a pinned count per (twin, route) while red — 1,472 to
+        // 8,911 (stem, twin) pairs per key, never rows — and drained it to zero with the pin deleted: comment rides this
+        // ratchet with 0 rows. The literal anchors it: changing the allowlist is a visible decision — change this count in
+        // the same commit and say why.
+        rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
 
         AssertRefusalCeilings(corpus.Corpus.Count);
     }

@@ -12,7 +12,8 @@
 # P22h Phase 1 (plan-f92797) re-populated it from a FULL-mode run with the S6o factSpurious rows (issue 2280) its
 # Phase 3 drained: arm (b) reads each quote's role from a walk of the text the lexer gives up (R-FV), so the 216
 # rows of the six pairing tails hold. S7 (issue 2279) was a pinned count while it was red (lead ruling L1); P22h
-# Phase 2 drained it and deleted the pin: S7 rides this ratchet with 0 rows. Empty.
+# Phase 2 drained it and deleted the pin: S7 rides this ratchet with 0 rows. Empty. P22i (plan-ee5544, issue 2290)
+# added the comment bucket the same way — a pinned count while red, drained and deleted in Phase 2. Empty.
 # Buckets (T = the applied text, D = the document):
 #   edits        the edit list is not legal for D (the strict applier threw)
 #   net          CheckMeaningPreserved(D, ast(D), T) refuses T: the applied text changes the program
@@ -30,9 +31,9 @@
 #                row is a finding, never a row (judged instead of depth on those documents)
 #   comment      a comment-only line of D (first character after spaces and tabs `#`) that does not start inside a
 #                literal in Q is not byte-identical in T: a comment line is trivia to the lexer, so no indent-only route
-#                rewrites its leading whitespace (R-GD, issue 2290). P22i Phase 1 (plan-ee5544) counts its cells against a
-#                pinned census count (CommentPendingPin) while red — the loader refuses a comment row until Phase 2
-#                drains the count and deletes the pin
+#                rewrites its leading whitespace (R-GD, issue 2290). P22i Phase 1 (plan-ee5544) counted its cells against a
+#                pinned census count while red (1,472 to 8,911 (stem, twin) pairs per twin and route); Phase 2 drained it to
+#                zero and deleted the pin: a comment row is a finding, never a row
 # The S6 family (P22f, P22g) loses a literal WITHOUT a lexer abort inside its read, every document derived from Q by
 # FormatterTwins.LiteralLossShapes; the label (FormattingRouteParitySweepTests.LossState) fixes the cite:
 #   S6    the budget spent above a Q holding a multi-line literal (at any of FormatterTwins.BudgetStopLines), a stray
