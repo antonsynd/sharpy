@@ -122,6 +122,7 @@ SPY0912 always means a formatter bug: your file is valid and its meaning is safe
 - **Format Selection** formats the whole file and applies only the changes the selection touches. A change the selection touches is applied whole, so it can reach past the selection in either direction, to both ends of its run of changed lines, because part of a change can be wrong on its own. The text it would produce is checked the same way as the formatter's own output: if it would not parse, or would change the program, Format Selection applies **nothing**. The file keeps its line endings: a line outside a change keeps its own, the last line of a change keeps the ending it had, and every other line break a change writes is the file's first one — so a file with one kind of line ending keeps it, and a file that mixes them may see a changed line's ending become the file's first kind.
 - **Format on type** aligns the first line of a statement to its block's indentation, and nothing else: never a line that continues a statement (inside brackets, or after `\`), a comment line, or a line inside a string. It changes how far the line is indented, never which block it is in, so it leaves an unexpected indent alone and does not dedent an `else:` typed at its body's indentation. It applies the new indentation only if the file stays the same program; while the file does not parse, the indentation-only check below decides instead.
 - If the document **does not parse**, for example in the middle of typing, Format Document and Format Selection fall back to an indentation-only pass. It re-indents lines to four-space levels and changes nothing else. It applies its result only if every line keeps its text, every line inside a string is unchanged, every statement stays in the block it was in, and no new indentation error appears; otherwise it applies nothing. A line that belongs to no block, because it is indented with a tab or to a width no enclosing block uses, is the mistake the pass repairs: it moves to the level the editor guesses for it, which may not be the block you meant. This fallback is used only for documents that fail to parse, never for a document the formatter declined.
+- The indentation-only pass and format on type leave a comment-only line exactly as you wrote it, even when they re-indent the code around it. A comment has no indentation the lexer reads, so the editor cannot tell which block it belongs to while the file does not parse. After a repair, a comment can therefore sit at the old indentation: in a body repaired from 2 spaces to 4, its comments keep their 2 spaces. Format Document on a file that parses moves each comment-only line to the indentation of its code (guarantee 2).
 - While a bracket is left open — never closed before the end of the file, or still open at the end of a line the lexer could not read — the editor reads every line below the line that opened it as part of that bracket, so the indentation-only pass and format on type change none of them, and while any non-blank line follows the bracket they leave the line that opened it alone too. A bracket closed inside an unfinished string or backtick-delimited name counts as open, and so does a bracket opened on a line the lexer could not read, even when a later line closes it. Lines above the bracket can still be repaired or re-indented, but never in a way that puts the bracket's line in a different block, so in a file indented 8 spaces per level the block holding the bracket keeps its 8 spaces.
 - The line after a line the lexer could not read (one with a character such as `$` that is not Sharpy) starts a new statement, so it can be repaired like any other line. The unreadable line may have opened a block the editor cannot see: when it has a `:` outside brackets, strings, backtick-delimited names and comments (`if ready($):`), or it ends inside an unfinished string or backtick-delimited name (`if name == "abc:`), the lines directly below it that are indented deeper are never moved out of that block, however deep they are. When the unreadable line continues a statement begun above it (`for i in range(1,` and then `$):` on the next line), it is that statement's line: the lines below are measured against the statement's first line, and its own indentation is only ever aligned with the block it continues.
 - If any line of the file is indented with whitespace other than spaces and tabs (a form feed, a vertical tab or a no-break space), the lexer cannot read that line's indentation, so format on type and the indentation-only pass change nothing until it is replaced with spaces.
@@ -269,6 +270,27 @@ def main():
     x = $
     y = 1
     print(x)
+```
+
+In this file the body of `f` is indented six spaces, a width no block uses, so the file does not parse. Format Document repairs `y = 1` and leaves the comment in `main` as it is:
+
+<!-- editor-example: document -->
+```python
+def f():
+      y = 1
+
+def main():
+    # say hello
+    print("hello")
+```
+
+```python
+def f():
+    y = 1
+
+def main():
+    # say hello
+    print("hello")
 ```
 
 A file with 25 or more lexer errors is read to its end: past the compiler's limit, the editor re-indents lines and keeps every string it can read exactly as it does in a file with fewer errors. The compiler itself still stops at 25 errors; `sharpyc emit diagnostics --max-errors N` lists the errors past the first 25.
