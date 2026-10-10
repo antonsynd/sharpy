@@ -51,7 +51,7 @@ internal static class IndentationService
         {
             // no tokens: no literal is known
             return new IndentMap(new Dictionary<int, int>(), new List<Token>(), true, new HashSet<int>(), new HashSet<int>(), 0, null, null,
-                new Dictionary<int, RecoveryLine>(), new HashSet<int>(), new HashSet<int>(), false);
+                new Dictionary<int, RecoveryLine>(), new HashSet<int>(), new HashSet<int>(), false, new HashSet<int>());
         }
 
         // Levels come from the WIDTH stack of each logical line's leading whitespace, in physical
@@ -157,6 +157,7 @@ internal static class IndentationService
         var recoveryLines = new Dictionary<int, RecoveryLine>();
         var blockOpeners = new HashSet<int>();
         var unplaced = new HashSet<int>();
+        var commentLines = new HashSet<int>();
         var otherWhitespace = false;
         int? putativeBodyAbove = null; // the column width bounding the putative body being read (L8, L11): the shallowest
         for (var line = 1; line <= sourceLines.Count; line++)
@@ -171,8 +172,15 @@ internal static class IndentationService
             else
             {
                 var trimmed = sourceLines[line - 1].Trim(' ', '\t');
-                if (trimmed.Length == 0 || IsCommentOnlyLine(sourceLines[line - 1]) || literalLines.Contains(line))
+                if (trimmed.Length == 0 || literalLines.Contains(line))
                     continue;
+                // Trivia to the lexer: no level, and no route edits it (R-GD, #2290) — not a level guessed here.
+                if (IsCommentOnlyLine(sourceLines[line - 1]))
+                {
+                    commentLines.Add(line);
+                    continue;
+                }
+
                 startsLogicalLine = true; // a code line the lexer's error recovery dropped
                 var hash = trimmed.IndexOf('#', StringComparison.Ordinal);
                 lineOpensBlock = (hash >= 0 ? trimmed.Substring(0, hash) : trimmed).TrimEnd().EndsWith(":", StringComparison.Ordinal);
@@ -238,7 +246,7 @@ internal static class IndentationService
         var indentationDiagnostics = lexer.Diagnostics.GetAll().Count(d =>
             d.Code is DiagnosticCodes.Lexer.InvalidIndentation or DiagnosticCodes.Lexer.IndentationMismatch);
         return new IndentMap(lineIndent, tokens, lexer.LiteralStateUnknown, logicalLineStarts, literalLines, indentationDiagnostics,
-            lexer.BracketLeftOpenAtLine, frozenFrom, recoveryLines, unplaced, blockOpeners, otherWhitespace);
+            lexer.BracketLeftOpenAtLine, frozenFrom, recoveryLines, unplaced, blockOpeners, otherWhitespace, commentLines);
     }
 
     /// <summary>
@@ -362,7 +370,11 @@ internal readonly record struct RecoveryLine(int DroppedLine, int DroppedColumns
 /// lexer reads it as an unexpected character, so the map has no structure to give that line, and a level it skips or
 /// takes misplaces the lines around it (the third verifier's OW-LEVEL: <c>    if c:</c> / <c>\f        y = 1</c> /
 /// <c>        z = 2</c> levelled <c>z</c> out of the <c>if</c>). Like <see cref="LiteralStateUnknown"/>, it switches
-/// on-type and the indent-only pass off for the whole document (lead ruling L12).
+/// on-type and the indent-only pass off for the whole document (lead ruling L12). <see cref="CommentLines"/>: the comment-only
+/// lines (<see cref="IndentationService.IsCommentOnlyLine"/>) that do not start inside a literal — trivia to the lexer, so the
+/// map has no level for them (P22i, R-GD, #2290): every indent-only route returns such a line verbatim, byte-identical
+/// leading whitespace, and <c>FormattingFallback.IndentOnlyPreserved</c> refuses an applied text that changes one (clause
+/// 8). Not in <see cref="UnplacedLines"/> either: a comment in a putative body is held by clause 8, never by 6c.
 /// </summary>
 internal sealed record IndentMap(
     Dictionary<int, int> LineIndent,
@@ -376,7 +388,8 @@ internal sealed record IndentMap(
     IReadOnlyDictionary<int, RecoveryLine> RecoveryLines,
     IReadOnlySet<int> UnplacedLines,
     IReadOnlySet<int> BlockOpeners,
-    bool HasOtherWhitespace)
+    bool HasOtherWhitespace,
+    IReadOnlySet<int> CommentLines)
 {
     /// <summary>Whether no indent-only route may edit the 1-based <paramref name="line"/>: it is at or below <see cref="FrozenFrom"/>.</summary>
     internal bool IsFrozenByOpenBracket(int line) => FrozenFrom is { } from && line >= from;
