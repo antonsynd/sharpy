@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Gate: every fenced Sharpy block in the language spec must compile, carry a
-# marker, or be in the allowlist.
+# marker, or be in the allowlist; a block with an output marker must RUN and print
+# its stated output (#2286; the marker forms are in spec_blocks.py's docstring).
 #
 # Usage:
-#   bash build_tools/check_spec_blocks.sh           # Run the sweep
-#   bash build_tools/check_spec_blocks.sh --seed     # Seed the allowlist
-#   bash build_tools/check_spec_blocks.sh --report   # Print class counts
+#   bash build_tools/check_spec_blocks.sh                # Run the sweep
+#   bash build_tools/check_spec_blocks.sh --seed         # Seed the allowlist
+#   bash build_tools/check_spec_blocks.sh --report       # Print class counts + files with no output assertion
+#   bash build_tools/check_spec_blocks.sh --seed-output  # List unmarked blocks that state a result
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

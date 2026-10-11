@@ -25,6 +25,7 @@ billion = 1_000_000_000
 The integer suffixes work on every base — hexadecimal (`0x`), binary (`0b`) and octal (`0o`)
 literals take them exactly as decimal ones do, with or without digit separators:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     mult = 0x41C64E6Du        # uint32

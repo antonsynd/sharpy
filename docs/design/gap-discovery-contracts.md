@@ -96,7 +96,14 @@ deployment closure (`StandaloneDeploymentTests`).
 - **Spec blocks compile or carry a marker** (#1854): `check_spec_blocks.sh` extracts every fenced
   Sharpy block from `docs/language_specification/`, compiles it, and ratchets against
   `spec_blocks_allowlist.txt`. An unmarked failing block, a stale allowlist entry, or an
-  error-marker block that compiles clean all fail the gate.
+  error-marker block that compiles clean all fail the gate. **Output assertions** (#2286, R-FY): a
+  block under `<!-- spec-sweep: output -->` is RUN with `sharpyc run` and its stdout must equal the
+  expected output — an inline string, a following ```` ```output ```` block, or one exact
+  `print(...)  # value` comment per print (forms and the one comparison rule:
+  `spec_blocks.py`'s docstring); a mismatch, a non-zero exit, or an output block that does not
+  compile is red, and the allowlist never answers for one. `--report` lists every spec file with no
+  output assertion, so the absence is visible; `--seed-output` lists the unmarked blocks that state
+  a result — the conversion worklist a plan touching that file drains (R-BG as extended by R-FY).
 - **A probe asserts identity, not compilation** (#1829): a sweep that renders a name to reach a
   type asserts the name BOUND that type (the emitted C# is the witness) before probing its members;
   a name that binds elsewhere is `NotAttempted` with the reason, never a row against the member.
