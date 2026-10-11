@@ -12,7 +12,7 @@ Given a language-spec page (or feature description), generate test skeletons acr
 
 ## Spec format (verified ground truth)
 
-`docs/language_specification/` contains ~120 one-feature-per-page `.md` files plus a legacy grammar file `grammar.ebnf.txt` (43 KB, ISO EBNF). Conventions the reader can rely on:
+`docs/language_specification/` contains ~120 one-feature-per-page `.md` files and no grammar file. Conventions the reader can rely on:
 
 - ATX headings: one `# Title` per page, `##`/`###` sections.
 - **Sharpy code examples are in ` ```python ` fences** (775 occurrences corpus-wide); C# equivalents in ` ```csharp ` (92); grammar excerpts in ` ```ebnf ` (2 pages only).
@@ -21,13 +21,12 @@ Given a language-spec page (or feature description), generate test skeletons acr
 
 So the reader is a structural markdown parser + three targeted extractors — no NLP required, as the prompt anticipated.
 
-**`grammar.ebnf.txt` is NOT ground truth.** It dates from initial development and has been neglected since; the implemented grammar is more complex than it states. The authoritative grammar is the parser itself (`src/Sharpy.Compiler/Parser/`, 6 partial files). Consequently the scaffolder treats EBNF-derived data as a *hint source only*: grammar-sourced checklist items are labeled `grammar-hint:` and require verification against actual compiler behavior (`/spy-emit tokens` / `/spy-emit ast`) before any expected value is filled in. Spec prose and example blocks — which are maintained — outrank the EBNF file whenever they disagree.
+**There is no grammar input.** The authoritative grammar is the parser itself (`src/Sharpy.Compiler/Parser/`, 6 partial files). The legacy `grammar.ebnf.txt` understated it and was deleted (#2287, ruling R-FX); an executable grammar written from the parser, checked against it by a differential parse, is #2287's later steps. Until that lands the scaffolder reads spec pages only, and syntax it derives from them is verified against actual compiler behavior (`/spy-emit tokens` / `/spy-emit ast`) before any expected value is filled in.
 
 ## Architecture
 
 ```
- spec page (.md) ──┐
- grammar.ebnf.txt ─┤     ┌────────────┐   FeatureSpec    ┌───────────────────────┐
+ spec page (.md) ──┐     ┌────────────┐   FeatureSpec    ┌───────────────────────┐
  --feature name ───┼────▶│ SpecReader │─────────────────▶│ EdgeCaseDeriver        │
  --issue N ────────┘     │ (Markdig)  │                  │ (heuristic expansion)  │
                          └────────────┘                  └──────────┬────────────┘
@@ -61,13 +60,6 @@ namespace Sharpy.TestHarness.Scaffold;
 public interface ISpecReader
 {
     FeatureSpec Read(string specMarkdown, string specPath);
-
-    /// <summary>Resolves EBNF productions referenced by the feature from
-    /// grammar.ebnf.txt, by production-name match. CAUTION: that file is a
-    /// neglected initial-development artifact and understates the implemented
-    /// grammar — resolved rules are HINTS for test naming/case discovery, never
-    /// a source of expected values. The parser source is authoritative.</summary>
-    IReadOnlyList<GrammarRule> ResolveGrammar(FeatureSpec spec, string grammarEbnfText);
 }
 
 /// <summary>
@@ -121,7 +113,6 @@ public sealed record FeatureSpec
     /// <summary>Extracted from `# ERROR SPYxxxx:` markers inside code blocks
     /// and SPY\d{4} tokens in bold-Error prose.</summary>
     public IReadOnlyList<SpecErrorCase> ErrorCases { get; init; } = [];
-    public IReadOnlyList<GrammarRule> GrammarRules { get; init; } = [];
     /// <summary>Links to other spec pages → interaction-test candidates.</summary>
     public IReadOnlyList<string> CrossReferences { get; init; } = [];
     /// <summary>Sentences the reader couldn't classify but that contain
@@ -135,8 +126,6 @@ public sealed record SpecExample(string Code, string? PrecedingProse, int Source
 
 /// <summary>An expected-error case with its diagnostic code when the spec names one.</summary>
 public sealed record SpecErrorCase(string? DiagnosticCode, string Description, string? ExampleCode);
-
-public sealed record GrammarRule(string ProductionName, string EbnfBody);
 
 public sealed record ScaffoldOptions
 {
@@ -154,7 +143,7 @@ public sealed record ScaffoldOptions
 
 | Layer | Output location | What gets generated | Expected values from |
 |-------|-----------------|--------------------|--------------------|
-| Lexer | `src/Sharpy.Compiler.Tests/Lexer/<Feature>LexerTests.cs` | Token-type assertions for new keywords/operators found in spec examples/grammar hints; span checks; EOF/line-boundary edge cases | Spec examples; grammar terminals as `grammar-hint:` (verify via `/spy-emit tokens`); `TODO` for spans |
+| Lexer | `src/Sharpy.Compiler.Tests/Lexer/<Feature>LexerTests.cs` | Token-type assertions for new keywords/operators found in spec examples; span checks; EOF/line-boundary edge cases | Spec examples (verify via `/spy-emit tokens`); `TODO` for spans |
 | Parser | `src/Sharpy.Compiler.Tests/Parser/<Feature>ParserTests.cs` | Parse-success shape assertions (node type + child count) per spec example; error-recovery test per malformed variant | Spec examples; node type left `TODO` until AST record exists |
 | Semantic | `src/Sharpy.Compiler.Tests/Semantic/<Feature>SemanticTests.cs` | Type-inference assertions per typed example; rejection tests per error case with the spec's `SPYxxxx` code | Spec examples + `SpecErrorCase.DiagnosticCode` |
 | Validation | `.error` fixtures under `TestFixtures/<feature>/` | One fixture per `SpecErrorCase` carrying the code and, where the spec example pins one, `@line:col` | Spec error markers only |
@@ -170,10 +159,10 @@ All generated test classes compile immediately: `[Fact(Skip = "TODO(#123): <feat
 
 - **Boundary values** — examples containing collections get empty/single/nested variants; integer literals get `0`, `-1`, `int.MaxValue` variants when the example's types allow.
 - **Unicode** — identifier-bearing features get a non-ASCII identifier case; string-bearing features get an astral-plane (`𝔘+1D518`) and zero-width-joiner case (string indexing is a documented deviation area).
-- **Nesting** — recursive grammar productions (self-referencing EBNF) get a depth-8 nesting case.
+- **Nesting** — a construct a spec example nests inside itself gets a depth-8 nesting case.
 - **Interaction candidates** — one checklist item (not a generated test) per cross-referenced spec page: "does `<feature>` compose with `<other>`? (decorators/generics/async are the usual suspects)". Interactions need human judgment; the deriver only ensures they're not forgotten.
 
-Every derived case is labeled `derived:` in the checklist so reviewers can distinguish spec-sourced from heuristic cases; grammar-sourced cases are labeled `grammar-hint:` (see the `grammar.ebnf.txt` caveat above) so reviewers know they carry the extra verification obligation.
+Every derived case is labeled `derived:` in the checklist so reviewers can distinguish spec-sourced from heuristic cases.
 
 ## TDD checklist
 
@@ -209,7 +198,6 @@ Spec: docs/language_specification/assignment_expressions.md
 {
   "scaffold": {
     "specRoot": "docs/language_specification",
-    "grammarFile": "docs/language_specification/grammar.ebnf.txt",  // legacy artifact; hints only, never expected values
     "fixtureRoot": "src/Sharpy.Compiler.Tests/Integration/TestFixtures",
     "skipAttributeFormat": "TODO(#{issue}): {feature} not implemented",
     "deriveEdgeCases": true
@@ -267,7 +255,7 @@ Deliberately light — scaffolding is a dev-time tool:
 ## Test plan (for the scaffolder itself)
 
 - **SpecReader conformance sweep** — parse *all* ~120 spec pages; assert zero exceptions and, for a golden subset (`exception_handling.md`, `inheritance.md`, `flexible_arguments.md` — the EBNF-bearing pages), snapshot the extracted `FeatureSpec` JSON.
-- **Extractor unit tests** — `# ERROR SPY0134:` marker parsing (with/without message), SPY-code prose extraction, EBNF production resolution against the real `grammar.ebnf.txt`.
+- **Extractor unit tests** — `# ERROR SPY0134:` marker parsing (with/without message), SPY-code prose extraction.
 - **Generator snapshot tests** — fixed `FeatureSpec` → generated artifacts compared as snapshots; assert every generated `.cs` file parses with Roslyn and carries the `Skip` attribute with the issue reference.
 - **Idempotency test** — generate twice into a temp dir; second run produces zero writes and zero `.scaffold.new` files.
 - **Conflict test** — pre-existing file at a target path → `.scaffold.new` written, original untouched.
@@ -278,7 +266,7 @@ Deliberately light — scaffolding is a dev-time tool:
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Spec format drift breaks extractors | Silent under-extraction | Conformance sweep runs in `Sharpy.TestHarness.Tests` on every PR touching `docs/language_specification/**` (path-filtered job); `Unclassified` bucket makes under-extraction visible in the checklist |
-| `grammar.ebnf.txt` is stale (abandoned after initial development; implemented grammar is richer) | Grammar-derived skeletons test the wrong syntax or miss real productions | Grammar is a hint source only: `grammar-hint:` labeling, verification via `/spy-emit` mandatory before filling expectations, spec prose/examples outrank EBNF; optionally file an issue to regenerate or retire the file rather than letting tooling relegitimize it |
+| No grammar input (`grammar.ebnf.txt` deleted, #2287) | A production no spec example shows gets no skeleton | Syntax comes from spec examples only, verified via `/spy-emit` before expectations are filled; #2287's executable grammar, written from the parser, is the input a later scaffolder version can read |
 | Skeletons rot as permanently-skipped tests | Dead weight, false sense of coverage | Weekly skeleton-rot check keyed to issue state; checklist items are the tracked unit |
 | Generated tests encode a misreading of the spec | Wrong tests with authoritative air | Expected values only from spec text/verify-python; `derived:` labeling; `needs-clarification` lane for ambiguous prose (the prompt's open question — answered: ambiguity becomes a checklist item, never a guess) |
 | Scaffolder generates non-compiling code as test-project conventions evolve | Friction | Generator snapshot tests parse output with Roslyn; templates live beside the conventions they mirror |

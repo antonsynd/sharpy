@@ -45,7 +45,7 @@ A local tool manifest `.config/dotnet-tools.json` (new) pins `dotnet-reportgener
   "$schema": "docs/schemas/sharpy-test-harness.schema.json",
   "coverage":  { /* 01: thresholds, maxDeltaDrop, gateProfile */ },
   "oracle":    { /* 02: pythonPath, timeout, deviationCatalog, baseline */ },
-  "scaffold":  { /* 03: specRoot, grammarFile, skipAttributeFormat */ },
+  "scaffold":  { /* 03: specRoot, skipAttributeFormat */ },
   "mutation":  { /* 04: targets, componentThresholds, rotation, prMode */ },
   "fuzzing":   { /* 05: targets, corpusRoot, per-run seconds, limits */ },
   "visual":    { /* 06: driver, verifiers, confidence, budget, cache */ },
@@ -145,4 +145,4 @@ Implementing a new language feature (say, spec page `assignment_expressions.md`,
 
 .NET 10 / C# 14 for all new code; no Core consumption so no C# 9.0 constraint applies (called out explicitly in Shared Architecture); xUnit + CsCheck only; GitHub Actions only, `actions/*` + pinned containers, no third-party marketplace actions; macOS-local / Linux-CI split addressed per subsystem (fuzz dumb mode, platform-keyed visual baselines, everything else platform-neutral); vision backend fully abstract (`IVisionBackend`); scaffolded tests follow existing `src/Sharpy.Compiler.Tests` conventions; oracle transpiler rule-based by contract (closed whitelist, determinism tests).
 
-Known deltas from the original proposal, found during design: `docs/deviations.yaml` already exists (oracle consumes rather than creates it); there are 8 metamorphic transforms, not 10; integration tests execute in a subprocess, which reshapes the coverage design (blind spot) and the mutation design (Core scores measure the unit suite); `Microsoft.Testing.Extensions.Fuzz` does not exist, settling the fuzz framework question in SharpFuzz's favor; `grammar.ebnf.txt` is a neglected initial-development artifact that understates the implemented grammar, so the scaffolder (03) treats it as hints only — the parser source is authoritative.
+Known deltas from the original proposal, found during design: `docs/deviations.yaml` already exists (oracle consumes rather than creates it); there are 8 metamorphic transforms, not 10; integration tests execute in a subprocess, which reshapes the coverage design (blind spot) and the mutation design (Core scores measure the unit suite); `Microsoft.Testing.Extensions.Fuzz` does not exist, settling the fuzz framework question in SharpFuzz's favor; `grammar.ebnf.txt` was a neglected initial-development artifact that understated the implemented grammar; it has been deleted (#2287), the scaffolder (03) has no grammar input, and the parser source is authoritative.
