@@ -2,6 +2,7 @@ using System.CommandLine;
 using Sharpy.Cli.Services;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli.Commands;
@@ -114,6 +115,9 @@ internal static class RunCommand
         return combined;
     }
 
+    /// <summary>The clause SPY0913 opens with for a plain <c>run</c> (#2292).</summary>
+    internal const string RunPurpose = "`sharpyc run` starts the compiled program with `dotnet`";
+
     static int HandleRunCommand(
         FileInfo inputFile,
         FileInfo? output,
@@ -140,6 +144,15 @@ internal static class RunCommand
         if (!CliHelpers.ValidateNamespaceOption(namespaceName))
         {
             return 1;
+        }
+
+        // Before compiling: a host without `dotnet` cannot run the program or publish it, and the
+        // self-contained release archive runs on exactly such hosts (#2292).
+        var dotnetPurpose = selfContained ? SelfContainedPublisher.Purpose("run") : RunPurpose;
+        var dotnetRequirement = selfContained ? DotnetRequirement.Sdk : DotnetRequirement.Runtime;
+        if (!CliHelpers.TryResolveDotnet(dotnetPurpose, dotnetRequirement, out var dotnetPath))
+        {
+            return CliHelpers.ExitCompileError;
         }
 
         var outputPath = output?.FullName;
@@ -195,7 +208,8 @@ internal static class RunCommand
             {
                 return HandleSelfContainedRun(inputFile, outputPath, args, usedAssemblyPaths,
                     entryTypeName ?? throw new InvalidOperationException(
-                        "The compiler recorded no entry type for a successful compile."));
+                        "The compiler recorded no entry type for a successful compile."),
+                    dotnetPath);
             }
 
             Console.WriteLine();
@@ -204,7 +218,7 @@ internal static class RunCommand
 
             var startInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "dotnet",
+                FileName = dotnetPath,
                 ArgumentList = { outputPath },
                 UseShellExecute = false
             };
@@ -214,7 +228,17 @@ internal static class RunCommand
                 startInfo.ArgumentList.Add(arg);
             }
 
-            var process = System.Diagnostics.Process.Start(startInfo);
+            System.Diagnostics.Process? process;
+            try
+            {
+                process = System.Diagnostics.Process.Start(startInfo);
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                CliHelpers.ReportDotnetStartFailure(RunPurpose, DotnetRequirement.Runtime, dotnetPath, ex);
+                return CliHelpers.ExitCompileError;
+            }
+
             if (process != null)
             {
                 process.WaitForExit();
@@ -273,7 +297,8 @@ internal static class RunCommand
         string compiledExePath,
         string[] args,
         IReadOnlySet<string> usedAssemblyPaths,
-        string entryTypeNameFromCompile)
+        string entryTypeNameFromCompile,
+        string dotnetPath)
     {
         var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
         // The Main() call must name the class the emitter actually generated: the entry module's
@@ -284,7 +309,7 @@ internal static class RunCommand
 
         // No cleanup of the compiled executable here: the caller staged it in a directory of its own
         // and removes that directory in a finally, whichever way this returns (#1419).
-        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, assemblyName, entryTypeName, publishDir, usedAssemblyPaths);
+        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, assemblyName, entryTypeName, publishDir, usedAssemblyPaths, dotnetPath, "run");
         if (publishedExe == null)
         {
             return 1;

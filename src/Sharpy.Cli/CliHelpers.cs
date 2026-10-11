@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -469,6 +470,32 @@ internal static class CliHelpers
     {
         writer.WriteLine(Renderer.Render(diagnostic, sourceText, ShowDiagnosticProvenance));
     }
+
+    /// <summary>
+    /// The <c>dotnet</c> a command is about to need (#2292), resolved BEFORE the command does any
+    /// work. Returns <c>false</c> after writing SPY0913 to stderr when there is none; the caller
+    /// returns <see cref="ExitCompileError"/> without compiling. Every launch site starts the path
+    /// this returns — never a bare <c>dotnet</c> — so the check and the launch cannot disagree.
+    /// </summary>
+    /// <param name="purpose">What the command uses <c>dotnet</c> for, as the clause SPY0913 opens with.</param>
+    internal static bool TryResolveDotnet(string purpose, DotnetRequirement requirement, [NotNullWhen(true)] out string? dotnetPath)
+    {
+        dotnetPath = DotnetHost.Resolve();
+        if (dotnetPath != null)
+        {
+            return true;
+        }
+
+        RenderDiagnostic(DotnetHost.NotFound(purpose, requirement), null, Console.Error);
+        return false;
+    }
+
+    /// <summary>
+    /// SPY0913 for a resolved <c>dotnet</c> that <c>Process.Start</c> still could not start (built for
+    /// another architecture, removed since it was resolved) — reported, never an unhandled exception.
+    /// </summary>
+    internal static void ReportDotnetStartFailure(string purpose, DotnetRequirement requirement, string dotnetPath, System.ComponentModel.Win32Exception ex)
+        => RenderDiagnostic(DotnetHost.StartFailed(purpose, requirement, dotnetPath, ex.Message), null, Console.Error);
 
     internal static void RenderDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics, SourceText? sourceText, TextWriter writer)
     {

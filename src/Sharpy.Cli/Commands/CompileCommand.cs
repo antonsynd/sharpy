@@ -2,6 +2,7 @@ using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
@@ -266,6 +267,15 @@ internal static class CompileCommand
             return 1;
         }
 
+        // Before compiling: the publish needs the .NET SDK, which the self-contained release archive
+        // does not carry (#2292).
+        string? dotnetPath = null;
+        if (selfContained
+            && !CliHelpers.TryResolveDotnet(SelfContainedPublisher.Purpose("compile"), DotnetRequirement.Sdk, out dotnetPath))
+        {
+            return CliHelpers.ExitCompileError;
+        }
+
         var outputType = type ?? "exe";
         var extension = outputType.ToLowerInvariant() == "exe" ? ".exe" : ".dll";
 
@@ -312,7 +322,7 @@ internal static class CompileCommand
             // raw (file names).
             var entryTypeName = compileResult.EntryTypeName
                 ?? throw new InvalidOperationException("The compiler recorded no entry type for a successful compile.");
-            var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths);
+            var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths, dotnetPath!, "compile");
             if (publishedExe == null)
             {
                 return 1;

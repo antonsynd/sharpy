@@ -86,6 +86,45 @@ internal static class ProjectCommand
         return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
     }
 
+    /// <summary>
+    /// Restores the project's <c>&lt;PackageReference&gt;</c> items, recording the versions NuGet chose;
+    /// <c>false</c> after reporting the failure. With no packages it does nothing. The one restore path
+    /// for the interactive and the <c>--server</c> build, so both refuse before any work when there is
+    /// no <c>dotnet</c> to restore with (#2292) — the self-contained release archive carries none.
+    /// </summary>
+    static bool RestorePackages(ProjectConfig projectConfig, ICompilerLogger logger)
+    {
+        if (projectConfig.PackageReferences.Count == 0)
+        {
+            return true;
+        }
+
+        if (!CliHelpers.TryResolveDotnet(NuGetRestorer.Purpose, DotnetRequirement.Sdk, out var dotnetPath))
+        {
+            return false;
+        }
+
+        Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
+        var restoreResult = NuGetRestorer.RestorePackages(
+            projectConfig.PackageReferences,
+            projectConfig.TargetFramework,
+            logger,
+            dotnetPath);
+        if (!restoreResult)
+        {
+            if (restoreResult.Diagnostic != null)
+            {
+                CliHelpers.RenderDiagnostic(restoreResult.Diagnostic, null, Console.Error);
+            }
+
+            Console.Error.WriteLine("Error: NuGet package restore failed.");
+            return false;
+        }
+
+        projectConfig.ResolvedVersions = restoreResult.ResolvedVersions;
+        return true;
+    }
+
     static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null, string[]? features = null)
     {
         try
@@ -97,19 +136,9 @@ internal static class ProjectCommand
                 CleanProject(projectConfig);
             }
 
-            if (projectConfig.PackageReferences.Count > 0)
+            if (!RestorePackages(projectConfig, logger))
             {
-                Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
-                var restoreResult = NuGetRestorer.RestorePackages(
-                    projectConfig.PackageReferences,
-                    projectConfig.TargetFramework,
-                    logger);
-                if (!restoreResult)
-                {
-                    Console.Error.WriteLine("Error: NuGet package restore failed.");
-                    return 1;
-                }
-                projectConfig.ResolvedVersions = restoreResult.ResolvedVersions;
+                return CliHelpers.ExitCompileError;
             }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");
@@ -211,20 +240,9 @@ internal static class ProjectCommand
         {
             var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
 
-            if (projectConfig.PackageReferences.Count > 0)
+            if (!RestorePackages(projectConfig, logger))
             {
-                Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
-                var restoreResult = NuGetRestorer.RestorePackages(
-                    projectConfig.PackageReferences,
-                    projectConfig.TargetFramework,
-                    logger);
-                if (!restoreResult)
-                {
-                    Console.Error.WriteLine("Error: NuGet package restore failed.");
-                    metrics = null;
-                    return 1;
-                }
-                projectConfig.ResolvedVersions = restoreResult.ResolvedVersions;
+                return CliHelpers.ExitCompileError;
             }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");

@@ -112,5 +112,19 @@ public static partial class DiagnosticExplanations
             null,
             "Keep the file as it is (it is correct), and report this at https://github.com/antonsynd/sharpy/issues with " +
             "the .spy file and the full SPY0912 message. Until it is fixed, formatting other files is unaffected.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.DotnetHostUnavailable, "The `dotnet` host this command needs is not available", "Infrastructure",
+            "Compiling a program needs nothing outside sharpyc, but three things it can be asked to do afterwards start the " +
+            "`dotnet` host: 'sharpyc run' starts the compiled program with it (any .NET 10 install — runtime or SDK — has it), " +
+            "a --self-contained publish ('run' or 'compile') runs 'dotnet publish', and a .spyproj with <PackageReference> " +
+            "items runs 'dotnet restore' (both need the .NET 10 SDK). Each of these looks for `dotnet` before doing any work — " +
+            "in sharpyc's own directory, then on PATH — and refuses when there is none, so nothing is compiled. The " +
+            "self-contained release archives (sharpyc-<rid>.tar.gz / .zip) run sharpyc itself without any .NET install, so " +
+            "this is what they report on such a machine for those commands. The same code is reported when a `dotnet` was " +
+            "found but could not be started, for example one built for another CPU architecture.",
+            null,
+            "Install .NET 10 from https://dotnet.microsoft.com/download/dotnet/10.0 — the runtime is enough for 'sharpyc run', " +
+            "the SDK is needed for --self-contained and <PackageReference> — and make sure `dotnet` is on PATH. Commands " +
+            "that only compile ('build', 'compile' without --self-contained, 'project' without packages, 'emit') do not need it.");
     }
 }

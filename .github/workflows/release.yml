@@ -218,6 +218,15 @@ jobs:
         shell: bash
         run: build_tools/smoke_hello.sh "$PWD/sharpyc/sharpyc${{ runner.os == 'Windows' && '.exe' || '' }}"
 
+      # #2292 (R-GM): the archive starts with no .NET install, but `run` needs `dotnet` to start the
+      # program. On a host without it (PATH emptied, DOTNET_ROOT unset, the scrub verified) the same
+      # command must refuse with SPY0913 before compiling — v0.22.x crashed on an unhandled
+      # Win32Exception after the compile. Per RID, because each OS looks `dotnet` up its own way.
+      - name: README hello world on the archive with no dotnet on PATH
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: build_tools/smoke_hello.sh --no-dotnet "$PWD/sharpyc/sharpyc${{ runner.os == 'Windows' && '.exe' || '' }}"
+
   smoke-tool:
     name: Smoke sharpyc dotnet tool (${{ matrix.os }})
     needs: [nuget-pack]

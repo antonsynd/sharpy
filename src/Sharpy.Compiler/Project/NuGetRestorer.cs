@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Project;
@@ -10,16 +11,23 @@ internal sealed class RestoreResult
     public bool Success { get; }
     public IReadOnlyDictionary<string, string> ResolvedVersions { get; }
 
-    private RestoreResult(bool success, IReadOnlyDictionary<string, string> resolvedVersions)
+    /// <summary>
+    /// A failure the caller must render whatever the log level is — SPY0913 when the resolved
+    /// <c>dotnet</c> could not be started (#2292). <c>null</c> when the log already carries the cause.
+    /// </summary>
+    public CompilerDiagnostic? Diagnostic { get; }
+
+    private RestoreResult(bool success, IReadOnlyDictionary<string, string> resolvedVersions, CompilerDiagnostic? diagnostic = null)
     {
         Success = success;
         ResolvedVersions = resolvedVersions;
+        Diagnostic = diagnostic;
     }
 
     private static readonly IReadOnlyDictionary<string, string> EmptyVersions =
         new Dictionary<string, string>();
 
-    public static RestoreResult Failed() => new(false, EmptyVersions);
+    public static RestoreResult Failed(CompilerDiagnostic? diagnostic = null) => new(false, EmptyVersions, diagnostic);
     public static RestoreResult Succeeded(IReadOnlyDictionary<string, string> resolvedVersions) =>
         new(true, resolvedVersions);
 
@@ -33,18 +41,26 @@ internal static class NuGetRestorer
     // interactive auth, or a dead connection).
     private const int RestoreTimeoutMs = 600_000;
 
+    /// <summary>The clause SPY0913 opens with when restore has no <c>dotnet</c> to run (#2292).</summary>
+    internal const string Purpose = "<PackageReference> restore runs `dotnet restore` from the .NET SDK";
+
+    /// <param name="dotnetPath">
+    /// The <c>dotnet</c> the caller resolved through <see cref="DotnetHost"/> before doing any work (#2292).
+    /// </param>
     public static RestoreResult RestorePackages(
         IReadOnlyList<PackageRef> packageReferences,
         string targetFramework,
-        ICompilerLogger? logger)
+        ICompilerLogger? logger,
+        string dotnetPath)
     {
-        return RestorePackages(packageReferences, targetFramework, logger, packagesDir: null);
+        return RestorePackages(packageReferences, targetFramework, logger, dotnetPath, packagesDir: null);
     }
 
     internal static RestoreResult RestorePackages(
         IReadOnlyList<PackageRef> packageReferences,
         string targetFramework,
         ICompilerLogger? logger,
+        string dotnetPath,
         string? packagesDir)
     {
         if (packageReferences.Count == 0)
@@ -65,7 +81,7 @@ internal static class NuGetRestorer
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "dotnet",
+                    FileName = dotnetPath,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -134,8 +150,9 @@ internal static class NuGetRestorer
             }
             catch (System.ComponentModel.Win32Exception ex)
             {
-                logger?.LogError($"Could not start 'dotnet' for NuGet restore: {ex.Message}. Package restore requires the .NET SDK on PATH.", 0, 0);
-                return RestoreResult.Failed();
+                // The caller resolved this path a moment ago (#2292), so this is a dotnet that exists
+                // but cannot start — SPY0913, rendered by the caller at every log level.
+                return RestoreResult.Failed(DotnetHost.StartFailed(Purpose, DotnetRequirement.Sdk, dotnetPath, ex.Message));
             }
         }
         finally

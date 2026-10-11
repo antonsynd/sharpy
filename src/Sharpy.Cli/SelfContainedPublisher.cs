@@ -1,6 +1,7 @@
 extern alias SharpyRT;
 using System.Runtime.InteropServices;
 using System.Text;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Cli;
 
@@ -13,6 +14,10 @@ namespace Sharpy.Cli;
 /// </summary>
 internal static class SelfContainedPublisher
 {
+    /// <summary>The clause SPY0913 opens with for a <c>--self-contained</c> publish (#2292).</summary>
+    internal static string Purpose(string command) =>
+        $"`sharpyc {command} --self-contained` publishes the program with the .NET SDK (`dotnet publish`)";
+
     /// <summary>
     /// Publishes a self-contained executable for the current runtime into
     /// <paramref name="outputDir"/>.
@@ -32,13 +37,19 @@ internal static class SelfContainedPublisher
     /// </param>
     /// <param name="outputDir">Directory to publish the self-contained executable into.</param>
     /// <param name="usedAssemblyPaths">Stdlib assemblies referenced by the program.</param>
+    /// <param name="dotnetPath">
+    /// The <c>dotnet</c> the caller resolved before compiling (<see cref="CliHelpers.TryResolveDotnet"/>, #2292).
+    /// </param>
+    /// <param name="command">The command publishing (<c>run</c> or <c>compile</c>), named in SPY0913.</param>
     /// <returns>The path to the published executable, or <c>null</c> if publishing failed.</returns>
     internal static string? Publish(
         string compiledAssemblyPath,
         string assemblyName,
         string entryTypeName,
         string outputDir,
-        IReadOnlySet<string> usedAssemblyPaths)
+        IReadOnlySet<string> usedAssemblyPaths,
+        string dotnetPath,
+        string command)
     {
         var rid = RuntimeInformation.RuntimeIdentifier;
         var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
@@ -111,7 +122,7 @@ internal static class SelfContainedPublisher
             Console.WriteLine($"Publishing self-contained executable for {rid}...");
             var publishInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "dotnet",
+                FileName = dotnetPath,
                 ArgumentList =
                 {
                     "publish",
@@ -126,7 +137,17 @@ internal static class SelfContainedPublisher
                 RedirectStandardError = true
             };
 
-            var publishProcess = System.Diagnostics.Process.Start(publishInfo);
+            System.Diagnostics.Process? publishProcess;
+            try
+            {
+                publishProcess = System.Diagnostics.Process.Start(publishInfo);
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                CliHelpers.ReportDotnetStartFailure(Purpose(command), DotnetRequirement.Sdk, dotnetPath, ex);
+                return null;
+            }
+
             if (publishProcess != null)
             {
                 var stderr = publishProcess.StandardError.ReadToEnd();

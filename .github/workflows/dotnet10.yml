@@ -489,7 +489,7 @@ jobs:
     - name: Debug-information guard and line-directive tests
       run: >
         dotnet test src/Sharpy.Compiler.Tests --verbosity normal
-        --filter "FullyQualifiedName~DebugInformationFormatTests|FullyQualifiedName~LineDirectiveRuntimeTests"
+        --filter "FullyQualifiedName~DebugInformationFormatTests|FullyQualifiedName~LineDirectiveRuntimeTests|FullyQualifiedName~DotnetHostTests"
         --logger "trx;LogFileName=windows.trx" --results-directory TestResults
     - name: Upload test results
       if: ${{ !cancelled() }}
@@ -506,6 +506,12 @@ jobs:
       if: ${{ !cancelled() }}
       shell: bash
       run: build_tools/smoke_hello.sh "$PWD/publish/cli/sharpyc.exe"
+    # #2292 (R-GM): Windows looks `dotnet` up as dotnet.exe on a ;-separated PATH — the one host whose
+    # lookup the ubuntu jobs never exercise. With no dotnet, `run` refuses with SPY0913 before compiling.
+    - name: README hello world on the published sharpyc with no dotnet on PATH
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: build_tools/smoke_hello.sh --no-dotnet "$PWD/publish/cli/sharpyc.exe"
 
   ci-summary:
     name: CI summary

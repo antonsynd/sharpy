@@ -925,8 +925,8 @@ public static class DiagnosticCodes
     /// <summary>
     /// Infrastructure diagnostic codes (SPY0900-SPY0999).
     /// These cover compiler-level errors not tied to a specific language phase.
-    /// Active: SPY0900-SPY0912 (13 codes)
-    /// Reserved: SPY0913-SPY0999 (87 codes)
+    /// Active: SPY0900-SPY0913 (14 codes)
+    /// Reserved: SPY0914-SPY0999 (86 codes)
     /// </summary>
     public static class Infrastructure
     {
@@ -956,7 +956,15 @@ public static class DiagnosticCodes
         /// is left unchanged. Always a formatter bug (P22b meaning-preservation net).
         /// </summary>
         public const string FormatterDeclined = "SPY0912";         // Active
-        // SPY0913-SPY0999: Reserved for future infrastructure diagnostics
+
+        /// <summary>
+        /// A command that starts the <c>dotnet</c> host — <c>run</c> to start the program, a
+        /// <c>--self-contained</c> publish, a <c>&lt;PackageReference&gt;</c> restore — found none to
+        /// start, so it did nothing; or the one it found could not be started. Names whether the
+        /// .NET 10 runtime or the SDK is needed (#2292).
+        /// </summary>
+        public const string DotnetHostUnavailable = "SPY0913";     // Active
+        // SPY0914-SPY0999: Reserved for future infrastructure diagnostics
     }
 
     /// <summary>

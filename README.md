@@ -39,6 +39,14 @@ Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download).
 dotnet tool install -g sharpyc
 ```
 
+### Release Archives
+
+Each [GitHub release](https://github.com/antonsynd/sharpy/releases) also ships a self-contained
+`sharpyc-<rid>.tar.gz` / `.zip` that starts without any .NET install. Compiling needs nothing else;
+`sharpyc run` needs the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) to start
+the program, and `--self-contained` or a `.spyproj` with `<PackageReference>` items need the .NET 10
+SDK. Without them those commands stop before compiling with SPY0913, naming what to install.
+
 ### From Source
 
 ```bash

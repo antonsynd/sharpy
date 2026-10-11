@@ -74,11 +74,21 @@ sharpyc emit csharp hello.spy
     program. `--args` is **deprecated** in favour of it; `--args a --args b` still works, but
     `--args a b c` does not.
 
-!!! note ".NET SDK required for NuGet packages"
+!!! note "What needs .NET on the machine"
 
-    `<PackageReference>` in `.spyproj` files requires the .NET SDK on `PATH` to run
-    `dotnet restore`. The `dotnet tool install` path always has it; self-contained
-    archive distributions do not.
+    The self-contained release archives (`sharpyc-<rid>.tar.gz` / `.zip` on the GitHub Releases
+    page) start without any .NET install, and every command that only compiles — `build`,
+    `compile`, `project` without packages, `emit` — works with nothing else installed. Three things
+    start `dotnet` and need .NET 10 with `dotnet` on `PATH`:
+
+    | Command | Needs |
+    |---|---|
+    | `sharpyc run` (runs the compiled program) | the .NET 10 runtime or SDK |
+    | `run --self-contained`, `compile --self-contained` (`dotnet publish`) | the .NET 10 SDK |
+    | `project` with `<PackageReference>` items (`dotnet restore`) | the .NET 10 SDK |
+
+    Without it these refuse with SPY0913 before compiling anything (`sharpyc explain SPY0913`).
+    The `dotnet tool install` channel always has the SDK.
 
 ## Features
 

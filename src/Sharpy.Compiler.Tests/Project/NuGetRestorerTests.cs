@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Project;
 using Xunit;
 
@@ -19,11 +20,35 @@ public class NuGetRestorerTests : IDisposable
             Directory.Delete(_packagesDir, recursive: true);
     }
 
+    // The restorer starts the dotnet its caller resolved (#2292); the tests resolve the same way.
+    private static string Dotnet => DotnetHost.Resolve()
+        ?? throw new InvalidOperationException("these tests need a dotnet the test host can resolve");
+
+    [Fact]
+    public void RestorePackages_DotnetThatCannotStart_ReturnsSpy0913ForTheCallerToRender()
+    {
+        // A resolved path that no longer starts (removed since it was resolved, or built for another
+        // architecture): the failure carries SPY0913 naming the path and the SDK, because the caller's
+        // logger is a NullLogger at the default log level and would swallow a logged reason.
+        var missing = Path.Combine(_packagesDir, "no-such-dotnet");
+
+        var result = NuGetRestorer.RestorePackages(
+            new[] { new PackageRef("Newtonsoft.Json", "13.0.3") },
+            "net10.0", logger: null, dotnetPath: missing, packagesDir: _packagesDir);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.Diagnostic);
+        Assert.Equal(DiagnosticCodes.Infrastructure.DotnetHostUnavailable, result.Diagnostic!.Code);
+        Assert.Contains(missing, result.Diagnostic.Message);
+        Assert.Contains(".NET 10 SDK", result.Diagnostic.Message);
+        // MUTATION: drop the diagnostic from the Win32Exception catch (return RestoreResult.Failed()) → red.
+    }
+
     [Fact]
     public void RestorePackages_EmptyList_ReturnsSuccessWithEmptyVersions()
     {
         var result = NuGetRestorer.RestorePackages(
-            Array.Empty<PackageRef>(), "net10.0", logger: null, packagesDir: _packagesDir);
+            Array.Empty<PackageRef>(), "net10.0", logger: null, dotnetPath: Dotnet, packagesDir: _packagesDir);
 
         Assert.True(result.Success);
         Assert.Empty(result.ResolvedVersions);
@@ -36,7 +61,7 @@ public class NuGetRestorerTests : IDisposable
     {
         var result = NuGetRestorer.RestorePackages(
             new[] { new PackageRef("Newtonsoft.Json", "13.0.3") },
-            "net10.0", logger: null, packagesDir: _packagesDir);
+            "net10.0", logger: null, dotnetPath: Dotnet, packagesDir: _packagesDir);
 
         Assert.True(result.Success);
         Assert.True(Directory.Exists(Path.Combine(_packagesDir, "newtonsoft.json", "13.0.3")));
@@ -50,7 +75,7 @@ public class NuGetRestorerTests : IDisposable
     {
         var result = NuGetRestorer.RestorePackages(
             new[] { new PackageRef("Sharpy.Nonexistent.Package.For.Restore.Test", "99.99.99") },
-            "net10.0", logger: null, packagesDir: _packagesDir);
+            "net10.0", logger: null, dotnetPath: Dotnet, packagesDir: _packagesDir);
 
         Assert.False(result.Success);
     }
