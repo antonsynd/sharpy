@@ -92,14 +92,25 @@ public class DotnetHostTests : IDisposable
     [Fact]
     public void RelativeAndEmptyEntries_AreNotTheWorkingDirectory()
     {
-        var dir = Dir("rel");
-        Executable(dir, HostName);
-        var relative = Path.GetRelativePath(Directory.GetCurrentDirectory(), dir);
+        // Under the working directory, not the temp root: on Windows the two can sit on different
+        // drives, where no relative spelling exists and GetRelativePath answers with an absolute path.
+        var relative = "sharpy-dotnethost-rel-" + Guid.NewGuid().ToString("N")[..8];
+        var dir = Path.Combine(Directory.GetCurrentDirectory(), relative);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Executable(dir, HostName);
+            Assert.False(Path.IsPathRooted(relative), "the entry under test must be relative");
 
-        // Positive control: the same directory spelled absolutely resolves.
-        Assert.NotNull(DotnetHost.Resolve(processPath: null, HostPath(dir), IsWindows));
-        Assert.Null(DotnetHost.Resolve(processPath: null, HostPath(relative), IsWindows));
-        Assert.Null(DotnetHost.Resolve(processPath: null, HostPath("", relative, ""), IsWindows));
+            // Positive control: the same directory spelled absolutely resolves.
+            Assert.NotNull(DotnetHost.Resolve(processPath: null, HostPath(dir), IsWindows));
+            Assert.Null(DotnetHost.Resolve(processPath: null, HostPath(relative), IsWindows));
+            Assert.Null(DotnetHost.Resolve(processPath: null, HostPath("", relative, ""), IsWindows));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
     }
 
     [Fact]
