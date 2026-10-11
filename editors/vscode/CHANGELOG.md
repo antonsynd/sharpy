@@ -7,6 +7,19 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-10-10
+
+### Fixed
+- Format Document and format on type no longer damage a document the parser cannot read. When the language server falls back to re-indenting only, it never changes which block a line belongs to and never edits inside a string or a continuation line. It leaves comment-only lines exactly as written and makes no edits below a bracket that was never closed. A Format Selection whose range ends at column 0 leaves the next line alone (#2168, #2273, #2275, #2276, #2279, #2280, #2290).
+- Every formatting route counts lines the way the editor does: a lone `\r` is a line break (#2168).
+
+Toolchain-side:
+- `sharpyc run`, `build`, `compile` and `project` work on Windows again. A Debug build wrote the native Windows PDB, whose writer is not shipped, and failed with SPY0908 CS0041. It now writes a portable PDB on every platform (#2291).
+- `-m` / `<ModulePath>` search paths reach import resolution.
+- `x is None` is a reference null check on every type. `== None` on a .NET reference calls that type's `==` operator.
+- An import that resolves to a `.spy` outside the project's sources is SPY0313, not an internal error. An async generator expression is refused with SPY0358.
+- `threading.Barrier` behaves like CPython's: `wait()` returns the arrival index, and a reset, abort or timeout raises `BrokenBarrierError` in every waiter.
+
 ## [0.22.0] - 2026-10-04
 
 ### Changed
