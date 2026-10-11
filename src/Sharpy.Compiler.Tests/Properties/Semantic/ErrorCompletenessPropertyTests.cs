@@ -137,14 +137,19 @@ public class ErrorCompletenessPropertyTests
     private static Gen<Module> ProgramWithFunctionCall() =>
         GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 1);
 
+    /// <summary>
+    /// Every applicable sample must draw exactly the injection's code (<see cref="ErrorInjector.Judge"/>):
+    /// before #2288 the property counted ANY failed analysis — and any throw — as a catch, so an
+    /// unrelated refusal or an internal error passed for the refusal under test.
+    /// </summary>
     private void RunInjectionTest(
         Func<Module, ErrorInjector.InjectionResult?> injector,
         string label,
         Gen<Module>? overrideGen = null)
     {
         int tested = 0;
-        int caught = 0;
-        var falseNegatives = new List<string>();
+        var failures = new List<string>();
+        ErrorInjector.KnownRedRefusal? pin = null;
 
         var baseGen = overrideGen ?? Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
@@ -158,32 +163,19 @@ public class ErrorCompletenessPropertyTests
                 return;
 
             Interlocked.Increment(ref tested);
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(result.Mutated);
-
-            try
+            pin = result.KnownRed;
+            if (ErrorInjector.Judge(result, label) is { } failure)
             {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var compResult = compiler.Analyze(source, "error_test.spy");
-
-                if (!compResult.Success)
-                {
-                    Interlocked.Increment(ref caught);
-                }
-                else
-                {
-                    lock (falseNegatives)
-                        falseNegatives.Add(
-                            $"Injected {label} was not caught:\n{source}");
-                }
-            }
-            catch
-            {
-                Interlocked.Increment(ref caught);
+                lock (failures)
+                    failures.Add(failure);
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Error completeness ({label}): {caught}/{tested} caught");
+        _output.WriteLine(pin is null
+            ? $"Error completeness ({label}): {tested - failures.Count}/{tested} drew the expected code"
+            : $"Error completeness ({label}): KnownRed {pin.Issue} — {tested - failures.Count}/{tested} still unrefused ({pin.Observed})");
         Assert.True(tested > 0, $"No {label} injections were applicable");
-        Assert.Empty(falseNegatives);
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} {label} injections misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 }

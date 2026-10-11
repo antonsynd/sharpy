@@ -5,7 +5,64 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
 internal static class ErrorInjector
 {
-    public record InjectionResult(Module Mutated, string ExpectedDiagnosticCode);
+    /// <summary>
+    /// An injected program and the ONE error code it must draw (#2288). The code is exact, never a
+    /// prefix: a refusal for an unrelated reason is not a catch, and a mutation that also breaks
+    /// something else draws a second code — a bad injection, not a pass. <see cref="KnownRed"/> pins
+    /// an injection the compiler does not refuse today; <see cref="Judge"/> then requires the program
+    /// to still analyse clean, so the first refusal fails the row and the pin drains with its issue.
+    /// <see cref="ExpectedDiagnosticCode"/> is null only on a pin whose refusal has no code yet.
+    /// </summary>
+    public record InjectionResult(Module Mutated, string? ExpectedDiagnosticCode, KnownRedRefusal? KnownRed = null);
+
+    /// <summary>A refusal the compiler does not make today: <paramref name="Issue"/> tracks it, and
+    /// <paramref name="Observed"/> says what happens instead.</summary>
+    public sealed record KnownRedRefusal(string Issue, string Observed);
+
+    /// <summary>
+    /// Analyses the injected program: null when it drew exactly the expected error code (a pinned
+    /// injection: when it analysed clean), otherwise why not. A throw is an internal error, never a
+    /// refusal.
+    /// </summary>
+    public static string? Judge(InjectionResult injection, string label)
+    {
+        var source = Sharpy.Compiler.Pretty.Unparser.Unparse(injection.Mutated);
+        List<string> codes;
+        try
+        {
+            var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
+            codes = analysis.Diagnostics.GetAll()
+                .Where(d => d.IsError)
+                .Select(d => d.Code ?? "(no code)")
+                .Distinct()
+                .OrderBy(c => c, StringComparer.Ordinal)
+                .ToList();
+            if (!analysis.Success && codes.Count == 0)
+                return $"Injected {label} failed analysis without an error code:\n{source}";
+        }
+        catch (Exception e)
+        {
+            return $"Injected {label} threw {e.GetType().Name} — an internal error is not a refusal:\n{source}\n{e}";
+        }
+
+        var drew = codes.Count == 0 ? "nothing" : string.Join(", ", codes);
+        if (injection.KnownRed is { } pin)
+        {
+            var next = injection.ExpectedDiagnosticCode is { } code
+                ? $"expect {code}"
+                : "give the injection the code the fix allocated";
+            return codes.Count == 0
+                ? null
+                : $"Injected {label} is now refused [{drew}] — if that is {pin.Issue}'s fix, drop the KnownRed pin "
+                  + $"and {next}; otherwise the injection breaks something else:\n{source}";
+        }
+
+        var expected = injection.ExpectedDiagnosticCode
+            ?? throw new InvalidOperationException($"Injection {label} has neither an expected code nor a KnownRed pin");
+        return codes is [var only] && only == expected
+            ? null
+            : $"Injected {label} must draw exactly {expected}, drew [{drew}]:\n{source}";
+    }
 
     public static InjectionResult? InjectTypeMismatchAssignment(Module module)
     {
@@ -20,7 +77,7 @@ internal static class ErrorInjector
             {
                 var mutated = ReplaceStatement(module, body.Value, i,
                     decl with { InitialValue = new StringLiteral { Value = "wrong" } });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0220");
             }
 
             if (body.Value[i] is VariableDeclaration { Type: { } typeAnn2 } decl2
@@ -28,7 +85,7 @@ internal static class ErrorInjector
             {
                 var mutated = ReplaceStatement(module, body.Value, i,
                     decl2 with { InitialValue = new IntegerLiteral { Value = "42" } });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0220");
             }
         }
 
@@ -49,7 +106,7 @@ internal static class ErrorInjector
                 var replaced = ReplaceIdentifier(call, ident.Name, "undefined_xyz_var");
                 var mutated = ReplaceStatement(module, body.Value, i,
                     new ExpressionStatement { Expression = (Expression)replaced });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0200");
             }
         }
 
@@ -71,7 +128,7 @@ internal static class ErrorInjector
                 {
                     var result = ReplaceStatement(module, body.Value, i,
                         new ExpressionStatement { Expression = mutated });
-                    return new InjectionResult(result, "SPY02");
+                    return new InjectionResult(result, "SPY0320");
                 }
             }
         }
@@ -94,7 +151,7 @@ internal static class ErrorInjector
                 {
                     var result = ReplaceStatement(module, body.Value, i,
                         new ExpressionStatement { Expression = mutated });
-                    return new InjectionResult(result, "SPY02");
+                    return new InjectionResult(result, "SPY0224");
                 }
             }
         }
@@ -148,11 +205,13 @@ internal static class ErrorInjector
                 && FindUserFunctionCall(expr) is { } target
                 && target.Arguments.Length > 0)
             {
-                var broken = target with { Arguments = target.Arguments.RemoveAt(0) };
+                // The LAST argument, so the others keep their parameters: dropping the first shifted
+                // a `bool` into an `int` slot and drew SPY0220 beside SPY0224 (#2288).
+                var broken = target with { Arguments = target.Arguments.RemoveAt(target.Arguments.Length - 1) };
                 var newExpr = ReplaceNestedCall(expr, target, broken);
                 var mutated = ReplaceStatement(module, body.Value, i,
                     new ExpressionStatement { Expression = newExpr });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0224");
             }
         }
 
@@ -181,7 +240,7 @@ internal static class ErrorInjector
                 var newExpr = ReplaceNestedCall(expr, target, broken);
                 var mutated = ReplaceStatement(module, body.Value, i,
                     new ExpressionStatement { Expression = newExpr });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0220");
             }
         }
 
@@ -203,7 +262,7 @@ internal static class ErrorInjector
                 var newExpr = ReplaceNestedCall(expr, target, broken);
                 var mutated = ReplaceStatement(module, body.Value, i,
                     new ExpressionStatement { Expression = newExpr });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0200");
             }
         }
 
@@ -263,12 +322,22 @@ internal static class ErrorInjector
                             ? new TypeAnnotation { Name = "str" }
                             : new TypeAnnotation { Name = "int" };
 
-                        var brokenMethod = method with { ReturnType = wrongReturnType };
+                        // The body returns the new type, so the override's signature is the one
+                        // broken fact: keeping `return "result"` under `-> int` drew SPY0260 from the
+                        // body and never reached an override check (#2288).
+                        var brokenMethod = method with
+                        {
+                            ReturnType = wrongReturnType,
+                            Body = ImmutableArray.Create<Statement>(
+                                new ReturnStatement { Value = GenTyped.DefaultValue(wrongReturnType.Name) })
+                        };
                         var newClassBody = classDef.Body.SetItem(j, brokenMethod);
                         var newClass = classDef with { Body = newClassBody };
                         var newModuleBody = module.Body.SetItem(i, newClass);
                         return new InjectionResult(
-                            module with { Body = newModuleBody }, "SPY02");
+                            module with { Body = newModuleBody }, "SPY0282",
+                            KnownRed: new KnownRedRefusal("#2143",
+                                "analyses clean; `run` is SPY0908 CS0508 — no override signature check for a Sharpy base"));
                     }
                 }
             }
@@ -303,8 +372,16 @@ internal static class ErrorInjector
                                     Expression = new EllipsisLiteral()
                                 })
                         };
+                        // The class is @abstract too, so the derived class's missing member is the
+                        // one broken fact: an @abstract method in a plain class drew SPY0493 (#1307)
+                        // for the BASE, and no sample ever asked about the derived class (#2288).
                         var newBaseBody = baseDef.Body.SetItem(j, abstractMethod);
-                        var newBase = baseDef with { Body = newBaseBody };
+                        var newBase = baseDef with
+                        {
+                            Body = newBaseBody,
+                            Decorators = baseDef.Decorators.Add(
+                                new Decorator { QualifiedParts = ImmutableArray.Create("abstract") })
+                        };
                         var newModuleBody = module.Body.SetItem(i, newBase);
 
                         var derivedIdx = -1;
@@ -318,20 +395,22 @@ internal static class ErrorInjector
                                 break;
                             }
                         }
-                        if (derivedIdx >= 0 && newModuleBody[derivedIdx] is ClassDef derived)
+                        if (derivedIdx < 0 || newModuleBody[derivedIdx] is not ClassDef derived)
+                            return null; // no concrete subclass, so no member can be missing
+
+                        var withoutOverride = derived.Body
+                            .Where(s => s is not FunctionDef fd || fd.Name != method.Name)
+                            .ToImmutableArray();
+                        if (withoutOverride.Length < derived.Body.Length)
                         {
-                            var withoutOverride = derived.Body
-                                .Where(s => s is not FunctionDef fd || fd.Name != method.Name)
-                                .ToImmutableArray();
-                            if (withoutOverride.Length < derived.Body.Length)
-                            {
-                                newModuleBody = newModuleBody.SetItem(derivedIdx,
-                                    derived with { Body = withoutOverride });
-                            }
+                            newModuleBody = newModuleBody.SetItem(derivedIdx,
+                                derived with { Body = withoutOverride });
                         }
 
                         return new InjectionResult(
-                            module with { Body = newModuleBody }, "SPY02");
+                            module with { Body = newModuleBody }, ExpectedDiagnosticCode: null,
+                            KnownRed: new KnownRedRefusal("#2143",
+                                "analyses clean; `run` is SPY0908 CS0534 — no missing-abstract-member check for a Sharpy base"));
                     }
                 }
             }
@@ -353,10 +432,11 @@ internal static class ErrorInjector
                 && char.IsUpper(name[0])
                 && ctorCall.Arguments.Length > 0)
             {
-                var broken = ctorCall with { Arguments = ctorCall.Arguments.RemoveAt(0) };
+                // The last argument, for the reason InjectWrongFunctionArgCount gives.
+                var broken = ctorCall with { Arguments = ctorCall.Arguments.RemoveAt(ctorCall.Arguments.Length - 1) };
                 var mutated = ReplaceStatement(module, body.Value, i,
                     decl with { InitialValue = broken });
-                return new InjectionResult(mutated, "SPY02");
+                return new InjectionResult(mutated, "SPY0224");
             }
         }
 

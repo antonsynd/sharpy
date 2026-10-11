@@ -63,8 +63,11 @@ public class ClassInheritancePropertyTests
     [Fact]
     public void AbstractMethod_MustBeOverridden()
     {
+        // Judged like every injection (#2288): exactly the injection's code, or — while the refusal
+        // is missing — its KnownRed pin. This was `rejected > tested / 2` over any failure or throw,
+        // and every sample was rejected for SPY0493 on the BASE class, never for the missing member.
         int tested = 0;
-        int rejected = 0;
+        var failures = new List<string>();
 
         GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
             .Sample(module =>
@@ -74,25 +77,17 @@ public class ClassInheritancePropertyTests
                     return;
 
                 Interlocked.Increment(ref tested);
-                var injectedSource = Sharpy.Compiler.Pretty.Unparser.Unparse(injected.Mutated);
-
-                try
+                if (ErrorInjector.Judge(injected, "missing abstract implementation") is { } failure)
                 {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(injectedSource, "class_test.spy");
-                    if (!result.Success)
-                        Interlocked.Increment(ref rejected);
-                }
-                catch
-                {
-                    Interlocked.Increment(ref rejected);
+                    lock (failures)
+                        failures.Add(failure);
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Abstract method enforcement: {rejected}/{tested} rejected");
-        if (tested > 0)
-            Assert.True(rejected > tested / 2,
-                $"Abstract method enforcement rate too low: {rejected}/{tested}");
+        _output.WriteLine($"Abstract method enforcement: {tested - failures.Count}/{tested} judged as expected");
+        Assert.True(tested > 0, "No missing-abstract-implementation injections were applicable");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} missing-abstract-implementation injections misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 
     [Fact]
