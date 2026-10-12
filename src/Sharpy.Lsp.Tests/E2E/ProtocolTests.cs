@@ -826,6 +826,67 @@ public class ProtocolTests : IAsyncLifetime
         session.Apply(inProcess).Should().Be(applied, "the wire applies what the in-process handler applies");
     }
 
+    /// <summary>
+    /// The wire half of the contract for the issue's second repro (#2232 close criterion (2); the verify round's G3):
+    /// Wrap in try/except on lines 2–4 of the hand test's document, through a real server over stdio, returns an edit
+    /// whose APPLIED text is byte-exact. Source, selection range (1,0)–(3,16) and expected text are EXACTLY those of
+    /// <c>RegionMoverTests.Wrap_Cell3_NestedBodyKeepsItsRelativeIndentation</c>, and <c>docs/tooling/lsp-server.md</c>'s
+    /// Wrap before/after blocks are the same bytes. Before P47 the server returned the nested <c>print(x)</c> flattened
+    /// to the <c>if</c>'s column (<c>        print(x)</c> under <c>        if x > 0:</c>, cell 3 of the plan's table).
+    /// </summary>
+    [Fact]
+    public async Task CodeAction_WrapInTryExcept_TheIssuesRepro_AppliesByteExact()
+    {
+        const string source = "def main():\n    x = 1\n    if x > 0:  # positive\n        print(x)\n    print(\"done\")\n";
+        const string expected =
+            "def main():\n    try:\n        x = 1\n        if x > 0:  # positive\n            print(x)\n"
+            + "    except Exception as e:\n        raise\n    print(\"done\")\n";
+
+        await _client.InitializeAsync();
+        var uri = "file:///test_wrap_try_shape.spy";
+        await _client.DidOpenAsync(uri, source);
+        await _client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
+
+        var result = await _client.SendRequestAsync("textDocument/codeAction", new JsonObject
+        {
+            ["textDocument"] = new JsonObject { ["uri"] = uri },
+            ["range"] = new JsonObject
+            {
+                ["start"] = new JsonObject { ["line"] = 1, ["character"] = 0 },
+                ["end"] = new JsonObject { ["line"] = 3, ["character"] = 16 },
+            },
+            ["context"] = new JsonObject { ["diagnostics"] = new JsonArray() },
+        });
+
+        result.Should().NotBeNull("code action response should not be null");
+        var action = result!.AsArray().SingleOrDefault(a => a!["title"]!.GetValue<string>() == "Wrap in try/except");
+        action.Should().NotBeNull("Wrap in try/except is offered on a selection of whole statements");
+        var changes = action!["edit"]!["changes"]!.AsObject();
+        changes.Count.Should().Be(1, "the action edits the requested document only");
+        var edits = changes.Single().Value!.AsArray().Select(e => new OmniSharp.Extensions.LanguageServer.Protocol.Models.TextEdit
+        {
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(
+                    e!["range"]!["start"]!["line"]!.GetValue<int>(), e["range"]!["start"]!["character"]!.GetValue<int>()),
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(
+                    e["range"]!["end"]!["line"]!.GetValue<int>(), e["range"]!["end"]!["character"]!.GetValue<int>())),
+            NewText = e["newText"]!.GetValue<string>(),
+        }).ToList();
+
+        var applied = Conformance.LspFormattingDriver.ApplyStrict(source, edits);
+
+        applied.Should().Be(expected);
+        using var driver = new Conformance.LspCodeActionDriver(
+            new Sharpy.Compiler.CompilerApi(Sharpy.Compiler.Logging.NullLogger.Instance, Conformance.StdlibReferences.Paths()));
+        using var session = driver.Open(source);
+        var inProcess = session.Request(
+            new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(1, 0),
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(3, 16)))
+            .Single(a => a.Title == "Wrap in try/except");
+        session.Apply(inProcess).Should().Be(applied, "the wire applies what the in-process handler applies");
+    }
+
     [Fact]
     public async Task CodeAction_DiagnosticQuickFix_ReturnsAction()
     {

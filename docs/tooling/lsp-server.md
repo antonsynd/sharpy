@@ -161,7 +161,8 @@ def main():
 These texts are what the server returned for these documents. The tests
 `OrganizeImportsUnitTests.Cell1_TheIssuesRepro_MovesUnitsVerbatim` and
 `RegionMoverTests.Wrap_Cell3_NestedBodyKeepsItsRelativeIndentation` pin them byte for byte, and
-`ProtocolTests.CodeAction_OrganizeImports_TheIssuesRepro_AppliesByteExact` pins the first one over the wire. The
+`ProtocolTests.CodeAction_OrganizeImports_TheIssuesRepro_AppliesByteExact` /
+`ProtocolTests.CodeAction_WrapInTryExcept_TheIssuesRepro_AppliesByteExact` pin them over the wire. The
 code-action shape sweep (`CodeActionShapeSweepTests`) checks the rules above for every action over the test corpus.
 
 ### Display
