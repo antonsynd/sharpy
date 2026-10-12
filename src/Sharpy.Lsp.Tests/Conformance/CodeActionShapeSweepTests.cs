@@ -68,9 +68,10 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// on T differs from S's, judged when T parses (a T that does not is <c>parse</c>'s verdict; sampled in regular mode, see
 /// the theories);</item>
 /// <item><c>comment</c> — the comment TRIVIA of T (re-lexed, never a substring) lacks a comment of S, or holds one S
-/// does not, other than the comments on the lines the action deletes as whole statements (the declared removals,
-/// D5: the unused import a quick fix or Organize Imports deletes, the declaration Inline variable deletes) — those
-/// may go;</item>
+/// does not, other than the comments on the lines the action deletes whole (the declared removals, D5: the unused
+/// import a quick fix or Organize Imports deletes — the whole statement only when EVERY name is unused, else the own
+/// line of an unused name, never a line it shares with a kept name — and the declaration Inline variable deletes;
+/// <see cref="DeclareImportRemovals"/>) — those may go;</item>
 /// <item><c>line</c> (<c>Move</c>) — a non-blank line of the replaced region of S (the whole lines the edits touch),
 /// other than a header the action re-spells and a declared removal, does not reappear in T's new region with the
 /// region's ONE indentation offset δ (clamped at column 0), or a line that starts inside a multi-line literal does
@@ -963,9 +964,13 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     /// <item><c>to-match</c>/<c>to-if</c> — the target's header lines (<c>LineStart..HeaderLineEnd</c>, each clause's
     /// <c>LineStart..HeaderLineEnd</c>, the <c>else</c> header line) are re-spelled; the moved span is the target;</item>
     /// <item><c>wrap-try</c>/<c>extract-method</c> — the moved span is the request's selected statements;</item>
-    /// <item><c>organize-imports</c> — the moved span is the module's first through last import; the unused imports
-    /// (published SPY0452) are declared removals; blank lines inside the block are the action's layout (D4);</item>
-    /// <item><c>remove-import</c> — the import statement at the diagnostic's line is a declared removal;</item>
+    /// <item><c>organize-imports</c> — the moved span is the module's first through last import; the declared removals
+    /// are D5's over the published SPY0452 positions (<see cref="DeclareImportRemovals"/>: an import whose every name
+    /// is unused goes whole; an unused name alone on its line goes with its line; a name sharing its line with a kept
+    /// name removes nothing — that line is re-spelled); a decorated import is pinned (D4), never removed; blank lines
+    /// inside the block are the action's layout (D4);</item>
+    /// <item><c>remove-import</c> — D5 for the import holding the request's one diagnostic: whole (decorator lines
+    /// included) when every name is unused, else that name's own line, else nothing;</item>
     /// <item><c>inline-variable</c> — the target declaration is a declared removal.</item>
     /// </list>
     /// </summary>
@@ -1004,17 +1009,17 @@ public sealed class CodeActionShapeSweepTests : IDisposable
                 var imports = module.Body.Where(st => st.UnwrapDecorated() is ImportStatement or FromImportStatement).ToList();
                 if (imports.Count > 0)
                     moved = (imports[0].LineStart, doc.EndLine(imports[^1]));
-                var unused = published.Where(d => d.Code?.String == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnusedImport)
-                    .Select(d => d.Range.Start.Line + 1).ToHashSet();
-                foreach (var import in imports.Where(st => unused.Contains(st.LineStart)))
-                    Span(removed, import.LineStart, doc.EndLine(import));
+                var unused = UnusedImportPositions(published);
+                // A decorated import is pinned verbatim (D4): never a removal, whatever SPY0452 says of its names.
+                foreach (var import in imports.Where(st => st is not DecoratedStatement))
+                    DeclareImportRemovals(doc, import, unused, unused, removed, headers);
                 blankInsideExempt = true;
                 break;
             case "remove-import" when request.Diagnostic is { } diagnostic && doc.Module is { } module:
-                var line = diagnostic.Range.Start.Line + 1;
-                var statement = Walk(module).Nodes.OfType<Statement>().FirstOrDefault(st => st.LineStart == line && st.UnwrapDecorated() is ImportStatement or FromImportStatement);
+                var requested = new SCG.HashSet<(int Line, int Column)> { PositionOf(diagnostic) };
+                var statement = module.Body.FirstOrDefault(st => ImportNamesOf(st).Any(n => Holds(n, PositionOf(diagnostic))));
                 if (statement is not null)
-                    Span(removed, statement.LineStart, doc.EndLine(statement));
+                    DeclareImportRemovals(doc, statement, UnusedImportPositions(published), requested, removed, headers);
                 break;
             case "inline-variable" when request.Target is VariableDeclaration declaration:
                 Span(removed, declaration.LineStart, doc.EndLine(declaration));
@@ -1022,6 +1027,75 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         }
 
         return new Exemptions(removed, headers, moved, blankInsideExempt);
+    }
+
+    /// <summary>The 1-based (line, column) positions of the published SPY0452 diagnostics — each names ONE imported name at that name's position.</summary>
+    internal static SCG.HashSet<(int Line, int Column)> UnusedImportPositions(IReadOnlyList<Diagnostic> published)
+        => published.Where(d => d.Code?.String == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnusedImport)
+            .Select(PositionOf).ToHashSet();
+
+    private static (int Line, int Column) PositionOf(Diagnostic diagnostic) => (diagnostic.Range.Start.Line + 1, diagnostic.Range.Start.Character + 1);
+
+    /// <summary>The names of an import statement, through a decorator wrapper; none for <c>from m import *</c> or any other statement.</summary>
+    internal static ImmutableArray<ImportAlias> ImportNamesOf(Statement statement) => statement.UnwrapDecorated() switch
+    {
+        ImportStatement import => import.Names,
+        FromImportStatement { ImportAll: false } fromImport => fromImport.Names,
+        _ => ImmutableArray<ImportAlias>.Empty,
+    };
+
+    /// <summary>True when the 1-based <paramref name="position"/> lies on <paramref name="name"/> (its <c>as</c> alias included).</summary>
+    private static bool Holds(ImportAlias name, (int Line, int Column) position)
+        => position.Line == name.LineStart && position.Column >= name.ColumnStart && position.Column < Math.Max(name.ColumnEnd, name.ColumnStart + 1);
+
+    /// <summary>
+    /// The declared removals of an import statement under D5, computed from the AST and the SPY0452 positions alone
+    /// (never from the provider): when every name of the statement is unused (<paramref name="unused"/>) — or it has
+    /// one name — the statement's whole lines, decorator lines included, are removed; otherwise each name of
+    /// <paramref name="requested"/> that stands alone on its line (<see cref="StandsAloneOnItsLine"/>) removes that
+    /// line, its comma and its comment with it; a requested name sharing its line with a kept name removes nothing
+    /// of the line — the line is re-spelled (<paramref name="headers"/>: exempt from <c>line</c>, its comment still
+    /// required). Organize Imports passes every unused name as requested; Remove unused import passes the request's one.
+    /// </summary>
+    internal static void DeclareImportRemovals(SweepText doc, Statement statement, SCG.IReadOnlySet<(int Line, int Column)> unused,
+        SCG.IReadOnlySet<(int Line, int Column)> requested, SCG.HashSet<int> removed, SCG.HashSet<int> headers)
+    {
+        var names = ImportNamesOf(statement);
+        if (names.IsEmpty)
+            return;
+        bool Marked(ImportAlias name, SCG.IReadOnlySet<(int, int)> positions) => positions.Any(p => Holds(name, p));
+        if (!names.Any(n => Marked(n, requested)))
+            return;
+        if (names.Length == 1 || names.All(n => Marked(n, unused)))
+        {
+            for (var line = statement.LineStart; line <= doc.EndLine(statement); line++)
+                removed.Add(line);
+            return;
+        }
+
+        foreach (var name in names.Where(n => Marked(n, requested)))
+        {
+            if (StandsAloneOnItsLine(doc, name))
+                removed.Add(name.LineStart);
+            else
+                headers.Add(name.LineStart);
+        }
+    }
+
+    /// <summary>
+    /// True when <paramref name="name"/> is the only code on its line: whitespace before it, and after it nothing but
+    /// an optional comma and an optional comment (a parenthesized import's one-name-per-line layout).
+    /// </summary>
+    internal static bool StandsAloneOnItsLine(SweepText doc, ImportAlias name)
+    {
+        if (name.LineStart != name.LineEnd || name.LineStart < 1 || name.LineStart > doc.Lines.Count)
+            return false;
+        var text = doc.Lines[name.LineStart - 1];
+        var before = text[..Math.Min(text.Length, Math.Max(0, name.ColumnStart - 1))];
+        var after = text[Math.Min(text.Length, Math.Max(0, name.ColumnEnd - 1))..].TrimStart(' ', '\t');
+        if (after.StartsWith(','))
+            after = after[1..].TrimStart(' ', '\t');
+        return SweepText.IsBlankLine(before) && (after.Length == 0 || after.StartsWith('#'));
     }
 
     // ================================================================
@@ -1334,6 +1408,93 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         var source = SweepText.Of("import sys  # a\nprint(1)\n");
         CommentVerdict(source, SweepText.Of("print(1)\n"), new SCG.HashSet<int> { 1 }).Should().BeNull();
         CommentVerdict(source, SweepText.Of("print(1)\n"), new SCG.HashSet<int>()).Should().Contain("comment lost", "the same deletion without the declared removal");
+    }
+
+    // ---- the declared removals of an import are D5's: per NAME, never the whole statement while a name is kept ----
+
+    private const string ParenthesizedImports =
+        "from os.path import (\n    join,  # j\n    basename,  # b\n    dirname,  # d\n)\nprint(join(\"a\", \"b\"), dirname(\"c\"))\n";
+
+    /// <summary>An SPY0452 as the server publishes it: at the unused NAME's 0-based position.</summary>
+    private static Diagnostic UnusedAt(int line, int character, int length) => new()
+    {
+        Code = Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnusedImport,
+        Range = new LspRange(new Position(line, character), new Position(line, character + length)),
+    };
+
+    /// <summary>The exemptions the sweep computes for <paramref name="action"/>: Organize Imports on the whole-document request, Remove unused import on the request carrying <paramref name="requested"/>.</summary>
+    private static Exemptions ImportExemptions(string action, SweepText doc, Diagnostic requested, params Diagnostic[] alsoPublished)
+    {
+        var request = action == "remove-import"
+            ? new SweepRequest(DiagRequest, requested.Range, requested, null, null, "diag")
+            : new SweepRequest(WholeRequest, Cursor(0, 0), null, null, null, "whole");
+        return ExemptionsOf(Spec(action), request, doc, alsoPublished.Prepend(requested).ToArray());
+    }
+
+    /// <summary>
+    /// Positive control (i)/(ii): `basename` unused in a parenthesized import. Its own line is the one declared
+    /// removal, so an applied text that drops `# b` and keeps `# j`/`# d` is clean, and one that also drops `# j`
+    /// (a KEPT name's comment) fires — under the old whole-statement exemption it passed.
+    /// </summary>
+    [Theory]
+    [InlineData("organize-imports")]
+    [InlineData("remove-import")]
+    public void Comment_OfAnUnusedNameAloneOnItsLine_MayGo_AKeptNamesMustStay(string action)
+    {
+        var doc = SweepText.Of(ParenthesizedImports);
+        var exemptions = ImportExemptions(action, doc, UnusedAt(2, 4, "basename".Length));
+        exemptions.RemovedLines.Should().BeEquivalentTo(new[] { 3 }, "basename's own line, and nothing else of the statement");
+        var kept = SweepText.Of("from os.path import (\n    join,  # j\n    dirname,  # d\n)\nprint(join(\"a\", \"b\"), dirname(\"c\"))\n");
+        CommentVerdict(doc, kept, exemptions.RemovedLines).Should().BeNull("# b went with its line; # j and # d stayed");
+        var joinLost = SweepText.Of("from os.path import (\n    join,\n    dirname,  # d\n)\nprint(join(\"a\", \"b\"), dirname(\"c\"))\n");
+        CommentVerdict(doc, joinLost, exemptions.RemovedLines).Should().Contain("comment lost: '# j'", "join is kept; its comment is no declared removal");
+    }
+
+    /// <summary>Positive control (iii): an unused name sharing its line with a kept name declares nothing of the line removed; the line is re-spelled (exempt from <c>line</c> only).</summary>
+    [Theory]
+    [InlineData("organize-imports")]
+    [InlineData("remove-import")]
+    public void Comment_OnALineAnUnusedNameSharesWithAKeptName_MustStay(string action)
+    {
+        var doc = SweepText.Of("from os.path import join, basename  # both\nprint(join(\"a\", \"b\"))\n");
+        var exemptions = ImportExemptions(action, doc, UnusedAt(0, "from os.path import join, ".Length, "basename".Length));
+        exemptions.RemovedLines.Should().BeEmpty("nothing of a shared line is a declared removal");
+        exemptions.HeaderLines.Should().BeEquivalentTo(new[] { 1 }, "the line is re-spelled: exempt from line, never from comment");
+        CommentVerdict(doc, SweepText.Of("from os.path import join\nprint(join(\"a\", \"b\"))\n"), exemptions.RemovedLines)
+            .Should().Contain("comment lost: '# both'");
+        CommentVerdict(doc, SweepText.Of("from os.path import join  # both\nprint(join(\"a\", \"b\"))\n"), exemptions.RemovedLines).Should().BeNull();
+    }
+
+    /// <summary>
+    /// Every name unused: the whole statement through its closing parenthesis is the declared removal — found from
+    /// diagnostics on lines 2 and 3 of a statement that starts on line 1 (the line-start test missed this layout);
+    /// Remove unused import's request carries ONE of them and the published set decides "every".
+    /// </summary>
+    [Theory]
+    [InlineData("organize-imports")]
+    [InlineData("remove-import")]
+    public void Comment_OfAnImportWhoseEveryNameIsUnused_MayGoWithTheWholeStatement(string action)
+    {
+        var doc = SweepText.Of("from os.path import (\n    join,  # j\n    basename,  # b\n)\nprint(1)\n");
+        var exemptions = ImportExemptions(action, doc, UnusedAt(1, 4, "join".Length), UnusedAt(2, 4, "basename".Length));
+        exemptions.RemovedLines.Should().Equal(1, 2, 3, 4);
+        CommentVerdict(doc, SweepText.Of("print(1)\n"), exemptions.RemovedLines).Should().BeNull();
+        ImportExemptions(action, doc, UnusedAt(1, 4, "join".Length)).RemovedLines.Should().BeEquivalentTo(new[] { 2 }, "with basename used, only join's line goes");
+    }
+
+    /// <summary>The convention the exemption matches on is the publisher's: the server's SPY0452 sits at the unused name's position (1-based (3, 5) for `basename`).</summary>
+    [Fact]
+    public void UnusedImportPositions_ArePublishedAtTheNamesPosition()
+    {
+        var (_, driver) = Isolated();
+        using (driver)
+        using (var session = driver.Open(ParenthesizedImports))
+        {
+            UnusedImportPositions(session.Diagnostics).Should().Equal((3, 5));
+            var basename = ImportNamesOf(SweepText.Of(ParenthesizedImports).Module!.Body[0]).Single(n => n.Name == "basename");
+            (basename.LineStart, basename.ColumnStart).Should().Be((3, 5));
+            StandsAloneOnItsLine(SweepText.Of(ParenthesizedImports), basename).Should().BeTrue();
+        }
     }
 
     /// <summary>The flattened nested line of cell 3: <c>print(x)</c> moved to the <c>if</c> column under a +4 wrap.</summary>
