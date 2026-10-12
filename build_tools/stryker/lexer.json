@@ -1,0 +1,14 @@
+{
+  "stryker-config": {
+    "project": "Sharpy.Compiler.csproj",
+    "test-projects": ["src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj"],
+    "mutate": ["**/Lexer/*.cs"],
+    "test-case-filter": "FullyQualifiedName~Sharpy.Compiler.Tests.Lexer.|FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Lexer.",
+    "coverage-analysis": "perTest",
+    "mutation-level": "Standard",
+    "concurrency": 4,
+    "configuration": "Debug",
+    "reporters": ["dots", "json", "html", "markdown", "cleartext"],
+    "thresholds": { "high": 80, "low": 60, "break": 0 }
+  }
+}

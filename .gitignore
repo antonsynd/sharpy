@@ -23,6 +23,9 @@ site/
 BenchmarkDotNet.Artifacts/
 BenchmarkResults/
 
+# Stryker.NET output when run without -O (the committed artifact is the docs/audits/ report, #2289)
+StrykerOutput/
+
 node_modules/
 .serena/
 
