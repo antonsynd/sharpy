@@ -418,6 +418,9 @@ public class DispatchSiteInventoryTests
         ["Sharpy.Lsp/Refactoring/ImportNames.cs::ImportNames.Of"] = "walker-default-contract",
         ["Sharpy.Lsp/Refactoring/ScopeAnalyzer.cs::SelectionVisitor.CollectAssignmentTargets"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Sharpy.Lsp/Refactoring/SelectionAnalyzer.cs::SelectionAnalyzer.GetStatementBody"] = "walker-default-contract",
+        // Chore R-GP (#2296): the decorators attached above a moved region's first statement; a kind with none is
+        // whole. Netted by ParseSafetyTests' nested-declaration rows (a decorated nested def is not offered).
+        ["Sharpy.Lsp/Refactoring/SelectionAnalyzer.cs::SelectionAnalyzer.LeavesADecoratorBehind"] = "refusal-net:ParseSafetyTests",
 
         // Coverage-critical handlers — Phase 2 totality guards
         ["Sharpy.Lsp/Handlers/SemanticTokensHandler.cs::SharpySemanticTokensHandler.CollectStatementTokens"] = "guarded-by:SemanticTokensDispatchTotalityTests",

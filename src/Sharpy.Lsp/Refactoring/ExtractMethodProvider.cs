@@ -37,9 +37,10 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         if (selectedStatements.Count == 0)
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 
-        // A type body's members and a module's declarations cannot become a function's body statements: no
-        // legal text exists there, so the action is not offered.
-        if (!SelectionAnalyzer.CanMoveIntoBlock(owner, selectedStatements)
+        // A type body's members and a module's declarations cannot become a function's body statements, and a
+        // nested declaration read after the selection would leave that read undefined: no legal text exists
+        // there, so the action is not offered.
+        if (!SelectionAnalyzer.CanMoveIntoBlock(ast, context.SourceText, owner, selectedStatements)
             || !SourceLines.Of(context.SourceText).BeginsItsLine(selectedStatements[0]))
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 

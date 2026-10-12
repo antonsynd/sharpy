@@ -477,9 +477,10 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (selectedStatements.Count == 0)
             return;
 
-        // A try block cannot stand in a type body, and a module-level declaration inside one is no longer a
-        // declaration: no legal text exists there, so the action is not offered.
-        if (!SelectionAnalyzer.CanMoveIntoBlock(owner, selectedStatements)
+        // A try block cannot stand in a type body, a module-level declaration inside one is no longer a
+        // declaration, and a nested declaration inside one is scoped to it (a read after it is undefined): no
+        // legal text exists there, so the action is not offered.
+        if (!SelectionAnalyzer.CanMoveIntoBlock(ast, sourceText, owner, selectedStatements)
             || !SourceLines.Of(sourceText).BeginsItsLine(selectedStatements[0]))
             return;
 

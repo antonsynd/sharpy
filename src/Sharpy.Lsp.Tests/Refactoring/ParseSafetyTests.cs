@@ -298,6 +298,67 @@ public sealed class ParseSafetyTests : IDisposable
         NotOffered(text, 1, 0, 1, 26, "Extract method");
     }
 
+    // ---- chore R-GP (#2296): a nested declaration moved into a block is scoped to it ----
+
+    /// <summary>
+    /// A def or a type alias declared inside a function and moved into a <c>try:</c> body or a new function is
+    /// scoped to that block: a read of its name after the region is undefined (SPY0200 / SPY0202). Not offered @
+    /// 7f0502de3, offered with that damage @ e4a24985f (a not-offered → offered-damaged direction, measured on
+    /// both binaries). The read may be a call, a value, a closure's body, an f-string hole or a type annotation,
+    /// and the owner may be an <c>if</c> body. A decorated nested def is withheld even without a later read: its
+    /// decorator sits above the def's first line and would stay behind (SPY0105).
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    def helper() -> int:\n        return 1\n    print(helper())\n", 1, 0, 2, 16)]
+    [InlineData("def main():\n    def helper() -> int:\n        return 1\n    f = helper\n    print(f())\n", 1, 0, 2, 16)]
+    [InlineData("def main():\n    def helper() -> int:\n        return 1\n    def other() -> int:\n        return helper()\n    print(other())\n", 1, 0, 2, 16)]
+    [InlineData("def main():\n    if True:\n        def helper() -> int:\n            return 1\n        print(helper())\n", 2, 0, 3, 20)]
+    [InlineData("def main():\n    def helper() -> int:\n        return 1\n    print(f\"{helper()}\")\n", 1, 0, 2, 16)]
+    [InlineData("def main():\n    type T = int\n    v: T = 1\n    print(v)\n", 1, 0, 1, 16)]
+    [InlineData("def main():\n    x: int = 1\n    def helper() -> int:\n        return 1\n    print(helper())\n", 1, 0, 3, 16)]
+    [InlineData("def main():\n    @deprecated(\"x\")\n    def helper() -> int:\n        return 1\n    print(helper())\n", 1, 0, 3, 16)]
+    [InlineData("def main():\n    @deprecated(\"x\")\n    def helper() -> int:\n        return 1\n    print(2)\n", 1, 0, 3, 16)]
+    public void WrapAndExtract_NestedDeclarationReadAfterTheRegion_NotOffered(string text, int sl, int sc, int el, int ec)
+    {
+        NotOffered(text, sl, sc, el, ec, "Wrap in try/except");
+        NotOffered(text, sl, sc, el, ec, "Extract method");
+    }
+
+    /// <summary>
+    /// The positive controls of the cell above: the same nested def with no read after the region, its call
+    /// moved WITH it, a same-named def in another function, and a member access <c>C().helper()</c> (a name after
+    /// a <c>.</c> is a member, not a read) are all still offered, and each applied text compiles.
+    /// </summary>
+    [Fact]
+    public void Wrap_NestedDeclarationNotReadAfterTheRegion_IsOffered()
+    {
+        Applied("def main():\n    def helper() -> int:\n        return 1\n    print(2)\n", 1, 0, 2, 16, "Wrap in try/except").Should().Be(
+            "def main():\n    try:\n        def helper() -> int:\n            return 1\n    except Exception as e:\n        raise\n    print(2)\n");
+        Applied("def main():\n    def helper() -> int:\n        return 1\n    print(helper())\n    print(3)\n", 1, 0, 3, 19, "Wrap in try/except").Should().Be(
+            "def main():\n    try:\n        def helper() -> int:\n            return 1\n        print(helper())\n    except Exception as e:\n        raise\n    print(3)\n");
+        Applied("def main():\n    def helper() -> int:\n        return 1\n    print(2)\n\ndef helper() -> int:\n    return 5\n\ndef g():\n    print(helper())\n",
+                1, 0, 2, 16, "Wrap in try/except").Should().Be(
+            "def main():\n    try:\n        def helper() -> int:\n            return 1\n    except Exception as e:\n        raise\n    print(2)\n\n"
+            + "def helper() -> int:\n    return 5\n\ndef g():\n    print(helper())\n");
+        Applied("class C:\n    def helper(self) -> int:\n        return 2\n\ndef main():\n    def helper() -> int:\n        return 1\n    print(C().helper())\n",
+                5, 0, 6, 16, "Wrap in try/except").Should().Be(
+            "class C:\n    def helper(self) -> int:\n        return 2\n\ndef main():\n    try:\n        def helper() -> int:\n            return 1\n"
+            + "    except Exception as e:\n        raise\n    print(C().helper())\n");
+        Applied("def main():\n    type T = int\n    v: int = 1\n    print(v)\n", 1, 0, 1, 16, "Wrap in try/except").Should().Be(
+            "def main():\n    try:\n        type T = int\n    except Exception as e:\n        raise\n    v: int = 1\n    print(v)\n");
+    }
+
+    [Fact]
+    public void ExtractMethod_NestedDeclarationNotReadAfterTheRegion_IsOffered()
+    {
+        Applied("def main():\n    def helper() -> int:\n        return 1\n    print(2)\n", 1, 0, 2, 16, "Extract method").Should().Be(
+            "def extracted_method():\n    def helper() -> int:\n        return 1\n\ndef main():\n    extracted_method()\n    print(2)\n");
+        Applied("class C:\n    def helper(self) -> int:\n        return 2\n\ndef main():\n    def helper() -> int:\n        return 1\n    print(C().helper())\n",
+                5, 0, 6, 16, "Extract method").Should().Be(
+            "class C:\n    def helper(self) -> int:\n        return 2\n\ndef extracted_method():\n    def helper() -> int:\n        return 1\n\n"
+            + "def main():\n    extracted_method()\n    print(C().helper())\n");
+    }
+
     [Fact]
     public void Wrap_SelectionEndingInsideAStatement_DoesNotCoverIt()
     {

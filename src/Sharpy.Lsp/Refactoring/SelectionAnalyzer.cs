@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
@@ -148,7 +150,7 @@ internal static class SelectionAnalyzer
         // base's reading of a whole-def selection, which a statement it failed to cover had hidden (P47, #2232).
         // Only a body of its own lines: a bodiless `def f(self) -> T` (abstract, interface) or a stub
         // `def f(): ...` has none, and stays refused.
-        if (selected.Count == 1 && selected[0].UnwrapDecorated() is FunctionDef function && !CanMoveIntoBlock(owner, selected)
+        if (selected.Count == 1 && selected[0].UnwrapDecorated() is FunctionDef function && !BlockMayHold(owner, selected)
             && function.Body.Length > 0 && function.HeaderLineEnd > 0 && function.Body[0].LineStart > function.HeaderLineEnd
             && function.Body.All(Covers))
         {
@@ -164,14 +166,114 @@ internal static class SelectionAnalyzer
     /// module), may be moved into a statement block — a <c>try:</c> body or a new function's body — and still
     /// mean what they meant (P47, #2232). A type body (class, struct, interface, enum) holds members, not
     /// statements: no block may stand there. At module level a declaration (a def, a type, an import, a
-    /// module variable or const) moved into a block stops being a declaration (SPY0340 / SPY0202). Where no
-    /// legal text exists the action is not offered.
+    /// module variable or const) moved into a block stops being a declaration (SPY0340 / SPY0202). Inside a
+    /// function a declaration moved into a block is scoped to that block, so a declaration whose name is read
+    /// after the region would leave that read undefined (SPY0200; chore R-GP, #2296), and a declaration's
+    /// attached decorators sit above its first line, outside the lines a mover takes, so the first selected
+    /// statement may not carry one (SPY0105 on the decorator left behind). Where no legal text exists the
+    /// action is not offered.
     /// </summary>
-    public static bool CanMoveIntoBlock(Statement? owner, IReadOnlyList<Statement> statements)
+    public static bool CanMoveIntoBlock(Module ast, string sourceText, Statement? owner, IReadOnlyList<Statement> statements)
+        => BlockMayHold(owner, statements) && !LeavesADecoratorBehind(statements)
+           && !DeclaresANameReadAfter(ast, sourceText, statements);
+
+    /// <summary>
+    /// The structural half of <see cref="CanMoveIntoBlock"/>: false in a type body, and at module level for a
+    /// selection holding a module declaration.
+    /// </summary>
+    private static bool BlockMayHold(Statement? owner, IReadOnlyList<Statement> statements)
     {
         if (owner is ClassDef or StructDef or InterfaceDef or EnumDef)
             return false;
         return owner is not null || !statements.Any(IsModuleDeclaration);
+    }
+
+    /// <summary>
+    /// True when one of <paramref name="statements"/> declares a name (a def, a type alias, a type) that is
+    /// read after the region, before the end of the function holding it (the module when none does). The
+    /// reads are the lexer's identifier tokens, so a read in a type annotation, an f-string hole or a nested
+    /// function counts; a name after a <c>.</c> is a member, not a read. True as well when the region's end
+    /// cannot be read from the tokens: without that fact the action cannot be judged safe.
+    /// </summary>
+    private static bool DeclaresANameReadAfter(Module ast, string sourceText, IReadOnlyList<Statement> statements)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var statement in statements)
+        {
+            if (DeclaredName(statement.UnwrapDecorated()) is { Length: > 0 } name)
+                names.Add(name);
+        }
+
+        if (names.Count == 0)
+            return false;
+
+        var source = SourceLines.Of(sourceText);
+        var tokens = source.Tokens;
+        if (Extent.StatementEndOffset(statements[^1], tokens, source) is not { } regionEnd)
+            return true;
+
+        var scopeEnd = sourceText.Length;
+        if (EnclosingFunction(ast, statements) is { } function)
+        {
+            if (Extent.StatementEndOffset(function, tokens, source) is not { } functionEnd)
+                return true;
+            scopeEnd = functionEnd;
+        }
+
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            if (token.Position < regionEnd)
+                continue;
+            if (token.Position >= scopeEnd)
+                break;
+            if (token.Type == TokenType.Identifier && names.Contains(token.Value)
+                && (i == 0 || tokens[i - 1].Type != TokenType.Dot))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>The name a def or a type declaration (<see cref="StatementExtensions.TryGetNestedDeclaration"/>) binds; null for any other statement.</summary>
+    private static string? DeclaredName(Statement statement) =>
+        statement is FunctionDef function ? function.Name
+        : statement.TryGetNestedDeclaration(out var declaration) ? declaration.Name
+        : null;
+
+    /// <summary>
+    /// True when the first of <paramref name="statements"/> carries a decorator written above its first line:
+    /// the parser attaches a def's, a type's, a property's, an event's or a field's decorators to it while its
+    /// <c>LineStart</c> is the declaration's own line, and the movers take lines from there. A
+    /// <see cref="DecoratedStatement"/> (statement-scoped <c>@suppress</c>) starts at its decorator and is whole.
+    /// </summary>
+    private static bool LeavesADecoratorBehind(IReadOnlyList<Statement> statements)
+    {
+        var first = statements[0];
+        var decorators = first switch
+        {
+            FunctionDef f => f.Decorators,
+            VariableDeclaration v => v.Decorators,
+            PropertyDef p => p.Decorators,
+            EventDef e => e.Decorators,
+            _ when first.TryGetNestedDeclaration(out var declaration) => declaration.Decorators,
+            _ => ImmutableArray<Decorator>.Empty,
+        };
+        return !decorators.IsDefaultOrEmpty && decorators.Any(d => d.LineStart > 0 && d.LineStart < first.LineStart);
+    }
+
+    /// <summary>The innermost function whose body holds <paramref name="statements"/>, or null at module level.</summary>
+    private static FunctionDef? EnclosingFunction(Module ast, IReadOnlyList<Statement> statements)
+    {
+        var first = statements[0];
+        FunctionDef? enclosing = null;
+        foreach (var node in PositionService.FindAllContainingNodes(ast, first.LineStart, first.ColumnStart))
+        {
+            if (node is FunctionDef function && !statements.Any(s => ReferenceEquals(s.UnwrapDecorated(), function)))
+                enclosing = function;
+        }
+
+        return enclosing;
     }
 
     private static bool IsModuleDeclaration(Statement statement) =>

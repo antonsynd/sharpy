@@ -102,7 +102,10 @@ An action that moves or rewrites code you wrote keeps it the way you wrote it:
   Extract method can take a builtin or a name the selection binds as a parameter
   ([#2294](https://github.com/antonsynd/sharpy/issues/2294)); and Convert to match re-spells a comparand from
   the literal's value, so a raw-string comparand (`if x == r"\d":`) becomes `case r"\\d":`, which is not a
-  pattern ([#2296](https://github.com/antonsynd/sharpy/issues/2296)).
+  pattern ([#2296](https://github.com/antonsynd/sharpy/issues/2296)). Wrap in try/except and Extract method are
+  also not offered when the selection declares a nested `def` or `type` alias that is used after it (inside the new
+  block the name would be out of scope there), or when it starts with a decorated declaration (the decorator sits
+  above the lines that move).
 
 Organize Imports on
 
