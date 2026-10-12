@@ -190,4 +190,43 @@ public sealed class RegionMoverTests : IDisposable
         Apply("def main():\n    print(1)\nimport math", 2, 0, 2, 0, "Remove unused import", unusedImportContext: true)
             .Should().Be("def main():\n    print(1)");
     }
+
+    // ---- Remove unused import × decorated import (the plan's "decorated (pinned) import × unused multi-line import" cell) ----
+
+    /// <summary>
+    /// The corpus shape (fixture <c>imports/import_suppress_unrelated_code</c>): a suppress-decorated import whose
+    /// one name is unused. e4a24985f deleted the import line alone and `@suppress(...)` attached to `def main`;
+    /// the decorator lines of a deleted statement are part of it.
+    /// </summary>
+    [Fact]
+    public void RemoveUnusedImport_DecoratedSingleLineImport_DeletesTheDecoratorWithIt()
+    {
+        var text = "@suppress(\"SPY0480\")\nfrom System.IO import StringWriter\n\ndef main():\n    print(1)\n";
+
+        Apply(text, 1, 0, 1, 0, "Remove unused import", unusedImportContext: true).Should().Be(
+            "\ndef main():\n    print(1)\n");
+    }
+
+    /// <summary>e4a24985f left `from os.path import (\n)` under the decorator — it does not parse.</summary>
+    [Fact]
+    public void RemoveUnusedImport_DecoratedParenthesizedImportAllUnused_DeletesDecoratorAndWholeStatement()
+    {
+        var text = "@suppress(\"SPY0480\")\nfrom os.path import (\n    join,\n)\n\ndef main():\n    print(1)\n";
+
+        Apply(text, 2, 4, 2, 4, "Remove unused import", unusedImportContext: true).Should().Be(
+            "\ndef main():\n    print(1)\n");
+    }
+
+    /// <summary>
+    /// Direction guard: with a still-used name the per-name rule applies and the decorator and statement stay
+    /// (e4a24985f's one-line fallback happened to delete the same line).
+    /// </summary>
+    [Fact]
+    public void RemoveUnusedImport_DecoratedParenthesizedImportKeepingAUsedName_DeletesOnlyTheUnusedNamesLine()
+    {
+        var text = "@suppress(\"SPY0480\")\nfrom os.path import (\n    join,\n    basename,\n)\n\ndef main():\n    print(join(\"a\", \"b\"))\n";
+
+        Apply(text, 3, 4, 3, 4, "Remove unused import", unusedImportContext: true).Should().Be(
+            "@suppress(\"SPY0480\")\nfrom os.path import (\n    join,\n)\n\ndef main():\n    print(join(\"a\", \"b\"))\n");
+    }
 }

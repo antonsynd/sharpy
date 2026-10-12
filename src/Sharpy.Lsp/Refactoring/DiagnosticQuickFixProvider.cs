@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 using SCG = System.Collections.Generic;
@@ -111,7 +112,11 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
     /// name of the import statement holding it is unused, the statement's whole lines through its TRUE last
     /// line (a parenthesized import's closing line included, D2), its trailing comment with it (D5); when a
     /// name of that statement is still used, only this name — its own line inside a parenthesized import, else
-    /// its text and one separating comma. Null when no import statement holds the diagnostic's position.
+    /// its text and one separating comma. A suppress-decorated import (#1124) is its inner statement for the
+    /// names, and its decorator lines are the statement's leading lines: deleted with it when the whole
+    /// statement goes (a decorator of a deleted statement is part of it — left behind it would attach to the
+    /// next statement), untouched when only a name goes. Null when no import statement holds the diagnostic's
+    /// position.
     /// </summary>
     private static TextEdit? RemoveImportEdit(CodeActionProviderContext context, SourceLines source, Diagnostic diag)
     {
@@ -122,10 +127,9 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         var column = diag.Range.Start.Character + 1;
         foreach (var stmt in ast.Body)
         {
-            // A decorated (suppressing) import keeps today's line deletion: its decorator lines are not this
-            // fix's (ImportNames.Of sees no names through the decorator wrapper).
-            var names = ImportNames.Of(stmt);
-            if (names.IsEmpty || line < stmt.LineStart || line > source.EndLine(stmt))
+            var import = stmt.UnwrapDecorated();
+            var names = ImportNames.Of(import);
+            if (names.IsEmpty || line < import.LineStart || line > source.EndLine(import))
                 continue;
 
             var index = -1;
@@ -140,7 +144,7 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
 
             var unused = new UnusedImportNames(context, names);
             if (names.Length == 1 || names.All(unused.Contains))
-                return source.WholeLineEdit(stmt.LineStart, source.EndLine(stmt), Array.Empty<string>());
+                return source.WholeLineEdit(stmt.LineStart, source.EndLine(import), Array.Empty<string>());
 
             var (start, end) = ImportNames.RemovalSpans(source, names, new SCG.HashSet<int> { index }).Single();
             return new TextEdit { Range = new LspRange(source.PositionOf(start), source.PositionOf(end)), NewText = "" };
