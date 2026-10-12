@@ -134,7 +134,7 @@ public class FrontEndParityTests
     [Fact]
     public async Task FrontEndParity_AllFixtures_AgreeWithAnalyzeBaseline()
     {
-        var (corePath, stdlibPath) = ResolveStdlibAssemblyPaths();
+        var (corePath, stdlibPath) = StdlibReferences.Resolve();
         Assert.True(File.Exists(corePath), $"Sharpy.Core.dll not found at {corePath}");
         Assert.True(File.Exists(stdlibPath), $"Sharpy.Stdlib.dll not found at {stdlibPath}");
 
@@ -699,12 +699,6 @@ public class FrontEndParityTests
     /// root does the same walk once (#1338).
     /// </summary>
     private static string ResolveFixturesPath() => FixtureRoots.CompilerTests.Path;
-
-    private static (string CorePath, string StdlibPath) ResolveStdlibAssemblyPaths()
-    {
-        var baseDir = Path.GetDirectoryName(typeof(FrontEndParityTests).Assembly.Location)!;
-        return (Path.Combine(baseDir, "Sharpy.Core.dll"), Path.Combine(baseDir, "Sharpy.Stdlib.dll"));
-    }
 
     private static int ReadIntEnv(string name, int fallback)
         => int.TryParse(Environment.GetEnvironmentVariable(name), out var v) ? v : fallback;
