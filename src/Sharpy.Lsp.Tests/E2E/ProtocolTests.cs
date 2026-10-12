@@ -761,6 +761,71 @@ public class ProtocolTests : IAsyncLifetime
             "should offer an 'Organize Imports' code action");
     }
 
+    /// <summary>
+    /// The wire half of the code-action source-shape contract (#2232, plan P47 Phase 3 Task 2): the issue's
+    /// Organize Imports repro, through a real server over stdio, returns an edit whose APPLIED text — applied
+    /// strictly (<see cref="Conformance.LspFormattingDriver.ApplyStrict"/>) — is byte-exact. The expected text is
+    /// the one <c>OrganizeImportsUnitTests.Cell1_TheIssuesRepro_MovesUnitsVerbatim</c> pins in process, and
+    /// <c>docs/tooling/lsp-server.md</c> shows it; the in-process driver must apply the same text, so the wire
+    /// (serialisation, registration, routing) is the one thing this cell adds. Before P47 the server returned
+    /// <c>import math\nimport sys\nfrom os.path import join, basename\n</c> over lines 0–8: three comments,
+    /// the parentheses and the blank line before <c>def main</c> gone.
+    /// </summary>
+    [Fact]
+    public async Task CodeAction_OrganizeImports_TheIssuesRepro_AppliesByteExact()
+    {
+        const string source =
+            "import sys\n# string helpers\nfrom os.path import (\n    join,  # path joining\n    basename,\n)\n"
+            + "import math  # numeric\n\ndef main():\n    print(math.floor(1.5), join(\"a\", \"b\"), basename(\"/x/y\"), len(sys.argv) >= 0)\n";
+        const string expected =
+            "import math  # numeric\nimport sys\n# string helpers\nfrom os.path import (\n    join,  # path joining\n    basename,\n)\n"
+            + "\ndef main():\n    print(math.floor(1.5), join(\"a\", \"b\"), basename(\"/x/y\"), len(sys.argv) >= 0)\n";
+
+        await _client.InitializeAsync();
+        var uri = "file:///test_organize_imports_shape.spy";
+        await _client.DidOpenAsync(uri, source);
+        await _client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
+
+        var result = await _client.SendRequestAsync("textDocument/codeAction", new JsonObject
+        {
+            ["textDocument"] = new JsonObject { ["uri"] = uri },
+            ["range"] = new JsonObject
+            {
+                ["start"] = new JsonObject { ["line"] = 0, ["character"] = 0 },
+                ["end"] = new JsonObject { ["line"] = 0, ["character"] = 0 },
+            },
+            ["context"] = new JsonObject { ["diagnostics"] = new JsonArray() },
+        });
+
+        result.Should().NotBeNull("code action response should not be null");
+        var action = result!.AsArray().SingleOrDefault(a => a!["title"]!.GetValue<string>() == "Organize Imports");
+        action.Should().NotBeNull("Organize Imports is offered on a document with imports");
+        var changes = action!["edit"]!["changes"]!.AsObject();
+        changes.Count.Should().Be(1, "the action edits the requested document only");
+        var edits = changes.Single().Value!.AsArray().Select(e => new OmniSharp.Extensions.LanguageServer.Protocol.Models.TextEdit
+        {
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(
+                    e!["range"]!["start"]!["line"]!.GetValue<int>(), e["range"]!["start"]!["character"]!.GetValue<int>()),
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(
+                    e["range"]!["end"]!["line"]!.GetValue<int>(), e["range"]!["end"]!["character"]!.GetValue<int>())),
+            NewText = e["newText"]!.GetValue<string>(),
+        }).ToList();
+
+        var applied = Conformance.LspFormattingDriver.ApplyStrict(source, edits);
+
+        applied.Should().Be(expected);
+        using var driver = new Conformance.LspCodeActionDriver(
+            new Sharpy.Compiler.CompilerApi(Sharpy.Compiler.Logging.NullLogger.Instance, Conformance.StdlibReferences.Paths()));
+        using var session = driver.Open(source);
+        var inProcess = session.Request(
+            new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(0, 0),
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(0, 0)))
+            .Single(a => a.Title == "Organize Imports");
+        session.Apply(inProcess).Should().Be(applied, "the wire applies what the in-process handler applies");
+    }
+
     [Fact]
     public async Task CodeAction_DiagnosticQuickFix_ReturnsAction()
     {

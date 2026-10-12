@@ -67,7 +67,98 @@ Diagnostics are published after each document change (debounced) and include all
 | Method | Description |
 |--------|-------------|
 | `textDocument/rename` | Symbol rename with validation (rejects invalid names) |
-| `textDocument/codeAction` | Quick fixes for naming conventions, unused imports, unused variables |
+| `textDocument/codeAction` | Quick fixes and refactorings: the actions listed under [Code actions](#code-actions) |
+
+### Code actions
+
+Each provider offers these actions (titles as the editor shows them; `<name>` and `<type>` are filled in):
+
+| Provider | Actions |
+|----------|---------|
+| Quick fixes (from a diagnostic) | `Remove unused import` · `Prefix with '_' to mark as intentionally unused` · `Rename to '<name>'` |
+| Organize imports | `Organize Imports` |
+| Implement interface | `Implement interface '<name>'` · `Implement all interfaces` |
+| Extract variable | `Extract variable 'result'` (or `'result: <type>'` when the type is known) |
+| Extract method | `Extract method` |
+| Convert forms | `Convert to match statement` · `Convert to if/elif/else` · `Add type annotation ': <type>'` · `Remove type annotation` · `Wrap in try/except` |
+| Inline | `Inline variable '<name>'` · `Inline function '<name>'` |
+
+#### Code actions keep the source shape
+
+An action that moves or rewrites code you wrote keeps it the way you wrote it:
+
+- **Moved lines keep their comments, blank lines and relative indentation.** A nested block moved into a `try:` or a
+  `case` keeps its shape; only the whole region moves by one indentation step.
+- **A multi-line string's lines never move.** Re-indenting them would change the string's value.
+- **A deleted statement takes its trailing comment with it.** Removing an unused import, or inlining a variable,
+  deletes the comment on that line too; a comment on its own line above it stays.
+- **The document's line breaks are kept.** In a document that uses `\r\n` or `\r`, every line an action writes ends
+  the same way.
+- **Where no legal text exists, the action is not offered.** No action turns a document that parses into one that
+  does not. The known exception: Extract method and Extract variable can still spell an inferred parameter or
+  variable type the parser does not accept (for example a builtin's `Callable[...]` type, or a bare list type), and
+  Extract method can take a builtin or a name the selection binds as a parameter
+  ([#2294](https://github.com/antonsynd/sharpy/issues/2294)).
+
+Organize Imports on
+
+```python
+import sys
+# string helpers
+from os.path import (
+    join,  # path joining
+    basename,
+)
+import math  # numeric
+
+def main():
+    print(math.floor(1.5), join("a", "b"), basename("/x/y"), len(sys.argv) >= 0)
+```
+
+gives
+
+```python
+import math  # numeric
+import sys
+# string helpers
+from os.path import (
+    join,  # path joining
+    basename,
+)
+
+def main():
+    print(math.floor(1.5), join("a", "b"), basename("/x/y"), len(sys.argv) >= 0)
+```
+
+The comment above an import travels with it, the parenthesized import keeps its parentheses and inner comment, and
+the blank line before `def main()` stays. Wrap in try/except, with lines 2–4 selected in
+
+```python
+def main():
+    x = 1
+    if x > 0:  # positive
+        print(x)
+    print("done")
+```
+
+gives
+
+```python
+def main():
+    try:
+        x = 1
+        if x > 0:  # positive
+            print(x)
+    except Exception as e:
+        raise
+    print("done")
+```
+
+These texts are what the server returned for these documents. The tests
+`OrganizeImportsUnitTests.Cell1_TheIssuesRepro_MovesUnitsVerbatim` and
+`RegionMoverTests.Wrap_Cell3_NestedBodyKeepsItsRelativeIndentation` pin them byte for byte, and
+`ProtocolTests.CodeAction_OrganizeImports_TheIssuesRepro_AppliesByteExact` pins the first one over the wire. The
+code-action shape sweep (`CodeActionShapeSweepTests`) checks the rules above for every action over the test corpus.
 
 ### Display
 
