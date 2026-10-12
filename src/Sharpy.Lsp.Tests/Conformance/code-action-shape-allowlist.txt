@@ -35,12 +35,8 @@ remove-annotation identity parse 11 3d9ed18bf8685386 11 3d9ed18bf8685386 # #2232
 remove-import identity diagnostics 17 c7327c10f9936099 4 c64f809e53e1ecee # #2296 removes an error
 rename identity diagnostics 51 45195117e72c86d8 12 eacec041e408ec96 # #2296 adds SPY0253 (and 58 other cells)
 rename identity parse 3 2ee1889adc56d551 3 2ee1889adc56d551 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
-to-if identity comment 1 1e77d36b46e16375 1 1e77d36b46e16375 # #2232 loses a comment
-to-if identity edits 8 525ec0e9f6172951 8 525ec0e9f6172951 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-if identity line 2 283be9eb716824b6 2 283be9eb716824b6 # #2232 moved lines not kept at one indentation offset
-to-if identity parse 11 76a97570d0fa4239 11 76a97570d0fa4239 # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
-to-match identity edits 34 563c2825185db8df 34 563c2825185db8df # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-match identity parse 9 801e943ac5bbf518 9 801e943ac5bbf518 # #2232 does not parse (SPY0014 Indentation mismatch)
+to-if identity diagnostics 4 35d1e4876190ef73 1 96a879de4c764cb2 # #2296 adds SPY0402 (and 4 other cells)
+to-if identity parse 2 9e8c1a56f472c5fc 2 9e8c1a56f472c5fc # #2232 does not parse (SPY0100 Unexpected token: Else)
 wrap-try identity diagnostics 1760 e63761107e9b2d00 443 e480942ed03d5e3f # #2296 adds SPY0203 (and 3084 other cells)
 wrap-try identity parse 239 dfd7cbebea67ab51 239 dfd7cbebea67ab51 # #2232 does not parse (SPY0105 Decorators can only be applied to functions, cla) (and 151 other cells)
 extract-method crlf diagnostics 2900 c1849fba3ae96312 100 99129c968656a462 # #2294 adds SPY0202 (and 5882 other cells)
@@ -66,12 +62,8 @@ remove-annotation crlf parse 11 3d9ed18bf8685386 4 3026a1be7a2422c8 # #2232 does
 remove-import crlf diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 rename crlf diagnostics 51 45195117e72c86d8 0 - # #2296 adds SPY0253 (and 58 other cells)
 rename crlf parse 3 2ee1889adc56d551 1 36eec7b54f793482 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
-to-if crlf comment 1 1e77d36b46e16375 0 - # #2232 loses a comment
-to-if crlf edits 8 525ec0e9f6172951 1 8dc473b0d8d81e11 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-if crlf line 2 283be9eb716824b6 0 - # #2232 moved lines not kept at one indentation offset
-to-if crlf parse 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
-to-match crlf edits 34 563c2825185db8df 3 5d64754ada70bac1 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-match crlf parse 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 does not parse (SPY0014 Indentation mismatch)
+to-if crlf diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0402 (and 4 other cells)
+to-if crlf parse 2 9e8c1a56f472c5fc 1 73b1672f4dc1c550 # #2232 does not parse (SPY0100 Unexpected token: Else)
 wrap-try crlf diagnostics 1760 e63761107e9b2d00 67 ea189e2fdb3c8ba9 # #2296 adds SPY0203 (and 3084 other cells)
 wrap-try crlf parse 239 dfd7cbebea67ab51 32 5cef7c63a9de42b4 # #2232 does not parse (SPY0105 Decorators can only be applied to functions, cla) (and 151 other cells)
 extract-method cr diagnostics 2900 c1849fba3ae96312 113 87285015c6a9e3eb # #2294 adds SPY0202 (and 5882 other cells)
@@ -95,18 +87,14 @@ remove-annotation cr parse 11 3d9ed18bf8685386 4 3026a1be7a2422c8 # #2232 does n
 remove-import cr diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 rename cr diagnostics 51 45195117e72c86d8 1 9fca33cf93393813 # #2296 adds SPY0253 (and 58 other cells)
 rename cr parse 3 2ee1889adc56d551 1 36eec7b54f793482 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
-to-if cr comment 1 1e77d36b46e16375 0 - # #2232 loses a comment
-to-if cr edits 8 525ec0e9f6172951 1 8dc473b0d8d81e11 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-if cr line 2 283be9eb716824b6 0 - # #2232 moved lines not kept at one indentation offset
-to-if cr parse 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
-to-match cr edits 34 563c2825185db8df 3 5d64754ada70bac1 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-match cr parse 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 does not parse (SPY0014 Indentation mismatch)
+to-if cr diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0402 (and 4 other cells)
+to-if cr parse 2 9e8c1a56f472c5fc 1 73b1672f4dc1c550 # #2232 does not parse (SPY0100 Unexpected token: Else)
 wrap-try cr diagnostics 1760 e63761107e9b2d00 69 526a019e8cdb51ad # #2296 adds SPY0203 (and 3084 other cells)
 wrap-try cr parse 239 dfd7cbebea67ab51 32 5cef7c63a9de42b4 # #2232 does not parse (SPY0105 Decorators can only be applied to functions, cla) (and 151 other cells)
 extract-method comment diagnostics 2900 c1849fba3ae96312 117 df88978d477a8b1c # #2294 adds SPY0202 (and 5872 other cells)
 extract-method comment parse 1176 5223e9cfbc4cd1a9 170 c799e4b69c42871b # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 298 other cells)
 extract-method comment parse 523 3865c4b65147e9a4 67 6bdb7bd4510816ed # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
-extract-variable comment diagnostics 219 821612fd704f7791 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 256 other cells)
+extract-variable comment diagnostics 220 d2848e20c7e3e51a 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 258 other cells)
 extract-variable comment edits 21 9b16cab6cfac29ce 4 103804a44c3cd20e # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 extract-variable comment parse 83 1bfb3c74e80014b4 12 7c5ddb610c474450 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 70 other cells)
 implement comment diagnostics 8 d8a83539921ee75b 0 - # #2296 adds SPY0224 (and 3 other cells)
@@ -115,26 +103,23 @@ inline-function comment comment 235 9c3432e91dc0aed3 29 3d73a4df0cfaca30 # #2232
 inline-function comment diagnostics 51 305325034b8547a6 0 - # #2296 removes an error (and 42 other cells)
 inline-function comment parse 13 1b3d31528fd4e8a1 2 97431b6bea6bfa0a # #2232 does not parse (SPY0102 A match expression cannot be written inside brac) (and 7 other cells)
 inline-variable comment comment 2 92e5ce7ba56bbeb8 0 - # #2232 gains a comment (and 1 other cells)
-inline-variable comment diagnostics 157 662c610df54e8d3f 4 e0bd8a6a34f05570 # #2296 adds SPY0200 (and 160 other cells)
+inline-variable comment diagnostics 158 a9dacd8f57298b78 4 e0bd8a6a34f05570 # #2296 adds SPY0200 (and 161 other cells)
 inline-variable comment edits 7 af6255070fdd1aa5 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable comment parse 35 64040af10277ccf6 1 fb63f0d8480cf1e7 # #2232 does not parse (SPY0100 Unexpected token: RightParen) (and 13 other cells)
-organize-imports comment diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
+organize-imports comment diagnostics 18 fd72658684b07753 0 - # #2296 removes an error
 prefix-underscore comment diagnostics 21 e2e2257abde88092 0 - # #2296 adds SPY0200 (and 6 other cells)
 prefix-underscore comment parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
-remove-annotation comment diagnostics 332 c69c0da685a652c9 28 fea4201873be93cd # #2296 adds SPY0227 (and 381 other cells)
+remove-annotation comment diagnostics 333 14dbb510d6c24539 28 fea4201873be93cd # #2296 adds SPY0227 (and 383 other cells)
 remove-annotation comment parse 11 3d9ed18bf8685386 4 3026a1be7a2422c8 # #2232 does not parse (SPY0105 Decorators cannot be applied to assignments — on)
 remove-import comment diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 rename comment comment 15 a312db63665da726 1 e3e42a4994f34f9f # #2232 loses a comment
 rename comment diagnostics 51 45195117e72c86d8 0 - # #2296 adds SPY0253 (and 58 other cells)
 rename comment parse 3 2ee1889adc56d551 1 36eec7b54f793482 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
-to-if comment comment 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 loses a comment
-to-if comment edits 8 525ec0e9f6172951 1 8dc473b0d8d81e11 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-if comment line 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 moved lines not kept at one indentation offset
-to-if comment parse 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
-to-match comment comment 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 loses a comment
-to-match comment edits 34 563c2825185db8df 3 5d64754ada70bac1 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
-to-match comment line 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 moved lines not kept at one indentation offset
-to-match comment parse 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 does not parse (SPY0014 Indentation mismatch) (and 2 other cells)
+to-if comment comment 1 96a879de4c764cb2 0 - # #2232 gains a comment
+to-if comment diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0222 (and 4 other cells)
+to-if comment parse 2 9e8c1a56f472c5fc 1 73b1672f4dc1c550 # #2232 does not parse (SPY0100 Unexpected token: Else)
+to-match comment comment 8 6ea6d025412f034d 1 7b05569888fb81ce # #2232 loses a comment
+to-match comment parse 8 6ea6d025412f034d 1 7b05569888fb81ce # #2232 does not parse (SPY0013 Indentation must be multiple of 4 spaces (found )
 wrap-try comment comment 258 343e369304880b32 31 7817711500d905f3 # #2232 loses a comment
-wrap-try comment diagnostics 1617 e96b28eefc145e77 61 64043acdeccdfc76 # #2296 adds SPY0203 (and 2819 other cells)
+wrap-try comment diagnostics 1617 e96b28eefc145e77 61 64043acdeccdfc76 # #2296 adds SPY0203 (and 2820 other cells)
 wrap-try comment parse 483 71a666b3833b5c23 60 b518e8f738fd56a9 # #2232 does not parse (SPY0013 Indentation must be multiple of 4 spaces (found ) (and 403 other cells)

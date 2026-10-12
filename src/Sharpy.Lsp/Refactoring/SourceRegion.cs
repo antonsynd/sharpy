@@ -123,6 +123,23 @@ internal sealed class SourceLines
     /// </summary>
     public Trivia? InlineComment(int line) => _lex.Value.InlineComments.TryGetValue(line, out var trivia) ? trivia : null;
 
+    /// <summary>Every comment on lines <paramref name="first"/>..<paramref name="last"/> (1-based), in source order.</summary>
+    public IReadOnlyList<Trivia> CommentsOn(int first, int last) =>
+        _lex.Value.Comments.Where(c => c.Line >= first && c.Line <= last).ToList();
+
+    /// <summary>
+    /// The inline comment of line <paramref name="line"/> as it is written there — the whitespace that separates
+    /// it from the code, then its text — for re-attaching to a re-spelled header; <c>""</c> when the line has none.
+    /// </summary>
+    public string AttachedComment(int line)
+    {
+        if (InlineComment(line) is not { } comment || !Contains(line))
+            return "";
+        var content = _lines[line - 1];
+        var before = content[..Math.Min(content.Length, Math.Max(0, comment.Column - 1))];
+        return before[before.TrimEnd(' ', '\t').Length..] + comment.Text;
+    }
+
     /// <summary>The true last line of <paramref name="node"/> — <see cref="Extent.EndLine"/> over this table's tokens.</summary>
     public int EndLine(AstNode node) => Extent.EndLine(node, Tokens, this);
 
@@ -222,7 +239,8 @@ internal sealed class SourceLines
     private sealed record LexFacts(
         IReadOnlyList<Token> Tokens,
         IReadOnlySet<int> LiteralLines,
-        IReadOnlyDictionary<int, Trivia> InlineComments)
+        IReadOnlyDictionary<int, Trivia> InlineComments,
+        IReadOnlyList<Trivia> Comments)
     {
         public static LexFacts Of(string text)
         {
@@ -237,18 +255,20 @@ internal sealed class SourceLines
             catch (Exception)
             {
                 // no tokens: no literal, comment or token extent is known
-                return new LexFacts(Array.Empty<Token>(), new HashSet<int>(), new Dictionary<int, Trivia>());
+                return new LexFacts(Array.Empty<Token>(), new HashSet<int>(), new Dictionary<int, Trivia>(), Array.Empty<Trivia>());
             }
 
             var literalLines = LiteralSpans.LinesStartingInside(text, LiteralSpans.Of(tokens, lexer.RecoveryResumes));
             var inline = new Dictionary<int, Trivia>();
+            var comments = new List<Trivia>();
             foreach (var token in tokens)
             {
                 Add(token.LeadingTrivia);
                 Add(token.TrailingTrivia);
             }
 
-            return new LexFacts(tokens, literalLines, inline);
+            comments.Sort((a, b) => a.Position.CompareTo(b.Position));
+            return new LexFacts(tokens, literalLines, inline, comments);
 
             void Add(IReadOnlyList<Trivia>? trivia)
             {
@@ -256,7 +276,10 @@ internal sealed class SourceLines
                     return;
                 foreach (var t in trivia)
                 {
-                    if (t.Kind == TriviaKind.Comment && t.IsInline)
+                    if (t.Kind != TriviaKind.Comment)
+                        continue;
+                    comments.Add(t);
+                    if (t.IsInline)
                         inline.TryAdd(t.Line, t);
                 }
             }

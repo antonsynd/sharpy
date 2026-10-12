@@ -73,14 +73,15 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (scrutinee is null)
             return;
 
-        var arms = new SCG.List<(string literalText, ImmutableArray<Statement> body)>();
+        var source = SourceLines.Of(sourceText);
+        var clauses = new SCG.List<Clause>();
 
         // Extract the literal from the if-condition
         var ifLiteral = ExtractLiteralFromEqualityCheck(ifStmt.Test, scrutinee);
         if (ifLiteral is null)
             return;
-        var source = SourceLines.Of(sourceText);
-        arms.Add((FormatLiteral(ifLiteral, source), ifStmt.ThenBody));
+        clauses.Add(new Clause(ifStmt.LineStart, HeaderEnd(ifStmt.LineStart, ifStmt.HeaderLineEnd),
+            $"case {FormatLiteral(ifLiteral, source)}:", ifStmt.ThenBody));
 
         // Extract literals from elif clauses
         foreach (var elif in ifStmt.ElifClauses)
@@ -88,42 +89,35 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
             var elifLiteral = ExtractLiteralFromEqualityCheck(elif.Test, scrutinee);
             if (elifLiteral is null)
                 return;
-            arms.Add((FormatLiteral(elifLiteral, source), elif.Body));
-        }
-
-        // Build the match statement text
-        var lineBreak = source.DocumentLineBreak;
-        var indent = source.Indentation(ifStmt.LineStart);
-        var indentUnit = source.IndentUnit;
-        var bodyIndent = indent + indentUnit;
-        var bodyBodyIndent = bodyIndent + indentUnit;
-
-        var sb = new StringBuilder();
-        sb.Append(indent);
-        sb.Append("match ");
-        sb.Append(scrutinee);
-        sb.Append(':');
-
-        foreach (var (literal, body) in arms)
-        {
-            sb.Append(lineBreak);
-            sb.Append(bodyIndent);
-            sb.Append("case ");
-            sb.Append(literal);
-            sb.Append(':');
-            AppendBody(sb, body, bodyBodyIndent, source);
+            clauses.Add(new Clause(elif.LineStart, HeaderEnd(elif.LineStart, elif.HeaderLineEnd),
+                $"case {FormatLiteral(elifLiteral, source)}:", elif.Body));
         }
 
         if (!ifStmt.ElseBody.IsDefaultOrEmpty)
         {
-            sb.Append(lineBreak);
-            sb.Append(bodyIndent);
-            sb.Append("case _:");
-            AppendBody(sb, ifStmt.ElseBody, bodyBodyIndent, source);
+            if (ifStmt.ElseHeaderLine < 1)
+                return;
+            clauses.Add(new Clause(ifStmt.ElseHeaderLine, ifStmt.ElseHeaderLine, "case _:", ifStmt.ElseBody));
         }
 
-        var editRange = NodeToLspRange(ifStmt);
-        var edit = CreateWorkspaceEdit(context.DocumentUri, editRange, sb.ToString());
+        // D6 + D2: only the headers are re-spelled; each body is the region of lines between its header and
+        // the next one (the last through the statement's TRUE last line), moved one indent unit right.
+        var first = ifStmt.LineStart;
+        var last = source.EndLine(ifStmt);
+        if (!source.Contains(first) || !source.Contains(last))
+            return;
+
+        var indent = source.Indentation(first);
+        var unit = source.IndentUnit;
+        var newLines = new SCG.List<string> { indent + "match " + scrutinee + ":" };
+        for (var i = 0; i < clauses.Count; i++)
+        {
+            var bodyEnd = i + 1 < clauses.Count ? clauses[i + 1].HeaderStart - 1 : last;
+            EmitClause(source, clauses[i], bodyEnd, indent + unit, unit.Length, unit[0], newLines);
+        }
+
+        var textEdit = source.WholeLineEdit(first, last, newLines);
+        var edit = CreateWorkspaceEdit(context.DocumentUri, textEdit.Range, textEdit.NewText);
 
         actions.Add(new CodeAction
         {
@@ -246,57 +240,51 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
             return;
 
         var source = SourceLines.Of(sourceText);
-        var lineBreak = source.DocumentLineBreak;
-        var indent = source.Indentation(matchStmt.LineStart);
-        var indentUnit = source.IndentUnit;
-        var bodyIndent = indent + indentUnit;
+        var first = matchStmt.LineStart;
+        var last = source.EndLine(matchStmt);
+        if (!source.Contains(first) || !source.Contains(last))
+            return;
+
+        var indent = source.Indentation(first);
         var scrutineeText = ExtractSourceText(source, matchStmt.Scrutinee);
+        var matchHeaderEnd = HeaderEnd(first, matchStmt.HeaderLineEnd);
 
-        var sb = new StringBuilder();
-        var isFirst = true;
-        var wildcardCase = (MatchCase?)null;
+        // Each case's body region runs to the next case header in DOCUMENT order (the last through the
+        // statement's true last line); the wildcard case is written last, as `else:`, with its region.
+        var cases = matchStmt.Cases;
+        var bodyEnds = new int[cases.Length];
+        for (var i = 0; i < cases.Length; i++)
+            bodyEnds[i] = i + 1 < cases.Length ? cases[i + 1].LineStart - 1 : last;
 
-        foreach (var matchCase in matchStmt.Cases)
+        var order = Enumerable.Range(0, cases.Length).Where(i => cases[i].Pattern is not WildcardPattern)
+            .Concat(Enumerable.Range(0, cases.Length).Where(i => cases[i].Pattern is WildcardPattern))
+            .ToList();
+
+        // D6, CORRECTED carrier: the `match` header's comments have no re-spelled counterpart, so they are
+        // written as own-line comments at the statement's indent above the new `if`; the lines between the
+        // `match` header and the first case (comments, blank lines at the case column) follow, moved with the
+        // cases' offset.
+        var caseIndent = source.Indentation(cases[0].LineStart);
+        var delta = indent.Length - caseIndent.Length;
+        var newLines = new SCG.List<string>();
+        foreach (var comment in source.CommentsOn(first, matchHeaderEnd))
+            newLines.Add(indent + comment.Text);
+        if (cases[0].LineStart - 1 > matchHeaderEnd)
+            newLines.AddRange(Region.Reindent(source.Slice(matchHeaderEnd + 1, cases[0].LineStart - 1), delta, source.LiteralLines));
+
+        var arm = 0;
+        foreach (var i in order)
         {
-            if (matchCase.Pattern is WildcardPattern)
-            {
-                wildcardCase = matchCase;
-                continue;
-            }
-
-            // Arms are separated by the document's line break; none follows the last.
-            if (!isFirst)
-                sb.Append(lineBreak);
-
-            sb.Append(indent);
-            if (isFirst)
-            {
-                sb.Append("if ");
-                isFirst = false;
-            }
-            else
-            {
-                sb.Append("elif ");
-            }
-
-            sb.Append(scrutineeText);
-            sb.Append(" == ");
-            sb.Append(FormatPatternAsLiteral(matchCase.Pattern, source));
-            sb.Append(':');
-            AppendBody(sb, matchCase.Body, bodyIndent, source);
+            var matchCase = cases[i];
+            var header = matchCase.Pattern is WildcardPattern
+                ? "else:"
+                : $"{(arm++ == 0 ? "if" : "elif")} {scrutineeText} == {FormatPatternAsLiteral(matchCase.Pattern, source)}:";
+            var clause = new Clause(matchCase.LineStart, HeaderEnd(matchCase.LineStart, matchCase.HeaderLineEnd), header, matchCase.Body);
+            EmitClause(source, clause, bodyEnds[i], indent, delta, ' ', newLines);
         }
 
-        if (wildcardCase is not null)
-        {
-            if (!isFirst)
-                sb.Append(lineBreak);
-            sb.Append(indent);
-            sb.Append("else:");
-            AppendBody(sb, wildcardCase.Body, bodyIndent, source);
-        }
-
-        var editRange = NodeToLspRange(matchStmt);
-        var edit = CreateWorkspaceEdit(context.DocumentUri, editRange, sb.ToString());
+        var textEdit = source.WholeLineEdit(first, last, newLines);
+        var edit = CreateWorkspaceEdit(context.DocumentUri, textEdit.Range, textEdit.NewText);
 
         actions.Add(new CodeAction
         {
@@ -498,37 +486,54 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     #region Helpers
 
     /// <summary>
-    /// Appends a statement body with proper indentation. Each statement's source text
-    /// is extracted from the original source and re-indented; every line break written is the
-    /// document's (<see cref="SourceLines.DocumentLineBreak"/>).
+    /// One clause of a converted statement: its header's source lines (<see cref="HeaderStart"/> through the
+    /// line of its colon), the re-spelled header text (no indentation) and its body statements.
     /// </summary>
-    private static void AppendBody(
-        StringBuilder sb,
-        ImmutableArray<Statement> body,
-        string bodyIndent,
-        SourceLines source)
+    private sealed record Clause(int HeaderStart, int HeaderEnd, string NewHeader, ImmutableArray<Statement> Body);
+
+    /// <summary>The line of a header's colon, or its first line when the parser recorded none.</summary>
+    private static int HeaderEnd(int headerStart, int headerLineEnd) => headerLineEnd >= headerStart ? headerLineEnd : headerStart;
+
+    /// <summary>
+    /// Writes one clause (D6): its re-spelled header at <paramref name="headerIndent"/> carrying the inline
+    /// comment of its colon line as written there, every other comment of its header lines as an own-line
+    /// comment just above it, then its body REGION — the source lines after the header through
+    /// <paramref name="bodyEnd"/>, comments and blank lines included — moved by ONE offset
+    /// (<paramref name="delta"/> characters of <paramref name="fill"/>; literal lines byte-identical, D3).
+    /// A body on the header line itself (<c>if x == 1: f()</c>) becomes the first body line, verbatim with its
+    /// comment, at the header indent plus one unit; a clause with no body line gets <c>pass</c>.
+    /// </summary>
+    private static void EmitClause(
+        SourceLines source, Clause clause, int bodyEnd, string headerIndent, int delta, char fill, SCG.List<string> into)
     {
-        var lineBreak = source.DocumentLineBreak;
-        if (body.IsDefaultOrEmpty)
+        var bodyIndent = headerIndent + source.IndentUnit;
+        var inlineBody = !clause.Body.IsDefaultOrEmpty && clause.Body[0].LineStart <= clause.HeaderEnd;
+        var colonComment = inlineBody ? null : source.InlineComment(clause.HeaderEnd);
+
+        foreach (var comment in source.CommentsOn(clause.HeaderStart, clause.HeaderEnd))
         {
-            sb.Append(lineBreak);
-            sb.Append(bodyIndent);
-            sb.Append("pass");
-            return;
+            if (inlineBody && comment.Line == clause.HeaderEnd)
+                continue; // the inline body's own comment travels with it
+            if (colonComment is not null && comment.Position == colonComment.Position)
+                continue;
+            into.Add(headerIndent + comment.Text);
         }
 
-        foreach (var stmt in body)
+        into.Add(headerIndent + clause.NewHeader + (colonComment is null ? "" : source.AttachedComment(clause.HeaderEnd)));
+
+        var regionStart = clause.HeaderEnd + 1;
+        if (inlineBody)
         {
-            foreach (var stmtLine in NodeLinePieces(source, stmt))
-            {
-                var trimmed = stmtLine.TrimStart();
-                if (trimmed.Length == 0)
-                    continue;
-                sb.Append(lineBreak);
-                sb.Append(bodyIndent);
-                sb.Append(trimmed);
-            }
+            var content = source.Line(clause.HeaderEnd);
+            into.Add(bodyIndent + content[Math.Min(content.Length, Math.Max(0, clause.Body[0].ColumnStart - 1))..]);
         }
+        else if (regionStart > bodyEnd)
+        {
+            into.Add(bodyIndent + "pass");
+        }
+
+        if (regionStart <= bodyEnd)
+            into.AddRange(Region.Reindent(source.Slice(regionStart, bodyEnd), delta, source.LiteralLines, fill));
     }
 
     /// <summary>
@@ -572,16 +577,6 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     /// </summary>
     private static string ExtractSourceText(SourceLines source, Node node) =>
         string.Join(source.DocumentLineBreak, NodeLinePieces(source, node));
-
-    /// <summary>
-    /// Converts an AST node's span to an LSP Range.
-    /// </summary>
-    private static LspRange NodeToLspRange(Node node)
-    {
-        return new LspRange(
-            PositionConverter.ToLsp(node.LineStart, node.ColumnStart),
-            PositionConverter.ToLsp(node.LineEnd, node.ColumnEnd));
-    }
 
     /// <summary>
     /// Creates a WorkspaceEdit with a single text edit.
