@@ -88,7 +88,9 @@ Each provider offers these actions (titles as the editor shows them; `<name>` an
 An action that moves or rewrites code you wrote keeps it the way you wrote it:
 
 - **Moved lines keep their comments, blank lines and relative indentation.** A nested block moved into a `try:` or a
-  `case` keeps its shape; only the whole region moves by one indentation step.
+  `case` keeps its shape; only the whole region moves by one indentation step. Organize Imports is the one action
+  that rebuilds a layout: it writes the sorted imports as one contiguous block, so a blank line *between* two imports
+  is not kept, while the blank lines after the block are (`OrganizeImportsUnitTests.Cell22_…`).
 - **A multi-line string's lines never move.** Re-indenting them would change the string's value.
 - **A deleted statement takes its trailing comment with it.** Removing an unused import, or inlining a variable,
   deletes the comment on that line too; a comment on its own line above it stays.
