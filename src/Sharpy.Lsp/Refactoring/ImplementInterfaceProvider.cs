@@ -246,11 +246,12 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
             return null;
 
         var sourceText = context.SourceText!;
+        var lineBreak = SourceLines.Of(sourceText).DocumentLineBreak;
 
         // Determine the indentation level (1 level inside the class)
         var classBodyIndentLevel = DetectClassBodyIndentLevel(sourceText, classBody);
 
-        var stubText = GenerateStubs(missingMethods, missingProperties, classBodyIndentLevel);
+        var stubText = GenerateStubs(missingMethods, missingProperties, classBodyIndentLevel, lineBreak);
         if (string.IsNullOrEmpty(stubText))
             return null;
 
@@ -268,7 +269,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         var insertRange = new LspRange(insertPosition, insertPosition);
 
         // Add a leading blank line to separate from existing content
-        var textToInsert = "\n" + stubText + "\n";
+        var textToInsert = lineBreak + stubText + lineBreak;
 
         var edit = new WorkspaceEdit
         {
@@ -335,12 +336,14 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
     }
 
     /// <summary>
-    /// Generates Sharpy source stubs for missing methods and properties.
+    /// Generates Sharpy source stubs for missing methods and properties. Every line break it writes is
+    /// <paramref name="lineBreak"/> — the document's (<see cref="SourceLines.DocumentLineBreak"/>).
     /// </summary>
     internal static string GenerateStubs(
         SCG.List<FunctionSymbol> missingMethods,
         SCG.List<PropertySymbol> missingProperties,
-        int indentLevel)
+        int indentLevel,
+        string lineBreak)
     {
         var sb = new StringBuilder();
         var isFirst = true;
@@ -350,8 +353,8 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         {
             if (!isFirst)
             {
-                sb.AppendLine();
-                sb.AppendLine();
+                sb.Append(lineBreak);
+                sb.Append(lineBreak);
             }
             isFirst = false;
 
@@ -360,7 +363,8 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
                 prop.Type,
                 prop.HasGetter,
                 prop.HasSetter,
-                indentLevel));
+                indentLevel,
+                lineBreak));
         }
 
         // Generate method stubs
@@ -368,12 +372,12 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         {
             if (!isFirst)
             {
-                sb.AppendLine();
-                sb.AppendLine();
+                sb.Append(lineBreak);
+                sb.Append(lineBreak);
             }
             isFirst = false;
 
-            sb.Append(FormatMethodStub(method, indentLevel));
+            sb.Append(FormatMethodStub(method, indentLevel, lineBreak));
         }
 
         return sb.ToString();
@@ -383,7 +387,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
     /// Formats a method stub with proper handling of "self" parameter (no type annotation)
     /// and "raise NotImplementedError()" as the default body.
     /// </summary>
-    internal static string FormatMethodStub(FunctionSymbol method, int indentLevel)
+    internal static string FormatMethodStub(FunctionSymbol method, int indentLevel, string lineBreak)
     {
         var indent = new string(' ', indentLevel * SharpySourceGenerator.DefaultIndentWidth);
         var bodyIndent = new string(' ', (indentLevel + 1) * SharpySourceGenerator.DefaultIndentWidth);
@@ -432,7 +436,7 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         }
 
         sb.Append(':');
-        sb.AppendLine();
+        sb.Append(lineBreak);
         sb.Append(bodyIndent);
         sb.Append("raise NotImplementedError()");
 

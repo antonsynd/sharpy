@@ -70,8 +70,9 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         int functionIndentLevel = DetermineIndentLevel(containingFunction, containingClass);
 
         // Build the extracted function body from the selected source text.
+        var source = SourceLines.Of(context.SourceText);
         var bodyText = BuildFunctionBody(
-            selectedStatements, returnValues, context.SourceText, functionIndentLevel);
+            selectedStatements, returnValues, source, functionIndentLevel);
 
         // Generate the new function definition.
         var functionDef = SharpySourceGenerator.FormatFunctionDef(
@@ -79,17 +80,17 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             parameters,
             returnType,
             functionIndentLevel,
+            source.DocumentLineBreak,
             bodyText);
 
         // Generate the call site that replaces the selected statements.
-        var stmtIndent = SharpySourceGenerator.GetIndentation(
-            context.SourceText, selectedStatements[0].LineStart - 1);
+        var stmtIndent = source.Indentation(selectedStatements[0].LineStart);
         var callSite = BuildCallSite(DefaultMethodName, parameters, returnValues, stmtIndent);
 
         // Build the two text edits.
         var edits = BuildTextEdits(
             context.DocumentUri,
-            context.SourceText,
+            source.DocumentLineBreak,
             selectedStatements,
             containingFunction,
             containingClass,
@@ -275,50 +276,45 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
     private static string BuildFunctionBody(
         IReadOnlyList<Statement> selectedStatements,
         IReadOnlyList<(string Name, SemanticType Type)> returnValues,
-        string sourceText,
+        SourceLines source,
         int functionIndentLevel)
     {
-        var lines = sourceText.Split('\n');
+        var lineBreak = source.DocumentLineBreak;
         var bodyIndent = new string(' ', (functionIndentLevel + 1) * SharpySourceGenerator.DefaultIndentWidth);
 
         // Determine the original indentation of the selected statements
         // by looking at the first selected statement's line.
-        var firstStmtLineIndex = selectedStatements[0].LineStart - 1; // 1-based to 0-based
-        var originalIndent = "";
-        if (firstStmtLineIndex >= 0 && firstStmtLineIndex < lines.Length)
-        {
-            originalIndent = GetLeadingWhitespace(lines[firstStmtLineIndex]);
-        }
+        var originalIndent = source.Indentation(selectedStatements[0].LineStart);
 
-        // Extract and re-indent the source lines for the selected statements.
-        var firstLine = selectedStatements[0].LineStart - 1; // 0-based
-        var lastLine = selectedStatements[selectedStatements.Count - 1].LineEnd - 1; // 0-based
+        // Extract and re-indent the source lines for the selected statements (1-based lines).
+        var firstLine = selectedStatements[0].LineStart;
+        var lastLine = selectedStatements[selectedStatements.Count - 1].LineEnd;
         var sb = new StringBuilder();
 
-        for (var i = firstLine; i <= lastLine && i < lines.Length; i++)
+        for (var i = firstLine; i <= lastLine && source.Contains(i); i++)
         {
             if (i > firstLine)
             {
-                sb.AppendLine();
+                sb.Append(lineBreak);
                 sb.Append(bodyIndent);
             }
 
             // Strip original indentation and let the caller handle adding bodyIndent.
-            var line = lines[i];
+            var line = source.Line(i);
             if (line.StartsWith(originalIndent, StringComparison.Ordinal))
             {
-                sb.Append(line.Substring(originalIndent.Length).TrimEnd('\r'));
+                sb.Append(line.Substring(originalIndent.Length));
             }
             else
             {
-                sb.Append(line.TrimEnd('\r'));
+                sb.Append(line);
             }
         }
 
         // Append return statement if there are return values.
         if (returnValues.Count > 0)
         {
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("return ");
             if (returnValues.Count == 1)
@@ -390,7 +386,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
     /// </summary>
     private static IEnumerable<TextEdit> BuildTextEdits(
         OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
-        string sourceText,
+        string lineBreak,
         IReadOnlyList<Statement> selectedStatements,
         FunctionDef? containingFunction,
         Statement? containingClass,
@@ -421,7 +417,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         var insertEdit = new TextEdit
         {
             Range = new LspRange(insertPosition, insertPosition),
-            NewText = functionDef + "\n\n"
+            NewText = functionDef + lineBreak + lineBreak
         };
         edits.Add(insertEdit);
 
@@ -438,22 +434,11 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         var replaceEdit = new TextEdit
         {
             Range = new LspRange(replaceStart, replaceEnd),
-            NewText = callSite + "\n"
+            NewText = callSite + lineBreak
         };
         edits.Add(replaceEdit);
 
         return edits;
-    }
-
-    /// <summary>
-    /// Returns the leading whitespace of a string.
-    /// </summary>
-    private static string GetLeadingWhitespace(string line)
-    {
-        var i = 0;
-        while (i < line.Length && (line[i] == ' ' || line[i] == '\t'))
-            i++;
-        return line[..i];
     }
 
     /// <summary>

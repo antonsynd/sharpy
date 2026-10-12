@@ -79,7 +79,8 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         var ifLiteral = ExtractLiteralFromEqualityCheck(ifStmt.Test, scrutinee);
         if (ifLiteral is null)
             return;
-        arms.Add((FormatLiteral(ifLiteral, sourceText), ifStmt.ThenBody));
+        var source = SourceLines.Of(sourceText);
+        arms.Add((FormatLiteral(ifLiteral, source), ifStmt.ThenBody));
 
         // Extract literals from elif clauses
         foreach (var elif in ifStmt.ElifClauses)
@@ -87,12 +88,13 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
             var elifLiteral = ExtractLiteralFromEqualityCheck(elif.Test, scrutinee);
             if (elifLiteral is null)
                 return;
-            arms.Add((FormatLiteral(elifLiteral, sourceText), elif.Body));
+            arms.Add((FormatLiteral(elifLiteral, source), elif.Body));
         }
 
         // Build the match statement text
-        var indent = SharpySourceGenerator.GetIndentation(sourceText, ifStmt.LineStart - 1);
-        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
+        var lineBreak = source.DocumentLineBreak;
+        var indent = source.Indentation(ifStmt.LineStart);
+        var indentUnit = source.IndentUnit;
         var bodyIndent = indent + indentUnit;
         var bodyBodyIndent = bodyIndent + indentUnit;
 
@@ -104,20 +106,20 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
         foreach (var (literal, body) in arms)
         {
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("case ");
             sb.Append(literal);
             sb.Append(':');
-            AppendBody(sb, body, bodyBodyIndent, sourceText);
+            AppendBody(sb, body, bodyBodyIndent, source);
         }
 
         if (!ifStmt.ElseBody.IsDefaultOrEmpty)
         {
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("case _:");
-            AppendBody(sb, ifStmt.ElseBody, bodyBodyIndent, sourceText);
+            AppendBody(sb, ifStmt.ElseBody, bodyBodyIndent, source);
         }
 
         var editRange = NodeToLspRange(ifStmt);
@@ -198,7 +200,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     /// the caller admits only the literal kinds <c>IsSimpleLiteral</c> lists, so the switch is
     /// deliberately partial and no semantic decision keys on it.
     /// </summary>
-    private static string FormatLiteral(Expression literal, string sourceText)
+    private static string FormatLiteral(Expression literal, SourceLines source)
     {
         return literal switch
         {
@@ -209,7 +211,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
                 : $"\"{EscapeStringContent(sl.Value)}\"",
             BooleanLiteral bl => bl.Value ? "True" : "False",
             NoneLiteral => "None",
-            _ => ExtractSourceText(sourceText, literal)
+            _ => ExtractSourceText(source, literal)
         };
     }
 
@@ -243,10 +245,12 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (!AllCasesAreLiteralOrWildcard(matchStmt))
             return;
 
-        var indent = SharpySourceGenerator.GetIndentation(sourceText, matchStmt.LineStart - 1);
-        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
+        var source = SourceLines.Of(sourceText);
+        var lineBreak = source.DocumentLineBreak;
+        var indent = source.Indentation(matchStmt.LineStart);
+        var indentUnit = source.IndentUnit;
         var bodyIndent = indent + indentUnit;
-        var scrutineeText = ExtractSourceText(sourceText, matchStmt.Scrutinee);
+        var scrutineeText = ExtractSourceText(source, matchStmt.Scrutinee);
 
         var sb = new StringBuilder();
         var isFirst = true;
@@ -259,6 +263,10 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
                 wildcardCase = matchCase;
                 continue;
             }
+
+            // Arms are separated by the document's line break; none follows the last.
+            if (!isFirst)
+                sb.Append(lineBreak);
 
             sb.Append(indent);
             if (isFirst)
@@ -273,23 +281,18 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
             sb.Append(scrutineeText);
             sb.Append(" == ");
-            sb.Append(FormatPatternAsLiteral(matchCase.Pattern, sourceText));
+            sb.Append(FormatPatternAsLiteral(matchCase.Pattern, source));
             sb.Append(':');
-            AppendBody(sb, matchCase.Body, bodyIndent, sourceText);
-            sb.AppendLine();
+            AppendBody(sb, matchCase.Body, bodyIndent, source);
         }
 
         if (wildcardCase is not null)
         {
+            if (!isFirst)
+                sb.Append(lineBreak);
             sb.Append(indent);
             sb.Append("else:");
-            AppendBody(sb, wildcardCase.Body, bodyIndent, sourceText);
-        }
-        else
-        {
-            // Remove the trailing newline from the last elif/if block
-            while (sb.Length > 0 && sb[sb.Length - 1] is '\r' or '\n')
-                sb.Length--;
+            AppendBody(sb, wildcardCase.Body, bodyIndent, source);
         }
 
         var editRange = NodeToLspRange(matchStmt);
@@ -317,10 +320,10 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         return true;
     }
 
-    private static string FormatPatternAsLiteral(Pattern pattern, string sourceText)
+    private static string FormatPatternAsLiteral(Pattern pattern, SourceLines source)
     {
         if (pattern is LiteralPattern lp)
-            return FormatLiteral(lp.Literal, sourceText);
+            return FormatLiteral(lp.Literal, source);
 
         // Wildcard should not reach here
         return "_";
@@ -400,12 +403,11 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         // We need to remove the ": type" part.
         // The colon starts right after the name, and the type ends just before the "=".
         // We find the ": type" by looking at the source text between the name end and "=".
-        var lines = sourceText.Split('\n');
-        var declLineIndex = varDecl.LineStart - 1;
-        if (declLineIndex < 0 || declLineIndex >= lines.Length)
+        var source = SourceLines.Of(sourceText);
+        if (!source.Contains(varDecl.LineStart))
             return;
 
-        var declLine = lines[declLineIndex];
+        var declLine = source.Line(varDecl.LineStart);
 
         var nameEndOffset = varDecl.NameColumnEnd - 1;
         var colonIndex = declLine.IndexOf(':', nameEndOffset);
@@ -462,32 +464,34 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         var firstStmt = selectedStatements[0];
         var lastStmt = selectedStatements[selectedStatements.Count - 1];
 
-        var indent = SharpySourceGenerator.GetIndentation(sourceText, firstStmt.LineStart - 1);
-        var indentUnit = SharpySourceGenerator.GetIndentUnit(sourceText);
+        var source = SourceLines.Of(sourceText);
+        var lineBreak = source.DocumentLineBreak;
+        var indent = source.Indentation(firstStmt.LineStart);
+        var indentUnit = source.IndentUnit;
         var bodyIndent = indent + indentUnit;
 
         var sb = new StringBuilder();
         sb.Append(indent);
         sb.Append("try:");
-        sb.AppendLine();
+        sb.Append(lineBreak);
 
         // Re-indent the selected statements under the try block
         foreach (var stmt in selectedStatements)
         {
-            var stmtText = ExtractStatementText(sourceText, stmt);
-            var stmtLines = stmtText.Split('\n');
-            foreach (var stmtLine in stmtLines)
+            foreach (var stmtLine in NodeLinePieces(source, stmt))
             {
                 sb.Append(bodyIndent);
-                sb.AppendLine(stmtLine.TrimStart());
+                sb.Append(stmtLine.TrimStart());
+                sb.Append(lineBreak);
             }
         }
 
         sb.Append(indent);
         sb.Append("except Exception as e:");
-        sb.AppendLine();
+        sb.Append(lineBreak);
         sb.Append(bodyIndent);
-        sb.AppendLine("raise");
+        sb.Append("raise");
+        sb.Append(lineBreak);
 
         var editRange = new LspRange(
             PositionConverter.ToLsp(firstStmt.LineStart, 1),
@@ -508,17 +512,19 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
     /// <summary>
     /// Appends a statement body with proper indentation. Each statement's source text
-    /// is extracted from the original source and re-indented.
+    /// is extracted from the original source and re-indented; every line break written is the
+    /// document's (<see cref="SourceLines.DocumentLineBreak"/>).
     /// </summary>
     private static void AppendBody(
         StringBuilder sb,
         ImmutableArray<Statement> body,
         string bodyIndent,
-        string sourceText)
+        SourceLines source)
     {
+        var lineBreak = source.DocumentLineBreak;
         if (body.IsDefaultOrEmpty)
         {
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("pass");
             return;
@@ -526,14 +532,12 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
         foreach (var stmt in body)
         {
-            var stmtText = ExtractStatementText(sourceText, stmt);
-            var stmtLines = stmtText.Split('\n');
-            foreach (var stmtLine in stmtLines)
+            foreach (var stmtLine in NodeLinePieces(source, stmt))
             {
                 var trimmed = stmtLine.TrimStart();
                 if (trimmed.Length == 0)
                     continue;
-                sb.AppendLine();
+                sb.Append(lineBreak);
                 sb.Append(bodyIndent);
                 sb.Append(trimmed);
             }
@@ -541,57 +545,46 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     }
 
     /// <summary>
-    /// Extracts the source text for a node using its line/column span.
+    /// The source text of a node, one piece per source line it spans — from <c>ColumnStart</c> on its
+    /// first line through <c>ColumnEnd</c> on its last — read from the ONE line table.
     /// </summary>
-    private static string ExtractSourceText(string sourceText, Node node)
+    private static SCG.List<string> NodeLinePieces(SourceLines source, Node node)
     {
-        var lines = sourceText.Split('\n');
         if (node.LineStart < 1 || node.LineEnd < 1
-            || node.LineStart > lines.Length || node.LineEnd > lines.Length)
-            return "";
+            || !source.Contains(node.LineStart) || !source.Contains(node.LineEnd))
+            return new SCG.List<string> { "" };
 
         if (node.LineStart == node.LineEnd)
         {
-            var line = lines[node.LineStart - 1];
+            var line = source.Line(node.LineStart);
             var start = System.Math.Max(0, node.ColumnStart - 1);
             var end = System.Math.Min(line.Length, node.ColumnEnd - 1);
             if (start >= end)
-                return line.Substring(start).TrimEnd('\r');
-            return line.Substring(start, end - start).TrimEnd('\r');
+                return new SCG.List<string> { line.Substring(start) };
+            return new SCG.List<string> { line.Substring(start, end - start) };
         }
 
         // Multi-line extraction
-        var sb = new StringBuilder();
-        for (var i = node.LineStart - 1; i <= node.LineEnd - 1 && i < lines.Length; i++)
+        var pieces = new SCG.List<string>();
+        for (var i = node.LineStart; i <= node.LineEnd; i++)
         {
-            var line = lines[i];
-            if (i == node.LineStart - 1)
-            {
-                var start = System.Math.Max(0, node.ColumnStart - 1);
-                sb.Append(line.Substring(start).TrimEnd('\r'));
-            }
-            else if (i == node.LineEnd - 1)
-            {
-                var end = System.Math.Min(line.Length, node.ColumnEnd - 1);
-                sb.Append('\n');
-                sb.Append(line.Substring(0, end).TrimEnd('\r'));
-            }
+            var line = source.Line(i);
+            if (i == node.LineStart)
+                pieces.Add(line.Substring(System.Math.Max(0, node.ColumnStart - 1)));
+            else if (i == node.LineEnd)
+                pieces.Add(line.Substring(0, System.Math.Min(line.Length, node.ColumnEnd - 1)));
             else
-            {
-                sb.Append('\n');
-                sb.Append(line.TrimEnd('\r'));
-            }
+                pieces.Add(line);
         }
-        return sb.ToString();
+        return pieces;
     }
 
     /// <summary>
-    /// Extracts the full source text for a statement, including all its lines.
+    /// Extracts the source text for a node using its line/column span, its lines joined by the
+    /// document's line break.
     /// </summary>
-    private static string ExtractStatementText(string sourceText, Statement stmt)
-    {
-        return ExtractSourceText(sourceText, stmt);
-    }
+    private static string ExtractSourceText(SourceLines source, Node node) =>
+        string.Join(source.DocumentLineBreak, NodeLinePieces(source, node));
 
     /// <summary>
     /// Converts an AST node's span to an LSP Range.

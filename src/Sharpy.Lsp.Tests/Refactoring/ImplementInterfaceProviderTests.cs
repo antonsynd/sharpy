@@ -262,7 +262,7 @@ def main():
             ReturnType = new VoidType()
         };
 
-        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1, "\n");
 
         result.Should().Contain("def do_work(self):");
         result.Should().Contain("raise NotImplementedError()");
@@ -283,7 +283,7 @@ def main():
             ReturnType = new VoidType()
         };
 
-        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1, "\n");
 
         result.Should().Contain("def greet(self, name: str):");
         result.Should().Contain("raise NotImplementedError()");
@@ -302,7 +302,7 @@ def main():
             ReturnType = (BuiltinType)SemanticType.Int
         };
 
-        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1, "\n");
 
         result.Should().Contain("def get_count(self) -> int32:");
         result.Should().Contain("raise NotImplementedError()");
@@ -318,7 +318,7 @@ def main():
             ReturnType = (BuiltinType)SemanticType.Float
         };
 
-        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
+        var result = ImplementInterfaceProvider.FormatMethodStub(method, 1, "\n");
 
         result.Should().Contain("def compute(self) -> float64:");
     }
@@ -328,7 +328,7 @@ def main():
     {
         var result = SharpySourceGenerator.FormatPropertyDef(
             "count", (BuiltinType)SemanticType.Int,
-            hasGetter: true, hasSetter: false, indentLevel: 1);
+            hasGetter: true, hasSetter: false, indentLevel: 1, lineBreak: "\n");
 
         result.Should().Contain("@property");
         result.Should().Contain("def count(self) -> int32:");
@@ -341,7 +341,7 @@ def main():
     {
         var result = SharpySourceGenerator.FormatPropertyDef(
             "name", (BuiltinType)SemanticType.Str,
-            hasGetter: true, hasSetter: true, indentLevel: 1);
+            hasGetter: true, hasSetter: true, indentLevel: 1, lineBreak: "\n");
 
         result.Should().Contain("@property");
         result.Should().Contain("def name(self) -> str:");
@@ -377,7 +377,7 @@ def main():
             }
         };
 
-        var result = ImplementInterfaceProvider.GenerateStubs(methods, properties, 1);
+        var result = ImplementInterfaceProvider.GenerateStubs(methods, properties, 1, "\n");
 
         // Properties come first (convention)
         var propIdx = result.IndexOf("@property", StringComparison.Ordinal);
@@ -394,7 +394,8 @@ def main():
         var result = ImplementInterfaceProvider.GenerateStubs(
             new SCG.List<FunctionSymbol>(),
             new SCG.List<PropertySymbol>(),
-            1);
+            1,
+            "\n");
 
         result.Should().BeEmpty();
     }

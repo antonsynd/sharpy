@@ -196,7 +196,7 @@ public class SharpySourceGeneratorTests
     public void FormatFunctionDef_NoParams_ProducesCorrectStub()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharpySourceGenerator.FormatFunctionDef("do_something", parameters, null, 0);
+        var result = SharpySourceGenerator.FormatFunctionDef("do_something", parameters, null, 0, "\n");
 
         result.Should().Contain("def do_something():");
         result.Should().Contain("pass");
@@ -212,7 +212,7 @@ public class SharpySourceGeneratorTests
             ("x", (BuiltinType)SemanticType.Int),
             ("name", (BuiltinType)SemanticType.Str)
         };
-        var result = SharpySourceGenerator.FormatFunctionDef("greet", parameters, null, 0);
+        var result = SharpySourceGenerator.FormatFunctionDef("greet", parameters, null, 0, "\n");
 
         result.Should().Contain("def greet(x: int32, name: str):");
         result.Should().Contain("pass");
@@ -223,7 +223,7 @@ public class SharpySourceGeneratorTests
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
         var result = SharpySourceGenerator.FormatFunctionDef(
-            "get_value", parameters, (BuiltinType)SemanticType.Int, 0);
+            "get_value", parameters, (BuiltinType)SemanticType.Int, 0, "\n");
 
         result.Should().Contain("def get_value() -> int32:");
         result.Should().Contain("pass");
@@ -234,7 +234,7 @@ public class SharpySourceGeneratorTests
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
         var result = SharpySourceGenerator.FormatFunctionDef(
-            "do_thing", parameters, new VoidType(), 0);
+            "do_thing", parameters, new VoidType(), 0, "\n");
 
         result.Should().NotContain("->");
     }
@@ -243,7 +243,7 @@ public class SharpySourceGeneratorTests
     public void FormatFunctionDef_WithIndent_IndentsCorrectly()
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
-        var result = SharpySourceGenerator.FormatFunctionDef("method", parameters, null, 1);
+        var result = SharpySourceGenerator.FormatFunctionDef("method", parameters, null, 1, "\n");
 
         result.Should().StartWith("    def method():");
         // Body should be indented 2 levels (8 spaces)
@@ -255,7 +255,7 @@ public class SharpySourceGeneratorTests
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
         var result = SharpySourceGenerator.FormatFunctionDef(
-            "custom", parameters, null, 0, body: "return 42");
+            "custom", parameters, null, 0, "\n", body: "return 42");
 
         result.Should().Contain("return 42");
         result.Should().NotContain("pass");
@@ -269,7 +269,7 @@ public class SharpySourceGeneratorTests
             ("x", SemanticType.Unknown),
             ("y", (BuiltinType)SemanticType.Int)
         };
-        var result = SharpySourceGenerator.FormatFunctionDef("process", parameters, null, 0);
+        var result = SharpySourceGenerator.FormatFunctionDef("process", parameters, null, 0, "\n");
 
         result.Should().Contain("def process(x, y: int32):");
     }
@@ -279,7 +279,7 @@ public class SharpySourceGeneratorTests
     {
         var parameters = System.Array.Empty<(string Name, SemanticType Type)>();
         var result = SharpySourceGenerator.FormatFunctionDef(
-            "get_value", parameters, SemanticType.Unknown, 0);
+            "get_value", parameters, SemanticType.Unknown, 0, "\n");
 
         result.Should().NotContain("->");
     }
@@ -292,7 +292,7 @@ public class SharpySourceGeneratorTests
     public void FormatPropertyDef_GetterOnly_ProducesCorrectStub()
     {
         var result = SharpySourceGenerator.FormatPropertyDef(
-            "value", (BuiltinType)SemanticType.Int, hasGetter: true, hasSetter: false, indentLevel: 1);
+            "value", (BuiltinType)SemanticType.Int, hasGetter: true, hasSetter: false, indentLevel: 1, lineBreak: "\n");
 
         result.Should().Contain("@property");
         result.Should().Contain("def value(self) -> int32:");
@@ -304,7 +304,7 @@ public class SharpySourceGeneratorTests
     public void FormatPropertyDef_SetterOnly_ProducesCorrectStub()
     {
         var result = SharpySourceGenerator.FormatPropertyDef(
-            "value", (BuiltinType)SemanticType.Int, hasGetter: false, hasSetter: true, indentLevel: 1);
+            "value", (BuiltinType)SemanticType.Int, hasGetter: false, hasSetter: true, indentLevel: 1, lineBreak: "\n");
 
         result.Should().NotContain("@property");
         result.Should().Contain("@value.setter");
@@ -315,7 +315,7 @@ public class SharpySourceGeneratorTests
     public void FormatPropertyDef_GetterAndSetter_ProducesBoth()
     {
         var result = SharpySourceGenerator.FormatPropertyDef(
-            "name", (BuiltinType)SemanticType.Str, hasGetter: true, hasSetter: true, indentLevel: 1);
+            "name", (BuiltinType)SemanticType.Str, hasGetter: true, hasSetter: true, indentLevel: 1, lineBreak: "\n");
 
         result.Should().Contain("@property");
         result.Should().Contain("def name(self) -> str:");

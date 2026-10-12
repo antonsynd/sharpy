@@ -109,7 +109,8 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         SortImportGroup(projectImports);
 
         // Determine the text range covering all existing imports.
-        var sourceLines = context.SourceText.Split('\n');
+        var sourceLines = SourceLines.Of(context.SourceText);
+        var lineBreak = sourceLines.DocumentLineBreak;
         var importRange = GetImportRange(importLike, sourceLines);
 
         // Generate the replacement text. With no decorated imports this is byte-identical to the
@@ -117,7 +118,7 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         // their slots in sorted order while decorated imports stay pinned and verbatim.
         var newText = anyDecoratedImport
             ? GenerateImportTextWithPinned(importLike, stdlibImports, projectImports, unusedImportLines, sourceLines)
-            : GenerateImportText(stdlibImports, projectImports);
+            : GenerateImportText(stdlibImports, projectImports, lineBreak);
 
         var edit = new WorkspaceEdit
         {
@@ -229,24 +230,27 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
     /// Generates the replacement text for the organized imports.
     /// Stdlib imports come first, then a blank line, then project imports.
     /// </summary>
-    private static string GenerateImportText(System.Collections.Generic.List<Statement> stdlibImports, System.Collections.Generic.List<Statement> projectImports)
+    private static string GenerateImportText(
+        System.Collections.Generic.List<Statement> stdlibImports,
+        System.Collections.Generic.List<Statement> projectImports,
+        string lineBreak)
     {
         var sb = new StringBuilder();
 
         foreach (var stmt in stdlibImports)
         {
-            sb.AppendLine(RenderImportStatement(stmt));
+            sb.Append(RenderImportStatement(stmt)).Append(lineBreak);
         }
 
         // Add blank line separator if both groups have content
         if (stdlibImports.Count > 0 && projectImports.Count > 0)
         {
-            sb.AppendLine();
+            sb.Append(lineBreak);
         }
 
         foreach (var stmt in projectImports)
         {
-            sb.AppendLine(RenderImportStatement(stmt));
+            sb.Append(RenderImportStatement(stmt)).Append(lineBreak);
         }
 
         return sb.ToString();
@@ -264,8 +268,9 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         System.Collections.Generic.List<Statement> stdlibImports,
         System.Collections.Generic.List<Statement> projectImports,
         HashSet<int> unusedImportLines,
-        string[] sourceLines)
+        SourceLines sourceLines)
     {
+        var lineBreak = sourceLines.DocumentLineBreak;
         var sortedPlain = new Queue<Statement>(stdlibImports.Count + projectImports.Count);
         foreach (var stmt in stdlibImports)
             sortedPlain.Enqueue(stmt);
@@ -277,11 +282,11 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         {
             if (stmt is DecoratedStatement decorated)
             {
-                sb.AppendLine(RenderDecoratedImportVerbatim(decorated, sourceLines));
+                sb.Append(RenderDecoratedImportVerbatim(decorated, sourceLines)).Append(lineBreak);
             }
             else if (!IsUnusedImport(stmt, unusedImportLines) && sortedPlain.Count > 0)
             {
-                sb.AppendLine(RenderImportStatement(sortedPlain.Dequeue()));
+                sb.Append(RenderImportStatement(sortedPlain.Dequeue())).Append(lineBreak);
             }
             // Unused plain imports (and plain slots past the sorted supply) emit nothing.
         }
@@ -293,21 +298,12 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
     /// Renders a decorated import by slicing its original source lines, preserving the decorator
     /// exactly. Falls back to reconstructing the inner import if the span is out of range.
     /// </summary>
-    private static string RenderDecoratedImportVerbatim(DecoratedStatement decorated, string[] sourceLines)
+    private static string RenderDecoratedImportVerbatim(DecoratedStatement decorated, SourceLines sourceLines)
     {
-        var first = decorated.LineStart - 1; // AST lines are 1-based
-        var last = decorated.LineEnd - 1;
-        if (first >= 0 && last >= first && last < sourceLines.Length)
-        {
-            var sb = new StringBuilder();
-            for (int i = first; i <= last; i++)
-            {
-                if (i > first)
-                    sb.Append('\n');
-                sb.Append(sourceLines[i].TrimEnd('\r'));
-            }
-            return sb.ToString();
-        }
+        var first = decorated.LineStart; // AST lines are 1-based, as are SourceLines'
+        var last = decorated.LineEnd;
+        if (sourceLines.Contains(first) && sourceLines.Contains(last) && last >= first)
+            return sourceLines.Slice(first, last).Join(sourceLines.DocumentLineBreak);
 
         // Defensive fallback: render the inner import without its decorator.
         return RenderImportStatement(decorated.Statement);
@@ -349,7 +345,7 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
     /// Computes the LSP range covering all import statements, including any trailing blank lines
     /// between the last import and the first non-import statement.
     /// </summary>
-    private static LspRange GetImportRange(System.Collections.Generic.List<Statement> allImports, string[] sourceLines)
+    private static LspRange GetImportRange(System.Collections.Generic.List<Statement> allImports, SourceLines sourceLines)
     {
         // Find the first and last import lines (0-based for LSP).
         var firstLine = int.MaxValue;
@@ -364,9 +360,9 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         firstLine -= 1; // 1-based to 0-based
         lastImportLine -= 1; // 1-based to 0-based
 
-        // Extend past any blank lines after the last import
+        // Extend past any blank lines after the last import (endLine is 0-based, SourceLines 1-based)
         var endLine = lastImportLine + 1;
-        while (endLine < sourceLines.Length && string.IsNullOrWhiteSpace(sourceLines[endLine]))
+        while (endLine < sourceLines.Count && sourceLines.IsBlank(endLine + 1))
         {
             endLine++;
         }

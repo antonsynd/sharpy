@@ -85,7 +85,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         // Edit 1: Insert variable declaration before the statement
         // Insert at the beginning of the containing statement's line
         var insertPosition = PositionConverter.ToLsp(containingStatement.LineStart, 1);
-        var declarationLine = $"{declarationText}{expressionSourceText}\n";
+        var declarationLine = declarationText + expressionSourceText + SourceLines.Of(sourceText).DocumentLineBreak;
         edits.Add(new TextEdit
         {
             Range = new LspRange(insertPosition, insertPosition),

@@ -69,9 +69,8 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         LspRange deleteRange;
         if (documentText != null)
         {
-            var lines = documentText.Split('\n');
             var lineIndex = range.Start.Line;
-            if (lineIndex >= 0 && lineIndex < lines.Length)
+            if (SourceLines.Of(documentText).Contains(lineIndex + 1))
             {
                 deleteRange = new LspRange(
                     new Position(lineIndex, 0),

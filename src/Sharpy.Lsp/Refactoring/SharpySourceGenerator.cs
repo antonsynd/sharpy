@@ -12,7 +12,6 @@ namespace Sharpy.Lsp.Refactoring;
 internal static class SharpySourceGenerator
 {
     internal const int DefaultIndentWidth = 4;
-    private const int MaxDetectableIndent = 8;
 
     /// <summary>
     /// Formats a SemanticType as a Sharpy type annotation string.
@@ -92,13 +91,15 @@ internal static class SharpySourceGenerator
     }
 
     /// <summary>
-    /// Generates a function definition stub with a pass body.
+    /// Generates a function definition stub with a pass body. Every line break it writes is
+    /// <paramref name="lineBreak"/> — the document's (<see cref="SourceLines.DocumentLineBreak"/>); no default.
     /// </summary>
     public static string FormatFunctionDef(
         string name,
         IReadOnlyList<(string Name, SemanticType Type)> parameters,
         SemanticType? returnType,
         int indentLevel,
+        string lineBreak,
         string? body = null)
     {
         var indent = new string(' ', indentLevel * DefaultIndentWidth);
@@ -126,7 +127,7 @@ internal static class SharpySourceGenerator
         }
 
         sb.Append(':');
-        sb.AppendLine();
+        sb.Append(lineBreak);
         sb.Append(bodyIndent);
         sb.Append(body ?? "pass");
 
@@ -134,14 +135,16 @@ internal static class SharpySourceGenerator
     }
 
     /// <summary>
-    /// Generates a property definition stub.
+    /// Generates a property definition stub. Every line break it writes is <paramref name="lineBreak"/> —
+    /// the document's (<see cref="SourceLines.DocumentLineBreak"/>); no default.
     /// </summary>
     public static string FormatPropertyDef(
         string name,
         SemanticType type,
         bool hasGetter,
         bool hasSetter,
-        int indentLevel)
+        int indentLevel,
+        string lineBreak)
     {
         var indent = new string(' ', indentLevel * DefaultIndentWidth);
         var bodyIndent = new string(' ', (indentLevel + 1) * DefaultIndentWidth);
@@ -151,10 +154,10 @@ internal static class SharpySourceGenerator
         {
             sb.Append(indent);
             sb.Append("@property");
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(indent);
             sb.Append(CultureInfo.InvariantCulture, $"def {name}(self) -> {FormatTypeAnnotation(type)}:");
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("raise NotImplementedError()");
         }
@@ -162,13 +165,13 @@ internal static class SharpySourceGenerator
         if (hasSetter)
         {
             if (hasGetter)
-                sb.AppendLine().AppendLine();
+                sb.Append(lineBreak).Append(lineBreak);
             sb.Append(indent);
             sb.Append(CultureInfo.InvariantCulture, $"@{name}.setter");
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(indent);
             sb.Append(CultureInfo.InvariantCulture, $"def {name}(self, value: {FormatTypeAnnotation(type)}):");
-            sb.AppendLine();
+            sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("raise NotImplementedError()");
         }
@@ -177,106 +180,21 @@ internal static class SharpySourceGenerator
     }
 
     /// <summary>
-    /// Gets the indentation string (leading whitespace) of a specific line.
+    /// Gets the indentation string (leading whitespace) of a specific line (0-based
+    /// <paramref name="lineIndex"/>, the LSP line) — <see cref="SourceLines.Indentation"/>.
     /// </summary>
-    public static string GetIndentation(string sourceText, int lineIndex)
-    {
-        var lines = sourceText.Split('\n');
-        if (lineIndex < 0 || lineIndex >= lines.Length)
-            return "";
-
-        var line = lines[lineIndex];
-        var i = 0;
-        while (i < line.Length && (line[i] == ' ' || line[i] == '\t'))
-            i++;
-
-        return line[..i];
-    }
+    public static string GetIndentation(string sourceText, int lineIndex) =>
+        SourceLines.Of(sourceText).Indentation(lineIndex + 1);
 
     /// <summary>
-    /// Extracts the source text for a given AST node using its line/column positions.
+    /// Extracts the source text for a given AST node using its line/column positions, verbatim —
+    /// <see cref="SourceLines.NodeText"/>.
     /// </summary>
-    internal static string? GetNodeSourceText(string sourceText, AstNode node)
-    {
-        var lines = sourceText.Split('\n');
-
-        if (node.LineStart == 0 || node.LineEnd == 0)
-            return null;
-
-        var startLineIdx = node.LineStart - 1;
-        var endLineIdx = node.LineEnd - 1;
-
-        if (startLineIdx < 0 || startLineIdx >= lines.Length ||
-            endLineIdx < 0 || endLineIdx >= lines.Length)
-            return null;
-
-        if (startLineIdx == endLineIdx)
-        {
-            // Single-line node
-            var line = lines[startLineIdx];
-            var startCol = node.ColumnStart - 1;
-            var endCol = node.ColumnEnd - 1;
-
-            if (startCol < 0 || endCol < 0 || startCol > line.Length || endCol > line.Length)
-                return null;
-
-            return line[startCol..endCol];
-        }
-
-        // Multi-line node
-        var result = new StringBuilder();
-
-        // First line: from ColumnStart to end of line
-        var firstLine = lines[startLineIdx];
-        var firstStartCol = node.ColumnStart - 1;
-        if (firstStartCol >= 0 && firstStartCol <= firstLine.Length)
-            result.Append(firstLine[firstStartCol..]);
-        else
-            return null;
-
-        // Middle lines: complete lines
-        for (var idx = startLineIdx + 1; idx < endLineIdx; idx++)
-        {
-            result.Append('\n');
-            result.Append(lines[idx]);
-        }
-
-        // Last line: from start to ColumnEnd
-        result.Append('\n');
-        var lastLine = lines[endLineIdx];
-        var lastEndCol = node.ColumnEnd - 1;
-        if (lastEndCol >= 0 && lastEndCol <= lastLine.Length)
-            result.Append(lastLine[..lastEndCol]);
-        else
-            return null;
-
-        return result.ToString();
-    }
+    internal static string? GetNodeSourceText(string sourceText, AstNode node) =>
+        SourceLines.Of(sourceText).NodeText(node);
 
     /// <summary>
-    /// Detects the indent unit used in the source (defaults to 4 spaces).
+    /// Detects the indent unit used in the source (defaults to 4 spaces) — <see cref="SourceLines.IndentUnit"/>.
     /// </summary>
-    public static string GetIndentUnit(string sourceText)
-    {
-        var lines = sourceText.Split('\n');
-        foreach (var line in lines)
-        {
-            if (line.Length > 0 && line[0] == '\t')
-                return "\t";
-
-            var spaces = 0;
-            foreach (var ch in line)
-            {
-                if (ch == ' ')
-                    spaces++;
-                else
-                    break;
-            }
-
-            if (spaces > 0 && spaces <= MaxDetectableIndent)
-                return new string(' ', spaces);
-        }
-
-        return "    ";
-    }
+    public static string GetIndentUnit(string sourceText) => SourceLines.Of(sourceText).IndentUnit;
 }
