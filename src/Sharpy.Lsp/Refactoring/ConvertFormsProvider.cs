@@ -78,19 +78,19 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
         // Extract the literal from the if-condition
         var ifLiteral = ExtractLiteralFromEqualityCheck(ifStmt.Test, scrutinee);
-        if (ifLiteral is null)
+        if (ifLiteral is null || FormatLiteral(ifLiteral, source) is not { } ifLiteralText)
             return;
         clauses.Add(new Clause(ifStmt.LineStart, HeaderEnd(ifStmt.LineStart, ifStmt.HeaderLineEnd),
-            $"case {FormatLiteral(ifLiteral, source)}:", ifStmt.ThenBody));
+            $"case {ifLiteralText}:", ifStmt.ThenBody));
 
         // Extract literals from elif clauses
         foreach (var elif in ifStmt.ElifClauses)
         {
             var elifLiteral = ExtractLiteralFromEqualityCheck(elif.Test, scrutinee);
-            if (elifLiteral is null)
+            if (elifLiteral is null || FormatLiteral(elifLiteral, source) is not { } elifLiteralText)
                 return;
             clauses.Add(new Clause(elif.LineStart, HeaderEnd(elif.LineStart, elif.HeaderLineEnd),
-                $"case {FormatLiteral(elifLiteral, source)}:", elif.Body));
+                $"case {elifLiteralText}:", elif.Body));
         }
 
         if (!ifStmt.ElseBody.IsDefaultOrEmpty)
@@ -190,11 +190,13 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     }
 
     /// <summary>
-    /// Formats a literal expression as Sharpy source text. Rendering only (documented-by-design):
-    /// the caller admits only the literal kinds <c>IsSimpleLiteral</c> lists, so the switch is
-    /// deliberately partial and no semantic decision keys on it.
+    /// Formats a literal expression as Sharpy source text. Rendering only (documented-by-design): the
+    /// literal kinds <c>IsLiteralExpression</c> lists are re-spelled; any other node a literal pattern
+    /// can hold (a negative number, `case -1:`, is a <see cref="UnaryOp"/>) is its verbatim source text
+    /// read from the ONE seam (<see cref="SourceLines.NodeText"/>, plan D1) — null when that node is not
+    /// on the document's lines, and the caller then offers nothing. No semantic decision keys on it.
     /// </summary>
-    private static string FormatLiteral(Expression literal, SourceLines source)
+    private static string? FormatLiteral(Expression literal, SourceLines source)
     {
         return literal switch
         {
@@ -205,7 +207,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
                 : $"\"{EscapeStringContent(sl.Value)}\"",
             BooleanLiteral bl => bl.Value ? "True" : "False",
             NoneLiteral => "None",
-            _ => ExtractSourceText(source, literal)
+            _ => source.NodeText(literal)
         };
     }
 
@@ -251,7 +253,11 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
             return;
 
         var indent = source.Indentation(first);
-        var scrutineeText = ExtractSourceText(source, matchStmt.Scrutinee);
+        // The scrutinee's verbatim text from the ONE seam (D1): a multi-line string literal's tail lines come
+        // with it (the parser's ColumnEnd for a multi-line last token is on its START line, #2295, which a
+        // ColumnStart..ColumnEnd slice read as `"""a` — the header did not parse).
+        if (source.NodeText(matchStmt.Scrutinee) is not { } scrutineeText)
+            return;
         var matchHeaderEnd = HeaderEnd(first, matchStmt.HeaderLineEnd);
 
         // Each case's body region runs to the next case header in DOCUMENT order (the last through the
@@ -293,9 +299,11 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         foreach (var i in order)
         {
             var matchCase = cases[i];
+            if (FormatPatternAsLiteral(matchCase.Pattern, source) is not { } literalText)
+                return;
             var header = matchCase.Pattern is WildcardPattern
                 ? "else:"
-                : $"{(arm++ == 0 ? "if" : "elif")} {scrutineeText} == {FormatPatternAsLiteral(matchCase.Pattern, source)}:";
+                : $"{(arm++ == 0 ? "if" : "elif")} {scrutineeText} == {literalText}:";
             var clause = new Clause(matchCase.LineStart, HeaderEnd(matchCase.LineStart, matchCase.HeaderLineEnd), header, matchCase.Body);
             EmitClause(source, clause, bodyEnds[i], indent, delta, ' ', newLines);
         }
@@ -325,12 +333,12 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         return true;
     }
 
-    private static string FormatPatternAsLiteral(Pattern pattern, SourceLines source)
+    private static string? FormatPatternAsLiteral(Pattern pattern, SourceLines source)
     {
         if (pattern is LiteralPattern lp)
             return FormatLiteral(lp.Literal, source);
 
-        // Wildcard should not reach here
+        // A wildcard's header is `else:`; its text is never written
         return "_";
     }
 
@@ -565,48 +573,6 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (regionStart <= bodyEnd)
             into.AddRange(Region.Reindent(source.Slice(regionStart, bodyEnd), delta, source.LiteralLines, fill));
     }
-
-    /// <summary>
-    /// The source text of a node, one piece per source line it spans — from <c>ColumnStart</c> on its
-    /// first line through <c>ColumnEnd</c> on its last — read from the ONE line table.
-    /// </summary>
-    private static SCG.List<string> NodeLinePieces(SourceLines source, Node node)
-    {
-        if (node.LineStart < 1 || node.LineEnd < 1
-            || !source.Contains(node.LineStart) || !source.Contains(node.LineEnd))
-            return new SCG.List<string> { "" };
-
-        if (node.LineStart == node.LineEnd)
-        {
-            var line = source.Line(node.LineStart);
-            var start = System.Math.Max(0, node.ColumnStart - 1);
-            var end = System.Math.Min(line.Length, node.ColumnEnd - 1);
-            if (start >= end)
-                return new SCG.List<string> { line.Substring(start) };
-            return new SCG.List<string> { line.Substring(start, end - start) };
-        }
-
-        // Multi-line extraction
-        var pieces = new SCG.List<string>();
-        for (var i = node.LineStart; i <= node.LineEnd; i++)
-        {
-            var line = source.Line(i);
-            if (i == node.LineStart)
-                pieces.Add(line.Substring(System.Math.Max(0, node.ColumnStart - 1)));
-            else if (i == node.LineEnd)
-                pieces.Add(line.Substring(0, System.Math.Min(line.Length, node.ColumnEnd - 1)));
-            else
-                pieces.Add(line);
-        }
-        return pieces;
-    }
-
-    /// <summary>
-    /// Extracts the source text for a node using its line/column span, its lines joined by the
-    /// document's line break.
-    /// </summary>
-    private static string ExtractSourceText(SourceLines source, Node node) =>
-        string.Join(source.DocumentLineBreak, NodeLinePieces(source, node));
 
     /// <summary>
     /// Creates a WorkspaceEdit with a single text edit.

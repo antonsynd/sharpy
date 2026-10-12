@@ -122,4 +122,30 @@ public sealed class ConvertFormsShapeTests : IDisposable
             "def main():\n    x = 1\n    match x:\n        case 1:\n            s = \"\"\"a\n  b\"\"\"\n            print(s)\n"
             + "        case 2:\n            print(\"two\")\n");
     }
+
+    /// <summary>
+    /// A multi-line string literal as the `match` scrutinee is written into the `if` header verbatim, its second
+    /// line byte-identical at column 0 (D1/D3): e4a24985f's private ColumnStart..ColumnEnd slice read it as
+    /// <c>"""a</c> (the parser's ColumnEnd for a multi-line last token is on its start line, #2295) and the
+    /// applied <c>if """a == "x":</c> did not parse. The single-line cells above are the positive control that
+    /// the seam's text is the slice's on one line.
+    /// </summary>
+    [Fact]
+    public void MatchToIf_MultiLineStringScrutinee_IsWrittenVerbatimIntoTheHeader()
+    {
+        var text = "def main():\n    match \"\"\"a\nb\"\"\":\n        case \"x\":\n            print(1)\n        case _:\n            print(2)\n";
+
+        Convert(text, 1, 4, ToIf).Should().Be(
+            "def main():\n    if \"\"\"a\nb\"\"\" == \"x\":\n        print(1)\n    else:\n        print(2)\n");
+    }
+
+    /// <summary>A negative-number literal pattern (`case -1:`, a <c>UnaryOp</c>) reaches the verbatim arm: `if x == -1:`.</summary>
+    [Fact]
+    public void MatchToIf_NegativeLiteralPattern_IsWrittenVerbatim()
+    {
+        var text = "def main():\n    x = 1\n    match x:\n        case -1:\n            print(1)\n        case _:\n            print(2)\n";
+
+        Convert(text, 2, 4, ToIf).Should().Be(
+            "def main():\n    x = 1\n    if x == -1:\n        print(1)\n    else:\n        print(2)\n");
+    }
 }
