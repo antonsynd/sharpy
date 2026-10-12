@@ -80,14 +80,19 @@ public sealed class ParseSafetyTests : IDisposable
     // ---- inline variable / function: where no legal text exists, not offered ----
 
     /// <summary>
-    /// An initializer carrying a comment cannot be copied without duplicating, moving or dropping it; a declaration
+    /// A comment inside the initializer travels with its text to the one reference, written once (the base,
+    /// 7f0502de3, applied exactly this text; e4a24985f withheld the action — a regression by direction); with two
+    /// references it would be written twice and with none dropped, so there it is not offered. A declaration
     /// alone in its block cannot be deleted without emptying the block; a name BOUND elsewhere (`let pair,
     /// other = …`) cannot take a value. The positive control is the same module variable with no such binding.
     /// </summary>
     [Fact]
     public void InlineVariable_NoLegalText_NotOffered_PlainModuleVariable_Inlines()
     {
-        NotOffered("def main():\n    k: int = (1 +  # one\n              2)\n    print(k)\n", 1, 4, 1, 4, "Inline variable");
+        Applied("def main():\n    k: int = (1 +  # one\n              2)\n    print(k)\n", 1, 4, 1, 4, "Inline variable")
+            .Should().Be("def main():\n    print((1 +  # one\n              2))\n");
+        NotOffered("def main():\n    k: int = (1 +  # one\n              2)\n    print(k)\n    print(k)\n", 1, 4, 1, 4, "Inline variable");
+        NotOffered("def main():\n    k: int = (1 +  # one\n              2)\n    print(1)\n", 1, 4, 1, 4, "Inline variable");
         NotOffered("def main():\n    if True:\n        k: int = 1\n    print(k)\n", 2, 8, 2, 8, "Inline variable");
         NotOffered("pair: int = 1\n\ndef f() -> None:\n    let pair, other = 6, 0\n    print(pair + other)\n\ndef main():\n    print(pair)\n    f()\n",
             0, 0, 0, 0, "Inline variable");

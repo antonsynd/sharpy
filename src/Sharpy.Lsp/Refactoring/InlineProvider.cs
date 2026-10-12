@@ -137,10 +137,12 @@ internal sealed class InlineProvider : ICodeActionProvider
         if (source.NodeSpan(varDecl.InitialValue) is not { } initializerSpan)
             return null;
 
-        // An initializer that carries a comment cannot be copied to its references without duplicating,
-        // moving or dropping that comment; a declaration alone in its block cannot be deleted without leaving
-        // the block empty. No legal text exists for either: not offered (P47, #2232).
-        if (source.HasCommentIn(initializerSpan.Start, initializerSpan.End)
+        // A comment inside the initializer travels with its text to the ONE reference, written once (the rule
+        // Convert to if/elif/else applies to a comment in the scrutinee); with two or more references it would be
+        // duplicated and with none dropped (the declaration is deleted, and D5 covers only a trailing comment).
+        // A declaration alone in its block cannot be deleted without leaving the block empty. No legal text
+        // exists for either: not offered (P47, #2232).
+        if ((references.Count != 1 && source.HasCommentIn(initializerSpan.Start, initializerSpan.End))
             || ContainingBlockSize(ast.Body, varDecl) is null or 1)
             return null;
         var declEnd = source.LineOfOffset(Math.Max(initializerSpan.Start, initializerSpan.End - 1));
