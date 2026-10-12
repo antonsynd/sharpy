@@ -299,30 +299,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     // Corpus and sampling
     // ================================================================
 
-    internal sealed record Fixture(string Name, string Source);
-
-    internal sealed record CorpusCensus(int SingleFile, IReadOnlyList<string> Unparseable, SCG.IReadOnlyDictionary<string, Fixture> Corpus);
-
-    internal static readonly Lazy<CorpusCensus> Corpus = new(BuildCorpus);
-
-    private static CorpusCensus BuildCorpus()
-    {
-        var single = FixtureDiscoveryHelper.DiscoverFixtures(FixtureRoots.CompilerTests.Path, includeSkipped: true)
-            .Where(f => !f.IsMultiFile)
-            .ToArray();
-        var corpus = new SortedDictionary<string, Fixture>(StringComparer.Ordinal);
-        var unparseable = new SCG.List<string>();
-        foreach (var fixture in single)
-        {
-            var source = File.ReadAllText(fixture.SpyFilePath);
-            if (Parse(source).Module == null)
-                unparseable.Add(fixture.TestName);
-            else
-                corpus[fixture.TestName] = new Fixture(fixture.TestName, source);
-        }
-
-        return new CorpusCensus(single.Length, unparseable, corpus);
-    }
+    /// <summary>The corpus (<see cref="SweepCorpus"/>, shared with the code-action sweep).</summary>
+    internal static readonly Lazy<SweepCorpus.CorpusCensus> Corpus = SweepCorpus.Corpus;
 
     public static IEnumerable<object[]> CorpusNames() => Corpus.Value.Corpus.Keys.Select(name => new object[] { name });
 
@@ -333,20 +311,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>Whether <paramref name="stem"/>'s <c>range-line</c> and <c>ontype</c> cells run under <paramref name="stride"/>.</summary>
     internal static bool IsSampledIn(string stem, int stride) => StableBucket(stem, stride) == 0;
 
-    /// <summary>Process-independent bucket in <c>[0, stride)</c>: FNV-1a of the name (the <c>FrontEndParityTests</c> precedent).</summary>
-    internal static int StableBucket(string text, int stride)
-    {
-        if (stride <= 1)
-            return 0;
-        uint hash = 2166136261;
-        foreach (var ch in text)
-        {
-            hash ^= ch;
-            hash *= 16777619;
-        }
-
-        return (int)(hash % (uint)stride);
-    }
+    /// <summary>Process-independent bucket in <c>[0, stride)</c> (<see cref="SweepCorpus.StableBucket"/>).</summary>
+    internal static int StableBucket(string text, int stride) => SweepCorpus.StableBucket(text, stride);
 
     // ================================================================
     // Documents and cells

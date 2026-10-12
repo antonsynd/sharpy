@@ -532,19 +532,8 @@ public class FrontEndParityTests
     }
 
     /// <summary>Stable (process-independent) bucket in [0, stride) from an FNV-1a hash of the name,
-    /// so sub-sampling is deterministic across runs.</summary>
-    private static int StableBucket(string text, int stride)
-    {
-        if (stride <= 1)
-            return 0;
-        uint hash = 2166136261;
-        foreach (var ch in text)
-        {
-            hash ^= ch;
-            hash *= 16777619;
-        }
-        return (int)(hash % (uint)stride);
-    }
+    /// so sub-sampling is deterministic across runs (<see cref="SweepCorpus.StableBucket"/>).</summary>
+    private static int StableBucket(string text, int stride) => SweepCorpus.StableBucket(text, stride);
 
     // ---- allowlist + report I/O (mirrors InteropConformanceTests) ----
 
