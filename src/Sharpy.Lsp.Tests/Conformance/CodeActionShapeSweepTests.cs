@@ -1472,9 +1472,40 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     internal static bool JudgesDiagnostics(string stem, string twin, string requestKey, string action, bool full)
         => full || SweepCorpus.StableBucket($"{stem}|{twin}|{requestKey}|{action}", DiagnosticsStride) == 0;
 
-    private static readonly Lazy<CompilerApi> s_sweepApi = new(() => new CompilerApi(CompilerNullLogger.Instance, StdlibReferences.Paths()));
+    /// <summary>
+    /// A FRESH compiler and driver for one (stem, twin). One <see cref="CompilerApi"/> caches its builtin and module
+    /// registries across analyses, and an analysis on a warm instance can answer differently from a cold one (measured
+    /// @ 43aab2658: Extract method's spelling of a builtin parameter type and SPY0220 on the IFormattable fixtures
+    /// moved with what the same instance analysed before, and with the thread interleaving at DOP 4 — ledgered as a
+    /// class finding). Isolating each (stem, twin) makes every verdict a function of that document alone: independent
+    /// of the parallelism, of the order stems run in, and of which stems a mode samples (so the regular pin pair is
+    /// the FULL pair restricted, as it claims). The handler's analyses and the <c>diagnostics</c> oracle share the
+    /// instance within the (stem, twin), in the fixed request order. Cost: ≈ 16 ms per (stem, twin) (measured).
+    /// </summary>
+    private static (CompilerApi Api, LspCodeActionDriver Driver) Isolated()
+    {
+        var api = new CompilerApi(CompilerNullLogger.Instance, s_references.Value);
+        return (api, new LspCodeActionDriver(api));
+    }
 
-    private static readonly Lazy<LspCodeActionDriver> s_driver = new(() => new LspCodeActionDriver(s_sweepApi.Value));
+    private static readonly Lazy<string[]> s_references = new(StdlibReferences.Paths);
+
+    /// <summary>Documents a disposed per-(stem, twin) driver still held when its sweep ended (must stay 0).</summary>
+    private static int s_retainedDocuments;
+
+    /// <summary>Counts a driver that still holds a document once its session is closed.</summary>
+    private sealed class RetentionCheck : IDisposable
+    {
+        private readonly LspCodeActionDriver _driver;
+
+        public RetentionCheck(LspCodeActionDriver driver) => _driver = driver;
+
+        public void Dispose()
+        {
+            if (_driver.OpenDocumentCount != 0)
+                Interlocked.Increment(ref s_retainedDocuments);
+        }
+    }
 
     private static int Parallelism => int.TryParse(Environment.GetEnvironmentVariable("SHARPY_CODEACTION_SWEEP_DOP"), out var n) && n > 0
         ? n
@@ -1573,7 +1604,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             }
         });
 
-        s_driver.Value.OpenDocumentCount.Should().Be(0, "the driver closes every document it opens");
+        Volatile.Read(ref s_retainedDocuments).Should().Be(0, "every per-stem driver closes every document it opens");
         s_stemsRun[twin] = stems.Length;
         s_requests[twin] = requests;
         s_seconds[twin] = clock.Elapsed.TotalSeconds;
@@ -1682,9 +1713,19 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         var text = SweepCorpus.Corpus.Value.Corpus[stem].Source;
         var doc = SweepText.Of(text);
         var offers = new SCG.Dictionary<string, SCG.HashSet<string>>(StringComparer.Ordinal);
-        using var session = s_driver.Value.Open(text);
-        foreach (var request in BuildRequests(doc, session.Diagnostics))
-            offers[request.Key] = OfferedNames(session.Request(request.Range, ContextOf(request)), out _);
+        var (_, driver) = Isolated();
+        using (driver)
+        {
+            using (var session = driver.Open(text))
+            {
+                foreach (var request in BuildRequests(doc, session.Diagnostics))
+                    offers[request.Key] = OfferedNames(session.Request(request.Range, ContextOf(request)), out _);
+            }
+
+            if (driver.OpenDocumentCount != 0)
+                Interlocked.Increment(ref s_retainedDocuments);
+        }
+
         return offers;
     }
 
@@ -1729,7 +1770,10 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         var stemRunsRegular = Runs(stem, twin, full: false);
         var identityOffers = OfferTwins.Contains(twin) ? IdentityOffers(stem) : null;
         var judgedSignatures = new SCG.HashSet<string>(StringComparer.Ordinal);
-        using var session = s_driver.Value.Open(text);
+        var (api, driver) = Isolated();
+        using var disposeDriver = driver;
+        using var retention = new RetentionCheck(driver); // disposed after the session, before the driver
+        using var session = driver.Open(text);
         var published = session.Diagnostics;
         var requests = BuildRequests(doc, published);
         requestCount = requests.Count;
@@ -1781,7 +1825,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
                 var regularDiagnostics = JudgesDiagnostics(stem, twin, request.Key, spec.Name, full: false);
                 var judgeDiagnostics = full || regularDiagnostics;
                 var exemptions = ExemptionsOf(spec, request, doc, published);
-                foreach (var (bucket, detail, cite) in Judge(doc, spec, edits, exemptions, judgeDiagnostics ? s_sweepApi.Value : null))
+                foreach (var (bucket, detail, cite) in Judge(doc, spec, edits, exemptions, judgeDiagnostics ? api : null))
                 {
                     var regular = stemRunsRegular && (bucket != Diagnostics || regularDiagnostics);
                     group.Fail(bucket, cite, $"{request.Key}: {detail}", regular);
