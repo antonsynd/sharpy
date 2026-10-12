@@ -82,7 +82,9 @@ public sealed class ParseSafetyTests : IDisposable
     /// <summary>
     /// A comment inside the initializer travels with its text to the one reference, written once (the base,
     /// 7f0502de3, applied exactly this text; e4a24985f withheld the action — a regression by direction); with two
-    /// references it would be written twice and with none dropped, so there it is not offered. A declaration
+    /// references it would be written twice, so there it is not offered. A declaration with NO reference is not
+    /// offered at all (measured: the symbol is found through a reference identifier), with or without a comment —
+    /// the zero-reference row pins that the comment is never dropped by a deletion. A declaration
     /// alone in its block cannot be deleted without emptying the block; a name BOUND elsewhere (`let pair,
     /// other = …`) cannot take a value. The positive control is the same module variable with no such binding.
     /// </summary>
