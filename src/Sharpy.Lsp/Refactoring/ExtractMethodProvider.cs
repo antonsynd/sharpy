@@ -90,7 +90,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         // Build the two text edits.
         var edits = BuildTextEdits(
             context.DocumentUri,
-            source.DocumentLineBreak,
+            source,
             selectedStatements,
             containingFunction,
             containingClass,
@@ -286,28 +286,27 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         // by looking at the first selected statement's line.
         var originalIndent = source.Indentation(selectedStatements[0].LineStart);
 
-        // Extract and re-indent the source lines for the selected statements (1-based lines).
+        // D8: the selected statements' whole lines through the last one's TRUE last line, moved by ONE
+        // offset (bodyIndent − originalIndent); a line inside a multi-line literal keeps its bytes (D3) and
+        // a blank line stays blank. FormatFunctionDef writes bodyIndent before the body's first line, so
+        // that line goes in without it.
         var firstLine = selectedStatements[0].LineStart;
-        var lastLine = selectedStatements[selectedStatements.Count - 1].LineEnd;
+        var lastLine = source.EndLine(selectedStatements[selectedStatements.Count - 1]);
+        var moved = Region.Reindent(
+            source.Slice(firstLine, lastLine), bodyIndent.Length - originalIndent.Length, source.LiteralLines);
         var sb = new StringBuilder();
 
-        for (var i = firstLine; i <= lastLine && source.Contains(i); i++)
+        for (var i = 0; i < moved.Count; i++)
         {
-            if (i > firstLine)
+            if (i == 0)
             {
-                sb.Append(lineBreak);
-                sb.Append(bodyIndent);
-            }
-
-            // Strip original indentation and let the caller handle adding bodyIndent.
-            var line = source.Line(i);
-            if (line.StartsWith(originalIndent, StringComparison.Ordinal))
-            {
-                sb.Append(line.Substring(originalIndent.Length));
+                var head = moved[0];
+                sb.Append(head.StartsWith(bodyIndent, StringComparison.Ordinal) ? head[bodyIndent.Length..] : head.TrimStart(' ', '\t'));
             }
             else
             {
-                sb.Append(line);
+                sb.Append(lineBreak);
+                sb.Append(moved[i]);
             }
         }
 
@@ -386,7 +385,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
     /// </summary>
     private static IEnumerable<TextEdit> BuildTextEdits(
         OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
-        string lineBreak,
+        SourceLines source,
         IReadOnlyList<Statement> selectedStatements,
         FunctionDef? containingFunction,
         Statement? containingClass,
@@ -417,26 +416,15 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         var insertEdit = new TextEdit
         {
             Range = new LspRange(insertPosition, insertPosition),
-            NewText = functionDef + lineBreak + lineBreak
+            NewText = functionDef + source.DocumentLineBreak + source.DocumentLineBreak
         };
         edits.Add(insertEdit);
 
-        // Edit 2: Replace selected statements with the call site.
+        // Edit 2: Replace the selected statements' whole lines — through the last one's TRUE last line
+        // (D2) — with the call site.
         var firstStmt = selectedStatements[0];
         var lastStmt = selectedStatements[selectedStatements.Count - 1];
-
-        // Start at the beginning of the first statement's line.
-        var replaceStart = PositionConverter.ToLsp(firstStmt.LineStart, 1);
-
-        // End at the end of the last statement's line (start of next line).
-        var replaceEnd = PositionConverter.ToLsp(lastStmt.LineEnd + 1, 1);
-
-        var replaceEdit = new TextEdit
-        {
-            Range = new LspRange(replaceStart, replaceEnd),
-            NewText = callSite + lineBreak
-        };
-        edits.Add(replaceEdit);
+        edits.Add(source.WholeLineEdit(firstStmt.LineStart, source.EndLine(lastStmt), new[] { callSite }));
 
         return edits;
     }

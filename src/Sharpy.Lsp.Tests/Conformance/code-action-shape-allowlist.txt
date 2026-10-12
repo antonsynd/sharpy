@@ -14,17 +14,16 @@
 # #2294 synthesized type spellings (Extract method parameter inference, Extract variable annotation);
 # #2296 code actions that are not meaning-preserving (diagnostics of every other action).
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
-extract-method identity diagnostics 2898 dc6ffaecf5711fe3 831 f16e8e35815ca069 # #2294 adds SPY0202 (and 5864 other cells)
-extract-method identity edits 27 081d204c9c1f5285 27 081d204c9c1f5285 # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-extract-method identity line 77 9cac4080d8ec8130 77 9cac4080d8ec8130 # #2232 moved lines not kept at one indentation offset (and 7 other cells)
-extract-method identity parse 1168 6406767529e1b2d0 1168 6406767529e1b2d0 # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 247 other cells)
-extract-method identity parse 517 b1cc7dc8becd43d2 517 b1cc7dc8becd43d2 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
+extract-method identity diagnostics 2900 c1849fba3ae96312 832 8d4d6f52473e7d40 # #2294 adds SPY0202 (and 5882 other cells)
+extract-method identity parse 1170 bf4b409d646fdf01 1170 bf4b409d646fdf01 # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 246 other cells)
+extract-method identity parse 523 3865c4b65147e9a4 523 3865c4b65147e9a4 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
 extract-variable identity diagnostics 219 821612fd704f7791 40 d98546d1233d2f8d # #2294 adds SPY0220 (and 256 other cells)
+extract-variable identity edits 23 a411e159591159fb 23 a411e159591159fb # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 extract-variable identity parse 83 1bfb3c74e80014b4 83 1bfb3c74e80014b4 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 70 other cells)
 implement identity diagnostics 9 c2d4b3f2b2867e83 2 9ad8447b70a67f77 # #2296 adds SPY0224 (and 4 other cells)
 implement identity parse 37 eb5c07e5746b7156 37 eb5c07e5746b7156 # #2232 does not parse (SPY0148 @property is not a decorator in Sharpy — propert) (and 2 other cells)
 inline-function identity diagnostics 51 305325034b8547a6 15 8b23e6b45cbc85de # #2296 removes an error (and 42 other cells)
-inline-function identity parse 6 b5983fbee715548a 6 b5983fbee715548a # #2232 does not parse (SPY0101 Expected identifier, got Integer) (and 4 other cells)
+inline-function identity parse 13 1b3d31528fd4e8a1 13 1b3d31528fd4e8a1 # #2232 does not parse (SPY0102 A match expression cannot be written inside brac) (and 7 other cells)
 inline-variable identity diagnostics 159 3a2fd59813d8856a 23 0435530ff0255803 # #2296 adds SPY0200 (and 161 other cells)
 inline-variable identity edits 12 8db46feb8899d041 12 8db46feb8899d041 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable identity parse 28 f56ec4b47186deca 28 f56ec4b47186deca # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 7 other cells)
@@ -37,7 +36,7 @@ prefix-underscore identity diagnostics 21 e2e2257abde88092 1 47ec1f14bc7f4d75 # 
 prefix-underscore identity parse 25 0441a71527abea2b 25 0441a71527abea2b # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation identity diagnostics 516 013792cce97a038a 91 0589405297fbebe0 # #2296 adds SPY0227 (and 518 other cells)
 remove-annotation identity parse 11 3d9ed18bf8685386 11 3d9ed18bf8685386 # #2232 does not parse (SPY0105 Decorators cannot be applied to assignments — on)
-remove-import identity diagnostics 18 f237e8d332e7d504 5 dc01019ddb55ce3c # #2296 removes an error (and 1 other cells)
+remove-import identity diagnostics 17 c7327c10f9936099 4 c64f809e53e1ecee # #2296 removes an error
 rename identity diagnostics 51 45195117e72c86d8 12 eacec041e408ec96 # #2296 adds SPY0253 (and 58 other cells)
 rename identity parse 3 2ee1889adc56d551 3 2ee1889adc56d551 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
 to-if identity comment 1 1e77d36b46e16375 1 1e77d36b46e16375 # #2232 loses a comment
@@ -46,25 +45,22 @@ to-if identity line 2 283be9eb716824b6 2 283be9eb716824b6 # #2232 moved lines no
 to-if identity parse 11 76a97570d0fa4239 11 76a97570d0fa4239 # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
 to-match identity edits 34 563c2825185db8df 34 563c2825185db8df # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 to-match identity parse 9 801e943ac5bbf518 9 801e943ac5bbf518 # #2232 does not parse (SPY0014 Indentation mismatch)
-wrap-try identity blank 1565 80343c31c3ffba98 1565 80343c31c3ffba98 # #2232 drops blank lines inside the region
-wrap-try identity comment 534 fc8b1cd4d852bf26 534 fc8b1cd4d852bf26 # #2232 loses a comment
-wrap-try identity diagnostics 1264 efec7a18e19cf623 231 52b97a84c4bc099f # #2296 adds SPY0200 (and 1087 other cells)
-wrap-try identity edits 28 4bf651679b65c532 28 4bf651679b65c532 # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-wrap-try identity line 2266 fc1b3ff0731e9a9c 2266 fc1b3ff0731e9a9c # #2232 moved lines not kept at one indentation offset (and 8 other cells)
-wrap-try identity parse 2046 d29f0a97680948ae 2046 d29f0a97680948ae # #2232 does not parse (SPY0104 Expected Indent, got Identifier) (and 1609 other cells)
-extract-method crlf diagnostics 2898 dc6ffaecf5711fe3 100 99129c968656a462 # #2294 adds SPY0202 (and 5864 other cells)
-extract-method crlf edits 27 081d204c9c1f5285 4 7e218ba396230ac4 # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-extract-method crlf line 77 9cac4080d8ec8130 14 c4b0ecd1212c414f # #2232 moved lines not kept at one indentation offset (and 7 other cells)
-extract-method crlf parse 1168 6406767529e1b2d0 169 da8b08f726210618 # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 247 other cells)
-extract-method crlf parse 517 b1cc7dc8becd43d2 66 d7e71c6e6c8216ef # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
+wrap-try identity diagnostics 1760 e63761107e9b2d00 443 e480942ed03d5e3f # #2296 adds SPY0203 (and 3084 other cells)
+wrap-try identity parse 239 dfd7cbebea67ab51 239 dfd7cbebea67ab51 # #2232 does not parse (SPY0105 Decorators can only be applied to functions, cla) (and 151 other cells)
+extract-method crlf diagnostics 2900 c1849fba3ae96312 100 99129c968656a462 # #2294 adds SPY0202 (and 5882 other cells)
+extract-method crlf parse 1170 bf4b409d646fdf01 169 da8b08f726210618 # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 246 other cells)
+extract-method crlf parse 523 3865c4b65147e9a4 67 6bdb7bd4510816ed # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
 extract-variable crlf diagnostics 219 821612fd704f7791 9 579d0c58dbf30210 # #2294 adds SPY0220 (and 256 other cells)
+extract-variable crlf edits 23 a411e159591159fb 5 7b774977934a8c8b # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 extract-variable crlf parse 83 1bfb3c74e80014b4 12 7c5ddb610c474450 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 70 other cells)
 implement crlf diagnostics 9 c2d4b3f2b2867e83 0 - # #2296 adds SPY0224 (and 4 other cells)
 implement crlf parse 37 eb5c07e5746b7156 4 5843b6179daec5f1 # #2232 does not parse (SPY0148 @property is not a decorator in Sharpy — propert) (and 2 other cells)
 inline-function crlf diagnostics 51 305325034b8547a6 1 0dca4479e9842c20 # #2296 removes an error (and 42 other cells)
-inline-function crlf parse 6 b5983fbee715548a 1 36fa85bd61080d74 # #2232 does not parse (SPY0101 Expected identifier, got Integer) (and 4 other cells)
+inline-function crlf lineBreak 7 d565889fa61c2cfb 1 3cc829ae90eefeb6 # #2232 writes a line break that is not the document's
+inline-function crlf parse 13 1b3d31528fd4e8a1 2 97431b6bea6bfa0a # #2232 does not parse (SPY0102 A match expression cannot be written inside brac) (and 7 other cells)
 inline-variable crlf diagnostics 159 3a2fd59813d8856a 21 0c53a532e36f107b # #2296 adds SPY0200 (and 161 other cells)
 inline-variable crlf edits 12 8db46feb8899d041 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
+inline-variable crlf lineBreak 2 c2c893cbc8c526cf 1 b17af7112e20cb74 # #2232 writes a line break that is not the document's
 inline-variable crlf parse 28 f56ec4b47186deca 1 fb63f0d8480cf1e7 # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 7 other cells)
 organize-imports crlf blank 250 1be9f4d6e6521b9f 32 56d7be7f3d9b180a # #2232 edit reaches past the moved statements
 organize-imports crlf comment 2 45ae2f3c8e707c04 0 - # #2232 loses a comment
@@ -75,7 +71,7 @@ prefix-underscore crlf diagnostics 21 e2e2257abde88092 0 - # #2296 adds SPY0200 
 prefix-underscore crlf parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation crlf diagnostics 516 013792cce97a038a 9 589fc84f1e1bef7d # #2296 adds SPY0227 (and 518 other cells)
 remove-annotation crlf parse 11 3d9ed18bf8685386 4 3026a1be7a2422c8 # #2232 does not parse (SPY0105 Decorators cannot be applied to assignments — on)
-remove-import crlf diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
+remove-import crlf diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 rename crlf diagnostics 51 45195117e72c86d8 0 - # #2296 adds SPY0253 (and 58 other cells)
 rename crlf parse 3 2ee1889adc56d551 1 36eec7b54f793482 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
 to-if crlf comment 1 1e77d36b46e16375 0 - # #2232 loses a comment
@@ -84,23 +80,18 @@ to-if crlf line 2 283be9eb716824b6 0 - # #2232 moved lines not kept at one inden
 to-if crlf parse 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
 to-match crlf edits 34 563c2825185db8df 3 5d64754ada70bac1 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 to-match crlf parse 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 does not parse (SPY0014 Indentation mismatch)
-wrap-try crlf blank 1565 80343c31c3ffba98 208 9fa297708a8bf339 # #2232 drops blank lines inside the region
-wrap-try crlf comment 534 fc8b1cd4d852bf26 70 298d1e65a21d90e2 # #2232 loses a comment
-wrap-try crlf diagnostics 1264 efec7a18e19cf623 29 107df9c17386ff08 # #2296 adds SPY0200 (and 1087 other cells)
-wrap-try crlf edits 28 4bf651679b65c532 4 7e218ba396230ac4 # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-wrap-try crlf line 2266 fc1b3ff0731e9a9c 307 781e8a75a0ed5899 # #2232 moved lines not kept at one indentation offset (and 8 other cells)
-wrap-try crlf parse 2046 d29f0a97680948ae 277 b504c96bfa367b4e # #2232 does not parse (SPY0104 Expected Indent, got Identifier) (and 1609 other cells)
-extract-method cr diagnostics 2898 dc6ffaecf5711fe3 113 87285015c6a9e3eb # #2294 adds SPY0202 (and 5864 other cells)
-extract-method cr edits 27 081d204c9c1f5285 4 7e218ba396230ac4 # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-extract-method cr line 77 9cac4080d8ec8130 14 c4b0ecd1212c414f # #2232 moved lines not kept at one indentation offset (and 7 other cells)
-extract-method cr parse 1168 6406767529e1b2d0 169 da8b08f726210618 # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 247 other cells)
-extract-method cr parse 517 b1cc7dc8becd43d2 66 d7e71c6e6c8216ef # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
+wrap-try crlf diagnostics 1760 e63761107e9b2d00 67 ea189e2fdb3c8ba9 # #2296 adds SPY0203 (and 3084 other cells)
+wrap-try crlf parse 239 dfd7cbebea67ab51 32 5cef7c63a9de42b4 # #2232 does not parse (SPY0105 Decorators can only be applied to functions, cla) (and 151 other cells)
+extract-method cr diagnostics 2900 c1849fba3ae96312 113 87285015c6a9e3eb # #2294 adds SPY0202 (and 5882 other cells)
+extract-method cr parse 1170 bf4b409d646fdf01 169 da8b08f726210618 # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 246 other cells)
+extract-method cr parse 523 3865c4b65147e9a4 67 6bdb7bd4510816ed # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
 extract-variable cr diagnostics 219 821612fd704f7791 4 b1013f49688ce6db # #2294 adds SPY0220 (and 256 other cells)
+extract-variable cr edits 23 a411e159591159fb 5 7b774977934a8c8b # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 extract-variable cr parse 83 1bfb3c74e80014b4 12 7c5ddb610c474450 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 70 other cells)
 implement cr diagnostics 9 c2d4b3f2b2867e83 0 - # #2296 adds SPY0224 (and 4 other cells)
 implement cr parse 37 eb5c07e5746b7156 4 5843b6179daec5f1 # #2232 does not parse (SPY0148 @property is not a decorator in Sharpy — propert) (and 2 other cells)
 inline-function cr diagnostics 51 305325034b8547a6 0 - # #2296 removes an error (and 42 other cells)
-inline-function cr parse 6 b5983fbee715548a 1 36fa85bd61080d74 # #2232 does not parse (SPY0101 Expected identifier, got Integer) (and 4 other cells)
+inline-function cr parse 13 1b3d31528fd4e8a1 2 97431b6bea6bfa0a # #2232 does not parse (SPY0102 A match expression cannot be written inside brac) (and 7 other cells)
 inline-variable cr diagnostics 159 3a2fd59813d8856a 4 2d350456bb67f94c # #2296 adds SPY0200 (and 161 other cells)
 inline-variable cr edits 12 8db46feb8899d041 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable cr parse 28 f56ec4b47186deca 1 fb63f0d8480cf1e7 # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 7 other cells)
@@ -113,7 +104,7 @@ prefix-underscore cr diagnostics 21 e2e2257abde88092 1 f2393f38b6f205e2 # #2296 
 prefix-underscore cr parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation cr diagnostics 516 013792cce97a038a 27 4ea9b045a28530f6 # #2296 adds SPY0227 (and 518 other cells)
 remove-annotation cr parse 11 3d9ed18bf8685386 4 3026a1be7a2422c8 # #2232 does not parse (SPY0105 Decorators cannot be applied to assignments — on)
-remove-import cr diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
+remove-import cr diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 rename cr diagnostics 51 45195117e72c86d8 1 9fca33cf93393813 # #2296 adds SPY0253 (and 58 other cells)
 rename cr parse 3 2ee1889adc56d551 1 36eec7b54f793482 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
 to-if cr comment 1 1e77d36b46e16375 0 - # #2232 loses a comment
@@ -122,25 +113,19 @@ to-if cr line 2 283be9eb716824b6 0 - # #2232 moved lines not kept at one indenta
 to-if cr parse 11 76a97570d0fa4239 2 49203fdcc621ac1f # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 5 other cells)
 to-match cr edits 34 563c2825185db8df 3 5d64754ada70bac1 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 to-match cr parse 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 does not parse (SPY0014 Indentation mismatch)
-wrap-try cr blank 1565 80343c31c3ffba98 208 9fa297708a8bf339 # #2232 drops blank lines inside the region
-wrap-try cr comment 534 fc8b1cd4d852bf26 70 298d1e65a21d90e2 # #2232 loses a comment
-wrap-try cr diagnostics 1264 efec7a18e19cf623 33 52753a16aafd7647 # #2296 adds SPY0200 (and 1087 other cells)
-wrap-try cr edits 28 4bf651679b65c532 4 7e218ba396230ac4 # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-wrap-try cr line 2266 fc1b3ff0731e9a9c 307 781e8a75a0ed5899 # #2232 moved lines not kept at one indentation offset (and 8 other cells)
-wrap-try cr parse 2046 d29f0a97680948ae 277 b504c96bfa367b4e # #2232 does not parse (SPY0104 Expected Indent, got Identifier) (and 1609 other cells)
-extract-method comment comment 2 ae472c9d6462f901 0 - # #2232 loses a comment
-extract-method comment diagnostics 2900 452581a7c6ed936a 117 df88978d477a8b1c # #2294 adds SPY0202 (and 5873 other cells)
-extract-method comment edits 4 20ad73c125f443ac 0 - # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-extract-method comment line 3142 86c82f8d8de7c81e 404 687d1481108ddf9d # #2232 moved lines not kept at one indentation offset (and 2 other cells)
-extract-method comment parse 1175 6a08e02f5e6917ea 170 c799e4b69c42871b # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 299 other cells)
+wrap-try cr diagnostics 1760 e63761107e9b2d00 69 526a019e8cdb51ad # #2296 adds SPY0203 (and 3084 other cells)
+wrap-try cr parse 239 dfd7cbebea67ab51 32 5cef7c63a9de42b4 # #2232 does not parse (SPY0105 Decorators can only be applied to functions, cla) (and 151 other cells)
+extract-method comment diagnostics 2900 c1849fba3ae96312 117 df88978d477a8b1c # #2294 adds SPY0202 (and 5872 other cells)
+extract-method comment parse 1176 5223e9cfbc4cd1a9 170 c799e4b69c42871b # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 298 other cells)
 extract-method comment parse 523 3865c4b65147e9a4 67 6bdb7bd4510816ed # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
-extract-variable comment diagnostics 219 821612fd704f7791 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 256 other cells)
+extract-variable comment diagnostics 220 9b2704ce472cb5ef 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 256 other cells)
+extract-variable comment edits 21 9b16cab6cfac29ce 4 103804a44c3cd20e # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 extract-variable comment parse 83 1bfb3c74e80014b4 12 7c5ddb610c474450 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 70 other cells)
 implement comment diagnostics 8 d8a83539921ee75b 0 - # #2296 adds SPY0224 (and 3 other cells)
 implement comment parse 38 d5303fcfeb332d9c 4 5843b6179daec5f1 # #2232 does not parse (SPY0148 @property is not a decorator in Sharpy — propert) (and 5 other cells)
-inline-function comment comment 228 a7619a6b755a20c0 28 878a548ad7659a46 # #2232 loses a comment
+inline-function comment comment 235 9c3432e91dc0aed3 29 3d73a4df0cfaca30 # #2232 loses a comment
 inline-function comment diagnostics 51 305325034b8547a6 0 - # #2296 removes an error (and 42 other cells)
-inline-function comment parse 6 b5983fbee715548a 1 36fa85bd61080d74 # #2232 does not parse (SPY0101 Expected identifier, got Integer) (and 4 other cells)
+inline-function comment parse 13 1b3d31528fd4e8a1 2 97431b6bea6bfa0a # #2232 does not parse (SPY0102 A match expression cannot be written inside brac) (and 7 other cells)
 inline-variable comment comment 2 92e5ce7ba56bbeb8 0 - # #2232 gains a comment (and 1 other cells)
 inline-variable comment diagnostics 157 662c610df54e8d3f 4 e0bd8a6a34f05570 # #2296 adds SPY0200 (and 160 other cells)
 inline-variable comment edits 7 af6255070fdd1aa5 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
@@ -154,7 +139,7 @@ prefix-underscore comment diagnostics 21 e2e2257abde88092 0 - # #2296 adds SPY02
 prefix-underscore comment parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation comment diagnostics 332 c69c0da685a652c9 28 fea4201873be93cd # #2296 adds SPY0227 (and 381 other cells)
 remove-annotation comment parse 11 3d9ed18bf8685386 4 3026a1be7a2422c8 # #2232 does not parse (SPY0105 Decorators cannot be applied to assignments — on)
-remove-import comment diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
+remove-import comment diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 rename comment comment 15 a312db63665da726 1 e3e42a4994f34f9f # #2232 loses a comment
 rename comment diagnostics 51 45195117e72c86d8 0 - # #2296 adds SPY0253 (and 58 other cells)
 rename comment parse 3 2ee1889adc56d551 1 36eec7b54f793482 # #2232 does not parse (SPY0104 Expected Case, got Identifier) (and 2 other cells)
@@ -166,9 +151,6 @@ to-match comment comment 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 loses a c
 to-match comment edits 34 563c2825185db8df 3 5d64754ada70bac1 # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 to-match comment line 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 moved lines not kept at one indentation offset
 to-match comment parse 9 801e943ac5bbf518 4 3c824e4222a42ea9 # #2232 does not parse (SPY0014 Indentation mismatch) (and 2 other cells)
-wrap-try comment blank 1569 585c91b9204c911d 208 9fa297708a8bf339 # #2232 drops blank lines inside the region
-wrap-try comment comment 3192 85a0f9afbe22c2c6 408 a66e144e29bf0390 # #2232 loses a comment
-wrap-try comment diagnostics 1121 d432d34f0948c5b3 27 5fb37b4bed66999d # #2296 adds SPY0200 (and 933 other cells)
-wrap-try comment edits 4 20ad73c125f443ac 0 - # #2232 illegal edit: edit N end (N:N) is past the document's last line (N)
-wrap-try comment line 3217 665d6b32bc7ccbcb 414 0e9ab4c2a6a76e75 # #2232 moved lines not kept at one indentation offset (and 1 other cells)
-wrap-try comment parse 2179 e8171e97e8b6b775 295 2deddd2e385fe344 # #2232 does not parse (SPY0104 Expected Indent, got Identifier) (and 2793 other cells)
+wrap-try comment comment 258 343e369304880b32 31 7817711500d905f3 # #2232 loses a comment
+wrap-try comment diagnostics 1617 e96b28eefc145e77 61 64043acdeccdfc76 # #2296 adds SPY0203 (and 2819 other cells)
+wrap-try comment parse 483 71a666b3833b5c23 60 b518e8f738fd56a9 # #2232 does not parse (SPY0013 Indentation must be multiple of 4 spaces (found ) (and 403 other cells)

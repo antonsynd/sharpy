@@ -1,10 +1,13 @@
 using System.Runtime.CompilerServices;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Formatting;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Text;
 using AstNode = Sharpy.Compiler.Parser.Ast.Node;
 using CompilerLexer = Sharpy.Compiler.Lexer.Lexer;
+using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
+using Token = Sharpy.Compiler.Lexer.Token;
 
 namespace Sharpy.Lsp.Refactoring;
 
@@ -139,12 +142,61 @@ internal sealed class SourceLines
         var endCol = node.ColumnEnd - 1;
         var startLine = _lines[node.LineStart - 1];
         var endLine = _lines[node.LineEnd - 1];
-        if (startCol < 0 || startCol > startLine.Length || endCol < 0 || endCol > endLine.Length)
+        if (startCol < 0 || startCol > startLine.Length || endCol < 0)
             return null;
 
         var start = StartOffset(node.LineStart) + startCol;
         var end = StartOffset(node.LineEnd) + endCol;
-        return end < start ? null : Text.Substring(start, end - start);
+        if (endCol > endLine.Length && !EndsAMultiLineToken(start, end, node.LineEnd))
+            return null;
+
+        return end < start || end > Text.Length ? null : Text.Substring(start, end - start);
+    }
+
+    /// <summary>
+    /// True when <paramref name="end"/> is the end offset of one of the node's tokens that starts on
+    /// <paramref name="lineEnd"/> — the parser's position for a node whose last token spans lines
+    /// (<c>ColumnEnd = Column + Length</c> on the token's START line, #2295) addresses that token's true end.
+    /// </summary>
+    private bool EndsAMultiLineToken(int start, int end, int lineEnd)
+    {
+        foreach (var token in Tokens)
+        {
+            if (token.Position >= start && token.Line == lineEnd && token.Length > 0 && token.Position + token.Length == end)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The edit that replaces lines <paramref name="first"/>..<paramref name="last"/> (1-based, whole lines)
+    /// with <paramref name="newLines"/>, each written with the document's break (plan D2): the range is
+    /// <c>(first − 1, 0)</c> to <c>(last, 0)</c>. When <paramref name="last"/> is the document's final line
+    /// (no break follows it) the range ends at that line's end and the text gets no final break; an empty
+    /// <paramref name="newLines"/> there deletes the preceding line's break instead, so no blank line is left.
+    /// </summary>
+    public TextEdit WholeLineEdit(int first, int last, IReadOnlyList<string> newLines)
+    {
+        if (!Contains(first) || !Contains(last) || last < first)
+            throw new ArgumentOutOfRangeException(nameof(first), $"lines {first}..{last} are not lines of a {Count}-line document");
+
+        var lineBreak = DocumentLineBreak;
+        if (last < Count)
+        {
+            return new TextEdit
+            {
+                Range = new LspRange(new Position(first - 1, 0), new Position(last, 0)),
+                NewText = newLines.Count == 0 ? "" : string.Join(lineBreak, newLines) + lineBreak,
+            };
+        }
+
+        var endOfLast = new Position(last - 1, _lines[last - 1].Length);
+        if (newLines.Count > 0)
+            return new TextEdit { Range = new LspRange(new Position(first - 1, 0), endOfLast), NewText = string.Join(lineBreak, newLines) };
+
+        var start = first > 1 ? new Position(first - 2, _lines[first - 2].Length) : new Position(0, 0);
+        return new TextEdit { Range = new LspRange(start, endOfLast), NewText = "" };
     }
 
     private string DetectIndentUnit()

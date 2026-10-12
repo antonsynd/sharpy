@@ -128,15 +128,10 @@ internal sealed class InlineProvider : ICodeActionProvider
             });
         }
 
-        // Delete the entire declaration line.
-        // We delete from the start of the line to the start of the next line.
-        var declLineStart = new Position(varDecl.LineStart - 1, 0);
-        var declLineEnd = new Position(varDecl.LineEnd, 0); // Next line start
-        edits.Add(new TextEdit
-        {
-            Range = new LspRange(declLineStart, declLineEnd),
-            NewText = ""
-        });
+        // Delete the declaration's whole lines through its TRUE last line (D2: a multi-line string
+        // initializer's tail lines go with it), its trailing comment included (D5).
+        var source = SourceLines.Of(sourceText);
+        edits.Add(source.WholeLineEdit(varDecl.LineStart, source.EndLine(varDecl), Array.Empty<string>()));
 
         var workspaceEdit = new WorkspaceEdit
         {

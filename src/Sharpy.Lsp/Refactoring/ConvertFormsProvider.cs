@@ -464,39 +464,26 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         var firstStmt = selectedStatements[0];
         var lastStmt = selectedStatements[selectedStatements.Count - 1];
 
+        // D7: the selected statements' whole lines — through the last one's TRUE last line, comments,
+        // blank lines and continuation lines included — move one indent unit right under `try:`; a line
+        // inside a multi-line literal keeps its bytes (D3). Nothing is re-rendered.
         var source = SourceLines.Of(sourceText);
-        var lineBreak = source.DocumentLineBreak;
-        var indent = source.Indentation(firstStmt.LineStart);
+        var first = firstStmt.LineStart;
+        var last = source.EndLine(lastStmt);
+        if (!source.Contains(first) || !source.Contains(last) || last < first)
+            return;
+
+        var indent = source.Indentation(first);
         var indentUnit = source.IndentUnit;
         var bodyIndent = indent + indentUnit;
 
-        var sb = new StringBuilder();
-        sb.Append(indent);
-        sb.Append("try:");
-        sb.Append(lineBreak);
+        var newLines = new SCG.List<string> { indent + "try:" };
+        newLines.AddRange(Region.Reindent(source.Slice(first, last), indentUnit.Length, source.LiteralLines, indentUnit[0]));
+        newLines.Add(indent + "except Exception as e:");
+        newLines.Add(bodyIndent + "raise");
 
-        // Re-indent the selected statements under the try block
-        foreach (var stmt in selectedStatements)
-        {
-            foreach (var stmtLine in NodeLinePieces(source, stmt))
-            {
-                sb.Append(bodyIndent);
-                sb.Append(stmtLine.TrimStart());
-                sb.Append(lineBreak);
-            }
-        }
-
-        sb.Append(indent);
-        sb.Append("except Exception as e:");
-        sb.Append(lineBreak);
-        sb.Append(bodyIndent);
-        sb.Append("raise");
-        sb.Append(lineBreak);
-
-        var editRange = new LspRange(
-            PositionConverter.ToLsp(firstStmt.LineStart, 1),
-            PositionConverter.ToLsp(lastStmt.LineEnd + 1, 1));
-        var edit = CreateWorkspaceEdit(context.DocumentUri, editRange, sb.ToString());
+        var textEdit = source.WholeLineEdit(first, last, newLines);
+        var edit = CreateWorkspaceEdit(context.DocumentUri, textEdit.Range, textEdit.NewText);
 
         actions.Add(new CodeAction
         {

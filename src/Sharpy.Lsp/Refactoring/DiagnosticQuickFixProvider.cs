@@ -1,6 +1,10 @@
+using System.Collections.Immutable;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Diagnostics;
+using ImportAlias = Sharpy.Compiler.Parser.Ast.ImportAlias;
+using ImportStatement = Sharpy.Compiler.Parser.Ast.ImportStatement;
+using FromImportStatement = Sharpy.Compiler.Parser.Ast.FromImportStatement;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 using SCG = System.Collections.Generic;
 
@@ -27,7 +31,7 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         new SCG.Dictionary<string, Func<CodeActionProviderContext, Diagnostic, CodeAction?>>(StringComparer.Ordinal)
         {
             [DiagnosticCodes.Validation.UnusedImport] =
-                static (ctx, diag) => CreateRemoveImportAction(ctx.DocumentUri, diag, ctx.SourceText),
+                static (ctx, diag) => CreateRemoveImportAction(ctx, diag),
             [DiagnosticCodes.Validation.UnusedVariable] =
                 static (ctx, diag) => CreatePrefixUnderscoreAction(ctx.DocumentUri, diag),
             [DiagnosticCodes.Validation.NamingConventionWarning] =
@@ -59,38 +63,40 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
     }
 
-    private static CodeAction CreateRemoveImportAction(
-        OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
-        Diagnostic diag,
-        string? documentText)
+    private static CodeAction CreateRemoveImportAction(CodeActionProviderContext context, Diagnostic diag)
     {
+        var uri = context.DocumentUri;
+        var documentText = context.SourceText;
         var range = diag.Range;
 
-        LspRange deleteRange;
+        TextEdit deleteEdit;
         if (documentText != null)
         {
+            var source = SourceLines.Of(documentText);
             var lineIndex = range.Start.Line;
-            if (SourceLines.Of(documentText).Contains(lineIndex + 1))
+            if (RemoveImportEdit(context, source, diag) is { } importEdit)
             {
-                deleteRange = new LspRange(
-                    new Position(lineIndex, 0),
-                    new Position(lineIndex + 1, 0));
+                deleteEdit = importEdit;
+            }
+            else if (source.Contains(lineIndex + 1))
+            {
+                deleteEdit = source.WholeLineEdit(lineIndex + 1, lineIndex + 1, Array.Empty<string>());
             }
             else
             {
-                deleteRange = range;
+                deleteEdit = new TextEdit { Range = range, NewText = "" };
             }
         }
         else
         {
-            deleteRange = range;
+            deleteEdit = new TextEdit { Range = range, NewText = "" };
         }
 
         var edit = new WorkspaceEdit
         {
             Changes = new Dictionary<OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri, IEnumerable<TextEdit>>
             {
-                [uri] = [new TextEdit { Range = deleteRange, NewText = "" }]
+                [uri] = [deleteEdit]
             }
         };
 
@@ -100,6 +106,106 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
             Kind = CodeActionKind.QuickFix,
             Diagnostics = new Container<Diagnostic>(diag),
             Edit = edit
+        };
+    }
+
+    /// <summary>
+    /// The deletion for an SPY0452 diagnostic, which names ONE imported name (an alias's position): when every
+    /// name of the import statement holding it is unused, the statement's whole lines through its TRUE last
+    /// line (a parenthesized import's closing line included, D2), its trailing comment with it (D5); when a
+    /// name of that statement is still used, only this name — its own line inside a parenthesized import, else
+    /// its text and one separating comma. Null when no import statement holds the diagnostic's position.
+    /// </summary>
+    private static TextEdit? RemoveImportEdit(CodeActionProviderContext context, SourceLines source, Diagnostic diag)
+    {
+        if (context.Analysis?.Ast is not { } ast)
+            return null;
+
+        var line = diag.Range.Start.Line + 1;
+        var column = diag.Range.Start.Character + 1;
+        foreach (var stmt in ast.Body)
+        {
+            // A decorated (suppressing) import keeps today's line deletion: its decorator lines are not this fix's.
+            ImmutableArray<ImportAlias> names;
+            if (stmt is ImportStatement import)
+                names = import.Names;
+            else if (stmt is FromImportStatement { ImportAll: false } fromImport)
+                names = fromImport.Names;
+            else
+                continue;
+
+            if (line < stmt.LineStart || line > source.EndLine(stmt))
+                continue;
+
+            var index = -1;
+            for (var i = 0; i < names.Length; i++)
+            {
+                if (names[i].LineStart == line && names[i].ColumnStart == column)
+                    index = i;
+            }
+
+            if (index < 0)
+                return null;
+
+            var unused = UnusedImportPositions(context);
+            if (names.Length == 1 || names.All(n => unused.Contains((n.LineStart, n.ColumnStart))))
+                return source.WholeLineEdit(stmt.LineStart, source.EndLine(stmt), Array.Empty<string>());
+
+            return RemoveOneName(source, names, index);
+        }
+
+        return null;
+    }
+
+    /// <summary>The 1-based (line, column) of every SPY0452 the request and the analysis carry.</summary>
+    private static SCG.HashSet<(int Line, int Column)> UnusedImportPositions(CodeActionProviderContext context)
+    {
+        var positions = new SCG.HashSet<(int, int)>();
+        foreach (var d in context.Diagnostics)
+        {
+            if (d.Code?.String == DiagnosticCodes.Validation.UnusedImport)
+                positions.Add((d.Range.Start.Line + 1, d.Range.Start.Character + 1));
+        }
+
+        if (context.Analysis?.Diagnostics is { } compilerDiagnostics)
+        {
+            foreach (var d in compilerDiagnostics)
+            {
+                if (d.Code == DiagnosticCodes.Validation.UnusedImport && d.Line is { } l && d.Column is { } c)
+                    positions.Add((l, c));
+            }
+        }
+
+        return positions;
+    }
+
+    /// <summary>
+    /// Deletes one name of an import that keeps others: the name's whole line when it stands alone on it
+    /// (its trailing comma and comment with it), else the name and the comma that separates it from its
+    /// neighbour (the previous one's, or the next one's for the first name).
+    /// </summary>
+    private static TextEdit RemoveOneName(SourceLines source, ImmutableArray<ImportAlias> names, int index)
+    {
+        var name = names[index];
+        if (name.LineStart == name.LineEnd && source.Contains(name.LineStart))
+        {
+            var content = source.Line(name.LineStart);
+            var before = content[..Math.Min(content.Length, name.ColumnStart - 1)];
+            var after = content[Math.Min(content.Length, name.ColumnEnd - 1)..];
+            if (source.InlineComment(name.LineStart) is { } comment && comment.Line == name.LineStart)
+                after = after[..Math.Max(0, Math.Min(after.Length, comment.Column - name.ColumnEnd))];
+            var rest = after.Trim();
+            if (string.IsNullOrWhiteSpace(before) && (rest.Length == 0 || rest == ","))
+                return source.WholeLineEdit(name.LineStart, name.LineStart, Array.Empty<string>());
+        }
+
+        var (startLine, startColumn, endLine, endColumn) = index > 0
+            ? (names[index - 1].LineEnd, names[index - 1].ColumnEnd, name.LineEnd, name.ColumnEnd)
+            : (name.LineStart, name.ColumnStart, names[index + 1].LineStart, names[index + 1].ColumnStart);
+        return new TextEdit
+        {
+            Range = new LspRange(PositionConverter.ToLsp(startLine, startColumn), PositionConverter.ToLsp(endLine, endColumn)),
+            NewText = "",
         };
     }
 
