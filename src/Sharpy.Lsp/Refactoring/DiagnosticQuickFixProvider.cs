@@ -1,10 +1,6 @@
-using System.Collections.Immutable;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Diagnostics;
-using ImportAlias = Sharpy.Compiler.Parser.Ast.ImportAlias;
-using ImportStatement = Sharpy.Compiler.Parser.Ast.ImportStatement;
-using FromImportStatement = Sharpy.Compiler.Parser.Ast.FromImportStatement;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 using SCG = System.Collections.Generic;
 
@@ -125,16 +121,10 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         var column = diag.Range.Start.Character + 1;
         foreach (var stmt in ast.Body)
         {
-            // A decorated (suppressing) import keeps today's line deletion: its decorator lines are not this fix's.
-            ImmutableArray<ImportAlias> names;
-            if (stmt is ImportStatement import)
-                names = import.Names;
-            else if (stmt is FromImportStatement { ImportAll: false } fromImport)
-                names = fromImport.Names;
-            else
-                continue;
-
-            if (line < stmt.LineStart || line > source.EndLine(stmt))
+            // A decorated (suppressing) import keeps today's line deletion: its decorator lines are not this
+            // fix's (ImportNames.Of sees no names through the decorator wrapper).
+            var names = ImportNames.Of(stmt);
+            if (names.IsEmpty || line < stmt.LineStart || line > source.EndLine(stmt))
                 continue;
 
             var index = -1;
@@ -147,66 +137,22 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
             if (index < 0)
                 return null;
 
-            var unused = UnusedImportPositions(context);
-            if (names.Length == 1 || names.All(n => unused.Contains((n.LineStart, n.ColumnStart))))
+            var unused = new UnusedImportNames(context, names);
+            if (names.Length == 1 || names.All(unused.Contains))
                 return source.WholeLineEdit(stmt.LineStart, source.EndLine(stmt), Array.Empty<string>());
 
-            return RemoveOneName(source, names, index);
+            var (start, end) = ImportNames.RemovalSpans(source, names, new SCG.HashSet<int> { index }).Single();
+            return new TextEdit { Range = new LspRange(PositionOf(source, start), PositionOf(source, end)), NewText = "" };
         }
 
         return null;
     }
 
-    /// <summary>The 1-based (line, column) of every SPY0452 the request and the analysis carry.</summary>
-    private static SCG.HashSet<(int Line, int Column)> UnusedImportPositions(CodeActionProviderContext context)
+    /// <summary>The LSP position of a 0-based document offset.</summary>
+    private static Position PositionOf(SourceLines source, int offset)
     {
-        var positions = new SCG.HashSet<(int, int)>();
-        foreach (var d in context.Diagnostics)
-        {
-            if (d.Code?.String == DiagnosticCodes.Validation.UnusedImport)
-                positions.Add((d.Range.Start.Line + 1, d.Range.Start.Character + 1));
-        }
-
-        if (context.Analysis?.Diagnostics is { } compilerDiagnostics)
-        {
-            foreach (var d in compilerDiagnostics)
-            {
-                if (d.Code == DiagnosticCodes.Validation.UnusedImport && d.Line is { } l && d.Column is { } c)
-                    positions.Add((l, c));
-            }
-        }
-
-        return positions;
-    }
-
-    /// <summary>
-    /// Deletes one name of an import that keeps others: the name's whole line when it stands alone on it
-    /// (its trailing comma and comment with it), else the name and the comma that separates it from its
-    /// neighbour (the previous one's, or the next one's for the first name).
-    /// </summary>
-    private static TextEdit RemoveOneName(SourceLines source, ImmutableArray<ImportAlias> names, int index)
-    {
-        var name = names[index];
-        if (name.LineStart == name.LineEnd && source.Contains(name.LineStart))
-        {
-            var content = source.Line(name.LineStart);
-            var before = content[..Math.Min(content.Length, name.ColumnStart - 1)];
-            var after = content[Math.Min(content.Length, name.ColumnEnd - 1)..];
-            if (source.InlineComment(name.LineStart) is { } comment && comment.Line == name.LineStart)
-                after = after[..Math.Max(0, Math.Min(after.Length, comment.Column - name.ColumnEnd))];
-            var rest = after.Trim();
-            if (string.IsNullOrWhiteSpace(before) && (rest.Length == 0 || rest == ","))
-                return source.WholeLineEdit(name.LineStart, name.LineStart, Array.Empty<string>());
-        }
-
-        var (startLine, startColumn, endLine, endColumn) = index > 0
-            ? (names[index - 1].LineEnd, names[index - 1].ColumnEnd, name.LineEnd, name.ColumnEnd)
-            : (name.LineStart, name.ColumnStart, names[index + 1].LineStart, names[index + 1].ColumnStart);
-        return new TextEdit
-        {
-            Range = new LspRange(PositionConverter.ToLsp(startLine, startColumn), PositionConverter.ToLsp(endLine, endColumn)),
-            NewText = "",
-        };
+        var line = source.LineOfOffset(offset);
+        return new Position(line - 1, offset - source.StartOffset(line));
     }
 
     private static CodeAction CreatePrefixUnderscoreAction(

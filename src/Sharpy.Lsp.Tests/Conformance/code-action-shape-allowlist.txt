@@ -27,11 +27,7 @@ inline-function identity parse 13 1b3d31528fd4e8a1 13 1b3d31528fd4e8a1 # #2232 d
 inline-variable identity diagnostics 159 3a2fd59813d8856a 23 0435530ff0255803 # #2296 adds SPY0200 (and 161 other cells)
 inline-variable identity edits 12 8db46feb8899d041 12 8db46feb8899d041 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable identity parse 28 f56ec4b47186deca 28 f56ec4b47186deca # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 7 other cells)
-organize-imports identity blank 250 1be9f4d6e6521b9f 250 1be9f4d6e6521b9f # #2232 edit reaches past the moved statements
-organize-imports identity comment 2 45ae2f3c8e707c04 2 45ae2f3c8e707c04 # #2232 loses a comment
-organize-imports identity diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
-organize-imports identity line 4 4e16990fd4234551 4 4e16990fd4234551 # #2232 moved lines not kept at one indentation offset
-organize-imports identity parse 1 c7a15a1b281a430a 1 c7a15a1b281a430a # #2232 does not parse (SPY0101 Expected identifier, got Class — 'class' is a re)
+organize-imports identity diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 prefix-underscore identity diagnostics 21 e2e2257abde88092 1 47ec1f14bc7f4d75 # #2296 adds SPY0200 (and 6 other cells)
 prefix-underscore identity parse 25 0441a71527abea2b 25 0441a71527abea2b # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation identity diagnostics 516 013792cce97a038a 91 0589405297fbebe0 # #2296 adds SPY0227 (and 518 other cells)
@@ -62,11 +58,7 @@ inline-variable crlf diagnostics 159 3a2fd59813d8856a 21 0c53a532e36f107b # #229
 inline-variable crlf edits 12 8db46feb8899d041 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable crlf lineBreak 2 c2c893cbc8c526cf 1 b17af7112e20cb74 # #2232 writes a line break that is not the document's
 inline-variable crlf parse 28 f56ec4b47186deca 1 fb63f0d8480cf1e7 # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 7 other cells)
-organize-imports crlf blank 250 1be9f4d6e6521b9f 32 56d7be7f3d9b180a # #2232 edit reaches past the moved statements
-organize-imports crlf comment 2 45ae2f3c8e707c04 0 - # #2232 loses a comment
-organize-imports crlf diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
-organize-imports crlf line 4 4e16990fd4234551 0 - # #2232 moved lines not kept at one indentation offset
-organize-imports crlf parse 1 c7a15a1b281a430a 0 - # #2232 does not parse (SPY0101 Expected identifier, got Class — 'class' is a re)
+organize-imports crlf diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 prefix-underscore crlf diagnostics 21 e2e2257abde88092 0 - # #2296 adds SPY0200 (and 6 other cells)
 prefix-underscore crlf parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation crlf diagnostics 516 013792cce97a038a 9 589fc84f1e1bef7d # #2296 adds SPY0227 (and 518 other cells)
@@ -95,11 +87,7 @@ inline-function cr parse 13 1b3d31528fd4e8a1 2 97431b6bea6bfa0a # #2232 does not
 inline-variable cr diagnostics 159 3a2fd59813d8856a 4 2d350456bb67f94c # #2296 adds SPY0200 (and 161 other cells)
 inline-variable cr edits 12 8db46feb8899d041 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable cr parse 28 f56ec4b47186deca 1 fb63f0d8480cf1e7 # #2232 does not parse (SPY0100 Unexpected token: Indent) (and 7 other cells)
-organize-imports cr blank 250 1be9f4d6e6521b9f 32 56d7be7f3d9b180a # #2232 edit reaches past the moved statements
-organize-imports cr comment 2 45ae2f3c8e707c04 0 - # #2232 loses a comment
-organize-imports cr diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
-organize-imports cr line 4 4e16990fd4234551 0 - # #2232 moved lines not kept at one indentation offset
-organize-imports cr parse 1 c7a15a1b281a430a 0 - # #2232 does not parse (SPY0101 Expected identifier, got Class — 'class' is a re)
+organize-imports cr diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 prefix-underscore cr diagnostics 21 e2e2257abde88092 1 f2393f38b6f205e2 # #2296 adds SPY0200 (and 6 other cells)
 prefix-underscore cr parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation cr diagnostics 516 013792cce97a038a 27 4ea9b045a28530f6 # #2296 adds SPY0227 (and 518 other cells)
@@ -118,7 +106,7 @@ wrap-try cr parse 239 dfd7cbebea67ab51 32 5cef7c63a9de42b4 # #2232 does not pars
 extract-method comment diagnostics 2900 c1849fba3ae96312 117 df88978d477a8b1c # #2294 adds SPY0202 (and 5872 other cells)
 extract-method comment parse 1176 5223e9cfbc4cd1a9 170 c799e4b69c42871b # #2232 does not parse (SPY0104 Expected Indent, got Def) (and 298 other cells)
 extract-method comment parse 523 3865c4b65147e9a4 67 6bdb7bd4510816ed # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 363 other cells)
-extract-variable comment diagnostics 220 9b2704ce472cb5ef 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 256 other cells)
+extract-variable comment diagnostics 219 821612fd704f7791 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 256 other cells)
 extract-variable comment edits 21 9b16cab6cfac29ce 4 103804a44c3cd20e # #2232 illegal edit: edit N end (N:N) is outside line N, whose content is N UTF-
 extract-variable comment parse 83 1bfb3c74e80014b4 12 7c5ddb610c474450 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 70 other cells)
 implement comment diagnostics 8 d8a83539921ee75b 0 - # #2296 adds SPY0224 (and 3 other cells)
@@ -130,11 +118,7 @@ inline-variable comment comment 2 92e5ce7ba56bbeb8 0 - # #2232 gains a comment (
 inline-variable comment diagnostics 157 662c610df54e8d3f 4 e0bd8a6a34f05570 # #2296 adds SPY0200 (and 160 other cells)
 inline-variable comment edits 7 af6255070fdd1aa5 1 450633b53dc3bc52 # #2232 illegal edit: edit N [N:N-N:N] overlaps edit N [N:N-N:N]
 inline-variable comment parse 35 64040af10277ccf6 1 fb63f0d8480cf1e7 # #2232 does not parse (SPY0100 Unexpected token: RightParen) (and 13 other cells)
-organize-imports comment blank 250 1be9f4d6e6521b9f 32 56d7be7f3d9b180a # #2232 edit reaches past the moved statements
-organize-imports comment comment 223 44ace19a40b13ff2 29 0f93d3a79f6aeffb # #2232 loses a comment
-organize-imports comment diagnostics 18 f237e8d332e7d504 0 - # #2296 removes an error (and 1 other cells)
-organize-imports comment line 223 44ace19a40b13ff2 29 0f93d3a79f6aeffb # #2232 moved lines not kept at one indentation offset
-organize-imports comment parse 1 c7a15a1b281a430a 0 - # #2232 does not parse (SPY0101 Expected identifier, got Class — 'class' is a re)
+organize-imports comment diagnostics 17 c7327c10f9936099 0 - # #2296 removes an error
 prefix-underscore comment diagnostics 21 e2e2257abde88092 0 - # #2296 adds SPY0200 (and 6 other cells)
 prefix-underscore comment parse 25 0441a71527abea2b 4 1bf5cb6639e43a7f # #2232 does not parse (SPY0145 a 'try' statement requires an 'except' handler o) (and 14 other cells)
 remove-annotation comment diagnostics 332 c69c0da685a652c9 28 fea4201873be93cd # #2296 adds SPY0227 (and 381 other cells)

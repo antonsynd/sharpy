@@ -31,10 +31,10 @@ public class RefactoringLineTableScanTests
 
     /// <summary>
     /// The scan's root, anchored to a literal: the eleven Refactoring sources @ 7f0502de3 plus
-    /// <c>SourceRegion.cs</c>. A scan of the wrong directory, or of a directory a file left, fails here
-    /// instead of passing vacuously.
+    /// <c>SourceRegion.cs</c> (P47 Task 1) and <c>ImportNames.cs</c> (P47 Task 3). A scan of the wrong
+    /// directory, or of a directory a file left, fails here instead of passing vacuously.
     /// </summary>
-    private const int ExpectedSourceFileCount = 12;
+    private const int ExpectedSourceFileCount = 13;
 
     public static TheoryData<string> Arms => new()
     {
