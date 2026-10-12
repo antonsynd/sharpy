@@ -203,6 +203,75 @@ public sealed class ParseSafetyTests : IDisposable
             "x = 1\ntry:\n    if x > 0:\n        print(x)\n    print(2)\nexcept Exception as e:\n    raise\n");
     }
 
+    // ---- P2.T5b: the statements an action acts on are exactly the statements the selection covers ----
+
+    private const string Describe = "def describe(n: int) -> str:\n    result: str = \"a\" if n == 1 else \"b\"\n    return result\n";
+
+    private const string DescribeBodyWrapped = "def describe(n: int) -> str:\n    try:\n        result: str = \"a\" if n == 1 else \"b\"\n"
+        + "        return result\n    except Exception as e:\n        raise\n";
+
+    /// <summary>
+    /// A selection ending exactly at the end of `    return result` covers it. The parser's LineEnd for a block's
+    /// last statement runs on to the next token, so the base and 2abf1e5d2 left `return result` outside the try
+    /// (SPY0200). A selection holding the whole def at module level means its body (a def cannot stand in a try).
+    /// </summary>
+    [Theory]
+    [InlineData(0, 0, 2, 17)] // the whole def, ending exactly at the end of its last line
+    [InlineData(1, 0, 2, 17)] // the body only
+    [InlineData(1, 0, 3, 0)]  // ending at the next line's column 0
+    public void Wrap_SelectionCoveringTheLastStatementExactly_WrapsIt(int sl, int sc, int el, int ec)
+    {
+        Applied(Describe, sl, sc, el, ec, "Wrap in try/except").Should().Be(DescribeBodyWrapped);
+    }
+
+    /// <summary>
+    /// A bodiless def (`def greet(self) -> str` in an interface, an `@abstract` method) has no body of its own
+    /// lines to fall back to: selecting it whole offers neither wrap nor extract method.
+    /// </summary>
+    [Fact]
+    public void WrapAndExtract_BodilessDefSelectedWhole_NotOffered()
+    {
+        var text = "interface IGreeter:\n    def greet(self) -> str\n\ndef main():\n    print(1)\n";
+
+        NotOffered(text, 1, 0, 1, 26, "Wrap in try/except");
+        NotOffered(text, 1, 0, 1, 26, "Extract method");
+    }
+
+    [Fact]
+    public void Wrap_SelectionEndingInsideAStatement_DoesNotCoverIt()
+    {
+        Applied(Describe, 1, 0, 2, 10, "Wrap in try/except").Should().Be(
+            "def describe(n: int) -> str:\n    try:\n        result: str = \"a\" if n == 1 else \"b\"\n    except Exception as e:\n        raise\n"
+            + "    return result\n");
+    }
+
+    [Fact]
+    public void Wrap_LastStatementAtEndOfFileWithNoBreak_IsCovered()
+    {
+        Applied(Describe.TrimEnd('\n'), 1, 0, 2, 17, "Wrap in try/except").Should().Be(DescribeBodyWrapped.TrimEnd('\n'));
+    }
+
+    [Fact]
+    public void Wrap_WholeDefWithAnIfBody_WrapsTheWholeBody()
+    {
+        Applied("def describe(n: int) -> str:\n    if n == 1:\n        return \"a\"\n    return \"r\"\n", 0, 0, 3, 14, "Wrap in try/except").Should().Be(
+            "def describe(n: int) -> str:\n    try:\n        if n == 1:\n            return \"a\"\n        return \"r\"\n    except Exception as e:\n        raise\n");
+    }
+
+    /// <summary>
+    /// Extract method on a selection that covers `return result` is not offered (a `return` cannot leave its
+    /// function — the base wrote it twice); the statement before it alone is extracted.
+    /// </summary>
+    [Fact]
+    public void ExtractMethod_SelectionCoveringTheReturn_NotOffered_TheStatementBeforeIt_Extracts()
+    {
+        var text = "def describe() -> str:\n    result: str = \"a\"\n    return result\n";
+
+        NotOffered(text, 1, 0, 2, 17, "Extract method");
+        Applied(text, 1, 0, 1, 21, "Extract method").Should().Be(
+            "def extracted_method() -> str:\n    result: str = \"a\"\n    return result\n\ndef describe() -> str:\n    result = extracted_method()\n    return result\n");
+    }
+
     /// <summary>A class body holds members, not statements: a try block cannot stand there.</summary>
     [Fact]
     public void R1_Wrap_ClassBodyMembers_NotOffered()

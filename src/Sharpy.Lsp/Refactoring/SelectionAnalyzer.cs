@@ -93,7 +93,7 @@ internal static class SelectionAnalyzer
     /// Walks the module body and nested function/class/struct bodies to find the appropriate scope.
     /// </summary>
     /// <param name="ast">The parsed module AST.</param>
-    /// <param name="sourceText">The full source text of the document (unused currently, reserved for future use).</param>
+    /// <param name="sourceText">The full source text of the document: coverage is judged on its offsets and tokens.</param>
     /// <param name="selection">The LSP selection range (0-based).</param>
     /// <returns>A list of statements fully contained within the selection, in source order.</returns>
     public static IReadOnlyList<Statement> FindSelectedStatements(Module ast, string sourceText, LspRange selection)
@@ -112,10 +112,18 @@ internal static class SelectionAnalyzer
         var (startLine, startCol) = PositionConverter.ToCompiler(selection.Start);
         var (endLine, endCol) = PositionConverter.ToCompiler(selection.End);
 
+        // A statement is COVERED by the selection when the selection starts at or before its first character and
+        // ends at or after its last code character (Extent.StatementEndOffset — trailing whitespace and comments
+        // do not count). The parser's LineEnd/ColumnEnd for a block's last statement runs on to the next token,
+        // so a selection ending exactly at `    return result` used to drop that statement (P47, #2232).
+        bool Covers(Statement stmt) => sourceText is null
+            ? IsNodeContainedInSelection(stmt, startLine, startCol, endLine, endCol)
+            : CoversByText(SourceLines.Of(sourceText), stmt, selection);
+
         // Find the deepest statement body that contains the selection start — but never descend into a
         // statement the selection holds whole: selecting `interface I: …` from its first column selects the
         // interface, not its members (P47, #2232).
-        var body = FindContainingBody(ast, startLine, startCol, endLine, endCol, out owner);
+        var body = FindContainingBody(ast, startLine, startCol, Covers, out owner);
 
         // Collect statements from that body that are fully within the selection
         var selected = new SCG.List<Statement>();
@@ -123,7 +131,7 @@ internal static class SelectionAnalyzer
 
         foreach (var stmt in body)
         {
-            if (IsNodeContainedInSelection(stmt, startLine, startCol, endLine, endCol))
+            if (Covers(stmt))
             {
                 inRange = true;
                 selected.Add(stmt);
@@ -133,6 +141,19 @@ internal static class SelectionAnalyzer
                 // Once we leave the range, stop (contiguous only)
                 break;
             }
+        }
+
+        // A selection holding ONE whole function where no block may hold a def (the module, a class body) means
+        // the function's body: wrapping or extracting the def itself has no legal text, its statements do — the
+        // base's reading of a whole-def selection, which a statement it failed to cover had hidden (P47, #2232).
+        // Only a body of its own lines: a bodiless `def f(self) -> T` (abstract, interface) or a stub
+        // `def f(): ...` has none, and stays refused.
+        if (selected.Count == 1 && selected[0].UnwrapDecorated() is FunctionDef function && !CanMoveIntoBlock(owner, selected)
+            && function.Body.Length > 0 && function.HeaderLineEnd > 0 && function.Body[0].LineStart > function.HeaderLineEnd
+            && function.Body.All(Covers))
+        {
+            owner = function;
+            return function.Body;
         }
 
         return selected;
@@ -207,7 +228,7 @@ internal static class SelectionAnalyzer
     /// Walks into FunctionDef, ClassDef, StructDef, IfStatement, ForStatement, WhileStatement, etc.
     /// </summary>
     private static IReadOnlyList<Statement> FindContainingBody(
-        Module ast, int line, int col, int endLine, int endCol, out Statement? owner)
+        Module ast, int line, int col, Func<Statement, bool> covered, out Statement? owner)
     {
         // Start with the module body
         IReadOnlyList<Statement> currentBody = ast.Body;
@@ -219,7 +240,7 @@ internal static class SelectionAnalyzer
 
             foreach (var stmt in currentBody)
             {
-                if (!ContainsPosition(stmt, line, col) || IsNodeContainedInSelection(stmt, line, col, endLine, endCol))
+                if (!ContainsPosition(stmt, line, col) || covered(stmt))
                     continue;
 
                 // Try to descend into a nested body
@@ -259,6 +280,51 @@ internal static class SelectionAnalyzer
             WithStatement wis => wis.Body,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// True when <paramref name="selection"/> covers <paramref name="statement"/>: it starts at or before the
+    /// statement's first character and ends at or after its last CODE character — the true end from the
+    /// statement's own tokens (<see cref="Extent.StatementEndOffset"/>), so whitespace, a line break or a trailing
+    /// comment after it never matters, and a selection ending inside it does not cover it.
+    /// </summary>
+    private static bool CoversByText(SourceLines source, Statement statement, LspRange selection)
+    {
+        if (!source.Contains(statement.LineStart) || statement.ColumnStart < 1)
+            return false;
+
+        var start = source.StartOffset(statement.LineStart) + statement.ColumnStart - 1;
+        int end;
+        if (Extent.StatementEndOffset(statement, source.Tokens, source) is { } tokenEnd)
+        {
+            end = tokenEnd;
+        }
+        else if (source.Contains(statement.LineEnd) && statement.ColumnEnd >= 1)
+        {
+            end = Math.Min(source.Text.Length, source.StartOffset(statement.LineEnd) + statement.ColumnEnd - 1);
+        }
+        else
+        {
+            return false;
+        }
+
+        // A token whose recorded length runs past its source text (a normalized `.5`) must not push the end into
+        // the line break that follows it.
+        while (end > start && char.IsWhiteSpace(source.Text[end - 1]))
+            end--;
+
+        return OffsetOf(source, selection.Start) <= start && end <= OffsetOf(source, selection.End);
+    }
+
+    /// <summary>The 0-based document offset of an LSP position, its character clamped to the line's content.</summary>
+    private static int OffsetOf(SourceLines source, Position position)
+    {
+        var line = position.Line + 1;
+        if (line > source.Count)
+            return source.Text.Length;
+        if (line < 1)
+            return 0;
+        return source.StartOffset(line) + Math.Min(position.Character, source.Line(line).Length);
     }
 
     /// <summary>

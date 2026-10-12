@@ -407,8 +407,21 @@ internal static class Extent
     /// of the last code token before that point (a multi-line literal's last line). Null when the statement's
     /// first token is not found.
     /// </summary>
-    private static int? StatementEndLine(Sharpy.Compiler.Parser.Ast.Statement statement, IReadOnlyList<Token> tokens, SourceLines lines)
+    private static int? StatementEndLine(Sharpy.Compiler.Parser.Ast.Statement statement, IReadOnlyList<Token> tokens, SourceLines lines) =>
+        StatementEndOffset(statement, tokens, lines) is { } endOffset ? lines.LineOfOffset(Math.Max(0, endOffset - 1)) : null;
+
+    /// <summary>
+    /// The 0-based offset just past <paramref name="statement"/>'s last code character, read from its tokens as
+    /// <see cref="StatementEndLine"/> reads its last line — trailing whitespace and a trailing comment excluded,
+    /// a decorated statement through its declaration. Null when the statement's first token is not found. A
+    /// selection COVERS a statement exactly when it starts at or before the statement's first character and ends
+    /// at or after this offset (<see cref="SelectionAnalyzer"/>).
+    /// </summary>
+    public static int? StatementEndOffset(Sharpy.Compiler.Parser.Ast.Statement statement, IReadOnlyList<Token> tokens, SourceLines lines)
     {
+        if (statement is Sharpy.Compiler.Parser.Ast.DecoratedStatement decorated)
+            return StatementEndOffset(decorated.Statement, tokens, lines);
+
         if (!lines.Contains(statement.LineStart) || statement.ColumnStart < 1)
             return null;
 
@@ -458,8 +471,7 @@ internal static class Extent
 
             if (token.Length <= 0 || token.Position < 0)
                 continue;
-            var last = Math.Min(token.Position + token.Length - 1, lines.Text.Length - 1);
-            var tokenEnd = lines.LineOfOffset(last);
+            var tokenEnd = Math.Min(token.Position + token.Length, lines.Text.Length);
             if (end is null || tokenEnd > end)
                 end = tokenEnd;
         }
