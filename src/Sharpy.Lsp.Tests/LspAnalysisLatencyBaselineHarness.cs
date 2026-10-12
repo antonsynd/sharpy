@@ -643,7 +643,7 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
     {
         public SCG.List<string> Lines { get; } = new();
 
-        public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,

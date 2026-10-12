@@ -47,7 +47,7 @@ internal sealed class StandardErrorLoggerProvider : ILoggerProvider
 
         // Scopes carry no information this format shows, and the level filter is applied by the
         // logging infrastructure from the configured minimum — the provider logs what reaches it.
-        public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
         public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
 

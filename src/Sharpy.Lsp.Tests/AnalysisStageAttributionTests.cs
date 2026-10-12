@@ -142,7 +142,7 @@ public class AnalysisStageAttributionTests : IDisposable
             }
         }
 
-        public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
         public bool IsEnabled(LogLevel logLevel) => logLevel >= _minimum && _minimum != LogLevel.None;
 

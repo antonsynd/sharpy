@@ -32,7 +32,7 @@ public class DiagnosticPublisherTests
 
         var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
 
-        result.Message.Should().Be("unexpected token");
+        result.Message!.String.Should().Be("unexpected token");
         result.Source.Should().Be("sharpy");
     }
 
@@ -362,7 +362,7 @@ public class DiagnosticPublisherTests
             MixedSeverityDiagnostics(), null, ConfigurationWithCap("2"));
 
         result.Should().HaveCount(2);
-        result.Select(d => d.Message).Should().Equal("error one", "error two");
+        result.Select(d => d.Message!.String).Should().Equal("error one", "error two");
     }
 
     [Fact]
@@ -371,7 +371,7 @@ public class DiagnosticPublisherTests
         var result = DiagnosticPublisher.ConvertDiagnostics(
             MixedSeverityDiagnostics(), null, ConfigurationWithCap("3"));
 
-        result.Select(d => d.Message).Should().Equal(new[] { "warning", "error one", "error two" },
+        result.Select(d => d.Message!.String).Should().Equal(new[] { "warning", "error one", "error two" },
             "the survivors keep the order the editor already showed them in");
     }
 
@@ -405,7 +405,7 @@ public class DiagnosticPublisherTests
         var result = DiagnosticPublisher.ConvertDiagnostics(
             MixedSeverityDiagnostics(), null, configuration);
 
-        result.Select(d => d.Message).Should().Equal("error one", "error two");
+        result.Select(d => d.Message!.String).Should().Equal("error one", "error two");
     }
 
     [Fact]

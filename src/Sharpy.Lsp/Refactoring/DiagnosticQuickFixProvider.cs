@@ -179,7 +179,9 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         if (context.SourceText is null)
             return null;
 
-        var message = diag.Message ?? "";
+        // LSP 3.18 lets a diagnostic message be markup; this server publishes plain strings, and a markup
+        // message echoed back by a client is read through its text.
+        var message = diag.Message?.String ?? diag.Message?.MarkupContent?.Value ?? "";
         var open = message.IndexOf('\'', StringComparison.Ordinal);
         var close = open < 0 ? -1 : message.IndexOf("'", open + 1, StringComparison.Ordinal);
         if (close <= open + 1)
