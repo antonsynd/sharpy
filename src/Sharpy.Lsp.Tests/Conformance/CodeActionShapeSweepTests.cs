@@ -32,7 +32,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// <para><b>Actions</b> (<see cref="Actions"/>): the fourteen title prefixes the seven providers can offer, each with
 /// a SHAPE class that fixes which buckets judge it — <c>Move</c> (re-emits a region of lines: every bucket),
 /// <c>Insert</c> (adds lines: no <c>line</c>/<c>blank</c>), <c>Delete</c> (removes lines and writes no text: no
-/// <c>line</c>/<c>blank</c>/<c>lineBreak</c>) and <c>Rewrite</c> (changes one line's text: no <c>line</c>/<c>blank</c>).
+/// <c>blank</c>/<c>lineBreak</c>, and <c>line</c> judges its decorator anchors only) and <c>Rewrite</c> (changes one
+/// line's text: no <c>line</c>/<c>blank</c>).
 /// The roster is total over the title literals of <c>src/Sharpy.Lsp/Refactoring/*.cs</c>
 /// (<see cref="Actions_AreTotalOverTheTitleLiteralsOfRefactoring"/>, a Roslyn scan that also resolves
 /// <c>Title = local</c> to the local's initializer and takes both arms of a conditional).</para>
@@ -75,7 +76,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// <item><c>line</c> (<c>Move</c>) — a non-blank line of the replaced region of S (the whole lines the edits touch),
 /// other than a header the action re-spells and a declared removal, does not reappear in T's new region with the
 /// region's ONE indentation offset δ (clamped at column 0), or a line that starts inside a multi-line literal does
-/// not reappear byte-identical;</item>
+/// not reappear byte-identical, or a decorator run no longer sits above its definition (<see cref="DecoratorVerdict"/>;
+/// for a <c>Delete</c> action this is the bucket's one rule — a deleted statement's decorator must go with it);</item>
 /// <item><c>blank</c> (<c>Move</c>) — the region's blank lines decrease (Organize Imports' own block exempt, D4), or
 /// an edit reaches outside the whole lines of the moved statements (from the first one's line start to the line
 /// after the last one's true last line), swallowing an edge blank line;</item>
@@ -204,7 +206,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     {
         [ShapeClass.Move] = new[] { Edits, Offer, Parse, Diagnostics, CommentBucket, Line, Blank, LineBreak },
         [ShapeClass.Insert] = new[] { Edits, Offer, Parse, Diagnostics, LineBreak, CommentBucket },
-        [ShapeClass.Delete] = new[] { Edits, Offer, Parse, Diagnostics, CommentBucket },
+        [ShapeClass.Delete] = new[] { Edits, Offer, Parse, Diagnostics, CommentBucket, Line },
         [ShapeClass.Rewrite] = new[] { Edits, Offer, Parse, Diagnostics, LineBreak, CommentBucket },
     };
 
@@ -626,8 +628,14 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         Add(LineBreak, LineBreakVerdict(source, after));
         if (spec.Shape == ShapeClass.Move)
         {
-            Add(Line, LineVerdict(source, edits, exemptions) ?? DecoratorVerdict(source, after));
+            Add(Line, LineVerdict(source, edits, exemptions) ?? DecoratorVerdict(source, after, deletes: false));
             Add(Blank, BlankVerdict(source, edits, exemptions));
+        }
+        else if (spec.Shape == ShapeClass.Delete)
+        {
+            // A deletion re-emits nothing, so `line` has only the decorator anchors to judge: a decorator whose
+            // statement went must go with it, not stay above the next statement.
+            Add(Line, DecoratorVerdict(source, after, deletes: true));
         }
 
         // A text that does not parse is parse's verdict; diagnostics judges the semantic change of a text that does.
@@ -639,25 +647,49 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     /// <summary>
     /// <c>line</c>, decorator anchors (P2.T5c): every run of decorator lines of S (lines whose code starts with
     /// <c>@</c>) sits directly above the same next code line in T — comment and blank lines between them aside,
-    /// indentation aside (a moved region is re-indented). A Move action that inserts or moves a line between a
-    /// decorator and its definition hands the decorator to another definition; the text still parses.
+    /// indentation aside (a moved region is re-indented). A Move action (<paramref name="deletes"/> false) that
+    /// inserts or moves a line between a decorator and its definition hands the decorator to another definition;
+    /// the text still parses. A Delete action (<paramref name="deletes"/> true) may take a decorated statement away
+    /// — then its decorator run must go with it: a run whose statement is gone while the run's text still occurs as
+    /// often as before in T is orphaned onto the next statement (Remove unused import on `@suppress(…)` over an
+    /// import; the decorator then suppresses the wrong statement, and the text still parses).
     /// </summary>
-    internal static string? DecoratorVerdict(SweepText source, SweepText applied)
+    internal static string? DecoratorVerdict(SweepText source, SweepText applied, bool deletes)
     {
         var before = DecoratorAnchors(source.Lines);
         var after = DecoratorAnchors(applied.Lines);
-        foreach (var (key, n) in before)
+        var runsBefore = RunsOf(before);
+        var runsAfter = RunsOf(after);
+        foreach (var ((run, next), n) in before)
         {
-            if (after.GetValueOrDefault(key) < n)
-                return $"decorator moved off its definition: '{Clip(key)}' ({after.GetValueOrDefault(key)} of {n} still directly above it)";
+            var kept = after.GetValueOrDefault((run, next));
+            if (kept >= n)
+                continue;
+            if (!deletes)
+                return $"decorator moved off its definition: '{Clip(run + " => " + next)}' ({kept} of {n} still directly above it)";
+            var lost = n - kept;
+            if (runsAfter.GetValueOrDefault(run) > runsBefore[run] - lost)
+            {
+                var now = after.Keys.Where(k => k.Run == run && k.Next != next).Select(k => k.Next).FirstOrDefault() ?? "(nothing)";
+                return $"decorator orphaned by the deletion: '{Clip(run)}' decorated '{Clip(next)}', which is gone, and now sits above '{Clip(now)}'";
+            }
         }
 
         return null;
+
+        static SCG.Dictionary<string, int> RunsOf(SCG.Dictionary<(string Run, string Next), int> anchors)
+        {
+            var runs = new SCG.Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var ((run, _), n) in anchors)
+                runs[run] = runs.GetValueOrDefault(run) + n;
+            return runs;
+        }
     }
 
-    private static SCG.Dictionary<string, int> DecoratorAnchors(IReadOnlyList<string> lines)
+    /// <summary>Each run of decorator lines (joined by <c> | </c>) with the next code line under it, counted.</summary>
+    private static SCG.Dictionary<(string Run, string Next), int> DecoratorAnchors(IReadOnlyList<string> lines)
     {
-        var anchors = new SCG.Dictionary<string, int>(StringComparer.Ordinal);
+        var anchors = new SCG.Dictionary<(string, string), int>();
         var run = new SCG.List<string>();
         foreach (var raw in lines)
         {
@@ -672,7 +704,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
 
             if (run.Count > 0)
             {
-                var key = string.Join(" | ", run) + " => " + line;
+                var key = (string.Join(" | ", run), line);
                 anchors[key] = anchors.GetValueOrDefault(key) + 1;
                 run.Clear();
             }
@@ -1707,8 +1739,33 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         var source = SweepText.Of("@deprecated(\"x\")\ndef main():\n    x = 1\n");
         var stolen = SweepText.Of("@deprecated(\"x\")\ndef extracted_method():\n    x = 1\n\ndef main():\n    extracted_method()\n");
         var kept = SweepText.Of("def extracted_method():\n    x = 1\n\n@deprecated(\"x\")\ndef main():\n    extracted_method()\n");
-        DecoratorVerdict(source, stolen).Should().NotBeNull();
-        DecoratorVerdict(source, kept).Should().BeNull();
+        DecoratorVerdict(source, stolen, deletes: false).Should().NotBeNull();
+        DecoratorVerdict(source, kept, deletes: false).Should().BeNull();
+    }
+
+    private const string DecoratedImport = "@suppress(\"SPY0480\")\nfrom System.IO import StringWriter\n\n\ndef main():\n    print(\"ok\")\n";
+
+    /// <summary>
+    /// The decorator anchor oracle for the <c>Delete</c> class (the verify round's G2; the corpus fixture
+    /// <c>imports/import_suppress_unrelated_code</c>): Remove unused import that deletes only the import line leaves
+    /// <c>@suppress("SPY0480")</c> above <c>def main():</c> — the text parses, the decorator suppresses the wrong
+    /// statement. Must fire: the import line alone gone. Clean: decorator and import both gone. Judged through
+    /// <see cref="Judge"/> with the <c>remove-import</c> spec, so the <c>line</c> bucket's Delete arm is what is proved.
+    /// </summary>
+    [Fact]
+    public void DecoratorVerdict_DecoratorOrphanedByADeletion_Fires_DeletedWithItsStatement_DoesNot()
+    {
+        var source = SweepText.Of(DecoratedImport);
+        var orphaned = SweepText.Of("@suppress(\"SPY0480\")\n\n\ndef main():\n    print(\"ok\")\n");
+        var clean = SweepText.Of("\n\ndef main():\n    print(\"ok\")\n");
+        orphaned.Parses.Should().BeTrue("the orphaned decorator parses: nothing but this oracle sees it");
+        DecoratorVerdict(source, orphaned, deletes: true).Should().Contain("decorator orphaned");
+        DecoratorVerdict(source, clean, deletes: true).Should().BeNull();
+
+        var spec = Spec("remove-import");
+        Judge(source, spec, new[] { E(1, 0, 2, 0, "") }, Exemptions.None, null)
+            .Should().ContainSingle(v => v.Bucket == Line).Which.Detail.Should().Contain("@suppress(\"SPY0480\")");
+        Judge(source, spec, new[] { E(0, 0, 2, 0, "") }, Exemptions.None, null).Should().NotContain(v => v.Bucket == Line);
     }
 
     // ================================================================
