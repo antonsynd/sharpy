@@ -406,10 +406,14 @@ public class DispatchSiteInventoryTests
         // Refactoring providers — documented-by-design partial dispatch
         ["Sharpy.Lsp/Refactoring/ConvertFormsProvider.cs::ConvertFormsProvider.FormatLiteral"] = "documented-by-design:Sharpy.Lsp/Refactoring/ConvertFormsProvider.cs:FormatLiteral",
         ["Sharpy.Lsp/Refactoring/ImplementInterfaceProvider.cs::ImplementInterfaceProvider.GetCodeActionsAsync"] = "documented-by-design:Sharpy.Lsp/Refactoring/ImplementInterfaceProvider.cs:GetCodeActionsAsync",
+        // P47 (#2232): blocks under a statement, for "a declaration alone in its block is not inlined"; not found → refused.
+        ["Sharpy.Lsp/Refactoring/InlineProvider.cs::InlineProvider.BodiesOf"] = "documented-by-design:Sharpy.Lsp/Refactoring/InlineProvider.cs:BodiesOf",
         ["Sharpy.Lsp/Refactoring/InlineProvider.cs::InlineProvider.CheckReassignmentInStatement"] = "walker-default-contract",
         ["Sharpy.Lsp/Refactoring/InlineProvider.cs::InlineProvider.IsSideEffectFree"] = "walker-default-contract",
-        ["Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs::OrganizeImportsProvider.GetSortKey"] = "documented-by-design:Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs:GetSortKey",
-        ["Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs::OrganizeImportsProvider.RenderImportStatement"] = "documented-by-design:Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs:RenderImportStatement",
+        // P47 (#2232): Organize Imports moves import units verbatim; the module-name key is rendering-only.
+        ["Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs::OrganizeImportsProvider.SortKey"] = "documented-by-design:Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs:SortKey",
+        // P47 (#2232): the names of an import statement; every other kind (a decorated import included) has none.
+        ["Sharpy.Lsp/Refactoring/ImportNames.cs::ImportNames.Of"] = "walker-default-contract",
         ["Sharpy.Lsp/Refactoring/ScopeAnalyzer.cs::SelectionVisitor.CollectAssignmentTargets"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Sharpy.Lsp/Refactoring/SelectionAnalyzer.cs::SelectionAnalyzer.GetStatementBody"] = "walker-default-contract",
 
@@ -593,7 +597,7 @@ public class DispatchSiteInventoryTests
             [noMember] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:NoSuchMethodZZ",
             [legacy] = "documented-by-design:HandleUnrecognizedExpression-default",
             [ok] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:DescribeTypeOperand",
-            [lspOk] = "documented-by-design:Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs:RenderImportStatement",
+            [lspOk] = "documented-by-design:Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs:SortKey",
         };
 
         var violations = CollectDesignCitationViolations(synthetic);

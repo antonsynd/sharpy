@@ -467,6 +467,11 @@ internal sealed class InlineProvider : ICodeActionProvider
         return null;
     }
 
+    /// <summary>
+    /// The statement blocks directly under <paramref name="statement"/>. Deliberately partial: a kind not listed
+    /// holds no statement block, and a declaration whose block is not found is not offered
+    /// (<see cref="ContainingBlockSize"/> returns null, which the caller refuses).
+    /// </summary>
     private static IEnumerable<IReadOnlyList<Statement>> BodiesOf(Statement statement)
     {
         switch (statement)

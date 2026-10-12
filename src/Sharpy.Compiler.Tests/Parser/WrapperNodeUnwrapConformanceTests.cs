@@ -72,19 +72,18 @@ public class WrapperNodeUnwrapConformanceTests
     /// </summary>
     private static readonly Dictionary<string, string> Allowlist = new(StringComparer.Ordinal)
     {
-        // OrganizeImportsProvider.ExecuteAsync collects import-like statements, then skips every
-        // DecoratedStatement wrapper (`if (stmt is DecoratedStatement) continue;`) BEFORE populating
-        // the stdlib/project lists these helpers classify, sort, and render. Decorated imports are
-        // pinned and rendered by RenderDecoratedImportVerbatim instead, so these helpers only ever
-        // receive plain, unwrapped ImportStatement/FromImportStatement values.
+        // OrganizeImportsProvider's block keeps a suppress-decorated import (#1124) in place: BuildUnits pins
+        // every DecoratedStatement verbatim at its slot (`if (stmt is DecoratedStatement) { … IsPinned … continue; }`)
+        // BEFORE these helpers run, so they only ever receive plain ImportStatement/FromImportStatement values.
         ["OrganizeImportsProvider.cs :: IsStdlibImport"] =
-            "Receives only plain imports; ExecuteAsync skips DecoratedStatement wrappers before calling it.",
-        ["OrganizeImportsProvider.cs :: CompareImports"] =
-            "Sorts pre-filtered plain imports; decorated wrappers are excluded from the sorted groups.",
-        ["OrganizeImportsProvider.cs :: GetSortKey"] =
-            "Keys pre-filtered plain imports; decorated wrappers never reach the sort.",
-        ["OrganizeImportsProvider.cs :: RenderImportStatement"] =
-            "Renders pre-filtered plain imports; decorated imports go to RenderDecoratedImportVerbatim.",
+            "Receives only plain imports; BuildUnits pins DecoratedStatement wrappers before calling it.",
+        ["OrganizeImportsProvider.cs :: SortKey"] =
+            "Keys only plain imports; BuildUnits pins DecoratedStatement wrappers before the sort.",
+        // ImportNames.Of returns NO names for a DecoratedStatement by design (P47, #2232): a suppress-decorated
+        // import is never a removal candidate — Organize Imports pins it, and Remove unused import is not
+        // offered through the wrapper (DiagnosticQuickFixProvider says so at its call site).
+        ["ImportNames.cs :: Of"] =
+            "By design: a decorated (suppressed) import has no removable names; both callers rely on the empty result.",
 
         // BENIGN — verified unreachable. The module-level statement emitter has no DecoratedStatement
         // arm, but a decorated statement cannot reach it: decorated imports are filtered out by
