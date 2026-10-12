@@ -71,10 +71,13 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
             ? $"{indentation}{DefaultVariableName}: {typeAnnotation} = "
             : $"{indentation}{DefaultVariableName} = ";
 
-        // Get the expression source text from the original document
-        var expressionSourceText = SharpySourceGenerator.GetNodeSourceText(sourceText, expression);
-        if (expressionSourceText is null)
+        // Get the expression source text from the original document — its TRUE extent (#2295: a node whose last
+        // token is a multi-line string records ColumnEnd on the token's start line), the same span the replace
+        // edit below covers.
+        var source = SourceLines.Of(sourceText);
+        if (source.NodeSpan(expression) is not { } span)
             return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
+        var expressionSourceText = sourceText.Substring(span.Start, span.End - span.Start);
 
         // Build TextEdits:
         // 1. Insert the variable declaration on a new line before the containing statement
@@ -85,7 +88,7 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         // Edit 1: Insert variable declaration before the statement
         // Insert at the beginning of the containing statement's line
         var insertPosition = PositionConverter.ToLsp(containingStatement.LineStart, 1);
-        var declarationLine = declarationText + expressionSourceText + SourceLines.Of(sourceText).DocumentLineBreak;
+        var declarationLine = declarationText + expressionSourceText + source.DocumentLineBreak;
         edits.Add(new TextEdit
         {
             Range = new LspRange(insertPosition, insertPosition),
@@ -93,11 +96,9 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         });
 
         // Edit 2: Replace the expression with the variable name
-        var exprStart = PositionConverter.ToLsp(expression.LineStart, expression.ColumnStart);
-        var exprEnd = PositionConverter.ToLsp(expression.LineEnd, expression.ColumnEnd);
         edits.Add(new TextEdit
         {
-            Range = new LspRange(exprStart, exprEnd),
+            Range = new LspRange(source.PositionOf(span.Start), source.PositionOf(span.End)),
             NewText = DefaultVariableName
         });
 

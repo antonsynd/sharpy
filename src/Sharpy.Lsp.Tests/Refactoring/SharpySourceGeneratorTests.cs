@@ -294,10 +294,10 @@ public class SharpySourceGeneratorTests
         var result = SharpySourceGenerator.FormatPropertyDef(
             "value", (BuiltinType)SemanticType.Int, hasGetter: true, hasSetter: false, indentLevel: 1, lineBreak: "\n");
 
-        result.Should().Contain("@property");
-        result.Should().Contain("def value(self) -> int32:");
+        result.Should().NotContain("@property", "Sharpy refuses the Python decorator (SPY0148)");
+        result.Should().Contain("property get value(self) -> int32:");
         result.Should().Contain("raise NotImplementedError()");
-        result.Should().NotContain("@value.setter");
+        result.Should().NotContain("property set");
     }
 
     [Fact]
@@ -306,9 +306,9 @@ public class SharpySourceGeneratorTests
         var result = SharpySourceGenerator.FormatPropertyDef(
             "value", (BuiltinType)SemanticType.Int, hasGetter: false, hasSetter: true, indentLevel: 1, lineBreak: "\n");
 
-        result.Should().NotContain("@property");
-        result.Should().Contain("@value.setter");
-        result.Should().Contain("def value(self, value: int32):");
+        result.Should().NotContain("property get", "a setter-only stub has no getter");
+        result.Should().Contain("property set value(self, value: ");
+        result.Should().Contain("property set value(self, value: int32):");
     }
 
     [Fact]
@@ -317,10 +317,10 @@ public class SharpySourceGeneratorTests
         var result = SharpySourceGenerator.FormatPropertyDef(
             "name", (BuiltinType)SemanticType.Str, hasGetter: true, hasSetter: true, indentLevel: 1, lineBreak: "\n");
 
-        result.Should().Contain("@property");
-        result.Should().Contain("def name(self) -> str:");
-        result.Should().Contain("@name.setter");
-        result.Should().Contain("def name(self, value: str):");
+        result.Should().NotContain("@property", "Sharpy refuses the Python decorator (SPY0148)");
+        result.Should().Contain("property get name(self) -> str:");
+        result.Should().Contain("property set name(self, value: ");
+        result.Should().Contain("property set name(self, value: str):");
     }
 
     #endregion

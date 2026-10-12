@@ -2034,7 +2034,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             _output.WriteLine("CODEACTION-CENSUS floors skipped: not every twin's sweep ran in this process");
         }
 
-        rows.Count.Should().Be(109, "P47 Phase 1 Task 3 populated 182 pins from one FULL run (132 cite #2232, 15 #2294, 35 #2296); Phase 2 Task 1 (one line table, the document's break) left 158 (106 #2232, 16 #2294, 36 #2296); Phase 2 Task 2 (wrap, extract method, inline, remove unused import move whole regions) left 140 (88 #2232, 16 #2294, 36 #2296); Phase 2 Task 3 (Organize Imports moves units) left 124 (72 #2232, 16 #2294, 36 #2296); Phase 2 Task 4 (convert forms re-spell headers, move bodies) left 109 (53 #2232, 16 #2294, 40 #2296); a commit that changes the count says why");
+        rows.Count.Should().Be(55, "P47 Phase 1 Task 3 populated 182 pins from one FULL run (132 cite #2232, 15 #2294, 35 #2296); Phase 2 Task 1 (one line table, the document's break) left 158 (106 #2232, 16 #2294, 36 #2296); Phase 2 Task 2 (wrap, extract method, inline, remove unused import move whole regions) left 140 (88 #2232, 16 #2294, 36 #2296); Phase 2 Task 3 (Organize Imports moves units) left 124 (72 #2232, 16 #2294, 36 #2296); Phase 2 Task 4 (convert forms re-spell headers, move bodies) left 109 (53 #2232, 16 #2294, 40 #2296); Phase 2 Task 5 (statement extents from tokens, never un-parse: the #2232 residue) left 55 (0 #2232, 16 #2294, 39 #2296); a commit that changes the count says why");
     }
 }
 

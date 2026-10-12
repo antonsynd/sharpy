@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Diagnostics;
+using TokenType = Sharpy.Compiler.Lexer.TokenType;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 using SCG = System.Collections.Generic;
 
@@ -29,11 +30,11 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
             [DiagnosticCodes.Validation.UnusedImport] =
                 static (ctx, diag) => CreateRemoveImportAction(ctx, diag),
             [DiagnosticCodes.Validation.UnusedVariable] =
-                static (ctx, diag) => CreatePrefixUnderscoreAction(ctx.DocumentUri, diag),
+                static (ctx, diag) => CreatePrefixUnderscoreAction(ctx, diag),
             [DiagnosticCodes.Validation.NamingConventionWarning] =
-                static (ctx, diag) => CreateRenameToSuggestionAction(ctx.DocumentUri, diag),
+                static (ctx, diag) => CreateRenameToSuggestionAction(ctx, diag),
             [DiagnosticCodes.Semantic.UndefinedVariable] =
-                static (ctx, diag) => CreateRenameToSuggestionAction(ctx.DocumentUri, diag),
+                static (ctx, diag) => CreateRenameToSuggestionAction(ctx, diag),
         };
 
     public Task<IReadOnlyList<CodeAction>> GetCodeActionsAsync(
@@ -142,30 +143,81 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
                 return source.WholeLineEdit(stmt.LineStart, source.EndLine(stmt), Array.Empty<string>());
 
             var (start, end) = ImportNames.RemovalSpans(source, names, new SCG.HashSet<int> { index }).Single();
-            return new TextEdit { Range = new LspRange(PositionOf(source, start), PositionOf(source, end)), NewText = "" };
+            return new TextEdit { Range = new LspRange(source.PositionOf(start), source.PositionOf(end)), NewText = "" };
         }
 
         return null;
     }
 
-    /// <summary>The LSP position of a 0-based document offset.</summary>
-    private static Position PositionOf(SourceLines source, int offset)
+    /// <summary>
+    /// The extent of the NAME a naming or unused-variable diagnostic is about. Those diagnostics are reported at
+    /// their statement's start (`let x = 1`, `except E as e:`), so the diagnostic range is not the name's: the
+    /// name is the first quoted word of the message, found as an identifier token from the diagnostic's start
+    /// to the end of its logical line. Falls back to the diagnostic's range when the document or the name is
+    /// not found (P47, #2232: `_let x`, `_except …`).
+    /// </summary>
+    private static LspRange NameRange(CodeActionProviderContext context, Diagnostic diag) =>
+        NameToken(context, diag) is { } token
+            ? token.IsBacktickEscaped // the name inside the backticks; the escape stays
+                ? new LspRange(SourceLines.Of(context.SourceText!).PositionOf(token.Position + 1),
+                    SourceLines.Of(context.SourceText!).PositionOf(token.Position + token.Length - 1))
+                : new LspRange(SourceLines.Of(context.SourceText!).PositionOf(token.Position),
+                    SourceLines.Of(context.SourceText!).PositionOf(token.Position + token.Length))
+            : diag.Range;
+
+    /// <summary>
+    /// The identifier token <see cref="NameRange"/> describes: the first identifier spelled as the message's
+    /// first quoted word, searched from the diagnostic's start through its end (a decorated field's range starts
+    /// at the decorator) or, for a zero-width range, through the end of its logical line. Null when not found.
+    /// </summary>
+    private static Sharpy.Compiler.Lexer.Token? NameToken(CodeActionProviderContext context, Diagnostic diag)
     {
-        var line = source.LineOfOffset(offset);
-        return new Position(line - 1, offset - source.StartOffset(line));
+        if (context.SourceText is null)
+            return null;
+
+        var message = diag.Message ?? "";
+        var open = message.IndexOf('\'', StringComparison.Ordinal);
+        var close = open < 0 ? -1 : message.IndexOf("'", open + 1, StringComparison.Ordinal);
+        if (close <= open + 1)
+            return null;
+        var name = message[(open + 1)..close];
+
+        var source = SourceLines.Of(context.SourceText);
+        var startLine = diag.Range.Start.Line + 1;
+        var endLine = diag.Range.End.Line + 1;
+        if (!source.Contains(startLine) || !source.Contains(endLine))
+            return null;
+        var from = source.StartOffset(startLine) + diag.Range.Start.Character;
+        var to = source.StartOffset(endLine) + diag.Range.End.Character;
+        foreach (var token in source.Tokens)
+        {
+            if (token.Position < from)
+                continue;
+            if (to > from ? token.Position >= to : token.Type is TokenType.Newline)
+                break;
+            if (token.Type == TokenType.Eof)
+                break;
+            if (token.Type == TokenType.Identifier && token.Value == name)
+                return token;
+        }
+
+        return null;
     }
 
-    private static CodeAction CreatePrefixUnderscoreAction(
-        OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
-        Diagnostic diag)
+    private static CodeAction CreatePrefixUnderscoreAction(CodeActionProviderContext context, Diagnostic diag)
     {
-        var range = diag.Range;
+        var uri = context.DocumentUri;
+
+        // The underscore goes before the name — inside the backticks of an escaped one (`_class`).
+        var start = NameToken(context, diag) is { } token
+            ? SourceLines.Of(context.SourceText!).PositionOf(token.Position + (token.IsBacktickEscaped ? 1 : 0))
+            : diag.Range.Start;
 
         var edit = new WorkspaceEdit
         {
             Changes = new Dictionary<OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri, IEnumerable<TextEdit>>
             {
-                [uri] = [new TextEdit { Range = new LspRange(range.Start, range.Start), NewText = "_" }]
+                [uri] = [new TextEdit { Range = new LspRange(start, start), NewText = "_" }]
             }
         };
 
@@ -181,13 +233,13 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
     /// <summary>
     /// Builds a "Rename to '&lt;suggestedName&gt;'" fix that replaces the diagnostic's range with
     /// the <c>suggestedName</c> carried in the diagnostic data. Shared by naming-convention
-    /// warnings and undefined-identifier "did you mean?" errors — in both the diagnostic range
-    /// is exactly the identifier to rename. Returns null when no suggestion is present.
+    /// warnings and undefined-identifier "did you mean?" errors. The edit covers the NAME's extent
+    /// (<see cref="NameRange"/>), not a statement-start diagnostic range. Returns null when no
+    /// suggestion is present.
     /// </summary>
-    private static CodeAction? CreateRenameToSuggestionAction(
-        OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
-        Diagnostic diag)
+    private static CodeAction? CreateRenameToSuggestionAction(CodeActionProviderContext context, Diagnostic diag)
     {
+        var uri = context.DocumentUri;
         var suggestedName = ExtractSuggestedNameFromData(diag.Data);
 
         if (string.IsNullOrEmpty(suggestedName))
@@ -197,7 +249,7 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         {
             Changes = new Dictionary<OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri, IEnumerable<TextEdit>>
             {
-                [uri] = [new TextEdit { Range = diag.Range, NewText = suggestedName }]
+                [uri] = [new TextEdit { Range = NameRange(context, diag), NewText = suggestedName }]
             }
         };
 

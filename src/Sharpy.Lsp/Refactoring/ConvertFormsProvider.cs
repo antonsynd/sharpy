@@ -239,6 +239,11 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (!AllCasesAreLiteralOrWildcard(matchStmt))
             return;
 
+        // A match of only `case _:` has no `if` to begin the chain — a bare `else:` does not parse, and any
+        // other spelling re-renders the program: no legal text exists, so the action is not offered.
+        if (matchStmt.Cases.All(c => c.Pattern is WildcardPattern))
+            return;
+
         var source = SourceLines.Of(sourceText);
         var first = matchStmt.LineStart;
         var last = source.EndLine(matchStmt);
@@ -266,9 +271,21 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         // cases' offset.
         var caseIndent = source.Indentation(cases[0].LineStart);
         var delta = indent.Length - caseIndent.Length;
+        // The scrutinee's text is written into every `if`/`elif` header: a comment inside it would be written
+        // once per arm — with more than one arm no legal text keeps it once, so the action is not offered; with
+        // one arm it travels inside the scrutinee and is not repeated above (P47, #2232).
+        var scrutineeSpan = source.NodeSpan(matchStmt.Scrutinee);
+        if (scrutineeSpan is { } span && source.HasCommentIn(span.Start, span.End)
+            && cases.Count(c => c.Pattern is not WildcardPattern) > 1)
+            return;
+
         var newLines = new SCG.List<string>();
         foreach (var comment in source.CommentsOn(first, matchHeaderEnd))
+        {
+            if (scrutineeSpan is { } s && comment.Position >= s.Start && comment.Position < s.End)
+                continue;
             newLines.Add(indent + comment.Text);
+        }
         if (cases[0].LineStart - 1 > matchHeaderEnd)
             newLines.AddRange(Region.Reindent(source.Slice(matchHeaderEnd + 1, cases[0].LineStart - 1), delta, source.LiteralLines));
 
@@ -386,6 +403,13 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
         if (varDecl.Type is null || varDecl.InitialValue is null)
             return;
 
+        // A decorated field declaration needs its annotation — without it the decorator precedes a bare
+        // assignment, which does not parse (SPY0105): no legal text exists, so the action is not offered.
+        if (!varDecl.Decorators.IsDefaultOrEmpty
+            || (PositionService.FindNodeOfType<DecoratedStatement>(ast, line, col) is { } decorated
+                && ReferenceEquals(decorated.Statement, varDecl)))
+            return;
+
         // The type annotation spans from just after the variable name (the ": type" portion)
         // up to the " = " before the initial value.
         // We need to remove the ": type" part.
@@ -440,9 +464,15 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     {
         // Only offer when the user has selected one or more statements
         var selectedStatements = SelectionAnalyzer.FindSelectedStatements(
-            ast, sourceText, context.Range);
+            ast, sourceText, context.Range, out var owner);
 
         if (selectedStatements.Count == 0)
+            return;
+
+        // A try block cannot stand in a type body, and a module-level declaration inside one is no longer a
+        // declaration: no legal text exists there, so the action is not offered.
+        if (!SelectionAnalyzer.CanMoveIntoBlock(owner, selectedStatements)
+            || !SourceLines.Of(sourceText).BeginsItsLine(selectedStatements[0]))
             return;
 
         // Don't offer if the selection is just a cursor (zero-width)

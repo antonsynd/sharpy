@@ -86,9 +86,37 @@ internal static class SharpySourceGenerator
     public static string FormatParameter(string name, SemanticType type)
     {
         if (type is UnknownType)
-            return name;
-        return $"{name}: {FormatTypeAnnotation(type)}";
+            return SpellName(name);
+        return $"{SpellName(name)}: {FormatTypeAnnotation(type)}";
     }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Spellings = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// A name as generated text must spell it: bare when the lexer reads it as one identifier AND the parser takes
+    /// it as an argument (`f(name)`), in backticks otherwise — a keyword (`let`) or a soft keyword the parser reads
+    /// as a statement start (`match`) does not parse bare as a generated parameter, argument or binding (P47,
+    /// #2232). The lexer and the parser are the judges, so no keyword list is kept here.
+    /// </summary>
+    public static string SpellName(string name) => Spellings.GetOrAdd(name, static n =>
+    {
+        try
+        {
+            var logger = Sharpy.Compiler.Logging.NullLogger.Instance;
+            var tokens = new Sharpy.Compiler.Lexer.Lexer(n, logger).TokenizeAll();
+            var first = tokens.Count > 0 ? tokens[0] : null;
+            if (first is not { Type: Sharpy.Compiler.Lexer.TokenType.Identifier } || first.Value != n || first.IsBacktickEscaped)
+                return $"`{n}`";
+
+            var probe = Sharpy.Compiler.FileCompilationPipeline.Lex(new Sharpy.Compiler.Text.SourceText($"f({n})", "<name>"), logger);
+            var parse = Sharpy.Compiler.FileCompilationPipeline.Parse(probe.Tokens, logger);
+            return probe.HasErrors || parse.HasErrors ? $"`{n}`" : n;
+        }
+        catch (Exception)
+        {
+            return $"`{n}`";
+        }
+    });
 
     /// <summary>
     /// Generates a function definition stub with a pass body. Every line break it writes is
@@ -135,8 +163,11 @@ internal static class SharpySourceGenerator
     }
 
     /// <summary>
-    /// Generates a property definition stub. Every line break it writes is <paramref name="lineBreak"/> —
-    /// the document's (<see cref="SourceLines.DocumentLineBreak"/>); no default.
+    /// Generates a property definition stub in Sharpy's function-style property syntax
+    /// (<c>docs/language_specification/properties_function_style.md</c>: <c>property get name(self) -&gt; T:</c>,
+    /// <c>property set name(self, value: T):</c>) — never Python's <c>@property</c> / <c>@name.setter</c>,
+    /// which Sharpy refuses (SPY0148). Every line break it writes is <paramref name="lineBreak"/> — the
+    /// document's (<see cref="SourceLines.DocumentLineBreak"/>); no default.
     /// </summary>
     public static string FormatPropertyDef(
         string name,
@@ -153,10 +184,7 @@ internal static class SharpySourceGenerator
         if (hasGetter)
         {
             sb.Append(indent);
-            sb.Append("@property");
-            sb.Append(lineBreak);
-            sb.Append(indent);
-            sb.Append(CultureInfo.InvariantCulture, $"def {name}(self) -> {FormatTypeAnnotation(type)}:");
+            sb.Append(CultureInfo.InvariantCulture, $"property get {name}(self) -> {FormatTypeAnnotation(type)}:");
             sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("raise NotImplementedError()");
@@ -167,10 +195,7 @@ internal static class SharpySourceGenerator
             if (hasGetter)
                 sb.Append(lineBreak).Append(lineBreak);
             sb.Append(indent);
-            sb.Append(CultureInfo.InvariantCulture, $"@{name}.setter");
-            sb.Append(lineBreak);
-            sb.Append(indent);
-            sb.Append(CultureInfo.InvariantCulture, $"def {name}(self, value: {FormatTypeAnnotation(type)}):");
+            sb.Append(CultureInfo.InvariantCulture, $"property set {name}(self, value: {FormatTypeAnnotation(type)}):");
             sb.Append(lineBreak);
             sb.Append(bodyIndent);
             sb.Append("raise NotImplementedError()");

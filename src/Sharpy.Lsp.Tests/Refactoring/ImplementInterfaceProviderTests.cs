@@ -330,10 +330,10 @@ def main():
             "count", (BuiltinType)SemanticType.Int,
             hasGetter: true, hasSetter: false, indentLevel: 1, lineBreak: "\n");
 
-        result.Should().Contain("@property");
-        result.Should().Contain("def count(self) -> int32:");
+        result.Should().NotContain("@property", "Sharpy refuses the Python decorator (SPY0148)");
+        result.Should().Contain("property get count(self) -> int32:");
         result.Should().Contain("raise NotImplementedError()");
-        result.Should().NotContain("@count.setter");
+        result.Should().NotContain("property set");
     }
 
     [Fact]
@@ -343,10 +343,10 @@ def main():
             "name", (BuiltinType)SemanticType.Str,
             hasGetter: true, hasSetter: true, indentLevel: 1, lineBreak: "\n");
 
-        result.Should().Contain("@property");
-        result.Should().Contain("def name(self) -> str:");
-        result.Should().Contain("@name.setter");
-        result.Should().Contain("def name(self, value: str):");
+        result.Should().NotContain("@property", "Sharpy refuses the Python decorator (SPY0148)");
+        result.Should().Contain("property get name(self) -> str:");
+        result.Should().Contain("property set name(self, value: ");
+        result.Should().Contain("property set name(self, value: str):");
     }
 
     [Fact]
@@ -380,11 +380,11 @@ def main():
         var result = ImplementInterfaceProvider.GenerateStubs(methods, properties, 1, "\n");
 
         // Properties come first (convention)
-        var propIdx = result.IndexOf("@property", StringComparison.Ordinal);
+        var propIdx = result.IndexOf("property get", StringComparison.Ordinal);
         var methodIdx = result.IndexOf("def process", StringComparison.Ordinal);
         propIdx.Should().BeLessThan(methodIdx);
 
-        result.Should().Contain("def status(self) -> str:");
+        result.Should().Contain("property get status(self) -> str:");
         result.Should().Contain("def process(self, data: str) -> bool:");
     }
 

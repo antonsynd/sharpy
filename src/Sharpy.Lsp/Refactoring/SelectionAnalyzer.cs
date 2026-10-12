@@ -97,15 +97,25 @@ internal static class SelectionAnalyzer
     /// <param name="selection">The LSP selection range (0-based).</param>
     /// <returns>A list of statements fully contained within the selection, in source order.</returns>
     public static IReadOnlyList<Statement> FindSelectedStatements(Module ast, string sourceText, LspRange selection)
+        => FindSelectedStatements(ast, sourceText, selection, out _);
+
+    /// <summary>
+    /// <see cref="FindSelectedStatements(Module, string, LspRange)"/>, also returning the statement that owns
+    /// the body the statements were taken from (null for the module body).
+    /// </summary>
+    public static IReadOnlyList<Statement> FindSelectedStatements(Module ast, string sourceText, LspRange selection, out Statement? owner)
     {
+        owner = null;
         if (ast is null)
             return Array.Empty<Statement>();
 
         var (startLine, startCol) = PositionConverter.ToCompiler(selection.Start);
         var (endLine, endCol) = PositionConverter.ToCompiler(selection.End);
 
-        // Find the deepest statement body that contains the selection start
-        var body = FindContainingBody(ast, startLine, startCol);
+        // Find the deepest statement body that contains the selection start — but never descend into a
+        // statement the selection holds whole: selecting `interface I: …` from its first column selects the
+        // interface, not its members (P47, #2232).
+        var body = FindContainingBody(ast, startLine, startCol, endLine, endCol, out owner);
 
         // Collect statements from that body that are fully within the selection
         var selected = new SCG.List<Statement>();
@@ -127,6 +137,27 @@ internal static class SelectionAnalyzer
 
         return selected;
     }
+
+    /// <summary>
+    /// True when <paramref name="statements"/>, taken from the body <paramref name="owner"/> owns (null = the
+    /// module), may be moved into a statement block — a <c>try:</c> body or a new function's body — and still
+    /// mean what they meant (P47, #2232). A type body (class, struct, interface, enum) holds members, not
+    /// statements: no block may stand there. At module level a declaration (a def, a type, an import, a
+    /// module variable or const) moved into a block stops being a declaration (SPY0340 / SPY0202). Where no
+    /// legal text exists the action is not offered.
+    /// </summary>
+    public static bool CanMoveIntoBlock(Statement? owner, IReadOnlyList<Statement> statements)
+    {
+        if (owner is ClassDef or StructDef or InterfaceDef or EnumDef)
+            return false;
+        return owner is not null || !statements.Any(IsModuleDeclaration);
+    }
+
+    private static bool IsModuleDeclaration(Statement statement) =>
+        statement is DecoratedStatement
+        || statement is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef
+            or PropertyDef or TypeAlias or ImportStatement or FromImportStatement
+        || statement is VariableDeclaration { IsLet: false };
 
     /// <summary>
     /// Finds the FunctionDef that contains the given position.
@@ -175,10 +206,12 @@ internal static class SelectionAnalyzer
     /// Finds the statement body (list of statements) in the deepest scope containing the given position.
     /// Walks into FunctionDef, ClassDef, StructDef, IfStatement, ForStatement, WhileStatement, etc.
     /// </summary>
-    private static IReadOnlyList<Statement> FindContainingBody(Module ast, int line, int col)
+    private static IReadOnlyList<Statement> FindContainingBody(
+        Module ast, int line, int col, int endLine, int endCol, out Statement? owner)
     {
         // Start with the module body
         IReadOnlyList<Statement> currentBody = ast.Body;
+        owner = null;
 
         while (true)
         {
@@ -186,7 +219,7 @@ internal static class SelectionAnalyzer
 
             foreach (var stmt in currentBody)
             {
-                if (!ContainsPosition(stmt, line, col))
+                if (!ContainsPosition(stmt, line, col) || IsNodeContainedInSelection(stmt, line, col, endLine, endCol))
                     continue;
 
                 // Try to descend into a nested body
@@ -194,6 +227,7 @@ internal static class SelectionAnalyzer
                 if (nestedBody is not null && nestedBody.Count > 0)
                 {
                     currentBody = nestedBody;
+                    owner = stmt;
                     foundDeeper = true;
                     break;
                 }

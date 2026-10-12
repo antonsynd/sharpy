@@ -258,18 +258,26 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
         // Insert at the end of the class body (before the closing line).
         // The last statement in the body tells us where existing content ends.
         // We insert after the last body statement, or at the start of the class body if empty.
-        var insertLine = DetermineInsertionLine(classBody, classLineEnd);
+        var source = SourceLines.Of(sourceText);
+        var insertLine = DetermineInsertionLine(source, classBody, classLineEnd);
 
-        // Convert to LSP 0-based line
-        var lspInsertLine = insertLine - 1;
+        // Insert at the start of the line after the body's true last line, a blank line separating the stubs
+        // from the existing content; when that last line is the document's final line (no break after it),
+        // at its end instead.
+        Position insertPosition;
+        string textToInsert;
+        if (source.Contains(insertLine))
+        {
+            insertPosition = new Position(insertLine - 1, 0);
+            textToInsert = lineBreak + stubText + lineBreak;
+        }
+        else
+        {
+            insertPosition = new Position(source.Count - 1, source.Line(source.Count).Length);
+            textToInsert = lineBreak + lineBreak + stubText;
+        }
 
-        // We want to insert at the beginning of the insert line (which is the line
-        // just before the class ends)
-        var insertPosition = new Position(lspInsertLine, 0);
         var insertRange = new LspRange(insertPosition, insertPosition);
-
-        // Add a leading blank line to separate from existing content
-        var textToInsert = lineBreak + stubText + lineBreak;
 
         var edit = new WorkspaceEdit
         {
@@ -323,16 +331,18 @@ internal sealed class ImplementInterfaceProvider : ICodeActionProvider
 
     /// <summary>
     /// Determines the 1-based line number where stubs should be inserted.
-    /// Inserts after the last statement in the class body, or at classLineEnd if the body is empty.
+    /// Inserts after the last statement's TRUE last line (<see cref="SourceLines.EndLine"/> — a bodiless
+    /// <c>def f(self) -&gt; int: ...</c> ending a class body records a LineEnd on the next statement's line), or
+    /// at classLineEnd if the body is empty.
     /// </summary>
-    private static int DetermineInsertionLine(ImmutableArray<Statement> classBody, int classLineEnd)
+    private static int DetermineInsertionLine(SourceLines source, ImmutableArray<Statement> classBody, int classLineEnd)
     {
         if (classBody.Length == 0)
             return classLineEnd;
 
         // Insert after the last statement
         var lastStmt = classBody[^1];
-        return lastStmt.LineEnd + 1;
+        return source.EndLine(lastStmt) + 1;
     }
 
     /// <summary>

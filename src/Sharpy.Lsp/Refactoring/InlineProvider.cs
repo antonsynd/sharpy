@@ -130,8 +130,23 @@ internal sealed class InlineProvider : ICodeActionProvider
 
         // Delete the declaration's whole lines through its TRUE last line (D2: a multi-line string
         // initializer's tail lines go with it), its trailing comment included (D5).
+        // The declaration ends where its initializer ends (its true end — a multi-line string's tail line
+        // included); the declaration node's own LineEnd can run on to the next statement's line in a class
+        // body, and deleting through it would delete that statement too.
         var source = SourceLines.Of(sourceText);
-        edits.Add(source.WholeLineEdit(varDecl.LineStart, source.EndLine(varDecl), Array.Empty<string>()));
+        if (source.NodeSpan(varDecl.InitialValue) is not { } initializerSpan)
+            return null;
+
+        // An initializer that carries a comment cannot be copied to its references without duplicating,
+        // moving or dropping that comment; a declaration alone in its block cannot be deleted without leaving
+        // the block empty. No legal text exists for either: not offered (P47, #2232).
+        if (source.HasCommentIn(initializerSpan.Start, initializerSpan.End)
+            || ContainingBlockSize(ast.Body, varDecl) is null or 1)
+            return null;
+        var declEnd = source.LineOfOffset(Math.Max(initializerSpan.Start, initializerSpan.End - 1));
+        if (edits.Any(e => e.Range.Start.Line + 1 <= declEnd && e.Range.End.Line + 1 >= varDecl.LineStart))
+            return null; // a reference inside the declaration's own lines: no legal deletion exists
+        edits.Add(source.WholeLineEdit(varDecl.LineStart, declEnd, Array.Empty<string>()));
 
         var workspaceEdit = new WorkspaceEdit
         {
@@ -205,26 +220,82 @@ internal sealed class InlineProvider : ICodeActionProvider
         if (funcCall.Arguments.Length != effectiveParams.Length)
             return null;
 
-        // Build the replacement text by substituting parameter names in the return expression
-        var returnExprText = SharpySourceGenerator.GetNodeSourceText(sourceText, returnStmt.Value);
-        if (returnExprText is null)
+        // The texts this action copies and the call it replaces, at their TRUE extents.
+        var source = SourceLines.Of(sourceText);
+        if (source.NodeSpan(returnStmt.Value) is not { } returnSpan || source.NodeSpan(funcCall) is not { } callSpan)
             return null;
 
-        // Build parameter-to-argument mapping
-        var substitutionText = returnExprText;
-        for (var i = 0; i < effectiveParams.Length; i++)
+        var argumentSpans = new SCG.List<(int Start, int End)>();
+        foreach (var argument in funcCall.Arguments)
         {
-            var paramName = effectiveParams[i].Name;
-            var argText = SharpySourceGenerator.GetNodeSourceText(sourceText, funcCall.Arguments[i]);
-            if (argText is null)
+            // An argument passed with a modifier (`in v`, `out v`, `ref v`) is a passing convention, not an
+            // expression a use of the parameter could be replaced by: no legal text exists, not offered.
+            if (argument is ModifiedArgument || source.NodeSpan(argument) is not { } argumentSpan)
                 return null;
-
-            substitutionText = SubstituteIdentifier(substitutionText, paramName, argText);
+            argumentSpans.Add(argumentSpan);
         }
 
+        // A comment in the copied return expression would be duplicated (the function stays), one in an
+        // argument copied once per use, one in the call's brackets dropped: no legal text keeps it, so the
+        // action is not offered (P47, #2232).
+        if (source.HasCommentIn(returnSpan.Start, returnSpan.End) || source.HasCommentIn(callSpan.Start, callSpan.End))
+            return null;
+
+        // Substitute each parameter's USES — the identifiers that resolve to the parameter, found in the AST,
+        // never a same-spelled name bound inside the expression (a lambda's parameter, a comprehension target),
+        // which a textual replace would turn into an argument and un-parse (P47, #2232).
+        var uses = new SCG.List<(int Start, int End, int Argument)>();
+        var finder = new IdentifierUseFinder();
+        finder.Visit(returnStmt.Value);
+        foreach (var identifier in finder.Found)
+        {
+            var parameterIndex = -1;
+            for (var i = 0; i < effectiveParams.Length; i++)
+            {
+                if (effectiveParams[i].Name == identifier.Name)
+                    parameterIndex = i;
+            }
+
+            if (parameterIndex < 0)
+                continue;
+
+            var symbol = semanticQuery.GetIdentifierSymbol(identifier);
+            if (symbol is null)
+                return null;
+            if (symbol.EffectiveNameLine is not { } declared)
+                return null;
+            var headerEnd = funcDef.HeaderLineEnd > 0 ? funcDef.HeaderLineEnd : funcDef.LineStart;
+            if (declared < funcDef.LineStart || declared > headerEnd)
+                continue; // bound inside the expression, not the parameter
+            if (source.NodeSpan(identifier) is not { } useSpan)
+                return null;
+            uses.Add((useSpan.Start, useSpan.End, parameterIndex));
+        }
+
+        var substitution = new System.Text.StringBuilder();
+        var at = returnSpan.Start;
+        foreach (var use in uses.OrderBy(u => u.Start))
+        {
+            substitution.Append(sourceText, at, use.Start - at);
+            // A parameter use is an atom: an argument that is not one (a lambda, an operator expression) goes
+            // in parentheses so it binds as the parameter did (`f(x)` with f = `lambda x: x + 3` → `(lambda …)(x)`).
+            var argumentSpan = argumentSpans[use.Argument];
+            var atomic = funcCall.Arguments[use.Argument] is Identifier or IntegerLiteral or FloatLiteral or StringLiteral
+                or BooleanLiteral or NoneLiteral or FunctionCall;
+            if (!atomic)
+                substitution.Append('(');
+            substitution.Append(sourceText, argumentSpan.Start, argumentSpan.End - argumentSpan.Start);
+            if (!atomic)
+                substitution.Append(')');
+            at = use.End;
+        }
+
+        substitution.Append(sourceText, at, returnSpan.End - at);
+        var substitutionText = substitution.ToString();
+
         // Build the edit: replace the function call with the substituted expression
-        var callStart = PositionConverter.ToLsp(funcCall.LineStart, funcCall.ColumnStart);
-        var callEnd = PositionConverter.ToLsp(funcCall.LineEnd, funcCall.ColumnEnd);
+        var callStart = source.PositionOf(callSpan.Start);
+        var callEnd = source.PositionOf(callSpan.End);
 
         // Wrap in parentheses to preserve grouping at the call site
         var replacementText = $"({substitutionText})";
@@ -364,7 +435,135 @@ internal sealed class InlineProvider : ICodeActionProvider
     /// </summary>
     private static bool HasReassignment(Module ast, string variableName)
     {
-        return CheckReassignmentInBody(ast.Body, variableName);
+        if (CheckReassignmentInBody(ast.Body, variableName))
+            return true;
+
+        // Every binding target anywhere — a tuple or starred target (`let pair, other = …`, `first, *tail = …`),
+        // a `for` target — not only a bare-name assignment: substituting a value for a name that is BOUND there
+        // does not parse (P47, #2232).
+        var finder = new BindingTargetFinder(variableName);
+        foreach (var statement in ast.Body)
+            finder.Visit(statement);
+        return finder.Found;
+    }
+
+    /// <summary>
+    /// The number of statements in the block that holds <paramref name="target"/> (null when not found): a
+    /// declaration alone in its block cannot be deleted — the block would be left empty, which does not parse.
+    /// </summary>
+    private static int? ContainingBlockSize(IReadOnlyList<Statement> body, Statement target)
+    {
+        foreach (var statement in body)
+        {
+            if (ReferenceEquals(statement, target))
+                return body.Count;
+            foreach (var inner in BodiesOf(statement))
+            {
+                if (ContainingBlockSize(inner, target) is { } size)
+                    return size;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<IReadOnlyList<Statement>> BodiesOf(Statement statement)
+    {
+        switch (statement)
+        {
+            case DecoratedStatement decorated:
+                yield return new[] { decorated.Statement };
+                break;
+            case FunctionDef f:
+                yield return f.Body;
+                break;
+            case ClassDef c:
+                yield return c.Body;
+                break;
+            case StructDef s:
+                yield return s.Body;
+                break;
+            case InterfaceDef i:
+                yield return i.Body;
+                break;
+            case WithStatement w:
+                yield return w.Body;
+                break;
+            case IfStatement ifs:
+                yield return ifs.ThenBody;
+                foreach (var elif in ifs.ElifClauses)
+                    yield return elif.Body;
+                yield return ifs.ElseBody;
+                break;
+            case ForStatement fs:
+                yield return fs.Body;
+                yield return fs.ElseBody;
+                break;
+            case WhileStatement ws:
+                yield return ws.Body;
+                yield return ws.ElseBody;
+                break;
+            case TryStatement ts:
+                yield return ts.Body;
+                foreach (var handler in ts.Handlers)
+                    yield return handler.Body;
+                yield return ts.ElseBody;
+                yield return ts.FinallyBody;
+                break;
+            case MatchStatement ms:
+                foreach (var matchCase in ms.Cases)
+                    yield return matchCase.Body;
+                break;
+        }
+    }
+
+    /// <summary>Every <see cref="Identifier"/> expression under a node.</summary>
+    private sealed class IdentifierUseFinder : AstVisitor
+    {
+        public SCG.List<Identifier> Found { get; } = new();
+
+        public override void VisitIdentifier(Identifier node)
+        {
+            Found.Add(node);
+            base.VisitIdentifier(node);
+        }
+    }
+
+    /// <summary>Finds <c>name</c> among the identifiers of any assignment or <c>for</c> target.</summary>
+    private sealed class BindingTargetFinder(string name) : AstVisitor
+    {
+        public bool Found { get; private set; }
+
+        public override void VisitAssignment(Assignment node)
+        {
+            Found |= Names(node.Target);
+            base.VisitAssignment(node);
+        }
+
+        public override void VisitForStatement(ForStatement node)
+        {
+            Found |= Names(node.Target);
+            base.VisitForStatement(node);
+        }
+
+        private bool Names(Expression target)
+        {
+            var collector = new NameCollector(name);
+            collector.Visit(target);
+            return collector.Found;
+        }
+    }
+
+    private sealed class NameCollector(string name) : AstVisitor
+    {
+        public bool Found { get; private set; }
+
+        public override void VisitIdentifier(Identifier node)
+        {
+            if (node.Name == name)
+                Found = true;
+            base.VisitIdentifier(node);
+        }
     }
 
     /// <summary>
@@ -477,52 +676,6 @@ internal sealed class InlineProvider : ICodeActionProvider
                     symbol.EffectiveNameLine.Value,
                     symbol.EffectiveNameColumn.Value)
                 : null);
-    }
-
-    /// <summary>
-    /// Substitutes all occurrences of an identifier name in expression text with a replacement.
-    /// Uses word-boundary-aware replacement to avoid partial matches
-    /// (e.g., replacing "x" should not affect "max").
-    /// </summary>
-    private static string SubstituteIdentifier(string text, string identifier, string replacement)
-    {
-        // Use a simple word-boundary-aware approach: scan for the identifier
-        // and only replace when surrounded by non-identifier characters.
-        var result = new System.Text.StringBuilder(text.Length);
-        var i = 0;
-
-        while (i < text.Length)
-        {
-            // Check if the identifier starts at position i
-            if (i + identifier.Length <= text.Length &&
-                text.AsSpan(i, identifier.Length).SequenceEqual(identifier.AsSpan()))
-            {
-                // Check word boundaries
-                var beforeIsWordChar = i > 0 && IsIdentifierChar(text[i - 1]);
-                var afterIsWordChar = i + identifier.Length < text.Length &&
-                                      IsIdentifierChar(text[i + identifier.Length]);
-
-                if (!beforeIsWordChar && !afterIsWordChar)
-                {
-                    result.Append(replacement);
-                    i += identifier.Length;
-                    continue;
-                }
-            }
-
-            result.Append(text[i]);
-            i++;
-        }
-
-        return result.ToString();
-    }
-
-    /// <summary>
-    /// Returns true if the character can be part of a Python/Sharpy identifier.
-    /// </summary>
-    private static bool IsIdentifierChar(char c)
-    {
-        return char.IsLetterOrDigit(c) || c == '_';
     }
 
 }

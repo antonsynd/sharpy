@@ -123,6 +123,18 @@ internal sealed class SourceLines
     /// </summary>
     public Trivia? InlineComment(int line) => _lex.Value.InlineComments.TryGetValue(line, out var trivia) ? trivia : null;
 
+    /// <summary>
+    /// True when <paramref name="node"/> is the first code on its line — nothing but indentation before it. A
+    /// statement that shares its line with its block's header (<c>def f(self) -&gt; int: ...</c>, the stub body
+    /// <c>...</c>) has no whole lines of its own to move.
+    /// </summary>
+    public bool BeginsItsLine(AstNode node) =>
+        Contains(node.LineStart) && node.ColumnStart >= 1
+        && string.IsNullOrWhiteSpace(_lines[node.LineStart - 1][..Math.Min(_lines[node.LineStart - 1].Length, node.ColumnStart - 1)]);
+
+    /// <summary>True when a comment starts inside the 0-based offsets <c>[start, end)</c> — text a provider would copy or drop with it.</summary>
+    public bool HasCommentIn(int start, int end) => _lex.Value.Comments.Any(c => c.Position >= start && c.Position < end);
+
     /// <summary>Every comment on lines <paramref name="first"/>..<paramref name="last"/> (1-based), in source order.</summary>
     public IReadOnlyList<Trivia> CommentsOn(int first, int last) =>
         _lex.Value.Comments.Where(c => c.Line >= first && c.Line <= last).ToList();
@@ -150,7 +162,17 @@ internal sealed class SourceLines
     /// The source text of <paramref name="node"/>, from its start position to its end position, verbatim
     /// (its own line breaks kept); null when either position is not on the document's lines.
     /// </summary>
-    public string? NodeText(AstNode node)
+    public string? NodeText(AstNode node) =>
+        NodeSpan(node) is { } span ? Text.Substring(span.Start, span.End - span.Start) : null;
+
+    /// <summary>
+    /// The 0-based document offsets <c>[Start, End)</c> of <paramref name="node"/>; null when either position is
+    /// not on the document's lines. An end column past its line's content is accepted only when it addresses
+    /// the true end of a string literal that spans lines (the parser's <c>ColumnEnd = Column + Length</c> on the
+    /// token's START line, #2295) — any other overshoot (a token whose length is not its source length, e.g. a
+    /// normalized <c>.5</c>) is refused rather than read into the line break.
+    /// </summary>
+    public (int Start, int End)? NodeSpan(AstNode node)
     {
         if (node.LineStart == 0 || node.LineEnd == 0 || !Contains(node.LineStart) || !Contains(node.LineEnd))
             return null;
@@ -164,22 +186,31 @@ internal sealed class SourceLines
 
         var start = StartOffset(node.LineStart) + startCol;
         var end = StartOffset(node.LineEnd) + endCol;
-        if (endCol > endLine.Length && !EndsAMultiLineToken(start, end, node.LineEnd))
+        if (endCol > endLine.Length && !EndsAMultiLineString(start, end, node.LineEnd))
             return null;
 
-        return end < start || end > Text.Length ? null : Text.Substring(start, end - start);
+        return end < start || end > Text.Length ? null : (start, end);
+    }
+
+    /// <summary>The LSP position (0-based line, UTF-16 column) of a 0-based document offset.</summary>
+    public Position PositionOf(int offset)
+    {
+        var line = LineOfOffset(offset);
+        return new Position(line - 1, offset - StartOffset(line));
     }
 
     /// <summary>
-    /// True when <paramref name="end"/> is the end offset of one of the node's tokens that starts on
-    /// <paramref name="lineEnd"/> — the parser's position for a node whose last token spans lines
-    /// (<c>ColumnEnd = Column + Length</c> on the token's START line, #2295) addresses that token's true end.
+    /// True when <paramref name="end"/> is the end offset of a string literal token of the node that starts on
+    /// <paramref name="lineEnd"/> and whose last character lies on a later line.
     /// </summary>
-    private bool EndsAMultiLineToken(int start, int end, int lineEnd)
+    private bool EndsAMultiLineString(int start, int end, int lineEnd)
     {
         foreach (var token in Tokens)
         {
-            if (token.Position >= start && token.Line == lineEnd && token.Length > 0 && token.Position + token.Length == end)
+            if (token.Type is not (TokenType.String or TokenType.RawString or TokenType.ByteString))
+                continue;
+            if (token.Position >= start && token.Line == lineEnd && token.Length > 0 && token.Position + token.Length == end
+                && end <= Text.Length && LineOfOffset(end - 1) > lineEnd)
                 return true;
         }
 
@@ -218,9 +249,34 @@ internal sealed class SourceLines
 
     private string DetectIndentUnit()
     {
-        const int maxDetectableIndent = 8;
-        foreach (var content in _lines)
+        // Only a line that STARTS a logical line carries block indentation: a continuation line inside
+        // brackets (`f(  # c⏎ b)`) or a line inside a multi-line string may sit at any column (P47, #2232).
+        var tokens = Tokens;
+        var logicalStarts = new HashSet<int>();
+        var atStart = true;
+        foreach (var token in tokens)
         {
+            if (token.Type is TokenType.Newline or TokenType.Indent or TokenType.Dedent)
+            {
+                atStart = true;
+                continue;
+            }
+
+            if (token.Type == TokenType.Eof)
+                break;
+            if (atStart)
+                logicalStarts.Add(token.Line);
+            atStart = false;
+        }
+
+        const int maxDetectableIndent = 8;
+        for (var i = 0; i < _lines.Count; i++)
+        {
+            // A document that does not lex clean (a tab or 2-space indent is refused, SPY0012/SPY0013) keeps the
+            // plain first-indented-line reading.
+            if (_lex.Value.LexedClean && !logicalStarts.Contains(i + 1))
+                continue;
+            var content = _lines[i];
             if (content.Length > 0 && content[0] == '\t')
                 return "\t";
 
@@ -240,7 +296,8 @@ internal sealed class SourceLines
         IReadOnlyList<Token> Tokens,
         IReadOnlySet<int> LiteralLines,
         IReadOnlyDictionary<int, Trivia> InlineComments,
-        IReadOnlyList<Trivia> Comments)
+        IReadOnlyList<Trivia> Comments,
+        bool LexedClean)
     {
         public static LexFacts Of(string text)
         {
@@ -255,7 +312,7 @@ internal sealed class SourceLines
             catch (Exception)
             {
                 // no tokens: no literal, comment or token extent is known
-                return new LexFacts(Array.Empty<Token>(), new HashSet<int>(), new Dictionary<int, Trivia>(), Array.Empty<Trivia>());
+                return new LexFacts(Array.Empty<Token>(), new HashSet<int>(), new Dictionary<int, Trivia>(), Array.Empty<Trivia>(), false);
             }
 
             var literalLines = LiteralSpans.LinesStartingInside(text, LiteralSpans.Of(tokens, lexer.RecoveryResumes));
@@ -268,7 +325,7 @@ internal sealed class SourceLines
             }
 
             comments.Sort((a, b) => a.Position.CompareTo(b.Position));
-            return new LexFacts(tokens, literalLines, inline, comments);
+            return new LexFacts(tokens, literalLines, inline, comments, !lexer.Diagnostics.HasErrors);
 
             void Add(IReadOnlyList<Trivia>? trivia)
             {
@@ -304,9 +361,20 @@ internal static class Extent
     /// only the node's own tokens, so once the parser records the true end it returns <c>LineEnd</c> unchanged.
     /// TODO(#2295): an identity once the parser's LineEnd/ColumnEnd for a multi-line last token is fixed —
     /// then inline this to <c>node.LineEnd</c>.</para>
+    ///
+    /// <para>For a STATEMENT a second parser fact matters: a statement that ends a block (a bodiless
+    /// <c>def f(self) -&gt; int: ...</c> in an interface, a class field) records a <c>LineEnd</c> that runs on to
+    /// the next statement's line — trusting it would slice or delete that statement. So a statement's last line
+    /// is read from its own tokens alone (<see cref="StatementEndLine"/>): through the depth-0 <c>Newline</c> that
+    /// ends its logical line, or — for a compound statement — through the <c>Dedent</c> that closes its body.</para>
     /// </summary>
     public static int EndLine(AstNode node, IReadOnlyList<Token> tokens, SourceLines lines)
     {
+        if (node is Sharpy.Compiler.Parser.Ast.DecoratedStatement decorated)
+            return EndLine(decorated.Statement, tokens, lines);
+        if (node is Sharpy.Compiler.Parser.Ast.Statement statement && StatementEndLine(statement, tokens, lines) is { } statementEnd)
+            return statementEnd;
+
         var end = node.LineEnd;
         if (!lines.Contains(node.LineStart) || node.ColumnStart < 1)
             return end;
@@ -331,6 +399,80 @@ internal static class Extent
 
         return end;
     }
+
+    /// <summary>
+    /// The last line of <paramref name="statement"/> read from its tokens: from its first token, through the
+    /// bracket-depth-0 <c>Newline</c> that ends its logical line (unless an <c>Indent</c> follows — a compound
+    /// statement's header), or the <c>Dedent</c> that closes the body it opened; the line of the last character
+    /// of the last code token before that point (a multi-line literal's last line). Null when the statement's
+    /// first token is not found.
+    /// </summary>
+    private static int? StatementEndLine(Sharpy.Compiler.Parser.Ast.Statement statement, IReadOnlyList<Token> tokens, SourceLines lines)
+    {
+        if (!lines.Contains(statement.LineStart) || statement.ColumnStart < 1)
+            return null;
+
+        var startOffset = lines.StartOffset(statement.LineStart) + statement.ColumnStart - 1;
+        var first = -1;
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (tokens[i].Position >= startOffset && tokens[i].Type is not (TokenType.Indent or TokenType.Dedent or TokenType.Newline))
+            {
+                first = i;
+                break;
+            }
+        }
+
+        if (first < 0 || tokens[first].Position != startOffset)
+            return null;
+
+        int? end = null;
+        var depth = 0;
+        var blocks = 0;
+        for (var i = first; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            switch (token.Type)
+            {
+                case TokenType.Eof:
+                    return end;
+                case TokenType.Indent:
+                    blocks++;
+                    continue;
+                case TokenType.Dedent:
+                    blocks--;
+                    if (blocks <= 0 && !ContinuesWithClause(tokens, i + 1))
+                        return end;
+                    continue;
+                case TokenType.Newline:
+                    if (depth <= 0 && blocks == 0 && (i + 1 >= tokens.Count || tokens[i + 1].Type != TokenType.Indent))
+                        return end;
+                    continue;
+                case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
+                    depth--;
+                    break;
+            }
+
+            if (token.Length <= 0 || token.Position < 0)
+                continue;
+            var last = Math.Min(token.Position + token.Length - 1, lines.Text.Length - 1);
+            var tokenEnd = lines.LineOfOffset(last);
+            if (end is null || tokenEnd > end)
+                end = tokenEnd;
+        }
+
+        return end;
+    }
+
+    /// <summary>
+    /// True when the token right after the Dedent that closed the statement's body begins a further clause of
+    /// the SAME statement (another Dedent first means the clause belongs to an enclosing statement).
+    /// </summary>
+    private static bool ContinuesWithClause(IReadOnlyList<Token> tokens, int index) =>
+        index < tokens.Count && tokens[index].Type is TokenType.Elif or TokenType.Else or TokenType.Except or TokenType.Finally;
 }
 
 /// <summary>

@@ -31,9 +31,15 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
 
         // Find the statements fully contained within the selection.
         var selectedStatements = SelectionAnalyzer.FindSelectedStatements(
-            ast, context.SourceText, context.Range);
+            ast, context.SourceText, context.Range, out var owner);
 
         if (selectedStatements.Count == 0)
+            return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
+
+        // A type body's members and a module's declarations cannot become a function's body statements: no
+        // legal text exists there, so the action is not offered.
+        if (!SelectionAnalyzer.CanMoveIntoBlock(owner, selectedStatements)
+            || !SourceLines.Of(context.SourceText).BeginsItsLine(selectedStatements[0]))
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 
         // Find the containing function (if any) to get all statements for scope analysis.
@@ -66,8 +72,10 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         var returnType = DetermineReturnType(returnValues);
 
         // Determine indentation context.
-        var containingClass = SelectionAnalyzer.FindContainingClass(ast, startLine, startCol);
-        int functionIndentLevel = DetermineIndentLevel(containingFunction, containingClass);
+        // The new function is always a MODULE-level def — the call site calls it unqualified, so a class-body
+        // def (which would need `self.`) is not what it calls — inserted before the top-level statement that
+        // holds the selection (BuildTextEdits).
+        const int functionIndentLevel = 0;
 
         // Build the extracted function body from the selected source text.
         var source = SourceLines.Of(context.SourceText);
@@ -91,9 +99,8 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         var edits = BuildTextEdits(
             context.DocumentUri,
             source,
+            ast.Body,
             selectedStatements,
-            containingFunction,
-            containingClass,
             functionDef,
             callSite);
 
@@ -246,30 +253,6 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
     }
 
     /// <summary>
-    /// Determines the indentation level for the new function based on its
-    /// insertion context (module-level, class-level, or nested).
-    /// </summary>
-    private static int DetermineIndentLevel(
-        FunctionDef? containingFunction,
-        Statement? containingClass)
-    {
-        if (containingFunction is not null && containingClass is not null)
-        {
-            // Method inside a class: the extracted function goes at class body level.
-            return 1;
-        }
-
-        if (containingFunction is not null)
-        {
-            // Function at module level: the extracted function goes at module level.
-            return 0;
-        }
-
-        // Module-level statements: extracted function goes at module level.
-        return 0;
-    }
-
-    /// <summary>
     /// Builds the function body text from the selected statements' source text,
     /// re-indented appropriately, with an optional return statement appended.
     /// </summary>
@@ -318,11 +301,11 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
             sb.Append("return ");
             if (returnValues.Count == 1)
             {
-                sb.Append(returnValues[0].Name);
+                sb.Append(SharpySourceGenerator.SpellName(returnValues[0].Name));
             }
             else
             {
-                sb.Append(string.Join(", ", returnValues.Select(rv => rv.Name)));
+                sb.Append(string.Join(", ", returnValues.Select(rv => SharpySourceGenerator.SpellName(rv.Name))));
             }
         }
 
@@ -348,7 +331,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         {
             if (i > 0)
                 callExpr.Append(", ");
-            callExpr.Append(parameters[i].Name);
+            callExpr.Append(SharpySourceGenerator.SpellName(parameters[i].Name));
         }
         callExpr.Append(')');
 
@@ -362,7 +345,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         {
             // Single return value: x = extracted_method(...)
             sb.Append(indent);
-            sb.Append(returnValues[0].Name);
+            sb.Append(SharpySourceGenerator.SpellName(returnValues[0].Name));
             sb.Append(" = ");
             sb.Append(callExpr);
         }
@@ -370,7 +353,7 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         {
             // Multiple return values: x, y = extracted_method(...)
             sb.Append(indent);
-            sb.Append(string.Join(", ", returnValues.Select(rv => rv.Name)));
+            sb.Append(string.Join(", ", returnValues.Select(rv => SharpySourceGenerator.SpellName(rv.Name))));
             sb.Append(" = ");
             sb.Append(callExpr);
         }
@@ -386,9 +369,8 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
     private static IEnumerable<TextEdit> BuildTextEdits(
         OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
         SourceLines source,
+        IReadOnlyList<Statement> topLevel,
         IReadOnlyList<Statement> selectedStatements,
-        FunctionDef? containingFunction,
-        Statement? containingClass,
         string functionDef,
         string callSite)
     {
@@ -396,22 +378,20 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
 
         // Edit 1: Insert new function definition.
         // Determine insertion point based on context.
-        Position insertPosition;
-        if (containingFunction is not null && containingClass is not null)
+        // The new function is a module-level def (column 0), so it goes before the TOP-LEVEL statement that holds
+        // the selection — its first decorator line included — never inside a class body or between a decorator
+        // and its def (P47, #2232).
+        var insertLine = selectedStatements[0].LineStart;
+        foreach (var top in topLevel)
         {
-            // Inside a class method: insert before the containing method, at class body level.
-            insertPosition = PositionConverter.ToLsp(containingFunction.LineStart, 1);
+            if (top.LineStart <= insertLine && insertLine <= source.EndLine(top))
+            {
+                insertLine = top.LineStart;
+                break;
+            }
         }
-        else if (containingFunction is not null)
-        {
-            // Module-level function: insert before it.
-            insertPosition = PositionConverter.ToLsp(containingFunction.LineStart, 1);
-        }
-        else
-        {
-            // Module-level statements: insert before the first selected statement.
-            insertPosition = PositionConverter.ToLsp(selectedStatements[0].LineStart, 1);
-        }
+
+        var insertPosition = PositionConverter.ToLsp(insertLine, 1);
 
         var insertEdit = new TextEdit
         {
