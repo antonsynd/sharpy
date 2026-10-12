@@ -377,12 +377,14 @@ internal static class Extent
     /// <c>x = """a⏎b"""</c>) records <c>LineEnd = Previous.Line</c>, the token's START line, so a provider
     /// slicing through <c>LineEnd</c> leaves the literal's tail lines behind. The rule is monotone and reads
     /// only the node's own tokens, so once the parser records the true end it returns <c>LineEnd</c> unchanged.
-    /// TODO(#2295): an identity once the parser's LineEnd/ColumnEnd for a multi-line last token is fixed —
-    /// then inline this to <c>node.LineEnd</c>.</para>
+    /// TODO(#2295): an identity for a non-statement node once the parser's LineEnd/ColumnEnd for a multi-line
+    /// last token is fixed; the statement arm below stays until #2297 is fixed too — only then can this be
+    /// inlined to <c>node.LineEnd</c>.</para>
     ///
     /// <para>For a STATEMENT a second parser fact matters: a statement that ends a block (a bodiless
     /// <c>def f(self) -&gt; int: ...</c> in an interface, a class field) records a <c>LineEnd</c> that runs on to
-    /// the next statement's line — trusting it would slice or delete that statement. So a statement's last line
+    /// the next statement's line (#2297, a residue of #1736) — trusting it would slice or delete that statement.
+    /// So a statement's last line
     /// is read from its own tokens alone (<see cref="StatementEndLine"/>): through the depth-0 <c>Newline</c> that
     /// ends its logical line, or — for a compound statement — through the <c>Dedent</c> that closes its body.</para>
     /// </summary>

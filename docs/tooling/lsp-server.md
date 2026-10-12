@@ -97,10 +97,12 @@ An action that moves or rewrites code you wrote keeps it the way you wrote it:
 - **The document's line breaks are kept.** In a document that uses `\r\n` or `\r`, every line an action writes ends
   the same way.
 - **Where no legal text exists, the action is not offered.** No action turns a document that parses into one that
-  does not. The known exception: Extract method and Extract variable can still spell an inferred parameter or
+  does not. The known exceptions: Extract method and Extract variable can still spell an inferred parameter or
   variable type the parser does not accept (for example a builtin's `Callable[...]` type, or a bare list type), and
   Extract method can take a builtin or a name the selection binds as a parameter
-  ([#2294](https://github.com/antonsynd/sharpy/issues/2294)).
+  ([#2294](https://github.com/antonsynd/sharpy/issues/2294)); and Convert to match re-spells a comparand from
+  the literal's value, so a raw-string comparand (`if x == r"\d":`) becomes `case r"\\d":`, which is not a
+  pattern ([#2296](https://github.com/antonsynd/sharpy/issues/2296)).
 
 Organize Imports on
 
