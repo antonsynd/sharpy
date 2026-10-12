@@ -88,6 +88,10 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         // Edit 1: Insert variable declaration before the statement
         // Insert at the beginning of the containing statement's line
         var insertPosition = PositionConverter.ToLsp(containingStatement.LineStart, 1);
+        // A bare tuple (`1, 2` on the right of `let a, b = 1, 2`) is not an initializer: in a declaration it takes
+        // its parentheses, or `result: … = 1, 2` does not parse (SPY0103) (P47, #2232).
+        if (expression is TupleLiteral && !IsWrappedInParentheses(source, span.Start, span.End))
+            expressionSourceText = "(" + expressionSourceText + ")";
         var declarationLine = declarationText + expressionSourceText + source.DocumentLineBreak;
         edits.Add(new TextEdit
         {
@@ -122,6 +126,41 @@ internal sealed class ExtractVariableProvider : ICodeActionProvider
         });
 
         return Task.FromResult<IReadOnlyList<CodeAction>>(actions);
+    }
+
+    /// <summary>
+    /// True when the text at <c>[start, end)</c> is one parenthesized group: its first token is <c>(</c> and the
+    /// matching <c>)</c> is its last token (<c>(1, 2)</c> yes; <c>(f), g</c> no), read from the lexer's tokens.
+    /// </summary>
+    private static bool IsWrappedInParentheses(SourceLines source, int start, int end)
+    {
+        var depth = 0;
+        var first = true;
+        foreach (var token in source.Tokens)
+        {
+            if (token.Position < start || token.Length <= 0)
+                continue;
+            if (token.Position >= end)
+                break;
+            if (token.Type is Sharpy.Compiler.Lexer.TokenType.Newline or Sharpy.Compiler.Lexer.TokenType.Indent
+                or Sharpy.Compiler.Lexer.TokenType.Dedent)
+                continue;
+            if (first && token.Type != Sharpy.Compiler.Lexer.TokenType.LeftParen)
+                return false;
+            first = false;
+            if (token.Type is Sharpy.Compiler.Lexer.TokenType.LeftParen or Sharpy.Compiler.Lexer.TokenType.LeftBracket
+                or Sharpy.Compiler.Lexer.TokenType.LeftBrace)
+                depth++;
+            else if (token.Type is Sharpy.Compiler.Lexer.TokenType.RightParen or Sharpy.Compiler.Lexer.TokenType.RightBracket
+                or Sharpy.Compiler.Lexer.TokenType.RightBrace)
+            {
+                depth--;
+                if (depth == 0 && token.Position + token.Length < end)
+                    return false;
+            }
+        }
+
+        return !first && depth == 0;
     }
 
     /// <summary>

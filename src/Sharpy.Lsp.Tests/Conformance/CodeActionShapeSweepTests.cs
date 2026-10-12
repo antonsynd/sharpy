@@ -625,7 +625,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         Add(LineBreak, LineBreakVerdict(source, after));
         if (spec.Shape == ShapeClass.Move)
         {
-            Add(Line, LineVerdict(source, edits, exemptions));
+            Add(Line, LineVerdict(source, edits, exemptions) ?? DecoratorVerdict(source, after));
             Add(Blank, BlankVerdict(source, edits, exemptions));
         }
 
@@ -633,6 +633,51 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         if (diagnosticsApi is not null && after.Parses)
             Add(Diagnostics, DiagnosticsVerdict(diagnosticsApi, source, after));
         return verdicts;
+    }
+
+    /// <summary>
+    /// <c>line</c>, decorator anchors (P2.T5c): every run of decorator lines of S (lines whose code starts with
+    /// <c>@</c>) sits directly above the same next code line in T — comment and blank lines between them aside,
+    /// indentation aside (a moved region is re-indented). A Move action that inserts or moves a line between a
+    /// decorator and its definition hands the decorator to another definition; the text still parses.
+    /// </summary>
+    internal static string? DecoratorVerdict(SweepText source, SweepText applied)
+    {
+        var before = DecoratorAnchors(source.Lines);
+        var after = DecoratorAnchors(applied.Lines);
+        foreach (var (key, n) in before)
+        {
+            if (after.GetValueOrDefault(key) < n)
+                return $"decorator moved off its definition: '{Clip(key)}' ({after.GetValueOrDefault(key)} of {n} still directly above it)";
+        }
+
+        return null;
+    }
+
+    private static SCG.Dictionary<string, int> DecoratorAnchors(IReadOnlyList<string> lines)
+    {
+        var anchors = new SCG.Dictionary<string, int>(StringComparer.Ordinal);
+        var run = new SCG.List<string>();
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+            if (line.StartsWith('@'))
+            {
+                run.Add(line);
+                continue;
+            }
+
+            if (run.Count > 0)
+            {
+                var key = string.Join(" | ", run) + " => " + line;
+                anchors[key] = anchors.GetValueOrDefault(key) + 1;
+                run.Clear();
+            }
+        }
+
+        return anchors;
     }
 
     /// <summary><c>parse</c>: S parses and T does not.</summary>
@@ -1414,11 +1459,31 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             return spec.Name is "extract-method" or "extract-variable" ? SpellingIssue : MeaningIssue;
         if (bucket != Parse || applied is null)
             return ShapeIssue;
-        if (spec.Name == "extract-variable")
+        if (spec.Name == "extract-variable" && InsideSynthesizedDeclaration(applied))
             return SpellingIssue;
         if (spec.Name == "extract-method" && InsideSynthesizedParameterList(applied))
             return SpellingIssue;
         return ShapeIssue;
+    }
+
+    private const string SynthesizedVariable = "result";
+
+    /// <summary>
+    /// True when <paramref name="applied"/>'s first parse error lies inside the head of the declaration Extract variable
+    /// synthesizes — <c>result: T = </c>, its name or type annotation, up to and including the <c>=</c> — a type
+    /// spelling (#2294). An error anywhere else (the copied expression, the replaced site) is the edit's shape.
+    /// </summary>
+    private static bool InsideSynthesizedDeclaration(SweepText applied)
+    {
+        if (applied.FirstErrorLine is not { } line || applied.FirstErrorColumn is not { } column || line < 1 || line > applied.Lines.Count)
+            return false;
+        var text = applied.Lines[line - 1];
+        var name = text.Length - text.TrimStart().Length;
+        if (!text.AsSpan(name).StartsWith(SynthesizedVariable + ":", StringComparison.Ordinal)
+            && !text.AsSpan(name).StartsWith(SynthesizedVariable + " =", StringComparison.Ordinal))
+            return false;
+        var equals = text.IndexOf(" = ", name, StringComparison.Ordinal);
+        return column > name && (equals < 0 || column <= equals + 2);
     }
 
     private const string SynthesizedDef = "def extracted_method(";
@@ -1445,8 +1510,44 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         CiteOf(spec, Parse, misplaced).Should().Be(ShapeIssue, "the error is the def's position, not its spelling");
         CiteOf(spec, Diagnostics, null).Should().Be(SpellingIssue);
         CiteOf(Actions.Single(a => a.Name == "wrap-try"), Diagnostics, null).Should().Be(MeaningIssue);
-        CiteOf(Actions.Single(a => a.Name == "extract-variable"), Parse, misplaced).Should().Be(SpellingIssue);
+        CiteOf(Actions.Single(a => a.Name == "extract-variable"), Parse, misplaced).Should().Be(ShapeIssue,
+            "an extract-variable parse error outside its synthesized declaration is the edit's shape (P2.T5c)");
         CiteOf(Actions.Single(a => a.Name == "prefix-underscore"), Parse, misplaced).Should().Be(ShapeIssue);
+    }
+
+    /// <summary>
+    /// Extract variable's parse cells: an error inside the synthesized <c>result: T = </c> head is a type spelling
+    /// (#2294); the same action's error at the replaced site — the edit that swallowed the line break after a
+    /// block-form match (<c>v: int = result    print(v)</c>) — is shape (#2232). The negative control is the
+    /// spelled declaration with a well-formed annotation, which parses.
+    /// </summary>
+    [Fact]
+    public void Cite_ExtractVariableErrorInsideTheSynthesizedDeclaration_IsASpelling_ElsewhereShape()
+    {
+        var spec = Actions.Single(a => a.Name == "extract-variable");
+        var spelled = SweepText.Of("def main():\n    result: Callable[[int32], str] , = f\n    print(result)\n");
+        spelled.Parses.Should().BeFalse();
+        CiteOf(spec, Parse, spelled).Should().Be(SpellingIssue);
+        var swallowed = SweepText.Of("def main():\n    result: int = 1\n    v: int = result    print(v)\n");
+        swallowed.Parses.Should().BeFalse();
+        CiteOf(spec, Parse, swallowed).Should().Be(ShapeIssue);
+        SweepText.Of("def main():\n    result: list[int] = [1]\n    print(result)\n").Parses.Should().BeTrue("the negative control parses");
+    }
+
+    /// <summary>
+    /// The decorator anchor oracle (part of <c>line</c>, P2.T5c): every run of decorator lines of the source sits
+    /// directly above the same next code line in the applied text. Positive control: Extract method inserting its
+    /// def between `@deprecated("x")` and `def main():` (the decorator now decorates the new def — SPY0466, or
+    /// silently wrong for `@dataclass`); clean control: the def inserted above the decorator.
+    /// </summary>
+    [Fact]
+    public void DecoratorVerdict_DecoratorTakenOverByAnInsertedDef_Fires_InsertedAboveIt_DoesNot()
+    {
+        var source = SweepText.Of("@deprecated(\"x\")\ndef main():\n    x = 1\n");
+        var stolen = SweepText.Of("@deprecated(\"x\")\ndef extracted_method():\n    x = 1\n\ndef main():\n    extracted_method()\n");
+        var kept = SweepText.Of("def extracted_method():\n    x = 1\n\n@deprecated(\"x\")\ndef main():\n    extracted_method()\n");
+        DecoratorVerdict(source, stolen).Should().NotBeNull();
+        DecoratorVerdict(source, kept).Should().BeNull();
     }
 
     // ================================================================

@@ -405,6 +405,8 @@ public class DispatchSiteInventoryTests
 
         // Refactoring providers — documented-by-design partial dispatch
         ["Sharpy.Lsp/Refactoring/ConvertFormsProvider.cs::ConvertFormsProvider.FormatLiteral"] = "documented-by-design:Sharpy.Lsp/Refactoring/ConvertFormsProvider.cs:FormatLiteral",
+        // P47 P2.T5c (#2232): the decorators attached above a top-level statement, for Extract method's insertion line.
+        ["Sharpy.Lsp/Refactoring/ExtractMethodProvider.cs::ExtractMethodProvider.DecoratorsOf"] = "documented-by-design:Sharpy.Lsp/Refactoring/ExtractMethodProvider.cs:DecoratorsOf",
         ["Sharpy.Lsp/Refactoring/ImplementInterfaceProvider.cs::ImplementInterfaceProvider.GetCodeActionsAsync"] = "documented-by-design:Sharpy.Lsp/Refactoring/ImplementInterfaceProvider.cs:GetCodeActionsAsync",
         // P47 (#2232): blocks under a statement, for "a declaration alone in its block is not inlined"; not found → refused.
         ["Sharpy.Lsp/Refactoring/InlineProvider.cs::InlineProvider.BodiesOf"] = "documented-by-design:Sharpy.Lsp/Refactoring/InlineProvider.cs:BodiesOf",

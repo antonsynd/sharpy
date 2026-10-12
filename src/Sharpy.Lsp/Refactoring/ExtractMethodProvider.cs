@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Parser.Ast;
@@ -362,6 +363,22 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
     }
 
     /// <summary>
+    /// The decorators attached to a top-level statement — a def's, a type's, or a <see cref="DecoratedStatement"/>'s —
+    /// all of which sit above its <c>LineStart</c>. Rendering only (documented-by-design): the kinds listed carry
+    /// decorators; every other statement has none, deliberately.
+    /// </summary>
+    private static ImmutableArray<Decorator> DecoratorsOf(Statement statement) => statement switch
+    {
+        DecoratedStatement d => d.Decorators,
+        FunctionDef f => f.Decorators,
+        ClassDef c => c.Decorators,
+        StructDef s => s.Decorators,
+        InterfaceDef i => i.Decorators,
+        EnumDef e => e.Decorators,
+        _ => ImmutableArray<Decorator>.Empty,
+    };
+
+    /// <summary>
     /// Builds the TextEdits for the extract method refactoring:
     /// 1. Insert the new function definition before the containing function (or at appropriate scope).
     /// 2. Replace the selected statements with the call site.
@@ -386,7 +403,15 @@ internal sealed class ExtractMethodProvider : ICodeActionProvider
         {
             if (top.LineStart <= insertLine && insertLine <= source.EndLine(top))
             {
+                // A def's or class's ATTACHED decorators precede its LineStart: the new def goes above the first
+                // of them, or it would take them over (SPY0466 for @deprecated; silently wrong for @dataclass).
                 insertLine = top.LineStart;
+                foreach (var decorator in DecoratorsOf(top))
+                {
+                    if (decorator.LineStart > 0 && decorator.LineStart < insertLine)
+                        insertLine = decorator.LineStart;
+                }
+
                 break;
             }
         }

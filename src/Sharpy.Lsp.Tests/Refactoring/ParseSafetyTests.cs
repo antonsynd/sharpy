@@ -203,6 +203,60 @@ public sealed class ParseSafetyTests : IDisposable
             "x = 1\ntry:\n    if x > 0:\n        print(x)\n    print(2)\nexcept Exception as e:\n    raise\n");
     }
 
+    // ---- P2.T5c F1: an expression's replaced range never takes the line break after its last token ----
+
+    /// <summary>
+    /// A block-form match whose last arm is a nested match records its end at the next line's column 1; selected
+    /// exactly by that range, the replaced span used to swallow the break (`v: str = result    print(v)`).
+    /// </summary>
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    [InlineData("\r")]
+    public void ExtractVariable_BlockMatchEndingAtTheNextLine_KeepsTheBreak(string lineBreak)
+    {
+        var text = ("def main():\n    a: int = 1\n    v: str = match a:\n        case 1: \"x\"\n        case _: match a:\n"
+            + "            case 2: \"y\"\n            case _: \"z\"\n    print(v)\n").Replace("\n", lineBreak, StringComparison.Ordinal);
+
+        Applied(text, 2, 13, 7, 0, "Extract variable").Should().Be(
+            ("def main():\n    a: int = 1\n    result: str = match a:\n        case 1: \"x\"\n        case _: match a:\n"
+            + "            case 2: \"y\"\n            case _: \"z\"\n    v: str = result\n    print(v)\n").Replace("\n", lineBreak, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A bare tuple on the right of a destructuring `let` is not an initializer on its own: the synthesized
+    /// declaration gives it its parentheses (the reclassified #2232 cells: `result: … = "x", "y"` does not parse).
+    /// </summary>
+    [Fact]
+    public void ExtractVariable_BareTuple_IsParenthesizedInTheDeclaration()
+    {
+        Applied("def main():\n    let a, b = \"x\", \"y\"\n    print(a + b)\n", 1, 15, 1, 23, "Extract variable")
+            .Should().Be("def main():\n    result: tuple[str, str] = (\"x\", \"y\")\n    let a, b = result\n    print(a + b)\n");
+    }
+
+    // ---- P2.T5c F2: Extract method never inserts between a decorator and its definition ----
+
+    [Fact]
+    public void ExtractMethod_InsideADecoratedTopLevelDef_InsertsAboveTheDecorator()
+    {
+        Applied("@deprecated(\"x\")\ndef main():\n    a = \"x\"\n    b = \"y\"\n", 2, 0, 3, 11, "Extract method")
+            .Should().Be("def extracted_method():\n    a = \"x\"\n    b = \"y\"\n\n@deprecated(\"x\")\ndef main():\n    extracted_method()\n");
+    }
+
+    [Fact]
+    public void ExtractMethod_InsideTwiceDecoratedDef_InsertsAboveBothDecorators()
+    {
+        Applied("@deprecated(\"x\")\n@static\ndef main():\n    a = \"x\"\n    b = \"y\"\n", 3, 0, 4, 11, "Extract method")
+            .Should().Be("def extracted_method():\n    a = \"x\"\n    b = \"y\"\n\n@deprecated(\"x\")\n@static\ndef main():\n    extracted_method()\n");
+    }
+
+    [Fact]
+    public void ExtractMethod_InsideAMethodOfADecoratedClass_InsertsAboveTheClassDecorator()
+    {
+        Applied("@dataclass\nclass A:\n    def m(self) -> None:\n        a = \"x\"\n        b = \"y\"\n", 3, 0, 4, 15, "Extract method")
+            .Should().Be("def extracted_method():\n    a = \"x\"\n    b = \"y\"\n\n@dataclass\nclass A:\n    def m(self) -> None:\n        extracted_method()\n");
+    }
+
     // ---- P2.T5b: the statements an action acts on are exactly the statements the selection covers ----
 
     private const string Describe = "def describe(n: int) -> str:\n    result: str = \"a\" if n == 1 else \"b\"\n    return result\n";

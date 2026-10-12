@@ -188,8 +188,26 @@ internal sealed class SourceLines
         var end = StartOffset(node.LineEnd) + endCol;
         if (endCol > endLine.Length && !EndsAMultiLineString(start, end, node.LineEnd))
             return null;
+        if (end < start || end > Text.Length)
+            return null;
 
-        return end < start || end > Text.Length ? null : (start, end);
+        // The span ends at the node's last CODE character: a block-form expression (a `match` whose last arm
+        // ends a line) records its end at the NEXT line's column 1, and a span through it would take the line
+        // break — and any trailing comment — with the expression (P47, #2232).
+        var codeEnd = -1;
+        foreach (var token in Tokens)
+        {
+            if (token.Position >= end)
+                break;
+            if (token.Position < start || token.Length <= 0
+                || token.Type is TokenType.Newline or TokenType.Indent or TokenType.Dedent or TokenType.Eof)
+                continue;
+            codeEnd = Math.Max(codeEnd, Math.Min(token.Position + token.Length, end));
+        }
+
+        if (codeEnd > start && codeEnd < end)
+            end = codeEnd;
+        return (start, end);
     }
 
     /// <summary>The LSP position (0-based line, UTF-16 column) of a 0-based document offset.</summary>
