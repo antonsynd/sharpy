@@ -46,9 +46,10 @@ public sealed class FormatterDocEditorExamplesTests : IDisposable
 
         // The instrument: the extractor found the examples the doc has (a literal, not a count of the
         // same source), and at least one changes its text — so equality is not passing on identity.
-        examples.Should().HaveCount(11);
-        examples.SelectMany(e => e.Requests).Should().HaveCount(21);
-        examples.Count(e => e.After is not null && e.After != e.Before).Should().Be(4);
+        // P50 (R-ET, #2239) added the vertical-spacing Format Document example: 11 -> 12, 21 -> 22, 4 -> 5.
+        examples.Should().HaveCount(12);
+        examples.SelectMany(e => e.Requests).Should().HaveCount(22);
+        examples.Count(e => e.After is not null && e.After != e.Before).Should().Be(5);
 
         foreach (var example in examples)
         {

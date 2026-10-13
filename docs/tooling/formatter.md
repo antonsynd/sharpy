@@ -99,6 +99,15 @@ Verbatim also means the layout inside the construct is kept: `[1,2]` stays `[1,2
 
 Some constructs have one written form, so formatting may change their spelling without changing the program. For example, an `except` clause that catches several exception types is always written with parentheses: `except KeyError, IndexError:` becomes `except (KeyError, IndexError):`.
 
+## Vertical spacing
+
+The formatter writes blank lines by two rules.
+
+- **Canonical spacing.** Two blank lines come before a top-level definition (a function, class, struct, interface, enum, union or delegate), and two after one unless the statement that follows is an import. One blank line separates two items of a body when either is a method, property or nested definition, in every body. One blank line follows the import block.
+- **Your blank lines.** A blank line you wrote between two statements is kept as one blank line, however many you wrote. The same holds between two comments, two enum members, two union cases, and two `case` arms of a `match`. Canonical spacing is a minimum, not an addition: blank lines you wrote before a top-level definition still give two, never more.
+
+A blank line you wrote is never kept at the start of a body (before its first statement, docstring or comment), between a decorator and what it decorates, or at the start or end of the file. A blank line between a comment and the statement below it is kept, because they are two separate lines of the file: one blank line, even when the statement is a definition. A blank line inside brackets is not kept, unless the construct is written as you wrote it because it has a comment inside (see the previous sections). A blank line inside a triple-quoted string is part of the string and is never changed (guarantee 1).
+
 ## When the formatter declines: SPY0912
 
 Before it writes anything, the formatter re-reads its own output and checks guarantees 2–4. If the output would drop or move a comment, drop a backtick escape, fail to parse, or change the program's structure, the formatter **declines**:
@@ -294,6 +303,51 @@ def main():
 ```
 
 A file with 25 or more lexer errors is read to its end: past the compiler's limit, the editor re-indents lines and keeps every string it can read exactly as it does in a file with fewer errors. The compiler itself still stops at 25 errors; `sharpyc emit diagnostics --max-errors N` lists the errors past the first 25.
+
+Format Document keeps one blank line wherever you wrote blank lines between two statements, and none at the start of a body or after a decorator (see [Vertical spacing](#vertical-spacing)):
+
+<!-- editor-example: document -->
+```python
+class Greeter:
+
+    @staticmethod
+
+    def hello() -> str:
+        return "hello"
+def main():
+
+    a = 1
+
+    b = 2
+    # section two
+
+
+    print(a + b)
+x = 1
+
+y = 2
+```
+
+```python
+class Greeter:
+    @staticmethod
+    def hello() -> str:
+        return "hello"
+
+
+def main():
+    a = 1
+
+    b = 2
+    # section two
+
+    print(a + b)
+
+
+x = 1
+
+y = 2
+```
 
 ## Reporting a problem
 
