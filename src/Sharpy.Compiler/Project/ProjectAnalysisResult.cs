@@ -42,9 +42,23 @@ public sealed class ProjectAnalysisResult
     public IDependencyQuery? Dependencies => DependencyGraph;
 
     /// <summary>
+    /// The file a diagnostic with no <see cref="CompilerDiagnostic.FilePath"/> belongs to in
+    /// <see cref="GetFileResult"/> (normalized; D5 of #2242). One rule for every per-file reader —
+    /// this projection, the editor's publisher, the front-end parity sweep — see
+    /// <see cref="ProjectModel.UnattributedDiagnosticTarget"/>.
+    /// </summary>
+    public string? UnattributedTarget => ProjectModel.UnattributedDiagnosticTarget;
+
+    /// <summary>
     /// Gets per-file analysis results for a specific file, compatible with
     /// <see cref="SemanticResult"/> for single-file consumers.
     /// </summary>
+    /// <remarks>
+    /// <see cref="FileAnalysisResult.Diagnostics"/> is <see cref="ProjectModel.DiagnosticsForFile"/>
+    /// over <see cref="Diagnostics"/>: every build diagnostic stamped with this file, from every
+    /// phase — not only the unit's own bag, which until #2242 hid import, declaration,
+    /// inheritance, cycle and collision errors from the editor.
+    /// </remarks>
     /// <param name="filePath">The file path to look up.</param>
     /// <returns>A per-file view, or null if the file is not in the project.</returns>
     public FileAnalysisResult? GetFileResult(string filePath)
@@ -53,11 +67,14 @@ public sealed class ProjectAnalysisResult
         if (unit == null)
             return null;
 
+        var diagnostics = ProjectModel.DiagnosticsForFile(filePath, Diagnostics);
+
         // Phase alone is not success: since #1360 a unit that parsed with errors still advances
-        // to TypeChecked when the type checker itself adds nothing, so the unit's accumulated
-        // diagnostics must also be clean (matching the single-file path, which derives success
-        // from the diagnostic bag).
-        var succeeded = unit.Phase == CompilationPhase.TypeChecked && !unit.Diagnostics.HasErrors;
+        // to TypeChecked when the type checker itself adds nothing, so the file's diagnostics
+        // must also be clean (matching the single-file path, which derives success from the
+        // diagnostic bag) — the projected set, so an import or declaration error the unit's own
+        // bag never saw also fails the file (#2242).
+        var succeeded = unit.Phase == CompilationPhase.TypeChecked && !diagnostics.Any(d => d.IsError);
         var semanticInfo = unit.FileSemanticInfo ?? ProjectModel.SemanticInfo;
 
         return new FileAnalysisResult(
@@ -65,7 +82,7 @@ public sealed class ProjectAnalysisResult
             Ast: unit.Ast,
             SemanticInfo: semanticInfo,
             SymbolTable: ProjectModel.GlobalSymbols,
-            Diagnostics: unit.Diagnostics.GetAll(),
+            Diagnostics: diagnostics,
             CommentSpans: unit.CommentSpans);
     }
 }

@@ -253,6 +253,113 @@ public class ProjectModel
     }
 
     /// <summary>
+    /// The ONE per-file projection of a project's diagnostics: every diagnostic of
+    /// <paramref name="projectBag"/> (the bag <c>sharpyc project</c> prints) that belongs to
+    /// <paramref name="filePath"/>, so a per-file consumer — the editor's per-file result
+    /// (<see cref="Project.ProjectAnalysisResult.GetFileResult"/>), the publisher, the front-end
+    /// parity sweep — sees exactly the build's diagnostics for that file (#2242).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Order: the unit's own bag first, then the project-bag entries whose
+    /// <see cref="PathNormalizer"/>-normalized <see cref="CompilerDiagnostic.FilePath"/> is this
+    /// file, then — only when this file is <see cref="UnattributedDiagnosticTarget"/> — the
+    /// project-bag entries with no file at all. Deduplicated by the bag's own key
+    /// (<c>DiagnosticBag.GetDeduplicationKey</c>), first occurrence kept: the phases that write
+    /// both bags (lex, parse, feature gates, type checking, the incremental replay) appear once.
+    /// </para>
+    /// <para>
+    /// Until #2242 the per-file view was the unit bag alone, and these phases write ONLY the
+    /// project bag, so their diagnostics never reached the editor: package/module-name
+    /// collisions (SPY0526), name resolution and declarations (Phase 3, e.g. SPY0204), import
+    /// resolution (Phase 4: SPY0300, SPY0313, …), circular imports (SPY0302), inheritance
+    /// (Phase 4b, e.g. SPY0288), the type checker's aborted arm, and the path-less ones
+    /// (cancellation SPY0901, internal compiler errors SPY0909, generator-assembly errors).
+    /// </para>
+    /// <para>
+    /// The projection is built through a bag carrying <paramref name="projectBag"/>'s warning
+    /// policy: a unit's bag is policy-less, so without it a <c>&lt;NoWarn&gt;</c>-suppressed
+    /// warning the build never prints would reappear from the unit's copy, and a
+    /// <c>&lt;WarningsAsErrors&gt;</c>-promoted one would show as a warning. A unit-bag entry
+    /// stamped with ANOTHER file's path is that file's, not this one's (it is in the project bag
+    /// under that path); a path-less unit-bag entry is the unit's own.
+    /// </para>
+    /// </remarks>
+    /// <param name="filePath">The file to project onto (any spelling <see cref="PathNormalizer"/> accepts).</param>
+    /// <param name="projectBag">The project-wide bag (<see cref="Project.ProjectAnalysisResult.Diagnostics"/>).</param>
+    /// <returns>The file's diagnostics; empty when nothing belongs to it.</returns>
+    public IReadOnlyList<CompilerDiagnostic> DiagnosticsForFile(string filePath, DiagnosticBag projectBag)
+    {
+        ArgumentNullException.ThrowIfNull(projectBag);
+        var target = PathNormalizer.Normalize(filePath);
+        var takesUnattributed = string.Equals(target, UnattributedDiagnosticTarget, StringComparison.Ordinal);
+        var projected = projectBag.CreateEmptyWithSamePolicy();
+
+        var unit = GetUnit(filePath);
+        if (unit != null)
+        {
+            foreach (var diagnostic in unit.Diagnostics.GetAll())
+            {
+                if (string.IsNullOrEmpty(diagnostic.FilePath) || IsStampedWith(diagnostic, target))
+                    projected.Add(diagnostic);
+            }
+        }
+
+        foreach (var diagnostic in projectBag.GetAll())
+        {
+            if (string.IsNullOrEmpty(diagnostic.FilePath) ? takesUnattributed : IsStampedWith(diagnostic, target))
+                projected.Add(diagnostic);
+        }
+
+        return projected.GetAll();
+    }
+
+    private static bool IsStampedWith(CompilerDiagnostic diagnostic, string normalizedPath)
+        => string.Equals(PathNormalizer.Normalize(diagnostic.FilePath!), normalizedPath, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The file a project diagnostic with no <see cref="CompilerDiagnostic.FilePath"/> is
+    /// reported on (D5 of #2242), normalized by <see cref="PathNormalizer"/>; null when the
+    /// project lists no source. The project's <see cref="ProjectConfig.EntryPoint"/> when it
+    /// names a source — by path relative to the project directory, else by file name, the way
+    /// the compiler recognizes its entry file — otherwise the first
+    /// <see cref="ProjectConfig.SourceFiles"/> entry (a library, or an entry point that names no
+    /// source), so an unstamped diagnostic (cancellation, an internal compiler error, a
+    /// generator-assembly error, #2127) always lands on a defined file and is never dropped.
+    /// </summary>
+    public string? UnattributedDiagnosticTarget
+    {
+        get
+        {
+            var sources = Config.SourceFiles;
+            if (sources.Count == 0)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(Config.EntryPoint))
+            {
+                var entryPoint = Config.EntryPoint!;
+                var entryPath = PathNormalizer.Normalize(Path.IsPathRooted(entryPoint)
+                    ? entryPoint
+                    : Path.Combine(Config.ProjectDirectory, entryPoint));
+                foreach (var source in sources)
+                {
+                    if (string.Equals(PathNormalizer.Normalize(source), entryPath, StringComparison.Ordinal))
+                        return entryPath;
+                }
+
+                var entryName = Path.GetFileName(entryPoint);
+                foreach (var source in sources)
+                {
+                    if (string.Equals(Path.GetFileName(source), entryName, StringComparison.OrdinalIgnoreCase))
+                        return PathNormalizer.Normalize(source);
+                }
+            }
+
+            return PathNormalizer.Normalize(sources[0]);
+        }
+    }
+
+    /// <summary>
     /// Indicates whether the project has any errors.
     /// </summary>
     public bool HasErrors =>

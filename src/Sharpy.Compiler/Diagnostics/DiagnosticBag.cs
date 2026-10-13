@@ -189,6 +189,15 @@ public class DiagnosticBag
     }
 
     /// <summary>
+    /// An empty bag that applies this bag's warning policy — the same suppressed codes and the
+    /// same warnings-as-errors promotion — and dedupes by the same key. Used to project a
+    /// project bag onto one file (<see cref="Model.ProjectModel.DiagnosticsForFile"/>): a
+    /// compilation unit's own bag is policy-less, so its copies must pass through the project's
+    /// policy before they can stand beside the project bag's (#2242).
+    /// </summary>
+    internal DiagnosticBag CreateEmptyWithSamePolicy() => new(_warningsAsErrors, _suppressedWarnings);
+
+    /// <summary>
     /// Opens a phase-provenance scope. Every diagnostic added while the returned scope is
     /// alive whose <see cref="CompilerDiagnostic.Phase"/> is still <see cref="CompilerPhase.Unknown"/>
     /// is back-filled with <paramref name="phase"/>. Existing explicit phases are never overwritten.
