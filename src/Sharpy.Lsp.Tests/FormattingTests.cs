@@ -348,6 +348,35 @@ public class FormattingTests : IDisposable
         result.Should().BeNull();
     }
 
+    // ---- R-ET (#2239): user blank lines between statements, Format Document ----
+
+    private const string IssueProgram =
+        "def main():\n    a = 1\n\n    b = 2\n    # section two\n\n    print(a + b)\nx = 1\n\ny = 2\n";
+
+    private const string IssueProgramFormatted =
+        "def main():\n    a = 1\n\n    b = 2\n    # section two\n\n    print(a + b)\n\n\nx = 1\n\ny = 2\n";
+
+    /// <summary>
+    /// #2239's program: a paragraph break in a body (after a statement, after a comment) and one between
+    /// module statements are kept; the canonical two blank lines after the definition are written as before.
+    /// </summary>
+    [Fact]
+    public async Task IssueProgram_UserBlankLinesKept_CanonicalSpacingUnchangedAsync()
+    {
+        var formatted = await FormatAsync(IssueProgram);
+
+        formatted.Should().Be(IssueProgramFormatted);
+    }
+
+    /// <summary>The same program with CRLF line breaks: the same runs are kept, written with the formatter's line ending.</summary>
+    [Fact]
+    public async Task IssueProgram_Crlf_UserBlankLinesKeptAsync()
+    {
+        var formatted = await FormatAsync(IssueProgram.Replace("\n", "\r\n"));
+
+        formatted.Should().Be(IssueProgramFormatted);
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

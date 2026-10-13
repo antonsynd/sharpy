@@ -343,6 +343,37 @@ public class RangeFormattingTests : IDisposable
         result.Should().BeEmpty();
     }
 
+    // ---- R-ET (#2239): user blank lines between statements, Format Selection ----
+
+    private const string BodyWithARunOfThree = "def foo():\n    x: int = 1\n\n\n\n    return x\n";
+
+    /// <summary>A selection that touches a run of blank lines applies the hunk that collapses it to one line.</summary>
+    [Fact]
+    public async Task SelectionTouchingABlankRun_CollapsesItToOneLineAsync()
+    {
+        var applied = await ApplyRangeAsync(BodyWithARunOfThree, 2, 0, 4, 0);
+
+        applied.Should().Be("def foo():\n    x: int = 1\n\n    return x\n");
+    }
+
+    /// <summary>A selection of the statement before the run only does not touch the run's deletion: no edit.</summary>
+    [Fact]
+    public async Task SelectionOfTheStatementBeforeABlankRun_LeavesTheRunAsync()
+    {
+        var edits = await FormatRangeAsync(BodyWithARunOfThree, 1, 0, 1, 14);
+
+        edits.Should().BeEmpty();
+    }
+
+    /// <summary>One blank line between statements is the formatted layout: a selection over it has nothing to apply.</summary>
+    [Fact]
+    public async Task SelectionOverAKeptBlankLine_NoEditAsync()
+    {
+        var edits = await FormatRangeAsync("def foo():\n    x: int = 1\n\n    return x\n", 0, 0, 3, 12);
+
+        edits.Should().BeEmpty();
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

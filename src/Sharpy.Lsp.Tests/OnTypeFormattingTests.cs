@@ -400,6 +400,22 @@ public class OnTypeFormattingTests : IDisposable
         }
     }
 
+    /// <summary>R-ET (#2239): on type on the line after a blank line re-indents that line only — the blank line stays.</summary>
+    [Fact]
+    public async Task LineAfterABlankLine_OnlyItsIndentationChangesAsync()
+    {
+        // The over-indented line opens the body (an over-indent of a LATER line would be an unexpected
+        // indent, which on type leaves alone); the blank line above it is never touched.
+        var source = "def foo():\n\n        x: int = 1\n";
+        var edits = await OnTypeAsync(source, line: 2, character: 9, ch: "\n");
+
+        edits.Should().NotBeNull();
+        edits!.Should().ContainSingle();
+        edits.First().Range.Start.Line.Should().Be(2);
+        edits.First().Range.End.Line.Should().Be(2);
+        edits.First().NewText.Should().Be("    ");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
