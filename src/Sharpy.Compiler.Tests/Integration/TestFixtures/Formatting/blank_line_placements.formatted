@@ -1,0 +1,117 @@
+# cell: module-start — the two blank lines above are dropped
+import os  # cell: after-comment (comment, blank, statement)
+import sys  # cell: between-imports
+
+x = 1  # cell: after-import-block (canonical 1; a run of 2)
+y = 2  # cell: module-between-statements
+# cell: before-a-leading-comment (one empty and one whitespace-only line above)
+z = 3
+
+
+# cell: run-of-five-above, then a comment before a def
+def body_cells(n: int) -> int:  # cell: comment-blank-def (Decision 4)
+    """Docstring."""  # cell: body-start-before-docstring (dropped)
+    a = 1  # cell: after-docstring
+    b = 2  # cell: inside-function-body
+    # cell: a-run-of-two-above, before a comment
+    c = a + b  # cell: after-comment-in-body
+    if c > 0:
+        d = 1  # cell: body-start-of-if (dropped)
+        e = 2  # cell: inside-nested-block
+    elif c < 0:  # cell: before-elif
+        d = 2
+    else:  # cell: before-else
+        d = 3
+    for i in range(n):  # cell: after-block
+        # cell: body-start-before-leading-comment (the blank above is dropped)
+        print(i)
+    try:
+        d = 4
+    except ValueError:  # cell: before-except
+        d = 5
+    finally:  # cell: before-finally
+        print(d)
+    match n:
+        case 1:
+            d = 6
+        case _:  # cell: between-match-statement-arms
+            d = 7
+    s = match n:
+        case 3: "three"  # cell: before-first-match-expression-arm (dropped)
+        case _: "other"  # cell: between-match-expression-arms
+    t = s  # cell: after-match-expression-statement (#2227)
+
+    def inner() -> int:  # cell: nested-def-in-function-body (canonical 1)
+        return 1
+
+    u = [1, 2]  # cell: blank-inside-brackets (not a run; the canonical rewrite joins the lines)
+    v = [  # cell: bracket-with-an-inner-comment (verbatim, its blank line stays)
+        1,
+
+        2,
+    ]
+    w = """line one
+
+line three"""  # cell: blank-inside-a-triple-quoted-string (string content)
+    return d + e + len(s) + len(t) + inner() + len(u) + len(v) + len(w)
+    # cell: between-body-end-comments (first)
+    # cell: between-body-end-comments (second)
+
+
+def two_depths() -> None:
+    if True:
+        pass
+        # cell: body-end-comment at the if body
+    # cell: body-end-comment at the function body
+
+
+@decorator_one
+@decorator_two  # cell: between-two-decorators (dropped)
+def decorated() -> None:  # cell: decorator-to-header (dropped)
+    pass
+
+
+@decorator_one
+# cell: a-comment-after-a-decorator
+def decorated_after_comment() -> None:  # cell: after-the-comment-that-follows-a-decorator (kept)
+    pass
+
+
+class Point:
+    x: int = 0  # cell: class-body-start (dropped)
+    y: int = 0  # cell: class-body-between-fields (canonical 0)
+
+    def norm(self) -> int:  # cell: field-to-method (canonical 1)
+        return self.x + self.y
+
+    def scale(self, k: int) -> int:  # cell: between-methods, a run of 2 (canonical 1)
+        return self.x * k
+
+
+class Service:
+    @staticmethod
+    def make() -> int:  # cell: class-body-start-before-a-decorated-member (dropped)
+        return 1
+
+
+class Documented:
+    """Class docstring."""  # cell: class-body-start-before-docstring (dropped)
+    value: int = 0  # cell: after-class-docstring
+
+
+enum Color:
+    RED = 1
+    GREEN = 2  # cell: between-enum-members
+
+
+union Shape:
+    case Circle(radius: float)
+    case Square(side: float)  # cell: between-union-cases
+
+    def area(self) -> float:  # cell: last-case-to-first-method (canonical 1)
+        return 0.0
+
+
+final = 1
+# cell: before-an-end-of-file-comment (kept)
+# cell: end-of-file-after-a-trailing-comment (the two blank lines below are dropped)
