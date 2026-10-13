@@ -79,6 +79,43 @@ internal sealed class UnparseWriter
             _lineEndedByBlockExpression = true;
     }
 
+    /// <summary>
+    /// Ensures the output ends with at least <paramref name="count"/> blank lines (P50, R-ET #2239): the
+    /// canonical spacing before an anchor and a user's blank-line run both go through here, so the larger
+    /// of the two is written, never their sum. Only at a line start of a non-empty output — no blank line
+    /// is ever written at the start of the file or in the middle of a line. The line endings are
+    /// appended directly, never through the absorbing <see cref="WriteLine()"/>: a block expression's
+    /// pending host terminator (#2227) stays pending, so it still ends the host's line, not a blank one.
+    /// </summary>
+    public void EnsureBlankLines(int count)
+    {
+        if (_sb.Length == 0 || !_atLineStart)
+            return;
+        var lineEndings = 0;
+        var end = _sb.Length;
+        while (end >= _lineEnding.Length && EndsWithLineEndingAt(end))
+        {
+            lineEndings++;
+            end -= _lineEnding.Length;
+        }
+
+        if (lineEndings == 0)
+            return;
+        for (var blank = lineEndings - 1; blank < count; blank++)
+            _sb.Append(_lineEnding);
+    }
+
+    private bool EndsWithLineEndingAt(int end)
+    {
+        for (var i = 0; i < _lineEnding.Length; i++)
+        {
+            if (_sb[end - _lineEnding.Length + i] != _lineEnding[i])
+                return false;
+        }
+
+        return true;
+    }
+
     public void WriteLine(string text)
     {
         Write(text);
