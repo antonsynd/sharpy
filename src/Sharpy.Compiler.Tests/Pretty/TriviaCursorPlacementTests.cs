@@ -59,6 +59,28 @@ public class TriviaCursorPlacementTests
         TriviaCursor.FromTokens(tokens, "x = 1\n\ny = 2\n").PlacementOf(run).Should().Be(BlankRunPlacement.Between);
     }
 
+    /// <summary>
+    /// <see cref="TriviaCursor.TakeDetached"/> takes the items before an anchor up to and including the
+    /// last blank-line run among them — what a blank line separates from the anchor — and leaves the
+    /// comments directly above the anchor pending (owner ruling 2026-10-13, P50).
+    /// </summary>
+    [Theory]
+    [InlineData("x = 1\n\n# a\n\ndef f():\n    pass\n", 5, "blank,# a,blank", "")]
+    [InlineData("x = 1\n# a\n\n# b\ndef f():\n    pass\n", 5, "# a,blank", "# b")]
+    [InlineData("x = 1\n# a\n# b\ndef f():\n    pass\n", 4, "", "# a,# b")]
+    [InlineData("x = 1\n\n\ndef f():\n    pass\n", 4, "blank", "")]
+    public void TakeDetached_TakesThroughTheLastBlankRun_LeavesTheAttachedComments(string source, int defLine, string detached, string attached)
+    {
+        var cursor = TriviaCursor.FromTokens(Lex(source), source);
+        cursor.TakeBefore(2);
+
+        Describe(cursor.TakeDetached(defLine)).Should().Be(detached);
+        Describe(cursor.TakeBefore(defLine)).Should().Be(attached);
+
+        static string Describe(List<Trivia> items)
+            => string.Join(",", items.Select(t => t.Kind == TriviaKind.BlankLines ? "blank" : t.Text));
+    }
+
     private static IReadOnlyList<Token> Lex(string source)
         => FileCompilationPipeline.Lex(new SourceText(source, "<placement>"), NullLogger.Instance, preserveTrivia: true).Tokens;
 

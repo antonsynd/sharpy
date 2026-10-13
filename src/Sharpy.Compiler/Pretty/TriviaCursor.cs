@@ -235,6 +235,30 @@ internal sealed class TriviaCursor
         return taken;
     }
 
+    /// <summary>
+    /// The items before <paramref name="line"/> (as <see cref="TakeBefore"/> takes them) up to and
+    /// including the LAST blank-line run among them: what a blank line separates from the anchor at
+    /// <paramref name="line"/>. The comments after that run — directly above the anchor — stay pending
+    /// for it. Empty when no run precedes the anchor.
+    /// </summary>
+    public List<Trivia> TakeDetached(int line)
+    {
+        var end = _head - 1;
+        for (var j = _head; j < _items.Count; j++)
+        {
+            var t = _items[j];
+            if (!(t.Line < line || (t.Kind == TriviaKind.BlankLines && t.Line == line)))
+                break;
+            if (t.Kind == TriviaKind.BlankLines)
+                end = j;
+        }
+
+        var taken = new List<Trivia>();
+        while (_head <= end)
+            taken.Add(_items[_head++]);
+        return taken;
+    }
+
     /// <summary>The comments on lines [<paramref name="lineStart"/>, <paramref name="lineEnd"/>] other than the inline comment that ends line <paramref name="lineEnd"/> — a header's INNER comments.</summary>
     public List<Trivia> TakeInner(int lineStart, int lineEnd)
     {

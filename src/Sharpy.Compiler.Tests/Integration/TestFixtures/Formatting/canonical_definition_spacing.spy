@@ -1,0 +1,31 @@
+"""A module docstring followed by a definition: two blank lines (owner ruling 2026-10-13, P50)."""
+def first() -> None:
+    pass
+import json  # a definition followed by an import: two blank lines (owner ruling 2026-10-13)
+x = 1
+
+# detached: a blank line separates this comment from the definition below
+
+def detached() -> None:
+    pass
+# attached: no blank line, so the comment moves with the definition
+def attached() -> None:
+    pass
+
+# detached after a definition: two blank lines above it and two below it
+
+@decorator_one
+def decorated_after_detached() -> None:
+    pass
+y = 2
+# a detached block of two comments
+# ends here
+
+# the last comment block stays attached
+class Holder:
+    value: int = 0
+
+    # in a class body the canonical one line already brackets a comment between members
+
+    def get(self) -> int:
+        return self.value

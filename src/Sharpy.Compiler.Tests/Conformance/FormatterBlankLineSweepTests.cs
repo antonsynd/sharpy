@@ -276,8 +276,9 @@ public class FormatterBlankLineSweepTests
         // Q's items map onto F's by their keys: the formatter may add an item (the `...` body of a
         // bodyless definition) but never moves one, so a longest common subsequence is the alignment.
         var toF = Align(qItems, fItems);
+        var qRuns = Runs(Lex(q));
         var between = new HashSet<int>();
-        foreach (var run in Runs(Lex(q)).Where(r => r.Placement == Placement.Between))
+        foreach (var run in qRuns.Where(r => r.Placement == Placement.Between))
         {
             var index = qItems.FindIndex(item => item.StartLine == run.Trivia.Line);
             if (index < 0 || toF[index] < 0)
@@ -290,6 +291,19 @@ public class FormatterBlankLineSweepTests
             between.Add(toF[index]);
         }
 
+        // The detached-comment rule (owner ruling 2026-10-13): where it applies, the gap is restated
+        // here — the run-free twin F₀ attaches every comment to the definition, so it cannot supply it.
+        var overrides = new Dictionary<int, int>();
+        foreach (var (qIndex, gap) in DetachedCommentGaps(qItems, qRuns))
+        {
+            if (toF[qIndex] < 0)
+            {
+                yield return (Instrument, $"the item at Q line {qItems[qIndex].StartLine} ('{qItems[qIndex].Key}') has no counterpart in F");
+                yield break;
+            }
+            overrides[toF[qIndex]] = gap;
+        }
+
         var fGaps = Gaps(f, fItems);
         var f0Gaps = Gaps(f0, f0Items);
         string? lost = null;
@@ -300,7 +314,8 @@ public class FormatterBlankLineSweepTests
             shape ??= $"trailing blank lines: F={fGaps.Trailing} F₀={f0Gaps.Trailing}";
         for (var i = 1; i < fItems.Count; i++)
         {
-            var expected = between.Contains(i) ? Math.Max(1, f0Gaps.Before[i]) : f0Gaps.Before[i];
+            var expected = overrides.TryGetValue(i, out var restated) ? restated
+                : between.Contains(i) ? Math.Max(1, f0Gaps.Before[i]) : f0Gaps.Before[i];
             if (fGaps.Before[i] == expected)
                 continue;
             var at = $"before F line {fItems[i].StartLine} ('{fItems[i].Key}'): {fGaps.Before[i]} blank line(s), expected {expected} (F₀: {f0Gaps.Before[i]})";
@@ -318,6 +333,88 @@ public class FormatterBlankLineSweepTests
             yield return (BlankLength, "Format(Q⁺) != Format(Q): the run's length reaches the output");
         if (fAgain != f)
             yield return (NotIdempotent, "Format(F) != F");
+    }
+
+    private static readonly HashSet<TokenType> DefinitionKeywords = new()
+    {
+        TokenType.Def, TokenType.Class, TokenType.Struct, TokenType.Interface, TokenType.Enum,
+        TokenType.Union, TokenType.Delegate, TokenType.Async,
+    };
+
+    /// <summary>
+    /// The gaps the detached-comment rule fixes (owner ruling 2026-10-13, black's layout), restated: for
+    /// a top-level definition (a module-level line starting with a definition keyword, or the first of
+    /// its decorators) whose own-line comments above it (at column 1 — an indented comment is a closing
+    /// body's end) contain a blank-line run AFTER at least one
+    /// comment, the comments up to the last such run are module-level content. The item right after
+    /// that run gets the canonical 2 (the definition, or the first comment still attached to it); the
+    /// first detached comment gets 2 when the previous top-level statement is a definition, else 1 when a
+    /// run precedes it, else 0. Bodies are untouched (their canonical spacing already agrees).
+    /// </summary>
+    internal static IEnumerable<(int Index, int Gap)> DetachedCommentGaps(IReadOnlyList<Item> items, IReadOnlyList<Run> runs)
+    {
+        var runLines = runs.Where(r => r.Placement == Placement.Between).Select(r => r.Trivia.Line).ToHashSet();
+        var lastTopLevelIsDefinition = false;
+        var previousTopLevel = (TokenType?)null;
+        for (var d = 0; d < items.Count; d++)
+        {
+            var item = items[d];
+            if (item.Depth != 0)
+                continue;
+            var continuesDecorators = previousTopLevel == TokenType.At && PreviousCode(items, d) is { Depth: 0, First: TokenType.At };
+            previousTopLevel = item.First;
+            if (continuesDecorators)
+                continue;
+            var startsDefinition = item.First is { } kind && (DefinitionKeywords.Contains(kind) || kind == TokenType.At && DecoratesDefinition(items, d));
+            if (startsDefinition)
+            {
+                var c0 = d;
+                // Module-level comments only: a comment indented at a closing body's column is that
+                // body's end (the unparser's CloseBody claims it), not the definition's.
+                while (c0 > 0 && items[c0 - 1].Depth < 0 && items[c0 - 1].Column == 1)
+                    c0--;
+                var j = -1;
+                for (var k = d; k > c0; k--)
+                {
+                    if (runLines.Contains(items[k].StartLine))
+                    {
+                        j = k;
+                        break;
+                    }
+                }
+
+                if (j > 0)
+                {
+                    yield return (j, 2);
+                    if (c0 > 0)
+                        yield return (c0, lastTopLevelIsDefinition ? 2 : runLines.Contains(items[c0].StartLine) ? 1 : 0);
+                }
+            }
+
+            lastTopLevelIsDefinition = startsDefinition;
+        }
+    }
+
+    private static Item? PreviousCode(IReadOnlyList<Item> items, int index)
+    {
+        for (var k = index - 1; k >= 0; k--)
+        {
+            if (items[k].Depth >= 0)
+                return items[k];
+        }
+        return null;
+    }
+
+    /// <summary>True when the decorator line at <paramref name="index"/> decorates a definition (the first non-decorator line after it starts one).</summary>
+    private static bool DecoratesDefinition(IReadOnlyList<Item> items, int index)
+    {
+        for (var k = index + 1; k < items.Count; k++)
+        {
+            if (items[k].Depth < 0 || items[k].First == TokenType.At)
+                continue;
+            return items[k].First is { } kind && DefinitionKeywords.Contains(kind);
+        }
+        return false;
     }
 
     // ================================================================
@@ -400,7 +497,7 @@ public class FormatterBlankLineSweepTests
     /// An item: a logical line or an own-line comment, with its first and last source line (1-based) and
     /// its key — the first token's type and value, or the comment's text — which aligns Q's items with F's.
     /// </summary>
-    internal readonly record struct Item(int StartLine, int EndLine, string Key);
+    internal readonly record struct Item(int StartLine, int EndLine, string Key, int Depth = -1, TokenType? First = null, int Column = 0);
 
     /// <summary>For each item of <paramref name="a"/>, the index of its counterpart in <paramref name="b"/> (or −1): a longest common subsequence of the keys.</summary>
     internal static int[] Align(IReadOnlyList<Item> a, IReadOnlyList<Item> b)
@@ -451,23 +548,28 @@ public class FormatterBlankLineSweepTests
         var tokens = Lex(text);
         var items = new List<Item>();
         var open = false;
-        int start = 0, end = 0;
+        int start = 0, end = 0, depth = 0, lineDepth = 0;
         var key = "";
+        TokenType? first = null;
         foreach (var token in tokens)
         {
+            if (token.Type == TokenType.Indent)
+                depth++;
+            else if (token.Type == TokenType.Dedent)
+                depth--;
             if (!open)
             {
                 foreach (var trivia in token.LeadingTrivia ?? Array.Empty<Trivia>())
                 {
                     if (trivia.Kind == TriviaKind.Comment && !trivia.IsInline)
-                        items.Add(new Item(trivia.Line, trivia.Line, "#" + FormatterTwins.CommentText(trivia)));
+                        items.Add(new Item(trivia.Line, trivia.Line, "#" + FormatterTwins.CommentText(trivia), Column: trivia.Column));
                 }
             }
 
             if (token.Type is TokenType.Newline or TokenType.Eof)
             {
                 if (open)
-                    items.Add(new Item(start, Math.Max(end, token.Type == TokenType.Newline ? token.Line : end), key));
+                    items.Add(new Item(start, Math.Max(end, token.Type == TokenType.Newline ? token.Line : end), key, lineDepth, first));
                 open = false;
                 continue;
             }
@@ -480,6 +582,8 @@ public class FormatterBlankLineSweepTests
                 start = token.Line;
                 end = token.Line;
                 key = $"{token.Type}:{token.Value}";
+                lineDepth = depth;
+                first = token.Type;
             }
 
             end = Math.Max(end, EndLine(token, text));
@@ -601,6 +705,16 @@ public class FormatterBlankLineSweepTests
         Judge(q2, "x = 1\nz\ny = 2\n", "x = 1\nz\ny = 2\n", "x = 1\nz\ny = 2\n", "x = 1\nz\ny = 2\n")
             .Select(o => o.Bucket).Should().Equal(BlankLost);
         Judge(q2, inserted, "x = 1\ny = 2\n", inserted, inserted).Select(o => o.Bucket).Should().Equal(Instrument);
+
+        // The detached-comment rule (owner ruling 2026-10-13): a comment a blank line separates from
+        // the definition is module-level; the definition gets its 2 directly above it. F₀ (runs
+        // deleted) attaches the comment, so the oracle restates these two gaps.
+        const string q3 = "x = 1\n\n# c\n\ndef f():\n    pass\n";
+        const string f03 = "x = 1\n\n\n# c\ndef f():\n    pass\n";
+        const string ruled3 = "x = 1\n\n# c\n\n\ndef f():\n    pass\n";
+        Judge(q3, ruled3, f03, ruled3, ruled3).Should().BeEmpty();
+        const string attachedShape = "x = 1\n\n\n# c\n\ndef f():\n    pass\n";
+        Judge(q3, attachedShape, f03, attachedShape, attachedShape).Select(o => o.Bucket).Should().Equal(BlankShape);
     }
 
     /// <summary>

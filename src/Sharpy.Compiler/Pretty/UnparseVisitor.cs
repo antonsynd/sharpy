@@ -42,7 +42,6 @@ internal sealed partial class UnparseVisitor : AstVisitor
         }
 
         var fmt = _options.Formatting;
-        bool hasWrittenNonImport = false;
         bool lastWasImport = false;
 
         for (int i = 0; i < module.Body.Length; i++)
@@ -54,22 +53,35 @@ internal sealed partial class UnparseVisitor : AstVisitor
             bool isImport = stmt.UnwrapDecorated() is ImportStatement or FromImportStatement;
             bool isDef = stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef;
 
-            if (fmt != null && i > 0)
+            if (fmt != null)
             {
-                if (isDef || (hasWrittenNonImport && !isImport && module.Body[i - 1] is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef))
+                // Two blank lines after a top-level definition, whatever follows — an import too
+                // (owner ruling 2026-10-13, P50; black's layout).
+                var afterDef = i > 0 && IsTopLevelDef(module.Body[i - 1]);
+                if (isDef)
+                {
+                    if (afterDef)
+                        _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
+                    // A comment separated from the definition by a blank line is module-level
+                    // content, written here; the definition's two blank lines go directly above
+                    // it and the comments attached to it (owner ruling 2026-10-13, P50; black's
+                    // layout). Anything written before — code, the module docstring, a detached
+                    // comment — gets them; a definition that opens the file gets none.
+                    if (_cursor is { HasSource: true })
+                        WriteOwnLine(_cursor.TakeDetached(FirstLineOf(stmt)));
+                    _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
+                }
+                else if (afterDef)
                 {
                     _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
                 }
-                else if (lastWasImport && !isImport)
+                else if (i > 0 && lastWasImport && !isImport)
                 {
                     _w.EnsureBlankLines(1);
                 }
             }
 
             VisitStatementWithTrivia(stmt);
-
-            if (!isImport)
-                hasWrittenNonImport = true;
             lastWasImport = isImport;
         }
 
@@ -85,6 +97,23 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
     private static bool IsTopLevelDef(Statement stmt) =>
         stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef;
+
+    /// <summary>The first source line of <paramref name="stmt"/>: its first decorator's, else its header's.</summary>
+    private static int FirstLineOf(Statement stmt)
+    {
+        var header = stmt is DecoratedStatement decorated ? decorated.Statement : stmt;
+        var line = header.LineStart;
+        var decorators = DecoratorsOf(stmt);
+        if (!decorators.IsDefaultOrEmpty)
+        {
+            foreach (var decorator in decorators)
+            {
+                if (decorator.LineStart > 0 && (line <= 0 || decorator.LineStart < line))
+                    line = decorator.LineStart;
+            }
+        }
+        return line;
+    }
 
     #region Trivia anchors
 

@@ -21,7 +21,7 @@ z = 3
 
 # cell: run-of-five-above, then a comment before a def
 
-def body_cells(n: int) -> int:  # cell: comment-blank-def (Decision 4)
+def body_cells(n: int) -> int:  # cell: detached-comment-before-def (owner ruling 2026-10-13: two blank lines directly above the def)
 
     """Docstring."""  # cell: body-start-before-docstring (dropped)
 
