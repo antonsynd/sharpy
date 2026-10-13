@@ -1,0 +1,13 @@
+# The formatter blank-line sweep's ratchet (FormatterBlankLineSweepTests, plan P50, #2239; R-ET 2026-10-04).
+#
+# Two kinds of entry:
+#   stem twin bucket # #issue reason                 — one failing cell
+#   pin twin bucket count digest # #issue reason     — every failing stem of a (twin, bucket) key
+# twin   — identity | comment
+# bucket — instrument | blankLost | blankShape | blankLength | notIdempotent (the class doc defines each)
+# count/digest — the failing stems of the key: their number, and the first 16 hex chars of SHA-256 over the
+#          sorted, \n-joined stem names ("-" for none) — the code-action-shape-allowlist.txt precedent.
+# A failing cell no entry covers is red; a row whose bucket holds now is red (drain on fix); a pin whose count or
+# digest differs is red in both directions. The census anchors the entry counts at literals.
+pin identity blankLost 1057 f69173c5a2114904 # #2239 a user blank line between statements is deleted (R-ET): every Between run written as no line
+pin comment blankLost 1057 f69173c5a2114904 # #2239 a user blank line between statements is deleted (R-ET): every Between run written as no line
