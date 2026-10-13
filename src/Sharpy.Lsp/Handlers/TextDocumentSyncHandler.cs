@@ -135,7 +135,10 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
     private Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
     {
         var sourceText = _workspace.GetSourceText(uri);
-        _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText);
+
+        // The single-file result carries its import closure's diagnostics too; each is published on
+        // its own file, positioned against that file's disk text — the text the closure analyzed.
+        _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText, DiagnosticPublisher.ReadSourceTextFromDisk);
         return Task.CompletedTask;
     }
 

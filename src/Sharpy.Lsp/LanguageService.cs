@@ -616,7 +616,7 @@ internal sealed class LanguageService : IDisposable
         return overlay != null ? config.WithInMemorySources(overlay) : config;
     }
 
-    private static string? UriToFilePath(string uri)
+    internal static string? UriToFilePath(string uri)
     {
         if (Uri.TryCreate(uri, UriKind.Absolute, out var parsed) && parsed.IsFile)
             return parsed.LocalPath;
@@ -628,7 +628,7 @@ internal sealed class LanguageService : IDisposable
         return null;
     }
 
-    private static string FilePathToUri(string filePath)
+    internal static string FilePathToUri(string filePath)
     {
         var fullPath = System.IO.Path.GetFullPath(filePath);
         return new Uri(fullPath).ToString();

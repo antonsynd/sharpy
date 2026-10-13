@@ -1,9 +1,13 @@
 using FluentAssertions;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Text;
 using Sharpy.Lsp;
 using Xunit;
+using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Tests;
 
@@ -480,5 +484,232 @@ public class DiagnosticPublisherTests
 
         result.RelatedInformation!.Select(r => r.Message).Should().Equal(
             "In generated source Foo:Bar", "'H' is first declared here");
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Publication partitions by file (P53 D4, #2242). An analysis result may hold diagnostics of
+    // other files — the single-file door returns its synthetic project's whole bag, import
+    // closure included. Each diagnostic is published on the file it belongs to and positioned
+    // against THAT file's text; positioning lib.spy's SPY0204 against main.spy's buffer threw
+    // ArgumentOutOfRangeException and dropped main.spy's whole notification.
+    // ---------------------------------------------------------------------------------------
+
+    private static readonly string PartitionDir =
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sharpy-publisher-partition");
+    private static readonly string MainPath = System.IO.Path.Combine(PartitionDir, "main.spy");
+    private static readonly string LibPath = System.IO.Path.Combine(PartitionDir, "lib.spy");
+    private static readonly string MainUri = new Uri(MainPath).ToString();
+    private static readonly string LibUri = new Uri(LibPath).ToString();
+
+    // 17 characters: any span starting past offset 17 cannot be positioned against this text.
+    private const string MainSource = "x: int = 1\ny = x\n";
+
+    // lib.spy: twelve lines, the duplicate declaration on line 12 at offset well past main's end.
+    private static readonly string LibSource =
+        string.Concat(Enumerable.Range(1, 11).Select(i => $"v{i}: int = {i}\n")) + "class Widget:\n    pass\n";
+
+    private static CompilerDiagnostic LibDuplicateClass(string? filePath)
+    {
+        var start = LibSource.IndexOf("Widget", StringComparison.Ordinal);
+        return new CompilerDiagnostic(
+            Message: "Duplicate declaration of 'Widget'",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 12,
+            Column: 7,
+            FilePath: filePath,
+            Code: "SPY0204",
+            Span: new TextSpan(start, "Widget".Length));
+    }
+
+    private static SemanticResult ResultOf(params CompilerDiagnostic[] diagnostics)
+        => new() { Diagnostics = diagnostics };
+
+    [Fact]
+    public void BuildPublications_SiblingFileDiagnostic_IsPublishedOnItsOwnUri_AndNothingThrows()
+    {
+        LibSource.IndexOf("Widget", StringComparison.Ordinal).Should().BeGreaterThan(MainSource.Length,
+            "the cell needs a sibling span that main.spy's text cannot resolve");
+        var own = new CompilerDiagnostic(
+            "own", CompilerDiagnosticSeverity.Error, Line: 2, Column: 1, Code: "SPY0200", Span: new TextSpan(11, 1));
+        // The same sibling file spelled two ways (a path and a file URI) is one file.
+        var sibling = LibDuplicateClass(LibPath);
+        var siblingAsUri = LibDuplicateClass(LibUri) with { Message = "second" };
+
+        IReadOnlyList<PublishDiagnosticsParams>? publications = null;
+        var act = () => publications = DiagnosticPublisher.BuildPublications(
+            MainUri, ResultOf(own, sibling, siblingAsUri), new SourceText(MainSource, MainPath),
+            sourceTextFor: null, configuration: null);
+
+        act.Should().NotThrow("a sibling's span must never be positioned against the open buffer's text");
+        publications!.Select(p => p.Uri.GetFileSystemPath()).Should().Equal(MainPath, LibPath);
+
+        var mainDiagnostics = publications![0].Diagnostics.ToList();
+        mainDiagnostics.Select(d => d.Code?.String).Should().Equal("SPY0200");
+        mainDiagnostics[0].Range.Should().Be(new LspRange(1, 0, 1, 1), "the document's own span resolves against its own text");
+
+        var libDiagnostics = publications[1].Diagnostics.ToList();
+        libDiagnostics.Select(d => d.Message!.String).Should().Equal("Duplicate declaration of 'Widget'", "second");
+        libDiagnostics.Should().AllSatisfy(d => d.Range.Should().Be(new LspRange(11, 6, 11, 6),
+            "with no text for lib.spy the recorded line/column is the position, zero-width"));
+    }
+
+    [Fact]
+    public void BuildPublications_SiblingFileDiagnostic_IsPositionedAgainstTheResolvedSiblingText()
+    {
+        var requested = new List<string>();
+        SourceText? Resolve(string uri)
+        {
+            requested.Add(uri);
+            return string.Equals(uri, LibUri, StringComparison.Ordinal) ? new SourceText(LibSource, LibPath) : null;
+        }
+
+        var publications = DiagnosticPublisher.BuildPublications(
+            MainUri, ResultOf(LibDuplicateClass(LibPath)), new SourceText(MainSource, MainPath), Resolve, null);
+
+        requested.Should().Equal(new[] { LibUri }, "the resolver is asked for the sibling only, by the URI it is published on");
+        publications.Select(p => p.Uri.GetFileSystemPath()).Should().Equal(MainPath, LibPath);
+        publications[0].Diagnostics.Should().BeEmpty("main.spy owns none of them — and the empty notification clears it");
+        publications[1].Diagnostics.Single().Range.Should().Be(new LspRange(11, 6, 11, 12),
+            "the span is resolved against lib.spy's own text");
+    }
+
+    [Fact]
+    public void BuildPublications_SameFileDiagnostic_InRangeSpan_YieldsTheSpansExactRange()
+    {
+        // Positive control for the cell above: the identical diagnostic stamped with the
+        // document's own path, its span inside the document's text, converts to the span's range.
+        var start = MainSource.IndexOf('y');
+        var diag = LibDuplicateClass(MainPath) with { Line = 2, Column = 1, Span = new TextSpan(start, 1) };
+
+        var publications = DiagnosticPublisher.BuildPublications(
+            MainUri, ResultOf(diag), new SourceText(MainSource, MainPath), sourceTextFor: null, configuration: null);
+
+        publications.Should().ContainSingle();
+        publications[0].Uri.GetFileSystemPath().Should().Be(MainPath);
+        publications[0].Diagnostics.Single().Range.Should().Be(new LspRange(1, 0, 1, 1));
+    }
+
+    [Fact]
+    public void BuildPublications_NullFilePath_LandsOnTheRequestingDocument()
+    {
+        var diag = new CompilerDiagnostic(
+            "pathless", CompilerDiagnosticSeverity.Error, Line: 1, Column: 1, FilePath: null, Code: "SPY0200",
+            Span: new TextSpan(0, 1));
+
+        var publications = DiagnosticPublisher.BuildPublications(
+            MainUri, ResultOf(diag), new SourceText(MainSource, MainPath), sourceTextFor: null, configuration: null);
+
+        publications.Should().ContainSingle();
+        publications[0].Uri.GetFileSystemPath().Should().Be(MainPath);
+        publications[0].Diagnostics.Single().Range.Should().Be(new LspRange(0, 0, 0, 1));
+    }
+
+    [Fact]
+    public void BuildPublications_NoDiagnostics_StillPublishesAnEmptySetOnTheDocument()
+    {
+        var publications = DiagnosticPublisher.BuildPublications(
+            MainUri, ResultOf(), new SourceText(MainSource, MainPath), sourceTextFor: null, configuration: null);
+
+        publications.Should().ContainSingle();
+        publications[0].Uri.GetFileSystemPath().Should().Be(MainPath);
+        publications[0].Diagnostics.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildPublications_GeneratedSourceDiagnostic_IsReroutedBeforePartitioning()
+    {
+        // The reroute stamps the document URI, so a generated-source diagnostic lands on the
+        // document at its trigger decorator — never in a partition of its own, and its span
+        // (an offset into the GENERATED text) is never positioned against the document.
+        var source =
+            "class GenerateEquals:\n" +
+            "    def generate(self, context: int) -> int:\n" +
+            "        return 0\n" +
+            "\n" +
+            "@[GenerateEquals]\n" +
+            "class Point:\n" +
+            "    x: int = 0\n";
+        var analysis = new CompilerApi().Analyze(source);
+        var generator = analysis.SymbolTable!.LookupType("GenerateEquals");
+        generator.Should().NotBeNull();
+        generator!.IsSourceGenerator = true;
+        var point = analysis.Ast!.Body.OfType<ClassDef>().Single(c => c.Name == "Point");
+        var trigger = point.Decorators.Single(d => d.Name == "GenerateEquals");
+        analysis.SemanticInfo!.AddGeneratorBinding(point, generator, trigger);
+
+        var generated = new CompilerDiagnostic(
+            "type mismatch in generated code", CompilerDiagnosticSeverity.Error, Line: 3, Column: 1,
+            FilePath: "<generated:GenerateEquals:Point>", Code: "SPY0552", Span: new TextSpan(5000, 3));
+        var unrerouted = generated with { FilePath = "<generated:NoSuchGenerator:Point>", Message = "unbound" };
+
+        var publications = DiagnosticPublisher.BuildPublications(
+            MainUri, analysis with { Diagnostics = new[] { generated, unrerouted } },
+            new SourceText(source, MainPath), sourceTextFor: null, configuration: null);
+
+        publications.Should().ContainSingle("both generated diagnostics belong to the requesting document");
+        publications[0].Uri.GetFileSystemPath().Should().Be(MainPath);
+        var diagnostics = publications[0].Diagnostics.ToList();
+        diagnostics.Select(d => d.Message!.String).Should().Equal("type mismatch in generated code", "unbound");
+        diagnostics[0].Range.Start.Should().Be(new Position(trigger.LineStart - 1, trigger.ColumnStart - 1));
+        diagnostics[0].RelatedInformation!.Single().Message.Should().Contain("<generated:GenerateEquals:Point>");
+        diagnostics[1].Range.Should().Be(new LspRange(2, 0, 2, 0),
+            "an unrerouted generated position indexes the generated text: line/column only");
+    }
+
+    [Fact]
+    public void BuildPublications_ProblemCap_AppliesPerNotification()
+    {
+        var configuration = new LspConfiguration();
+        configuration.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":1}}"""));
+        var diagnostics = new[]
+        {
+            new CompilerDiagnostic("own-1", CompilerDiagnosticSeverity.Error, Line: 1, Column: 1),
+            new CompilerDiagnostic("own-2", CompilerDiagnosticSeverity.Error, Line: 2, Column: 1),
+            LibDuplicateClass(LibPath),
+            LibDuplicateClass(LibPath) with { Message = "lib-2" },
+        };
+
+        var publications = DiagnosticPublisher.BuildPublications(
+            MainUri, ResultOf(diagnostics), new SourceText(MainSource, MainPath), null, configuration);
+
+        publications.Select(p => p.Diagnostics.Count()).Should().Equal(1, 1);
+        publications[0].Diagnostics.Single().Message!.String.Should().Be("own-1");
+        publications[1].Diagnostics.Single().Message!.String.Should().Be("Duplicate declaration of 'Widget'");
+    }
+
+    [Fact]
+    public void ReadSourceTextFromDisk_ReadsAnExistingFile_AndAnswersNullForAnAbsentOrNonFileUri()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sharpy-publisher-disk-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        try
+        {
+            var path = System.IO.Path.Combine(dir, "lib.spy");
+            System.IO.File.WriteAllText(path, LibSource);
+
+            DiagnosticPublisher.ReadSourceTextFromDisk(new Uri(path).ToString())!.ToString().Should().Be(LibSource);
+            DiagnosticPublisher.ReadSourceTextFromDisk(new Uri(System.IO.Path.Combine(dir, "gone.spy")).ToString())
+                .Should().BeNull("a file deleted since analysis falls back to line/column ranges");
+            DiagnosticPublisher.ReadSourceTextFromDisk("untitled:Untitled-1").Should().BeNull();
+        }
+        finally
+        {
+            System.IO.Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConvertDiagnostic_SpanOutsideTheText_FallsBackToLineColumn_InsteadOfThrowing()
+    {
+        // A span that starts past the end of the supplied text was recorded against another text
+        // (or an older version of this one). The recorded line/column is text-independent; a
+        // clamp would invent an end-of-file position the diagnostic never named.
+        var diag = LibDuplicateClass(MainPath);
+
+        Diagnostic? converted = null;
+        var act = () => converted = DiagnosticPublisher.ConvertDiagnostic(diag, new SourceText(MainSource, MainPath));
+
+        act.Should().NotThrow();
+        converted!.Range.Should().Be(new LspRange(11, 6, 11, 6));
     }
 }

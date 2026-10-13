@@ -72,7 +72,7 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
                 var result = await _languageService.GetAnalysisAsync(fileUri, ct).ConfigureAwait(false);
                 if (result is not null)
                 {
-                    _diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null);
+                    _diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null, _languageService.GetSourceText);
                 }
             }
 

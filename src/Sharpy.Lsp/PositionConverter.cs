@@ -46,13 +46,22 @@ internal static class PositionConverter
 
     /// <summary>
     /// Creates an LSP Range from a CompilerDiagnostic.
-    /// Falls back to a zero-width range at the start position if span info is absent.
+    /// Falls back to a zero-width range at the diagnostic's line/column when span info is absent,
+    /// when no text is supplied, or when the span does not start inside the supplied text.
     /// </summary>
+    /// <remarks>
+    /// A span that starts outside <paramref name="sourceText"/> was recorded against a different
+    /// text — a sibling file's diagnostic handed the open buffer's text, or an analysis the buffer
+    /// has since outrun (#2242). Clamping it would draw the squiggle at end-of-file, a position the
+    /// diagnostic never named; the recorded line/column is text-independent, so it is the fallback.
+    /// Never throws for such a span: <see cref="SourceText.GetLineAndColumn"/> does, and one throw
+    /// used to abort the whole publication it was part of.
+    /// </remarks>
     public static LspRange DiagnosticToRange(CompilerDiagnostic diagnostic, SourceText? sourceText)
     {
-        if (diagnostic.Span.HasValue && sourceText != null)
+        if (diagnostic.Span is { } span && sourceText != null && StartsInside(span, sourceText))
         {
-            return ToLspRange(diagnostic.Span.Value, sourceText);
+            return ToLspRange(span, sourceText);
         }
 
         // Fall back to line/column with zero-width range
@@ -61,4 +70,11 @@ internal static class PositionConverter
         var pos = new Position(line, col);
         return new LspRange(pos, pos);
     }
+
+    /// <summary>
+    /// True when <paramref name="span"/> starts at a position <paramref name="sourceText"/> can
+    /// resolve (end-of-text included). The end needs no check: <see cref="ToLspRange"/> clamps it.
+    /// </summary>
+    private static bool StartsInside(TextSpan span, SourceText sourceText)
+        => span.Start >= 0 && span.Start <= sourceText.Length && span.Length >= 0;
 }

@@ -9,6 +9,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Lsp;
 
@@ -26,16 +27,168 @@ internal sealed class DiagnosticPublisher
         _configuration = configuration;
     }
 
-    public void PublishDiagnostics(string uri, SemanticResult result, SourceText? sourceText)
+    /// <summary>
+    /// Publishes <paramref name="result"/>'s diagnostics, each on the file it belongs to.
+    /// </summary>
+    /// <param name="uri">The document the analysis was requested for. It always receives a
+    /// notification, empty when none of the diagnostics are its own (that clears stale squiggles).</param>
+    /// <param name="result">The analysis. Its bag may hold diagnostics of other files — the
+    /// single-file door returns the whole bag of its synthetic project, import closure included.</param>
+    /// <param name="sourceText">The text of <paramref name="uri"/>; only that document's own
+    /// diagnostics are positioned against it. Null → line/column ranges.</param>
+    /// <param name="sourceTextFor">Resolves another file's text from its document URI (the string
+    /// that file's notification is published on). Null, or a null answer → line/column ranges for
+    /// that file's diagnostics.</param>
+    public void PublishDiagnostics(
+        string uri,
+        SemanticResult result,
+        SourceText? sourceText,
+        Func<string, SourceText?>? sourceTextFor = null)
     {
-        var lspDiagnostics = ConvertDiagnostics(result.Diagnostics, sourceText, _configuration, result.SemanticQuery, uri);
+        foreach (var publication in BuildPublications(uri, result, sourceText, sourceTextFor, _configuration))
+        {
+            _server.TextDocument.PublishDiagnostics(publication);
+        }
+    }
 
-        _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
+    /// <summary>
+    /// Partitions <paramref name="result"/>'s diagnostics by the file they belong to and converts
+    /// each partition against that file's own text (#2242). The requesting document's notification
+    /// comes first and is always present; every other file a diagnostic names gets one notification
+    /// on its own URI, in first-appearance order.
+    /// </summary>
+    /// <remarks>
+    /// <para>Generated-source diagnostics are rerouted to their trigger decorator FIRST — the reroute
+    /// stamps this document's URI, so it lands in this document's partition — and partitioned
+    /// after.</para>
+    /// <para>Ownership, by <see cref="CompilerDiagnostic.FilePath"/>: null/empty, the document's own
+    /// URI, or a path (or file URI) that normalizes to the document's path → this document,
+    /// positioned against <paramref name="sourceText"/>. Another path → that file's notification,
+    /// positioned against <paramref name="sourceTextFor"/>'s answer or by line/column. A name that is
+    /// no file (<c>&lt;source&gt;</c>, a path-less buffer's virtual name; an unrerouted
+    /// <c>&lt;generated:…&gt;</c> path) → this document, the only place it can be shown — positioned
+    /// against <paramref name="sourceText"/> unless it is generated source, whose positions index the
+    /// generated text and are published by line/column only.</para>
+    /// <para>The problem cap (<c>sharpy.lsp.maxNumberOfProblems</c>) applies per notification; the
+    /// setting is per file. This method never clears a file it published to earlier and does not
+    /// name now — which route owns a file's squiggles is the caller's decision.</para>
+    /// </remarks>
+    internal static IReadOnlyList<PublishDiagnosticsParams> BuildPublications(
+        string uri,
+        SemanticResult result,
+        SourceText? sourceText,
+        Func<string, SourceText?>? sourceTextFor,
+        LspConfiguration? configuration)
+    {
+        var documentPath = LanguageService.UriToFilePath(uri);
+        var documentKey = documentPath != null ? PathNormalizer.Normalize(documentPath) : null;
+
+        var own = new System.Collections.Generic.List<Diagnostic>();
+        var foreignOrder = new System.Collections.Generic.List<string>();
+        var foreign = new Dictionary<string, (string Uri, System.Collections.Generic.List<CompilerDiagnostic> Diagnostics)>(
+            StringComparer.Ordinal);
+
+        foreach (var diag in result.Diagnostics)
+        {
+            if (IsFilteredTransitionHint(diag, configuration))
+                continue;
+
+            var rerouted = TryRerouteGeneratedDiagnostic(diag, result.SemanticQuery, uri);
+            var effective = rerouted ?? diag;
+            var generatedOrigin = rerouted != null ? diag : null;
+
+            var filePath = effective.FilePath;
+            if (string.IsNullOrEmpty(filePath) || string.Equals(filePath, uri, StringComparison.Ordinal))
+            {
+                own.Add(ConvertDiagnostic(effective, sourceText, generatedOrigin));
+                continue;
+            }
+
+            var localPath = LanguageService.UriToFilePath(filePath);
+            if (localPath == null)
+            {
+                // Names no file, so there is nowhere else to publish it. Generated-source positions
+                // index the generated text, never this one.
+                own.Add(ConvertDiagnostic(effective, IsGeneratedFilePath(filePath) ? null : sourceText, generatedOrigin));
+                continue;
+            }
+
+            var key = PathNormalizer.Normalize(localPath);
+            if (string.Equals(key, documentKey, StringComparison.Ordinal))
+            {
+                own.Add(ConvertDiagnostic(effective, sourceText, generatedOrigin));
+                continue;
+            }
+
+            if (!foreign.TryGetValue(key, out var partition))
+            {
+                partition = (LanguageService.FilePathToUri(localPath), new System.Collections.Generic.List<CompilerDiagnostic>());
+                foreign[key] = partition;
+                foreignOrder.Add(key);
+            }
+
+            partition.Diagnostics.Add(effective);
+        }
+
+        var publications = new System.Collections.Generic.List<PublishDiagnosticsParams>(1 + foreignOrder.Count)
+        {
+            CreatePublication(uri, ApplyProblemCap(own, configuration?.MaxNumberOfProblems)),
+        };
+
+        foreach (var key in foreignOrder)
+        {
+            var (foreignUri, diagnostics) = foreign[key];
+            var foreignText = sourceTextFor?.Invoke(foreignUri);
+            var converted = new System.Collections.Generic.List<Diagnostic>(diagnostics.Count);
+            foreach (var diag in diagnostics)
+            {
+                converted.Add(ConvertDiagnostic(diag, foreignText));
+            }
+
+            publications.Add(CreatePublication(foreignUri, ApplyProblemCap(converted, configuration?.MaxNumberOfProblems)));
+        }
+
+        return publications;
+    }
+
+    /// <summary>
+    /// A file's text as it is on disk, or null when it cannot be read. The text resolver for a
+    /// route whose analysis read the other files from disk — the single-file door reads its import
+    /// closure from disk, never from other open buffers — so a sibling's spans are positioned
+    /// against the text they were recorded in.
+    /// </summary>
+    /// <remarks>
+    /// An unreadable file loses no diagnostic: its diagnostics are still published, positioned by
+    /// their recorded line/column instead of their span.
+    /// </remarks>
+    internal static SourceText? ReadSourceTextFromDisk(string uri)
+    {
+        var path = LanguageService.UriToFilePath(uri);
+        if (path == null)
+            return null;
+
+        try
+        {
+            return SourceText.FromFile(path);
+        }
+        catch (IOException)
+        {
+            // Includes FileNotFoundException and DirectoryNotFoundException (deleted since analysis).
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static PublishDiagnosticsParams CreatePublication(
+        string uri, System.Collections.Generic.List<Diagnostic> diagnostics)
+        => new()
         {
             Uri = DocumentUri.From(uri),
-            Diagnostics = new Container<Diagnostic>(lspDiagnostics)
-        });
-    }
+            Diagnostics = new Container<Diagnostic>(diagnostics),
+        };
 
     public void ClearDiagnostics(string uri)
     {
@@ -54,18 +207,10 @@ internal sealed class DiagnosticPublisher
         string? documentUri = null)
     {
         var result = new System.Collections.Generic.List<Diagnostic>(diagnostics.Count);
-        var transitionHintsEnabled = configuration?.TransitionHintsEnabled ?? true;
 
         foreach (var diag in diagnostics)
         {
-            // Filter out transition hints when disabled.
-            // Transition hints are Hint-severity diagnostics in the SPY0470-SPY0479 range. BOTH
-            // conjuncts are load-bearing: the severity check is what kept the over-wide range
-            // (#1466) from suppressing the SPY0480-0484 warnings, and it stays the authority even
-            // now that the range is right — severity is never inferred from a code number here.
-            if (!transitionHintsEnabled
-                && diag.Severity == CompilerDiagnosticSeverity.Hint
-                && IsTransitionHintCode(diag.Code))
+            if (IsFilteredTransitionHint(diag, configuration))
             {
                 continue;
             }
@@ -79,6 +224,18 @@ internal sealed class DiagnosticPublisher
 
         return ApplyProblemCap(result, configuration?.MaxNumberOfProblems);
     }
+
+    /// <summary>
+    /// Filters out transition hints when they are disabled. Transition hints are Hint-severity
+    /// diagnostics in the SPY0470-SPY0479 range. BOTH conjuncts are load-bearing: the severity
+    /// check is what kept the over-wide range (#1466) from suppressing the SPY0480-0484 warnings,
+    /// and it stays the authority even now that the range is right — severity is never inferred
+    /// from a code number here.
+    /// </summary>
+    private static bool IsFilteredTransitionHint(CompilerDiagnostic diag, LspConfiguration? configuration)
+        => !(configuration?.TransitionHintsEnabled ?? true)
+            && diag.Severity == CompilerDiagnosticSeverity.Hint
+            && IsTransitionHintCode(diag.Code);
 
     /// <summary>
     /// Applies <c>sharpy.lsp.maxNumberOfProblems</c>. Returns <paramref name="diagnostics"/>

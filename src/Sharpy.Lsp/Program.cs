@@ -145,7 +145,7 @@ public class Program
                                 var result = await languageService.GetAnalysisAsync(fileUri).ConfigureAwait(false);
                                 if (result != null)
                                 {
-                                    diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null);
+                                    diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null, languageService.GetSourceText);
                                 }
                             }
                         });
