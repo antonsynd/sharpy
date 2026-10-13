@@ -410,25 +410,28 @@ def test_create_connection_timeout_omitted_none_and_value():
     # python3's timeout default is a sentinel, not None (#2236): an omitted
     # timeout takes getdefaulttimeout(), an explicit None (positional or
     # keyword) is blocking, a value is applied as-is. python3 with
-    # setdefaulttimeout(5.0) prints 5.0 / None / None / 2.0 / 2.0.
+    # setdefaulttimeout(30.0) prints 30.0 / None / None / 20.0 / 20.0.
+    # Both values also govern a loopback connect the test expects to complete,
+    # so they are ceilings a loaded runner cannot reach, not short guesses
+    # (#2278: 2.0 timed out on mainline run 38458675444).
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(("127.0.0.1", 0))
     server.listen(8)
     port = server.getsockname()[1]
-    socket.setdefaulttimeout(5.0)
+    socket.setdefaulttimeout(30.0)
     try:
         omitted: socket.socket = socket.create_connection(("127.0.0.1", port))
         none_positional: socket.socket = socket.create_connection(("127.0.0.1", port), None)
         none_keyword: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=None)
-        value_positional: socket.socket = socket.create_connection(("127.0.0.1", port), 2.0)
-        value_keyword: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=2.0)
+        value_positional: socket.socket = socket.create_connection(("127.0.0.1", port), 20.0)
+        value_keyword: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=20.0)
 
-        assert omitted.gettimeout() == 5.0
+        assert omitted.gettimeout() == 30.0
         assert none_positional.gettimeout() is None
         assert none_keyword.gettimeout() is None
-        assert value_positional.gettimeout() == 2.0
-        assert value_keyword.gettimeout() == 2.0
+        assert value_positional.gettimeout() == 20.0
+        assert value_keyword.gettimeout() == 20.0
 
         omitted.close()
         none_positional.close()
