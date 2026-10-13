@@ -130,7 +130,11 @@ public class UnparseWriterTests
     /// and the terminator stays absorbed, so exactly one blank line separates the block from what follows.
     /// </summary>
     [Fact]
-    public void EnsureBlankLines_AfterABlockExpression_IsARealLine_AndTheHostTerminatorStaysAbsorbed()
+    // Guards the flag: EnsureBlankLines must leave the pending host terminator pending (clearing it
+    // writes a second, real line through the next WriteLine — red under that mutation). Appending the
+    // ensured line through the absorbing WriteLine() instead is an equivalent mutant the visitor never
+    // reaches (every Ensure site runs after the host's terminator), so this test does not claim it.
+    public void EnsureBlankLines_AfterABlockExpression_LeavesTheHostTerminatorPending_SoTheEnsuredLineIsReal()
     {
         var writer = CreateWriter();
         writer.WriteLine("s = match n:");
