@@ -352,6 +352,8 @@ internal partial class TypeChecker
                 if (IsCurrentCallCallee(memberAccess))
                 {
                     _semanticInfo.MarkTypeReference(memberAccess);
+                    // #2242 (D6): record the binding for the editor's navigation handlers.
+                    _semanticInfo.SetModuleMemberResolution(memberAccess, moduleSymbol, builtinsQualifiedType);
                     return new UserDefinedType { Name = builtinsQualifiedType.Name, Symbol = builtinsQualifiedType };
                 }
 
@@ -386,6 +388,8 @@ internal partial class TypeChecker
                     && _symbolTable.BuiltinRegistry.GetFunctionOverloads(memberName) is { Count: > 0 })
                 {
                     _semanticInfo.MarkTypeReference(memberAccess);
+                    // #2242 (D6): record the binding for the editor's navigation handlers.
+                    _semanticInfo.SetModuleMemberResolution(memberAccess, moduleSymbol, registryFallback);
                     return new UserDefinedType { Name = registryFallback.Name, Symbol = registryFallback };
                 }
             }
@@ -437,6 +441,11 @@ internal partial class TypeChecker
                 if (exportedSymbol is TypeSymbol
                     || (exportedSymbol is TypeAliasSymbol && exportedType is UserDefinedType))
                     _semanticInfo.MarkTypeReference(memberAccess);
+                // #2242 (D6): the ONE fact of which export this spelling bound — recorded after the
+                // #1328 identity check above (so it exists exactly when the checker accepted the
+                // spelling) and with `memberName` as rewritten by the .NET PascalCase fallback, so
+                // the editor never re-derives either rule. Navigation handlers read it.
+                _semanticInfo.SetModuleMemberResolution(memberAccess, moduleSymbol, exportedSymbol);
                 return exportedType;
             }
 
@@ -3814,6 +3823,7 @@ internal partial class TypeChecker
                     }
 
                 moduleSymbol.Exports.Add(memberAccess.Member, subModule);
+                _semanticInfo.SetModuleMemberResolution(memberAccess, moduleSymbol, subModule); // #2242 (D6)
                 return new ModuleType { Symbol = subModule };
             }
         }
@@ -3842,6 +3852,7 @@ internal partial class TypeChecker
                         subModule.Exports.Add(typeSymbol.Name, typeSymbol);
 
                     moduleSymbol.Exports.Add(memberAccess.Member, subModule);
+                    _semanticInfo.SetModuleMemberResolution(memberAccess, moduleSymbol, subModule); // #2242 (D6)
                     return new ModuleType { Symbol = subModule };
                 }
             }
@@ -3857,6 +3868,10 @@ internal partial class TypeChecker
                 {
                     moduleSymbol.Exports.Add(memberAccess.Member, typeSymbol);
                     _semanticInfo.MarkTypeReference(memberAccess);
+                    // #2242 (D6): the CLR-type arm binds the TypeSymbol it just synthesized from the
+                    // reflected type (and registered as an export, so a later access hits the
+                    // Exports arm above and records the same symbol).
+                    _semanticInfo.SetModuleMemberResolution(memberAccess, moduleSymbol, typeSymbol);
                     return new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol };
                 }
             }

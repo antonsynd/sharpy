@@ -184,6 +184,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 
+    // #2242 (P53 D6): which export a MODULE-qualified member access bound — `lib.build`,
+    // `l.build` (an aliased import), `pkg.lib.build`, `lib.Widget`, a CLR sub-namespace or type
+    // reached through a .NET module. The module (not a type) is the owner, which is why this is
+    // its own table rather than a widening of _memberAccessResolutions. Recorded only where the
+    // checker ACCEPTED the spelling, so it exists exactly when the binding does. Read by the LSP's
+    // navigation handlers; emits nothing.
+    private readonly ConcurrentDictionary<MemberAccess, (ModuleSymbol Module, Symbol Member)> _moduleMemberResolutions =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1428: augmented assignment mutation lowering — when an augmented assignment matches the
     // Classify table, the emitter emits a mutation call (e.g. xs.Extend(ys)) instead of the
     // default rebind. Keyed on the Assignment node; value is the CLR method name on the
@@ -1216,6 +1225,23 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records that a module-qualified MemberAccess (<c>lib.build</c>, <c>l.build</c> after
+    /// <c>import lib as l</c>, <c>pkg.lib.build</c>, <c>lib.Widget</c>) bound the export
+    /// <paramref name="member"/> of <paramref name="module"/>. Written by the TypeChecker at each
+    /// site that accepts a member of a module receiver (#2242).
+    /// </summary>
+    public void SetModuleMemberResolution(MemberAccess memberAccess, ModuleSymbol module, Symbol member)
+    {
+        _moduleMemberResolutions[memberAccess] = (module, member);
+    }
+
+    /// <inheritdoc cref="ISemanticQuery.GetModuleMemberResolution"/>
+    public (ModuleSymbol Module, Symbol Member)? GetModuleMemberResolution(MemberAccess memberAccess)
+    {
+        return _moduleMemberResolutions.TryGetValue(memberAccess, out var resolution) ? resolution : null;
+    }
+
+    /// <summary>
     /// Records that a pattern was resolved to a specific union case type symbol, together with the
     /// scrutinee union's SUBSTITUTED type-argument vector (<paramref name="parentTypeArgs"/>): the
     /// closed <c>[int, str]</c> for a <c>Result[int, str]</c> scrutinee, the declaration's own
@@ -2220,6 +2246,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._memberAccessResolutions)
             _memberAccessResolutions.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._moduleMemberResolutions)
+            _moduleMemberResolutions.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._generatorFunctions)
             _generatorFunctions.TryAdd(kvp.Key, kvp.Value);

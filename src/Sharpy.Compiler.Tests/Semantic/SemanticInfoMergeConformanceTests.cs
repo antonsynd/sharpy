@@ -50,7 +50,7 @@ public class SemanticInfoMergeConformanceTests
     /// enumeration below cannot silently go vacuous (a refactor that renamed the collections out of
     /// the filter would drop the count, not pass a zero-field check).
     /// </summary>
-    private const int MinimumSideTableFieldCount = 78;
+    private const int MinimumSideTableFieldCount = 79;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

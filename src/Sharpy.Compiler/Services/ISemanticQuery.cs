@@ -57,6 +57,23 @@ public interface ISemanticQuery
     (TypeSymbol Owner, Symbol Member)? GetMemberAccessResolution(Parser.Ast.MemberAccess memberAccess);
 
     /// <summary>
+    /// Gets the export a MODULE-qualified member access bound: the module the receiver denotes and
+    /// the symbol its member resolved to (<c>lib.build</c>, <c>l.build</c> after
+    /// <c>import lib as l</c>, <c>pkg.lib.build</c>, <c>lib.Widget</c>, a CLR sub-namespace or type
+    /// reached through a .NET module). Returns null when the receiver is not a module or the checker
+    /// refused the member.
+    /// <para>
+    /// The consumer is the LSP's navigation handlers (definition, implementation, hover — #2242):
+    /// they read this one recorded resolution instead of re-deriving the export lookup, which would
+    /// have to re-implement the #1328 escape-identity rule and the .NET PascalCase fallback. It is a
+    /// separate fact from <see cref="GetMemberAccessResolution"/> because that table's owner is a
+    /// <see cref="TypeSymbol"/> and is read as one (<c>ConstEligibility</c> treats a recorded owner
+    /// as the declaring type) — a module is not a type.
+    /// </para>
+    /// </summary>
+    (ModuleSymbol Module, Symbol Member)? GetModuleMemberResolution(Parser.Ast.MemberAccess memberAccess);
+
+    /// <summary>
     /// Gets the recorded resolution of a member-access PATTERN head (e.g. <c>Outer.Holder.A</c>):
     /// the deepest resolved type symbol and the index of its final segment in
     /// <see cref="Parser.Ast.MemberAccessPattern.Parts"/>. Returns null when the checker recorded

@@ -348,6 +348,9 @@ internal partial class TypeChecker
                                 TypeArgs = typeArgs,
                                 SelectedOverload = modFuncSymbol,
                             });
+                            // #2242 (D6): this arm binds the member access WITHOUT CheckMemberAccess
+                            // visiting it, so the module-member fact is recorded here too.
+                            _semanticInfo.SetModuleMemberResolution(memberAccessObj, modType.Symbol, modFuncSymbol);
                             resultType = funcType;
                             return true;
                         }
@@ -377,6 +380,7 @@ internal partial class TypeChecker
                                 ReceiverType = modType,
                                 TypeArgs = typeArgs,
                             });
+                            _semanticInfo.SetModuleMemberResolution(memberAccessObj, modType.Symbol, modTypeSymbol); // #2242 (D6)
                             resultType = genericType;
                             return true;
                         }
