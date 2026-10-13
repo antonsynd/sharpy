@@ -100,13 +100,35 @@ public class ImportOutsideSourceSetEditorTests : IDisposable
     }
 
     /// <summary>
+    /// #2242 (P53 Phase 2): the per-file result the editor's handlers and publisher read for
+    /// main.spy carries the build's SPY0313, once, and is not a success. Until #2242 that result was
+    /// the unit's own bag, which import resolution never writes, so it held nothing while
+    /// <c>sharpyc project</c> printed the refusal.
+    /// </summary>
+    [Theory]
+    [InlineData("from")]
+    [InlineData("plain")]
+    public async Task PerFileResult_CarriesTheImportRefusal(string form)
+    {
+        await LoadAsync(form);
+
+        var result = await _service.GetAnalysisAsync(MainUri);
+
+        result.Should().NotBeNull($"[{form}] main.spy is a project file");
+        var errors = result!.Diagnostics.Where(d => d.IsError).ToList();
+        var refusal = errors.Should().ContainSingle($"[{form}] the build's one error on main.spy").Subject;
+        refusal.Code.Should().Be("SPY0313", $"[{form}]");
+        refusal.Line.Should().Be(1, $"[{form}] on the import");
+        IOPath.GetFileName(refusal.FilePath).Should().Be("main.spy", $"[{form}]");
+        result.Success.Should().BeFalse($"[{form}] a file whose import is refused is not a success");
+    }
+
+    /// <summary>
     /// Exactly one error, SPY0313 on main.spy's import, in the project analysis the editor indexes.
     /// </summary>
     /// <remarks>
-    /// Asserted on <see cref="LanguageService.ProjectAnalysis"/>, not on the per-file result the
-    /// publisher sends: project-mode import-resolution diagnostics stay in the project bag and never
-    /// reach a unit's bag, so the per-file result carries neither this refusal nor a missing module's
-    /// SPY0300 (measured; a pre-existing gap reported with #2234's round, not pinned here).
+    /// Asserted on <see cref="LanguageService.ProjectAnalysis"/> — the build's bag; the per-file
+    /// result carries the same refusal since #2242 (<see cref="PerFileResult_CarriesTheImportRefusal"/>).
     /// </remarks>
     private void AssertTheImportIsRefused(string form)
     {
