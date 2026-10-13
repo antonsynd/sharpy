@@ -13,6 +13,7 @@ using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Utilities;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -55,6 +56,18 @@ namespace Sharpy.Lsp.Tests.Conformance;
 ///     <c>run</c>. Compared on both fixture arities: against the Analyze baseline for single-file
 ///     fixtures, and against the AnalyzeProject baseline for multi-file ones — the latter is the
 ///     cell that would have caught #1377.</item>
+///   <item><c>LSP-project</c> — the editor in PROJECT mode (#2242): the multi-file fixture copied to
+///     a temp root under a generated <c>project.spyproj</c> listing every file,
+///     <see cref="LanguageService.InitializeProjectAsync"/>, then
+///     <see cref="LanguageService.GetAnalysisAsync"/> per file — the per-file view every handler and
+///     the diagnostic publisher read. Two checks under one key: (i) the union of the per-file
+///     in-scope multisets equals the AnalyzeProject baseline (a build diagnostic that lands in no
+///     file's result is a missing entry, so the oracle iterates the project files AND every distinct
+///     <c>FilePath</c> the project bag stamps); (ii) attribution — every diagnostic in file F's
+///     result is stamped F, or is unstamped and F is the unattributed-diagnostic target (the
+///     project's <c>EntryPoint</c>, else its first source file, plan-6ce1a5 D5). A diagnostic on
+///     the wrong file is a violation even when the union matches; it is recorded as
+///     <c>misattributed:&lt;code&gt;@&lt;file&gt;</c> in the comparison's added list.</item>
 /// </list>
 /// </para>
 ///
@@ -117,6 +130,7 @@ public class FrontEndParityTests
     private const string EntryRepl = "REPL";
     private const string EntryCompileProject = "compile-project";
     private const string EntryEmitDiagnostics = "emit-diagnostics";
+    private const string EntryLspProject = "LSP-project";
 
     // Diagnostics whose SPYnnnn number is in [1, 499] are front-end (Lexer/Parser/Semantic/
     // Validation). 500-599 = code generation, 900-999 = infrastructure, 1000+ = info notes — all
@@ -156,6 +170,7 @@ public class FrontEndParityTests
         var comparisons = new ConcurrentBag<Comparison>();
         var crashes = new ConcurrentBag<CrashRecord>();
         var skips = new ConcurrentBag<SkipRecord>();
+        var projectStats = new ProjectModeStats();
 
         var dop = Math.Max(1, ReadIntEnv("FRONTEND_PARITY_DOP", Math.Min(8, Environment.ProcessorCount)));
         await Parallel.ForEachAsync(
@@ -166,7 +181,8 @@ public class FrontEndParityTests
                 try
                 {
                     if (fixture.IsMultiFile)
-                        SweepMultiFile(api, references, fixture, comparisons, crashes);
+                        await SweepMultiFileAsync(api, references, fixture, comparisons, crashes, projectStats, ct)
+                            .ConfigureAwait(false);
                     else
                         await SweepSingleFileAsync(api, fixture, comparisons, crashes, skips, ct)
                             .ConfigureAwait(false);
@@ -188,15 +204,31 @@ public class FrontEndParityTests
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
 
+        var multiFileSwept = sampled.Count(f => f.IsMultiFile);
         WriteReport(fixtures.Count, sampled.Count, comparisons, violations, crashes.ToList(),
-            skips.ToList(), allowlist, offenders.Count, stale);
+            skips.ToList(), allowlist, offenders.Count, stale, multiFileSwept, projectStats);
 
-        _output.WriteLine($"Fixtures discovered: {fixtures.Count}  swept: {sampled.Count}  (stride {stride})");
+        _output.WriteLine($"Fixtures discovered: {fixtures.Count}  swept: {sampled.Count}  (stride {stride})  multi-file: {multiFileSwept}");
         _output.WriteLine($"Comparisons: {comparisons.Count}  Matches: {matches}  Violations: {violations.Count}");
         _output.WriteLine($"Justified-normalized skips: {skips.Count}  Crashes: {crashes.Count}");
         _output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted violations: {offenders.Count}  Stale allowlist entries: {stale.Count}");
+        _output.WriteLine(
+            $"LSP-project: compared {comparisons.Count(c => c.EntryPoint == EntryLspProject)}  " +
+            $"attributed diagnostics {projectStats.AttributedDiagnostics} (non-entry file {projectStats.AttributedNonEntryDiagnostics})  " +
+            $"unstamped project-bag diagnostics {projectStats.Unstamped.Count}");
 
         Assert.True(comparisons.Count > 0, "Front-end parity sweep produced zero comparisons.");
+
+        // Vacuity control for the LSP-project attribution oracle (#2242): the type-check phase writes
+        // both bags with the file's stamp, so a corpus whose files carry type errors must show
+        // correctly attributed diagnostics. Zero means the oracle never saw a stamped diagnostic —
+        // it would pass any attribution, right or wrong.
+        if (multiFileSwept > 0)
+        {
+            Assert.True(projectStats.AttributedDiagnostics > 0,
+                "LSP-project attribution oracle is vacuous: no per-file result carried a diagnostic " +
+                "stamped with that file across the multi-file corpus.");
+        }
 
         // A crash in any front end on any fixture is always a hard failure.
         Assert.True(crashes.IsEmpty,
@@ -340,9 +372,10 @@ public class FrontEndParityTests
 
     // ---- multi-file sweep: ProjectCompiler.Compile vs CompilerApi.AnalyzeProject ----
 
-    private void SweepMultiFile(
+    private static async Task SweepMultiFileAsync(
         CompilerApi api, string[] references, TestFixtureInfo fixture,
-        ConcurrentBag<Comparison> comparisons, ConcurrentBag<CrashRecord> crashes)
+        ConcurrentBag<Comparison> comparisons, ConcurrentBag<CrashRecord> crashes,
+        ProjectModeStats projectStats, CancellationToken ct)
     {
         var projectDir = fixture.SpyFilePath;
         var spyFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
@@ -416,7 +449,182 @@ public class FrontEndParityTests
         {
             crashes.Add(new CrashRecord(fixture.TestName, EntryEmitDiagnostics, $"{ex.GetType().Name}: {ex.Message}"));
         }
+
+        // --- LSP-project: the editor's per-file view in project mode (#2242) ---
+        try
+        {
+            await SweepLspProjectAsync(api, fixture, projectDir, spyFiles, entryPoint,
+                Signature(baselineDiags), comparisons, crashes, projectStats, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            crashes.Add(new CrashRecord(fixture.TestName, EntryLspProject, $"{ex.GetType().Name}: {ex.Message}"));
+        }
     }
+
+    /// <summary>
+    /// The <c>LSP-project</c> pair (#2242, plan-6ce1a5 Phase 1): the editor's per-file results in
+    /// project mode, read through <see cref="LanguageService.GetAnalysisAsync"/> — the seam the
+    /// diagnostic publisher and every handler read — against the build's bag.
+    /// </summary>
+    /// <remarks>
+    /// The fixture tree is shared read-only state, and <see cref="LanguageService.InitializeProjectAsync"/>
+    /// discovers its <c>.spyproj</c> in the workspace root, so the fixture is copied to a temp root and
+    /// a <c>project.spyproj</c> listing the same files as <c>MakeConfig</c> is written there. The
+    /// fixture's features travel in <c>&lt;Features&gt;</c>, the way a real project carries them;
+    /// without them every gated fixture would be an SPY0331 red that is not this class.
+    /// </remarks>
+    private static async Task SweepLspProjectAsync(
+        CompilerApi api, TestFixtureInfo fixture, string projectDir, IReadOnlyList<string> spyFiles,
+        string entryPoint, IReadOnlyList<string> baselineSig,
+        ConcurrentBag<Comparison> comparisons, ConcurrentBag<CrashRecord> crashes,
+        ProjectModeStats stats, CancellationToken ct)
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"sharpy_parity_project_{Guid.NewGuid():N}");
+        try
+        {
+            CopyFixtureTree(projectDir, tempRoot);
+            WriteProjectFile(tempRoot,
+                spyFiles.Select(f => Path.GetRelativePath(projectDir, f)), entryPoint, fixture.Features);
+
+            using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
+            using var service = new LanguageService(workspace, api, NullLogger<LanguageService>.Instance);
+            await service.InitializeProjectAsync(tempRoot, ct).ConfigureAwait(false);
+
+            var analysis = service.ProjectAnalysis;
+            if (!service.HasProject || analysis == null)
+            {
+                crashes.Add(new CrashRecord(fixture.TestName, EntryLspProject,
+                    "InitializeProjectAsync loaded no project from the generated project.spyproj"));
+                return;
+            }
+
+            var config = analysis.ProjectModel.Config;
+            var unattributedTarget = PathNormalizer.Normalize(UnattributedTargetFile(config));
+            var entryFile = config.EntryPoint != null
+                ? PathNormalizer.Normalize(Path.Combine(config.ProjectDirectory, config.EntryPoint))
+                : null;
+            var bag = analysis.Diagnostics.GetAll();
+
+            // The files the oracle reads: every project file, plus every distinct path the project bag
+            // stamps (plan-6ce1a5 [ADDED: adequacy]) — an entry stamped with a non-project path lands in
+            // no project file's result, and must surface as a missing entry, not vanish.
+            var filesToRead = new SCG.Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var uri in service.GetProjectFileUris())
+            {
+                var path = new Uri(uri).LocalPath;
+                filesToRead.TryAdd(PathNormalizer.Normalize(path), uri);
+            }
+            foreach (var d in bag)
+            {
+                if (string.IsNullOrEmpty(d.FilePath))
+                {
+                    stats.Unstamped.Add(new UnstampedRecord(fixture.TestName, d.Code ?? "<uncoded>", d.Message));
+                    continue;
+                }
+                if (Path.IsPathRooted(d.FilePath))
+                    filesToRead.TryAdd(PathNormalizer.Normalize(d.FilePath), new Uri(Path.GetFullPath(d.FilePath)).ToString());
+            }
+
+            var union = new SCG.List<CompilerDiagnostic>();
+            var misattributed = new SCG.SortedSet<string>(StringComparer.Ordinal);
+            foreach (var (normalizedFile, uri) in filesToRead.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            {
+                var result = await service.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+                if (result == null)
+                    continue;
+                var relative = RelativeToRoot(tempRoot, new Uri(uri).LocalPath);
+                foreach (var d in result.Diagnostics)
+                {
+                    union.Add(d);
+                    if (string.IsNullOrEmpty(d.FilePath))
+                    {
+                        if (normalizedFile != unattributedTarget)
+                            misattributed.Add($"misattributed:{d.Code ?? "<uncoded>"}@{relative}");
+                    }
+                    else if (PathNormalizer.Normalize(d.FilePath) != normalizedFile)
+                    {
+                        misattributed.Add($"misattributed:{d.Code ?? "<uncoded>"}@{relative}");
+                    }
+                    else
+                    {
+                        stats.CountAttributed(nonEntry: normalizedFile != entryFile);
+                    }
+                }
+            }
+
+            var unionSig = Signature(union);
+            var (added, removed) = MultisetDiff(baselineSig, unionSig);
+            added.AddRange(misattributed);
+            comparisons.Add(new Comparison(EntryLspProject, fixture.TestName, baselineSig, unionSig,
+                added, removed, Match: added.Count == 0 && removed.Count == 0));
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup of the temp copy.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Where an unstamped project-bag diagnostic belongs (plan-6ce1a5 D5): the project's
+    /// <c>EntryPoint</c>, else its first source file (a library has no entry point).
+    /// </summary>
+    private static string UnattributedTargetFile(ProjectConfig config)
+        => config.EntryPoint != null
+            ? Path.Combine(config.ProjectDirectory, config.EntryPoint)
+            : config.SourceFiles[0];
+
+    /// <summary>Copies the fixture tree, skipping build output (<c>bin/</c>, <c>obj/</c>, …).</summary>
+    private static void CopyFixtureTree(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(source, file);
+            if (CrashBundleWriter.IsNonSourceSegment(relative))
+                continue;
+            var target = Path.Combine(destination, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target);
+        }
+    }
+
+    /// <summary>
+    /// The <c>.spyproj</c> equivalent of <c>MakeConfig</c>: same root namespace, output type, entry
+    /// point and file list, plus the fixture's features.
+    /// </summary>
+    private static void WriteProjectFile(
+        string root, IEnumerable<string> relativeSources, string entryPoint, IReadOnlyList<string> features)
+    {
+        var items = string.Concat(relativeSources.Select(r =>
+            $"        <SpyFile Include=\"{System.Security.SecurityElement.Escape(r)}\" />\n"));
+        var featuresElement = features.Count > 0
+            ? $"        <Features>{string.Join(";", features)}</Features>\n"
+            : "";
+        File.WriteAllText(Path.Combine(root, "project.spyproj"),
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+            "<Project>\n" +
+            "    <PropertyGroup>\n" +
+            "        <RootNamespace>Test</RootNamespace>\n" +
+            "        <OutputType>exe</OutputType>\n" +
+            $"        <EntryPoint>{System.Security.SecurityElement.Escape(entryPoint)}</EntryPoint>\n" +
+            featuresElement +
+            "    </PropertyGroup>\n" +
+            "    <ItemGroup>\n" +
+            items +
+            "    </ItemGroup>\n" +
+            "</Project>\n");
+    }
+
+    private static string RelativeToRoot(string root, string path)
+        => Path.GetRelativePath(root, path).Replace('\\', '/');
 
     private static ModuleRegistry BuildProjectRegistry(string[] references, ProjectConfig config)
     {
@@ -586,7 +794,7 @@ public class FrontEndParityTests
         int discovered, int swept, IReadOnlyCollection<Comparison> comparisons,
         IReadOnlyCollection<Comparison> violations, IReadOnlyCollection<CrashRecord> crashes,
         IReadOnlyCollection<SkipRecord> skips, Allowlist allowlist, int nonAllowlistedViolations,
-        IReadOnlyList<string> staleAllowlistEntries)
+        IReadOnlyList<string> staleAllowlistEntries, int multiFileFixtures, ProjectModeStats projectStats)
     {
         var byEntryPoint = comparisons
             .GroupBy(c => c.EntryPoint)
@@ -630,6 +838,7 @@ public class FrontEndParityTests
                 entryPointsCompared = new[]
                 {
                     EntryCompile, EntryLsp, EntryRepl, EntryCompileProject, EntryEmitDiagnostics,
+                    EntryLspProject,
                 },
                 comparisons = comparisons.Count,
                 matches = comparisons.Count(c => c.Match),
@@ -642,6 +851,21 @@ public class FrontEndParityTests
             },
             ratchetMode = AllowlistFileExists(),
             signatureCoverage,
+            // The project-mode pairs state their coverage (#2242): how many multi-file fixtures the
+            // LSP-project pair compared, and how many diagnostics its attribution oracle saw land on
+            // the file they are stamped with (the vacuity control, asserted > 0). Unstamped
+            // project-bag entries are #2127 cells, listed so none is silently routed.
+            projectMode = new
+            {
+                multiFileFixtures,
+                lspProjectCompared = comparisons.Count(c => c.EntryPoint == EntryLspProject),
+                attributedDiagnostics = projectStats.AttributedDiagnostics,
+                attributedNonEntryDiagnostics = projectStats.AttributedNonEntryDiagnostics,
+                unstampedProjectBagDiagnostics = projectStats.Unstamped
+                    .OrderBy(u => u.Fixture, StringComparer.Ordinal)
+                    .ThenBy(u => u.Code, StringComparer.Ordinal)
+                    .Select(u => new { u.Fixture, u.Code, u.Message }),
+            },
             normalizationRules = new[]
             {
                 "N1 (all pairs): compare only Error/Warning diagnostics with SPYnnnn in [0001,0499] (Lexer/Parser/Semantic/Validation), plus SPY0522/SPY0523 — numbered in the codegen band but emitted during semantic analysis/validation; drop the rest of codegen SPY05xx (including emitter-only SPY0520), infra SPY09xx, info SPY1xxx, and uncoded diagnostics.",
@@ -655,7 +879,7 @@ public class FrontEndParityTests
             },
             byEntryPoint,
             skipsByReason,
-            violationDetails = violations.Take(200).Select(v => new
+            violationDetails = violations.OrderBy(v => v.Key, StringComparer.Ordinal).Take(5000).Select(v => new
             {
                 key = v.Key,
                 entryPoint = v.EntryPoint,
@@ -705,6 +929,31 @@ public class FrontEndParityTests
     private sealed record CrashRecord(string Fixture, string EntryPoint, string Exception);
 
     private sealed record SkipRecord(string Fixture, string EntryPoint, string Reason);
+
+    /// <summary>A project-bag diagnostic with no <c>FilePath</c> (a #2127 cell, plan-6ce1a5 D5).</summary>
+    private sealed record UnstampedRecord(string Fixture, string Code, string Message);
+
+    /// <summary>Coverage counters for the project-mode pairs, shared across the parallel sweep.</summary>
+    private sealed class ProjectModeStats
+    {
+        private int _attributed;
+        private int _attributedNonEntry;
+
+        /// <summary>Diagnostics found in the result of exactly the file they are stamped with.</summary>
+        public int AttributedDiagnostics => Volatile.Read(ref _attributed);
+
+        /// <summary>The subset of <see cref="AttributedDiagnostics"/> on a file other than the entry point.</summary>
+        public int AttributedNonEntryDiagnostics => Volatile.Read(ref _attributedNonEntry);
+
+        public ConcurrentBag<UnstampedRecord> Unstamped { get; } = new();
+
+        public void CountAttributed(bool nonEntry)
+        {
+            Interlocked.Increment(ref _attributed);
+            if (nonEntry)
+                Interlocked.Increment(ref _attributedNonEntry);
+        }
+    }
 
     /// <summary>The reviewed parity allowlist: exact <c>pair::fixture</c> keys plus simple
     /// <c>*</c>-glob patterns, each with a justification comment in the file.</summary>
