@@ -65,6 +65,11 @@ internal sealed partial class UnparseVisitor : AstVisitor
                     _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
                 else if (i > 0 && lastWasImport && !isImport)
                     _w.EnsureBlankLines(1);
+                else if (i == 0 && module.DocString != null)
+                    // One blank line after the module docstring before anything that is not a
+                    // definition — a comment, an import, a statement (owner ruling 2026-10-13 A,
+                    // P50 verify-implementation; black's layout). A definition gets its two below.
+                    _w.EnsureBlankLines(1);
                 if (isDef)
                 {
                     // A comment separated from the definition by a blank line is module-level

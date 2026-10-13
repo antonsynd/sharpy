@@ -357,14 +357,17 @@ public class FormatterBlankLineSweepTests
     /// that run gets the canonical 2 (the definition, or the first comment still attached to it); the
     /// first detached comment gets 2 when the previous top-level statement is a definition, else 1 when
     /// it is an import (the import block's one blank line is a minimum — found at verification, the
-    /// restated oracle had the writer's own omission) or a run precedes it, else 0. Bodies are untouched
-    /// (their canonical spacing already agrees).
+    /// restated oracle had the writer's own omission) or the module docstring (owner ruling 2026-10-13 A:
+    /// one blank line after it before anything that is not a definition) or a run precedes it, else 0.
+    /// Bodies are untouched (their canonical spacing already agrees).
     /// </summary>
     internal static IEnumerable<(int Index, int Gap)> DetachedCommentGaps(IReadOnlyList<Item> items, IReadOnlyList<Run> runs)
     {
         var runLines = runs.Where(r => r.Placement == Placement.Between).Select(r => r.Trivia.Line).ToHashSet();
         var lastTopLevelIsDefinition = false;
         var lastTopLevelIsImport = false;
+        var lastTopLevelIsDocstring = false;
+        var topLevelSeen = false;
         var previousTopLevel = (TokenType?)null;
         for (var d = 0; d < items.Count; d++)
         {
@@ -397,12 +400,15 @@ public class FormatterBlankLineSweepTests
                 {
                     yield return (j, 2);
                     if (c0 > 0)
-                        yield return (c0, lastTopLevelIsDefinition ? 2 : lastTopLevelIsImport || runLines.Contains(items[c0].StartLine) ? 1 : 0);
+                        yield return (c0, lastTopLevelIsDefinition ? 2 : lastTopLevelIsImport || lastTopLevelIsDocstring || runLines.Contains(items[c0].StartLine) ? 1 : 0);
                 }
             }
 
             lastTopLevelIsDefinition = startsDefinition;
             lastTopLevelIsImport = item.First is TokenType.Import or TokenType.From;
+            // The module docstring: the first top-level item of the file is a string.
+            lastTopLevelIsDocstring = !topLevelSeen && item.First == TokenType.String;
+            topLevelSeen = true;
         }
     }
 

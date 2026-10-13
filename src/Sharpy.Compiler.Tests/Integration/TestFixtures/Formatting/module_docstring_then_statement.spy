@@ -1,0 +1,4 @@
+"""A module docstring followed by a statement: one blank line after the docstring (owner ruling 2026-10-13, black's layout)."""
+x = 1
+
+y = 2

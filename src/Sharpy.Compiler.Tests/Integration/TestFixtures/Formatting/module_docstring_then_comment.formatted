@@ -1,0 +1,7 @@
+"""A module docstring followed by a comment a blank line separates from the definition below: one blank line after the docstring, two above the definition (owner ruling 2026-10-13, black's layout)."""
+
+# helpers below
+
+
+def f() -> None:
+    pass

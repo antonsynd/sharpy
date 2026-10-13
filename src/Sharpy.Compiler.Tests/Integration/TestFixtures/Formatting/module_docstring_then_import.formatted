@@ -1,0 +1,6 @@
+"""A module docstring followed by an import: one blank line after the docstring (owner ruling 2026-10-13, black's layout)."""
+
+import os
+import sys
+
+print(os.sep, sys.argv)
