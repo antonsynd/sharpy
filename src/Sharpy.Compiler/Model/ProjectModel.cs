@@ -322,7 +322,8 @@ public class ProjectModel
     /// reported on (D5 of #2242), normalized by <see cref="PathNormalizer"/>; null when the
     /// project lists no source. The project's <see cref="ProjectConfig.EntryPoint"/> when it
     /// names a source — by path relative to the project directory, else by file name, the way
-    /// the compiler recognizes its entry file — otherwise the first
+    /// the compiler recognizes its entry file; for an executable with no entry point, its `main`
+    /// file (the compiler's default entry) — otherwise the first
     /// <see cref="ProjectConfig.SourceFiles"/> entry (a library, or an entry point that names no
     /// source), so an unstamped diagnostic (cancellation, an internal compiler error, a
     /// generator-assembly error, #2127) always lands on a defined file and is never dropped.
@@ -351,6 +352,16 @@ public class ProjectModel
                 foreach (var source in sources)
                 {
                     if (string.Equals(Path.GetFileName(source), entryName, StringComparison.OrdinalIgnoreCase))
+                        return PathNormalizer.Normalize(source);
+                }
+            }
+            else if (!Config.OutputType.Equals("library", StringComparison.OrdinalIgnoreCase))
+            {
+                // An executable with no <EntryPoint> enters at its `main` file — the compiler's own
+                // default (ProjectCompiler.IsEntryPointFileForTypeCheck) — so D5 agrees with it.
+                foreach (var source in sources)
+                {
+                    if (Path.GetFileNameWithoutExtension(source).Equals("main", StringComparison.OrdinalIgnoreCase))
                         return PathNormalizer.Normalize(source);
                 }
             }

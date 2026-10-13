@@ -438,7 +438,8 @@ public class ProjectAnalysisResultTests
     /// <summary>
     /// A cancellation after parsing records SPY0901 with no file; it is projected onto the D5 file
     /// and no other. Rows: an exe whose entry point is NOT the first source (so "entry" and
-    /// "first source" disagree), and a library with no entry point (first source).
+    /// "first source" disagree), an exe with no entry point whose `main` file is not the first source
+    /// (the compiler's default entry), and a library with no entry point (first source).
     /// </summary>
     /// <remarks>
     /// A token cancelled BEFORE the call does not reach this: <c>ParseAllFiles</c> checks it before
@@ -448,26 +449,31 @@ public class ProjectAnalysisResultTests
     /// </remarks>
     [Theory]
     [InlineData("exe")]
+    [InlineData("exe-default")]
     [InlineData("library")]
-    public void UnattributedDiagnostic_LandsOnTheD5File_AndNoOther(string outputType)
+    public void UnattributedDiagnostic_LandsOnTheD5File_AndNoOther(string row)
     {
+        // "exe-default": an executable with no <EntryPoint> enters at its `main` file (the
+        // compiler's default), which is NOT the first source here.
+        var outputType = row == "library" ? "library" : "exe";
+        var entryName = row == "exe-default" ? "main.spy" : "run.spy";
         using var helper = new ProjectCompilationHelper()
             .WithRootNamespace("D5Target")
             .WithOutputType(outputType);
-        if (outputType == "exe")
+        if (row == "exe")
             helper.WithEntryPoint("run.spy");
         var files = new Dictionary<string, string>
         {
             ["alpha.spy"] = CleanMod,
-            ["run.spy"] = "import alpha\n\ndef main() -> None:\n    print(alpha.f())\n",
+            [entryName] = "import alpha\n\ndef main() -> None:\n    print(alpha.f())\n",
         };
         using var cts = new CancellationTokenSource();
         var api = new CompilerApi(new CancelAtPhase3Logger(cts));
         var (config, result) = Analyze(helper, files, "src/*.spy", api: api, ct: cts.Token);
 
-        var runPath = PathNormalizer.Normalize(config.SourceFiles.Single(f => f.EndsWith("run.spy")));
+        var runPath = PathNormalizer.Normalize(config.SourceFiles.Single(f => f.EndsWith(entryName)));
         Assert.NotEqual(runPath, PathNormalizer.Normalize(config.SourceFiles[0]));
-        var expectedTarget = outputType == "exe" ? runPath : PathNormalizer.Normalize(config.SourceFiles[0]);
+        var expectedTarget = row == "library" ? PathNormalizer.Normalize(config.SourceFiles[0]) : runPath;
         Assert.Equal(expectedTarget, result.UnattributedTarget);
 
         var cancelled = Assert.Single(result.Diagnostics.GetAll(),
