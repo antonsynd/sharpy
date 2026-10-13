@@ -55,13 +55,18 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
             if (fmt != null)
             {
-                // Two blank lines after a top-level definition, whatever follows — an import too
-                // (owner ruling 2026-10-13, P50; black's layout).
+                // The gap the PREVIOUS statement leaves below it comes first: two blank lines after
+                // a top-level definition, whatever follows — an import too (owner ruling 2026-10-13,
+                // P50; black's layout) — and one after the import block. Written before the
+                // definition's detached comments below, so a comment a blank line separates from the
+                // definition still sits under that gap instead of taking its place.
                 var afterDef = i > 0 && IsTopLevelDef(module.Body[i - 1]);
+                if (afterDef)
+                    _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
+                else if (i > 0 && lastWasImport && !isImport)
+                    _w.EnsureBlankLines(1);
                 if (isDef)
                 {
-                    if (afterDef)
-                        _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
                     // A comment separated from the definition by a blank line is module-level
                     // content, written here; the definition's two blank lines go directly above
                     // it and the comments attached to it (owner ruling 2026-10-13, P50; black's
@@ -70,14 +75,6 @@ internal sealed partial class UnparseVisitor : AstVisitor
                     if (_cursor is { HasSource: true })
                         WriteOwnLine(_cursor.TakeDetached(FirstLineOf(stmt)));
                     _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
-                }
-                else if (afterDef)
-                {
-                    _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
-                }
-                else if (i > 0 && lastWasImport && !isImport)
-                {
-                    _w.EnsureBlankLines(1);
                 }
             }
 

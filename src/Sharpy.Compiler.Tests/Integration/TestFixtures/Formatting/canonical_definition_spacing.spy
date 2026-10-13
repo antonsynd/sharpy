@@ -2,6 +2,16 @@
 def first() -> None:
     pass
 import json  # a definition followed by an import: two blank lines (owner ruling 2026-10-13)
+# detached below the import block: the block's one blank line stays above this comment (found at verification)
+
+def after_import() -> None:
+    pass
+from os import path
+# the same below a from-import, above a decorated definition
+
+@decorator_one
+def decorated_after_import() -> None:
+    pass
 x = 1
 
 # detached: a blank line separates this comment from the definition below

@@ -121,6 +121,13 @@ public class FormatterBlankLineSweepTests
         foreach (var (bucket, stems) in failing)
             _output.WriteLine($"FMTBLANK-PIN {twin} {bucket} {stems.Count} {Digest(stems)}");
 
+        // A refused cell is skipped, not judged, so the count is anchored: a blank-line change that
+        // drove Q, Q₀ or Q⁺ into SPY0912 would otherwise hide its cell behind the exemption
+        // (contract §2; 0 at 4aca8ebfe, both twins, measured).
+        verdicts.Values.Count(v => v.Refused).Should().Be(0,
+            $"the {twin} twin's refused cells are census, not judgement — a new one is a formatter refusal to fix, never a cell to skip: "
+            + string.Join(", ", verdicts.Where(kv => kv.Value.Refused).Select(kv => kv.Key).Take(10)));
+
         var problems = Compare(twin, failing, Allowlist.Value);
         if (problems.Count > 0)
         {
@@ -348,13 +355,16 @@ public class FormatterBlankLineSweepTests
     /// body's end) contain a blank-line run AFTER at least one
     /// comment, the comments up to the last such run are module-level content. The item right after
     /// that run gets the canonical 2 (the definition, or the first comment still attached to it); the
-    /// first detached comment gets 2 when the previous top-level statement is a definition, else 1 when a
-    /// run precedes it, else 0. Bodies are untouched (their canonical spacing already agrees).
+    /// first detached comment gets 2 when the previous top-level statement is a definition, else 1 when
+    /// it is an import (the import block's one blank line is a minimum — found at verification, the
+    /// restated oracle had the writer's own omission) or a run precedes it, else 0. Bodies are untouched
+    /// (their canonical spacing already agrees).
     /// </summary>
     internal static IEnumerable<(int Index, int Gap)> DetachedCommentGaps(IReadOnlyList<Item> items, IReadOnlyList<Run> runs)
     {
         var runLines = runs.Where(r => r.Placement == Placement.Between).Select(r => r.Trivia.Line).ToHashSet();
         var lastTopLevelIsDefinition = false;
+        var lastTopLevelIsImport = false;
         var previousTopLevel = (TokenType?)null;
         for (var d = 0; d < items.Count; d++)
         {
@@ -387,11 +397,12 @@ public class FormatterBlankLineSweepTests
                 {
                     yield return (j, 2);
                     if (c0 > 0)
-                        yield return (c0, lastTopLevelIsDefinition ? 2 : runLines.Contains(items[c0].StartLine) ? 1 : 0);
+                        yield return (c0, lastTopLevelIsDefinition ? 2 : lastTopLevelIsImport || runLines.Contains(items[c0].StartLine) ? 1 : 0);
                 }
             }
 
             lastTopLevelIsDefinition = startsDefinition;
+            lastTopLevelIsImport = item.First is TokenType.Import or TokenType.From;
         }
     }
 
