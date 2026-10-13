@@ -1,0 +1,10 @@
+x = 1  # cell: module-start-before-code (the two blank lines above are dropped)
+
+
+def f() -> None:
+    a = 1  # cell: function-body-start-before-the-first-statement (the blank line above is dropped)
+
+    return None  # cell: inside-a-function-body (kept)
+
+
+final = 2  # cell: end-of-file-after-code (the two blank lines below are dropped)

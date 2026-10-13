@@ -1,0 +1,1 @@
+Not a compilation test — formatting-only fixture: the placement cells one file cannot hold beside their twins in blank_line_placements — the module start before code, a function body's first statement, the end of file after code (P50, #2239)
