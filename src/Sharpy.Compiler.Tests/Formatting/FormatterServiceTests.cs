@@ -409,6 +409,7 @@ public class FormatterServiceTests
     private const string D9 = "# top\ndef a():\n    return 1  # one\n# between\ndef b():\n    # inside\n    return 2\n# tail\n";
     private const string D11 = "def main():\n        if False:\n                print(1)\n                print(2)\n";
     private const string D16 = "def main():\n        x = 1\n\n        y = 2\n        print(x, y)\n";
+    private const string D16b = "def main():\n\n        x = 1\n        y = 2\n        print(x, y)\n";
     private const string D17 = "import os\nx: int = 1\n\n\n\n\n\ndef main():\n    print(x)\n";
 
     /// <summary>A selection of whole lines <c>s..e</c> ending inside line <c>e</c> (not at column 0).</summary>
@@ -488,15 +489,32 @@ public class FormatterServiceTests
         => AssertRange(D17, Lines(7, 8), D17).Hunks.Should().BeEmpty();
 
     /// <summary>
-    /// Plan cell 9 (D16, line 1). Format deletes the blank line inside main, so lines 1–4 differ with no
-    /// unchanged line between them: one hunk, and selecting line 1 takes the whole re-indent — which
-    /// passes the net. (At 7a034b81d this request wrote `x` at 4 and left `y` at 8.)
+    /// Plan cell 9 (D16b, line 1). Format deletes the blank line at the start of main's body (a body
+    /// start keeps no blank line, R-ET #2239), so lines 1–4 differ with no unchanged line between them:
+    /// one hunk, and selecting line 1 takes the whole re-indent — which passes the net. (At 7a034b81d this
+    /// request wrote `x` at 4 and left `y` at 8.) Until P50 the cell was D16, whose blank line BETWEEN
+    /// statements Format deleted too; R-ET keeps that one (next test).
     /// </summary>
     [Fact]
-    public void FormatRange_Cell9_D16Line1_TakesTheWholeReindentHunk()
+    public void FormatRange_Cell9_D16bLine1_TakesTheWholeReindentHunk()
     {
-        var hunk = AssertRange(D16, Lines(1, 1), "def main():\n    x = 1\n    y = 2\n    print(x, y)\n").Hunks.Should().ContainSingle().Subject;
+        var hunk = AssertRange(D16b, Lines(1, 1), "def main():\n    x = 1\n    y = 2\n    print(x, y)\n").Hunks.Should().ContainSingle().Subject;
         (hunk.Start, hunk.End).Should().Be((1, 5));
+    }
+
+    /// <summary>
+    /// D16 under R-ET (#2239): the blank line between `x = 1` and `y = 2` is kept, so it is an UNCHANGED
+    /// line splitting the re-indent into two hunks. Selecting line 1 touches only the first; re-indenting
+    /// `x` alone does not parse, so Format Selection applies nothing (refused) — where until P50 it applied
+    /// the whole body. Selecting the whole body applies both hunks. Pinned as observed; the class (a
+    /// re-indent split by an unchanged line is refused on a partial selection — a line inside a
+    /// triple-quoted string splits it the same way) is a findings-ledger cell of P50, not this plan's seam.
+    /// </summary>
+    [Fact]
+    public void FormatRange_D16Line1_AReindentSplitByAKeptBlankLine_IsRefused_TheWholeBodyApplies()
+    {
+        AssertRefused(D16, Lines(1, 1));
+        AssertRange(D16, Lines(1, 4), "def main():\n    x = 1\n\n    y = 2\n    print(x, y)\n").Hunks.Should().HaveCount(2);
     }
 
     /// <summary>Plan cell 10 (D11, line 3): one hunk over lines 1–3, so "the whole re-indent".</summary>

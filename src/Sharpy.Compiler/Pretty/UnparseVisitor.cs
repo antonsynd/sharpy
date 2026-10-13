@@ -58,12 +58,11 @@ internal sealed partial class UnparseVisitor : AstVisitor
             {
                 if (isDef || (hasWrittenNonImport && !isImport && module.Body[i - 1] is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef))
                 {
-                    for (int b = 0; b < fmt.BlankLinesAroundTopLevelDefs; b++)
-                        _w.WriteLine();
+                    _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
                 }
                 else if (lastWasImport && !isImport)
                 {
-                    _w.WriteLine();
+                    _w.EnsureBlankLines(1);
                 }
             }
 
@@ -104,8 +103,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
             && module.Body.Length > 0
             && IsTopLevelDef(module.Body[module.Body.Length - 1]))
         {
-            for (int b = 0; b < fmt.BlankLinesAroundTopLevelDefs; b++)
-                _w.WriteLine();
+            _w.EnsureBlankLines(fmt.BlankLinesAroundTopLevelDefs);
         }
         WriteOwnLine(rest);
     }
@@ -163,7 +161,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
     /// <summary>
     /// THE anchor helper: every comment the unparser writes goes through here (or a body's end, or
     /// the module's end). Before the anchor's first line <paramref name="lineStart"/>, the pending
-    /// own-line comments (and blank lines, when not formatting) are written as full lines at the
+    /// own-line comments are written as full lines (and blank-line runs by <see cref="WriteBlankRun"/>) at the
     /// current indent; <paramref name="write"/> writes the anchor; the inline comment ending its
     /// header line <paramref name="headerLineEnd"/> is appended to the written header line. A
     /// comment inside the header's range [<paramref name="lineStart"/>, <paramref name="headerLineEnd"/>]
@@ -298,9 +296,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
                 {
                     if (trivia.Kind == TriviaKind.BlankLines)
                     {
-                        if (_options.Formatting == null)
-                            for (int i = 0; i < trivia.BlankLineCount; i++)
-                                _w.WriteLine();
+                        WriteBlankRun(trivia);
                         continue;
                     }
                     _w.WriteLineAtLevel(closing.First(b => b.Column <= trivia.Column).Level, trivia.Text);
@@ -345,17 +341,31 @@ internal sealed partial class UnparseVisitor : AstVisitor
         foreach (var trivia in items)
         {
             if (trivia.Kind == TriviaKind.BlankLines)
-            {
-                if (_options.Formatting != null)
-                    continue;
-                for (int i = 0; i < trivia.BlankLineCount; i++)
-                    _w.WriteLine();
-            }
+                WriteBlankRun(trivia);
             else
-            {
                 _w.WriteLine(trivia.Text);
-            }
         }
+    }
+
+    /// <summary>
+    /// A blank-line run — written only here, for an anchor (<see cref="WriteOwnLine"/>) and for a body's
+    /// end (<see cref="CloseBody"/>). Without formatting it is written as the source has it. Formatting
+    /// (R-ET, #2239) writes a run BETWEEN two items as one blank line — however many the user wrote, and
+    /// never more than the canonical spacing already written before the anchor — and drops a run at a
+    /// body start, the module start, after a decorator and at the end of the file
+    /// (<see cref="TriviaCursor.PlacementOf"/>; an AST-built cursor knows no placement and drops every run).
+    /// </summary>
+    private void WriteBlankRun(Trivia run)
+    {
+        if (_options.Formatting == null)
+        {
+            for (int i = 0; i < run.BlankLineCount; i++)
+                _w.WriteLine();
+            return;
+        }
+
+        if (_cursor?.PlacementOf(run) == BlankRunPlacement.Between)
+            _w.EnsureBlankLines(1);
     }
 
     /// <summary>
@@ -573,8 +583,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
                 bool prevWasMemberDef = body[i - 1] is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or PropertyDef or EventDef;
                 if (isMemberDef || prevWasMemberDef)
                 {
-                    for (int b = 0; b < fmt.BlankLinesBetweenClassMembers; b++)
-                        _w.WriteLine();
+                    _w.EnsureBlankLines(fmt.BlankLinesBetweenClassMembers);
                 }
             }
 

@@ -185,12 +185,14 @@ public sealed class LspFormattingDriverTests : IDisposable
 
     // ---- one request per route through the real handlers ----
 
+    // The subject of these requests is the driver, not the layout: each document has a run of blank
+    // lines the formatter collapses to one (R-ET, #2239), so every request produces an edit.
     [Fact]
     public void Full_FormatsTheDocument()
     {
-        var (edits, applied) = _driver.Full("def foo():\n    x: int = 1\n\n    return x\n");
+        var (edits, applied) = _driver.Full("def foo():\n    x: int = 1\n\n\n    return x\n");
         edits.Should().NotBeEmpty();
-        applied.Should().Be("def foo():\n    x: int = 1\n    return x\n");
+        applied.Should().Be("def foo():\n    x: int = 1\n\n    return x\n");
         _driver.OpenDocumentCount.Should().Be(0);
     }
 
@@ -229,10 +231,10 @@ public sealed class LspFormattingDriverTests : IDisposable
         // would produce another's name.
         var results = new string[64];
         Parallel.For(0, results.Length, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
-            results[i] = _driver.Full($"def f{i}():\n    x: int = {i}\n\n    return x\n").Applied);
+            results[i] = _driver.Full($"def f{i}():\n    x: int = {i}\n\n\n    return x\n").Applied);
 
         for (var i = 0; i < results.Length; i++)
-            results[i].Should().Be($"def f{i}():\n    x: int = {i}\n    return x\n");
+            results[i].Should().Be($"def f{i}():\n    x: int = {i}\n\n    return x\n");
         _driver.OpenDocumentCount.Should().Be(0);
     }
 }

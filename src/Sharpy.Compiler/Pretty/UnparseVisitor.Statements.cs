@@ -704,8 +704,7 @@ internal sealed partial class UnparseVisitor
             {
                 if (fmt != null && (i > 0 || !node.Cases.IsEmpty))
                 {
-                    for (int b = 0; b < fmt.BlankLinesBetweenClassMembers; b++)
-                        _w.WriteLine();
+                    _w.EnsureBlankLines(fmt.BlankLinesBetweenClassMembers);
                 }
                 VisitStatementWithTrivia(node.Body[i]);
             }

@@ -68,17 +68,34 @@ public class FormattingTests : IDisposable
         formatted.Should().BeNull();
     }
 
+    /// <summary>R-ET (#2239): a blank line the user wrote between two statements is kept — the document is already formatted.</summary>
     [Fact]
-    public async Task BlankLines_InsideFunctionAreNormalizedAsync()
+    public async Task OneUserBlankLine_InsideFunctionIsKeptAsync()
     {
-        // The pretty formatter normalizes blank lines inside function bodies
-        // (using the BlankLinesBetweenStatements rule = 0 by default), so a
-        // stray blank line between statements is removed.
         var source = "def foo():\n    x: int = 1\n\n    return x\n";
         var formatted = await FormatAsync(source);
 
-        formatted.Should().NotBeNull();
-        formatted.Should().Be("def foo():\n    x: int = 1\n    return x\n");
+        formatted.Should().BeNull();
+    }
+
+    /// <summary>R-ET (#2239): a run of blank lines between two statements collapses to one.</summary>
+    [Fact]
+    public async Task ThreeUserBlankLines_CollapseToOneAsync()
+    {
+        var source = "def foo():\n    x: int = 1\n\n\n\n    return x\n";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().Be("def foo():\n    x: int = 1\n\n    return x\n");
+    }
+
+    /// <summary>R-ET (#2239): a blank line at the start of a body is not kept; one between statements is.</summary>
+    [Fact]
+    public async Task UserBlankLine_AtBodyStartIsRemoved_BetweenStatementsKeptAsync()
+    {
+        var source = "def foo():\n\n    x: int = 1\n\n    return x\n";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().Be("def foo():\n    x: int = 1\n\n    return x\n");
     }
 
     /// <summary>
@@ -94,14 +111,19 @@ public class FormattingTests : IDisposable
         formatted.Should().BeNull();
     }
 
-    /// <summary>#2227: a user-written blank line after a match-expression statement is dropped exactly like one after any statement — never doubled.</summary>
+    /// <summary>
+    /// #2227 + R-ET (#2239): a user-written blank line after a match-expression statement is kept exactly
+    /// like one after any statement — one line, never doubled by the expression's absorbed terminator;
+    /// a run of them collapses to one.
+    /// </summary>
     [Fact]
-    public async Task MatchExpressionStatement_BlankLineAfter_IsNormalizedLikeAnyStatementAsync()
+    public async Task MatchExpressionStatement_BlankLineAfter_IsKeptLikeAnyStatement_NeverDoubledAsync()
     {
-        var source = "def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n\n    return s\n";
-        var formatted = await FormatAsync(source);
+        var kept = "def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n\n    return s\n";
+        (await FormatAsync(kept)).Should().BeNull();
 
-        formatted.Should().Be("def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n    return s\n");
+        var run = "def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n\n\n    return s\n";
+        (await FormatAsync(run)).Should().Be(kept);
     }
 
     [Fact]

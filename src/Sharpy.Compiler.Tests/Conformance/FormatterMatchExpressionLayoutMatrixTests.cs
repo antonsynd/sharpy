@@ -14,7 +14,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// pass, so idempotence alone could not see it.
 /// <para>Matrix: statement position {middle of a body, last in an inner body, last in a body before a
 /// definition, last in the file, at module level, last at module level, followed by a comment,
-/// followed by a blank line the user wrote} × host {assignment, annotated declaration, augmented
+/// followed by a blank line the user wrote, a blank line before the first arm and between two arms}
+/// × host {assignment, annotated declaration, augmented
 /// assignment, <c>let</c>, <c>return</c>, <c>yield</c>, expression statement, lambda body,
 /// conditional's else branch, an enclosing match-expression arm}. A match expression as a call
 /// ARGUMENT does not parse (ruling R-DT, #2210 — SPY0102 steers to a local), so it has no layout; its
@@ -22,11 +23,13 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <para>Oracles per cell P: <c>Format(P)</c> is clean and idempotent; its token stream (type and
 /// value) equals P's; and its layout equals the layout of the PLAIN twin — P with the match expression
 /// replaced by a one-line <c>"x"</c> — once the formatted arm lines are removed (the differential
-/// oracle: no blank line is invented or lost by the expression kind). A user-written blank line inside
-/// a body is not kept: the formatter's canonical layout drops it after any statement
-/// (<c>FormattingTests.BlankLines_InsideFunctionAreNormalized</c>), and the plain twin pins exactly
-/// that. Every cell except the lambda host (whose <c>lambda:</c> the unparser respells
-/// <c>lambda :</c>) is also pinned as exact text: P itself, minus the user's blank line.</para>
+/// oracle: no blank line is invented or lost by the expression kind). A user-written blank line between
+/// two statements is kept as one line after any statement (R-ET, #2239 —
+/// <c>FormattingTests.OneUserBlankLine_InsideFunctionIsKept</c>), and the plain twin pins exactly that;
+/// inside the expression, a blank line between two arms is kept and one before the first arm (a body
+/// start) is dropped — the plain-twin reading removes a blank line that precedes an arm with the arm.
+/// Every cell except the lambda host (whose <c>lambda:</c> the unparser respells <c>lambda :</c>) is
+/// also pinned as exact text: P itself, minus the blank line before the first arm.</para>
 /// </summary>
 public class FormatterMatchExpressionLayoutMatrixTests
 {
@@ -56,6 +59,7 @@ public class FormatterMatchExpressionLayoutMatrixTests
     {
         "middle_of_body", "last_in_inner_body", "last_in_body_before_def", "last_in_file",
         "module_level", "module_level_last", "followed_by_comment", "followed_by_user_blank_line",
+        "blank_between_arms",
     };
 
     public static TheoryData<string, string> Cells()
@@ -88,11 +92,11 @@ public class FormatterMatchExpressionLayoutMatrixTests
         return new List<string> { pad + prefix + Scrutinee, pad + "    case 3: \"three\"", pad + "    case _: \"other\"" };
     }
 
-    /// <summary>The cell program; <paramref name="userBlankLine"/> is the line index of the blank line the user wrote (or -1).</summary>
-    private static string Program(string host, string position, bool plain, out int userBlankLine)
+    /// <summary>The cell program; <paramref name="droppedBlankLine"/> is the line index of a blank line the user wrote that formatting drops (or -1).</summary>
+    private static string Program(string host, string position, bool plain, out int droppedBlankLine)
     {
         const string Def = "def f(n: int, c: bool) -> str:";
-        userBlankLine = -1;
+        droppedBlankLine = -1;
         var lines = new List<string>();
         switch (position)
         {
@@ -148,21 +152,45 @@ public class FormatterMatchExpressionLayoutMatrixTests
                 lines.Add(Def);
                 lines.Add("    s = \"\"");
                 lines.AddRange(Statement(host, 4, plain));
-                userBlankLine = lines.Count;
                 lines.Add("");
                 lines.Add("    return s");
                 break;
+            case "blank_between_arms":
+                {
+                    lines.Add(Def);
+                    lines.Add("    s = \"\"");
+                    var statement = Statement(host, 4, plain);
+                    if (!plain)
+                    {
+                        // A blank line between the outermost expression's last two arms (kept) and one
+                        // before its first arm (a body start: dropped).
+                        statement.Insert(statement.Count - 1, "");
+                        statement.Insert(1, "");
+                        droppedBlankLine = lines.Count + 1;
+                    }
+                    lines.AddRange(statement);
+                    lines.Add("    return s");
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(position), position, null);
         }
         return string.Join("\n", lines) + "\n";
     }
 
-    /// <summary>The formatted match-expression program read as its plain twin: arm lines removed, the match header's <c>match n:</c> read as <c>"x"</c>.</summary>
-    private static string AsPlainTwin(string formatted) =>
-        string.Join("\n", formatted.Split('\n')
-            .Where(l => !l.TrimStart().StartsWith("case ", StringComparison.Ordinal))
+    /// <summary>
+    /// The formatted match-expression program read as its plain twin: arm lines — and a blank line
+    /// right before an arm, which belongs to the expression — removed, the match header's
+    /// <c>match n:</c> read as <c>"x"</c>.
+    /// </summary>
+    private static string AsPlainTwin(string formatted)
+    {
+        var lines = formatted.Split('\n');
+        static bool IsArm(string line) => line.TrimStart().StartsWith("case ", StringComparison.Ordinal);
+        return string.Join("\n", lines
+            .Where((l, i) => !IsArm(l) && !(l.Length == 0 && i + 1 < lines.Length && IsArm(lines[i + 1])))
             .Select(l => l.EndsWith(Scrutinee, StringComparison.Ordinal) ? l[..^Scrutinee.Length] + Plain : l));
+    }
 
     [Theory]
     [MemberData(nameof(Cells))]
@@ -170,7 +198,7 @@ public class FormatterMatchExpressionLayoutMatrixTests
     public void Format_MatchExpressionStatement_GetsThePlainStatementLayout(string host, string position)
     {
         var label = $"{host}.{position}";
-        var program = Program(host, position, plain: false, out var userBlankLine);
+        var program = Program(host, position, plain: false, out var droppedBlankLine);
         var plainTwin = Program(host, position, plain: true, out _);
 
         var formatted = FormatterService.Format(program);
@@ -185,12 +213,13 @@ public class FormatterMatchExpressionLayoutMatrixTests
         // Differential layout oracle: the expression kind changes no blank line around the statement.
         Assert.Equal(plainFormatted.FormattedText, AsPlainTwin(text));
 
-        // Exact layout: the cell program is written in canonical layout apart from the user's blank line.
+        // Exact layout: the cell program is already in the ruled layout (R-ET, #2239: the user's blank
+        // line between statements or arms is kept) apart from a blank line before the first arm.
         if (host != "lambda_body")
         {
             var expected = program.Split('\n').ToList();
-            if (userBlankLine >= 0)
-                expected.RemoveAt(userBlankLine);
+            if (droppedBlankLine >= 0)
+                expected.RemoveAt(droppedBlankLine);
             Assert.Equal(string.Join("\n", expected), text);
         }
 

@@ -9,5 +9,4 @@
 #          sorted, \n-joined stem names ("-" for none) — the code-action-shape-allowlist.txt precedent.
 # A failing cell no entry covers is red; a row whose bucket holds now is red (drain on fix); a pin whose count or
 # digest differs is red in both directions. The census anchors the entry counts at literals.
-pin identity blankLost 1057 f69173c5a2114904 # #2239 a user blank line between statements is deleted (R-ET): every Between run written as no line
-pin comment blankLost 1057 f69173c5a2114904 # #2239 a user blank line between statements is deleted (R-ET): every Between run written as no line
+# EMPTY since P50 Phase 2 (R-ET, #2239): the two Phase 1 pins (blankLost 1057 per twin) drained by the fix.

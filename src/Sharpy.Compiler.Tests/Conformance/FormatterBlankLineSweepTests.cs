@@ -658,10 +658,11 @@ public class FormatterBlankLineSweepTests
             stemsByPlacement[placement].Should().Contain(PlacementFixture, $"the placement fixture must hold a {placement} run");
         allowlist.Where(e => !e.IsPin).Should().OnlyContain(e => Corpus.ContainsKey(e.Stem), "every allowlist row names a corpus fixture");
 
-        // P50 Phase 1: the defect R-ET ruled is pinned, one pin per twin (#2239); Phase 2 drains both.
-        // Changing these literals is a visible decision — change them in the same commit as the file and say why.
+        // P50 Phase 1 pinned the defect R-ET ruled (blankLost 1057 per twin, #2239); the Phase 2 fix drained
+        // both pins. Re-populating the allowlist is a visible decision — change these literals in the same
+        // commit as the file and say why.
         allowlist.Count(e => !e.IsPin).Should().Be(0, "the blank-line sweep has no per-stem rows");
-        allowlist.Count(e => e.IsPin).Should().Be(2, "P50 Phase 1 pins today's lost runs, one pin per twin, until the Phase 2 fix drains them");
+        allowlist.Count(e => e.IsPin).Should().Be(0, "the P50 Phase 1 pins were drained by the Phase 2 fix");
     }
 
     // ================================================================

@@ -31,6 +31,7 @@ def then_blank(n: int) -> str:
     s = match n:
         case 3: "three"
         case _: "other"
+
     return s
 
 
