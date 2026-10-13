@@ -4,6 +4,33 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Pretty;
 
 /// <summary>
+/// Where a blank-line run sits in the token stream (P50 Design Decision 1, R-ET #2239). The formatter
+/// writes a <see cref="Between"/> run as one blank line and every other placement as none: a body's
+/// first line, the file's first line, the lines between a decorator and what it decorates, and the end of
+/// the file carry no blank line. <see cref="Unknown"/>: the cursor has no token stream (built from the AST).
+/// </summary>
+internal enum BlankRunPlacement
+{
+    /// <summary>Between two items (code or own-line comments) — after a comment, a statement, a block, before a clause header.</summary>
+    Between,
+
+    /// <summary>The first item of a body: the run follows the body's <c>Indent</c> with no comment before it.</summary>
+    BodyStart,
+
+    /// <summary>Before any code, with no comment before it.</summary>
+    ModuleStart,
+
+    /// <summary>Right after a decorator line (between two decorators, or before the decorated header).</summary>
+    AfterDecorator,
+
+    /// <summary>At the end of the file, with no comment after it.</summary>
+    EndOfFile,
+
+    /// <summary>No token stream to read the placement from.</summary>
+    Unknown,
+}
+
+/// <summary>
 /// The unparser's ONE comment mechanism (P22b Design Decision 3, #2077): every comment and blank
 /// line of the source, in source order, consumed from the head at <b>anchors</b> as the unparser
 /// writes the tree. An anchor at line L first takes everything before L (written as full lines),
@@ -30,11 +57,13 @@ internal sealed class TriviaCursor
     private readonly int[]? _codeLines;
     private readonly HashSet<int>? _linesStartingInsideLiteral;
     private readonly List<int>? _lineStarts;
+    private readonly Dictionary<Trivia, BlankRunPlacement>? _placements;
 
     private TriviaCursor(List<Trivia> items, string? source, List<Token>? codeTokens, List<int>? boundaries,
-        int[]? codeLines, HashSet<int>? linesStartingInsideLiteral)
+        int[]? codeLines, HashSet<int>? linesStartingInsideLiteral, Dictionary<Trivia, BlankRunPlacement>? placements = null)
     {
         _items = items;
+        _placements = placements;
         _source = source;
         _codeTokens = codeTokens;
         _boundaries = boundaries;
@@ -73,12 +102,27 @@ internal sealed class TriviaCursor
     public static TriviaCursor FromTokens(IReadOnlyList<Token> tokens, string source)
     {
         var literals = LiteralSpans.Of(tokens);
-        var items = new List<Trivia>();
+        var collected = new List<Trivia>();
         var boundaries = new List<int>();
         var codeTokens = new List<Token>();
+        var placements = new Dictionary<Trivia, BlankRunPlacement>(ReferenceEqualityComparer.Instance);
+        Token? previous = null;
+        Token? lineFirst = null;
+        Token? previousLineFirst = null;
+        var seenCode = false;
         foreach (var token in tokens)
         {
-            Add(token.LeadingTrivia);
+            var leading = token.LeadingTrivia;
+            if (leading != null)
+            {
+                for (var k = 0; k < leading.Count; k++)
+                {
+                    if (leading[k].Kind == TriviaKind.BlankLines)
+                        placements[leading[k]] = PlacementOf(token, leading, k, previous, previousLineFirst, seenCode);
+                }
+            }
+
+            Add(leading);
             Add(token.TrailingTrivia);
             if (token.Position >= 0 && token.Type != TokenType.Indent && token.Type != TokenType.Dedent)
             {
@@ -86,22 +130,65 @@ internal sealed class TriviaCursor
                 if (token.Type is not (TokenType.Newline or TokenType.Eof))
                     codeTokens.Add(token);
             }
+
+            if (token.Type == TokenType.Newline)
+            {
+                if (lineFirst != null)
+                    previousLineFirst = lineFirst;
+                lineFirst = null;
+            }
+            else if (token.Type is not (TokenType.Indent or TokenType.Dedent or TokenType.Eof))
+            {
+                lineFirst ??= token;
+                seenCode = true;
+            }
+
+            previous = token;
         }
 
-        items.Sort((a, b) => a.Position.CompareTo(b.Position));
+        // Stable: a blank-line run and the comment line that ends it share a position, and the run
+        // comes first (an unstable sort could write the comment above the blank line).
+        var items = collected.Select((t, i) => (t, i)).OrderBy(p => p.t.Position).ThenBy(p => p.i).Select(p => p.t).ToList();
         boundaries.AddRange(items.Where(t => t.Kind == TriviaKind.Comment).Select(t => t.Position));
         boundaries.Sort();
         codeTokens.Sort((a, b) => a.Position.CompareTo(b.Position));
         var codeLines = codeTokens.Select(t => t.Line).Distinct().OrderBy(l => l).ToArray();
         return new TriviaCursor(items, source, codeTokens, boundaries, codeLines,
-            LiteralSpans.LinesStartingInside(source, literals));
+            LiteralSpans.LinesStartingInside(source, literals), placements);
 
         void Add(IReadOnlyList<Trivia>? trivia)
         {
             if (trivia != null)
-                items.AddRange(trivia);
+                collected.AddRange(trivia);
         }
     }
+
+    /// <summary>
+    /// The placement of the blank-line run at <paramref name="index"/> of <paramref name="carrier"/>'s
+    /// leading trivia (the run is recorded on the token after it): at the end of the file when the
+    /// carrier is <c>Eof</c> and no comment follows the run; between items when a comment precedes it on
+    /// the carrier; else, as the first item before its carrier, at the module start before any code, at
+    /// a body start right after an <c>Indent</c>, after a decorator when the previous logical line starts
+    /// with <c>@</c>, and between items otherwise.
+    /// </summary>
+    private static BlankRunPlacement PlacementOf(Token carrier, IReadOnlyList<Trivia> leading, int index, Token? previous, Token? previousLineFirst, bool seenCode)
+    {
+        if (carrier.Type == TokenType.Eof && !leading.Skip(index + 1).Any(t => t.Kind == TriviaKind.Comment))
+            return BlankRunPlacement.EndOfFile;
+        if (index > 0)
+            return BlankRunPlacement.Between;
+        if (!seenCode)
+            return BlankRunPlacement.ModuleStart;
+        if (previous?.Type == TokenType.Indent)
+            return BlankRunPlacement.BodyStart;
+        if (previousLineFirst?.Type == TokenType.At)
+            return BlankRunPlacement.AfterDecorator;
+        return BlankRunPlacement.Between;
+    }
+
+    /// <summary>Where the blank-line run <paramref name="run"/> sits (<see cref="BlankRunPlacement.Unknown"/> for a cursor without a token stream, or a trivia it did not collect).</summary>
+    public BlankRunPlacement PlacementOf(Trivia run)
+        => _placements != null && _placements.TryGetValue(run, out var placement) ? placement : BlankRunPlacement.Unknown;
 
     /// <summary>The trivia the parser attached to statements (leading and trailing), in source order.</summary>
     public static TriviaCursor FromAst(Node root)
