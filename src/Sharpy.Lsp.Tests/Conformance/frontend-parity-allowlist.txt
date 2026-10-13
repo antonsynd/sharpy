@@ -82,20 +82,9 @@ compile::errors/escaped_new_is_a_name_2166   # drain-exempt: escaped `new` is a 
 # --- P53 LSP project mode (#2242) — drains in plan-6ce1a5 Phases 2–4 ---
 #
 # First run of the two project-mode pairs @ 8be4576fd (plan-6ce1a5 Phase 1, 150 multi-file
-# fixtures). LSP-project: the editor's per-file results in project mode
-# (LanguageService.GetAnalysisAsync after InitializeProjectAsync) lose every diagnostic the
-# project bag holds and no unit bag does — import resolution (SPY0300, SPY0301, SPY0484),
-# circular import (SPY0302), name resolution (SPY0204). `-[codes]` = in the build, in no file's
-# result. No misattribution and no unstamped project-bag entry at this sha. Drains in Phase 2
-# (D1 per-file projection).
-LSP-project::errors/circular_import  # -[SPY0302]
-LSP-project::errors/edge_cases/multifile_error_recovery  # -[SPY0300]
-LSP-project::errors/selective_import_error  # -[SPY0301]
-LSP-project::imports/circular_import  # -[SPY0302]
-LSP-project::imports/duplicate_wildcard_from_import  # -[SPY0204]
-LSP-project::module_imports/circular_import_error  # -[SPY0302]
-LSP-project::multi_file/package_import  # -[SPY0484,SPY0484]
-LSP-project::star_import_collision_explicit  # -[SPY0484]
+# fixtures). LSP-project found 8 fixtures whose build diagnostics landed in no file's result
+# (SPY0300, SPY0301, SPY0302, SPY0204, SPY0484); all 8 drained with the D1 per-file projection
+# (plan-6ce1a5 Phase 2). The pair now stands at 0 rows.
 #
 # LSP-project-nav, `member` cells: go-to-definition on a module-qualified member (`m.name`,
 # `a.b.name`, `import m as n` -> `n.name`) answers nothing — every such cell in the corpus
