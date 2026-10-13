@@ -108,7 +108,7 @@ The formatter writes blank lines by two rules.
 
 Comments directly above a top-level definition, with no blank line between them and it, belong to the definition: its two blank lines go above them. A comment that a blank line separates from the definition belongs to the module instead: the definition gets its two blank lines directly above it, and the comment keeps the spacing above it that any statement would have. This is the layout black writes.
 
-A blank line you wrote is never kept at the start of a body (before its first statement, docstring or comment), between a decorator and what it decorates, or at the start or end of the file. A blank line between a comment and the statement below it is kept as one blank line. A blank line inside brackets is not kept, unless the construct is written as you wrote it because it has a comment inside (see the previous sections). A blank line inside a triple-quoted string is part of the string and is never changed (guarantee 1).
+A blank line you wrote is never kept at the start of a body (before its first statement, docstring or comment), between a decorator and what it decorates, or at the start or end of the file. A blank line between a comment and the statement below it is kept as one blank line — a comment line between a decorator and its definition counts too: a blank line below that comment is kept. A blank line inside brackets is not kept, unless the construct is written as you wrote it because it has a comment inside (see the previous sections). A blank line inside a triple-quoted string is part of the string and is never changed (guarantee 1).
 
 ## When the formatter declines: SPY0912
 
