@@ -98,7 +98,7 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// </list>
 /// <c>refusedWork</c> — a range cell with a non-empty <c>selected</c> whose T is D — is census, not a
 /// failure of its cell; its RATE per range kind (over the cells whose <c>selected</c> changes D) is pinned
-/// on the <c>identity</c> and <c>comment</c> twins as a ceiling (<see cref="RefusalCeilingPercent"/>), and
+/// on the <c>identity</c>, <c>comment</c> and (since P50) <c>wide</c> twins as a ceiling (<see cref="RefusalCeilingPercent"/>), and
 /// the census prints beside it how far applied selections reach outside their lines.</para>
 ///
 /// <para><b>Ratchet.</b> <c>Conformance/formatting-route-parity-allowlist.txt</c> lists
@@ -2706,8 +2706,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// full mode @ ec673074f and rounded UP to the next whole percent above it (a measured 0.00% pins 1%:
     /// a <c>range-whole</c> refusal is also a <c>whole</c> failure, judged cell by cell). A change that makes
     /// selections refuse more often is red. The <c>wide</c> twin refuses by construction (a blank or comment line splits a
-    /// block's re-indent into hunks, and a partial re-indent fails the net) and the <c>crlf</c> and <c>cr</c> twins
-    /// are <c>identity</c>'s line breaks: all three are printed, not judged.
+    /// block's re-indent into hunks, and a partial re-indent fails the net) and is judged against its own ceilings since
+    /// P50 (owner ruling 2026-10-13: R-ET keeps blank lines, so more of them split a re-indent — the rate rose from
+    /// 13197/35101 (37.60%) @ f58a75158 to the pinned 53.24% on range-line, accepted, and must not drift further). The
+    /// <c>crlf</c> and <c>cr</c> twins are <c>identity</c>'s line breaks: printed, not judged.
     /// </summary>
     internal static readonly SCG.IReadOnlyDictionary<(string Route, string Twin), int> RefusalCeilingPercent =
         new SCG.Dictionary<(string Route, string Twin), int>
@@ -2720,6 +2722,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(RangeStatement, Comment)] = 1,   // 0/1184 (0.00%)
             [(RangeBlock, Comment)] = 1,       // 4/2854 (0.14%)
             [(RangeLine, Comment)] = 12,       // 46/402 (11.44%)
+            [(RangeWhole, Wide)] = 1,          // 0/3286 (0.00%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
+            [(RangeStatement, Wide)] = 5,      // 311/6837 (4.55%) @ 17aba6fb6
+            [(RangeBlock, Wide)] = 31,         // 4064/13121 (30.97%) @ 17aba6fb6
+            [(RangeLine, Wide)] = 54,          // 18565/34870 (53.24%) @ 17aba6fb6 — 13197/35101 (37.60%) @ f58a75158, before R-ET kept blank lines
         };
 
     /// <summary>
@@ -2733,6 +2739,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             [Identity] = 9,  // 12/138 (8.70%)
             [Comment] = 6,   // 2/34 (5.88%)
+            [Wide] = 54,     // 2484/4684 (53.03%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
         };
 
     /// <summary>
@@ -2742,7 +2749,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// </summary>
     private void AssertRefusalCeilings(int corpusCount)
     {
-        foreach (var twin in new[] { Identity, Comment })
+        foreach (var twin in new[] { Identity, Comment, Wide })
         {
             var stems = s_stemsRun.GetValueOrDefault(twin);
             if (stems != corpusCount)
