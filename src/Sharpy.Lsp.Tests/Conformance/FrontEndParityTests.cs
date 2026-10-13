@@ -5,6 +5,7 @@ using System.Text.Json;
 using SCG = System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
+using LspModels = OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
@@ -68,6 +69,14 @@ namespace Sharpy.Lsp.Tests.Conformance;
 ///     project's <c>EntryPoint</c>, else its first source file, plan-6ce1a5 D5). A diagnostic on
 ///     the wrong file is a violation even when the union matches; it is recorded as
 ///     <c>misattributed:&lt;code&gt;@&lt;file&gt;</c> in the comparison's added list.</item>
+///   <item><c>LSP-project-nav</c> — go-to-definition on every imported spelling in the same loaded
+///     project (#2242): the first use of every <c>from m import x</c> name, and every
+///     <c>MemberAccess</c> whose receiver binds a module (<c>m.x</c>, <c>a.b.x</c>, an
+///     <c>import m as n</c> alias), asked of <see cref="Sharpy.Lsp.Handlers.SharpyDefinitionHandler"/> at the
+///     name's token. The oracle is the fixture's own module files: the answer must land in the
+///     module's file (or, for a re-exported name, in the file declaring the export). Modules with
+///     no file (.NET namespaces, the stdlib) are record-and-skipped with the reason, counted in the
+///     report. One allowlist key per cell: <c>LSP-project-nav::&lt;fixture&gt;::&lt;file&gt;:&lt;line&gt;:&lt;col&gt;</c>.</item>
 /// </list>
 /// </para>
 ///
@@ -131,6 +140,7 @@ public class FrontEndParityTests
     private const string EntryCompileProject = "compile-project";
     private const string EntryEmitDiagnostics = "emit-diagnostics";
     private const string EntryLspProject = "LSP-project";
+    private const string EntryLspProjectNav = "LSP-project-nav";
 
     // Diagnostics whose SPYnnnn number is in [1, 499] are front-end (Lexer/Parser/Semantic/
     // Validation). 500-599 = code generation, 900-999 = infrastructure, 1000+ = info notes — all
@@ -216,6 +226,10 @@ public class FrontEndParityTests
             $"LSP-project: compared {comparisons.Count(c => c.EntryPoint == EntryLspProject)}  " +
             $"attributed diagnostics {projectStats.AttributedDiagnostics} (non-entry file {projectStats.AttributedNonEntryDiagnostics})  " +
             $"unstamped project-bag diagnostics {projectStats.Unstamped.Count}");
+        _output.WriteLine(
+            $"LSP-project-nav: compared {comparisons.Count(c => c.EntryPoint == EntryLspProjectNav)}  " +
+            $"from cells {projectStats.NavigationCellCount("from")}  member cells {projectStats.NavigationCellCount("member")}  " +
+            $"skipped {projectStats.NavigationSkips.Values.Sum()}");
 
         Assert.True(comparisons.Count > 0, "Front-end parity sweep produced zero comparisons.");
 
@@ -228,6 +242,13 @@ public class FrontEndParityTests
             Assert.True(projectStats.AttributedDiagnostics > 0,
                 "LSP-project attribution oracle is vacuous: no per-file result carried a diagnostic " +
                 "stamped with that file across the multi-file corpus.");
+
+            // Vacuity controls for the navigation sweep: both spellings must be present in the
+            // corpus, or the sweep compares nothing for the spelling it exists to watch.
+            Assert.True(projectStats.NavigationCellCount("from") > 0,
+                "LSP-project-nav found no `from m import x` use to ask about — the sweep is vacuous for the bare spelling.");
+            Assert.True(projectStats.NavigationCellCount("member") > 0,
+                "LSP-project-nav found no module-qualified `m.x` access to ask about — the sweep is vacuous for the qualified spelling.");
         }
 
         // A crash in any front end on any fixture is always a hard failure.
@@ -558,6 +579,10 @@ public class FrontEndParityTests
             added.AddRange(misattributed);
             comparisons.Add(new Comparison(EntryLspProject, fixture.TestName, baselineSig, unionSig,
                 added, removed, Match: added.Count == 0 && removed.Count == 0));
+
+            // --- LSP-project-nav: definition on every imported spelling, same loaded project ---
+            await SweepProjectNavigationAsync(api, service, analysis, fixture, tempRoot, comparisons, stats, ct)
+                .ConfigureAwait(false);
         }
         finally
         {
@@ -571,6 +596,266 @@ public class FrontEndParityTests
             }
         }
     }
+
+    /// <summary>
+    /// The <c>LSP-project-nav</c> pair (#2242, plan-6ce1a5 Phase 1 Task 2): go-to-definition on every
+    /// imported spelling the corpus writes, in the loaded project.
+    /// </summary>
+    /// <remarks>
+    /// Two cell kinds, both asked at a name token (1-based compiler position → 0-based LSP position):
+    /// <list type="bullet">
+    ///   <item><c>from</c> — the first identifier use of each <c>from m import x [as y]</c> binding;
+    ///     the answer must land in <c>m</c>'s file (or <c>m.x</c>'s, when <c>x</c> is a submodule).
+    ///     The module is found among the project's own units by dotted path — no symbol the handler
+    ///     reads is the oracle. These cells navigate at HEAD: they are the positive control that the
+    ///     oracle can pass.</item>
+    ///   <item><c>member</c> — every <c>MemberAccess</c> whose receiver binds a
+    ///     <see cref="Sharpy.Compiler.Semantic.ModuleSymbol"/> (an identifier bound to a module, or a
+    ///     nested <c>a.b</c> receiver), asked at <see cref="MemberAccess.MemberNameLineStart"/> /
+    ///     <see cref="MemberAccess.MemberNameColumnStart"/>; the answer must land in the module's
+    ///     <c>FilePath</c>, or in the declaring file of the export when the module re-exports it.</item>
+    /// </list>
+    /// A module with no file (a .NET namespace, a stdlib module) has no location to land on: its
+    /// cells are record-and-skipped with the reason, counted under <c>projectMode.navigation</c> in
+    /// the report, never silently passed.
+    /// </remarks>
+    private static async Task SweepProjectNavigationAsync(
+        CompilerApi api, LanguageService service, ProjectAnalysisResult analysis, TestFixtureInfo fixture,
+        string tempRoot, ConcurrentBag<Comparison> comparisons, ProjectModeStats stats, CancellationToken ct)
+    {
+        const string PackageInit = ".__init__";
+        var unitsByModule = new SCG.Dictionary<string, string>(StringComparer.Ordinal);
+        var unitsByFile = new SCG.Dictionary<string, Module?>(StringComparer.Ordinal);
+        foreach (var unit in analysis.ProjectModel.Units.Values)
+        {
+            unitsByFile.TryAdd(unit.FilePath, unit.Ast);
+            unitsByModule.TryAdd(unit.ModulePath, unit.FilePath);
+            if (unit.ModulePath.EndsWith(PackageInit, StringComparison.Ordinal))
+                unitsByModule.TryAdd(unit.ModulePath[..^PackageInit.Length], unit.FilePath);
+        }
+
+        var handler = new Sharpy.Lsp.Handlers.SharpyDefinitionHandler(service, api);
+
+        foreach (var uri in service.GetProjectFileUris())
+        {
+            var result = await service.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+            var query = result?.SemanticQuery;
+            if (result?.Ast == null || query == null)
+            {
+                stats.SkipNavigation("file has no analyzed AST in the project result (nothing to ask)");
+                continue;
+            }
+
+            var fileRel = RelativeToRoot(tempRoot, new Uri(uri).LocalPath);
+            var nodes = EnumerateNodes(result.Ast).ToList();
+            var identifiers = nodes.OfType<Identifier>()
+                .Where(id => id.LineStart > 0)
+                .OrderBy(id => id.LineStart).ThenBy(id => id.ColumnStart)
+                .ToList();
+
+            var topLevelNames = new SCG.HashSet<string>(
+                result.Ast.Body.Select(TopLevelDefinitionName).OfType<string>(), StringComparer.Ordinal);
+
+            var cells = new SCG.List<NavCell>();
+            foreach (var fromImport in nodes.OfType<FromImportStatement>())
+            {
+                if (fromImport.ImportAll)
+                {
+                    stats.SkipNavigation("from m import *: no single name to ask about");
+                    continue;
+                }
+                if (fromImport.Module.StartsWith('.'))
+                {
+                    stats.SkipNavigation("relative from-import (resolved by package; none in the corpus when written)");
+                    continue;
+                }
+                var moduleName = fromImport.ModuleParts.IsDefaultOrEmpty
+                    ? fromImport.Module
+                    : string.Join(".", fromImport.ModuleParts);
+                foreach (var alias in fromImport.Names)
+                {
+                    var local = alias.AsName ?? alias.Name;
+                    var targets = new SCG.List<string>();
+                    CollectFromImportTargets(moduleName, alias.Name, unitsByModule, unitsByFile, targets, depth: 0);
+                    if (targets.Count == 0)
+                    {
+                        stats.SkipNavigation("from-import of a module with no project file (.NET namespace or stdlib)");
+                        continue;
+                    }
+                    if (topLevelNames.Contains(local))
+                    {
+                        stats.SkipNavigation("a definition in the importing file shadows the from-imported name");
+                        continue;
+                    }
+                    var use = identifiers.FirstOrDefault(id => string.Equals(id.Name, local, StringComparison.Ordinal));
+                    if (use == null)
+                    {
+                        stats.SkipNavigation("from-imported name is never used as an identifier in the file");
+                        continue;
+                    }
+                    cells.Add(new NavCell("from", local, use.LineStart, use.ColumnStart, targets));
+                }
+            }
+
+            foreach (var access in nodes.OfType<MemberAccess>())
+            {
+                var module = ResolveModuleReceiver(access.Object, query);
+                if (module == null)
+                    continue;
+                if (module.IsNetModule || string.IsNullOrEmpty(module.FilePath))
+                {
+                    stats.SkipNavigation("member of a module with no file (.NET namespace or stdlib)");
+                    continue;
+                }
+                if (access.MemberNameLineStart <= 0 || access.Member.Length == 0)
+                {
+                    stats.SkipNavigation("member access with no member token (parser recovery)");
+                    continue;
+                }
+                if (!module.Exports.TryGetValue(access.Member, out var export))
+                {
+                    stats.SkipNavigation("member is not an export of the module (the program refuses it)");
+                    continue;
+                }
+                var expected = new SCG.List<string> { module.FilePath };
+                if (export is Sharpy.Compiler.Semantic.ModuleSymbol { FilePath.Length: > 0 } submodule)
+                    expected.Add(submodule.FilePath);
+                else if (!string.IsNullOrEmpty(export.DeclaringFilePath))
+                    expected.Add(export.DeclaringFilePath);
+                cells.Add(new NavCell("member", $"{Spell(access.Object)}.{access.Member}",
+                    access.MemberNameLineStart, access.MemberNameColumnStart, expected));
+            }
+
+            foreach (var cell in cells)
+            {
+                stats.CountNavigationCell(cell.Kind);
+                var response = await handler.Handle(
+                    new LspModels.DefinitionParams
+                    {
+                        TextDocument = new LspModels.TextDocumentIdentifier(uri),
+                        Position = new LspModels.Position(cell.Line - 1, cell.Column - 1),
+                    },
+                    ct).ConfigureAwait(false);
+                var location = response?.Select(l => l.Location).FirstOrDefault(l => l != null);
+                var actual = location?.Uri.GetFileSystemPath();
+                var match = actual != null && cell.ExpectedFiles.Any(e =>
+                    PathNormalizer.Normalize(e) == PathNormalizer.Normalize(actual));
+
+                var expectedText = $"{cell.Kind} {cell.Spelling} -> " +
+                    string.Join("|", cell.ExpectedFiles.Select(e => RelativeToRoot(tempRoot, e)).Distinct());
+                var actualText = actual == null ? "none" : RelativeToRoot(tempRoot, actual);
+                comparisons.Add(new Comparison(EntryLspProjectNav,
+                    $"{fixture.TestName}::{fileRel}:{cell.Line}:{cell.Column}",
+                    new[] { expectedText }, new[] { actualText },
+                    match ? Array.Empty<string>() : new[] { actualText },
+                    match ? Array.Empty<string>() : new[] { expectedText },
+                    match));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The module a member-access receiver binds: an identifier bound to a module, or a nested
+    /// <c>a.b</c> whose outer module exports <c>b</c> as a module; the receiver's module type
+    /// answers when the binding has no recorded symbol.
+    /// </summary>
+    private static Sharpy.Compiler.Semantic.ModuleSymbol? ResolveModuleReceiver(Expression receiver, ISemanticQuery query)
+        => receiver switch
+        {
+            Identifier id => query.GetIdentifierSymbol(id) as Sharpy.Compiler.Semantic.ModuleSymbol
+                ?? (query.GetEffectiveType(id) as Sharpy.Compiler.Semantic.ModuleType)?.Symbol,
+            MemberAccess nested =>
+                (ResolveModuleReceiver(nested.Object, query) is { } outer
+                    && outer.Exports.TryGetValue(nested.Member, out var inner)
+                    ? inner as Sharpy.Compiler.Semantic.ModuleSymbol
+                    : null)
+                ?? (query.GetEffectiveType(nested) as Sharpy.Compiler.Semantic.ModuleType)?.Symbol,
+            _ => null,
+        };
+
+    /// <summary>
+    /// The files a definition on <c>from module import name</c> may land in, read from the project's
+    /// own ASTs: <c>module.name</c>'s file when <c>name</c> is a submodule, else <c>module</c>'s file —
+    /// plus, when that module itself re-exports <c>name</c> (<c>from x import name</c>, or a
+    /// <c>from x import *</c> that may carry it, as a package <c>__init__</c> does), the files
+    /// that re-export resolves to. No symbol the handler reads takes part.
+    /// </summary>
+    private static void CollectFromImportTargets(
+        string moduleName, string name, SCG.IReadOnlyDictionary<string, string> unitsByModule,
+        SCG.IReadOnlyDictionary<string, Module?> unitsByFile, SCG.List<string> targets, int depth)
+    {
+        if (depth > 8)
+            return;
+        if (unitsByModule.TryGetValue($"{moduleName}.{name}", out var submodule))
+        {
+            if (!targets.Contains(submodule))
+                targets.Add(submodule);
+            return;
+        }
+        if (!unitsByModule.TryGetValue(moduleName, out var file))
+            return;
+        if (!targets.Contains(file))
+            targets.Add(file);
+        if (!unitsByFile.TryGetValue(file, out var ast) || ast == null)
+            return;
+        foreach (var reExport in ast.Body.OfType<FromImportStatement>())
+        {
+            if (reExport.Module.StartsWith('.'))
+                continue;
+            var source = reExport.ModuleParts.IsDefaultOrEmpty
+                ? reExport.Module
+                : string.Join(".", reExport.ModuleParts);
+            if (reExport.ImportAll)
+            {
+                CollectFromImportTargets(source, name, unitsByModule, unitsByFile, targets, depth + 1);
+                continue;
+            }
+            foreach (var alias in reExport.Names)
+            {
+                if (string.Equals(alias.AsName ?? alias.Name, name, StringComparison.Ordinal))
+                    CollectFromImportTargets(source, alias.Name, unitsByModule, unitsByFile, targets, depth + 1);
+            }
+        }
+    }
+
+    /// <summary>The name a top-level statement defines (function, type, alias), or null.</summary>
+    private static string? TopLevelDefinitionName(Statement statement) => statement switch
+    {
+        DecoratedStatement decorated => TopLevelDefinitionName(decorated.Statement),
+        FunctionDef f => f.Name,
+        ClassDef c => c.Name,
+        StructDef s => s.Name,
+        InterfaceDef i => i.Name,
+        EnumDef e => e.Name,
+        TypeAlias t => t.Name,
+        _ => null,
+    };
+
+    /// <summary>The dotted spelling of a receiver chain, for the report (<c>a.b</c>, or <c>&lt;expr&gt;</c>).</summary>
+    private static string Spell(Expression expression) => expression switch
+    {
+        Identifier id => id.Name,
+        MemberAccess access => $"{Spell(access.Object)}.{access.Member}",
+        _ => "<expr>",
+    };
+
+    private static IEnumerable<Node> EnumerateNodes(Node root)
+    {
+        var stack = new SCG.Stack<Node>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            yield return node;
+            foreach (var child in node.GetChildNodes())
+            {
+                if (child != null)
+                    stack.Push(child);
+            }
+        }
+    }
+
+    private sealed record NavCell(string Kind, string Spelling, int Line, int Column, IReadOnlyList<string> ExpectedFiles);
 
     /// <summary>
     /// Where an unstamped project-bag diagnostic belongs (plan-6ce1a5 D5): the project's
@@ -814,16 +1099,18 @@ public class FrontEndParityTests
         // carried a non-empty in-scope diagnostic multiset (so agreement is meaningful, not "both
         // empty"), the widest signature seen, and the distinct in-scope codes that actually flowed
         // through the comparison — plus a sample of matched non-empty comparisons.
-        var withDiagnostics = comparisons.Count(c => c.BaselineCodes.Count > 0);
-        var distinctCodes = comparisons.SelectMany(c => c.BaselineCodes).Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+        // Navigation cells carry locations, not diagnostic codes, so they stay out of this block.
+        var codeComparisons = comparisons.Where(c => c.EntryPoint != EntryLspProjectNav).ToList();
+        var withDiagnostics = codeComparisons.Count(c => c.BaselineCodes.Count > 0);
+        var distinctCodes = codeComparisons.SelectMany(c => c.BaselineCodes).Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
         var signatureCoverage = new
         {
             comparisonsWithNonEmptySignature = withDiagnostics,
-            comparisonsWithEmptySignature = comparisons.Count - withDiagnostics,
-            widestBaselineSignature = comparisons.Count == 0 ? 0 : comparisons.Max(c => c.BaselineCodes.Count),
+            comparisonsWithEmptySignature = codeComparisons.Count - withDiagnostics,
+            widestBaselineSignature = codeComparisons.Count == 0 ? 0 : codeComparisons.Max(c => c.BaselineCodes.Count),
             distinctInScopeCodesObserved = distinctCodes.Count,
             distinctInScopeCodes = distinctCodes,
-            sampleMatchedNonEmpty = comparisons
+            sampleMatchedNonEmpty = codeComparisons
                 .Where(c => c.Match && c.BaselineCodes.Count > 0)
                 .Take(15)
                 .Select(c => new { c.EntryPoint, c.Fixture, codes = c.BaselineCodes }),
@@ -838,7 +1125,7 @@ public class FrontEndParityTests
                 entryPointsCompared = new[]
                 {
                     EntryCompile, EntryLsp, EntryRepl, EntryCompileProject, EntryEmitDiagnostics,
-                    EntryLspProject,
+                    EntryLspProject, EntryLspProjectNav,
                 },
                 comparisons = comparisons.Count,
                 matches = comparisons.Count(c => c.Match),
@@ -865,6 +1152,15 @@ public class FrontEndParityTests
                     .OrderBy(u => u.Fixture, StringComparer.Ordinal)
                     .ThenBy(u => u.Code, StringComparer.Ordinal)
                     .Select(u => new { u.Fixture, u.Code, u.Message }),
+                navigation = new
+                {
+                    compared = comparisons.Count(c => c.EntryPoint == EntryLspProjectNav),
+                    fromCells = projectStats.NavigationCellCount("from"),
+                    memberCells = projectStats.NavigationCellCount("member"),
+                    skipsByReason = projectStats.NavigationSkips
+                        .OrderByDescending(kv => kv.Value)
+                        .Select(kv => new { reason = kv.Key, count = kv.Value }),
+                },
             },
             normalizationRules = new[]
             {
@@ -953,6 +1249,18 @@ public class FrontEndParityTests
             if (nonEntry)
                 Interlocked.Increment(ref _attributedNonEntry);
         }
+
+        /// <summary>Navigation cells asked, by kind (<c>from</c> / <c>member</c>).</summary>
+        public ConcurrentDictionary<string, int> NavigationCells { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Navigation candidates record-and-skipped, by reason.</summary>
+        public ConcurrentDictionary<string, int> NavigationSkips { get; } = new(StringComparer.Ordinal);
+
+        public int NavigationCellCount(string kind) => NavigationCells.GetValueOrDefault(kind);
+
+        public void CountNavigationCell(string kind) => NavigationCells.AddOrUpdate(kind, 1, (_, n) => n + 1);
+
+        public void SkipNavigation(string reason) => NavigationSkips.AddOrUpdate(reason, 1, (_, n) => n + 1);
     }
 
     /// <summary>The reviewed parity allowlist: exact <c>pair::fixture</c> keys plus simple
