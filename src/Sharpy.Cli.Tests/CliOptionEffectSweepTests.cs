@@ -324,6 +324,8 @@ public class CliOptionEffectSweepTests
         ["project --configuration"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Project_Configuration_SelectsTheOutputDirectory",
         ["project --clean"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Project_Clean_DeletesBinAndObjFirst",
         ["project --emit-cs-to"] = "Sharpy.Cli.Tests.Commands.ProjectCommandTests.EmitCsTo_FlatModule_WritesAtProjectRelativePath",
+        ["project --reference"] = "Sharpy.Cli.Tests.E2E.ProjectReferenceOptionTests.AReference_IsHonoured_AndAMissingOneIsSpy0305",
+        ["project --module-path"] = "Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests.ProjectModulePathOption_ReachesImportResolution",
         ["project --incremental"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Project_Incremental_WritesTheIncrementalCache",
 
         ["emit csharp --output"] = "Sharpy.Cli.Tests.Commands.EmitCommandTests.CSharp_WritesGeneratedFile",
@@ -426,8 +428,8 @@ public class CliOptionEffectSweepTests
                 throw new InvalidOperationException($"{AllowlistFileName}: '{line}' must read `cell key  # {Tracker} reason`.");
             var key = line[..split].Trim();
             var comment = line[(split + 3)..].Trim();
-            if (!comment.StartsWith(Tracker, StringComparison.Ordinal))
-                throw new InvalidOperationException($"{AllowlistFileName}: '{line}' must cite {Tracker} first.");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(comment, @"^#\d+\b"))
+                throw new InvalidOperationException($"{AllowlistFileName}: '{line}' must cite an issue first (`# #N reason`, e.g. {Tracker}).");
             if (!rows.TryAdd(key, comment))
                 throw new InvalidOperationException($"{AllowlistFileName}: '{key}' is listed twice.");
         }

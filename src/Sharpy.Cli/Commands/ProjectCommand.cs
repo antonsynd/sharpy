@@ -19,12 +19,20 @@ internal static class ProjectCommand
         var cleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ directories before building" };
         var emitCsOpt = new Option<DirectoryInfo?>("--emit-cs-to") { Description = "Save generated C# code to the specified directory" };
         var incrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation (only recompile changed files)" };
+        // `compile app.spyproj` takes these and `project` did not (a parse error), so the two project
+        // commands diverged (#2223); both now merge them through CliHelpers.MergeCommandLineIntoProject.
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
+        refOpt.Aliases.Add("-r");
+        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
+        modPathOpt.Aliases.Add("-m");
 
         command.Arguments.Add(projFileArg);
         command.Options.Add(configOpt);
         command.Options.Add(cleanOpt);
         command.Options.Add(emitCsOpt);
         command.Options.Add(incrementalOpt);
+        command.Options.Add(refOpt);
+        command.Options.Add(modPathOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -42,9 +50,15 @@ internal static class ProjectCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
+            var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
+            if (!CliHelpers.ValidateModulePaths(modulePath))
+            {
+                return CliHelpers.ExitCompileError;
+            }
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
+            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features, reference, modulePath);
         });
 
         root.Subcommands.Add(command);
@@ -63,7 +77,9 @@ internal static class ProjectCommand
         bool warnAsError = false,
         string? nowarn = null,
         int? maxErrors = null,
-        string[]? features = null)
+        string[]? features = null,
+        string[]? references = null,
+        string[]? modulePaths = null)
     {
         FileInfo? resolvedProjectFile = projectFile;
 
@@ -90,7 +106,7 @@ internal static class ProjectCommand
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
+        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features, references, modulePaths);
     }
 
     /// <summary>
@@ -132,11 +148,23 @@ internal static class ProjectCommand
         return true;
     }
 
-    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null, string[]? features = null)
+    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null, string[]? features = null, string[]? references = null, string[]? modulePaths = null)
     {
         try
         {
             var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+
+            // -r/-m join the project's items exactly as for `compile app.spyproj`; a -r that resolves
+            // nowhere is refused before anything is cleaned, restored or compiled (#2223).
+            var unresolved = CliHelpers.MergeCommandLineIntoProject(
+                projectConfig, references ?? Array.Empty<string>(), modulePaths ?? Array.Empty<string>());
+            if (unresolved.Count > 0)
+            {
+                Console.Error.WriteLine("Compilation FAILED.");
+                Console.Error.WriteLine();
+                CliHelpers.RenderDiagnosticsFromFiles(unresolved, Console.Error, projectConfig.EntryPoint);
+                return CliHelpers.ExitCompileError;
+            }
 
             if (clean)
             {

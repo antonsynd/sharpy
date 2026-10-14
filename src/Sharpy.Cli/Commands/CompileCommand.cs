@@ -242,41 +242,9 @@ internal static class CompileCommand
                 projectConfig.OutputAssemblyPathOverride = output.FullName;
             }
 
-            // `-r`/`-m` were parsed and silently dropped for a project (#2173). They join the
-            // project's own <ModulePath>/<Reference> items, so they mean what those items mean. Paths
-            // are resolved against the working directory, as for a single file; each reference is
-            // spelled as the file the module registry resolves it to (CliHelpers.ResolveReferences),
-            // so semantic analysis and the Roslyn step see the same assembly.
-            foreach (var modulePath in modulePaths)
-            {
-                var full = Path.GetFullPath(modulePath);
-                if (!projectConfig.ModulePaths.Contains(full))
-                    projectConfig.ModulePaths.Add(full);
-            }
-
-            // A `-r` that resolves nowhere is an error, as it is for a single file (where the module
-            // registry's SPY0305 fails the compile). The project path does not surface registry load
-            // failures — a .spyproj's own unresolvable <Reference> is still accepted, recorded
-            // separately — so the command-line references are checked here, by the registry's own
-            // resolution over the merged module paths, before anything is compiled.
-            var unresolved = new List<CompilerDiagnostic>();
-            foreach (var reference in references)
-            {
-                var resolved = ModuleRegistry.ResolveAssemblyPath(reference, projectConfig.ModulePaths);
-                if (resolved == null)
-                {
-                    unresolved.Add(new CompilerDiagnostic(
-                        $"Assembly not found: {reference}",
-                        CompilerDiagnosticSeverity.Error,
-                        Code: DiagnosticCodes.Semantic.AssemblyNotFound,
-                        Phase: CompilerPhase.ImportResolution));
-                }
-                else if (!projectConfig.References.Contains(resolved))
-                {
-                    projectConfig.References.Add(resolved);
-                }
-            }
-
+            // `-r`/`-m` join the project's own <Reference>/<ModulePath> items (#2173), through the one
+            // merge `project` shares (#2223).
+            var unresolved = CliHelpers.MergeCommandLineIntoProject(projectConfig, references, modulePaths);
             if (unresolved.Count > 0)
             {
                 Console.Error.WriteLine("Compilation FAILED.");

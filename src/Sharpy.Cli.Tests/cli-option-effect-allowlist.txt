@@ -1,11 +1,7 @@
-# CliOptionEffectSweepTests ratchet (P46, #2223): one row per (command path[@kind], option) cell that
+# CliOptionEffectSweepTests ratchet (P46, the CLI input-totality class): one row per (command path[@kind], option) cell that
 # breaks the contract today — honoured, refused for that input kind, or documented as ignored; never
-# silently dropped. Row grammar: `<cell key>  # #2223 <reason>`, where the cell key is the sweep's:
+# silently dropped. Row grammar: `<cell key>  # #<open issue> <reason>`, where the cell key is the sweep's:
 #   `<command path> <option>`            a one-column table (`emit csharp --metrics-format`)
 #   `<command path>@.spy|@.spyproj <opt>` a compile column (`compile@.spyproj --metrics-output`)
 #   `<command path> <option> missing`    a compiling/analysing command that does not take -r/-m
 # A failing cell not listed fails; a listed cell that passes fails (delete the row); P46 drains to zero.
-
-# Commands that analyse or compile but do not take -r / -m.
-project --reference missing  # #2223 compile .spyproj takes -r; project does not
-project --module-path missing  # #2223 compile .spyproj takes -m; project does not

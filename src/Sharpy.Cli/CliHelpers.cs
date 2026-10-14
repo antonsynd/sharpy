@@ -423,6 +423,47 @@ internal static class CliHelpers
     }
 
     /// <summary>
+    /// The one merge of the command line's <c>-r</c>/<c>-m</c> into a loaded project, shared by
+    /// <c>compile &lt;proj&gt;.spyproj</c> and <c>project</c> (#2173, #2223): they join the project's own
+    /// <c>&lt;ModulePath&gt;</c>/<c>&lt;Reference&gt;</c> items, so they mean what those items mean. Paths
+    /// are resolved against the working directory, as for a single file; each reference is spelled
+    /// as the file the module registry resolves it to over the merged module paths, so semantic
+    /// analysis and the Roslyn step see the same assembly. Returns one SPY0305 per <c>-r</c> that
+    /// resolves nowhere, spelled as given; the caller refuses before anything is compiled or
+    /// written (the registry's own SPY0305 would name the rooted path instead).
+    /// </summary>
+    internal static System.Collections.Generic.List<CompilerDiagnostic> MergeCommandLineIntoProject(
+        ProjectConfig config, IEnumerable<string> references, IEnumerable<string> modulePaths)
+    {
+        foreach (var modulePath in modulePaths)
+        {
+            var full = Path.GetFullPath(modulePath);
+            if (!config.ModulePaths.Contains(full))
+                config.ModulePaths.Add(full);
+        }
+
+        var unresolved = new System.Collections.Generic.List<CompilerDiagnostic>();
+        foreach (var reference in references)
+        {
+            var resolved = ModuleRegistry.ResolveAssemblyPath(reference, config.ModulePaths);
+            if (resolved == null)
+            {
+                unresolved.Add(new CompilerDiagnostic(
+                    $"Assembly not found: {reference}",
+                    CompilerDiagnosticSeverity.Error,
+                    Code: DiagnosticCodes.Semantic.AssemblyNotFound,
+                    Phase: CompilerPhase.ImportResolution));
+            }
+            else if (!config.References.Contains(resolved))
+            {
+                config.References.Add(resolved);
+            }
+        }
+
+        return unresolved;
+    }
+
+    /// <summary>
     /// <c>--project-reference</c> is parsed by <c>build</c>, <c>run</c> and <c>compile</c> but no
     /// mode builds a .NET project, so it was silently dropped (#2173). Refuse it instead. Prints the
     /// error and returns false when any project reference was given.

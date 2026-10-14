@@ -33,11 +33,11 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 
 - `-t, --type <exe|library>` - Output type (default: library)
 - `-o, --output <path>` - Output file path
-- `-r, --reference <assembly>` - Add .NET assembly references (a path, or a file name found on a module path). A reference that resolves nowhere is an error (SPY0305). With `compile app.spyproj`, added to the project's own `<Reference>` items.
+- `-r, --reference <assembly>` - Add .NET assembly references (a path, or a file name found on a module path). A reference that resolves nowhere is an error (SPY0305). With `compile app.spyproj` and `project`, added to the project's own `<Reference>` items. Also taken by `emit diagnostics` and `emit hover`, so an entry importing a referenced library can be analysed.
 - `-p, --project-reference <project>` - Refused: sharpyc does not build .NET projects; build it with `dotnet build` and pass the assembly with `-r`
-- `-m, --module-path <path>` - Additional module search paths (a relative path is relative to the working directory). An absolute import is resolved below each one, on every command: with `-m mods`, `from helper import f` finds `mods/helper.spy` and `import pkg.mod` finds `mods/pkg/mod.spy`. A directory that does not exist is an error. With `compile app.spyproj`, added to the project's own `<ModulePath>` items.
+- `-m, --module-path <path>` - Additional module search paths (a relative path is relative to the working directory). An absolute import is resolved below each one, on every command that takes it (`run`, `compile`, `build`, `project`, `emit csharp`, `emit diagnostics`, `emit hover`; lexing and parsing need no search path, so `emit tokens`/`ast`/`parse` do not): with `-m mods`, `from helper import f` finds `mods/helper.spy` and `import pkg.mod` finds `mods/pkg/mod.spy`. A directory that does not exist is an error. With `compile app.spyproj` and `project`, added to the project's own `<ModulePath>` items.
 
-`compile` accepts both a `.spy` file and a `.spyproj`. Every option it accepts is either honoured, refused for that input kind, or documented in `--help` as ignored for it (`--type` for a `.spyproj`, `--incremental`/`--clean` for a `.spy` file; `--self-contained` is refused for a `.spyproj`) — the table is `CompileCommand.OptionEffects`.
+`compile` accepts both a `.spy` file and a `.spyproj`. Every option it accepts is either honoured, refused for that input kind, or documented in `--help` as ignored for it (`--type` for a `.spyproj`, `--incremental`/`--clean` for a `.spy` file; `--self-contained` is refused for a `.spyproj`) — its table is the `"compile"` table of `CommandOptionEffects`, the one option-to-effect registry for every command.
 
 ### Project Options
 

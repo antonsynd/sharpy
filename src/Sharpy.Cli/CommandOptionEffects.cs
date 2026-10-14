@@ -269,6 +269,8 @@ internal static class CommandOptionEffects
                     ["--clean"] = H("bin/ and obj/ are deleted first"),
                     ["--emit-cs-to"] = H("generated C# is written to this directory"),
                     ["--incremental"] = H("unchanged files are not recompiled"),
+                    ["--reference"] = H("added to the .spyproj's <Reference> items; a reference that cannot be found is SPY0305"),
+                    ["--module-path"] = H("added to the .spyproj's <ModulePath> items; a directory that does not exist is an error"),
                 }),
 
             ["emit tokens"] = Table(CommandPerforms.Lexes, new[] { InputKind.SpyFile },

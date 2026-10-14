@@ -36,6 +36,8 @@ public class PathOptionArityTests
         // hover's --line/--col are required, so they ride in the command part of the spelling.
         ("emit hover --line 1 --col 1", "--reference", "a.dll"),
         ("emit hover --line 1 --col 1", "--module-path", "mods"),
+        ("project", "--reference", "a.dll"),
+        ("project", "--module-path", "mods"),
     };
 
     /// <summary>

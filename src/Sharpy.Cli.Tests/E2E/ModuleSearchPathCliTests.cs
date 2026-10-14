@@ -179,6 +179,31 @@ public class ModuleSearchPathCliTests : IDisposable
         Normalize(run.StdOut).Should().Be("42\n7\n", $"{cell} {run.StdErr}");
     }
 
+    /// <summary>
+    /// <c>project app.spyproj -m mods</c>: the option joins the project's <c>&lt;ModulePath&gt;</c> items
+    /// as it does for <c>compile app.spyproj</c>; before #2223 it was a parse error on <c>project</c>.
+    /// The control without it is <see cref="CompileSpyproj_WithoutAnySearchPath_IsSPY0300"/>'s layout.
+    /// </summary>
+    [Theory]
+    [InlineData("from")]
+    [InlineData("plain")]
+    public void ProjectModulePathOption_ReachesImportResolution(string form)
+    {
+        WriteLayout(form);
+        WriteProject(modulePathItem: false);
+
+        // The project relative to the working directory, as in the compile cells: an absolute spelling
+        // through the /var symlink against the cwd's /private/var is the known-red symlink cell below.
+        var without = ExecCli("project", "app.spyproj");
+        var result = ExecCli("project", "app.spyproj", "-m", "mods");
+        var combined = result.StdOut + "\n" + result.StdErr;
+
+        (without.StdOut + without.StdErr).Should().Contain("SPY0300", "control: without -m the module is not found");
+        combined.Should().NotContain("SPY0300", $"[project app.spyproj -m mods · {form}]");
+        result.ExitCode.Should().Be(0, combined);
+        combined.Should().Contain("Build succeeded.");
+    }
+
     /// <summary>Control: the same project with neither the item nor the option is SPY0300.</summary>
     [Fact]
     public void CompileSpyproj_WithoutAnySearchPath_IsSPY0300()
