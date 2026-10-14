@@ -43,10 +43,10 @@ Editor <-> stdio (JSON-RPC) <-> LSP Server
 
 Diagnostics are published after each document change (debounced) and include all `SPY`-prefixed diagnostic codes from the compiler.
 
-**In project mode** (a `.spyproj` in the workspace root), each source the project lists shows exactly the diagnostics `sharpyc project` reports for that file:
+**In project mode** (a `.spyproj` in the workspace root), each source the project lists shows the diagnostics that the project's analysis reports for that file. That analysis is everything `sharpyc project` checks before code generation: parsing, name and import resolution, type checking and validation. Code-generation diagnostics (`SPY05xx`, `SPY0908` and C# compiler errors such as a missing entry point) appear only when the project is built.
 
-- A file's squiggles are its own project-build diagnostics, including import, declaration, inheritance and cycle errors (`SPY0300`, `SPY0313`, `SPY0204`, `SPY0302`). The project's `<NoWarn>` and `<WarningsAsErrors>` apply.
-- A project diagnostic that names no file appears on the entry file. That is the configured `<EntryPoint>`. Without one, an executable uses its `main` file, and a library its first listed source.
+- A file's squiggles are its own project-analysis diagnostics, including import, declaration, inheritance and cycle errors (`SPY0300`, `SPY0313`, `SPY0204`, `SPY0302`). The project's `<NoWarn>` and `<WarningsAsErrors>` apply.
+- A project-analysis diagnostic that names no file appears on the entry file. That is the configured `<EntryPoint>`. Without one, an executable uses its `main` file, and a library its first listed source.
 - Every project file is republished after each project analysis: initial indexing, an edit, a watched-file change (including creating a missing module), a `.spyproj` reload and a `sharpy.features` change. A hints-only configuration change republishes without reanalyzing.
 - A project that fails to compile still publishes: indexing with errors puts each error on its file. An analysis superseded by a newer edit publishes nothing.
 - Opening or editing a project file never replaces its project diagnostics with a single-file analysis. A file opened before indexing finishes shows a single-file result until the index publishes.
