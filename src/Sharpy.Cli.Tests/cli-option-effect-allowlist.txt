@@ -1,0 +1,39 @@
+# CliOptionEffectSweepTests ratchet (P46, #2223): one row per (command path[@kind], option) cell that
+# breaks the contract today — honoured, refused for that input kind, or documented as ignored; never
+# silently dropped. Row grammar: `<cell key>  # #2223 <reason>`, where the cell key is the sweep's:
+#   `<command path> <option>`            a one-column table (`emit csharp --metrics-format`)
+#   `<command path>@.spy|@.spyproj <opt>` a compile column (`compile@.spyproj --metrics-output`)
+#   `<command path> <option> missing`    a compiling/analysing command that does not take -r/-m
+# A failing cell not listed fails; a listed cell that passes fails (delete the row); P46 drains to zero.
+
+# --metrics-output given alone is dropped: the metrics writers return unless --metrics-format is also given.
+build --metrics-output  # #2223 dropped without --metrics-format
+compile@.spy --metrics-output  # #2223 dropped without --metrics-format
+compile@.spyproj --metrics-output  # #2223 dropped without --metrics-format
+run --metrics-output  # #2223 dropped without --metrics-format
+project --metrics-output  # #2223 dropped without --metrics-format
+
+# emit csharp / emit diagnostics compile or analyse but never report metrics.
+emit csharp --metrics-format  # #2223 parsed, never printed
+emit csharp --metrics-output  # #2223 parsed, never written
+emit diagnostics --metrics-format  # #2223 parsed, never printed
+emit diagnostics --metrics-output  # #2223 parsed, never written
+
+# emit hover reads none of these into its analysis (api.Analyze(source) with no options).
+emit hover --max-errors  # #2223 read into a local, never passed to Analyze
+emit hover --warn-as-error  # #2223 not read
+emit hover --nowarn  # #2223 not read
+emit hover --enable-feature  # #2223 not read
+
+# The compile server builds a logger from the logger globals and never calls it.
+server --log-level  # #2223 logger built, never used
+server --log-file  # #2223 logger built, never used (the file is created empty)
+server --verbose  # #2223 logger built, never used
+
+# Commands that analyse or compile but do not take -r / -m.
+emit diagnostics --reference missing  # #2223 an entry importing a referenced library cannot be analysed
+emit diagnostics --module-path missing  # #2223 an entry importing a module on a search path cannot be analysed
+emit hover --reference missing  # #2223 as emit diagnostics
+emit hover --module-path missing  # #2223 as emit diagnostics
+project --reference missing  # #2223 compile .spyproj takes -r; project does not
+project --module-path missing  # #2223 compile .spyproj takes -m; project does not
