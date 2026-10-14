@@ -79,25 +79,19 @@ compile::types/callable_ellipsis_refused_1852   # drain-exempt: Callable[..., in
 compile::errors/escaped_accessor_is_a_name_2166   # drain-exempt: escaped `get` is a property name (#2166): compile stops at SPY0104, Analyze recovers and continues (+SPY0203) — #1360 block
 compile::errors/escaped_new_is_a_name_2166   # drain-exempt: escaped `new` is a constraint type name (#2166): compile stops at SPY0104, Analyze recovers and continues (+SPY0200) — #1360 block
 
-# --- P53 LSP project mode (#2242) — drains in plan-6ce1a5 Phases 2–4 ---
+# --- P53 LSP project mode (#2242) — drained in plan-6ce1a5 Phases 2–4 ---
 #
 # First run of the two project-mode pairs @ 8be4576fd (plan-6ce1a5 Phase 1, 150 multi-file
 # fixtures). LSP-project found 8 fixtures whose build diagnostics landed in no file's result
 # (SPY0300, SPY0301, SPY0302, SPY0204, SPY0484); all 8 drained with the D1 per-file projection
 # (plan-6ce1a5 Phase 2). The pair now stands at 0 rows.
 #
-# LSP-project-nav, `member` cells: go-to-definition on a module-qualified member (`m.name`,
-# `a.b.name`, `import m as n` -> `n.name`) answers nothing — every such cell in the corpus
-# (88 of 88). Drains in Phase 4 (D6 recorded fact + D7 resolver).
-LSP-project-nav::module_imports/backtick_escaped_export_bare_qualified::main.spy:9:14  # member libz.zed -> libz.spy
-#
-# LSP-project-nav, `from` cells: the bare spelling navigates in all but 8 cells (the
-# positive control). These misses are NOT the m.name class: four sit in a program that
-# refuses the binding (a SPY0302 import cycle x3; a bare reference to an escape-declared
-# export), four ask at a generic-call / type-argument / type-alias-call position. They are on
-# the round's findings ledger for the lead to classify; Phase 4 is not expected to drain
-# them — move them to their class tracker when it is named.
-LSP-project-nav::imports/circular_import::a.spy:4:12  # from helper -> b.spy (got none)
-LSP-project-nav::imports/circular_import::b.spy:4:12  # from greet -> a.spy (got none)
-LSP-project-nav::imports/circular_import::main.spy:5:11  # from greet -> a.spy (got none)
-LSP-project-nav::module_imports/backtick_escaped_export_bare_reference::main.spy:10:9  # from zed -> libz.spy (got none)
+# LSP-project-nav found 96 go-to-definition cells that answered nothing. All drained in Phase 4:
+# 86 module-qualified member cells (`m.name`, `a.b.name`, `n.name` after `import m as n`) by the
+# D7 member-access resolver reading the checker's recorded export binding (D6); 5 by the checker
+# recording the binding at a generic-call, type-argument or type-alias position (`Slot[int,
+# str](..)`, `Box[int](5)`, `widest[Shape]`, `Handle("42")`, `lib.Handle("42")` — the alias also
+# gained its declaration span and file); 5 sit in programs that REFUSE the binding (a SPY0302
+# import cycle x3; SPY0200 / SPY0203 on a bare spelling of an escape-declared export x2) and are
+# skipped by the oracle's enumerated binding-refusal rule (FrontEndParityTests.BindingRefusals),
+# counted in the report's skip reasons. The pair now stands at 0 rows.

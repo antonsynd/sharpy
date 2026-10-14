@@ -617,7 +617,10 @@ public class FrontEndParityTests
     /// </list>
     /// A module with no file (a .NET namespace, a stdlib module) has no location to land on: its
     /// cells are record-and-skipped with the reason, counted under <c>projectMode.navigation</c> in
-    /// the report, never silently passed.
+    /// the report, never silently passed. So is a cell in a program that REFUSES the binding the cell
+    /// asks about (a fixture expecting an import cycle, an undefined name or an undefined module
+    /// member — <see cref="BindingRefusals"/>): the checker binds no symbol there, so there is no
+    /// declaration to land on.
     /// </remarks>
     private static async Task SweepProjectNavigationAsync(
         CompilerApi api, LanguageService service, ProjectAnalysisResult analysis, TestFixtureInfo fixture,
@@ -635,6 +638,7 @@ public class FrontEndParityTests
         }
 
         var handler = new Sharpy.Lsp.Handlers.SharpyDefinitionHandler(service, api);
+        var refusals = BindingRefusals(fixture, analysis);
 
         foreach (var uri in service.GetProjectFileUris())
         {
@@ -726,8 +730,17 @@ public class FrontEndParityTests
                     access.MemberNameLineStart, access.MemberNameColumnStart, expected));
             }
 
+            var normalizedFile = PathNormalizer.Normalize(new Uri(uri).LocalPath);
             foreach (var cell in cells)
             {
+                // Decided from the BUILD's diagnostics and the fixture's expectation, before the
+                // handler is asked — never from what navigation answers.
+                if (refusals.Refuses(normalizedFile, cell.Line) is { } refusalCode)
+                {
+                    stats.SkipNavigation(
+                        $"the program refuses this binding ({refusalCode}, the fixture's expected error): no declaration to land on");
+                    continue;
+                }
                 stats.CountNavigationCell(cell.Kind);
                 var response = await handler.Handle(
                     new LspModels.DefinitionParams
@@ -772,6 +785,65 @@ public class FrontEndParityTests
                 ?? (query.GetEffectiveType(nested) as Sharpy.Compiler.Semantic.ModuleType)?.Symbol,
             _ => null,
         };
+
+    /// <summary>
+    /// The codes by which the build REFUSES a name binding, so a navigation cell in a program that
+    /// expects one has no declaration to land on (plan-6ce1a5 lead decision, the nav oracle rule).
+    /// Measured @ c245ece62 before the rule existed: at every cell these codes cover, the checker
+    /// recorded no symbol (<c>GetIdentifierSymbol</c> / <c>GetModuleMemberResolution</c> null) — so
+    /// "navigates" was never the right expectation there. Enumerated, never derived: a code joins
+    /// this list only with that measurement.
+    /// </summary>
+    /// <remarks>
+    /// <list type="bullet">
+    ///   <item><c>SPY0302</c> (import cycle) — FIXTURE-wide: the cycle leaves every import of its
+    ///     files and of their importers unbound, wherever the diagnostic is stamped.</item>
+    ///   <item><c>SPY0200</c> (undefined name — incl. a bare reference to an escape-declared export,
+    ///     #1328) and <c>SPY0203</c> (no such module member — the bare qualified spelling of one) —
+    ///     LINE-scoped: only a cell on the refused line of the stamped file.</item>
+    /// </list>
+    /// Only a fixture that EXPECTS an error (<c>main.error</c>) qualifies: a refusal in a fixture
+    /// that should compile is a defect, and its cells stay asked.
+    /// </remarks>
+    private static readonly SCG.HashSet<string> FixtureWideBindingRefusals = new(StringComparer.Ordinal)
+    {
+        DiagnosticCodes.Semantic.CircularImport,
+    };
+
+    private static readonly SCG.HashSet<string> LineScopedBindingRefusals = new(StringComparer.Ordinal)
+    {
+        DiagnosticCodes.Semantic.UndefinedVariable,
+        DiagnosticCodes.Semantic.UndefinedMember,
+    };
+
+    private static NavRefusals BindingRefusals(TestFixtureInfo fixture, ProjectAnalysisResult analysis)
+    {
+        if (fixture.ErrorFile == null)
+            return NavRefusals.None;
+
+        string? fixtureWide = null;
+        var lines = new SCG.Dictionary<(string File, int Line), string>();
+        foreach (var d in analysis.Diagnostics.GetErrors())
+        {
+            if (d.Code == null)
+                continue;
+            if (FixtureWideBindingRefusals.Contains(d.Code))
+                fixtureWide ??= d.Code;
+            else if (LineScopedBindingRefusals.Contains(d.Code) && !string.IsNullOrEmpty(d.FilePath)
+                     && d.Line is { } line)
+                lines.TryAdd((PathNormalizer.Normalize(d.FilePath), line), d.Code);
+        }
+        return new NavRefusals(fixtureWide, lines);
+    }
+
+    private sealed record NavRefusals(string? FixtureWide, SCG.IReadOnlyDictionary<(string File, int Line), string> Lines)
+    {
+        public static readonly NavRefusals None =
+            new(null, new SCG.Dictionary<(string File, int Line), string>());
+
+        public string? Refuses(string normalizedFile, int line)
+            => FixtureWide ?? (Lines.TryGetValue((normalizedFile, line), out var code) ? code : null);
+    }
 
     /// <summary>
     /// The files a definition on <c>from module import name</c> may land in, read from the project's

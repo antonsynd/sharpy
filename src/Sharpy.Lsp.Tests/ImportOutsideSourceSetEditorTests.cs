@@ -15,7 +15,9 @@ namespace Sharpy.Lsp.Tests;
 /// </summary>
 /// <remarks>
 /// Cells: the import form {<c>from lib import build</c>, <c>import lib</c>} × the request {hover,
-/// definition}, each on the use of <c>build</c> (definition through <c>import lib</c> excepted, below). 2139c65da refused the import by binding an
+/// definition}, each on the use of <c>build</c> (definition through <c>import lib</c> — the
+/// module-qualified <c>lib.build</c> — navigates since #2242's member-access resolver; the full
+/// spelling matrix is <see cref="DefinitionModuleQualifiedTests"/>). 2139c65da refused the import by binding an
 /// error-recovery symbol, which left both requests with nothing to answer; the refusal now reports
 /// and binding continues (the error still stops code generation).
 /// </remarks>
@@ -53,10 +55,9 @@ public class ImportOutsideSourceSetEditorTests : IDisposable
         ? ("from lib import build\n\n\ndef main() -> None:\n    print(build(\"x\").label)\n", 10)
         : ("import lib\n\n\ndef main() -> None:\n    print(lib.build(\"x\").label)\n", 14);
 
-    // `import lib` + `lib.build` is not a row: go-to-definition on a module-qualified member of an
-    // extracted module answers nothing at 746004125 too (measured), a gap of its own outside #2234.
     [Theory]
     [InlineData("from")]
+    [InlineData("plain")]
     public async Task Definition_ThroughAnUnlistedImport_LandsInTheDefiningFile(string form)
     {
         var character = await LoadAsync(form);
