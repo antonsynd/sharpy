@@ -18,9 +18,16 @@ namespace Sharpy.Cli.Tests.Commands;
 /// <c>run</c> test's program reports through its exit code (<c>sys.exit(7)</c>).
 /// </para>
 /// </summary>
-public class OptionEffectEvidenceTests
+public class OptionEffectEvidenceTests : IClassFixture<ReferenceLibraryFixture>
 {
     static readonly string CliDll = Path.Combine(AppContext.BaseDirectory, "sharpyc.dll");
+
+    readonly ReferenceLibraryFixture _library;
+
+    public OptionEffectEvidenceTests(ReferenceLibraryFixture library)
+    {
+        _library = library;
+    }
 
     const string PlainMain = "def main():\n    print(\"plain\")\n";
 
@@ -522,6 +529,178 @@ public class OptionEffectEvidenceTests
         invocation.ExitCode.Should().Be(0, Show(invocation));
         invocation.StdErr.Should().NotContain("SPY0331");
         invocation.StdOut.Should().Contain("body\ndeferred\n3\n", "with the feature the deferred print runs at scope exit");
+    }
+
+    // ---- build / emit csharp -r and -m: the import binds ----
+
+    const string GreeterMain = "from Tablegreeter import Greeter\n\ndef main():\n    print(Greeter().greet())\n";
+
+    /// <summary>
+    /// Spawned, not in process: once another test has loaded <c>Tablegreeter</c> into this process,
+    /// the import can bind without <c>-r</c> and the control would pass for the wrong reason.
+    /// </summary>
+    [Fact]
+    public void Build_Reference_BindsTheImport()
+    {
+        using var ws = new TempWorkspace();
+        ws.WriteSpy(GreeterMain);
+
+        var control = ExecCli(ws.Root, "build", "main.spy", "-o", Path.Combine("control", "a.dll"));
+        var invocation = ExecCli(ws.Root, "build", "main.spy", "-r", _library.DllPath, "-o", Path.Combine("out", "a.dll"));
+
+        control.ExitCode.Should().NotBe(0, "control: the import needs the reference\n" + control.Output);
+        control.Output.Should().Contain("SPY0300");
+        File.Exists(ws.PathFor(Path.Combine("control", "a.dll"))).Should().BeFalse();
+        invocation.ExitCode.Should().Be(0, invocation.Output);
+        invocation.Output.Should().NotContain("SPY0300");
+        File.Exists(ws.PathFor(Path.Combine("out", "a.dll"))).Should().BeTrue("-r binds the import and the build completes");
+    }
+
+    /// <summary>Spawned for the same reason as <see cref="Build_Reference_BindsTheImport"/>.</summary>
+    [Fact]
+    public void EmitCSharp_Reference_BindsTheImport()
+    {
+        using var ws = new TempWorkspace();
+        ws.WriteSpy(GreeterMain);
+
+        var control = ExecCli(ws.Root, "emit", "csharp", "main.spy", "-o", Path.Combine("control", "main.cs"));
+        var invocation = ExecCli(ws.Root, "emit", "csharp", "main.spy", "-r", _library.DllPath, "-o", Path.Combine("out", "main.cs"));
+
+        control.ExitCode.Should().NotBe(0, "control: the import needs the reference\n" + control.Output);
+        control.Output.Should().Contain("SPY0300");
+        File.Exists(ws.PathFor(Path.Combine("control", "main.cs"))).Should().BeFalse();
+        invocation.ExitCode.Should().Be(0, invocation.Output);
+        invocation.Output.Should().NotContain("SPY0300");
+        File.ReadAllText(ws.PathFor(Path.Combine("out", "main.cs"))).Should().Contain("Greeter",
+            "-r binds the import and the C# is written");
+    }
+
+    [Fact]
+    public void Build_ModulePath_ResolvesAnImport()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("from helper import helper_value\n\ndef main():\n    print(helper_value())\n");
+        ws.WriteFile(Path.Combine("mods", "helper.spy"), "def helper_value() -> int:\n    return 42\n");
+        var mods = ws.PathFor("mods");
+        var controlOut = ws.PathFor(Path.Combine("control", "a.dll"));
+        var output = ws.PathFor(Path.Combine("out", "a.dll"));
+
+        var control = CliTestHarness.Invoke($"build \"{spy}\" -o \"{controlOut}\"");
+        var invocation = CliTestHarness.Invoke($"build \"{spy}\" -m \"{mods}\" -o \"{output}\"");
+
+        control.ExitCode.Should().NotBe(0, "control: helper is not beside main.spy\n" + Show(control));
+        control.StdErr.Should().Contain("SPY0300");
+        File.Exists(controlOut).Should().BeFalse();
+        invocation.ExitCode.Should().Be(0, Show(invocation));
+        File.Exists(output).Should().BeTrue("-m puts mods/ on the module search path, so the import resolves");
+    }
+
+    // ---- compile <file>.spy --configuration: the default output directory ----
+
+    /// <summary>
+    /// Without <c>-o</c>, <c>compile x.spy</c> writes under the WORKING directory's
+    /// <c>bin/{Configuration}</c>. The process is spawned with the workspace as its working
+    /// directory, because the in-process current directory is process-global.
+    /// </summary>
+    [Fact]
+    public void CompileFile_Configuration_SelectsTheDefaultOutputDirectory()
+    {
+        using var releaseWs = new TempWorkspace();
+        using var debugWs = new TempWorkspace();
+        releaseWs.WriteSpy(PlainMain);
+        debugWs.WriteSpy(PlainMain);
+
+        var release = ExecCli(releaseWs.Root, "compile", "main.spy", "--no-deps", "-c", "Release");
+        var debug = ExecCli(debugWs.Root, "compile", "main.spy", "--no-deps", "-c", "Debug");
+
+        release.ExitCode.Should().Be(0, release.Output);
+        debug.ExitCode.Should().Be(0, debug.Output);
+        FilesNamed(releaseWs.PathFor(Path.Combine("bin", "Release")), "main.exe").Should().ContainSingle();
+        FilesNamed(releaseWs.PathFor(Path.Combine("bin", "Debug")), "main.exe").Should().BeEmpty();
+        FilesNamed(debugWs.PathFor(Path.Combine("bin", "Debug")), "main.exe").Should().ContainSingle(
+            "-c Debug selects bin/Debug under the working directory");
+        FilesNamed(debugWs.PathFor(Path.Combine("bin", "Release")), "main.exe").Should().BeEmpty();
+    }
+
+    // ---- format --diff / --output ----
+
+    /// <summary>A body indented 8 spaces: the formatter rewrites it to 4.</summary>
+    const string Unformatted = "def foo():\n        pass\n";
+
+    [Fact]
+    public void Format_Diff_PrintsAUnifiedDiff()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(Unformatted, "f.spy");
+
+        var control = CliTestHarness.Invoke($"format \"{spy}\" --check");
+        var invocation = CliTestHarness.Invoke($"format \"{spy}\" --diff");
+
+        control.ExitCode.Should().Be(1, "positive control: the file is not formatted\n" + Show(control));
+        control.StdOut.Should().NotContain("@@", "control: --check reports without a diff");
+        invocation.ExitCode.Should().Be(0, Show(invocation));
+        invocation.StdOut.Should().Contain("--- ").And.Contain("+++ ").And.Contain("@@ ")
+            .And.Contain("-        pass").And.Contain("+    pass");
+        File.ReadAllText(spy).Should().Be(Unformatted, "--diff writes nothing");
+    }
+
+    [Fact]
+    public void Format_Output_WritesTheFormattedTextThere()
+    {
+        using var ws = new TempWorkspace();
+        var source = ws.WriteSpy(Unformatted, "f.spy");
+        var copy = ws.WriteSpy(Unformatted, "copy.spy");
+        var target = ws.PathFor("g.spy");
+
+        var control = CliTestHarness.Invoke($"format \"{copy}\"");
+        var invocation = CliTestHarness.Invoke($"format \"{source}\" -o \"{target}\"");
+
+        control.ExitCode.Should().Be(0, Show(control));
+        var formatted = File.ReadAllText(copy);
+        formatted.Should().NotBe(Unformatted, "control: without -o the input itself is rewritten");
+        invocation.ExitCode.Should().Be(0, Show(invocation));
+        File.Exists(target).Should().BeTrue("-o names where the formatted text goes");
+        File.ReadAllText(target).Should().Be(formatted);
+        File.ReadAllText(source).Should().Be(Unformatted, "with -o the input is left unchanged");
+    }
+
+    // ── a spawned `sharpyc` ──────────────────────────────────────────────────
+
+    sealed record ProcessResult(int ExitCode, string StdOut, string StdErr)
+    {
+        public string Output => StdOut + StdErr;
+    }
+
+    /// <summary>Runs <c>sharpyc</c> in a fresh process with <paramref name="workingDirectory"/> as its working directory.</summary>
+    static ProcessResult ExecCli(string workingDirectory, params string[] args)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        psi.ArgumentList.Add(CliDll);
+        foreach (var arg in args)
+            psi.ArgumentList.Add(arg);
+
+        using var process = Process.Start(psi)!;
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) lock (stdout) stdout.AppendLine(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (stderr) stderr.AppendLine(e.Data); };
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException($"sharpyc {string.Join(' ', args)} did not exit within 2 minutes");
+        }
+
+        process.WaitForExit(); // the untimed overload waits for the redirected streams to reach EOF
+        return new ProcessResult(process.ExitCode, stdout.ToString(), stderr.ToString());
     }
 
     // ── a spawned `sharpyc server` ───────────────────────────────────────────
