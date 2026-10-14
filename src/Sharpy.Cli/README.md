@@ -119,6 +119,15 @@ Create a `.spyproj` file to define your multi-file Sharpy project:
 
         <!-- Or use glob patterns -->
         <SpyFile Include="src/**/*.spy" />
+
+        <!-- .NET assembly references: a path, or a name with a HintPath -->
+        <Reference Include="libs/Greeter.dll" />
+        <Reference Include="Greeter">
+            <HintPath>libs/Greeter.dll</HintPath>
+        </Reference>
+
+        <!-- Module search paths for absolute imports -->
+        <ModulePath Include="mods" />
     </ItemGroup>
 </Project>
 ```
@@ -132,6 +141,11 @@ Create a `.spyproj` file to define your multi-file Sharpy project:
 - `SpyFile Include="..."` - Source files to compile
   - Supports glob patterns: `**/*.spy`, `src/**/*.spy`, etc.
   - Uses Microsoft.Extensions.FileSystemGlobbing
+- `Reference Include="..."` - A .NET assembly the project imports from
+  - Without a `<HintPath>` child, `Include` is the file's path: absolute, or relative to the `.spyproj`'s directory. It is not searched for on a `<ModulePath>` or `-m` directory.
+  - With a non-empty `<HintPath>` child, the HintPath is the file (absolute, or relative to the `.spyproj`'s directory) and `Include` is the reference's name. A name that differs from the assembly's own is not diagnosed.
+  - A reference whose file does not exist is an error (SPY0305), and nothing is compiled or written.
+- `ModulePath Include="..."` - A module search path, relative to the `.spyproj`'s directory. An absolute import is resolved below it, as with `-m`. A module found there must also be a `<SpyFile>` of the project (SPY0313).
 
 **Output Structure:**
 ```

@@ -99,6 +99,68 @@ project; list it as a <SpyFile> in the .spyproj, or remove the import (in main.s
 
 With `<SpyFile Include="**/*.spy" />` the same project builds, and the program prints `42`.
 
+**Project references.** A `.spyproj` references a .NET assembly — a Sharpy library built with
+`-t library`, or any other — with a `<Reference>` item, and its modules and types are then
+importable, as `-r` makes them on the command line. There are two spellings:
+
+```xml
+<ItemGroup>
+    <Reference Include="libs/Greeter.dll" />
+    <Reference Include="Greeter">
+        <HintPath>libs/Greeter.dll</HintPath>
+    </Reference>
+</ItemGroup>
+```
+
+Without a `<HintPath>`, `Include` is the file's path: absolute, or relative to the `.spyproj`'s
+directory. It is not searched for below a `<ModulePath>` or `-m` directory, and the working
+directory plays no part: `<Reference Include="Greeter.dll" />` names `Greeter.dll` beside the
+`.spyproj` and nothing else. With a non-empty `<HintPath>` — the spelling MSBuild projects use —
+the `HintPath` is the file, absolute or relative to the `.spyproj`'s directory (`..` included), and
+`Include` is the reference's name. The file is what loads: an `Include` that differs from the
+assembly's own name is not diagnosed.
+
+A reference whose file does not exist is error `SPY0305`, which names the path it resolved to.
+Nothing is compiled and nothing is written — no assembly, no output directory — on `compile` and
+`project` alike, and the editor reports the error on the project's entry file:
+
+```text
+app/app.spyproj  <Reference Include="Greeter"><HintPath>../libs/Greeter.dll</HintPath></Reference>
+libs/            (empty)
+
+$ sharpyc project app/app.spyproj
+error[SPY0305]: Assembly not found: /…/libs/Greeter.dll
+```
+
+Deployment: `compile` and `run` copy every referenced assembly beside the output unless
+`--no-deps`; `build` and `project` write the assembly only.
+
+For example, a library built from `greeter.spy` with
+`sharpyc compile greeter.spy -t library -o libs/Greeter.dll`:
+
+```python
+class Greeter:
+    def greet(self, name: str) -> str:
+        return f"hello, {name}"
+```
+
+is referenced from `app/app.spyproj` through `<HintPath>../libs/Greeter.dll</HintPath>` as above,
+and imported by the project's `main.spy` under its namespace, `Greeter`:
+
+<!-- spec-sweep: fragment -->
+```python
+from Greeter import Greeter
+
+def main():
+    print(Greeter().greet("world"))
+```
+
+The program prints:
+
+```text
+hello, world
+```
+
 Because types sit beside the members class, a type may share its module's name: `class Thing[T]`
 (or a `struct`, `enum`, `union`, … named `Thing`) in `thing.spy` is simply `Merge.Thing.Thing`, and
 a function and a type whose emitted names coincide (`def foo_bar` and `class FooBar`) live in two
