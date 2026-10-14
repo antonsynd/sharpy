@@ -571,7 +571,7 @@ internal partial class NameResolver
             return;
         }
 
-        _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias));
+        _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias, _currentFilePath));
     }
 
 }

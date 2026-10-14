@@ -236,6 +236,11 @@ internal partial class TypeChecker
                     if (!CheckGenericTypeReferenceArity(genericTypeSymbol, typeArgs, indexAccess))
                         return true; // arity error emitted; handled
 
+                    // #2242: this arm binds the bare callee WITHOUT CheckIdentifier visiting it, so
+                    // the identifier's symbol is recorded here — the one fact the editor reads for
+                    // `Box` in `Box[int](5)` exactly as for `Box` in `Box(5)`.
+                    _semanticInfo.SetIdentifierSymbol(typeId, genericTypeSymbol);
+
                     var genericType = new GenericType
                     {
                         Name = genericTypeSymbol.Name,
@@ -270,6 +275,8 @@ internal partial class TypeChecker
                     if (!CheckGenericReferenceConstraints(
                             resolvedFuncSymbol.TypeParameters, typeArgs, indexAccess))
                         return true; // constraint error emitted; handled (#1289)
+
+                    _semanticInfo.SetIdentifierSymbol(typeId, resolvedFuncSymbol); // #2242, as above
 
                     var funcType = new GenericFunctionType
                     {

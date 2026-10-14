@@ -1,0 +1,6 @@
+from a import A
+
+
+def main():
+    a = A()
+    print(len(a.make()))

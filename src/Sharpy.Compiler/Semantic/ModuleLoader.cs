@@ -401,7 +401,7 @@ internal class ModuleLoader
                 // ResolveQualifiedType requires a TypeSymbol for the final segment and an alias is
                 // not one (Shared/ModuleSymbolExtensions.cs:88-97). That is tracked separately
                 // (#1436); the export itself is the prerequisite for either spelling.
-                moduleInfo.ExportedSymbols.Add(typeAlias.Name, TypeAliasSymbol.CreateFrom(typeAlias));
+                moduleInfo.ExportedSymbols.Add(typeAlias.Name, TypeAliasSymbol.CreateFrom(typeAlias, CurrentModulePath));
                 break;
 
             default:
@@ -733,7 +733,7 @@ internal class ModuleLoader
                     break;
                 case TypeAlias typeAlias:
                     (aliases ??= new List<TypeAliasSymbol>()).Add(
-                        TypeAliasSymbol.CreateFrom(typeAlias));
+                        TypeAliasSymbol.CreateFrom(typeAlias, definingModulePath));
                     break;
             }
         }

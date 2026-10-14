@@ -1,0 +1,9 @@
+# b.spy closes the cycle and uses A in an annotation only.
+from a import A
+
+
+class B:
+    a_ref: list[A]
+
+    def __init__(self):
+        self.a_ref = []

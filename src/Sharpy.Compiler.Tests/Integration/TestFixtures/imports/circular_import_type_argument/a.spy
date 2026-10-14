@@ -1,0 +1,10 @@
+# B comes from a deferred circular import, so it may appear only in type positions. A TYPE
+# ARGUMENT is one: `list[B]()` constructs a list, not a B. Its identifier now carries a recorded
+# symbol (the editor navigates it, #2242); CircularImportUsageValidator must still not read that
+# as runtime usage of B (SPY0308).
+from b import B
+
+
+class A:
+    def make(self) -> list[B]:
+        return list[B]()

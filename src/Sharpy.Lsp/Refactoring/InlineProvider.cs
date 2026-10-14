@@ -210,6 +210,14 @@ internal sealed class InlineProvider : ICodeActionProvider
         if (funcCall.KeywordArguments.Length > 0)
             return null;
 
+        // An explicitly type-argued call (`f[int](x)`) is not inlined: the substitution keeps the
+        // arguments and drops the `[int]`, which the call's typing depends on (`f[int](Some("x"))` is
+        // refused; its inlined `Some("x")` is not — #2296's meaning-preservation class). The single-call-
+        // site gate above never counted this callee until #2242 recorded its binding (and with it the
+        // reference), so the action was never offered here; it stays not offered.
+        if (funcCall.Function is IndexAccess)
+            return null;
+
         // Argument count must match parameter count (no variadic, no defaults missing)
         var parameters = funcDef.Parameters;
 

@@ -3124,7 +3124,7 @@ internal partial class TypeChecker
             return;
         }
 
-        _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias));
+        _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias, _currentFilePath));
     }
 
     /// <summary>

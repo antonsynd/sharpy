@@ -3379,6 +3379,7 @@ internal partial class TypeChecker
             // classifier owns its refusal; the annotation arity error (#1331) must not fire here.
             var resolved = _typeResolver.ResolveTypeAnnotation(
                 typeAnnotation, AnnotationPosition.Value, bareGenericFillsFromContext: true);
+            RecordTypeArgumentIdentifierSymbol(typeId, resolved);
             return resolved != SemanticType.Unknown ? resolved : null;
         }
 
@@ -3431,6 +3432,27 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Records the symbol a bare type name written in EXPRESSION position (<c>Shape</c> in
+    /// <c>widest[Shape](…)</c>, <c>Box[Shape]()</c>) bound. The name is resolved as a type through
+    /// <see cref="TypeResolver"/>, never visited by <c>CheckIdentifier</c>, so nothing recorded it and
+    /// the editor had no binding to read (#2242). Recorded only when the resolved type IS the
+    /// declaration the name looks up — by identity — so an alias expanded to its target
+    /// (<c>type W = Widget</c>) is not recorded as <c>Widget</c>, and a primitive (<c>int</c>) records
+    /// nothing.
+    /// </summary>
+    private void RecordTypeArgumentIdentifierSymbol(Identifier typeId, SemanticType resolved)
+    {
+        var named = resolved switch
+        {
+            UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
+            GenericType { GenericDefinition: { } definition } => definition,
+            _ => null,
+        };
+        if (named != null && ReferenceEquals(_symbolTable.Lookup(typeId.Name), named))
+            _semanticInfo.SetIdentifierSymbol(typeId, named);
     }
 
     /// <summary>

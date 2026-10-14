@@ -763,8 +763,15 @@ public record TypeAliasSymbol : Symbol
     /// Used by both NameResolver (module/class scope) and TypeChecker (function scope)
     /// to avoid duplicating construction logic.
     /// </summary>
-    public static TypeAliasSymbol CreateFrom(TypeAlias typeAlias) => new()
+    /// <param name="typeAlias">The declaration.</param>
+    /// <param name="declaringFilePath">The file that declares the alias — required, so every
+    /// construction site states it. Without it (and <see cref="Symbol.DeclarationSpan"/>) an alias was
+    /// the one declaration kind go-to-definition could not land on, in the same file or another
+    /// (#2242).</param>
+    public static TypeAliasSymbol CreateFrom(TypeAlias typeAlias, string? declaringFilePath) => new()
     {
+        DeclarationSpan = typeAlias.Span,
+        DeclaringFilePath = declaringFilePath,
         Name = typeAlias.Name,
         Kind = SymbolKind.TypeAlias,
         IsNameBacktickEscaped = typeAlias.IsNameBacktickEscaped,
