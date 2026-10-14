@@ -52,7 +52,7 @@ public sealed class ProjectReferenceParserTests : IDisposable
         var data = new TheoryData<string, bool>();
         var spellings = new[]
         {
-            "IncludeAbsolute", "IncludeRelative", "HintPathAbsolute",
+            "IncludeAbsolute", "IncludeRelative", "IncludeRelativeDotDot", "HintPathAbsolute",
             "HintPathRelative", "HintPathOnly", "IncludeWithEmptyHintPath",
         };
         foreach (var spelling in spellings)
@@ -78,8 +78,13 @@ public sealed class ProjectReferenceParserTests : IDisposable
                 libAbsolute),
             "IncludeRelative" => (
                 $"<Reference Include=\"{localRelative}\" />",
-                // Today's Include rule, unchanged: joined to the project directory, not normalized.
                 Path.Combine(_projectDir, localRelative)),
+            "IncludeRelativeDotDot" => (
+                "<Reference Include=\"../libs/Greeter.dll\" />",
+                // One full spelling, like the HintPath branch (owner ruling on #2223, 2026-10-14):
+                // the `..` is collapsed, so the LSP's reference identity and the merge's write-back
+                // compare equal strings for one file.
+                Path.GetFullPath(Path.Combine(_root, "libs", "Greeter.dll"))),
             "HintPathAbsolute" => (
                 $"<Reference Include=\"Greeter\"><HintPath>{libAbsolute}</HintPath></Reference>",
                 libAbsolute),

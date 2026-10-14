@@ -9,6 +9,27 @@ namespace Sharpy.Cli.Tests;
 
 public class CliHelpersTests
 {
+    /// <summary>
+    /// The merge writes every project reference item back as the file it resolves to, so the
+    /// registry, the Roslyn step and the deployment seed read one spelling (owner ruling on #2223,
+    /// 2026-10-14). A rooted item that names no file is SPY0305 and left as spelled.
+    /// </summary>
+    [Fact]
+    public void MergeCommandLineIntoProject_RewritesEveryItemToTheFileItResolvesTo()
+    {
+        var existing = typeof(CliHelpersTests).Assembly.Location;
+        var unnormalized = Path.Combine(Path.GetDirectoryName(existing)!, ".", Path.GetFileName(existing));
+        var missing = Path.Combine(Path.GetDirectoryName(existing)!, "does-not-exist.dll");
+        var config = new ProjectConfig { References = { unnormalized, missing } };
+
+        var unresolved = CliHelpers.MergeCommandLineIntoProject(config, Array.Empty<string>(), Array.Empty<string>());
+
+        unnormalized.Should().NotBe(Path.GetFullPath(unnormalized), "positive control: the spelling differs from its full path");
+        config.References[0].Should().Be(Path.GetFullPath(unnormalized));
+        config.References[1].Should().Be(missing, "an item that resolves nowhere keeps its spelling for the message");
+        unresolved.Should().ContainSingle().Which.Message.Should().Contain($"Assembly not found: {missing}");
+    }
+
     [Fact]
     public void CreateLogger_None_ReturnsDisabledLogger()
     {

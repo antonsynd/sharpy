@@ -412,11 +412,10 @@ public static class ProjectFileParser
                 var include = reference.Attribute("Include")?.Value;
                 if (!string.IsNullOrWhiteSpace(include))
                 {
-                    // Resolve relative paths
-                    var referencePath = Path.IsPathRooted(include)
-                        ? include
-                        : Path.Combine(projectDirectory, include);
-                    references.Add(referencePath);
+                    // Rooted at the project directory and normalized to one full spelling, like the
+                    // HintPath branch: an exact path, searched nowhere and never completed with
+                    // `.dll` (owner ruling on #2223, 2026-10-14).
+                    references.Add(Path.GetFullPath(Path.Combine(projectDirectory, include)));
                 }
             }
 

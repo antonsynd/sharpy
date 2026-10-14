@@ -509,17 +509,26 @@ internal static class CliHelpers
 
         var unresolved = new System.Collections.Generic.List<CompilerDiagnostic>();
 
-        // The project's own items first, by the registry's own resolution (an item is a rooted path,
-        // or a file name the registry may still find on a module path).
-        foreach (var item in config.References)
+        // The project's own items first, by the registry's own resolution, and written back as the
+        // file it resolves to — ONE spelling for the registry, the Roslyn step and the deployment
+        // seed (owner ruling on #2223, 2026-10-14: two spellings of one item were the registry
+        // binding an import that Roslyn then could not find). A rooted item resolves to itself or to
+        // nothing; a file name may still be found on a module path.
+        for (var i = 0; i < config.References.Count; i++)
         {
-            if (ModuleRegistry.ResolveAssemblyPath(item, config.ModulePaths) == null)
+            var item = config.References[i];
+            var resolved = ModuleRegistry.ResolveAssemblyPath(item, config.ModulePaths);
+            if (resolved == null)
             {
                 unresolved.Add(new CompilerDiagnostic(
                     $"Assembly not found: {item}",
                     CompilerDiagnosticSeverity.Error,
                     Code: DiagnosticCodes.Semantic.AssemblyNotFound,
                     Phase: CompilerPhase.ImportResolution));
+            }
+            else
+            {
+                config.References[i] = resolved;
             }
         }
 

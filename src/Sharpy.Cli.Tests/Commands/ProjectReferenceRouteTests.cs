@@ -142,6 +142,55 @@ public sealed class ProjectReferenceRouteTests : IClassFixture<ReferenceLibraryF
         invocation.ExitCode.Should().NotBe(0, $"[{route}] control: the import needs the reference\n{invocation.StdOut}{invocation.StdErr}");
     }
 
+    /// <summary>
+    /// A rooted reference path is exact (owner ruling on #2223, 2026-10-14): never searched below a
+    /// module path, never completed with `.dll`. `<Reference Include="…/Tablegreeter"/>` with a
+    /// `<ModulePath>` used to load Tablegreeter.dll in the registry (the module-path loop appended
+    /// `.dll` to the rooted path) while the Roslyn step got the raw item — SPY0908 CS0400. Now
+    /// SPY0305 with nothing written. Positive control: the `.dll` spelling with the same module path
+    /// binds the import.
+    /// </summary>
+    [Theory]
+    [InlineData("compile")]
+    [InlineData("project")]
+    public void AnExtensionlessRootedInclude_IsSpy0305_EvenWithAModulePath(string route)
+    {
+        using var ws = new TempWorkspace();
+        var projectDir = ws.PathFor("app");
+        var outDir = ws.PathFor("out");
+        var modulePath = ws.PathFor("mods");
+        System.IO.Directory.CreateDirectory(modulePath);
+        var extensionless = Path.Combine(_library.Directory, "Tablegreeter");
+        var items = $"<Reference Include=\"{extensionless}\" />\n    <ModulePath Include=\"{modulePath}\" />";
+
+        var project = WriteProject(ws, items);
+        var refused = CliTestHarness.Invoke(CommandLine(route, project, outDir));
+
+        var all = refused.StdOut + refused.StdErr;
+        refused.ExitCode.Should().Be(1, all);
+        refused.StdErr.Should().Contain("SPY0305").And.Contain($"Assembly not found: {extensionless}");
+        all.Should().NotContain("SPY0908").And.NotContain("CS0400");
+        WrittenAssemblies(route, projectDir, outDir).Should().BeEmpty("nothing is written");
+
+        var control = WriteProject(ws, $"<Reference Include=\"{_library.DllPath}\" />\n    <ModulePath Include=\"{modulePath}\" />");
+        var bound = CliTestHarness.Invoke(CommandLine(route, control, outDir));
+        bound.ExitCode.Should().Be(0, "positive control: the .dll spelling binds the import\n" + bound.StdOut + bound.StdErr);
+    }
+
+    /// <summary>A non-rooted `-r` name keeps its module-path search and `.dll` completion.</summary>
+    [Fact]
+    public void ANonRootedReferenceName_IsStillSearchedAndCompleted()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(GreeterMain);
+        var outDir = ws.PathFor("out");
+
+        var result = CliTestHarness.Invoke($"compile \"{spy}\" -r Tablegreeter -m \"{_library.Directory}\" -o \"{Path.Combine(outDir, "App.dll")}\" --no-deps");
+
+        result.ExitCode.Should().Be(0, result.StdOut + result.StdErr);
+        File.Exists(Path.Combine(outDir, "App.dll")).Should().BeTrue();
+    }
+
     static string CommandLine(string route, string project, string outDir) => route switch
     {
         "compile" => $"compile \"{project}\" -o \"{Path.Combine(outDir, "App.dll")}\"",

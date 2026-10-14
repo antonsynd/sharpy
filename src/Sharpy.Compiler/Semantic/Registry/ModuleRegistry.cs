@@ -651,6 +651,18 @@ internal class ModuleRegistry
             return Path.GetFullPath(assemblyPath);
         }
 
+        // A rooted path is exact (owner ruling on #2223, 2026-10-14): it is never searched for
+        // below a module path and never completed with `.dll`. Every .spyproj <Reference> without
+        // a HintPath is rooted at the project directory, so `Include="Greeter"` with Greeter.dll
+        // beside the project is SPY0305 — with or without a <ModulePath>. Before, the module-path
+        // loop below re-combined the rooted path with each search directory (a no-op) and then
+        // appended `.dll`, so the registry loaded Greeter.dll and bound the import while the Roslyn
+        // step, given the raw item, failed with CS0400 behind SPY0908.
+        if (Path.IsPathRooted(assemblyPath))
+        {
+            return null;
+        }
+
         // Try in current directory
         var currentDirPath = Path.Combine(Directory.GetCurrentDirectory(), assemblyPath);
         if (File.Exists(currentDirPath))

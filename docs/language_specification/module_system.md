@@ -114,9 +114,11 @@ importable, as `-r` makes them on the command line. There are two spellings:
 ```
 
 Without a `<HintPath>`, `Include` is the file's path: absolute, or relative to the `.spyproj`'s
-directory. It is not searched for below a `<ModulePath>` or `-m` directory, and the working
-directory plays no part: `<Reference Include="Greeter.dll" />` names `Greeter.dll` beside the
-`.spyproj` and nothing else. With a non-empty `<HintPath>` — the spelling MSBuild projects use —
+directory. It is not searched for below a `<ModulePath>` or `-m` directory, it is not completed
+with `.dll`, and the working directory plays no part: `<Reference Include="Greeter.dll" />` names
+`Greeter.dll` beside the `.spyproj` and nothing else, and `<Reference Include="Greeter" />` names a
+file called `Greeter`, which is SPY0305 when there is none (only a non-rooted `-r Greeter` is
+searched on the module paths and completed). With a non-empty `<HintPath>` — the spelling MSBuild projects use —
 the `HintPath` is the file, absolute or relative to the `.spyproj`'s directory (`..` included), and
 `Include` is the reference's name. The file is what loads: an `Include` that differs from the
 assembly's own name is not diagnosed.
