@@ -130,7 +130,12 @@ public class ProjectConfig
     internal bool EmitLineDirectives { get; init; } = true;
 
     /// <summary>
-    /// List of .NET assembly references
+    /// List of .NET assembly references, as file paths. From a .spyproj (R-EK, #2223): a
+    /// <c>&lt;Reference&gt;</c> with a non-empty <c>&lt;HintPath&gt;</c> child contributes the
+    /// HintPath — absolute, or relative to <see cref="ProjectDirectory"/> — normalized to a full
+    /// path; its <c>Include</c> is only the assembly name and is not stored (a name that differs
+    /// from the file's assembly is not diagnosed). Without a HintPath, <c>Include</c> is the path
+    /// (rooted as written, or joined to <see cref="ProjectDirectory"/>).
     /// </summary>
     public List<string> References { get; init; } = new();
 
@@ -387,9 +392,21 @@ public static class ProjectFileParser
                 }
             }
 
-            // Parse Reference includes
+            // Parse Reference items (R-EK, #2223): a non-empty <HintPath> child is the reference's
+            // file; Include is then only its assembly name (not stored: the registry reads the
+            // name off the loaded assembly, and a name that differs from the file's is not
+            // diagnosed). Without a HintPath, Include is the path, as before.
             foreach (var reference in itemGroup.Elements("Reference"))
             {
+                var hintPath = reference.Element("HintPath")?.Value.Trim();
+                if (!string.IsNullOrEmpty(hintPath))
+                {
+                    // Normalized to one full spelling so the LSP's reference identity comparison
+                    // and DefaultReferences.ApplyTo's dedupe see the same string for one file.
+                    references.Add(Path.GetFullPath(Path.Combine(projectDirectory, hintPath)));
+                    continue;
+                }
+
                 var include = reference.Attribute("Include")?.Value;
                 if (!string.IsNullOrWhiteSpace(include))
                 {
