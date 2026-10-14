@@ -135,7 +135,9 @@ public class ProjectConfig
     /// HintPath — absolute, or relative to <see cref="ProjectDirectory"/> — normalized to a full
     /// path; its <c>Include</c> is only the assembly name and is not stored (a name that differs
     /// from the file's assembly is not diagnosed). Without a HintPath, <c>Include</c> is the path
-    /// (rooted as written, or joined to <see cref="ProjectDirectory"/>).
+    /// (rooted as written, or joined to <see cref="ProjectDirectory"/>). A path that resolves to no
+    /// file is SPY0305, reported by every compiler door that builds a registry from this config
+    /// (<see cref="Semantic.Registry.ModuleRegistry.MissingReferenceDiagnostics"/>).
     /// </summary>
     public List<string> References { get; init; } = new();
 

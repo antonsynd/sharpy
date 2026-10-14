@@ -132,13 +132,8 @@ public sealed class CompilerApi
 
         // A reference that resolves to no file is SPY0305 on the registry; this path built the
         // registry and never read it, so `--reference does/not/exist.dll` compiled silently (#2173).
-        // Refuse before compiling, as for a missing input file — nothing is written. Only the
-        // missing-path code: SPY0306 also fires when a long-lived process (a test host, the
-        // compile server) already loaded a same-named assembly from another path, and that
-        // compile goes on to succeed against the loaded copy — a different defect, not this one.
-        var missingReferences = registry?.Diagnostics.GetAll()
-            .Where(d => d.Code == DiagnosticCodes.Semantic.AssemblyNotFound)
-            .ToList();
+        // Refuse before compiling, as for a missing input file — nothing is written.
+        var missingReferences = registry?.MissingReferenceDiagnostics();
         if (missingReferences is { Count: > 0 })
         {
             return new CompileResult
@@ -517,7 +512,23 @@ public sealed class CompilerApi
             moduleRegistry: registry,
             options: ProjectOptionsMerge.Merge(opts, config, incremental: false, sharedBuiltins: builtins),
             emitterFactory: _emitterFactory);
-        return compiler.AnalyzeProject(config, cancellationToken);
+        var result = compiler.AnalyzeProject(config, cancellationToken);
+
+        // A <Reference> that resolves to no file is SPY0305 on the registry, which the analysis
+        // never reads (#2223). Analysis writes nothing, so merging after it is enough; the entry is
+        // file-less, so the per-file readers place it on UnattributedTarget (D3/D5 of #2242). The
+        // registry is the cached one: its diagnostics were recorded when it was built, so a warm
+        // call reports them again, and a reference appearing or vanishing changes its mtime in the
+        // cache key, which rebuilds the registry.
+        var missingReferences = registry?.MissingReferenceDiagnostics();
+        if (missingReferences is not { Count: > 0 })
+            return result;
+
+        foreach (var diagnostic in missingReferences)
+            result.Diagnostics.Add(diagnostic);
+
+        return new Project.ProjectAnalysisResult(
+            success: false, result.ProjectModel, result.DependencyGraph, result.Diagnostics);
     }
 
     /// <summary>

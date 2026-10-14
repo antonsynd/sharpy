@@ -35,6 +35,26 @@ internal class ModuleRegistry
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
+    /// The registry's SPY0305 (<see cref="DiagnosticCodes.Semantic.AssemblyNotFound"/>)
+    /// diagnostics: one per reference that resolved to no file. The one read every door that builds
+    /// a registry from a <see cref="ProjectConfig"/> makes before it compiles or reports (#2173,
+    /// #2223) — <c>Compiler.CompileProject</c> refuses with these before anything is written,
+    /// <c>CompilerApi.CompileAsSyntheticProject</c> likewise, and <c>CompilerApi.AnalyzeProject</c>
+    /// merges them into its result, where the file-less entry lands on the project's unattributed
+    /// target.
+    /// </summary>
+    /// <remarks>
+    /// Only the missing-path code: SPY0306 also fires when a long-lived process (a test host, the
+    /// compile server) already loaded a same-named assembly from another path, and that compile
+    /// goes on to succeed against the loaded copy — a different defect, not this one. Refusing on
+    /// every registry error reddened run-route cells when this was first measured (fa7e8aa63).
+    /// </remarks>
+    public IReadOnlyList<CompilerDiagnostic> MissingReferenceDiagnostics()
+        => _diagnostics.GetAll()
+            .Where(d => d.Code == DiagnosticCodes.Semantic.AssemblyNotFound)
+            .ToList();
+
+    /// <summary>
     /// The assemblies loaded as module references so far. Consulted by the TypeChecker's BCL
     /// member-absence proof (#1141) so an extension method shipped by an imported .NET module keeps
     /// the member-reference channel permissive.
