@@ -356,11 +356,15 @@ internal static class CliHelpers
         if (accepted.Contains(kind))
             return true;
 
+        // The steer spells the path as the user gave it (FileInfo.ToString() is the original
+        // string), so `build ../app/App.spyproj` steers to `compile ../app/App.spyproj`, which
+        // works from the same directory; the bare name would not.
+        var given = input.ToString();
         Console.Error.WriteLine(kind == InputKind.SpyProject
-            ? $"Error: '{input.Name}' is a project file; use 'sharpyc compile {input.Name}' or 'sharpyc project {input.Name}'."
+            ? $"Error: '{given}' is a project file; use 'sharpyc compile {given}' or 'sharpyc project {given}'."
             : Directory.Exists(input.FullName)
-                ? $"Error: '{input.Name}' is a directory; give the .spyproj file inside it, or run 'sharpyc project' from that directory."
-                : $"Error: '{input.Name}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
+                ? $"Error: '{given}' is a directory; give the .spyproj file inside it, or run 'sharpyc project' from that directory."
+                : $"Error: '{given}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
         return false;
     }
 
@@ -380,7 +384,9 @@ internal static class CliHelpers
             return false;
         }
 
-        if (inputFile.Extension != ".spy")
+        // Keyed on the one classifier, so the warning and the input-kind refusal agree on what a
+        // .spy file is (the extension compares ordinal-ignore-case: `UP.SPY` is a .spy file).
+        if (ClassifyInput(inputFile) != InputKind.SpyFile)
         {
             Console.Error.WriteLine($"Warning: Input file '{inputFile.Name}' does not have .spy extension.");
         }

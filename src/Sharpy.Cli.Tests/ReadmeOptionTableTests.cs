@@ -10,8 +10,10 @@ namespace Sharpy.Cli.Tests;
 /// this keeps it from fossilising (#2223). Both ways: every command path of the registry has a row
 /// and every row names a registry command, and each row's input kinds, <c>-r</c>/<c>-m</c> column and
 /// "global options without effect" column say what the command's table says. The deployment column
-/// is prose the registry does not hold, so it is not checked here (ReferenceDeploymentMatrixTests
-/// observes it).
+/// is prose the registry does not hold: it is pinned against the literal set of deploying commands
+/// (<see cref="DeployingCommands"/>, the callers of RuntimeDependencyHelper.CopyRuntimeDependencies),
+/// as are the `build`/`project` help sentences that say they write the assembly only
+/// (ReferenceDeploymentMatrixTests observes the behaviour itself).
 /// </summary>
 public class ReadmeOptionTableTests
 {
@@ -31,13 +33,12 @@ public class ReadmeOptionTableTests
 
     static readonly Regex Backticked = new(@"`([^`]+)`", RegexOptions.Compiled);
 
-    /// <summary>The table's rows: command path → (input, -r/-m, globals) cells.</summary>
-    internal static Dictionary<string, (string Input, string PathOptions, string Globals)> ParseTable(string readme)
+    /// <summary>The table's data rows: command path → its cells after the command column.</summary>
+    static IEnumerable<(string Command, string[] Cells)> TableRows(string readme)
     {
-        var rows = new Dictionary<string, (string, string, string)>(StringComparer.Ordinal);
         var section = readme.IndexOf("### Options by Command", StringComparison.Ordinal);
         if (section < 0)
-            return rows;
+            yield break;
 
         foreach (var line in readme[section..].Split('\n').Skip(1).TakeWhile(l => !l.StartsWith("#", StringComparison.Ordinal)))
         {
@@ -46,11 +47,57 @@ public class ReadmeOptionTableTests
             var cells = line.Trim().Trim('|').Split('|').Select(c => c.Trim()).ToArray();
             if (cells.Length < 5)
                 continue;
-            var command = Backticked.Match(cells[0]).Groups[1].Value;
+            yield return (Backticked.Match(cells[0]).Groups[1].Value, cells);
+        }
+    }
+
+    /// <summary>The table's rows: command path → (input, -r/-m, globals) cells.</summary>
+    internal static Dictionary<string, (string Input, string PathOptions, string Globals)> ParseTable(string readme)
+    {
+        var rows = new Dictionary<string, (string, string, string)>(StringComparer.Ordinal);
+        foreach (var (command, cells) in TableRows(readme))
             rows[command] = (cells[1], cells[2], cells[4]);
+        return rows;
+    }
+
+    /// <summary>The table's "Deploys references" cell per command path.</summary>
+    internal static Dictionary<string, string> ParseDeployColumn(string readme)
+    {
+        var deploys = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (command, cells) in TableRows(readme))
+            deploys[command] = cells[3];
+        return deploys;
+    }
+
+    /// <summary>
+    /// The commands whose action copies the runtime dependencies and user references beside the
+    /// output: the callers of RuntimeDependencyHelper.CopyRuntimeDependencies (#2223). `build` and
+    /// `project` write the assembly only. A literal, not derived from the registry, so the README
+    /// and help text are pinned against something other than themselves.
+    /// </summary>
+    internal static readonly IReadOnlySet<string> DeployingCommands = new HashSet<string>(StringComparer.Ordinal) { "compile", "run" };
+
+    internal static readonly IReadOnlySet<string> AssemblyOnlyCommands = new HashSet<string>(StringComparer.Ordinal) { "build", "project" };
+
+    const string AssemblyOnlySentence = "Writes the assembly only; `compile` deploys its runtime dependencies and references beside the output";
+
+    /// <summary>Every way the README's "Deploys references" column disagrees with <see cref="DeployingCommands"/>.</summary>
+    internal static System.Collections.Generic.List<string> DeployMismatches(string readme)
+    {
+        var deploys = ParseDeployColumn(readme);
+        var problems = new System.Collections.Generic.List<string>();
+        foreach (var (path, cell) in deploys)
+        {
+            var expected = DeployingCommands.Contains(path) ? "yes"
+                : AssemblyOnlyCommands.Contains(path) ? "no"
+                : "—";
+            if (!cell.StartsWith(expected, StringComparison.Ordinal))
+                problems.Add($"`{path}`: the Deploys references cell says '{cell}', expected it to start with '{expected}'");
+            if (AssemblyOnlyCommands.Contains(path) && !cell.Contains("writes the assembly only", StringComparison.Ordinal))
+                problems.Add($"`{path}`: the Deploys references cell does not say it writes the assembly only: '{cell}'");
         }
 
-        return rows;
+        return problems;
     }
 
     static IReadOnlySet<string> GlobalsIn(string cell) => cell switch
@@ -122,5 +169,54 @@ public class ReadmeOptionTableTests
 
         Mismatches(wrong, CommandOptionEffects.Tables).Should().ContainSingle()
             .Which.Should().StartWith("`emit diagnostics`: the README lists");
+    }
+
+    [Fact]
+    public void TheDeploysColumn_MatchesTheDeployingCommands()
+    {
+        var readme = ReadmeText();
+
+        ParseDeployColumn(readme).Should().HaveCount(CommandOptionEffects.Tables.Count, "positive control: the parser reads every row's deploy cell");
+        DeployMismatches(readme).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AWrongDeploysCell_IsReported()
+    {
+        var readme = ReadmeText();
+        var line = readme.Split('\n').Single(l => l.StartsWith("| `project` |", StringComparison.Ordinal));
+        var wrong = readme.Replace(line, line.Replace("| no — writes the assembly only |", "| yes |", StringComparison.Ordinal), StringComparison.Ordinal);
+
+        DeployMismatches(wrong).Should().HaveCount(2)
+            .And.AllSatisfy(p => p.Should().StartWith("`project`:"));
+    }
+
+    /// <summary>
+    /// `build --help` and `project --help` say they write the assembly only and name `compile` as the
+    /// deploying command; their `-r` line says the reference is not deployed. The deploying commands'
+    /// help carries no such sentence (positive control: the sentence is specific, not boilerplate).
+    /// </summary>
+    [Theory]
+    [InlineData("build")]
+    [InlineData("project")]
+    public void AnAssemblyOnlyCommand_SaysSoInItsHelp(string command)
+    {
+        var help = CliTestHarness.Invoke($"{command} --help");
+
+        help.ExitCode.Should().Be(0);
+        help.StdOut.Should().Contain(AssemblyOnlySentence);
+        help.StdOut.Should().Contain("not deployed beside the output", $"the -r line of `{command} --help` carries the deploy reason");
+    }
+
+    [Theory]
+    [InlineData("compile")]
+    [InlineData("run")]
+    public void ADeployingCommand_HasNoAssemblyOnlySentence(string command)
+    {
+        var help = CliTestHarness.Invoke($"{command} --help");
+
+        help.ExitCode.Should().Be(0);
+        help.StdOut.Should().NotContain(AssemblyOnlySentence);
+        help.StdOut.Should().NotContain("not deployed beside the output");
     }
 }

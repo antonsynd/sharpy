@@ -88,7 +88,7 @@ internal static class RunCommand
                 : null;
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features, serverPipe, namespaceName);
+            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features, serverPipe, namespaceName, verbose: parseResult.GetValue(globals.Verbose));
         });
 
         root.Subcommands.Add(command);
@@ -140,7 +140,8 @@ internal static class RunCommand
         bool selfContained = false,
         string[]? features = null,
         string? serverPipe = null,
-        string? namespaceName = null)
+        string? namespaceName = null,
+        bool verbose = false)
     {
         if (!CliHelpers.ValidateInputFile(inputFile))
         {
@@ -192,7 +193,7 @@ internal static class RunCommand
             string? entryTypeName = null;
             if (serverPipe != null
                 && !selfContained
-                && TryServerCompileForRun(serverPipe, inputFile, outputPath, references, projectReferences, modulePaths, warnAsError, nowarn, maxErrors, features, namespaceName, out var serverExit, out var serverUsedPaths))
+                && TryServerCompileForRun(serverPipe, inputFile, outputPath, references, projectReferences, modulePaths, warnAsError, nowarn, maxErrors, features, namespaceName, verbose, out var serverExit, out var serverUsedPaths))
             {
                 if (serverExit != 0)
                 {
@@ -372,6 +373,7 @@ internal static class RunCommand
         int? maxErrors,
         string[]? features,
         string? namespaceName,
+        bool verbose,
         out int exitCode,
         out IReadOnlySet<string> usedAssemblyPaths)
     {
@@ -407,6 +409,8 @@ internal static class RunCommand
 
         Console.Out.Write(response.Stdout);
         Console.Error.Write(response.Stderr);
+        if (verbose)
+            CompileServerClient.WriteVerboseSummary(Console.Error, pipeName, response);
         exitCode = response.ExitCode;
         usedAssemblyPaths = new HashSet<string>(response.UsedAssemblyPaths);
         return true;

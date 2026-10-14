@@ -235,6 +235,7 @@ public class CompileOptionEffectTableTests : IClassFixture<ReferenceLibraryFixtu
         { "compile \"{1}\" -o \"{2}/App.dll\"", true },
         { "build \"{0}\" -o \"{2}/App.dll\"", true },
         { "run \"{0}\"", false },
+        { "run \"{0}\" -o \"{2}/App.exe\"", true },
         { "emit csharp \"{0}\" --output \"{2}/main.cs\"", false },
     };
 
@@ -251,6 +252,8 @@ public class CompileOptionEffectTableTests : IClassFixture<ReferenceLibraryFixtu
 
         var control = CliTestHarness.Invoke(line);
         control.ExitCode.Should().Be(0, "control: the command succeeds without the reference\n" + control.StdErr);
+        if (writesAssembly)
+            System.IO.Directory.Exists(outDir).Should().BeTrue("positive control: a successful compile creates the output directory");
         if (System.IO.Directory.Exists(outDir))
             System.IO.Directory.Delete(outDir, recursive: true);
 
@@ -261,6 +264,9 @@ public class CompileOptionEffectTableTests : IClassFixture<ReferenceLibraryFixtu
         invocation.StdOut.Should().NotContain("plain", "nothing ran");
         if (writesAssembly)
             File.Exists(Path.Combine(outDir, "App.dll")).Should().BeFalse("nothing is compiled");
+        // "Before anything is written" includes the output directory: a refused single-file compile
+        // used to leave an empty one behind (P46 verify, #2223).
+        System.IO.Directory.Exists(outDir).Should().BeFalse("a refused compile writes nothing, not even an empty output directory");
     }
 
     [Theory]

@@ -112,9 +112,10 @@ public class InputKindMatrixTests
 
         var usageExit = command == "format" ? 2 : 1;
         invocation.ExitCode.Should().Be(usageExit, all);
+        // The steer spells the input as it was given (here: its full path), so following it works.
         invocation.StdErr.Should().Contain(kind == ".spyproj"
-            ? $"'App.spyproj' is a project file; use 'sharpyc compile App.spyproj' or 'sharpyc project App.spyproj'."
-            : "'main.spy' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
+            ? $"'{input}' is a project file; use 'sharpyc compile {input}' or 'sharpyc project {input}'."
+            : $"'{input}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
         // Read as the wrong kind, the XML lexed as Sharpy is SPY0013 and the Sharpy loaded as XML is an
         // "Unexpected error" — both mean the file was read before the refusal.
         all.Should().NotContain("SPY0013").And.NotContain("Unexpected error");
@@ -138,6 +139,48 @@ public class InputKindMatrixTests
         invocation.StdErr.Should().Contain("is a directory; give the .spyproj file inside it");
         invocation.StdErr.Should().NotContain("Unexpected error");
         Directory.Exists(ws.PathFor("bin")).Should().BeFalse();
+    }
+
+    /// <summary>
+    /// The steer spells the path as the user gave it, so the suggested command works from the same
+    /// directory: `build ../app/App.spyproj` steered to `compile App.spyproj` — the bare name — which
+    /// fails from that cwd (P46 verify, #2223).
+    /// </summary>
+    [Theory]
+    [InlineData("build")]
+    [InlineData("run")]
+    [InlineData("emit csharp")]
+    public void TheSteer_SpellsThePathAsGiven(string command)
+    {
+        using var ws = new TempWorkspace();
+        var (project, _) = Write(ws, ".spyproj");
+        var given = Path.Combine(Path.GetDirectoryName(project)!, "src", "..", Path.GetFileName(project));
+
+        var invocation = CliTestHarness.Invoke($"{command} \"{given}\"");
+
+        invocation.ExitCode.Should().Be(1, invocation.StdOut + invocation.StdErr);
+        invocation.StdErr.Should().Contain($"'{given}' is a project file; use 'sharpyc compile {given}' or 'sharpyc project {given}'.");
+        invocation.StdErr.Should().NotContain($"compile {Path.GetFileName(project)}'", "the bare file name would not resolve from the caller's directory");
+    }
+
+    /// <summary>
+    /// The non-.spy warning is keyed on the one classifier, so it agrees with the refusal: an
+    /// upper-case `.SPY` is a .spy file (no warning); positive control: `.txt` still warns.
+    /// </summary>
+    [Fact]
+    public void AnUpperCaseSpyExtension_IsASpyFile_WithoutTheWarning()
+    {
+        using var ws = new TempWorkspace();
+        var upper = ws.WriteFile("UP.SPY", Program);
+        var text = ws.WriteFile("plain.txt", Program);
+
+        var accepted = CliTestHarness.Invoke($"build \"{upper}\" -o \"{ws.PathFor("out/up.exe")}\"");
+        accepted.ExitCode.Should().Be(0, accepted.StdOut + accepted.StdErr);
+        accepted.StdErr.Should().NotContain("does not have .spy extension");
+
+        var control = CliTestHarness.Invoke($"build \"{text}\" -o \"{ws.PathFor("out/txt.exe")}\"");
+        control.ExitCode.Should().Be(0, control.StdOut + control.StdErr);
+        control.StdErr.Should().Contain("does not have .spy extension", "positive control: another extension still warns");
     }
 
     /// <summary>

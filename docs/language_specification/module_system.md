@@ -135,7 +135,8 @@ error[SPY0305]: Assembly not found: /…/libs/Greeter.dll
 
 Deployment: `compile`, for a `.spy` or a `.spyproj`, and `run` copy every referenced assembly
 beside the output, whether the program uses it or not, together with the dependencies that sit
-beside it. `compile --no-deps` copies nothing, and a `--self-contained` publish carries every
+beside it. `compile --no-deps` copies none of them (the assembly and its `.deps.json` /
+`.runtimeconfig.json` host files are still written), and a `--self-contained` publish carries every
 reference. `build` and `project` write the assembly only, without its references or
 `Sharpy.Core.dll`, so a directory meant to run with `dotnet` comes from `compile`.
 

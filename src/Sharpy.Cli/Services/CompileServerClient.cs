@@ -40,14 +40,22 @@ internal static class CompileServerClient
         stderr.Write(response.Stderr);
 
         if (verbose)
-        {
-            var warmth = response.Warm ? "warm" : "cold";
-            stderr.WriteLine(
-                $"sharpyc: compiled via server on pipe '{pipeName}' "
-                + $"({warmth}, compile #{response.CompileOrdinal}, server-side {response.TotalMillis:F1} ms).");
-        }
+            WriteVerboseSummary(stderr, pipeName, response);
 
         return response.ExitCode;
+    }
+
+    /// <summary>
+    /// The <c>--verbose</c> line of a server-route compile — the route and its timing — written by
+    /// every command that takes the route (<c>build --server</c> here, <c>run --server</c> through
+    /// its own send), so the two arms print the same summary (#2223).
+    /// </summary>
+    public static void WriteVerboseSummary(TextWriter stderr, string pipeName, CompileServerResponse response)
+    {
+        var warmth = response.Warm ? "warm" : "cold";
+        stderr.WriteLine(
+            $"sharpyc: compiled via server on pipe '{pipeName}' "
+            + $"({warmth}, compile #{response.CompileOrdinal}, server-side {response.TotalMillis:F1} ms).");
     }
 
     /// <summary>

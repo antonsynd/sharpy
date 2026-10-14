@@ -20,7 +20,7 @@ internal static class BuildCommand
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
         outputOpt.Aliases.Add("-o");
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
-        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable); not deployed beside the output — `compile` deploys" };
         refOpt.Aliases.Add("-r");
         var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
         projRefOpt.Aliases.Add("-p");
@@ -154,11 +154,9 @@ internal static class BuildCommand
                 ? output.FullName
                 : Path.Combine(outputDir, assemblyName + extension);
 
-            var outputDirectory = Path.GetDirectoryName(finalOutputPath);
-            if (!string.IsNullOrEmpty(outputDirectory) && !Directory.Exists(outputDirectory))
-            {
-                Directory.CreateDirectory(outputDirectory);
-            }
+            // The output directory is created by the assembly writer when the assembly is written,
+            // not here: a compile refused before that (a `-r` that resolves nowhere is SPY0305 from
+            // the registry) must leave nothing behind, not even an empty directory (#2223).
 
             // #1038: single-file compilation is a synthetic project-of-one-file driven through
             // ProjectCompiler. Handing the output location, assembly name, and configuration to

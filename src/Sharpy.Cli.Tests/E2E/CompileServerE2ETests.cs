@@ -133,6 +133,42 @@ public class CompileServerE2ETests : IDisposable
         }
     }
 
+    /// <summary>
+    /// <c>--verbose</c> IS carried on the server route: both arms print the server's route-and-timing
+    /// summary. <c>run --server</c> sent the request through its own path and printed nothing extra
+    /// (P46 verify, #2223). Control: without <c>--verbose</c> the summary is absent.
+    /// </summary>
+    [Theory]
+    [InlineData("build")]
+    [InlineData("run")]
+    public void ServerRoute_Verbose_PrintsTheServerSummary_OnBothArms(string command)
+    {
+        var pipeName = "spy-v-" + Guid.NewGuid().ToString("N")[..8];
+        var source = _ws.WriteSpy("def main():\n    print(\"via\")\n");
+        var line = command == "build" ? $"build \"{source}\" --output \"{_ws.PathFor("v.exe")}\"" : $"run \"{source}\"";
+
+        using var server = StartServer(pipeName);
+        try
+        {
+            WaitUntilListening(pipeName, server);
+
+            var control = CliTestHarness.Invoke($"{line} --server={pipeName}");
+            control.ExitCode.Should().Be(0, control.StdErr);
+            control.StdErr.Should().NotContain("compiling in-process", "control: the route reaches the live server")
+                .And.NotContain("compiled via server on pipe", "control: no summary without --verbose");
+
+            var result = CliTestHarness.Invoke($"{line} --server={pipeName} --verbose");
+            result.ExitCode.Should().Be(0, result.StdOut + result.StdErr);
+            result.StdErr.Should().NotContain("compiling in-process", "--verbose is carried to the server route");
+            result.StdErr.Should().Contain($"compiled via server on pipe '{pipeName}'");
+        }
+        finally
+        {
+            TryShutdown(pipeName);
+            StopServer(server);
+        }
+    }
+
     private static string ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);

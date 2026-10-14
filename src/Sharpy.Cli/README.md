@@ -31,7 +31,7 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 
 ### Build Options
 
-- `-t, --type <exe|library>` - Output type (default: library)
+- `-t, --type <exe|library>` - Output type (default: exe)
 - `-o, --output <path>` - Output file path
 - `-r, --reference <assembly>` - Add .NET assembly references (a path, or a file name found on a module path). A reference that resolves nowhere is an error (SPY0305). With `compile app.spyproj` and `project`, added to the project's own `<Reference>` items. Also taken by `emit diagnostics` and `emit hover`, so an entry importing a referenced library can be analysed.
 - `-p, --project-reference <project>` - Refused: sharpyc does not build .NET projects; build it with `dotnet build` and pass the assembly with `-r`

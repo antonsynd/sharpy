@@ -157,11 +157,9 @@ internal static class CompileCommand
             outputPath = Path.Combine(defaultDir, assemblyName + extension);
         }
 
+        // Not created here: the assembly writer creates it when it writes the assembly, so a
+        // refused compile leaves no empty directory behind (#2223).
         var outputDir = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory();
-        if (!Directory.Exists(outputDir))
-        {
-            Directory.CreateDirectory(outputDir);
-        }
 
         var compileResult = BuildCommand.CompileToBinary(
             inputFile, outputType, new FileInfo(outputPath), references, modulePaths,

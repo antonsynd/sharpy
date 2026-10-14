@@ -21,7 +21,7 @@ internal static class ProjectCommand
         var incrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation (only recompile changed files)" };
         // `compile app.spyproj` takes these and `project` did not (a parse error), so the two project
         // commands diverged (#2223); both now merge them through CliHelpers.MergeCommandLineIntoProject.
-        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable); not deployed beside the output — `compile` deploys" };
         refOpt.Aliases.Add("-r");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
