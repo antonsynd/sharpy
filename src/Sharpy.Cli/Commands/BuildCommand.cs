@@ -12,7 +12,7 @@ internal static class BuildCommand
 {
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
-        var command = new Command("build", "Compile a Sharpy source file to a binary or library");
+        var command = new Command("build", "Compile a Sharpy source file to a binary or library. Writes the assembly only; `compile` deploys its runtime dependencies and references beside the output");
 
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to compile" };
         var typeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: exe)" };

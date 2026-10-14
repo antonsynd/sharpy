@@ -11,7 +11,7 @@ internal static class ProjectCommand
 {
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
-        var command = new Command("project", "Build a Sharpy project from a .spyproj file");
+        var command = new Command("project", "Build a Sharpy project from a .spyproj file. Writes the assembly only; `compile` deploys its runtime dependencies and references beside the output");
 
         var projFileArg = new Argument<FileInfo?>("project") { Description = "Path to .spyproj file (auto-discovers if not specified)", Arity = ArgumentArity.ZeroOrOne };
         var configOpt = new Option<string?>("--configuration") { Description = "Build configuration (Debug or Release)" };

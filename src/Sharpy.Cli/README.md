@@ -148,18 +148,37 @@ Create a `.spyproj` file to define your multi-file Sharpy project:
 - `ModulePath Include="..."` - A module search path, relative to the `.spyproj`'s directory. An absolute import is resolved below it, as with `-m`. A module found there must also be a `<SpyFile>` of the project (SPY0313).
 
 **Output Structure:**
+
+`project` writes the assembly only, under `bin/<Configuration>/net10.0/` in the `.spyproj`'s
+directory:
+
 ```
 bin/
   Debug/
     net10.0/
-      MyApp.exe
-      MyApp.dll
-      MyApp.pdb
-  Release/
-    net10.0/
-      MyApp.exe
-      MyApp.dll
+      MyApp.exe                  # MyApp.dll for OutputType library
+      MyApp.pdb                  # Debug only
+      MyApp.deps.json
+      MyApp.runtimeconfig.json
 ```
+
+Nothing else is written beside it: not `Sharpy.Core.dll`, not the standard-library assemblies, and
+not the project's `<Reference>` assemblies. `dotnet bin/Debug/net10.0/MyApp.exe` therefore fails to
+load them. `build` is the same for a single file: it writes the assembly only.
+
+`compile` and `run` deploy. Beside the assembly they copy `Sharpy.Core.dll`, the standard-library
+assemblies the program uses (every default one for a `.spyproj`), and every `-r` or `<Reference>`
+assembly whether the program uses it or not. Each copied assembly brings the dependencies that sit
+beside it, managed and native. The output directory then runs with `dotnet`:
+
+```bash
+sharpyc compile app.spyproj -o out/MyApp.dll    # or: sharpyc compile main.spy -r libs/Greeter.dll -o out/main.dll
+dotnet out/MyApp.dll
+```
+
+`compile --no-deps` skips the copy. `compile --self-contained` and `run --self-contained` publish
+an executable that carries every reference. `compile` defaults to the `Release` configuration, so
+without `-o` it writes `bin/Release/net10.0/` for a `.spyproj` and `bin/Release/` for a `.spy`.
 
 ## Implementation Status
 
