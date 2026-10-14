@@ -97,6 +97,49 @@ internal static class CliTestHarness
     }
 
     /// <summary>
+    /// <see cref="Invoke"/> for a command that reads <see cref="Console.In"/> (the REPL): the command
+    /// line runs with <paramref name="stdin"/> as its standard input, redirected under the same
+    /// <see cref="ConsoleLock"/> as stdout/stderr and restored afterwards.
+    /// </summary>
+    internal static CliInvocation InvokeWithInput(string commandLine, string stdin)
+    {
+        lock (ConsoleLock)
+        {
+            var originalIn = Console.In;
+            var originalOut = Console.Out;
+            var originalErr = Console.Error;
+            using var inReader = new StringReader(stdin);
+            using var outWriter = new StringWriter();
+            using var errWriter = new StringWriter();
+            try
+            {
+                Console.SetIn(inReader);
+                Console.SetOut(outWriter);
+                Console.SetError(errWriter);
+
+                var (compilerArguments, programArguments) = SplitCommandLine(commandLine);
+                var (root, _, run) = BuildRoot(programArguments);
+                var parseResult = root.Parse(compilerArguments);
+                if (!CliHelpers.ValidateProgramArgumentPlacement(parseResult, run, programArguments))
+                {
+                    return new CliInvocation(
+                        CliHelpers.ExitCompileError, outWriter.ToString(), errWriter.ToString(), parseResult);
+                }
+#pragma warning disable CS0618 // ParseResult.Invoke is obsolete in System.CommandLine 2.x; matches production Program.cs usage
+                var exitCode = parseResult.Invoke();
+#pragma warning restore CS0618
+                return new CliInvocation(exitCode, outWriter.ToString(), errWriter.ToString(), parseResult);
+            }
+            finally
+            {
+                Console.SetIn(originalIn);
+                Console.SetOut(originalOut);
+                Console.SetError(originalErr);
+            }
+        }
+    }
+
+    /// <summary>
     /// Runs <paramref name="action"/> with <see cref="Console.Out"/>/<see cref="Console.Error"/>
     /// redirected to in-memory buffers, serialized against <see cref="Invoke"/> through the same
     /// <see cref="ConsoleLock"/> so no test can corrupt another's console redirection. The original
