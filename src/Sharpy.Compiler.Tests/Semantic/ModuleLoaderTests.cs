@@ -34,6 +34,37 @@ public class ModuleLoaderTests : IDisposable
         return path;
     }
 
+    /// <summary>
+    /// A type alias nested in a class of an extracted module carries the module's FILE as its
+    /// declaring path, like the top-level alias beside it. plan-6ce1a5 (#2242) gave aliases a declaring
+    /// path; the nested-alias extractor passed <c>definingModulePath</c> — the canonical module NAME its
+    /// siblings put in <c>DefiningModule</c> — so rename, go-to-definition and the incremental cache
+    /// would have read a module name as a file. This door (<c>LoadModule</c>) is where name and file
+    /// differ; on the single-file analyze door they coincide and no test can see the swap. Found by
+    /// the /verify-implementation class-cure review; the top-level alias is the positive control.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ClassNestedTypeAlias_DeclaringFilePathIsTheModuleFile_NotItsName()
+    {
+        var path = CreateModule("lib.spy", "type Top = int\n\nclass Outer:\n    type Handle = int\n");
+        // ImportResolver.UpdateCurrentModule sets the loader's CurrentModulePath to the module under
+        // resolution before its symbols are extracted (ImportResolver.cs:262); every extractor reads
+        // it as the declaring FILE. Mirror that protocol — a bare loader leaves it null.
+        _loader.CurrentModulePath = path;
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        Assert.NotNull(moduleInfo);
+        var top = Assert.IsType<TypeAliasSymbol>(moduleInfo!.ExportedSymbols["Top"]);
+        Assert.Equal("lib.spy", Path.GetFileName(top.DeclaringFilePath));
+
+        var outer = Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Outer"]);
+        Assert.NotEqual(top.DeclaringFilePath, outer.DefiningModule); // the two values differ on this door
+        var nested = Assert.Single(outer.NestedTypeAliases);
+        Assert.Equal("Handle", nested.Name);
+        Assert.Equal(top.DeclaringFilePath, nested.DeclaringFilePath);
+    }
+
     [Fact]
     public void LoadModule_CacheHit_ReturnsCachedResult()
     {

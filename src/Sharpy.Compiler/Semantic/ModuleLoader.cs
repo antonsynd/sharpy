@@ -733,7 +733,9 @@ internal class ModuleLoader
                     break;
                 case TypeAlias typeAlias:
                     (aliases ??= new List<TypeAliasSymbol>()).Add(
-                        TypeAliasSymbol.CreateFrom(typeAlias, definingModulePath));
+                        // CurrentModulePath is the FILE; definingModulePath is the module NAME (the
+                        // sibling extractors above put it in DefiningModule, never DeclaringFilePath).
+                        TypeAliasSymbol.CreateFrom(typeAlias, CurrentModulePath));
                     break;
             }
         }
