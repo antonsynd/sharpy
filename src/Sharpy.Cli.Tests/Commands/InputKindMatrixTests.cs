@@ -123,6 +123,24 @@ public class InputKindMatrixTests
     }
 
     /// <summary>
+    /// <c>project</c> given a directory gets a steer to the .spyproj inside it, not the .spy-file steer
+    /// (P46 verify), and nothing is written.
+    /// </summary>
+    [Fact]
+    public void Project_OfADirectory_IsRefusedWithADirectorySteer()
+    {
+        using var ws = new TempWorkspace();
+        Write(ws, ".spyproj");
+
+        var invocation = CliTestHarness.Invoke($"project \"{ws.Root}\"");
+
+        invocation.ExitCode.Should().Be(1, invocation.StdOut + invocation.StdErr);
+        invocation.StdErr.Should().Contain("is a directory; give the .spyproj file inside it");
+        invocation.StdErr.Should().NotContain("Unexpected error");
+        Directory.Exists(ws.PathFor("bin")).Should().BeFalse();
+    }
+
+    /// <summary>
     /// A directory given to <c>format</c> is untouched by the classifier: only its <c>.spy</c> files
     /// are formatted, so a <c>.spyproj</c> beside them is no refusal.
     /// </summary>

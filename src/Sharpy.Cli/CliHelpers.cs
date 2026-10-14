@@ -358,7 +358,9 @@ internal static class CliHelpers
 
         Console.Error.WriteLine(kind == InputKind.SpyProject
             ? $"Error: '{input.Name}' is a project file; use 'sharpyc compile {input.Name}' or 'sharpyc project {input.Name}'."
-            : $"Error: '{input.Name}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
+            : Directory.Exists(input.FullName)
+                ? $"Error: '{input.Name}' is a directory; give the .spyproj file inside it, or run 'sharpyc project' from that directory."
+                : $"Error: '{input.Name}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
         return false;
     }
 
@@ -423,14 +425,50 @@ internal static class CliHelpers
     }
 
     /// <summary>
+    /// The global options a <c>--server</c> compile cannot carry: the request has no logger or
+    /// metrics channel, so <c>build|run --server</c> dropped them silently (P46 verify, #2223). When
+    /// any is given, <see cref="ServerRouteOrInProcess"/> sends the compile in process instead.
+    /// (<c>--verbose</c> is carried: on the server route it prints the server's route and timing.)
+    /// </summary>
+    internal static System.Collections.Generic.List<string> GlobalsTheServerCannotCarry(System.CommandLine.ParseResult parseResult, GlobalOptions globals)
+    {
+        var given = new System.Collections.Generic.List<string>();
+        foreach (var option in new System.CommandLine.Option[] { globals.LogLevel, globals.LogFile, globals.MetricsFormat, globals.MetricsOutput })
+        {
+            if (parseResult.GetResult(option) is { Implicit: false })
+                given.Add(option.Name);
+        }
+
+        return given;
+    }
+
+    /// <summary>
+    /// Whether a requested <c>--server</c> compile goes to the server: false (after a note on stderr)
+    /// when the command line carries options the server cannot honour, so the compile runs in
+    /// process, where they are honoured — the same fallback as when no server answers.
+    /// </summary>
+    internal static bool ServerRouteOrInProcess(System.CommandLine.ParseResult parseResult, GlobalOptions globals)
+    {
+        var dropped = GlobalsTheServerCannotCarry(parseResult, globals);
+        if (dropped.Count == 0)
+            return true;
+
+        Console.Error.WriteLine(
+            $"sharpyc: {string.Join(", ", dropped)} cannot be carried to the compile server; compiling in-process.");
+        return false;
+    }
+
+    /// <summary>
     /// The one merge of the command line's <c>-r</c>/<c>-m</c> into a loaded project, shared by
     /// <c>compile &lt;proj&gt;.spyproj</c> and <c>project</c> (#2173, #2223): they join the project's own
     /// <c>&lt;ModulePath&gt;</c>/<c>&lt;Reference&gt;</c> items, so they mean what those items mean. Paths
     /// are resolved against the working directory, as for a single file; each reference is spelled
     /// as the file the module registry resolves it to over the merged module paths, so semantic
-    /// analysis and the Roslyn step see the same assembly. Returns one SPY0305 per <c>-r</c> that
-    /// resolves nowhere, spelled as given; the caller refuses before anything is compiled or
-    /// written (the registry's own SPY0305 would name the rooted path instead).
+    /// analysis and the Roslyn step see the same assembly. Returns one SPY0305 per reference that
+    /// resolves nowhere — a <c>-r</c> spelled as given, a <c>.spyproj</c> <c>&lt;Reference&gt;</c> item as the
+    /// path the parser rooted it to — so the caller refuses before anything is cleaned, compiled or
+    /// written. <c>Compiler.CompileProject</c> refuses the same items before its pipeline, but the CLI
+    /// runs <c>--clean</c> before that, and a refused build must not have deleted bin/ and obj/.
     /// </summary>
     internal static System.Collections.Generic.List<CompilerDiagnostic> MergeCommandLineIntoProject(
         ProjectConfig config, IEnumerable<string> references, IEnumerable<string> modulePaths)
@@ -443,6 +481,21 @@ internal static class CliHelpers
         }
 
         var unresolved = new System.Collections.Generic.List<CompilerDiagnostic>();
+
+        // The project's own items first, by the registry's own resolution (an item is a rooted path,
+        // or a file name the registry may still find on a module path).
+        foreach (var item in config.References)
+        {
+            if (ModuleRegistry.ResolveAssemblyPath(item, config.ModulePaths) == null)
+            {
+                unresolved.Add(new CompilerDiagnostic(
+                    $"Assembly not found: {item}",
+                    CompilerDiagnosticSeverity.Error,
+                    Code: DiagnosticCodes.Semantic.AssemblyNotFound,
+                    Phase: CompilerPhase.ImportResolution));
+            }
+        }
+
         foreach (var reference in references)
         {
             var resolved = ModuleRegistry.ResolveAssemblyPath(reference, config.ModulePaths);

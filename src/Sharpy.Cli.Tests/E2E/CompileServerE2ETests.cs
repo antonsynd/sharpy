@@ -79,6 +79,67 @@ public class CompileServerE2ETests : IDisposable
         File.Exists(output).Should().BeTrue("the in-process fallback still produces the binary");
     }
 
+    /// <summary>
+    /// The server route cannot carry the logger or metrics globals (the request has no channel for
+    /// them), so with a LIVE server <c>build|run --server</c> given one compiles in process, says so,
+    /// and honours it; they were dropped silently before (P46 verify, #2223). Control: the same
+    /// command without the option is compiled by the server — the server's compile ordinal counts it,
+    /// and does not count the probe.
+    /// </summary>
+    [Theory]
+    [InlineData("build", "--log-level Info")]
+    [InlineData("build", "--log-level Info --log-file {log}")]
+    [InlineData("build", "--metrics-format json")]
+    [InlineData("build", "--metrics-output {metrics}")]
+    [InlineData("run", "--log-level Info")]
+    [InlineData("run", "--metrics-output {metrics}")]
+    public void ServerRoute_LoggerAndMetricsGlobals_CompileInProcess_AndAreHonoured(string command, string option)
+    {
+        var pipeName = "spy-g-" + Guid.NewGuid().ToString("N")[..8];
+        var source = _ws.WriteSpy("def main():\n    print(\"via\")\n");
+        var log = _ws.PathFor("probe.log");
+        var metrics = _ws.PathFor("metrics.txt");
+        var line = command == "build" ? $"build \"{source}\" --output \"{_ws.PathFor("a.exe")}\"" : $"run \"{source}\"";
+
+        using var server = StartServer(pipeName);
+        try
+        {
+            WaitUntilListening(pipeName, server);
+
+            var control = CliTestHarness.Invoke($"{line} --server={pipeName}");
+            control.ExitCode.Should().Be(0, control.StdErr);
+            control.StdErr.Should().NotContain("compiling in-process", "control: the route reaches the live server");
+
+            var result = CliTestHarness.Invoke($"{line} --server={pipeName} {option.Replace("{log}", $"\"{log}\"").Replace("{metrics}", $"\"{metrics}\"")}");
+            var all = result.StdOut + result.StdErr;
+            result.ExitCode.Should().Be(0, all);
+            result.StdErr.Should().Contain("cannot be carried to the compile server; compiling in-process");
+            if (option.Contains("{log}"))
+                ReadShared(log).Should().Contain("[INFO]");
+            else if (option.Contains("--log-level"))
+                all.Should().Contain("[INFO]");
+            else if (option.Contains("{metrics}"))
+                File.Exists(metrics).Should().BeTrue("--metrics-output is honoured in process");
+            else
+                result.StdOut.Should().Contain("\"total_duration_ms\"");
+
+            // The server compiled the control (ordinal 1) and not the probe: this is its second compile.
+            SendCompile(pipeName, source, _ws.PathFor("ordinal.exe")).CompileOrdinal.Should().Be(2);
+        }
+        finally
+        {
+            TryShutdown(pipeName);
+            StopServer(server);
+        }
+    }
+
+    private static string ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private static Process StartServer(string pipeName)

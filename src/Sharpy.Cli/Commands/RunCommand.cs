@@ -83,7 +83,7 @@ internal static class RunCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
-            var serverPipe = parseResult.GetResult(serverOpt) is not null
+            var serverPipe = parseResult.GetResult(serverOpt) is not null && CliHelpers.ServerRouteOrInProcess(parseResult, globals)
                 ? parseResult.GetValue(serverOpt) ?? CompileServerProtocol.DefaultPipeName
                 : null;
 

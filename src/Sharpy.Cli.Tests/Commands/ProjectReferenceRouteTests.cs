@@ -91,6 +91,39 @@ public sealed class ProjectReferenceRouteTests : IClassFixture<ReferenceLibraryF
     }
 
     /// <summary>
+    /// A missing reference with <c>--clean</c>: the refusal comes before the clean, so a refused build
+    /// has not deleted bin/ and obj/ (P46 verify: the compiler's own SPY0305 check ran after the CLI's
+    /// clean). The control is the same project with the reference present: --clean then deletes them.
+    /// </summary>
+    [Theory]
+    [InlineData("compile", false)]
+    [InlineData("compile", true)]
+    [InlineData("project", false)]
+    [InlineData("project", true)]
+    public void AMissingReference_IsRefusedBeforeCleanDeletesAnything(string route, bool resolves)
+    {
+        using var ws = new TempWorkspace();
+        var target = resolves ? _library.DllPath : ws.PathFor(Path.Combine("libs", "Tablegreeter.dll"));
+        var project = WriteProject(ws, $"<Reference Include=\"Tablegreeter\"><HintPath>{target}</HintPath></Reference>");
+        var sentinels = new[] { ws.WriteFile(Path.Combine("app", "bin", "keep.txt"), "x"), ws.WriteFile(Path.Combine("app", "obj", "keep.txt"), "x") };
+
+        var invocation = CliTestHarness.Invoke(CommandLine(route, project, ws.PathFor("out")) + " --clean");
+        var cell = $"[{route} --clean, resolves={resolves}]";
+
+        if (resolves)
+        {
+            invocation.ExitCode.Should().Be(0, $"{cell}\n{invocation.StdOut}{invocation.StdErr}");
+            sentinels.Should().AllSatisfy(s => File.Exists(s).Should().BeFalse($"{cell} control: --clean deleted bin/ and obj/"));
+        }
+        else
+        {
+            invocation.ExitCode.Should().Be(1, $"{cell}\n{invocation.StdOut}{invocation.StdErr}");
+            invocation.StdErr.Should().Contain("SPY0305").And.Contain($"Assembly not found: {target}");
+            sentinels.Should().AllSatisfy(s => File.Exists(s).Should().BeTrue($"{cell} the refusal comes before --clean"));
+        }
+    }
+
+    /// <summary>
     /// The positive control for the resolving cells: without the item the import does not bind.
     /// (In a fresh sharpyc this is SPY0300; in this test process the library may already be loaded
     /// by another test, and then it fails later, at the Roslyn step — either way it does not

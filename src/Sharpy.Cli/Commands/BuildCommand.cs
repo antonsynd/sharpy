@@ -68,7 +68,7 @@ internal static class BuildCommand
 
             // --server: try the keep-alive server first; a null result means no server answered and
             // we should fall through to the in-process compile below (explicit over magic, #1049).
-            if (parseResult.GetResult(serverOpt) is not null)
+            if (parseResult.GetResult(serverOpt) is not null && CliHelpers.ServerRouteOrInProcess(parseResult, globals))
             {
                 var pipeName = parseResult.GetValue(serverOpt) ?? CompileServerProtocol.DefaultPipeName;
                 var request = new CompileServerRequest

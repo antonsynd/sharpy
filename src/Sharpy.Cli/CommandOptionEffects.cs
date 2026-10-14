@@ -470,7 +470,16 @@ internal static class CommandOptionEffects
                     option.Description += DescriptionSuffix(table, row);
             }
 
-            command.Description += GlobalsSentence(table);
+            var sentence = GlobalsSentence(table);
+            if (sentence.Length > 0)
+            {
+                // "Emit tokenized output. Global options without effect here: …" — the description
+                // is a phrase without its own full stop.
+                var description = command.Description ?? string.Empty;
+                if (description.Length > 0 && !description.EndsWith('.'))
+                    description += ".";
+                command.Description = description + sentence;
+            }
         }
     }
 
