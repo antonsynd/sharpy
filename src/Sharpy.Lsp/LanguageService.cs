@@ -604,6 +604,46 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// <c>textDocument/didClose</c> of a project file, after the workspace dropped its buffer. The
+    /// close discards the buffer, so the file's truth is its disk text again: when the closed buffer
+    /// differed from disk, the project's publication came from text that no longer exists, and the
+    /// project is reanalyzed from disk — through <see cref="OnDocumentChangedAsync"/>, whose
+    /// per-document scope also cancels a still-running reanalysis of the discarded buffer, and
+    /// whose analysis lock orders this one after any that already finished (#2242). When the buffer
+    /// equaled disk the publication already is the disk's, and nothing is reanalyzed.
+    /// </summary>
+    /// <param name="uri">The closed document.</param>
+    /// <param name="closedBufferText">Its buffer text at the close.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if the project was reanalyzed.</returns>
+    public async Task<bool> OnDocumentClosedAsync(string uri, string closedBufferText, CancellationToken ct = default)
+    {
+        if (!IsProjectFile(uri) || UriToFilePath(uri) is not { } filePath)
+            return false;
+
+        string? diskText;
+        try
+        {
+            diskText = File.ReadAllText(filePath);
+        }
+        catch (IOException)
+        {
+            // Deleted or unreadable: the buffer certainly differed from what the build now reads.
+            diskText = null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            diskText = null;
+        }
+
+        if (string.Equals(diskText, closedBufferText, StringComparison.Ordinal))
+            return false;
+
+        await OnDocumentChangedAsync(uri, ct).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
     /// Handles a <c>.spy</c> file changed outside the editor (detected by file watcher). A project
     /// file triggers reanalysis as an edit does. Any other <c>.spy</c> file under the project
     /// directory or a module path reanalyzes the whole project too: it is outside the source set,

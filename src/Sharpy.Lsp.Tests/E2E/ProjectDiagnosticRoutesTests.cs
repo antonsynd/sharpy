@@ -79,7 +79,7 @@ public sealed class ProjectDiagnosticRoutesTests
         {
             "index", "open-during-indexing", "didOpen", "didChange-structural", "didChange-nochange",
             "didClose", "watched-sibling", "spyproj-reload", "config-features", "config-hints-only",
-            "didOpen-non-project-importer",
+            "didOpen-non-project-importer", "didClose-after-unsaved-edit", "edit-then-immediate-close",
         })
         {
             foreach (var state in new[] { "clean", "missing", "unlisted", "dupclass" })
@@ -159,6 +159,44 @@ public sealed class ProjectDiagnosticRoutesTests
                         ["textDocument"] = new JsonObject { ["uri"] = mainUri },
                     });
                     mustPublish = false;
+                    break;
+
+                case "didClose-after-unsaved-edit":
+                    {
+                        // The buffer gains a type error (never saved) and is published; the close
+                        // discards the buffer, so the last publication must be the DISK text's build.
+                        await client.DidOpenAsync(mainUri, Main);
+                        await session.DrainQuietAsync();
+                        var editMark = session.Count;
+                        await client.DidChangeAsync(mainUri, MainEditWithTypeError, 2);
+                        var bufferBuild = Oracle(dir, new Dictionary<string, string> { ["main.spy"] = MainEditWithTypeError }, features);
+                        if (state == "clean")
+                        {
+                            // The control that the buffer's set differs from the disk's and was shown
+                            // (an import error stops the build before type checking in other states).
+                            bufferBuild["main.spy"].Should().Contain("SPY0260");
+                        }
+
+                        await session.ConvergeAsync(bufferBuild, editMark, $"{route}/{state} unsaved edit");
+                        mark = session.Count;
+                        await client.SendNotificationAsync("textDocument/didClose", new JsonObject
+                        {
+                            ["textDocument"] = new JsonObject { ["uri"] = mainUri },
+                        });
+                        break;
+                    }
+
+                case "edit-then-immediate-close":
+                    // The close lands while the edit's reanalysis may still run: no publication of
+                    // the discarded buffer may be the last one.
+                    await client.DidOpenAsync(mainUri, Main);
+                    await session.DrainQuietAsync();
+                    mark = session.Count;
+                    await client.DidChangeAsync(mainUri, MainEditWithTypeError, 2);
+                    await client.SendNotificationAsync("textDocument/didClose", new JsonObject
+                    {
+                        ["textDocument"] = new JsonObject { ["uri"] = mainUri },
+                    });
                     break;
 
                 case "watched-sibling":

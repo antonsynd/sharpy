@@ -128,6 +128,31 @@ public sealed class DiagnosticRoutesTests : IDisposable
 
         Count("main.spy").Should().Be(before, "the build still reports main.spy's error with the file closed");
         Last("main.spy").Should().Equal("SPY0313");
+
+        // Its buffer equaled the disk text: the publication already is the disk's, nothing reruns.
+        var reanalyzed = await _service.OnDocumentClosedAsync(main, MainFrom);
+        reanalyzed.Should().BeFalse();
+        Count("main.spy").Should().Be(before);
+    }
+
+    [Fact]
+    public async Task CloseOfAProjectFile_AfterAnUnsavedEdit_RepublishesTheDiskTextsBuild()
+    {
+        WriteFiles(("main.spy", MainFrom), ("lib.spy", Lib));
+        WriteProject("main.spy", "lib.spy");
+        await _service.InitializeProjectAsync(_dir);
+        var main = UriOf("main.spy");
+        var unsaved = MainFrom + "\n\ndef extra() -> int:\n    return \"s\"\n";
+        _workspace.OpenDocument(main, unsaved, 2);
+        await _service.OnDocumentChangedAsync(main);
+        Last("main.spy").Should().Contain("SPY0260", "the project analyzed the unsaved buffer");
+
+        Close(main);
+        var reanalyzed = await _service.OnDocumentClosedAsync(main, unsaved);
+
+        reanalyzed.Should().BeTrue();
+        Last("main.spy").Should().BeEmpty("the close discarded the buffer; on disk main.spy is clean, as `sharpyc project` reports");
+        Last("lib.spy").Should().BeEmpty();
     }
 
     [Fact]

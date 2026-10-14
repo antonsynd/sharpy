@@ -87,11 +87,21 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
     public override Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
+        var closedBufferText = _workspace.GetDocument(uri)?.Text;
         _workspace.CloseDocument(uri);
 
         // A project file keeps the project's publication — the build still reports its
         // diagnostics with the file closed; any other file's squiggles are cleared (#2242).
         _diagnosticRoutes.OnDocumentClosed(uri);
+
+        // ...unless that publication came from an unsaved buffer the close just discarded: the
+        // file's truth is its disk text again, so the project is reanalyzed from disk (which also
+        // supersedes a still-running reanalysis of the buffer). Fire-and-forget, like an edit's.
+        if (closedBufferText != null && _languageService.IsProjectFile(uri))
+        {
+            _ = TriggerCloseReanalysisAsync(uri, closedBufferText);
+        }
+
         return Unit.Task;
     }
 
@@ -132,6 +142,23 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
         catch (OperationCanceledException)
         {
             // Expected when document changes rapidly
+        }
+    }
+
+    /// <summary>
+    /// The close half of the project route: see <see cref="LanguageService.OnDocumentClosedAsync"/>.
+    /// Not passed the notification's token, for the reason <see cref="TriggerProjectReanalysisAsync"/>
+    /// gives.
+    /// </summary>
+    private async Task TriggerCloseReanalysisAsync(string uri, string closedBufferText)
+    {
+        try
+        {
+            await _languageService.OnDocumentClosedAsync(uri, closedBufferText).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer open/edit of the same document, which publishes.
         }
     }
 
