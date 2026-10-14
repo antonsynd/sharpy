@@ -321,6 +321,40 @@ internal static class CliHelpers
     }
 
     /// <summary>
+    /// The one input classifier (#2223): a <c>.spy</c> source file, a <c>.spyproj</c> project, or
+    /// anything else — by extension, ignoring case, without reading the file.
+    /// </summary>
+    internal static InputKind ClassifyInput(FileInfo input)
+    {
+        if (input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase))
+            return InputKind.SpyProject;
+        return input.Extension.Equals(".spy", StringComparison.OrdinalIgnoreCase) ? InputKind.SpyFile : InputKind.Other;
+    }
+
+    /// <summary>
+    /// The one input-kind refusal (#2223): before a command reads <paramref name="input"/>, refuse a
+    /// kind it does not accept, with a steer to the command that does. A <c>.spyproj</c> given to a
+    /// command that compiles Sharpy source used to be lexed as Sharpy (SPY0013 on the XML), and a
+    /// <c>.spy</c> given to <c>project</c> reached the XML loader ("Unexpected error: Data at the root
+    /// level is invalid"). Returns false (after printing the refusal) when the command must exit with
+    /// its usage code.
+    /// </summary>
+    internal static bool RefuseInputKind(FileInfo input, params InputKind[] accepted)
+    {
+        var kind = ClassifyInput(input);
+        if (accepted.Contains(kind))
+            return true;
+
+        Console.Error.WriteLine(kind == InputKind.SpyProject
+            ? $"Error: '{input.Name}' is a project file; use 'sharpyc compile {input.Name}' or 'sharpyc project {input.Name}'."
+            : $"Error: '{input.Name}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
+        return false;
+    }
+
+    /// <summary>The kinds a command that compiles one Sharpy source file accepts: <c>.spy</c>, and any other extension with a warning.</summary>
+    internal static readonly InputKind[] SourceInputKinds = { InputKind.SpyFile, InputKind.Other };
+
+    /// <summary>
     /// Validates that the input file exists and has a .spy extension. Returns
     /// <c>false</c> (after writing an error) if the file does not exist; a missing
     /// .spy extension only produces a warning and still returns <c>true</c>.

@@ -36,6 +36,11 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
+            if (!CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var logLevel = globals.ResolveLogLevel(parseResult);
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
@@ -54,6 +59,11 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
+            if (!CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var logLevel = globals.ResolveLogLevel(parseResult);
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
@@ -92,6 +102,11 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
+            if (!CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var output = parseResult.GetValue(outputOpt);
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
@@ -119,6 +134,11 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
+            if (!CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var logLevel = globals.ResolveLogLevel(parseResult);
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
@@ -144,6 +164,11 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
+            if (!CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var format = parseResult.GetValue(formatOpt) ?? "text";
             if (format != "text" && format != "json")
             {
@@ -178,6 +203,11 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
+            if (!CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var line = parseResult.GetValue(lineOpt);
             var col = parseResult.GetValue(colOpt);
             var logLevel = globals.ResolveLogLevel(parseResult);

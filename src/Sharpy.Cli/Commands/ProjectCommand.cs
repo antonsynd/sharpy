@@ -67,6 +67,13 @@ internal static class ProjectCommand
     {
         FileInfo? resolvedProjectFile = projectFile;
 
+        // A .spy (or anything that is not a .spyproj) used to reach the XML loader and fail as
+        // "Unexpected error: Data at the root level is invalid" (#2223).
+        if (resolvedProjectFile != null && !CliHelpers.RefuseInputKind(resolvedProjectFile, InputKind.SpyProject))
+        {
+            return CliHelpers.ExitCompileError;
+        }
+
         if (resolvedProjectFile == null)
         {
             var currentDir = Directory.GetCurrentDirectory();

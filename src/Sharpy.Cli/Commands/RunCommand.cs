@@ -60,12 +60,13 @@ internal static class RunCommand
 
         command.SetAction((parseResult) =>
         {
-            if (!CommandOptionEffects.Refuse(parseResult, command))
+            var input = parseResult.GetValue(inputArg)!;
+            if (!CommandOptionEffects.Refuse(parseResult, command)
+                || !CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
             {
                 return CliHelpers.ExitCompileError;
             }
 
-            var input = parseResult.GetValue(inputArg)!;
             var output = parseResult.GetValue(outputOpt);
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var projectReference = parseResult.GetValue(projRefOpt) ?? Array.Empty<string>();

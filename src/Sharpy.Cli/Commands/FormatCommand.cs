@@ -78,6 +78,13 @@ internal static class FormatCommand
 
         var isFile = File.Exists(input);
         var isDirectory = !isFile && Directory.Exists(input);
+
+        // A single file must be Sharpy source; a .spyproj was lexed as Sharpy and failed with
+        // SPY0013 on the XML (#2223). A directory formats only the .spy files under it.
+        if (isFile && !CliHelpers.RefuseInputKind(new FileInfo(input), CliHelpers.SourceInputKinds))
+        {
+            return 2;
+        }
         if (!isFile && !isDirectory)
         {
             Console.Error.WriteLine($"Error: path '{input}' does not exist.");

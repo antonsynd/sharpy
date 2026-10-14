@@ -10,6 +10,12 @@ internal enum InputKind
 
     /// <summary>A <c>.spyproj</c> project file.</summary>
     SpyProject,
+
+    /// <summary>
+    /// Any other extension. Never a table column: commands that compile Sharpy source accept it as
+    /// source with a warning (<see cref="CliHelpers.ValidateInputFile"/>), as they always have.
+    /// </summary>
+    Other,
 }
 
 /// <summary>What a command does with an option (#2173, #2223).</summary>
@@ -65,7 +71,7 @@ internal sealed record OptionEffectRow(OptionEffect SpyFile, OptionEffect SpyPro
     /// <summary>A row with the same effect for every input kind (every one-column table uses these).</summary>
     internal static OptionEffectRow Uniform(OptionEffect effect, string reason) => new(effect, effect, reason);
 
-    internal OptionEffect For(InputKind kind) => kind == InputKind.SpyFile ? SpyFile : SpyProject;
+    internal OptionEffect For(InputKind kind) => kind == InputKind.SpyProject ? SpyProject : SpyFile;
 
     internal bool IsUniform => SpyFile == SpyProject;
 }

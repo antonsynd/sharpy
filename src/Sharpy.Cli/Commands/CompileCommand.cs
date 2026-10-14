@@ -86,7 +86,8 @@ internal static class CompileCommand
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
 
-            var kind = input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase)
+            // The one classifier (#2223); any other extension compiles as source, with the warning.
+            var kind = CliHelpers.ClassifyInput(input) == InputKind.SpyProject
                 ? InputKind.SpyProject
                 : InputKind.SpyFile;
             if (!CommandOptionEffects.Refuse(parseResult, command, kind)

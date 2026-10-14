@@ -38,12 +38,13 @@ internal static class BuildCommand
 
         command.SetAction((parseResult) =>
         {
-            if (!CommandOptionEffects.Refuse(parseResult, command))
+            var input = parseResult.GetValue(inputArg)!;
+            if (!CommandOptionEffects.Refuse(parseResult, command)
+                || !CliHelpers.RefuseInputKind(input, CliHelpers.SourceInputKinds))
             {
                 return CliHelpers.ExitCompileError;
             }
 
-            var input = parseResult.GetValue(inputArg)!;
             var type = parseResult.GetValue(typeOpt) ?? "exe";
             var output = parseResult.GetValue(outputOpt);
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
