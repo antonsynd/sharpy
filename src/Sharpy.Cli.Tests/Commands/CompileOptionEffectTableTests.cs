@@ -15,43 +15,13 @@ namespace Sharpy.Cli.Tests.Commands;
 /// found dropped: <c>-r</c>/<c>-m</c> for a project, <c>-p</c> everywhere, a <c>-r</c> or <c>-m</c>
 /// naming nothing, and <c>--log-file</c>.
 /// </summary>
-public class CompileOptionEffectTableTests : IClassFixture<CompileOptionEffectTableTests.ReferenceLibrary>
+public class CompileOptionEffectTableTests : IClassFixture<ReferenceLibraryFixture>
 {
-    readonly ReferenceLibrary _library;
+    readonly ReferenceLibraryFixture _library;
 
-    public CompileOptionEffectTableTests(ReferenceLibrary library)
+    public CompileOptionEffectTableTests(ReferenceLibraryFixture library)
     {
         _library = library;
-    }
-
-    /// <summary>
-    /// A Sharpy library compiled once per class, so a <c>-r</c> has something real to resolve:
-    /// <c>Tablegreeter.dll</c> (namespace <c>Tablegreeter</c>, class <c>Greeter</c>).
-    /// </summary>
-    public sealed class ReferenceLibrary : IDisposable
-    {
-        readonly TempWorkspace _ws = new();
-
-        public string Directory { get; }
-
-        public string DllPath { get; }
-
-        public ReferenceLibrary()
-        {
-            var source = _ws.WriteSpy(
-                "class Greeter:\n    def greet(self) -> str:\n        return \"hello from lib\"\n",
-                "tablegreeter.spy");
-            Directory = _ws.PathFor("lib");
-            DllPath = Path.Combine(Directory, "Tablegreeter.dll");
-            var invocation = CliTestHarness.Invoke($"compile \"{source}\" -t library -o \"{DllPath}\" --no-deps");
-            if (invocation.ExitCode != 0 || !File.Exists(DllPath))
-            {
-                throw new InvalidOperationException(
-                    $"could not build the reference library: exit {invocation.ExitCode}\n{invocation.StdOut}\n{invocation.StdErr}");
-            }
-        }
-
-        public void Dispose() => _ws.Dispose();
     }
 
     const string GreeterMain = "from Tablegreeter import Greeter\n\ndef main():\n    print(Greeter().greet())\n";
