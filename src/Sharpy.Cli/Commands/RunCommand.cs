@@ -174,6 +174,12 @@ internal static class RunCommand
             outputPath = Path.Combine(tempRunDir, $"{inputFileName}_{Guid.NewGuid():N}.exe");
         }
 
+        // The deployment seed's user half, on BOTH branches: the `-r` list resolved over the very
+        // module paths the compile (in-process or the server) is handed, so a bare `-r name` found on
+        // `-m` names the same file here as there. The server's reply carries only the used
+        // assemblies, which never include a referenced library (#2223).
+        var userReferences = CliHelpers.ResolveReferences(references, modulePaths);
+
         try
         {
             // Obtain the compiled binary + its runtime-dependency set either from a keep-alive
@@ -208,11 +214,11 @@ internal static class RunCommand
             }
 
             var outputDir = Path.GetDirectoryName(outputPath)!;
-            RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, usedAssemblyPaths);
+            RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, usedAssemblyPaths, userReferences);
 
             if (selfContained)
             {
-                return HandleSelfContainedRun(inputFile, outputPath, args, usedAssemblyPaths,
+                return HandleSelfContainedRun(inputFile, outputPath, args, usedAssemblyPaths, userReferences,
                     entryTypeName ?? throw new InvalidOperationException(
                         "The compiler recorded no entry type for a successful compile."),
                     dotnetPath);
@@ -303,6 +309,7 @@ internal static class RunCommand
         string compiledExePath,
         string[] args,
         IReadOnlySet<string> usedAssemblyPaths,
+        IReadOnlyCollection<string> userReferences,
         string entryTypeNameFromCompile,
         string dotnetPath)
     {
@@ -315,7 +322,7 @@ internal static class RunCommand
 
         // No cleanup of the compiled executable here: the caller staged it in a directory of its own
         // and removes that directory in a finally, whichever way this returns (#1419).
-        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, assemblyName, entryTypeName, publishDir, usedAssemblyPaths, dotnetPath, "run");
+        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, assemblyName, entryTypeName, publishDir, usedAssemblyPaths, userReferences, dotnetPath, "run");
         if (publishedExe == null)
         {
             return 1;

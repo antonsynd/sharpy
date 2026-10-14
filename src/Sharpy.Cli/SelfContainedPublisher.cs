@@ -1,5 +1,6 @@
 extern alias SharpyRT;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using Sharpy.Compiler.Project;
 
@@ -37,6 +38,10 @@ internal static class SelfContainedPublisher
     /// </param>
     /// <param name="outputDir">Directory to publish the self-contained executable into.</param>
     /// <param name="usedAssemblyPaths">Stdlib assemblies referenced by the program.</param>
+    /// <param name="userReferences">
+    /// The program's explicit references (<c>-r</c>, resolved). Referenced by the wrapper whether or
+    /// not the program "used" them — the same seed as <see cref="RuntimeDependencyHelper.CopyRuntimeDependencies"/> (#2223).
+    /// </param>
     /// <param name="dotnetPath">
     /// The <c>dotnet</c> the caller resolved before compiling (<see cref="CliHelpers.TryResolveDotnet"/>, #2292).
     /// </param>
@@ -48,12 +53,12 @@ internal static class SelfContainedPublisher
         string entryTypeName,
         string outputDir,
         IReadOnlySet<string> usedAssemblyPaths,
+        IReadOnlyCollection<string> userReferences,
         string dotnetPath,
         string command)
     {
         var rid = RuntimeInformation.RuntimeIdentifier;
         var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
-        var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
 
         Directory.CreateDirectory(outputDir);
 
@@ -64,21 +69,7 @@ internal static class SelfContainedPublisher
         {
             var csprojPath = Path.Combine(tempProjDir, $"{assemblyName}.csproj");
 
-            var stdlibRefs = new StringBuilder();
-            foreach (var assemblyPath in usedAssemblyPaths)
-            {
-                var fileName = Path.GetFileName(assemblyPath);
-                if (fileName.Equals("Sharpy.Core.dll", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                var fullPath = Path.Combine(cliDir, fileName);
-                if (File.Exists(fullPath))
-                {
-                    var includeName = Path.GetFileNameWithoutExtension(fileName);
-                    stdlibRefs.AppendLine($@"    <Reference Include=""{includeName}"">
-      <HintPath>{fullPath}</HintPath>
-    </Reference>");
-                }
-            }
+            var assemblyRefs = BuildAssemblyReferenceItems(usedAssemblyPaths, userReferences);
 
             // The program assembly is COPIED beside the wrapper under a fixed, distinct file name —
             // never <Reference>d — and reflection-loaded at run time (see BuildEntryPointSource). Two
@@ -94,8 +85,9 @@ internal static class SelfContainedPublisher
             //     equal the wrapper's <AssemblyName> — the same-named managed dll would overwrite the
             //     program in the output and load in its place. The distinct copy name plus a dedicated
             //     AssemblyLoadContext (its simple name may still equal the wrapper's) keeps them apart.
-            // The wrapper still references Sharpy.Core and the used stdlib assemblies so they are
-            // published beside the program for its runtime dependency resolution.
+            // The wrapper still references Sharpy.Core, the used stdlib assemblies and the user's
+            // references so they are published beside the program for its runtime dependency
+            // resolution.
             const string programCopyFileName = "__sharpy_program.dll";
             File.Copy(compiledAssemblyPath, Path.Combine(tempProjDir, programCopyFileName), overwrite: true);
 
@@ -112,7 +104,7 @@ internal static class SelfContainedPublisher
     <Reference Include=""Sharpy.Core"">
       <HintPath>{sharpyCorePath}</HintPath>
     </Reference>
-{stdlibRefs}  </ItemGroup>
+{assemblyRefs}  </ItemGroup>
 </Project>";
 
             File.WriteAllText(csprojPath, csprojContent);
@@ -179,6 +171,40 @@ internal static class SelfContainedPublisher
             { Directory.Delete(tempProjDir, recursive: true); }
             catch { }
         }
+    }
+
+    /// <summary>
+    /// The wrapper's <c>&lt;Reference&gt;</c> items: every seed path — used stdlib assembly or user
+    /// reference — that names an existing file, at that path. Sharpy.Core is referenced separately,
+    /// so it is skipped here. Filtering to files in the CLI's own directory (as this did before
+    /// #2223) silently dropped a <c>-r</c> library kept anywhere else, and the published program
+    /// failed to load it. One item per assembly name: the first seed spelling a name wins.
+    /// </summary>
+    internal static string BuildAssemblyReferenceItems(
+        IEnumerable<string> usedAssemblyPaths, IEnumerable<string> userReferences)
+    {
+        var items = new StringBuilder();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var seedPath in usedAssemblyPaths.Concat(userReferences))
+        {
+            if (string.IsNullOrEmpty(seedPath))
+                continue;
+
+            var fileName = Path.GetFileName(seedPath);
+            if (fileName.Equals("Sharpy.Core.dll", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var fullPath = Path.GetFullPath(seedPath);
+            var includeName = Path.GetFileNameWithoutExtension(fileName);
+            if (!File.Exists(fullPath) || !seen.Add(includeName))
+                continue;
+
+            items.AppendLine($@"    <Reference Include=""{SecurityElement.Escape(includeName)}"">
+      <HintPath>{SecurityElement.Escape(fullPath)}</HintPath>
+    </Reference>");
+        }
+
+        return items.ToString();
     }
 
     /// <summary>

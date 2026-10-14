@@ -172,6 +172,12 @@ internal static class CompileCommand
             return CliHelpers.LastFailureExitCode;
         }
 
+        // The deployment seed's user half: the `-r` list spelled exactly as CompileToBinary handed it
+        // to the compiler (CliHelpers.ResolveReferences over the same module paths). Not read off
+        // compileResult.ProjectConfig.References: CompilerApi folds the default references into that
+        // list, and deploying every default would copy the whole stdlib beside every program (#2223).
+        var userReferences = CliHelpers.ResolveReferences(references, modulePaths);
+
         if (emitCSharp)
         {
             // Single-file units are keyed by absolute source path; they mirror their path relative
@@ -188,7 +194,7 @@ internal static class CompileCommand
             // raw (file names).
             var entryTypeName = compileResult.EntryTypeName
                 ?? throw new InvalidOperationException("The compiler recorded no entry type for a successful compile.");
-            var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths, dotnetPath!, "compile");
+            var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths, userReferences, dotnetPath!, "compile");
             if (publishedExe == null)
             {
                 return 1;
@@ -199,7 +205,7 @@ internal static class CompileCommand
 
         if (!noDeps)
         {
-            RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, compileResult.UsedAssemblyPaths);
+            RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, compileResult.UsedAssemblyPaths, userReferences);
         }
 
         ReportOutput(outputPath);
@@ -294,6 +300,10 @@ internal static class CompileCommand
             }
             Console.WriteLine();
 
+            // The deployment seed's user half, captured before the default references join the list
+            // below: the .spyproj's own <Reference> items plus the merged `-r` (#2223).
+            var userReferences = projectConfig.References.ToList();
+
             var defaultReferences = CliHelpers.GetDefaultReferences();
 
             var compilerOptions = CompilerOptionsFactory.ForProject(
@@ -336,8 +346,9 @@ internal static class CompileCommand
             {
                 var outputDir = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory();
                 // The project result does not expose per-module used assemblies, so
-                // conservatively copy every referenced runtime assembly.
-                RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase));
+                // conservatively copy every referenced runtime assembly, plus every user reference.
+                RuntimeDependencyHelper.CopyRuntimeDependencies(
+                    outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
             }
 
             // --self-contained is refused for a project up front, by the option table, before
