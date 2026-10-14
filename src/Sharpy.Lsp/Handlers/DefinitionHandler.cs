@@ -38,7 +38,7 @@ internal sealed class SharpyDefinitionHandler : DefinitionHandlerBase
         if (node == null)
             return null;
 
-        var symbol = ResolveSymbol(node, analysis);
+        var symbol = ResolveSymbol(node, analysis, line, col);
         if (symbol == null)
             return null;
 
@@ -49,7 +49,7 @@ internal sealed class SharpyDefinitionHandler : DefinitionHandlerBase
         return new LocationOrLocationLinks(location);
     }
 
-    private static Symbol? ResolveSymbol(Node node, SemanticResult analysis)
+    private Symbol? ResolveSymbol(Node node, SemanticResult analysis, int line, int col)
     {
         var query = analysis.SemanticQuery!;
 
@@ -57,34 +57,10 @@ internal sealed class SharpyDefinitionHandler : DefinitionHandlerBase
         {
             Identifier id => query.GetIdentifierSymbol(id),
             FunctionCall call => query.GetCallTarget(call),
-            MemberAccess ma => ResolveFromMemberAccess(ma, analysis),
+            MemberAccess ma => MemberAccessSymbolResolver.Resolve(query, ma,
+                _api.FindNodeOfType<FunctionCall>(analysis.Ast!, line, col)),
             _ => null
         };
-    }
-
-    private static Symbol? ResolveFromMemberAccess(MemberAccess ma, SemanticResult analysis)
-    {
-        var query = analysis.SemanticQuery!;
-
-        // Try to get the type of the object, then look up the member
-        var objType = query.GetEffectiveType(ma.Object);
-        if (objType is UserDefinedType udt && udt.Symbol != null)
-        {
-            // Look through methods and fields
-            var memberName = ma.Member;
-
-            var method = udt.Symbol.Methods.Find(m =>
-                string.Equals(m.Name, memberName, StringComparison.Ordinal));
-            if (method != null)
-                return method;
-
-            var field = udt.Symbol.Fields.Find(f =>
-                string.Equals(f.Name, memberName, StringComparison.Ordinal));
-            if (field != null)
-                return field;
-        }
-
-        return null;
     }
 
     protected override DefinitionRegistrationOptions CreateRegistrationOptions(

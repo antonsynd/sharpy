@@ -3,6 +3,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
+using Sharpy.Lsp.Handlers;
 
 namespace Sharpy.Lsp;
 
@@ -219,21 +220,15 @@ public sealed class HoverService
 
             case MemberAccess memberAccess:
                 {
-                    // Check if TypeChecker recorded a static/const member resolution
-                    var resolution = query.GetMemberAccessResolution(memberAccess);
-                    if (resolution != null)
-                        return SymbolFormatter.FormatSymbolWithDocs(resolution.Value.Member);
-
-                    // Check if this MemberAccess is the Function of an enclosing FunctionCall
-                    // (e.g., items.count(2) — cursor on "count" gives MemberAccess, but the
-                    // resolved call target is on the FunctionCall node)
+                    // The ONE member-access resolution the navigation handlers share (#2242, D7):
+                    // a recorded static/const/enum member, the export a module-qualified spelling
+                    // bound, the enclosing call's target (items.count(2) — the cursor on "count"
+                    // gives the MemberAccess, the resolved target is on the FunctionCall), then a
+                    // user-defined receiver's own method or field.
                     var enclosingCall = _api.FindNodeOfType<FunctionCall>(analysis.Ast!, line, col);
-                    if (enclosingCall != null && ReferenceEquals(enclosingCall.Function, memberAccess))
-                    {
-                        var target = query.GetCallTarget(enclosingCall);
-                        if (target != null)
-                            return SymbolFormatter.FormatSymbolWithDocs(target);
-                    }
+                    var resolved = MemberAccessSymbolResolver.Resolve(query, memberAccess, enclosingCall);
+                    if (resolved != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(resolved);
 
                     // super().method — resolve parent class method
                     if (memberAccess.Object is FunctionCall { Function: SuperExpression })

@@ -5,6 +5,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Lsp.Handlers;
 
@@ -42,7 +43,7 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
             if (node == null)
                 return null;
 
-            var symbol = ResolveSymbol(node, analysis);
+            var symbol = ResolveSymbol(node, analysis, line, col);
             if (symbol == null)
                 return null;
 
@@ -76,7 +77,7 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
         }
     }
 
-    private static Symbol? ResolveSymbol(Node node, SemanticResult analysis)
+    private Symbol? ResolveSymbol(Node node, SemanticResult analysis, int line, int col)
     {
         var query = analysis.SemanticQuery!;
 
@@ -84,7 +85,8 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
         {
             Identifier id => query.GetIdentifierSymbol(id),
             FunctionCall call => query.GetCallTarget(call),
-            MemberAccess ma => ResolveFromMemberAccess(ma, analysis),
+            MemberAccess ma => MemberAccessSymbolResolver.Resolve(query, ma,
+                _api.FindNodeOfType<FunctionCall>(analysis.Ast!, line, col)),
             ClassDef cd => analysis.SymbolTable?.Lookup(cd.Name)
                 ?? analysis.SymbolTable?.LookupInModuleScopes(cd.Name),
             InterfaceDef ifd => analysis.SymbolTable?.Lookup(ifd.Name)
@@ -115,56 +117,45 @@ internal sealed class SharpyImplementationHandler : ImplementationHandlerBase
             ?? analysis.SymbolTable.LookupInModuleScopes(fd.Name);
     }
 
-    private static Symbol? ResolveFromMemberAccess(MemberAccess ma, SemanticResult analysis)
-    {
-        var query = analysis.SemanticQuery!;
-
-        var objType = query.GetEffectiveType(ma.Object);
-        if (objType is UserDefinedType udt && udt.Symbol != null)
-        {
-            var memberName = ma.Member;
-
-            var method = udt.Symbol.Methods.Find(m =>
-                string.Equals(m.Name, memberName, StringComparison.Ordinal));
-            if (method != null)
-                return method;
-
-            var field = udt.Symbol.Fields.Find(f =>
-                string.Equals(f.Name, memberName, StringComparison.Ordinal));
-            if (field != null)
-                return field;
-        }
-
-        return null;
-    }
-
+    /// <summary>
+    /// The best table's own instance of the SAME declaration as <paramref name="symbol"/>, or null
+    /// (the caller keeps <paramref name="symbol"/>).
+    /// </summary>
+    /// <remarks>
+    /// The search is by name, so a candidate is accepted only when it IS that declaration — same
+    /// kind, name, declaring file and line. A bare-name lookup alone answered whichever module scope
+    /// declares the name first: implementation on <c>b.Point</c> landed on <c>a.Point</c> when both
+    /// modules declare a <c>Point</c> (#2242).
+    /// </remarks>
     private static Symbol? ReResolveInTable(Symbol symbol, SymbolTable symbolTable)
     {
-        if (symbol is TypeSymbol)
-            return symbolTable.Lookup(symbol.Name)
-                ?? symbolTable.LookupInModuleScopes(symbol.Name);
-
         if (symbol is FunctionSymbol funcSym)
         {
-            // Methods aren't top-level — search declaring types by name + line.
+            // Methods aren't top-level — search the declaring types.
             foreach (var ts in symbolTable.GlobalScope.GetAllSymbols()
                 .Concat(symbolTable.GetAllModuleScopeSymbols()).OfType<TypeSymbol>())
             {
-                var method = ts.Methods.Find(m =>
-                    string.Equals(m.Name, funcSym.Name, StringComparison.Ordinal)
-                    && m.DeclarationLine == funcSym.DeclarationLine);
+                var method = ts.Methods.Find(m => IsSameDeclaration(m, funcSym));
                 if (method != null)
                     return method;
             }
-
-            // Fall back to top-level function.
-            return symbolTable.Lookup(symbol.Name)
-                ?? symbolTable.LookupInModuleScopes(symbol.Name);
         }
 
-        return symbolTable.Lookup(symbol.Name)
-            ?? symbolTable.LookupInModuleScopes(symbol.Name);
+        if (symbolTable.Lookup(symbol.Name) is { } global && IsSameDeclaration(global, symbol))
+            return global;
+
+        return symbolTable.GetAllModuleScopeSymbols().FirstOrDefault(s => IsSameDeclaration(s, symbol));
     }
+
+    private static bool IsSameDeclaration(Symbol candidate, Symbol symbol)
+        => ReferenceEquals(candidate, symbol)
+            || (candidate.GetType() == symbol.GetType()
+                && string.Equals(candidate.Name, symbol.Name, StringComparison.Ordinal)
+                && candidate.DeclarationLine == symbol.DeclarationLine
+                && string.Equals(
+                    candidate.DeclaringFilePath is { } c ? PathNormalizer.Normalize(c) : null,
+                    symbol.DeclaringFilePath is { } s ? PathNormalizer.Normalize(s) : null,
+                    StringComparison.Ordinal));
 
     private SymbolTable? GetBestSymbolTable(SemanticResult analysis)
     {
