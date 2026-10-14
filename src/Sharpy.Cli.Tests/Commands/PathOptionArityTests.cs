@@ -16,7 +16,7 @@ public class PathOptionArityTests
 {
     /// <summary>
     /// Every (command, option) pair in the CLI that declares one of the three path options.
-    /// <c>emit csharp</c> is the only one without <c>--project-reference</c>.
+    /// The emit subcommands take no <c>--project-reference</c>.
     /// </summary>
     private static readonly (string Command, string Option, string Value)[] OptionSites =
     {
@@ -31,6 +31,11 @@ public class PathOptionArityTests
         ("run", "--module-path", "mods"),
         ("emit csharp", "--reference", "a.dll"),
         ("emit csharp", "--module-path", "mods"),
+        ("emit diagnostics", "--reference", "a.dll"),
+        ("emit diagnostics", "--module-path", "mods"),
+        // hover's --line/--col are required, so they ride in the command part of the spelling.
+        ("emit hover --line 1 --col 1", "--reference", "a.dll"),
+        ("emit hover --line 1 --col 1", "--module-path", "mods"),
     };
 
     /// <summary>

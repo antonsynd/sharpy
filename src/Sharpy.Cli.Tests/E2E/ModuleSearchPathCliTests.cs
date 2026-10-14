@@ -77,6 +77,10 @@ public class ModuleSearchPathCliTests : IDisposable
     [InlineData("relative", "emit", "plain")]
     [InlineData("absolute", "emit", "from")]
     [InlineData("absolute", "emit", "plain")]
+    [InlineData("relative", "diagnostics", "from")]
+    [InlineData("absolute", "diagnostics", "plain")]
+    [InlineData("relative", "hover", "plain")]
+    [InlineData("absolute", "hover", "from")]
     public void ModulePathOption_ReachesImportResolution(string spelling, string command, string form)
     {
         WriteLayout(form);
@@ -87,7 +91,17 @@ public class ModuleSearchPathCliTests : IDisposable
 
         combined.Should().NotContain("SPY0300", $"{cell} the module is found through -m");
         result.ExitCode.Should().Be(0, $"{cell} {combined}");
-        if (command == "emit")
+        if (command == "diagnostics")
+        {
+            result.StdOut.Should().Contain("No diagnostics.", $"{cell} {combined}");
+        }
+        else if (command == "hover")
+        {
+            // Hovering `main` (line 4, column 5): the analysis bound both imports, so no error lines.
+            result.StdErr.Should().NotContain("error", $"{cell} {combined}");
+            result.StdOut.Should().Contain("main", $"{cell} {combined}");
+        }
+        else if (command == "emit")
         {
             File.Exists(_ws.PathFor(Path.Combine("mods", "helper.cs"))).Should().BeTrue($"{cell} the module is compiled");
             File.Exists(_ws.PathFor(Path.Combine("mods", "pkg", "mod.cs"))).Should().BeTrue($"{cell} the module is compiled");
@@ -109,6 +123,8 @@ public class ModuleSearchPathCliTests : IDisposable
     [InlineData("run")]
     [InlineData("compile")]
     [InlineData("emit")]
+    [InlineData("diagnostics")]
+    [InlineData("hover")]
     public void WithoutModulePath_TheSameImportIsSPY0300(string command)
     {
         WriteLayout("from");
@@ -116,8 +132,11 @@ public class ModuleSearchPathCliTests : IDisposable
         var result = InvokeCommand(command, Array.Empty<string>());
         var combined = result.StdOut + "\n" + result.StdErr;
 
-        result.ExitCode.Should().NotBe(0, combined);
-        combined.Should().Contain("error[SPY0300]: Cannot find module 'helper'", $"[{command}]");
+        // emit hover still prints the hover after its error lines, so it exits 0.
+        if (command != "hover")
+            result.ExitCode.Should().NotBe(0, combined);
+        // The analysis commands print `error SPY0300 (l:c): …`, the compiling ones `error[SPY0300]: …`.
+        combined.Should().MatchRegex(@"error[\[ ]SPY0300\]?[^\n]*Cannot find module 'helper'", $"[{command}]");
     }
 
     [Theory]
@@ -329,6 +348,8 @@ public class ModuleSearchPathCliTests : IDisposable
         {
             "run" => new System.Collections.Generic.List<string> { "run", "main.spy" },
             "compile" => new System.Collections.Generic.List<string> { "compile", "main.spy", "-o", _ws.PathFor(Path.Combine("out", "app.dll")) },
+            "diagnostics" => new System.Collections.Generic.List<string> { "emit", "diagnostics", "main.spy" },
+            "hover" => new System.Collections.Generic.List<string> { "emit", "hover", "main.spy", "--line", "4", "--col", "5" },
             _ => new System.Collections.Generic.List<string> { "emit", "csharp", "main.spy" },
         };
         args.AddRange(modulePathArgs);

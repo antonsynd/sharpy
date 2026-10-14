@@ -60,6 +60,10 @@ internal sealed class CompileServer
         await Console.Error.WriteLineAsync(
             $"sharpyc server listening on pipe '{_pipeName}' (idle timeout {idleDesc}). "
             + "Send a 'shutdown' request or press Ctrl+C to stop.").ConfigureAwait(false);
+        // The logger ServerCommand builds from --log-level/--log-file/--verbose was stored and never
+        // called, so those options were parsed and dropped (#2223); the server's lifecycle and each
+        // request now go through it.
+        _logger.LogInfo($"Compile server listening on pipe '{_pipeName}' (idle timeout {idleDesc})");
 
         // One reused server-stream instance for the whole lifetime: after a client disconnects we
         // Disconnect() and WaitForConnection() again on the SAME instance. Disposing and recreating
@@ -109,6 +113,7 @@ internal sealed class CompileServer
                         }
 
                         await Console.Error.WriteLineAsync("sharpyc server: idle timeout reached; shutting down.").ConfigureAwait(false);
+                        _logger.LogInfo("Compile server idle timeout reached; shutting down");
                         break;
                     }
                 }
@@ -208,6 +213,7 @@ internal sealed class CompileServer
                     case CompileServerProtocol.CommandShutdown:
                         await WriteAsync(writer, new CompileServerResponse { ExitCode = 0, Stdout = "shutting down" }).ConfigureAwait(false);
                         _shutdownRequested = true;
+                        _logger.LogInfo("Compile server received a shutdown request");
                         await cts.CancelAsync().ConfigureAwait(false);
                         return;
 
@@ -290,6 +296,7 @@ internal sealed class CompileServer
             Console.SetError(errBuffer);
 
             var (exitCode, metrics, usedAssemblyPaths) = RunCompile(request);
+            _logger.LogInfo($"Compile #{ordinal} ({request.Command} {request.Input}) finished with exit code {exitCode}");
 
             var response = new CompileServerResponse
             {

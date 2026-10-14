@@ -302,13 +302,19 @@ internal static class CommandOptionEffects
                 {
                     ["--format"] = H("text or json"),
                     ["--include-codegen"] = H("code generation diagnostics are included"),
-                }),
+                    ["--reference"] = H("a reference that cannot be found is SPY0305"),
+                    ["--module-path"] = H("a directory that does not exist is an error"),
+                },
+                ignoredGlobals: Ignore("emit diagnostics reports diagnostics, not compilation metrics; build, compile, run and emit csharp report them",
+                    "--metrics-format", "--metrics-output")),
 
             ["emit hover"] = Table(CommandPerforms.Analyses, new[] { InputKind.SpyFile },
                 new Dictionary<string, OptionEffectRow>(StringComparer.Ordinal)
                 {
                     ["--line"] = H("the hovered line"),
                     ["--col"] = H("the hovered column"),
+                    ["--reference"] = H("a reference that cannot be found is SPY0305"),
+                    ["--module-path"] = H("a directory that does not exist is an error"),
                 },
                 ignoredGlobals: Ignore("hover analyses the file but compiles nothing, so it has no compilation metrics",
                     "--metrics-format", "--metrics-output")),

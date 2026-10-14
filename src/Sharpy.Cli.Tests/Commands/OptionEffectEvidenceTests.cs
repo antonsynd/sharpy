@@ -425,13 +425,8 @@ public class OptionEffectEvidenceTests
         patient.Process.HasExited.Should().BeFalse("control: --idle-timeout 60 is still alive 3 s after it started listening");
     }
 
-    const string ServerLogsNothingReason =
-        "Measured @ 27e261684: `sharpyc server --idle-timeout 1 --log-level Debug --log-file f` (and --verbose) " +
-        "writes no [INFO]/[DEBUG] line to stdout, stderr or f (f is created empty). CompileServer stores the " +
-        "logger ServerCommand builds but never calls it, and each compile request runs with NullLogger.Instance. " +
-        "Reported to the P46 lead: the cell is not observable as Honoured.";
 
-    [Fact(Skip = ServerLogsNothingReason)]
+    [Fact]
     public void Server_LogFile_ReceivesTheLog()
     {
         using var ws = new TempWorkspace();
@@ -443,7 +438,7 @@ public class OptionEffectEvidenceTests
         ReadShared(log).Should().Contain("[INFO]");
     }
 
-    [Fact(Skip = ServerLogsNothingReason)]
+    [Fact]
     public void Server_LogLevel_EnablesTheLogger()
     {
         using var control = SpawnedServer.Start("--idle-timeout", "1");
@@ -455,7 +450,7 @@ public class OptionEffectEvidenceTests
         (server.StdOut + server.StdErr).Should().Contain("[INFO]");
     }
 
-    [Fact(Skip = ServerLogsNothingReason)]
+    [Fact]
     public void Server_Verbose_RaisesTheLogLevel()
     {
         using var control = SpawnedServer.Start("--idle-timeout", "1");
@@ -584,12 +579,14 @@ public class OptionEffectEvidenceTests
             process.OutputDataReceived += (_, e) =>
             {
                 if (e.Data != null)
-                    lock (server._gate) server._stdout.AppendLine(e.Data);
+                    lock (server._gate)
+                        server._stdout.AppendLine(e.Data);
             };
             process.ErrorDataReceived += (_, e) =>
             {
                 if (e.Data != null)
-                    lock (server._gate) server._stderr.AppendLine(e.Data);
+                    lock (server._gate)
+                        server._stderr.AppendLine(e.Data);
             };
             process.Start();
             process.BeginOutputReadLine();

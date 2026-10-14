@@ -212,12 +212,23 @@ internal static class CliHelpers
         Console.Error.WriteLine();
     }
 
+    /// <summary>
+    /// Metrics are reported when either metrics option is given: <c>--metrics-output f</c> alone writes
+    /// them to <c>f</c> in the <see cref="DefaultMetricsFormat"/>. It used to be parsed and dropped
+    /// unless <c>--metrics-format</c> was given too (#2223).
+    /// </summary>
+    internal static bool MetricsRequested(string? metricsFormat, FileInfo? metricsOutput) =>
+        metricsFormat != null || metricsOutput != null;
+
+    /// <summary>The metrics format when only <c>--metrics-output</c> is given.</summary>
+    internal const string DefaultMetricsFormat = "text";
+
     internal static void OutputMetrics(CompilationMetrics? metrics, string? metricsFormat, FileInfo? metricsOutput)
     {
-        if (metrics == null || metricsFormat == null)
+        if (metrics == null || !MetricsRequested(metricsFormat, metricsOutput))
             return;
 
-        var format = metricsFormat.ToLowerInvariant();
+        var format = (metricsFormat ?? DefaultMetricsFormat).ToLowerInvariant();
         if (format != "text" && format != "json")
         {
             Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
@@ -243,10 +254,10 @@ internal static class CliHelpers
         string? metricsFormat,
         FileInfo? metricsOutput)
     {
-        if (metricsFormat == null || (frontend == null && assembly == null))
+        if (!MetricsRequested(metricsFormat, metricsOutput) || (frontend == null && assembly == null))
             return;
 
-        var format = metricsFormat.ToLowerInvariant();
+        var format = (metricsFormat ?? DefaultMetricsFormat).ToLowerInvariant();
         if (format != "text" && format != "json")
         {
             Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
@@ -306,10 +317,10 @@ internal static class CliHelpers
 
     internal static void OutputProjectMetrics(ProjectCompilationMetrics? metrics, string? metricsFormat, FileInfo? metricsOutput)
     {
-        if (metrics == null || metricsFormat == null)
+        if (metrics == null || !MetricsRequested(metricsFormat, metricsOutput))
             return;
 
-        var format = metricsFormat.ToLowerInvariant();
+        var format = (metricsFormat ?? DefaultMetricsFormat).ToLowerInvariant();
         if (format != "text" && format != "json")
         {
             Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");

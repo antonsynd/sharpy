@@ -335,6 +335,10 @@ public class CliOptionEffectSweepTests
 
         ["emit diagnostics --format"] = "Sharpy.Cli.Tests.Commands.EmitCommandTests.Diagnostics_JsonFormat_ProducesJsonArray",
         ["emit diagnostics --include-codegen"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitDiagnostics_IncludeCodegen_RunsTheCompilePipeline",
+        ["emit diagnostics --reference"] = "Sharpy.Cli.Tests.E2E.AnalysisReferenceOptionTests.AReference_LetsTheEntryBeAnalysed",
+        ["emit diagnostics --module-path"] = "Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests.ModulePathOption_ReachesImportResolution",
+        ["emit hover --reference"] = "Sharpy.Cli.Tests.E2E.AnalysisReferenceOptionTests.AReference_LetsTheEntryBeAnalysed",
+        ["emit hover --module-path"] = "Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests.ModulePathOption_ReachesImportResolution",
         ["emit hover --line"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitHover_LineAndCol_SelectTheHoveredSymbol",
         ["emit hover --col"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitHover_LineAndCol_SelectTheHoveredSymbol",
 

@@ -120,8 +120,10 @@ internal static class EmitCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
+            var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
+            var metricsOutput = parseResult.GetValue(globals.MetricsOutput);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName, features);
+            return EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName, features, metricsFormat, metricsOutput);
         });
         parent.Subcommands.Add(command);
     }
@@ -156,10 +158,15 @@ internal static class EmitCommand
         var formatOpt = new Option<string?>("--format") { Description = "Output format: text or json" };
         formatOpt.Aliases.Add("-f");
         var includeCodegenOpt = new Option<bool>("--include-codegen") { Description = "Include code generation phase (uses Compile instead of Analyze)" };
+        // An entry that imports a referenced library or a module on a search path cannot be analysed
+        // without these; they were undeclared (a parse error) on emit diagnostics (#2223).
+        var (refOpt, modPathOpt) = PathOptions();
 
         command.Arguments.Add(inputArg);
         command.Options.Add(formatOpt);
         command.Options.Add(includeCodegenOpt);
+        command.Options.Add(refOpt);
+        command.Options.Add(modPathOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -183,8 +190,15 @@ internal static class EmitCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
+            var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
+            if (!CliHelpers.ValidateModulePaths(modulePath))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen, features);
+            return EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen, features, reference, modulePath);
         });
         parent.Subcommands.Add(command);
     }
@@ -195,10 +209,13 @@ internal static class EmitCommand
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
         var lineOpt = new Option<int>("--line") { Description = "1-based line number", Required = true };
         var colOpt = new Option<int>("--col") { Description = "1-based column number", Required = true };
+        var (refOpt, modPathOpt) = PathOptions();
 
         command.Arguments.Add(inputArg);
         command.Options.Add(lineOpt);
         command.Options.Add(colOpt);
+        command.Options.Add(refOpt);
+        command.Options.Add(modPathOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -214,10 +231,33 @@ internal static class EmitCommand
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
+            var warnAsError = parseResult.GetValue(globals.WarnAsError);
+            var nowarn = parseResult.GetValue(globals.Nowarn);
+            var features = parseResult.GetValue(globals.EnableFeature);
+            var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
+            if (!CliHelpers.ValidateModulePaths(modulePath))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return EmitHover(input, line, col, logger, maxErrors);
+            return EmitHover(input, line, col, logger, maxErrors, warnAsError, nowarn, features, reference, modulePath);
         });
         parent.Subcommands.Add(command);
+    }
+
+    /// <summary>
+    /// The <c>-r</c>/<c>-m</c> pair the analysis commands take, spelled exactly as on <c>emit csharp</c>:
+    /// one value per occurrence, repeatable (#1179, #1215).
+    /// </summary>
+    static (Option<string[]> Reference, Option<string[]> ModulePath) PathOptions()
+    {
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
+        refOpt.Aliases.Add("-r");
+        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
+        modPathOpt.Aliases.Add("-m");
+        return (refOpt, modPathOpt);
     }
 
     static int EmitTokens(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
@@ -347,8 +387,11 @@ internal static class EmitCommand
 
     static int EmitDiagnostics(FileInfo inputFile, ICompilerLogger logger, string format,
         bool warnAsError = false, string? nowarn = null, int? maxErrors = null, bool includeCodegen = false,
-        string[]? features = null)
+        string[]? features = null, string[]? references = null, string[]? modulePaths = null)
     {
+        // Each reference spelled as the file the module registry resolves it to, as for compile.
+        var resolvedReferences = CliHelpers.ResolveReferences(references ?? Array.Empty<string>(), modulePaths ?? Array.Empty<string>());
+
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
@@ -359,6 +402,8 @@ internal static class EmitCommand
             if (includeCodegen)
             {
                 var compilerOptions = CompilerOptionsFactory.ForCli(
+                    references: resolvedReferences,
+                    modulePaths: modulePaths,
                     warningsAsErrors: warnAsError,
                     suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
                     maxErrors: maxErrors ?? 0,
@@ -384,6 +429,8 @@ internal static class EmitCommand
                 // refusal for a file the user only asked to check.
                 var analyzeOptions = CompilerOptionsFactory.ForCli(
                     outputType: "library",
+                    references: resolvedReferences,
+                    modulePaths: modulePaths,
                     warningsAsErrors: warnAsError,
                     suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
                     maxErrors: maxErrors ?? 0,
@@ -437,13 +484,26 @@ internal static class EmitCommand
         }
     }
 
-    static int EmitHover(FileInfo inputFile, int line, int col, ICompilerLogger logger, int? maxErrors = null)
+    static int EmitHover(FileInfo inputFile, int line, int col, ICompilerLogger logger, int? maxErrors = null,
+        bool warnAsError = false, string? nowarn = null, string[]? features = null,
+        string[]? references = null, string[]? modulePaths = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var api = CliHelpers.CreateCompilerApi(logger);
-            var result = api.Analyze(source);
+            // Analyse the entry BY PATH with the analysis options, exactly as `emit diagnostics` does
+            // (#1377, #1097): `api.Analyze(source)` rooted the import closure at the working directory
+            // and dropped --max-errors, --warn-as-error, --nowarn and --enable-feature (#2223).
+            var analyzeOptions = CompilerOptionsFactory.ForCli(
+                outputType: "library",
+                references: CliHelpers.ResolveReferences(references ?? Array.Empty<string>(), modulePaths ?? Array.Empty<string>()),
+                modulePaths: modulePaths,
+                warningsAsErrors: warnAsError,
+                suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
+                maxErrors: maxErrors ?? 0,
+                features: CliHelpers.ParseFeatures(features));
+            var result = api.Analyze(source, inputFile.FullName, analyzeOptions);
 
             foreach (var d in result.Diagnostics.Where(d => d.IsError))
             {
@@ -480,7 +540,7 @@ internal static class EmitCommand
     static int EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
         ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,
         bool showLineDirectives = false, string outputType = "exe", string? namespaceName = null,
-        string[]? features = null)
+        string[]? features = null, string? metricsFormat = null, FileInfo? metricsOutput = null)
     {
         try
         {
@@ -563,6 +623,13 @@ internal static class EmitCommand
             {
                 Console.WriteLine($"Generated C# code written to: {moduleOutputPath}");
             }
+
+            // emit csharp runs the compiler, so it reports the compile's metrics like build does;
+            // --metrics-format/--metrics-output were parsed and dropped here (#2223).
+            if (result.ProjectMetrics != null)
+                CliHelpers.OutputProjectMetrics(result.ProjectMetrics, metricsFormat, metricsOutput);
+            else
+                CliHelpers.OutputMetrics(result.Metrics, metricsFormat, metricsOutput);
             return 0;
         }
         catch (Exception ex)
