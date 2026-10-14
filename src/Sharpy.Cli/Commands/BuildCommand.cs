@@ -22,7 +22,7 @@ internal static class BuildCommand
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
         var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var projRefOpt = new Option<string[]>("--project-reference") { Description = $"Add a .NET project reference (repeatable; refused: {CliHelpers.ProjectReferenceUnsupportedReason})" };
+        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
@@ -38,6 +38,11 @@ internal static class BuildCommand
 
         command.SetAction((parseResult) =>
         {
+            if (!CommandOptionEffects.Refuse(parseResult, command))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var input = parseResult.GetValue(inputArg)!;
             var type = parseResult.GetValue(typeOpt) ?? "exe";
             var output = parseResult.GetValue(outputOpt);
@@ -90,7 +95,7 @@ internal static class BuildCommand
                 }
             }
 
-            var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
+            var compileResult = CompileToBinary(input, type, output, reference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
             return compileResult == null ? CliHelpers.LastFailureExitCode : 0;
         });
 
@@ -107,7 +112,6 @@ internal static class BuildCommand
         string outputType,
         FileInfo? output,
         string[] references,
-        string[] projectReferences,
         string[] modulePaths,
         ICompilerLogger logger,
         string? metricsFormat,
@@ -120,9 +124,10 @@ internal static class BuildCommand
         string? namespaceName = null)
     {
         // The one single-file seam behind build, run, compile <file>.spy and the compile server:
-        // a project reference is refused rather than dropped, and a module path that does not
-        // exist is an error rather than ignored (#2173).
-        if (!CliHelpers.RefuseProjectReferences(projectReferences) || !CliHelpers.ValidateModulePaths(modulePaths))
+        // a module path that does not exist is an error rather than ignored (#2173). A project
+        // reference never reaches here: the commands refuse it from their option table
+        // (CommandOptionEffects.Refuse) and the server refuses it from the request.
+        if (!CliHelpers.ValidateModulePaths(modulePaths))
         {
             CliHelpers.LastFailureExitCode = CliHelpers.ExitCompileError;
             return null;

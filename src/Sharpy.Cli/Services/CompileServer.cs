@@ -360,13 +360,19 @@ internal sealed class CompileServer
             return (projectExit, projectMetrics, null);
         }
 
+        // The CLI refuses --project-reference from its option table before it sends a request; a
+        // request that carries one anyway is refused here, as the command would (#2173).
+        if (!CliHelpers.RefuseProjectReferences(request.ProjectReferences))
+        {
+            return (CliHelpers.ExitCompileError, null, null);
+        }
+
         var output = string.IsNullOrEmpty(request.Output) ? null : new FileInfo(request.Output);
         var result = BuildCommand.CompileToBinary(
             inputFile,
             request.OutputType,
             output,
             request.References,
-            request.ProjectReferences,
             request.ModulePaths,
             NullLogger.Instance,
             metricsFormat: null,

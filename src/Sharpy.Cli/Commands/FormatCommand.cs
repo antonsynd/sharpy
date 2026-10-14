@@ -17,7 +17,7 @@ internal static class FormatCommand
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Write formatted output to the specified file (single-file input only)" };
         outputOpt.Aliases.Add("-o");
         var indentOpt = new Option<int?>("--indent") { Description = "Indent size in spaces; must be 4 — Sharpy indentation is exactly 4 spaces per level" };
-        var tabsOpt = new Option<bool>("--tabs") { Description = "Not supported: Sharpy does not allow tabs for indentation (usage error)" };
+        var tabsOpt = new Option<bool>("--tabs") { Description = "Indent with tabs" };
 
         command.Arguments.Add(inputArg);
         command.Options.Add(checkOpt);
@@ -28,13 +28,18 @@ internal static class FormatCommand
 
         command.SetAction((parseResult) =>
         {
+            // --tabs is refused from the option table (the one refusal seam for every command).
+            if (!CommandOptionEffects.Refuse(parseResult, command))
+            {
+                return 2;
+            }
+
             var input = parseResult.GetValue(inputArg)!;
             var check = parseResult.GetValue(checkOpt);
             var diff = parseResult.GetValue(diffOpt);
             var output = parseResult.GetValue(outputOpt);
             var indent = parseResult.GetValue(indentOpt);
-            var tabs = parseResult.GetValue(tabsOpt);
-            return HandleFormatCommand(input, check, diff, output, indent, tabs);
+            return HandleFormatCommand(input, check, diff, output, indent);
         });
 
         root.Subcommands.Add(command);
@@ -45,8 +50,7 @@ internal static class FormatCommand
         bool check,
         bool diff,
         FileInfo? output,
-        int? indent,
-        bool tabs)
+        int? indent)
     {
         if (check && diff)
         {
@@ -68,14 +72,6 @@ internal static class FormatCommand
         {
             Console.Error.WriteLine(
                 $"Error: --indent {indent.Value} is not supported: Sharpy indentation is exactly "
-                + $"{Sharpy.Compiler.Lexer.Lexer.IndentWidth} spaces per level (docs/language_specification/indentation.md).");
-            return 2;
-        }
-
-        if (tabs)
-        {
-            Console.Error.WriteLine(
-                "Error: --tabs is not supported: Sharpy does not allow tabs for indentation; it is exactly "
                 + $"{Sharpy.Compiler.Lexer.Lexer.IndentWidth} spaces per level (docs/language_specification/indentation.md).");
             return 2;
         }

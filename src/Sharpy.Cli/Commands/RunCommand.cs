@@ -30,7 +30,7 @@ internal static class RunCommand
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
         var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var projRefOpt = new Option<string[]>("--project-reference") { Description = $"Add a .NET project reference (repeatable; refused: {CliHelpers.ProjectReferenceUnsupportedReason})" };
+        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
@@ -60,6 +60,11 @@ internal static class RunCommand
 
         command.SetAction((parseResult) =>
         {
+            if (!CommandOptionEffects.Refuse(parseResult, command))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var input = parseResult.GetValue(inputArg)!;
             var output = parseResult.GetValue(outputOpt);
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
@@ -191,7 +196,7 @@ internal static class RunCommand
             }
             else
             {
-                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features, namespaceName: namespaceName);
+                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features, namespaceName: namespaceName);
                 if (compileResult == null)
                 {
                     return CliHelpers.LastFailureExitCode;

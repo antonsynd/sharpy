@@ -29,25 +29,8 @@ internal static class CliTestHarness
     /// </param>
     internal static (RootCommand Root, GlobalOptions Globals, Command Run) BuildRoot(
         IReadOnlyList<string>? programArguments = null)
-    {
-        var root = new RootCommand("sharpyc - Sharpy Compiler");
-        var globals = new GlobalOptions();
-        globals.AddToCommand(root);
+        => CliRoot.Build(programArguments);
 
-        BuildCommand.Configure(root, globals);
-        CompileCommand.Configure(root, globals);
-        var run = RunCommand.Configure(root, globals, programArguments);
-        ProjectCommand.Configure(root, globals);
-        EmitCommand.Configure(root, globals);
-        CacheCommand.Configure(root, globals);
-        ExplainCommand.Configure(root, globals);
-        LspCommand.Configure(root, globals);
-        ReplCommand.Configure(root, globals);
-        FormatCommand.Configure(root, globals);
-        ServerCommand.Configure(root, globals);
-
-        return (root, globals, run);
-    }
 
     /// <summary>
     /// Tokenizes a command line the way <c>Command.Parse(string)</c> does, then applies the same

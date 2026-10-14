@@ -2,7 +2,6 @@ using System.CommandLine;
 using FluentAssertions;
 using Sharpy.Cli.Commands;
 using Xunit;
-using OptionEffect = Sharpy.Cli.Commands.CompileCommand.OptionEffect;
 
 namespace Sharpy.Cli.Tests.Commands;
 
@@ -118,7 +117,7 @@ public class CompileOptionEffectTableTests : IClassFixture<CompileOptionEffectTa
         foreach (var option in own)
         {
             var row = CompileCommand.OptionEffects[option.Name];
-            var suffix = CompileCommand.DescriptionSuffix(row);
+            var suffix = CommandOptionEffects.DescriptionSuffix(CommandOptionEffects.Tables["compile"], row);
             if (row.SpyFile == OptionEffect.Honoured && row.SpyProject == OptionEffect.Honoured)
             {
                 suffix.Should().BeEmpty();

@@ -17,139 +17,13 @@ namespace Sharpy.Cli.Commands;
 /// </summary>
 internal static class CompileCommand
 {
-    /// <summary>The two input kinds <c>compile</c> accepts; the option table has one column per kind.</summary>
-    internal enum InputKind
-    {
-        /// <summary>A single <c>.spy</c> source file (compiled as a synthetic project-of-one-file).</summary>
-        SpyFile,
-
-        /// <summary>A <c>.spyproj</c> project file.</summary>
-        SpyProject,
-    }
-
-    /// <summary>What <c>compile</c> does with an option for one input kind (#2173).</summary>
-    internal enum OptionEffect
-    {
-        /// <summary>The option reaches the compile and changes its result.</summary>
-        Honoured,
-
-        /// <summary>
-        /// Giving the option is an error for this input kind: the command prints why and exits 1
-        /// before compiling anything (<see cref="RefuseInapplicableOptions"/>).
-        /// </summary>
-        Refused,
-
-        /// <summary>
-        /// The option has no effect for this input kind, and its <c>--help</c> description says so
-        /// (the suffix is appended from this table by <see cref="Configure"/>).
-        /// </summary>
-        Ignored,
-    }
-
-    /// <summary>One row of the option-to-effect table: the effect per input kind and why.</summary>
-    internal sealed record OptionEffectRow(OptionEffect SpyFile, OptionEffect SpyProject, string Reason)
-    {
-        internal OptionEffect For(InputKind kind) => kind == InputKind.SpyFile ? SpyFile : SpyProject;
-    }
-
     /// <summary>
-    /// The option-to-effect table for <c>compile</c>, keyed by option name: every option the command
-    /// accepts — its own and the recursive global ones — with what it does for a <c>.spy</c> and a
-    /// <c>.spyproj</c> input. A parsed option is honoured, refused for that input kind with a message,
-    /// or documented as ignored; it is never silently dropped (#2173, after #2159 found <c>-o</c>
-    /// parsed and dropped for a project). <c>CompileOptionEffectTableTests</c> fails when an option is
-    /// declared without a row or a row names no declared option.
+    /// The option-to-effect table for <c>compile</c> (#2173): one column per input kind
+    /// {.spy, .spyproj}. It lives in the one registry for every command
+    /// (<see cref="CommandOptionEffects"/>, #2223), which generates its <c>--help</c> notes and
+    /// refusals; this is the <c>"compile"</c> table's rows.
     /// </summary>
-    internal static readonly IReadOnlyDictionary<string, OptionEffectRow> OptionEffects =
-        new Dictionary<string, OptionEffectRow>(StringComparer.Ordinal)
-        {
-            ["--output"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "the assembly path; for a project it overrides bin/{Configuration}/{TFM} (#2159)"),
-            ["--configuration"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "the build configuration (default Release)"),
-            ["--type"] = new(OptionEffect.Honoured, OptionEffect.Ignored,
-                "a project's output type is its <OutputType>"),
-            ["--reference"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "for a project, added to the .spyproj's <Reference> items; a reference that cannot be found is SPY0305"),
-            ["--project-reference"] = new(OptionEffect.Refused, OptionEffect.Refused,
-                CliHelpers.ProjectReferenceUnsupportedReason),
-            ["--module-path"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "for a project, added to the .spyproj's <ModulePath> items; a directory that does not exist is an error"),
-            ["--self-contained"] = new(OptionEffect.Honoured, OptionEffect.Refused,
-                "self-contained publishing of a .spyproj is not supported yet"),
-            ["--no-deps"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "runtime dependencies are not copied beside the output"),
-            ["--incremental"] = new(OptionEffect.Ignored, OptionEffect.Honoured,
-                "the incremental cache lives in a project's obj/"),
-            ["--clean"] = new(OptionEffect.Ignored, OptionEffect.Honoured,
-                "only a project has bin/ and obj/ directories to delete"),
-            ["--emit-csharp"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "generated C# is mirrored beside the output (#2159)"),
-
-            // Recursive global options (GlobalOptions): every one reaches both paths.
-            ["--log-level"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "the compiler logger's level"),
-            ["--log-file"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "the compiler log goes to this file (at the --log-level/--verbose level)"),
-            ["--metrics-format"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "compilation metrics are printed"),
-            ["--metrics-output"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "compilation metrics are written to this file"),
-            ["--warn-as-error"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "warnings fail the compile (OR-ed with a project's <WarningsAsErrors>)"),
-            ["--nowarn"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "the codes are suppressed (unioned with a project's <NoWarn>)"),
-            ["--max-errors"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "error reporting stops after this many"),
-            ["--verbose"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "raises the log level to Info and shows diagnostic provenance"),
-            ["--enable-feature"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
-                "the experimental feature is enabled (unioned with a project's <Features>)"),
-            ["--help"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "prints help instead of compiling"),
-        };
-
-    /// <summary>
-    /// The <c>--help</c> suffix that documents a row's non-honoured cells, e.g.
-    /// <c>(ignored for .spyproj)</c>. Empty when the option is honoured for both input kinds.
-    /// </summary>
-    internal static string DescriptionSuffix(OptionEffectRow row)
-    {
-        var notes = new List<string>();
-        if (row.SpyFile == row.SpyProject && row.SpyFile != OptionEffect.Honoured)
-        {
-            notes.Add($"{EffectWord(row.SpyFile)} for .spy and .spyproj: {row.Reason}");
-        }
-        else
-        {
-            if (row.SpyFile != OptionEffect.Honoured)
-                notes.Add($"{EffectWord(row.SpyFile)} for .spy: {row.Reason}");
-            if (row.SpyProject != OptionEffect.Honoured)
-                notes.Add($"{EffectWord(row.SpyProject)} for .spyproj: {row.Reason}");
-        }
-
-        return notes.Count == 0 ? string.Empty : $" ({string.Join("; ", notes)})";
-
-        static string EffectWord(OptionEffect effect) => effect == OptionEffect.Refused ? "refused" : "ignored";
-    }
-
-    /// <summary>
-    /// Refuses, before anything is compiled or written, every option the user actually gave whose
-    /// table cell for <paramref name="kind"/> is <see cref="OptionEffect.Refused"/>. Returns false
-    /// (after printing one error per refused option) when the command must exit.
-    /// </summary>
-    internal static bool RefuseInapplicableOptions(System.CommandLine.ParseResult parseResult, IEnumerable<Option> options, InputKind kind)
-    {
-        var refused = false;
-        foreach (var option in options)
-        {
-            if (!OptionEffects.TryGetValue(option.Name, out var row) || row.For(kind) != OptionEffect.Refused)
-                continue;
-            if (parseResult.GetResult(option) is not { Implicit: false })
-                continue;
-
-            var inputKind = kind == InputKind.SpyFile ? "a .spy file" : "a .spyproj project";
-            Console.Error.WriteLine($"Error: {option.Name} is not supported when compiling {inputKind}: {row.Reason}.");
-            refused = true;
-        }
-
-        return !refused;
-    }
+    internal static IReadOnlyDictionary<string, OptionEffectRow> OptionEffects => CommandOptionEffects.Tables["compile"].Rows;
 
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
@@ -188,15 +62,6 @@ internal static class CompileCommand
         command.Options.Add(cleanOpt);
         command.Options.Add(emitCSharpOpt);
 
-        // The table documents its own non-honoured cells in --help, so "ignored"/"refused" cannot
-        // drift from what the command does. (Global options are honoured for both kinds; the table
-        // test keeps it that way, since their descriptions are shared with every other command.)
-        foreach (var option in command.Options)
-        {
-            if (OptionEffects.TryGetValue(option.Name, out var row))
-                option.Description += DescriptionSuffix(row);
-        }
-
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
@@ -224,7 +89,7 @@ internal static class CompileCommand
             var kind = input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase)
                 ? InputKind.SpyProject
                 : InputKind.SpyFile;
-            if (!RefuseInapplicableOptions(parseResult, command.Options, kind)
+            if (!CommandOptionEffects.Refuse(parseResult, command, kind)
                 || !CliHelpers.ValidateModulePaths(modulePath))
             {
                 return CliHelpers.ExitCompileError;
@@ -298,7 +163,7 @@ internal static class CompileCommand
         }
 
         var compileResult = BuildCommand.CompileToBinary(
-            inputFile, outputType, new FileInfo(outputPath), references, projectReferences, modulePaths,
+            inputFile, outputType, new FileInfo(outputPath), references, modulePaths,
             logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration, features);
 
         if (compileResult == null)
