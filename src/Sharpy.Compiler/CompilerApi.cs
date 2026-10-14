@@ -471,13 +471,21 @@ public sealed class CompilerApi
                 : null;
         }
 
+        // A reference that resolves to no file is SPY0305 on the (cached) registry, which the analysis
+        // never reads; the single-file analyze door dropped it, as AnalyzeProject did (#2223).
+        // Analysis writes nothing, so merging after it is enough.
+        var missingReferences = registry?.MissingReferenceDiagnostics() ?? Array.Empty<CompilerDiagnostic>();
+        var diagnostics = missingReferences.Count == 0
+            ? analysis.Diagnostics.GetAll()
+            : analysis.Diagnostics.GetAll().Concat(missingReferences).ToList();
+
         return new SemanticResult
         {
             // Diagnostics and success come from the whole analysis (project bag), matching the
             // former single-file driver and the compile path; the AST/semantic/symbol/comment
             // artifacts are the entry file's per-unit view.
-            Success = !analysis.Diagnostics.HasErrors,
-            Diagnostics = analysis.Diagnostics.GetAll(),
+            Success = !analysis.Diagnostics.HasErrors && missingReferences.Count == 0,
+            Diagnostics = diagnostics,
             Ast = entryResult?.Ast,
             SemanticInfo = entryResult?.SemanticInfo,
             // Already positioned at the entry file's module scope by SyntheticProject.Analyze.

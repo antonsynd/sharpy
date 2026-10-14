@@ -171,6 +171,48 @@ public sealed class RegistryErrorDoorTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// The single-file analyze door (every public <c>CompilerApi.Analyze</c> overload runs one body,
+    /// <c>AnalyzeCore</c>) builds its registry from a synthetic config through the same cached
+    /// <c>GetOrBuildAnalysisContext</c> as <see cref="AnalyzeProject"/>, so it reports a missing
+    /// reference the same way (#2223; the CLI's <c>emit diagnostics</c>/<c>emit hover</c> reach it).
+    /// The control is the same analysis with the reference present.
+    /// </summary>
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public void SingleFileAnalyze_ReportsAMissingReferenceAsSpy0305(bool withPath, bool missingReference)
+    {
+        var dir = Path.Combine(_root, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var source = "def main() -> None:\n    print(\"hi\")\n";
+        var entry = Path.Combine(dir, "main.spy");
+        File.WriteAllText(entry, source);
+        var reference = Path.Combine(dir, "libs", "Probe.dll");
+        if (!missingReference)
+            EmitTinyAssembly(reference);
+        var options = CompilerOptionsFactory.ForCli(outputType: "library", references: new[] { reference });
+        var cell = $"[Analyze withPath={withPath}, missing={missingReference}]";
+
+        var api = new CompilerApi(NullLogger.Instance, DefaultReferences.Resolve());
+        var result = withPath ? api.Analyze(source, entry, options) : api.Analyze(source, options);
+        var spy0305 = result.Diagnostics.Where(d => d.Code == DiagnosticCodes.Semantic.AssemblyNotFound).ToList();
+
+        if (missingReference)
+        {
+            result.Success.Should().BeFalse($"{cell} a reference that resolves nowhere fails the analysis");
+            spy0305.Should().ContainSingle($"{cell}").Which.Message.Should().Contain(reference);
+        }
+        else
+        {
+            spy0305.Should().BeEmpty($"{cell} control: the reference exists");
+            result.Success.Should().BeTrue(
+                $"{cell} control\n" + string.Join("\n", result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code}: {d.Message}")));
+        }
+    }
+
     private string WriteProject(string referenceItem)
     {
         var dir = Path.Combine(_root, Guid.NewGuid().ToString("N"));
