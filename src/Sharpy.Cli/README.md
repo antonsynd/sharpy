@@ -45,6 +45,33 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 - `--incremental` - Enable incremental compilation (skip unchanged files)
 - `--clean` - Delete bin/ and obj/ directories before building
 - `--emit-cs-to <dir>` - Save generated C# code to directory, mirroring each source's path relative to the project directory (`pkg/lib.spy` → `<dir>/pkg/lib.cs`)
+- `-r, --reference <assembly>` / `-m, --module-path <path>` - As for `compile app.spyproj`: added to the project's own `<Reference>`/`<ModulePath>` items; a reference that resolves nowhere is SPY0305 and a missing directory an error, before anything is built
+
+### Options by Command
+
+Every option a command accepts — its own and the global ones — is honoured, refused (with a message, before anything is read or written), or documented in `--help` as having no effect. The registry is `CommandOptionEffects`; `CliOptionEffectSweepTests` checks every cell, and `ReadmeOptionTableTests` checks this table against it.
+
+| Command | Input | `-r` / `-m` | Deploys references | Global options without effect |
+|---|---|---|---|---|
+| `build` | `.spy` | yes | no — writes the assembly only | none |
+| `compile` | `.spy`, `.spyproj` | yes | yes, unless `--no-deps` | none |
+| `run` | `.spy` | yes | yes, beside the program it runs | none |
+| `project` | `.spyproj` | yes | no — writes the assembly only | none |
+| `emit tokens` | `.spy` | no — lexing needs no references | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--enable-feature` |
+| `emit ast` | `.spy` | no — parsing needs no references | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--enable-feature` |
+| `emit parse` | `.spy` | no — parsing needs no references | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--enable-feature` |
+| `emit csharp` | `.spy` | yes | — | none |
+| `emit diagnostics` | `.spy` | yes | — | `--metrics-format`, `--metrics-output` |
+| `emit hover` | `.spy` | yes | — | `--metrics-format`, `--metrics-output` |
+| `cache clear` | — | no | — | all nine |
+| `cache info` | — | no | — | all nine |
+| `explain` | — | no | — | all nine |
+| `lsp` | — | no | — | `--log-file`, `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--max-errors`, `--verbose`, `--enable-feature` |
+| `repl` | — | no | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--max-errors` |
+| `format` | `.spy` (or a directory of them) | no | — | all nine |
+| `server` | — | no | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--max-errors`, `--enable-feature` |
+
+A `.spyproj` given to a command that takes `.spy` source is refused with a steer to `compile`/`project`, and a `.spy` given to `project` with a steer to `build`/`run`/`compile`.
 
 ### Generated C# Layout
 
