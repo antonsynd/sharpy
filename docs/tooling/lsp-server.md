@@ -43,7 +43,7 @@ Editor <-> stdio (JSON-RPC) <-> LSP Server
 
 Diagnostics are published after each document change (debounced) and include all `SPY`-prefixed diagnostic codes from the compiler.
 
-**In project mode** (a `.spyproj` in the workspace root), each source the project lists shows the diagnostics that the project's analysis reports for that file. That analysis is everything `sharpyc project` checks before code generation: parsing, name and import resolution, type checking and validation. Code-generation diagnostics (`SPY05xx`, `SPY0908` and C# compiler errors such as a missing entry point) appear only when the project is built.
+**In project mode** (a `.spyproj` in the workspace root), each source the project lists shows the diagnostics that the project's analysis reports for that file. That analysis runs every phase before code generation — parsing, name and import resolution, type checking and validation — on every file and keeps going after an error. `sharpyc project` stops at the first failing phase (a parse error or a package/module-name collision ends the build), so when such an error exists the editor also shows later-phase diagnostics, in that file and in others, that the build never reached. Code-generation diagnostics (`SPY0908` and C# compiler errors such as a missing entry point) appear only when the project is built; `SPY0526` (package/module-name collision) is an analysis diagnostic despite its range and does appear in the editor.
 
 - A file's squiggles are its own project-analysis diagnostics, including import, declaration, inheritance and cycle errors (`SPY0300`, `SPY0313`, `SPY0204`, `SPY0302`). The project's `<NoWarn>` and `<WarningsAsErrors>` apply.
 - A project-analysis diagnostic that names no file appears on the entry file. That is the configured `<EntryPoint>`. Without one, an executable uses its `main` file, and a library its first listed source.
@@ -51,7 +51,7 @@ Diagnostics are published after each document change (debounced) and include all
 - A project that fails to compile still publishes: indexing with errors puts each error on its file. An analysis superseded by a newer edit publishes nothing.
 - Opening or editing a project file never replaces its project diagnostics with a single-file analysis. A file opened before indexing finishes shows a single-file result until the index publishes.
 - Closing a project file keeps its diagnostics when the buffer matched the file on disk. If the buffer had unsaved changes, the project is re-analyzed from disk and republished. Closing any other file clears its diagnostics.
-- An open project file's unsaved buffer is analyzed as that file, but files that import it are still checked against its disk text (#2304).
+- An open project file's unsaved buffer is analyzed as that file, but when another project file imports it the module is also loaded from its disk text, and that load's import and cycle diagnostics (`SPY0300`, `SPY0302`) are stamped on the file too. Removing a bad import in the buffer leaves the error standing until the file is saved; adding one shows up at once. Importers are likewise checked against the disk text (#2304).
 - When a `.spyproj` reload drops a file from the project, its project diagnostics are cleared. If the file is open, it shows its single-file result instead.
 - A file outside the project that imports a project file shows only its own diagnostics. It never overwrites the imported file's squiggles.
 
