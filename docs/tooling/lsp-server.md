@@ -43,6 +43,17 @@ Editor <-> stdio (JSON-RPC) <-> LSP Server
 
 Diagnostics are published after each document change (debounced) and include all `SPY`-prefixed diagnostic codes from the compiler.
 
+**In project mode** (a `.spyproj` in the workspace root), each source the project lists shows exactly the diagnostics `sharpyc project` reports for that file:
+
+- A file's squiggles are its own project-build diagnostics, including import, declaration, inheritance and cycle errors (`SPY0300`, `SPY0313`, `SPY0204`, `SPY0302`). The project's `<NoWarn>` and `<WarningsAsErrors>` apply.
+- A project diagnostic that names no file appears on the entry file. That is the configured `<EntryPoint>`. Without one, an executable uses its `main` file, and a library its first listed source.
+- Every project file is republished after each project analysis: initial indexing, an edit, a watched-file change (including creating a missing module), a `.spyproj` reload and a `sharpy.features` change. A hints-only configuration change republishes without reanalyzing.
+- A project that fails to compile still publishes: indexing with errors puts each error on its file. An analysis superseded by a newer edit publishes nothing.
+- Opening or editing a project file never replaces its project diagnostics with a single-file analysis. A file opened before indexing finishes shows a single-file result until the index publishes.
+- Closing a project file keeps its diagnostics. Closing any other file clears them.
+- When a `.spyproj` reload drops a file from the project, its project diagnostics are cleared. If the file is open, it shows its single-file result instead.
+- A file outside the project that imports a project file shows only its own diagnostics. It never overwrites the imported file's squiggles.
+
 ### Navigation
 
 | Method | Description |
