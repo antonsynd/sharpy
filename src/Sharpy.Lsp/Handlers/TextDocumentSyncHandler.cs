@@ -16,19 +16,20 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
 {
     private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
-    private readonly DiagnosticPublisher _diagnosticPublisher;
+    private readonly DiagnosticRoutes _diagnosticRoutes;
 
     public TextDocumentSyncHandler(
         SharpyWorkspace workspace,
         LanguageService languageService,
-        DiagnosticPublisher diagnosticPublisher)
+        DiagnosticRoutes diagnosticRoutes)
     {
         _workspace = workspace;
         _languageService = languageService;
-        _diagnosticPublisher = diagnosticPublisher;
+        _diagnosticRoutes = diagnosticRoutes;
 
-        // Subscribe to analysis completion to publish single-file diagnostics.
-        // Project-file reanalysis is triggered directly in Handle(DidChange) instead.
+        // Subscribe to analysis completion to publish single-file diagnostics (the single-file
+        // route). Project files are published by the project route (DiagnosticRoutes), whose
+        // reanalysis Handle(DidOpen/DidChange) triggers directly.
         _workspace.DocumentAnalyzed += OnDocumentAnalyzedAsync;
     }
 
@@ -45,14 +46,13 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
 
         _workspace.OpenDocument(uri, text, version);
 
-        // For project files, kick off project-level reanalysis in the background.
-        // Single-file diagnostics are published by the workspace debounce → DocumentAnalyzed path.
-        // Project reanalysis updates the LanguageService cache for subsequent handler requests.
-        // Must not be awaited — awaiting can deadlock when background indexing holds
-        // _analysisLock while _fileResults is already visible (ConcurrentDictionary).
+        // For project files, kick off project-level reanalysis in the background; it publishes
+        // every project file when it completes (a buffer identical to what was analyzed —
+        // whitespace/comment-only — publishes nothing: the project's publication stands). Must not
+        // be awaited — awaiting can deadlock when background indexing holds the analysis lock.
         if (_languageService.IsProjectFile(uri))
         {
-            _ = TriggerProjectReanalysisAsync(uri, ct);
+            _ = TriggerProjectReanalysisAsync(uri);
         }
 
         return Unit.Task;
@@ -73,12 +73,12 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
             _workspace.ApplyChanges(uri, mapped, version);
         }
 
-        // For project files, kick off project-level reanalysis in the background.
-        // Single-file diagnostics are published by the workspace debounce → DocumentAnalyzed path.
-        // Project reanalysis updates the LanguageService cache for subsequent handler requests.
+        // For project files, kick off project-level reanalysis in the background; it publishes
+        // every project file when it completes. A newer edit cancels it, and the newer one
+        // publishes.
         if (_languageService.IsProjectFile(uri))
         {
-            _ = TriggerProjectReanalysisAsync(uri, ct);
+            _ = TriggerProjectReanalysisAsync(uri);
         }
 
         return Unit.Task;
@@ -87,8 +87,11 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
     public override Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken ct)
     {
         var uri = request.TextDocument.Uri.ToString();
-        _diagnosticPublisher.ClearDiagnostics(uri);
         _workspace.CloseDocument(uri);
+
+        // A project file keeps the project's publication — the build still reports its
+        // diagnostics with the file closed; any other file's squiggles are cleared (#2242).
+        _diagnosticRoutes.OnDocumentClosed(uri);
         return Unit.Task;
     }
 
@@ -111,15 +114,20 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
     }
 
     /// <summary>
-    /// Triggers project-level reanalysis for a file. Updates the LanguageService
-    /// cache silently — diagnostic publishing is handled by the workspace's
-    /// DocumentAnalyzed event (single-file analysis via debounce).
+    /// Triggers project-level reanalysis for a file; the LanguageService publishes its results
+    /// through the project route when it completes.
     /// </summary>
-    private async Task TriggerProjectReanalysisAsync(string uri, CancellationToken ct)
+    /// <remarks>
+    /// Deliberately not passed the notification's cancellation token: OmniSharp cancels that token
+    /// when the notification handler returns — immediately, since this runs fire-and-forget — and a
+    /// reanalysis linked to it was cancelled on every open and edit (#2242). The LanguageService
+    /// cancels a superseded reanalysis itself and links the rest to the server's lifetime.
+    /// </remarks>
+    private async Task TriggerProjectReanalysisAsync(string uri)
     {
         try
         {
-            await _languageService.OnDocumentChangedAsync(uri, ct).ConfigureAwait(false);
+            await _languageService.OnDocumentChangedAsync(uri).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -128,17 +136,17 @@ internal sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase, IDi
     }
 
     /// <summary>
-    /// Handles workspace single-file analysis completion. Publishes diagnostics
-    /// for the analyzed document. Project-level reanalysis for affected files is
-    /// triggered directly in Handle(DidOpen/DidChange) instead of cascading here.
+    /// Handles workspace single-file analysis completion: the single-file route. Publishes nothing
+    /// for a project file once the project has been analyzed — the project's per-file result is
+    /// that file's publication (#2242). Before the first indexing completes the project owns no
+    /// file, so a document opened during indexing gets a single-file publication first and the
+    /// index's publication after it.
     /// </summary>
     private Task OnDocumentAnalyzedAsync(string uri, SemanticResult result)
     {
-        var sourceText = _workspace.GetSourceText(uri);
-
-        // The single-file result carries its import closure's diagnostics too; each is published on
-        // its own file, positioned against that file's disk text — the text the closure analyzed.
-        _diagnosticPublisher.PublishDiagnostics(uri, result, sourceText, DiagnosticPublisher.ReadSourceTextFromDisk);
+        // The single-file result carries its import closure's diagnostics too; the routes publish
+        // an imported file's share only when no one else owns that file.
+        _diagnosticRoutes.PublishSingleFile(uri, result, _workspace.GetSourceText(uri));
         return Task.CompletedTask;
     }
 

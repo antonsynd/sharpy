@@ -176,9 +176,12 @@ public class MultiFileTests : IAsyncLifetime
         var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
         await _client.DidOpenAsync(mainUri, mainText);
 
-        var notification = await _client.WaitForNotificationAsync(
-            "textDocument/publishDiagnostics",
-            LspTestClient.ArrivalTimeout);
+        // In project mode every project file is published (the index publishes lib.spy too), so
+        // the notification read is main.spy's, not whichever arrived first (#2242).
+        var notification = await WaitForDiagnosticsMatchingAsync(
+            n => IsFor(n, mainUri),
+            LspTestClient.ArrivalTimeout,
+            "main.spy's diagnostics are published");
 
         notification.Should().NotBeNull();
 
@@ -203,9 +206,11 @@ public class MultiFileTests : IAsyncLifetime
         var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
         await _client.DidOpenAsync(mainUri, mainText);
 
-        var notification = await _client.WaitForNotificationAsync(
-            "textDocument/publishDiagnostics",
-            LspTestClient.ArrivalTimeout);
+        // main.spy's notification, not whichever project file's arrived first (#2242).
+        var notification = await WaitForDiagnosticsMatchingAsync(
+            n => IsFor(n, mainUri),
+            LspTestClient.ArrivalTimeout,
+            "main.spy's diagnostics are published");
 
         var diagnostics = notification["diagnostics"]?.AsArray();
         diagnostics.Should().NotBeNull();
@@ -616,6 +621,14 @@ public class MultiFileTests : IAsyncLifetime
     /// This handles the race between background project indexing and single-file
     /// analysis, which can both publish diagnostic notifications.
     /// </summary>
+    /// <summary>Whether a publishDiagnostics notification is for <paramref name="uri"/>'s file
+    /// (compared as file paths: the server spells URIs from the project's paths).</summary>
+    private static bool IsFor(JsonNode notification, string uri)
+        => string.Equals(
+            new Uri(notification["uri"]!.GetValue<string>()).LocalPath,
+            new Uri(uri).LocalPath,
+            StringComparison.OrdinalIgnoreCase);
+
     private async Task<JsonNode> WaitForDiagnosticsMatchingAsync(
         Func<JsonNode, bool> predicate,
         TimeSpan timeout,

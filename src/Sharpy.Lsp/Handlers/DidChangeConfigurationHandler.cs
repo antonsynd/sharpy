@@ -11,27 +11,24 @@ namespace Sharpy.Lsp.Handlers;
 /// <summary>
 /// Handles workspace/didChangeConfiguration notifications.
 /// Updates the shared <see cref="LspConfiguration"/> with client-supplied settings,
-/// then republishes diagnostics for all open documents so editors reflect changes
-/// (e.g., toggling transitionHints).
+/// then has the project's diagnostics republished through the project route so editors reflect
+/// changes (e.g., toggling transitionHints).
 /// </summary>
 internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurationHandler
 {
     private readonly LspConfiguration _configuration;
     private readonly LanguageService _languageService;
-    private readonly DiagnosticPublisher _diagnosticPublisher;
     private readonly ILanguageServerFacade _server;
     private readonly ILogger<SharpyDidChangeConfigurationHandler> _logger;
 
     public SharpyDidChangeConfigurationHandler(
         LspConfiguration configuration,
         LanguageService languageService,
-        DiagnosticPublisher diagnosticPublisher,
         ILanguageServerFacade server,
         ILogger<SharpyDidChangeConfigurationHandler> logger)
     {
         _configuration = configuration;
         _languageService = languageService;
-        _diagnosticPublisher = diagnosticPublisher;
         _server = server;
         _logger = logger;
     }
@@ -52,28 +49,18 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
                 string.Join(", ", _configuration.Features));
 
             // Features change what analysis produces (SPY0331 gating), not just how it is rendered,
-            // so this reanalyzes rather than republishing — the workspace re-runs open documents and
-            // a loaded project is reindexed before the republish loop below reads its results (#1149).
-            await _languageService
+            // so a feature change reanalyzes — the workspace re-runs open documents and a loaded
+            // project is reindexed, whose completion publishes every project file (#1149, #2242).
+            var reanalyzed = await _languageService
                 .ApplyWorkspaceFeaturesAsync(_configuration.Features, ct)
                 .ConfigureAwait(false);
 
-            // Republish cached analysis results so the new filter is applied
-            // without waiting for the next edit. This works because hint filtering
-            // happens at ConvertDiagnostics time, not at analysis time — no
-            // reanalysis is needed to reflect the configuration change.
-            foreach (var fileUri in _languageService.GetProjectFileUris())
+            // No feature changed, so nothing was reanalyzed — but the transition-hint filter may
+            // have: it is applied when a diagnostic is converted, not at analysis, so the project's
+            // cached results are republished through the same seam to apply it without an edit.
+            if (!reanalyzed)
             {
-                if (ct.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                var result = await _languageService.GetAnalysisAsync(fileUri, ct).ConfigureAwait(false);
-                if (result is not null)
-                {
-                    _diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null, _languageService.GetSourceText);
-                }
+                await _languageService.RepublishProjectDiagnosticsAsync(ct).ConfigureAwait(false);
             }
 
             RequestInlayHintRefresh();

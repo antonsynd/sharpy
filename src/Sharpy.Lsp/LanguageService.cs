@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Text;
@@ -24,11 +26,20 @@ internal sealed class LanguageService : IDisposable
     private string? _workspaceRoot;
     private ProjectConfig? _projectConfig;
     private ProjectAnalysisResult? _projectAnalysis;
+
+    // PathNormalizer keys of _projectConfig.SourceFiles, written with it: which files the project
+    // owns (IsProjectFile), whether or not the analysis produced a unit for each.
+    private ImmutableHashSet<string> _projectFileKeys = ImmutableHashSet<string>.Empty;
     private readonly ConcurrentDictionary<string, SemanticResult> _fileResults = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _analysisLock = new(1, 1);
 
     // Per-document cancellation: cancel stale reanalysis when newer edits arrive
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _documentCts = new(StringComparer.OrdinalIgnoreCase);
+
+    // Server lifetime: a project reanalysis an edit starts outlives the didOpen/didChange
+    // notification that started it. OmniSharp cancels a notification's token when its handler
+    // returns, so linking a reanalysis to that token alone cancelled every one of them (#2242).
+    private readonly CancellationTokenSource _lifetimeCts = new();
 
     // Background indexing
     private ProgressReporter? _progressReporter;
@@ -45,6 +56,24 @@ internal sealed class LanguageService : IDisposable
         _api = api;
         _logger = logger;
     }
+
+    /// <summary>
+    /// Raised after every project analysis that completed — successful or not — and by
+    /// <see cref="RepublishProjectDiagnosticsAsync"/>, with the URI of EVERY project file: the one
+    /// publication seam of project-mode diagnostics (#2242). The subscriber publishes each URI's
+    /// <see cref="GetProjectPublication"/> and clears a file that left the project.
+    /// </summary>
+    /// <remarks>
+    /// <para>Every file, not only the edited file's dependents: a file outside the dependency
+    /// cone can still change its set — a duplicate class across files, a module-name collision, an
+    /// import that starts or stops resolving to it.</para>
+    /// <para>Raised while the analysis lock is held, so publications reach the client in
+    /// analysis order. A cancelled analysis raises nothing — the analysis that superseded it
+    /// publishes — and neither does a whitespace/comment-only edit (the NoChange fast path): the
+    /// published set is still the build's, and republishing a cached result would position its
+    /// spans against text they were not recorded in.</para>
+    /// </remarks>
+    public event Func<IReadOnlyList<string>, Task>? ProjectFilesAnalyzed;
 
     /// <summary>
     /// Sets the progress reporter for background indexing notifications.
@@ -95,6 +124,7 @@ internal sealed class LanguageService : IDisposable
         {
             _logger.LogInformation("No .spyproj file found in {Root}", workspaceRoot);
             _workspace.SetProjectConfig(null);
+            await UnloadProjectAsync(ct).ConfigureAwait(false);
             Interlocked.Exchange(ref _state, StateReady);
             return false;
         }
@@ -109,6 +139,7 @@ internal sealed class LanguageService : IDisposable
 
             Volatile.Write(ref _workspaceRoot, workspaceRoot);
             Volatile.Write(ref _projectConfig, config);
+            Volatile.Write(ref _projectFileKeys, ProjectFileKeys(config));
 
             // Single-file analysis of buffers outside the project (and of every buffer before
             // indexing finishes) runs with the project's features and warning settings too, so a
@@ -128,24 +159,12 @@ internal sealed class LanguageService : IDisposable
                 await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
                 try
                 {
-                    // Overlay any open workspace buffers so a reload (files already open) analyzes
-                    // unsaved edits, not just what is on disk (#1099).
-                    var analysisConfig = WithOpenBuffers(config);
-                    var result = await Task.Run(
-                        () => _api.AnalyzeProject(analysisConfig, _workspace.Options, ct), ct).ConfigureAwait(false);
+                    // Overlays any open workspace buffers so a reload (files already open)
+                    // analyzes unsaved edits, not just what is on disk (#1099).
+                    var result = await Task.Run(() => AnalyzeProjectOrReportFailure(config, ct), ct)
+                        .ConfigureAwait(false);
 
-                    Volatile.Write(ref _projectAnalysis, result);
-
-                    // Populate per-file result cache
-                    _fileResults.Clear();
-                    foreach (var filePath in config.SourceFiles)
-                    {
-                        var fileResult = ExtractFileResult(filePath, result);
-                        if (fileResult != null)
-                        {
-                            _fileResults[filePath] = fileResult;
-                        }
-                    }
+                    CommitAnalysis(config, result);
 
                     Interlocked.Exchange(ref _state, StateReady);
 
@@ -158,6 +177,10 @@ internal sealed class LanguageService : IDisposable
                     progress.Complete(result.Success
                         ? $"Indexed {_fileResults.Count} file(s)"
                         : $"Indexing completed with {result.Diagnostics.ErrorCount} error(s)");
+
+                    // Success or not: a project with errors is exactly the one whose files need
+                    // squiggles, and a clean one publishes ∅ to clear stale ones (D3 of #2242).
+                    await RaiseProjectFilesAnalyzedAsync().ConfigureAwait(false);
 
                     return result.Success;
                 }
@@ -325,7 +348,7 @@ internal sealed class LanguageService : IDisposable
 
         // For project files not open in the editor, lazy-load from disk
         var filePath = UriToFilePath(uri);
-        if (filePath != null && _fileResults.ContainsKey(filePath) && File.Exists(filePath))
+        if (filePath != null && IsProjectFile(uri) && File.Exists(filePath))
         {
             return new LazySourceText(filePath).Materialize();
         }
@@ -349,15 +372,69 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
-    /// Checks if a URI belongs to the current project.
+    /// Whether <paramref name="uri"/> is a source of the loaded project AND the project has been
+    /// analyzed: the project route owns its diagnostics (#2242). False until the first indexing
+    /// completes — a file opened before then is published by its single-file analysis, then by the
+    /// index — and for a file outside the project's source set.
     /// </summary>
     public bool IsProjectFile(string uri)
     {
+        if (Volatile.Read(ref _projectAnalysis) == null)
+            return false;
+
         var filePath = UriToFilePath(uri);
         if (filePath == null)
             return false;
 
-        return _fileResults.ContainsKey(filePath);
+        return Volatile.Read(ref _projectFileKeys).Contains(PathNormalizer.Normalize(filePath));
+    }
+
+    /// <summary>
+    /// What the project route publishes for <paramref name="uri"/>: its cached per-file result,
+    /// or — for a source the analysis produced no unit for (it threw before parsing, or the file
+    /// could not be read) — the same per-file projection of the project bag
+    /// (<see cref="ProjectModel.DiagnosticsForFile"/>, unattributed entries on
+    /// <see cref="ProjectAnalysisResult.UnattributedTarget"/>). Never single-file analysis: a
+    /// project file's squiggles are the build's. Null when no project analysis exists or
+    /// <paramref name="uri"/> is no file.
+    /// </summary>
+    internal SemanticResult? GetProjectPublication(string uri)
+    {
+        var analysis = Volatile.Read(ref _projectAnalysis);
+        var filePath = UriToFilePath(uri);
+        if (analysis == null || filePath == null)
+            return null;
+
+        if (_fileResults.TryGetValue(filePath, out var cached))
+            return cached;
+
+        return new SemanticResult
+        {
+            Success = false,
+            Diagnostics = analysis.ProjectModel.DiagnosticsForFile(filePath, analysis.Diagnostics),
+        };
+    }
+
+    /// <summary>
+    /// Re-raises <see cref="ProjectFilesAnalyzed"/> for every project file without reanalyzing —
+    /// for a change that alters how diagnostics are rendered but not what analysis produces (the
+    /// transition-hint filter is applied when a diagnostic is converted). Waits for an in-flight
+    /// analysis, so it republishes that analysis's results, in order.
+    /// </summary>
+    public async Task RepublishProjectDiagnosticsAsync(CancellationToken ct = default)
+    {
+        if (Volatile.Read(ref _projectAnalysis) == null)
+            return;
+
+        await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await RaiseProjectFilesAnalyzedAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _analysisLock.Release();
+        }
     }
 
     /// <summary>
@@ -378,11 +455,13 @@ internal sealed class LanguageService : IDisposable
             return Array.Empty<string>();
 
         var changedFilePath = UriToFilePath(uri);
-        if (changedFilePath == null || !_fileResults.ContainsKey(changedFilePath))
+        if (changedFilePath == null || !IsProjectFile(uri))
             return Array.Empty<string>();
 
-        // Cancel any in-flight reanalysis for this document and create a new linked CTS
-        using var scope = new CancellableAnalysisScope(_documentCts, uri, ct);
+        // Cancel any in-flight reanalysis for this document and create a new linked CTS — linked
+        // to the server's lifetime as well as the caller's token (see _lifetimeCts).
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetimeCts.Token);
+        using var scope = new CancellableAnalysisScope(_documentCts, uri, lifetime.Token);
         var linkedToken = scope.Token;
 
         // Fast path: when the edit leaves the changed document structurally identical to what was
@@ -433,35 +512,30 @@ internal sealed class LanguageService : IDisposable
             // starts from data, not intuition.
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Overlay open workspace buffers so project diagnostics reflect unsaved edits, not the
-            // last-saved bytes on disk (#1099). The cached _projectConfig is left untouched.
-            var analysisConfig = WithOpenBuffers(config);
-
-            // The workspace options carry the editor's `sharpy.features` on top of the project's own
+            // Overlays open workspace buffers so project diagnostics reflect unsaved edits, not the
+            // last-saved bytes on disk (#1099); the cached _projectConfig is left untouched. The
+            // workspace options carry the editor's `sharpy.features` on top of the project's own
             // <Features>/warning settings; AnalyzeProject re-merges the config, so project settings
             // apply either way and the two LSP analysis paths cannot gate differently (#1149).
-            var result = await Task.Run(
-                () => _api.AnalyzeProject(analysisConfig, _workspace.Options, linkedToken), linkedToken).ConfigureAwait(false);
+            var result = await Task.Run(() => AnalyzeProjectOrReportFailure(config, linkedToken), linkedToken)
+                .ConfigureAwait(false);
 
-            Volatile.Write(ref _projectAnalysis, result);
+            CommitAnalysis(config, result);
 
-            // Update cached results for all project files
+            // The edited file and its transitive dependents, for callers that want the dependency
+            // cone. Publication covers every project file — see ProjectFilesAnalyzed.
             var updatedUris = new List<string>();
             foreach (var filePath in config.SourceFiles)
             {
-                var fileResult = ExtractFileResult(filePath, result);
-                if (fileResult != null)
+                // affectedPaths uses normalized (lowercased on macOS) paths
+                if (_fileResults.ContainsKey(filePath)
+                    && affectedPaths.Contains(PathNormalizer.Normalize(filePath)))
                 {
-                    _fileResults[filePath] = fileResult;
-
-                    // Only report affected files as updated
-                    // affectedPaths uses normalized (lowercased on macOS) paths
-                    if (affectedPaths.Contains(PathNormalizer.Normalize(filePath)))
-                    {
-                        updatedUris.Add(FilePathToUri(filePath));
-                    }
+                    updatedUris.Add(FilePathToUri(filePath));
                 }
             }
+
+            await RaiseProjectFilesAnalyzedAsync().ConfigureAwait(false);
 
             stopwatch.Stop();
             AnalysisLatencyLog.LogLatency(
@@ -479,6 +553,8 @@ internal sealed class LanguageService : IDisposable
         }
         catch (Exception ex)
         {
+            // Not the compiler (AnalyzeProjectOrReportFailure turns its exceptions into a published
+            // internal-compiler-error result) — this LSP layer's own bookkeeping.
             _logger.LogError(ex, "Failed to reanalyze project after change to {File}", changedFilePath);
             return Array.Empty<string>();
         }
@@ -528,20 +604,182 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
-    /// Handles a file changed outside the editor (detected by file watcher).
-    /// If the file is part of the project, triggers reanalysis of affected files.
+    /// Handles a <c>.spy</c> file changed outside the editor (detected by file watcher). A project
+    /// file triggers reanalysis as an edit does. Any other <c>.spy</c> file under the project
+    /// directory or a module path reanalyzes the whole project too: it is outside the source set,
+    /// but the build can still see it — an import that starts or stops finding it turns SPY0300
+    /// into SPY0313 or back (#2242).
     /// </summary>
     /// <param name="filePath">The absolute file path that changed on disk.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>URIs of files whose analysis results were updated.</returns>
     public async Task<IReadOnlyList<string>> OnExternalFileChangedAsync(string filePath, CancellationToken ct = default)
     {
-        if (!_fileResults.ContainsKey(filePath))
+        var uri = FilePathToUri(filePath);
+        if (IsProjectFile(uri))
+            return await OnDocumentChangedAsync(uri, ct).ConfigureAwait(false);
+
+        var config = Volatile.Read(ref _projectConfig);
+        if (config == null || Volatile.Read(ref _projectAnalysis) == null || !IsVisibleToTheBuild(config, filePath))
             return Array.Empty<string>();
 
-        var uri = FilePathToUri(filePath);
-        return await OnDocumentChangedAsync(uri, ct).ConfigureAwait(false);
+        // Keyed by the changed file, so a burst of events for one file keeps only the last.
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetimeCts.Token);
+        using var scope = new CancellableAnalysisScope(_documentCts, uri, lifetime.Token);
+        var token = scope.Token;
+
+        await _analysisLock.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var result = await Task.Run(() => AnalyzeProjectOrReportFailure(config, token), token)
+                .ConfigureAwait(false);
+
+            CommitAnalysis(config, result);
+            await RaiseProjectFilesAnalyzedAsync().ConfigureAwait(false);
+
+            stopwatch.Stop();
+            AnalysisLatencyLog.LogLatency(
+                _logger,
+                AnalysisLatencyLog.ProjectPath,
+                affectedFiles: _fileResults.Count,
+                stopwatch.Elapsed.TotalMilliseconds);
+
+            return GetProjectFileUris();
+        }
+        finally
+        {
+            _analysisLock.Release();
+        }
     }
+
+    /// <summary>
+    /// Runs project analysis over <paramref name="config"/> with the open buffers overlaid. An
+    /// exception escaping the compiler is no reason to publish nothing: it becomes a result whose
+    /// bag holds one internal-compiler-error diagnostic, path-less, so the project route shows it
+    /// on <see cref="ProjectAnalysisResult.UnattributedTarget"/> (D3/D5 of #2242).
+    /// </summary>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled. The
+    /// compiler reports its own cancellation as a SPY0901 result, not an exception; that result
+    /// belongs to a superseded analysis and is never cached or published.</exception>
+    private ProjectAnalysisResult AnalyzeProjectOrReportFailure(ProjectConfig config, CancellationToken ct)
+    {
+        ProjectAnalysisResult result;
+        try
+        {
+            result = _api.AnalyzeProject(WithOpenBuffers(config), _workspace.Options, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Project analysis threw");
+            var bag = new DiagnosticBag();
+            bag.AddError(
+                $"internal compiler error ({ex.GetType().Name}): {ex.Message}. "
+                + "This is a Sharpy compiler bug — please report it at https://github.com/antonsynd/sharpy/issues.",
+                code: DiagnosticCodes.Infrastructure.InternalCompilerError);
+            result = new ProjectAnalysisResult(false, new ProjectModel(config), dependencyGraph: null, bag);
+        }
+
+        ct.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    /// <summary>
+    /// Makes <paramref name="result"/> the current project analysis and its per-file results the
+    /// cache. Caller holds the analysis lock. A file the new analysis has no result for leaves the
+    /// cache (handlers fall back to single-file analysis for it); entries are replaced in place, so
+    /// a concurrent reader never sees an emptied cache.
+    /// </summary>
+    private void CommitAnalysis(ProjectConfig config, ProjectAnalysisResult result)
+    {
+        Volatile.Write(ref _projectAnalysis, result);
+
+        var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var filePath in config.SourceFiles)
+        {
+            var fileResult = ExtractFileResult(filePath, result);
+            if (fileResult != null)
+            {
+                _fileResults[filePath] = fileResult;
+                present.Add(filePath);
+            }
+        }
+
+        foreach (var stale in _fileResults.Keys)
+        {
+            if (!present.Contains(stale))
+                _fileResults.TryRemove(stale, out _);
+        }
+    }
+
+    /// <summary>
+    /// The workspace has no <c>.spyproj</c> (any more): forget the project and tell the
+    /// publication seam, so files that were project files stop showing the project's squiggles.
+    /// </summary>
+    private async Task UnloadProjectAsync(CancellationToken ct)
+    {
+        if (Volatile.Read(ref _projectConfig) == null && Volatile.Read(ref _projectAnalysis) == null)
+            return;
+
+        await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            Volatile.Write(ref _projectConfig, null);
+            Volatile.Write(ref _projectFileKeys, ImmutableHashSet<string>.Empty);
+            Volatile.Write(ref _projectAnalysis, null);
+            _fileResults.Clear();
+            await RaiseProjectFilesAnalyzedAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _analysisLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Invokes every <see cref="ProjectFilesAnalyzed"/> subscriber with every project file's URI.
+    /// Caller holds the analysis lock. A subscriber's failure is logged, never propagated into the
+    /// analysis that raised it.
+    /// </summary>
+    private async Task RaiseProjectFilesAnalyzedAsync()
+    {
+        var handler = ProjectFilesAnalyzed;
+        if (handler == null)
+            return;
+
+        var uris = GetProjectFileUris();
+        foreach (var subscriber in handler.GetInvocationList().Cast<Func<IReadOnlyList<string>, Task>>())
+        {
+            try
+            {
+                await subscriber(uris).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Publishing project diagnostics failed");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether a <c>.spy</c> file outside the source set is where the build's import resolution
+    /// can find it: under the project directory or one of its module paths.
+    /// </summary>
+    private static bool IsVisibleToTheBuild(ProjectConfig config, string filePath)
+    {
+        var file = PathNormalizer.Normalize(filePath);
+        return config.ModulePaths.Prepend(config.ProjectDirectory)
+            .Where(root => !string.IsNullOrEmpty(root))
+            .Select(root => PathNormalizer.Normalize(System.IO.Path.IsPathRooted(root) ? root : System.IO.Path.Combine(config.ProjectDirectory, root)).TrimEnd('/') + "/")
+            .Any(root => file.StartsWith(root, StringComparison.Ordinal));
+    }
+
+    private static ImmutableHashSet<string> ProjectFileKeys(ProjectConfig config)
+        => config.SourceFiles.Select(PathNormalizer.Normalize).ToImmutableHashSet(StringComparer.Ordinal);
 
     /// <summary>
     /// Extracts a <see cref="SemanticResult"/> from a <see cref="ProjectAnalysisResult"/>
@@ -636,6 +874,11 @@ internal sealed class LanguageService : IDisposable
 
     public void Dispose()
     {
+        try
+        { _lifetimeCts.Cancel(); }
+        catch (ObjectDisposedException) { }
+        _lifetimeCts.Dispose();
+
         var cts = Interlocked.Exchange(ref _indexingCts, null);
         try
         { cts?.Cancel(); }

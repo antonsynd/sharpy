@@ -93,6 +93,7 @@ public class Program
                     services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
                     services.AddSingleton<LanguageService>();
+                    services.AddSingleton<DiagnosticRoutes>();
                     services.AddSingleton<HoverService>();
                     // Code action providers
                     services.AddSingleton<ICodeActionProvider, DiagnosticQuickFixProvider>();
@@ -135,20 +136,14 @@ public class Program
                         var progressReporter = new ProgressReporter(server.WorkDoneManager, progressLogger);
                         languageService.SetProgressReporter(progressReporter);
 
+                        // Resolved BEFORE indexing starts: constructing the routes subscribes them to
+                        // LanguageService.ProjectFilesAnalyzed — the one publication seam of
+                        // project-mode diagnostics, which indexing raises on completion (even on
+                        // failure) — so the index publication cannot complete unheard (#2242).
+                        server.Services.GetRequiredService<DiagnosticRoutes>();
+
                         // Start background indexing — returns immediately.
-                        // On completion, publish diagnostics for all project files.
-                        var diagnosticPublisher = server.Services.GetRequiredService<DiagnosticPublisher>();
-                        languageService.StartBackgroundIndexing(rootPath, async () =>
-                        {
-                            foreach (var fileUri in languageService.GetProjectFileUris())
-                            {
-                                var result = await languageService.GetAnalysisAsync(fileUri).ConfigureAwait(false);
-                                if (result != null)
-                                {
-                                    diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null, languageService.GetSourceText);
-                                }
-                            }
-                        });
+                        languageService.StartBackgroundIndexing(rootPath);
                     }
 
                     return Task.CompletedTask;

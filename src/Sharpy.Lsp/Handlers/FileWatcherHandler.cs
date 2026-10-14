@@ -7,7 +7,8 @@ namespace Sharpy.Lsp.Handlers;
 
 /// <summary>
 /// Handles workspace/didChangeWatchedFiles notifications.
-/// Reloads .spy files changed externally and reloads project on .spyproj changes.
+/// Reanalyzes the project on .spy files changed externally and reloads it on .spyproj changes;
+/// the project route publishes the results.
 /// </summary>
 internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
 {
@@ -24,13 +25,21 @@ internal sealed class FileWatcherHandler : IDidChangeWatchedFilesHandler
         {
             var path = change.Uri.GetFileSystemPath();
 
-            if (path.EndsWith(".spyproj", StringComparison.OrdinalIgnoreCase))
+            // Both calls publish through the project route when their analysis completes (#2242).
+            try
             {
-                await _languageService.ReloadProjectAsync(ct).ConfigureAwait(false);
+                if (path.EndsWith(".spyproj", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _languageService.ReloadProjectAsync(ct).ConfigureAwait(false);
+                }
+                else if (path.EndsWith(".spy", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _languageService.OnExternalFileChangedAsync(path, ct).ConfigureAwait(false);
+                }
             }
-            else if (path.EndsWith(".spy", StringComparison.OrdinalIgnoreCase))
+            catch (OperationCanceledException)
             {
-                await _languageService.OnExternalFileChangedAsync(path, ct).ConfigureAwait(false);
+                // Superseded by a newer change to the same file, which publishes.
             }
         }
 

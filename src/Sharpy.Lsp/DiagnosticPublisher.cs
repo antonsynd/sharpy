@@ -18,14 +18,33 @@ namespace Sharpy.Lsp;
 /// </summary>
 internal sealed class DiagnosticPublisher
 {
-    private readonly ILanguageServerFacade _server;
+    private readonly Action<PublishDiagnosticsParams> _send;
     private readonly LspConfiguration _configuration;
 
     public DiagnosticPublisher(ILanguageServerFacade server, LspConfiguration configuration)
+        : this(publication => server.TextDocument.PublishDiagnostics(publication), configuration)
     {
-        _server = server;
+    }
+
+    // Private so the container sees one constructor.
+    private DiagnosticPublisher(Action<PublishDiagnosticsParams> send, LspConfiguration configuration)
+    {
+        _send = send;
         _configuration = configuration;
     }
+
+    /// <summary>
+    /// A publisher that hands every notification to <paramref name="send"/> instead of a client —
+    /// for tests of what the routes publish.
+    /// </summary>
+    internal static DiagnosticPublisher ForSink(Action<PublishDiagnosticsParams> send, LspConfiguration configuration)
+        => new(send, configuration);
+
+    /// <summary>The configuration the publisher converts with (problem cap, hint filter).</summary>
+    internal LspConfiguration Configuration => _configuration;
+
+    /// <summary>Sends one notification as built — the routes' own publications.</summary>
+    internal void Send(PublishDiagnosticsParams publication) => _send(publication);
 
     /// <summary>
     /// Publishes <paramref name="result"/>'s diagnostics, each on the file it belongs to.
@@ -47,7 +66,7 @@ internal sealed class DiagnosticPublisher
     {
         foreach (var publication in BuildPublications(uri, result, sourceText, sourceTextFor, _configuration))
         {
-            _server.TextDocument.PublishDiagnostics(publication);
+            _send(publication);
         }
     }
 
@@ -192,7 +211,7 @@ internal sealed class DiagnosticPublisher
 
     public void ClearDiagnostics(string uri)
     {
-        _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
+        _send(new PublishDiagnosticsParams
         {
             Uri = DocumentUri.From(uri),
             Diagnostics = new Container<Diagnostic>()
