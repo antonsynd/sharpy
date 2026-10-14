@@ -352,21 +352,42 @@ internal static class CliHelpers
     /// </summary>
     internal static bool RefuseInputKind(FileInfo input, params InputKind[] accepted)
     {
-        var kind = ClassifyInput(input);
-        if (accepted.Contains(kind))
-            return true;
-
         // The steer spells the path as the user gave it (FileInfo.ToString() is the original
         // string), so `build ../app/App.spyproj` steers to `compile ../app/App.spyproj`, which
         // works from the same directory; the bare name would not.
         var given = input.ToString();
+
+        // A directory is no input kind at all: refused first, on every command, with the file it
+        // should have been given (it used to be "does not exist" on build/run/compile and an
+        // "Unexpected error" on emit). `format` walks directories itself and never asks.
+        if (Directory.Exists(input.FullName))
+        {
+            var takesProject = accepted.Contains(InputKind.SpyProject);
+            var takesSource = accepted.Contains(InputKind.SpyFile);
+            Console.Error.WriteLine(takesProject && takesSource
+                ? $"Error: '{given}' is a directory; give the .spy or .spyproj file inside it."
+                : takesProject
+                    ? $"Error: '{given}' is a directory; give the .spyproj file inside it, or run 'sharpyc project' from that directory."
+                    : $"Error: '{given}' is a directory; give the .spy file inside it.");
+            return false;
+        }
+
+        var kind = ClassifyInput(input);
+        if (accepted.Contains(kind))
+            return true;
+
         Console.Error.WriteLine(kind == InputKind.SpyProject
             ? $"Error: '{given}' is a project file; use 'sharpyc compile {given}' or 'sharpyc project {given}'."
-            : Directory.Exists(input.FullName)
-                ? $"Error: '{given}' is a directory; give the .spyproj file inside it, or run 'sharpyc project' from that directory."
-                : $"Error: '{given}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
+            : $"Error: '{given}' is not a .spyproj project file; use 'sharpyc build', 'run' or 'compile' for a .spy file.");
         return false;
     }
+
+    /// <summary>
+    /// The kinds <c>project</c> accepts: a <c>.spyproj</c>, and any other extension — a valid project
+    /// file under another name built before P46 and still does; only a <c>.spy</c> is refused (it is
+    /// Sharpy source, not XML) and a directory (above).
+    /// </summary>
+    internal static readonly InputKind[] ProjectInputKinds = { InputKind.SpyProject, InputKind.Other };
 
     /// <summary>The kinds a command that compiles one Sharpy source file accepts: <c>.spy</c>, and any other extension with a warning.</summary>
     internal static readonly InputKind[] SourceInputKinds = { InputKind.SpyFile, InputKind.Other };

@@ -142,6 +142,59 @@ public class InputKindMatrixTests
     }
 
     /// <summary>
+    /// A valid project file under another extension (`app.proj`) built at 27e261684 and still does:
+    /// `project` refuses only a `.spy` (Sharpy source, not XML) and a directory, never `Other`
+    /// (P46 verify: the first cut refused it with a steer to the .spy commands).
+    /// </summary>
+    [Fact]
+    public void Project_OfAnotherExtension_IsAcceptedAsAProjectFile()
+    {
+        using var ws = new TempWorkspace();
+        var (project, _) = Write(ws, ".spyproj");
+        var renamed = Path.Combine(Path.GetDirectoryName(project)!, "App.proj");
+        File.Move(project, renamed);
+
+        var invocation = CliTestHarness.Invoke($"project \"{renamed}\"");
+
+        invocation.ExitCode.Should().Be(0, invocation.StdOut + invocation.StdErr);
+        invocation.StdErr.Should().NotContain("is not a .spyproj project file");
+        Directory.Exists(ws.PathFor("bin")).Should().BeTrue("positive control: the project built");
+    }
+
+    /// <summary>
+    /// A directory is refused on every file-taking command before it is read, with the file it
+    /// should have been given: it was "does not exist" on build/run/compile and an "Unexpected
+    /// error: Access … denied" on every emit subcommand; only `project` had a steer (P46 verify).
+    /// `format` walks directories and is its own control below. The log file is a second
+    /// "nothing written" probe: `project` used to create it before refusing.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Commands))]
+    public void ADirectory_IsRefusedBeforeItIsRead(string command, string line, bool acceptsSpy, bool acceptsProject)
+    {
+        if (command == "format")
+            return;
+        using var ws = new TempWorkspace();
+        Write(ws, ".spyproj");
+        var directory = ws.PathFor("src");
+        var log = ws.PathFor("probe.log");
+
+        var invocation = CliTestHarness.Invoke($"{string.Format(line, directory, ws.PathFor("out"))} --log-level Info --log-file \"{log}\"");
+
+        var all = invocation.StdOut + invocation.StdErr;
+        invocation.ExitCode.Should().Be(1, all);
+        invocation.StdErr.Should().Contain(acceptsSpy && acceptsProject
+            ? $"'{directory}' is a directory; give the .spy or .spyproj file inside it."
+            : acceptsProject
+                ? $"'{directory}' is a directory; give the .spyproj file inside it"
+                : $"'{directory}' is a directory; give the .spy file inside it.");
+        all.Should().NotContain("Unexpected error").And.NotContain("does not exist");
+        File.Exists(log).Should().BeFalse("refused before the logger is created");
+        Directory.Exists(ws.PathFor("out")).Should().BeFalse();
+        Directory.Exists(ws.PathFor("bin")).Should().BeFalse();
+    }
+
+    /// <summary>
     /// The steer spells the path as the user gave it, so the suggested command works from the same
     /// directory: `build ../app/App.spyproj` steered to `compile App.spyproj` — the bare name — which
     /// fails from that cwd (P46 verify, #2223).

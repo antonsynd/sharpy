@@ -30,14 +30,20 @@ public class AnalysisReferenceOptionTests : IClassFixture<ReferenceLibraryFixtur
 
     public void Dispose() => _ws.Dispose();
 
-    static string[] CommandArgs(string command) => command == "diagnostics"
-        ? new[] { "emit", "diagnostics", "main.spy" }
+    static string[] CommandArgs(string command) => command switch
+    {
+        "diagnostics" => new[] { "emit", "diagnostics", "main.spy" },
+        // The compile branch of emit diagnostics: the same -r/-m must reach it (P46 verify).
+        "diagnostics --include-codegen" => new[] { "emit", "diagnostics", "main.spy", "--include-codegen" },
         // Hover the class name in `print(Greeter().greet())` (line 4, column 11).
-        : new[] { "emit", "hover", "main.spy", "--line", "4", "--col", "11" };
+        _ => new[] { "emit", "hover", "main.spy", "--line", "4", "--col", "11" },
+    };
 
     [Theory]
     [InlineData("diagnostics", "absolute")]
     [InlineData("diagnostics", "bare-name-on-module-path")]
+    [InlineData("diagnostics --include-codegen", "absolute")]
+    [InlineData("diagnostics --include-codegen", "bare-name-on-module-path")]
     [InlineData("hover", "absolute")]
     [InlineData("hover", "bare-name-on-module-path")]
     public void AReference_LetsTheEntryBeAnalysed(string command, string spelling)
@@ -54,7 +60,7 @@ public class AnalysisReferenceOptionTests : IClassFixture<ReferenceLibraryFixtur
 
         var combined = with.StdOut + with.StdErr;
         combined.Should().NotContain("SPY0300").And.NotContain("was not matched");
-        if (command == "diagnostics")
+        if (command.StartsWith("diagnostics", StringComparison.Ordinal))
         {
             with.ExitCode.Should().Be(0, combined);
             with.StdOut.Should().Contain("No diagnostics.");
@@ -68,6 +74,7 @@ public class AnalysisReferenceOptionTests : IClassFixture<ReferenceLibraryFixtur
 
     [Theory]
     [InlineData("diagnostics")]
+    [InlineData("diagnostics --include-codegen")]
     [InlineData("hover")]
     public void AReferenceThatResolvesNowhere_IsSpy0305(string command)
     {

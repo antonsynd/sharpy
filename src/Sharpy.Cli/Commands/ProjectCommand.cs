@@ -52,6 +52,16 @@ internal static class ProjectCommand
             var features = parseResult.GetValue(globals.EnableFeature);
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
+
+            // The input-kind refusal comes before anything is written or validated: a .spy (Sharpy
+            // source, not XML) or a directory used to reach the XML loader as "Unexpected error:
+            // Data at the root level is invalid", and until P46 verify the refusal ran after the
+            // logger had created --log-file and -m had been validated (#2223).
+            if (project != null && !CliHelpers.RefuseInputKind(project, CliHelpers.ProjectInputKinds))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             if (!CliHelpers.ValidateModulePaths(modulePath))
             {
                 return CliHelpers.ExitCompileError;
@@ -82,13 +92,6 @@ internal static class ProjectCommand
         string[]? modulePaths = null)
     {
         FileInfo? resolvedProjectFile = projectFile;
-
-        // A .spy (or anything that is not a .spyproj) used to reach the XML loader and fail as
-        // "Unexpected error: Data at the root level is invalid" (#2223).
-        if (resolvedProjectFile != null && !CliHelpers.RefuseInputKind(resolvedProjectFile, InputKind.SpyProject))
-        {
-            return CliHelpers.ExitCompileError;
-        }
 
         if (resolvedProjectFile == null)
         {

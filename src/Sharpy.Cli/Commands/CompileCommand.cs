@@ -90,7 +90,9 @@ internal static class CompileCommand
             var kind = CliHelpers.ClassifyInput(input) == InputKind.SpyProject
                 ? InputKind.SpyProject
                 : InputKind.SpyFile;
+            // compile accepts both kinds, so the one refusal only turns away a directory here.
             if (!CommandOptionEffects.Refuse(parseResult, command, kind)
+                || !CliHelpers.RefuseInputKind(input, InputKind.SpyFile, InputKind.SpyProject, InputKind.Other)
                 || !CliHelpers.ValidateModulePaths(modulePath))
             {
                 return CliHelpers.ExitCompileError;

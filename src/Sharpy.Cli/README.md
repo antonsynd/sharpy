@@ -71,7 +71,7 @@ Every option a command accepts — its own and the global ones — is honoured, 
 | `format` | `.spy` (or a directory of them) | no | — | all nine |
 | `server` | — | no | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--max-errors`, `--enable-feature` |
 
-A `.spyproj` given to a command that takes `.spy` source is refused with a steer to `compile`/`project`, and a `.spy` given to `project` with a steer to `build`/`run`/`compile`.
+A `.spyproj` given to a command that takes `.spy` source is refused with a steer to `compile`/`project`, and a `.spy` given to `project` with a steer to `build`/`run`/`compile` (any other extension is accepted: as source with a warning, or as a project file). A directory is refused on every file-taking command, naming the file it should have been given; `format` walks a directory's `.spy` files.
 
 ### Generated C# Layout
 
