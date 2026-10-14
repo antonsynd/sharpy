@@ -47,30 +47,6 @@ internal sealed class DiagnosticPublisher
     internal void Send(PublishDiagnosticsParams publication) => _send(publication);
 
     /// <summary>
-    /// Publishes <paramref name="result"/>'s diagnostics, each on the file it belongs to.
-    /// </summary>
-    /// <param name="uri">The document the analysis was requested for. It always receives a
-    /// notification, empty when none of the diagnostics are its own (that clears stale squiggles).</param>
-    /// <param name="result">The analysis. Its bag may hold diagnostics of other files — the
-    /// single-file door returns the whole bag of its synthetic project, import closure included.</param>
-    /// <param name="sourceText">The text of <paramref name="uri"/>; only that document's own
-    /// diagnostics are positioned against it. Null → line/column ranges.</param>
-    /// <param name="sourceTextFor">Resolves another file's text from its document URI (the string
-    /// that file's notification is published on). Null, or a null answer → line/column ranges for
-    /// that file's diagnostics.</param>
-    public void PublishDiagnostics(
-        string uri,
-        SemanticResult result,
-        SourceText? sourceText,
-        Func<string, SourceText?>? sourceTextFor = null)
-    {
-        foreach (var publication in BuildPublications(uri, result, sourceText, sourceTextFor, _configuration))
-        {
-            _send(publication);
-        }
-    }
-
-    /// <summary>
     /// Partitions <paramref name="result"/>'s diagnostics by the file they belong to and converts
     /// each partition against that file's own text (#2242). The requesting document's notification
     /// comes first and is always present; every other file a diagnostic names gets one notification
@@ -208,15 +184,6 @@ internal sealed class DiagnosticPublisher
             Uri = DocumentUri.From(uri),
             Diagnostics = new Container<Diagnostic>(diagnostics),
         };
-
-    public void ClearDiagnostics(string uri)
-    {
-        _send(new PublishDiagnosticsParams
-        {
-            Uri = DocumentUri.From(uri),
-            Diagnostics = new Container<Diagnostic>()
-        });
-    }
 
     internal static System.Collections.Generic.List<Diagnostic> ConvertDiagnostics(
         IReadOnlyList<CompilerDiagnostic> diagnostics,

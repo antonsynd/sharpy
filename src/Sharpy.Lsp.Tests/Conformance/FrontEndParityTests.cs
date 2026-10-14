@@ -521,7 +521,10 @@ public class FrontEndParityTests
             }
 
             var config = analysis.ProjectModel.Config;
-            var unattributedTarget = PathNormalizer.Normalize(UnattributedTargetFile(config));
+            // The oracle reads the SAME entry-file rule the publisher reads (plan-6ce1a5 D5 /
+            // ProjectModel.UnattributedDiagnosticTarget), so the two cannot drift; the rule itself is
+            // pinned by ProjectAnalysisResultTests' D5 rows, not by this sweep.
+            var unattributedTarget = analysis.UnattributedTarget;
             var entryFile = config.EntryPoint != null
                 ? PathNormalizer.Normalize(Path.Combine(config.ProjectDirectory, config.EntryPoint))
                 : null;
@@ -928,15 +931,6 @@ public class FrontEndParityTests
     }
 
     private sealed record NavCell(string Kind, string Spelling, int Line, int Column, IReadOnlyList<string> ExpectedFiles);
-
-    /// <summary>
-    /// Where an unstamped project-bag diagnostic belongs (plan-6ce1a5 D5): the project's
-    /// <c>EntryPoint</c>, else its first source file (a library has no entry point).
-    /// </summary>
-    private static string UnattributedTargetFile(ProjectConfig config)
-        => config.EntryPoint != null
-            ? Path.Combine(config.ProjectDirectory, config.EntryPoint)
-            : config.SourceFiles[0];
 
     /// <summary>Copies the fixture tree, skipping build output (<c>bin/</c>, <c>obj/</c>, …).</summary>
     private static void CopyFixtureTree(string source, string destination)

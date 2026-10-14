@@ -49,8 +49,8 @@ internal class CircularImportUsageValidator : ValidatingAstWalker
     /// symbol there and never fired. Recording a navigation fact must not change a verdict, so they
     /// stay unjudged: whether constructing a deferred-cycle type through its generic spelling is
     /// runtime usage is a rule of its own (measured @ c245ece62: <c>Box[int]()</c> on a deferred
-    /// stub compiles and runs while <c>Box()</c> is SPY0308), and a type argument is a type
-    /// position, which this validator admits.
+    /// stub compiles and runs while <c>Box()</c> is SPY0308 — the generic-spelling cell of #2219),
+    /// and a type argument is a type position, which this validator admits.
     /// </remarks>
     private readonly HashSet<Identifier> _genericReferenceNames = new(ReferenceEqualityComparer.Instance);
 
