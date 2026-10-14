@@ -175,11 +175,12 @@ public class CliOptionEffectSweepTests
                     {
                         var description = command.Description ?? string.Empty;
                         var sentence = CommandOptionEffects.GlobalsSentence(table);
-                        return sentence.Length > 0 && description.EndsWith(sentence, StringComparison.Ordinal)
-                            && sentence.Contains(cell.Option, StringComparison.Ordinal)
-                            ? null
-                            : $"{cell.Option} is ignored by `{cell.Path}`, but the command's --help description does not name it "
-                              + "among the global options without effect";
+                        // The sentence follows the description's own full stop ("… output. Global options …").
+                        return sentence.Length > 0 && description.EndsWith("." + sentence, StringComparison.Ordinal)
+                                && sentence.Contains(cell.Option, StringComparison.Ordinal)
+                                ? null
+                                : $"{cell.Option} is ignored by `{cell.Path}`, but the command's --help description does not name it "
+                                  + "among the global options without effect";
                     }
 
                     var option = command.Options.Single(o => o.Name == cell.Option);
@@ -266,10 +267,13 @@ public class CliOptionEffectSweepTests
         return $"`{cell.Key}` is honoured but nothing observes it: name an evidence test (Evidence) that shows the option's effect";
     }
 
+    /// <summary>
+    /// The evidence for exactly this cell. A cell of a multi-column table needs evidence for its own
+    /// input kind: one test cannot certify both kinds by a kind-less key (P46 verify — `compile
+    /// --configuration` was "observed" for .spy by a .spyproj-only test).
+    /// </summary>
     static string? EvidenceFor(Cell cell, IReadOnlyDictionary<string, string> evidence) =>
-        evidence.TryGetValue(cell.Key, out var exact) ? exact
-        : evidence.TryGetValue($"{cell.Path} {cell.Option}", out var any) ? any
-        : null;
+        evidence.TryGetValue(cell.Key, out var exact) ? exact : null;
 
     /// <summary>An evidence name resolves to a public, non-skipped xUnit test method of the test assembly.</summary>
     internal static string? ResolveEvidence(string evidence, Assembly assembly)
@@ -296,25 +300,29 @@ public class CliOptionEffectSweepTests
     {
         ["build --type"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Build_TypeLibrary_CompilesAMainlessFile",
         ["build --output"] = "Sharpy.Cli.Tests.Commands.BuildCommandTests.Build_ValidSource_ReturnsExitCode0",
-        ["build --reference"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.AReferenceThatResolvesNowhere_IsSpy0305",
-        ["build --module-path"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.AModulePathThatDoesNotExist_IsAnError",
+        ["build --reference"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Build_Reference_BindsTheImport",
+        ["build --module-path"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Build_ModulePath_ResolvesAnImport",
         ["build --server"] = "Sharpy.Cli.Tests.E2E.CompileServerE2ETests.Client_FallsBackToInProcess_WhenNoServerIsRunning",
 
         ["compile@.spy --output"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_ValidSource_ProducesDll",
         ["compile@.spyproj --output"] = "Sharpy.Cli.Tests.Commands.GeneratedCSharpLayoutTests.CompileProject_OutputOption_PlacesTheAssemblyAndItsCSharp",
-        ["compile --configuration"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Compile_Configuration_SelectsTheProjectOutputDirectory",
-        ["compile --type"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Compile_TypeLibrary_CompilesAMainlessFile",
-        ["compile@.spy --reference"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.AReferenceThatResolvesNowhere_IsSpy0305",
+        ["compile@.spy --configuration"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileFile_Configuration_SelectsTheDefaultOutputDirectory",
+        ["compile@.spyproj --configuration"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Compile_Configuration_SelectsTheProjectOutputDirectory",
+        ["compile@.spy --type"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Compile_TypeLibrary_CompilesAMainlessFile",
+        ["compile@.spy --reference"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.UserReference_IsDeployedBesideTheOutput_AndTheProgramRunsFromThere",
         ["compile@.spyproj --reference"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.Reference_IsHonouredForAProject",
-        ["compile --module-path"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.ModulePath_ResolvesABareReferenceName",
-        ["compile --self-contained"] = "Sharpy.Cli.Tests.E2E.DotnetHostPrerequisiteTests.WithoutDotnet_RefusesBeforeDoingAnyWork",
-        ["compile --no-deps"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_NoDeps_SkipsCopyingRuntimeDependencies",
-        ["compile --incremental"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileProject_Incremental_WritesTheIncrementalCache",
-        ["compile --clean"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileProject_Clean_DeletesBinAndObjFirst",
-        ["compile --emit-csharp"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_EmitCSharp_WritesCSharpFileAlongsideDll",
+        ["compile@.spy --module-path"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.ModulePath_ResolvesABareReferenceName",
+        ["compile@.spyproj --module-path"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.ModulePath_ResolvesABareReferenceName",
+        ["compile@.spy --self-contained"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.SelfContained_Compile_PublishesTheReference",
+        ["compile@.spy --no-deps"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_NoDeps_SkipsCopyingRuntimeDependencies",
+        ["compile@.spyproj --no-deps"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.Control_TheOptOuts_WriteTheAssemblyOnly",
+        ["compile@.spyproj --incremental"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileProject_Incremental_WritesTheIncrementalCache",
+        ["compile@.spyproj --clean"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileProject_Clean_DeletesBinAndObjFirst",
+        ["compile@.spy --emit-csharp"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_EmitCSharp_WritesCSharpFileAlongsideDll",
+        ["compile@.spyproj --emit-csharp"] = "Sharpy.Cli.Tests.Commands.GeneratedCSharpLayoutTests.CompileProject_OutputOption_PlacesTheAssemblyAndItsCSharp",
 
         ["run --output"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Run_Output_WritesTheAssemblyThere",
-        ["run --reference"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.AReferenceThatResolvesNowhere_IsSpy0305",
+        ["run --reference"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.UserReference_IsDeployedBesideTheOutput_AndTheProgramRunsFromThere",
         ["run --module-path"] = "Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests.ModulePathOption_ReachesImportResolution",
         ["run --args"] = "Sharpy.Cli.Tests.Commands.RunCommandTests.Run_RepeatedArgsOption_ReachesTheProgram",
         ["run --namespace"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Run_Namespace_WrapsTheGeneratedCode",
@@ -329,7 +337,7 @@ public class CliOptionEffectSweepTests
         ["project --incremental"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Project_Incremental_WritesTheIncrementalCache",
 
         ["emit csharp --output"] = "Sharpy.Cli.Tests.Commands.EmitCommandTests.CSharp_WritesGeneratedFile",
-        ["emit csharp --reference"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.AReferenceThatResolvesNowhere_IsSpy0305",
+        ["emit csharp --reference"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitCSharp_Reference_BindsTheImport",
         ["emit csharp --module-path"] = "Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests.ModulePathOption_ReachesImportResolution",
         ["emit csharp --show-line-directives"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitCSharp_ShowLineDirectives_KeepsLineDirectives",
         ["emit csharp --type"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitCSharp_TypeExe_RequiresAnEntryPoint",
@@ -349,8 +357,8 @@ public class CliOptionEffectSweepTests
         ["explain --list"] = "Sharpy.Cli.Tests.Commands.ExplainCommandTests.List_PrintsDocumentedCodes",
 
         ["format --check"] = "Sharpy.Cli.Tests.Commands.FormatCommandTests.Check_OnFormattedFile_ReportsClean",
-        ["format --diff"] = "Sharpy.Cli.Tests.Commands.FormatCommandTests.CheckAndDiff_Combined_IsUsageError",
-        ["format --output"] = "Sharpy.Cli.Tests.Commands.FormatCommandTests.OutputOption_RejectedForDirectoryInput",
+        ["format --diff"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Format_Diff_PrintsAUnifiedDiff",
+        ["format --output"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Format_Output_WritesTheFormattedTextThere",
         ["format --indent"] = "Sharpy.Cli.Tests.Commands.FormatCommandTests.NonFourSpaceIndentation_IsUsageError_AndLeavesTheFileUntouched",
 
         ["lsp --log-level"] = "Sharpy.Cli.Tests.Commands.LspCommandTests.ServerArgs_PresentLevel_BecomesTheServersFlag",
@@ -518,10 +526,7 @@ public class CliOptionEffectSweepTests
     public void EveryEvidenceAndSpellingKey_NamesACellOfTheGrammar()
     {
         var (root, _, _) = CliTestHarness.BuildRoot();
-        var cells = Cells(root, CommandOptionEffects.Tables).ToList();
-        var keys = cells.Select(c => c.Key)
-            .Concat(cells.Select(c => $"{c.Path} {c.Option}"))
-            .ToHashSet(StringComparer.Ordinal);
+        var keys = Cells(root, CommandOptionEffects.Tables).Select(c => c.Key).ToHashSet(StringComparer.Ordinal);
 
         Evidence.Keys.Concat(RefusedSpellings.Keys).Where(k => !keys.Contains(k)).Should().BeEmpty(
             "an evidence or spelling entry must name a cell, or it silently covers nothing");
@@ -618,6 +623,34 @@ public class CliOptionEffectSweepTests
         // Control: a real test method resolves.
         ResolveEvidence($"{typeof(CliOptionEffectSweepTests).FullName}.{nameof(TheSweep_ReportsASyntheticDroppedOption)}",
             typeof(CliOptionEffectSweepTests).Assembly).Should().BeNull();
+    }
+
+    [Fact]
+    public void TheSweep_RequiresEvidencePerInputKind()
+    {
+        var root = new RootCommand("synthetic");
+        var probe = new Command("probe", "two input kinds");
+        probe.Options.Add(new Option<bool>("--both") { Description = "--both" });
+        probe.SetAction(_ => 0);
+        root.Subcommands.Add(probe);
+        var tables = new Dictionary<string, CommandEffectTable>(StringComparer.Ordinal)
+        {
+            ["probe"] = new(CommandPerforms.Tooling, new[] { InputKind.SpyFile, InputKind.SpyProject },
+                new Dictionary<string, OptionEffectRow>(StringComparer.Ordinal)
+                {
+                    ["--both"] = OptionEffectRow.Uniform(OptionEffect.Honoured, "is honoured"),
+                }),
+        };
+        var real = $"{typeof(CliOptionEffectSweepTests).FullName}.{nameof(TheSweep_ReportsASyntheticDroppedOption)}";
+        var context = new SweepContext(
+            new Dictionary<string, string> { ["probe@.spy --both"] = real, ["probe --both"] = real },
+            new Dictionary<string, string>(), new Dictionary<string, string>(),
+            _ => throw new InvalidOperationException("no invocation"), (_, _, _, _) => null,
+            typeof(CliOptionEffectSweepTests).Assembly);
+
+        Check(new Cell("probe", InputKind.SpyFile, "--both"), root, tables, context).Should().BeNull("the .spy cell names its own evidence");
+        Check(new Cell("probe", InputKind.SpyProject, "--both"), root, tables, context).Should()
+            .Contain("nothing observes it", "a kind-less key does not certify the .spyproj cell");
     }
 
     [Fact]

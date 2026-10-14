@@ -256,9 +256,10 @@ internal static class GlobalOptionProbes
                         return $"positive control: under --warn-as-error the SPY0451 warning is not reported, so --nowarn cannot be observed:\n{Show(control)}";
                     var (probe, input) = Invoke(commandPath, kind, performs, Fixture.Warn, "--warn-as-error --nowarn SPY0451");
                     input.Dispose();
-                    return All(probe).Contains("SPY0451", StringComparison.Ordinal)
-                        ? $"--nowarn SPY0451 did not suppress the warning:\n{Show(probe)}"
-                        : null;
+                    if (All(probe).Contains("SPY0451", StringComparison.Ordinal))
+                        return $"--nowarn SPY0451 did not suppress the warning:\n{Show(probe)}";
+                    // The absence must come from a run that worked, not one that failed before reporting.
+                    return ErrorLine.IsMatch(All(probe)) ? $"--nowarn: the run reported an error:\n{Show(probe)}" : null;
                 }
 
             case "--max-errors":
@@ -282,9 +283,9 @@ internal static class GlobalOptionProbes
                         return $"positive control: the defer program is not refused with SPY0331 without the flag:\n{Show(baseline)}";
                     var (probe, input) = Invoke(commandPath, kind, performs, Fixture.Defer, "--enable-feature defer");
                     input.Dispose();
-                    return All(probe).Contains("SPY0331", StringComparison.Ordinal)
-                        ? $"--enable-feature defer did not enable the feature:\n{Show(probe)}"
-                        : null;
+                    if (All(probe).Contains("SPY0331", StringComparison.Ordinal))
+                        return $"--enable-feature defer did not enable the feature:\n{Show(probe)}";
+                    return ErrorLine.IsMatch(All(probe)) ? $"--enable-feature defer: the run reported an error:\n{Show(probe)}" : null;
                 }
 
             default:
