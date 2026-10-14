@@ -50,7 +50,8 @@ Diagnostics are published after each document change (debounced) and include all
 - Every project file is republished after each project analysis: initial indexing, an edit, a watched-file change (including creating a missing module), a `.spyproj` reload and a `sharpy.features` change. A hints-only configuration change republishes without reanalyzing.
 - A project that fails to compile still publishes: indexing with errors puts each error on its file. An analysis superseded by a newer edit publishes nothing.
 - Opening or editing a project file never replaces its project diagnostics with a single-file analysis. A file opened before indexing finishes shows a single-file result until the index publishes.
-- Closing a project file keeps its diagnostics. Closing any other file clears them.
+- Closing a project file keeps its diagnostics when the buffer matched the file on disk. If the buffer had unsaved changes, the project is re-analyzed from disk and republished. Closing any other file clears its diagnostics.
+- An open project file's unsaved buffer is analyzed as that file, but files that import it are still checked against its disk text (#2304).
 - When a `.spyproj` reload drops a file from the project, its project diagnostics are cleared. If the file is open, it shows its single-file result instead.
 - A file outside the project that imports a project file shows only its own diagnostics. It never overwrites the imported file's squiggles.
 
