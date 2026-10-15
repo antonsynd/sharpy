@@ -8,4 +8,9 @@
     <Compile Include="../Random/**/*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The module's .spy source imports `from threading import Lock` for its module lock (#2250). -->
+    <ProjectReference Include="Sharpy.Stdlib.Threading.csproj" />
+  </ItemGroup>
+
 </Project>
