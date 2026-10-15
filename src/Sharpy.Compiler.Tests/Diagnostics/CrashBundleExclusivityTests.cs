@@ -54,12 +54,8 @@ public sealed class CrashBundleExclusivityTests : IDisposable
     /// </summary>
     private static readonly Dictionary<int, string> KnownRed = new()
     {
-        // Deterministic under the aligned clock: every round starts all writers on one directory
-        // listing. Measured with an R-iteration loop of RunWriters at 486c9a88a.
-        [2] = "#2250 check-then-create suffix scan — two writers read one free suffix and share its directory; "
-            + "reproduced 1000/1000 @ 486c9a88a (at most 12 of 20 distinct); drains in P54 Phase 3 task 3",
-        [8] = "#2250 check-then-create suffix scan — eight writers read one free suffix and share its directory; "
-            + "reproduced 300/300 @ 486c9a88a (at most 37 of 80 distinct); drains in P54 Phase 3 task 3",
+        // Drained in P54 Phase 3 task 3 (create-exclusive .owner marker + pid in the name): the 2- and
+        // 8-writer rows (1000/1000 and 300/300 red @ 486c9a88a) reported "stale" against the fix.
     };
 
     [Theory]
