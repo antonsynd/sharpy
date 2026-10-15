@@ -59,18 +59,11 @@ public class StdlibModuleGlobalConcurrencyTests
     /// </summary>
     internal static readonly Dictionary<string, KnownRedRow> KnownRed = new(StringComparer.Ordinal)
     {
-        // random: one System.Random shared by every thread (documented non-thread-safe); concurrent
-        // NextDouble races its seed-array indices, so the draws stop being the seed-7 stream.
-        ["random/read/2"] = new(false, "#2250 probabilistic — not reproduced, 0/6 runs @ 486c9a88a; mechanism: concurrent System.Random.NextDouble on one instance"),
-        ["random/read/8"] = new(false, "#2250 probabilistic — red in 4/6 runs @ 486c9a88a, e.g. 15803/16000 draws not the seed-7 stream's"),
-
-        // socket: double? is a 16-byte struct — its write is not atomic by the CLR memory model
-        // (ECMA-335 §I.12.6.6 guarantees only native-int-sized writes), so a reader can see
-        // HasValue from one write and the value of another. Never reproduced here.
-        ["socket/write/2"] = new(false, "#2250 probabilistic — not reproduced, 0/6 runs @ 486c9a88a; mechanism: a 16-byte double? write is not atomic by the CLR memory model"),
-        ["socket/write/8"] = new(false, "#2250 probabilistic — not reproduced, 0/6 runs @ 486c9a88a; mechanism: a 16-byte double? write is not atomic by the CLR memory model"),
-        ["socket/read/2"] = new(false, "#2250 probabilistic — not reproduced, 0/6 runs @ 486c9a88a; mechanism: a 16-byte double? write is not atomic by the CLR memory model"),
-        ["socket/read/8"] = new(false, "#2250 probabilistic — not reproduced, 0/6 runs @ 486c9a88a; mechanism: a 16-byte double? write is not atomic by the CLR memory model"),
+        // random and socket: drained by Phase 3 task 1 — every read and write of RandomModuleModule._Random and
+        // SocketModuleModule._DefaultTimeout now happens under one module lock (random_module.spy /
+        // socket_module.spy). random/read/8 was red in 4/6 runs @ 486c9a88a and is 0/R after the cure (R in the
+        // commit body); the socket rows were never reproduced (0/6) — they drain because the cure lands: the
+        // 16-byte double? write now happens under the lock.
 
         // xml: concurrent writes to one Dictionary<string, string> lose entries, throw
         // InvalidOperationException ("concurrent update ... corrupted its state"), and make a

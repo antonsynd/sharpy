@@ -36,6 +36,7 @@ namespace Sharpy.SocketModule
         public static int SHUT_RDWR = (int)global::System.Net.Sockets.SocketShutdown.Both;
         public static int SOMAXCONN = 128;
         public static double? _DefaultTimeout = null;
+        public static global::Sharpy.Lock _Lock = new global::Sharpy.Lock();
         /// <summary>
         /// Refuse a timeout value python3 refuses, at the call that receives it (#2228).
         /// The one rule shared by every timeout-accepting entry point (settimeout,
@@ -74,7 +75,18 @@ namespace Sharpy.SocketModule
         /// </summary>
         public static double? Getdefaulttimeout()
         {
-            return global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+            {
+                var __ctx_1 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_1.Enter();
+                try
+                {
+                    return global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+                }
+                finally
+                {
+                    __ctx_1.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -83,7 +95,18 @@ namespace Sharpy.SocketModule
         public static void Setdefaulttimeout(double? timeout)
         {
             global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
-            _DefaultTimeout = timeout;
+            {
+                var __ctx_2 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_2.Enter();
+                try
+                {
+                    _DefaultTimeout = timeout;
+                }
+                finally
+                {
+                    __ctx_2.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -92,7 +115,21 @@ namespace Sharpy.SocketModule
         /// </summary>
         public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address)
         {
-            return global::Sharpy.SocketModule.SocketModuleModule.CreateConnection(address, global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout);
+            double? @default = null;
+            {
+                var __ctx_3 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_3.Enter();
+                try
+                {
+                    @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+                }
+                finally
+                {
+                    __ctx_3.Exit();
+                }
+            }
+
+            return global::Sharpy.SocketModule.SocketModuleModule.CreateConnection(address, @default);
         }
 
         /// <summary>
@@ -819,7 +856,20 @@ namespace Sharpy.SocketModule
         {
             this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
             this._Timeout = null;
-            double? @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+            double? @default = null;
+            {
+                var __ctx_0 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_0.Enter();
+                try
+                {
+                    @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+                }
+                finally
+                {
+                    __ctx_0.Exit();
+                }
+            }
+
             if (@default is not null)
             {
                 this.Settimeout(@default.Value);

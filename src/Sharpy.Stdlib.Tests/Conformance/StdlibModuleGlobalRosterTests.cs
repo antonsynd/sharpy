@@ -54,11 +54,11 @@ public class StdlibModuleGlobalRosterTests
         // CPython 3.12 (verified): random.__doc__ "...and is, therefore, threadsafe."
         new("Sharpy.RandomModule.RandomModuleModule._Random", "src/Sharpy.Stdlib/Random/Random.cs",
             ProcessWideUnderTheGil + " (random.__doc__: \"threadsafe\")",
-            "none — one System.Random, documented non-thread-safe", "#2250"),
+            "one module lock (random_module.spy `_lock`, a threading.Lock) around every read and write", "#2250"),
         // socket_module.spy → generated Socket/SocketModule.cs:38; setdefaulttimeout() writes it.
         new("Sharpy.SocketModule.SocketModuleModule._DefaultTimeout", "src/Sharpy.Stdlib/Socket/SocketModule.cs",
             ProcessWideUnderTheGil + " (one pointer write)",
-            "none — a 16-byte double?, not atomic by the CLR memory model", "#2250"),
+            "one module lock (socket_module.spy `_lock`, a threading.Lock) around every read and write", "#2250"),
         // Calendar/CalendarConstants.cs:37; setfirstweekday() writes it. An int write is atomic.
         new("Sharpy.CalendarModule._moduleFirstweekday", "src/Sharpy.Stdlib/Calendar/CalendarConstants.cs",
             ProcessWideUnderTheGil,
