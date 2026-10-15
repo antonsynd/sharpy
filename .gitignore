@@ -15,6 +15,9 @@ editors/vscode/out/
 
 mcp.json
 
+# AgentMemory
+data/stream_store/
+
 # MkDocs build output
 site/
 
