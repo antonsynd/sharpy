@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
+using Sharpy.TestInfrastructure.Registry;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -33,7 +35,15 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// not reference the LSP handlers.</para>
 ///
 /// <para><b>Oracle and fingerprint.</b> Before any concurrent phase, every (instance kind, program,
-/// operation) a schedule names runs ALONE on the test thread on a FRESH instance. A fingerprint is
+/// operation) a schedule names runs ALONE on the test thread on a FRESH instance — the programs that
+/// name no reference FIRST, so the oracle of <c>library/greeter_unreferenced</c> is taken before this
+/// run's library has been loaded by anything in the process (its namespace is unique to the run, so
+/// no earlier run's copy can answer it either); then a bystander <see cref="Compiler"/> holding the
+/// library stays alive through the concurrent phase — the plan's cell-4 shape, "another registry in
+/// the process has loaded it". Every program with an <see cref="IsolationProgram.OracleMustCarry"/>
+/// control is checked against its oracle on every (kind, operation): the probes read what the seams
+/// decide (SPY0220/SPY0203 on a fresh instance; success for the referenced compile; SPY0300 for the
+/// unreferenced one), or the run is an instrument fault, not a green. A fingerprint is
 /// success + the sorted multiset of diagnostic <c>(code, line, col)</c> + the used-assembly set
 /// where the operation exposes one (<c>compile</c> on both kinds — <see cref="CompileResult.UsedAssemblyPaths"/>
 /// and the <see cref="Compiler"/>'s registry — and <c>analyze</c> on <see cref="Compiler"/>;
@@ -53,7 +63,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// A cell is red in a repetition when any of its observations in that repetition is; <c>k/R</c> is
 /// the number of red repetitions.</para>
 ///
-/// <para><b>Ratchet.</b> Rows <c>program sharing threads operation bucket [probabilistic]  # #2250
+/// <para><b>Ratchet.</b> Rows <c>program sharing threads operation bucket [probabilistic]  # #NNNN
 /// reason; reproduced k/R @ sha</c> in <c>Conformance/in-process-isolation-allowlist.txt</c>. A red
 /// cell without a row fails; a row whose cell was exercised and reproduced in no repetition fails as
 /// stale (drain on fix) unless it is marked <c>probabilistic</c> — those are reported, not judged. A
@@ -65,7 +75,13 @@ public class InProcessIsolationSweepTests
 {
     private const string AllowlistFileName = "in-process-isolation-allowlist.txt";
     private const string FullModeVariable = "SHARPY_ISOLATION_SWEEP_FULL";
-    private const string IssueCite = "#2250";
+    /// <summary>
+    /// A row cites an issue by number (<c>#NNNN</c>) — any issue, so the ratchet outlives the class tracker it was
+    /// born under (#2250 is closed): whether the cited issue is still OPEN is <c>build_tools/check_allowlist_issue_state.sh</c>'s
+    /// question, asked of every tracked allowlist file.
+    /// </summary>
+    private static readonly Regex IssueCitePattern = new(@"(^|\s)#\d+\b", RegexOptions.Compiled);
+    private const string IssueCite = "#NNNN";
     private const string Probabilistic = "probabilistic";
 
     internal const string Drift = "drift";
@@ -124,15 +140,15 @@ public class InProcessIsolationSweepTests
     [Fact]
     [Trait("Category", "GapDiscovery")]
     public void Sweep_EightThreads_EightRepetitions()
-        => RunSweep("gap-discovery", new[] { 8 }, repetitions: 8, "in-process-isolation-report.json");
+        => RunSweep("gap-discovery", new[] { 8 }, repetitions: 8, fullTriggers: true, "in-process-isolation-report.json");
 
     [Fact]
     public void Sweep_RegularSlice()
     {
         if (Environment.GetEnvironmentVariable(FullModeVariable) == "1")
-            RunSweep("full", new[] { 1, 2, 8 }, repetitions: 8, "in-process-isolation-slice-report.json");
+            RunSweep("full", new[] { 1, 2, 8 }, repetitions: 8, fullTriggers: true, "in-process-isolation-slice-report.json");
         else
-            RunSweep("regular", new[] { 1, 2 }, repetitions: 1, "in-process-isolation-slice-report.json");
+            RunSweep("regular", new[] { 1, 2 }, repetitions: 1, fullTriggers: false, "in-process-isolation-slice-report.json");
     }
 
     // ================================================================
@@ -180,29 +196,60 @@ public class InProcessIsolationSweepTests
         }
     }
 
-    /// <summary>The schedules are pure functions of the literal seeds, and every thread's schedule
-    /// carries every named program under both operations.</summary>
+    /// <summary>The schedules are pure functions of the literal seeds; every thread's schedule opens
+    /// with the library pair, carries every named program and probe under both operations and every
+    /// trigger under analyze, and reads every probe once more after its last trigger; the regular
+    /// trigger set is a head of the full one; every probe and the pair carry an oracle control.</summary>
     [Fact]
     public void Schedules_AreSeededAndCarryTheRoster()
     {
         Assert.Equal(8, InProcessIsolationCorpus.ThreadSeeds.Distinct().Count());
         Assert.StartsWith(InProcessIsolationCorpus.Cell1FirstLine, InProcessIsolationCorpus.RegenerateCell1Program().Source, StringComparison.Ordinal);
         Assert.True(InProcessIsolationCorpus.Sample.Count > 100, $"stride sample has {InProcessIsolationCorpus.Sample.Count} programs");
-        for (var t = 0; t < InProcessIsolationCorpus.ThreadSeeds.Length; t++)
+
+        var pair = new[]
         {
-            var first = InProcessIsolationCorpus.Schedule(t).Select(s => $"{s.Program.Id}/{s.Operation}").ToList();
-            var second = InProcessIsolationCorpus.Schedule(t).Select(s => $"{s.Program.Id}/{s.Operation}").ToList();
-            Assert.Equal(first, second);
-            foreach (var program in InProcessIsolationCorpus.Named)
+            new IsolationProgram(InProcessIsolationCorpus.ReferencedProgramId, "main.spy", "") { References = new[] { "x.dll" }, OracleMustCarry = IsolationProgram.OracleSucceeds },
+            new IsolationProgram(InProcessIsolationCorpus.UnreferencedProgramId, "main.spy", "") { OracleMustCarry = InProcessIsolationCorpus.ModuleNotFound },
+        };
+        var regular = InProcessIsolationCorpus.Roster(full: false, pair);
+        var full = InProcessIsolationCorpus.Roster(full: true, pair);
+        Assert.Equal(WarmInstanceTriggers.AllTexts.Length + InProcessIsolationCorpus.RegularGeneratedTriggerCount, regular.Triggers.Count);
+        Assert.Equal(regular.Triggers.Select(t => t.Id), full.Triggers.Take(regular.Triggers.Count).Select(t => t.Id));
+        Assert.True(full.Triggers.Count > regular.Triggers.Count, $"full carries {full.Triggers.Count} triggers");
+        Assert.Equal(full.Triggers.Count, full.Triggers.Select(t => t.Id).Distinct().Count());
+        Assert.All(full.Probes.Concat(pair), p => Assert.NotNull(p.OracleMustCarry));
+        Assert.Contains(full.Probes, p => p.OracleMustCarry == "SPY0220");
+        Assert.Contains(full.Probes, p => p.OracleMustCarry == "SPY0203");
+
+        foreach (var roster in new[] { regular, full })
+        {
+            for (var t = 0; t < InProcessIsolationCorpus.ThreadSeeds.Length; t++)
             {
-                Assert.Contains($"{program.Id}/{IsolationOperation.Analyze}", first);
-                Assert.Contains($"{program.Id}/{IsolationOperation.Compile}", first);
+                var first = InProcessIsolationCorpus.Schedule(t, roster).Select(s => $"{s.Program.Id}/{s.Operation}").ToList();
+                var second = InProcessIsolationCorpus.Schedule(t, roster).Select(s => $"{s.Program.Id}/{s.Operation}").ToList();
+                Assert.Equal(first, second);
+                Assert.Equal(
+                    pair.SelectMany(p => new[] { $"{p.Id}/{IsolationOperation.Analyze}", $"{p.Id}/{IsolationOperation.Compile}" }),
+                    first.Take(4));
+                foreach (var program in roster.Named.Concat(roster.Probes))
+                {
+                    Assert.Contains($"{program.Id}/{IsolationOperation.Analyze}", first);
+                    Assert.Contains($"{program.Id}/{IsolationOperation.Compile}", first);
+                }
+
+                var lastTrigger = first.FindLastIndex(s => s.StartsWith("trigger/", StringComparison.Ordinal));
+                Assert.True(lastTrigger >= 0, "the schedule carries no trigger");
+                foreach (var program in roster.Triggers)
+                    Assert.Contains($"{program.Id}/{IsolationOperation.Analyze}", first);
+                foreach (var program in roster.Probes)
+                    Assert.Contains($"{program.Id}/{IsolationOperation.Analyze}", first.Skip(lastTrigger + 1));
             }
         }
 
         Assert.NotEqual(
-            InProcessIsolationCorpus.Schedule(0).Select(s => s.Program.Id),
-            InProcessIsolationCorpus.Schedule(1).Select(s => s.Program.Id));
+            InProcessIsolationCorpus.Schedule(0, regular).Select(s => s.Program.Id),
+            InProcessIsolationCorpus.Schedule(1, regular).Select(s => s.Program.Id));
     }
 
     // ================================================================
@@ -213,36 +260,99 @@ public class InProcessIsolationSweepTests
 
     private sealed record RedCell(string Key, string Bucket, int Reds, int Repetitions, string Oracle, string Observed);
 
-    private void RunSweep(string mode, int[] threadCounts, int repetitions, string reportFileName)
+    private void RunSweep(string mode, int[] threadCounts, int repetitions, bool fullTriggers, string reportFileName)
     {
         var wall = Stopwatch.StartNew();
         var maxThreads = threadCounts.Max();
-        var schedules = Enumerable.Range(0, maxThreads).Select(InProcessIsolationCorpus.Schedule).ToList();
-
-        // 1. The solo oracle, before any concurrent phase: a fresh instance per (kind, program, operation).
-        var oracle = new Dictionary<(InstanceKind, string, IsolationOperation), Fingerprint>();
-        foreach (var kind in new[] { InstanceKind.Compiler, InstanceKind.Api })
+        var runTag = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var libraryDir = Path.Combine(Path.GetTempPath(), $"sharpy_isolation_lib_{runTag}");
+        try
         {
-            foreach (var step in schedules.SelectMany(s => s))
+            var roster = InProcessIsolationCorpus.Roster(fullTriggers, InProcessIsolationCorpus.BuildLibraryPair(libraryDir, runTag));
+            var schedules = Enumerable.Range(0, maxThreads).Select(t => InProcessIsolationCorpus.Schedule(t, roster)).ToList();
+
+            // 1. The solo oracle, before any concurrent phase: a fresh instance per (kind, program, operation) —
+            //    reference-free programs first, so the unreferenced library compile is answered before this run's
+            //    library has been loaded by anything in the process.
+            var oracle = new Dictionary<(InstanceKind, string, IsolationOperation), Fingerprint>();
+            foreach (var referenced in new[] { false, true })
             {
-                var key = (kind, step.Program.Id, step.Operation);
-                if (!oracle.ContainsKey(key))
-                    oracle[key] = Solo(kind, step);
+                foreach (var kind in new[] { InstanceKind.Compiler, InstanceKind.Api })
+                {
+                    foreach (var step in schedules.SelectMany(s => s).Where(s => (s.Program.References.Count > 0) == referenced))
+                    {
+                        var key = (kind, step.Program.Id, step.Operation);
+                        if (!oracle.ContainsKey(key))
+                            oracle[key] = Solo(kind, step);
+                    }
+                }
+            }
+
+            var oracleSeconds = wall.Elapsed.TotalSeconds;
+            AssertOracleControls(oracle, roster);
+
+            // The bystander: a registry that has loaded this run's library and lives through the concurrent phase.
+            using var bystander = IsolationInstance.Create(InstanceKind.Compiler);
+            var bystanderReading = bystander.Observe(new IsolationStep(roster.LibraryPair[0], IsolationOperation.Analyze));
+            Assert.True(bystanderReading.Success, $"the bystander's referenced analysis must succeed: {bystanderReading}");
+
+            // 2. The concurrent phase: repetitions × sharing × threads, each a barrier-started set of workers.
+            var observations = new List<Observation>();
+            for (var repetition = 0; repetition < repetitions; repetition++)
+            {
+                foreach (var sharing in AllSharing)
+                {
+                    foreach (var threads in threadCounts)
+                        observations.AddRange(RunConfiguration(repetition, sharing, threads, schedules));
+                }
+            }
+
+            Judge(mode, threadCounts, repetitions, reportFileName, roster, oracle, observations, oracleSeconds, wall);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(libraryDir))
+                    Directory.Delete(libraryDir, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup; the loaded library may still be mapped.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every oracle control holds on every (kind, operation): a probe's fresh answer carries the code
+    /// it reads for, the referenced compile succeeds, the unreferenced one is refused — else the
+    /// probe is not reading what the seam decides and the run is an instrument fault.
+    /// </summary>
+    private static void AssertOracleControls(IReadOnlyDictionary<(InstanceKind, string, IsolationOperation), Fingerprint> oracle, IsolationRoster roster)
+    {
+        var problems = new List<string>();
+        foreach (var program in roster.Probes.Concat(roster.LibraryPair).Where(p => p.OracleMustCarry != null))
+        {
+            foreach (var kind in new[] { InstanceKind.Compiler, InstanceKind.Api })
+            {
+                foreach (var operation in new[] { IsolationOperation.Analyze, IsolationOperation.Compile })
+                {
+                    var fingerprint = oracle[(kind, program.Id, operation)];
+                    var holds = program.OracleMustCarry == IsolationProgram.OracleSucceeds
+                        ? fingerprint.Success && fingerprint.Exception == null
+                        : !fingerprint.Success && fingerprint.Diagnostics.Contains(program.OracleMustCarry + "@", StringComparison.Ordinal);
+                    if (!holds)
+                        problems.Add($"{program.Id} {kind}/{Name(operation)}: the solo oracle must carry {program.OracleMustCarry}; observed {fingerprint}");
+                }
             }
         }
 
-        var oracleSeconds = wall.Elapsed.TotalSeconds;
+        Assert.True(problems.Count == 0, "oracle control(s) failed (an instrument fault, not a cell):\n  " + string.Join("\n  ", problems));
+    }
 
-        // 2. The concurrent phase: repetitions × sharing × threads, each a barrier-started set of workers.
-        var observations = new List<Observation>();
-        for (var repetition = 0; repetition < repetitions; repetition++)
-        {
-            foreach (var sharing in AllSharing)
-            {
-                foreach (var threads in threadCounts)
-                    observations.AddRange(RunConfiguration(repetition, sharing, threads, schedules));
-            }
-        }
+    private void Judge(string mode, int[] threadCounts, int repetitions, string reportFileName, IsolationRoster roster,
+        Dictionary<(InstanceKind, string, IsolationOperation), Fingerprint> oracle, List<Observation> observations, double oracleSeconds, Stopwatch wall)
+    {
 
         // 3. Classification: a cell is (program, sharing, threads, operation); red in a repetition when any observation is.
         var exercised = new HashSet<string>(StringComparer.Ordinal);
@@ -278,7 +388,7 @@ public class InProcessIsolationSweepTests
             .ToList();
 
         // 4. The ratchet.
-        var allowlist = LoadAllowlist();
+        var allowlist = LoadAllowlist(InProcessIsolationCorpus.AllIds);
         var unlisted = reds.Where(r => !allowlist.ContainsKey(r.Key)).ToList();
         var notExercised = allowlist.Keys.Where(k => !exercised.Contains(CellOf(k))).OrderBy(k => k, StringComparer.Ordinal).ToList();
         var silent = allowlist
@@ -290,7 +400,7 @@ public class InProcessIsolationSweepTests
 
         var bucketCounts = new[] { Drift, Crash, Order }.ToDictionary(b => b, b => reds.Count(r => r.Bucket == b));
         var census = $"ISOLATION-CENSUS mode={mode} threads={{{string.Join(",", threadCounts)}}} R={repetitions} "
-            + $"corpus={InProcessIsolationCorpus.Named.Count}+{InProcessIsolationCorpus.Sample.Count} "
+            + $"corpus={roster.Named.Count}+{roster.LibraryPair.Count}+{roster.Triggers.Count}+{roster.Probes.Count}+{InProcessIsolationCorpus.Sample.Count} "
             + $"oracle={oracle.Count} observations={observations.Count} compared={observed} cancelled={cancelled} "
             + $"cells={exercised.Count} red={reds.Count} drift={bucketCounts[Drift]} crash={bucketCounts[Crash]} order={bucketCounts[Order]} "
             + $"allowlisted={allowlist.Count} oracle-elapsed={oracleSeconds:F0}s elapsed={wall.Elapsed.TotalSeconds:F0}s";
@@ -478,44 +588,62 @@ public class InProcessIsolationSweepTests
 
     /// <summary>
     /// One <see cref="Compiler"/> for the instance's life — its module registry is built once, in the
-    /// constructor, and serves every program of the schedule. Sharpy.Core is referenced (without it
-    /// the C# → IL emit of <c>print(1)</c> is SPY0908 — measured), and the output path makes
-    /// <c>Compile</c> reach IL.
+    /// constructor, and serves every reference-free program of the schedule; a program that names a
+    /// reference gets a sibling <see cref="Compiler"/> on the same instance (one per distinct
+    /// reference set, built on first use — a <see cref="Compiler"/> binds its references at
+    /// construction), so the leak the library pair guards flows between two registries on one
+    /// thread as well as across threads. Sharpy.Core is referenced (without it the C# → IL emit of
+    /// <c>print(1)</c> is SPY0908 — measured), and the output path makes <c>Compile</c> reach IL.
     /// </summary>
     private sealed class CompilerInstance : IsolationInstance
     {
-        private readonly Compiler _compiler;
+        private readonly Dictionary<string, Compiler> _compilers = new(StringComparer.Ordinal);
+        private readonly object _gate = new();
 
         public CompilerInstance()
         {
             Directory.CreateDirectory(Root);
-            _compiler = new Compiler(CompilerOptionsFactory.ForCli(
-                references: new[] { SharpyCoreReference.Location },
+            _compilers[""] = Build(Array.Empty<string>());
+        }
+
+        private Compiler Build(IReadOnlyList<string> references)
+            => new(CompilerOptionsFactory.ForCli(
+                references: new[] { SharpyCoreReference.Location }.Concat(references).ToArray(),
                 assemblyName: AssemblyName,
                 outputAssemblyPath: Path.Combine(Root, AssemblyName + ".dll")), NullLogger.Instance);
+
+        private Compiler For(IsolationProgram program)
+        {
+            var key = string.Join(";", program.References);
+            lock (_gate)
+            {
+                if (!_compilers.TryGetValue(key, out var compiler))
+                    _compilers[key] = compiler = Build(program.References);
+                return compiler;
+            }
         }
 
         protected override Fingerprint Analyze(IsolationProgram program, CancellationToken cancellationToken)
         {
-            var result = _compiler.Analyze(program.Source, program.FileName, cancellationToken);
+            var result = For(program).Analyze(program.Source, program.FileName, cancellationToken);
             return Fingerprint.Of(result.Success, result.Diagnostics.GetAll(), result.ModuleRegistry?.GetUsedAssemblyPaths());
         }
 
         protected override Fingerprint Compile(IsolationProgram program, CancellationToken cancellationToken)
         {
-            var result = _compiler.Compile(program.Source, program.FileName, cancellationToken);
+            var result = For(program).Compile(program.Source, program.FileName, cancellationToken);
             return Fingerprint.Of(result.Success, result.Diagnostics.GetAll(), result.ModuleRegistry?.GetUsedAssemblyPaths());
         }
     }
 
-    /// <summary>One <see cref="CompilerApi"/> referencing Sharpy.Core; each <c>Compile</c> writes into its own directory.</summary>
+    /// <summary>One <see cref="CompilerApi"/> referencing Sharpy.Core; a program's own references ride on its options; each <c>Compile</c> writes into its own directory.</summary>
     private sealed class ApiInstance : IsolationInstance
     {
         private readonly CompilerApi _api = new(NullLogger.Instance, new[] { SharpyCoreReference.Location });
 
         protected override Fingerprint Analyze(IsolationProgram program, CancellationToken cancellationToken)
         {
-            var result = _api.AnalyzeDocument(program.Source, program.FileName, CompilerOptionsFactory.ForCli(),
+            var result = _api.AnalyzeDocument(program.Source, program.FileName, CompilerOptionsFactory.ForCli(references: program.References.ToArray()),
                 stageMetrics: null, cancellationToken);
             return Fingerprint.Of(result.Success, result.Diagnostics, usedAssemblies: null);
         }
@@ -526,6 +654,7 @@ public class InProcessIsolationSweepTests
             try
             {
                 var options = CompilerOptionsFactory.ForCli(
+                    references: program.References.ToArray(),
                     assemblyName: AssemblyName,
                     outputAssemblyPath: Path.Combine(callDir, AssemblyName + ".dll"));
                 var result = _api.Compile(program.Source, options, program.FileName, cancellationToken);
@@ -553,11 +682,12 @@ public class InProcessIsolationSweepTests
     private sealed record AllowlistRow(bool Probabilistic, string Comment);
 
     /// <summary>
-    /// <c>program sharing threads operation bucket [probabilistic]  # #2250 reason; reproduced k/R @ sha</c>.
-    /// A row that does not parse, names an unknown sharing/operation/bucket, or does not cite #2250 is
-    /// refused (an instrument fault), never silently skipped.
+    /// <c>program sharing threads operation bucket [probabilistic]  # #NNNN reason; reproduced k/R @ sha</c>.
+    /// A row that does not parse, names a program that is no corpus id (<paramref name="corpusIds"/>:
+    /// a typo would park a red cell as "not exercised"), names an unknown sharing/operation/bucket, or
+    /// cites no issue number is refused (an instrument fault), never silently skipped.
     /// </summary>
-    private static Dictionary<string, AllowlistRow> LoadAllowlist()
+    private static Dictionary<string, AllowlistRow> LoadAllowlist(IReadOnlySet<string> corpusIds)
     {
         var path = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler.Tests", "Conformance", AllowlistFileName);
         if (!File.Exists(path))
@@ -577,11 +707,13 @@ public class InProcessIsolationSweepTests
             var probabilistic = fields.Length == 6 && fields[5] == Probabilistic;
             if (fields.Length != 5 && !probabilistic)
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — expected `program sharing threads operation bucket [{Probabilistic}]  # {IssueCite} …`.");
+            if (!corpusIds.Contains(fields[0]))
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — '{fields[0]}' is not a corpus program id (InProcessIsolationCorpus.AllIds).");
             if (!sharingNames.Contains(fields[1]) || fields[2] is not ("1" or "2" or "8") || !operationNames.Contains(fields[3])
                 || fields[4] is not (Drift or Crash or Order))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — unknown sharing, thread count, operation or bucket.");
-            if (!comment.Contains(IssueCite, StringComparison.Ordinal))
-                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — every row cites {IssueCite}.");
+            if (!IssueCitePattern.IsMatch(comment))
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — every row cites an issue by number ({IssueCite}).");
             var key = string.Join(' ', fields.Take(5));
             if (!rows.TryAdd(key, new AllowlistRow(probabilistic, comment)))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{key}' is listed twice.");

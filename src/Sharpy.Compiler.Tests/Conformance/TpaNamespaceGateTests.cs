@@ -84,7 +84,7 @@ public class TpaNamespaceGateTests
         foreach (var (cell, reason) in KnownRed)
         {
             Assert.Contains(cell, AllCells);
-            Assert.Contains("#2250", reason, StringComparison.Ordinal);
+            Assert.Matches(@"(^|\s)#\d+\b", reason);
         }
         Assert.True(AllCells.Count(c => !KnownRed.ContainsKey(c)) >= 2,
             "each probe needs a green positive-control cell; the oracle is not 'always red'");

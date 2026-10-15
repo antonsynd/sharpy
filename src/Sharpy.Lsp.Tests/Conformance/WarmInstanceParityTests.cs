@@ -154,7 +154,7 @@ public sealed class WarmInstanceParityTests : IClassFixture<WarmInstanceParityTe
         {
             Assert.True(cells.Contains(cell), $"KnownRed row '{cell}' names no cell of the matrix");
             Assert.False(cell.Contains($" {Fresh} ", StringComparison.Ordinal), $"'{cell}': the fresh arm is the positive control; it carries no KnownRed row");
-            Assert.Contains("#2250", row.Row, StringComparison.Ordinal);
+            Assert.Matches(@"(^|\s)#\d+\b", row.Row);
             Assert.Matches(@"\d+/\d+[^@]* @ [0-9a-f]{7,}", row.Row);
         }
     }

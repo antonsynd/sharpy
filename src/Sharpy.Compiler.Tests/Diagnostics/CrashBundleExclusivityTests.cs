@@ -85,7 +85,7 @@ public sealed class CrashBundleExclusivityTests : IDisposable
     public void KnownRedRows_CiteTheIssue()
     {
         foreach (var (_, reason) in KnownRed)
-            Assert.Contains("#2250", reason, StringComparison.Ordinal);
+            Assert.Matches(@"(^|\s)#\d+\b", reason);
     }
 
     private static Outcome RunWriters(int writers, string outputDirectory)

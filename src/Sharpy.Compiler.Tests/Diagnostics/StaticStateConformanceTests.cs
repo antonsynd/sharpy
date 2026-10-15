@@ -201,10 +201,10 @@ public class StaticStateConformanceTests
 
             // ---- The visibility seam's framework index (#2250, P54 Design Decision 1) ----
             [("Sharpy.Compiler.Discovery.AssemblyVisibility", "s_framework")] =
-                "Lazy<TypeIndex> with no key: the framework set — the trusted-platform System.*/Microsoft.*/" +
-                "netstandard/mscorlib assemblies, Sharpy.Core, the compiler and its direct dependencies — loaded " +
-                "and indexed once; the trusted-platform list is fixed at process start, so the value is a process " +
-                "constant. ExecutionAndPublication: a reader blocks until the index is complete. The five " +
+                "Lazy<TypeIndex> with no key: the framework set — the shared framework (every trusted-platform " +
+                "assembly whose .dll lies in the Microsoft.NETCore.App runtime directory CoreLib was loaded from) " +
+                "plus Sharpy.Core, never the host's own application packages (f5fb7f8e4) — loaded and indexed " +
+                "once; CoreLib's directory is fixed at process start, so the value is a process constant. ExecutionAndPublication: a reader blocks until the index is complete. The five " +
                 "name-keyed rows it replaced (_originNameDefinitionCache, _displayNameDefinitionCache, " +
                 "s_typePresentCache, _probedNamespaces, _loadedRuntimeNamespaces) drained into per-visibility state.",
         };

@@ -89,9 +89,9 @@ public class ProcessWideResolutionScanTests
                 "assembly qualifier binds against the visible set by simple name and an unqualified name is " +
                 "searched in the visible set, so nothing binds against the process."),
             ["Discovery/AssemblyVisibility.cs::AssemblyVisibility.LoadFrameworkAssembly::Assembly.Load"] = (1,
-                "the one seam: Assembly.Load(AssemblyName) of a trusted-platform System.*/Microsoft.*/netstandard/" +
-                "mscorlib name (or a compiler dependency), once per process behind the framework Lazy — the " +
-                "default context's TPA binding, a process constant."),
+                "the one seam: Assembly.Load(AssemblyName) of a shared-framework name (a .dll in the " +
+                "Microsoft.NETCore.App runtime directory CoreLib was loaded from) or Sharpy.Core, once per " +
+                "process behind the framework Lazy — the default context's TPA binding, a process constant."),
             ["Discovery/AssemblyVisibility.cs::AssemblyVisibility.IsProcessStable::AssemblyLoadContext.Default"] = (1,
                 "the one seam: Design Decision 3's gate — a static Type-keyed cache holds a type only when it is " +
                 "wholly in the default context, so no static cache pins a per-registry load context."),
