@@ -1792,22 +1792,27 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         => full || SweepCorpus.StableBucket($"{stem}|{twin}|{requestKey}|{action}", DiagnosticsStride) == 0;
 
     /// <summary>
-    /// A FRESH compiler and driver for one (stem, twin). One <see cref="CompilerApi"/> caches its builtin and module
-    /// registries across analyses, and an analysis on a warm instance can answer differently from a cold one (measured
-    /// @ 43aab2658: Extract method's spelling of a builtin parameter type and SPY0220 on the IFormattable fixtures
-    /// moved with what the same instance analysed before, and with the thread interleaving at DOP 4 — ledgered as a
-    /// class finding). Isolating each (stem, twin) makes every verdict a function of that document alone: independent
-    /// of the parallelism, of the order stems run in, and of which stems a mode samples (so the regular pin pair is
-    /// the FULL pair restricted, as it claims). The handler's analyses and the <c>diagnostics</c> oracle share the
-    /// instance within the (stem, twin), in the fixed request order. Cost: ≈ 16 ms per (stem, twin) (measured).
+    /// A fresh driver for one (stem, twin) over the ONE <see cref="CompilerApi"/> the whole sweep shares — as the
+    /// language server shares one for the life of its process. Until #2250 (P54) each (stem, twin) needed its own
+    /// instance: an analysis on a warm instance could answer differently from a cold one (measured @ 43aab2658 —
+    /// a user `def len`/`def format` inside a `try:` rewrote the master builtin's parameters, so Extract method's
+    /// spelling of a builtin parameter type and SPY0220 on the IFormattable fixtures moved with what the instance
+    /// analysed before). P54 froze the master registries and gave every def its own symbol, so a verdict is a function
+    /// of its document alone on a shared instance too: independent of the parallelism, of the order stems run in and
+    /// of which stems a mode samples. The pins in code-action-shape-allowlist.txt are byte-identical (count and
+    /// digest) under the shared instance in regular and FULL mode — this sweep is the direction control for P54.
+    /// The handler's analyses and the <c>diagnostics</c> oracle share the instance in the fixed request order.
     /// </summary>
     private static (CompilerApi Api, LspCodeActionDriver Driver) Isolated()
     {
-        var api = new CompilerApi(CompilerNullLogger.Instance, s_references.Value);
+        var api = s_sharedApi.Value;
         return (api, new LspCodeActionDriver(api));
     }
 
     private static readonly Lazy<string[]> s_references = new(StdlibReferences.Paths);
+
+    private static readonly Lazy<CompilerApi> s_sharedApi =
+        new(() => new CompilerApi(CompilerNullLogger.Instance, s_references.Value));
 
     /// <summary>Documents a disposed per-(stem, twin) driver still held when its sweep ended (must stay 0).</summary>
     private static int s_retainedDocuments;
