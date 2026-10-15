@@ -18,11 +18,18 @@ namespace Sharpy.Compiler.Discovery;
 /// loaded so far" and so made a compile a function of the process's history.
 ///
 /// <para><b>The framework set is a process CONSTANT</b> (option A of Design Decision 1): a process
-/// <see cref="Lazy{T}"/> loads, once, every trusted-platform assembly named <c>System</c>,
-/// <c>System.*</c>, <c>Microsoft.*</c>, <c>netstandard</c> or <c>mscorlib</c>, plus <c>Sharpy.Core</c>,
-/// the compiler itself and the compiler's direct dependencies, and indexes their public types by
-/// namespace and by (simple name, arity). The trusted-platform list is fixed at process start, so the
-/// index is a function of nothing a compile can change. There is no namespace-driven loading left to
+/// <see cref="Lazy{T}"/> loads, once, the SHARED FRAMEWORK — every trusted-platform assembly that
+/// <c>Microsoft.NETCore.App</c> ships, i.e. whose file name is in the runtime directory CoreLib was
+/// loaded from — plus <c>Sharpy.Core</c>, and indexes their public types by namespace and by (simple
+/// name, arity). It is NOT the host's own application assemblies: a host's trusted-platform list also
+/// carries its deps.json packages (sharpyc: System.CommandLine, Microsoft.CodeAnalysis*,
+/// Microsoft.Extensions.*; the LSP: OmniSharp's; a test host: xunit's), which a compiled program does
+/// not ship with and which differ per host. A name filter (<c>System.*</c>/<c>Microsoft.*</c>) made the
+/// framework a compile saw a function of WHICH host ran it, and turned an import of a host package
+/// into a compile that crashes at run (#2250). A host package a program wants comes in by reference
+/// (<c>-r</c>) and loads into that registry's reference context like any other. The trusted-platform
+/// list and the runtime directory are fixed at process start, so the index is a function of nothing a
+/// compile can change, and it is the same set in every host on one runtime. There is no namespace-driven loading left to
 /// race (the former <c>ModuleRegistry._loadedRuntimeNamespaces</c> and
 /// <c>ClrAttributeResolver._probedNamespaces</c> gates are subsumed), and the namespace-less queries
 /// (a generic definition by display name, "does any assembly declare this namespace", the generic
@@ -420,11 +427,28 @@ internal sealed class AssemblyVisibility
 
     // ---- The framework set ----
 
-    /// <summary>Whether a trusted-platform simple name belongs to the framework set.</summary>
-    internal static bool IsFrameworkFileName(string simpleName)
-        => simpleName is "System" or "mscorlib" or "netstandard"
-           || simpleName.StartsWith("System.", StringComparison.Ordinal)
-           || simpleName.StartsWith("Microsoft.", StringComparison.Ordinal);
+    /// <summary>
+    /// The shared framework's directory — the <c>Microsoft.NETCore.App</c> runtime directory CoreLib was
+    /// loaded from — or null in a host whose CoreLib has no file (browser-wasm, a single-file bundle).
+    /// Computed, not stored: a function of the process's CoreLib.
+    /// </summary>
+    internal static string? SharedFrameworkDirectory
+        => typeof(object).Assembly.Location is { Length: > 0 } coreLib
+           && Path.GetDirectoryName(Path.GetFullPath(coreLib)) is { Length: > 0 } directory
+            ? directory
+            : null;
+
+    /// <summary>
+    /// Whether the shared framework ships an assembly named <paramref name="simpleName"/> — a
+    /// <c>.dll</c> of that name lies in <see cref="SharedFrameworkDirectory"/>. Keyed on the runtime's
+    /// files, never on a name prefix: the host's own <c>System.*</c>/<c>Microsoft.*</c> packages are not
+    /// the framework (#2250).
+    /// </summary>
+    internal static bool IsSharedFrameworkName(string simpleName)
+        => SharedFrameworkDirectory is { } directory
+           && simpleName.Length > 0
+           && simpleName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
+           && File.Exists(Path.Combine(directory, simpleName + ".dll"));
 
     /// <summary>The framework index's size and first-use cost (Phase 2 task 6's record).</summary>
     internal static (int Assemblies, int Types, long Milliseconds) FrameworkIndexStatistics
@@ -444,28 +468,48 @@ internal sealed class AssemblyVisibility
                 assemblies.Add(assembly);
         }
 
-        // The compiler's own identities first: CoreLib (what the static Type.GetType searched first),
-        // Sharpy.Core, the compiler itself, then its direct dependencies.
+        // CoreLib first (what the static Type.GetType searched first), then Sharpy.Core — the runtime
+        // every compiled program ships with. NOT the compiler itself nor its dependencies (Roslyn,
+        // Microsoft.Extensions.*): those are the host's, not the program's.
         Include(typeof(object).Assembly);
         Include(typeof(SharpyRT::Sharpy.Builtins).Assembly);
-        var compiler = typeof(AssemblyVisibility).Assembly;
-        Include(compiler);
-        foreach (var dependency in compiler.GetReferencedAssemblies().OrderBy(n => n.Name, StringComparer.Ordinal))
-            Include(LoadFrameworkAssembly(dependency));
 
-        // The trusted-platform System.* / Microsoft.* / netstandard / mscorlib assemblies, in ordinal
-        // name order — a process constant.
-        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string tpa)
+        if (SharedFrameworkDirectory != null)
         {
-            var names = tpa.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => Path.GetFileNameWithoutExtension(p) ?? string.Empty)
-                .Where(n => n.Length > 0 && IsFrameworkFileName(n))
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(n => n, StringComparer.Ordinal);
-            foreach (var name in names)
+            // The shared framework: the trusted-platform names Microsoft.NETCore.App ships, in ordinal
+            // name order — a process constant, the same in every host on this runtime. Loaded BY NAME,
+            // so a framework assembly the host's deps.json rolls forward binds to the one copy the
+            // process uses.
+            if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string tpa)
             {
-                if (!seen.Contains(name))
-                    Include(LoadFrameworkAssembly(new AssemblyName(name)));
+                var names = tpa.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => Path.GetFileNameWithoutExtension(p) ?? string.Empty)
+                    .Where(n => n.Length > 0 && IsSharedFrameworkName(n))
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(n => n, StringComparer.Ordinal);
+                foreach (var name in names)
+                {
+                    if (!seen.Contains(name))
+                        Include(LoadFrameworkAssembly(new AssemblyName(name)));
+                }
+            }
+        }
+        else
+        {
+            // A host with no file-backed runtime directory (the browser-wasm Playground, a single-file
+            // bundle) cannot tell the shared framework from its own packages by file. It gets the
+            // compiler's direct dependencies named System / System.* / netstandard / mscorlib — the
+            // framework facades the compiler was built against. Microsoft.* is the host's (Roslyn,
+            // Microsoft.Extensions.*) and is never included. Name-keyed only because no file exists to
+            // key on (#2250).
+            var compiler = typeof(AssemblyVisibility).Assembly;
+            foreach (var dependency in compiler.GetReferencedAssemblies().OrderBy(n => n.Name, StringComparer.Ordinal))
+            {
+                if (dependency.Name is "System" or "netstandard" or "mscorlib"
+                    || dependency.Name?.StartsWith("System.", StringComparison.Ordinal) == true)
+                {
+                    Include(LoadFrameworkAssembly(dependency));
+                }
             }
         }
 

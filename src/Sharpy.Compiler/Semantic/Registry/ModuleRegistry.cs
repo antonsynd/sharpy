@@ -112,8 +112,10 @@ internal class ModuleRegistry
             // Load the assembly into a load context keyed by this registry's reference set (#2250) —
             // never the process's default context, where a same-named copy another compilation loaded
             // would collide (the old SPY0306 arm) and stay visible to every later compile. A framework
-            // assembly (Sharpy.Core is a default reference) keeps the one identity the compiler was
-            // built against: the framework copy is used, not a second one. A simple name this registry
+            // assembly (the shared framework, or Sharpy.Core — a default reference) keeps the one
+            // identity the compiler was built against: the framework copy is used, not a second one. A
+            // reference named like one of the HOST's own packages (System.CommandLine under sharpyc)
+            // is not framework: the user's file is loaded, never the host's copy (#2250). A simple name this registry
             // already loaded keeps its first copy (first wins, as before), without loading another.
             var identity = AssemblyName.GetAssemblyName(resolvedPath);
             var simpleName = identity.Name ?? Path.GetFileNameWithoutExtension(resolvedPath);

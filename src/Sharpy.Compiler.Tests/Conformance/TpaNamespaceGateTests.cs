@@ -151,18 +151,19 @@ public class TpaNamespaceGateTests
 
     /// <summary>
     /// The public top-level types of <paramref name="namespaceName"/> declared by the framework's
-    /// trusted-platform files (System, System.*, Microsoft.*, netstandard, mscorlib), read from
-    /// metadata without loading any assembly.
+    /// trusted-platform files — the names the shared framework's runtime directory ships, never the
+    /// host's own packages (#2250) — read from metadata without loading any assembly.
     /// </summary>
     private static HashSet<string> FrameworkMetadataCensus(string namespaceName)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
+        var runtimeDirectory = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
         var tpa = ((AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string) ?? "")
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
         foreach (var path in tpa)
         {
             var simpleName = Path.GetFileNameWithoutExtension(path);
-            if (!AssemblyVisibility.IsFrameworkFileName(simpleName))
+            if (!File.Exists(Path.Combine(runtimeDirectory, simpleName + ".dll")))
                 continue;
 
             using var stream = File.OpenRead(path);
