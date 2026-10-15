@@ -29,6 +29,10 @@ namespace Sharpy.Compiler.Tests.Diagnostics;
 ///     literal count.</item>
 /// </list>
 ///
+/// Every rule reads a static auto-property's backing field as the property it stands for — keyed by
+/// the property name — so <c>static int Counter { get; set; }</c> is rule 1's and
+/// <c>static Dictionary&lt;K, V&gt; Map { get; } = new();</c> rule 2's, exactly like the fields they hide.
+///
 /// Rules 1 and 2 consult a single <see cref="Allowlist"/> keyed by declaring-type + field name.
 /// Every entry carries a justification: either an init-once lookup table (populated at
 /// declaration/static-ctor and never mutated afterward, so effectively immutable) or a
@@ -237,17 +241,18 @@ public class StaticStateConformanceTests
             foreach (var field in type.GetFields(
                          BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             {
+                // A static auto-property's backing field is compiler-generated, but `static int Counter
+                // { get; set; }` is a mutable static exactly like the field it stands for, and
+                // `static Dictionary<K, V> Map { get; } = new();` a mutable static collection: every rule
+                // applies to it, keyed by the PROPERTY name (#1036, #2250). Any other compiler-generated
+                // field (a lambda cache, a fixed buffer) is the compiler's, not ours.
+                var memberName = field.Name;
                 if (IsCompilerGenerated(field))
                 {
-                    // A static auto-property's backing field is compiler-generated, but a cache behind
-                    // `static ConcurrentDictionary<K, V> Cache { get; } = new();` is the same hazard as a
-                    // field — rule 2b keys it by the property name.
-                    if (field.IsInitOnly && TryGetAutoPropertyName(field, out var propertyName)
-                        && IsProcessWideCache(field.FieldType))
+                    if (!TryGetAutoPropertyName(field, out memberName))
                     {
-                        CheckProcessWideCache((type.FullName ?? type.Name, propertyName), field.FieldType);
+                        continue;
                     }
-                    continue;
                 }
 
                 if (field.IsLiteral && field.FieldType.IsEnum)
@@ -255,7 +260,7 @@ public class StaticStateConformanceTests
                     continue;
                 }
 
-                var key = (type.FullName ?? type.Name, field.Name);
+                var key = (type.FullName ?? type.Name, memberName);
                 var allowlisted = Allowlist.ContainsKey(key);
 
                 // Rule 1: static fields must be readonly or const.
@@ -268,7 +273,7 @@ public class StaticStateConformanceTests
                     else
                     {
                         violations.Add(
-                            $"[rule 1: not readonly/const] {key.Item1}.{field.Name} : {FriendlyType(field.FieldType)}");
+                            $"[rule 1: not readonly/const] {key.Item1}.{memberName} : {FriendlyType(field.FieldType)}");
                     }
                     continue;
                 }
@@ -283,7 +288,7 @@ public class StaticStateConformanceTests
                     else
                     {
                         violations.Add(
-                            $"[rule 2: mutable static collection] {key.Item1}.{field.Name} : {FriendlyType(field.FieldType)}");
+                            $"[rule 2: mutable static collection] {key.Item1}.{memberName} : {FriendlyType(field.FieldType)}");
                     }
                 }
 
