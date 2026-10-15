@@ -174,14 +174,14 @@ public class CompileServerE2ETests : IDisposable
     /// <summary>
     /// Deterministic base reproductions of the server request sequence, keyed by request; the value
     /// is the server's observed <see cref="RunFingerprint"/> at base. Each row drains in P54 Phase 2
-    /// task 2 (#2250).
+    /// (#2250).
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string> RequestSequenceKnownRed = new Dictionary<string, string>
     {
-        // #2250 cell 4: request 2's reference stays loaded in the server process, so request 3's
-        // import resolves at the registry and the Roslyn step has no reference — an ICE where a fresh
-        // process answers SPY0300 (exit 1). Reproduced 1/1 @ 486c9a88a (P46 verifier: 739ae5416, c245ece62).
-        ["3: run main.spy"] = "exit 2 | SPY0908(CS0400)",
+        // Empty since P54 Phase 2 task 1 (#2250): request 3 answered SPY0908(CS0400) @ 486c9a88a
+        // because request 2's reference stayed visible to the process-wide scans; with every CLR name
+        // resolved against the request's own AssemblyVisibility it answers SPY0300, exit 1, as a
+        // fresh process does — the row reported stale and drained.
     };
 
     /// <summary>
@@ -189,7 +189,7 @@ public class CompileServerE2ETests : IDisposable
     /// <c>run main.spy</c> (no <c>-r</c>) → <c>run -r Tablegreeter.dll main.spy</c> → <c>run main.spy</c>
     /// answers each request as a fresh <c>sharpyc</c> process answers the same command: exit code and
     /// diagnostic code set (and the program's line when it runs). Requests 1–2 are the positive
-    /// controls (SPY0300; runs); request 3 is a <see cref="RequestSequenceKnownRed"/> row at base.
+    /// controls (SPY0300; runs); request 3 was a <see cref="RequestSequenceKnownRed"/> row at base.
     /// Every client is a child process, so the library is never loaded into the test host.
     /// </summary>
     [Fact]
