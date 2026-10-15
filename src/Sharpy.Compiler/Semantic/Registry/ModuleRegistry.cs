@@ -362,7 +362,19 @@ internal class ModuleRegistry
     /// </summary>
     /// <param name="moduleName">The Sharpy module name (e.g., "system")</param>
     /// <returns>List of TypeSymbols for all public types in the namespace</returns>
-    public List<TypeSymbol> GetNamespaceTypes(string moduleName)
+    public List<TypeSymbol> GetNamespaceTypes(string moduleName) => GetNamespaceTypes(moduleName, beforeTpaLoad: null);
+
+    /// <summary>
+    /// <see cref="GetNamespaceTypes(string)"/> with a test seam on the process-wide TPA gate.
+    /// </summary>
+    /// <param name="moduleName">The Sharpy module name (e.g., "system")</param>
+    /// <param name="beforeTpaLoad">
+    /// Test seam only (#2250, P54 Phase 1 — retired when the gate gains a completion barrier):
+    /// invoked with the .NET namespace after THIS call has won the
+    /// <see cref="EnsureRuntimeAssembliesLoaded"/> gate and before it loads any trusted-platform
+    /// assembly, so a test can hold the gate open deterministically. Production passes null.
+    /// </param>
+    internal List<TypeSymbol> GetNamespaceTypes(string moduleName, Action<string>? beforeTpaLoad)
     {
         var types = new List<TypeSymbol>();
         var netNamespace = MapModuleToNamespace(moduleName);
@@ -370,7 +382,7 @@ internal class ModuleRegistry
             return types;
 
         // Ensure runtime assemblies for this namespace are loaded (e.g., System.IO.FileSystem for System.IO)
-        EnsureRuntimeAssembliesLoaded(netNamespace);
+        EnsureRuntimeAssembliesLoaded(netNamespace, beforeTpaLoad);
 
         // #1613: a CLR namespace spells some names as a GROUP of types differing only in generic
         // arity (EventHandler / EventHandler`1 / EventHandler`2, Action`0..16, Func`1..17).
@@ -700,10 +712,12 @@ internal class ModuleRegistry
     /// This ensures types like System.IO.DriveInfo (in System.IO.FileSystem.dll) are
     /// discoverable even when the hosting assembly isn't loaded by default.
     /// </summary>
-    private void EnsureRuntimeAssembliesLoaded(string netNamespace)
+    private void EnsureRuntimeAssembliesLoaded(string netNamespace, Action<string>? beforeTpaLoad)
     {
         if (!_loadedRuntimeNamespaces.TryAdd(netNamespace, 0))
             return;
+
+        beforeTpaLoad?.Invoke(netNamespace);
 
         var tpaString = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
         if (tpaString == null)
