@@ -95,6 +95,11 @@ public class ProcessWideResolutionScanTests
             ["Discovery/AssemblyVisibility.cs::AssemblyVisibility.IsProcessStable::AssemblyLoadContext.Default"] = (1,
                 "the one seam: Design Decision 3's gate — a static Type-keyed cache holds a type only when it is " +
                 "wholly in the default context, so no static cache pins a per-registry load context."),
+            ["Discovery/ReferenceLoadContext.cs::ReferenceLoadContext.GetOrLoad::new AssemblyLoadContext"] = (1,
+                "the one seam's other half (P54 Design Decision 2): a collectible context keyed by the registry's " +
+                "reference set (file identities + module paths), weakly shared — its contents are a function of " +
+                "the key; Load() defers to the default context (one framework / Sharpy.Core identity) unless " +
+                "the name is one of the set's own."),
         };
 
     /// <summary>
@@ -104,12 +109,6 @@ public class ProcessWideResolutionScanTests
     private static readonly IReadOnlyDictionary<string, (int Count, string Reason)> Allowlist =
         new Dictionary<string, (int, string)>(StringComparer.Ordinal)
         {
-            ["Discovery/Caching/AssemblyIdentity.cs::AssemblyIdentity.FromAssemblyPath::Assembly.LoadFrom"] = (1,
-                "#2250 drains in Phase 2 task 2 — DEAD code (zero callers) that would load into the default context — deleted, not rewritten."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.BindAlreadyLoadedCopy::Assembly.Load"] = (1,
-                "#2250 drains in Phase 2 task 2 — TRANSITIONAL: binds the default-context copy a same-named load from another path collided with, so task 1 changes no program's answer."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.LoadReference::Assembly.LoadFrom"] = (1,
-                "#2250 drains in Phase 2 task 2 — a user reference loaded into the default context: same-named copy from another path is SPY0306, the first copy stays visible to later compiles."),
         };
 
     private readonly ITestOutputHelper _output;
@@ -345,13 +344,15 @@ public class ProcessWideResolutionScanTests
         // Literal census @ 486c9a88a (measured): 14 AppDomain scans + 7 static Type.GetType + 4
         // Assembly.LoadFrom = 25 resolution sites; 5 Assembly.Load + 1 load-context construction = 6
         // rostered sites. P54 Phase 2 task 1 (measured): the 14 scans and the 6 non-seam Type.GetType
-        // sites drained into AssemblyVisibility, whose own three seam sites are Roster rows; 2 LoadFrom
-        // sites remain for task 2, plus task 1's one transitional Assembly.Load. Re-anchor as rows drain.
+        // sites drained into AssemblyVisibility, whose own three seam sites are Roster rows. Task 2
+        // (measured): the 3 remaining Allowlist rows drained — LoadReference loads into the registry's
+        // ReferenceLoadContext (its construction is a Roster row), AssemblyIdentity.FromAssemblyPath
+        // deleted, the transitional bind deleted. The Allowlist is EMPTY.
         Assert.Equal(0, result.Sites.Count(s => s.Kind == AppDomainScan));
         Assert.Equal(1, result.Sites.Count(s => s.Kind == StaticTypeGetType));
-        Assert.Equal(3, result.Sites.Count(s => Allowlist.ContainsKey(s.Key)));
-        Assert.Equal(9, result.Sites.Count(s => Roster.ContainsKey(s.Key)));
-        Assert.Equal(12, result.Sites.Count);
+        Assert.Empty(Allowlist);
+        Assert.Equal(10, result.Sites.Count(s => Roster.ContainsKey(s.Key)));
+        Assert.Equal(10, result.Sites.Count);
     }
 
     // ---- Synthetic controls: the same classifier on in-memory sources ----

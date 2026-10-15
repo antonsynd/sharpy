@@ -21,24 +21,6 @@ internal class AssemblyIdentity
     public string CompilerVersion { get; set; } = string.Empty;
 
     /// <summary>
-    /// Create an identity from an assembly file path.
-    /// </summary>
-    public static AssemblyIdentity FromAssemblyPath(string assemblyPath)
-    {
-        var assembly = Assembly.LoadFrom(assemblyPath);
-        var assemblyName = assembly.GetName();
-
-        return new AssemblyIdentity
-        {
-            Name = assemblyName.Name ?? Path.GetFileNameWithoutExtension(assemblyPath),
-            Version = assemblyName.Version?.ToString() ?? "1.0.0",
-            ContentHash = ComputeFileHash(assemblyPath),
-            FilePath = assemblyPath,
-            CompilerVersion = Shared.CompilerIdentity.Version
-        };
-    }
-
-    /// <summary>
     /// Create an identity from a loaded assembly.
     /// </summary>
     public static AssemblyIdentity FromAssembly(Assembly assembly)

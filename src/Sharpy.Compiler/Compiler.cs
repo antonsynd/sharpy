@@ -131,15 +131,15 @@ public class Compiler
             _discoveryTime += discoveryStopwatch.Elapsed;
         }
 
-        // A reference that resolves to no file is SPY0305 on the registry (the constructor's and the
-        // NuGet loads above). Refuse here, BEFORE the project pipeline runs: on this route
+        // A reference that resolves to no file (SPY0305) or cannot be loaded as given (SPY0306) is a
+        // registry error (the constructor's and the NuGet loads above; R-HI). Refuse here, BEFORE the project pipeline runs: on this route
         // ProjectCompiler.Compile itself writes the assembly, so a merge after it would leave the
         // output on disk beside a failed result (#2223). Same shape as CompileAsSyntheticProject.
-        var missingReferences = _moduleRegistry?.MissingReferenceDiagnostics();
-        if (missingReferences is { Count: > 0 })
+        var referenceErrors = _moduleRegistry?.ReferenceDiagnostics();
+        if (referenceErrors is { Count: > 0 })
         {
             var refused = new DiagnosticBag();
-            foreach (var diagnostic in missingReferences)
+            foreach (var diagnostic in referenceErrors)
                 refused.Add(diagnostic);
 
             return new ProjectCompilationResult

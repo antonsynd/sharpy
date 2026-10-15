@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Tests.Project;
 /// Every public compiler entry point that builds a module registry from a
 /// <see cref="ProjectConfig"/> reports a reference that resolves to no file as SPY0305 (#2223,
 /// plan-05dd79 Decision 5), through the one registry read
-/// <c>ModuleRegistry.MissingReferenceDiagnostics</c>.
+/// <c>ModuleRegistry.ReferenceDiagnostics</c>.
 /// </summary>
 /// <remarks>
 /// <para>The doors are enumerated by reflection and pinned to a LITERAL list of three, so a new
@@ -111,6 +111,57 @@ public sealed class RegistryErrorDoorTests : IDisposable
                 outputPath.Should().Be(defaultOutput, $"{cell} control writes the default output the missing cell checks");
                 File.Exists(defaultOutput).Should().BeTrue($"{cell} control: the assembly is on disk");
             }
+        }
+    }
+
+    /// <summary>
+    /// R-HI (#2250, #2182): EVERY registry error reaches every door, not only SPY0305. A reference
+    /// file that exists but is not a loadable assembly is SPY0306 ("cannot be loaded as given" — its
+    /// one meaning since each registry owns its load context); before, the doors read SPY0305 only, so
+    /// the compile went on and the Roslyn step met the bad file. The control is the same project with
+    /// a real assembly at that path: no SPY0306, success.
+    /// </summary>
+    [Theory]
+    [InlineData(CompileProject, true)]
+    [InlineData(CompileProject, false)]
+    [InlineData(CompileProjectWithToken, true)]
+    [InlineData(CompileProjectWithToken, false)]
+    [InlineData(AnalyzeProject, true)]
+    [InlineData(AnalyzeProject, false)]
+    public void Door_ReportsAnUnloadableReferenceAsSpy0306(string door, bool unloadable)
+    {
+        var dir = WriteProject("<Reference Include=\"Bad\"><HintPath>libs/Bad.dll</HintPath></Reference>");
+        var badPath = Path.Combine(dir, "libs", "Bad.dll");
+        if (unloadable)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(badPath)!);
+            File.WriteAllText(badPath, "this is not a .NET assembly");
+        }
+        else
+        {
+            EmitTinyAssembly(badPath);
+        }
+        var config = ProjectFileParser.Load(Path.Combine(dir, "app.spyproj"));
+        var cell = $"[{door}, unloadable={unloadable}]";
+
+        var (success, diagnostics, outputPath) = Run(door, config);
+        var spy0306 = diagnostics.Where(d => d.Code == DiagnosticCodes.Semantic.AssemblyLoadError).ToList();
+        var report = string.Join("\n", diagnostics.Where(d => d.IsError).Select(d => $"{d.Code}: {d.Message}"));
+
+        if (unloadable)
+        {
+            success.Should().BeFalse($"{cell} a reference that cannot be loaded fails the door\n{report}");
+            spy0306.Should().ContainSingle($"{cell} one SPY0306 for the one unloadable reference\n{report}");
+            spy0306[0].Message.Should().Contain(badPath, $"{cell} the diagnostic names the path");
+            diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+                $"{cell} refused by the registry, never by the C# compiler behind SPY0908\n{report}");
+            if (door != AnalyzeProject)
+                outputPath.Should().BeNull($"{cell} nothing was compiled");
+        }
+        else
+        {
+            spy0306.Should().BeEmpty($"{cell} control: a real assembly loads\n{report}");
+            success.Should().BeTrue($"{cell} control compiles\n{report}");
         }
     }
 

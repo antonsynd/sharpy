@@ -191,6 +191,14 @@ public class StaticStateConformanceTests
                 "is a function of the key; Phase 2's default-context gate applies to Assembly keys as to Type " +
                 "keys (Design Decision 3).",
 
+            // ---- The per-reference-set load contexts (#2250, P54 Design Decision 2) ----
+            [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_shared")] =
+                "Reference-set key (each reference file's full path + length + last-write time, the earlier " +
+                "references' identities, the module paths — AssemblyCompiler.s_referenceCache's convention) -> " +
+                "WeakReference to the context loaded for it: the context's contents are a function of the files " +
+                "its key names, so equal keys may share it; held weakly so it unloads when no registry uses it, " +
+                "and dead entries are pruned on every creation.",
+
             // ---- The visibility seam's framework index (#2250, P54 Design Decision 1) ----
             [("Sharpy.Compiler.Discovery.AssemblyVisibility", "s_framework")] =
                 "Lazy<TypeIndex> with no key: the framework set — the trusted-platform System.*/Microsoft.*/" +
@@ -319,7 +327,8 @@ public class StaticStateConformanceTests
         // Literal census @ 486c9a88a (measured): 20 ConcurrentDictionary + 2 Lazy, 0 ConditionalWeakTable.
         // P54 Phase 2 task 1 (measured): the five name-keyed rows drained (-5) and the framework index Lazy
         // was rostered (+1): 15 ConcurrentDictionary + 3 Lazy = 18.
-        Assert.Equal(18, flaggedCaches.Count);
+        // P54 Phase 2 task 2 (measured): + ReferenceLoadContext.s_shared = 19.
+        Assert.Equal(19, flaggedCaches.Count);
     }
 
     /// <summary>

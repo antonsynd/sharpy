@@ -538,6 +538,9 @@ public class ProcessGlobalStateConformanceTests
                 PropertiesNs + "Semantic.ValidatorOrderingPropertyTests", PropertiesNs + "Semantic.VariancePropertyTests",
                 PropertiesNs + "Stress.LargeProgramPropertyTests",
             }),
+        ("Sharpy.Compiler.Tests", "LoadContextRetention",
+            "forces full GCs to measure the per-reference-set load contexts a long-lived host retains (#2250); a forced collection stalls every concurrently running test (#2254)",
+            new[] { "Sharpy.Compiler.Tests.Project.RegistryIsolationTests" }),
         ("Sharpy.Stdlib.Tests", "ProcessCwd",
             "os.chdir changes the current directory and os.putenv the environment; getcwd, Path.cwd and relative paths read them",
             new[] { "Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.OsModuleTestsModuleTests" }),
@@ -558,10 +561,10 @@ public class ProcessGlobalStateConformanceTests
     };
 
     /// <summary>Positive control: roster size counted by hand from the P2/P4/P5 audit (not from the array).</summary>
-    private const int ExpectedSerialCollections = 7;
+    private const int ExpectedSerialCollections = 8;
 
-    /// <summary>1 + 1 + 44 (Compiler) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
-    private const int ExpectedSerialMembers = 52;
+    /// <summary>1 + 1 + 44 + 1 (Compiler; LoadContextRetention #2250) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
+    private const int ExpectedSerialMembers = 53;
 
     [Fact]
     public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()

@@ -25,6 +25,14 @@ internal class ModuleRegistry
     private readonly ConcurrentDictionary<string, string> _assemblyNameToPath = new();
     private readonly ConcurrentDictionary<string, byte> _usedAssemblyPaths = new();
 
+    /// <summary>
+    /// The load contexts this registry's non-framework references live in (#2250, P54 Design
+    /// Decision 2), keyed by its reference set (<see cref="ReferenceLoadContext.GetOrLoad"/>). Held
+    /// strongly for the registry's life — the process-wide share holds them only weakly, so holding
+    /// them here is what keeps a context from unloading under a compilation still using it.
+    /// </summary>
+    private readonly List<ReferenceLoadContext> _loadContexts = new();
+
     public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
         _logger = logger ?? NullLogger.Instance;
@@ -42,24 +50,19 @@ internal class ModuleRegistry
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
-    /// The registry's SPY0305 (<see cref="DiagnosticCodes.Semantic.AssemblyNotFound"/>)
-    /// diagnostics: one per reference that resolved to no file. The one read every door that builds
-    /// a registry from a <see cref="ProjectConfig"/> makes before it compiles or reports (#2173,
-    /// #2223) — <c>Compiler.CompileProject</c> refuses with these before anything is written,
-    /// <c>CompilerApi.CompileAsSyntheticProject</c> likewise, and <c>CompilerApi.AnalyzeProject</c>
-    /// merges them into its result, where the file-less entry lands on the project's unattributed
-    /// target.
+    /// Every registry error: SPY0305 (<see cref="DiagnosticCodes.Semantic.AssemblyNotFound"/>, a
+    /// reference that resolved to no file) and SPY0306 (<see cref="DiagnosticCodes.Semantic.AssemblyLoadError"/>,
+    /// a reference that cannot be loaded as given — not an assembly, unreadable). The one read every
+    /// door that builds a registry from a <see cref="ProjectConfig"/> makes before it compiles or
+    /// reports (#2173, #2223, R-HI) — <c>Compiler.CompileProject</c> refuses with these before
+    /// anything is written, <c>CompilerApi.CompileAsSyntheticProject</c> likewise, and
+    /// <c>CompilerApi.AnalyzeProject</c> merges them into its result, where the file-less entry lands
+    /// on the project's unattributed target. SPY0306 has ONE meaning since each registry loads its
+    /// references into its own load context (#2250): a same-named assembly another compilation
+    /// loaded from another path can no longer collide with this one's.
     /// </summary>
-    /// <remarks>
-    /// Only the missing-path code: SPY0306 also fires when a long-lived process (a test host, the
-    /// compile server) already loaded a same-named assembly from another path, and that compile
-    /// goes on to succeed against the loaded copy — a different defect, not this one. Refusing on
-    /// every registry error reddened run-route cells when this was first measured (fa7e8aa63).
-    /// </remarks>
-    public IReadOnlyList<CompilerDiagnostic> MissingReferenceDiagnostics()
-        => _diagnostics.GetAll()
-            .Where(d => d.Code == DiagnosticCodes.Semantic.AssemblyNotFound)
-            .ToList();
+    public IReadOnlyList<CompilerDiagnostic> ReferenceDiagnostics()
+        => _diagnostics.GetAll().ToList();
 
     /// <summary>
     /// The assemblies loaded as module references so far. Consulted by the TypeChecker's BCL
@@ -106,9 +109,23 @@ internal class ModuleRegistry
                 return false;
             }
 
-            // Load the assembly
-            var assembly = Assembly.LoadFrom(resolvedPath);
-            var assemblyName = assembly.GetName().Name ?? Path.GetFileNameWithoutExtension(resolvedPath);
+            // Load the assembly into a load context keyed by this registry's reference set (#2250) —
+            // never the process's default context, where a same-named copy another compilation loaded
+            // would collide (the old SPY0306 arm) and stay visible to every later compile. A framework
+            // assembly (Sharpy.Core is a default reference) keeps the one identity the compiler was
+            // built against: the framework copy is used, not a second one. A simple name this registry
+            // already loaded keeps its first copy (first wins, as before), without loading another.
+            var identity = AssemblyName.GetAssemblyName(resolvedPath);
+            var simpleName = identity.Name ?? Path.GetFileNameWithoutExtension(resolvedPath);
+            if (_loadedAssemblies.ContainsKey(simpleName))
+            {
+                _logger.LogDebug($"Assembly '{simpleName}' already loaded");
+                return true;
+            }
+
+            var assembly = AssemblyVisibility.FindFrameworkAssembly(simpleName)
+                ?? LoadIntoReferenceContext(resolvedPath);
+            var assemblyName = assembly.GetName().Name ?? simpleName;
 
             // Use TryAdd for atomic check-and-add operation
             if (!_loadedAssemblies.TryAdd(assemblyName, assembly))
@@ -124,17 +141,6 @@ internal class ModuleRegistry
 
             _logger.LogInfo($"Loaded module reference: {assemblyName} from {resolvedPath}");
             return true;
-        }
-        catch (FileLoadException ex) when (BindAlreadyLoadedCopy(assemblyPath) is { } alreadyLoaded)
-        {
-            // TRANSITIONAL (#2250, drains in P54 Phase 2 task 2 with the per-registry load context): a
-            // same-named assembly from another path is already in the default context, so this load
-            // fails (SPY0306, still filtered by MissingReferenceDiagnostics) — and before the visibility
-            // seam the process-wide scans then found that OTHER copy. The copy is made visible here, so
-            // this commit changes no program's answer; task 2 gives each registry its own copy instead.
-            _diagnostics.AddPhaseError($"Failed to load assembly '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
-            Visibility.Add(alreadyLoaded);
-            return false;
         }
         catch (IOException ex)
         {
@@ -154,21 +160,27 @@ internal class ModuleRegistry
     }
 
     /// <summary>
-    /// TRANSITIONAL (#2250, deleted in P54 Phase 2 task 2): the default-context copy of the assembly
-    /// <paramref name="assemblyPath"/> names, bound by its simple name — the copy a same-named load from
-    /// another path collided with. Null when the path does not resolve or no such copy binds.
+    /// The registry's copy of the non-framework reference at <paramref name="fullPath"/>: an assembly
+    /// one of its contexts already loaded from that file (as a dependency of an earlier reference), else
+    /// the reference-set-keyed context's (#2250).
     /// </summary>
-    private Assembly? BindAlreadyLoadedCopy(string assemblyPath)
+    private Assembly LoadIntoReferenceContext(string fullPath)
     {
-        try
+        lock (_loadContexts)
         {
-            return ResolveAssemblyPath(assemblyPath) is { } path
-                ? Assembly.Load(AssemblyName.GetAssemblyName(path))
-                : null;
-        }
-        catch (Exception ex) when (ex is IOException or BadImageFormatException or ArgumentException)
-        {
-            return null;
+            foreach (var held in _loadContexts)
+            {
+                foreach (var loaded in held.Assemblies)
+                {
+                    if (string.Equals(loaded.Location, fullPath, StringComparison.Ordinal))
+                        return loaded;
+                }
+            }
+
+            var context = ReferenceLoadContext.GetOrLoad(
+                fullPath, Visibility.OwnAssemblies, GetModulePaths().ToList());
+            _loadContexts.Add(context);
+            return context.Reference;
         }
     }
 
@@ -621,7 +633,7 @@ internal class ModuleRegistry
     /// 2. Relative to current directory
     /// 3. Module search paths
     /// Note: TOCTOU (Time-of-Check-Time-of-Use) race condition is acceptable here
-    /// as any file system changes between this check and Assembly.LoadFrom() are
+    /// as any file system changes between this check and the load in LoadReference() are
     /// handled by exception catching (IOException, UnauthorizedAccessException) in LoadReference().
     /// </summary>
     private string? ResolveAssemblyPath(string assemblyPath) => ResolveAssemblyPath(assemblyPath, _modulePaths);
