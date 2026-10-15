@@ -1037,7 +1037,7 @@ internal partial class TypeChecker
             };
             if (receiverSymbol != null)
             {
-                List<FunctionSymbol>? getItemMethods = null;
+                SymbolMemberList<FunctionSymbol>? getItemMethods = null;
                 receiverSymbol.OperatorMethods.TryGetValue(DunderNames.GetItem, out getItemMethods);
                 if (getItemMethods == null)
                     receiverSymbol.ProtocolMethods.TryGetValue(DunderNames.GetItem, out getItemMethods);

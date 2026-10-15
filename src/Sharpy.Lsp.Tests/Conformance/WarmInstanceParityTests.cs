@@ -100,10 +100,11 @@ public sealed class WarmInstanceParityTests : IClassFixture<WarmInstanceParityTe
     /// The earlier documents measured to flip the targets on ONE instance (<see cref="WarmInstanceTriggers"/>): two
     /// Wrap-in-try applied texts the P47 sweep analysed @ 43aab2658, found by replaying the sweep on one instance and
     /// re-reading the targets after every document; the sweep no longer produces them, so they are replayed by text
-    /// right before each target (and shuffled into the concurrent arm).
+    /// right before each target (and shuffled into the concurrent arm). With them, the TYPE-definition twins
+    /// (<see cref="WarmInstanceTriggers.TypeDefinitionTexts"/>: a <c>class str</c> and its struct/interface/union/delegate
+    /// and dataclass siblings inside a block, which wrote the master <c>str</c> until the type-definition seam).
     /// </summary>
-    internal static readonly (string Name, string Text)[] TriggerTexts =
-        WarmInstanceTriggers.AppliedTexts.Select(t => (t.Name, t.Text)).ToArray();
+    internal static readonly (string Name, string Text)[] TriggerTexts = WarmInstanceTriggers.AllTexts;
 
     /// <summary>The concurrent arm's marker for a trigger-text item.</summary>
     private const string TriggerTwin = "trigger";
@@ -285,6 +286,53 @@ public sealed class WarmInstanceParityTests : IClassFixture<WarmInstanceParityTe
         log.Add(before.Describe(after, 6));
         log.Add($"elapsed {clock.Elapsed.TotalSeconds:F1}s");
         Judge(WarmConcurrent, readings.ToDictionary(p => p.Key, p => p.Value.ToList(), StringComparer.Ordinal), log);
+    }
+
+    /// <summary>
+    /// The verifier's F1 cell (P54 #2250 @ effba7776), as one Sharpy.Lsp served it: a later document that reads a member
+    /// the master <c>str</c> does not have (<see cref="WarmInstanceTriggers.LaterDocumentProbes"/>) must publish what a
+    /// cold process publishes after EACH trigger text — opened through the server's document route and analysed by
+    /// text — was served on the same instance. Before the type-definition seam the <c>class str</c> text added a
+    /// <c>_size</c> backing field to the master <c>str</c> and the probe's SPY0203 vanished on the warm instance.
+    /// Positive controls: the cold oracle publishes SPY0203 for the probe (the cell reads what it is about), and each
+    /// probe opened first on the same instance — before any trigger — equals the cold reading.
+    /// </summary>
+    [Fact]
+    public async Task WarmSequential_LaterDocumentProbes_AnswerAsTheColdProcessAfterEveryTrigger()
+    {
+        var cold = new SCG.Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (name, text) in WarmInstanceTriggers.LaterDocumentProbes)
+            cold[name] = (await ColdAsync(text, null)).Diagnostics;
+        Assert.Contains("SPY0203", cold["str-has-no-_size"], StringComparison.Ordinal);
+
+        var api = NewApi();
+        using var driver = new LspCodeActionDriver(api);
+        var problems = new SCG.List<string>();
+        void ReadProbes(string after)
+        {
+            foreach (var (name, text) in WarmInstanceTriggers.LaterDocumentProbes)
+            {
+                using var session = driver.Open(text);
+                var warm = DiagFingerprint(session.Diagnostics);
+                _output.WriteLine($"{name} after {after}: {warm}");
+                if (!string.Equals(warm, cold[name], StringComparison.Ordinal))
+                    problems.Add($"{name} after {after}: warm [{warm}] / cold [{cold[name]}]");
+            }
+        }
+
+        ReadProbes("nothing (the positive control)");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+        foreach (var (name, text) in TriggerTexts)
+        {
+            using (driver.Open(text))
+            {
+            }
+
+            api.Analyze(text, CancellationToken.None);
+            ReadProbes($"trigger {name}");
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
     }
 
     // ================================================================

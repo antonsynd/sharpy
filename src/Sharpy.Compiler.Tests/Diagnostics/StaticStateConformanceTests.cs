@@ -435,6 +435,9 @@ public class StaticStateConformanceTests
                 "ConcurrentDictionary<Type, TypeSymbol> — interface definition cache (#1633)",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_clrTypeCache")] =
                 "ConcurrentDictionary<(string, int), TypeSymbol?> — CLR type lookup cache (#1633)",
+            [("Sharpy.Compiler.Semantic.SymbolOverloadTable", "_table")] =
+                "Dictionary<string, SymbolMemberList<FunctionSymbol>> — not a cache: a TypeSymbol's own overload table " +
+                "(OperatorMethods/ProtocolMethods/MethodOverloads), which refuses every write once its symbol is frozen (#2250)",
         };
 
     [Fact]

@@ -433,7 +433,7 @@ public class MasterRegistryImmutabilityTests
         var symbols = new RegistrySnapshot(api);
         symbols.AssertNotVacuous();
         Assert.Equal(cold, BuiltinIdentifierTypes(api, probe, builtins));
-        foreach (var (name, _, text) in WarmInstanceTriggers.AppliedTexts)
+        foreach (var (name, text) in WarmInstanceTriggers.AllTexts)
         {
             api.Analyze(text, CancellationToken.None);
             var now = MasterRegistryKeySets.Take(api);
@@ -550,11 +550,13 @@ public class MasterRegistryImmutabilityTests
     }
 
     /// <summary>
-    /// <see cref="FunctionSymbol.Parameters"/> is a <see cref="List{T}"/>, so no setter can refuse an element write the way
-    /// the frozen properties do: <c>symbol.Parameters[i] = …</c> on a master symbol would retype the builtin without a
-    /// throw — the exact #2250 write. Every element write therefore goes through
+    /// <see cref="FunctionSymbol.Parameters"/> was a <see cref="List{T}"/> when this scan was written, so no setter could
+    /// refuse an element write the way the frozen properties do: <c>symbol.Parameters[i] = …</c> on a master symbol
+    /// retyped the builtin without a throw — the exact #2250 write. Every element write goes through
     /// <see cref="FunctionSymbol.ReplaceParameter"/>, which checks the freeze, and this scan keeps it that way: no compiler
-    /// source assigns a <c>Parameters[…]</c> element except <c>Symbol.cs</c> itself.
+    /// source assigns a <c>Parameters[…]</c> element except <c>Symbol.cs</c> itself. Since the member-collection freeze
+    /// (<see cref="SymbolMemberList{T}"/>, <see cref="MasterSymbolCollections_AreFrozen_AndEveryWriteIsRefused"/>) the list
+    /// refuses the write itself too; the scan stays as the source-level layer.
     /// </summary>
     [Fact]
     public void NoCompilerSourceWritesAParameterElementPastTheFreeze()
@@ -594,6 +596,315 @@ public class MasterRegistryImmutabilityTests
             "a Parameters element is written directly, past the master-symbol freeze — use FunctionSymbol.ReplaceParameter "
             + $"(#2250):\n  {string.Join("\n  ", writes)}");
     }
+
+    /// <summary>
+    /// The verifier's F1 cell (P54 #2250 @ effba7776) at the compiler level: on ONE <see cref="CompilerApi"/>, a later
+    /// document that reads a member the master <c>str</c> does not have
+    /// (<see cref="WarmInstanceTriggers.LaterDocumentProbes"/>) has the diagnostics a fresh instance gives, after EACH
+    /// trigger text — in particular the type-definition texts, whose <c>class str</c> in a block added a <c>_size</c>
+    /// backing field to the master <c>str</c> (the probe's SPY0203 vanished). Positive controls: the fresh reading
+    /// carries SPY0203 (the probe reads what the cell is about), and the same instance answers as the fresh one before
+    /// any trigger.
+    /// </summary>
+    [Fact]
+    public void WarmInstanceTriggers_DoNotChangeALaterDocumentsDiagnostics()
+    {
+        var fresh = WarmInstanceTriggers.LaterDocumentProbes.ToDictionary(
+            p => p.Name, p => DiagnosticFingerprint(new CompilerApi(null, StdlibReferencePaths()), p.Text), StringComparer.Ordinal);
+        Assert.Contains("SPY0203", fresh["str-has-no-_size"], StringComparison.Ordinal);
+
+        var api = new CompilerApi(null, StdlibReferencePaths());
+        var problems = new List<string>();
+        void ReadProbes(string after)
+        {
+            foreach (var (name, text) in WarmInstanceTriggers.LaterDocumentProbes)
+            {
+                var warm = DiagnosticFingerprint(api, text);
+                _output.WriteLine($"{name} after {after}: {warm}");
+                if (!string.Equals(warm, fresh[name], StringComparison.Ordinal))
+                    problems.Add($"{name} after {after}: warm [{warm}] / fresh [{fresh[name]}]");
+            }
+        }
+
+        ReadProbes("nothing (the positive control)");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+        foreach (var (name, text) in WarmInstanceTriggers.AllTexts)
+        {
+            api.Analyze(text, CancellationToken.None);
+            ReadProbes($"trigger {name}");
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    /// <summary>
+    /// The verifier's F2 cell and its siblings (P54 #2250 @ effba7776): a type definition in a block or a function body
+    /// — a class, a <c>@dataclass</c> class, a struct, an interface, a union, a delegate, each named <c>str</c> — is
+    /// REFUSED (SPY0202: it has no symbol of its own, C# has no local types; plus SPY0340 for a module-level block) and
+    /// never reaches an internal error: the dataclass text was SPY0909 (PhaseViolationException on the frozen master
+    /// <c>str</c>) at effba7776. The SPY0202 is the positive control for the absence of SPY09xx — the checker reached the
+    /// definition.
+    /// </summary>
+    [Fact]
+    public void WarmInstanceTriggers_TypeDefinitionsAreRefusedWithoutAnInternalError()
+    {
+        var api = new CompilerApi(null, StdlibReferencePaths());
+        var problems = new List<string>();
+        foreach (var (name, text) in WarmInstanceTriggers.TypeDefinitionTexts)
+        {
+            var codes = api.Analyze(text, CancellationToken.None).Diagnostics.Select(d => d.Code ?? "-").ToList();
+            _output.WriteLine($"{name}: {string.Join(" ", codes)}");
+            if (codes.Any(c => c.StartsWith("SPY09", StringComparison.Ordinal)))
+                problems.Add($"{name}: an internal error ({string.Join(" ", codes)})");
+            if (!codes.Contains("SPY0202"))
+                problems.Add($"{name}: the type definition was not refused with SPY0202 ({string.Join(" ", codes)})");
+            if (text.StartsWith("try:", StringComparison.Ordinal) && !codes.Contains("SPY0340"))
+                problems.Add($"{name}: the module-level block was not refused with SPY0340 ({string.Join(" ", codes)})");
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    /// <summary>
+    /// The freeze covers a master symbol's member COLLECTIONS, not only its settable properties (P54 #2250 @ effba7776,
+    /// F1: <c>typeSymbol.Fields.Add(backingField)</c> wrote the master <c>str</c> through a list the property freeze did
+    /// not reach). Every <see cref="SymbolMemberList{T}"/> / <see cref="SymbolOverloadTable"/> of every master type and
+    /// function overload is frozen (a floor on the count), and on the master <c>str</c> and <c>len</c> every mutator of
+    /// every such collection throws <see cref="Sharpy.Compiler.Diagnostics.PhaseViolationException"/> and leaves the
+    /// collection as it was.
+    /// </summary>
+    [Fact]
+    public void MasterSymbolCollections_AreFrozen_AndEveryWriteIsRefused()
+    {
+        var api = new CompilerApi();
+        var master = api.PrimeAnalysisContextForTests();
+        var symbols = new List<Symbol>();
+        foreach (var (_, type) in master.GetAllTypes())
+            symbols.Add(type);
+        foreach (var (name, _) in master.GetAllFunctions())
+            symbols.AddRange(master.GetFunctionOverloads(name) ?? new List<FunctionSymbol>());
+
+        var collections = 0;
+        var unfrozen = new List<string>();
+        foreach (var symbol in symbols)
+        {
+            foreach (var (property, collection) in MemberCollections(symbol))
+            {
+                collections++;
+                if (!IsCollectionFrozen(collection))
+                    unfrozen.Add($"{symbol.GetType().Name} '{symbol.Name}'.{property}");
+            }
+        }
+
+        Assert.True(collections >= 500, $"only {collections} member collections of master symbols were enumerated");
+        Assert.True(unfrozen.Count == 0, $"unfrozen member collections of master symbols: {string.Join(", ", unfrozen.Take(20))}");
+
+        var refusals = 0;
+        foreach (var symbol in new Symbol[] { master.GetType("str")!, master.GetFunction("len")! })
+        {
+            foreach (var (property, collection) in MemberCollections(symbol))
+                refusals += AssertEveryWriteRefused($"{symbol.GetType().Name} '{symbol.Name}'.{property}", collection);
+        }
+
+        // TypeSymbol carries 15 member collections and FunctionSymbol 2; each is tried with at least 4 mutators.
+        Assert.True(refusals >= 4 * 17, $"only {refusals} refused writes were attempted");
+    }
+
+    /// <summary>
+    /// The instrument of <see cref="MasterSymbolCollections_AreFrozen_AndEveryWriteIsRefused"/>, both directions, and the
+    /// totality of <c>FreezeMembers</c>: on a symbol built here, every member collection accepts every mutator BEFORE
+    /// <see cref="Symbol.Freeze"/> (positive control — the refusal is the freeze, not the collection type), and refuses
+    /// every one after it. Enumerated by reflection, so a member collection added to a symbol type and not to its
+    /// <c>FreezeMembers</c> is red here. A symbol type that declares a raw mutable collection (a <see cref="List{T}"/>,
+    /// <see cref="Dictionary{TKey,TValue}"/>, …) instead of a freezable one is red too: the freeze could not reach it.
+    /// </summary>
+    [Fact]
+    public void SymbolMemberCollections_AcceptWritesUntilFrozen_ThenRefuseEvery()
+    {
+        var symbols = new Symbol[]
+        {
+            new TypeSymbol { Name = "Probe", Kind = SymbolKind.Type },
+            new FunctionSymbol { Name = "probe", Kind = SymbolKind.Function },
+        };
+
+        foreach (var symbol in symbols)
+        {
+            var members = MemberCollections(symbol).ToList();
+            Assert.NotEmpty(members);
+            foreach (var (property, collection) in members)
+            {
+                Assert.False(IsCollectionFrozen(collection), $"{symbol.GetType().Name} '{symbol.Name}'.{property} is frozen before Freeze()");
+                AssertEveryWriteAccepted($"{symbol.GetType().Name} '{symbol.Name}'.{property}", collection);
+            }
+
+            symbol.Freeze();
+            foreach (var (property, collection) in members)
+            {
+                Assert.True(IsCollectionFrozen(collection), $"{symbol.GetType().Name} '{symbol.Name}'.{property} is not frozen by Freeze() — add it to FreezeMembers");
+                AssertEveryWriteRefused($"{symbol.GetType().Name} '{symbol.Name}'.{property}", collection);
+            }
+        }
+
+        Assert.Equal(15, MemberCollections(symbols[0]).Count());
+        Assert.Equal(2, MemberCollections(symbols[1]).Count());
+
+        // Every symbol type the master owns declares no collection the freeze cannot reach: the runtime types of the
+        // master's symbols and their members, plus the member kinds the registry's freeze walk visits (fields and
+        // dataclass fields are VariableSymbols, nested aliases TypeAliasSymbols) whether or not a builtin has one today.
+        var api = new CompilerApi();
+        var master = api.PrimeAnalysisContextForTests();
+        var observed = master.GetAllTypes().Select(p => p.Type)
+            .SelectMany(t => new Symbol[] { t }.Concat(t.Methods).Concat(t.Fields).Concat(t.Constructors).Concat(t.NestedTypes))
+            .Select(s => s.GetType())
+            .Distinct()
+            .ToList();
+        Assert.Contains(typeof(TypeSymbol), observed);
+        Assert.Contains(typeof(FunctionSymbol), observed);
+        var ownedTypes = observed.Concat(new[] { typeof(VariableSymbol), typeof(TypeAliasSymbol) }).Distinct().ToList();
+        var unfreezable = ownedTypes
+            .SelectMany(t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => (Type: t, Property: p)))
+            .Where(x => IsRawMutableCollection(x.Property.PropertyType))
+            .Select(x => $"{x.Type.Name}.{x.Property.Name} : {x.Property.PropertyType.Name}")
+            .ToList();
+        Assert.True(unfreezable.Count == 0,
+            $"a symbol type the master owns declares a mutable collection the freeze cannot reach — use SymbolMemberList / SymbolOverloadTable (#2250):\n  {string.Join("\n  ", unfreezable)}");
+        Assert.True(IsRawMutableCollection(typeof(List<int>)) && IsRawMutableCollection(typeof(Dictionary<string, int>))
+            && !IsRawMutableCollection(typeof(SymbolMemberList<int>)) && !IsRawMutableCollection(typeof(IReadOnlyList<int>)),
+            "the raw-mutable-collection classifier is wrong");
+    }
+
+    /// <summary>A symbol's freezable member collections, by property name (reflection — the totality is the point).</summary>
+    private static IEnumerable<(string Property, object Collection)> MemberCollections(Symbol symbol)
+    {
+        foreach (var property in symbol.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var type = property.PropertyType;
+            var freezable = type == typeof(SymbolOverloadTable)
+                || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(SymbolMemberList<>));
+            if (freezable && property.GetValue(symbol) is { } value)
+                yield return (property.Name, value);
+        }
+    }
+
+    private static bool IsCollectionFrozen(object collection)
+        => (bool)collection.GetType().GetProperty("IsFrozen", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(collection)!;
+
+    private static bool IsRawMutableCollection(Type type)
+    {
+        if (!type.IsGenericType)
+            return false;
+        var definition = type.GetGenericTypeDefinition();
+        return definition == typeof(List<>) || definition == typeof(Dictionary<,>) || definition == typeof(HashSet<>)
+            || definition == typeof(IList<>) || definition == typeof(ICollection<>) || definition == typeof(IDictionary<,>)
+            || definition == typeof(ISet<>);
+    }
+
+    /// <summary>Each mutator of <paramref name="collection"/> succeeds, and the collection ends empty again.</summary>
+    private static void AssertEveryWriteAccepted(string what, object collection)
+    {
+        if (collection is SymbolOverloadTable table)
+        {
+            table["__probe__"] = new SymbolMemberList<FunctionSymbol>();
+            table["__probe__"].Add(new FunctionSymbol { Name = "__probe__", Kind = SymbolKind.Function });
+            Assert.True(table.Remove("__probe__"), what);
+            Assert.True(table.TryAdd("__probe__", new SymbolMemberList<FunctionSymbol>()), what);
+            table.Remove("__probe__");
+            table.Add("__probe__", new SymbolMemberList<FunctionSymbol>());
+            table.Remove("__probe__");
+            Assert.Empty(table);
+            return;
+        }
+
+        var list = (IList)collection;
+        var sample = SampleElement(collection);
+        list.Add(sample);
+        list[0] = sample;
+        list.Insert(0, sample);
+        list.Remove(sample);
+        list.RemoveAt(0);
+        Assert.Empty(list);
+        list.Add(sample);
+        list.Clear();
+        Assert.Empty(list);
+    }
+
+    /// <summary>Each mutator of <paramref name="collection"/> throws and leaves it unchanged; returns the count tried.</summary>
+    private static int AssertEveryWriteRefused(string what, object collection)
+    {
+        static void Refused(string what, string mutator, Action write)
+        {
+            var thrown = Record.Exception(write);
+            Assert.True(thrown is Sharpy.Compiler.Diagnostics.PhaseViolationException,
+                $"{what}: {mutator} on a frozen collection was {(thrown is null ? "accepted" : $"a {thrown.GetType().Name}")}");
+        }
+
+        if (collection is SymbolOverloadTable table)
+        {
+            var keys = table.Keys.ToList();
+            var triedTable = 4;
+            Refused(what, "indexer set", () => table["__probe__"] = new SymbolMemberList<FunctionSymbol>());
+            Refused(what, "TryAdd", () => table.TryAdd("__probe__", new SymbolMemberList<FunctionSymbol>()));
+            Refused(what, "Add", () => table.Add("__probe__", new SymbolMemberList<FunctionSymbol>()));
+            Refused(what, "Remove", () => table.Remove(keys.FirstOrDefault() ?? "__probe__"));
+            foreach (var key in keys)
+            {
+                triedTable += AssertEveryWriteRefused($"{what}[{key}]", table[key]);
+            }
+
+            Assert.Equal(keys, table.Keys.ToList());
+            return triedTable;
+        }
+
+        var list = (IList)collection;
+        var before = list.Cast<object?>().ToList();
+        var sample = SampleElement(collection);
+        Refused(what, "Add", () => list.Add(sample));
+        Refused(what, "Insert", () => list.Insert(0, sample));
+        Refused(what, "Clear", list.Clear);
+        Refused(what, "AddRange", () =>
+        {
+            try
+            {
+                collection.GetType().GetMethod("AddRange")!.Invoke(
+                    collection, new object[] { Array.CreateInstance(collection.GetType().GetGenericArguments()[0], 1) });
+            }
+            catch (TargetInvocationException invocation) when (invocation.InnerException is { } inner)
+            {
+                throw inner;
+            }
+        });
+        var tried = 4;
+
+        // An empty list has no element to replace or remove — those mutators are bounds/lookup no-ops before any write.
+        if (before.Count > 0)
+        {
+            Refused(what, "indexer set", () => list[0] = before[0]);
+            Refused(what, "Remove", () => list.Remove(before[0]));
+            Refused(what, "RemoveAt", () => list.RemoveAt(0));
+            tried += 3;
+        }
+
+        Assert.Equal(before, list.Cast<object?>().ToList());
+        return tried;
+    }
+
+    /// <summary>
+    /// An element of the right type for <paramref name="collection"/>: its first element, else null (every member
+    /// collection holds a reference type; a value type gets its default).
+    /// </summary>
+    private static object? SampleElement(object collection)
+    {
+        var list = (IList)collection;
+        if (list.Count > 0)
+            return list[0];
+        var elementType = collection.GetType().GetGenericArguments()[0];
+        return elementType.IsValueType ? Activator.CreateInstance(elementType) : null;
+    }
+
+    private static string DiagnosticFingerprint(CompilerApi api, string text)
+        => string.Join(" ", api.Analyze(text, CancellationToken.None).Diagnostics
+            .Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")
+            .OrderBy(s => s, StringComparer.Ordinal));
 
     private static readonly System.Text.RegularExpressions.Regex DirectParameterElementWrite =
         new(@"\bParameters\[[^\]]+\]\s*=(?!=)", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
@@ -672,6 +983,8 @@ public class MasterRegistryImmutabilityTests
 
         foreach (var (name, fixture, applied) in WarmInstanceTriggers.AppliedTexts)
             programs.Add((name, File.ReadAllText(Path.Combine(FixtureRoots.CompilerTests.Path, fixture + ".spy")), applied));
+        foreach (var (name, text) in WarmInstanceTriggers.TypeDefinitionTexts)
+            programs.Add((name, text, null));
         foreach (var (name, source) in Corpus)
             programs.Add((name, source, null));
         return programs;

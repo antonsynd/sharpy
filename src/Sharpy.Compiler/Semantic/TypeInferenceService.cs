@@ -781,7 +781,7 @@ internal class TypeInferenceService
     /// those parameters open, and an open position is a wildcard to the operand check.
     /// </param>
     private FunctionSymbol? FindBestOverload(
-        List<FunctionSymbol> candidates, SemanticType argumentType, SemanticType? receiver = null)
+        IReadOnlyList<FunctionSymbol> candidates, SemanticType argumentType, SemanticType? receiver = null)
     {
         if (candidates.Count == 0)
             return null;
@@ -1709,7 +1709,7 @@ internal class TypeInferenceService
     /// (the single-method chain walker only ever returns one candidate) — currently just
     /// <c>__getitem__</c> in <see cref="InferIndexAccessType"/>'s host-view arm (#1859).
     /// </summary>
-    private static List<FunctionSymbol>? FindOverloadsInChain(TypeSymbol? symbol, string dunderName)
+    private static IReadOnlyList<FunctionSymbol>? FindOverloadsInChain(TypeSymbol? symbol, string dunderName)
     {
         for (var current = symbol; current != null; current = current.BaseType)
         {

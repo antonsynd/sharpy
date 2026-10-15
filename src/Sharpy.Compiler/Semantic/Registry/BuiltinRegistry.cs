@@ -471,10 +471,10 @@ internal class BuiltinRegistry
         // Element widening is written, not inferred: a slot-directed literal (`xs: list[object] = [1]`)
         // or an explicit reconstruction (`list[Animal](ds)`).
 
-        var methods = discovered?.Methods ?? new List<FunctionSymbol>();
-        var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();
-        var protocolMethods = discovered?.ProtocolMethods ?? new Dictionary<string, List<FunctionSymbol>>();
-        var properties = discovered?.Properties ?? new List<PropertySymbol>();
+        var methods = discovered?.Methods ?? new SymbolMemberList<FunctionSymbol>();
+        var operatorMethods = discovered?.OperatorMethods ?? new SymbolOverloadTable();
+        var protocolMethods = discovered?.ProtocolMethods ?? new SymbolOverloadTable();
+        var properties = discovered?.Properties ?? new SymbolMemberList<PropertySymbol>();
 
         // For types not discoverable from Sharpy.Core, provide inline definitions.
         ApplyNonDiscoverableDefinitions(sharpyName, ref methods, ref operatorMethods, ref protocolMethods);
@@ -536,7 +536,7 @@ internal class BuiltinRegistry
     /// <see cref="System.Reflection.GenericParameterAttributes"/> from the generic type
     /// definition's parameters (#827). Non-generic sources leave the definitions unchanged.
     /// </summary>
-    private static List<TypeParameterDef> ApplyClrVariance(List<TypeParameterDef> typeParams, Type? clrSource)
+    private static SymbolMemberList<TypeParameterDef> ApplyClrVariance(SymbolMemberList<TypeParameterDef> typeParams, Type? clrSource)
     {
         if (typeParams.Count == 0 || clrSource is not { IsGenericTypeDefinition: true })
             return typeParams;
@@ -767,9 +767,9 @@ internal class BuiltinRegistry
     /// </summary>
     private void ApplyNonDiscoverableDefinitions(
         string typeName,
-        ref List<FunctionSymbol> methods,
-        ref Dictionary<string, List<FunctionSymbol>> operatorMethods,
-        ref Dictionary<string, List<FunctionSymbol>> protocolMethods)
+        ref SymbolMemberList<FunctionSymbol> methods,
+        ref SymbolOverloadTable operatorMethods,
+        ref SymbolOverloadTable protocolMethods)
     {
         switch (typeName)
         {
@@ -830,7 +830,7 @@ internal class BuiltinRegistry
     /// and adds them as instance method FunctionSymbols. The <c>this string</c> first parameter
     /// is stripped since the TypeChecker sees these as instance methods on <c>str</c>.
     /// </summary>
-    private void DiscoverStringExtensionMethods(ref List<FunctionSymbol> methods)
+    private void DiscoverStringExtensionMethods(ref SymbolMemberList<FunctionSymbol> methods)
     {
         var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
         var extensionType = sharpyCoreAssembly.GetType("Sharpy.StringExtensions");

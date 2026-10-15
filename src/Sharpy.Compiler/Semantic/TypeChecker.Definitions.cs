@@ -420,12 +420,65 @@ internal partial class TypeChecker
     /// definition of the same name carries another span or none (#2250). A definition built without
     /// a span (a synthesized AST) is matched by its start position, which both sites also stamp.
     /// </summary>
-    private bool IsDeclaredBy(FunctionSymbol symbol, FunctionDef functionDef)
-        => !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol)
-            && (functionDef.Span is { } span
-                ? symbol.DeclarationSpan == span
-                : symbol.DeclarationLine == functionDef.LineStart
-                    && symbol.DeclarationColumn == functionDef.ColumnStart);
+    private bool IsDeclaredBy(Symbol symbol, Statement definition)
+        => !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol) && symbol.IsDeclaredAt(definition);
+
+    /// <summary>
+    /// The symbol declared FOR this type definition (class, struct, interface, union, delegate) —
+    /// the one its checker writes fields, properties, constructors, dataclass facts and member types
+    /// onto — or null when nothing declared one (#2250).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// NameResolver declares the type definitions of a module body and of a type body (nested types,
+    /// which the host's checker re-registers in the host's scope). A type definition anywhere else —
+    /// in a function body, or inside a block (<c>if</c>/<c>for</c>/<c>while</c>/<c>try</c>/<c>with</c>/
+    /// <c>match</c>) — has no symbol: C# has no local types, so it is refused
+    /// (<see cref="ReportUndeclaredTypeDefinition"/>), never emitted. A bare name lookup there answered
+    /// with whatever the name already meant — the master BuiltinRegistry's <c>str</c>, shared by every
+    /// analysis on a CompilerApi, or an enclosing user type of the same name — and the checker then
+    /// wrote that symbol: a later document on the same CompilerApi lost its <c>SPY0203</c> on
+    /// <c>s._size</c>, and a function-local <c>class Foo</c> gave the module's <c>Foo</c> a
+    /// <c>_size</c> field.
+    /// </para>
+    /// <para>
+    /// The same rule as <see cref="LookupFunctionSymbol"/>: the declaration span identifies the
+    /// symbol, and a builtin never qualifies. A second definition of a name in one scope (refused by
+    /// NameResolver as a duplicate) has no symbol of its own either, so it no longer writes the first.
+    /// </para>
+    /// </remarks>
+    private TypeSymbol? LookupTypeDefinitionSymbol(Statement typeDefinition, string name)
+        => _symbolTable.Lookup(name) is TypeSymbol candidate && IsDeclaredBy(candidate, typeDefinition)
+            ? candidate
+            : null;
+
+    /// <summary>
+    /// The refusal for a type definition with no symbol of its own
+    /// (<see cref="LookupTypeDefinitionSymbol"/>): the <c>SPY0202</c> "symbol not found" a
+    /// function-local class already got when its name was unbound, now reached wherever the definition
+    /// has no declaration instead of binding to a same-named symbol (#2250). A duplicate definition
+    /// already carries NameResolver's refusal, so it gets no second diagnostic.
+    /// </summary>
+    private void ReportUndeclaredTypeDefinition(Statement typeDefinition, string kind, string name)
+    {
+        if (IsDuplicateTypeDefinition(typeDefinition, name))
+            return;
+
+        AddError($"{kind} symbol for '{name}' not found", typeDefinition.LineStart, typeDefinition.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedType, span: typeDefinition.Span);
+    }
+
+    /// <summary>
+    /// True when another definition of <paramref name="name"/> was declared in the CURRENT scope at a
+    /// declaring position (a module or type body, outside any function or block): NameResolver refused
+    /// this one as a duplicate, and a "not found" beside it would be a cascade on the same mistake.
+    /// </summary>
+    private bool IsDuplicateTypeDefinition(Statement typeDefinition, string name)
+        => _currentFunctionReturnType == null
+            && _controlFlowDepth == 0
+            && _symbolTable.Lookup(name, searchParents: false) is { } existing
+            && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(existing)
+            && !IsDeclaredBy(existing, typeDefinition);
 
     /// <summary>
     /// Resolve the return type for a function definition from its type annotation.
@@ -1174,12 +1227,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking class: {classDef.Name}");
 
-        // Look up the class symbol
-        var classSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var classSymbol = LookupTypeDefinitionSymbol(classDef, classDef.Name);
         if (classSymbol == null)
         {
-            AddError($"Class symbol for '{classDef.Name}' not found", classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
-                span: classDef.Span);
+            ReportUndeclaredTypeDefinition(classDef, "Class", classDef.Name);
             return;
         }
 
@@ -1472,12 +1524,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking struct: {structDef.Name}");
 
-        // Look up the struct symbol
-        var structSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var structSymbol = LookupTypeDefinitionSymbol(structDef, structDef.Name);
         if (structSymbol == null)
         {
-            AddError($"Struct symbol for '{structDef.Name}' not found", structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
-                span: structDef.Span);
+            ReportUndeclaredTypeDefinition(structDef, "Struct", structDef.Name);
             return;
         }
 
@@ -1579,12 +1630,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking interface: {interfaceDef.Name}");
 
-        // Look up the interface symbol
-        var interfaceSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var interfaceSymbol = LookupTypeDefinitionSymbol(interfaceDef, interfaceDef.Name);
         if (interfaceSymbol == null)
         {
-            AddError($"Interface symbol for '{interfaceDef.Name}' not found", interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
-                span: interfaceDef.Span);
+            ReportUndeclaredTypeDefinition(interfaceDef, "Interface", interfaceDef.Name);
             return;
         }
 
@@ -1813,11 +1863,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking union: {unionDef.Name}");
 
-        var unionSymbol = _symbolTable.Lookup(unionDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var unionSymbol = LookupTypeDefinitionSymbol(unionDef, unionDef.Name);
         if (unionSymbol == null)
         {
-            AddError($"Union symbol for '{unionDef.Name}' not found", unionDef.LineStart, unionDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedType, span: unionDef.Span);
+            ReportUndeclaredTypeDefinition(unionDef, "Union", unionDef.Name);
             return;
         }
 
@@ -1915,11 +1965,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking delegate: {delegateDef.Name}");
 
-        var delegateSymbol = _symbolTable.Lookup(delegateDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var delegateSymbol = LookupTypeDefinitionSymbol(delegateDef, delegateDef.Name);
         if (delegateSymbol == null)
         {
-            AddError($"Delegate symbol for '{delegateDef.Name}' not found", delegateDef.LineStart, delegateDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedType, span: delegateDef.Span);
+            ReportUndeclaredTypeDefinition(delegateDef, "Delegate", delegateDef.Name);
             return;
         }
 

@@ -53,4 +53,105 @@ public static class WarmInstanceTriggers
             "    print(f.format(\"hello\"))",
             "")),
     };
+
+    /// <summary>
+    /// The TYPE-definition twins of <see cref="AppliedTexts"/> (P54 #2250 final verification, F1/F2 @ effba7776): a
+    /// builtin type's name (<c>str</c>) defined by a class, struct, interface, union or delegate inside a block or a
+    /// function body, where NameResolver declares no symbol. Before the type-definition seam the checker looked the name
+    /// up and wrote whatever it found — the MASTER <c>str</c>: the mixed auto/setter property added a <c>_size</c>
+    /// backing field to it (a later document's <c>s._size</c> lost its SPY0203 on the same instance, measured on one
+    /// Sharpy.Lsp), and the dataclass text set <c>IsDataclass</c> on it (silently at 486c9a88a; a SPY0909
+    /// PhaseViolationException ICE once the master's properties were frozen at cbabbf73a). Each is refused (SPY0202, and
+    /// SPY0340 for a module-level block) and writes nothing it did not declare.
+    /// </summary>
+    public static readonly (string Name, string Text)[] TypeDefinitionTexts =
+    {
+        ("class-str-in-if-in-def", string.Join("\n",
+            "def helper() -> None:",
+            "    if True:",
+            "        class str:",
+            "            property size: int = 0",
+            "",
+            "            property set size(self, v: int) -> None:",
+            "                self._size = v",
+            "    print(\"helper\")",
+            "",
+            "def main() -> None:",
+            "    helper()",
+            "")),
+        ("dataclass-str-in-module-try", string.Join("\n",
+            "try:",
+            "    @dataclass",
+            "    class str:",
+            "        x: int",
+            "except Exception:",
+            "    pass",
+            "",
+            "def main() -> None:",
+            "    print(\"ok\")",
+            "")),
+        ("struct-str-in-def", string.Join("\n",
+            "def helper() -> None:",
+            "    struct str:",
+            "        property size: int = 0",
+            "",
+            "        property set size(self, v: int) -> None:",
+            "            self._size = v",
+            "",
+            "def main() -> None:",
+            "    helper()",
+            "")),
+        ("interface-str-in-for-in-def", string.Join("\n",
+            "def helper() -> None:",
+            "    for i in range(1):",
+            "        interface str:",
+            "            def probe(self, value: int) -> int: ...",
+            "",
+            "def main() -> None:",
+            "    helper()",
+            "")),
+        ("union-str-in-module-try", string.Join("\n",
+            "try:",
+            "    union str:",
+            "        case Probe(value: int)",
+            "except Exception:",
+            "    pass",
+            "",
+            "def main() -> None:",
+            "    print(\"ok\")",
+            "")),
+        ("delegate-str-in-def", string.Join("\n",
+            "def helper() -> None:",
+            "    delegate str(value: int) -> int",
+            "",
+            "def main() -> None:",
+            "    helper()",
+            "")),
+    };
+
+    /// <summary>
+    /// Every trigger text — <see cref="AppliedTexts"/> then <see cref="TypeDefinitionTexts"/> — for the consumers that
+    /// replay them by text (<c>WarmInstanceParityTests</c>; <c>MasterRegistryImmutabilityTests</c>).
+    /// </summary>
+    public static readonly (string Name, string Text)[] AllTexts =
+        AppliedTexts.Select(t => (t.Name, t.Text)).Concat(TypeDefinitionTexts).ToArray();
+
+    /// <summary>
+    /// Later documents whose analysis reads what a <see cref="TypeDefinitionTexts"/> write would change: a member the
+    /// master <c>str</c> does not have (<c>SPY0203</c> on a fresh instance — the verifier's <c>c5ctl.spy</c>), and a
+    /// control that names no written member.
+    /// </summary>
+    public static readonly (string Name, string Text)[] LaterDocumentProbes =
+    {
+        ("str-has-no-_size", string.Join("\n",
+            "def main() -> None:",
+            "    s = \"abc\"",
+            "    print(s._size)",
+            "")),
+        ("str-upper-control", string.Join("\n",
+            "def main() -> None:",
+            "    s = \"abc\"",
+            "    print(s.upper())",
+            "")),
+    };
 }

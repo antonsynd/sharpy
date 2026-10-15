@@ -176,8 +176,32 @@ public abstract record Symbol
     /// </summary>
     internal bool IsFrozen => ReferenceEquals(_frozenAs, this);
 
-    /// <summary>Freezes this symbol: every settable property throws from now on (#2250).</summary>
-    internal void Freeze() => _frozenAs = this;
+    /// <summary>
+    /// Freezes this symbol: every settable property, and every member list or overload table it owns
+    /// (<see cref="SymbolMemberList{T}"/>, <see cref="SymbolOverloadTable"/>), throws on a write from
+    /// now on (#2250).
+    /// </summary>
+    internal void Freeze()
+    {
+        _frozenAs = this;
+        FreezeMembers();
+    }
+
+    /// <summary>Freezes the member collections this symbol owns — every one of them (#2250).</summary>
+    private protected virtual void FreezeMembers()
+    {
+    }
+
+    /// <summary>
+    /// True when this symbol was declared FOR <paramref name="definition"/>: the declaring site stamps the
+    /// definition's span (its start position for a span-less, synthesized definition). A same-named symbol found by a
+    /// name lookup — a builtin, an import, an enclosing definition — carries another span or none. The one rule every
+    /// pass that WRITES the symbol of a definition it is walking applies before writing (#2250).
+    /// </summary>
+    internal bool IsDeclaredAt(Parser.Ast.Node definition)
+        => definition.Span is { } span
+            ? DeclarationSpan == span
+            : DeclarationLine == definition.LineStart && DeclarationColumn == definition.ColumnStart;
 
     /// <summary>
     /// Refuses a write to a frozen symbol — always on, not DEBUG-only, like
@@ -289,7 +313,7 @@ public record VariableSymbol : Symbol
 /// </summary>
 public record FunctionSymbol : Symbol
 {
-    public List<ParameterSymbol> Parameters { get; init; } = new();
+    public SymbolMemberList<ParameterSymbol> Parameters { get; init; } = new();
 
     /// <summary>
     /// Replaces one parameter — the only write a checker makes to <see cref="Parameters"/> once the
@@ -299,6 +323,12 @@ public record FunctionSymbol : Symbol
     {
         ThrowIfFrozen(nameof(Parameters));
         Parameters[index] = parameter;
+    }
+
+    private protected override void FreezeMembers()
+    {
+        Parameters.Freeze(Name);
+        TypeParameters.Freeze(Name);
     }
 
     public SemanticType ReturnType { get; internal set { ThrowIfFrozen(); field = value; } } = SemanticType.Unknown;
@@ -329,7 +359,7 @@ public record FunctionSymbol : Symbol
     public bool IsAsync { get; internal set { ThrowIfFrozen(); field = value; } }
 
     // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
+    public SymbolMemberList<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;
 
     // For .NET interop
@@ -452,37 +482,37 @@ public record TypeSymbol : Symbol
     public string? DefiningFilePath { get; init; }
 
     // Generic type parameters
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
+    public SymbolMemberList<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;
 
     // Members
-    public List<VariableSymbol> Fields { get; init; } = new();
-    public List<FunctionSymbol> Methods { get; init; } = new();
-    public List<PropertySymbol> Properties { get; init; } = new();
-    public List<EventSymbol> Events { get; init; } = new();
+    public SymbolMemberList<VariableSymbol> Fields { get; init; } = new();
+    public SymbolMemberList<FunctionSymbol> Methods { get; init; } = new();
+    public SymbolMemberList<PropertySymbol> Properties { get; init; } = new();
+    public SymbolMemberList<EventSymbol> Events { get; init; } = new();
 
     // Operator methods (dunder methods for operators)
     // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
-    public Dictionary<string, List<FunctionSymbol>> OperatorMethods { get; init; } = new();
+    public SymbolOverloadTable OperatorMethods { get; init; } = new();
 
     // Protocol methods (non-operator dunders like __len__, __str__, __iter__)
     // Maps protocol dunder names to lists of overloads (usually just one, but allows flexibility)
-    public Dictionary<string, List<FunctionSymbol>> ProtocolMethods { get; init; } = new();
+    public SymbolOverloadTable ProtocolMethods { get; init; } = new();
 
     // Regular method overloads — maps method name to list of overloads
     // Only populated when a class has multiple methods with the same name
-    public Dictionary<string, List<FunctionSymbol>> MethodOverloads { get; init; } = new();
+    public SymbolOverloadTable MethodOverloads { get; init; } = new();
 
     // Constructors - tracks all __init__ overloads
     // Unlike Python (which allows only one __init__ that gets replaced), Sharpy supports
     // multiple __init__ methods that map to C# constructor overloads
-    public List<FunctionSymbol> Constructors { get; init; } = new();
+    public SymbolMemberList<FunctionSymbol> Constructors { get; init; } = new();
 
     // Union cases (only populated for TypeKind.Union)
-    public List<TypeSymbol> UnionCases { get; init; } = new();
+    public SymbolMemberList<TypeSymbol> UnionCases { get; init; } = new();
 
     // Nested types
-    public List<TypeSymbol> NestedTypes { get; init; } = new();
+    public SymbolMemberList<TypeSymbol> NestedTypes { get; init; } = new();
 
     /// <summary>
     /// Nested type aliases (<c>type Id = int</c> declared inside a class/struct/interface body).
@@ -491,7 +521,7 @@ public record TypeSymbol : Symbol
     /// answer a qualified <c>Outer.Id</c> (#1729, R-I). The bare-inside form resolves through the
     /// host scope's symbol table instead — this list carries the qualified spelling only.
     /// </summary>
-    public List<TypeAliasSymbol> NestedTypeAliases { get; init; } = new();
+    public SymbolMemberList<TypeAliasSymbol> NestedTypeAliases { get; init; } = new();
 
     /// <summary>
     /// The enclosing type for nested types. Null for top-level types.
@@ -508,7 +538,7 @@ public record TypeSymbol : Symbol
     /// </remarks>
     public TypeSymbol? BaseType { get; internal set { ThrowIfFrozen(); field = value; } }
     public BaseTypeReference? BaseTypeRef { get; internal set { ThrowIfFrozen(); field = value; } }
-    public List<InterfaceReference> Interfaces { get; init; } = new();
+    public SymbolMemberList<InterfaceReference> Interfaces { get; init; } = new();
 
     /// <summary>
     /// Unresolved base class name from AST, used for deferred inheritance resolution
@@ -538,7 +568,7 @@ public record TypeSymbol : Symbol
     /// alongside: a name list and an annotation list are two records of one fact, and the second
     /// one silently goes stale.
     /// </remarks>
-    public List<TypeAnnotation> UnresolvedInterfaces { get; init; } = new();
+    public SymbolMemberList<TypeAnnotation> UnresolvedInterfaces { get; init; } = new();
 
     /// <summary>
     /// Dunder-synthesized interface rows restored from the symbol cache and not yet resolved to
@@ -547,7 +577,7 @@ public record TypeSymbol : Symbol
     /// <see cref="InheritanceResolver"/> re-resolves it through the same rule on a warm build,
     /// alongside <see cref="UnresolvedInterfaces"/>. Empty on the cold path.
     /// </summary>
-    public List<UnresolvedSynthesizedInterface> UnresolvedSynthesizedInterfaces { get; init; } = new();
+    public SymbolMemberList<UnresolvedSynthesizedInterface> UnresolvedSynthesizedInterfaces { get; init; } = new();
 
     /// <summary>
     /// Builds a MethodOverloads dictionary from a list of methods, excluding dunder methods.
@@ -607,6 +637,25 @@ public record TypeSymbol : Symbol
             MethodOverloads.TryAdd(name, overloads);
         foreach (var method in Methods)
             RegisterDunderMethod(method);
+    }
+
+    private protected override void FreezeMembers()
+    {
+        TypeParameters.Freeze(Name);
+        Fields.Freeze(Name);
+        Methods.Freeze(Name);
+        Properties.Freeze(Name);
+        Events.Freeze(Name);
+        OperatorMethods.Freeze(Name);
+        ProtocolMethods.Freeze(Name);
+        MethodOverloads.Freeze(Name);
+        Constructors.Freeze(Name);
+        UnionCases.Freeze(Name);
+        NestedTypes.Freeze(Name);
+        NestedTypeAliases.Freeze(Name);
+        Interfaces.Freeze(Name);
+        UnresolvedInterfaces.Freeze(Name);
+        UnresolvedSynthesizedInterfaces.Freeze(Name);
     }
 
     public virtual bool Equals(TypeSymbol? other) => ReferenceEquals(this, other);

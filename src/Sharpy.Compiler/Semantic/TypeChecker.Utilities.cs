@@ -2232,7 +2232,7 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType SubstituteTypeParameters(
         SemanticType type,
-        List<TypeParameterDef> typeParams,
+        IReadOnlyList<TypeParameterDef> typeParams,
         List<SemanticType> typeArgs,
         bool substituteNamedUserTypes = false)
     {
