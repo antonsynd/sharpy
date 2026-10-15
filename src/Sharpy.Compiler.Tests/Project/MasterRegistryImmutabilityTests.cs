@@ -5,8 +5,12 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.TestInfrastructure.Formatting;
+using Sharpy.TestInfrastructure.Integration;
+using Sharpy.TestInfrastructure.Registry;
 using Xunit;
 using Xunit.Abstractions;
+using SAst = Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Tests.Project;
 
@@ -249,6 +253,351 @@ public class MasterRegistryImmutabilityTests
 
     #endregion
 
+    #region Dictionary key sets across the handler-query / applied-text request sequence (P54, #2250)
+
+    /// <summary>
+    /// The P47 stems (#2250 cells 2–3, issuecomment-6120931669) whose Extract-method output moved with what the same
+    /// <see cref="CompilerApi"/> had served before; each is run as its <c>identity</c> and lone-<c>\r</c> twin.
+    /// </summary>
+    private static readonly string[] P47Stems =
+    {
+        "fstrings/format_iformattable_class_1988",
+        "fstrings/format_no_dunder_format_refused_1988",
+        "deferred_overload_annotated_pin_1589",
+    };
+
+    /// <summary>
+    /// KnownRed rows (P54 Phase 1 convention): the instance key sets of <see cref="MasterRegistryKeySets"/> measured to
+    /// GROW on a second, identical pass of the request sequence after a full warm-up — keyed by set path, each citing
+    /// #2250 with its measured reproduction. A row asserts the growth reproduces (the Phase 2 task 3 freeze turns it
+    /// red as stale: delete the row); a set that grows with no row is red.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> KnownGrowingKeySets = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+    };
+
+    /// <summary>
+    /// KnownRed rows: master symbol properties the request sequence WRITES (symbol path + property, as the
+    /// <see cref="RegistrySnapshot"/> names them). Deterministic — each asserts the write reproduces. This is the #2250
+    /// cell-2 seam: analysing a <see cref="WarmInstanceTriggers"/> text (a builtin's name defined inside a <c>try:</c>
+    /// body) rewrites the master builtin's <c>Parameters</c>, and every later document reads the user signature.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> KnownWrittenMasterProperties = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["BuiltinRegistry._functions[][]:len.Parameters"] = "#2250 cell 2: wrap-try-shadowing-len rewrites len's parameter to int — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
+        ["BuiltinRegistry._functions[][]:format.Parameters"] = "#2250 cell 2: wrap-try-method-format rewrites format's parameters to (Formatter, int32) — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
+    };
+
+    /// <summary>
+    /// #2250 Design Decision 4: after ONE full pass of the P47 request sequence — LSP-route analysis
+    /// (<see cref="CompilerApi.AnalyzeDocument"/> with <see cref="CompilerOptionsFactory.ForLsp"/>, a fresh document path
+    /// per open, as the workspace does), the semantic queries a code-action/hover handler makes on that analysis
+    /// (<see cref="RunHandlerQueries"/>), the analysis of the Extract-method APPLIED text, and the path-less source
+    /// analysis the P47 sweep's oracle ran — the master registries' dictionary key sets and every master symbol property
+    /// must be a fixed point: a second identical pass may not add a key or write a property. Between every step of the
+    /// second pass the first diverging key is printed (the seam measurement for cells 2–3).
+    /// </summary>
+    [Fact]
+    public void MasterKeySets_AreAFixedPointAfterWarmUp_AcrossAnalyzeHandlerQueriesAndAppliedTextAnalyze()
+    {
+        var api = new CompilerApi(null, StdlibReferencePaths());
+        var master = api.PrimeAnalysisContextForTests();
+        var baseline = MasterRegistryKeySets.Take(api);
+        Assert.True(baseline.InstanceKeyCount >= 50,
+            $"the key-set snapshot saw only {baseline.InstanceKeyCount} entries in the master's dictionaries — it is not "
+            + "reading the registry and every comparison below would pass vacuously");
+
+        // Symbol properties are never a target, warm or not (#1633): compared from the baseline, before the first pass.
+        var symbols = new RegistrySnapshot(api);
+        symbols.AssertNotVacuous();
+        var programs = RequestSequencePrograms();
+        foreach (var (label, step) in RequestSequence(api, programs, pass: 1))
+            step();
+        AssertSameMaster(api, master, "the warm-up pass");
+        var warm = MasterRegistryKeySets.Take(api);
+        _output.WriteLine($"warm-up pass grew the masters:\n{baseline.Describe(warm)}");
+
+        var previous = warm;
+        var steps = 0;
+        foreach (var (label, step) in RequestSequence(api, programs, pass: 2))
+        {
+            step();
+            var now = MasterRegistryKeySets.Take(api);
+            var first = previous.InstanceDiffTo(now);
+            _output.WriteLine($"{label}: {(first.Count == 0 ? "no instance key-set change" : first[0].ToString())}");
+            previous = now;
+            steps++;
+        }
+
+        AssertSameMaster(api, master, "the second pass");
+        Assert.True(steps >= 4 * programs.Count, $"the second pass ran only {steps} steps");
+        var grown = warm.InstanceDiffTo(previous);
+        _output.WriteLine($"second pass, instance sets:\n{warm.Describe(previous)}");
+        var mutations = symbols.FindMutations(api);
+        _output.WriteLine($"both passes, master symbol properties: {mutations.Count} written, "
+            + $"{symbols.AppearedSinceBaseline} symbols appeared\n{Format(mutations)}");
+
+        var problems = new List<string>();
+        var written = mutations.Select(m => $"{m.SymbolPath}.{m.Property}").ToHashSet(StringComparer.Ordinal);
+        foreach (var property in written.Where(p => !KnownWrittenMasterProperties.ContainsKey(p)))
+            problems.Add($"{property} — a master symbol property was written (no KnownRed row):\n{Format(mutations)}");
+        foreach (var (property, row) in KnownWrittenMasterProperties)
+        {
+            if (!written.Contains(property))
+                problems.Add($"{property} is no longer written — stale KnownRed row ({row}): delete it");
+        }
+
+        foreach (var divergence in grown)
+        {
+            if (!KnownGrowingKeySets.ContainsKey(divergence.Path))
+                problems.Add($"{divergence} — a master dictionary grew on a pass that repeats one it has already served (no KnownRed row)");
+        }
+
+        foreach (var (path, row) in KnownGrowingKeySets)
+        {
+            if (grown.All(d => d.Path != path))
+                problems.Add($"{path} no longer grows on the second pass — stale KnownRed row ({row}): delete it");
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    /// <summary>
+    /// Positive control for the key-set instrument: a deliberate write to one master dictionary
+    /// (<c>BuiltinRegistry._interfaceSymbols</c>, made here by reflection) must be named by the comparison — and the
+    /// comparison must be clean again once it is undone. A missing field is a <see cref="MissingFieldException"/> from
+    /// <see cref="MasterRegistryKeySets.Take(CompilerApi)"/>, so a rename is red too.
+    /// </summary>
+    [Fact]
+    public void KeySetSnapshot_DetectsAWriteToAMasterDictionary()
+    {
+        var api = new CompilerApi(null, StdlibReferencePaths());
+        var master = api.PrimeAnalysisContextForTests();
+        var before = MasterRegistryKeySets.Take(api);
+        var field = typeof(BuiltinRegistry).GetField("_interfaceSymbols", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(nameof(BuiltinRegistry), "_interfaceSymbols");
+        var table = (Dictionary<Type, TypeSymbol>)field.GetValue(master)!;
+        var key = typeof(IKeySetProbe);
+        Assert.False(table.ContainsKey(key));
+        table[key] = new TypeSymbol { Name = "IKeySetProbe", Kind = SymbolKind.Type };
+        try
+        {
+            var after = MasterRegistryKeySets.Take(api);
+            var divergences = before.InstanceDiffTo(after);
+            _output.WriteLine(before.Describe(after));
+            Assert.Contains(divergences, d => d.Path == "BuiltinRegistry._interfaceSymbols"
+                && d.Added.Any(k => k.StartsWith(key.FullName!, StringComparison.Ordinal)));
+            Assert.StartsWith("BuiltinRegistry._interfaceSymbols", before.FirstDivergence(after), StringComparison.Ordinal);
+        }
+        finally
+        {
+            table.Remove(key);
+        }
+
+        Assert.Empty(before.InstanceDiffTo(MasterRegistryKeySets.Take(api)));
+    }
+
+    /// <summary>
+    /// KnownRed rows for <see cref="WarmInstanceTriggers_DoNotRetypeABuiltinForALaterDocument"/>: the builtin names a
+    /// later document reads with a different type after a <see cref="WarmInstanceTriggers"/> text was analysed on the
+    /// same instance (deterministic; the row asserts the retype reproduces — the Phase 2 task 3 freeze turns it stale).
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> KnownRetypedBuiltins = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["len"] = "#2250 cell 2: (object) -> int32 becomes (int32) -> int32 after wrap-try-shadowing-len — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
+        ["format"] = "#2250 cell 2: (object | None, str) -> str becomes (Formatter, int32) -> str after wrap-try-method-format — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
+    };
+
+    /// <summary>
+    /// The compiler-level twin of #2250 cell 2: on ONE <see cref="CompilerApi"/>, a later document's builtin identifiers
+    /// must have the type they have on a fresh instance after the <see cref="WarmInstanceTriggers"/> texts — a module
+    /// <c>def len</c> and a method <c>format</c> declared inside a <c>try:</c> body — were analysed. The master's key sets
+    /// and symbol properties across the triggers are printed (the seam). <c>print</c> is the positive control: no trigger
+    /// shadows it, so it must read the same.
+    /// </summary>
+    [Fact]
+    public void WarmInstanceTriggers_DoNotRetypeABuiltinForALaterDocument()
+    {
+        const string probe = "def main() -> None:\n    xs: list[int] = [1, 2]\n    n: int32 = len(xs)\n    s: str = format(1.5, \".1f\")\n    print(s)\n";
+        var builtins = new[] { "len", "format", "print" };
+        var cold = BuiltinIdentifierTypes(new CompilerApi(null, StdlibReferencePaths()), probe, builtins);
+        Assert.Equal(builtins.Length, cold.Count);
+
+        var api = new CompilerApi(null, StdlibReferencePaths());
+        api.PrimeAnalysisContextForTests();
+        var keySets = MasterRegistryKeySets.Take(api);
+        var symbols = new RegistrySnapshot(api);
+        symbols.AssertNotVacuous();
+        Assert.Equal(cold, BuiltinIdentifierTypes(api, probe, builtins));
+        foreach (var (name, _, text) in WarmInstanceTriggers.AppliedTexts)
+        {
+            api.Analyze(text, CancellationToken.None);
+            var now = MasterRegistryKeySets.Take(api);
+            _output.WriteLine($"after {name}: key sets {keySets.FirstDivergence(now)}");
+            keySets = now;
+        }
+
+        var mutations = symbols.FindMutations(api);
+        _output.WriteLine($"master symbol properties written across the triggers: {mutations.Count} "
+            + $"({symbols.ComparedProperties} compared over {symbols.ComparedSymbols} symbols)\n{Format(mutations)}");
+        var warm = BuiltinIdentifierTypes(api, probe, builtins);
+        var problems = new List<string>();
+        foreach (var name in builtins)
+        {
+            var line = $"{name}: cold {cold[name]} / warm {warm[name]}";
+            _output.WriteLine(line);
+            var retyped = cold[name] != warm[name];
+            if (KnownRetypedBuiltins.TryGetValue(name, out var row))
+            {
+                if (!retyped)
+                    problems.Add($"{line} — no longer retyped: stale KnownRed row ({row}), delete it");
+            }
+            else if (retyped)
+            {
+                problems.Add($"{line} — a later document's builtin was retyped by an earlier analysis (no KnownRed row)");
+            }
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    /// <summary>The effective type of each named builtin identifier in <paramref name="source"/>, analysed on <paramref name="api"/>.</summary>
+    private static Dictionary<string, string> BuiltinIdentifierTypes(CompilerApi api, string source, string[] names)
+    {
+        var result = api.Analyze(source, CancellationToken.None);
+        var types = new Dictionary<string, string>(StringComparer.Ordinal);
+        var stack = new Stack<SAst.Node>();
+        stack.Push(result.Ast ?? throw new InvalidOperationException("the probe did not parse"));
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node is SAst.Identifier id && names.Contains(id.Name))
+                types[id.Name] = result.SemanticQuery?.GetEffectiveType(id)?.GetDisplayName() ?? "<none>";
+            foreach (var child in node.GetChildNodes())
+            {
+                if (child is not null)
+                    stack.Push(child);
+            }
+        }
+
+        return types;
+    }
+
+    /// <summary>A CLR interface no builtin implements: the positive control's key.</summary>
+    private interface IKeySetProbe
+    {
+    }
+
+    private static void AssertSameMaster(CompilerApi api, BuiltinRegistry master, string what)
+        => Assert.True(ReferenceEquals(master, api.CachedBuiltinsForTests),
+            $"{what} replaced the cached master registry; the key sets would describe a registry nobody uses");
+
+    /// <summary>The Core and Stdlib assemblies beside the test assembly — the server's default reference pair.</summary>
+    private static string[] StdlibReferencePaths()
+    {
+        var paths = new[] { "Sharpy.Core.dll", "Sharpy.Stdlib.dll" }.Select(n => Path.Combine(AppContext.BaseDirectory, n)).ToArray();
+        foreach (var path in paths)
+            Assert.True(File.Exists(path), $"{path} is missing beside the test assembly");
+        return paths;
+    }
+
+    /// <summary>
+    /// (name, source, applied) for each P47 stem twin, each <see cref="WarmInstanceTriggers"/> program (its applied
+    /// text is the Wrap-in-try text measured to move the P47 stems on one instance) and each corpus program. A program
+    /// with no applied text re-analyses its edited source (one trailing line break). Extract method's own applied text
+    /// for the P47 stems is <c>WarmInstanceParityTests</c>' (Lsp.Tests) step — it needs the LSP handler.
+    /// </summary>
+    private static List<(string Name, string Source, string? Applied)> RequestSequencePrograms()
+    {
+        var programs = new List<(string, string, string?)>();
+        foreach (var stem in P47Stems)
+        {
+            var source = File.ReadAllText(Path.Combine(FixtureRoots.CompilerTests.Path, stem + ".spy"));
+            programs.Add((stem, source, null));
+            programs.Add((stem + "#cr", FormatterTwins.Cr(source), null));
+        }
+
+        foreach (var (name, fixture, applied) in WarmInstanceTriggers.AppliedTexts)
+            programs.Add((name, File.ReadAllText(Path.Combine(FixtureRoots.CompilerTests.Path, fixture + ".spy")), applied));
+        foreach (var (name, source) in Corpus)
+            programs.Add((name, source, null));
+        return programs;
+    }
+
+    private static long s_documentId;
+
+    /// <summary>
+    /// One pass of the request sequence: per program, the LSP-route analysis, the handler queries on it, the applied
+    /// text's analysis and the oracle's path-less source analysis — each a labelled step.
+    /// </summary>
+    private static IEnumerable<(string Label, Action Step)> RequestSequence(CompilerApi api, List<(string Name, string Source, string? Applied)> programs, int pass)
+    {
+        foreach (var (name, source, applied) in programs)
+        {
+            SemanticResult? analysis = null;
+            yield return ($"pass {pass} {name} analyze", () => analysis = api.AnalyzeDocument(
+                source, $"/master-registry-keysets/doc{Interlocked.Increment(ref s_documentId)}.spy",
+                CompilerOptionsFactory.ForLsp(), null, CancellationToken.None));
+            yield return ($"pass {pass} {name} handler queries", () => RunHandlerQueries(analysis!));
+            yield return ($"pass {pass} {name} applied-text analyze", () => api.Analyze(applied ?? source + "\n", CancellationToken.None));
+            yield return ($"pass {pass} {name} oracle analyze", () => api.Analyze(source, CancellationToken.None));
+        }
+    }
+
+    /// <summary>
+    /// The semantic queries the LSP handlers make on an analysis (hover, Extract method's parameter typing, find
+    /// references, signature help): every identifier's expression/effective type, symbol and references, every
+    /// call's target, routing and inferred type arguments, every annotation's type, every declaration's symbol — and
+    /// each type's display name, which is what Extract method spells.
+    /// </summary>
+    private static void RunHandlerQueries(SemanticResult analysis)
+    {
+        var query = analysis.SemanticQuery;
+        if (analysis.Ast is null || query is null)
+            return;
+        var stack = new Stack<SAst.Node>();
+        stack.Push(analysis.Ast);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            switch (node)
+            {
+                case SAst.Identifier id:
+                    _ = query.GetExpressionType(id)?.GetDisplayName();
+                    _ = query.GetEffectiveType(id)?.GetDisplayName();
+                    if (query.GetIdentifierSymbol(id) is { } symbol)
+                        _ = query.GetReferences(symbol).Count;
+                    break;
+                case SAst.FunctionCall call:
+                    _ = query.GetCallTarget(call)?.Name;
+                    _ = query.GetCalleeRouting(call);
+                    _ = query.GetInferredTypeArguments(call)?.Count;
+                    _ = query.GetExpressionType(call)?.GetDisplayName();
+                    break;
+                case SAst.TypeAnnotation annotation:
+                    _ = query.GetTypeAnnotation(annotation)?.GetDisplayName();
+                    break;
+                case SAst.VariableDeclaration declaration:
+                    _ = query.GetDeclarationSymbol(declaration)?.Name;
+                    break;
+                case SAst.FunctionDef definition:
+                    _ = query.GetFunctionDeclarationSymbol(definition)?.Name;
+                    break;
+                case SAst.Expression expression:
+                    _ = query.GetEffectiveType(expression)?.GetDisplayName();
+                    break;
+            }
+
+            foreach (var child in node.GetChildNodes())
+            {
+                if (child is not null)
+                    stack.Push(child);
+            }
+        }
+    }
+
+    #endregion
+
     #region Comparison plumbing
 
     private void AssertUnchanged(CompilerApi api, BuiltinRegistry master, RegistrySnapshot snapshot, string entryPoint)
@@ -451,9 +800,16 @@ public class MasterRegistryImmutabilityTests
         {
             if (node is IEnumerable enumerable and not string)
             {
+                // A dictionary VALUE may be null (the master's `_clrTypeCache` caches a name that resolved to no
+                // type as null, #2250's key-set walk) — nothing to walk into, and Unwrap needs an object.
                 foreach (var element in Enumerate(enumerable))
+                {
+                    if (element is null)
+                        continue;
                     foreach (var child in Unwrap(element))
                         yield return (child, $"{path}[]");
+                }
+
                 yield break;
             }
 
