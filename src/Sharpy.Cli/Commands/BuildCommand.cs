@@ -96,8 +96,8 @@ internal static class BuildCommand
                 }
             }
 
-            var compileResult = CompileToBinary(input, type, output, reference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
-            return compileResult == null ? CliHelpers.LastFailureExitCode : 0;
+            var compileResult = CompileToBinary(input, type, output, reference, modulePath, logger, metricsFormat, metricsOutput, out var failureExitCode, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
+            return compileResult == null ? failureExitCode : 0;
         });
 
         root.Subcommands.Add(command);
@@ -105,8 +105,11 @@ internal static class BuildCommand
 
     /// <summary>
     /// Compiles a Sharpy source file to a binary. Returns the <see cref="CompileResult"/>
-    /// on success, or <c>null</c> if compilation or assembly generation failed (the
-    /// caller should treat a <c>null</c> result as exit code 1).
+    /// on success, or <c>null</c> if compilation or assembly generation failed; then
+    /// <paramref name="failureExitCode"/> carries the ICE (3) / escaped-C# (2) / ordinary-error (1)
+    /// distinction mapped from this call's own diagnostics (<see cref="CliHelpers.MapFailureExitCode"/>).
+    /// It is a return value, not a process global read after the fact: a long-lived process
+    /// (the compile server) must never answer one request with another's exit code (#2250).
     /// </summary>
     internal static CompileResult? CompileToBinary(
         FileInfo inputFile,
@@ -117,6 +120,7 @@ internal static class BuildCommand
         ICompilerLogger logger,
         string? metricsFormat,
         FileInfo? metricsOutput,
+        out int failureExitCode,
         bool warnAsError = false,
         string? nowarn = null,
         int? maxErrors = null,
@@ -128,9 +132,9 @@ internal static class BuildCommand
         // a module path that does not exist is an error rather than ignored (#2173). A project
         // reference never reaches here: the commands refuse it from their option table
         // (CommandOptionEffects.Refuse) and the server refuses it from the request.
+        failureExitCode = CliHelpers.ExitCompileError;
         if (!CliHelpers.ValidateModulePaths(modulePaths))
         {
-            CliHelpers.LastFailureExitCode = CliHelpers.ExitCompileError;
             return null;
         }
 
@@ -188,7 +192,7 @@ internal static class BuildCommand
                 // import resolution, so handing the entry buffer to every diagnostic made a sibling
                 // file's parse error underline an innocent line of the entry file (#1437).
                 CliHelpers.RenderDiagnosticsFromFiles(result.Diagnostics.Where(d => d.IsError), Console.Error, inputFile.FullName);
-                CliHelpers.LastFailureExitCode = CliHelpers.MapFailureExitCode(result.Diagnostics);
+                failureExitCode = CliHelpers.MapFailureExitCode(result.Diagnostics);
                 return null;
             }
 
@@ -209,7 +213,7 @@ internal static class BuildCommand
         {
             // An exception here (not surfaced as a diagnostic) is itself an internal error.
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            CliHelpers.LastFailureExitCode = CliHelpers.ExitInternalError;
+            failureExitCode = CliHelpers.ExitInternalError;
             return null;
         }
     }

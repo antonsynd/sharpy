@@ -384,6 +384,7 @@ internal sealed class CompileServer
             NullLogger.Instance,
             metricsFormat: null,
             metricsOutput: null,
+            out var failureExitCode,
             warnAsError: request.WarnAsError,
             nowarn: request.Nowarn,
             maxErrors: request.MaxErrors,
@@ -391,7 +392,7 @@ internal sealed class CompileServer
             features: request.Features,
             namespaceName: request.Namespace);
 
-        var exitCode = result == null ? CliHelpers.LastFailureExitCode : 0;
+        var exitCode = result == null ? failureExitCode : 0;
         return (exitCode, result?.ProjectMetrics, result?.UsedAssemblyPaths);
     }
 }

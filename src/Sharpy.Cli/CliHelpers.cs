@@ -70,14 +70,6 @@ internal static class CliHelpers
     /// </summary>
     internal static bool ShowDiagnosticProvenance;
 
-    /// <summary>
-    /// Exit code produced by the most recent failed <see cref="Commands.BuildCommand.CompileToBinary"/>
-    /// call, mapped from its diagnostics (see <see cref="MapFailureExitCode"/>). Callers that treat a
-    /// null <c>CompileResult</c> as failure read this to propagate the ICE (3) / escaped-C# (2) /
-    /// ordinary-error (1) distinction. Defaults to <see cref="ExitCompileError"/>.
-    /// </summary>
-    internal static int LastFailureExitCode = ExitCompileError;
-
     internal static CompilerApi CreateCompilerApi(ICompilerLogger logger)
     {
         return new CompilerApi(logger, GetDefaultReferences());

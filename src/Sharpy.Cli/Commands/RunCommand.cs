@@ -204,10 +204,10 @@ internal static class RunCommand
             }
             else
             {
-                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features, namespaceName: namespaceName);
+                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, modulePaths, logger, metricsFormat, metricsOutput, out var failureExitCode, warnAsError, nowarn, maxErrors, features: features, namespaceName: namespaceName);
                 if (compileResult == null)
                 {
-                    return CliHelpers.LastFailureExitCode;
+                    return failureExitCode;
                 }
 
                 usedAssemblyPaths = compileResult.UsedAssemblyPaths;
