@@ -680,7 +680,7 @@ import numpy.random
 
 ### `numpy.random.seed(seed: int)`
 
-Seed the thread-local random number generator with *seed*.
+Seed the process-wide random number generator with *seed*.
 
 **Parameters:**
 

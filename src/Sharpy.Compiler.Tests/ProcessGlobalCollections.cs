@@ -34,3 +34,13 @@ public class ConsoleCaptureCollection
 public class PropertySerialCollection
 {
 }
+
+/// <summary>
+/// Tests that force full garbage collections to measure what a long-lived host retains (the
+/// per-registry load contexts of #2250): a forced collection stalls every concurrently running test,
+/// so these run alone (#2254).
+/// </summary>
+[CollectionDefinition("LoadContextRetention", DisableParallelization = true)]
+public class LoadContextRetentionCollection
+{
+}

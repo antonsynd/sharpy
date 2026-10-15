@@ -20,12 +20,8 @@ internal partial class TypeChecker
     /// </summary>
     private void ResolveModuleFunctionSignature(FunctionDef functionDef)
     {
-        // For overloaded module-level functions, the symbol table only holds the
-        // first overload, so resolve the specific symbol by declaration line.
-        var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
-        var functionSymbol = overloads is { Count: > 1 }
-            ? overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
-            : _symbolTable.LookupFunction(functionDef.Name);
+        // The symbol declared for THIS def, never one found by name alone (#2250).
+        var functionSymbol = LookupFunctionSymbol(functionDef);
         if (functionSymbol == null)
             return;
 
@@ -116,7 +112,7 @@ internal partial class TypeChecker
             }
             if (i < functionSymbol.Parameters.Count)
             {
-                functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
+                functionSymbol.ReplaceParameter(i, functionSymbol.Parameters[i] with { Type = paramType });
             }
         }
 
@@ -161,10 +157,13 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
-        // Nested function: if we're inside a function (not at module level),
-        // register the nested function symbol in the enclosing scope so it can be called by name.
-        // NameResolver only handles module-level declarations, so nested functions need registration here.
-        if (_currentFunctionReturnType != null)
+        // A def NameResolver did not declare declares its OWN symbol here, in the scope it appears in.
+        // NameResolver walks only the direct members of a module or type body, so a def nested in a
+        // function — or inside a block (try/if/for/while/with/match) at module or class level — has no
+        // symbol yet. Without this, the lookup below found whatever the name already meant: for a
+        // builtin's name inside a `try:` body that was the MASTER registry's symbol, which the
+        // signature writes then retyped for every later document on the same CompilerApi (#2250).
+        if (_currentFunctionReturnType != null || _controlFlowDepth > 0)
         {
             var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
             if (existingSymbol == null)
@@ -391,13 +390,95 @@ internal partial class TypeChecker
         // For top-level/nested functions, look up from symbol table.
         // When the function is overloaded, the symbol table only holds the first
         // overload, so resolve the specific symbol by declaration line.
+        //
+        // A name lookup answers with whatever the name MEANS here, which is not necessarily the
+        // symbol this definition declared: when nothing declared one (a def NameResolver does not
+        // walk), it is the enclosing binding — for a builtin's name, the master BuiltinRegistry's
+        // symbol, shared by every analysis on the CompilerApi (#2250). Every caller writes the
+        // signature onto what this returns, so it returns only the symbol declared AT this def.
         var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
-        if (overloads is { Count: > 1 })
-        {
-            return overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart);
-        }
-        return _symbolTable.LookupFunction(functionDef.Name);
+        var candidate = overloads is { Count: > 1 }
+            ? overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
+            : _symbolTable.LookupFunction(functionDef.Name);
+        return candidate is not null && IsDeclaredBy(candidate, functionDef) ? candidate : null;
     }
+
+    /// <summary>
+    /// The symbol the generator/async/cache metadata passes mark, when the def is not a method of the
+    /// current class: the symbol declared for this def (<see cref="LookupFunctionSymbol"/>) — never a
+    /// same-named symbol it did not declare (#2250). A constructor is not a target: these passes never
+    /// reached one by name, and <see cref="LookupFunctionSymbol"/>'s constructor arm must not make them.
+    /// </summary>
+    private FunctionSymbol? LookupMetadataTarget(FunctionDef functionDef)
+        => _currentClass != null && functionDef.Name == DunderNames.Init ? null : LookupFunctionSymbol(functionDef);
+
+    /// <summary>
+    /// True when <paramref name="symbol"/> is the symbol declared for <paramref name="functionDef"/>
+    /// in this compilation — the one a signature write may target. Both declaring sites
+    /// (<c>NameResolver.ResolveFunctionDeclaration</c> and <see cref="CheckFunction"/>'s local
+    /// declaration) stamp the definition's span; a builtin, an imported symbol or an enclosing
+    /// definition of the same name carries another span or none (#2250). A definition built without
+    /// a span (a synthesized AST) is matched by its start position, which both sites also stamp.
+    /// </summary>
+    private bool IsDeclaredBy(Symbol symbol, Statement definition)
+        => !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol) && symbol.IsDeclaredAt(definition);
+
+    /// <summary>
+    /// The symbol declared FOR this type definition (class, struct, interface, union, delegate) —
+    /// the one its checker writes fields, properties, constructors, dataclass facts and member types
+    /// onto — or null when nothing declared one (#2250).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// NameResolver declares the type definitions of a module body and of a type body (nested types,
+    /// which the host's checker re-registers in the host's scope). A type definition anywhere else —
+    /// in a function body, or inside a block (<c>if</c>/<c>for</c>/<c>while</c>/<c>try</c>/<c>with</c>/
+    /// <c>match</c>) — has no symbol: C# has no local types, so it is refused
+    /// (<see cref="ReportUndeclaredTypeDefinition"/>), never emitted. A bare name lookup there answered
+    /// with whatever the name already meant — the master BuiltinRegistry's <c>str</c>, shared by every
+    /// analysis on a CompilerApi, or an enclosing user type of the same name — and the checker then
+    /// wrote that symbol: a later document on the same CompilerApi lost its <c>SPY0203</c> on
+    /// <c>s._size</c>, and a function-local <c>class Foo</c> gave the module's <c>Foo</c> a
+    /// <c>_size</c> field.
+    /// </para>
+    /// <para>
+    /// The same rule as <see cref="LookupFunctionSymbol"/>: the declaration span identifies the
+    /// symbol, and a builtin never qualifies. A second definition of a name in one scope (refused by
+    /// NameResolver as a duplicate) has no symbol of its own either, so it no longer writes the first.
+    /// </para>
+    /// </remarks>
+    private TypeSymbol? LookupTypeDefinitionSymbol(Statement typeDefinition, string name)
+        => _symbolTable.Lookup(name) is TypeSymbol candidate && IsDeclaredBy(candidate, typeDefinition)
+            ? candidate
+            : null;
+
+    /// <summary>
+    /// The refusal for a type definition with no symbol of its own
+    /// (<see cref="LookupTypeDefinitionSymbol"/>): the <c>SPY0202</c> "symbol not found" a
+    /// function-local class already got when its name was unbound, now reached wherever the definition
+    /// has no declaration instead of binding to a same-named symbol (#2250). A duplicate definition
+    /// already carries NameResolver's refusal, so it gets no second diagnostic.
+    /// </summary>
+    private void ReportUndeclaredTypeDefinition(Statement typeDefinition, string kind, string name)
+    {
+        if (IsDuplicateTypeDefinition(typeDefinition, name))
+            return;
+
+        AddError($"{kind} symbol for '{name}' not found", typeDefinition.LineStart, typeDefinition.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedType, span: typeDefinition.Span);
+    }
+
+    /// <summary>
+    /// True when another definition of <paramref name="name"/> was declared in the CURRENT scope at a
+    /// declaring position (a module or type body, outside any function or block): NameResolver refused
+    /// this one as a duplicate, and a "not found" beside it would be a cascade on the same mistake.
+    /// </summary>
+    private bool IsDuplicateTypeDefinition(Statement typeDefinition, string name)
+        => _currentFunctionReturnType == null
+            && _controlFlowDepth == 0
+            && _symbolTable.Lookup(name, searchParents: false) is { } existing
+            && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(existing)
+            && !IsDeclaredBy(existing, typeDefinition);
 
     /// <summary>
     /// Resolve the return type for a function definition from its type annotation.
@@ -762,7 +843,7 @@ internal partial class TypeChecker
             // Update the function symbol's parameter type
             if (functionSymbol != null && i < functionSymbol.Parameters.Count)
             {
-                functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
+                functionSymbol.ReplaceParameter(i, functionSymbol.Parameters[i] with { Type = paramType });
             }
 
             if (param.DefaultValue != null)
@@ -844,11 +925,10 @@ internal partial class TypeChecker
         // so the symbol table doesn't contain the method. The Methods list has the
         // updatedSymbol (from the return type update), which is also the same
         // reference stored in ProtocolMethods/OperatorMethods.
-        // For top-level functions, check the overload list first (disambiguate by line),
-        // then fall back to the symbol table for non-overloaded functions.
+        // Otherwise the symbol declared for this def (LookupMetadataTarget) — never a same-named
+        // symbol the def did not declare, such as a master builtin (#2250).
         var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
-            ?? _symbolTable.LookupFunctionOverloads(functionDef.Name)?.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
-            ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+            ?? LookupMetadataTarget(functionDef);
         Debug.Assert(currentSymbol != null, $"Generator function '{functionDef.Name}' not found in Methods list or SymbolTable");
         if (currentSymbol != null)
         {
@@ -887,8 +967,7 @@ internal partial class TypeChecker
             return;
 
         var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
-            ?? _symbolTable.LookupFunctionOverloads(functionDef.Name)?.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
-            ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+            ?? LookupMetadataTarget(functionDef);
         if (asyncSymbol == null)
             return;
 
@@ -927,8 +1006,7 @@ internal partial class TypeChecker
         // because the TypeChecker class scope is already popped at this point.
         var currentSymbol = _currentClass?.Methods.FirstOrDefault(m =>
                 m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
-            ?? _symbolTable.LookupFunctionOverloads(functionDef.Name)?.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
-            ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
+            ?? LookupMetadataTarget(functionDef);
         if (currentSymbol == null)
             return;
 
@@ -1149,12 +1227,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking class: {classDef.Name}");
 
-        // Look up the class symbol
-        var classSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var classSymbol = LookupTypeDefinitionSymbol(classDef, classDef.Name);
         if (classSymbol == null)
         {
-            AddError($"Class symbol for '{classDef.Name}' not found", classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
-                span: classDef.Span);
+            ReportUndeclaredTypeDefinition(classDef, "Class", classDef.Name);
             return;
         }
 
@@ -1447,12 +1524,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking struct: {structDef.Name}");
 
-        // Look up the struct symbol
-        var structSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var structSymbol = LookupTypeDefinitionSymbol(structDef, structDef.Name);
         if (structSymbol == null)
         {
-            AddError($"Struct symbol for '{structDef.Name}' not found", structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
-                span: structDef.Span);
+            ReportUndeclaredTypeDefinition(structDef, "Struct", structDef.Name);
             return;
         }
 
@@ -1554,12 +1630,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking interface: {interfaceDef.Name}");
 
-        // Look up the interface symbol
-        var interfaceSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var interfaceSymbol = LookupTypeDefinitionSymbol(interfaceDef, interfaceDef.Name);
         if (interfaceSymbol == null)
         {
-            AddError($"Interface symbol for '{interfaceDef.Name}' not found", interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
-                span: interfaceDef.Span);
+            ReportUndeclaredTypeDefinition(interfaceDef, "Interface", interfaceDef.Name);
             return;
         }
 
@@ -1788,11 +1863,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking union: {unionDef.Name}");
 
-        var unionSymbol = _symbolTable.Lookup(unionDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var unionSymbol = LookupTypeDefinitionSymbol(unionDef, unionDef.Name);
         if (unionSymbol == null)
         {
-            AddError($"Union symbol for '{unionDef.Name}' not found", unionDef.LineStart, unionDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedType, span: unionDef.Span);
+            ReportUndeclaredTypeDefinition(unionDef, "Union", unionDef.Name);
             return;
         }
 
@@ -1890,11 +1965,11 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking delegate: {delegateDef.Name}");
 
-        var delegateSymbol = _symbolTable.Lookup(delegateDef.Name) as TypeSymbol;
+        // The symbol declared FOR this definition — never a builtin's or an enclosing type's (#2250).
+        var delegateSymbol = LookupTypeDefinitionSymbol(delegateDef, delegateDef.Name);
         if (delegateSymbol == null)
         {
-            AddError($"Delegate symbol for '{delegateDef.Name}' not found", delegateDef.LineStart, delegateDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedType, span: delegateDef.Span);
+            ReportUndeclaredTypeDefinition(delegateDef, "Delegate", delegateDef.Name);
             return;
         }
 

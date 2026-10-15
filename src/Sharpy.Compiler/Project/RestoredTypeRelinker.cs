@@ -171,7 +171,7 @@ internal sealed class RestoredTypeRelinker
         {
             var relinked = Relink(function.Parameters[i].Type);
             if (!ReferenceEquals(relinked, function.Parameters[i].Type))
-                function.Parameters[i] = function.Parameters[i] with { Type = relinked };
+                function.ReplaceParameter(i, function.Parameters[i] with { Type = relinked });
         }
     }
 }

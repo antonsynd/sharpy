@@ -188,7 +188,7 @@ internal partial class TypeChecker
     /// arguments match the TRAILING parameters. Only the operator-dunder path sets this; see
     /// <see cref="ResolveDunderOverload"/> for why the method-call paths must not.</param>
     internal record OverloadResolutionContext(
-        List<FunctionSymbol> Candidates,
+        IReadOnlyList<FunctionSymbol> Candidates,
         int TotalArgCount,
         List<SemanticType> ArgTypes,
         bool SkipSelfParam = false,
@@ -2570,7 +2570,7 @@ internal partial class TypeChecker
     /// <returns>The overload set, plus the receiver's type-argument substitution — a method reached
     /// through <c>list[int]</c> denotes signatures with <c>T</c> already replaced by <c>int</c>, which
     /// is what a target type is compared against.</returns>
-    private (List<FunctionSymbol> Overloads, Func<SemanticType, SemanticType> Substitute)?
+    private (IReadOnlyList<FunctionSymbol> Overloads, Func<SemanticType, SemanticType> Substitute)?
         ResolveReferencedCallableOverloads(Expression reference)
     {
         static SemanticType Identity(SemanticType t) => t;

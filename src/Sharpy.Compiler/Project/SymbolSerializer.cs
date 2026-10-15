@@ -49,13 +49,19 @@ internal static class SymbolSerializer
     /// <param name="cached">The cached symbol to deserialize.</param>
     /// <param name="symbolRegistry">Registry of already-deserialized symbols for resolving cross-references.</param>
     /// <param name="typeResolver">Optional function to resolve type IDs to SemanticTypes.</param>
+    /// <param name="visibility">
+    /// The CLR types the restoring compilation may see: a CLR identity stored as text resolves against
+    /// it, never against the process's loaded set (#2250). The framework set alone when null.
+    /// </param>
     public static Symbol Deserialize(
         CachedSymbol cached,
         Dictionary<string, Symbol> symbolRegistry,
         Func<string, SemanticType>? typeResolver = null,
-        SemanticBinding? binding = null)
+        SemanticBinding? binding = null,
+        Discovery.AssemblyVisibility? visibility = null)
     {
-        typeResolver ??= ResolveTypeFromId;
+        var effectiveVisibility = visibility ?? Discovery.AssemblyVisibility.FrameworkOnly;
+        typeResolver ??= typeId => ResolveTypeFromId(typeId, effectiveVisibility);
 
         return cached.Kind switch
         {
@@ -1058,9 +1064,9 @@ internal static class SymbolSerializer
     /// Resolves a type ID back to a SemanticType.
     /// Delegates to <see cref="TypeCodecRegistry"/> for encode/decode logic.
     /// </summary>
-    private static SemanticType ResolveTypeFromId(string typeId)
+    private static SemanticType ResolveTypeFromId(string typeId, Discovery.AssemblyVisibility visibility)
     {
-        return TypeCodecRegistry.Deserialize(typeId);
+        return TypeCodecRegistry.Deserialize(typeId, visibility);
     }
 
 
@@ -1142,7 +1148,7 @@ internal static class SymbolSerializer
     /// <summary>
     /// Parses a comma-separated list of type IDs, handling nested brackets.
     /// </summary>
-    private static List<SemanticType> ParseTypeArguments(string argsStr)
+    private static List<SemanticType> ParseTypeArguments(string argsStr, Discovery.AssemblyVisibility visibility)
     {
         var types = new List<SemanticType>();
         if (string.IsNullOrEmpty(argsStr))
@@ -1161,7 +1167,7 @@ internal static class SymbolSerializer
             else if (c == ',' && depth == 0)
             {
                 var typeId = argsStr[start..i].Trim();
-                types.Add(ResolveTypeFromId(typeId));
+                types.Add(ResolveTypeFromId(typeId, visibility));
                 start = i + 1;
             }
         }
@@ -1170,7 +1176,7 @@ internal static class SymbolSerializer
         if (start < argsStr.Length)
         {
             var typeId = argsStr[start..].Trim();
-            types.Add(ResolveTypeFromId(typeId));
+            types.Add(ResolveTypeFromId(typeId, visibility));
         }
 
         return types;
@@ -1451,7 +1457,7 @@ internal static class SymbolSerializer
     private static class TypeCodecRegistry
     {
         private delegate string Encoder(SemanticType type);
-        private delegate SemanticType Decoder(string value);
+        private delegate SemanticType Decoder(string value, Discovery.AssemblyVisibility visibility);
 
         /// <summary>
         /// Maps concrete SemanticType CLR types to their (prefix, encoder) pair.
@@ -1482,7 +1488,7 @@ internal static class SymbolSerializer
         {
             Register<BuiltinType>("builtin",
                 bt => bt.ClrType is { } t ? $"{bt.Name}@{t.FullName}" : bt.Name,
-                value => ResolveBuiltinType(value));
+                (value, visibility) => ResolveBuiltinType(value, visibility));
 
             // Format: name[args], with `name@ClrOriginTypeName[args]` when the type was mapped from CLR
             // metadata (#1260). The origin travels because a warm incremental build reads a cached
@@ -1507,7 +1513,7 @@ internal static class SymbolSerializer
                 gt => (ClrOriginOf(gt) ?? SharpyOriginOf(gt)) is { Length: > 0 } origin
                     ? $"{gt.Name}@{origin}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]"
                     : $"{gt.Name}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]",
-                value =>
+                (value, visibility) =>
                 {
                     var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
                     if (bracketIndex < 0)
@@ -1528,7 +1534,7 @@ internal static class SymbolSerializer
                         Name = name,
                         ClrOriginTypeName = IsSharpyOrigin(origin) ? null : origin,
                         CacheOrigin = IsSharpyOrigin(origin) ? origin : null,
-                        TypeArguments = ParseTypeArguments(argsStr)
+                        TypeArguments = ParseTypeArguments(argsStr, visibility)
                     };
                 });
 
@@ -1542,7 +1548,7 @@ internal static class SymbolSerializer
             // occur in a type name, so the first one splits the payload.
             Register<UserDefinedType>("user",
                 udt => CachedTypeOrigin.Of(udt) is { } origin ? $"{udt.Name}@{origin}" : udt.Name,
-                value =>
+                (value, visibility) =>
                 {
                     var at = value.IndexOf('@', StringComparison.Ordinal);
                     return at < 0
@@ -1552,23 +1558,23 @@ internal static class SymbolSerializer
 
             Register<UnmappedClrType>("unmappedclr",
                 uct => uct.ClrTypeName,
-                value => new UnmappedClrType
+                (value, visibility) => new UnmappedClrType
                 {
                     ClrTypeName = value,
                     // The carried identity is restored when it resolves (shared origin resolver,
                     // null-cached); an unresolvable name keeps today's graceful null (#1534).
                     ClrType = value.Length > 0
-                        ? Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(value)
+                        ? visibility.ResolveType(value)
                         : null
                 });
 
             Register<NullableType>("nullable",
                 nt => Serialize(nt.UnderlyingType),
-                value => new NullableType { UnderlyingType = Deserialize(value) });
+                (value, visibility) => new NullableType { UnderlyingType = Deserialize(value, visibility) });
 
             Register<OptionalType>("optional",
                 ot => Serialize(ot.UnderlyingType),
-                value => new OptionalType { UnderlyingType = Deserialize(value) });
+                (value, visibility) => new OptionalType { UnderlyingType = Deserialize(value, visibility) });
 
             // FunctionType format: (paramTypes|V|O)->returnType
             // V = VariadicParameterIndex as integer or "-" for null
@@ -1580,7 +1586,7 @@ internal static class SymbolSerializer
                     var o = ft.OptionalParameterCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
                     return $"({string.Join(",", ft.ParameterTypes.Select(Serialize))}|{v}|{o})->{Serialize(ft.ReturnType)}";
                 },
-                value =>
+                (value, visibility) =>
                 {
                     // The arrow that follows the parameter list's own closing paren — a function-typed
                     // parameter carries an arrow of its own, and the first one in the payload is ITS
@@ -1639,11 +1645,11 @@ internal static class SymbolSerializer
 
                     var paramTypes = string.IsNullOrEmpty(paramsStr)
                         ? new List<SemanticType>()
-                        : ParseTypeArguments(paramsStr);
+                        : ParseTypeArguments(paramsStr, visibility);
                     return new FunctionType
                     {
                         ParameterTypes = paramTypes,
-                        ReturnType = Deserialize(returnStr),
+                        ReturnType = Deserialize(returnStr, visibility),
                         VariadicParameterIndex = variadicIndex,
                         OptionalParameterCount = optionalCount
                     };
@@ -1651,26 +1657,26 @@ internal static class SymbolSerializer
 
             Register<TupleType>("tuple",
                 tt => $"[{string.Join(",", tt.ElementTypes.Select(Serialize))}]",
-                value =>
+                (value, visibility) =>
                 {
                     // Exactly the outer pair: a last element that is itself bracketed (`list[P]`) ends
                     // the payload in `]]`, and trimming every `]` cut the element's own bracket and then
                     // its last character (`…lib.spy` → `…lib.sp`, an origin that relinks to nothing).
                     var inner = value.Length >= 2 && value[0] == '[' && value[^1] == ']' ? value[1..^1] : value;
-                    return new TupleType { ElementTypes = ParseTypeArguments(inner) };
+                    return new TupleType { ElementTypes = ParseTypeArguments(inner, visibility) };
                 });
 
             Register<VoidType>("void",
                 _ => "",
-                _ => SemanticType.Void);
+                (_, _) => SemanticType.Void);
 
             Register<UnknownType>("unknown",
                 _ => "",
-                _ => SemanticType.Unknown);
+                (_, _) => SemanticType.Unknown);
 
             Register<ModuleType>("module",
                 mt => mt.Symbol.Name,
-                value =>
+                (value, visibility) =>
                 {
                     var placeholderSymbol = new ModuleSymbol { Name = value, Kind = SymbolKind.Module };
                     return new ModuleType { Symbol = placeholderSymbol };
@@ -1678,7 +1684,7 @@ internal static class SymbolSerializer
 
             Register<TypeParameterType>("typeparam",
                 tpt => tpt.Name,
-                value => new TypeParameterType { Name = value });
+                (value, visibility) => new TypeParameterType { Name = value });
 
             // Format: ok!err, split at the first `!` outside brackets — an ok type holding a Result of its
             // own (`(int !ValueError) !KeyError` has ok `tuple[int !ValueError]`) carries a `!` first, and
@@ -1690,7 +1696,7 @@ internal static class SymbolSerializer
                 rt => rt.OkType is ResultType
                     ? $"({Serialize(rt.OkType)})!{Serialize(rt.ErrorType)}"
                     : $"{Serialize(rt.OkType)}!{Serialize(rt.ErrorType)}",
-                value =>
+                (value, visibility) =>
                 {
                     var bangIndex = IndexAtDepthZero(value, '!');
                     if (bangIndex < 0)
@@ -1698,19 +1704,19 @@ internal static class SymbolSerializer
                     var okStr = value[..bangIndex];
                     if (okStr.Length >= 2 && okStr[0] == '(' && MatchingClose(okStr, 0) == okStr.Length - 1)
                         okStr = okStr[1..^1];
-                    return new ResultType { OkType = Deserialize(okStr), ErrorType = Deserialize(value[(bangIndex + 1)..]) };
+                    return new ResultType { OkType = Deserialize(okStr, visibility), ErrorType = Deserialize(value[(bangIndex + 1)..], visibility) };
                 });
 
             // GenericFunctionType: serialize as the underlying function with type args marker
             Register<GenericFunctionType>("gfunc",
                 gft => $"{gft.FunctionSymbol.Name}[{string.Join(",", gft.TypeArguments.Select(Serialize))}]",
-                value =>
+                (value, visibility) =>
                 {
                     var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
                     if (bracketIndex < 0)
                         return SemanticType.Unknown;
                     var argsStr = value[(bracketIndex + 1)..^1];
-                    var typeArgs = ParseTypeArguments(argsStr);
+                    var typeArgs = ParseTypeArguments(argsStr, visibility);
                     // Return as GenericType -- full GenericFunctionType restoration
                     // requires the FunctionSymbol which is not available during deserialization
                     return new GenericType { Name = value[..bracketIndex], TypeArguments = typeArgs };
@@ -1719,30 +1725,30 @@ internal static class SymbolSerializer
             // UnionType: placeholder for v0.2.x tagged unions
             Register<UnionType>("union",
                 ut => $"{ut.Name}[{string.Join(",", ut.CaseTypes.Select(Serialize))}]",
-                value =>
+                (value, visibility) =>
                 {
                     var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
                     if (bracketIndex < 0)
                         return new UnionType { Name = value, CaseTypes = new List<SemanticType>() };
                     var name = value[..bracketIndex];
                     var argsStr = value[(bracketIndex + 1)..^1];
-                    return new UnionType { Name = name, CaseTypes = ParseTypeArguments(argsStr) };
+                    return new UnionType { Name = name, CaseTypes = ParseTypeArguments(argsStr, visibility) };
                 });
 
             // TaskType: async task wrapper
             Register<TaskType>("task",
                 tt => tt.ResultType == null ? "" : Serialize(tt.ResultType),
-                value => string.IsNullOrEmpty(value)
+                (value, visibility) => string.IsNullOrEmpty(value)
                     ? new TaskType { ResultType = null }
-                    : new TaskType { ResultType = Deserialize(value) });
+                    : new TaskType { ResultType = Deserialize(value, visibility) });
 
             Register<LiteralStringType>("literalstring",
                 _ => "",
-                _ => LiteralStringType.Instance);
+                (_, _) => LiteralStringType.Instance);
 
             Register<SelfType>("self",
                 st => st.DeclaringType?.Name ?? "",
-                value => string.IsNullOrEmpty(value)
+                (value, visibility) => string.IsNullOrEmpty(value)
                     ? new SelfType()
                     : new SelfType { DeclaringType = new TypeSymbol { Name = value, Kind = SymbolKind.Type } });
         }
@@ -1756,7 +1762,7 @@ internal static class SymbolSerializer
                 $"Unhandled SemanticType in SerializeType: {type.GetType().Name}");
         }
 
-        public static SemanticType Deserialize(string typeId)
+        public static SemanticType Deserialize(string typeId, Discovery.AssemblyVisibility visibility)
         {
             if (string.IsNullOrEmpty(typeId))
                 return SemanticType.Unknown;
@@ -1769,7 +1775,7 @@ internal static class SymbolSerializer
             var value = typeId[(colonIndex + 1)..];
 
             if (s_decoders.TryGetValue(prefix, out var decode))
-                return decode(value);
+                return decode(value, visibility);
 
             // Unknown prefix -- graceful degradation with older cache formats
             return SemanticType.Unknown;
@@ -1820,7 +1826,7 @@ internal static class SymbolSerializer
         /// singleton). <c>BuiltinTypeSerializerTotalityTests</c> asserts this over the whole
         /// reflection-enumerated census.</para>
         /// </remarks>
-        private static SemanticType ResolveBuiltinType(string value)
+        private static SemanticType ResolveBuiltinType(string value, Discovery.AssemblyVisibility visibility)
         {
             // Split the @-origin format (#1538): "name@ClrFullName" or just "name". Resolution
             // goes through the shared, null-caching origin resolver — every channel that stores
@@ -1831,7 +1837,7 @@ internal static class SymbolSerializer
             if (atIndex >= 0)
             {
                 name = value[..atIndex];
-                resolvedClrType = Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(value[(atIndex + 1)..]);
+                resolvedClrType = visibility.ResolveType(value[(atIndex + 1)..]);
             }
             else
             {

@@ -2149,7 +2149,7 @@ internal partial class RoslynEmitter
         return caseDecl;
     }
 
-    private MethodDeclarationSyntax GenerateDeconstructMethod(List<VariableSymbol> fields)
+    private MethodDeclarationSyntax GenerateDeconstructMethod(IReadOnlyList<VariableSymbol> fields)
     {
         var outParams = fields.Select(f =>
             Parameter(EscapedIdentifier(NameMangler.ToCamelCase(f.Name)))

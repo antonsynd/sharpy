@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Text;
+using System.Text.RegularExpressions;
 using FluentAssertions;
 using Sharpy.Cli.Services;
 using Xunit;
@@ -167,6 +169,133 @@ public class CompileServerE2ETests : IDisposable
             TryShutdown(pipeName);
             StopServer(server);
         }
+    }
+
+    /// <summary>
+    /// Deterministic base reproductions of the server request sequence, keyed by request; the value
+    /// is the server's observed <see cref="RunFingerprint"/> at base. Each row drains in P54 Phase 2
+    /// (#2250).
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> RequestSequenceKnownRed = new Dictionary<string, string>
+    {
+        // Empty since P54 Phase 2 task 1 (#2250): request 3 answered SPY0908(CS0400) @ 486c9a88a
+        // because request 2's reference stayed visible to the process-wide scans; with every CLR name
+        // resolved against the request's own AssemblyVisibility it answers SPY0300, exit 1, as a
+        // fresh process does — the row reported stale and drained.
+    };
+
+    /// <summary>
+    /// P54 (#2250) cell 4: a compile is a pure function of its inputs, so ONE server answering
+    /// <c>run main.spy</c> (no <c>-r</c>) → <c>run -r Tablegreeter.dll main.spy</c> → <c>run main.spy</c>
+    /// answers each request as a fresh <c>sharpyc</c> process answers the same command: exit code and
+    /// diagnostic code set (and the program's line when it runs). Requests 1–2 are the positive
+    /// controls (SPY0300; runs); request 3 was a <see cref="RequestSequenceKnownRed"/> row at base.
+    /// Every client is a child process, so the library is never loaded into the test host.
+    /// </summary>
+    [Fact]
+    public void RequestSequence_NoRef_Ref_NoRef_AnswersAsThreeFreshProcesses()
+    {
+        var library = new ReferenceLibraryFixture();
+        _ws.WriteSpy("from Tablegreeter import Greeter\n\ndef main():\n    print(Greeter().greet())\n");
+        var requests = new (string Id, string[] Args)[]
+        {
+            ("1: run main.spy", new[] { "run", "main.spy" }),
+            ("2: run -r Tablegreeter.dll main.spy", new[] { "run", "-r", library.DllPath, "main.spy" }),
+            ("3: run main.spy", new[] { "run", "main.spy" }),
+        };
+
+        var pipeName = "spy-seq-" + Guid.NewGuid().ToString("N")[..8];
+        var failures = new List<string>();
+        var oracles = new List<string>();
+        using var server = StartServer(pipeName);
+        try
+        {
+            WaitUntilListening(pipeName, server);
+
+            foreach (var (id, args) in requests)
+            {
+                var viaServer = ExecCli(args.Append($"--server={pipeName}").ToArray());
+                var fresh = ExecCli(args);
+                var served = RunFingerprint(viaServer);
+                var oracle = RunFingerprint(fresh);
+                oracles.Add(oracle);
+                var report = $"server: {served}\n{viaServer.StdOut}{viaServer.StdErr}\nfresh: {oracle}\n{fresh.StdOut}{fresh.StdErr}";
+
+                viaServer.StdErr.Should().NotContain("compiling in-process", $"[{id}] the request reaches the live server");
+
+                if (RequestSequenceKnownRed.TryGetValue(id, out var recorded))
+                {
+                    if (served != recorded || served == oracle)
+                        failures.Add($"[{id}] KnownRed row is stale — drain it (#2250): recorded '{recorded}'\n{report}");
+                }
+                else if (served != oracle)
+                {
+                    failures.Add($"[{id}] the server answers unlike a fresh process\n{report}");
+                }
+            }
+        }
+        finally
+        {
+            TryShutdown(pipeName);
+            StopServer(server);
+        }
+
+        // The fresh-process oracle is what the issue says it is, so parity is not vacuous: no -r is
+        // an unresolved import, -r runs the program.
+        oracles.Should().Equal("exit 1 | SPY0300", "exit 0 | - | hello from lib", "exit 1 | SPY0300");
+        failures.Should().BeEmpty(string.Join("\n\n", failures));
+    }
+
+    /// <summary>
+    /// <c>exit N | sorted distinct diagnostic codes (a SPY0908 spelled with the C# error it wraps) |
+    /// the program's line when it ran</c>.
+    /// </summary>
+    private static string RunFingerprint(ProcessResult result)
+    {
+        var all = result.StdOut + result.StdErr;
+        var codes = Regex.Matches(all, @"(?:error|warning)\[(SPY\d{4})\]: ([^\n]*)")
+            .Select(m => m.Groups[1].Value == "SPY0908"
+                ? $"SPY0908({Regex.Match(m.Groups[2].Value, @"\bCS\d{4}\b").Value})"
+                : m.Groups[1].Value)
+            .Distinct()
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .ToList();
+        var fingerprint = $"exit {result.ExitCode} | {(codes.Count == 0 ? "-" : string.Join(",", codes))}";
+        return all.Contains("hello from lib", StringComparison.Ordinal) ? fingerprint + " | hello from lib" : fingerprint;
+    }
+
+    private sealed record ProcessResult(int ExitCode, string StdOut, string StdErr);
+
+    /// <summary>A <c>sharpyc</c> child process in the workspace — a fresh process per call.</summary>
+    private ProcessResult ExecCli(params string[] args)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            WorkingDirectory = _ws.Root,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        psi.ArgumentList.Add(CliDll);
+        foreach (var arg in args)
+            psi.ArgumentList.Add(arg);
+
+        using var process = Process.Start(psi)!;
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException($"sharpyc {string.Join(' ', args)} did not exit within 2 minutes");
+        }
+
+        process.WaitForExit();
+        return new ProcessResult(process.ExitCode, stdout.ToString(), stderr.ToString());
     }
 
     private static string ReadShared(string path)

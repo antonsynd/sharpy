@@ -30,6 +30,66 @@ namespace Sharpy.Stdlib.Tests.Spy
     public sealed class PrngStateCollection
     {
     }
+
+    // The module globals StdlibModuleGlobalConcurrencyTests (Conformance/) drives from several
+    // threads (#2250): each module's cells share a collection with the spy tests that set and then
+    // read the same global, so a cell never runs beside them. Like PrngState, none needs to run alone.
+
+    /// <summary>Tests that set and read socket.setdefaulttimeout's process-wide default.</summary>
+    [CollectionDefinition("SocketDefaultTimeout")]
+    public sealed class SocketDefaultTimeoutCollection
+    {
+    }
+
+    /// <summary>Tests that set calendar.setfirstweekday's module-wide first weekday and read it back.</summary>
+    [CollectionDefinition("CalendarFirstweekday")]
+    public sealed class CalendarFirstweekdayCollection
+    {
+    }
+
+    /// <summary>Tests that write xml.register_namespace's process-wide registry.</summary>
+    [CollectionDefinition("XmlRegisteredNamespaces")]
+    public sealed class XmlRegisteredNamespacesCollection
+    {
+    }
+
+    /// <summary>Tests that seed numpy.random and compare draws.</summary>
+    [CollectionDefinition("NumpyRandomState")]
+    public sealed class NumpyRandomStateCollection
+    {
+    }
+}
+
+namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
+{
+    [Collection("SocketDefaultTimeout")]
+    public partial class SocketModuleTestsModuleTests
+    {
+    }
+}
+
+namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
+{
+    [Collection("CalendarFirstweekday")]
+    public partial class CalendarTestsModuleTests
+    {
+    }
+}
+
+namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
+{
+    [Collection("XmlRegisteredNamespaces")]
+    public partial class XmlModuleTestsModuleTests
+    {
+    }
+}
+
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyRandomTests
+{
+    [Collection("NumpyRandomState")]
+    public partial class NumpyRandomTestsModuleTests
+    {
+    }
 }
 
 namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests

@@ -673,8 +673,13 @@ internal class IncrementalCompilationCache
     /// </summary>
     /// <param name="filePath">The path to the source file.</param>
     /// <param name="symbolRegistry">The registry to populate with restored symbols.</param>
+    /// <param name="visibility">
+    /// The restoring compilation's CLR visibility — a CLR identity stored as text resolves against it,
+    /// never against the process (#2250). The framework set alone when null.
+    /// </param>
     /// <returns>True if symbols were restored, false if no valid cache.</returns>
-    public bool RestoreSymbols(string filePath, Dictionary<string, Symbol> symbolRegistry, SemanticBinding? binding = null)
+    public bool RestoreSymbols(string filePath, Dictionary<string, Symbol> symbolRegistry, SemanticBinding? binding = null,
+        Discovery.AssemblyVisibility? visibility = null)
     {
         var entry = GetFileCache(filePath);
         if (entry == null)
@@ -684,7 +689,7 @@ internal class IncrementalCompilationCache
 
         foreach (var cachedSymbol in entry.Symbols)
         {
-            var symbol = SymbolSerializer.Deserialize(cachedSymbol, symbolRegistry, binding: binding);
+            var symbol = SymbolSerializer.Deserialize(cachedSymbol, symbolRegistry, binding: binding, visibility: visibility);
             symbolRegistry[cachedSymbol.Id] = symbol;
         }
 

@@ -2877,13 +2877,13 @@ def _spec_primitive_roster() -> set[str]:
 
 
 def _registered_builtin_types() -> dict[str, str]:
-    """Every `RegisterType(<name>, typeof(<clr>))` in BuiltinRegistry.cs: Sharpy name -> CLR short name."""
+    """Every `Register(<name>, typeof(<clr>))` in BuiltinRegistry.LoadBuiltins: Sharpy name -> CLR short name."""
     names = (_COMPILER_SRC / "Shared" / "BuiltinNames.cs").read_text(encoding="utf-8")
     consts = dict(re.findall(r'public const string (\w+) = "([^"]+)";', names))
     registry = _REGISTRY_CS.read_text(encoding="utf-8")
     registered = {}
     for m in re.finditer(
-        r'RegisterType\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,\s*typeof\(([^()]*)\)', registry
+        r'\bRegister\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,\s*typeof\(([^()]*)\)', registry
     ):
         sharpy = m.group(1) or consts[m.group(2)]
         clr = re.sub(r"<[^<>]*>$", "", m.group(3)).replace("::", ".").rsplit(".", 1)[-1]
@@ -2892,7 +2892,7 @@ def _registered_builtin_types() -> dict[str, str]:
 
 
 def _registered_generic_builtins() -> set[str]:
-    """The `RegisterType(..., isGeneric: true, ...)` names: written without type arguments, such a
+    """The `Register(..., isGeneric: true, ...)` names: written without type arguments, such a
     name does not denote the non-generic CLR type the C# meant (`System.Collections.IEnumerable`)."""
     names = (_COMPILER_SRC / "Shared" / "BuiltinNames.cs").read_text(encoding="utf-8")
     consts = dict(re.findall(r'public const string (\w+) = "([^"]+)";', names))
@@ -2900,7 +2900,7 @@ def _registered_generic_builtins() -> set[str]:
     return {
         m.group(1) or consts[m.group(2)]
         for m in re.finditer(
-            r'RegisterType\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,[^;]*isGeneric:\s*true', registry
+            r'\bRegister\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,[^;]*isGeneric:\s*true', registry
         )
     }
 
@@ -3416,13 +3416,13 @@ class TestRenderedNameProseAndLayout:
 _MAPPING_IDENTITY = [
     # (C# spelling, rendered Sharpy, cited file, text that must be in it)
     ("IEnumerable<int>", "IEnumerable[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "RegisterType(BuiltinNames.IEnumerable, typeof(IEnumerable<>)"),
+     "Register(BuiltinNames.IEnumerable, typeof(IEnumerable<>)"),
     ("System.Collections.Generic.IEnumerable<int>", "IEnumerable[int]",
      "docs/language_specification/collection_types.md", "`IEnumerable[T]` for a read-only"),
     ("IEnumerator<int>", "IEnumerator[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "RegisterType(BuiltinNames.IEnumerator, typeof(IEnumerator<>)"),
+     "Register(BuiltinNames.IEnumerator, typeof(IEnumerator<>)"),
     ("Iterator<int>", "Iterator[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "RegisterType(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>)"),
+     "Register(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>)"),
     ("IComparer<int>", "IComparer[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
      '"System.Collections.Generic",'),
     ("int[]", "array[int]", "docs/language_specification/primitive_types.md", "| `array[T]` | `T[]` |"),
@@ -3440,27 +3440,27 @@ _MAPPING_IDENTITY = [
      "docs/language_specification/nullable_types.md", "T?"),
     ("int?", "int | None", "docs/language_specification/nullable_types.md", "T?"),
     ("List<int>", "list[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("list", typeof(SharpyRT::Sharpy.List<>)'),
+     'Register("list", typeof(SharpyRT::Sharpy.List<>)'),
     ("Dict<string, int>", "dict[str, int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("dict", typeof(SharpyRT::Sharpy.Dict<,>)'),
+     'Register("dict", typeof(SharpyRT::Sharpy.Dict<,>)'),
     ("Set<int>", "set[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("set", typeof(SharpyRT::Sharpy.Set<>)'),
+     'Register("set", typeof(SharpyRT::Sharpy.Set<>)'),
     ("Bytes", "bytes", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("bytes", typeof(SharpyRT::Sharpy.Bytes)'),
+     'Register("bytes", typeof(SharpyRT::Sharpy.Bytes)'),
     ("Complex", "complex", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "RegisterType(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex)"),
+     "Register(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex)"),
     ("Slice", "slice", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("slice", typeof(SharpyRT::Sharpy.Slice)'),
+     'Register("slice", typeof(SharpyRT::Sharpy.Slice)'),
     ("Optional<int>", "Optional[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("Optional", typeof(SharpyRT::Sharpy.Optional<>)'),
+     'Register("Optional", typeof(SharpyRT::Sharpy.Optional<>)'),
     ("Result<int, string>", "Result[int, str]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("Result", typeof(SharpyRT::Sharpy.Result<,>)'),
+     'Register("Result", typeof(SharpyRT::Sharpy.Result<,>)'),
     ("ValueTuple<int, string>", "tuple[int, str]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple)"),
+     "Register(BuiltinNames.Tuple, typeof(System.ValueTuple)"),
     ("(int, string)", "tuple[int, str]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple)"),
+     "Register(BuiltinNames.Tuple, typeof(System.ValueTuple)"),
     ("void", "None", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'RegisterType("None", typeof(void)'),
+     'Register("None", typeof(void)'),
     ("System.Runtime.CompilerServices.ITuple", "system.runtime.compiler_services.ITuple",
      "src/Sharpy.Compiler/Semantic/Registry/ModuleRegistry.cs", '"system.text.regular_expressions"'),
     ("System.Net.Sockets.SocketException", "SocketException",

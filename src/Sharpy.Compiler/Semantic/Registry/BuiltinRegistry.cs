@@ -23,18 +23,13 @@ internal class BuiltinRegistry
     private readonly ClrTypeBridge _clrTypeMapper = new();
 
     /// <summary>
-    /// Deferred interface population work recorded by <see cref="RegisterType"/> and processed
-    /// after all builtin types are registered, so that interface definitions can be resolved
-    /// against already-registered symbols (e.g., IEnumerable, IEnumerator).
-    /// </summary>
-    private readonly List<(TypeSymbol Symbol, TypeParameterType[] TypeParams)> _pendingInterfacePopulation = new();
-
-    /// <summary>
     /// Cache of minimal interface TypeSymbols keyed by the open-generic (or non-generic) CLR
     /// interface definition, so all builtin types implementing the same interface share one
-    /// definition symbol.
+    /// definition symbol. Filled by <see cref="ConcurrentDictionary{TKey,TValue}.GetOrAdd(TKey, Func{TKey,TValue})"/>
+    /// with a value that is a function of the key alone, so a fill after construction — none
+    /// happens today — could neither race nor depend on which analysis asked first (#2250).
     /// </summary>
-    private readonly Dictionary<Type, TypeSymbol> _interfaceSymbols = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Type, TypeSymbol> _interfaceSymbols = new();
 
     /// <summary>
     /// Names excluded from primitive registration because they are registered separately
@@ -78,14 +73,108 @@ internal class BuiltinRegistry
         "Some", "Ok", "Err"
     };
 
-    public BuiltinRegistry(ICompilerLogger? logger = null)
+    /// <summary>
+    /// The CLR types this registry's bare-name fallback (<see cref="TryResolveClrType"/>) may see:
+    /// the paired <c>ModuleRegistry</c>'s visibility — a builtin registry is built for ONE reference
+    /// set, beside that set's module registry — or the framework set alone (#2250). Never whatever the
+    /// process has loaded.
+    /// </summary>
+    private readonly AssemblyVisibility _clrFallbackVisibility;
+
+    /// <param name="logger">Optional logger.</param>
+    /// <param name="clrFallbackVisibility">
+    /// The paired module registry's visibility; null gives the framework set alone
+    /// (<see cref="AssemblyVisibility.FrameworkOnly"/>).
+    /// </param>
+    public BuiltinRegistry(ICompilerLogger? logger = null, AssemblyVisibility? clrFallbackVisibility = null)
     {
+        _clrFallbackVisibility = clrFallbackVisibility ?? AssemblyVisibility.FrameworkOnly;
         _discovery = new CachedModuleDiscovery(null, logger);
         LoadBuiltins();
+        FreezeSymbols();
+    }
+
+    /// <summary>
+    /// Freezes every symbol the registry built: a <c>CompilerApi</c> hands this ONE instance to
+    /// every analysis it performs (#1633 retired the per-compilation clone), so a symbol reachable
+    /// from it must never be a write target — analysing a user <c>def len</c> inside a <c>try:</c>
+    /// body wrote the builtin <c>len</c>'s parameters and every later document read the user's
+    /// signature (#2250). After this, a write throws (<see cref="Symbol.IsFrozen"/>) instead of
+    /// retyping the builtin for the rest of the process.
+    /// </summary>
+    private void FreezeSymbols()
+    {
+        var roots = _types.Values.Cast<Symbol>()
+            .Concat(_functions.Values.SelectMany(overloads => overloads))
+            .Concat(_interfaceSymbols.Values);
+        var seen = new HashSet<Symbol>();
+        var pending = new Stack<Symbol>(roots);
+        while (pending.Count > 0)
+        {
+            var symbol = pending.Pop();
+            if (!seen.Add(symbol))
+                continue;
+
+            symbol.Freeze();
+            if (symbol is not TypeSymbol type)
+                continue;
+
+            foreach (var member in OwnedSymbols(type))
+            {
+                if (member is not null)
+                    pending.Push(member);
+            }
+        }
+    }
+
+    /// <summary>The symbols a builtin <see cref="TypeSymbol"/> holds — its members and the types it names.</summary>
+    private static IEnumerable<Symbol?> OwnedSymbols(TypeSymbol type)
+    {
+        foreach (var method in type.Methods)
+            yield return method;
+        foreach (var constructor in type.Constructors)
+            yield return constructor;
+        foreach (var field in type.Fields)
+            yield return field;
+        foreach (var overloads in type.MethodOverloads.Values
+                     .Concat(type.OperatorMethods.Values)
+                     .Concat(type.ProtocolMethods.Values))
+        {
+            foreach (var overload in overloads)
+                yield return overload;
+        }
+
+        foreach (var nested in type.NestedTypes.Concat(type.UnionCases))
+            yield return nested;
+        foreach (var alias in type.NestedTypeAliases)
+            yield return alias;
+        foreach (var iface in type.Interfaces)
+            yield return iface.Definition;
+        if (type.DataclassFields is { } dataclassFields)
+        {
+            foreach (var field in dataclassFields)
+                yield return field;
+        }
+
+        if (type.ClrArityGroup is { } arityGroup)
+        {
+            foreach (var sibling in arityGroup.Values)
+                yield return sibling;
+        }
+
+        yield return type.BaseType;
+        yield return type.DeclaringType;
     }
 
     private void LoadBuiltins()
     {
+        // Interface population is deferred until every builtin type is registered, so interface
+        // definitions resolve to registered symbols (#827). The work list lives in this method and
+        // is drained before it returns: no registration work survives construction (#2250).
+        var pendingInterfacePopulation = new List<(TypeSymbol Symbol, TypeParameterType[] TypeParams)>();
+        void Register(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
+            => RegisterType(sharpyName, clrType, kind, pendingInterfacePopulation, isGeneric, typeParamCount);
+
         // Load Sharpy.Core assembly first so discovery data is available for RegisterType
         var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
         _discovery.LoadAssembly(sharpyCoreAssembly);
@@ -117,33 +206,33 @@ internal class BuiltinRegistry
             }
 
             var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
-            RegisterType(info.SharpyName, info.ClrType, kind);
+            Register(info.SharpyName, info.ClrType, kind);
             registeredClrTypes[info.ClrType] = info.SharpyName;
         }
 
         // Collections (generic) - use Sharpy.Core wrapper types
-        RegisterType("list", typeof(SharpyRT::Sharpy.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        Register("list", typeof(SharpyRT::Sharpy.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
         // dict was left on System.Collections.Generic.Dictionary<,> when 616a07c9b moved its
         // siblings to the wrappers. The CLR type recorded here is what operator resolution
         // reflects over, and Dictionary declares no operators, so every `dict op dict` had to be
         // served by the single-candidate shortcut in TypeInferenceService.FindBestOverload; a
         // second `|` overload took that shortcut away and `dict | dict` stopped resolving (#1361).
-        RegisterType("dict", typeof(SharpyRT::Sharpy.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType(BuiltinNames.FrozenDict, typeof(SharpyRT::Sharpy.FrozenDict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType(BuiltinNames.FrozenSet, typeof(SharpyRT::Sharpy.FrozenSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        Register("dict", typeof(SharpyRT::Sharpy.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        Register("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        Register(BuiltinNames.FrozenDict, typeof(SharpyRT::Sharpy.FrozenDict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        Register(BuiltinNames.FrozenSet, typeof(SharpyRT::Sharpy.FrozenSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
         // Bytes (non-generic) - immutable byte sequence
-        RegisterType("bytes", typeof(SharpyRT::Sharpy.Bytes), TypeKind.Struct);
+        Register("bytes", typeof(SharpyRT::Sharpy.Bytes), TypeKind.Struct);
 
         // Slice — the Python `slice` type used in `__getitem__(self, s: slice)` (#1610).
-        RegisterType("slice", typeof(SharpyRT::Sharpy.Slice), TypeKind.Struct);
+        Register("slice", typeof(SharpyRT::Sharpy.Slice), TypeKind.Struct);
 
         // complex: the Python spelling. `Complex` already resolved through the Sharpy-namespace
         // discovery rule — this is not a rename, it registers the lowercase name a Python reader
         // actually writes, and both spellings resolve afterwards (#1362). Every other builtin is
         // lowercase; Complex was the outlier.
-        RegisterType(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex), TypeKind.Struct);
+        Register(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex), TypeKind.Struct);
 
         // Tuple: registered for OperatorValidator/ProtocolValidator metadata lookup.
         // typeParamCount=1 is nominal — real tuple arity is tracked by TupleType.ElementTypes,
@@ -154,20 +243,20 @@ internal class BuiltinRegistry
         // ClrTypeBridge.SpecialCases (-> "System.ValueTuple") and a written tuple annotation is
         // emitted from TupleType through MapSemanticType's per-arity ValueTuple arm — so the
         // sentinel never reaches the global::-qualification arm in TypeSyntaxMapper (#1765).
-        RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
+        Register(BuiltinNames.Tuple, typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
 
         // Dict view types (returned by dict.items(), .keys(), .values()).
         // These named their real CLR types only after #1346: they were registered against
         // typeof(object) placeholders, which PopulateClrInterfaces skips, so none of them carried a
         // CLR interface list. Naming the real type is what gives them one.
-        RegisterType(BuiltinNames.DictItemsView, typeof(SharpyRT::Sharpy.DictItemsView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType(BuiltinNames.DictKeyView, typeof(SharpyRT::Sharpy.DictKeyView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType(BuiltinNames.DictValuesView, typeof(SharpyRT::Sharpy.DictValuesView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        Register(BuiltinNames.DictItemsView, typeof(SharpyRT::Sharpy.DictItemsView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        Register(BuiltinNames.DictKeyView, typeof(SharpyRT::Sharpy.DictKeyView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        Register(BuiltinNames.DictValuesView, typeof(SharpyRT::Sharpy.DictValuesView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
 
         // Iterator/iterable types (used by generators and reversed()). Sharpy.Iterator<T> is
         // ABSTRACT, which is the fact that makes a reference to it non-constructible (#1346) —
         // recorded here rather than asserted in prose, so NonConstructibleTypeNameOf reads it.
-        RegisterType(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        Register(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
         // The registered ClrType is the GENERIC definition Sharpy actually maps these names to.
         // They carried the non-generic System.Collections.IEnumerable/IEnumerator until #1765:
         // a symbol declaring one type parameter whose ClrType had none made every consumer that
@@ -175,19 +264,19 @@ internal class BuiltinRegistry
         // 311252e33 papered over by exempting ALL generic types from global:: qualification.
         // Naming the definition here removes the need for both the exemption and the separate
         // varianceSource argument (ApplyClrVariance now reads the variance off the ClrType).
-        RegisterType(BuiltinNames.IEnumerable, typeof(IEnumerable<>), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
-        RegisterType(BuiltinNames.IEnumerator, typeof(IEnumerator<>), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        Register(BuiltinNames.IEnumerable, typeof(IEnumerable<>), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        Register(BuiltinNames.IEnumerator, typeof(IEnumerator<>), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
 
         // Result and Optional (for semantic-time method/property resolution)
-        RegisterType("Result", typeof(SharpyRT::Sharpy.Result<,>), TypeKind.Struct, isGeneric: true, typeParamCount: 2);
-        RegisterType("Optional", typeof(SharpyRT::Sharpy.Optional<>), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
+        Register("Result", typeof(SharpyRT::Sharpy.Result<,>), TypeKind.Struct, isGeneric: true, typeParamCount: 2);
+        Register("Optional", typeof(SharpyRT::Sharpy.Optional<>), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
 
         // Template (PEP 750) — t"..." literal type
-        RegisterType(BuiltinNames.Template, typeof(SharpyRT::Sharpy.Template), TypeKind.Class);
+        Register(BuiltinNames.Template, typeof(SharpyRT::Sharpy.Template), TypeKind.Class);
 
         // Special
-        RegisterType("object", typeof(object), TypeKind.Class);
-        RegisterType("None", typeof(void), TypeKind.Struct); // void for return type
+        Register("object", typeof(object), TypeKind.Class);
+        Register("None", typeof(void), TypeKind.Struct); // void for return type
 
         // Load builtin functions using reflection-based discovery
         LoadBuiltinFunctions();
@@ -202,7 +291,7 @@ internal class BuiltinRegistry
         // Register System.Exception as a base type for catch clauses
         if (!_types.ContainsKey("Exception"))
         {
-            RegisterType("Exception", typeof(System.Exception), TypeKind.Class);
+            Register("Exception", typeof(System.Exception), TypeKind.Class);
         }
 
         // Wire up BaseType for discovered exception types whose CLR base is outside the
@@ -213,7 +302,7 @@ internal class BuiltinRegistry
 
         // Populate CLR interface information on registered TypeSymbols. Deferred until all
         // types are registered so interface definitions resolve to registered symbols (#827).
-        PopulateClrInterfaces();
+        PopulateClrInterfaces(pendingInterfacePopulation);
     }
 
     private void LoadBuiltinTypes()
@@ -331,7 +420,13 @@ internal class BuiltinRegistry
         }
     }
 
-    private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
+    private void RegisterType(
+        string sharpyName,
+        Type clrType,
+        TypeKind kind,
+        List<(TypeSymbol Symbol, TypeParameterType[] TypeParams)> pendingInterfacePopulation,
+        bool isGeneric = false,
+        int typeParamCount = 0)
     {
         // Build shared TypeParameterType instances for generic types so all methods
         // reference the same objects (required for consistent name-based substitution).
@@ -376,10 +471,10 @@ internal class BuiltinRegistry
         // Element widening is written, not inferred: a slot-directed literal (`xs: list[object] = [1]`)
         // or an explicit reconstruction (`list[Animal](ds)`).
 
-        var methods = discovered?.Methods ?? new List<FunctionSymbol>();
-        var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();
-        var protocolMethods = discovered?.ProtocolMethods ?? new Dictionary<string, List<FunctionSymbol>>();
-        var properties = discovered?.Properties ?? new List<PropertySymbol>();
+        var methods = discovered?.Methods ?? new SymbolMemberList<FunctionSymbol>();
+        var operatorMethods = discovered?.OperatorMethods ?? new SymbolOverloadTable();
+        var protocolMethods = discovered?.ProtocolMethods ?? new SymbolOverloadTable();
+        var properties = discovered?.Properties ?? new SymbolMemberList<PropertySymbol>();
 
         // For types not discoverable from Sharpy.Core, provide inline definitions.
         ApplyNonDiscoverableDefinitions(sharpyName, ref methods, ref operatorMethods, ref protocolMethods);
@@ -433,7 +528,7 @@ internal class BuiltinRegistry
 
         // Defer interface population until all builtin types are registered, so that
         // interface definitions (e.g., IEnumerable) resolve to the registered symbols.
-        _pendingInterfacePopulation.Add((typeSymbol, sharedTypeParams));
+        pendingInterfacePopulation.Add((typeSymbol, sharedTypeParams));
     }
 
     /// <summary>
@@ -441,7 +536,7 @@ internal class BuiltinRegistry
     /// <see cref="System.Reflection.GenericParameterAttributes"/> from the generic type
     /// definition's parameters (#827). Non-generic sources leave the definitions unchanged.
     /// </summary>
-    private static List<TypeParameterDef> ApplyClrVariance(List<TypeParameterDef> typeParams, Type? clrSource)
+    private static SymbolMemberList<TypeParameterDef> ApplyClrVariance(SymbolMemberList<TypeParameterDef> typeParams, Type? clrSource)
     {
         if (typeParams.Count == 0 || clrSource is not { IsGenericTypeDefinition: true })
             return typeParams;
@@ -464,13 +559,13 @@ internal class BuiltinRegistry
     /// TypeHierarchyService and generic inference can walk interface hierarchies of
     /// builtin types (#827).
     /// </summary>
-    private void PopulateClrInterfaces()
+    private void PopulateClrInterfaces(List<(TypeSymbol Symbol, TypeParameterType[] TypeParams)> pendingInterfacePopulation)
     {
-        foreach (var (typeSymbol, typeParams) in _pendingInterfacePopulation)
+        foreach (var (typeSymbol, typeParams) in pendingInterfacePopulation)
         {
             PopulateClrInterfaces(typeSymbol, typeParams);
         }
-        _pendingInterfacePopulation.Clear();
+        pendingInterfacePopulation.Clear();
     }
 
     private void PopulateClrInterfaces(TypeSymbol typeSymbol, TypeParameterType[] sharedTypeParams)
@@ -597,9 +692,13 @@ internal class BuiltinRegistry
         if (_types.TryGetValue(name, out var registered) && registered.TypeKind == TypeKind.Interface)
             return registered;
 
-        if (_interfaceSymbols.TryGetValue(interfaceDef, out var cached))
-            return cached;
+        return _interfaceSymbols.GetOrAdd(interfaceDef, CreateInterfaceSymbol);
+    }
 
+    /// <summary>The minimal interface symbol for <paramref name="interfaceDef"/> — a function of the definition alone.</summary>
+    private static TypeSymbol CreateInterfaceSymbol(Type interfaceDef)
+    {
+        var name = ClrNameHelper.StripArity(interfaceDef.Name);
         var clrArgs = interfaceDef.IsGenericTypeDefinition
             ? interfaceDef.GetGenericArguments()
             : Type.EmptyTypes;
@@ -607,7 +706,7 @@ internal class BuiltinRegistry
             .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = ClrTypeBridge.GetClrVariance(arg) })
             .ToList();
 
-        var symbol = new TypeSymbol
+        return new TypeSymbol
         {
             Name = name,
             Kind = SymbolKind.Type,
@@ -616,8 +715,6 @@ internal class BuiltinRegistry
             TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public
         };
-        _interfaceSymbols[interfaceDef] = symbol;
-        return symbol;
     }
 
     /// <summary>
@@ -670,9 +767,9 @@ internal class BuiltinRegistry
     /// </summary>
     private void ApplyNonDiscoverableDefinitions(
         string typeName,
-        ref List<FunctionSymbol> methods,
-        ref Dictionary<string, List<FunctionSymbol>> operatorMethods,
-        ref Dictionary<string, List<FunctionSymbol>> protocolMethods)
+        ref SymbolMemberList<FunctionSymbol> methods,
+        ref SymbolOverloadTable operatorMethods,
+        ref SymbolOverloadTable protocolMethods)
     {
         switch (typeName)
         {
@@ -733,7 +830,7 @@ internal class BuiltinRegistry
     /// and adds them as instance method FunctionSymbols. The <c>this string</c> first parameter
     /// is stripped since the TypeChecker sees these as instance methods on <c>str</c>.
     /// </summary>
-    private void DiscoverStringExtensionMethods(ref List<FunctionSymbol> methods)
+    private void DiscoverStringExtensionMethods(ref SymbolMemberList<FunctionSymbol> methods)
     {
         var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
         var extensionType = sharpyCoreAssembly.GetType("Sharpy.StringExtensions");
@@ -1116,12 +1213,13 @@ internal class BuiltinRegistry
     {
         var registryOwnsName = IsReservedBuiltinTypeName(name) || CamelCaseAliases.ContainsKey(name);
 
-        // The extra state is a pure function of the KEY's name, so it can never make two callers
-        // disagree about a cached entry.
-        return _clrTypeCache.GetOrAdd((name, arity), static ((string Name, int Arity) key, bool ownedByRegistry) =>
+        // The extra state is a pure function of the KEY's name and of this registry's construction-time
+        // visibility, so it can never make two callers disagree about a cached entry.
+        return _clrTypeCache.GetOrAdd((name, arity), static ((string Name, int Arity) key,
+            (bool OwnedByRegistry, AssemblyVisibility Visibility) state) =>
         {
             var (n, a) = key;
-            var clrType = TryFindClrType(n, a, allowSharpyNamespace: !ownedByRegistry);
+            var clrType = TryFindClrType(state.Visibility, n, a, allowSharpyNamespace: !state.OwnedByRegistry);
             if (clrType == null)
                 return null;
 
@@ -1159,7 +1257,7 @@ internal class BuiltinRegistry
             }
 
             return sym;
-        }, registryOwnsName);
+        }, (registryOwnsName, _clrFallbackVisibility));
     }
 
     /// <summary>
@@ -1196,28 +1294,23 @@ internal class BuiltinRegistry
     /// keeps <c>Dict</c>/<c>List</c> off the reflected <c>Sharpy.Dict</c>/<c>Sharpy.List</c>
     /// (see <see cref="TryResolveClrType"/>, #1625).
     /// </param>
-    private static Type? TryFindClrType(string name, int arity, bool allowSharpyNamespace)
+    private static Type? TryFindClrType(AssemblyVisibility visibility, string name, int arity, bool allowSharpyNamespace)
     {
         // #1613: for arity > 0, probe `Name`N (e.g. Action`1, Func`3)
         var clrName = arity > 0 ? $"{name}`{arity}" : name;
 
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        // The registry's construction-time visibility (#2250): the framework set plus the references
+        // of the ONE reference set this registry was built for — the stdlib's Sharpy-namespace classes
+        // that declare no module (StatisticsError, CapturedOutput, ...) are reachable only through this
+        // fallback — and never whatever else the process has loaded.
         foreach (var ns in ClrFallbackNamespaces)
         {
             if (!allowSharpyNamespace && ClrTypeBridge.SpecialCases.IsSharpyNamespace(ns))
                 continue;
 
-            var fullName = $"{ns}.{clrName}";
-            var type = Type.GetType(fullName);
+            var type = visibility.ResolveType($"{ns}.{clrName}");
             if (Accepts(type))
                 return type;
-
-            foreach (var assembly in assemblies)
-            {
-                type = assembly.GetType(fullName);
-                if (Accepts(type))
-                    return type;
-            }
         }
 
         return null;

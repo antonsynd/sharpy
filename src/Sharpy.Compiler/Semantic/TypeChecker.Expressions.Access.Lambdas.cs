@@ -675,7 +675,7 @@ internal partial class TypeChecker
         // Resolve the function being called to get its parameter types. Dispatched on the canonical
         // (paren-stripped) callee so a placeholder under `(add)(5, _)` infers the same as `add(5, _)`
         // (#1170).
-        List<ParameterSymbol>? funcParams = null;
+        IReadOnlyList<ParameterSymbol>? funcParams = null;
         var callee = UnwrapParenthesized(call.Function);
 
         if (callee is Identifier funcId)

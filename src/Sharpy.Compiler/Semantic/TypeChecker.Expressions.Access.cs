@@ -1515,7 +1515,7 @@ internal partial class TypeChecker
     /// </summary>
     private TypeSymbol? GenericDefinitionOf(GenericType generic)
         => generic.GenericDefinition
-           ?? (Discovery.ClrTypeHelper.ResolveOriginDefinition(generic) is { } originDefinition
+           ?? (Discovery.ClrTypeHelper.ResolveOriginDefinition(Visibility, generic) is { } originDefinition
                ? _bclGenericMethodBridge.GetOrCreateClrDefinitionSymbol(originDefinition)
                : null);
 
@@ -3131,7 +3131,7 @@ internal partial class TypeChecker
         if (viewType is TupleType && TryGetConstantIntIndex(index, out _))
             return IndexAccessLowering.TupleItem;
 
-        if (index is TupleLiteral && Discovery.ClrTypeHelper.HasParamsIndexer(viewType))
+        if (index is TupleLiteral && Discovery.ClrTypeHelper.HasParamsIndexer(Visibility, viewType))
             return IndexAccessLowering.ParamsSpread;
 
         if (viewType == SemanticType.Str)

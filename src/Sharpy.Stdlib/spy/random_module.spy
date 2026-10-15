@@ -1,30 +1,43 @@
 """Generate pseudo-random numbers with various distributions."""
 
 from system import Math as SysMath, Random as SysRandom
+# threading.Lock, not `from sharpy import Lock`: under the sharpy spelling `with _lock:` lowers to
+# `using` (IDisposable) and never acquires the lock (#2250).
+from threading import Lock
 
 _random: SysRandom = SysRandom()
 
+# CPython's random module is thread-safe ("The underlying implementation in C is both fast and
+# threadsafe"); System.Random is not, so every read and write of _random holds this one lock (#2250).
+_lock: Lock = Lock()
+
 def seed(s: int) -> None:
     """Initialize the random number generator with the given seed."""
-    _random = SysRandom(s)
+    with _lock:
+        _random = SysRandom(s)
 
 def next_double() -> float:
     """Return the next random floating point number in the range [0.0, 1.0)."""
-    return _random.next_double()
+    with _lock:
+        return _random.next_double()
 
 def randint(a: int, b: int) -> int:
     """Return a random integer in the range [a, b], including both end points."""
-    return _random.next(a, b + 1)
+    with _lock:
+        return _random.next(a, b + 1)
 
 def uniform(a: float, b: float) -> float:
     """Return a random floating point number in the range [a, b]."""
-    return a + (_random.next_double() * (b - a))
+    with _lock:
+        return a + (_random.next_double() * (b - a))
 
 def choice[T](seq: list[T]) -> T:
     """Return a random element from the non-empty sequence seq."""
     if seq is None or len(seq) == 0:
         raise IndexError("Cannot choose from an empty sequence")
-    index: int = _random.next(len(seq))
+    index: int = 0
+    with _lock:
+        index = _random.next(len(seq))
     return seq[index]
 
 def shuffle[T](x: list[T]) -> None:
@@ -34,7 +47,9 @@ def shuffle[T](x: list[T]) -> None:
     n: int = len(x)
     i: int = n - 1
     while i > 0:
-        j: int = _random.next(i + 1)
+        j: int = 0
+        with _lock:
+            j = _random.next(i + 1)
         temp: T = x[i]
         x[i] = x[j]
         x[j] = temp
@@ -44,7 +59,8 @@ def randrange(stop: int) -> int:
     """Return a randomly selected element from range(stop)."""
     if stop <= 0:
         raise ValueError(f"empty range for randrange() (0, {stop})")
-    return _random.next(stop)
+    with _lock:
+        return _random.next(stop)
 
 def randrange(start: int, stop: int, step: int = 1) -> int:
     """Return a randomly selected element from range(start, stop, step)."""
@@ -54,7 +70,8 @@ def randrange(start: int, stop: int, step: int = 1) -> int:
     if step == 1:
         if width <= 0:
             raise ValueError(f"empty range for randrange() ({start}, {stop}, {step})")
-        return start + _random.next(width)
+        with _lock:
+            return start + _random.next(width)
     n: int = 0
     if step > 0:
         n = (width + step - 1) // step
@@ -62,12 +79,16 @@ def randrange(start: int, stop: int, step: int = 1) -> int:
         n = (width + step + 1) // step
     if n <= 0:
         raise ValueError(f"empty range for randrange() ({start}, {stop}, {step})")
-    return start + step * _random.next(n)
+    with _lock:
+        return start + step * _random.next(n)
 
 def gauss(mu: float, sigma: float) -> float:
     """Return a random floating point number with Gaussian distribution."""
-    u1: float = _random.next_double()
-    u2: float = _random.next_double()
+    u1: float = 0.0
+    u2: float = 0.0
+    with _lock:
+        u1 = _random.next_double()
+        u2 = _random.next_double()
     z0: float = SysMath.sqrt(-2.0 * SysMath.log(u1)) * SysMath.cos(2.0 * 3.141592653589793 * u2)
     return mu + sigma * z0
 
@@ -79,7 +100,8 @@ def getrandbits(k: int) -> int:
         return 0
     if k > 30:
         raise ValueError("number of bits must be <= 30 for int return")
-    return _random.next(1 << k)
+    with _lock:
+        return _random.next(1 << k)
 
 def choices[T](population: list[T], k: int = 1) -> list[T]:
     """Return a list of k elements chosen from population with replacement."""
@@ -89,7 +111,10 @@ def choices[T](population: list[T], k: int = 1) -> list[T]:
     result: list[T] = []
     i: int = 0
     while i < k:
-        result.append(population[_random.next(n)])
+        index: int = 0
+        with _lock:
+            index = _random.next(n)
+        result.append(population[index])
         i = i + 1
     return result
 
@@ -103,7 +128,9 @@ def sample[T](population: list[T], k: int) -> list[T]:
     pool: list[T] = list(population)
     i: int = 0
     while i < k:
-        j: int = _random.next(i, n)
+        j: int = 0
+        with _lock:
+            j = _random.next(i, n)
         temp: T = pool[i]
         pool[i] = pool[j]
         pool[j] = temp

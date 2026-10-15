@@ -1660,7 +1660,7 @@ internal partial class TypeChecker
     /// <summary>
     /// The overload set a receiver's type declares under <paramref name="memberName"/>.
     /// </summary>
-    private List<FunctionSymbol>? LookupInstanceMethodOverloads(SemanticType? receiverType, string memberName)
+    private IReadOnlyList<FunctionSymbol>? LookupInstanceMethodOverloads(SemanticType? receiverType, string memberName)
     {
         if (receiverType == null)
             return null;
@@ -1749,16 +1749,15 @@ internal partial class TypeChecker
             var clrTypeName = func.Parameters[paramIdx].ClrTypeName;
             if (!string.IsNullOrEmpty(clrTypeName))
             {
-                var clrType = Type.GetType(clrTypeName);
+                // Resolved against this compilation's visibility, never the process's loaded set
+                // (#2250): the AQN first, then — as before — the bare namespace-qualified name in
+                // any visible assembly, for an AQN whose assembly the visibility names differently.
+                var clrType = Visibility.ResolveType(clrTypeName!);
                 if (clrType == null)
                 {
-                    // Assembly.GetType expects just the namespace-qualified name,
-                    // not the full AQN — strip the assembly qualifier.
                     var commaIdx = clrTypeName!.IndexOf(',', StringComparison.Ordinal);
-                    var typeNameOnly = commaIdx >= 0 ? clrTypeName[..commaIdx] : clrTypeName;
-                    clrType = AppDomain.CurrentDomain.GetAssemblies()
-                        .Select(a => a.GetType(typeNameOnly))
-                        .FirstOrDefault(t => t != null);
+                    if (commaIdx >= 0)
+                        clrType = Visibility.ResolveType(clrTypeName[..commaIdx]);
                 }
                 if (clrType != null)
                 {
@@ -2159,7 +2158,7 @@ internal partial class TypeChecker
     /// Finds all overloads for a method name walking the type hierarchy.
     /// Returns null if no overloads are found.
     /// </summary>
-    private List<FunctionSymbol>? FindMethodOverloadsInHierarchy(TypeSymbol type, string methodName)
+    private IReadOnlyList<FunctionSymbol>? FindMethodOverloadsInHierarchy(TypeSymbol type, string methodName)
         => FindOverloadsInHierarchy(type, methodName,
             static (t, n) => t.MethodOverloads.TryGetValue(n, out var overloads) && overloads.Count > 0
                 ? overloads
@@ -2175,7 +2174,7 @@ internal partial class TypeChecker
     /// therefore blind to every dunder overload set, which is how <c>obj(args)</c> on a class with
     /// two <c>__call__</c> declarations resolved to whichever was written first (#1672).</para>
     /// </summary>
-    private List<FunctionSymbol>? FindDunderOverloadsInHierarchy(TypeSymbol type, string dunderName)
+    private IReadOnlyList<FunctionSymbol>? FindDunderOverloadsInHierarchy(TypeSymbol type, string dunderName)
         => FindOverloadsInHierarchy(type, dunderName, static (t, n) =>
             t.ProtocolMethods.TryGetValue(n, out var protocolOverloads) && protocolOverloads.Count > 0
                 ? protocolOverloads
@@ -2188,8 +2187,8 @@ internal partial class TypeChecker
     /// chain, then its interfaces (the last handles interface-typed variables and interface methods
     /// not reachable through the base chain, #364). Only the per-type dictionary differs.
     /// </summary>
-    private List<FunctionSymbol>? FindOverloadsInHierarchy(
-        TypeSymbol type, string name, Func<TypeSymbol, string, List<FunctionSymbol>?> lookup)
+    private IReadOnlyList<FunctionSymbol>? FindOverloadsInHierarchy(
+        TypeSymbol type, string name, Func<TypeSymbol, string, IReadOnlyList<FunctionSymbol>?> lookup)
     {
         if (lookup(type, name) is { } own)
             return own;

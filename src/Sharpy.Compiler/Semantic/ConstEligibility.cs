@@ -188,15 +188,15 @@ internal sealed class ConstEligibility
                     break;
 
                 case ClassDef classDef:
-                    CollectTypeBody(classDef.Name, classDef.Body, scope, owningType);
+                    CollectTypeBody(classDef, classDef.Name, classDef.Body, scope, owningType);
                     break;
 
                 case StructDef structDef:
-                    CollectTypeBody(structDef.Name, structDef.Body, scope, owningType);
+                    CollectTypeBody(structDef, structDef.Name, structDef.Body, scope, owningType);
                     break;
 
                 case InterfaceDef interfaceDef:
-                    CollectTypeBody(interfaceDef.Name, interfaceDef.Body, scope, owningType);
+                    CollectTypeBody(interfaceDef, interfaceDef.Name, interfaceDef.Body, scope, owningType);
                     break;
 
                 case FunctionDef funcDef:
@@ -214,23 +214,36 @@ internal sealed class ConstEligibility
         }
     }
 
-    private void CollectTypeBody(string typeName, IEnumerable<Statement> body, ConstScope scope, TypeSymbol? enclosing)
+    private void CollectTypeBody(Statement definition, string typeName, IEnumerable<Statement> body, ConstScope scope, TypeSymbol? enclosing)
     {
-        var typeSymbol = ResolveTypeSymbol(typeName, enclosing);
+        // A type definition with no symbol of its own — one in a function body or a block, which the checker refuses
+        // (SPY0202: C# has no local types) — owns no fields to fold onto. Its body is not collected: walked with the
+        // symbol a NAME lookup found, its `const X` bound to that symbol's field X and folded onto it — an enclosing
+        // user type's, or a shared registry type's (#2250).
+        if (ResolveTypeSymbol(definition, typeName, enclosing) is not { } typeSymbol)
+            return;
+
         // A type body allows forward references, as C# does.
         Collect(body, new ConstScope(scope, allowsForwardReference: true), typeSymbol);
     }
 
     /// <summary>
-    /// The declaring type of a nested type is its enclosing <see cref="TypeSymbol.NestedTypes"/>;
-    /// a top-level type is looked up in the symbol table. A type declared inside a function has no
-    /// resolvable symbol here — its field consts get no fact and the emitter keeps the non-const
-    /// shape.
+    /// The symbol declared FOR <paramref name="definition"/>: a nested type is in its enclosing
+    /// <see cref="TypeSymbol.NestedTypes"/>, a top-level type in the symbol table — in either case only the one
+    /// declared at this definition (<see cref="Symbol.IsDeclaredAt"/>), never a builtin's or another definition's of
+    /// the same name (#2250).
     /// </summary>
-    private TypeSymbol? ResolveTypeSymbol(string name, TypeSymbol? enclosing)
-        => enclosing != null
-            ? enclosing.NestedTypes.FirstOrDefault(t => t.Name == name)
+    private TypeSymbol? ResolveTypeSymbol(Statement definition, string name, TypeSymbol? enclosing)
+    {
+        var candidate = enclosing != null
+            ? enclosing.NestedTypes.FirstOrDefault(t => t.Name == name && t.IsDeclaredAt(definition))
             : _symbolTable.Lookup(name) as TypeSymbol;
+        return candidate is not null
+            && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(candidate)
+            && candidate.IsDeclaredAt(definition)
+                ? candidate
+                : null;
+    }
 
     private void Declare(VariableDeclaration decl, ConstScope scope, TypeSymbol? owningType)
     {

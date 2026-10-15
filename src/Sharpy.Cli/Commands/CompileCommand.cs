@@ -165,11 +165,11 @@ internal static class CompileCommand
 
         var compileResult = BuildCommand.CompileToBinary(
             inputFile, outputType, new FileInfo(outputPath), references, modulePaths,
-            logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration, features);
+            logger, metricsFormat, metricsOutput, out var failureExitCode, warnAsError, nowarn, maxErrors, configuration, features);
 
         if (compileResult == null)
         {
-            return CliHelpers.LastFailureExitCode;
+            return failureExitCode;
         }
 
         // The deployment seed's user half: the `-r` list spelled exactly as CompileToBinary handed it

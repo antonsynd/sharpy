@@ -130,16 +130,17 @@ public sealed class CompilerApi
         var config = SyntheticProject.BuildConfig(source, entryFilePath, options, _logger);
         var registry = BuildModuleRegistry(config);
 
-        // A reference that resolves to no file is SPY0305 on the registry; this path built the
-        // registry and never read it, so `--reference does/not/exist.dll` compiled silently (#2173).
-        // Refuse before compiling, as for a missing input file — nothing is written.
-        var missingReferences = registry?.MissingReferenceDiagnostics();
-        if (missingReferences is { Count: > 0 })
+        // A reference that resolves to no file (SPY0305) or cannot be loaded as given (SPY0306) is a
+        // registry error; this path built the registry and never read it, so
+        // `--reference does/not/exist.dll` compiled silently (#2173). Refuse before compiling, as for
+        // a missing input file — nothing is written. Every registry error reaches every door (R-HI).
+        var referenceErrors = registry?.ReferenceDiagnostics();
+        if (referenceErrors is { Count: > 0 })
         {
             return new CompileResult
             {
                 Success = false,
-                Diagnostics = missingReferences,
+                Diagnostics = referenceErrors,
                 GeneratedCSharpFiles = new Dictionary<string, string>(),
                 UsedAssemblyPaths = new HashSet<string>(),
                 ProjectConfig = config,
@@ -471,20 +472,21 @@ public sealed class CompilerApi
                 : null;
         }
 
-        // A reference that resolves to no file is SPY0305 on the (cached) registry, which the analysis
-        // never reads; the single-file analyze door dropped it, as AnalyzeProject did (#2223).
+        // A registry error (SPY0305 no file, SPY0306 not loadable as given) is on the (cached)
+        // registry, which the analysis never reads; the single-file analyze door dropped it, as
+        // AnalyzeProject did (#2223, R-HI).
         // Analysis writes nothing, so merging after it is enough.
-        var missingReferences = registry?.MissingReferenceDiagnostics() ?? Array.Empty<CompilerDiagnostic>();
-        var diagnostics = missingReferences.Count == 0
+        var referenceErrors = registry?.ReferenceDiagnostics() ?? Array.Empty<CompilerDiagnostic>();
+        var diagnostics = referenceErrors.Count == 0
             ? analysis.Diagnostics.GetAll()
-            : analysis.Diagnostics.GetAll().Concat(missingReferences).ToList();
+            : analysis.Diagnostics.GetAll().Concat(referenceErrors).ToList();
 
         return new SemanticResult
         {
             // Diagnostics and success come from the whole analysis (project bag), matching the
             // former single-file driver and the compile path; the AST/semantic/symbol/comment
             // artifacts are the entry file's per-unit view.
-            Success = !analysis.Diagnostics.HasErrors && missingReferences.Count == 0,
+            Success = !analysis.Diagnostics.HasErrors && referenceErrors.Count == 0,
             Diagnostics = diagnostics,
             Ast = entryResult?.Ast,
             SemanticInfo = entryResult?.SemanticInfo,
@@ -522,17 +524,17 @@ public sealed class CompilerApi
             emitterFactory: _emitterFactory);
         var result = compiler.AnalyzeProject(config, cancellationToken);
 
-        // A <Reference> that resolves to no file is SPY0305 on the registry, which the analysis
-        // never reads (#2223). Analysis writes nothing, so merging after it is enough; the entry is
+        // A <Reference> that resolves to no file (SPY0305) or cannot be loaded as given (SPY0306) is a
+        // registry error, which the analysis never reads (#2223, R-HI). Analysis writes nothing, so merging after it is enough; the entry is
         // file-less, so the per-file readers place it on UnattributedTarget (D3/D5 of #2242). The
         // registry is the cached one: its diagnostics were recorded when it was built, so a warm
         // call reports them again, and a reference appearing or vanishing changes its mtime in the
         // cache key, which rebuilds the registry.
-        var missingReferences = registry?.MissingReferenceDiagnostics();
-        if (missingReferences is not { Count: > 0 })
+        var referenceErrors = registry?.ReferenceDiagnostics();
+        if (referenceErrors is not { Count: > 0 })
             return result;
 
-        foreach (var diagnostic in missingReferences)
+        foreach (var diagnostic in referenceErrors)
             result.Diagnostics.Add(diagnostic);
 
         return new Project.ProjectAnalysisResult(
@@ -638,6 +640,12 @@ public sealed class CompilerApi
     /// registries essential there. <c>MaterializeCodeGenInfo</c> folds bridge tables into
     /// the <see cref="Semantic.SemanticBinding"/> without writing to symbols (#1633), so the
     /// cached <see cref="BuiltinRegistry"/> is returned directly — no per-compilation clone.
+    /// <para>The contract that makes sharing it sound: the master is FROZEN after construction —
+    /// no registration state survives its constructor, its lazily filled caches are
+    /// <c>GetOrAdd</c> with a value that is a function of the key, and every symbol it built
+    /// refuses a write (<see cref="Semantic.Symbol.IsFrozen"/>). An analysis therefore answers on
+    /// a warm instance exactly as on a cold one; a user definition declares its own symbol and
+    /// never writes the builtin of the same name (#2250).</para>
     /// </summary>
     internal (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
         ProjectConfig config)
@@ -650,8 +658,9 @@ public sealed class CompilerApi
                 return (_analysisCache.Registry, _analysisCache.Builtins);
         }
 
-        var builtins = new BuiltinRegistry(_logger);
+        // The registry first: the builtin registry's CLR fallback sees THIS reference set's visibility (#2250).
         var registry = BuildModuleRegistry(config);
+        var builtins = new BuiltinRegistry(_logger, registry?.Visibility);
 
         var entry = new AnalysisCacheEntry(key, registry, builtins);
         lock (_analysisCacheLock)

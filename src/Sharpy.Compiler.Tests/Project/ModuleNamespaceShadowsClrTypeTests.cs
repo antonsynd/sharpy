@@ -188,6 +188,12 @@ public class ModuleNamespaceShadowsClrTypeTests : IDisposable
         var report = string.Join("\n", diagnostics.Where(d => d.IsError).Select(d => $"{d.Code} {d.FilePath}:{d.Line}:{d.Column} {d.Message}"));
         diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
             $"[{route}/{cell}] never CS0118/CS0234 behind SPY0908\n{report}");
+        // Every cell builds its own AppTypes.dll in a fresh directory. Before each registry owned its
+        // load context (#2250, R-HI) the second and later same-named loads in this process recorded
+        // SPY0306 (filtered out) and then compiled against the FIRST copy; now each compile loads the
+        // file it was given.
+        diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.AssemblyLoadError,
+            $"[{route}/{cell}] the reference loads as given — no SPY0306\n{report}");
         if (shadowed != null)
         {
             success.Should().BeFalse($"[{route}/{cell}] is refused");

@@ -61,7 +61,7 @@ internal static class ClrTypeHelper
             }
         }
 
-        _clrMethodNameCache[(clrType, memberName)] = resolved;
+        AssemblyVisibility.SetIfProcessStable(_clrMethodNameCache, (clrType, memberName), clrType, resolved);
         return resolved;
     }
 
@@ -89,7 +89,7 @@ internal static class ClrTypeHelper
                 && NameMangler.ToSharpyName(m.Name, ReverseNameContext.Method) == memberName)
             .ToImmutableArray();
 
-        _genericInstanceMethodCache[(clrType, memberName)] = matches;
+        AssemblyVisibility.SetIfProcessStable(_genericInstanceMethodCache, (clrType, memberName), clrType, matches);
         return matches;
     }
 
@@ -115,7 +115,7 @@ internal static class ClrTypeHelper
     /// </summary>
     internal static IReadOnlySet<string>? GetMemberNameSurface(Type clrType)
     {
-        return _memberNameSurfaceCache.GetOrAdd(clrType, static t =>
+        return AssemblyVisibility.GetOrAddIfProcessStable(_memberNameSurfaceCache, clrType, clrType, static t =>
         {
             var names = new HashSet<string>(StringComparer.Ordinal);
             try
@@ -210,7 +210,7 @@ internal static class ClrTypeHelper
     /// </summary>
     internal static IReadOnlySet<string> GetExtensionMethodNames(Assembly assembly)
     {
-        return _extensionMethodNameCache.GetOrAdd(assembly, static asm =>
+        return AssemblyVisibility.GetOrAddIfProcessStable(_extensionMethodNameCache, assembly, static asm =>
         {
             var names = new HashSet<string>(StringComparer.Ordinal);
             foreach (var method in EnumerateExtensionMethods(asm))
@@ -238,7 +238,7 @@ internal static class ClrTypeHelper
     /// </summary>
     internal static IReadOnlyDictionary<string, MethodInfo[]> GetExtensionMethodsByVerbatimName(Assembly assembly)
     {
-        return _extensionMethodsByVerbatimNameCache.GetOrAdd(assembly, static asm =>
+        return AssemblyVisibility.GetOrAddIfProcessStable(_extensionMethodsByVerbatimNameCache, assembly, static asm =>
             EnumerateExtensionMethods(asm)
                 .GroupBy(m => m.Name, StringComparer.Ordinal)
                 .ToFrozenDictionary(g => g.Key, g => g.ToArray(), StringComparer.Ordinal));
@@ -315,7 +315,7 @@ internal static class ClrTypeHelper
             }
         }
 
-        _clrPropertyNameCache[(clrType, memberName)] = resolved;
+        AssemblyVisibility.SetIfProcessStable(_clrPropertyNameCache, (clrType, memberName), clrType, resolved);
         return resolved;
     }
 
@@ -325,13 +325,13 @@ internal static class ClrTypeHelper
     /// <c>a[1, 2]</c> can be spread into separate element-access arguments (#956). Used by the
     /// TypeChecker to materialize <c>IndexAccessLowering.ParamsSpread</c>; the emitter never reflects.
     /// </summary>
-    internal static bool HasParamsIndexer(SemanticType? type)
+    internal static bool HasParamsIndexer(AssemblyVisibility visibility, SemanticType? type)
     {
         var clrType = type switch
         {
             UserDefinedType udt => udt.Symbol?.ClrType,
             BuiltinType bt => bt.ClrType,
-            GenericType gt => TryConstructClosedGeneric(gt, t => t.ClrType ?? typeof(object)),
+            GenericType gt => TryConstructClosedGeneric(visibility, gt, t => t.ClrType ?? typeof(object)),
             _ => null
         };
 
@@ -353,7 +353,8 @@ internal static class ClrTypeHelper
             }
         }
 
-        _paramsIndexerCache.TryAdd(clrType, result);
+        if (AssemblyVisibility.IsProcessStable(clrType))
+            _paramsIndexerCache.TryAdd(clrType, result);
         return result;
     }
 
@@ -398,78 +399,18 @@ internal static class ClrTypeHelper
             }
         }
 
-        _overridableMemberCache[key] = result;
+        AssemblyVisibility.SetIfProcessStable(_overridableMemberCache, key, clrType, result);
         return result;
     }
 
-    // Caches a stored CLR type name -> the resolved CLR type, so every channel that records a
-    // CLR identity as text scans loaded assemblies at most once per name. Null is cached too:
-    // an unresolvable name stays unresolvable.
-    private static readonly ConcurrentDictionary<string, Type?> _originNameDefinitionCache = new();
-
     /// <summary>
-    /// Resolves a CLR type by the FullName a cache channel recorded — <c>Type.GetType</c> first,
-    /// then a loaded-assembly scan, null-cached per name. The SHARED origin resolver for every
-    /// serializer channel that stores a CLR identity as text (the #1538 builtin channel, the
-    /// #1534 UnmappedClrType channel) and for <see cref="ResolveOriginDefinition"/>'s
-    /// generic-definition lookup, which layers its arity gates on top.
+    /// The CLR type a <see cref="GenericType"/> denotes, closed over its arguments' identities (the
+    /// open definition when an argument has none). A definition recorded only by name
+    /// (<see cref="GenericType.ClrOriginTypeName"/>) resolves against <paramref name="visibility"/> —
+    /// the compilation's, never the process's (#2250).
     /// </summary>
-    internal static Type? ResolveClrTypeByStoredName(string fullName)
-        => _originNameDefinitionCache.GetOrAdd(fullName, static name =>
-        {
-            var direct = Type.GetType(name);
-            if (direct != null)
-                return direct;
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var found = assembly.GetType(name);
-                if (found != null)
-                    return found;
-            }
-            return null;
-        });
-
-    // Caches a bare Sharpy display name + arity -> the resolved CLR generic definition (or null),
-    // so the last-resort scan below runs at most once per spelling instead of on every negative
-    // protocol probe.
-    private static readonly ConcurrentDictionary<string, Type?> _displayNameDefinitionCache = new();
-
-    /// <summary>
-    /// Last-resort resolution of a CLR generic definition from a bare Sharpy DISPLAY name (no
-    /// <see cref="GenericType.ClrOriginTypeName"/>, no symbol) — the shape a return type takes
-    /// after losing its identity through the overload-index → builtin-substitution chain (#1517).
-    /// Probes System.Collections.Generic directly, then scans loaded assemblies for an arity
-    /// match on the StripArity'd simple name. Cached per name+arity, nulls included.
-    /// </summary>
-    internal static Type? ResolveGenericDefinitionByDisplayName(string displayName, int arity)
-        => _displayNameDefinitionCache.GetOrAdd($"{displayName}`{arity}", _ =>
-        {
-            var candidateName = displayName.Contains('`', StringComparison.Ordinal)
-                ? displayName
-                : displayName + "`" + arity;
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var found = assembly.GetType("System.Collections.Generic." + candidateName)
-                        ?? assembly.GetTypes().FirstOrDefault(t =>
-                            t.IsGenericTypeDefinition
-                            && Shared.ClrNameHelper.StripArity(t.Name) == displayName
-                            && t.GetGenericArguments().Length == arity);
-                    if (found != null)
-                        return found;
-                }
-                catch (ReflectionTypeLoadException)
-                {
-                    // A partially-loadable assembly cannot veto the scan — skip it.
-                }
-            }
-            return null;
-        });
-
-    internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
+    internal static Type? TryConstructClosedGeneric(
+        AssemblyVisibility visibility, GenericType generic, Func<SemanticType, Type?> resolveClrType)
     {
         // Provenance has two channels and a GenericType may carry either one. TypeResolver's
         // ANNOTATION path sets GenericDefinition from the resolved symbol; the discovery path that
@@ -480,7 +421,7 @@ internal static class ClrTypeHelper
         // when it came from an expression — so CLR operator resolution accepted `x | y` and refused
         // `d.keys() | e.keys()` (#1496). Both channels answer the same question, so both are read
         // here, at the single funnel every CLR operator/member resolution already goes through.
-        var openDef = generic.GenericDefinition?.ClrType ?? ResolveOriginDefinition(generic);
+        var openDef = generic.GenericDefinition?.ClrType ?? ResolveOriginDefinition(visibility, generic);
         if (openDef == null || !openDef.IsGenericTypeDefinition)
             return openDef;
 
@@ -509,12 +450,14 @@ internal static class ClrTypeHelper
     /// longer resolves. Arity is checked here so a name that resolves to a differently-shaped
     /// definition is rejected rather than blowing up inside <c>MakeGenericType</c>.
     /// </summary>
-    internal static Type? ResolveOriginDefinition(GenericType generic)
+    internal static Type? ResolveOriginDefinition(AssemblyVisibility visibility, GenericType generic)
     {
         if (generic.ClrOriginTypeName is not { Length: > 0 } originName)
             return null;
 
-        var resolved = ResolveClrTypeByStoredName(originName);
+        // Resolved against the compilation's visibility — the one origin resolver every channel that
+        // stores a CLR identity as text shares, cached per name there (#1538, #2250).
+        var resolved = visibility.ResolveType(originName);
 
         if (resolved is not { IsGenericTypeDefinition: true })
             return null;
@@ -604,8 +547,10 @@ internal static class ClrTypeHelper
     /// </para>
     /// </summary>
     private static Type? FindGenericDefinitionInClosure(Type type, string definitionFullName)
-        => _originDefinitionCache.GetOrAdd(
+        => AssemblyVisibility.GetOrAddIfProcessStable(
+            _originDefinitionCache,
             (type, definitionFullName),
+            type,
             key => FindGenericDefinitionInClosureUncached(key.Item1, key.Item2));
 
     private static Type? FindGenericDefinitionInClosureUncached(Type type, string definitionFullName)

@@ -16,12 +16,24 @@ namespace Sharpy.RandomModule
     public static partial class RandomModuleModule
     {
         public static global::System.Random _Random = new global::System.Random();
+        public static global::Sharpy.Lock _Lock = new global::Sharpy.Lock();
         /// <summary>
         /// Initialize the random number generator with the given seed.
         /// </summary>
         public static void Seed(int s)
         {
-            _Random = new global::System.Random(s);
+            {
+                var __ctx_0 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_0.Enter();
+                try
+                {
+                    _Random = new global::System.Random(s);
+                }
+                finally
+                {
+                    __ctx_0.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -29,7 +41,18 @@ namespace Sharpy.RandomModule
         /// </summary>
         public static double NextDouble()
         {
-            return global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
+            {
+                var __ctx_1 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_1.Enter();
+                try
+                {
+                    return global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
+                }
+                finally
+                {
+                    __ctx_1.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -37,7 +60,18 @@ namespace Sharpy.RandomModule
         /// </summary>
         public static int Randint(int a, int b)
         {
-            return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(a, b + 1);
+            {
+                var __ctx_2 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_2.Enter();
+                try
+                {
+                    return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(a, b + 1);
+                }
+                finally
+                {
+                    __ctx_2.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -45,7 +79,18 @@ namespace Sharpy.RandomModule
         /// </summary>
         public static double Uniform(double a, double b)
         {
-            return a + (global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble() * (b - a));
+            {
+                var __ctx_3 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_3.Enter();
+                try
+                {
+                    return a + (global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble() * (b - a));
+                }
+                finally
+                {
+                    __ctx_3.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -58,7 +103,20 @@ namespace Sharpy.RandomModule
                 throw new global::Sharpy.IndexError("Cannot choose from an empty sequence");
             }
 
-            int index = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(global::Sharpy.Builtins.Len(seq));
+            int index = 0;
+            {
+                var __ctx_4 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_4.Enter();
+                try
+                {
+                    index = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(global::Sharpy.Builtins.Len(seq));
+                }
+                finally
+                {
+                    __ctx_4.Exit();
+                }
+            }
+
             return seq[index];
         }
 
@@ -76,7 +134,20 @@ namespace Sharpy.RandomModule
             int i = n - 1;
             while (i > 0)
             {
-                int j = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(i + 1);
+                int j = 0;
+                {
+                    var __ctx_5 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                    __ctx_5.Enter();
+                    try
+                    {
+                        j = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(i + 1);
+                    }
+                    finally
+                    {
+                        __ctx_5.Exit();
+                    }
+                }
+
                 T temp = x[i];
                 x[i] = x[j];
                 x[j] = temp;
@@ -94,7 +165,18 @@ namespace Sharpy.RandomModule
                 throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() (0, {(global::Sharpy.Builtins.Str(stop))})"));
             }
 
-            return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(stop);
+            {
+                var __ctx_6 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_6.Enter();
+                try
+                {
+                    return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(stop);
+                }
+                finally
+                {
+                    __ctx_6.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -115,7 +197,18 @@ namespace Sharpy.RandomModule
                     throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(global::Sharpy.Builtins.Str(start))}, {(global::Sharpy.Builtins.Str(stop))}, {(global::Sharpy.Builtins.Str(step))})"));
                 }
 
-                return start + global::Sharpy.RandomModule.RandomModuleModule._Random.Next(width);
+                {
+                    var __ctx_7 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                    __ctx_7.Enter();
+                    try
+                    {
+                        return start + global::Sharpy.RandomModule.RandomModuleModule._Random.Next(width);
+                    }
+                    finally
+                    {
+                        __ctx_7.Exit();
+                    }
+                }
             }
 
             int n = 0;
@@ -133,7 +226,18 @@ namespace Sharpy.RandomModule
                 throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(global::Sharpy.Builtins.Str(start))}, {(global::Sharpy.Builtins.Str(stop))}, {(global::Sharpy.Builtins.Str(step))})"));
             }
 
-            return start + step * global::Sharpy.RandomModule.RandomModuleModule._Random.Next(n);
+            {
+                var __ctx_8 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_8.Enter();
+                try
+                {
+                    return start + step * global::Sharpy.RandomModule.RandomModuleModule._Random.Next(n);
+                }
+                finally
+                {
+                    __ctx_8.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -141,8 +245,22 @@ namespace Sharpy.RandomModule
         /// </summary>
         public static double Gauss(double mu, double sigma)
         {
-            double u1 = global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
-            double u2 = global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
+            double u1 = 0.0d;
+            double u2 = 0.0d;
+            {
+                var __ctx_9 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_9.Enter();
+                try
+                {
+                    u1 = global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
+                    u2 = global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
+                }
+                finally
+                {
+                    __ctx_9.Exit();
+                }
+            }
+
             double z0 = global::System.Math.Sqrt(-2.0d * global::System.Math.Log(u1)) * global::System.Math.Cos(2.0d * 3.141592653589793d * u2);
             return mu + sigma * z0;
         }
@@ -167,7 +285,18 @@ namespace Sharpy.RandomModule
                 throw new global::Sharpy.ValueError("number of bits must be <= 30 for int return");
             }
 
-            return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(1 << k);
+            {
+                var __ctx_10 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                __ctx_10.Enter();
+                try
+                {
+                    return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(1 << k);
+                }
+                finally
+                {
+                    __ctx_10.Exit();
+                }
+            }
         }
 
         /// <summary>
@@ -187,7 +316,21 @@ namespace Sharpy.RandomModule
             int i = 0;
             while (i < k)
             {
-                result.Append(population[global::Sharpy.RandomModule.RandomModuleModule._Random.Next(n)]);
+                int index = 0;
+                {
+                    var __ctx_11 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                    __ctx_11.Enter();
+                    try
+                    {
+                        index = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(n);
+                    }
+                    finally
+                    {
+                        __ctx_11.Exit();
+                    }
+                }
+
+                result.Append(population[index]);
                 i = i + 1;
             }
 
@@ -214,7 +357,20 @@ namespace Sharpy.RandomModule
             int i = 0;
             while (i < k)
             {
-                int j = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(i, n);
+                int j = 0;
+                {
+                    var __ctx_12 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
+                    __ctx_12.Enter();
+                    try
+                    {
+                        j = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(i, n);
+                    }
+                    finally
+                    {
+                        __ctx_12.Exit();
+                    }
+                }
+
                 T temp = pool[i];
                 pool[i] = pool[j];
                 pool[j] = temp;

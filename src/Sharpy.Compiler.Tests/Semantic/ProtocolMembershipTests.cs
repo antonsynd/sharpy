@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
@@ -47,7 +48,7 @@ public class ProtocolMembershipTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var membership = new ProtocolMembership(symbolTable, builtins);
+        var membership = new ProtocolMembership(symbolTable, builtins, AssemblyVisibility.FrameworkOnly);
 
         var delta = new HashSet<(string TypeName, string Dunder)>();
         var genericTypesChecked = 0;

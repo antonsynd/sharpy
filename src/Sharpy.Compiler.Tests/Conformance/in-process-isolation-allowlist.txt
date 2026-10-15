@@ -1,0 +1,13 @@
+# In-process isolation sweep allowlist (P54, #2250) — read by InProcessIsolationSweepTests.
+#
+# One row per red cell: `program sharing threads operation bucket [probabilistic]  # #2250 reason; reproduced k/R @ sha`
+#   program    a corpus id (InProcessIsolationCorpus: a named roster id or a fixture test name)
+#   sharing    compiler-per-thread | api-per-thread | api-shared
+#   threads    1 | 2 | 8
+#   operation  analyze | compile
+#   bucket     drift (differs from the solo oracle under 2/8 threads) | crash (an exception escaped)
+#              | order (on ONE thread the warm instance differs from a fresh one)
+#
+# A red cell without a row fails. A row whose cell was exercised and reproduced in no repetition fails
+# as stale — drain it when the fix lands — unless it is marked `probabilistic` (reported, not judged).
+# Every row cites #2250; the k/R is the measured reproduction count at the named sha.

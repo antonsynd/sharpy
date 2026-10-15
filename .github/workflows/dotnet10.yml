@@ -7,7 +7,7 @@
 #
 #   build ─┬─ test-fast                 CLI + Core + Stdlib + LSP (one step each)
 #          ├─ compiler (matrix 1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace
-#          ├─ sweep (matrix of 5)       one job per GapDiscovery sweep, filters unchanged
+#          ├─ sweep (matrix of 6)       one job per GapDiscovery sweep, filters unchanged
 #          ├─ stdlib-spy-gates          .spy native compile + generated-C# staleness gates
 #          └─ compiler-shard-partition  proves the shards partition the main-step filter
 #   ci-summary (needs all, always runs) the single check to require: fails unless every job
@@ -52,7 +52,12 @@ env:
   # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
   # The CPython execution oracle likewise earned its own job when #1202 took it from a
   # 60-program sample to the full ~565-cell pool.
-  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance"
+  # The in-process isolation sweep (#2250) is excluded by Category AND name, not by name alone:
+  # InProcessIsolationSweepTests also carries a regular-suite slice (threads {1, 2} x 1
+  # repetition) and its controls, which must keep running in the shards — a bare
+  # `FullyQualifiedName!~InProcessIsolation` would leave them selected by no step
+  # (CiFilterCoverageConformanceTests).
+  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
   # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
   # PARTITION INVARIANT: shards 1–6 are positive namespace buckets (shard 5 excludes shard 4's
   # sub-bucket by negation); shard 7 is "everything else" — the negation of every other bucket
@@ -322,6 +327,18 @@ jobs:
           - name: formatter-emit-invariance
             filter: "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance"
             python: false
+          # In-process isolation sweep (P54, #2250). A compile is a function of its inputs alone:
+          # seeded per-thread schedules over a corpus (the #2250 cell programs + a stride-16
+          # fixture sample) x instance sharing {compiler-per-thread, api-per-thread, api-shared}
+          # x 8 threads x 8 repetitions x {analyze, compile-to-IL}, each answer compared with the
+          # same (program, operation) run alone on a fresh instance. Emits
+          # .claude/tmp/in-process-isolation-report.json and ratchets
+          # src/Sharpy.Compiler.Tests/Conformance/in-process-isolation-allowlist.txt (drain-on-fix;
+          # `probabilistic` rows are reported, not judged). Only the GapDiscovery mode runs here:
+          # the class's regular slice (threads {1, 2} x 1) stays in the Compiler shards.
+          - name: in-process-isolation
+            filter: "Category=GapDiscovery&FullyQualifiedName~InProcessIsolation"
+            python: false
 
     steps:
     - uses: actions/checkout@v7
@@ -539,7 +556,7 @@ jobs:
         NS = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
         shards = sorted(int(k[len("COMPILER_SHARD_"):]) for k in os.environ if k.startswith("COMPILER_SHARD_"))
         sweeps = ["interop-conformance", "metamorphic-corpus", "differential-execution",
-                  "format-spec-differential", "formatter-emit-invariance"]
+                  "format-spec-differential", "formatter-emit-invariance", "in-process-isolation"]
         expected = (["cli", "core", "stdlib", "lsp", "windows"] + [f"compiler-shard-{n}" for n in shards]
                     + [f"sweep-{s}" for s in sweeps])
         found = {os.path.basename(p)[:-4]: p for p in glob.glob("trx/**/*.trx", recursive=True)}

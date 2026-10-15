@@ -8,26 +8,32 @@ namespace Sharpy
     /// generation backed by <see cref="System.Random"/> and Math.NET Numerics distributions.
     /// </summary>
     /// <remarks>
-    /// The underlying random number generator is <see cref="ThreadStaticAttribute">thread-static</see>
-    /// — each thread sees its own instance. This matches the safer .NET model while remaining
-    /// compatible with Python's non-thread-safe global RNG behavior. Call <see cref="Seed(int)"/>
-    /// on a thread to obtain a reproducible sequence on that thread.
+    /// The underlying random number generator is ONE process-wide <see cref="System.Random"/>
+    /// behind a lock, as numpy's global <c>RandomState</c> is process-wide: with numpy 2.5.1,
+    /// <c>np.random.seed(7)</c> on the main thread and then <c>np.random.rand()</c> on a worker
+    /// thread returns the main thread's re-seeded draw (0.07630828937395717 both). A
+    /// <see cref="Seed(int)"/> on any thread is therefore seen by the next draw on every thread,
+    /// and each call holds the lock for its whole draw, as <c>RandomState</c>'s methods hold its
+    /// lock (#2250).
     /// </remarks>
     [SharpyModule("numpy.random")]
     public static class NumpyRandom
     {
-        [ThreadStatic]
-        private static System.Random? _rng;
+        private static System.Random _rng = new System.Random();
 
-        private static System.Random Rng => _rng ??= new System.Random();
+        /// <summary>Guards every read and write of <see cref="_rng"/> (#2250).</summary>
+        private static readonly object RngLock = new object();
 
         /// <summary>
-        /// Seed the thread-local random number generator with <paramref name="seed"/>.
+        /// Seed the process-wide random number generator with <paramref name="seed"/>.
         /// </summary>
         /// <param name="seed">Seed value for the underlying <see cref="System.Random"/>.</param>
         public static void Seed(int seed)
         {
-            _rng = new System.Random(seed);
+            lock (RngLock)
+            {
+                _rng = new System.Random(seed);
+            }
         }
 
         /// <summary>
@@ -43,10 +49,13 @@ namespace Sharpy
 
             int size = ProductOfShape(shape);
             var data = new double[size];
-            var rng = Rng;
-            for (int i = 0; i < size; i++)
+            lock (RngLock)
             {
-                data[i] = rng.NextDouble();
+                var rng = _rng;
+                for (int i = 0; i < size; i++)
+                {
+                    data[i] = rng.NextDouble();
+                }
             }
 
             return new NdArray<double>(data, shape);
@@ -65,10 +74,13 @@ namespace Sharpy
 
             int size = ProductOfShape(shape);
             var data = new double[size];
-            var rng = Rng;
-            for (int i = 0; i < size; i++)
+            lock (RngLock)
             {
-                data[i] = MathNet.Numerics.Distributions.Normal.Sample(rng, 0.0, 1.0);
+                var rng = _rng;
+                for (int i = 0; i < size; i++)
+                {
+                    data[i] = MathNet.Numerics.Distributions.Normal.Sample(rng, 0.0, 1.0);
+                }
             }
 
             return new NdArray<double>(data, shape);
@@ -95,10 +107,13 @@ namespace Sharpy
 
             int size = ProductOfShape(shape);
             var data = new int[size];
-            var rng = Rng;
-            for (int i = 0; i < size; i++)
+            lock (RngLock)
             {
-                data[i] = rng.Next(low, high);
+                var rng = _rng;
+                for (int i = 0; i < size; i++)
+                {
+                    data[i] = rng.Next(low, high);
+                }
             }
 
             return new NdArray<int>(data, shape);
@@ -125,10 +140,13 @@ namespace Sharpy
 
             int size = ProductOfShape(shape);
             var data = new double[size];
-            var rng = Rng;
-            for (int i = 0; i < size; i++)
+            lock (RngLock)
             {
-                data[i] = MathNet.Numerics.Distributions.Normal.Sample(rng, loc, scale);
+                var rng = _rng;
+                for (int i = 0; i < size; i++)
+                {
+                    data[i] = MathNet.Numerics.Distributions.Normal.Sample(rng, loc, scale);
+                }
             }
 
             return new NdArray<double>(data, shape);
@@ -155,10 +173,13 @@ namespace Sharpy
 
             int size = ProductOfShape(shape);
             var data = new double[size];
-            var rng = Rng;
-            for (int i = 0; i < size; i++)
+            lock (RngLock)
             {
-                data[i] = ContinuousUniform.Sample(rng, low, high);
+                var rng = _rng;
+                for (int i = 0; i < size; i++)
+                {
+                    data[i] = ContinuousUniform.Sample(rng, low, high);
+                }
             }
 
             return new NdArray<double>(data, shape);
@@ -206,7 +227,6 @@ namespace Sharpy
             }
 
             var data = new T[size];
-            var rng = Rng;
 
             // Materialize source values via flat stride-aware indexing so views work correctly.
             var source = new T[n];
@@ -215,29 +235,33 @@ namespace Sharpy
                 source[i] = a._data[a._offset + i * a._strides[0]];
             }
 
-            if (replace)
+            lock (RngLock)
             {
-                for (int i = 0; i < size; i++)
+                var rng = _rng;
+                if (replace)
                 {
-                    data[i] = source[rng.Next(n)];
+                    for (int i = 0; i < size; i++)
+                    {
+                        data[i] = source[rng.Next(n)];
+                    }
                 }
-            }
-            else
-            {
-                // Partial Fisher-Yates: draw without replacement by shuffling the first `size` slots.
-                var indices = new int[n];
-                for (int i = 0; i < n; i++)
+                else
                 {
-                    indices[i] = i;
-                }
+                    // Partial Fisher-Yates: draw without replacement by shuffling the first `size` slots.
+                    var indices = new int[n];
+                    for (int i = 0; i < n; i++)
+                    {
+                        indices[i] = i;
+                    }
 
-                for (int i = 0; i < size; i++)
-                {
-                    int j = rng.Next(i, n);
-                    int tmp = indices[i];
-                    indices[i] = indices[j];
-                    indices[j] = tmp;
-                    data[i] = source[indices[i]];
+                    for (int i = 0; i < size; i++)
+                    {
+                        int j = rng.Next(i, n);
+                        int tmp = indices[i];
+                        indices[i] = indices[j];
+                        indices[j] = tmp;
+                        data[i] = source[indices[i]];
+                    }
                 }
             }
 
@@ -278,29 +302,32 @@ namespace Sharpy
 
             int stride0 = a._strides[0];
             int offset = a._offset;
-            var rng = Rng;
-
-            // Fisher-Yates swap of full blocks along axis 0.
-            for (int i = n - 1; i > 0; i--)
+            lock (RngLock)
             {
-                int j = rng.Next(i + 1);
-                if (i == j)
-                {
-                    continue;
-                }
+                var rng = _rng;
 
-                int srcBase = offset + i * stride0;
-                int dstBase = offset + j * stride0;
+                // Fisher-Yates swap of full blocks along axis 0.
+                for (int i = n - 1; i > 0; i--)
+                {
+                    int j = rng.Next(i + 1);
+                    if (i == j)
+                    {
+                        continue;
+                    }
 
-                if (a.Ndim == 1)
-                {
-                    T tmp = a._data[srcBase];
-                    a._data[srcBase] = a._data[dstBase];
-                    a._data[dstBase] = tmp;
-                }
-                else
-                {
-                    SwapBlock(a, srcBase, dstBase, blockSize);
+                    int srcBase = offset + i * stride0;
+                    int dstBase = offset + j * stride0;
+
+                    if (a.Ndim == 1)
+                    {
+                        T tmp = a._data[srcBase];
+                        a._data[srcBase] = a._data[dstBase];
+                        a._data[dstBase] = tmp;
+                    }
+                    else
+                    {
+                        SwapBlock(a, srcBase, dstBase, blockSize);
+                    }
                 }
             }
         }

@@ -193,7 +193,7 @@ _SHARPY_TYPE_NAMES: dict[str, str] = {
     "Sharpy.Bytes": "bytes",
     "Slice": "slice",
     "Sharpy.Slice": "slice",
-    # `RegisterType(BuiltinNames.Complex, typeof(Sharpy.Complex))` — Python's spelling (#1362, #2163).
+    # `Register(BuiltinNames.Complex, typeof(Sharpy.Complex))` — Python's spelling (#1362, #2163).
     "Complex": "complex",
     "Sharpy.Complex": "complex",
 }
@@ -201,16 +201,16 @@ _SHARPY_TYPE_NAMES: dict[str, str] = {
 # Generic types, keyed by the C# outer name. Every value is the name the compiler resolves for that
 # CLR type (#2163), cited by where it is registered — a page may only spell a type the way a Sharpy
 # user can write it:
-#   list / dict / set   BuiltinRegistry `RegisterType("list", typeof(Sharpy.List<>))`, etc.
-#   IEnumerable         `RegisterType(BuiltinNames.IEnumerable, typeof(IEnumerable<>))`; the spec's
+#   list / dict / set   BuiltinRegistry `Register("list", typeof(Sharpy.List<>))`, etc.
+#   IEnumerable         `Register(BuiltinNames.IEnumerable, typeof(IEnumerable<>))`; the spec's
 #                       spelling (collection_types.md "`IEnumerable[T]` for a read-only ...",
 #                       dunder_methods.md `__iter__`). NOT `Iterable`: no Sharpy surface declares
 #                       it (`def f(xs: Iterable[int])` is SPY0202 "Generic type 'Iterable' not found").
-#   IEnumerator         `RegisterType(BuiltinNames.IEnumerator, typeof(IEnumerator<>))`. NOT
+#   IEnumerator         `Register(BuiltinNames.IEnumerator, typeof(IEnumerator<>))`. NOT
 #                       `Iterator`: that is the registered abstract `Sharpy.Iterator<T>`, another type.
-#   Iterator            `RegisterType(BuiltinNames.Iterator, typeof(Sharpy.Iterator<>))`.
-#   Optional / Result   `RegisterType("Optional", ...)`, `RegisterType("Result", ...)`.
-#   tuple               `RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple))`.
+#   Iterator            `Register(BuiltinNames.Iterator, typeof(Sharpy.Iterator<>))`.
+#   Optional / Result   `Register("Optional", ...)`, `Register("Result", ...)`.
+#   tuple               `Register(BuiltinNames.Tuple, typeof(System.ValueTuple))`.
 # `IComparer<T>` has no entry: it renders as itself, a System.Collections.Generic interface the
 # compiler resolves bare. The `Comparer` it used to render as is `SCG.Comparer<T>`, another type.
 _GENERIC_TYPE_MAP: dict[str, str] = {

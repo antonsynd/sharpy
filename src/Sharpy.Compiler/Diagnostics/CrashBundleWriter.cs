@@ -92,33 +92,59 @@ public static class CrashBundleWriter
     public const string SpanDataKey = "crash-span";
 
     /// <summary>
-    /// Writes a crash bundle under <c>&lt;outputDirectory&gt;/.sharpy-crash/&lt;timestamp&gt;/</c>.
+    /// The marker a writer creates with <see cref="FileMode.CreateNew"/> inside a candidate bundle
+    /// directory to claim it. <see cref="Directory.CreateDirectory(string)"/> succeeds for a
+    /// directory that already exists, so it cannot tell two writers apart; a create-new file is the
+    /// one create-exclusive primitive .NET offers on every platform (#2250).
+    /// </summary>
+    internal const string OwnerMarkerName = ".owner";
+
+    /// <summary>How many suffixed candidates a writer tries before giving up (returning null).</summary>
+    private const int MaxBundleCandidates = 100;
+
+    /// <summary>
+    /// Writes a crash bundle under <c>&lt;outputDirectory&gt;/.sharpy-crash/&lt;timestamp&gt;-&lt;pid&gt;[-n]/</c>.
     /// Returns the bundle directory path on success, or <c>null</c> if writing failed for any reason
     /// (the caller must treat a null result as "no bundle" and never let it interrupt error reporting).
     /// </summary>
     public static string? TryWrite(string? outputDirectory, CrashBundleRequest request)
+        => TryWrite(outputDirectory, request, () => DateTime.UtcNow);
+
+    /// <summary>
+    /// Test seam for <see cref="TryWrite(string?, CrashBundleRequest)"/>: the clock that names the
+    /// bundle directory is a parameter, so a test can pin every writer to one tick and make a
+    /// same-millisecond collision deterministic (#2250). A parameter rather than a settable static
+    /// hook — a mutable static would be a <c>StaticStateConformanceTests</c> rule-1 violation.
+    /// </summary>
+    internal static string? TryWrite(string? outputDirectory, CrashBundleRequest request, Func<DateTime> clock)
     {
         try
         {
             var root = ResolveCrashRoot(outputDirectory);
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
-            var bundleDir = Path.Combine(root, timestamp);
+            var timestamp = clock().ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
+            var stem = Path.Combine(
+                root, timestamp + "-" + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
 
-            // Extremely unlikely collision guard (two crashes in the same millisecond).
-            var suffix = 0;
-            var candidate = bundleDir;
-            while (Directory.Exists(candidate) && suffix < 100)
+            // Two crashes in one millisecond — in one process (a compile server, an LSP, parallel
+            // tests) or two — must get two bundles. "Directory.Exists, then CreateDirectory" let two
+            // writers pick one directory and overwrite each other's report (#2250). The process id
+            // separates processes; within one, a writer owns a candidate only if it created the
+            // owner marker with CreateNew, and moves to the next suffix when another writer did.
+            for (var suffix = 0; suffix < MaxBundleCandidates; suffix++)
             {
-                suffix++;
-                candidate = $"{bundleDir}-{suffix}";
+                var candidate = suffix == 0 ? stem : $"{stem}-{suffix}";
+                Directory.CreateDirectory(candidate);
+                if (!TryClaim(candidate))
+                {
+                    continue;
+                }
+
+                WriteReport(candidate, request);
+                WriteSources(candidate, request);
+                return candidate;
             }
-            bundleDir = candidate;
-            Directory.CreateDirectory(bundleDir);
 
-            WriteReport(bundleDir, request);
-            WriteSources(bundleDir, request);
-
-            return bundleDir;
+            return null;
         }
         catch
         {
@@ -145,6 +171,24 @@ public static class CrashBundleWriter
             parts.Add($"offset {span.Value.Start}..{span.Value.End}");
 
         return parts.Count == 0 ? null : string.Join(" @ ", parts);
+    }
+
+    /// <summary>
+    /// Claims <paramref name="bundleDir"/> by creating its owner marker exclusively. False when
+    /// another writer already created it (the directory is theirs).
+    /// </summary>
+    private static bool TryClaim(string bundleDir)
+    {
+        try
+        {
+            using var marker = new FileStream(
+                Path.Combine(bundleDir, OwnerMarkerName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            return true;
+        }
+        catch (IOException) when (File.Exists(Path.Combine(bundleDir, OwnerMarkerName)))
+        {
+            return false;
+        }
     }
 
     private static string ResolveCrashRoot(string? outputDirectory)

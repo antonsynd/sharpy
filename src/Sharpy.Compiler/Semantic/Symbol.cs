@@ -20,7 +20,7 @@ public abstract record Symbol
     public string Name { get; init; } = string.Empty;
     public SymbolKind Kind { get; init; }
     public bool IsNameBacktickEscaped { get; init; }
-    public AccessLevel AccessLevel { get; internal set; } = AccessLevel.Public;
+    public AccessLevel AccessLevel { get; internal set { ThrowIfFrozen(); field = value; } } = AccessLevel.Public;
     public int? DeclarationLine { get; init; }
     public int? DeclarationColumn { get; init; }
 
@@ -130,7 +130,7 @@ public abstract record Symbol
     /// The access level explicitly set via decorator (@public, @protected, @private, @internal).
     /// When non-null, this overrides the name-based access level convention.
     /// </summary>
-    public AccessLevel? ExplicitAccessLevel { get; internal set; }
+    public AccessLevel? ExplicitAccessLevel { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// If non-null, this symbol is deprecated and this is the deprecation message.
@@ -148,7 +148,7 @@ public abstract record Symbol
     /// during name resolution. For .NET assemblies, populated from XML doc files
     /// during assembly discovery.
     /// </remarks>
-    public string? Documentation { get; internal set; }
+    public string? Documentation { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Use reference equality for symbols. Record default (value equality) is unsafe
@@ -159,6 +159,63 @@ public abstract record Symbol
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 
     public override string ToString() => $"{Kind} '{Name}'";
+
+    /// <summary>
+    /// The symbol this one was frozen as. A symbol is frozen when this is the symbol itself, so a
+    /// <c>with</c> copy — which copies the field but is a different object — is born unfrozen: the
+    /// copy is a new declaration its maker owns, the original stays the master's.
+    /// </summary>
+    private Symbol? _frozenAs;
+
+    /// <summary>
+    /// True for a symbol owned by a master <see cref="Registry.BuiltinRegistry"/>, frozen when its
+    /// construction completes. Every analysis on a <c>CompilerApi</c> reads the same master (the
+    /// per-compilation clone was retired at #1633), so a write to one is a write every later
+    /// document reads — a user <c>def len</c> inside a <c>try:</c> body retyped the builtin
+    /// <c>len</c> for every document analysed after it (#2250).
+    /// </summary>
+    internal bool IsFrozen => ReferenceEquals(_frozenAs, this);
+
+    /// <summary>
+    /// Freezes this symbol: every settable property, and every member list or overload table it owns
+    /// (<see cref="SymbolMemberList{T}"/>, <see cref="SymbolOverloadTable"/>), throws on a write from
+    /// now on (#2250).
+    /// </summary>
+    internal void Freeze()
+    {
+        _frozenAs = this;
+        FreezeMembers();
+    }
+
+    /// <summary>Freezes the member collections this symbol owns — every one of them (#2250).</summary>
+    private protected virtual void FreezeMembers()
+    {
+    }
+
+    /// <summary>
+    /// True when this symbol was declared FOR <paramref name="definition"/>: the declaring site stamps the
+    /// definition's span (its start position for a span-less, synthesized definition). A same-named symbol found by a
+    /// name lookup — a builtin, an import, an enclosing definition — carries another span or none. The one rule every
+    /// pass that WRITES the symbol of a definition it is walking applies before writing (#2250).
+    /// </summary>
+    internal bool IsDeclaredAt(Parser.Ast.Node definition)
+        => definition.Span is { } span
+            ? DeclarationSpan == span
+            : DeclarationLine == definition.LineStart && DeclarationColumn == definition.ColumnStart;
+
+    /// <summary>
+    /// Refuses a write to a frozen symbol — always on, not DEBUG-only, like
+    /// <see cref="SemanticBinding"/>'s phase freezes: a write that reached a master symbol is a
+    /// silent retype of every later document, and an internal error is the better failure.
+    /// </summary>
+    private protected void ThrowIfFrozen([CallerMemberName] string property = "")
+    {
+        if (IsFrozen)
+        {
+            throw new Diagnostics.PhaseViolationException(
+                $"write {GetType().Name}.{property}", "construction of the master BuiltinRegistry", Name);
+        }
+    }
 }
 
 /// <summary>
@@ -173,7 +230,7 @@ public record VariableSymbol : Symbol
     /// Uses 'internal set' because type resolution happens after symbol creation.
     /// Readers should prefer SemanticBinding.GetVariableType when available.
     /// </remarks>
-    public SemanticType Type { get; internal set; } = SemanticType.Unknown;
+    public SemanticType Type { get; internal set { ThrowIfFrozen(); field = value; } } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
     public bool IsStatic { get; init; }
@@ -201,7 +258,7 @@ public record VariableSymbol : Symbol
     /// be folded. Used by <c>IsImplicitConstantConversion</c> to treat a const reference as a
     /// constant expression at every §10.2.11 site (#1460).
     /// </summary>
-    public System.Numerics.BigInteger? ConstantValue { get; internal set; }
+    public System.Numerics.BigInteger? ConstantValue { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// The compile-time-constant fact for a <c>const</c> symbol that arrived from ANOTHER module —
@@ -212,7 +269,7 @@ public record VariableSymbol : Symbol
     /// symbol is created; <c>ConstEligibility.IsCompileTimeConstant</c> is the ONE reader that
     /// consults both (#1791, #1782).
     /// </summary>
-    public bool IsCompileTimeConstant { get; internal set; }
+    public bool IsCompileTimeConstant { get; internal set { ThrowIfFrozen(); field = value; } }
 
     public Parser.Ast.ParameterModifier ParameterModifier { get; init; } = Parser.Ast.ParameterModifier.None;
 
@@ -234,7 +291,7 @@ public record VariableSymbol : Symbol
     /// Uses 'internal set' because separate <c>property get</c>/<c>property set</c>
     /// declarations for the same name are merged onto one symbol during name resolution.
     /// </remarks>
-    public bool HasPropertyGetter { get; internal set; }
+    public bool HasPropertyGetter { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// True when a module-level property has a setter accessor
@@ -245,7 +302,7 @@ public record VariableSymbol : Symbol
     /// Uses 'internal set' because separate <c>property get</c>/<c>property set</c>
     /// declarations for the same name are merged onto one symbol during name resolution.
     /// </remarks>
-    public bool HasPropertySetter { get; internal set; }
+    public bool HasPropertySetter { get; internal set { ThrowIfFrozen(); field = value; } }
 
     public virtual bool Equals(VariableSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
@@ -256,8 +313,25 @@ public record VariableSymbol : Symbol
 /// </summary>
 public record FunctionSymbol : Symbol
 {
-    public List<ParameterSymbol> Parameters { get; init; } = new();
-    public SemanticType ReturnType { get; internal set; } = SemanticType.Unknown;
+    public SymbolMemberList<ParameterSymbol> Parameters { get; init; } = new();
+
+    /// <summary>
+    /// Replaces one parameter — the only write a checker makes to <see cref="Parameters"/> once the
+    /// symbol is declared, routed here so a frozen (master) symbol refuses it (#2250).
+    /// </summary>
+    internal void ReplaceParameter(int index, ParameterSymbol parameter)
+    {
+        ThrowIfFrozen(nameof(Parameters));
+        Parameters[index] = parameter;
+    }
+
+    private protected override void FreezeMembers()
+    {
+        Parameters.Freeze(Name);
+        TypeParameters.Freeze(Name);
+    }
+
+    public SemanticType ReturnType { get; internal set { ThrowIfFrozen(); field = value; } } = SemanticType.Unknown;
     public bool IsStatic { get; init; }
     public bool IsAbstract { get; init; }
     public bool IsVirtual { get; init; }
@@ -268,24 +342,24 @@ public record FunctionSymbol : Symbol
     /// the pre-lowering validators read SemanticInfo.IsGenerator(FunctionDef); SynthesisAnalyzer
     /// uses this property when it has only the FunctionSymbol.
     /// </summary>
-    public bool IsGenerator { get; internal set; }
+    public bool IsGenerator { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Set by NameResolver when the function carries the '@must_use' decorator (#1022). The
     /// MustUseValidator warns (SPY0480) when a call to this function is discarded as a bare
     /// expression statement, even when the return type is not itself a Result/Optional carrier.
     /// </summary>
-    public bool IsMustUse { get; internal set; }
+    public bool IsMustUse { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Set by TypeChecker.Definitions.cs when the function is declared with 'async def'.
     /// CodeGen uses this to wrap return types in Task&lt;T&gt; and enable await expressions.
     /// Follows the same pattern as IsGenerator.
     /// </summary>
-    public bool IsAsync { get; internal set; }
+    public bool IsAsync { get; internal set { ThrowIfFrozen(); field = value; } }
 
     // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
+    public SymbolMemberList<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;
 
     // For .NET interop
@@ -309,14 +383,14 @@ public record FunctionSymbol : Symbol
     /// <c>@functools.lru_cache</c> or <c>@functools.cache</c>. CodeGen reads this
     /// to emit a memoization wrapper backed by <see cref="global::Sharpy.LruCache{TKey,TResult}"/>.
     /// </summary>
-    public bool IsCached { get; internal set; }
+    public bool IsCached { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Maxsize for the <c>@lru_cache</c> wrapper, or <c>null</c> for an unbounded cache
     /// (matching <c>@cache</c> and <c>@lru_cache(maxsize=None)</c>). Only meaningful
     /// when <see cref="IsCached"/> is <c>true</c>.
     /// </summary>
-    public int? CacheMaxSize { get; internal set; }
+    public int? CacheMaxSize { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// True when this method's receiver is a PEP 3101 format template whose replacement fields are
@@ -361,13 +435,13 @@ public record TypeSymbol : Symbol
     /// <summary>
     /// Whether this type extends SourceGenerator (detected during inheritance resolution).
     /// </summary>
-    public bool IsSourceGenerator { get; internal set; }
+    public bool IsSourceGenerator { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Whether this type carries the '@must_use' decorator (#1022). The MustUseValidator warns
     /// (SPY0480) when an expression of this type is discarded as a bare expression statement.
     /// </summary>
-    public bool IsMustUse { get; internal set; }
+    public bool IsMustUse { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Whether this enum's members carry string values (#1284). A string-backed enum is emitted as
@@ -381,19 +455,19 @@ public record TypeSymbol : Symbol
     /// <summary>
     /// Whether this type is a @dataclass.
     /// </summary>
-    public bool IsDataclass { get; internal set; }
+    public bool IsDataclass { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Dataclass configuration options (only set when IsDataclass is true).
     /// </summary>
-    public DataclassOptions? DataclassInfo { get; internal set; }
+    public DataclassOptions? DataclassInfo { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// Ordered list of dataclass fields (collected during semantic analysis).
     /// Includes inherited fields from parent @dataclass types (parent fields first).
     /// Only populated when IsDataclass is true.
     /// </summary>
-    public IReadOnlyList<VariableSymbol>? DataclassFields { get; internal set; }
+    public IReadOnlyList<VariableSymbol>? DataclassFields { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
     /// The module path that defines this type (e.g., "animal" for a type imported from animal.spy).
@@ -408,37 +482,37 @@ public record TypeSymbol : Symbol
     public string? DefiningFilePath { get; init; }
 
     // Generic type parameters
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
+    public SymbolMemberList<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;
 
     // Members
-    public List<VariableSymbol> Fields { get; init; } = new();
-    public List<FunctionSymbol> Methods { get; init; } = new();
-    public List<PropertySymbol> Properties { get; init; } = new();
-    public List<EventSymbol> Events { get; init; } = new();
+    public SymbolMemberList<VariableSymbol> Fields { get; init; } = new();
+    public SymbolMemberList<FunctionSymbol> Methods { get; init; } = new();
+    public SymbolMemberList<PropertySymbol> Properties { get; init; } = new();
+    public SymbolMemberList<EventSymbol> Events { get; init; } = new();
 
     // Operator methods (dunder methods for operators)
     // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
-    public Dictionary<string, List<FunctionSymbol>> OperatorMethods { get; init; } = new();
+    public SymbolOverloadTable OperatorMethods { get; init; } = new();
 
     // Protocol methods (non-operator dunders like __len__, __str__, __iter__)
     // Maps protocol dunder names to lists of overloads (usually just one, but allows flexibility)
-    public Dictionary<string, List<FunctionSymbol>> ProtocolMethods { get; init; } = new();
+    public SymbolOverloadTable ProtocolMethods { get; init; } = new();
 
     // Regular method overloads — maps method name to list of overloads
     // Only populated when a class has multiple methods with the same name
-    public Dictionary<string, List<FunctionSymbol>> MethodOverloads { get; init; } = new();
+    public SymbolOverloadTable MethodOverloads { get; init; } = new();
 
     // Constructors - tracks all __init__ overloads
     // Unlike Python (which allows only one __init__ that gets replaced), Sharpy supports
     // multiple __init__ methods that map to C# constructor overloads
-    public List<FunctionSymbol> Constructors { get; init; } = new();
+    public SymbolMemberList<FunctionSymbol> Constructors { get; init; } = new();
 
     // Union cases (only populated for TypeKind.Union)
-    public List<TypeSymbol> UnionCases { get; init; } = new();
+    public SymbolMemberList<TypeSymbol> UnionCases { get; init; } = new();
 
     // Nested types
-    public List<TypeSymbol> NestedTypes { get; init; } = new();
+    public SymbolMemberList<TypeSymbol> NestedTypes { get; init; } = new();
 
     /// <summary>
     /// Nested type aliases (<c>type Id = int</c> declared inside a class/struct/interface body).
@@ -447,12 +521,12 @@ public record TypeSymbol : Symbol
     /// answer a qualified <c>Outer.Id</c> (#1729, R-I). The bare-inside form resolves through the
     /// host scope's symbol table instead — this list carries the qualified spelling only.
     /// </summary>
-    public List<TypeAliasSymbol> NestedTypeAliases { get; init; } = new();
+    public SymbolMemberList<TypeAliasSymbol> NestedTypeAliases { get; init; } = new();
 
     /// <summary>
     /// The enclosing type for nested types. Null for top-level types.
     /// </summary>
-    public TypeSymbol? DeclaringType { get; internal set; }
+    public TypeSymbol? DeclaringType { get; internal set { ThrowIfFrozen(); field = value; } }
 
     // Inheritance
     /// <summary>
@@ -462,9 +536,9 @@ public record TypeSymbol : Symbol
     /// Uses 'internal set' because inheritance resolution happens after symbol creation.
     /// Readers should prefer SemanticBinding.GetBaseType when available.
     /// </remarks>
-    public TypeSymbol? BaseType { get; internal set; }
-    public BaseTypeReference? BaseTypeRef { get; internal set; }
-    public List<InterfaceReference> Interfaces { get; init; } = new();
+    public TypeSymbol? BaseType { get; internal set { ThrowIfFrozen(); field = value; } }
+    public BaseTypeReference? BaseTypeRef { get; internal set { ThrowIfFrozen(); field = value; } }
+    public SymbolMemberList<InterfaceReference> Interfaces { get; init; } = new();
 
     /// <summary>
     /// Unresolved base class name from AST, used for deferred inheritance resolution
@@ -494,7 +568,7 @@ public record TypeSymbol : Symbol
     /// alongside: a name list and an annotation list are two records of one fact, and the second
     /// one silently goes stale.
     /// </remarks>
-    public List<TypeAnnotation> UnresolvedInterfaces { get; init; } = new();
+    public SymbolMemberList<TypeAnnotation> UnresolvedInterfaces { get; init; } = new();
 
     /// <summary>
     /// Dunder-synthesized interface rows restored from the symbol cache and not yet resolved to
@@ -503,7 +577,7 @@ public record TypeSymbol : Symbol
     /// <see cref="InheritanceResolver"/> re-resolves it through the same rule on a warm build,
     /// alongside <see cref="UnresolvedInterfaces"/>. Empty on the cold path.
     /// </summary>
-    public List<UnresolvedSynthesizedInterface> UnresolvedSynthesizedInterfaces { get; init; } = new();
+    public SymbolMemberList<UnresolvedSynthesizedInterface> UnresolvedSynthesizedInterfaces { get; init; } = new();
 
     /// <summary>
     /// Builds a MethodOverloads dictionary from a list of methods, excluding dunder methods.
@@ -563,6 +637,25 @@ public record TypeSymbol : Symbol
             MethodOverloads.TryAdd(name, overloads);
         foreach (var method in Methods)
             RegisterDunderMethod(method);
+    }
+
+    private protected override void FreezeMembers()
+    {
+        TypeParameters.Freeze(Name);
+        Fields.Freeze(Name);
+        Methods.Freeze(Name);
+        Properties.Freeze(Name);
+        Events.Freeze(Name);
+        OperatorMethods.Freeze(Name);
+        ProtocolMethods.Freeze(Name);
+        MethodOverloads.Freeze(Name);
+        Constructors.Freeze(Name);
+        UnionCases.Freeze(Name);
+        NestedTypes.Freeze(Name);
+        NestedTypeAliases.Freeze(Name);
+        Interfaces.Freeze(Name);
+        UnresolvedInterfaces.Freeze(Name);
+        UnresolvedSynthesizedInterfaces.Freeze(Name);
     }
 
     public virtual bool Equals(TypeSymbol? other) => ReferenceEquals(this, other);

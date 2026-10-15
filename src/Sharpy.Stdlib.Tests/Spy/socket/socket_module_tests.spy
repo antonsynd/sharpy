@@ -590,22 +590,32 @@ def test_create_connection_with_timeout_succeeds_to_listening_server():
 @test
 def test_connect_with_timeout_refused_raises_error_not_timeout():
     # python3: ConnectionRefusedError (an OSError, not a TimeoutError), at once.
-    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(10.0)
-    caught: bool = False
-    is_timeout: bool = False
-    try:
-        s.connect(("127.0.0.1", port))
-    except Exception as e:
-        caught = isinstance(e, socket.error)
-        is_timeout = isinstance(e, socket.timeout)
-    assert caught
-    assert not is_timeout
-    s.close()
+    assert _connect_to_closed_port(10.0, False, 0) == "socket.error"
+
+@test
+def test_connect_helper_reports_accepted_for_a_listening_port():
+    # Positive control for _connect_to_closed_port's retry: a genuine accept is
+    # reported as "accepted", never masked (python3: four connects to one
+    # listen(8) socket that never accepts all succeed).
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(8)
+    port: int = server.getsockname()[1]
+    assert _connect_outcome(port, 10.0, False) == "accepted"
+    assert _connect_outcome(port, 10.0, True) == "accepted"
+    server.close()
+
+@test
+def test_connect_to_closed_port_retries_an_accepted_first_pick():
+    # The retry arm: a first pick that accepts (the symptom of a re-taken
+    # ephemeral port) is replaced by a fresh closed port, which refuses.
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(8)
+    port: int = server.getsockname()[1]
+    assert _connect_to_closed_port(10.0, False, port) == "socket.error"
+    assert _connect_to_closed_port(10.0, True, port) == "socket.error"
+    server.close()
 
 @test
 def test_recv_with_timeout_raises_timeout():
@@ -697,6 +707,51 @@ def _closed_loopback_port() -> int:
     probe.close()
     return port
 
+def _connect_outcome(port: int, timeout: float | None, via_create_connection: bool) -> str:
+    # One connect to 127.0.0.1:port — through create_connection(timeout=) or
+    # settimeout + connect — classified as "accepted", "socket.timeout", or
+    # _timeout_outcome's name for the exception (a refused timeout value raises
+    # before any connect).
+    outcome: str = "accepted"
+    if via_create_connection:
+        try:
+            c: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+            c.close()
+        except Exception as e:
+            outcome = _timeout_outcome(e)
+            if isinstance(e, socket.timeout):
+                outcome = "socket.timeout"
+    else:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        try:
+            s.connect(("127.0.0.1", port))
+        except Exception as e:
+            outcome = _timeout_outcome(e)
+            if isinstance(e, socket.timeout):
+                outcome = "socket.timeout"
+        s.close()
+    return outcome
+
+def _connect_to_closed_port(timeout: float | None, via_create_connection: bool, first_port: int) -> str:
+    # A closed port is picked by binding port 0 and closing it, so another
+    # process can take it before the connect; the only symptom is a connect that
+    # is accepted. The race cannot be prevented (a bound-but-not-listening port
+    # TIMES OUT on macOS, so the probe cannot hold it), so an accepted connect
+    # picks another port, up to five attempts (#2250). first_port > 0 replaces
+    # the first pick: the retry arm's test double.
+    attempt: int = 0
+    outcome: str = "accepted"
+    while attempt < 5:
+        port: int = first_port
+        if attempt > 0 or first_port <= 0:
+            port = _closed_loopback_port()
+        outcome = _connect_outcome(port, timeout, via_create_connection)
+        if outcome != "accepted":
+            return outcome
+        attempt += 1
+    return outcome
+
 def _assert_timeout_rule(value: float | None, expected: str) -> None:
     # setdefaulttimeout: the outcome is decided at the call. The next socket()
     # construction never raises and sees the accepted value, or the previous
@@ -735,14 +790,7 @@ def _assert_timeout_rule(value: float | None, expected: str) -> None:
     # create_connection(timeout=): a refused value raises before any connect;
     # an accepted one reaches the connect, which the closed port refuses with
     # socket.error (never socket.timeout: the refusal is immediate).
-    port: int = _closed_loopback_port()
-    outcome = "accepted"
-    try:
-        c: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=value)
-        c.close()
-    except Exception as e:
-        outcome = _timeout_outcome(e)
-        assert not isinstance(e, socket.timeout)
+    outcome = _connect_to_closed_port(value, True, 0)
     if expected == "accepted":
         assert outcome == "socket.error"
     else:

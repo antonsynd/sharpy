@@ -61,6 +61,13 @@ internal class TypeInferenceService
     /// </summary>
     internal Func<SemanticType, SemanticType, bool>? OperandAssignability { get; set; }
 
+    /// <summary>
+    /// The CLR types this compilation may see — a generic recorded only by its CLR origin name
+    /// resolves against it, never against the process's loaded set (#2250). Set by the owning
+    /// TypeChecker from its registry.
+    /// </summary>
+    internal Discovery.AssemblyVisibility Visibility { get; set; } = Discovery.AssemblyVisibility.FrameworkOnly;
+
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
@@ -774,7 +781,7 @@ internal class TypeInferenceService
     /// those parameters open, and an open position is a wildcard to the operand check.
     /// </param>
     private FunctionSymbol? FindBestOverload(
-        List<FunctionSymbol> candidates, SemanticType argumentType, SemanticType? receiver = null)
+        IReadOnlyList<FunctionSymbol> candidates, SemanticType argumentType, SemanticType? receiver = null)
     {
         if (candidates.Count == 0)
             return null;
@@ -1702,7 +1709,7 @@ internal class TypeInferenceService
     /// (the single-method chain walker only ever returns one candidate) — currently just
     /// <c>__getitem__</c> in <see cref="InferIndexAccessType"/>'s host-view arm (#1859).
     /// </summary>
-    private static List<FunctionSymbol>? FindOverloadsInChain(TypeSymbol? symbol, string dunderName)
+    private static IReadOnlyList<FunctionSymbol>? FindOverloadsInChain(TypeSymbol? symbol, string dunderName)
     {
         for (var current = symbol; current != null; current = current.BaseType)
         {
@@ -2037,7 +2044,7 @@ internal class TypeInferenceService
     }
 
     private Type? TryConstructClosedGeneric(GenericType generic)
-        => Discovery.ClrTypeHelper.TryConstructClosedGeneric(generic, GetClrType);
+        => Discovery.ClrTypeHelper.TryConstructClosedGeneric(Visibility, generic, GetClrType);
 
     /// <summary>
     /// Recursively unwraps <see cref="NullableType"/> (C# nullable interop) wrappers for
