@@ -129,9 +129,6 @@ public class StaticStateConformanceTests
         "wholly in the default load context, so a per-registry type is answered uncached and never pins its " +
         "context (Design Decision 3).";
 
-    private const string NameKeyedDrains =
-        "#2250 drains in Phase 2 (moves to per-registry AssemblyVisibility state). ";
-
     /// <summary>
     /// Rule 2b roster (#2250): every static process-wide cache in the compiler assembly, with why its value is a
     /// function of its key alone. Rows citing #2250 are NOT key-pure — their value depends on what the process
@@ -194,23 +191,14 @@ public class StaticStateConformanceTests
                 "is a function of the key; Phase 2's default-context gate applies to Assembly keys as to Type " +
                 "keys (Design Decision 3).",
 
-            // ---- NAME-keyed: the value is a function of the key AND the process's loaded set ----
-            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_originNameDefinitionCache")] =
-                NameKeyedDrains + "Stored CLR type name -> Type resolved by Type.GetType + an AppDomain scan, " +
-                "pinned for the process by whichever compile asked first (null cached too).",
-            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_displayNameDefinitionCache")] =
-                NameKeyedDrains + "Display name + arity -> generic definition from an AppDomain scan, pinned for " +
-                "the process by whichever compile asked first (null cached too).",
-            [("Sharpy.Compiler.Discovery.ClrAttributeResolver", "s_typePresentCache")] =
-                NameKeyedDrains + "Full type name -> present in SOME loaded assembly: a presence verdict another " +
-                "compilation's reference load can create.",
-            [("Sharpy.Compiler.Discovery.ClrAttributeResolver", "_probedNamespaces")] =
-                NameKeyedDrains + "Namespace -> TPA assemblies already loaded: a check-then-act gate with no " +
-                "completion barrier (a second thread's TryAdd fails while the first is still loading).",
-            [("Sharpy.Compiler.Semantic.Registry.ModuleRegistry", "_loadedRuntimeNamespaces")] =
-                NameKeyedDrains + "Namespace -> TPA assemblies already loaded: a check-then-act gate with no " +
-                "completion barrier; Phase 2 makes it a ConcurrentDictionary<string, Lazy<bool>> whose Lazy IS " +
-                "the barrier.",
+            // ---- The visibility seam's framework index (#2250, P54 Design Decision 1) ----
+            [("Sharpy.Compiler.Discovery.AssemblyVisibility", "s_framework")] =
+                "Lazy<TypeIndex> with no key: the framework set — the trusted-platform System.*/Microsoft.*/" +
+                "netstandard/mscorlib assemblies, Sharpy.Core, the compiler and its direct dependencies — loaded " +
+                "and indexed once; the trusted-platform list is fixed at process start, so the value is a process " +
+                "constant. ExecutionAndPublication: a reader blocks until the index is complete. The five " +
+                "name-keyed rows it replaced (_originNameDefinitionCache, _displayNameDefinitionCache, " +
+                "s_typePresentCache, _probedNamespaces, _loadedRuntimeNamespaces) drained into per-visibility state.",
         };
 
     [Fact]
@@ -329,8 +317,9 @@ public class StaticStateConformanceTests
                 .Select(k => $"{k.Type}.{k.Field}")));
 
         // Literal census @ 486c9a88a (measured): 20 ConcurrentDictionary + 2 Lazy, 0 ConditionalWeakTable.
-        // Five rows are name-keyed and drain in P54 Phase 2 (#2250); re-anchor as they do.
-        Assert.Equal(22, flaggedCaches.Count);
+        // P54 Phase 2 task 1 (measured): the five name-keyed rows drained (-5) and the framework index Lazy
+        // was rostered (+1): 15 ConcurrentDictionary + 3 Lazy = 18.
+        Assert.Equal(18, flaggedCaches.Count);
     }
 
     /// <summary>

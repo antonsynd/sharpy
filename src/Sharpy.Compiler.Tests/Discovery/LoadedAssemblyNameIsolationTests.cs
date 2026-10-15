@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Tests.Discovery;
 
 /// <summary>
 /// One assembly in the process that cannot describe itself must not fail a compilation (#1840).
-/// <c>ClrAttributeResolver</c> enumerates the loaded assemblies and reads each simple name; a
+/// <c>AssemblyVisibility</c> reads the simple name of every assembly it indexes or resolves by name; a
 /// transient assembly whose file has been replaced throws <see cref="BadImageFormatException"/>
 /// ("Index not found") from <see cref="Assembly.GetName()"/>, and that exception escaped into
 /// <c>DecoratorValidator</c> as an internal compiler error — nondeterministically, depending on what
@@ -66,7 +66,7 @@ public class LoadedAssemblyNameIsolationTests
             new NamedAssembly("After.Unreadable")
         };
 
-        var names = ClrAttributeResolver.LoadedSimpleNames(assemblies);
+        var names = AssemblyVisibility.SafeSimpleNames(assemblies);
 
         // The isolation itself: no exception escapes. `label` names the injected fault in the
         // failure message, so a red says WHICH exception type the guard let through.
@@ -93,12 +93,12 @@ public class LoadedAssemblyNameIsolationTests
     /// <summary>
     /// The real process's assemblies still produce a non-empty set: a guard that swallowed everything
     /// would satisfy the injection test and silently stop the namespace-to-assembly matching that
-    /// <c>EnsureFrameworkAssembliesLoaded</c> depends on.
+    /// the visibility's by-name assembly lookup depends on.
     /// </summary>
     [Fact]
     public void TheProcessAssemblies_StillAnswer()
     {
-        var names = ClrAttributeResolver.LoadedSimpleNames(AppDomain.CurrentDomain.GetAssemblies());
+        var names = AssemblyVisibility.SafeSimpleNames(AppDomain.CurrentDomain.GetAssemblies());
 
         Assert.NotEmpty(names);
         Assert.Contains("Sharpy.Compiler", names);

@@ -90,6 +90,13 @@ internal class SemanticContext
     /// </summary>
     internal Discovery.ReferenceClosure ReferenceClosure { get; set; } = Discovery.ReferenceClosure.Empty;
 
+    /// <summary>
+    /// The CLR types and namespaces this compilation may see — the framework set plus its registry's
+    /// references, never another compilation's loads (#2250). <see cref="Discovery.AssemblyVisibility.FrameworkOnly"/>
+    /// for a compilation with no registry.
+    /// </summary>
+    internal Discovery.AssemblyVisibility Visibility { get; set; } = Discovery.AssemblyVisibility.FrameworkOnly;
+
     // Configuration
     public bool ContinueAfterErrors { get; set; } = true;
     public int MaxErrors { get; set; } = 100;

@@ -691,7 +691,7 @@ internal static class ClrExtensionMethodResolver
 
     private static Type[] Ancestors(Type type)
     {
-        return _ancestorCache.GetOrAdd(type, static t =>
+        return AssemblyVisibility.GetOrAddIfProcessStable(_ancestorCache, type, type, static t =>
         {
             var all = new List<Type>();
             for (var current = t; current != null; current = current.BaseType)

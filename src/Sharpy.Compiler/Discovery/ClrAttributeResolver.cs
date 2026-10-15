@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -50,30 +48,30 @@ internal sealed class ClrAttributeResolver
     };
 
     /// <summary>
-    /// PRESENCE verdicts: full type name -> a loaded assembly declares it. Process-wide, and safe
-    /// to keep that way — assemblies do not unload, so a type that exists cannot stop existing.
-    /// Membership is the verdict; there is no false entry here.
+    /// The CLR types this compilation can see — the framework set plus its registry's references
+    /// (#2250). Presence and absence are both answered from it, and it is a function of the
+    /// compilation's inputs, so neither polarity can be another compilation's verdict. It replaces a
+    /// process-wide presence cache (<c>s_typePresentCache</c>) and namespace-driven framework loading
+    /// behind a process-wide gate (<c>_probedNamespaces</c>), both answered from whatever the process
+    /// had loaded.
     /// </summary>
-    private static readonly ConcurrentDictionary<string, byte> s_typePresentCache = new(StringComparer.Ordinal);
+    private readonly AssemblyVisibility _visibility;
 
     /// <summary>
     /// ABSENCE verdicts, scoped to ONE resolver instance — that is, to one compilation.
     ///
-    /// <para>#1493: this was process-lifetime alongside the presence half, on the premise that the
-    /// answer is a function of the key and the loaded assembly set, and that the one event changing
-    /// the latter (<see cref="EnsureFrameworkAssembliesLoaded"/>) cleared it. The premise held only
-    /// for loads this class performs itself. <c>ModuleRegistry.LoadReference</c> — or any other
-    /// assembly load — never cleared it, so in a long-lived process (the LSP) a name probed before
-    /// its assembly was loaded stayed "absent" until restart: an SPY0495 that is order-dependent,
-    /// silent, and unfixable by editing the file.</para>
-    ///
-    /// <para>The two polarities are split rather than the whole cache being scoped, because only
-    /// one of them can go stale. That keeps the hot path (a name that resolves) process-wide while
-    /// the verdicts a refusal is built on live exactly as long as the facts they summarize —
-    /// the instance-scoped shape of <c>TypeChecker._bclMemberAbsenceMemo</c> (#1344), the sibling
-    /// pattern from the same batch.</para>
+    /// <para>#1493: an absence verdict that outlived its compilation was an SPY0495 that is
+    /// order-dependent, silent, and unfixable by editing the file. Scoped here, it lives exactly as
+    /// long as the facts it summarizes — the instance-scoped shape of
+    /// <c>TypeChecker._bclMemberAbsenceMemo</c> (#1344).</para>
     /// </summary>
     private readonly HashSet<string> _typeAbsentThisCompilation = new(StringComparer.Ordinal);
+
+    /// <summary>A resolver over <paramref name="visibility"/> — the compilation's own.</summary>
+    internal ClrAttributeResolver(AssemblyVisibility visibility)
+    {
+        _visibility = visibility;
+    }
 
     /// <summary>
     /// The project's reference closure, threaded in from the compilation that owns this resolver.
@@ -160,13 +158,6 @@ internal sealed class ClrAttributeResolver
     }
 
     /// <summary>
-    /// Namespaces whose shared-framework assemblies have already been pulled in. Monotonic and
-    /// idempotent, the same shape as <c>ModuleRegistry._loadedRuntimeNamespaces</c>: it gates a
-    /// one-time load side effect, never per-compile output.
-    /// </summary>
-    private static readonly ConcurrentDictionary<string, byte> _probedNamespaces = new(StringComparer.Ordinal);
-
-    /// <summary>
     /// Every full type name the generated attribute usage could bind to, most likely first:
     /// the mangled name as written (which is already fully qualified for a dotted bracket
     /// attribute), then each in-scope namespace, each in both the bare and <c>Attribute</c>-suffixed
@@ -208,56 +199,22 @@ internal sealed class ClrAttributeResolver
     /// <summary>
     /// True when at least one candidate spelling of <paramref name="mangledName"/> names a type
     /// that exists. False is a proof of absence and is safe to refuse on.
-    /// TODO(#1492): "safe to refuse on" overstates the evidence base — the proof consults loaded
-    /// assemblies and the shared framework only, never the project's .spyproj References/
-    /// PackageReferences (those are consumed first in Phase 7, AssemblyCompiler). An attribute
-    /// type living only in a project-referenced assembly is falsely refused with SPY0495.
+    /// TODO(#1492): "safe to refuse on" overstates the evidence base — the proof consults the
+    /// compilation's visibility (the framework set and the registry's references) and the project's
+    /// reference closure; a PackageReference consumed only in Phase 7 (AssemblyCompiler) is not
+    /// probed, so an attribute type living only there is falsely refused with SPY0495.
     /// </summary>
     internal bool ResolvesToClrType(string mangledName, IEnumerable<string>? importedNamespaces = null)
     {
-        // Materialized because the namespaces are walked twice (candidate construction, then the
-        // second-chance load) and the caller may hand over a lazy sequence.
         var namespaces = importedNamespaces as IReadOnlyList<string> ?? importedNamespaces?.ToList();
-        var candidates = CandidateTypeNames(mangledName, namespaces);
-
-        foreach (var candidate in candidates)
+        foreach (var candidate in CandidateTypeNames(mangledName, namespaces))
         {
             if (TypeExists(candidate))
                 return true;
         }
 
-        // Nothing among the assemblies this process happens to have touched. The type may still
-        // live in a shared-framework assembly nothing has loaded yet (System.ComponentModel.
-        // Primitives, System.IO.FileSystem, ...), so pull those in and retry — the same second
-        // chance ModuleRegistry.EnsureRuntimeAssembliesLoaded gives namespace imports. Only the
-        // namespaces that can plausibly be unloaded are probed: the mangled name's own qualifier
-        // and the file's namespace imports. The always-in-scope namespaces are already resident
-        // in any process that got far enough to run a validator.
-        var loadedSomething = false;
-        var ownQualifier = mangledName.LastIndexOf('.');
-        if (ownQualifier > 0)
-            loadedSomething |= EnsureFrameworkAssembliesLoaded(mangledName.Substring(0, ownQualifier));
-        if (namespaces != null)
-        {
-            foreach (var ns in namespaces)
-            {
-                if (!string.IsNullOrEmpty(ns))
-                    loadedSomething |= EnsureFrameworkAssembliesLoaded(ns);
-            }
-        }
-
-        if (!loadedSomething)
-            return false;
-
-        // New assemblies invalidate every cached "not found".
-        InvalidateAbsenceVerdicts();
-
-        foreach (var candidate in candidates)
-        {
-            if (TypeExists(candidate))
-                return true;
-        }
-
+        // The framework set is complete — a process constant indexed once — so there is no second
+        // chance to give: no later load can add a framework type it lacks (#2250).
         return false;
     }
 
@@ -269,8 +226,8 @@ internal sealed class ClrAttributeResolver
     /// import is NOT counted as used) or does not resolve at all (#1429).
     ///
     /// <para>Kept separate from <see cref="ResolvesToClrType"/>, which answers the different
-    /// question the SPY0495 refusal asks — "does it resolve anywhere". Both share the type cache and
-    /// the second-chance framework load, so calling both costs one resolution's worth of reflection.</para>
+    /// question the SPY0495 refusal asks — "does it resolve anywhere". Both read the compilation's
+    /// visibility, so calling both costs one resolution's worth of reflection.</para>
     /// </summary>
     internal string? RequiredImportNamespace(
         string mangledName, IEnumerable<string>? importedNamespaces)
@@ -279,23 +236,6 @@ internal sealed class ClrAttributeResolver
         if (namespaces == null || namespaces.Count == 0)
             return null;
 
-        var found = FindRequiredImportNamespace(mangledName, namespaces);
-        if (found != null)
-            return found;
-
-        // Second chance: the required type may live in a shared-framework assembly nothing has
-        // loaded yet. Pull in the imports' assemblies and retry (mirrors ResolvesToClrType).
-        var loadedSomething = false;
-        foreach (var ns in namespaces)
-        {
-            if (!string.IsNullOrEmpty(ns))
-                loadedSomething |= EnsureFrameworkAssembliesLoaded(ns);
-        }
-
-        if (!loadedSomething)
-            return null;
-
-        InvalidateAbsenceVerdicts();
         return FindRequiredImportNamespace(mangledName, namespaces);
     }
 
@@ -330,21 +270,16 @@ internal sealed class ClrAttributeResolver
 
     private bool TypeExists(string fullName)
     {
-        if (s_typePresentCache.ContainsKey(fullName))
-            return true;
         if (_typeAbsentThisCompilation.Contains(fullName))
             return false;
 
-        if (FindType(fullName) != null)
-        {
-            s_typePresentCache.TryAdd(fullName, 0);
+        // The compilation's visibility caches the answer per name (nulls too) and replaces that
+        // cache when its own set grows (#2250).
+        if (_visibility.ResolveType(fullName) != null)
             return true;
-        }
 
         // Last, because it is the most expensive and the least often needed: the project's own
-        // references. Not added to the process-wide presence cache — that verdict is a function of
-        // THIS project's references, and a different project in the same process has different
-        // ones (#1492).
+        // reference closure, read as metadata (#1492).
         if (ReferencedAssembliesDeclare(fullName))
             return true;
 
@@ -353,132 +288,8 @@ internal sealed class ClrAttributeResolver
     }
 
     /// <summary>
-    /// Forgets this compilation's absence verdicts. Called when a load has just widened the set of
-    /// types that could exist, so the retry is a real second look rather than a replay of the
-    /// answers that motivated it.
+    /// Forgets this compilation's absence verdicts. Called when the reference closure changes, so a
+    /// verdict reached against a smaller world is not replayed.
     /// </summary>
     private void InvalidateAbsenceVerdicts() => _typeAbsentThisCompilation.Clear();
-
-    private static Type? FindType(string fullName)
-    {
-        var direct = Type.GetType(fullName, throwOnError: false);
-        if (direct != null)
-            return direct;
-
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            var found = SafeGetType(assembly, fullName);
-            if (found != null)
-                return found;
-        }
-
-        return null;
-    }
-
-    private static Type? SafeGetType(Assembly assembly, string fullName)
-    {
-        try
-        {
-            return assembly.GetType(fullName, throwOnError: false);
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or TypeLoadException or BadImageFormatException)
-        {
-            // An assembly whose own references cannot be resolved cannot contribute a type.
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// The simple names of <paramref name="assemblies"/>, skipping any assembly that cannot describe
-    /// itself.
-    ///
-    /// <para>An assembly in the process can fail to answer <see cref="Assembly.GetName()"/> — a
-    /// transient assembly a test emitted whose file has since been replaced throws
-    /// <see cref="BadImageFormatException"/> ("Index not found") from the runtime's locale read. That
-    /// exception escaped into the validator and surfaced as an internal compiler error on programs
-    /// with nothing wrong with them, nondeterministically, depending on what else the process had
-    /// loaded (#1840). One unreadable assembly is not a reason to fail a compilation: it only means
-    /// that assembly's name cannot be compared against, so it is skipped and every other assembly is
-    /// still collected.</para>
-    /// </summary>
-    internal static HashSet<string> LoadedSimpleNames(IEnumerable<Assembly> assemblies)
-    {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var assembly in assemblies)
-        {
-            string? name;
-            try
-            {
-                name = assembly.GetName().Name;
-            }
-            catch (Exception ex) when (ex is BadImageFormatException or FileNotFoundException
-                                          or ReflectionTypeLoadException or NotSupportedException)
-            {
-                continue;
-            }
-
-            if (name != null)
-                names.Add(name);
-        }
-
-        return names;
-    }
-
-    /// <summary>
-    /// Loads the trusted-platform assemblies whose simple name matches <paramref name="namespaceName"/>
-    /// or one of its parents. Returns true when at least one new assembly was loaded.
-    /// </summary>
-    private static bool EnsureFrameworkAssembliesLoaded(string namespaceName)
-    {
-        if (namespaceName.Length == 0)
-            return false;
-        if (!_probedNamespaces.TryAdd(namespaceName, 0))
-            return false;
-
-        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is not string tpaString)
-            return false;
-
-        // .NET does not distribute types along namespace lines (System.Net.Sockets.AddressFamily
-        // lives in System.Net.Primitives.dll), so parent-namespace assemblies are matched too.
-        var prefixes = new List<string> { namespaceName + ".", namespaceName };
-        var parts = namespaceName.Split('.');
-        for (var i = parts.Length - 1; i >= 2; i--)
-            prefixes.Add(string.Join(".", parts, 0, i) + ".");
-
-        var loadedNames = LoadedSimpleNames(AppDomain.CurrentDomain.GetAssemblies());
-
-        var loadedAny = false;
-        foreach (var path in tpaString.Split(Path.PathSeparator))
-        {
-            var fileName = Path.GetFileNameWithoutExtension(path);
-            if (string.IsNullOrEmpty(fileName) || loadedNames.Contains(fileName))
-                continue;
-
-            var matches = false;
-            foreach (var prefix in prefixes)
-            {
-                if (fileName.StartsWith(prefix, StringComparison.Ordinal)
-                    || string.Equals(fileName, prefix.TrimEnd('.'), StringComparison.Ordinal))
-                {
-                    matches = true;
-                    break;
-                }
-            }
-            if (!matches)
-                continue;
-
-            try
-            {
-                Assembly.LoadFrom(path);
-                loadedAny = true;
-            }
-            catch (Exception ex) when (ex is IOException or BadImageFormatException or UnauthorizedAccessException)
-            {
-                // An assembly that will not load cannot contribute a type.
-            }
-        }
-
-        return loadedAny;
-    }
 }

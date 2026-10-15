@@ -440,6 +440,8 @@ internal partial class TypeChecker
         context.Features = Features;
         // Thread the project's references so the SPY0495 absence proof can consult them (#1492).
         context.ReferenceClosure = ReferenceClosure;
+        // Thread the compilation's CLR visibility so validators resolve CLR names as the checker does (#2250).
+        context.Visibility = Visibility;
         return context;
     }
 
@@ -586,7 +588,27 @@ internal partial class TypeChecker
     /// When set, backtick-escaped identifiers that fail symbol-table lookup are resolved against
     /// the registry's known .NET namespaces lazily, without requiring an explicit import.
     /// </summary>
-    internal ModuleRegistry? ModuleRegistry { get; set; }
+    internal ModuleRegistry? ModuleRegistry
+    {
+        get => _moduleRegistry;
+        set
+        {
+            _moduleRegistry = value;
+            // The inference service resolves recorded CLR names (a generic's ClrOriginTypeName)
+            // against the same visibility the checker does (#2250).
+            _typeInference.Visibility = Visibility;
+        }
+    }
+
+    private ModuleRegistry? _moduleRegistry;
+
+    /// <summary>
+    /// The CLR types and namespaces this compilation may see: its registry's
+    /// <see cref="ModuleRegistry.Visibility"/>, or the framework set alone when it has no registry
+    /// (#2250). Every CLR-name question the checker asks goes through it.
+    /// </summary>
+    internal Discovery.AssemblyVisibility Visibility
+        => _moduleRegistry?.Visibility ?? Discovery.AssemblyVisibility.FrameworkOnly;
 
     /// <summary>
     /// Check for cancellation periodically in tight loops.

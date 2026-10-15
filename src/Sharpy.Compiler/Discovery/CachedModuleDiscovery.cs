@@ -29,6 +29,9 @@ internal class CachedModuleDiscovery
     // name. All methods on a generic type must share these instances so that reference
     // equality holds during generic substitution.
     private readonly ConcurrentDictionary<string, TypeParameterType[]> _skeletonTypeParams = new();
+    // The CLR types this discovery may resolve a stored ClrTypeName against: the framework set plus
+    // the assemblies loaded into it (#2250) — the owning ModuleRegistry's visibility.
+    private readonly AssemblyVisibility _visibility;
 
     /// <summary>
     /// Create a discovery instance using the default cache directory.
@@ -42,12 +45,21 @@ internal class CachedModuleDiscovery
     /// </summary>
     /// <param name="cache">Custom cache instance. If null, creates a default cache.</param>
     /// <param name="logger">Optional logger. If null, uses NullLogger.</param>
-    public CachedModuleDiscovery(OverloadIndexCache? cache, ICompilerLogger? logger = null)
+    /// <param name="visibility">
+    /// The owning registry's <see cref="AssemblyVisibility"/>; null gives the discovery its own, whose
+    /// own set is exactly the assemblies passed to <see cref="LoadAssembly"/>.
+    /// </param>
+    public CachedModuleDiscovery(OverloadIndexCache? cache, ICompilerLogger? logger = null,
+        AssemblyVisibility? visibility = null)
     {
         _cache = cache ?? new OverloadIndexCache(null, logger);
         _builder = new OverloadIndexBuilder(logger);
         _typeMapper = new ClrTypeBridge();
+        _visibility = visibility ?? new AssemblyVisibility();
     }
+
+    /// <summary>The CLR types this discovery resolves stored names against.</summary>
+    internal AssemblyVisibility Visibility => _visibility;
 
     /// <summary>
     /// Load an assembly and discover its functions.
@@ -55,6 +67,10 @@ internal class CachedModuleDiscovery
     /// </summary>
     public void LoadAssembly(Assembly assembly)
     {
+        // The assembly's types become visible to THIS discovery's resolution (and its registry's)
+        // before any of its ClrTypeNames are resolved below.
+        _visibility.Add(assembly);
+
         var identity = AssemblyIdentity.FromAssembly(assembly);
 
         // Use Lazy<T> with GetOrAdd to guarantee single factory execution
@@ -256,13 +272,9 @@ internal class CachedModuleDiscovery
     /// </summary>
     private TypeSymbol? CreateSkeletonTypeSymbol(Caching.DiscoveredTypeInfo typeInfo, string? definingModule = null)
     {
-        Type? clrType = Type.GetType(typeInfo.ClrTypeName);
-        if (clrType == null)
-        {
-            clrType = AppDomain.CurrentDomain.GetAssemblies()
-                .Select(a => a.GetType(typeInfo.ClrTypeName))
-                .FirstOrDefault(t => t != null);
-        }
+        // The stored (assembly-qualified) name resolves against this compilation's visibility —
+        // the assembly this index was built from is in it — never the process's first copy (#2250).
+        var clrType = _visibility.ResolveType(typeInfo.ClrTypeName);
 
         var typeKind = typeInfo.TypeKind switch
         {
@@ -948,17 +960,9 @@ internal class CachedModuleDiscovery
         // Try to resolve the CLR type from the stored ClrTypeName
         if (!string.IsNullOrEmpty(signature.ClrTypeName))
         {
-            // Try direct Type.GetType first
-            var clrType = Type.GetType(signature.ClrTypeName);
-
-            // If that fails, search loaded assemblies
-            // Note: This could be optimized by caching assembly lookups if performance becomes an issue
-            if (clrType == null)
-            {
-                clrType ??= AppDomain.CurrentDomain.GetAssemblies()
-                    .Select(a => a.GetType(signature.ClrTypeName))
-                    .FirstOrDefault(t => t != null);
-            }
+            // Resolved against this compilation's visibility (cached per name there), never the
+            // process's loaded set (#2250).
+            var clrType = _visibility.ResolveType(signature.ClrTypeName);
 
             if (clrType != null)
             {

@@ -16,12 +16,13 @@ namespace Sharpy.TestInfrastructure.Registry;
 /// <c>_types</c>/<c>_functions</c> (with each overload set's size; the deferred interface work list is a local of the
 /// constructor since Phase 2 — no registration state survives construction), the
 /// <see cref="CachedModuleDiscovery"/> and <see cref="ClrTypeBridge"/> caches each master holds, and
-/// <see cref="ModuleRegistry"/>'s <c>_dynamicNamespaceCache</c> / <c>_loadedAssemblies</c> / <c>_usedAssemblyPaths</c>.
+/// <see cref="ModuleRegistry"/>'s <c>_loadedAssemblies</c> / <c>_usedAssemblyPaths</c>.
 /// Every field is read by reflection on its NAME and a missing field THROWS, so a rename is red, never a silently
-/// empty set. The process-wide name-keyed statics (<c>ModuleRegistry._loadedRuntimeNamespaces</c>,
-/// <c>ClrTypeHelper._originNameDefinitionCache</c>/<c>_displayNameDefinitionCache</c>) and the loaded-assembly names
-/// are recorded as <see cref="Scope.Process"/> sets: concurrent test classes grow them too, so they are evidence
-/// for the seam (<c>_clrTypeCache</c>'s dependence on what the process has loaded), never an assertion.
+/// empty set. The loaded-assembly names are recorded as a <see cref="Scope.Process"/> set: concurrent test classes
+/// grow it too, so it is evidence, never an assertion. (The process-wide name-keyed statics this once also recorded —
+/// <c>ModuleRegistry._loadedRuntimeNamespaces</c>, <c>ClrTypeHelper._originNameDefinitionCache</c> /
+/// <c>_displayNameDefinitionCache</c> — are gone: every CLR name now resolves against the registry's
+/// <c>AssemblyVisibility</c>, #2250.)
 ///
 /// <para>Symbol-property writes on the masters are <c>MasterRegistryImmutabilityTests</c>' reflection snapshot;
 /// this is the membership half the plan says that guard lacks. Take it only between steps: the masters'
@@ -64,15 +65,11 @@ public sealed class MasterRegistryKeySets
     public static readonly string[] BridgeFields = { "_interfaceSymbolCache", "_typeCache" };
 
     /// <summary>The <see cref="ModuleRegistry"/> dictionaries, by field name.</summary>
-    public static readonly string[] ModuleRegistryFields = { "_dynamicNamespaceCache", "_loadedAssemblies", "_usedAssemblyPaths" };
+    public static readonly string[] ModuleRegistryFields = { "_loadedAssemblies", "_usedAssemblyPaths" };
 
     /// <summary>Process-wide name-keyed statics: (declaring type, field name).</summary>
-    public static readonly (Type Owner, string Field)[] ProcessFields =
-    {
-        (typeof(ModuleRegistry), "_loadedRuntimeNamespaces"),
-        (typeof(ClrTypeHelper), "_originNameDefinitionCache"),
-        (typeof(ClrTypeHelper), "_displayNameDefinitionCache"),
-    };
+    /// <remarks>Empty since #2250 drained them (see the class summary); kept so a future process-wide static is a row here.</remarks>
+    public static readonly (Type Owner, string Field)[] ProcessFields = System.Array.Empty<(Type Owner, string Field)>();
 
     private MasterRegistryKeySets(SCG.IReadOnlyList<KeySet> sets) => Sets = sets;
 

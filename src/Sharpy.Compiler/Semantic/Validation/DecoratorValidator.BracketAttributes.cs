@@ -20,9 +20,13 @@ internal partial class DecoratorValidator
     /// The attribute resolver, held per VALIDATOR rather than reached statically, so its absence
     /// verdicts die with this compilation instead of outliving the facts they summarize (#1493).
     /// ValidationPipelineFactory.CreateDefault builds a fresh DecoratorValidator per compilation,
-    /// which is what makes instance lifetime the right scope.
+    /// which is what makes instance lifetime the right scope. Built on first use over the
+    /// compilation's <see cref="SemanticContext.Visibility"/> (#2250).
     /// </summary>
-    private readonly ClrAttributeResolver _attributeResolver = new();
+    private ClrAttributeResolver? _attributeResolverInstance;
+
+    private ClrAttributeResolver AttributeResolver
+        => _attributeResolverInstance ??= new ClrAttributeResolver(Context.Visibility);
 
     /// <summary>
     /// Module-name prefixes the emitter treats as .NET framework namespaces — the only imports
@@ -142,16 +146,16 @@ internal partial class DecoratorValidator
         // The proof now includes the project's own references (#1492), so a type living only in a
         // .spyproj <Reference> resolves here instead of being refused by a proof that never looked
         // where it lives.
-        _attributeResolver.SetReferenceClosure(Context.ReferenceClosure);
+        AttributeResolver.SetReferenceClosure(Context.ReferenceClosure);
 
-        if (_attributeResolver.ResolvesToClrType(mangled, _importedClrNamespaces))
+        if (AttributeResolver.ResolvesToClrType(mangled, _importedClrNamespaces))
         {
             // Resolves as a CLR attribute. If it resolves ONLY through one of the file's imported
             // namespaces (no bare or always-in-scope spelling does), record that namespace so
             // UnusedImportValidator counts the import that brings it into scope as used (#1429). A
             // name reachable via an always-in-scope namespace records nothing, so a redundant import
             // there is still (correctly) reported unused.
-            var requiredImport = _attributeResolver.RequiredImportNamespace(mangled, _importedClrNamespaces);
+            var requiredImport = AttributeResolver.RequiredImportNamespace(mangled, _importedClrNamespaces);
             if (requiredImport != null)
                 Context.SemanticInfo.SetBracketAttributeResolvedNamespace(decorator, requiredImport);
             return;
@@ -168,7 +172,7 @@ internal partial class DecoratorValidator
         // #1146 leak — CS0246 behind SPY0908 instead of a clean diagnostic — for every project
         // with any reference at all. The negative cell in BracketAttributeResolutionTests pins
         // this distinction (#1492).
-        if (_attributeResolver.HasUnprobedReferences)
+        if (AttributeResolver.HasUnprobedReferences)
             return;
 
         var attempted = $"'{mangled}' or '{mangled}Attribute'";

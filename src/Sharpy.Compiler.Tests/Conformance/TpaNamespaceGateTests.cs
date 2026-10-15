@@ -1,9 +1,12 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 using Xunit.Abstractions;
@@ -11,39 +14,35 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Conformance;
 
 /// <summary>
-/// The two code-read candidates for #2250 cell 1 ("two in-process compilations of one source gave
-/// 5 vs 1 diagnostics at 8 threads"), probed deterministically (P54 Phase 1 task 2). The violated
-/// contract: a compile, and every query on its result, is a function of its inputs alone — the
-/// same whichever other compile ran first or runs beside it.
+/// The two code-read candidates for #2250 cell 1, probed deterministically (P54 Phase 1 task 2) and
+/// rewritten against the seam that replaced them (Phase 2 task 1). The violated contract: a compile,
+/// and every query on its result, is a function of its inputs alone — the same whichever other
+/// compile ran first or runs beside it.
 ///
-/// <para><b>Probe 1 — the TPA namespace gate.</b> <c>ModuleRegistry._loadedRuntimeNamespaces</c> is
-/// a process-wide check-then-act gate with no completion barrier: the first caller's
-/// <c>TryAdd</c> wins, every later caller returns at once, and so scans the process for the
-/// namespace's types while the winner may not yet have loaded the trusted-platform assemblies that
-/// hold them. The probe holds the winner inside the gate through the internal
-/// <c>beforeTpaLoad</c> parameter (a parameter, not a settable static hook, so no
-/// StaticStateConformance row) while seven fresh registries ask for the same namespace.</para>
+/// <para><b>Probe 1 — first use of a framework namespace.</b> Before Phase 2,
+/// <c>ModuleRegistry._loadedRuntimeNamespaces</c> was a process-wide check-then-act gate with no
+/// completion barrier: the first caller's <c>TryAdd</c> won, every later caller returned at once and
+/// scanned the process while the winner was still loading the namespace's trusted-platform assemblies
+/// (7/7 held askers passed the gate, 7/7 counted 1 type against the solo 9 @ 486c9a88a). Now every
+/// CLR-name question answers from the compilation's <see cref="AssemblyVisibility"/>, whose framework
+/// set is a process-constant index built once behind a <see cref="Lazy{T}"/>: there is no per-namespace
+/// load left to race. The probe asks for one framework namespace from eight fresh registries released
+/// together — the namespace's first use when the class runs alone — and compares every answer with a
+/// METADATA census of the framework's trusted-platform files (read with
+/// <see cref="System.Reflection.Metadata"/>, loading nothing), so a half-built answer is red in any
+/// host, not only where the namespace happens to be first-use.</para>
 ///
-/// <para><b>Probe 2 — the name-keyed origin cache.</b> <c>ClrTypeHelper._originNameDefinitionCache</c>
-/// is a static name → <c>Type</c> cache: whatever the first asker could see is the answer for
-/// every later compile in the process, including a null.</para>
-///
-/// <para><b>Two gate measurements.</b> The MECHANISM cell holds the gate for a fresh
-/// <c>system.p54tpagateprobe&lt;guid&gt;</c> key that no other test can have used and that loads
-/// nothing, and asks whether the askers got PAST the gate while the winner was inside it — measured
-/// in every host. The CONSEQUENCE cells compare type counts, which needs a namespace whose
-/// assemblies are not yet loaded, and the gate is single-shot per process. A bare
-/// <c>from system import …</c> (62 test files) enters the gate with <c>System</c>, whose prefix
-/// <c>System.</c> loads EVERY System.* trusted-platform file, so no <c>system.*</c> namespace is
-/// first-use in a shared test host. <c>microsoft.win32</c> is outside every system prefix and named
-/// by no test (the dynamic mapping branch needs one loaded public type in the namespace, which a
-/// test-only marker assembly provides) — but a co-run of the Conformance namespace still found
-/// <c>Microsoft.Win32.Registry</c> loaded by an earlier test, so where it is already loaded the count
-/// cells print NOT MEASURED (they never pass by default); run the class alone to measure them.</para>
+/// <para><b>Probe 2 — a reference's types are its compilation's alone.</b> Before Phase 2,
+/// <c>ClrTypeHelper._originNameDefinitionCache</c> was a static name → <c>Type</c> cache over an
+/// AppDomain scan: a compile with no reference resolved a name to the type ANOTHER compile's reference
+/// context loaded (8/8), and a null cached by a compile that could not see the name was the answer for
+/// a later compile whose reference held it (8/8). Now the name resolves against the asking
+/// compilation's visibility, whose caches are per instance and replaced when its own set grows.</para>
 ///
 /// <para><b>KnownRed convention.</b> A deterministic red cell is a <see cref="KnownRed"/> row: the
-/// test asserts the defect REPRODUCES there (so the Phase 2 fix reddens it as "stale — drain this
-/// row") and asserts parity in every other cell; each probe has a green positive-control cell.</para>
+/// test asserts the defect REPRODUCES there (so a fix reddens it as "stale — drain this row") and
+/// asserts parity in every other cell; each probe has a green positive-control cell. Every row
+/// drained in Phase 2 task 1; the cells stay as the class's guard.</para>
 /// </summary>
 [Trait("Category", "Conformance")]
 public class TpaNamespaceGateTests
@@ -53,7 +52,7 @@ public class TpaNamespaceGateTests
     public TpaNamespaceGateTests(ITestOutputHelper output) => _output = output;
 
     private const string MechanismCell = "tpa-gate.passes-before-completion";
-    private const string GateWinnerCell = "tpa-gate.gate-winner";
+    private const string SoloCell = "tpa-gate.solo-equals-census";
     private const string ConcurrentFirstUseCell = "tpa-gate.concurrent-first-use";
     private const string AfterCompletionCell = "tpa-gate.after-completion";
     private const string ReferenceSeenCell = "origin-cache.reference-seen-by-unreferencing-compile";
@@ -62,41 +61,21 @@ public class TpaNamespaceGateTests
 
     private static readonly string[] AllCells =
     {
-        MechanismCell, GateWinnerCell, ConcurrentFirstUseCell, AfterCompletionCell,
+        MechanismCell, SoloCell, ConcurrentFirstUseCell, AfterCompletionCell,
         ReferenceSeenCell, NullPinnedCell, FrameworkNameCell,
     };
 
     /// <summary>
     /// Cells red at base, each asserted to REPRODUCE. Drain a row when its cure lands (the probe
-    /// then fails the row as stale).
+    /// then fails the row as stale). Empty since P54 Phase 2 task 1 (#2250).
     /// </summary>
     private static readonly Dictionary<string, string> KnownRed = new(StringComparer.Ordinal)
     {
-        [MechanismCell] =
-            "#2250 — the TPA gate has no completion barrier: 7/7 registries returned from the gate "
-            + "while its winner was still inside it, deterministic, reproduced 3/3 class-alone "
-            + "test-host runs @ 486c9a88a; "
-            + "drains in Phase 2 task 1 (the gate becomes a Lazy)",
-        [ConcurrentFirstUseCell] =
-            "#2250 — the consequence: 7/7 registries that asked while the winner held the gate "
-            + "returned 1 type (the marker) against the solo 9, deterministic, reproduced 5/5 "
-            + "class-alone test-host runs @ 486c9a88a; NOT MEASURED where Microsoft.Win32.Registry "
-            + "is already loaded (the Conformance co-run); drains in Phase 2 task 1",
-        [ReferenceSeenCell] =
-            "#2250 — a compile with no reference resolves a name to the Type another compile's "
-            + "reference context loaded (8/8 threads), deterministic, reproduced 9/9 test-host runs @ 486c9a88a; "
-            + "drains in Phase 2 task 1 (name-keyed caches move behind the per-registry visibility)",
-        [NullPinnedCell] =
-            "#2250 — a null cached by a compile that could not see the name is the answer for a later "
-            + "compile whose reference holds it (8/8 threads), deterministic, reproduced 7/7 test-host runs @ 486c9a88a; "
-            + "drains in Phase 2 task 1",
     };
 
     private const string GateModule = "microsoft.win32";
     private const string GateNamespace = "Microsoft.Win32";
     private const string GateAssembly = "Microsoft.Win32.Registry";
-    private const int ConcurrentAskers = 7;
-    private static readonly TimeSpan HoldTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan JoinTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
@@ -114,178 +93,163 @@ public class TpaNamespaceGateTests
     [Fact]
     public void TpaNamespaceGate_ConcurrentFirstUse_IsComplete()
     {
-        var gateField = typeof(ModuleRegistry).GetField(
-            "_loadedRuntimeNamespaces", BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.True(gateField != null,
-            "ModuleRegistry._loadedRuntimeNamespaces is gone — the gate was rewritten; rewrite this probe against the new barrier");
-        var gate = (ConcurrentDictionary<string, byte>)gateField!.GetValue(null)!;
+        var failures = new List<string>();
 
-        // ---- Mechanism cell, measurable in ANY host: a gate key no other test can have used. ----
-        // `system.*` maps without an existence check, and no trusted-platform file starts with the
-        // fresh namespace, so the winner loads nothing — what is measured is only whether an asker
-        // can get PAST the gate while the winner is still inside it.
-        var freshModule = "system.p54tpagateprobe" + Guid.NewGuid().ToString("N");
-        var freshNamespace = new ModuleRegistry().GetNetNamespace(freshModule);
-        Assert.True(freshNamespace != null && !gate.ContainsKey(freshNamespace),
-            $"instrument: '{freshModule}' must map to a namespace the gate has never seen");
-        var fresh = HoldGateAndAsk(freshModule, freshNamespace!);
-        _output.WriteLine($"{MechanismCell}: winner={fresh.Winner} askers=[{string.Join(",", fresh.Askers)}] "
-            + $"askersFinishedWhileGateHeld={fresh.AskersFinishedWhileHeld}");
-        AssertCell(MechanismCell, diverged: fresh.AskersFinishedWhileHeld,
-            $"all {ConcurrentAskers} askers returned from the gate for '{freshNamespace}' while the winner was "
-            + $"still inside it: {fresh.AskersFinishedWhileHeld}");
+        // ---- Oracle: the namespace's public top-level types across the framework's trusted-platform
+        //      files, read as metadata — nothing is loaded, so the oracle cannot be order-dependent. ----
+        var census = FrameworkMetadataCensus(GateNamespace);
+        Assert.True(census.Count > 1,
+            $"INCONCLUSIVE: the framework census of '{GateNamespace}' found {census.Count} public types — "
+            + $"'{GateAssembly}' is not a trusted-platform file in this host, so the cell measures nothing");
+        var preloaded = IsLoaded(GateAssembly);
 
-        // ---- Consequence cells: the counts, measurable only where the namespace is first-use. ----
-        var tpa = ((AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string) ?? "")
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-        if (gate.ContainsKey(GateNamespace)
-            || IsLoaded(GateAssembly)
-            || !tpa.Any(p => Path.GetFileNameWithoutExtension(p) == GateAssembly))
-        {
-            // Not a pass of the count cells: they are NOT MEASURED in this host, and the output
-            // says so. The mechanism cell above was measured and asserted either way.
-            _output.WriteLine(
-                $"{ConcurrentFirstUseCell}, {GateWinnerCell}, {AfterCompletionCell}: NOT MEASURED in this host — "
-                + $"'{GateNamespace}' seen by the gate: {gate.ContainsKey(GateNamespace)}; '{GateAssembly}' "
-                + $"already loaded: {IsLoaded(GateAssembly)} (an earlier test in this process loaded it). "
-                + "Run this class alone to measure them.");
-            return;
-        }
+        // ---- Eight fresh registries released together: the namespace's first use when the class runs
+        //      alone (the shape the old gate lost: a second asker read a half-loaded process). ----
+        var concurrent = AskOnThreads(() => NamespaceAnswer(new ModuleRegistry()));
+        var solo = NamespaceAnswer(new ModuleRegistry());
+        var after = AskOnThreads(() => NamespaceAnswer(new ModuleRegistry()));
 
-        // The dynamic mapping branch needs one loaded public type in the namespace.
-        LoadIntoOwnContext("P54-TpaGateProbe",
-            "namespace Microsoft.Win32 { public sealed class P54TpaGateProbeMarker { } }");
-        var held = HoldGateAndAsk(GateModule, GateNamespace);
+        var incomplete = concurrent.Count(a => !a.SetEquals(census));
+        var (frameworkAssemblies, frameworkTypes, frameworkMillis) = AssemblyVisibility.FrameworkIndexStatistics;
+        _output.WriteLine($"framework index: {frameworkAssemblies} assemblies, {frameworkTypes} visible types, "
+            + $"built in {frameworkMillis} ms (first use in this process)");
+        _output.WriteLine($"census={census.Count} ('{GateAssembly}' loaded before the probe: {preloaded}) "
+            + $"concurrent=[{string.Join(",", concurrent.Select(a => a.Count))}] solo={solo.Count} "
+            + $"after=[{string.Join(",", after.Select(a => a.Count))}] incomplete={incomplete}/{concurrent.Length}");
 
-        // ---- Oracle: the solo count, taken once loading completed. ----
-        Assert.True(IsLoaded(GateAssembly),
-            $"INCONCLUSIVE: the gate winner did not load '{GateAssembly}', so the namespace never grew");
-        var solo = new ModuleRegistry().GetNamespaceTypes(GateModule).Count;
-        Assert.True(solo > 1,
-            $"INCONCLUSIVE: solo count {solo} — '{GateAssembly}' contributed no type beyond the marker");
+        AssertCell(failures, MechanismCell, diverged: incomplete > 0,
+            $"{incomplete}/{concurrent.Length} concurrent first-use answers differ from the framework census "
+            + $"({census.Count} types); first missing: {concurrent.Select(a => census.Except(a).FirstOrDefault()).FirstOrDefault(m => m != null) ?? "<none>"}");
+        AssertCell(failures, ConcurrentFirstUseCell, diverged: concurrent.Any(a => !a.SetEquals(solo)),
+            $"concurrent answers [{string.Join(",", concurrent.Select(a => a.Count))}] vs solo {solo.Count}");
+        AssertCell(failures, SoloCell, diverged: !solo.SetEquals(census),
+            $"solo {solo.Count} vs census {census.Count}");
+        AssertCell(failures, AfterCompletionCell, diverged: after.Any(a => !a.SetEquals(solo)),
+            $"after [{string.Join(",", after.Select(a => a.Count))}] vs solo {solo.Count}");
 
-        var after = AskOnThreads(() => new ModuleRegistry().GetNamespaceTypes(GateModule).Count);
-
-        var divergentAskers = held.Askers.Count(c => c != solo);
-        _output.WriteLine($"{ConcurrentFirstUseCell}: solo={solo} winner={held.Winner} askers=[{string.Join(",", held.Askers)}] "
-            + $"askersFinishedWhileGateHeld={held.AskersFinishedWhileHeld} divergent={divergentAskers}/{ConcurrentAskers} "
-            + $"after=[{string.Join(",", after)}]");
-
-        AssertCell(GateWinnerCell, diverged: held.Winner != solo,
-            $"the gate winner's count {held.Winner} vs solo {solo}");
-        AssertCell(ConcurrentFirstUseCell,
-            diverged: held.AskersFinishedWhileHeld && divergentAskers > 0,
-            $"{divergentAskers}/{ConcurrentAskers} askers that passed the held gate counted "
-            + $"[{string.Join(",", held.Askers)}] vs solo {solo} (finished while held: {held.AskersFinishedWhileHeld})");
-        AssertCell(AfterCompletionCell, diverged: after.Any(c => c != solo),
-            $"after completion [{string.Join(",", after)}] vs solo {solo}");
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
     /// <summary>
-    /// Thread A wins the gate for <paramref name="module"/> and is held inside it (the
-    /// <c>beforeTpaLoad</c> seam) until seven fresh registries, released together by a
-    /// <see cref="Barrier"/>, have each asked for the namespace's types — or until
-    /// <see cref="HoldTimeout"/>, which is what a gate with a completion barrier makes happen,
-    /// since its askers wait for A.
+    /// The CLR full names a registry answers for <see cref="GateModule"/>: every exported type symbol,
+    /// with an arity group (#1613) expanded to all its members.
     /// </summary>
-    private static (int Winner, int[] Askers, bool AskersFinishedWhileHeld) HoldGateAndAsk(
-        string module, string expectedNamespace)
+    private static HashSet<string> NamespaceAnswer(ModuleRegistry registry)
     {
-        var counts = new int[1 + ConcurrentAskers];
-        var errors = new ConcurrentQueue<Exception>();
-        var aInside = new ManualResetEventSlim(false);
-        var askersDone = new CountdownEvent(ConcurrentAskers);
-        var askersFinishedWhileHeld = false;
-        string? heldNamespace = null;
-
-        var winner = new Thread(() =>
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var symbol in registry.GetNamespaceTypes(GateModule))
         {
-            try
+            IEnumerable<TypeSymbol> members = symbol.ClrArityGroup is { } group ? group.Values : new[] { symbol };
+            foreach (var member in members)
             {
-                counts[0] = new ModuleRegistry().GetNamespaceTypes(module, beforeTpaLoad: ns =>
-                {
-                    heldNamespace = ns;
-                    aInside.Set();
-                    askersFinishedWhileHeld = askersDone.Wait(HoldTimeout);
-                }).Count;
+                if (member.ClrType?.FullName is { } fullName)
+                    names.Add(fullName);
             }
-            catch (Exception ex) { errors.Enqueue(ex); }
-            finally { aInside.Set(); }
-        });
-        winner.Start();
-        Assert.True(aInside.Wait(JoinTimeout), "thread A never reached the gate");
-        Assert.True(heldNamespace == expectedNamespace,
-            $"thread A did not win the gate for '{expectedNamespace}' (held: '{heldNamespace ?? "<none>"}') — "
-            + "the probe measures nothing");
+        }
+        return names;
+    }
 
-        var start = new Barrier(ConcurrentAskers);
-        var askers = Enumerable.Range(1, ConcurrentAskers).Select(i => new Thread(() =>
+    /// <summary>
+    /// The public top-level types of <paramref name="namespaceName"/> declared by the framework's
+    /// trusted-platform files (System, System.*, Microsoft.*, netstandard, mscorlib), read from
+    /// metadata without loading any assembly.
+    /// </summary>
+    private static HashSet<string> FrameworkMetadataCensus(string namespaceName)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        var tpa = ((AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string) ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var path in tpa)
         {
-            try
+            var simpleName = Path.GetFileNameWithoutExtension(path);
+            if (!AssemblyVisibility.IsFrameworkFileName(simpleName))
+                continue;
+
+            using var stream = File.OpenRead(path);
+            using var pe = new PEReader(stream);
+            if (!pe.HasMetadata)
+                continue;
+            var reader = pe.GetMetadataReader();
+            foreach (var handle in reader.TypeDefinitions)
             {
-                start.SignalAndWait();
-                counts[i] = new ModuleRegistry().GetNamespaceTypes(module).Count;
+                var definition = reader.GetTypeDefinition(handle);
+                if ((definition.Attributes & TypeAttributes.VisibilityMask) != TypeAttributes.Public)
+                    continue;
+                if (reader.GetString(definition.Namespace) != namespaceName)
+                    continue;
+                names.Add(namespaceName + "." + reader.GetString(definition.Name));
             }
-            catch (Exception ex) { errors.Enqueue(ex); }
-            finally { askersDone.Signal(); }
-        })).ToList();
-        askers.ForEach(t => t.Start());
-        foreach (var t in askers)
-            Assert.True(t.Join(JoinTimeout), "an asker thread did not finish");
-        Assert.True(winner.Join(JoinTimeout), "thread A did not finish");
-        Assert.Empty(errors);
-        return (counts[0], counts.Skip(1).ToArray(), askersFinishedWhileHeld);
+        }
+        return names;
     }
 
     [Fact]
     public void OriginNameCache_CrossCompile_IsNotPoisoned()
     {
+        var failures = new List<string>();
+
         // Cell: compile A's reference context holds a type; a compile with no such reference asks
         // the same stored name. Its inputs cannot name the type, so the answer must be null.
         var nsA = "P54OriginProbeA" + Guid.NewGuid().ToString("N");
         var nameA = nsA + ".Greeter";
         var asmA = LoadIntoOwnContext("P54-compile-A",
             $"namespace {nsA} {{ public sealed class Greeter {{ public int Alpha => 1; }} }}");
-        var typeA = ClrTypeHelper.ResolveClrTypeByStoredName(nameA);
+        var compileA = new AssemblyVisibility();
+        compileA.Add(asmA);
+        var typeA = compileA.ResolveType(nameA);
         Assert.True(typeA != null && typeA.Assembly == asmA,
             "instrument: compile A must resolve its own reference's type, or the cell measures nothing");
-        var seenByB = AskOnThreads(() => ClrTypeHelper.ResolveClrTypeByStoredName(nameA));
+        var seenByB = AskOnThreads(() => new ModuleRegistry().Visibility.ResolveType(nameA));
         var leaked = seenByB.Count(t => t != null && ReferenceEquals(t, typeA));
         _output.WriteLine($"{ReferenceSeenCell}: {leaked}/{seenByB.Length} unreferencing asks returned compile A's Type");
-        AssertCell(ReferenceSeenCell, diverged: leaked > 0,
+        AssertCell(failures, ReferenceSeenCell, diverged: leaked > 0,
             $"{leaked}/{seenByB.Length} asks from a compile with no reference returned '{nameA}' from compile A's context");
 
-        // Cell: a compile that cannot see a name asks first (null is cached); then a compile whose
-        // reference HOLDS the name asks. Its inputs name the type, so the answer must be the type.
+        // Cell: a compile that cannot see a name asks first (a null is cached); then a compile whose
+        // reference HOLDS the name asks — and so does the first compile once it gains the reference.
+        // Their inputs name the type, so the answer must be the type.
         var nsB = "P54OriginProbeB" + Guid.NewGuid().ToString("N");
         var nameB = nsB + ".Greeter";
-        Assert.Null(ClrTypeHelper.ResolveClrTypeByStoredName(nameB));
+        var growing = new AssemblyVisibility();
+        Assert.Null(growing.ResolveType(nameB));
         var asmB = LoadIntoOwnContext("P54-compile-B",
             $"namespace {nsB} {{ public sealed class Greeter {{ public int Beta => 2; }} }}");
         var truth = asmB.GetType(nameB);
         Assert.True(truth != null, "instrument: the referenced assembly must hold the type");
-        var seenByReferencing = AskOnThreads(() => ClrTypeHelper.ResolveClrTypeByStoredName(nameB));
-        var pinned = seenByReferencing.Count(t => t == null);
-        _output.WriteLine($"{NullPinnedCell}: {pinned}/{seenByReferencing.Length} referencing asks returned the pinned null");
-        AssertCell(NullPinnedCell, diverged: pinned > 0,
-            $"{pinned}/{seenByReferencing.Length} asks from the compile whose reference holds '{nameB}' returned null");
+        growing.Add(asmB);
+        var seenByReferencing = AskOnThreads(() =>
+        {
+            var fresh = new AssemblyVisibility();
+            fresh.Add(asmB);
+            return fresh.ResolveType(nameB);
+        }).Append(growing.ResolveType(nameB)).ToArray();
+        var pinned = seenByReferencing.Count(t => t != truth);
+        _output.WriteLine($"{NullPinnedCell}: {pinned}/{seenByReferencing.Length} referencing asks did not return the type");
+        AssertCell(failures, NullPinnedCell, diverged: pinned > 0,
+            $"{pinned}/{seenByReferencing.Length} asks from a compile whose reference holds '{nameB}' did not return it");
 
         // Positive control: a framework name is a pure function of its key — every ask agrees.
-        var framework = AskOnThreads(() => ClrTypeHelper.ResolveClrTypeByStoredName("System.Collections.Generic.List`1"));
-        AssertCell(FrameworkNameCell, diverged: framework.Any(t => t != typeof(List<>)),
+        var framework = AskOnThreads(() => new AssemblyVisibility().ResolveType("System.Collections.Generic.List`1"));
+        AssertCell(failures, FrameworkNameCell, diverged: framework.Any(t => t != typeof(List<>)),
             "a framework generic definition resolved to something other than typeof(List<>)");
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
-    private void AssertCell(string cell, bool diverged, string observed)
+    /// <summary>
+    /// Records a cell's verdict: a KnownRed row must still reproduce (else it is STALE — drain it),
+    /// every other cell must not diverge. Collected, so one run reports every cell.
+    /// </summary>
+    private static void AssertCell(List<string> failures, string cell, bool diverged, string observed)
     {
         if (KnownRed.TryGetValue(cell, out var row))
         {
-            Assert.True(diverged,
-                $"STALE KnownRed row '{cell}' — the defect no longer reproduces ({observed}); drain the row. Row: {row}");
+            if (!diverged)
+                failures.Add($"STALE KnownRed row '{cell}' — the defect no longer reproduces ({observed}); drain the row. Row: {row}");
         }
-        else
+        else if (diverged)
         {
-            Assert.False(diverged, $"cell '{cell}' diverged: {observed}");
+            failures.Add($"cell '{cell}' diverged: {observed}");
         }
     }
 

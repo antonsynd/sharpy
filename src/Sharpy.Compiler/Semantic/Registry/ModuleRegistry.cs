@@ -24,13 +24,20 @@ internal class ModuleRegistry
     private readonly DiagnosticBag _diagnostics = new();
     private readonly ConcurrentDictionary<string, string> _assemblyNameToPath = new();
     private readonly ConcurrentDictionary<string, byte> _usedAssemblyPaths = new();
-    private readonly ConcurrentDictionary<string, string?> _dynamicNamespaceCache = new();
 
     public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
         _logger = logger ?? NullLogger.Instance;
-        _discovery = new CachedModuleDiscovery(cache, _logger);
+        Visibility = new AssemblyVisibility();
+        _discovery = new CachedModuleDiscovery(cache, _logger, Visibility);
     }
+
+    /// <summary>
+    /// The CLR types and namespaces this registry's compilation may see: the framework set plus the
+    /// assemblies this registry loaded — never whatever else the process has loaded (#2250). Every
+    /// CLR-name question the compilation asks goes through it.
+    /// </summary>
+    public AssemblyVisibility Visibility { get; }
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
@@ -118,6 +125,17 @@ internal class ModuleRegistry
             _logger.LogInfo($"Loaded module reference: {assemblyName} from {resolvedPath}");
             return true;
         }
+        catch (FileLoadException ex) when (BindAlreadyLoadedCopy(assemblyPath) is { } alreadyLoaded)
+        {
+            // TRANSITIONAL (#2250, drains in P54 Phase 2 task 2 with the per-registry load context): a
+            // same-named assembly from another path is already in the default context, so this load
+            // fails (SPY0306, still filtered by MissingReferenceDiagnostics) — and before the visibility
+            // seam the process-wide scans then found that OTHER copy. The copy is made visible here, so
+            // this commit changes no program's answer; task 2 gives each registry its own copy instead.
+            _diagnostics.AddPhaseError($"Failed to load assembly '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
+            Visibility.Add(alreadyLoaded);
+            return false;
+        }
         catch (IOException ex)
         {
             _diagnostics.AddPhaseError($"Failed to load assembly '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
@@ -132,6 +150,25 @@ internal class ModuleRegistry
         {
             _diagnostics.AddPhaseError($"Access denied loading assembly '{assemblyPath}': {ex.Message}", CompilerPhase.ImportResolution, code: DiagnosticCodes.Semantic.AssemblyLoadError);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// TRANSITIONAL (#2250, deleted in P54 Phase 2 task 2): the default-context copy of the assembly
+    /// <paramref name="assemblyPath"/> names, bound by its simple name — the copy a same-named load from
+    /// another path collided with. Null when the path does not resolve or no such copy binds.
+    /// </summary>
+    private Assembly? BindAlreadyLoadedCopy(string assemblyPath)
+    {
+        try
+        {
+            return ResolveAssemblyPath(assemblyPath) is { } path
+                ? Assembly.Load(AssemblyName.GetAssemblyName(path))
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or BadImageFormatException or ArgumentException)
+        {
+            return null;
         }
     }
 
@@ -314,30 +351,13 @@ internal class ModuleRegistry
             return null;
         }
 
-        // Construct the full .NET type name
+        // Construct the full .NET type name and resolve it against THIS compilation's visibility.
         var fullTypeName = $"{netNamespace}.{typeName}";
-
-        // Try to find the type in loaded assemblies and the runtime
-        var clrType = Type.GetType(fullTypeName);
-        if (clrType != null)
-        {
-            _logger.LogDebug($"Resolved .NET type: {fullTypeName}");
-            return clrType;
-        }
-
-        // Try searching in all loaded assemblies
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            clrType = assembly.GetType(fullTypeName);
-            if (clrType != null)
-            {
-                _logger.LogDebug($"Resolved .NET type from assembly {assembly.GetName().Name}: {fullTypeName}");
-                return clrType;
-            }
-        }
-
-        _logger.LogDebug($".NET type not found: {fullTypeName}");
-        return null;
+        var clrType = Visibility.ResolveType(fullTypeName);
+        _logger.LogDebug(clrType != null
+            ? $"Resolved .NET type: {fullTypeName}"
+            : $".NET type not found: {fullTypeName}");
+        return clrType;
     }
 
     /// <summary>
@@ -362,27 +382,12 @@ internal class ModuleRegistry
     /// </summary>
     /// <param name="moduleName">The Sharpy module name (e.g., "system")</param>
     /// <returns>List of TypeSymbols for all public types in the namespace</returns>
-    public List<TypeSymbol> GetNamespaceTypes(string moduleName) => GetNamespaceTypes(moduleName, beforeTpaLoad: null);
-
-    /// <summary>
-    /// <see cref="GetNamespaceTypes(string)"/> with a test seam on the process-wide TPA gate.
-    /// </summary>
-    /// <param name="moduleName">The Sharpy module name (e.g., "system")</param>
-    /// <param name="beforeTpaLoad">
-    /// Test seam only (#2250, P54 Phase 1 — retired when the gate gains a completion barrier):
-    /// invoked with the .NET namespace after THIS call has won the
-    /// <see cref="EnsureRuntimeAssembliesLoaded"/> gate and before it loads any trusted-platform
-    /// assembly, so a test can hold the gate open deterministically. Production passes null.
-    /// </param>
-    internal List<TypeSymbol> GetNamespaceTypes(string moduleName, Action<string>? beforeTpaLoad)
+    public List<TypeSymbol> GetNamespaceTypes(string moduleName)
     {
         var types = new List<TypeSymbol>();
         var netNamespace = MapModuleToNamespace(moduleName);
         if (netNamespace == null)
             return types;
-
-        // Ensure runtime assemblies for this namespace are loaded (e.g., System.IO.FileSystem for System.IO)
-        EnsureRuntimeAssembliesLoaded(netNamespace, beforeTpaLoad);
 
         // #1613: a CLR namespace spells some names as a GROUP of types differing only in generic
         // arity (EventHandler / EventHandler`1 / EventHandler`2, Action`0..16, Func`1..17).
@@ -391,33 +396,21 @@ internal class ModuleRegistry
         // representative carrying the whole group for annotation-site selection.
         var byName = new Dictionary<string, SortedDictionary<int, TypeSymbol>>(StringComparer.Ordinal);
 
-        // Search all loaded assemblies for types in this namespace
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        // The namespace's public types in this compilation's visibility — the framework set is a
+        // process constant (no namespace-driven loading left to race), plus this registry's own
+        // references (#2250).
+        foreach (var clrType in Visibility.TypesInNamespace(netNamespace))
         {
-            try
-            {
-                var namespaceTypes = assembly.GetTypes()
-                    .Where(t => t.IsPublic && t.Namespace == netNamespace);
+            var typeSymbol = CreateTypeSymbolFromClrType(clrType);
+            if (typeSymbol == null)
+                continue;
 
-                foreach (var clrType in namespaceTypes)
-                {
-                    var typeSymbol = CreateTypeSymbolFromClrType(clrType);
-                    if (typeSymbol == null)
-                        continue;
-
-                    if (!byName.TryGetValue(typeSymbol.Name, out var group))
-                    {
-                        group = new SortedDictionary<int, TypeSymbol>();
-                        byName[typeSymbol.Name] = group;
-                    }
-                    group[typeSymbol.TypeParameters.Count] = typeSymbol;
-                }
-            }
-            catch (ReflectionTypeLoadException ex)
+            if (!byName.TryGetValue(typeSymbol.Name, out var group))
             {
-                // Skip assemblies that can't be fully loaded
-                _logger.LogDebug($"Skipping assembly '{assembly.GetName().Name}': {ex.Message}");
+                group = new SortedDictionary<int, TypeSymbol>();
+                byName[typeSymbol.Name] = group;
             }
+            group[typeSymbol.TypeParameters.Count] = typeSymbol;
         }
 
         foreach (var group in byName.Values)
@@ -609,33 +602,17 @@ internal class ModuleRegistry
             return string.Join(".", result);
         }
 
-        // For non-system/sharpy prefixes (e.g., NuGet packages), try PascalCase
-        // conversion and verify the namespace exists in a loaded assembly.
-        return _dynamicNamespaceCache.GetOrAdd(lower, _ =>
+        // For non-system/sharpy prefixes (e.g., NuGet packages), try PascalCase conversion and
+        // verify a VISIBLE assembly declares the namespace — this compilation's references or the
+        // framework set, never another compilation's load (#2250).
+        var parts = lower.Split('.');
+        var candidate = new string[parts.Length];
+        for (int i = 0; i < parts.Length; i++)
         {
-            var segments = lower.Split('.');
-            var candidate = new string[segments.Length];
-            for (int i = 0; i < segments.Length; i++)
-            {
-                candidate[i] = NameMangler.ToModuleIdentifier(segments[i], AcronymPolicy.IoOnly);
-            }
-            var candidateNs = string.Join(".", candidate);
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    if (assembly.GetTypes().Any(t => t.IsPublic && t.Namespace == candidateNs))
-                        return candidateNs;
-                }
-                catch (ReflectionTypeLoadException)
-                {
-                    // Skip assemblies that can't be fully loaded
-                }
-            }
-
-            return null;
-        });
+            candidate[i] = NameMangler.ToModuleIdentifier(parts[i], AcronymPolicy.IoOnly);
+        }
+        var candidateNs = string.Join(".", candidate);
+        return Visibility.NamespaceExists(candidateNs) ? candidateNs : null;
     }
 
     /// <summary>
@@ -704,73 +681,4 @@ internal class ModuleRegistry
 
         return null;
     }
-
-    private static readonly ConcurrentDictionary<string, byte> _loadedRuntimeNamespaces = new(StringComparer.Ordinal);
-
-    /// <summary>
-    /// Loads runtime assemblies whose names match or start with the given .NET namespace.
-    /// This ensures types like System.IO.DriveInfo (in System.IO.FileSystem.dll) are
-    /// discoverable even when the hosting assembly isn't loaded by default.
-    /// </summary>
-    private void EnsureRuntimeAssembliesLoaded(string netNamespace, Action<string>? beforeTpaLoad)
-    {
-        if (!_loadedRuntimeNamespaces.TryAdd(netNamespace, 0))
-            return;
-
-        beforeTpaLoad?.Invoke(netNamespace);
-
-        var tpaString = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
-        if (tpaString == null)
-            return;
-
-        // Build match prefixes: the namespace itself plus parent namespaces.
-        // .NET distributes types across assemblies that don't always match the
-        // namespace — e.g., System.Net.Sockets.AddressFamily is in
-        // System.Net.Primitives.dll. Loading parent-namespace assemblies
-        // catches these cross-assembly cases.
-        var prefixes = new List<string>();
-        prefixes.Add(netNamespace + ".");
-        prefixes.Add(netNamespace);
-        var parts = netNamespace.Split('.');
-        for (int i = parts.Length - 1; i >= 2; i--)
-        {
-            var parent = string.Join(".", parts, 0, i);
-            prefixes.Add(parent + ".");
-        }
-
-        foreach (var path in tpaString.Split(Path.PathSeparator))
-        {
-            var fileName = Path.GetFileNameWithoutExtension(path);
-            if (fileName == null)
-                continue;
-
-            bool matches = false;
-            foreach (var prefix in prefixes)
-            {
-                if (fileName.StartsWith(prefix, StringComparison.Ordinal) ||
-                    string.Equals(fileName, prefix.TrimEnd('.'), StringComparison.Ordinal))
-                {
-                    matches = true;
-                    break;
-                }
-            }
-            if (!matches)
-                continue;
-
-            if (AppDomain.CurrentDomain.GetAssemblies().Any(
-                a => string.Equals(a.GetName().Name, fileName, StringComparison.Ordinal)))
-                continue;
-
-            try
-            {
-                Assembly.LoadFrom(path);
-                _logger.LogDebug($"Loaded runtime assembly '{fileName}' for namespace '{netNamespace}'");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug($"Failed to load runtime assembly '{fileName}': {ex.Message}");
-            }
-        }
-    }
-
 }

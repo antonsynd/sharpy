@@ -34,7 +34,7 @@ internal static class BuiltinExceptionSurface
                 || (type.Assembly.GetName().Name == "Sharpy.Core"
                     && type.Namespace == "Sharpy"));
 
-        _typeCache[type] = result;
+        AssemblyVisibility.SetIfProcessStable(_typeCache, type, type, result);
         return result;
     }
 
@@ -52,7 +52,7 @@ internal static class BuiltinExceptionSurface
             return cached;
 
         bool refused = IsBuiltinExceptionType(clrType) && IsRefusedMemberCore(clrType, memberName);
-        _refusedCache[(clrType, memberName)] = refused;
+        AssemblyVisibility.SetIfProcessStable(_refusedCache, (clrType, memberName), clrType, refused);
         return refused;
     }
 

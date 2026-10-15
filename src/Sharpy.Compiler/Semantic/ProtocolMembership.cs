@@ -37,11 +37,18 @@ internal sealed class ProtocolMembership
 {
     private readonly IGlobalSymbolTable _symbolTable;
     private readonly BuiltinRegistry _builtins;
+    private readonly Discovery.AssemblyVisibility _visibility;
 
-    public ProtocolMembership(IGlobalSymbolTable symbolTable, BuiltinRegistry builtins)
+    /// <param name="visibility">
+    /// The compilation's CLR visibility: a generic recorded only by name resolves against it, never
+    /// against the process's loaded set (#2250).
+    /// </param>
+    public ProtocolMembership(IGlobalSymbolTable symbolTable, BuiltinRegistry builtins,
+        Discovery.AssemblyVisibility visibility)
     {
         _symbolTable = symbolTable;
         _builtins = builtins;
+        _visibility = visibility;
     }
 
     /// <summary>
@@ -208,14 +215,14 @@ internal sealed class ProtocolMembership
             // definition from ClrOriginTypeName and check its closed form (#1517 honest borders).
             // When both GenericDefinition and ClrOriginTypeName are missing (the return type lost
             // its CLR identity through the overload-index → builtin-substitution chain), fall back
-            // to the display-name scan. Both lookups go through ClrTypeHelper's null-cached
-            // resolvers — a negative protocol probe must not rescan loaded assemblies each time.
+            // to the display-name scan. Both lookups go through the compilation's visibility, which
+            // null-caches per name — a negative protocol probe must not rescan each time (#2250).
             if (generic.ClrOriginTypeName is { Length: > 0 } || symTableType == null)
             {
                 var arity = generic.TypeArguments.Count;
                 var resolvedDef = generic.ClrOriginTypeName is { Length: > 0 } originName
-                    ? Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(originName)
-                    : Discovery.ClrTypeHelper.ResolveGenericDefinitionByDisplayName(generic.Name, arity);
+                    ? _visibility.ResolveType(originName)
+                    : _visibility.ResolveGenericDefinitionByDisplayName(generic.Name, arity);
 
                 if (resolvedDef is { IsGenericTypeDefinition: true }
                     && resolvedDef.GetGenericArguments().Length == arity)

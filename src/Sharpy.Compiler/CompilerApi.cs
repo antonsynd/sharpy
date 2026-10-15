@@ -656,8 +656,9 @@ public sealed class CompilerApi
                 return (_analysisCache.Registry, _analysisCache.Builtins);
         }
 
-        var builtins = new BuiltinRegistry(_logger);
+        // The registry first: the builtin registry's CLR fallback sees THIS reference set's visibility (#2250).
         var registry = BuildModuleRegistry(config);
+        var builtins = new BuiltinRegistry(_logger, registry?.Visibility);
 
         var entry = new AnalysisCacheEntry(key, registry, builtins);
         lock (_analysisCacheLock)

@@ -587,16 +587,19 @@ internal partial class RoslynEmitter
     /// </summary>
     private static bool IsClrTypeGenericInNamespace(string namespaceName, string typeName)
     {
-        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+        // Rule-2 cell (#2250 findings ledger; no tracker yet): this is the emitter asking reflection a
+        // semantic question, which belongs in semantic analysis as a materialized fact. Until it moves,
+        // it asks the FRAMEWORK visibility — a process constant — instead of every assembly the process
+        // has loaded; its only caller passes a .NET framework namespace (IsNetFrameworkNamespace).
+        var framework = Discovery.AssemblyVisibility.FrameworkOnly;
+
+        // Try with generic arity suffixes `1 through `4 (covers most BCL types)
+        for (int arity = 1; arity <= 4; arity++)
         {
-            // Try with generic arity suffixes `1 through `4 (covers most BCL types)
-            for (int arity = 1; arity <= 4; arity++)
-            {
-                var fullName = $"{namespaceName}.{typeName}`{arity}";
-                var type = assembly.GetType(fullName, throwOnError: false);
-                if (type != null && type.IsGenericTypeDefinition)
-                    return true;
-            }
+            var fullName = $"{namespaceName}.{typeName}`{arity}";
+            var type = framework.ResolveType(fullName);
+            if (type != null && type.IsGenericTypeDefinition)
+                return true;
         }
 
         return false;

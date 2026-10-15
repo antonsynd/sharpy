@@ -426,7 +426,7 @@ internal class ClrTypeBridge
         if (genericDefinition is not { IsGenericTypeDefinition: true })
             return false;
 
-        return _mapsToSharpyBuiltinCache.GetOrAdd(genericDefinition, definition =>
+        return AssemblyVisibility.GetOrAddIfProcessStable(_mapsToSharpyBuiltinCache, genericDefinition, genericDefinition, definition =>
         {
             Type probe;
             try

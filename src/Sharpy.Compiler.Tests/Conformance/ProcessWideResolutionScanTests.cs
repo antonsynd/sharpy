@@ -81,6 +81,20 @@ public class ProcessWideResolutionScanTests
                 "the collectible SharplyGenerators context — self-owned, loads only the generator assembly " +
                 "this project just compiled (LoadFromStream); the precedent for the per-registry context " +
                 "of P54 Design Decision 2."),
+
+            // ---- The ONE visibility seam (#2250, P54 Design Decision 1): every CLR-name question the
+            //      compiler asks is answered here, from {framework} ∪ {the registry's own references}. ----
+            ["Discovery/AssemblyVisibility.cs::AssemblyVisibility.TypeNameResolution::Type.GetType"] = (1,
+                "the one seam: the runtime's type-name parser called with BOTH resolvers supplied — the " +
+                "assembly qualifier binds against the visible set by simple name and an unqualified name is " +
+                "searched in the visible set, so nothing binds against the process."),
+            ["Discovery/AssemblyVisibility.cs::AssemblyVisibility.LoadFrameworkAssembly::Assembly.Load"] = (1,
+                "the one seam: Assembly.Load(AssemblyName) of a trusted-platform System.*/Microsoft.*/netstandard/" +
+                "mscorlib name (or a compiler dependency), once per process behind the framework Lazy — the " +
+                "default context's TPA binding, a process constant."),
+            ["Discovery/AssemblyVisibility.cs::AssemblyVisibility.IsProcessStable::AssemblyLoadContext.Default"] = (1,
+                "the one seam: Design Decision 3's gate — a static Type-keyed cache holds a type only when it is " +
+                "wholly in the default context, so no static cache pins a per-registry load context."),
         };
 
     /// <summary>
@@ -90,56 +104,12 @@ public class ProcessWideResolutionScanTests
     private static readonly IReadOnlyDictionary<string, (int Count, string Reason)> Allowlist =
         new Dictionary<string, (int, string)>(StringComparer.Ordinal)
         {
-            ["CodeGen/RoslynEmitter.CompilationUnit.cs::RoslynEmitter.IsClrTypeGenericInNamespace::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — the emitter's one reflection site: is a CLR name generic in a namespace, asked of every loaded assembly."),
-            ["Discovery/CachedModuleDiscovery.cs::CachedModuleDiscovery.ConvertTypeSignature::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — overload-index ClrTypeName -> Type, first same-named copy loaded wins."),
-            ["Discovery/CachedModuleDiscovery.cs::CachedModuleDiscovery.ConvertTypeSignature::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — overload-index ClrTypeName -> Type against the process."),
-            ["Discovery/CachedModuleDiscovery.cs::CachedModuleDiscovery.CreateSkeletonTypeSymbol::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — module type ClrTypeName -> Type, first same-named copy loaded wins."),
-            ["Discovery/CachedModuleDiscovery.cs::CachedModuleDiscovery.CreateSkeletonTypeSymbol::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — module type ClrTypeName -> Type against the process."),
             ["Discovery/Caching/AssemblyIdentity.cs::AssemblyIdentity.FromAssemblyPath::Assembly.LoadFrom"] = (1,
-                "#2250 drains in Phase 2 — DEAD code (zero callers) that would load into the default context — deleted, not rewritten."),
-            ["Discovery/ClrAttributeResolver.cs::ClrAttributeResolver.EnsureFrameworkAssembliesLoaded::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — TPA namespace probe reads the process's loaded names."),
-            ["Discovery/ClrAttributeResolver.cs::ClrAttributeResolver.EnsureFrameworkAssembliesLoaded::Assembly.LoadFrom"] = (1,
-                "#2250 drains in Phase 2 — TPA load into the default context behind the static _probedNamespaces gate."),
-            ["Discovery/ClrAttributeResolver.cs::ClrAttributeResolver.FindType::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — attribute presence against every loaded assembly, cached process-wide in s_typePresentCache."),
-            ["Discovery/ClrAttributeResolver.cs::ClrAttributeResolver.FindType::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — attribute presence against the process."),
-            ["Discovery/ClrTypeHelper.cs::ClrTypeHelper.ResolveClrTypeByStoredName::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — stored name -> Type, pinned for the process in the static _originNameDefinitionCache."),
-            ["Discovery/ClrTypeHelper.cs::ClrTypeHelper.ResolveClrTypeByStoredName::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — stored name -> Type against the process."),
-            ["Discovery/ClrTypeHelper.cs::ClrTypeHelper.ResolveGenericDefinitionByDisplayName::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — namespace-less display name + arity -> generic definition, pinned in the static _displayNameDefinitionCache."),
-            ["Semantic/Registry/BuiltinRegistry.cs::BuiltinRegistry.TryFindClrType::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — bare-name CLR fallback over the loaded set, behind the master registry's _clrTypeCache."),
-            ["Semantic/Registry/BuiltinRegistry.cs::BuiltinRegistry.TryFindClrType::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — bare-name CLR fallback against the process."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.EnsureRuntimeAssembliesLoaded::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — TPA gate reads the process's loaded set behind the static check-then-act _loadedRuntimeNamespaces."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.EnsureRuntimeAssembliesLoaded::Assembly.LoadFrom"] = (1,
-                "#2250 drains in Phase 2 — TPA load into the default context."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.GetNamespaceTypes::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — which types a namespace has = whatever the process has loaded."),
+                "#2250 drains in Phase 2 task 2 — DEAD code (zero callers) that would load into the default context — deleted, not rewritten."),
+            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.BindAlreadyLoadedCopy::Assembly.Load"] = (1,
+                "#2250 drains in Phase 2 task 2 — TRANSITIONAL: binds the default-context copy a same-named load from another path collided with, so task 1 changes no program's answer."),
             ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.LoadReference::Assembly.LoadFrom"] = (1,
-                "#2250 drains in Phase 2 — a user reference loaded into the default context: same-named copy from another path is SPY0306, the first copy stays visible to later compiles."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.MapModuleToNamespace::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — namespace-less: does ANY loaded assembly have this namespace."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.TryResolveNetType::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — whether a name is a CLR type = whatever the process has loaded."),
-            ["Semantic/Registry/ModuleRegistry.cs::ModuleRegistry.TryResolveNetType::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — whether a name is a CLR type, against the process."),
-            ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.ResolveClrParameterType::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — call-site CLR parameter type lookup over the loaded set."),
-            ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.ResolveClrParameterType::Type.GetType"] = (1,
-                "#2250 drains in Phase 2 — call-site CLR parameter type lookup against the process."),
-            ["Semantic/TypeChecker.Utilities.cs::TypeChecker.TryGetClrType::AppDomain.GetAssemblies"] = (1,
-                "#2250 drains in Phase 2 — namespace-less: generic twin of a ClrType by simple name across loaded assemblies."),
+                "#2250 drains in Phase 2 task 2 — a user reference loaded into the default context: same-named copy from another path is SPY0306, the first copy stays visible to later compiles."),
         };
 
     private readonly ITestOutputHelper _output;
@@ -373,13 +343,15 @@ public class ProcessWideResolutionScanTests
             string.Join("\n  ", stale));
 
         // Literal census @ 486c9a88a (measured): 14 AppDomain scans + 7 static Type.GetType + 4
-        // Assembly.LoadFrom = 25 resolution sites (the Allowlist); 5 Assembly.Load + 1 load-context
-        // construction = 6 rostered sites. Re-anchor as Phase 2 drains rows.
-        Assert.Equal(14, result.Sites.Count(s => s.Kind == AppDomainScan));
-        Assert.Equal(7, result.Sites.Count(s => s.Kind == StaticTypeGetType));
-        Assert.Equal(25, result.Sites.Count(s => Allowlist.ContainsKey(s.Key)));
-        Assert.Equal(6, result.Sites.Count(s => Roster.ContainsKey(s.Key)));
-        Assert.Equal(31, result.Sites.Count);
+        // Assembly.LoadFrom = 25 resolution sites; 5 Assembly.Load + 1 load-context construction = 6
+        // rostered sites. P54 Phase 2 task 1 (measured): the 14 scans and the 6 non-seam Type.GetType
+        // sites drained into AssemblyVisibility, whose own three seam sites are Roster rows; 2 LoadFrom
+        // sites remain for task 2, plus task 1's one transitional Assembly.Load. Re-anchor as rows drain.
+        Assert.Equal(0, result.Sites.Count(s => s.Kind == AppDomainScan));
+        Assert.Equal(1, result.Sites.Count(s => s.Kind == StaticTypeGetType));
+        Assert.Equal(3, result.Sites.Count(s => Allowlist.ContainsKey(s.Key)));
+        Assert.Equal(9, result.Sites.Count(s => Roster.ContainsKey(s.Key)));
+        Assert.Equal(12, result.Sites.Count);
     }
 
     // ---- Synthetic controls: the same classifier on in-memory sources ----

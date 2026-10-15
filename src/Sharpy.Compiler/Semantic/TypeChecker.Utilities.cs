@@ -1972,28 +1972,17 @@ internal partial class TypeChecker
                         else if (candidateClr != null && !candidateClr.IsGenericTypeDefinition)
                         {
                             // ClrType is non-generic (e.g., IEnumerable instead of IEnumerable<T>).
-                            // Search loaded assemblies for the generic version with matching arity.
+                            // Find the generic version with matching arity in THIS compilation's
+                            // visibility (#2250): the same-namespace twin first, then any visible
+                            // generic definition of the display name and arity.
                             var arity = gt.TypeArguments.Count;
                             var genericName = candidateClr.Name.Contains('`', StringComparison.Ordinal)
                                 ? candidateClr.Name
                                 : candidateClr.Name + "`" + arity;
-                            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
-                            {
-                                try
-                                {
-                                    var match = asm.GetType(candidateClr.Namespace + "." + genericName)
-                                        ?? asm.GetTypes().FirstOrDefault(t =>
-                                            t.IsGenericTypeDefinition
-                                            && Shared.ClrNameHelper.StripArity(t.Name) == gt.Name
-                                            && t.GetGenericArguments().Length == arity);
-                                    if (match != null)
-                                    {
-                                        openType = match;
-                                        break;
-                                    }
-                                }
-                                catch { }
-                            }
+                            var match = Visibility.ResolveType(candidateClr.Namespace + "." + genericName)
+                                ?? Visibility.GenericDefinitionsNamed(gt.Name, arity).FirstOrDefault();
+                            if (match is { IsGenericTypeDefinition: true })
+                                openType = match;
                         }
                     }
                     if (openType == null || !openType.IsGenericTypeDefinition)

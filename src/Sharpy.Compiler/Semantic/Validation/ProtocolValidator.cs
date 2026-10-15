@@ -269,7 +269,7 @@ internal class ProtocolValidator : ValidatingAstWalker
         => Membership.Has(type, dunderName);
 
     private ProtocolMembership Membership
-        => _membership ??= new ProtocolMembership(Context.SymbolTable, Context.Builtins);
+        => _membership ??= new ProtocolMembership(Context.SymbolTable, Context.Builtins, Context.Visibility);
 
     private ProtocolMembership? _membership;
 }

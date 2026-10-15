@@ -296,7 +296,7 @@ def message_box() -> int:
     {
         // Instance-scoped since #1493: absence verdicts must not outlive the compilation that
         // reached them. One resolver here IS one compilation.
-        var resolver = new ClrAttributeResolver();
+        var resolver = new ClrAttributeResolver(AssemblyVisibility.FrameworkOnly);
         Assert.False(resolver.ResolvesToClrType("NoSuchAttrXyz"));
         Assert.True(resolver.ResolvesToClrType("Obsolete"));
     }

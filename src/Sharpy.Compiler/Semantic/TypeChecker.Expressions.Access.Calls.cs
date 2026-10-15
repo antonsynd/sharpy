@@ -1749,16 +1749,15 @@ internal partial class TypeChecker
             var clrTypeName = func.Parameters[paramIdx].ClrTypeName;
             if (!string.IsNullOrEmpty(clrTypeName))
             {
-                var clrType = Type.GetType(clrTypeName);
+                // Resolved against this compilation's visibility, never the process's loaded set
+                // (#2250): the AQN first, then — as before — the bare namespace-qualified name in
+                // any visible assembly, for an AQN whose assembly the visibility names differently.
+                var clrType = Visibility.ResolveType(clrTypeName!);
                 if (clrType == null)
                 {
-                    // Assembly.GetType expects just the namespace-qualified name,
-                    // not the full AQN — strip the assembly qualifier.
                     var commaIdx = clrTypeName!.IndexOf(',', StringComparison.Ordinal);
-                    var typeNameOnly = commaIdx >= 0 ? clrTypeName[..commaIdx] : clrTypeName;
-                    clrType = AppDomain.CurrentDomain.GetAssemblies()
-                        .Select(a => a.GetType(typeNameOnly))
-                        .FirstOrDefault(t => t != null);
+                    if (commaIdx >= 0)
+                        clrType = Visibility.ResolveType(clrTypeName[..commaIdx]);
                 }
                 if (clrType != null)
                 {

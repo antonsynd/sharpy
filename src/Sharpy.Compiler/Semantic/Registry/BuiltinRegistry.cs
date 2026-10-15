@@ -73,8 +73,22 @@ internal class BuiltinRegistry
         "Some", "Ok", "Err"
     };
 
-    public BuiltinRegistry(ICompilerLogger? logger = null)
+    /// <summary>
+    /// The CLR types this registry's bare-name fallback (<see cref="TryResolveClrType"/>) may see:
+    /// the paired <c>ModuleRegistry</c>'s visibility — a builtin registry is built for ONE reference
+    /// set, beside that set's module registry — or the framework set alone (#2250). Never whatever the
+    /// process has loaded.
+    /// </summary>
+    private readonly AssemblyVisibility _clrFallbackVisibility;
+
+    /// <param name="logger">Optional logger.</param>
+    /// <param name="clrFallbackVisibility">
+    /// The paired module registry's visibility; null gives the framework set alone
+    /// (<see cref="AssemblyVisibility.FrameworkOnly"/>).
+    /// </param>
+    public BuiltinRegistry(ICompilerLogger? logger = null, AssemblyVisibility? clrFallbackVisibility = null)
     {
+        _clrFallbackVisibility = clrFallbackVisibility ?? AssemblyVisibility.FrameworkOnly;
         _discovery = new CachedModuleDiscovery(null, logger);
         LoadBuiltins();
         FreezeSymbols();
@@ -1199,12 +1213,13 @@ internal class BuiltinRegistry
     {
         var registryOwnsName = IsReservedBuiltinTypeName(name) || CamelCaseAliases.ContainsKey(name);
 
-        // The extra state is a pure function of the KEY's name, so it can never make two callers
-        // disagree about a cached entry.
-        return _clrTypeCache.GetOrAdd((name, arity), static ((string Name, int Arity) key, bool ownedByRegistry) =>
+        // The extra state is a pure function of the KEY's name and of this registry's construction-time
+        // visibility, so it can never make two callers disagree about a cached entry.
+        return _clrTypeCache.GetOrAdd((name, arity), static ((string Name, int Arity) key,
+            (bool OwnedByRegistry, AssemblyVisibility Visibility) state) =>
         {
             var (n, a) = key;
-            var clrType = TryFindClrType(n, a, allowSharpyNamespace: !ownedByRegistry);
+            var clrType = TryFindClrType(state.Visibility, n, a, allowSharpyNamespace: !state.OwnedByRegistry);
             if (clrType == null)
                 return null;
 
@@ -1242,7 +1257,7 @@ internal class BuiltinRegistry
             }
 
             return sym;
-        }, registryOwnsName);
+        }, (registryOwnsName, _clrFallbackVisibility));
     }
 
     /// <summary>
@@ -1279,28 +1294,23 @@ internal class BuiltinRegistry
     /// keeps <c>Dict</c>/<c>List</c> off the reflected <c>Sharpy.Dict</c>/<c>Sharpy.List</c>
     /// (see <see cref="TryResolveClrType"/>, #1625).
     /// </param>
-    private static Type? TryFindClrType(string name, int arity, bool allowSharpyNamespace)
+    private static Type? TryFindClrType(AssemblyVisibility visibility, string name, int arity, bool allowSharpyNamespace)
     {
         // #1613: for arity > 0, probe `Name`N (e.g. Action`1, Func`3)
         var clrName = arity > 0 ? $"{name}`{arity}" : name;
 
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        // The registry's construction-time visibility (#2250): the framework set plus the references
+        // of the ONE reference set this registry was built for — the stdlib's Sharpy-namespace classes
+        // that declare no module (StatisticsError, CapturedOutput, ...) are reachable only through this
+        // fallback — and never whatever else the process has loaded.
         foreach (var ns in ClrFallbackNamespaces)
         {
             if (!allowSharpyNamespace && ClrTypeBridge.SpecialCases.IsSharpyNamespace(ns))
                 continue;
 
-            var fullName = $"{ns}.{clrName}";
-            var type = Type.GetType(fullName);
+            var type = visibility.ResolveType($"{ns}.{clrName}");
             if (Accepts(type))
                 return type;
-
-            foreach (var assembly in assemblies)
-            {
-                type = assembly.GetType(fullName);
-                if (Accepts(type))
-                    return type;
-            }
         }
 
         return null;

@@ -12,7 +12,7 @@ internal partial class ProjectCompiler
     /// </summary>
     private void InitializeSharedState()
     {
-        var builtinRegistry = _sharedBuiltinRegistry ?? new BuiltinRegistry(_logger);
+        var builtinRegistry = _sharedBuiltinRegistry ?? new BuiltinRegistry(_logger, _moduleRegistry?.Visibility);
         _symbolTableBacking = new SymbolTable(builtinRegistry);
         _semanticInfoBacking = new SemanticInfo();
         _semanticInfoBacking.SetSymbolTable(_symbolTableBacking);
@@ -91,7 +91,7 @@ internal partial class ProjectCompiler
                 servedUnit.CachedReferencedClrTypeNames = new HashSet<string>(
                     cachedFile.ReferencedClrTypeNames ?? new List<string>(), StringComparer.Ordinal);
             }
-            if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols, semanticBinding))
+            if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols, semanticBinding, _moduleRegistry?.Visibility))
             {
                 restoredByFile.Add((filePath, _restoredSymbols
                     .Where(kv => !keysBefore.Contains(kv.Key))
@@ -271,7 +271,8 @@ internal partial class ProjectCompiler
                     return registered;
                 }
 
-                return Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(clrName) is { } clrType
+                var visibility = _moduleRegistry?.Visibility ?? Discovery.AssemblyVisibility.FrameworkOnly;
+                return visibility.ResolveType(clrName) is { } clrType
                     ? _moduleRegistry?.CreateTypeSymbolFromClrType(clrType)
                     : null;
             }
