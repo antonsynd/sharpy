@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xunit;
@@ -19,9 +20,16 @@ namespace Sharpy.Compiler.Tests.Diagnostics;
 ///     (<see cref="HashSet{T}"/>, <see cref="Dictionary{TKey,TValue}"/>, <see cref="List{T}"/>)
 ///     is flagged, because <c>readonly</c> freezes the reference, not the contents — this
 ///     catches <c>_loadedRuntimeNamespaces</c>-style caches that rule 1 misses.</item>
+///   <item>(2b, #2250) A <c>static readonly</c> PROCESS-WIDE CACHE — <see cref="ConcurrentDictionary{TKey,TValue}"/>,
+///     <see cref="Lazy{T}"/>, <see cref="ConditionalWeakTable{TKey,TValue}"/>, including the backing field of a
+///     static auto-property — needs a <see cref="ProcessWideCacheRoster"/> row. These were once exempt by design
+///     ("their contents are a deterministic function of the key"); that premise is only as good as the key, and a
+///     name-keyed cache whose value is resolved against the process's loaded assemblies pins whoever asked first
+///     for every later compile. So each row states its key-purity justification, and the census is anchored to a
+///     literal count.</item>
 /// </list>
 ///
-/// Both rules consult a single <see cref="Allowlist"/> keyed by declaring-type + field name.
+/// Rules 1 and 2 consult a single <see cref="Allowlist"/> keyed by declaring-type + field name.
 /// Every entry carries a justification: either an init-once lookup table (populated at
 /// declaration/static-ctor and never mutated afterward, so effectively immutable) or a
 /// consciously-reviewed runtime-mutable field whose mutation is determinism-safe. Adding a
@@ -45,21 +53,8 @@ public class StaticStateConformanceTests
     /// → justification. Keep this list minimal and justified; new entries mean a new static
     /// mutable field was introduced and must be reviewed for determinism safety.
     /// </summary>
-    // Note on ConcurrentDictionary caches: ClrTypeHelper._paramsIndexerCache is a
-    // static readonly ConcurrentDictionary used as an idempotent cache keyed by CLR type.
-    // It is intentionally NOT flagged (rule 2 excludes ConcurrentDictionary) and needs no
-    // allowlist entry: its contents are a deterministic function of the key.
-    //
-    // The D2 warm-compile caches added for #1049 are the same shape and, likewise, need no
-    // keyed entry (a keyed entry would go stale since the field is never flagged) — they are
-    // recorded here so their determinism review is conscious and visible:
-    //   * AssemblyCompiler.s_referenceCache — MetadataReference keyed by (assembly path,
-    //     last-write time UTC). A reference is a pure function of the file's bytes; a changed
-    //     assembly gets a new mtime and thus a new key. Content-addressed, append-only.
-    //   * OverloadIndexCache.s_inMemoryIndices — deserialized OverloadIndex keyed by the full
-    //     cache-file path, which embeds the content-addressed AssemblyIdentity cache key
-    //     (name-version-hash). A changed assembly hashes to a different key. Content-addressed,
-    //     append-only; ClearAll evicts the directory's entries so the disk-clear path stays honest.
+    // Process-wide caches (ConcurrentDictionary / Lazy / ConditionalWeakTable) are rule 2b's,
+    // rostered in ProcessWideCacheRoster below — no longer exempt by type (#2250).
     private static readonly IReadOnlyDictionary<(string Type, string Field), string> Allowlist =
         new Dictionary<(string, string), string>
         {
@@ -125,12 +120,112 @@ public class StaticStateConformanceTests
                 "typing guidance-message table, initialized inline and read-only.",
         };
 
+    private const string TypeIdentity =
+        " A Type is an identity, so the value is a function of the key; P54 Phase 2 gates GetOrAdd on types " +
+        "wholly in the default load context, so a per-registry type is answered uncached and never pins its " +
+        "context (Design Decision 3).";
+
+    private const string NameKeyedDrains =
+        "#2250 drains in Phase 2 (moves to per-registry AssemblyVisibility state). ";
+
+    /// <summary>
+    /// Rule 2b roster (#2250): every static process-wide cache in the compiler assembly, with why its value is a
+    /// function of its key alone. Rows citing #2250 are NOT key-pure — their value depends on what the process
+    /// has loaded — and drain when P54 Phase 2 moves them into the compilation's registry; every other row is
+    /// permanent.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<(string Type, string Field), string> ProcessWideCacheRoster =
+        new Dictionary<(string, string), string>
+        {
+            // ---- Content-addressed (D2 warm-compile caches, #1049) ----
+            [("Sharpy.Compiler.AssemblyCompiler", "s_referenceCache")] =
+                "MetadataReference keyed by (assembly path, last-write time UTC): a pure function of the file's " +
+                "bytes; a changed assembly gets a new mtime and thus a new key. Append-only.",
+            [("Sharpy.Compiler.Discovery.Caching.OverloadIndexCache", "s_inMemoryIndices")] =
+                "Deserialized OverloadIndex keyed by the cache-file path, which embeds the content-addressed " +
+                "AssemblyIdentity key (name-version-hash); a hit is re-validated against the identity. ClearAll " +
+                "evicts the directory's entries.",
+            [("Sharpy.Compiler.Shared.CompilerIdentity", "s_version")] =
+                "Lazy<string> with no key: the compiler assembly's own version + SHA-256, a process constant.",
+
+            // ---- Fixed framework surface ----
+            [("Sharpy.Compiler.Discovery.ClrExtensionMethodResolver", "_byName")] =
+                "Lazy index over the fixed SurfaceTypes = { typeof(Enumerable) } — a framework type, a process " +
+                "constant; no key.",
+            [("Sharpy.Compiler.Discovery.ClrExtensionMethodResolver", "_ancestorCache")] =
+                "Type -> its base chain + interfaces, read off the Type alone." + TypeIdentity,
+
+            // ---- Type-keyed reflection memos ----
+            [("Sharpy.Compiler.Discovery.BuiltinExceptionSurface", "_typeCache")] =
+                "Type -> is a builtin exception (Exception-derived, Sharpy.Core assembly, Sharpy namespace), read " +
+                "off the Type alone." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.BuiltinExceptionSurface", "_refusedCache")] =
+                "(Type, member name) -> refused System.* member, by reflection over the Type alone." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeBridge", "_mapsToSharpyBuiltinCache")] =
+                "Generic definition -> collapsed onto a Sharpy builtin, probed through the bridge's own arm table " +
+                "keyed on the definition's FullName (ClrTypeBridge is parameterless — no registry input)." +
+                TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_paramsIndexerCache")] =
+                "Type -> has a params indexer, by reflection over the Type alone." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_clrMethodNameCache")] =
+                "(Type, Sharpy member name) -> CLR method name via the pure NameMangler reverse map." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_clrPropertyNameCache")] =
+                "(Type, Sharpy member name) -> CLR property name via the pure NameMangler reverse map." +
+                TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_originDefinitionCache")] =
+                "(Type, definition full name) -> that definition in the Type's own supertype closure." +
+                TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_genericInstanceMethodCache")] =
+                "(Type, Sharpy member name) -> generic method definitions on the Type." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_memberNameSurfaceCache")] =
+                "Type -> every member name it and its interfaces declare." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_overridableMemberCache")] =
+                "(Type, Sharpy method name, arity) -> overridable member kind on the Type." + TypeIdentity,
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_extensionMethodNameCache")] =
+                "Assembly -> names of the extension methods it exports. An Assembly is an identity, so the value " +
+                "is a function of the key; Phase 2's default-context gate applies to Assembly keys as to Type " +
+                "keys (Design Decision 3).",
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_extensionMethodsByVerbatimNameCache")] =
+                "Assembly -> its extension methods by verbatim CLR name. An Assembly is an identity, so the value " +
+                "is a function of the key; Phase 2's default-context gate applies to Assembly keys as to Type " +
+                "keys (Design Decision 3).",
+
+            // ---- NAME-keyed: the value is a function of the key AND the process's loaded set ----
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_originNameDefinitionCache")] =
+                NameKeyedDrains + "Stored CLR type name -> Type resolved by Type.GetType + an AppDomain scan, " +
+                "pinned for the process by whichever compile asked first (null cached too).",
+            [("Sharpy.Compiler.Discovery.ClrTypeHelper", "_displayNameDefinitionCache")] =
+                NameKeyedDrains + "Display name + arity -> generic definition from an AppDomain scan, pinned for " +
+                "the process by whichever compile asked first (null cached too).",
+            [("Sharpy.Compiler.Discovery.ClrAttributeResolver", "s_typePresentCache")] =
+                NameKeyedDrains + "Full type name -> present in SOME loaded assembly: a presence verdict another " +
+                "compilation's reference load can create.",
+            [("Sharpy.Compiler.Discovery.ClrAttributeResolver", "_probedNamespaces")] =
+                NameKeyedDrains + "Namespace -> TPA assemblies already loaded: a check-then-act gate with no " +
+                "completion barrier (a second thread's TryAdd fails while the first is still loading).",
+            [("Sharpy.Compiler.Semantic.Registry.ModuleRegistry", "_loadedRuntimeNamespaces")] =
+                NameKeyedDrains + "Namespace -> TPA assemblies already loaded: a check-then-act gate with no " +
+                "completion barrier; Phase 2 makes it a ConcurrentDictionary<string, Lazy<bool>> whose Lazy IS " +
+                "the barrier.",
+        };
+
     [Fact]
     public void CompilerAssembly_HasNoUnlistedMutableStaticState()
     {
         var assembly = typeof(Sharpy.Compiler.Compiler).Assembly;
         var violations = new List<string>();
         var matchedAllowlistKeys = new HashSet<(string, string)>();
+        var flaggedCaches = new List<(string, string)>();
+
+        void CheckProcessWideCache((string Type, string Field) cacheKey, Type fieldType)
+        {
+            flaggedCaches.Add(cacheKey);
+            if (!ProcessWideCacheRoster.ContainsKey(cacheKey))
+            {
+                violations.Add(
+                    $"[rule 2b: process-wide cache] {cacheKey.Type}.{cacheKey.Field} : {FriendlyType(fieldType)}");
+            }
+        }
 
         foreach (var type in assembly.GetTypes())
         {
@@ -142,7 +237,20 @@ public class StaticStateConformanceTests
             foreach (var field in type.GetFields(
                          BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             {
-                if (IsCompilerGenerated(field) || field.IsLiteral && field.FieldType.IsEnum)
+                if (IsCompilerGenerated(field))
+                {
+                    // A static auto-property's backing field is compiler-generated, but a cache behind
+                    // `static ConcurrentDictionary<K, V> Cache { get; } = new();` is the same hazard as a
+                    // field — rule 2b keys it by the property name.
+                    if (field.IsInitOnly && TryGetAutoPropertyName(field, out var propertyName)
+                        && IsProcessWideCache(field.FieldType))
+                    {
+                        CheckProcessWideCache((type.FullName ?? type.Name, propertyName), field.FieldType);
+                    }
+                    continue;
+                }
+
+                if (field.IsLiteral && field.FieldType.IsEnum)
                 {
                     continue;
                 }
@@ -178,6 +286,12 @@ public class StaticStateConformanceTests
                             $"[rule 2: mutable static collection] {key.Item1}.{field.Name} : {FriendlyType(field.FieldType)}");
                     }
                 }
+
+                // Rule 2b: static readonly process-wide caches must be rostered (#2250).
+                if (field.IsInitOnly && IsProcessWideCache(field.FieldType))
+                {
+                    CheckProcessWideCache(key, field.FieldType);
+                }
             }
         }
 
@@ -201,6 +315,62 @@ public class StaticStateConformanceTests
             string.Join("\n  ", staleEntries
                 .OrderBy(k => $"{k.Item1}.{k.Item2}", StringComparer.Ordinal)
                 .Select(k => $"{k.Item1}.{k.Item2}")));
+
+        var staleCacheRows = ProcessWideCacheRoster.Keys.Where(k => !flaggedCaches.Contains(k)).ToList();
+        Assert.True(staleCacheRows.Count == 0,
+            "Stale ProcessWideCacheRoster rows (no matching static cache — drained or renamed; remove them):\n  " +
+            string.Join("\n  ", staleCacheRows
+                .OrderBy(k => $"{k.Type}.{k.Field}", StringComparer.Ordinal)
+                .Select(k => $"{k.Type}.{k.Field}")));
+
+        // Literal census @ 486c9a88a (measured): 20 ConcurrentDictionary + 2 Lazy, 0 ConditionalWeakTable.
+        // Five rows are name-keyed and drain in P54 Phase 2 (#2250); re-anchor as they do.
+        Assert.Equal(22, flaggedCaches.Count);
+    }
+
+    /// <summary>
+    /// Rule 2b's type test, per arm — the census has no ConditionalWeakTable today, so each arm is pinned
+    /// here rather than trusted (positive and negative controls).
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(ConcurrentDictionary<string, int>), true)]
+    [InlineData(typeof(Lazy<string>), true)]
+    [InlineData(typeof(ConditionalWeakTable<object, object>), true)]
+    [InlineData(typeof(System.Collections.Immutable.ImmutableDictionary<string, int>), false)]
+    [InlineData(typeof(System.Collections.Frozen.FrozenSet<string>), false)]
+    [InlineData(typeof(Dictionary<string, int>), false)]
+    [InlineData(typeof(string), false)]
+    public void IsProcessWideCache_ClassifiesEachArm(Type type, bool expected)
+    {
+        Assert.Equal(expected, IsProcessWideCache(type));
+    }
+
+    private static bool IsProcessWideCache(Type type)
+    {
+        if (!type.IsGenericType)
+        {
+            return false;
+        }
+
+        var def = type.GetGenericTypeDefinition();
+        return def == typeof(ConcurrentDictionary<,>)
+            || def == typeof(Lazy<>)
+            || def == typeof(ConditionalWeakTable<,>);
+    }
+
+    private static bool TryGetAutoPropertyName(FieldInfo field, out string propertyName)
+    {
+        // `<Name>k__BackingField`
+        const string suffix = ">k__BackingField";
+        var name = field.Name;
+        if (name.StartsWith('<') && name.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            propertyName = name.Substring(1, name.Length - 1 - suffix.Length);
+            return true;
+        }
+
+        propertyName = string.Empty;
+        return false;
     }
 
     private static bool IsMutableCollection(Type type)
@@ -214,8 +384,8 @@ public class StaticStateConformanceTests
         return def == typeof(HashSet<>)
             || def == typeof(Dictionary<,>)
             || def == typeof(List<>);
-        // ConcurrentDictionary<,> and immutable/frozen/read-only collection types are
-        // intentionally not treated as mutable here.
+        // ConcurrentDictionary<,> / Lazy<> / ConditionalWeakTable<,> are rule 2b's (IsProcessWideCache);
+        // immutable/frozen/read-only collection types are intentionally not treated as mutable here.
     }
 
     private static bool IsCompilerGenerated(MemberInfo member) =>
