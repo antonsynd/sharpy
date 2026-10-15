@@ -97,11 +97,20 @@ public static class CrashBundleWriter
     /// (the caller must treat a null result as "no bundle" and never let it interrupt error reporting).
     /// </summary>
     public static string? TryWrite(string? outputDirectory, CrashBundleRequest request)
+        => TryWrite(outputDirectory, request, () => DateTime.UtcNow);
+
+    /// <summary>
+    /// Test seam for <see cref="TryWrite(string?, CrashBundleRequest)"/>: the clock that names the
+    /// bundle directory is a parameter, so a test can pin every writer to one tick and make a
+    /// same-millisecond collision deterministic (#2250). A parameter rather than a settable static
+    /// hook — a mutable static would be a <c>StaticStateConformanceTests</c> rule-1 violation.
+    /// </summary>
+    internal static string? TryWrite(string? outputDirectory, CrashBundleRequest request, Func<DateTime> clock)
     {
         try
         {
             var root = ResolveCrashRoot(outputDirectory);
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
+            var timestamp = clock().ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
             var bundleDir = Path.Combine(root, timestamp);
 
             // Extremely unlikely collision guard (two crashes in the same millisecond).
