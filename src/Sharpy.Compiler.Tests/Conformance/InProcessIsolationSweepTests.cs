@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.TestInfrastructure;
@@ -53,7 +54,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// A cell is red in a repetition when any of its observations in that repetition is; <c>k/R</c> is
 /// the number of red repetitions.</para>
 ///
-/// <para><b>Ratchet.</b> Rows <c>program sharing threads operation bucket [probabilistic]  # #2250
+/// <para><b>Ratchet.</b> Rows <c>program sharing threads operation bucket [probabilistic]  # #NNNN
 /// reason; reproduced k/R @ sha</c> in <c>Conformance/in-process-isolation-allowlist.txt</c>. A red
 /// cell without a row fails; a row whose cell was exercised and reproduced in no repetition fails as
 /// stale (drain on fix) unless it is marked <c>probabilistic</c> — those are reported, not judged. A
@@ -65,7 +66,13 @@ public class InProcessIsolationSweepTests
 {
     private const string AllowlistFileName = "in-process-isolation-allowlist.txt";
     private const string FullModeVariable = "SHARPY_ISOLATION_SWEEP_FULL";
-    private const string IssueCite = "#2250";
+    /// <summary>
+    /// A row cites an issue by number (<c>#NNNN</c>) — any issue, so the ratchet outlives the class tracker it was
+    /// born under (#2250 is closed): whether the cited issue is still OPEN is <c>build_tools/check_allowlist_issue_state.sh</c>'s
+    /// question, asked of every tracked allowlist file.
+    /// </summary>
+    private static readonly Regex IssueCitePattern = new(@"(^|\s)#\d+\b", RegexOptions.Compiled);
+    private const string IssueCite = "#NNNN";
     private const string Probabilistic = "probabilistic";
 
     internal const string Drift = "drift";
@@ -553,8 +560,8 @@ public class InProcessIsolationSweepTests
     private sealed record AllowlistRow(bool Probabilistic, string Comment);
 
     /// <summary>
-    /// <c>program sharing threads operation bucket [probabilistic]  # #2250 reason; reproduced k/R @ sha</c>.
-    /// A row that does not parse, names an unknown sharing/operation/bucket, or does not cite #2250 is
+    /// <c>program sharing threads operation bucket [probabilistic]  # #NNNN reason; reproduced k/R @ sha</c>.
+    /// A row that does not parse, names an unknown sharing/operation/bucket, or cites no issue number is
     /// refused (an instrument fault), never silently skipped.
     /// </summary>
     private static Dictionary<string, AllowlistRow> LoadAllowlist()
@@ -580,8 +587,8 @@ public class InProcessIsolationSweepTests
             if (!sharingNames.Contains(fields[1]) || fields[2] is not ("1" or "2" or "8") || !operationNames.Contains(fields[3])
                 || fields[4] is not (Drift or Crash or Order))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — unknown sharing, thread count, operation or bucket.");
-            if (!comment.Contains(IssueCite, StringComparison.Ordinal))
-                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — every row cites {IssueCite}.");
+            if (!IssueCitePattern.IsMatch(comment))
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — every row cites an issue by number ({IssueCite}).");
             var key = string.Join(' ', fields.Take(5));
             if (!rows.TryAdd(key, new AllowlistRow(probabilistic, comment)))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{key}' is listed twice.");

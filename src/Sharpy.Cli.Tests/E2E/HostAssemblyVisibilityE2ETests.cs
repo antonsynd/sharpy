@@ -18,7 +18,11 @@ namespace Sharpy.Cli.Tests.E2E;
 /// SPY0300 at base 486c9a88a and compiled, then died with FileNotFoundException, at effba7776;
 /// <c>from system.command_line import RootCommand</c> compiled then died (exit 134,
 /// FileNotFoundException System.CommandLine) at both. A refusal (SPY0301, the system.* prefix's
-/// answer for a namespace that exists nowhere) is the fix by direction. The
+/// answer for a namespace that exists nowhere) is the fix by direction. An UNUSED import of a host
+/// package (<c>from system.composition import ExportAttribute</c>, never referenced) compiled with
+/// SPY0452 at base and is SPY0301 now: worked → rejected, under the owner's 2026-10-15 ruling on the
+/// same mechanism (the unused <c>system.reactive.linq</c> cell on #2250) — the base answer depended on
+/// which packages the host happened to ship, which is the contract's violation. The
 /// <c>-r</c> cell is the positive control: the same import with the package given as a reference
 /// compiles and runs.
 /// </remarks>
@@ -34,6 +38,11 @@ public class HostAssemblyVisibilityE2ETests : IDisposable
         "from system.command_line import RootCommand\n\n"
         + "def main() -> None:\n    r = RootCommand(\"hello\")\n    print(r.description)\n";
 
+    /// <summary>An unused host-package import: the owner-ruled worked → rejected direction (see remarks).</summary>
+    private const string CompositionUnusedProgram =
+        "from system.composition import ExportAttribute\n\n"
+        + "def main() -> None:\n    print(\"ok\")\n";
+
     private readonly TempWorkspace _ws = new();
 
     public void Dispose() => _ws.Dispose();
@@ -46,6 +55,7 @@ public class HostAssemblyVisibilityE2ETests : IDisposable
     [Theory]
     [InlineData("extensions_primitives", PrimitivesProgram, "SPY0300")]
     [InlineData("command_line", CommandLineProgram, "SPY0301")]
+    [InlineData("composition_unused", CompositionUnusedProgram, "SPY0301")]
     public void HostPackageImport_WithoutReference_IsRefusedAtImport(string cell, string program, string refusal)
     {
         _ws.WriteSpy(program);

@@ -587,8 +587,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private static bool IsClrTypeGenericInNamespace(string namespaceName, string typeName)
     {
-        // Rule-2 cell (#2250 findings ledger; no tracker yet): this is the emitter asking reflection a
-        // semantic question, which belongs in semantic analysis as a materialized fact. Until it moves,
+        // TODO(#2320): Rule-2 cell — this is the emitter asking reflection a semantic question, which
+        // belongs in semantic analysis as a materialized fact (CodeGenInfo). Until it moves,
         // it asks the FRAMEWORK visibility — a process constant — instead of every assembly the process
         // has loaded; its only caller passes a .NET framework namespace (IsNetFrameworkNamespace).
         var framework = Discovery.AssemblyVisibility.FrameworkOnly;

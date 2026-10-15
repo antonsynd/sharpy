@@ -120,7 +120,7 @@ public class StdlibModuleGlobalConcurrencyTests
             Exercisers.Where(e => e.NotApplicable.Count == 0).Select(e => e.Module).OrderBy(m => m, StringComparer.Ordinal));
     }
 
-    /// <summary>Every KnownRed row names a real cell and cites #2250 with a measured reproduction.</summary>
+    /// <summary>Every KnownRed row names a real cell and cites an issue by number with a measured reproduction.</summary>
     [Fact]
     public void EveryKnownRedRow_IsARealCellCitingTheIssue()
     {
@@ -130,7 +130,7 @@ public class StdlibModuleGlobalConcurrencyTests
         foreach (var (cell, row) in KnownRed)
         {
             Assert.Contains(cell, cells);
-            Assert.Contains("#2250", row.Evidence, StringComparison.Ordinal);
+            Assert.Matches(@"(^|\s)#\d+\b", row.Evidence);
             Assert.Contains(" @ ", row.Evidence, StringComparison.Ordinal);
         }
     }
