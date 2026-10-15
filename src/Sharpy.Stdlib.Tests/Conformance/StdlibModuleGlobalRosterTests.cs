@@ -63,18 +63,18 @@ public class StdlibModuleGlobalRosterTests
         new("Sharpy.CalendarModule._moduleFirstweekday", "src/Sharpy.Stdlib/Calendar/CalendarConstants.cs",
             ProcessWideUnderTheGil,
             "none — an int, atomic by the CLR memory model", null),
-        // Xml/XmlFunctions.cs:176; register_namespace() writes it; nothing reads it @ 486c9a88a.
+        // Xml/XmlFunctions.cs:185; register_namespace() writes it; nothing in production reads it @ 486c9a88a.
         new("Sharpy.Xml._registeredNamespaces", "src/Sharpy.Stdlib/Xml/XmlFunctions.cs",
             ProcessWideUnderTheGil + " (ElementTree._namespace_map, a dict)",
-            "none — a Dictionary<string, string>", "#2250"),
+            "lock (Xml.RegisteredNamespacesLock) around every read and write", "#2250"),
         // Logging/LoggingModule.cs:27; getLogger() adds to it.
         new("Sharpy.Logging._loggers", "src/Sharpy.Stdlib/Logging/LoggingModule.cs",
             ProcessWideUnderTheGil + " (Manager.loggerDict)",
             "ConcurrentDictionary", null),
-        // Numpy/NumpyRandom.cs:19; seed() writes it, the Rng getter assigns it lazily (??=).
+        // Numpy/NumpyRandom.cs:22; seed() writes it.
         new("Sharpy.NumpyRandom._rng", "src/Sharpy.Stdlib/Numpy/NumpyRandom.cs",
             "process-wide global RandomState (numpy 2.5.1, verified: a seed on one thread is seen by the next draw on another)",
-            "[ThreadStatic] — per thread", "#2250"),
+            "one process-wide System.Random; lock (NumpyRandom.RngLock) around every read and write", "#2250"),
 
         // ---- Found by this census beyond the plan's six (findings-ledger rows, P54 Phase 1) ----
 

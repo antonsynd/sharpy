@@ -27,7 +27,8 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// row reports k/R and asserts nothing; every other cell asserts k == 0. The calendar, logging,
 /// HTTPStatus and typed-load-cache rows are the GREEN positive controls (the oracle is not "always
 /// red"), as are random's write and cross-thread cells, socket's and xml's cross-thread cells, and
-/// numpy.random/cross-thread/1 (one thread: the per-thread generator is the right one).</para>
+/// numpy.random/cross-thread/1 (green at base: on one thread the then [ThreadStatic] generator was
+/// the right one). Phase 3 of #2250 drained every row.</para>
 ///
 /// <para><b>Isolation.</b> Each module's cells sit in the xUnit collection of the spy tests that
 /// read the same global, so a concurrency cell never runs beside a seeded or set-then-read test of
@@ -65,23 +66,11 @@ public class StdlibModuleGlobalConcurrencyTests
         // commit body); the socket rows were never reproduced (0/6) — they drain because the cure lands: the
         // 16-byte double? write now happens under the lock.
 
-        // xml: concurrent writes to one Dictionary<string, string> lose entries, throw
-        // InvalidOperationException ("concurrent update ... corrupted its state"), and make a
-        // concurrent read miss a present key.
-        ["xml/write/2"] = new(false, "#2250 probabilistic — red in 3/6 runs @ 486c9a88a, e.g. 484 of 4000 prefixes lost"),
-        ["xml/write/8"] = new(false, "#2250 probabilistic — red in 6/6 runs @ 486c9a88a, e.g. 3891/16001 (InvalidOperationException)"),
-        ["xml/read/2"] = new(false, "#2250 probabilistic — red in 1/6 runs @ 486c9a88a, 27/4000 reads missed a present prefix"),
-        ["xml/read/8"] = new(false, "#2250 probabilistic — red in 5/6 runs @ 486c9a88a, e.g. 654/16000 reads missed a present prefix"),
-
-        // numpy.random: [ThreadStatic] — a seed on one thread is invisible to every other thread.
-        ["numpy.random/write/1"] = new(true, "#2250 deterministic — 1/2001 in 6/6 runs @ 486c9a88a: a draw on another thread ignores the seed"),
-        ["numpy.random/write/2"] = new(true, "#2250 deterministic — 1/4001 in 6/6 runs @ 486c9a88a"),
-        ["numpy.random/write/8"] = new(true, "#2250 deterministic — 1/16001 in 6/6 runs @ 486c9a88a"),
-        ["numpy.random/read/1"] = new(true, "#2250 deterministic — 2000/2000 in 6/6 runs @ 486c9a88a: the worker's draws are its own unseeded stream"),
-        ["numpy.random/read/2"] = new(true, "#2250 deterministic — 4000/4000 in 6/6 runs @ 486c9a88a"),
-        ["numpy.random/read/8"] = new(true, "#2250 deterministic — 16000/16000 in 6/6 runs @ 486c9a88a"),
-        ["numpy.random/cross-thread/2"] = new(true, "#2250 deterministic — 2000/4000 (every read) in 6/6 runs @ 486c9a88a"),
-        ["numpy.random/cross-thread/8"] = new(true, "#2250 deterministic — 2000/4000 (every read) in 6/6 runs @ 486c9a88a"),
+        // xml and numpy.random: drained by Phase 3 task 2 — Xml._registeredNamespaces is read and
+        // written under Xml.RegisteredNamespacesLock (xml/write/8 was red 6/6, xml/read/8 5/6 @ 486c9a88a;
+        // 0/R after the cure, R in the commit body), and NumpyRandom._rng is one process-wide generator
+        // under a lock instead of [ThreadStatic] (the eight deterministic rows reported stale, i.e. 0/R).
+        // Every cell now asserts k == 0; a new red lands here as a row citing its issue.
     };
 
     /// <summary>Every exerciser, keyed by the roster field it drives.</summary>
@@ -690,7 +679,13 @@ public class StdlibModuleGlobalConcurrencyTests
         public override string Module => "xml";
 
         private static bool Has(string prefix, string uri)
-            => Xml._registeredNamespaces.TryGetValue(prefix, out var found) && found == uri;
+        {
+            // The reader takes the registry's lock, as every production read and write does (#2250).
+            lock (Xml.RegisteredNamespacesLock)
+            {
+                return Xml._registeredNamespaces.TryGetValue(prefix, out var found) && found == uri;
+            }
+        }
 
         public override void Write(int threads, Tally tally)
         {
@@ -759,7 +754,13 @@ public class StdlibModuleGlobalConcurrencyTests
 
         // Clear() also resets a table a race corrupted, so the xml spy test that shares the
         // collection starts from a sound dictionary.
-        public override void Restore() => Xml._registeredNamespaces.Clear();
+        public override void Restore()
+        {
+            lock (Xml.RegisteredNamespacesLock)
+            {
+                Xml._registeredNamespaces.Clear();
+            }
+        }
     }
 
     /// <summary>

@@ -170,11 +170,23 @@ namespace Sharpy
                 throw new TypeError("expected str, got NoneType");
             }
 
-            _registeredNamespaces[prefix] = uri;
+            lock (RegisteredNamespacesLock)
+            {
+                _registeredNamespaces[prefix] = uri;
+            }
         }
 
+        /// <summary>
+        /// The process-wide prefix registry (CPython's <c>ElementTree._namespace_map</c>, a module
+        /// global every thread sees). Every read and write holds <see cref="RegisteredNamespacesLock"/>:
+        /// CPython mutates the dict under the GIL, and a <see cref="System.Collections.Generic.Dictionary{TKey, TValue}"/>
+        /// written concurrently loses entries or throws (#2250).
+        /// </summary>
         internal static readonly System.Collections.Generic.Dictionary<string, string> _registeredNamespaces =
             new System.Collections.Generic.Dictionary<string, string>();
+
+        /// <summary>Guards every read and write of <see cref="_registeredNamespaces"/> (#2250).</summary>
+        internal static readonly object RegisteredNamespacesLock = new object();
 
         internal const string CommentTag = "{sharpy:internal}comment";
         internal const string PITagPrefix = "{sharpy:internal}pi-";
