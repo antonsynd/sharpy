@@ -185,9 +185,16 @@ public class MasterRegistryImmutabilityTests
         var len = master.GetFunction("len");
         Assert.NotNull(len);
         var original = len!.Documentation;
+
+        // The setter refuses a write to a frozen master symbol (#2250), so the control writes the
+        // property's backing field directly — the instrument must still see what a writer that got
+        // past the freeze would have done.
+        var backing = typeof(Symbol).GetField($"<{nameof(Symbol.Documentation)}>k__BackingField",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(nameof(Symbol), $"<{nameof(Symbol.Documentation)}>k__BackingField");
         try
         {
-            len.Documentation = "poisoned by the positive control";
+            backing.SetValue(len, "poisoned by the positive control");
 
             var mutations = snapshot.FindMutations(api);
             Assert.NotEmpty(mutations);
@@ -199,7 +206,7 @@ public class MasterRegistryImmutabilityTests
         }
         finally
         {
-            len.Documentation = original;
+            backing.SetValue(len, original);
         }
 
         // ...and the same comparison is clean once the mutation is undone, so the control is
@@ -278,14 +285,13 @@ public class MasterRegistryImmutabilityTests
 
     /// <summary>
     /// KnownRed rows: master symbol properties the request sequence WRITES (symbol path + property, as the
-    /// <see cref="RegistrySnapshot"/> names them). Deterministic — each asserts the write reproduces. This is the #2250
-    /// cell-2 seam: analysing a <see cref="WarmInstanceTriggers"/> text (a builtin's name defined inside a <c>try:</c>
-    /// body) rewrites the master builtin's <c>Parameters</c>, and every later document reads the user signature.
+    /// <see cref="RegistrySnapshot"/> names them). Deterministic — each asserts the write reproduces. Empty since P54
+    /// Phase 2 task 3: the #2250 cell-2 seam — analysing a <see cref="WarmInstanceTriggers"/> text (a builtin's name
+    /// defined inside a <c>try:</c> body) rewrote the master builtin's <c>Parameters</c> — is cured (the def declares
+    /// its own symbol) and the master's symbols are frozen.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string> KnownWrittenMasterProperties = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["BuiltinRegistry._functions[][]:len.Parameters"] = "#2250 cell 2: wrap-try-shadowing-len rewrites len's parameter to int — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
-        ["BuiltinRegistry._functions[][]:format.Parameters"] = "#2250 cell 2: wrap-try-method-format rewrites format's parameters to (Formatter, int32) — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
     };
 
     /// <summary>
@@ -376,10 +382,10 @@ public class MasterRegistryImmutabilityTests
         var before = MasterRegistryKeySets.Take(api);
         var field = typeof(BuiltinRegistry).GetField("_interfaceSymbols", BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new MissingFieldException(nameof(BuiltinRegistry), "_interfaceSymbols");
-        var table = (Dictionary<Type, TypeSymbol>)field.GetValue(master)!;
+        var table = (System.Collections.Concurrent.ConcurrentDictionary<Type, TypeSymbol>)field.GetValue(master)!;
         var key = typeof(IKeySetProbe);
         Assert.False(table.ContainsKey(key));
-        table[key] = new TypeSymbol { Name = "IKeySetProbe", Kind = SymbolKind.Type };
+        Assert.True(table.TryAdd(key, new TypeSymbol { Name = "IKeySetProbe", Kind = SymbolKind.Type }));
         try
         {
             var after = MasterRegistryKeySets.Take(api);
@@ -391,7 +397,7 @@ public class MasterRegistryImmutabilityTests
         }
         finally
         {
-            table.Remove(key);
+            table.TryRemove(key, out _);
         }
 
         Assert.Empty(before.InstanceDiffTo(MasterRegistryKeySets.Take(api)));
@@ -400,12 +406,10 @@ public class MasterRegistryImmutabilityTests
     /// <summary>
     /// KnownRed rows for <see cref="WarmInstanceTriggers_DoNotRetypeABuiltinForALaterDocument"/>: the builtin names a
     /// later document reads with a different type after a <see cref="WarmInstanceTriggers"/> text was analysed on the
-    /// same instance (deterministic; the row asserts the retype reproduces — the Phase 2 task 3 freeze turns it stale).
+    /// same instance (deterministic; the row asserts the retype reproduces). Empty since P54 Phase 2 task 3.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string> KnownRetypedBuiltins = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["len"] = "#2250 cell 2: (object) -> int32 becomes (int32) -> int32 after wrap-try-shadowing-len — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
-        ["format"] = "#2250 cell 2: (object | None, str) -> str becomes (Formatter, int32) -> str after wrap-try-method-format — 1/1 @ 486c9a88a; drains in Phase 2 task 3",
     };
 
     /// <summary>
@@ -459,6 +463,155 @@ public class MasterRegistryImmutabilityTests
         }
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    /// <summary>
+    /// The seam of #2250 cell 2, asserted where it lives: each builtin-named <c>def</c> of a <see cref="WarmInstanceTriggers"/>
+    /// text — a module <c>def len</c> and a method <c>format</c> inside a <c>try:</c> body, which NameResolver does not
+    /// declare — declares its OWN symbol, carrying its own signature, never the master builtin of the same name. Before
+    /// P54 Phase 2 task 3 the definition resolved by name to the master symbol and wrote its signature onto it.
+    /// </summary>
+    [Fact]
+    public void WarmInstanceTriggers_EachBuiltinNamedDefDeclaresItsOwnSymbol()
+    {
+        var api = new CompilerApi(null, StdlibReferencePaths());
+        var master = api.PrimeAnalysisContextForTests();
+        var checkedDefs = 0;
+        foreach (var (name, _, text) in WarmInstanceTriggers.AppliedTexts)
+        {
+            var result = api.Analyze(text, CancellationToken.None);
+            Assert.NotNull(result.Ast);
+            foreach (var def in Descendants(result.Ast!).OfType<SAst.FunctionDef>()
+                         .Where(d => master.GetFunction(d.Name) is not null))
+            {
+                var declared = result.SemanticQuery?.GetFunctionDeclarationSymbol(def);
+                _output.WriteLine($"{name}: def {def.Name} @ {def.LineStart}:{def.ColumnStart} -> "
+                    + (declared is null
+                        ? "<none>"
+                        : $"{declared.Name}({string.Join(", ", declared.Parameters.Select(p => p.Type.GetDisplayName()))}) frozen={declared.IsFrozen}"));
+                Assert.NotNull(declared);
+                Assert.False(master.IsBuiltinSymbol(declared!), $"{name}: def {def.Name} resolved to the master builtin");
+                Assert.False(declared!.IsFrozen, $"{name}: def {def.Name} resolved to a frozen symbol");
+                Assert.Equal(def.LineStart, declared.DeclarationLine);
+                Assert.Equal(def.Parameters.Length, declared.Parameters.Count);
+                checkedDefs++;
+            }
+        }
+
+        // Positive control on the corpus: both triggers define a builtin's name (len; format) — a filter that matched
+        // nothing would pass vacuously.
+        Assert.True(checkedDefs >= 2, $"only {checkedDefs} builtin-named defs were checked");
+    }
+
+    /// <summary>
+    /// Design Decision 4 (#2250): the master <see cref="BuiltinRegistry"/>'s symbols are frozen when its construction
+    /// completes — a write to one throws instead of retyping the builtin for every later document. Positive and negative
+    /// controls: every registered type and function overload is frozen (a floor on the count), each kind of write
+    /// throws, and a <c>with</c> copy — a new declaration its maker owns — is born unfrozen and writable.
+    /// </summary>
+    [Fact]
+    public void MasterSymbols_AreFrozen_AndAWriteIsRefused()
+    {
+        var api = new CompilerApi();
+        var master = api.PrimeAnalysisContextForTests();
+        var symbols = new HashSet<Symbol>();
+        foreach (var (_, type) in master.GetAllTypes())
+            symbols.Add(type);
+        foreach (var (name, function) in master.GetAllFunctions())
+        {
+            symbols.Add(function);
+            foreach (var overload in master.GetFunctionOverloads(name) ?? new List<FunctionSymbol>())
+                symbols.Add(overload);
+        }
+
+        Assert.True(symbols.Count >= 50, $"only {symbols.Count} master symbols were enumerated");
+        var unfrozen = symbols.Where(s => !s.IsFrozen).Select(s => s.ToString()).ToList();
+        Assert.True(unfrozen.Count == 0, $"unfrozen master symbols: {string.Join(", ", unfrozen.Take(20))}");
+
+        var len = master.GetFunction("len")!;
+        var returnType = len.ReturnType;
+        var parameter = len.Parameters[0];
+        var refused = Assert.Throws<Sharpy.Compiler.Diagnostics.PhaseViolationException>(() => len.ReturnType = SemanticType.Str);
+        _output.WriteLine(refused.Message);
+        Assert.Throws<Sharpy.Compiler.Diagnostics.PhaseViolationException>(
+            () => len.ReplaceParameter(0, len.Parameters[0] with { Type = SemanticType.Str }));
+        Assert.Throws<Sharpy.Compiler.Diagnostics.PhaseViolationException>(() => len.Documentation = "x");
+        var exceptionType = master.GetType("Exception")!;
+        Assert.Throws<Sharpy.Compiler.Diagnostics.PhaseViolationException>(() => exceptionType.BaseType = null);
+        Assert.Same(returnType, len.ReturnType);
+        Assert.Same(parameter, len.Parameters[0]);
+
+        var copy = len with { Name = "len_copy", Parameters = new List<ParameterSymbol>(len.Parameters) };
+        Assert.False(copy.IsFrozen);
+        copy.ReturnType = SemanticType.Str;
+        copy.ReplaceParameter(0, copy.Parameters[0] with { Type = SemanticType.Str });
+        Assert.Equal(SemanticType.Str, copy.ReturnType);
+        Assert.Same(parameter, len.Parameters[0]);
+    }
+
+    /// <summary>
+    /// <see cref="FunctionSymbol.Parameters"/> is a <see cref="List{T}"/>, so no setter can refuse an element write the way
+    /// the frozen properties do: <c>symbol.Parameters[i] = …</c> on a master symbol would retype the builtin without a
+    /// throw — the exact #2250 write. Every element write therefore goes through
+    /// <see cref="FunctionSymbol.ReplaceParameter"/>, which checks the freeze, and this scan keeps it that way: no compiler
+    /// source assigns a <c>Parameters[…]</c> element except <c>Symbol.cs</c> itself.
+    /// </summary>
+    [Fact]
+    public void NoCompilerSourceWritesAParameterElementPastTheFreeze()
+    {
+        // Positive and negative controls for the pattern itself: a direct element write matches, a read and a
+        // comparison do not.
+        Assert.Matches(DirectParameterElementWrite, "functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = t };");
+        Assert.DoesNotMatch(DirectParameterElementWrite, "var p = symbol.Parameters[0];");
+        Assert.DoesNotMatch(DirectParameterElementWrite, "if (symbol.Parameters[0] == other) { }");
+
+        var root = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler");
+        var files = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToList();
+        Assert.True(files.Count >= 100, $"the scan saw only {files.Count} compiler sources under {root}");
+
+        var writes = new List<string>();
+        var symbolFileWrites = 0;
+        foreach (var file in files)
+        {
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (!DirectParameterElementWrite.IsMatch(lines[i]))
+                    continue;
+                if (Path.GetFileName(file) == "Symbol.cs")
+                    symbolFileWrites++;
+                else
+                    writes.Add($"{Path.GetRelativePath(root, file)}:{i + 1}: {lines[i].Trim()}");
+            }
+        }
+
+        // The one sanctioned write (inside ReplaceParameter) is the scan's in-corpus positive control.
+        Assert.Equal(1, symbolFileWrites);
+        Assert.True(writes.Count == 0,
+            "a Parameters element is written directly, past the master-symbol freeze — use FunctionSymbol.ReplaceParameter "
+            + $"(#2250):\n  {string.Join("\n  ", writes)}");
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex DirectParameterElementWrite =
+        new(@"\bParameters\[[^\]]+\]\s*=(?!=)", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static IEnumerable<SAst.Node> Descendants(SAst.Node root)
+    {
+        var stack = new Stack<SAst.Node>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            yield return node;
+            foreach (var child in node.GetChildNodes())
+            {
+                if (child is not null)
+                    stack.Push(child);
+            }
+        }
     }
 
     /// <summary>The effective type of each named builtin identifier in <paramref name="source"/>, analysed on <paramref name="api"/>.</summary>

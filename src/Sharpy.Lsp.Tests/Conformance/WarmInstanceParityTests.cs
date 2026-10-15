@@ -40,8 +40,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// diverging key is printed to the test output and to <c>.claude/tmp/warm-instance-parity/</c> (with the cold applied texts).</para>
 ///
 /// <para><b>KnownRed rows</b> (<see cref="KnownRedCells"/>, P54 Phase 1 convention): a deterministic row asserts the
-/// divergence REPRODUCES (the Phase 2 task 3 cure turns it red as stale: drain the row); a probabilistic row reports
-/// <c>k/R</c> and asserts nothing; every other cell asserts parity. <c>SHARPY_WARM_PARITY_FULL=1</c> replays the P47
+/// divergence REPRODUCES (a cure turns it red as stale: drain the row); a probabilistic row reports
+/// <c>k/R</c> and asserts nothing; every other cell asserts parity. No row is live since P54 Phase 2 task 3. <c>SHARPY_WARM_PARITY_FULL=1</c> replays the P47
 /// FULL ordering (every stem's identity and crlf twin, then the cr twin in corpus order up to each target — about 20
 /// minutes) instead of the stride sample.</para>
 /// </summary>
@@ -137,22 +137,11 @@ public sealed class WarmInstanceParityTests : IClassFixture<WarmInstanceParityTe
     /// </summary>
     internal static readonly SCG.IReadOnlyDictionary<string, KnownRed> KnownRedCells = new SCG.Dictionary<string, KnownRed>(StringComparer.Ordinal)
     {
-        // Cell 2 (ORDER), deterministic: after the trigger texts the builtin `format` identifier carries the user method's
-        // signature — the IFormattable sources gain SPY0220 at the `format(...)` call and Extract method spells
-        // `format: Callable[[Formatter, int32], str]`; `len` becomes `(int32) -> int32`. Master key sets unchanged.
-        ["format_iformattable_class_1988#cr warm-sequential analyze"] = new(false, "#2250 cell 2: +SPY0220@16:18,16:21 — 1/1 in each of 2 runs @ 486c9a88a; drains in Phase 2 task 3"),
-        ["format_iformattable_class_1988#cr warm-sequential extract"] = new(false, "#2250 cell 2: parse@(12,55) vs cold (12,59) — 1/1 in each of 2 runs @ 486c9a88a; drains in Phase 2 task 3"),
-        ["format_no_dunder_format_refused_1988#cr warm-sequential analyze"] = new(false, "#2250 cell 2: +SPY0220@14:18,14:21 — 1/1 in each of 2 runs @ 486c9a88a; drains in Phase 2 task 3"),
-        ["format_no_dunder_format_refused_1988#cr warm-sequential extract"] = new(false, "#2250 cell 2: parse@(8,55) vs cold (8,59) — 1/1 in each of 2 runs @ 486c9a88a; drains in Phase 2 task 3"),
-        ["deferred_overload_annotated_pin_1589#cr warm-sequential extract"] = new(false, "#2250 cell 2: parse@(5,148) vs cold (5,149) — 1/1 in each of 2 runs @ 486c9a88a; drains in Phase 2 task 3"),
-
-        // Cell 3 (CONCURRENCY), probabilistic: the same write, observed only by the target readings scheduled after a
-        // trigger text ran — the shuffle is seeded, the interleaving at DOP 4 is not.
-        ["format_iformattable_class_1988#cr warm-concurrent analyze"] = new(true, "#2250 cell 3, probabilistic: 2/4 @ 486c9a88a; drains in Phase 2 task 3"),
-        ["format_iformattable_class_1988#cr warm-concurrent extract"] = new(true, "#2250 cell 3, probabilistic: 2/4 @ 486c9a88a; drains in Phase 2 task 3"),
-        ["format_no_dunder_format_refused_1988#cr warm-concurrent analyze"] = new(true, "#2250 cell 3, probabilistic: 3/4 @ 486c9a88a; drains in Phase 2 task 3"),
-        ["format_no_dunder_format_refused_1988#cr warm-concurrent extract"] = new(true, "#2250 cell 3, probabilistic: 3/4 @ 486c9a88a; drains in Phase 2 task 3"),
-        ["deferred_overload_annotated_pin_1589#cr warm-concurrent extract"] = new(true, "#2250 cell 3, probabilistic: 2/4 @ 486c9a88a; drains in Phase 2 task 3"),
+        // Empty since P54 Phase 2 task 3. Cells 2 (ORDER, warm-sequential, deterministic) and 3 (CONCURRENCY,
+        // warm-concurrent, probabilistic) were one write: a trigger text's builtin-named def inside a `try:` body
+        // resolved by name to the master `len`/`format` and wrote its signature onto it, so the IFormattable sources
+        // gained SPY0220 and Extract method parsed at (12,55)/(8,55)/(5,148) instead of the cold (12,59)/(8,59)/(5,149).
+        // The def now declares its own symbol and the master's symbols are frozen.
     };
 
     [Fact]

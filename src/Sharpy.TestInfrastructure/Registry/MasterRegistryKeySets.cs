@@ -13,7 +13,8 @@ namespace Sharpy.TestInfrastructure.Registry;
 /// A KEY-SET snapshot of the dictionaries a <see cref="CompilerApi"/>'s cached master registries grow after
 /// construction (P54 Design Decision 4, #2250): <see cref="BuiltinRegistry"/>'s <c>_interfaceSymbols</c>,
 /// <c>_clrTypeCache</c> (with the CLR type each key resolved to — the value is what the process-wide scan answered),
-/// <c>_pendingInterfacePopulation</c> (a count), <c>_types</c>/<c>_functions</c> (with each overload set's size), the
+/// <c>_types</c>/<c>_functions</c> (with each overload set's size; the deferred interface work list is a local of the
+/// constructor since Phase 2 — no registration state survives construction), the
 /// <see cref="CachedModuleDiscovery"/> and <see cref="ClrTypeBridge"/> caches each master holds, and
 /// <see cref="ModuleRegistry"/>'s <c>_dynamicNamespaceCache</c> / <c>_loadedAssemblies</c> / <c>_usedAssemblyPaths</c>.
 /// Every field is read by reflection on its NAME and a missing field THROWS, so a rename is red, never a silently
@@ -50,7 +51,7 @@ public sealed class MasterRegistryKeySets
     /// <summary>The instance dictionaries of <see cref="BuiltinRegistry"/>, by field name (a ROSTER — a rename throws).</summary>
     public static readonly string[] BuiltinRegistryFields =
     {
-        "_interfaceSymbols", "_clrTypeCache", "_pendingInterfacePopulation", "_types", "_functions",
+        "_interfaceSymbols", "_clrTypeCache", "_types", "_functions",
     };
 
     /// <summary>The <see cref="CachedModuleDiscovery"/> dictionaries, by field name.</summary>
@@ -216,7 +217,7 @@ public sealed class MasterRegistryKeySets
         }
         else if (container is ICollection collection)
         {
-            // A list (the pending interface population) is recorded as its count: its elements are work items.
+            // A list is recorded as its count: its elements are work items, not keys.
             keys.Add($"count={collection.Count}");
         }
         else

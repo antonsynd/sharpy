@@ -638,6 +638,12 @@ public sealed class CompilerApi
     /// registries essential there. <c>MaterializeCodeGenInfo</c> folds bridge tables into
     /// the <see cref="Semantic.SemanticBinding"/> without writing to symbols (#1633), so the
     /// cached <see cref="BuiltinRegistry"/> is returned directly — no per-compilation clone.
+    /// <para>The contract that makes sharing it sound: the master is FROZEN after construction —
+    /// no registration state survives its constructor, its lazily filled caches are
+    /// <c>GetOrAdd</c> with a value that is a function of the key, and every symbol it built
+    /// refuses a write (<see cref="Semantic.Symbol.IsFrozen"/>). An analysis therefore answers on
+    /// a warm instance exactly as on a cold one; a user definition declares its own symbol and
+    /// never writes the builtin of the same name (#2250).</para>
     /// </summary>
     internal (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
         ProjectConfig config)

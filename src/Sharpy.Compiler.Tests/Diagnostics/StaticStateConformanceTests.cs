@@ -428,10 +428,9 @@ public class StaticStateConformanceTests
                 "Dictionary<string, TypeSymbol> — builtin type cache (#1633)",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_functions")] =
                 "Dictionary<string, List<FunctionSymbol>> — builtin function cache (#1633)",
-            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_pendingInterfacePopulation")] =
-                "List<(TypeSymbol, TypeParameterType[])> — deferred interface work (#1633)",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_interfaceSymbols")] =
-                "Dictionary<Type, TypeSymbol> — interface definition cache (#1633)",
+                "ConcurrentDictionary<Type, TypeSymbol> — interface definition cache, GetOrAdd with a value that is a " +
+                "function of the CLR definition alone; its symbols are frozen with the registry (#1633, #2250)",
             [("Sharpy.Compiler.Discovery.CachedModuleDiscovery", "_moduleTypeSymbols")] =
                 "ConcurrentDictionary<string, TypeSymbol> — module type symbol cache (#1633)",
             [("Sharpy.Compiler.Discovery.ClrTypeBridge", "_interfaceSymbolCache")] =
