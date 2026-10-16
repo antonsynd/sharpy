@@ -15,12 +15,12 @@ internal static class GenVariance
                 var lines = new List<string>
                 {
                     "interface IProducer[out T]:",
-                    "    def produce(self) -> T",
+                    "    def produce(self) -> T: ...",
                 };
 
                 if (methodCount > 1)
                 {
-                    lines.Add("    def peek(self) -> T");
+                    lines.Add("    def peek(self) -> T: ...");
                 }
 
                 lines.Add("");
@@ -52,12 +52,12 @@ internal static class GenVariance
                 var lines = new List<string>
                 {
                     "interface IConsumer[in T]:",
-                    "    def consume(self, item: T) -> None",
+                    "    def consume(self, item: T) -> None: ...",
                 };
 
                 if (methodCount > 1)
                 {
-                    lines.Add("    def process(self, item: T) -> None");
+                    lines.Add("    def process(self, item: T) -> None: ...");
                 }
 
                 lines.Add("");
@@ -106,7 +106,7 @@ internal static class GenVariance
             var lines = new List<string>
             {
                 "interface IBadProducer[out T]:",
-                "    def accept(self, item: T) -> None",
+                "    def accept(self, item: T) -> None: ...",
                 "",
                 $"class Producer(IBadProducer[{concreteType}]):",
                 $"    def accept(self, item: {concreteType}) -> None:",
@@ -126,7 +126,7 @@ internal static class GenVariance
             var lines = new List<string>
             {
                 "interface IBadConsumer[in T]:",
-                "    def produce(self) -> T",
+                "    def produce(self) -> T: ...",
                 "",
                 $"class Consumer(IBadConsumer[{concreteType}]):",
                 $"    def produce(self) -> {concreteType}:",

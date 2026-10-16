@@ -1,5 +1,5 @@
 using CsCheck;
-using Sharpy.TestInfrastructure;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -20,114 +20,93 @@ public class VariancePropertyTests
     }
 
     [Fact]
-    public void CovariantInterface_CompilesClean()
-    {
-        var samples = PropertyCorpus.CompileAll(GenVariance.CovariantInterfaceProgram(), iter: 50);
-        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
-            "CovariantInterface_CompilesClean");
-    }
+    public void CovariantInterface_CompilesClean() =>
+        AssertEverySampleIsDiagnosticFree(GenVariance.CovariantInterfaceProgram(), "covariant interface");
 
     [Fact]
-    public void ContravariantInterface_CompilesClean()
-    {
-        var samples = PropertyCorpus.CompileAll(GenVariance.ContravariantInterfaceProgram(), iter: 50);
-        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
-            "ContravariantInterface_CompilesClean");
-    }
+    public void ContravariantInterface_CompilesClean() =>
+        AssertEverySampleIsDiagnosticFree(GenVariance.ContravariantInterfaceProgram(), "contravariant interface");
 
     [Fact]
-    public void VarianceOnClass_ProducesDiagnostic()
-    {
-        int total = 0;
-        int diagnosed = 0;
+    public void VarianceOnClass_ProducesDiagnostic() =>
+        AssertEverySampleDraws(GenVariance.VarianceOnClassProgram(), "SPY0417", "variance on class");
 
-        GenVariance.VarianceOnClassProgram()
-            .Sample(source =>
+    [Fact]
+    public void CovariantInInputPosition_ProducesDiagnostic() =>
+        AssertEverySampleDraws(GenVariance.CovariantInInputPositionProgram(), "SPY0418",
+            "covariant in input position");
+
+    [Fact]
+    public void ContravariantInOutputPosition_ProducesDiagnostic() =>
+        AssertEverySampleDraws(GenVariance.ContravariantInOutputPositionProgram(), "SPY0419",
+            "contravariant in output position");
+
+    /// <summary>
+    /// Every sample of a one-fact invalid generator draws exactly <paramref name="code"/> through
+    /// <see cref="ErrorInjector.JudgeSource"/> (#2288): before, the lane passed when a quarter of the
+    /// samples carried the code among any others, and a throw was swallowed.
+    /// </summary>
+    private void AssertEverySampleDraws(Gen<string> gen, string code, string label)
+    {
+        int tested = 0;
+        var failures = new List<string>();
+
+        gen.Sample(source =>
+        {
+            Interlocked.Increment(ref tested);
+            if (ErrorInjector.JudgeSource(source, code, CompilerDiagnosticSeverity.Error, null, label) is { } failure)
             {
-                Interlocked.Increment(ref total);
+                lock (failures)
+                    failures.Add(failure);
+            }
+        }, iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "variance_test.spy");
-                    if (!result.Success && result.Diagnostics.GetAll().Any(d =>
-                        d.Code == "SPY0417"))
-                    {
-                        Interlocked.Increment(ref diagnosed);
-                    }
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Variance on class diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Variance on class diagnostic rate too low: {diagnosed}/{total}");
+        _output.WriteLine($"{label}: {tested - failures.Count}/{tested} drew {code}");
+        Assert.True(tested > 0, $"No {label} samples were generated");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} {label} samples misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 
-    [Fact]
-    public void CovariantInInputPosition_ProducesDiagnostic()
+    /// <summary>
+    /// Every sample of a valid generator analyses with no error AND no warning: the interface
+    /// methods are spelled with the `: ...` body, not the deprecated body-less form that drew
+    /// SPY0464 on every sample before #2288.
+    /// </summary>
+    private void AssertEverySampleIsDiagnosticFree(Gen<string> gen, string label)
     {
-        int total = 0;
-        int diagnosed = 0;
+        int tested = 0;
+        var failures = new List<string>();
 
-        GenVariance.CovariantInInputPositionProgram()
-            .Sample(source =>
+        gen.Sample(source =>
+        {
+            Interlocked.Increment(ref tested);
+            string? failure;
+            try
             {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "variance_test.spy");
-                    if (!result.Success && result.Diagnostics.GetAll().Any(d =>
-                        d.Code == "SPY0418"))
-                    {
-                        Interlocked.Increment(ref diagnosed);
-                    }
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Covariant in input position: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Covariant in input position diagnostic rate too low: {diagnosed}/{total}");
-    }
-
-    [Fact]
-    public void ContravariantInOutputPosition_ProducesDiagnostic()
-    {
-        int total = 0;
-        int diagnosed = 0;
-
-        GenVariance.ContravariantInOutputPositionProgram()
-            .Sample(source =>
+                var result = new Sharpy.Compiler.Compiler().Analyze(source, "variance_test.spy");
+                var drawn = result.Diagnostics.GetAll()
+                    .Where(d => d.IsError || d.IsWarning)
+                    .Select(d => $"{(d.IsError ? "error" : "warning")} {d.Code}: {d.Message}")
+                    .ToList();
+                failure = result.Success && drawn.Count == 0
+                    ? null
+                    : $"{label} sample must analyse with no diagnostic, drew [{string.Join("; ", drawn)}]:\n{source}";
+            }
+            catch (Exception e)
             {
-                Interlocked.Increment(ref total);
+                failure = $"{label} sample threw {e.GetType().Name}:\n{source}\n{e}";
+            }
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "variance_test.spy");
-                    if (!result.Success && result.Diagnostics.GetAll().Any(d =>
-                        d.Code == "SPY0419"))
-                    {
-                        Interlocked.Increment(ref diagnosed);
-                    }
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
+            if (failure is not null)
+            {
+                lock (failures)
+                    failures.Add(failure);
+            }
+        }, iter: 50);
 
-        _output.WriteLine($"Contravariant in output position: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Contravariant in output position diagnostic rate too low: {diagnosed}/{total}");
+        _output.WriteLine($"{label}: {tested - failures.Count}/{tested} analysed with no diagnostic");
+        Assert.True(tested > 0, $"No {label} samples were generated");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} {label} samples drew a diagnostic; the first:\n{failures.FirstOrDefault()}");
     }
 }
