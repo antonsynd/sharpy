@@ -101,8 +101,6 @@ public class PropertyOracleConformanceTests
         ("Semantic/GenericTypePropertyTests.cs", Threshold, 5, "#2288"),
         ("Semantic/ImportResolutionPropertyTests.cs", Threshold, 3, "#2288"),
         ("Semantic/IteratorPropertyTests.cs", Threshold, 3, "#2288"),
-        ("Semantic/SemanticInfoConsistencyTests.cs", AnyFailure, 4, "#2288"),
-        ("Semantic/SymbolPositionPropertyTests.cs", AnyFailure, 5, "#2288"),
     };
 
     private readonly ITestOutputHelper _output;

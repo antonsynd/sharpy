@@ -30,16 +30,12 @@ public class SymbolPositionPropertyTests
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "position_test.spy");
-
-            if (!result.Success || result.SymbolTable == null)
-                return;
+            var result = AnalyseAdmitted(source);
 
             var lineCount = source.Split('\n').Length;
             var errors = new List<string>();
 
-            foreach (var symbol in result.SymbolTable.GetAllModuleScopeSymbols())
+            foreach (var symbol in result.SymbolTable!.GetAllModuleScopeSymbols())
             {
                 AssertPositionWithinBounds(symbol, lineCount, errors);
             }
@@ -53,6 +49,7 @@ public class SymbolPositionPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
@@ -66,15 +63,11 @@ public class SymbolPositionPropertyTests
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "position_test.spy");
-
-            if (!result.Success || result.SymbolTable == null)
-                return;
+            var result = AnalyseAdmitted(source);
 
             var errors = new List<string>();
 
-            foreach (var symbol in result.SymbolTable.GetAllModuleScopeSymbols())
+            foreach (var symbol in result.SymbolTable!.GetAllModuleScopeSymbols())
             {
                 AssertNameAfterDeclaration(symbol, errors);
             }
@@ -88,6 +81,7 @@ public class SymbolPositionPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
@@ -101,15 +95,11 @@ public class SymbolPositionPropertyTests
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "position_test.spy");
-
-            if (!result.Success || result.SymbolTable == null)
-                return;
+            var result = AnalyseAdmitted(source);
 
             var errors = new List<string>();
 
-            foreach (var symbol in result.SymbolTable.GetAllModuleScopeSymbols())
+            foreach (var symbol in result.SymbolTable!.GetAllModuleScopeSymbols())
             {
                 // EffectiveNameLine fallback
                 if (!symbol.NameDeclarationLine.HasValue)
@@ -163,6 +153,7 @@ public class SymbolPositionPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
@@ -175,11 +166,7 @@ public class SymbolPositionPropertyTests
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "position_test.spy");
-
-            if (!result.Success || result.SymbolTable == null)
-                return;
+            var result = AnalyseAdmitted(source);
 
             var lineCount = source.Split('\n').Length;
             var errors = new List<string>();
@@ -187,7 +174,7 @@ public class SymbolPositionPropertyTests
             var functionSymbolCount = 0;
             var variableSymbolCount = 0;
 
-            foreach (var symbol in result.SymbolTable.GetAllModuleScopeSymbols())
+            foreach (var symbol in result.SymbolTable!.GetAllModuleScopeSymbols())
             {
                 switch (symbol)
                 {
@@ -217,6 +204,7 @@ public class SymbolPositionPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 20);
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
@@ -230,15 +218,11 @@ public class SymbolPositionPropertyTests
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "position_test.spy");
-
-            if (!result.Success || result.SymbolTable == null)
-                return;
+            var result = AnalyseAdmitted(source);
 
             var errors = new List<string>();
 
-            foreach (var symbol in result.SymbolTable.GetAllModuleScopeSymbols())
+            foreach (var symbol in result.SymbolTable!.GetAllModuleScopeSymbols())
             {
                 if (symbol.DeclarationSpan == null ||
                     !symbol.DeclarationLine.HasValue ||
@@ -267,6 +251,24 @@ public class SymbolPositionPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
+    }
+
+    /// <summary>Re-analyses a program the filter ADMITTED: a refusal or a missing symbol table here is a
+    /// red (analysis is not deterministic, or the result lost its table), never a skipped sample —
+    /// before #2288 such a sample returned silently.</summary>
+    private static Sharpy.Compiler.CompilationResult AnalyseAdmitted(string source)
+    {
+        var result = new Sharpy.Compiler.Compiler().Analyze(source, "position_test.spy");
+        if (!result.Success)
+        {
+            throw new Exception("A program the filter admitted no longer analyses clean: "
+                + string.Join("; ", result.Diagnostics.GetErrors().Select(d => $"{d.Code}: {d.Message}"))
+                + $"\n{source}");
+        }
+        if (result.SymbolTable == null)
+            throw new Exception($"An admitted program analysed clean without a symbol table:\n{source}");
+        return result;
     }
 
     private static void AssertPositionWithinBounds(Symbol symbol, int lineCount, List<string> errors)
