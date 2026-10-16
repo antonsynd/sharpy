@@ -532,6 +532,7 @@ public class ProcessGlobalStateConformanceTests
                 PropertiesNs + "Semantic.DiagnosticSpanPropertyTests", PropertiesNs + "Semantic.ErrorCompletenessPropertyTests",
                 PropertiesNs + "Semantic.ExceptionPropertyTests", PropertiesNs + "Semantic.FStringPropertyTests",
                 PropertiesNs + "Semantic.FunctionSemanticsPropertyTests", PropertiesNs + "Semantic.GenericTypePropertyTests",
+                PropertiesNs + "Semantic.GeneratorMemberSoundnessPropertyTests",
                 PropertiesNs + "Semantic.ImportResolutionPropertyTests", PropertiesNs + "Semantic.InterfacePropertyTests",
                 PropertiesNs + "Semantic.IteratorPropertyTests", PropertiesNs + "Semantic.OperatorOverloadPropertyTests",
                 PropertiesNs + "Semantic.OverloadOrderIndependencePropertyTests", PropertiesNs + "Semantic.PatternMatchPropertyTests",
@@ -566,7 +567,7 @@ public class ProcessGlobalStateConformanceTests
     private const int ExpectedSerialCollections = 8;
 
     /// <summary>1 + 1 + 44 + 1 (Compiler; LoadContextRetention #2250) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
-    private const int ExpectedSerialMembers = 53;
+    private const int ExpectedSerialMembers = 54;
 
     [Fact]
     public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()

@@ -232,7 +232,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2287", "no typed generator emits a dict or set literal"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
         new("collection_types.md", "Collection Types", "tuple literal and tuple[...] annotation",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithNestedPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithNestedPatterns", () => GenMatchPatterns.MatchWithNestedPatterns(), n => n is TupleLiteral),
             new ByDesign("no typing surface")),
         new("collection_types.md", "Slicing", "slices",
             new KnownRedRow("#2287", "no typed generator emits a slice"),
@@ -389,7 +389,7 @@ public class TypedGeneratorRosterTests
             new Y("GenExceptions.ModuleWithTryExcept", () => GenExceptions.ModuleWithTryExcept(handlerCount: 1), n => n is TryStatement t && t.Handlers.Any(h => h.ExceptionType != null && h.Name != null)),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("exception_handling.md", "Try/Except/Finally", "nested try",
-            new KnownRedRow("#2288", "GenExceptions.ModuleWithNestedTry emits it but no property samples the member — wired in-plan"),
+            new Y("GenExceptions.ModuleWithNestedTry", () => GenExceptions.ModuleWithNestedTry(), n => n is TryStatement t && t.Body.Any(s => s is TryStatement)),
             new ByDesign("no typing surface")),
         new("exception_handling.md", "Raise Statement", "raise of a constructed exception",
             new Y("GenExceptions.ModuleWithRaiseExpression", () => GenExceptions.ModuleWithRaiseExpression(), n => n is RaiseStatement { Exception: not null }),
@@ -426,7 +426,7 @@ public class TypedGeneratorRosterTests
             new Y("GenFunctions.ModuleWithFunctions", () => Functions(), n => CallTo(n, "compute", "process", "transform")),
             new YInjected("ErrorInjector.InjectUndefinedFunctionCall", "SPY0200", CompilerDiagnosticSeverity.Error)),
         new("expressions.md", "Index Access", "list[index]",
-            new KnownRedRow("#2288", "GenTyped.ListSubscript emits it but no property samples the member — wired in-plan"),
+            new Y("GenTyped.ListSubscript", () => GenTyped.ListSubscript(TypeEnv.WithCollections, "int"), n => n is IndexAccess),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
 
         // extended_numeric_literals.md
@@ -647,31 +647,31 @@ public class TypedGeneratorRosterTests
 
         // match_statement.md
         new("match_statement.md", "Match Statement", "match statement with a wildcard arm",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithOrPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is MatchStatement m && m.Cases.Any(c => c.Pattern is WildcardPattern)),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Guard Patterns", "case p if guard",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithGuards emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithGuards", () => GenMatchPatterns.MatchWithGuards(), n => (n is MatchStatement m && m.Cases.Any(c => c.Guard != null)) || n is GuardPattern),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Supported Patterns", "or-patterns",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithOrPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is OrPattern),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Supported Patterns", "list patterns with a star capture",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithListPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithListPatterns", () => GenMatchPatterns.MatchWithListPatterns(), n => n is ListPattern l && l.Elements.Any(e => e is StarPattern)),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Supported Patterns", "and-patterns",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithAndPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithAndPatterns", () => GenMatchPatterns.MatchWithAndPatterns(), n => n is AndPattern),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Positional Patterns", "class patterns case C()",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithTypePatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithTypePatterns", () => GenMatchPatterns.MatchWithTypePatterns(), n => n is PositionalPattern { Type: not null } or TypePattern),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Tuple Patterns", "tuple patterns",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithNestedPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithNestedPatterns", () => GenMatchPatterns.MatchWithNestedPatterns(), n => n is TuplePattern),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Constant Patterns", "literal constant patterns",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithOrPatterns emits it but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is LiteralPattern),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Exhaustiveness Checking", "non-exhaustive match statement (warning)",
-            new KnownRedRow("#2288", "GenMatchPatterns.MatchWithOrPatterns emits an exhaustive match but no property samples the member — wired in-plan"),
+            new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is MatchStatement m && m.Cases[^1].Pattern is WildcardPattern),
             new YInjected("GenMatchPatterns.MatchNonExhaustive", "SPY0463", CompilerDiagnosticSeverity.Warning)),
         new("match_statement.md", "Match Statement vs Match Expression", "match expression",
             new KnownRedRow("#2287", "no typed generator emits a match expression"),
@@ -1412,9 +1412,9 @@ public class TypedGeneratorRosterTests
     // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 88;
+    private const int ExpectedYGenerated = 100;
     private const int ExpectedYInjected = 24;
-    private const int ExpectedN = 261;
+    private const int ExpectedN = 249;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
