@@ -171,10 +171,14 @@ def query_states(numbers: list[int]) -> dict[int, str]:
     for num in sorted(set(numbers)):
         try:
             result = subprocess.run(
-                ["gh", "issue", "view", str(num), "--json", "state", "-q", ".state"],
+                ["gh", "issue", "view", str(num), "--json", "state,url", "-q", '.state + " " + .url'],
                 capture_output=True, text=True, check=True, cwd=REPO_ROOT,
             )
-            states[num] = result.stdout.strip()
+            state, _, url = result.stdout.strip().partition(" ")
+            # `gh issue view` also answers for a pull request (state MERGED/OPEN/CLOSED, a /pull/ url).
+            # A PR is never a tracker a row can drain against, open or merged (#2288 P63 R2: a
+            # `KnownRedRefusal("#1", ...)` naming merged PR #1 passed this gate).
+            states[num] = "PULL_REQUEST" if "/pull/" in url else state
         except subprocess.CalledProcessError:
             print(f"cannot verify issue state for #{num} — gh failed",
                   file=sys.stderr)
@@ -268,9 +272,11 @@ def main() -> None:
     for row in cited_rows:
         for num in row.cites:
             state = states.get(num, "UNKNOWN")
-            if state == "CLOSED":
+            # Only an OPEN issue is a live cite: CLOSED is a stale row, and a pull request (or any state
+            # gh reports for something that is not an open issue) never was a tracker.
+            if state != "OPEN":
                 offences.append(
-                    f"{row.file}:{row.line}  {row.text}  → #{num} CLOSED"
+                    f"{row.file}:{row.line}  {row.text}  → #{num} {state}"
                 )
 
     for row in uncited_rows:
