@@ -1426,8 +1426,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             if (group.KnownLimit > 0)
             {
                 // One per (stem, twin, route) — the unit an allowlist row had — and the cells beside it.
-                s_tallies.AddOrUpdate(KnownLimitTally(state, route), 1, (_, n) => n + 1);
-                s_tallies.AddOrUpdate(KnownLimitCellsTally(state, route), group.KnownLimit, (_, n) => n + group.KnownLimit);
+                s_tallies.AddOrUpdate(KnownLimitTally(state, route, twin), 1, (_, n) => n + 1);
+                s_tallies.AddOrUpdate(KnownLimitCellsTally(state, route, twin), group.KnownLimit, (_, n) => n + group.KnownLimit);
                 _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} {KnownLimitBucket[state]} ({group.KnownLimit}/{group.Cells} cells, #2274)");
             }
 
@@ -1618,9 +1618,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string ChangedTally(string route, string state, string twin) => $"changed {route} {state} {twin}";
 
-    private static string KnownLimitTally(string state, string route) => $"known-limit {state} {KnownLimitBucket[state]} {route}";
+    private static string KnownLimitTally(string state, string route, string twin) => $"known-limit {state} {KnownLimitBucket[state]} {route} {twin}";
 
-    private static string KnownLimitCellsTally(string state, string route) => $"known-limit-cells {state} {KnownLimitBucket[state]} {route}";
+    private static string KnownLimitCellsTally(string state, string route, string twin) => $"known-limit-cells {state} {KnownLimitBucket[state]} {route} {twin}";
 
     private static string ParityExemptTally(string twin, string route) => $"s7-parity-exempt {twin} {route}";
 
@@ -1641,7 +1641,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// task's diff; the comment twin splits statements across lines, hence its F4 surplus): a shrink is a
     /// repair the clean twin gained, a growth a new pre-existing lost repair — change the literal in the same commit and
     /// say which. The wide twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
-    /// cells are never sampled; asserted only when every twin's theory ran over every stem in this process.
+    /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
+    /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
     /// </summary>
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
@@ -1673,24 +1674,28 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// (<see cref="S6k"/>) documents have a cell that rewrites string content — the 20 allowlist rows this pin replaced
     /// (2 stems × 5 twins × {ontype, range-line}, <c>b"""</c>/<c>r"""</c> closers at column 0), measured in FULL mode
     /// @ 926670989. EXACT, not a floor: a shrink is a fix (record the cell closed on #2274), a growth a new known-limit
-    /// cell (post it on #2274) — change the literal in the same commit and say which. Asserted only when the theory
-    /// of every twin ran over every stem in this process; S6k cells are never sampled, so the sampled suite counts the
-    /// same cells as FULL mode.
+    /// cell (post it on #2274) — change the literal in the same commit and say which. S6k cells are never sampled, so
+    /// the sampled suite counts the same cells as FULL mode.
     /// </summary>
     /// <para>Lead ruling L2 (plan-f92797) adds <see cref="S6ok"/>: per route, the (stem, twin) pairs whose
     /// <c>closeline-own-</c> documents of the three tails R-FV's walk cannot pair have a spurious fact — measured in FULL
     /// mode @ 20d7c582a + the L1-L3 follow-up (54 per route; 162 cells per route). Phase 3 must leave these counts UNCHANGED: a walk that "fixes" them loses the stray-closed twins.</para>
-    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route), int> KnownLimitPin = new SCG.Dictionary<(string State, string Route), int>
-    {
-        [(S6k, Full)] = 0,
-        [(S6k, RangeWhole)] = 0,
-        [(S6k, RangeLine)] = 10,
-        [(S6k, OnType)] = 10,
-        [(S6ok, Full)] = 54,
-        [(S6ok, RangeWhole)] = 54,
-        [(S6ok, RangeLine)] = 54,
-        [(S6ok, OnType)] = 54,
-    };
+    /// <para>Pinned PER TWIN (in <see cref="Twins"/> order) since the LSP suite runs the twins in separate CI shards, so
+    /// each twin's census asserts its own share where its theory ran (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
+    /// The split was measured in sampled mode @ acbec36c4 and sums to the totals above (S6k 2 × 5 = 10; S6ok 13 × 4 + 2 = 54).</para>
+    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route, string Twin), int> KnownLimitPin = ByTwin(
+        new SCG.Dictionary<(string State, string Route), int[]>
+        {
+            //                       identity, comment, wide, crlf, cr
+            [(S6k, Full)] = new[] { 0, 0, 0, 0, 0 },
+            [(S6k, RangeWhole)] = new[] { 0, 0, 0, 0, 0 },
+            [(S6k, RangeLine)] = new[] { 2, 2, 2, 2, 2 },
+            [(S6k, OnType)] = new[] { 2, 2, 2, 2, 2 },
+            [(S6ok, Full)] = new[] { 13, 2, 13, 13, 13 },
+            [(S6ok, RangeWhole)] = new[] { 13, 2, 13, 13, 13 },
+            [(S6ok, RangeLine)] = new[] { 13, 2, 13, 13, 13 },
+            [(S6ok, OnType)] = new[] { 13, 2, 13, 13, 13 },
+        });
 
     /// <summary>
     /// The cells behind <see cref="KnownLimitPin"/>, pinned EXACTLY beside it: the pair count cannot see a tail move
@@ -1698,18 +1703,29 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// relabelled S6o leaves 54 pairs per route and drops 162 cells to 108). Measured with the pair counts. P22i Phase 1
     /// (plan-ee5544) requests the line routes on comment-only lines too (<see cref="CommentTargets"/>): 36 more S6ok
     /// <c>range-line</c> and <c>ontype</c> cells on the same 54 pairs (the spurious fact is the document's), 162 → 198.
+    /// Per twin like <see cref="KnownLimitPin"/> (S6ok: 39 × 4 + 6 = 162, 45 × 4 + 18 = 198).
     /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route), int> KnownLimitCellsPin = new SCG.Dictionary<(string State, string Route), int>
-    {
-        [(S6k, Full)] = 0,
-        [(S6k, RangeWhole)] = 0,
-        [(S6k, RangeLine)] = 10,
-        [(S6k, OnType)] = 10,
-        [(S6ok, Full)] = 162,
-        [(S6ok, RangeWhole)] = 162,
-        [(S6ok, RangeLine)] = 198,
-        [(S6ok, OnType)] = 198,
-    };
+    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route, string Twin), int> KnownLimitCellsPin = ByTwin(
+        new SCG.Dictionary<(string State, string Route), int[]>
+        {
+            //                       identity, comment, wide, crlf, cr
+            [(S6k, Full)] = new[] { 0, 0, 0, 0, 0 },
+            [(S6k, RangeWhole)] = new[] { 0, 0, 0, 0, 0 },
+            [(S6k, RangeLine)] = new[] { 2, 2, 2, 2, 2 },
+            [(S6k, OnType)] = new[] { 2, 2, 2, 2, 2 },
+            [(S6ok, Full)] = new[] { 39, 6, 39, 39, 39 },
+            [(S6ok, RangeWhole)] = new[] { 39, 6, 39, 39, 39 },
+            [(S6ok, RangeLine)] = new[] { 45, 18, 45, 45, 45 },
+            [(S6ok, OnType)] = new[] { 45, 18, 45, 45, 45 },
+        });
+
+    /// <summary>A per-twin pin table: one value per twin, in <see cref="Twins"/> order, for each (state, route).</summary>
+    private static SCG.IReadOnlyDictionary<(string State, string Route, string Twin), int> ByTwin(
+        SCG.Dictionary<(string State, string Route), int[]> rows)
+        => rows.SelectMany(row => row.Value.Length == Twins.Length
+                ? Twins.Select((twin, i) => (Key: (row.Key.State, row.Key.Route, twin), Pin: row.Value[i]))
+                : throw new InvalidOperationException($"pin row {row.Key} has {row.Value.Length} values for {Twins.Length} twins"))
+            .ToDictionary(p => p.Key, p => p.Pin);
 
     /// <summary>
     /// The allowlist ratchet for one (stem, twin): every failing (route, state, bucket) is listed; a listed
@@ -2484,12 +2500,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// has ≥ 1 cell; S4 and S5 have ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; every S6 shape but the
     /// comment re-pair has ≥ 1 abort-free document with a literal line to lose (the comment re-pair: ≥ 1 cell per
     /// route), and S6's dropped-delimiter shapes ≥ 1 cell per <see cref="TripleQuotedKinds"/> kind; the backslash and
-    /// bracket continuation shapes have ≥ 1 <c>ontype</c> cell; each S3 route edits ≥ 1 document of each twin
-    /// whose theory ran over every stem ("no edits" passes every unparseable oracle, and a route that counts
-    /// lines differently from the client declines a whole twin's documents silently — the lone-<c>\r</c> twin's
-    /// on-type and range fallback @ 88345108f, #2168). When the theories did not run in this
-    /// process (a filter selected the census alone), the cells are ENUMERATED instead — documents and
-    /// requests, no handler call. Every allowlist row names a corpus stem.
+    /// bracket continuation shapes have ≥ 1 <c>ontype</c> cell. When some twin's theory did not run over every stem in
+    /// this process (a CI shard runs a subset of the twins, a filter selected the census alone), the cells are
+    /// ENUMERATED instead — documents and requests, no handler call. Every allowlist row names a corpus stem. The
+    /// pins that need a handler call — each S3 route edits ≥ 1 document of a twin ("no edits" passes every
+    /// unparseable oracle, and a route that counts lines differently from the client declines a whole twin's
+    /// documents silently — the lone-<c>\r</c> twin's on-type and range fallback @ 88345108f, #2168), the known
+    /// limits, S7's parity exemptions and the refusal ceilings — are each twin's own census
+    /// (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
     /// </summary>
     [Fact]
     public void Census_EveryRouteAndStateHasCells_CountsAreStated()
@@ -2499,11 +2517,16 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         _output.WriteLine($"FMTROUTE-CENSUS corpus={corpus.Corpus.Count} single-file={corpus.SingleFile} excluded-unparseable={corpus.Unparseable.Count} "
             + $"stride={stride} mode={(FullMode ? "full" : "sampled")} sampled-in-stems={corpus.Corpus.Keys.Count(k => IsSampledIn(k, stride))}");
 
-        var measured = !s_cellsRun.IsEmpty;
+        // The floors read the cells of every twin. When some twin's theory did not run over every stem in this process
+        // (a CI shard runs a subset of the twins, a filter runs the census alone), they are ENUMERATED for every twin
+        // instead: the documents and requests are a function of the corpus and the stride alone, so a run and an
+        // enumeration of the same twins count the same cells.
+        var notRun = Twins.Where(t => !RanOverEveryStem(t, corpus.Corpus.Count)).ToList();
+        var measured = notRun.Count == 0;
         var (cells, tallies) = measured
             ? (new SCG.Dictionary<(string, string, string), int>(s_cellsRun), new SCG.Dictionary<string, int>(s_tallies, StringComparer.Ordinal))
             : Enumerate(stride);
-        _output.WriteLine($"FMTROUTE-CENSUS source={(measured ? "run" : "enumerated (the theories did not run in this process)")} "
+        _output.WriteLine($"FMTROUTE-CENSUS source={(measured ? "run" : $"enumerated (the theories of {string.Join(", ", notRun)} did not run over every stem in this process)")} "
             + $"sweep-time={TimeSpan.FromTicks(Interlocked.Read(ref s_sweepTicks)).TotalSeconds:F1}s declined={s_declined.Count}");
         foreach (var (stem, twin) in s_declined.Keys.OrderBy(k => k.Stem, StringComparer.Ordinal).ThenBy(k => k.Twin, StringComparer.Ordinal))
             _output.WriteLine($"FMTROUTE-CENSUS declined {stem} {twin}");
@@ -2555,13 +2578,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
         _output.WriteLine($"FMTROUTE-CENSUS continuation ontype (full-mode cells) {BackslashContinuation}={tallies.GetValueOrDefault($"ontype-{BackslashContinuation}")} "
             + $"{BracketContinuation}={tallies.GetValueOrDefault($"ontype-{BracketContinuation}")}");
-        if (measured)
+        foreach (var route in RoutesByState[S3])
         {
-            foreach (var route in RoutesByState[S3])
-            {
-                _output.WriteLine($"FMTROUTE-CENSUS S3 applied-differs {route} "
-                    + string.Join(" ", Twins.Select(t => $"{t}={tallies.GetValueOrDefault(ChangedTally(route, S3, t))}")));
-            }
+            _output.WriteLine($"FMTROUTE-CENSUS S3 applied-differs {route} "
+                + string.Join(" ", Twins.Select(t => $"{t}={s_tallies.GetValueOrDefault(ChangedTally(route, S3, t))}")));
         }
 
         var rows = Allowlist.Value;
@@ -2619,63 +2639,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 .BeGreaterThanOrEqualTo(1, $"S6's dropped-delimiter shapes must have a cell that loses a {kind} literal");
         }
 
-        // "No edits" passes every S3-S5 oracle; that some cell of each route DOES edit an S3 document is
-        // what keeps a route that always declines (a lexer flag that is always set) from passing unseen.
-        if (measured)
-        {
-            foreach (var twin in Twins.Where(t => s_stemsRun.GetValueOrDefault(t) == corpus.Corpus.Count))
-            {
-                foreach (var route in RoutesByState[S3])
-                {
-                    tallies.GetValueOrDefault(ChangedTally(route, S3, twin)).Should()
-                        .BeGreaterThanOrEqualTo(1, $"some {route} cell must apply a text that differs from its S3 document on the {twin} twin");
-                }
-            }
-        }
-
         rows.Should().OnlyContain(r => corpus.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
-
-        // The known limits of #2274 (R-FQ; lead ruling L2): the comment re-pair's string-content edits (S6k) and the
-        // unpairable own-quote tails' spurious facts (S6ok) are counted, never rows, and each count is pinned EXACTLY —
-        // only when every twin's theory ran over every stem in this process. So are S7's clean-twin parity exemptions (L7).
-        foreach (var state in KnownLimitBucket.Keys)
-        {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit {state} {KnownLimitBucket[state]} "
-                + string.Join(" ", RoutesByState[state].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitTally(state, r))}"))
-                + " (cells: " + string.Join(" ", RoutesByState[state].Select(r => $"{r}={tallies.GetValueOrDefault(KnownLimitCellsTally(state, r))}")) + ")");
-        }
-
-        var parityKeys = Twins.SelectMany(t => RoutesByState[S7].Select(r => (Twin: t, Route: r))).ToList();
-        foreach (var (twin, route) in parityKeys)
-        {
-            _output.WriteLine($"FMTROUTE-CENSUS s7-parity-exempt {twin} {route}={tallies.GetValueOrDefault(ParityExemptTally(twin, route))} "
-                + $"pin={S7ParityExemptPin.GetValueOrDefault((twin, route))}");
-        }
-
-        var everyTwinRan = Twins.Where(t => s_stemsRun.GetValueOrDefault(t) != corpus.Corpus.Count).ToList();
-        if (measured && everyTwinRan.Count == 0)
-        {
-            foreach (var state in KnownLimitBucket.Keys)
-            {
-                foreach (var route in RoutesByState[state])
-                {
-                    tallies.GetValueOrDefault(KnownLimitTally(state, route)).Should().Be(KnownLimitPin[(state, route)],
-                        $"the {state} {route} known-limit count is pinned (#2274, R-FQ): a shrink closes a cell on #2274, a growth posts one — change KnownLimitPin and say which");
-                    tallies.GetValueOrDefault(KnownLimitCellsTally(state, route)).Should().Be(KnownLimitCellsPin[(state, route)],
-                        $"the {state} {route} known-limit cell count is pinned (#2274): a tail or a cell that moves in or out of {state} moves it — change KnownLimitCellsPin and say which");
-                }
-            }
-
-            foreach (var (twin, route) in parityKeys)
-            {
-                tallies.GetValueOrDefault(ParityExemptTally(twin, route)).Should().Be(S7ParityExemptPin.GetValueOrDefault((twin, route)),
-                    $"S7 {twin} {route}'s clean-twin parity exemptions are pinned (S7ParityExemptPin, lead ruling L7): a shrink is a repair the clean twin gained, a growth a new pre-existing lost repair — change the pin and say which");
-            }
-        }
-        else
-        {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit and s7-parity pins skipped: {(measured ? $"the theories of {string.Join(", ", everyTwinRan)} did not run over every stem" : "the theories did not run")} in this process");
-        }
 
         // P22e drained the allowlist to EMPTY at Phase 3 Task 3 (the last ontype rows). P22f Phase 1 Task 4
         // re-populated it from a FULL-mode run with the S5/S6 rows its Phase 2 drains (#2271: 454) and the
@@ -2695,8 +2659,89 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // ratchet with 0 rows. The literal anchors it: changing the allowlist is a visible decision — change this count in
         // the same commit and say why.
         rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
+    }
 
-        AssertRefusalCeilings(corpus.Corpus.Count);
+    /// <summary>
+    /// The per-twin census, one fact per twin, named with its theory's prefix so a filter (a CI shard) that selects
+    /// a twin's theory by that prefix selects its census too; ordered after the theories (<see cref="RouteParitySweepOrderer"/>).
+    /// Asserted only when the twin's theory ran over EVERY corpus stem in this process — a filter that ran a subset
+    /// measures another population — and <c>SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1</c> (set by CI) makes that skip a
+    /// failure, so a shard filter that separates a census from its theory cannot disarm the pins.
+    /// Each S3 route edits ≥ 1 document of the twin ("no edits" passes every S3-S5 oracle, so this keeps a route that
+    /// always declines — a lexer flag that is always set — from passing unseen); the known limits of #2274
+    /// (<see cref="KnownLimitPin"/>, <see cref="KnownLimitCellsPin"/>) and S7's clean-twin parity exemptions
+    /// (<see cref="S7ParityExemptPin"/>) are EXACT; the refusal ceilings hold (<see cref="AssertRefusalCeilings"/>).
+    /// </summary>
+    [Fact]
+    public void Identity_Census_PinsHoldOverEveryStem() => AssertTwinCensus(Identity);
+
+    /// <inheritdoc cref="Identity_Census_PinsHoldOverEveryStem"/>
+    [Fact]
+    public void CommentInjected_Census_PinsHoldOverEveryStem() => AssertTwinCensus(Comment);
+
+    /// <inheritdoc cref="Identity_Census_PinsHoldOverEveryStem"/>
+    [Fact]
+    public void WideIndented_Census_PinsHoldOverEveryStem() => AssertTwinCensus(Wide);
+
+    /// <inheritdoc cref="Identity_Census_PinsHoldOverEveryStem"/>
+    [Fact]
+    public void Crlf_Census_PinsHoldOverEveryStem() => AssertTwinCensus(Crlf);
+
+    /// <inheritdoc cref="Identity_Census_PinsHoldOverEveryStem"/>
+    [Fact]
+    public void Cr_Census_PinsHoldOverEveryStem() => AssertTwinCensus(Cr);
+
+    private const string PinsRequiredVariable = "SHARPY_ROUTE_SWEEP_PINS_REQUIRED";
+
+    internal static bool PinsRequired => Environment.GetEnvironmentVariable(PinsRequiredVariable) == "1";
+
+    private static bool RanOverEveryStem(string twin, int corpusCount) => s_stemsRun.GetValueOrDefault(twin) == corpusCount;
+
+    private void AssertTwinCensus(string twin)
+    {
+        var corpus = Corpus.Value;
+        var stems = s_stemsRun.GetValueOrDefault(twin);
+        if (stems != corpus.Corpus.Count)
+        {
+            var skipped = $"FMTROUTE-CENSUS {twin} pins skipped: its theory ran {stems} of {corpus.Corpus.Count} stems in this process";
+            _output.WriteLine(skipped);
+            Assert.False(PinsRequired, $"{skipped}, and {PinsRequiredVariable}=1 requires them — the filter separates the {twin} census from its theory");
+            return;
+        }
+
+        using var scope = new AssertionScope();
+        foreach (var route in RoutesByState[S3])
+        {
+            s_tallies.GetValueOrDefault(ChangedTally(route, S3, twin)).Should()
+                .BeGreaterThanOrEqualTo(1, $"some {route} cell must apply a text that differs from its S3 document on the {twin} twin");
+        }
+
+        // The known limits of #2274 (R-FQ; lead ruling L2): the comment re-pair's string-content edits (S6k) and the
+        // unpairable own-quote tails' spurious facts (S6ok) are counted, never rows, and each count is pinned EXACTLY per
+        // twin. So are S7's clean-twin parity exemptions (L7).
+        foreach (var state in KnownLimitBucket.Keys)
+        {
+            _output.WriteLine($"FMTROUTE-CENSUS known-limit {twin} {state} {KnownLimitBucket[state]} "
+                + string.Join(" ", RoutesByState[state].Select(r => $"{r}={s_tallies.GetValueOrDefault(KnownLimitTally(state, r, twin))}"))
+                + " (cells: " + string.Join(" ", RoutesByState[state].Select(r => $"{r}={s_tallies.GetValueOrDefault(KnownLimitCellsTally(state, r, twin))}")) + ")");
+            foreach (var route in RoutesByState[state])
+            {
+                s_tallies.GetValueOrDefault(KnownLimitTally(state, route, twin)).Should().Be(KnownLimitPin[(state, route, twin)],
+                    $"the {state} {route} known-limit count of the {twin} twin is pinned (#2274, R-FQ): a shrink closes a cell on #2274, a growth posts one — change KnownLimitPin and say which");
+                s_tallies.GetValueOrDefault(KnownLimitCellsTally(state, route, twin)).Should().Be(KnownLimitCellsPin[(state, route, twin)],
+                    $"the {state} {route} known-limit cell count of the {twin} twin is pinned (#2274): a tail or a cell that moves in or out of {state} moves it — change KnownLimitCellsPin and say which");
+            }
+        }
+
+        foreach (var route in RoutesByState[S7])
+        {
+            var exempt = s_tallies.GetValueOrDefault(ParityExemptTally(twin, route));
+            _output.WriteLine($"FMTROUTE-CENSUS s7-parity-exempt {twin} {route}={exempt} pin={S7ParityExemptPin.GetValueOrDefault((twin, route))}");
+            exempt.Should().Be(S7ParityExemptPin.GetValueOrDefault((twin, route)),
+                $"S7 {twin} {route}'s clean-twin parity exemptions are pinned (S7ParityExemptPin, lead ruling L7): a shrink is a repair the clean twin gained, a growth a new pre-existing lost repair — change the pin and say which");
+        }
+
+        AssertRefusalCeilings(twin);
     }
 
     /// <summary>
@@ -2743,21 +2788,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         };
 
     /// <summary>
-    /// Asserts <see cref="RefusalCeilingPercent"/> for each judged twin whose theory ran over EVERY corpus stem
-    /// in this process — a filter that ran a subset (or the census alone) measures another population, and
-    /// that twin's ceilings are skipped and printed as such.
+    /// Asserts <see cref="RefusalCeilingPercent"/> for a judged twin (<c>identity</c>, <c>comment</c>, <c>wide</c>) whose
+    /// theory ran over EVERY corpus stem in this process (<see cref="AssertTwinCensus"/> checks that first).
     /// </summary>
-    private void AssertRefusalCeilings(int corpusCount)
+    private void AssertRefusalCeilings(string twin)
     {
-        foreach (var twin in new[] { Identity, Comment, Wide })
+        if (twin is Identity or Comment or Wide)
         {
-            var stems = s_stemsRun.GetValueOrDefault(twin);
-            if (stems != corpusCount)
-            {
-                _output.WriteLine($"FMTROUTE-CENSUS refusal-ceiling {twin} skipped: its theory ran {stems} of {corpusCount} stems in this process");
-                continue;
-            }
-
             foreach (var route in Routes.Where(RangeRoutes.Contains))
             {
                 var ceiling = route == RangeLine && !FullMode
@@ -2810,7 +2847,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 /// Orders <see cref="FormattingRouteParitySweepTests"/> (one collection, so its cases run in this order):
 /// the twins' theories in <see cref="FormattingRouteParitySweepTests.Twins"/> order — so a later twin's
 /// de-duplication reads the earlier twins' document keys instead of recomputing them — then the controls,
-/// then the census, which reads what the theories ran.
+/// then the censuses (the corpus census and each twin's), which read what the theories ran.
 /// </summary>
 public sealed class RouteParitySweepOrderer : ITestCaseOrderer
 {
@@ -2820,6 +2857,7 @@ public sealed class RouteParitySweepOrderer : ITestCaseOrderer
 
     private static int Rank(string method) => method switch
     {
+        _ when method.Contains("_Census_", StringComparison.Ordinal) => 6,
         _ when method.StartsWith("Identity_", StringComparison.Ordinal) => 0,
         _ when method.StartsWith("CommentInjected_", StringComparison.Ordinal) => 1,
         _ when method.StartsWith("WideIndented_", StringComparison.Ordinal) => 2,
