@@ -328,4 +328,41 @@ internal static class GenMatchPatterns
 
             return string.Join("\n", lines) + "\n";
         });
+
+    /// <summary>
+    /// A match EXPRESSION that misses a case (SPY0416, an error) as the program's one broken fact:
+    /// the <c>-> str</c> function returns <c>match …</c> whose arms are
+    /// <see cref="MatchExpressionExhaustive"/>'s minus the covering one — on <c>int</c> and a class
+    /// the wildcard, on <c>bool</c> the <c>False</c> arm (#2288 Phase 4).
+    /// </summary>
+    public static Gen<string> MatchExpressionNonExhaustive() => MatchExpression(exhaustive: false);
+
+    /// <summary>The valid twin of <see cref="MatchExpressionNonExhaustive"/>, variant for variant: the
+    /// same function with the covering arm kept, so it analyses clean and prints a value.</summary>
+    public static Gen<string> MatchExpressionExhaustive() => MatchExpression(exhaustive: true);
+
+    private static Gen<string> MatchExpression(bool exhaustive) =>
+        Gen.Int[0, 2].Select(variant =>
+        {
+            var (prelude, signature, arms, covering, call) = variant switch
+            {
+                0 => (Array.Empty<string>(), "def check(x: int) -> str:",
+                    new[] { "case 1: \"one\"", "case 2: \"two\"" }, "case _: \"other\"", "check(2)"),
+                1 => (Array.Empty<string>(), "def check(x: bool) -> str:",
+                    new[] { "case True: \"yes\"" }, "case False: \"no\"", "check(True)"),
+                _ => (new[] { "class Shape:", "    pass", "", "class Circle(Shape):", "    pass", "" },
+                    "def check(s: Shape) -> str:",
+                    new[] { "case Circle(): \"circle\"" }, "case _: \"shape\"", "check(Circle())"),
+            };
+
+            var lines = new List<string>(prelude) { signature, $"    return match {(variant == 2 ? "s" : "x")}:" };
+            lines.AddRange(arms.Select(a => "        " + a));
+            if (exhaustive)
+                lines.Add("        " + covering);
+            lines.Add("");
+            lines.Add("def main():");
+            lines.Add($"    print({call})");
+
+            return string.Join("\n", lines) + "\n";
+        });
 }

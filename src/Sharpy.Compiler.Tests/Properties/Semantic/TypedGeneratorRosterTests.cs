@@ -680,8 +680,8 @@ public class TypedGeneratorRosterTests
             new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is MatchStatement m && m.Cases[^1].Pattern is WildcardPattern),
             new YInjected("GenMatchPatterns.MatchNonExhaustive", "SPY0463", CompilerDiagnosticSeverity.Warning)),
         new("match_statement.md", "Match Statement vs Match Expression", "match expression",
-            new KnownRedRow("#2287", "no typed generator emits a match expression"),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new Y("GenMatchPatterns.MatchExpressionExhaustive", () => GenMatchPatterns.MatchExpressionExhaustive(), n => n is MatchExpression),
+            new YInjected("GenMatchPatterns.MatchExpressionNonExhaustive", "SPY0416", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Property Patterns", "property patterns",
             new KnownRedRow("#2287", "no typed generator emits a property pattern"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -1422,9 +1422,9 @@ public class TypedGeneratorRosterTests
     // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 102;
-    private const int ExpectedYInjected = 31;
-    private const int ExpectedN = 240;
+    private const int ExpectedYGenerated = 103;
+    private const int ExpectedYInjected = 32;
+    private const int ExpectedN = 238;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
