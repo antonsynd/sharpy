@@ -15,8 +15,9 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// bounds, any-failure counting, two-bucket sums, a <c>catch</c> that counts as a pass, and a second
 /// judging core comparing diagnostic codes outside the seam — must not be re-typed.
 /// <para>
-/// <b>Universe</b>: every <c>*.cs</c> under <c>src/Sharpy.Compiler.Tests/Properties/**</c> whose text
-/// names the typed generator namespace, computed by the scan (no hand list), minus the files inside
+/// <b>Universe</b>: every <c>*.cs</c> directly in <c>Properties/Semantic</c>, and every <c>*.cs</c> under
+/// <c>src/Sharpy.Compiler.Tests/Properties/**</c> whose text
+/// names the typed generator namespace, computed by the scan (no hand list), minus this scanner and the files inside
 /// that namespace's own directory (<c>ErrorInjector</c> and <c>SemanticFilter</c> ARE the seam). A
 /// universe under <see cref="MinimumUniverse"/> files fails loud — a broken path or marker would
 /// otherwise scan nothing and pass. Comments are blanked (Roslyn trivia) before matching, so a
@@ -96,6 +97,7 @@ public class PropertyOracleConformanceTests
         ("Semantic/AsyncPropertyTests.cs", CodeCompare, 1, "#2288"),
         ("Semantic/AsyncPropertyTests.cs", Threshold, 1, "#2288"),
         ("Semantic/ClassInheritancePropertyTests.cs", LowerBound, 1, "#2288"),
+        ("Semantic/CombinedFeaturePropertyTests.cs", Threshold, 4, "#2288"),
         ("Semantic/ContextManagerPropertyTests.cs", Threshold, 1, "#2288"),
         ("Semantic/DecoratorPropertyTests.cs", CodeCompare, 2, "#2288"),
         ("Semantic/ExceptionPropertyTests.cs", AnyFailure, 1, "#2288"),
@@ -269,15 +271,23 @@ public class PropertyOracleConformanceTests
 
     /// <summary>
     /// Every <c>*.cs</c> under <paramref name="propertiesRoot"/> naming the typed generator
-    /// namespace, outside that namespace's own directory — paths relative to the root, '/'-separated.
+    /// namespace, outside that namespace's own directory, plus every file of <c>Properties/Semantic</c>
+    /// whether or not it uses the typed generator (<c>CombinedFeaturePropertyTests</c> builds its own
+    /// programs and judged them with <c>passed &gt; total / 4</c>) — minus this scanner, whose
+    /// positive-control literals ARE the banned spellings. Paths relative to the root, '/'-separated.
     /// </summary>
+    private const string SelfFileName = "PropertyOracleConformanceTests.cs";
+
     private static HashSet<string> Universe(string propertiesRoot)
     {
         var seamDir = Path.Combine(propertiesRoot, "Generators", "Typed") + Path.DirectorySeparatorChar;
+        var semanticDir = Path.Combine(propertiesRoot, "Semantic") + Path.DirectorySeparatorChar;
         var marker = new Regex(@"\bGenerators\.Typed\b");
         return Directory.EnumerateFiles(propertiesRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.StartsWith(seamDir, StringComparison.Ordinal))
-            .Where(path => marker.IsMatch(File.ReadAllText(path)))
+            .Where(path => Path.GetFileName(path) != SelfFileName)
+            .Where(path => path.StartsWith(semanticDir, StringComparison.Ordinal)
+                || marker.IsMatch(File.ReadAllText(path)))
             .Select(path => Path.GetRelativePath(propertiesRoot, path).Replace(Path.DirectorySeparatorChar, '/'))
             .ToHashSet(StringComparer.Ordinal);
     }
