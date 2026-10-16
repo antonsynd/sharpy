@@ -68,7 +68,6 @@ dotnet run --project src/Sharpy.Cli -- run hello.spy
 ## Community
 
 - [GitHub Issues](https://github.com/antonsynd/sharpy/issues) — bug reports, feature requests
-- [GitHub Discussions](https://github.com/antonsynd/sharpy/discussions)
 
 ## License
 
