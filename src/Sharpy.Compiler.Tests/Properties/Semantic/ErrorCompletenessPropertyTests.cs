@@ -187,6 +187,15 @@ public class ErrorCompletenessPropertyTests
             $"{verdicts.Failures}/{verdicts.Tested} isinstance narrowing programs refused; the first:\n{verdicts.First}");
     }
 
+    /// <summary>A <c>const</c> binding reassigned — SPY0225 (#2288 Phase 4).</summary>
+    [Fact]
+    public void ConstReassignment_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectConstReassignment,
+            "const reassignment", Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)));
+    }
+
     private static Gen<Module> ProgramWithNarrowing(int fuel) =>
         Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel, withStatements: true));

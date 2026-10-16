@@ -904,6 +904,25 @@ internal static class ErrorInjector
 
     private const string NarrowedName = "narrowed";
 
+    /// <summary>
+    /// A <c>const</c> reassigned (#2288 Phase 4): <c>main</c>'s <c>const LIMIT: T = …</c>
+    /// (<c>GenTyped.TypedProgram</c> with statements) gets <c>LIMIT = &lt;a T value&gt;</c> appended —
+    /// the value has the const's type, so the reassignment is the one broken fact: SPY0225.
+    /// </summary>
+    public static InjectionResult? InjectConstReassignment(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body?.OfType<VariableDeclaration>().FirstOrDefault(d => d.IsConst && d.Type is not null) is not { } constDecl)
+            return null;
+
+        var reassignment = new VariableDeclaration
+        {
+            Name = constDecl.Name,
+            InitialValue = GenTyped.DefaultValue(constDecl.Type!.Name)
+        };
+        return new InjectionResult(AppendToMain(module, body.Value, reassignment), "SPY0225");
+    }
+
     private const string UnwrappedName = "unwrapped";
 
     /// <summary>The <c>T?</c> declarations of <c>main</c> (name, payload), preferring one the last

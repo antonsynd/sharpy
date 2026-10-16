@@ -159,7 +159,8 @@ internal static class GenTyped
                             Gen.Const(ImmutableArray<Statement>.Empty),
                             (acc, gen) => Gen.Select(acc, gen, (arr, s) => arr.Add(s))))
                 : Gen.Const(ImmutableArray<Statement>.Empty),
-            (expr, stmts) =>
+            withStatements && fuel > 0 ? ConstDeclaration() : Gen.Const((Statement?)null),
+            (expr, stmts, constDecl) =>
             {
                 var printCall = new FunctionCall
                 {
@@ -177,6 +178,8 @@ internal static class GenTyped
                         InitialValue = DefaultValueForType(binding.Value)
                     });
                 }
+                if (constDecl is not null)
+                    body.Add(constDecl);
                 body.AddRange(stmts);
                 body.Add(new ExpressionStatement { Expression = printCall });
 
@@ -190,6 +193,32 @@ internal static class GenTyped
                         })
                 };
             });
+
+    /// <summary>The name of the <c>const</c> binding <see cref="TypedProgram(TypeEnv, string, int, bool)"/>
+    /// may declare in <c>main</c>. Never in the env: no generated statement assigns or reads it, so the
+    /// binding stays assign-once by construction.</summary>
+    public const string ConstName = "LIMIT";
+
+    /// <summary>
+    /// Half the statement programs declare one local <c>const LIMIT: T = literal</c>
+    /// (statements.md §Constants; <see cref="VariableDeclaration.IsConst"/>) after the env bindings —
+    /// the construct <c>ErrorInjector.InjectConstReassignment</c> breaks (#2288 Phase 4).
+    /// </summary>
+    private static Gen<Statement?> ConstDeclaration() =>
+        Gen.Bool.SelectMany(declare => declare
+            ? Gen.OneOf(
+                GenLiterals.Integer.Select(v => ConstOf("int", v)),
+                GenLiterals.SimpleString.Select(v => ConstOf("str", v)),
+                GenLiterals.Boolean.Select(v => ConstOf("bool", v)))
+            : Gen.Const((Statement?)null));
+
+    private static Statement? ConstOf(string type, Expression value) => new VariableDeclaration
+    {
+        Name = ConstName,
+        Type = TypeAnnotationForType(type),
+        InitialValue = value,
+        IsConst = true
+    };
 
     /// <summary>
     /// One statement of <c>main</c>. When the env has <c>T?</c> bindings, <see cref="NarrowedBlock"/>

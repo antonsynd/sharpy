@@ -257,7 +257,7 @@ public class TypedGeneratorRosterTests
         // comparison_operators.md
         new("comparison_operators.md", "Comparison Operators", "== != < <= > >= on numeric operands",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => BinOp(n, BinaryOperator.Equal, BinaryOperator.NotEqual,
-                BinaryOperator.LessThan, BinaryOperator.LessThanOrEqual, BinaryOperator.GreaterThan, BinaryOperator.GreaterThanOrEqual)),
+                BinaryOperator.LessThan, BinaryOperator.LessThanOrEqual, BinaryOperator.GreaterThan, BinaryOperator.GreaterThanOrEqual), Samples: 100),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
 
         // comprehensions.md
@@ -452,7 +452,7 @@ public class TypedGeneratorRosterTests
 
         // float_literals.md
         new("float_literals.md", "Float Literals", "float literals",
-            new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is FloatLiteral),
+            new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is FloatLiteral, Samples: 100),
             new ByDesign("no typing surface")),
 
         // for_statement.md
@@ -864,8 +864,8 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2287", "no typed generator emits let"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
         new("statements.md", "Constants", "const declaration and its reassignment",
-            new KnownRedRow("#2287", "no typed generator emits const"),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is VariableDeclaration { IsConst: true }),
+            new YInjected("ErrorInjector.InjectConstReassignment", "SPY0225", CompilerDiagnosticSeverity.Error)),
         new("statements.md", "Module-Level Declaration Rules", "module-level typed constant",
             new Y("GenImports.ImportingModule", () => GenImports.ImportingModule(TypeEnv.Default, fuel: 1), n => n is Module m && m.Body.OfType<VariableDeclaration>().Any()),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
@@ -1422,9 +1422,9 @@ public class TypedGeneratorRosterTests
     // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 101;
-    private const int ExpectedYInjected = 28;
-    private const int ExpectedN = 244;
+    private const int ExpectedYGenerated = 102;
+    private const int ExpectedYInjected = 29;
+    private const int ExpectedN = 242;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
