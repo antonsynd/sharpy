@@ -96,7 +96,6 @@ public class PropertyOracleConformanceTests
         ("CodeGen/CsCleanPropertyTests.cs", AnyFailure, 1, "#2288"),
         ("Semantic/ClassInheritancePropertyTests.cs", LowerBound, 1, "#2288"),
         ("Semantic/CombinedFeaturePropertyTests.cs", Threshold, 4, "#2288"),
-        ("Semantic/ContextManagerPropertyTests.cs", Threshold, 1, "#2288"),
         ("Semantic/DecoratorPropertyTests.cs", CodeCompare, 2, "#2288"),
         ("Semantic/ExceptionPropertyTests.cs", AnyFailure, 1, "#2288"),
         ("Semantic/ExceptionPropertyTests.cs", CatchIncrement, 2, "#2288"),
