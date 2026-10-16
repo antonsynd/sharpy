@@ -13,14 +13,18 @@ internal sealed record ClassInfo(
 
 internal sealed record TypeEnv
 {
-    public ImmutableDictionary<string, string> Bindings { get; init; } =
-        ImmutableDictionary<string, string>.Empty;
+    // Sorted by ordinal key, never hashed: the generators enumerate these maps (declarations,
+    // OneOfConst over variables/functions), and a hashed map's order follows .NET's per-process
+    // randomized string hash — one CsCheck seed then drew different programs in different processes,
+    // so a printed seed did not reproduce its sample (#2288).
+    public ImmutableSortedDictionary<string, string> Bindings { get; init; } =
+        ImmutableSortedDictionary.Create<string, string>(StringComparer.Ordinal);
 
-    public ImmutableDictionary<string, FunctionSignature> Functions { get; init; } =
-        ImmutableDictionary<string, FunctionSignature>.Empty;
+    public ImmutableSortedDictionary<string, FunctionSignature> Functions { get; init; } =
+        ImmutableSortedDictionary.Create<string, FunctionSignature>(StringComparer.Ordinal);
 
-    public ImmutableDictionary<string, ClassInfo> Classes { get; init; } =
-        ImmutableDictionary<string, ClassInfo>.Empty;
+    public ImmutableSortedDictionary<string, ClassInfo> Classes { get; init; } =
+        ImmutableSortedDictionary.Create<string, ClassInfo>(StringComparer.Ordinal);
 
     public TypeEnv WithBinding(string name, string type) =>
         this with { Bindings = Bindings.SetItem(name, type) };
