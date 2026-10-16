@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Sharpy.TestInfrastructure;
 using Xunit;
@@ -29,37 +30,34 @@ public class InterfacePropertyTests
             "InterfaceImplementation_CompilesWhenComplete");
     }
 
+    /// <summary>
+    /// Every sample of the incomplete implementation draws exactly SPY0325 (interface method not
+    /// implemented) through <see cref="ErrorInjector.JudgeSource"/> (#2288): before, any SPY03xx or
+    /// SPY04xx code in a quarter of the samples passed the lane and a throw was swallowed.
+    /// </summary>
     [Fact]
     public void InterfaceImplementation_FailsWhenMissing()
     {
-        int total = 0;
-        int diagnosed = 0;
+        int tested = 0;
+        var failures = new List<string>();
 
         GenInterfaces.ModuleWithInterface(methodCount: 0, completeImpl: false)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
+                Interlocked.Increment(ref tested);
+                if (ErrorInjector.JudgeSource(source, "SPY0325", CompilerDiagnosticSeverity.Error, null,
+                        "interface method missing") is { } failure)
                 {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iface_test.spy");
-                    if (!result.Success && result.Diagnostics.GetAll().Any(d =>
-                        d.Code != null && (d.Code.StartsWith("SPY03") || d.Code.StartsWith("SPY04"))))
-                    {
-                        Interlocked.Increment(ref diagnosed);
-                    }
-                }
-                catch
-                {
-                    // Swallow
+                    lock (failures)
+                        failures.Add(failure);
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Interface missing method diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Interface missing method diagnostic rate too low: {diagnosed}/{total}");
+        _output.WriteLine($"interface method missing: {tested - failures.Count}/{tested} drew SPY0325");
+        Assert.True(tested > 0, "No incomplete-implementation samples were generated");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} incomplete-implementation samples misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 
     [Fact]
