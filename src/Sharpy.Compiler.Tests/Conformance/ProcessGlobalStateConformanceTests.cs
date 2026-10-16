@@ -161,6 +161,8 @@ public class ProcessGlobalStateConformanceTests
         // CsCheck Gen filters: the forced GC runs whenever the caller's property samples.
         new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedProgram", "Collect"),
         new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProgram", "Collect"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedSource", "Collect"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProject", "Collect"),
     };
 
     /// <summary>

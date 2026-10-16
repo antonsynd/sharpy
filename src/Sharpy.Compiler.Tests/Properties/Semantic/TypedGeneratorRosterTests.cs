@@ -1193,21 +1193,14 @@ public class TypedGeneratorRosterTests
 
     private const ulong RawSeed = 2288;
 
-    /// <summary>A compiler-side defect the raw corpus draws, pinned to its tracker. A sample is
-    /// tolerated (excluded from the corpus, counted, printed) only when its PRE-unparse AST has the
-    /// pinned shape AND every re-parse error carries <see cref="Code"/>; any other parse error stays red.
-    /// <see cref="ParsePins_StillFire"/> requires every pin to tolerate at least one sample of the
-    /// fixed-seed corpus, so a pin drains with its fix instead of going stale silently.</summary>
-    private sealed record ParsePin(KnownRedRow Pin, string Code, Func<Node, bool> AstShape);
-
-    private static readonly ParsePin[] ParsePins =
-    {
-        new(new KnownRedRow("#2169", "Unparser prints a conditional in a conditional's test position without parentheses → SPY0104"),
-            "SPY0104", n => n is ConditionalExpression { Test: ConditionalExpression }),
-    };
+    // The compiler-side defects the raw corpus draws are pinned ONCE, in KnownGeneratorPins (shared with
+    // the generated lane's RejectionSink, #2288): a sample is tolerated (excluded from the corpus, counted,
+    // printed) only when its PRE-unparse AST has the pinned shape AND every re-parse error carries the
+    // pin's code; any other parse error stays red. ParsePins_StillFire requires every pin to tolerate at
+    // least one sample of the fixed-seed corpus, so a pin drains with its fix instead of going stale.
 
     private sealed record RawControlResult(int RowsChecked, IReadOnlyList<string> Failures,
-        IReadOnlyDictionary<ParsePin, int> PinHits, IReadOnlyList<(string Row, int Hits)> RowHits, string CorpusHash, TimeSpan Elapsed);
+        IReadOnlyDictionary<KnownGeneratorPins.ParsePin, int> PinHits, IReadOnlyList<(string Row, int Hits)> RowHits, string CorpusHash, TimeSpan Elapsed);
 
     private static readonly Lazy<RawControlResult> RawControl = new(RunRawControl);
 
@@ -1215,7 +1208,7 @@ public class TypedGeneratorRosterTests
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var failures = new List<string>();
-        var pinHits = ParsePins.ToDictionary(p => p, _ => 0);
+        var pinHits = KnownGeneratorPins.ParsePins.ToDictionary(p => p, _ => 0);
         using var corpusHash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
         int rowsChecked = 0;
         var rowHits = new List<(string Row, int Hits)>();
@@ -1302,7 +1295,7 @@ public class TypedGeneratorRosterTests
 
     /// <summary>Draws <see cref="RawSamples"/> values from a boxed <c>Gen&lt;T&gt;</c> and re-parses every
     /// <see cref="Node"/> / <c>string</c> it carries (a tuple's items each).</summary>
-    private static List<Module> RawCorpus(object gen, int count, Dictionary<ParsePin, int> pinHits,
+    private static List<Module> RawCorpus(object gen, int count, Dictionary<KnownGeneratorPins.ParsePin, int> pinHits,
         System.Security.Cryptography.IncrementalHash corpusHash)
     {
         var elementType = GenElementType(gen.GetType())
@@ -1382,7 +1375,7 @@ public class TypedGeneratorRosterTests
         }
     }
 
-    private static Module? Reparse(string source, Node? origin, Dictionary<ParsePin, int> pinHits)
+    private static Module? Reparse(string source, Node? origin, Dictionary<KnownGeneratorPins.ParsePin, int> pinHits)
     {
         try
         {
@@ -1391,10 +1384,7 @@ public class TypedGeneratorRosterTests
             if (parser.Diagnostics.HasErrors)
             {
                 var errors = parser.Diagnostics.GetErrors().ToList();
-                var pin = origin == null
-                    ? null
-                    : ParsePins.FirstOrDefault(p => errors.All(d => d.Code == p.Code)
-                        && Infrastructure.AstDescendants.SelfAndDescendants(origin).Any(p.AstShape));
+                var pin = origin == null ? null : KnownGeneratorPins.Match(origin, errors);
                 if (pin != null)
                 {
                     pinHits[pin]++;

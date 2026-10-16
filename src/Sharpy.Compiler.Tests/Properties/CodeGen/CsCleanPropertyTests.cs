@@ -51,7 +51,8 @@ public class CsCleanPropertyTests
         var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
-        var wellTyped = SemanticFilter.WellTypedProgram(baseGen);
+        var sink = new RejectionSink("CsClean.SemanticClean_ImpliesZeroCsErrors");
+        var wellTyped = SemanticFilter.WellTypedProgram(baseGen, sink);
 
         int examined = 0;
         var analyzedButNotCompiled = new ConcurrentBag<string>();
@@ -103,6 +104,7 @@ public class CsCleanPropertyTests
             }
         }, print: SafeUnparse, iter: 100);
 
+        _output.WriteLine(sink.Summary);
         _output.WriteLine($"Examined {examined} semantic-clean program(s) through Roslyn emit "
             + $"({analyzedButNotCompiled.Count} analyzed but did not compile).");
 

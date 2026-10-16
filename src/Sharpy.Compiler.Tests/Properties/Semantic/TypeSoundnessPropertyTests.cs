@@ -23,7 +23,8 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
-        var compilable = SemanticFilter.CompilableProgram(baseGen);
+        var sink = new RejectionSink("TypeSoundness.TypedProgram_ExecutesWithoutRuntimeTypeErrors");
+        var compilable = SemanticFilter.CompilableProgram(baseGen, sink);
 
         int total = 0;
         compilable.Sample(module =>
@@ -46,6 +47,9 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
+        Output.WriteLine(sink.Summary);
+        Output.WriteLine(sink.Summary);
+        Output.WriteLine(sink.Summary);
         Output.WriteLine($"Type soundness: {total} programs executed, {errors.Count} runtime type errors");
         Assert.Empty(errors);
     }
@@ -58,7 +62,8 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         var baseGen = Gen.OneOfConst("int", "str", "list[int]").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true));
 
-        var compilable = SemanticFilter.CompilableProgram(baseGen);
+        var sink = new RejectionSink("TypeSoundness.TypedProgram_WithCollections_ExecutesWithoutRuntimeTypeErrors");
+        var compilable = SemanticFilter.CompilableProgram(baseGen, sink);
 
         int total = 0;
         compilable.Sample(module =>
@@ -93,7 +98,8 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
-        var wellTyped = SemanticFilter.WellTypedProgram(baseGen);
+        var sink = new RejectionSink("TypeSoundness.TypedProgram_WithOptionals_AnalyzesCleanly");
+        var wellTyped = SemanticFilter.WellTypedProgram(baseGen, sink);
 
         int total = 0;
         wellTyped.Sample(module =>
@@ -121,10 +127,11 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("TypeSoundness.FilteredTypedProgram_ProducesExpectedTypeOutput");
         Gen.OneOfConst("int", "str", "bool").Sample(resultType =>
         {
             var gen = SemanticFilter.CompilableProgram(
-                GenTyped.TypedProgram(TypeEnv.Default, resultType, fuel: 2));
+                GenTyped.TypedProgram(TypeEnv.Default, resultType, fuel: 2), sink);
 
             gen.Sample(module =>
             {
@@ -151,6 +158,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
         }, iter: 3);
 
+        Output.WriteLine(sink.Summary);
         Output.WriteLine($"Output type validation: {errors.Count} mismatches");
         Assert.Empty(errors);
     }

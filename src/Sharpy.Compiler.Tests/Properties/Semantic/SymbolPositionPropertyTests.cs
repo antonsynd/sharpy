@@ -22,9 +22,10 @@ public class SymbolPositionPropertyTests
     [Fact]
     public void SymbolPositions_AreWithinSourceBounds()
     {
+        var sink = new RejectionSink("SymbolPosition.SymbolPositions_AreWithinSourceBounds");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -51,14 +52,16 @@ public class SymbolPositionPropertyTests
                     $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
     }
 
     [Fact]
     public void NameDeclarationPosition_IsAtOrAfterDeclarationPosition()
     {
+        var sink = new RejectionSink("SymbolPosition.NameDeclarationPosition_IsAtOrAfterDeclarationPosition");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -84,14 +87,16 @@ public class SymbolPositionPropertyTests
                     $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
     }
 
     [Fact]
     public void EffectiveNamePosition_FallsBackCorrectly()
     {
+        var sink = new RejectionSink("SymbolPosition.EffectiveNamePosition_FallsBackCorrectly");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -157,13 +162,15 @@ public class SymbolPositionPropertyTests
                     $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
     }
 
     [Fact]
     public void SymbolPositions_WithClasses()
     {
+        var sink = new RejectionSink("SymbolPosition.SymbolPositions_WithClasses");
         var gen = SemanticFilter.WellTypedProgram(
-            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2));
+            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2), sink);
 
         gen.Sample(module =>
         {
@@ -209,14 +216,16 @@ public class SymbolPositionPropertyTests
                     $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 20);
+        _output.WriteLine(sink.Summary);
     }
 
     [Fact]
     public void DeclarationSpan_IsConsistentWithLineColumn()
     {
+        var sink = new RejectionSink("SymbolPosition.DeclarationSpan_IsConsistentWithLineColumn");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -257,6 +266,7 @@ public class SymbolPositionPropertyTests
                     $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);
+        _output.WriteLine(sink.Summary);
     }
 
     private static void AssertPositionWithinBounds(Symbol symbol, int lineCount, List<string> errors)

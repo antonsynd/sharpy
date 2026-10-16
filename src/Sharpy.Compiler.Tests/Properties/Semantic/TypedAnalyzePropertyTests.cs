@@ -67,7 +67,8 @@ public class TypedAnalyzePropertyTests
             return GenTyped.TypedProgram(env, type, fuel: 2);
         });
 
-        var filtered = SemanticFilter.WellTypedProgram(baseGen);
+        var sink = new RejectionSink("TypedAnalyze.FilteredTypedProgram_AnalyzesClean");
+        var filtered = SemanticFilter.WellTypedProgram(baseGen, sink);
 
         int count = 0;
         filtered.Sample(module =>
@@ -82,6 +83,7 @@ public class TypedAnalyzePropertyTests
                     $"Filtered program should analyze clean but got errors:\n{source}");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
+        _output.WriteLine(sink.Summary);
         _output.WriteLine($"Filtered typed analysis: {count} programs all analyzed clean");
     }
 

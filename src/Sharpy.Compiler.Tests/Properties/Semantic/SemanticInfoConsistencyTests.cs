@@ -25,9 +25,10 @@ public class SemanticInfoConsistencyTests
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -57,6 +58,7 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
 
         _output.WriteLine($"SemanticInfo consistency: {errors.Count} programs with unresolved types");
         Assert.Empty(errors);
@@ -67,9 +69,10 @@ public class SemanticInfoConsistencyTests
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("SemanticInfoConsistency.AllVariableReferences_ResolveToSymbols");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -105,6 +108,7 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
 
         _output.WriteLine($"Symbol resolution consistency: {errors.Count} programs with unresolved references");
         Assert.Empty(errors);
@@ -113,35 +117,39 @@ public class SemanticInfoConsistencyTests
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithCollections()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithCollections");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)));
-        AssertAllExpressionsResolved(gen, iter: 30);
+                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 30);
     }
 
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithOptionals()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithOptionals");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2)));
-        AssertAllExpressionsResolved(gen, iter: 30);
+                GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2)), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 30);
     }
 
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithClasses()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithClasses");
         var gen = SemanticFilter.WellTypedProgram(
-            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2));
-        AssertAllExpressionsResolved(gen, iter: 20);
+            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 20);
     }
 
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithFunctions()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithFunctions");
         var gen = SemanticFilter.WellTypedProgram(
-            GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2));
-        AssertAllExpressionsResolved(gen, iter: 20);
+            GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 20);
     }
 
     [Fact]
@@ -149,9 +157,10 @@ public class SemanticInfoConsistencyTests
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("SemanticInfoConsistency.ExpressionTypes_AreConsistentWithNodeKind");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -197,12 +206,13 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);
+        _output.WriteLine(sink.Summary);
 
         _output.WriteLine($"Type consistency: {errors.Count} programs with type/node mismatches");
         Assert.Empty(errors);
     }
 
-    private void AssertAllExpressionsResolved(Gen<Module> gen, int iter)
+    private void AssertAllExpressionsResolved(Gen<Module> gen, RejectionSink sink, int iter)
     {
         var errors = new List<string>();
 
@@ -249,6 +259,7 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: iter);
+        _output.WriteLine(sink.Summary);
 
         _output.WriteLine($"SemanticInfo consistency: {errors.Count} programs with unresolved types");
         Assert.Empty(errors);

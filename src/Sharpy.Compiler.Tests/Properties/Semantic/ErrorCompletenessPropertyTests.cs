@@ -176,7 +176,8 @@ public class ErrorCompletenessPropertyTests
         var baseGen = overrideGen ?? Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
 
-        var wellTyped = SemanticFilter.WellTypedProgram(baseGen);
+        var sink = new RejectionSink($"ErrorCompleteness base generator ({label})");
+        var wellTyped = SemanticFilter.WellTypedProgram(baseGen, sink);
 
         wellTyped.Sample(module =>
         {
@@ -193,6 +194,7 @@ public class ErrorCompletenessPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
+        _output.WriteLine(sink.Summary);
         _output.WriteLine(pin is null
             ? $"Error completeness ({label}): {tested - failures.Count}/{tested} drew the expected code"
             : $"Error completeness ({label}): KnownRed {pin.Issue} — {tested - failures.Count}/{tested} still unrefused ({pin.Observed})");
