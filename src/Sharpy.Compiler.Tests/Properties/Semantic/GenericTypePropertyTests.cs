@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
@@ -171,64 +172,41 @@ public class GenericTypePropertyTests
             $"Generic constraint handling rate too low: {constrained}/{tested}");
     }
 
+    /// <summary>
+    /// <c>Box[int, str](…)</c> on a one-parameter generic class draws exactly SPY0224 on every
+    /// sample (#2288; <c>type_parameter_defaults.md</c> documents the refusal). Before #2288 the lane
+    /// asserted only that analysis did not throw an internal error.
+    /// </summary>
     [Fact]
-    public void WrongTypeArgCount_NeverCrashes()
+    public void WrongTypeArgCount_IsRejected()
     {
-        int tested = 0;
+        var verdicts = ErrorInjector.JudgeSamples(GenGenerics.WrongTypeArgCountProgram(TypeEnv.WithGenerics, fuel: 1),
+            source => ErrorInjector.JudgeSource(source, "SPY0224", CompilerDiagnosticSeverity.Error, null,
+                "wrong type-argument count"), iter: 50);
+        _output.WriteLine($"Wrong type arg count: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} drew SPY0224");
 
-        GenGenerics.WrongTypeArgCountProgram(TypeEnv.WithGenerics, fuel: 1)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    compiler.Analyze(source, "generic_test.spy");
-                }
-                catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-                {
-                    throw new Exception(
-                        $"ICE on wrong type arg count program:\n{source}\n{ex.Message}");
-                }
-                catch
-                {
-                    // Non-ICE exceptions acceptable
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Wrong type arg count: {tested} programs processed without ICE");
+        Assert.True(verdicts.Tested > 0, "No wrong type-argument count programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} wrong type-argument count programs misjudged; the first:\n{verdicts.First}");
     }
 
+    /// <summary>
+    /// Assigning a <c>str</c>/<c>bool</c> literal to the <c>T</c> field of a <c>Box[int]</c> draws
+    /// exactly SPY0220 on every sample (#2288). Before #2288 the lane asserted only that analysis did
+    /// not throw an internal error.
+    /// </summary>
     [Fact]
-    public void TypeMismatchOnGenericField_NeverCrashes()
+    public void TypeMismatchOnGenericField_IsRejected()
     {
-        int tested = 0;
+        var verdicts = ErrorInjector.JudgeSamples(
+            GenGenerics.TypeMismatchOnGenericFieldProgram(TypeEnv.WithGenerics, fuel: 1),
+            source => ErrorInjector.JudgeSource(source, "SPY0220", CompilerDiagnosticSeverity.Error, null,
+                "type mismatch on a generic field"), iter: 50);
+        _output.WriteLine($"Generic field mismatch: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} drew SPY0220");
 
-        GenGenerics.TypeMismatchOnGenericFieldProgram(TypeEnv.WithGenerics, fuel: 1)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    compiler.Analyze(source, "generic_test.spy");
-                }
-                catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-                {
-                    throw new Exception(
-                        $"ICE on generic field mismatch program:\n{source}\n{ex.Message}");
-                }
-                catch
-                {
-                    // Non-ICE exceptions acceptable
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generic field mismatch: {tested} programs processed without ICE");
+        Assert.True(verdicts.Tested > 0, "No generic field mismatch programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} generic field mismatch programs misjudged; the first:\n{verdicts.First}");
     }
 
     [Fact]
