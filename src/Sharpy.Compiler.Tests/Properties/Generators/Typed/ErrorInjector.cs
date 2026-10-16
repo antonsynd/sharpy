@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using CsCheck;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Helpers;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
@@ -59,17 +60,49 @@ internal static class ErrorInjector
         string? expectedCode,
         CompilerDiagnosticSeverity severity,
         KnownRedRefusal? pin,
+        string label) =>
+        JudgeDiagnostics(() => AnalyseSingleFile(source), source, expectedCode, severity, pin, label);
+
+    /// <summary>
+    /// The multi-file front-end of the same verdict: compiles <paramref name="files"/> (relative
+    /// path, content) as one project through <see cref="ProjectCompilationHelper"/> — the route the
+    /// import lanes have always used — and judges its diagnostics exactly as
+    /// <see cref="JudgeSource"/> judges one file's. Only the analysis differs; the verdict is
+    /// <see cref="JudgeDiagnostics"/> for both.
+    /// </summary>
+    public static string? JudgeProject(
+        IReadOnlyList<(string Path, string Content)> files,
+        string? expectedCode,
+        CompilerDiagnosticSeverity severity,
+        KnownRedRefusal? pin,
+        string label) =>
+        JudgeDiagnostics(() => AnalyseProject(files), DescribeProject(files), expectedCode, severity, pin, label);
+
+    /// <summary>
+    /// The ONE verdict core behind <see cref="JudgeSource"/> and <see cref="JudgeProject"/>:
+    /// runs <paramref name="analyse"/> (a throw is an internal error, never a refusal; a failed
+    /// analysis with no error code is a failure) and judges the diagnostics it returns by the rules
+    /// documented on <see cref="JudgeSource"/>. <paramref name="sourceForMessage"/> is printed with
+    /// every failure.
+    /// </summary>
+    private static string? JudgeDiagnostics(
+        Func<(bool Success, List<CompilerDiagnostic> All)> analyse,
+        string sourceForMessage,
+        string? expectedCode,
+        CompilerDiagnosticSeverity severity,
+        KnownRedRefusal? pin,
         string label)
     {
         if (severity is not (CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning))
             throw new ArgumentOutOfRangeException(nameof(severity), severity,
                 "A refusal lane is judged at Error or Warning severity");
 
+        var source = sourceForMessage;
         List<string> errors;
         List<string> warnings;
         try
         {
-            var all = AnalyseSingleFile(source, out var success);
+            var (success, all) = analyse();
             errors = DistinctCodes(all.Where(d => d.IsError));
             warnings = DistinctCodes(all.Where(d => d.IsWarning));
             if (!success && errors.Count == 0)
@@ -123,7 +156,7 @@ internal static class ErrorInjector
     {
         try
         {
-            var all = AnalyseSingleFile(source, out var success);
+            var (success, all) = AnalyseSingleFile(source);
             var errors = DistinctCodes(all.Where(d => d.IsError));
             if (errors.Count > 0)
                 return $"Valid {label} must analyse clean, drew [{Describe(errors)}]:\n{source}";
@@ -146,31 +179,54 @@ internal static class ErrorInjector
     /// <paramref name="judge"/> (<see cref="JudgeSource"/> or <see cref="JudgeClean"/>) for its verdict.
     /// It counts, it never decides: the caller asserts <c>Tested &gt; 0</c> and <c>First is null</c>.
     /// </summary>
-    public static SampleVerdicts JudgeSamples(Gen<Module> gen, Func<string, string?> judge, int iter)
+    public static SampleVerdicts JudgeSamples(Gen<Module> gen, Func<string, string?> judge, int iter) =>
+        JudgeSamples(gen, module => judge(Sharpy.Compiler.Pretty.Unparser.Unparse(module)), iter,
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m));
+
+    /// <summary>The same count over any sample type — source tuples of a multi-file lane judged by
+    /// <see cref="JudgeProject"/>.</summary>
+    public static SampleVerdicts JudgeSamples<T>(
+        Gen<T> gen, Func<T, string?> judge, int iter, Func<T, string>? print = null)
     {
         int tested = 0;
         int failures = 0;
         string? first = null;
-        gen.Sample(module =>
+        gen.Sample(sample =>
         {
             Interlocked.Increment(ref tested);
-            if (judge(Sharpy.Compiler.Pretty.Unparser.Unparse(module)) is { } failure)
+            if (judge(sample) is { } failure)
             {
                 Interlocked.Increment(ref failures);
                 Interlocked.CompareExchange(ref first, failure, null);
             }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: iter);
+        }, print: print, iter: iter);
         return new SampleVerdicts(tested, failures, first);
     }
 
     /// <summary>The one in-process analysis both verdicts read: the property host's
     /// <c>Compiler().Analyze</c> (no stdlib references — a lane's expected code is measured here).</summary>
-    private static List<CompilerDiagnostic> AnalyseSingleFile(string source, out bool success)
+    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source)
     {
         var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
-        success = analysis.Success;
-        return analysis.Diagnostics.GetAll().ToList();
+        return (analysis.Success, analysis.Diagnostics.GetAll().ToList());
     }
+
+    /// <summary>The multi-file analysis: one project, root namespace <c>Test</c>, compiled by
+    /// <see cref="ProjectCompilationHelper.Compile()"/> (the import lanes' route).</summary>
+    private static (bool Success, List<CompilerDiagnostic> All) AnalyseProject(
+        IReadOnlyList<(string Path, string Content)> files)
+    {
+        using var helper = new ProjectCompilationHelper();
+        helper.WithRootNamespace("Test");
+        foreach (var (path, content) in files)
+            helper.AddSourceFile(path, content);
+        helper.CreateProjectFile();
+        var result = helper.Compile();
+        return (result.Success, result.Diagnostics.GetAll().ToList());
+    }
+
+    private static string DescribeProject(IReadOnlyList<(string Path, string Content)> files) =>
+        string.Join("\n", files.Select(f => $"# --- {f.Path}\n{f.Content}"));
 
     private static List<string> DistinctCodes(IEnumerable<CompilerDiagnostic> diagnostics) =>
         diagnostics
