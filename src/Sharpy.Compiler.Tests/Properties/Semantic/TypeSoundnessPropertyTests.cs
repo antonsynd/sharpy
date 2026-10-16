@@ -141,8 +141,14 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
                 var result = CompileAndExecuteWithGC(source);
 
+                // The filter already proved the program compiles, so a failed run is a runtime throw
+                // of a well-typed generated program — a finding, never a sample to skip (#2288).
                 if (!result.Success)
+                {
+                    lock (errors)
+                        errors.Add($"Compiled {resultType} program failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}");
                     return;
+                }
 
                 var output = result.StandardOutput.TrimEnd();
                 var valid = resultType switch
