@@ -114,7 +114,6 @@ public class PropertyOracleConformanceTests
         ("Semantic/IteratorPropertyTests.cs", CatchIncrement, 1, "#2288"),
         ("Semantic/IteratorPropertyTests.cs", Threshold, 3, "#2288"),
         ("Semantic/IteratorPropertyTests.cs", TwoBucket, 1, "#2288"),
-        ("Semantic/OperatorOverloadPropertyTests.cs", Threshold, 1, "#2288"),
         ("Semantic/SemanticInfoConsistencyTests.cs", AnyFailure, 4, "#2288"),
         ("Semantic/SymbolPositionPropertyTests.cs", AnyFailure, 5, "#2288"),
         ("Semantic/TypedAnalyzePropertyTests.cs", Threshold, 1, "#2288"),

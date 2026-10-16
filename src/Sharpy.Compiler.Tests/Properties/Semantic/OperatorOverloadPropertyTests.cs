@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
@@ -51,32 +52,39 @@ public class OperatorOverloadPropertyTests
             "OperatorPrecedence_PreservedThroughCompilation");
     }
 
+    /// <summary>
+    /// An operator dunder with the wrong arity draws exactly SPY0321 on every sample through
+    /// <see cref="ErrorInjector.JudgeSource"/> (#2288). Before, one lane mixed this with the unknown
+    /// dunder below (SPY0414) and passed when ANY failed analysis hit a quarter of the samples.
+    /// </summary>
     [Fact]
-    public void InvalidDunder_ProducesDiagnostic()
+    public void WrongArityOperatorDunder_ProducesDiagnostic() =>
+        AssertEverySampleDraws(GenOperators.WrongArityOperatorDunderProgram(), "SPY0321",
+            "wrong-arity operator dunder");
+
+    /// <summary>A dunder name the language does not define draws exactly SPY0414 on every sample.</summary>
+    [Fact]
+    public void UnknownDunder_ProducesDiagnostic() =>
+        AssertEverySampleDraws(GenOperators.UnknownDunderProgram(), "SPY0414", "unknown dunder");
+
+    private void AssertEverySampleDraws(Gen<string> gen, string code, string label)
     {
-        int total = 0;
-        int diagnosed = 0;
+        int tested = 0;
+        var failures = new List<string>();
 
-        GenOperators.InvalidDunderProgram()
-            .Sample(source =>
+        gen.Sample(source =>
+        {
+            Interlocked.Increment(ref tested);
+            if (ErrorInjector.JudgeSource(source, code, CompilerDiagnosticSeverity.Error, null, label) is { } failure)
             {
-                Interlocked.Increment(ref total);
+                lock (failures)
+                    failures.Add(failure);
+            }
+        }, iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "operator_test.spy");
-                    if (!result.Success)
-                        Interlocked.Increment(ref diagnosed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Invalid dunder diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Invalid dunder diagnostic rate too low: {diagnosed}/{total}");
+        _output.WriteLine($"{label}: {tested - failures.Count}/{tested} drew {code}");
+        Assert.True(tested > 0, $"No {label} samples were generated");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} {label} samples misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 }
