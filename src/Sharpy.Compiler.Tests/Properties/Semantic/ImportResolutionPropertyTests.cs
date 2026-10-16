@@ -1,6 +1,5 @@
 using CsCheck;
 using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -20,89 +19,60 @@ public class ImportResolutionPropertyTests
         _output = output;
     }
 
+    /// <summary>
+    /// Every raw <c>GenImports.ImportingModule</c> pair compiles clean as one project (or is a pinned known
+    /// red). Before #2288 the lane passed with half its pairs refused.
+    /// </summary>
     [Fact]
     public void ImportedFunction_IsCallable()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ImportResolution.ImportedFunction_IsCallable");
 
-        GenImports.ImportingModule(TypeEnv.Default, fuel: 1)
-            .Sample(pair =>
-            {
-                Interlocked.Increment(ref tested);
+        SemanticFilter.CompilableProject(GenImports.ImportingModule(TypeEnv.Default, fuel: 1),
+                pair => new[] { ("main.spy", pair.MainSource), ("lib.spy", pair.LibSource) }, sink)
+            .Sample(_ => { }, iter: 20);
 
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("main.spy", pair.MainSource)
-                    .AddSourceFile("lib.spy", pair.LibSource)
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }, iter: 20);
-
-        _output.WriteLine($"Imported function callable: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Import resolution rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// Every raw <c>GenImports.MultiFileProgram</c> pair compiles clean as one project. Before #2288 the
+    /// lane passed with half its pairs refused.
+    /// </summary>
     [Fact]
     public void MultiFileProgram_CompilesClean()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ImportResolution.MultiFileProgram_CompilesClean");
 
-        GenImports.MultiFileProgram(TypeEnv.Default, fuel: 1)
-            .Sample(pair =>
-            {
-                Interlocked.Increment(ref tested);
+        SemanticFilter.CompilableProject(GenImports.MultiFileProgram(TypeEnv.Default, fuel: 1),
+                pair => new[] { ("main.spy", pair.Main), ("lib.spy", pair.Lib) }, sink)
+            .Sample(_ => { }, iter: 20);
 
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("main.spy", pair.Main)
-                    .AddSourceFile("lib.spy", pair.Lib)
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }, iter: 20);
-
-        _output.WriteLine($"Multi-file compilation: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Multi-file pass rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>from lib import Widget</c> of a one-field class, for each field type: every pair compiles clean.
+    /// Before #2288 the lane passed with half its pairs refused.
+    /// </summary>
     [Fact]
     public void ImportedClass_IsInstantiable()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ImportResolution.ImportedClass_IsInstantiable");
 
-        Gen.OneOfConst("int", "str", "bool").Select(fieldType =>
-        {
-            var lib = $"class Widget:\n    value: {fieldType}\n\n    def __init__(self, value: {fieldType}):\n        self.value = value\n";
-            var main = $"from lib import Widget\n\ndef main():\n    w = Widget({GenImports_DefaultLiteral(fieldType)})\n    print(w.value)\n";
-            return (Main: main, Lib: lib);
-        }).Sample(pair =>
-        {
-            Interlocked.Increment(ref tested);
+        SemanticFilter.CompilableProject(Gen.OneOfConst("int", "str", "bool").Select(fieldType =>
+                {
+                    var lib = $"class Widget:\n    value: {fieldType}\n\n    def __init__(self, value: {fieldType}):\n        self.value = value\n";
+                    var main = $"from lib import Widget\n\ndef main():\n    w = Widget({GenImports_DefaultLiteral(fieldType)})\n    print(w.value)\n";
+                    return (Main: main, Lib: lib);
+                }),
+                pair => new[] { ("main.spy", pair.Main), ("lib.spy", pair.Lib) }, sink)
+            .Sample(_ => { }, iter: 20);
 
-            using var helper = new ProjectCompilationHelper(_output);
-            helper.WithRootNamespace("Test")
-                .AddSourceFile("main.spy", pair.Main)
-                .AddSourceFile("lib.spy", pair.Lib)
-                .CreateProjectFile();
-
-            var result = helper.Compile();
-            if (result.Success)
-                Interlocked.Increment(ref passed);
-        }, iter: 20);
-
-        _output.WriteLine($"Imported class instantiation: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Imported class instantiation rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     /// <summary>

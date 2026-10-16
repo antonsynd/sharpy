@@ -19,98 +19,49 @@ public class IteratorPropertyTests
         _output = output;
     }
 
+    /// <summary>
+    /// <c>GenIterators.ModuleWithGenerator(valid: true)</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with three quarters of its samples refused or throwing.
+    /// </summary>
     [Fact]
     public void GeneratorFunction_CompilesWithYield()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("Iterator.GeneratorFunction_CompilesWithYield");
 
-        GenIterators.ModuleWithGenerator(valid: true)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
+        SemanticFilter.WellTypedProgram(GenIterators.ModuleWithGenerator(valid: true), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iter_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generator function compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Generator function pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>GenIterators.ModuleWithGeneratorValidator</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with half of its samples refused or throwing. It asserted only that analysis did not throw an internal error; a refusal counted as "analyzed".
+    /// </summary>
     [Fact]
     public void GeneratorFunction_ValidatorChecks()
     {
-        int total = 0;
-        int analyzed = 0;
+        var sink = new RejectionSink("Iterator.GeneratorFunction_ValidatorChecks");
 
-        GenIterators.ModuleWithGeneratorValidator()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
+        SemanticFilter.WellTypedProgram(GenIterators.ModuleWithGeneratorValidator(), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iter_test.spy");
-                    Interlocked.Increment(ref analyzed);
-                }
-                catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-                {
-                    throw new Exception(
-                        $"ICE on generator program:\n{source}\n{ex.Message}");
-                }
-                catch
-                {
-                    // Other exceptions acceptable
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generator validator checks: {analyzed}/{total} analyzed without ICE");
-        Assert.True(analyzed > total / 2,
-            $"Generator validator analysis rate too low: {analyzed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>GenIterators.ModuleWithYieldFrom</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with three quarters of its samples refused or throwing.
+    /// </summary>
     [Fact]
     public void YieldFrom_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("Iterator.YieldFrom_CompilesClean");
 
-        GenIterators.ModuleWithYieldFrom()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
+        SemanticFilter.WellTypedProgram(GenIterators.ModuleWithYieldFrom(), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iter_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Yield from compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Yield from pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     /// <summary>

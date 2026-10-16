@@ -40,38 +40,19 @@ public class ExceptionPropertyTests
             "ExceptHandler_TypeMatching");
     }
 
+    /// <summary>
+    /// <c>GenExceptions.ModuleWithMultipleHandlers</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with half of its samples refused or throwing. Its <c>catch</c> counted a throw as "analyzed"; a throw is now an unexplained rejection.
+    /// </summary>
     [Fact]
     public void MultipleHandlers_OrderValidation()
     {
-        int total = 0;
-        int analyzed = 0;
+        var sink = new RejectionSink("Exception.MultipleHandlers_OrderValidation");
 
-        GenExceptions.ModuleWithMultipleHandlers()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
+        SemanticFilter.WellTypedProgram(GenExceptions.ModuleWithMultipleHandlers(), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    compiler.Analyze(source, "except_test.spy");
-                    Interlocked.Increment(ref analyzed);
-                }
-                catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-                {
-                    throw new Exception(
-                        $"ICE on exception program:\n{source}\n{ex.Message}");
-                }
-                catch
-                {
-                    Interlocked.Increment(ref analyzed);
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Multiple handlers analysis: {analyzed}/{total} analyzed without ICE");
-        Assert.True(analyzed > total / 2,
-            $"Multiple handlers analysis rate too low: {analyzed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     /// <summary>

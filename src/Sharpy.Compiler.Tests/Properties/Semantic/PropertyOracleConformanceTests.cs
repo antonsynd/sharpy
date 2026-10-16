@@ -84,20 +84,14 @@ public class PropertyOracleConformanceTests
         { Prefix, Threshold, LowerBound, AnyFailure, TwoBucket, CatchIncrement, CodeCompare };
 
     /// <summary>
-    /// Every current hit, by (file relative to <c>Properties/</c>, spelling) with its exact count,
-    /// seeded @ 8e0791f85 (34 rows, 64 hits) and drained by P63 Phase 2 Task 3 and Phase 3. The
-    /// <see cref="AnyFailure"/> rows of the accepted-program lanes (<c>CsClean</c>,
-    /// <c>SemanticInfoConsistency</c>, <c>SymbolPosition</c>) are silent skips of a refused sample —
-    /// the filtered-soundness shape Phase 3's sink asserts; <c>DecoratorPropertyTests</c>' exact-code
-    /// comparison is a strong oracle but a second judging core, so it moves onto the seam too.
+    /// Every current hit, by (file relative to <c>Properties/</c>, spelling) with its exact count.
+    /// Seeded @ 8e0791f85 (34 rows, 64 hits) and drained to ZERO by P63: Phase 2 Task 3 moved every
+    /// refusal lane onto <c>ErrorInjector.JudgeSource</c>/<c>Judge</c>, Phase 3 turned every threshold
+    /// soundness lane and every skip of a refused sample into a <c>RejectionSink</c> assertion (#2288).
+    /// A new row needs an issue and drains on fix, like every ratchet.
     /// </summary>
     private static readonly (string File, string SpellingId, int Count, string Issue)[] Allowlist =
     {
-        ("Semantic/CombinedFeaturePropertyTests.cs", Threshold, 4, "#2288"),
-        ("Semantic/ExceptionPropertyTests.cs", CatchIncrement, 1, "#2288"),
-        ("Semantic/ExceptionPropertyTests.cs", Threshold, 1, "#2288"),
-        ("Semantic/ImportResolutionPropertyTests.cs", Threshold, 3, "#2288"),
-        ("Semantic/IteratorPropertyTests.cs", Threshold, 3, "#2288"),
     };
 
     private readonly ITestOutputHelper _output;
