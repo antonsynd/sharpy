@@ -783,6 +783,64 @@ internal static class ErrorInjector
     }
 
     /// <summary>
+    /// A protocol dunder removed while its builtin is still called (#2288 Phase 4): the class's
+    /// <c>__len__</c> is renamed <c>length</c> (same signature and body — the method stays, only the
+    /// protocol goes), so <c>len(c)</c> in <c>main</c> draws SPY0320. Over
+    /// <c>GenInterfaces.ModuleWithProtocolDunder("__len__")</c>; inapplicable unless <c>main</c> calls
+    /// <c>len</c>.
+    /// </summary>
+    public static InjectionResult? InjectProtocolDunderRemoved(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body is null || !body.Value.Any(s => Sharpy.Compiler.Tests.Infrastructure.AstDescendants
+                .SelfAndDescendants(s).Any(n => n is FunctionCall { Function: Identifier { Name: "len" } })))
+            return null;
+
+        for (int i = 0; i < module.Body.Length; i++)
+        {
+            if (module.Body[i] is not ClassDef cls)
+                continue;
+            var j = cls.Body.IndexOf(cls.Body.FirstOrDefault(s => s is FunctionDef { Name: "__len__" })!);
+            if (j < 0)
+                continue;
+            var renamed = ((FunctionDef)cls.Body[j]) with { Name = "length" };
+            var mutated = module with { Body = module.Body.SetItem(i, cls with { Body = cls.Body.SetItem(j, renamed) }) };
+            return new InjectionResult(mutated, "SPY0320");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// An interface member a class no longer implements (#2288 Phase 4): the implementation of the
+    /// interface's LAST method is dropped from the implementing class — SPY0325. Over
+    /// <c>GenInterfaces.ModuleWithInterface(_, completeImpl: true)</c>; the generator's own
+    /// <c>completeImpl: false</c> drops the FIRST, so the two lanes are different cells.
+    /// </summary>
+    public static InjectionResult? InjectInterfaceMemberRemoved(Module module)
+    {
+        var interfaces = module.Body.OfType<InterfaceDef>().ToDictionary(d => d.Name, StringComparer.Ordinal);
+        for (int i = 0; i < module.Body.Length; i++)
+        {
+            if (module.Body[i] is not ClassDef cls)
+                continue;
+            var iface = cls.BaseClasses
+                .Select(b => interfaces.GetValueOrDefault(b.Name))
+                .FirstOrDefault(d => d is not null && d.Body.OfType<FunctionDef>().Any());
+            if (iface is null)
+                continue;
+            var last = iface.Body.OfType<FunctionDef>().Last().Name;
+            var without = cls.Body.Where(s => s is not FunctionDef { Name: var n } || n != last).ToImmutableArray();
+            if (without.Length == cls.Body.Length)
+                continue; // the class never implemented it, so nothing can be removed
+            return new InjectionResult(
+                module with { Body = module.Body.SetItem(i, cls with { Body = without }) }, "SPY0325");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// The Optional used as its payload in the FAILED branch of a narrowing test (#2288 Phase 4): the
     /// first <c>if v is not None: print(v)</c> block of <c>main</c> (<c>GenTyped.NarrowedBlock</c>)
     /// gains <c>else: unwrapped: T = v</c> — in the <c>is None</c> branch <c>v</c> is still

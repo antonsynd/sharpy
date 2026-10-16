@@ -365,7 +365,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("dunder_methods.md", "Special Methods", "__len__ / __bool__ protocol synthesis",
             new Y("GenInterfaces.ModuleWithProtocolDunder", () => Gen.OneOfConst("__len__", "__bool__").SelectMany(GenInterfaces.ModuleWithProtocolDunder), n => DefNamed(n, "__len__", "__bool__")),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new YInjected("ErrorInjector.InjectProtocolDunderRemoved", "SPY0320", CompilerDiagnosticSeverity.Error)),
         new("dunder_methods.md", "Special Methods", "__iter__ / __next__ iterator protocol",
             new Y("GenIterators.ModuleWithIterProtocol", () => GenIterators.ModuleWithIterProtocol(complete: true), n => DefNamed(n, "__next__")),
             new YInjected("GenIterators.ModuleWithIterProtocol", "SPY0320", CompilerDiagnosticSeverity.Error)),
@@ -602,7 +602,7 @@ public class TypedGeneratorRosterTests
         // interfaces.md
         new("interfaces.md", "Interfaces", "interface implemented by a class",
             new Y("GenInterfaces.ModuleWithInterface", () => GenInterfaces.ModuleWithInterface(methodCount: 0, completeImpl: true), n => n is InterfaceDef),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new YInjected("ErrorInjector.InjectInterfaceMemberRemoved", "SPY0325", CompilerDiagnosticSeverity.Error)),
         new("interfaces.md", "Interface Inheritance", "interface deriving an interface",
             new Y("GenInterfaces.ModuleWithInterfaceHierarchy", () => GenInterfaces.ModuleWithInterfaceHierarchy(), n => n is InterfaceDef { BaseInterfaces.Length: > 0 }),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
@@ -1423,8 +1423,8 @@ public class TypedGeneratorRosterTests
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 102;
-    private const int ExpectedYInjected = 29;
-    private const int ExpectedN = 242;
+    private const int ExpectedYInjected = 31;
+    private const int ExpectedN = 240;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;

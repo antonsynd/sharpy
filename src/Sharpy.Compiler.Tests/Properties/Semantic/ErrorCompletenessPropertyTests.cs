@@ -123,6 +123,22 @@ public class ErrorCompletenessPropertyTests
             "Optional arithmetic operand", ProgramWithOptionals());
     }
 
+    /// <summary><c>len(c)</c> on a class whose <c>__len__</c> was renamed away — SPY0320 (#2288 Phase 4).</summary>
+    [Fact]
+    public void ProtocolDunderRemoved_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectProtocolDunderRemoved,
+            "protocol dunder removed", GenInterfaces.ModuleWithProtocolDunder("__len__"));
+    }
+
+    /// <summary>A complete interface implementation that drops its last member — SPY0325 (#2288 Phase 4).</summary>
+    [Fact]
+    public void InterfaceMemberRemoved_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectInterfaceMemberRemoved,
+            "interface member removed", GenInterfaces.ModuleWithInterface(methodCount: 0, completeImpl: true));
+    }
+
     /// <summary>The Optional used as its payload in the <c>is None</c> branch of a
     /// <c>GenTyped.NarrowedBlock</c> — SPY0220 (#2288 Phase 4).</summary>
     [Fact]
