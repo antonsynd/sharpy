@@ -270,7 +270,7 @@ public class TypedGeneratorRosterTests
         // context_managers.md
         new("context_managers.md", "Context Managers", "with over a class defining __enter__/__exit__",
             new Y("GenContextManagers.ValidContextManagerProgram", () => GenContextManagers.ValidContextManagerProgram(), n => n is WithStatement { IsAsync: false }),
-            new KnownRedRow("#2288", "Phase 2 judges GenContextManagers.MissingEnterOrExitProgram exactly — today any failure (!Success)")),
+            new YInjected("GenContextManagers.MissingEnterOrExitProgram", "SPY0324", CompilerDiagnosticSeverity.Error)),
         new("context_managers.md", "`as` Targets", "with ... as name, the name used in the body",
             new Y("GenContextManagers.ContextManagerWithAsBinding", () => GenContextManagers.ContextManagerWithAsBinding(), n => n is WithStatement w && w.Items.Any(i => i.Target != null)),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
@@ -353,7 +353,7 @@ public class TypedGeneratorRosterTests
         // dunder_methods.md
         new("dunder_methods.md", "Arithmetic Operators", "arithmetic and unary dunder definitions",
             new Y("GenOperators.BinaryOperatorProgram", () => GenOperators.BinaryOperatorProgram(), n => DefNamed(n, "__add__", "__sub__", "__mul__", "__mod__")),
-            new KnownRedRow("#2288", "Phase 2 judges GenOperators.InvalidDunderProgram exactly — today any failure (!Success)")),
+            new YInjected("GenOperators.WrongArityOperatorDunderProgram", "SPY0321", CompilerDiagnosticSeverity.Error)),
         new("dunder_methods.md", "Comparison Operators", "comparison dunder definitions",
             new Y("GenOperators.ComparisonOperatorProgram", () => GenOperators.ComparisonOperatorProgram(), n => DefNamed(n, "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__")),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
@@ -672,7 +672,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("match_statement.md", "Exhaustiveness Checking", "non-exhaustive match statement (warning)",
             new KnownRedRow("#2288", "GenMatchPatterns.MatchWithOrPatterns emits an exhaustive match but no property samples the member — wired in-plan"),
-            new KnownRedRow("#2288", "Phase 2 judges GenMatchPatterns.MatchNonExhaustive exactly — today any warning or failure, and every sample also draws SPY0266")),
+            new YInjected("GenMatchPatterns.MatchNonExhaustive", "SPY0463", CompilerDiagnosticSeverity.Warning)),
         new("match_statement.md", "Match Statement vs Match Expression", "match expression",
             new KnownRedRow("#2287", "no typed generator emits a match expression"),
             new KnownRedRow("#2288", "Phase 4 adds the injection")),
@@ -1423,8 +1423,8 @@ public class TypedGeneratorRosterTests
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 87;
-    private const int ExpectedYInjected = 14;
-    private const int ExpectedN = 272;
+    private const int ExpectedYInjected = 17;
+    private const int ExpectedN = 269;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
