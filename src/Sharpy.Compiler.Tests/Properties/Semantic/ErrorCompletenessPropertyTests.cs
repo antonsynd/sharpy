@@ -107,6 +107,26 @@ public class ErrorCompletenessPropertyTests
             "constraint violation at an explicit instantiation", ProgramWithConstraints());
     }
 
+    /// <summary>An un-narrowed <c>T?</c> stored to a <c>T</c> slot — SPY0220 (#2288 Phase 4).</summary>
+    [Fact]
+    public void OptionalStoreWithoutNarrowing_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectOptionalStoreWithoutNarrowing,
+            "Optional stored to its payload type", ProgramWithOptionals());
+    }
+
+    /// <summary>An un-narrowed <c>T?</c> as an arithmetic operand — SPY0222 (#2288 Phase 4).</summary>
+    [Fact]
+    public void OptionalOperandWithoutNarrowing_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectOptionalOperandWithoutNarrowing,
+            "Optional arithmetic operand", ProgramWithOptionals());
+    }
+
+    private static Gen<Module> ProgramWithOptionals() =>
+        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
+
     private static Gen<Module> ProgramWithConstraints() =>
         GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1);
 

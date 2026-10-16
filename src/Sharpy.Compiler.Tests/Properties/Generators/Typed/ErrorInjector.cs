@@ -738,6 +738,81 @@ internal static class ErrorInjector
         return module with { Body = module.Body.Insert(mainIndex, plain) };
     }
 
+    /// <summary>
+    /// An Optional stored to its payload type with no narrowing (#2288 Phase 4): appends
+    /// <c>unwrapped: int = maybe_n</c> (the payload of the chosen <c>T?</c> declaration) at the end of
+    /// <c>main</c> — SPY0220 "the value is Optional[…]; narrow it". Over
+    /// <c>GenTyped.TypedProgram(TypeEnv.WithOptionals, …)</c>; the Optional chosen is one the program's
+    /// last statement reads, else the first declared.
+    /// </summary>
+    public static InjectionResult? InjectOptionalStoreWithoutNarrowing(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body is null || ChooseOptional(body.Value) is not { } optional)
+            return null;
+
+        var store = new VariableDeclaration
+        {
+            Name = UnwrappedName,
+            Type = new TypeAnnotation { Name = optional.Payload },
+            InitialValue = new Identifier { Name = optional.Name }
+        };
+        return new InjectionResult(AppendToMain(module, body.Value, store), "SPY0220");
+    }
+
+    /// <summary>
+    /// An Optional used as an arithmetic operand with no narrowing (#2288 Phase 4): appends
+    /// <c>print(maybe_n + 1)</c> (<c>+ "x"</c> for a <c>str?</c>) at the end of <c>main</c> — SPY0222.
+    /// The other operand has the payload type, so the Optional-ness is the one broken fact.
+    /// </summary>
+    public static InjectionResult? InjectOptionalOperandWithoutNarrowing(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body is null || ChooseOptional(body.Value) is not { } optional)
+            return null;
+
+        var operand = new BinaryOp
+        {
+            Left = new Identifier { Name = optional.Name },
+            Operator = BinaryOperator.Add,
+            Right = optional.Payload == "str"
+                ? new StringLiteral { Value = "x" }
+                : new IntegerLiteral { Value = "1" }
+        };
+        return new InjectionResult(AppendToMain(module, body.Value, PrintStatement(operand)), "SPY0222");
+    }
+
+    private const string UnwrappedName = "unwrapped";
+
+    /// <summary>The <c>T?</c> declarations of <c>main</c> (name, payload), preferring one the last
+    /// statement reads.</summary>
+    private static (string Name, string Payload)? ChooseOptional(ImmutableArray<Statement> body)
+    {
+        var optionals = body
+            .OfType<VariableDeclaration>()
+            .Where(d => d.Type is { IsOptional: true, TypeArguments.Length: 0 } && d.Type.Name is "int" or "str")
+            .Select(d => (d.Name, Payload: d.Type!.Name))
+            .ToList();
+        if (optionals.Count == 0)
+            return null;
+        var read = body.Length > 0 && body[^1] is ExpressionStatement { Expression: { } last }
+            ? optionals.FirstOrDefault(o => MentionsName(last, o.Name))
+            : default;
+        return read.Name is null ? optionals[0] : read;
+    }
+
+    private static bool MentionsName(Node node, string name) =>
+        Sharpy.Compiler.Tests.Infrastructure.AstDescendants.SelfAndDescendants(node)
+            .Any(n => n is Identifier id && id.Name == name);
+
+    private static Module AppendToMain(Module module, ImmutableArray<Statement> body, Statement statement)
+    {
+        var newModuleBody = module.Body
+            .Select(s => s is FunctionDef { Name: "main" } main ? main with { Body = body.Add(statement) } : s)
+            .ToImmutableArray();
+        return module with { Body = newModuleBody };
+    }
+
     private static ImmutableArray<Statement>? GetMainBody(Module module)
     {
         foreach (var stmt in module.Body)

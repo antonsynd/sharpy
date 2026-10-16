@@ -896,7 +896,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
         new("tagged_unions_optional.md", "Creating Optional Values", "None() into an Optional slot",
             new Y("GenTyped.TypedProgram", () => TypedOptionals(), n => n is FunctionCall { Function: NoneLiteral }),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new YInjected("ErrorInjector.InjectOptionalOperandWithoutNarrowing", "SPY0222", CompilerDiagnosticSeverity.Error)),
         new("tagged_unions_optional.md", "Pattern Matching", "Some / None patterns",
             new KnownRedRow("#2287", "no typed generator matches on an Optional"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -935,7 +935,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("type_annotations.md", "Nullability and Optional Type Syntax", "T? annotation",
             new Y("GenTyped.TypedProgram", () => TypedOptionals(), n => n is VariableDeclaration { Type.IsOptional: true }),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new YInjected("ErrorInjector.InjectOptionalStoreWithoutNarrowing", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // type_casting.md
         new("type_casting.md", "Type Casting (the `as!` / `as?` Operators)", "as! / as?",
@@ -1413,8 +1413,8 @@ public class TypedGeneratorRosterTests
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 100;
-    private const int ExpectedYInjected = 24;
-    private const int ExpectedN = 249;
+    private const int ExpectedYInjected = 26;
+    private const int ExpectedN = 247;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
