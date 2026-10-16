@@ -290,8 +290,13 @@ internal static class GenTyped
             });
     }
 
+    // A list literal in this generator never has an annotated slot (a print argument, a truthiness
+    // test, a conditional's branch, len()'s argument), and a slot-less `[]` has no element type —
+    // SPY0227 (collection_types.md §Element Type of a Literal; R-W refuses `[0, 0] if flag else []`
+    // too). So every generated literal is non-empty; `[]` appears only as the initializer of an
+    // annotated declaration (DefaultValueForType under TypeAnnotationForType) (#2288 G1).
     public static Gen<Expression> ListOfType(TypeEnv env, string elementType, int fuel) =>
-        ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
+        ExpressionOfType(env, elementType, fuel).Array[1, 3].Select(elems =>
             (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
 
     private static Gen<Expression> OptionalLeaf(TypeEnv env, string targetType, Gen<Expression>? varGen)
@@ -389,7 +394,7 @@ internal static class GenTyped
             });
 
     private static Gen<Expression> ListLiteralGen(string elementType) =>
-        Gen.Int[0, 3].Select(len =>
+        Gen.Int[1, 3].Select(len =>
         {
             var elements = Enumerable.Range(0, len)
                 .Select(_ => DefaultValueForType(elementType))
@@ -398,7 +403,7 @@ internal static class GenTyped
         });
 
     private static Gen<Expression> ListLiteralGen(string elementType, TypeEnv env, int fuel) =>
-        ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
+        ExpressionOfType(env, elementType, fuel).Array[1, 3].Select(elems =>
             (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
 
     public static Expression DefaultValue(string type) => DefaultValueForType(type);
