@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CsCheck;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -68,11 +69,10 @@ internal static class ErrorInjector
         List<string> warnings;
         try
         {
-            var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
-            var all = analysis.Diagnostics.GetAll().ToList();
+            var all = AnalyseSingleFile(source, out var success);
             errors = DistinctCodes(all.Where(d => d.IsError));
             warnings = DistinctCodes(all.Where(d => d.IsWarning));
-            if (!analysis.Success && errors.Count == 0)
+            if (!success && errors.Count == 0)
                 return $"Injected {label} failed analysis without an error code:\n{source}";
         }
         catch (Exception e)
@@ -110,6 +110,66 @@ internal static class ErrorInjector
         return errors is [var only] && only == expected
             ? null
             : $"Injected {label} must draw exactly {expected}, drew {drewAll}:\n{source}";
+    }
+
+    /// <summary>
+    /// The accepted-program verdict beside <see cref="JudgeSource"/>: null when
+    /// <paramref name="source"/> analyses successfully with no error (warnings are not read),
+    /// otherwise why not — a throw is an internal error, never an acceptance. The VALID half of a
+    /// refusal lane judges every sample with this, so "the complete program is accepted" is measured
+    /// per sample, never summed with the refusal half (#2288).
+    /// </summary>
+    public static string? JudgeClean(string source, string label)
+    {
+        try
+        {
+            var all = AnalyseSingleFile(source, out var success);
+            var errors = DistinctCodes(all.Where(d => d.IsError));
+            if (errors.Count > 0)
+                return $"Valid {label} must analyse clean, drew [{Describe(errors)}]:\n{source}";
+            return success
+                ? null
+                : $"Valid {label} failed analysis without an error code:\n{source}";
+        }
+        catch (Exception e)
+        {
+            return $"Valid {label} threw {e.GetType().Name} — an internal error is not an acceptance:\n{source}\n{e}";
+        }
+    }
+
+    /// <summary>What <see cref="JudgeSamples"/> saw: <see cref="Tested"/> samples judged,
+    /// <see cref="Failures"/> non-null verdicts, <see cref="First"/> the first of them.</summary>
+    public sealed record SampleVerdicts(int Tested, int Failures, string? First);
+
+    /// <summary>
+    /// Samples <paramref name="gen"/> <paramref name="iter"/> times, unparses each module and asks
+    /// <paramref name="judge"/> (<see cref="JudgeSource"/> or <see cref="JudgeClean"/>) for its verdict.
+    /// It counts, it never decides: the caller asserts <c>Tested &gt; 0</c> and <c>First is null</c>.
+    /// </summary>
+    public static SampleVerdicts JudgeSamples(Gen<Module> gen, Func<string, string?> judge, int iter)
+    {
+        int tested = 0;
+        int failures = 0;
+        string? first = null;
+        gen.Sample(module =>
+        {
+            Interlocked.Increment(ref tested);
+            if (judge(Sharpy.Compiler.Pretty.Unparser.Unparse(module)) is { } failure)
+            {
+                Interlocked.Increment(ref failures);
+                Interlocked.CompareExchange(ref first, failure, null);
+            }
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: iter);
+        return new SampleVerdicts(tested, failures, first);
+    }
+
+    /// <summary>The one in-process analysis both verdicts read: the property host's
+    /// <c>Compiler().Analyze</c> (no stdlib references — a lane's expected code is measured here).</summary>
+    private static List<CompilerDiagnostic> AnalyseSingleFile(string source, out bool success)
+    {
+        var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
+        success = analysis.Success;
+        return analysis.Diagnostics.GetAll().ToList();
     }
 
     private static List<string> DistinctCodes(IEnumerable<CompilerDiagnostic> diagnostics) =>

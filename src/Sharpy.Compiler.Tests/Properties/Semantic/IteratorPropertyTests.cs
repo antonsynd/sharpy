@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -112,53 +113,30 @@ public class IteratorPropertyTests
             $"Yield from pass rate too low: {passed}/{total}");
     }
 
+    /// <summary>
+    /// The two halves are judged separately, every sample (#2288): the complete class
+    /// (<c>__next__</c> + <c>__iter__ -> Self</c>, iterated by <c>for v in c</c>) analyses clean,
+    /// and the same class without <c>__iter__</c> draws exactly SPY0320 (not iterable). Before
+    /// #2288 one accepted-or-refused sample of either half passed the property, and the complete
+    /// half had never once analysed clean (an undeclared field, an unannotated <c>__iter__</c>).
+    /// </summary>
     [Fact]
     public void IterProtocol_RequiresBothMethods()
     {
-        int total = 0;
-        int completePassed = 0;
-        int incompleteErrored = 0;
+        var complete = ErrorInjector.JudgeSamples(GenIterators.ModuleWithIterProtocol(complete: true),
+            source => ErrorInjector.JudgeClean(source, "complete iterator class"), iter: 25);
+        _output.WriteLine($"Iter protocol (complete): {complete.Tested - complete.Failures}/{complete.Tested} analysed clean");
 
-        GenIterators.ModuleWithIterProtocol(complete: true)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
+        var incomplete = ErrorInjector.JudgeSamples(GenIterators.ModuleWithIterProtocol(complete: false),
+            source => ErrorInjector.JudgeSource(source, "SPY0320", CompilerDiagnosticSeverity.Error, null,
+                "iterated class without __iter__"), iter: 25);
+        _output.WriteLine($"Iter protocol (no __iter__): {incomplete.Tested - incomplete.Failures}/{incomplete.Tested} drew SPY0320");
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iter_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref completePassed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 25);
-
-        GenIterators.ModuleWithIterProtocol(complete: false)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iter_test.spy");
-                    if (!result.Success || result.Diagnostics.GetAll().Any())
-                        Interlocked.Increment(ref incompleteErrored);
-                }
-                catch
-                {
-                    Interlocked.Increment(ref incompleteErrored);
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 25);
-
-        _output.WriteLine($"Iter protocol: complete={completePassed}, incomplete errored={incompleteErrored}, total={total}");
-        Assert.True(completePassed + incompleteErrored > 0,
-            "No iter protocol programs were analyzed");
+        Assert.True(complete.Tested > 0, "No complete iterator programs were sampled");
+        Assert.True(incomplete.Tested > 0, "No incomplete iterator programs were sampled");
+        Assert.True(complete.First is null,
+            $"{complete.Failures}/{complete.Tested} complete iterator programs refused; the first:\n{complete.First}");
+        Assert.True(incomplete.First is null,
+            $"{incomplete.Failures}/{incomplete.Tested} incomplete iterator programs misjudged; the first:\n{incomplete.First}");
     }
 }
