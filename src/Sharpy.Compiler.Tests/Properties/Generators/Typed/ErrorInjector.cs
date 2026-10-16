@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
@@ -6,38 +7,72 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 internal static class ErrorInjector
 {
     /// <summary>
-    /// An injected program and the ONE error code it must draw (#2288). The code is exact, never a
+    /// An injected program and the ONE code it must draw (#2288). The code is exact, never a
     /// prefix: a refusal for an unrelated reason is not a catch, and a mutation that also breaks
     /// something else draws a second code — a bad injection, not a pass. <see cref="KnownRed"/> pins
     /// an injection the compiler does not refuse today; <see cref="Judge"/> then requires the program
     /// to still analyse clean, so the first refusal fails the row and the pin drains with its issue.
     /// <see cref="ExpectedDiagnosticCode"/> is null only on a pin whose refusal has no code yet.
+    /// <see cref="Severity"/> is the severity the code is drawn at — <c>Error</c> unless the one
+    /// broken fact is a warning (SPY0463); see <see cref="JudgeSource"/>.
     /// </summary>
-    public record InjectionResult(Module Mutated, string? ExpectedDiagnosticCode, KnownRedRefusal? KnownRed = null);
+    public record InjectionResult(
+        Module Mutated,
+        string? ExpectedDiagnosticCode,
+        KnownRedRefusal? KnownRed = null,
+        CompilerDiagnosticSeverity Severity = CompilerDiagnosticSeverity.Error);
 
     /// <summary>A refusal the compiler does not make today: <paramref name="Issue"/> tracks it, and
     /// <paramref name="Observed"/> says what happens instead.</summary>
     public sealed record KnownRedRefusal(string Issue, string Observed);
 
     /// <summary>
-    /// Analyses the injected program: null when it drew exactly the expected error code (a pinned
-    /// injection: when it analysed clean), otherwise why not. A throw is an internal error, never a
-    /// refusal.
+    /// Unparses the injected program and judges it through <see cref="JudgeSource"/> at the
+    /// injection's <see cref="InjectionResult.Severity"/> — this overload adds nothing but the
+    /// unparse, so the AST and source-text lanes share one verdict.
     /// </summary>
     public static string? Judge(InjectionResult injection, string label)
     {
         var source = Sharpy.Compiler.Pretty.Unparser.Unparse(injection.Mutated);
-        List<string> codes;
+        return JudgeSource(source, injection.ExpectedDiagnosticCode, injection.Severity, injection.KnownRed, label);
+    }
+
+    /// <summary>
+    /// The ONE refusal verdict for every injected or source-text generator lane (#2288). Analyses
+    /// <paramref name="source"/>: null when it drew exactly what <paramref name="severity"/> asks,
+    /// otherwise why not. A throw is an internal error, never a refusal; a failed analysis with no
+    /// error code is a failure.
+    /// <list type="bullet">
+    /// <item><c>Error</c>: the distinct error codes are exactly [<paramref name="expectedCode"/>]
+    /// (warnings are not read). Pinned: no error at all.</item>
+    /// <item><c>Warning</c>: the distinct warning codes are exactly [<paramref name="expectedCode"/>]
+    /// AND there is no error — a warning lane whose program is also refused proves nothing about the
+    /// warning. Pinned: no error, and no warning of the code (no warning at all when the code is
+    /// null).</item>
+    /// </list>
+    /// Expected codes are literal strings at the call site, never <c>DiagnosticCodes</c> constants —
+    /// a renumbering mutation must stay live.
+    /// </summary>
+    public static string? JudgeSource(
+        string source,
+        string? expectedCode,
+        CompilerDiagnosticSeverity severity,
+        KnownRedRefusal? pin,
+        string label)
+    {
+        if (severity is not (CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning))
+            throw new ArgumentOutOfRangeException(nameof(severity), severity,
+                "A refusal lane is judged at Error or Warning severity");
+
+        List<string> errors;
+        List<string> warnings;
         try
         {
             var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
-            codes = analysis.Diagnostics.GetAll()
-                .Where(d => d.IsError)
-                .Select(d => d.Code ?? "(no code)")
-                .Distinct()
-                .OrderBy(c => c, StringComparer.Ordinal)
-                .ToList();
-            if (!analysis.Success && codes.Count == 0)
+            var all = analysis.Diagnostics.GetAll().ToList();
+            errors = DistinctCodes(all.Where(d => d.IsError));
+            warnings = DistinctCodes(all.Where(d => d.IsWarning));
+            if (!analysis.Success && errors.Count == 0)
                 return $"Injected {label} failed analysis without an error code:\n{source}";
         }
         catch (Exception e)
@@ -45,24 +80,47 @@ internal static class ErrorInjector
             return $"Injected {label} threw {e.GetType().Name} — an internal error is not a refusal:\n{source}\n{e}";
         }
 
-        var drew = codes.Count == 0 ? "nothing" : string.Join(", ", codes);
-        if (injection.KnownRed is { } pin)
+        var isWarning = severity == CompilerDiagnosticSeverity.Warning;
+        // The arm's own codes: errors on the error arm, warnings on the warning arm.
+        var drew = Describe(isWarning ? warnings : errors);
+        var drewAll = isWarning ? $"errors [{Describe(errors)}], warnings [{drew}]" : $"[{drew}]";
+
+        if (pin is not null)
         {
-            var next = injection.ExpectedDiagnosticCode is { } code
+            var next = expectedCode is { } code
                 ? $"expect {code}"
                 : "give the injection the code the fix allocated";
-            return codes.Count == 0
+            var stillUnrefused = errors.Count == 0
+                && (!isWarning || (expectedCode is null ? warnings.Count == 0 : !warnings.Contains(expectedCode)));
+            return stillUnrefused
                 ? null
-                : $"Injected {label} is now refused [{drew}] — if that is {pin.Issue}'s fix, drop the KnownRed pin "
+                : $"Injected {label} is now refused {drewAll} — if that is {pin.Issue}'s fix, drop the KnownRed pin "
                   + $"and {next}; otherwise the injection breaks something else:\n{source}";
         }
 
-        var expected = injection.ExpectedDiagnosticCode
+        var expected = expectedCode
             ?? throw new InvalidOperationException($"Injection {label} has neither an expected code nor a KnownRed pin");
-        return codes is [var only] && only == expected
+        if (isWarning)
+        {
+            return warnings is [var onlyWarning] && onlyWarning == expected && errors.Count == 0
+                ? null
+                : $"Injected {label} must draw exactly warning {expected} and no error, drew {drewAll}:\n{source}";
+        }
+
+        return errors is [var only] && only == expected
             ? null
-            : $"Injected {label} must draw exactly {expected}, drew [{drew}]:\n{source}";
+            : $"Injected {label} must draw exactly {expected}, drew {drewAll}:\n{source}";
     }
+
+    private static List<string> DistinctCodes(IEnumerable<CompilerDiagnostic> diagnostics) =>
+        diagnostics
+            .Select(d => d.Code ?? "(no code)")
+            .Distinct()
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .ToList();
+
+    private static string Describe(List<string> codes) =>
+        codes.Count == 0 ? "nothing" : string.Join(", ", codes);
 
     public static InjectionResult? InjectTypeMismatchAssignment(Module module)
     {
