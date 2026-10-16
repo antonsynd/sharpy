@@ -45,6 +45,11 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// (<c>```python</c>/<c>spy</c>/<c>sharpy</c>, the fences <c>build_tools/spec_blocks.py</c> reads) are all
 /// marked <c>spec-sweep: fragment</c> or <c>spec-sweep: error</c> on the line above, or absent: a file
 /// with a compiled example defines something, so the exemption cannot be its own subject.</item>
+/// <item><b>RAW positive control</b> — every Y-generated row draws 40 samples at a fixed seed from the
+/// UNFILTERED member, unparses <see cref="Node"/> output (each <see cref="Node"/>/<c>string</c> item of a
+/// tuple), re-parses with the real parser, and requires its predicate to hit at least one node; a throw
+/// or a parse error anywhere is red with the sample's source. Presence only: acceptance of the raw
+/// sample is the generated lane's soundness property (P63 Phase 3).</item>
 /// </list>
 /// </summary>
 public class TypedGeneratorRosterTests
@@ -1180,5 +1185,232 @@ public class TypedGeneratorRosterTests
 
         Assert.True(problems.Count == 0,
             $"{problems.Count} malformed roster lane(s):\n  " + string.Join("\n  ", problems));
+    }
+
+    // ---- RAW positive control (Task 3) -------------------------------------------------------
+
+    private const ulong RawSeed = 2288;
+
+    /// <summary>A compiler-side defect the raw corpus draws, pinned to its tracker. A sample is
+    /// tolerated (excluded from the corpus, counted, printed) only when its PRE-unparse AST has the
+    /// pinned shape AND every re-parse error carries <see cref="Code"/>; any other parse error stays red.
+    /// <see cref="ParsePins_StillFire"/> requires every pin to tolerate at least one sample of the
+    /// fixed-seed corpus, so a pin drains with its fix instead of going stale silently.</summary>
+    private sealed record ParsePin(KnownRedRow Pin, string Code, Func<Node, bool> AstShape);
+
+    private static readonly ParsePin[] ParsePins =
+    {
+        new(new KnownRedRow("#2169", "Unparser prints a conditional in a conditional's test position without parentheses → SPY0104"),
+            "SPY0104", n => n is ConditionalExpression { Test: ConditionalExpression }),
+    };
+
+    private sealed record RawControlResult(int RowsChecked, IReadOnlyList<string> Failures,
+        IReadOnlyDictionary<ParsePin, int> PinHits, IReadOnlyList<(string Row, int Hits)> RowHits, string CorpusHash, TimeSpan Elapsed);
+
+    private static readonly Lazy<RawControlResult> RawControl = new(RunRawControl);
+
+    private static RawControlResult RunRawControl()
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var failures = new List<string>();
+        var pinHits = ParsePins.ToDictionary(p => p, _ => 0);
+        using var corpusHash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        int rowsChecked = 0;
+        var rowHits = new List<(string Row, int Hits)>();
+
+        foreach (var row in Rows)
+        {
+            if (row.Generated is not Y y)
+                continue;
+            rowsChecked++;
+            List<Module> corpus;
+            try
+            {
+                corpus = RawCorpus(y.Generator(), y.Samples, pinHits, corpusHash);
+            }
+            catch (RawSampleException e)
+            {
+                failures.Add($"{row.File} '{row.Construct}' ({y.Member}): {e.Message}");
+                continue;
+            }
+            catch (Exception e)
+            {
+                failures.Add($"{row.File} '{row.Construct}' ({y.Member}): generator threw {Unwrap(e)}");
+                continue;
+            }
+
+            var hits = corpus.Sum(m => Infrastructure.AstDescendants.SelfAndDescendants(m).Count(y.Predicate));
+            rowHits.Add(($"{row.File} '{row.Construct}'", hits));
+            if (hits == 0)
+            {
+                failures.Add($"{row.File} '{row.Construct}': {y.Member} drew {y.Samples} raw samples and none "
+                    + "contains the construct — a Y whose generator never emits it is not Y");
+            }
+        }
+
+        clock.Stop();
+        return new RawControlResult(rowsChecked, failures, pinHits, rowHits,
+            Convert.ToHexString(corpusHash.GetHashAndReset())[..16], clock.Elapsed);
+    }
+
+    private void PrintRawControl(RawControlResult result)
+    {
+        _output.WriteLine($"RAW control: {result.RowsChecked} Y-generated rows x {RawSamples} samples, more where a row raises it (seed {RawSeed}) "
+            + $"in {result.Elapsed.TotalSeconds:F1} s; corpus sha256 {result.CorpusHash} (equal across processes iff the generators are reproducible)");
+        foreach (var (pin, hits) in result.PinHits)
+            _output.WriteLine($"  parse pin {pin.Pin.Issue} ({pin.Code}): {hits} sample source(s) tolerated");
+        // The corpus is a pure function of the seed (TypeEnv's maps are ordinal-sorted), so these counts
+        // are stable across processes; the thinnest rows show which predicates sit closest to zero.
+        foreach (var (row, hits) in result.RowHits.OrderBy(r => r.Hits).Take(8))
+            _output.WriteLine($"  thinnest: {hits,4} hit(s)  {row}");
+    }
+
+    /// <summary>Every Y-generated row: 40 samples of the UNFILTERED member at a fixed seed, unparsed
+    /// and re-parsed by the real parser, contain its construct. A throw in the generator, the unparser
+    /// or the parser, or an unpinned parse error, is red with the sample's source.</summary>
+    [Fact]
+    public void YGenerated_RawCorpusContainsTheConstruct()
+    {
+        var result = RawControl.Value;
+        PrintRawControl(result);
+        Assert.True(result.RowsChecked > 0, "no Y-generated row was checked — the control is vacuous");
+        Assert.True(result.Failures.Count == 0,
+            $"{result.Failures.Count} Y-generated row(s) fail the raw control:\n  " + string.Join("\n  ", result.Failures));
+    }
+
+    /// <summary>Every parse pin still tolerates at least one sample: when the pinned defect is fixed the
+    /// pin goes red here and is dropped, never left behind as a silent exemption.</summary>
+    [Fact]
+    public void ParsePins_StillFire()
+    {
+        var result = RawControl.Value;
+        PrintRawControl(result);
+        var stale = result.PinHits.Where(kv => kv.Value == 0)
+            .Select(kv => $"{kv.Key.Pin.Issue} ({kv.Key.Code}): {kv.Key.Pin.Observed}")
+            .ToList();
+        Assert.True(stale.Count == 0,
+            "parse pin(s) tolerated no sample of the fixed-seed corpus — the defect is fixed; drop the pin:\n  "
+            + string.Join("\n  ", stale));
+    }
+
+    private sealed class RawSampleException(string message) : Exception(message);
+
+    private static string Unwrap(Exception e) =>
+        e is TargetInvocationException { InnerException: { } inner } ? Unwrap(inner) : $"{e.GetType().Name}: {e.Message}";
+
+    /// <summary>Draws <see cref="RawSamples"/> values from a boxed <c>Gen&lt;T&gt;</c> and re-parses every
+    /// <see cref="Node"/> / <c>string</c> it carries (a tuple's items each).</summary>
+    private static List<Module> RawCorpus(object gen, int count, Dictionary<ParsePin, int> pinHits,
+        System.Security.Cryptography.IncrementalHash corpusHash)
+    {
+        var elementType = GenElementType(gen.GetType())
+            ?? throw new RawSampleException($"generator is {gen.GetType().Name}, not a CsCheck Gen<T>");
+        var draw = typeof(TypedGeneratorRosterTests)
+            .GetMethod(nameof(Draw), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(elementType);
+        var samples = (List<object>)draw.Invoke(null, new object[] { gen, count })!;
+
+        var modules = new List<Module>();
+        foreach (var sample in samples)
+        {
+            foreach (var (source, origin) in SourcesOf(sample))
+            {
+                corpusHash.AppendData(System.Text.Encoding.UTF8.GetBytes(source + "\u0000"));
+                if (Reparse(source, origin, pinHits) is { } module)
+                    modules.Add(module);
+            }
+        }
+        return modules;
+    }
+
+    private static Type? GenElementType(Type? type)
+    {
+        for (var t = type; t != null; t = t.BaseType)
+        {
+            if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Gen<>))
+                return t.GetGenericArguments()[0];
+        }
+        return null;
+    }
+
+    private static List<object> Draw<T>(Gen<T> gen, int count)
+    {
+        var pcg = new PCG(1u, RawSeed);
+        var samples = new List<object>(count);
+        for (int i = 0; i < count; i++)
+            samples.Add(gen.Generate(pcg, null, out _)!);
+        return samples;
+    }
+
+    /// <summary>The source texts a sample carries, each with the AST it was unparsed from (null for a
+    /// source-text generator).</summary>
+    private static IEnumerable<(string Source, Node? Origin)> SourcesOf(object sample)
+    {
+        switch (sample)
+        {
+            case string s:
+                yield return (s, null);
+                break;
+            case Node node:
+                string text;
+                try
+                {
+                    text = node is Module m
+                        ? Sharpy.Compiler.Pretty.Unparser.Unparse(m)
+                        : Sharpy.Compiler.Pretty.Unparser.Unparse(node);
+                }
+                catch (Exception e)
+                {
+                    throw new RawSampleException($"Unparser threw {Unwrap(e)} on a {node.GetType().Name}");
+                }
+                yield return (text, node);
+                break;
+            case System.Runtime.CompilerServices.ITuple tuple:
+                for (int i = 0; i < tuple.Length; i++)
+                {
+                    if (tuple[i] is string or Node)
+                    {
+                        foreach (var item in SourcesOf(tuple[i]!))
+                            yield return item;
+                    }
+                }
+                break;
+            default:
+                throw new RawSampleException($"sample of type {sample.GetType().Name} carries no Node or source text");
+        }
+    }
+
+    private static Module? Reparse(string source, Node? origin, Dictionary<ParsePin, int> pinHits)
+    {
+        try
+        {
+            var parser = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
+            var module = parser.ParseModule();
+            if (parser.Diagnostics.HasErrors)
+            {
+                var errors = parser.Diagnostics.GetErrors().ToList();
+                var pin = origin == null
+                    ? null
+                    : ParsePins.FirstOrDefault(p => errors.All(d => d.Code == p.Code)
+                        && Infrastructure.AstDescendants.SelfAndDescendants(origin).Any(p.AstShape));
+                if (pin != null)
+                {
+                    pinHits[pin]++;
+                    return null;
+                }
+                throw new RawSampleException("the generated source does not parse ("
+                    + string.Join("; ", errors.Select(d => $"{d.Code}: {d.Message}"))
+                    + "):\n" + source);
+            }
+            return module;
+        }
+        catch (RawSampleException)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            throw new RawSampleException($"the parser threw {Unwrap(e)} on:\n{source}");
+        }
     }
 }
