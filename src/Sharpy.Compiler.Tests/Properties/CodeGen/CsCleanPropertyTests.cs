@@ -66,14 +66,20 @@ public class CsCleanPropertyTests
 
             // WellTypedProgram gates on Analyze(); this calls Compile(). The gap between them is
             // codegen — so a sample landing here is a program semantic analysis ACCEPTED and
-            // compilation then rejected, which is a defect of the same family this test hunts.
-            // It used to `return` silently, which meant the interesting samples were the ones the
-            // suite discarded (#1432's sibling). Collected and asserted below instead.
-            if (!result.Success || string.IsNullOrEmpty(result.GeneratedCSharpCode))
+            // compilation then rejected, which is a defect of the same family this test hunts
+            // (#1432's sibling). Each arm is its own recorded failure, asserted below — never a
+            // skipped sample (#2288).
+            if (!result.Success)
             {
                 var first = result.Diagnostics.GetErrors().FirstOrDefault();
                 analyzedButNotCompiled.Add(
                     $"{(first is null ? "(no error diagnostic)" : $"{first.Code}: {first.Message}")}\n{source}");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(result.GeneratedCSharpCode))
+            {
+                analyzedButNotCompiled.Add($"(compiled without generated C#)\n{source}");
                 return;
             }
 
@@ -105,6 +111,7 @@ public class CsCleanPropertyTests
         }, print: SafeUnparse, iter: 100);
 
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         _output.WriteLine($"Examined {examined} semantic-clean program(s) through Roslyn emit "
             + $"({analyzedButNotCompiled.Count} analyzed but did not compile).");
 

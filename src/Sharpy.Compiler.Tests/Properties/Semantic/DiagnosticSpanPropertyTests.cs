@@ -220,6 +220,7 @@ public class DiagnosticSpanPropertyTests
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);
 
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         _output.WriteLine($"Typed program span bounds: {errors.Count} violations found, {injected} injections tested");
         Assert.True(injected > 0, "No error injections were applicable");
         Assert.Empty(errors);
