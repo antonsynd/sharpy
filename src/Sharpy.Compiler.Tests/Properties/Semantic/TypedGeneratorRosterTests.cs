@@ -362,7 +362,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2288", "Phase 4 adds the injection")),
         new("dunder_methods.md", "Special Methods", "__iter__ / __next__ iterator protocol",
             new Y("GenIterators.ModuleWithIterProtocol", () => GenIterators.ModuleWithIterProtocol(complete: true), n => DefNamed(n, "__next__")),
-            new KnownRedRow("#2288", "Phase 2 judges GenIterators.ModuleWithIterProtocol(complete: false) exactly — today a two-bucket sum")),
+            new YInjected("GenIterators.ModuleWithIterProtocol", "SPY0320", CompilerDiagnosticSeverity.Error)),
 
         // dunder_methods_recommendations.md
         new("dunder_methods_recommendations.md", "1. Equality Contract (`__eq__` / `__hash__`)", "user __eq__",
@@ -396,7 +396,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("exception_handling.md", "Raise Statement", "bare raise inside an except block",
             new Y("GenExceptions.ModuleWithBareRaise", () => GenExceptions.ModuleWithBareRaise(insideExcept: true), n => n is RaiseStatement { Exception: null }),
-            new KnownRedRow("#2288", "Phase 2 judges GenExceptions.ModuleWithBareRaise(insideExcept: false) exactly — today a two-bucket sum")),
+            new YInjected("GenExceptions.ModuleWithBareRaise", "SPY0242", CompilerDiagnosticSeverity.Error)),
         new("exception_handling.md", "Exception Type Hierarchy", "subclass handler before its base",
             new Y("GenExceptions.ModuleWithExceptionHierarchy", () => GenExceptions.ModuleWithExceptionHierarchy(), n => n is TryStatement { Handlers.Length: >= 2 }),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
@@ -518,10 +518,10 @@ public class TypedGeneratorRosterTests
         // generics.md
         new("generics.md", "Generic Classes", "class Box[T]",
             new Y("GenGenerics.GenericClassProgram", () => GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2), n => n is ClassDef { TypeParameters.Length: 1 }),
-            new KnownRedRow("#2288", "Phase 2 judges GenGenerics.TypeMismatchOnGenericFieldProgram exactly — today no-throw only")),
+            new YInjected("GenGenerics.TypeMismatchOnGenericFieldProgram", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Generic Classes", "multiple type parameters Pair[A, B]",
             new Y("GenGenerics.MultiTypeParamProgram", () => GenGenerics.MultiTypeParamProgram(TypeEnv.WithGenerics, fuel: 2), n => n is ClassDef { TypeParameters.Length: >= 2 }),
-            new KnownRedRow("#2288", "Phase 2 judges GenGenerics.WrongTypeArgCountProgram exactly — today no-throw only")),
+            new YInjected("GenGenerics.WrongTypeArgCountProgram", "SPY0224", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Generic Classes", "generic class deriving a generic base",
             new Y("GenGenerics.GenericWithInheritanceProgram", () => GenGenerics.GenericWithInheritanceProgram(TypeEnv.WithGenerics, fuel: 2), n => n is ClassDef c && c.TypeParameters.Length > 0 && c.BaseClasses.Any(b => b.TypeArguments.Length > 0)),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
@@ -532,8 +532,8 @@ public class TypedGeneratorRosterTests
             new Y("GenGenerics.GenericFunctionProgram", () => GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2), n => n is FunctionCall { Function: IndexAccess { Object: Identifier { Name: "identity" } } }),
             new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
         new("generics.md", "Type Constraints", "type-parameter constraint",
-            new KnownRedRow("#2288", "GenGenerics.GenericConstraintProgram emits a constraint but every sample is SPY0301 (`from collections import Comparable`: no such export) — Phase 4 repairs it"),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new Y("GenGenerics.GenericConstraintProgram", () => GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1), n => n is ClassDef { TypeParameters: [{ Constraints.Length: > 0 }, ..] } || n is FunctionDef { TypeParameters: [{ Constraints.Length: > 0 }, ..] }),
+            new YInjected("ErrorInjector.InjectConstraintViolationAtInferredCall", "SPY0237", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Multiple Type Constraints", "several constraints on one type parameter",
             new KnownRedRow("#2287", "no typed generator emits multiple constraints"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -559,7 +559,7 @@ public class TypedGeneratorRosterTests
         // import_statements.md
         new("import_statements.md", "From-Import Statement", "from lib import name",
             new Y("GenImports.ImportingModule", () => GenImports.ImportingModule(TypeEnv.Default, fuel: 1), n => n is FromImportStatement),
-            new KnownRedRow("#2288", "Phase 2 judges GenImports.NameCollisionPair exactly — today StartsWith(\"SPY0\")")),
+            new YInjected("GenImports.NameCollisionPair", "SPY0204", CompilerDiagnosticSeverity.Error)),
         new("import_statements.md", "From-Import Statement", "unused from-import",
             new Y("GenImports.MultiFileProgram", () => GenImports.MultiFileProgram(TypeEnv.Default, fuel: 1), n => n is FromImportStatement),
             new YInjected("GenImports.UnusedImportProgram", "SPY0452", CompilerDiagnosticSeverity.Warning)),
@@ -702,7 +702,7 @@ public class TypedGeneratorRosterTests
         // module_system.md
         new("module_system.md", "Circular Import Handling", "circular import refusal",
             new ByDesign("a circular import is refused by spec; the valid import forms are import_statements.md's rows"),
-            new KnownRedRow("#2288", "judged !Success only (ImportResolutionPropertyTests.CircularImport_IsRejected over GenImports.CircularImportPair); the spec names SPY0302")),
+            new YInjected("GenImports.CircularImportPair", "SPY0302", CompilerDiagnosticSeverity.Error)),
 
         // name_mangling.md
         new("name_mangling.md", "Name Mangling", "snake_case to PascalCase collisions and acronyms",
@@ -1422,9 +1422,9 @@ public class TypedGeneratorRosterTests
     // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 87;
-    private const int ExpectedYInjected = 17;
-    private const int ExpectedN = 269;
+    private const int ExpectedYGenerated = 88;
+    private const int ExpectedYInjected = 24;
+    private const int ExpectedN = 261;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
