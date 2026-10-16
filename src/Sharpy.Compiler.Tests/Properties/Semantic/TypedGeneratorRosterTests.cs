@@ -111,6 +111,12 @@ public class TypedGeneratorRosterTests
         Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
+    /// <summary><c>ErrorCompletenessPropertyTests.NarrowedProgram_AnalysesClean</c> — the first caller of
+    /// <c>GenTyped.NarrowedBlock</c> (statements, an env with Optionals).</summary>
+    private static Gen<Module> TypedOptionalStatements() =>
+        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 1, withStatements: true));
+
     /// <summary><c>ClassInheritancePropertyTests</c>.</summary>
     private static Gen<Module> Classes() => GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2);
 
@@ -949,11 +955,15 @@ public class TypedGeneratorRosterTests
 
         // type_narrowing.md
         new("type_narrowing.md", "Narrowing Rules", "is-None narrowing",
-            new KnownRedRow("#2288", "GenTyped.NarrowedBlock emits it but no property samples the member — wired in-plan"),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new Y("GenTyped.TypedProgram", () => TypedOptionalStatements(), n => n is IfStatement
+            {
+                Test: BinaryOp { Operator: BinaryOperator.IsNot, Left: Identifier, Right: NoneLiteral },
+                ElseBody.Length: 0
+            }),
+            new YInjected("ErrorInjector.InjectUseInFailedNarrowingBranch", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("type_narrowing.md", "Narrowing Rules", "isinstance narrowing",
             new KnownRedRow("#2287", "no typed generator emits isinstance"),
-            new KnownRedRow("#2288", "Phase 4 adds the injection")),
+            new YInjected("ErrorInjector.InjectIsinstanceElseBranchMember", "SPY0203", CompilerDiagnosticSeverity.Error)),
 
         // type_parameter_defaults.md
         new("type_parameter_defaults.md", "Type Parameter Defaults", "type-parameter defaults",
@@ -1412,9 +1422,9 @@ public class TypedGeneratorRosterTests
     // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 100;
-    private const int ExpectedYInjected = 26;
-    private const int ExpectedN = 247;
+    private const int ExpectedYGenerated = 101;
+    private const int ExpectedYInjected = 28;
+    private const int ExpectedN = 244;
     private const int ExpectedKnownRed = 2;
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;

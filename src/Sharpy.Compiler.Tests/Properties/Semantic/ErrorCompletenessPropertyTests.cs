@@ -123,6 +123,81 @@ public class ErrorCompletenessPropertyTests
             "Optional arithmetic operand", ProgramWithOptionals());
     }
 
+    /// <summary>The Optional used as its payload in the <c>is None</c> branch of a
+    /// <c>GenTyped.NarrowedBlock</c> — SPY0220 (#2288 Phase 4).</summary>
+    [Fact]
+    public void UseInFailedNarrowingBranch_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectUseInFailedNarrowingBranch,
+            "Optional used in the failed narrowing branch", ProgramWithNarrowing(fuel: 2));
+    }
+
+    /// <summary>
+    /// <c>GenTyped.NarrowedBlock</c>'s first caller is sound by construction (#2288 Phase 4): every
+    /// RAW sample of <c>TypedProgram(WithOptionals, …, withStatements: true)</c> analyses clean —
+    /// judged per sample, never filtered — and the share that carries a narrowing block is printed
+    /// and must be non-zero, so the soundness claim covers the block. Fuel 1: at fuel 2 the generator
+    /// can nest a conditional in a conditional's test, which the Unparser prints unparenthesized
+    /// (#2169) — a cell of that pin, not of this generator.
+    /// </summary>
+    [Fact]
+    public void NarrowedProgram_AnalysesClean()
+    {
+        int narrowed = 0;
+        var verdicts = ErrorInjector.JudgeSamples(ProgramWithNarrowing(fuel: 1), module =>
+        {
+            if (HasNarrowedBlock(module))
+                Interlocked.Increment(ref narrowed);
+            return ErrorInjector.JudgeClean(Sharpy.Compiler.Pretty.Unparser.Unparse(module), "narrowed Optional program");
+        }, iter: 100, m => Sharpy.Compiler.Pretty.Unparser.Unparse(m));
+
+        _output.WriteLine($"narrowed Optional program: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed clean; "
+            + $"{narrowed}/{verdicts.Tested} carry a NarrowedBlock");
+        Assert.True(verdicts.Tested > 0, "No narrowed Optional programs were generated");
+        Assert.True(narrowed > 0, $"0/{verdicts.Tested} samples carry a NarrowedBlock — the soundness claim does not reach it");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} narrowed Optional programs refused; the first:\n{verdicts.First}");
+    }
+
+    /// <summary>A derived-only member read in the else branch of an <c>isinstance</c> test — SPY0203
+    /// (#2288 Phase 4).</summary>
+    [Fact]
+    public void IsinstanceElseBranchMember_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectIsinstanceElseBranchMember,
+            "derived member read in the isinstance else branch", ProgramWithClassHierarchy());
+    }
+
+    /// <summary>The positive control of <see cref="IsinstanceElseBranchMember_IsRejected"/>: the same
+    /// <c>isinstance</c> block reading a BASE member in its else branch analyses clean, sample for
+    /// sample — so SPY0203 is drawn by the else-branch read, not by the narrowing.</summary>
+    [Fact]
+    public void IsinstanceNarrowing_AnalysesClean()
+    {
+        var verdicts = ErrorInjector.JudgeSamples(ProgramWithClassHierarchy(), module =>
+            ErrorInjector.IsinstanceNarrowingValid(module) is { } valid
+                ? ErrorInjector.JudgeClean(Sharpy.Compiler.Pretty.Unparser.Unparse(valid), "isinstance narrowing")
+                : "isinstance narrowing is inapplicable to a ModuleWithClasses sample:\n"
+                  + Sharpy.Compiler.Pretty.Unparser.Unparse(module),
+            iter: 50, m => Sharpy.Compiler.Pretty.Unparser.Unparse(m));
+
+        _output.WriteLine($"isinstance narrowing: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed clean");
+        Assert.True(verdicts.Tested > 0, "No class hierarchies were generated");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} isinstance narrowing programs refused; the first:\n{verdicts.First}");
+    }
+
+    private static Gen<Module> ProgramWithNarrowing(int fuel) =>
+        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel, withStatements: true));
+
+    private static bool HasNarrowedBlock(Module module) =>
+        Sharpy.Compiler.Tests.Infrastructure.AstDescendants.SelfAndDescendants(module).Any(n => n is IfStatement
+        {
+            Test: ComparisonChain { Operators: [ComparisonOperator.IsNot], Operands: [Identifier, NoneLiteral] },
+            ElseBody.Length: 0
+        });
+
     private static Gen<Module> ProgramWithOptionals() =>
         Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));

@@ -782,6 +782,128 @@ internal static class ErrorInjector
         return new InjectionResult(AppendToMain(module, body.Value, PrintStatement(operand)), "SPY0222");
     }
 
+    /// <summary>
+    /// The Optional used as its payload in the FAILED branch of a narrowing test (#2288 Phase 4): the
+    /// first <c>if v is not None: print(v)</c> block of <c>main</c> (<c>GenTyped.NarrowedBlock</c>)
+    /// gains <c>else: unwrapped: T = v</c> — in the <c>is None</c> branch <c>v</c> is still
+    /// <c>T?</c>, so SPY0220. The then-branch is untouched: the narrowing it proves stays accepted.
+    /// </summary>
+    public static InjectionResult? InjectUseInFailedNarrowingBranch(Module module)
+    {
+        var body = GetMainBody(module);
+        if (body is null)
+            return null;
+        var payloads = body.Value.OfType<VariableDeclaration>()
+            .Where(d => d.Type is { IsOptional: true, TypeArguments.Length: 0 })
+            .ToDictionary(d => d.Name, d => d.Type!.Name, StringComparer.Ordinal);
+
+        for (int i = 0; i < body.Value.Length; i++)
+        {
+            if (body.Value[i] is IfStatement
+                {
+                    Test: ComparisonChain
+                    {
+                        Operators: [ComparisonOperator.IsNot],
+                        Operands: [Identifier { Name: var name }, NoneLiteral]
+                    },
+                    ElseBody.Length: 0
+                } narrowing
+                && payloads.TryGetValue(name, out var payload))
+            {
+                var failedBranchUse = new VariableDeclaration
+                {
+                    Name = UnwrappedName,
+                    Type = new TypeAnnotation { Name = payload },
+                    InitialValue = new Identifier { Name = name }
+                };
+                return new InjectionResult(
+                    ReplaceStatement(module, body.Value, i,
+                        narrowing with { ElseBody = ImmutableArray.Create<Statement>(failedBranchUse) }),
+                    "SPY0220");
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A derived-only member read in the ELSE branch of an <c>isinstance</c> test (#2288 Phase 4):
+    /// appends to <c>main</c>
+    /// <code>
+    /// narrowed: Base = obj
+    /// if isinstance(narrowed, Derived):
+    ///     print(narrowed.extra)
+    /// else:
+    ///     print(narrowed.extra)
+    /// </code>
+    /// where <c>extra</c> is a field <c>Derived</c> declares and <c>Base</c> lacks. The then-branch
+    /// read is narrowed and accepted; the else-branch read is on <c>Base</c> — SPY0203. Over
+    /// <c>GenClasses.ModuleWithClasses</c> (<c>GenClasses.ClassHierarchy</c>'s module).
+    /// <see cref="IsinstanceNarrowingValid"/> is its positive control.
+    /// </summary>
+    public static InjectionResult? InjectIsinstanceElseBranchMember(Module module) =>
+        IsinstanceNarrowing(module, breakElse: true) is { } mutated
+            ? new InjectionResult(mutated, "SPY0203")
+            : null;
+
+    /// <summary>The valid twin of <see cref="InjectIsinstanceElseBranchMember"/>: the else branch reads a
+    /// member the base declares, so the program analyses clean.</summary>
+    public static Module? IsinstanceNarrowingValid(Module module) => IsinstanceNarrowing(module, breakElse: false);
+
+    private static Module? IsinstanceNarrowing(Module module, bool breakElse)
+    {
+        var body = GetMainBody(module);
+        if (body is null)
+            return null;
+        var classes = module.Body.OfType<ClassDef>().ToDictionary(c => c.Name, StringComparer.Ordinal);
+        foreach (var derived in classes.Values)
+        {
+            if (derived.BaseClasses is not [{ Name: var baseName }] || !classes.TryGetValue(baseName, out var baseDef))
+                continue;
+            var baseFields = baseDef.Body.OfType<VariableDeclaration>().Select(v => v.Name).ToHashSet(StringComparer.Ordinal);
+            var extra = derived.Body.OfType<VariableDeclaration>().FirstOrDefault(v => !baseFields.Contains(v.Name));
+            var shared = baseDef.Body.OfType<VariableDeclaration>().FirstOrDefault();
+            var instance = body.Value.OfType<VariableDeclaration>()
+                .FirstOrDefault(v => v.Type?.Name == derived.Name);
+            if (extra is null || shared is null || instance is null)
+                continue;
+
+            Statement Read(string member) => PrintStatement(new MemberAccess
+            {
+                Object = new Identifier { Name = NarrowedName },
+                Member = member
+            });
+
+            var statements = ImmutableArray.Create<Statement>(
+                new VariableDeclaration
+                {
+                    Name = NarrowedName,
+                    Type = new TypeAnnotation { Name = baseName },
+                    InitialValue = new Identifier { Name = instance.Name }
+                },
+                new IfStatement
+                {
+                    Test = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "isinstance" },
+                        Arguments = ImmutableArray.Create<Expression>(
+                            new Identifier { Name = NarrowedName },
+                            new Identifier { Name = derived.Name })
+                    },
+                    ThenBody = ImmutableArray.Create(Read(extra.Name)),
+                    ElseBody = ImmutableArray.Create(Read(breakElse ? extra.Name : shared.Name))
+                });
+            var newModuleBody = module.Body
+                .Select(s => s is FunctionDef { Name: "main" } main ? main with { Body = body.Value.AddRange(statements) } : s)
+                .ToImmutableArray();
+            return module with { Body = newModuleBody };
+        }
+
+        return null;
+    }
+
+    private const string NarrowedName = "narrowed";
+
     private const string UnwrappedName = "unwrapped";
 
     /// <summary>The <c>T?</c> declarations of <c>main</c> (name, payload), preferring one the last

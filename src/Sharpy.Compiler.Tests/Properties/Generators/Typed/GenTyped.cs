@@ -191,11 +191,23 @@ internal static class GenTyped
                 };
             });
 
+    /// <summary>
+    /// One statement of <c>main</c>. When the env has <c>T?</c> bindings, <see cref="NarrowedBlock"/>
+    /// is a fourth choice, weighted 3 of 6 (#2288 Phase 4 — its first caller): <c>if v is not None:
+    /// print(v)</c>, the construct <c>ErrorInjector.InjectUseInFailedNarrowingBranch</c> breaks. At
+    /// equal weight about one sample in five carried a block (18/100), too few for the injection lane.
+    /// </summary>
     public static Gen<Statement> StatementOfType(TypeEnv env, int fuel) =>
-        Gen.OneOf(
-            IfElseStatement(env, fuel),
-            ForRangeStatement(env, fuel),
-            AssignmentStatement(env, fuel));
+        HasOptionalVars(env)
+            ? Gen.Frequency(
+                (1, IfElseStatement(env, fuel)),
+                (1, ForRangeStatement(env, fuel)),
+                (1, AssignmentStatement(env, fuel)),
+                (3, NarrowedBlock(env, fuel)))
+            : Gen.OneOf(
+                IfElseStatement(env, fuel),
+                ForRangeStatement(env, fuel),
+                AssignmentStatement(env, fuel));
 
     public static Gen<Statement> IfElseStatement(TypeEnv env, int fuel) =>
         Gen.Frequency(
