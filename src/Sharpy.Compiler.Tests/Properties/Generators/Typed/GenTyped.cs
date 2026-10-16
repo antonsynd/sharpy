@@ -16,6 +16,13 @@ internal static class GenTyped
             (2, CompositeOfType(env, targetType, fuel - 1)));
     }
 
+    // `int` is 32-bit and a product of literals is folded at compile time: an overflowing constant is
+    // SPY0348 (#1234), a refusal by design. At fuel 2 an int expression multiplies at most four
+    // literal leaves, so each stays <= 200 (200^4 < 2^31). GenLiterals.Integer's [0, 10000] drew
+    // `1410 * 1629 * 4183` — a program wrong by the spec, so a generator defect (#2288 G4).
+    private static readonly Gen<Expression> IntLiteral =
+        Gen.Long[0, 200].Select(v => (Expression)new IntegerLiteral { Value = v.ToString() });
+
     private static Gen<Expression> LeafOfType(TypeEnv env, string targetType)
     {
         var vars = env.VarsOfType(targetType);
@@ -26,8 +33,8 @@ internal static class GenTyped
         return targetType switch
         {
             "int" => varGen != null
-                ? Gen.OneOf(GenLiterals.Integer.Select(x => (Expression)x), varGen)
-                : GenLiterals.Integer.Select(x => (Expression)x),
+                ? Gen.OneOf(IntLiteral, varGen)
+                : IntLiteral,
             "str" => varGen != null
                 ? Gen.OneOf(GenLiterals.SimpleString.Select(x => (Expression)x), varGen)
                 : GenLiterals.SimpleString.Select(x => (Expression)x),

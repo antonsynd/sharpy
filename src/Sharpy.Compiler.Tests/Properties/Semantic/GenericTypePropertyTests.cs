@@ -21,125 +21,79 @@ public class GenericTypePropertyTests : IntegrationTestBase
         _output = output;
     }
 
+    /// <summary>
+    /// <c>GenGenerics.GenericClassProgram</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with half of its samples refused or throwing.
+    /// </summary>
     [Fact]
     public void GenericClass_SubstitutesTypeParameter()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("GenericType.GenericClass_SubstitutesTypeParameter");
 
-        GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
+        SemanticFilter.WellTypedProgram(GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "generic_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generic class substitution: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Generic class pass rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>GenGenerics.GenericFunctionProgram</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with half of its samples refused or throwing.
+    /// </summary>
     [Fact]
     public void GenericFunction_InfersTypeArgument()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("GenericType.GenericFunction_InfersTypeArgument");
 
-        GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
+        SemanticFilter.WellTypedProgram(GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "generic_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generic function inference: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Generic function pass rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>GenGenerics.MultiTypeParamProgram</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with half of its samples refused or throwing.
+    /// </summary>
     [Fact]
     public void MultipleTypeParams_SubstituteIndependently()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("GenericType.MultipleTypeParams_SubstituteIndependently");
 
-        GenGenerics.MultiTypeParamProgram(TypeEnv.WithGenerics, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
+        SemanticFilter.WellTypedProgram(GenGenerics.MultiTypeParamProgram(TypeEnv.WithGenerics, fuel: 2), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "generic_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Multi-type param substitution: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Multi-type param pass rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// Every raw <c>GenericClassProgram</c> sample analyses clean (the sink), and every admitted one
+    /// compiles to C# that instantiates <c>Box&lt;…&gt;</c> — a refusal at compile is a red, not a
+    /// skipped sample. Before #2288 half the samples could be refused, throw, or compile without the
+    /// generic instantiation.
+    /// </summary>
     [Fact]
     public void GenericInstantiation_ProducesCorrectCSharp()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("GenericType.GenericInstantiation_ProducesCorrectCSharp");
 
-        GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2)
+        SemanticFilter.WellTypedProgram(GenGenerics.GenericClassProgram(TypeEnv.WithGenerics, fuel: 2), sink)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
+                var result = new Sharpy.Compiler.Compiler().Compile(source, "generic_test.spy");
+                if (!result.Success)
                 {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Compile(source, "generic_test.spy");
-                    if (result.Success && result.GeneratedCSharpCode != null
-                        && result.GeneratedCSharpCode.Contains("Box<"))
-                        Interlocked.Increment(ref passed);
+                    throw new Exception("A generic program that analyses clean does not compile: "
+                        + string.Join("; ", result.Diagnostics.GetErrors().Select(d => $"{d.Code}: {d.Message}"))
+                        + $"\n{source}");
                 }
-                catch
-                {
-                    // Swallow
-                }
+                if (result.GeneratedCSharpCode?.Contains("Box<") != true)
+                    throw new Exception($"The generated C# never instantiates Box<…>:\n{source}\n{result.GeneratedCSharpCode}");
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Generic C# output: {passed}/{tested} produced correct generic syntax");
-        Assert.True(passed > tested / 2,
-            $"Generic C# output rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     /// <summary>
@@ -208,33 +162,18 @@ public class GenericTypePropertyTests : IntegrationTestBase
             $"{verdicts.Failures}/{verdicts.Tested} generic field mismatch programs misjudged; the first:\n{verdicts.First}");
     }
 
+    /// <summary>
+    /// <c>GenGenerics.GenericWithInheritanceProgram</c>: every raw sample analyses clean (or is a pinned known red) — the sink counts what the filter discards. Before #2288 the lane passed with half of its samples refused or throwing.
+    /// </summary>
     [Fact]
     public void GenericWithInheritance_CompilesClean()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("GenericType.GenericWithInheritance_CompilesClean");
 
-        GenGenerics.GenericWithInheritanceProgram(TypeEnv.WithGenerics, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
+        SemanticFilter.WellTypedProgram(GenGenerics.GenericWithInheritanceProgram(TypeEnv.WithGenerics, fuel: 2), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "generic_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generic inheritance compilation: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Generic inheritance pass rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 }

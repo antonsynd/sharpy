@@ -90,37 +90,35 @@ public class ClassInheritancePropertyTests
             $"{failures.Count}/{tested} missing-abstract-implementation injections misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 
+    /// <summary>
+    /// Every raw <c>ModuleWithClasses(TypeEnv.Default)</c> sample analyses clean (the sink); every
+    /// admitted one that calls <c>super().__init__</c> carries its semantic info; and the corpus calls
+    /// <c>super()</c> at least once (the applicability floor — a corpus without one proves nothing).
+    /// Before #2288 one resolved <c>super()</c> anywhere passed, beside any number of refusals.
+    /// </summary>
     [Fact]
     public void SuperCall_ResolvesCorrectly()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ClassInheritance.SuperCall_ResolvesCorrectly");
+        int withSuper = 0;
 
-        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
+        SemanticFilter.WellTypedProgram(GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2), sink)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                var hasSuperCall = source.Contains("super().__init__");
-                if (!hasSuperCall)
+                if (!source.Contains("super().__init__"))
                     return;
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "class_test.spy");
-                    if (result.Success && result.SemanticInfo != null)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                Interlocked.Increment(ref withSuper);
+                var result = new Sharpy.Compiler.Compiler().Analyze(source, "class_test.spy");
+                if (result.SemanticInfo == null)
+                    throw new Exception($"An admitted super() program has no semantic info:\n{source}");
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Super call resolution: {passed}/{tested} with super() resolved");
-        Assert.True(passed > 0, "No super() calls were successfully resolved");
+        _output.WriteLine(sink.Summary);
+        _output.WriteLine($"Super call resolution: {withSuper} admitted programs call super().__init__");
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
+        Assert.True(withSuper >= 1, "No sampled class program calls super().__init__ — the lane is vacuous");
     }
 
     [Fact]

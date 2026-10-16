@@ -78,6 +78,15 @@ internal static class GenFunctions
                              retType))));
                 }
 
+                // The env's declared functions (TypeEnv.WithFunctions: add/greet/is_positive) are
+                // DEFINED in the module beside the generated ones: FunctionCall may call any function the
+                // call env names, and a call to a function the module never defines is SPY0200 — a
+                // generator defect, not a compiler refusal (#2288 G2; 134/200 raw samples @ f8c37f986).
+                foreach (var (envName, envSig) in env.Functions)
+                {
+                    funcDefs.Add(FunctionDefWithSignature(envName, envSig, fuel).Select(fd => (fd.Name, fd, envSig)));
+                }
+
                 return funcDefs.Aggregate(
                     Gen.Const(ImmutableArray<(string Name, FunctionDef Def, FunctionSignature Sig)>.Empty),
                     (acc, gen) => Gen.Select(acc, gen, (arr, f) => arr.Add(f)))
@@ -155,6 +164,26 @@ internal static class GenFunctions
                     Body = body
                 });
         });
+
+    private static Gen<FunctionDef> FunctionDefWithSignature(string name, FunctionSignature sig, int fuel)
+    {
+        var paramEnv = new TypeEnv();
+        foreach (var (pName, pType) in sig.Parameters)
+            paramEnv = paramEnv.WithBinding(pName, pType);
+
+        return BodyForReturnType(paramEnv, sig.ReturnType, fuel).Select(body =>
+            new FunctionDef
+            {
+                Name = name,
+                Parameters = sig.Parameters.Select(p => new Parameter
+                {
+                    Name = p.Name,
+                    Type = TypeAnnotationFor(p.Type)
+                }).ToImmutableArray(),
+                ReturnType = TypeAnnotationFor(sig.ReturnType),
+                Body = body
+            });
+    }
 
     private static Gen<ImmutableArray<Statement>> BodyForReturnType(TypeEnv env, string returnType, int fuel) =>
         GenTyped.ExpressionOfType(env, returnType, fuel).Select(expr =>

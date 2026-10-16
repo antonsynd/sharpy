@@ -93,12 +93,9 @@ public class PropertyOracleConformanceTests
     /// </summary>
     private static readonly (string File, string SpellingId, int Count, string Issue)[] Allowlist =
     {
-        ("Semantic/ClassInheritancePropertyTests.cs", LowerBound, 1, "#2288"),
         ("Semantic/CombinedFeaturePropertyTests.cs", Threshold, 4, "#2288"),
         ("Semantic/ExceptionPropertyTests.cs", CatchIncrement, 1, "#2288"),
         ("Semantic/ExceptionPropertyTests.cs", Threshold, 1, "#2288"),
-        ("Semantic/FunctionSemanticsPropertyTests.cs", Threshold, 4, "#2288"),
-        ("Semantic/GenericTypePropertyTests.cs", Threshold, 5, "#2288"),
         ("Semantic/ImportResolutionPropertyTests.cs", Threshold, 3, "#2288"),
         ("Semantic/IteratorPropertyTests.cs", Threshold, 3, "#2288"),
     };
