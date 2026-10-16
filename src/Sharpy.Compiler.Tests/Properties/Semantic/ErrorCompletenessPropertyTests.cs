@@ -88,6 +88,28 @@ public class ErrorCompletenessPropertyTests
             "missing abstract implementation", ProgramWithClassHierarchy());
     }
 
+    /// <summary>A user class that implements nothing passed where <c>T: Ordered[T]</c> is inferred
+    /// — SPY0237 (#2288 Phase 4).</summary>
+    [Fact]
+    public void ConstraintViolationAtInferredCall_IsRejected()
+    {
+        RunInjectionTest(ErrorInjector.InjectConstraintViolationAtInferredCall,
+            "constraint violation at an inferred call", ProgramWithConstraints());
+    }
+
+    /// <summary>The same violation at an explicit instantiation <c>SortedBox[Plain](…)</c>: Sharpy
+    /// does not refuse it (Roslyn does, SPY0908 CS0311) — a KnownRed pin on #2212 that fails the
+    /// first time the program is refused.</summary>
+    [Fact]
+    public void ConstraintViolationAtExplicitInstantiation_IsPinned()
+    {
+        RunInjectionTest(ErrorInjector.InjectConstraintViolationAtExplicitInstantiation,
+            "constraint violation at an explicit instantiation", ProgramWithConstraints());
+    }
+
+    private static Gen<Module> ProgramWithConstraints() =>
+        GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1);
+
     private static Gen<Module> ProgramWithClassHierarchy() =>
         GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 1);
 

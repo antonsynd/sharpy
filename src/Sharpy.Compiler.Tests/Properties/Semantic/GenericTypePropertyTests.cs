@@ -2,6 +2,7 @@ using CsCheck;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -11,11 +12,11 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
 [Collection("PropertySerial")]
-public class GenericTypePropertyTests
+public class GenericTypePropertyTests : IntegrationTestBase
 {
     private readonly ITestOutputHelper _output;
 
-    public GenericTypePropertyTests(ITestOutputHelper output)
+    public GenericTypePropertyTests(ITestOutputHelper output) : base(output)
     {
         _output = output;
     }
@@ -141,35 +142,33 @@ public class GenericTypePropertyTests
             $"Generic C# output rate too low: {passed}/{tested}");
     }
 
+    /// <summary>
+    /// The constraint lane's positive control (#2288, P63 Phase 4): every
+    /// <c>GenGenerics.GenericConstraintProgram</c> sample — a user interface constraint
+    /// <c>T: Ordered[T]</c> reached at an inferred call and at an explicit instantiation — analyses
+    /// clean, and a representative (<c>ConstraintModule(3, 7, 5)</c>) RUNS and prints <c>7</c> then
+    /// <c>5</c>: <c>biggest</c> really dispatched through the constrained <c>less</c> (recorded is not
+    /// applied). The refusals over the same generator are in <c>ErrorCompletenessPropertyTests</c>
+    /// (SPY0237 at an inferred call; the explicit instantiation pinned to #2212). Before #2288 every
+    /// sample imported <c>collections.Comparable</c> — no such module in the property host (SPY0300) —
+    /// and the lane counted any <c>SPY0</c> code, or a throw, as "handled".
+    /// </summary>
     [Fact]
     public void GenericTypeConstraint_IsEnforced()
     {
-        int tested = 0;
-        int constrained = 0;
+        var verdicts = ErrorInjector.JudgeSamples(GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1),
+            source => ErrorInjector.JudgeClean(source, "constrained generic program"), iter: 50);
+        _output.WriteLine($"Generic constraint (valid): {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed clean");
+        Assert.True(verdicts.Tested > 0, "No constrained generic programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} constrained generic programs refused; the first:\n{verdicts.First}");
 
-        GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "generic_test.spy");
-                    if (result.Success || result.Diagnostics.GetAll().Any(
-                        d => d.Code.StartsWith("SPY0")))
-                        Interlocked.Increment(ref constrained);
-                }
-                catch
-                {
-                    Interlocked.Increment(ref constrained);
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Generic constraint handling: {constrained}/{tested} handled");
-        Assert.True(constrained > tested / 2,
-            $"Generic constraint handling rate too low: {constrained}/{tested}");
+        var source = Sharpy.Compiler.Pretty.Unparser.Unparse(GenGenerics.ConstraintModule(3, 7, 5));
+        var run = CompileAndExecute(source, "generic_constraint.spy");
+        _output.WriteLine($"Generic constraint (run): success={run.Success}, stdout={run.StandardOutput.Replace("\n", "\\n")}");
+        Assert.True(run.Success,
+            $"The constrained generic program must run:\n{source}\n{string.Join("\n", run.CompilationErrors)}\n{run.StandardError}");
+        Assert.Equal("7\n5\n", run.StandardOutput);
     }
 
     /// <summary>

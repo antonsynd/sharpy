@@ -432,55 +432,142 @@ internal static class GenGenerics
                 };
             });
 
+    /// <summary>
+    /// A user interface constraint, reached at BOTH instantiation forms (#2288, P63 Design Decision 8):
+    /// <c>interface Ordered[T]</c> with one method <c>less</c>, a class <c>Num(Ordered[Num])</c> that
+    /// satisfies it, a constrained generic FUNCTION <c>biggest[T: Ordered[T]]</c> whose type argument
+    /// is inferred at the call, and a constrained generic CLASS <c>SortedBox[T: Ordered[T]]</c>
+    /// instantiated with an explicit type argument. <c>main</c> prints <c>max(a, b)</c>, then
+    /// <c>c</c>. The program this replaces imported <c>collections.Comparable</c>, which does not exist
+    /// (SPY0300 in the property host on every sample) — the constraint was never reached. The spec's
+    /// own <c>__lt__</c> constraint example is SPY0413 (<c>generics.md</c>, #1952), hence the
+    /// method-based interface.
+    /// </summary>
     public static Gen<Module> GenericConstraintProgram(TypeEnv env, int fuel) =>
-        Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
+        Gen.Select(Gen.Int[0, 99], Gen.Int[0, 99], Gen.Int[0, 99], ConstraintModule);
+
+    /// <summary>The <see cref="GenericConstraintProgram"/> module for fixed values; prints
+    /// <c>max(a, b)</c> then <c>c</c>.</summary>
+    public static Module ConstraintModule(int a, int b, int c)
+    {
+        static TypeAnnotation Named(string name, params TypeAnnotation[] args) => new()
         {
-            var importStmt = new FromImportStatement
-            {
-                Module = "collections",
-                Names = ImmutableArray.Create(
-                    new ImportAlias { Name = "Comparable" })
-            };
+            Name = name,
+            TypeArguments = args.ToImmutableArray()
+        };
 
-            var typeParams = ImmutableArray.Create(
-                new TypeParameterDef
-                {
-                    Name = "T",
-                    Constraints = ImmutableArray.Create<ConstraintClause>(
-                        new TypeConstraint
-                        {
-                            Type = new TypeAnnotation { Name = "Comparable" }
-                        })
-                });
-
-            var fields = ImmutableArray.Create(("value", "T"));
-            var classDef = BuildGenericClassDef("SortedBox", typeParams, fields);
-
-            var mainBody = ImmutableArray.CreateBuilder<Statement>();
-            mainBody.Add(new VariableDeclaration
-            {
-                Name = "sb",
-                InitialValue = BuildGenericInstantiation("SortedBox",
-                    ImmutableArray.Create(concreteType),
-                    ImmutableArray.Create(BuildLiteral(concreteType)))
-            });
-            mainBody.Add(PrintCall(new MemberAccess
-            {
-                Object = new Identifier { Name = "sb" },
-                Member = "value"
-            }));
-
-            var main = new FunctionDef
-            {
-                Name = "main",
-                Body = mainBody.ToImmutable()
-            };
-
-            return new Module
-            {
-                Body = ImmutableArray.Create<Statement>(importStmt, classDef, main)
-            };
+        static ImmutableArray<TypeParameterDef> OrderedT() => ImmutableArray.Create(new TypeParameterDef
+        {
+            Name = "T",
+            Constraints = ImmutableArray.Create<ConstraintClause>(
+                new TypeConstraint { Type = Named("Ordered", Named("T")) })
         });
+
+        static Expression Field(string obj, string member) => new MemberAccess
+        {
+            Object = new Identifier { Name = obj },
+            Member = member
+        };
+
+        static Expression NewNum(int value) => new FunctionCall
+        {
+            Function = new Identifier { Name = "Num" },
+            Arguments = ImmutableArray.Create<Expression>(new IntegerLiteral { Value = value.ToString() })
+        };
+
+        var ordered = new InterfaceDef
+        {
+            Name = "Ordered",
+            TypeParameters = ImmutableArray.Create(new TypeParameterDef { Name = "T" }),
+            Body = ImmutableArray.Create<Statement>(new FunctionDef
+            {
+                Name = "less",
+                Parameters = ImmutableArray.Create(
+                    new Parameter { Name = "self" },
+                    new Parameter { Name = "other", Type = Named("T") }),
+                ReturnType = Named("bool"),
+                Body = ImmutableArray.Create<Statement>(
+                    new ExpressionStatement { Expression = new EllipsisLiteral() })
+            })
+        };
+
+        var less = new FunctionDef
+        {
+            Name = "less",
+            Parameters = ImmutableArray.Create(
+                new Parameter { Name = "self" },
+                new Parameter { Name = "other", Type = Named("Num") }),
+            ReturnType = Named("bool"),
+            Body = ImmutableArray.Create<Statement>(new ReturnStatement
+            {
+                Value = new BinaryOp
+                {
+                    Operator = BinaryOperator.LessThan,
+                    Left = Field("self", "v"),
+                    Right = Field("other", "v")
+                }
+            })
+        };
+        var num = BuildGenericClassDef("Num", ImmutableArray<TypeParameterDef>.Empty,
+            ImmutableArray.Create(("v", "int")),
+            baseClasses: ImmutableArray.Create(Named("Ordered", Named("Num"))),
+            extraMethods: ImmutableArray.Create(less));
+
+        var biggest = new FunctionDef
+        {
+            Name = "biggest",
+            TypeParameters = OrderedT(),
+            Parameters = ImmutableArray.Create(
+                new Parameter { Name = "a", Type = Named("T") },
+                new Parameter { Name = "b", Type = Named("T") }),
+            ReturnType = Named("T"),
+            Body = ImmutableArray.Create<Statement>(new ReturnStatement
+            {
+                Value = new ConditionalExpression
+                {
+                    Test = new FunctionCall
+                    {
+                        Function = Field("a", "less"),
+                        Arguments = ImmutableArray.Create<Expression>(new Identifier { Name = "b" })
+                    },
+                    ThenValue = new Identifier { Name = "b" },
+                    ElseValue = new Identifier { Name = "a" }
+                }
+            })
+        };
+
+        var sortedBox = BuildGenericClassDef("SortedBox", OrderedT(), ImmutableArray.Create(("value", "T")));
+
+        var main = new FunctionDef
+        {
+            Name = "main",
+            Body = ImmutableArray.Create<Statement>(
+                PrintCall(new MemberAccess
+                {
+                    Object = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "biggest" },
+                        Arguments = ImmutableArray.Create(NewNum(a), NewNum(b))
+                    },
+                    Member = "v"
+                }),
+                PrintCall(new MemberAccess
+                {
+                    Object = new MemberAccess
+                    {
+                        Object = BuildGenericInstantiation("SortedBox", ImmutableArray.Create("Num"),
+                            ImmutableArray.Create(NewNum(c))),
+                        Member = "value"
+                    },
+                    Member = "v"
+                }))
+        };
+
+        return new Module
+        {
+            Body = ImmutableArray.Create<Statement>(ordered, num, biggest, sortedBox, main)
+        };
+    }
 
     private static Expression BuildLiteral(string type) => type switch
     {

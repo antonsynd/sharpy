@@ -561,6 +561,127 @@ internal static class ErrorInjector
         return null;
     }
 
+    /// <summary>
+    /// The constraint violated where the type argument is INFERRED: the first <c>print(…)</c> in
+    /// <c>main</c> that calls a module-level function with a constrained type parameter becomes
+    /// <c>print(f(Plain(), …))</c>, with <c>class Plain: pass</c> (no interface) added — SPY0237
+    /// "Inferred type 'Plain' does not satisfy constraint" (#2288 Phase 4). Over
+    /// <c>GenGenerics.GenericConstraintProgram</c>.
+    /// </summary>
+    public static InjectionResult? InjectConstraintViolationAtInferredCall(Module module)
+    {
+        var fn = module.Body.OfType<FunctionDef>()
+            .FirstOrDefault(f => f.Name != "main" && HasTypeConstraint(f.TypeParameters));
+        var body = GetMainBody(module);
+        if (fn is null || body is null)
+            return null;
+
+        for (int i = 0; i < body.Value.Length; i++)
+        {
+            if (PrintArgument(body.Value[i]) is { } arg
+                && ContainsCall(arg, callee => callee is Identifier { Name: var n } && n == fn.Name))
+            {
+                var violating = new FunctionCall
+                {
+                    Function = new Identifier { Name = fn.Name },
+                    Arguments = fn.Parameters.Select(_ => PlainInstance()).ToImmutableArray()
+                };
+                return new InjectionResult(
+                    WithPlainClass(ReplaceStatement(module, body.Value, i, PrintStatement(violating))),
+                    "SPY0237");
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The constraint violated where the type argument is EXPLICIT: the first <c>print(…)</c> in
+    /// <c>main</c> that instantiates a class with a constrained type parameter becomes
+    /// <c>print(C[Plain](Plain(), …))</c>. Sharpy does not refuse it today — the program analyses
+    /// clean and Roslyn refuses the emitted C# (SPY0908 CS0311) — so it is pinned to #2212.
+    /// </summary>
+    public static InjectionResult? InjectConstraintViolationAtExplicitInstantiation(Module module)
+    {
+        var cls = module.Body.OfType<ClassDef>().FirstOrDefault(c => HasTypeConstraint(c.TypeParameters));
+        var body = GetMainBody(module);
+        if (cls is null || body is null)
+            return null;
+
+        var ctorArity = cls.Body.OfType<FunctionDef>()
+            .FirstOrDefault(f => f.Name == "__init__")?.Parameters.Count(p => p.Name != "self") ?? 0;
+        for (int i = 0; i < body.Value.Length; i++)
+        {
+            if (PrintArgument(body.Value[i]) is { } arg
+                && ContainsCall(arg, callee => callee is IndexAccess { Object: Identifier { Name: var n } } && n == cls.Name))
+            {
+                var violating = new FunctionCall
+                {
+                    Function = new IndexAccess
+                    {
+                        Object = new Identifier { Name = cls.Name },
+                        Index = new Identifier { Name = PlainClassName }
+                    },
+                    Arguments = Enumerable.Range(0, ctorArity).Select(_ => PlainInstance()).ToImmutableArray()
+                };
+                return new InjectionResult(
+                    WithPlainClass(ReplaceStatement(module, body.Value, i, PrintStatement(violating))),
+                    null, ExplicitInstantiationConstraintPin);
+            }
+        }
+
+        return null;
+    }
+
+    private static readonly KnownRedRefusal ExplicitInstantiationConstraintPin = new("#2212",
+        "analyses clean; run is SPY0908 CS0311 — a violated constraint at an explicit instantiation is refused by Roslyn, not Sharpy");
+
+    private const string PlainClassName = "Plain";
+
+    private static bool HasTypeConstraint(ImmutableArray<TypeParameterDef> typeParameters) =>
+        typeParameters.Any(tp => tp.Constraints.OfType<TypeConstraint>().Any());
+
+    private static Expression? PrintArgument(Statement statement) => statement is ExpressionStatement
+    {
+        Expression: FunctionCall { Function: Identifier { Name: "print" }, Arguments.Length: 1 } call
+    }
+        ? call.Arguments[0]
+        : null;
+
+    private static bool ContainsCall(Expression expr, Func<Expression, bool> isCallee) => expr switch
+    {
+        FunctionCall call => isCallee(call.Function) || call.Arguments.Any(a => ContainsCall(a, isCallee)),
+        MemberAccess access => ContainsCall(access.Object, isCallee),
+        _ => false
+    };
+
+    private static ExpressionStatement PrintStatement(Expression arg) => new()
+    {
+        Expression = new FunctionCall
+        {
+            Function = new Identifier { Name = "print" },
+            Arguments = ImmutableArray.Create(arg)
+        }
+    };
+
+    private static Expression PlainInstance() => new FunctionCall
+    {
+        Function = new Identifier { Name = PlainClassName },
+        Arguments = ImmutableArray<Expression>.Empty
+    };
+
+    /// <summary>Adds <c>class Plain: pass</c> — a class implementing nothing — before <c>main</c>.</summary>
+    private static Module WithPlainClass(Module module)
+    {
+        var plain = new ClassDef
+        {
+            Name = PlainClassName,
+            Body = ImmutableArray.Create<Statement>(new PassStatement())
+        };
+        var mainIndex = module.Body.IndexOf(module.Body.First(s => s is FunctionDef { Name: "main" }));
+        return module with { Body = module.Body.Insert(mainIndex, plain) };
+    }
+
     private static ImmutableArray<Statement>? GetMainBody(Module module)
     {
         foreach (var stmt in module.Body)
