@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -73,55 +74,30 @@ public class ExceptionPropertyTests
             $"Multiple handlers analysis rate too low: {analyzed}/{total}");
     }
 
+    /// <summary>
+    /// The two halves are judged separately, every sample (#2288): a bare <c>raise</c> inside an
+    /// <c>except</c> handler analyses clean, and the same statement directly in <c>main</c> draws
+    /// exactly SPY0242. Before #2288 one accepted-or-refused sample of either half passed, any
+    /// diagnostic (or a throw) counted as the refusal.
+    /// </summary>
     [Fact]
     public void BareRaise_OnlyInExceptBlock()
     {
-        int insideTotal = 0;
-        int insidePassed = 0;
-        int outsideTotal = 0;
-        int outsideDiagnosed = 0;
+        var inside = ErrorInjector.JudgeSamples(GenExceptions.ModuleWithBareRaise(insideExcept: true),
+            source => ErrorInjector.JudgeClean(source, "bare raise inside except"), iter: 25);
+        _output.WriteLine($"Bare raise (inside except): {inside.Tested - inside.Failures}/{inside.Tested} analysed clean");
 
-        GenExceptions.ModuleWithBareRaise(insideExcept: true)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref insideTotal);
+        var outside = ErrorInjector.JudgeSamples(GenExceptions.ModuleWithBareRaise(insideExcept: false),
+            source => ErrorInjector.JudgeSource(source, "SPY0242", CompilerDiagnosticSeverity.Error, null,
+                "bare raise outside except"), iter: 25);
+        _output.WriteLine($"Bare raise (outside except): {outside.Tested - outside.Failures}/{outside.Tested} drew SPY0242");
 
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "except_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref insidePassed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 25);
-
-        GenExceptions.ModuleWithBareRaise(insideExcept: false)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref outsideTotal);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "except_test.spy");
-                    if (!result.Success || result.Diagnostics.GetAll().Any())
-                        Interlocked.Increment(ref outsideDiagnosed);
-                }
-                catch
-                {
-                    Interlocked.Increment(ref outsideDiagnosed);
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 25);
-
-        _output.WriteLine($"Bare raise: inside={insidePassed}/{insideTotal}, outside diagnosed={outsideDiagnosed}/{outsideTotal}");
-        Assert.True(insidePassed + outsideDiagnosed > 0,
-            "No bare raise programs were analyzed");
+        Assert.True(inside.Tested > 0, "No inside-except bare raise programs were sampled");
+        Assert.True(outside.Tested > 0, "No outside-except bare raise programs were sampled");
+        Assert.True(inside.First is null,
+            $"{inside.Failures}/{inside.Tested} inside-except bare raises refused; the first:\n{inside.First}");
+        Assert.True(outside.First is null,
+            $"{outside.Failures}/{outside.Tested} outside-except bare raises misjudged; the first:\n{outside.First}");
     }
 
     [Fact]
