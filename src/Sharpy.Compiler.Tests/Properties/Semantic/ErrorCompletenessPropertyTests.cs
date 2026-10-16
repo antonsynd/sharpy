@@ -195,6 +195,7 @@ public class ErrorCompletenessPropertyTests
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         _output.WriteLine(pin is null
             ? $"Error completeness ({label}): {tested - failures.Count}/{tested} drew the expected code"
             : $"Error completeness ({label}): KnownRed {pin.Issue} — {tested - failures.Count}/{tested} still unrefused ({pin.Observed})");

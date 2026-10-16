@@ -48,8 +48,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
         Output.WriteLine(sink.Summary);
-        Output.WriteLine(sink.Summary);
-        Output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         Output.WriteLine($"Type soundness: {total} programs executed, {errors.Count} runtime type errors");
         Assert.Empty(errors);
     }
@@ -86,6 +85,8 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
+        Output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         Output.WriteLine($"Type soundness (collections): {total} programs executed, {errors.Count} runtime type errors");
         Assert.Empty(errors);
     }
@@ -118,6 +119,8 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
+        Output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         Output.WriteLine($"Type soundness (optionals): {total} programs analyzed, {errors.Count} failures");
         Assert.Empty(errors);
     }
@@ -159,6 +162,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         }, iter: 3);
 
         Output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         Output.WriteLine($"Output type validation: {errors.Count} mismatches");
         Assert.Empty(errors);
     }

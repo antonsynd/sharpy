@@ -100,6 +100,7 @@ public class DeterminismPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     private static (bool success, int diagCount) Compile(string source)
