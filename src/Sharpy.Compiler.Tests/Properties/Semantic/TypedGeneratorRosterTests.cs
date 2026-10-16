@@ -50,6 +50,8 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// tuple), re-parses with the real parser, and requires its predicate to hit at least one node; a throw
 /// or a parse error anywhere is red with the sample's source. Presence only: acceptance of the raw
 /// sample is the generated lane's soundness property (P63 Phase 3).</item>
+/// <item><b>Totality</b> — the counts are literal <c>const int</c>s bumped with the row that moves them,
+/// and the coverage line is printed per run.</item>
 /// </list>
 /// </summary>
 public class TypedGeneratorRosterTests
@@ -1412,5 +1414,44 @@ public class TypedGeneratorRosterTests
         {
             throw new RawSampleException($"the parser threw {Unwrap(e)} on:\n{source}");
         }
+    }
+
+    // ---- Totality (Task 4) -------------------------------------------------------------------
+
+    // Counted at landing and bumped in the same commit as the row that moves them. N = lanes citing the
+    // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
+    // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
+    private const int ExpectedRows = 202;
+    private const int ExpectedYGenerated = 87;
+    private const int ExpectedYInjected = 14;
+    private const int ExpectedN = 272;
+    private const int ExpectedKnownRed = 2;
+    private const int ExpectedByDesign = 21;
+    private const int ExpectedNoConstruct = 4;
+
+    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287", "#2288", "#2324" };
+
+    [Fact]
+    public void Totality_CountsMatchTheLiteralAnchors()
+    {
+        var lanes = Rows.SelectMany(r => new[] { r.Generated, r.Injected }).ToList();
+        int rows = Rows.Length;
+        int yGenerated = Rows.Count(r => r.Generated is Y);
+        int yInjected = Rows.Count(r => r.Injected is YInjected);
+        int n = lanes.Count(l => l is KnownRedRow k && GeneratorTrackers.Contains(k.Issue));
+        int knownRed = lanes.Count(l => l is KnownRedRow k && !GeneratorTrackers.Contains(k.Issue));
+        int byDesign = lanes.Count(l => l is ByDesign);
+        int noConstruct = Rows.Count(r => r.Generated is NoConstruct);
+
+        _output.WriteLine($"rows total/Y-gen/Y-inj/N/ByDesign/KnownRed = {rows}/{yGenerated}/{yInjected}/{n}/{byDesign}/{knownRed} "
+            + $"(NoConstruct rows {noConstruct}; spec files {UniverseFiles().Count}) (measured)");
+
+        Assert.Equal(ExpectedRows, rows);
+        Assert.Equal(ExpectedYGenerated, yGenerated);
+        Assert.Equal(ExpectedYInjected, yInjected);
+        Assert.Equal(ExpectedN, n);
+        Assert.Equal(ExpectedKnownRed, knownRed);
+        Assert.Equal(ExpectedByDesign, byDesign);
+        Assert.Equal(ExpectedNoConstruct, noConstruct);
     }
 }
