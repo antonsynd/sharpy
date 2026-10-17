@@ -9,9 +9,14 @@
 #            └─ build ─┬─ test-fast          CLI + Core + Stdlib (one step each)
 #                      ├─ lsp (matrix 1..N)  LSP tests, sharded by namespace and sweep twin
 #                      ├─ compiler (1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace
-#                      ├─ sweep (matrix 6)   one job per GapDiscovery sweep, filters unchanged
+#                      ├─ sweep (matrix 2)   one job per long GapDiscovery sweep
+#                      ├─ sweeps-quick       the four short GapDiscovery sweeps, one step each
 #                      ├─ stdlib-spy-gates   .spy native compile + generated-C# staleness gates
 #                      └─ shard-partition    proves each suite's shards partition its main filter
+#
+# Job count: the account runs at most 20 jobs at once, and `windows` plus CodeQL's csharp analysis
+# are still running when `build` finishes, so the fan-out under `build` is kept at 18. At 22
+# (run 38983789798) four jobs queued 31-86 s, and the last-started LSP shard set the wall clock.
 #   windows (no needs)                       debug-info guard + README hello world on win-x64
 #   ci-summary (needs all, always runs)      the single check to require: fails unless every job
 #                                            succeeded and every expected trx reports tests.
@@ -121,27 +126,25 @@ env:
   # same PARTITION INVARIANT as the Compiler shards holds (the `shard-partition` job re-proves it by
   # `--list-tests`, and ci-summary requires one trx per LSP_SHARD_<n>), and the last shard is the
   # negation of every other bucket, so a new namespace falls through to it.
-  # Balanced on per-shard wall clocks measured locally on 4 cores (the runner's count) @ acbec36c4:
-  # 203 / 276 / 293 / 247 / 157 s, where the one unsharded step took 16.5 min there and 20.7 min on
-  # CI (run 38963710211). FormattingRouteParitySweepTests was 16,510 of the 21,938 rows and, as one
+  # Balanced on CI per-shard test steps (run 38983789798): 271 / 346 / 173 / 283 / 205 s as first
+  # split, against 20.7 min for the one unsharded step (run 38963710211); the CRLF twin (125 s there)
+  # then moved from shard 2 to shard 3. FormattingRouteParitySweepTests was 16,510 of the 21,938 rows and, as one
   # class, an 849 s serial span; its five twin theories are split across shards 1-3, each with its
   # own twin census (`<Twin>_Census_*`, selected by the same prefix; SHARPY_ROUTE_SWEEP_PINS_REQUIRED
   # in the `lsp` job makes a census whose twin did not run in its process fail instead of skip).
   # The E2E route matrix (ProjectDiagnosticRoutesTests, a 407 s serial class) runs as one class per
   # state in shard 5.
   LSP_MAIN_FILTER: "Category!=Benchmark"
-  # 1: the comment twin (the heaviest: 194 s alone).
+  # 1: the comment twin (263 s on CI).
   LSP_SHARD_1: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.CommentInjected_"
-  # 2: the wide and CRLF twins (169 + 92 s).
-  LSP_SHARD_2: "(FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_|\
-    FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.Crlf_)"
-  # 3: the rest of FormattingRouteParitySweepTests — the identity and lone-CR twins (100 + 119 s; `.Cr_`
-  # does not match `.Crlf_`), the controls and the corpus census (50 s: it enumerates the twins this
-  # process did not run).
+  # 2: the wide twin (~213 s on CI).
+  LSP_SHARD_2: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_"
+  # 3: the rest of FormattingRouteParitySweepTests — the identity, CRLF and lone-CR twins (on CI
+  # identity + CR + census took 168 s and CRLF 125 s), the controls and the corpus
+  # census (it enumerates the twins this process did not run).
   LSP_SHARD_3: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.&\
     FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.CommentInjected_&\
-    FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_&\
-    FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.Crlf_"
+    FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_"
   # 4: the rest of Conformance (CodeActionShapeSweepTests, FrontEndParityTests, WarmInstanceParityTests, ...).
   LSP_SHARD_4: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.&\
     FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests."
@@ -403,6 +406,8 @@ jobs:
         if-no-files-found: warn
 
   sweep:
+    # The two long GapDiscovery sweeps (~5 min each), one job apiece; the four short ones share
+    # `sweeps-quick`. Every sweep is excluded from the Compiler shards by name (COMPILER_MAIN_FILTER).
     name: Sweep (${{ matrix.name }})
     needs: build
     runs-on: ubuntu-latest
@@ -410,13 +415,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Interop conformance sweep (#1034). Generated interop conformance sweep over every
-          # public stdlib member. Emits .claude/tmp/interop-conformance-report.json; becomes a
-          # ratchet once the reviewed allowlist
-          # (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
-          - name: interop-conformance
-            filter: "Category=GapDiscovery&FullyQualifiedName~InteropConformance"
-            python: false
           # Metamorphic corpus sweep (#1157). Every executing fixture x every
           # semantics-preserving transform must still compile with no new diagnostic code
           # (~14,600 cells, ~1.5 min). Emits .claude/tmp/metamorphic-corpus-report.json and
@@ -429,42 +427,6 @@ jobs:
           # in a deterministic CI gate.
           - name: metamorphic-corpus
             filter: "Category=GapDiscovery&FullyQualifiedName~MetamorphicCorpus"
-            python: false
-          # CPython differential execution oracle (#1202). Sharpy-compiled stdout vs batched
-          # `python3` over the shared executable subset. Since #1202 the fixture arm sweeps its
-          # ENTIRE eligible pool every run (565 cells, ~46 s on a dev machine) rather than a
-          # 60-program sample that reached 4% of it, which is what moved it out of the main
-          # Compiler step. Emits .claude/tmp/differential-exec-report.json — including the run's
-          # own coverage % — and ratchets against the reviewed allowlist
-          # (src/Sharpy.Compiler.Tests/Conformance/differential-exec-allowlist.txt), where every
-          # entry cites a docs/deviations.yaml id or an issue number.
-          # Needs the python steps (python: true); the test soft-skips (green) without a suitable
-          # python3, so a missing report means the oracle did not run, not that it agreed.
-          - name: differential-execution
-            filter: "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution"
-            python: true
-          # Format-spec differential sweep (#1943, #1944, #1945). Generated PEP-3101 spec x
-          # operand-kind cells (fixed-seed System.Random, 240 cells) compared byte-for-byte
-          # against batched `python3`, ratcheting the reviewed allowlist
-          # (src/Sharpy.Compiler.Tests/Conformance/format-spec-differential-allowlist.txt), where
-          # every entry cites an issue and stale entries fail. The '#'-on-float gap (#1958) is
-          # excluded at generation; the sweep soft-skips (green) without a suitable python3.
-          # Excluded from the Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly
-          # once.
-          - name: format-spec-differential
-            filter: "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential"
-            python: true
-          # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
-          # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
-          # removed (~2,400 fixtures, compiled to C# in process, ~30 s on a dev machine). Emits
-          # .claude/tmp/formatter-emit-invariance-report.json and ratchets the `emitChanged`
-          # section of src/Sharpy.Compiler.Tests/Conformance/
-          # formatter-meaning-preservation-allowlist.txt (drain-on-fix). The parse-level twin
-          # sweep (FormatterMeaningPreservationSweepTests) runs inline in the Compiler shards;
-          # this one is excluded there by name so it runs exactly once.
-          - name: formatter-emit-invariance
-            filter: "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance"
-            python: false
           # In-process isolation sweep (P54, #2250). A compile is a function of its inputs alone:
           # seeded per-thread schedules over a corpus (the #2250 cell programs + a stride-16
           # fixture sample) x instance sharing {compiler-per-thread, api-per-thread, api-shared}
@@ -476,7 +438,6 @@ jobs:
           # the class's regular slice (threads {1, 2} x 1) stays in the Compiler shards.
           - name: in-process-isolation
             filter: "Category=GapDiscovery&FullyQualifiedName~InProcessIsolation"
-            python: false
 
     steps:
     - uses: actions/checkout@v7
@@ -484,26 +445,6 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
-    - name: Setup Python
-      # Required by both CPython oracles here: the differential-execution sweep
-      # (DifferentialExecutionTests, #1156) compares compiled-program stdout against `python3`
-      # running the same source, and the format-spec differential sweep compares against
-      # batched `python3`. Pinned to 3.12 so behavior is stable. Both soft-skip if no suitable
-      # python is found — so removing this step would not fail CI, it would silently disarm the
-      # execution oracle's ratchet. Keep the pin.
-      if: ${{ matrix.python }}
-      uses: actions/setup-python@v7
-      with:
-        python-version: '3.12'
-    - name: Install oracle third-party modules
-      # ORACLE_THIRD_PARTY (build_tools/differential_exec/run_programs.py) declares the
-      # non-stdlib modules the execution oracle compares against CPython (currently PyYAML).
-      # This install is load-bearing, not an optimization: the oracle's vacuity guard in
-      # DifferentialExecutionTests FAILS (it does not skip) when a whitelisted module's
-      # cells can never be compared because the children cannot import it — which is what
-      # a runner without PyYAML produces. Keep this list in step with ORACLE_THIRD_PARTY.
-      if: ${{ matrix.python }}
-      run: python -m pip install "pyyaml>=6,<7"
     - name: Restore dependencies
       # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
       run: dotnet restore
@@ -523,6 +464,102 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: trx-sweep-${{ matrix.name }}
+        path: TestResults/*.trx
+        retention-days: 14
+        if-no-files-found: warn
+
+  sweeps-quick:
+    # The four GapDiscovery sweeps that take 50-90 s each on CI (run 38983789798), one step each in
+    # one job: as four jobs they cost four runner slots for ~4 min of tests. Each still writes its
+    # own sweep-<name>.trx, and each reports even if an earlier one failed.
+    name: Sweeps (interop, differential-execution, format-spec, formatter-emit)
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Setup Python
+      # Required by both CPython oracles here: the differential-execution sweep
+      # (DifferentialExecutionTests, #1156) compares compiled-program stdout against `python3`
+      # running the same source, and the format-spec differential sweep compares against
+      # batched `python3`. Pinned to 3.12 so behavior is stable. Both soft-skip if no suitable
+      # python is found — so removing this step would not fail CI, it would silently disarm the
+      # execution oracle's ratchet. Keep the pin.
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+    - name: Install oracle third-party modules
+      # ORACLE_THIRD_PARTY (build_tools/differential_exec/run_programs.py) declares the
+      # non-stdlib modules the execution oracle compares against CPython (currently PyYAML).
+      # This install is load-bearing, not an optimization: the oracle's vacuity guard in
+      # DifferentialExecutionTests FAILS (it does not skip) when a whitelisted module's
+      # cells can never be compared because the children cannot import it — which is what
+      # a runner without PyYAML produces. Keep this list in step with ORACLE_THIRD_PARTY.
+      run: python -m pip install "pyyaml>=6,<7"
+    - name: Restore dependencies
+      # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
+      run: dotnet restore
+    - name: Download build output
+      uses: actions/download-artifact@v8
+      with:
+        name: build-output
+    - name: Unpack build output
+      id: unpack
+      run: |
+        set -o pipefail
+        zstd -dc build-output.tar.zst | tar -xf -
+        rm build-output.tar.zst
+    - name: Sweep interop-conformance
+      # Interop conformance sweep (#1034). Generated interop conformance sweep over every
+      # public stdlib member. Emits .claude/tmp/interop-conformance-report.json; becomes a
+      # ratchet once the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance" --logger "trx;LogFileName=sweep-interop-conformance.trx" --results-directory TestResults
+    - name: Sweep differential-execution
+      # CPython differential execution oracle (#1202). Sharpy-compiled stdout vs batched
+      # `python3` over the shared executable subset. Since #1202 the fixture arm sweeps its
+      # ENTIRE eligible pool every run (565 cells, ~46 s on a dev machine) rather than a
+      # 60-program sample that reached 4% of it, which is what moved it out of the main
+      # Compiler step. Emits .claude/tmp/differential-exec-report.json — including the run's
+      # own coverage % — and ratchets against the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/differential-exec-allowlist.txt), where every
+      # entry cites a docs/deviations.yaml id or an issue number.
+      # Needs the python steps above; the test soft-skips (green) without a suitable
+      # python3, so a missing report means the oracle did not run, not that it agreed.
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution" --logger "trx;LogFileName=sweep-differential-execution.trx" --results-directory TestResults
+    - name: Sweep format-spec-differential
+      # Format-spec differential sweep (#1943, #1944, #1945). Generated PEP-3101 spec x
+      # operand-kind cells (fixed-seed System.Random, 240 cells) compared byte-for-byte
+      # against batched `python3`, ratcheting the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/format-spec-differential-allowlist.txt), where
+      # every entry cites an issue and stale entries fail. The '#'-on-float gap (#1958) is
+      # excluded at generation; the sweep soft-skips (green) without a suitable python3.
+      # Excluded from the Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly
+      # once.
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential" --logger "trx;LogFileName=sweep-format-spec-differential.trx" --results-directory TestResults
+    - name: Sweep formatter-emit-invariance
+      # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
+      # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
+      # removed (~2,400 fixtures, compiled to C# in process, ~30 s on a dev machine). Emits
+      # .claude/tmp/formatter-emit-invariance-report.json and ratchets the `emitChanged`
+      # section of src/Sharpy.Compiler.Tests/Conformance/
+      # formatter-meaning-preservation-allowlist.txt (drain-on-fix). The parse-level twin
+      # sweep (FormatterMeaningPreservationSweepTests) runs inline in the Compiler shards;
+      # this one is excluded there by name so it runs exactly once.
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance" --logger "trx;LogFileName=sweep-formatter-emit-invariance.trx" --results-directory TestResults
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: trx-sweeps-quick
         path: TestResults/*.trx
         retention-days: 14
         if-no-files-found: warn
@@ -572,21 +609,9 @@ jobs:
         fi
 
   shard-partition:
-    name: Shard partition check (${{ matrix.suite }})
+    name: Shard partition check (compiler, lsp)
     needs: build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - suite: compiler
-            project: src/Sharpy.Compiler.Tests
-            main: COMPILER_MAIN_FILTER
-            prefix: COMPILER_SHARD_
-          - suite: lsp
-            project: src/Sharpy.Lsp.Tests
-            main: LSP_MAIN_FILTER
-            prefix: LSP_SHARD_
 
     steps:
     - uses: actions/checkout@v7
@@ -606,40 +631,45 @@ jobs:
         zstd -dc build-output.tar.zst | tar -xf -
         rm build-output.tar.zst
     - name: Verify the shards partition the main-step filter
-      # Lists (does not run) the tests selected by the suite's main filter and by each
+      # Per suite, lists (does not run) the tests selected by its main filter and by each
       # main&<prefix><n>, and fails unless the sorted concatenation of the shard lists equals the
-      # main list (no test dropped, none double-run) and no shard is empty.
+      # main list (no test dropped, none double-run) and no shard is empty. Both suites are checked
+      # even if the first fails.
       # Names are compared as a multiset: xUnit truncates long theory arguments in display names,
       # but rows sharing a truncated name share a FullyQualifiedName and so always share a shard.
-      env:
-        PROJECT: ${{ matrix.project }}
-        MAIN: ${{ matrix.main }}
-        PREFIX: ${{ matrix.prefix }}
       run: |
-        set -euo pipefail
+        set -uo pipefail
         list() {
-          dotnet test "$PROJECT" --no-build --list-tests --filter "$1" > list.out
+          dotnet test "$1" --no-build --list-tests --filter "$2" > list.out || return 1
           sed -n 's/^    //p' list.out | LC_ALL=C sort
         }
-        list "${!MAIN}" > main.txt
-        : > union.txt
-        shards=$(compgen -v "$PREFIX" | sed "s/^$PREFIX//" | sort -n)
-        for n in $shards; do
-          var="$PREFIX$n"
-          list "${!MAIN}&${!var}" > "shard-$n.txt"
-          count=$(wc -l < "shard-$n.txt")
-          echo "shard $n: $count"
-          if [ "$count" -eq 0 ]; then echo "::error::$var selects no tests"; exit 1; fi
-          cat "shard-$n.txt" >> union.txt
-        done
-        LC_ALL=C sort union.txt -o union.txt
-        echo "main filter: $(wc -l < main.txt); sum of shards: $(wc -l < union.txt)"
-        if [ "$(wc -l < main.txt)" -eq 0 ]; then echo "::error::the main filter lists no tests"; exit 1; fi
-        if ! cmp -s main.txt union.txt; then
-          echo "::error::the $PREFIX<n> shards do not partition $MAIN (< only in main = dropped, > only in shards = double-run)"
-          diff main.txt union.txt | head -100 || true
-          exit 1
-        fi
+        check() {
+          local project=$1 main=$2 prefix=$3 n var count shards
+          echo "== $prefix<n> against $main ($project)"
+          list "$project" "${!main}" > main.txt || { echo "::error::listing $main failed"; return 1; }
+          : > union.txt
+          shards=$(compgen -v "$prefix" | sed "s/^$prefix//" | sort -n)
+          for n in $shards; do
+            var="$prefix$n"
+            list "$project" "${!main}&${!var}" > "shard-$n.txt" || { echo "::error::listing $var failed"; return 1; }
+            count=$(wc -l < "shard-$n.txt")
+            echo "shard $n: $count"
+            if [ "$count" -eq 0 ]; then echo "::error::$var selects no tests"; return 1; fi
+            cat "shard-$n.txt" >> union.txt
+          done
+          LC_ALL=C sort union.txt -o union.txt
+          echo "main filter: $(wc -l < main.txt); sum of shards: $(wc -l < union.txt)"
+          if [ "$(wc -l < main.txt)" -eq 0 ]; then echo "::error::$main lists no tests"; return 1; fi
+          if ! cmp -s main.txt union.txt; then
+            echo "::error::the $prefix<n> shards do not partition $main (< only in main = dropped, > only in shards = double-run)"
+            diff main.txt union.txt | head -100 || true
+            return 1
+          fi
+        }
+        status=0
+        check src/Sharpy.Compiler.Tests COMPILER_MAIN_FILTER COMPILER_SHARD_ || status=1
+        check src/Sharpy.Lsp.Tests LSP_MAIN_FILTER LSP_SHARD_ || status=1
+        exit $status
 
   windows:
     # #2291 (R-GH): the one host the rest of CI never runs. Roslyn's debug-information default is
@@ -687,7 +717,7 @@ jobs:
   ci-summary:
     name: CI summary
     if: ${{ always() }}
-    needs: [changes, format, build, test-fast, lsp, compiler, sweep, stdlib-spy-gates, shard-partition, windows]
+    needs: [changes, format, build, test-fast, lsp, compiler, sweep, sweeps-quick, stdlib-spy-gates, shard-partition, windows]
     runs-on: ubuntu-latest
     env:
       # 'false' on a README.md-only change (see `changes`): only the windows job ran.
