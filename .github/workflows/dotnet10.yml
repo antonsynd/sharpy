@@ -127,8 +127,9 @@ env:
   # `--list-tests`, and ci-summary requires one trx per LSP_SHARD_<n>), and the last shard is the
   # negation of every other bucket, so a new namespace falls through to it.
   # Balanced on CI per-shard test steps (run 38983789798): 271 / 346 / 173 / 283 / 205 s as first
-  # split, against 20.7 min for the one unsharded step (run 38963710211); the CRLF twin (125 s there)
-  # then moved from shard 2 to shard 3. FormattingRouteParitySweepTests was 16,510 of the 21,938 rows and, as one
+  # split, against 20.7 min for the one unsharded step (run 38963710211); with the CRLF twin moved to
+  # shard 3, run 38994447393 measured shard 2 (wide alone) at 101 s and shard 3 at 326 s (CR 121 s,
+  # controls + census 41 s), so the lone-CR twin then moved to shard 2. FormattingRouteParitySweepTests was 16,510 of the 21,938 rows and, as one
   # class, an 849 s serial span; its five twin theories are split across shards 1-3, each with its
   # own twin census (`<Twin>_Census_*`, selected by the same prefix; SHARPY_ROUTE_SWEEP_PINS_REQUIRED
   # in the `lsp` job makes a census whose twin did not run in its process fail instead of skip).
@@ -137,14 +138,15 @@ env:
   LSP_MAIN_FILTER: "Category!=Benchmark"
   # 1: the comment twin (263 s on CI).
   LSP_SHARD_1: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.CommentInjected_"
-  # 2: the wide twin (~213 s on CI).
-  LSP_SHARD_2: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_"
-  # 3: the rest of FormattingRouteParitySweepTests — the identity, CRLF and lone-CR twins (on CI
-  # identity + CR + census took 168 s and CRLF 125 s), the controls and the corpus
-  # census (it enumerates the twins this process did not run).
+  # 2: the wide and lone-CR twins (101 + 121 s on CI; `.Cr_` does not match `.Crlf_`).
+  LSP_SHARD_2: "(FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_|\
+    FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.Cr_)"
+  # 3: the rest of FormattingRouteParitySweepTests — the identity and CRLF twins (~163 s on CI), the
+  # controls and the corpus census (~41 s: it enumerates the twins this process did not run).
   LSP_SHARD_3: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.&\
     FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.CommentInjected_&\
-    FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_"
+    FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.WideIndented_&\
+    FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests.Cr_"
   # 4: the rest of Conformance (CodeActionShapeSweepTests, FrontEndParityTests, WarmInstanceParityTests, ...).
   LSP_SHARD_4: "FullyQualifiedName~Sharpy.Lsp.Tests.Conformance.&\
     FullyQualifiedName!~Sharpy.Lsp.Tests.Conformance.FormattingRouteParitySweepTests."
