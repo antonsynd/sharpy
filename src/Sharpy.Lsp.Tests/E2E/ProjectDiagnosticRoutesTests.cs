@@ -27,9 +27,19 @@ namespace Sharpy.Lsp.Tests.E2E;
 /// route's debounce, so a late wrong publication is seen.</para>
 /// <para>The <c>clean</c> state is the positive control on every route: <c>∅</c> on every file.
 /// The index cells also pin the oracle itself against the anchors the build prints.</para>
+/// <para>The matrix runs as one class per state (<see cref="ProjectDiagnosticRoutesTests.Clean"/> and its siblings,
+/// in a namespace named <c>ProjectDiagnosticRoutesTests</c> so <c>~ProjectDiagnosticRoutesTests</c> still selects every
+/// cell): each cell is a real server waiting out quiet windows, and xUnit v2 runs the rows of one class one at a time,
+/// so as one class the 52 cells were a 407 s serial pole of the LSP suite (measured @ acbec36c4).</para>
 /// </remarks>
-public sealed class ProjectDiagnosticRoutesTests
+public abstract class ProjectDiagnosticRouteCells
 {
+    /// <summary>The states, one partition class each (<see cref="ProjectDiagnosticRoutesTests.Totality"/>).</summary>
+    internal static readonly string[] States = { "clean", "missing", "unlisted", "dupclass" };
+
+    /// <summary>This class's state: every route runs on it.</summary>
+    protected abstract string State { get; }
+
     private const string PublishDiagnostics = "textDocument/publishDiagnostics";
 
     // Long enough for the single-file route's 300 ms debounce plus an analysis on a loaded runner,
@@ -67,14 +77,14 @@ public sealed class ProjectDiagnosticRoutesTests
 
     private readonly ITestOutputHelper _output;
 
-    public ProjectDiagnosticRoutesTests(ITestOutputHelper output)
+    protected ProjectDiagnosticRouteCells(ITestOutputHelper output)
     {
         _output = output;
     }
 
-    public static TheoryData<string, string> Cells()
+    public static TheoryData<string> Routes()
     {
-        var data = new TheoryData<string, string>();
+        var data = new TheoryData<string>();
         foreach (var route in new[]
         {
             "index", "open-during-indexing", "didOpen", "didChange-structural", "didChange-nochange",
@@ -82,16 +92,17 @@ public sealed class ProjectDiagnosticRoutesTests
             "didOpen-non-project-importer", "didClose-after-unsaved-edit", "edit-then-immediate-close",
         })
         {
-            foreach (var state in new[] { "clean", "missing", "unlisted", "dupclass" })
-                data.Add(route, state);
+            data.Add(route);
         }
 
         return data;
     }
 
     [Theory]
-    [MemberData(nameof(Cells))]
-    public async Task LastPublicationPerFile_EqualsTheBuildsPerFileDiagnostics(string route, string state)
+    [MemberData(nameof(Routes))]
+    public Task LastPublicationPerFile_EqualsTheBuildsPerFileDiagnostics(string route) => RunCellAsync(route, State);
+
+    private async Task RunCellAsync(string route, string state)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var dir = IOPath.Combine(IOPath.GetTempPath(), $"sharpy_routes_e2e_{Guid.NewGuid():N}");
