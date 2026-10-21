@@ -49,6 +49,10 @@ public class ValidatorOrderingPropertyTests
     {
         int total = 0;
         int compared = 0;
+        // An admitted sample whose re-analysis does not analyse clean is a RECORDED failure, never a
+        // skipped comparison (#2288): before, ValidateWith returned null and the caller returned, so a
+        // re-analysis that failed on every sample left the fact green with "0/30 programs compared".
+        var failures = new System.Collections.Concurrent.ConcurrentQueue<string>();
 
         // The canonical (Order-sorted) validator NAME sequence, used to assert that
         // AddValidator restores execution order regardless of registration order. Validator
@@ -78,9 +82,13 @@ public class ValidatorOrderingPropertyTests
             // fresh, deterministic semantic state (validators mutate SemanticInfo, so the
             // state must not be shared between runs). Returns null if the program does not
             // analyze cleanly.
-            var reference = ValidateWith(source, ValidationPipelineFactory.CreateDefault().Validators.ToList());
+            var reference = ValidateWith(source, ValidationPipelineFactory.CreateDefault().Validators.ToList(),
+                out var referenceFailure);
             if (reference is null)
+            {
+                failures.Enqueue($"reference run: {referenceFailure}\n{source}");
                 return;
+            }
 
             // The shuffle RNG is seeded from CsCheck, so the seed CsCheck prints reproduces the
             // exact registration orders this case tried. It used to be source.GetHashCode(),
@@ -110,9 +118,12 @@ public class ValidatorOrderingPropertyTests
                         Environment.NewLine + "Actual:   " + string.Join(" -> ", executionNames));
                 }
 
-                var actual = ValidateWith(source, pipeline);
+                var actual = ValidateWith(source, pipeline, out var actualFailure);
                 if (actual is null)
-                    continue; // Analysis is deterministic, but be defensive.
+                {
+                    failures.Enqueue($"shuffled trial {trial}: {actualFailure}\n{source}");
+                    return;
+                }
 
                 if (!reference.SequenceEqual(actual))
                 {
@@ -132,9 +143,14 @@ public class ValidatorOrderingPropertyTests
         }, print: s => $"shuffle seed {s.shuffleSeed}{Environment.NewLine}"
                        + Sharpy.Compiler.Pretty.Unparser.Unparse(s.module), iter: 30);
         _output.WriteLine(sink.Summary);
-        Assert.True(sink.Unexplained.Count == 0, sink.Report());
-
         _output.WriteLine("Validator registration ordering: " + compared + "/" + total + " programs compared");
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
+        Assert.True(failures.IsEmpty,
+            $"{failures.Count} admitted program(s) did not re-analyse clean, so their validator order was never "
+            + $"compared; the first:\n{failures.FirstOrDefault()}");
+        Assert.True(total > 0, "No program was admitted — the lane compared nothing");
+        Assert.True(compared == total,
+            $"{compared}/{total} admitted programs compared — every admitted program must be compared");
     }
 
     private static void FisherYatesShuffle<T>(IList<T> list, Random rng)
@@ -147,12 +163,12 @@ public class ValidatorOrderingPropertyTests
     }
 
     private static List<string>? ValidateWith(
-        string source, IReadOnlyList<ISemanticValidator> validators)
+        string source, IReadOnlyList<ISemanticValidator> validators, out string? failure)
     {
         var pipeline = ValidationPipelineFactory.CreateMinimal();
         foreach (var v in validators)
             pipeline.AddValidator(v);
-        return ValidateWith(source, pipeline);
+        return ValidateWith(source, pipeline, out failure);
     }
 
     /// <summary>
@@ -161,31 +177,26 @@ public class ValidatorOrderingPropertyTests
     /// <c>SemanticInfo</c>), then runs the given pipeline against it using a fresh
     /// <see cref="SemanticContext"/> with an unbounded error budget so every validator runs.
     /// Returns the sorted set of distinct resulting diagnostics (keyed by code, position, and
-    /// message), or <c>null</c> if the program does not analyze cleanly. The distinct set is
+    /// message), or <c>null</c> with <paramref name="failure"/> saying why when the program does not
+    /// analyze cleanly — the caller records that as a failure, never a skip (a throw propagates and
+    /// fails the sample). The distinct set is
     /// used because validators legitimately deduplicate against already-reported diagnostics,
     /// so the count of identical duplicates is not significant.
     /// </summary>
-    private static List<string>? ValidateWith(string source, ValidationPipeline pipeline)
+    private static List<string>? ValidateWith(string source, ValidationPipeline pipeline, out string? failure)
     {
         var logger = NullLogger.Instance;
 
-        CompilationResult analysis;
-        try
-        {
-            analysis = new Sharpy.Compiler.Compiler().Analyze(source, "validator_order_test.spy");
-        }
-        catch
-        {
+        var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "validator_order_test.spy");
+        var errors = analysis.Diagnostics.GetErrors().Select(d => d.Code ?? "(no code)").Distinct().ToList();
+        failure = errors.Count > 0 ? $"re-analysis drew [{string.Join(", ", errors)}]"
+            : !analysis.Success ? "re-analysis failed without an error code"
+            : analysis.Module is null ? "re-analysis produced no module"
+            : analysis.SymbolTable is null ? "re-analysis produced no symbol table"
+            : analysis.SemanticInfo is null ? "re-analysis produced no semantic info"
+            : null;
+        if (failure is not null)
             return null;
-        }
-
-        if (!analysis.Success
-            || analysis.Module is null
-            || analysis.SymbolTable is null
-            || analysis.SemanticInfo is null)
-        {
-            return null;
-        }
 
         var symbolTable = analysis.SymbolTable!;
         var semanticInfo = analysis.SemanticInfo!;
