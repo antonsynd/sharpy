@@ -1416,6 +1416,178 @@ public class TypedGeneratorRosterTests
         }
     }
 
+    // ---- Roster ↔ property links (#2288 verify F3) ------------------------------------------------
+    //
+    // A roster lane is a claim about a property; these facts read the property sources (Roslyn) so the
+    // claim cannot drift green from the code that sustains it. The property universe is every *.cs under
+    // Properties/ except this roster and the generator namespace's own directory.
+
+    private static string PropertiesRoot => Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler.Tests", "Properties");
+
+    private const string RosterFile = "Semantic/TypedGeneratorRosterTests.cs";
+    private const string GeneratorDirectory = "Generators/Typed/";
+    private const string InjectorFile = "Generators/Typed/ErrorInjector.cs";
+
+    private static readonly Lazy<PropertySourceIndex> PropertySources = new(() => PropertySourceIndex.Load(PropertiesRoot,
+        file => file != RosterFile && !file.StartsWith(GeneratorDirectory, StringComparison.Ordinal)));
+
+    /// <summary>The refusal verdicts a YInjected lane's property must reach (the one seam).</summary>
+    private static readonly HashSet<string> RefusalVerdicts = new(StringComparer.Ordinal)
+    {
+        "ErrorInjector.Judge", "ErrorInjector.JudgeSource", "ErrorInjector.JudgeProject",
+    };
+
+    /// <summary>
+    /// The ACCEPTANCE verdicts a Y-generated lane's property must reach — each judges every sample, never a
+    /// fraction: the generated-lane filter with its sink (<c>SemanticFilter.*</c>), the accepted-program
+    /// verdict (<c>ErrorInjector.JudgeClean</c>), <c>PropertyCorpus.AssertAllPassOrAllowed</c> with NO
+    /// allowed codes, the variance lanes' diagnostic-free core
+    /// (<c>VariancePropertyTests.AssertEverySampleIsDiagnosticFree</c>), and the decorator lanes'
+    /// <c>Assert.Equal(set.Total, set.Passed)</c> over every sample.
+    /// </summary>
+    private static readonly HashSet<string> AcceptanceVerdicts = new(StringComparer.Ordinal)
+    {
+        "SemanticFilter.WellTypedProgram", "SemanticFilter.CompilableProgram", "SemanticFilter.WellTypedSource",
+        "SemanticFilter.CompilableProject", "SemanticFilter.AdmitWellTyped", "ErrorInjector.JudgeClean",
+        "PropertyCorpus.AssertAllPassOrAllowed", "AssertEverySampleIsDiagnosticFree", "Assert.Equal",
+    };
+
+    private static bool IsAcceptance(PropertySourceIndex.Method method, string name,
+        Microsoft.CodeAnalysis.CSharp.Syntax.ArgumentListSyntax arguments)
+    {
+        if (!AcceptanceVerdicts.Contains(name))
+            return false;
+        var args = arguments.Arguments;
+        return name switch
+        {
+            // No allowed codes: the second argument (or `allowedCodes:`) is the null literal.
+            "PropertyCorpus.AssertAllPassOrAllowed" => args.Any(a =>
+                (a.NameColon?.Name.Identifier.ValueText == "allowedCodes" || (a.NameColon is null && args.IndexOf(a) == 1))
+                && Microsoft.CodeAnalysis.CSharpExtensions.IsKind(a.Expression, Microsoft.CodeAnalysis.CSharp.SyntaxKind.NullLiteralExpression)),
+            // Only the variance file's helper of that name.
+            "AssertEverySampleIsDiagnosticFree" => method.File == "Semantic/VariancePropertyTests.cs",
+            // Only Assert.Equal(x.Total, x.Passed): every sample passed.
+            "Assert.Equal" => args.Count == 2
+                && args[0].Expression is Microsoft.CodeAnalysis.CSharp.Syntax.MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Total" }
+                && args[1].Expression is Microsoft.CodeAnalysis.CSharp.Syntax.MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Passed" },
+            _ => true,
+        };
+    }
+
+    /// <summary>
+    /// Every <see cref="YInjected"/> row is the claim of a real refusal lane. For a generator member
+    /// (an invalid-program generator): some property method names the member AND the row's code literal in
+    /// ONE body, and its closure (the method plus the same-file helpers it calls) reaches the refusal seam
+    /// at the row's severity. For an <c>ErrorInjector</c> method: the method's own body draws exactly the
+    /// row's code (its only code literal, and <c>CompilerDiagnosticSeverity.Warning</c> named iff the row is
+    /// a warning), and some property method references it with a closure reaching
+    /// <c>ErrorInjector.Judge</c>.
+    /// </summary>
+    [Fact]
+    public void YInjected_RowsAreBackedByTheirRefusalProperty()
+    {
+        var index = PropertySources.Value;
+        var injector = PropertySourceIndex.Load(PropertiesRoot, file => file == InjectorFile);
+        var problems = new List<string>();
+        var checkedRows = 0;
+
+        foreach (var row in Rows)
+        {
+            if (row.Injected is not YInjected yi)
+                continue;
+            checkedRows++;
+            var (type, member) = (yi.Member.Split('.')[0], yi.Member.Split('.')[1]);
+            var severity = $"CompilerDiagnosticSeverity.{yi.Severity}";
+
+            if (type == "ErrorInjector")
+            {
+                var bodies = injector.Methods.Where(m => m.Name == member).ToList();
+                var codes = bodies.SelectMany(m => m.Literals).Where(l => DiagnosticCode.IsMatch(l)).Distinct().ToList();
+                if (bodies.Count == 0)
+                    problems.Add($"{yi.Member}: no such method in {InjectorFile}");
+                else if (codes is not [var only] || only != yi.Code)
+                    problems.Add($"{yi.Member}: the roster says {yi.Code}, the injector's body draws [{string.Join(", ", codes)}]");
+                var warns = bodies.Any(m => m.References.Contains("CompilerDiagnosticSeverity.Warning"));
+                if (warns != (yi.Severity == CompilerDiagnosticSeverity.Warning))
+                    problems.Add($"{yi.Member}: the roster says {yi.Severity}, the injector {(warns ? "names" : "does not name")} a Warning severity");
+
+                if (!index.Methods.Any(m => m.References.Contains(yi.Member)
+                        && index.ClosureInvocations(m).Any(i => i.Name == "ErrorInjector.Judge")))
+                    problems.Add($"{yi.Member}: no property method references it and reaches ErrorInjector.Judge");
+                continue;
+            }
+
+            var backing = index.Methods
+                .Where(m => m.References.Contains(yi.Member) && m.Literals.Contains(yi.Code))
+                .Where(m => index.Closure(m).Any(c => c.References.Contains(severity)))
+                .Where(m => index.ClosureInvocations(m).Any(i => RefusalVerdicts.Contains(i.Name)))
+                .ToList();
+            if (backing.Count == 0)
+                problems.Add($"{yi.Member} ({yi.Code}, {yi.Severity}): no property method names the member and \"{yi.Code}\" "
+                    + $"in one body and reaches the refusal seam at {severity}");
+            else
+                _output.WriteLine($"  {yi.Member} {yi.Code} {yi.Severity} <- {string.Join(", ", backing)}");
+        }
+
+        Assert.Equal(ExpectedYInjected, checkedRows);
+        Assert.True(problems.Count == 0,
+            $"{problems.Count} YInjected row(s) are not backed by their property:\n  " + string.Join("\n  ", problems));
+    }
+
+    /// <summary>
+    /// Every <see cref="Y"/> row's member is sampled by a property that ACCEPTS every sample (Design
+    /// Decision 5: the roster's raw control proves presence, the property proves acceptance): some
+    /// property method references the member and its closure reaches one of
+    /// <see cref="AcceptanceVerdicts"/>.
+    /// </summary>
+    [Fact]
+    public void YGenerated_RowsAreBackedByAnAcceptanceProperty()
+    {
+        var index = PropertySources.Value;
+        var problems = new List<string>();
+        var membersTested = Rows.Select(r => r.Generated).OfType<Y>().Select(y => y.Member).Distinct().OrderBy(m => m, StringComparer.Ordinal).ToList();
+
+        foreach (var member in membersTested)
+        {
+            var backing = index.Methods
+                .Where(m => m.References.Contains(member)
+                    && index.ClosureInvocations(m).Any(i => IsAcceptance(m, i.Name, i.Arguments)))
+                .ToList();
+            if (backing.Count == 0)
+                problems.Add($"{member}: no property method samples it and reaches an acceptance verdict");
+            else
+                _output.WriteLine($"  {member} <- {string.Join(", ", backing.Take(3))}{(backing.Count > 3 ? $" (+{backing.Count - 3})" : "")}");
+        }
+
+        Assert.True(membersTested.Count > 0, "no Y-generated member was checked — the link is vacuous");
+        Assert.True(problems.Count == 0,
+            $"{problems.Count} Y-generated member(s) have no acceptance property:\n  " + string.Join("\n  ", problems));
+    }
+
+    /// <summary>
+    /// Every <see cref="Y"/> row's label is the generator member its lambda calls — read from this file's
+    /// syntax, following the roster's consumer-argument helpers — so the label <see cref="Rows_AreWellFormed"/>
+    /// reflects on and the roster's links read cannot name one member while the control samples another.
+    /// </summary>
+    [Fact]
+    public void YGenerated_LabelIsTheMemberItsGeneratorCalls()
+    {
+        var generatorMethods = typeof(GenTyped).Assembly.GetTypes()
+            .Where(t => t.Namespace == GeneratorsNamespace && !t.IsNested && !t.Name.StartsWith("<", StringComparison.Ordinal))
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static).Select(m => $"{t.Name}.{m.Name}"))
+            .ToHashSet(StringComparer.Ordinal);
+        var rows = PropertySourceIndex.YRows(File.ReadAllText(Path.Combine(PropertiesRoot, RosterFile)), generatorMethods);
+
+        var problems = rows
+            .Where(r => r.Invoked.Count != 1 || !r.Invoked.Contains(r.Label))
+            .Select(r => $"line {r.Line}: label '{r.Label}', the generator calls [{string.Join(", ", r.Invoked.OrderBy(i => i, StringComparer.Ordinal))}]")
+            .ToList();
+
+        Assert.Equal(ExpectedYGenerated, rows.Count);
+        Assert.True(problems.Count == 0,
+            $"{problems.Count} Y row(s) label a member their generator does not call:\n  " + string.Join("\n  ", problems));
+    }
+
     // ---- Totality (Task 4) -------------------------------------------------------------------
 
     // Counted at landing and bumped in the same commit as the row that moves them. N = lanes citing the
