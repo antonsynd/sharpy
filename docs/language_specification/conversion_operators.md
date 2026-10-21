@@ -45,7 +45,7 @@ Emits: `public static implicit operator Celsius(double val) { ... }`
 
 ## Explicit Conversions (`__explicit__`)
 
-Explicit conversions require an explicit cast (`as!`, or the transitional `to`):
+Explicit conversions require an explicit cast (`as!`, or `as?` for a cast that yields `None` on failure):
 
 ```python
 temp: Celsius = Celsius(100.0)
