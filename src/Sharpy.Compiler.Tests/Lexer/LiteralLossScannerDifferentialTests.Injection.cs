@@ -150,6 +150,13 @@ public partial class LiteralLossScannerDifferentialTests
     /// opening quote (<c>"\"abc"</c>): the scanner must read the escape as the lexer does (<c>DroppedLineContinues</c>'
     /// escape arm — no fixture's short string holds an odd number of escaped own quotes, so without the twin a scanner
     /// that closed the string at <c>\"</c> agreed on every cell). Built only when the document has such a string.</item>
+    /// <item><c>@unbalanced-brace</c> — <c>{{#</c> right after the opening quote(s) of every single-line, top-level
+    /// f-/t-string: an escaped brace with no <c>}}</c> to pair it, then a <c>#</c> that is TEXT there. A scanner that
+    /// read the <c>{{</c> as a field opener (<c>WalkFrom</c>'s escaped-brace arm dropped) reads the <c>#</c> as a comment
+    /// in a field and the line as ending inside one. Every fixture's <c>{{</c> is balanced by a later <c>}}</c>, which
+    /// pairs the misread out. A lone <c>{{</c> followed by plain text (<c>f"a{{b"</c>) pairs out too: the
+    /// enclosing quote in a field closes the literal when no literal opened there closes on its line.
+    /// Built only when the document has such an f-string.</item>
     /// <item><c>@field-split</c> — a line break inserted before the <c>}</c> of every outermost field of each
     /// single-line, top-level single-quoted f-/t-string with no spec or self-documenting <c>=</c> (PEP 701 whitespace in a
     /// hole, <c>fstrings/multiline_hole_2022</c>): the f-string's line now ends inside an open field, so the scanner's
@@ -193,6 +200,25 @@ public partial class LiteralLossScannerDifferentialTests
         }
         if (at > 0)
             yield return ("@escaped-quote", escaped.Append(source, at, source.Length - at).ToString());
+
+        var unbalanced = new StringBuilder(source.Length + 64);
+        at = 0;
+        fdepth = 0;
+        foreach (var token in facts.Tokens)
+        {
+            if (token.Type == TokenType.FStringEnd && fdepth > 0)
+                fdepth--;
+            if (token.Type != TokenType.FStringStart || fdepth++ != 0)
+                continue;
+            var span = facts.Spans.FirstOrDefault(s => s.Start == token.Position);
+            if (span.End <= span.Start || source.AsSpan(span.Start, span.End - span.Start).IndexOfAny('\n', '\r') >= 0)
+                continue;   // not a top-level span, or it spans lines
+            var textStart = token.Position + token.Value.Length;   // past the prefix and the opening quote(s)
+            unbalanced.Append(source, at, textStart - at).Append("{{#");
+            at = textStart;
+        }
+        if (at > 0)
+            yield return ("@unbalanced-brace", unbalanced.Append(source, at, source.Length - at).ToString());
 
         var lineBreak = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : source.Contains('\r') ? "\r" : "\n";
         var splits = new List<int>();
@@ -455,7 +481,7 @@ public partial class LiteralLossScannerDifferentialTests
 
         clean.Should().BeGreaterThan(3000, "the oracle's population is the fixture corpus");
         perConstruct.Where(c => c.Value == 0).Select(c => c.Key).Should().BeEmpty("every construct must reach the corpus");
-        perTwin.Keys.Should().Contain(new[] { "as-is", "backtick", "escaped-quote", "field-split" }, "every twin must be built");
+        perTwin.Keys.Should().Contain(new[] { "as-is", "backtick", "escaped-quote", "unbalanced-brace", "field-split" }, "every twin must be built");
         misfires.Should().BeEmpty("a construct that does not abort exactly once on its line is outside the oracle");
         rejectedTwins.Should().BeEmpty("every twin is a clean document by construction");
         allowlist.Malformed.Should().BeEmpty();
