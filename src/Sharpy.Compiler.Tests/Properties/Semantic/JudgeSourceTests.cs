@@ -74,6 +74,15 @@ public class JudgeSourceTests
             print(n)
         """;
 
+    // The error arm's code beside a second error (SPY0200, an undefined name): two broken facts —
+    // measured SPY0220 + SPY0200 with the built `sharpyc emit diagnostics` @ f10b8381f.
+    private const string ErrorProgramAndUndefinedName = """
+        def main():
+            let n: int = "x"
+            print(n)
+            print(undefined_name)
+        """;
+
     private const string CleanProgram = """
         def main():
             let n: int = 1
@@ -147,6 +156,17 @@ public class JudgeSourceTests
             ErrorProgram, "SPY0222", CompilerDiagnosticSeverity.Error, null, "type mismatch");
         Assert.NotNull(failure);
         Assert.Contains("must draw exactly SPY0222, drew [SPY0220]", failure);
+    }
+
+    // (c) exactly ONE code on the error arm: the expected code beside a second error is not a catch —
+    // the injection broke one fact and the program draws two.
+    [Fact]
+    public void ErrorArm_ExpectedCodeBesideASecondError_IsRefused()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            ErrorProgramAndUndefinedName, "SPY0220", CompilerDiagnosticSeverity.Error, null, "type mismatch");
+        Assert.NotNull(failure);
+        Assert.Contains("must draw exactly SPY0220, drew [SPY0200, SPY0220]", failure);
     }
 
     // (c) an error is not a warning: the warning arm does not read the error list as its own.
