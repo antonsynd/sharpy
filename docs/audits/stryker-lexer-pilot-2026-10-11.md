@@ -135,6 +135,7 @@ bash build_tools/stryker/run.sh build_tools/stryker/lexer-probe.json <output-dir
   - `Lexer.Indentation.cs` has four `throw ReportError("…", _line, 1, code)` sites (lines 47, 51, 55, 72).
   - Each site's message-string mutant is reported `Ignored`, with the reason "Removed by method filter". That is 4 of 4. The json still records them, so the triage script can count them.
   - Log line: `2282 mutants got status Ignored. Reason: Removed by method filter`. That count covers all of `Sharpy.Compiler`, because Stryker applies the method filter before the `mutate` filter. It is not a Lexer figure.
+- **The `TokenizeAll` hole is closed.** Stryker compiles every mutant of `Sharpy.Compiler` before it applies `mutate` (73,308 created). The probe log has 85 "Safe Mode!" lines, and none names a method in `Lexer/`. At 258a7b66a, safe mode removed every mutation in `TokenizeAll` (CS0165 on `token`). After e621d9e94 moved the declaration inside the `try`, the method's mutants compile and the full re-run will score them.
 - **Not skipped:** two `_logger.LogIndentChange(…)` statement-removal mutants (`Lexer.Indentation.cs:175`, `:191`) survived. `LogIndentChange` is not in the list. Whether `ignore-methods` also drops the statement-removal mutant of the matched call itself was not probed. That is the next entry to measure.
 - **Score: 82.16 % @ e621d9e94 (measured)** over the three files.
   - 144 killed, 31 timeout, 38 survived, 0 without coverage.
