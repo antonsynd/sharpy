@@ -25,23 +25,20 @@ public class SemanticInfoConsistencyTests
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "consistency_test.spy");
-
-            if (!result.Success || result.SemanticInfo == null || result.Module == null)
-                return;
+            var (semanticInfo, analysed) = AnalyseAdmitted(source);
 
             var unresolved = new List<string>();
-            WalkExpressions(result.Module, expr =>
+            WalkExpressions(analysed, expr =>
             {
-                var type = result.SemanticInfo.GetExpressionType(expr);
+                var type = semanticInfo.GetExpressionType(expr);
                 if (type == null || type is UnknownType)
                 {
                     unresolved.Add($"{expr.GetType().Name} at line {expr.LineStart}");
@@ -57,6 +54,8 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
 
         _output.WriteLine($"SemanticInfo consistency: {errors.Count} programs with unresolved types");
         Assert.Empty(errors);
@@ -67,28 +66,25 @@ public class SemanticInfoConsistencyTests
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("SemanticInfoConsistency.AllVariableReferences_ResolveToSymbols");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "consistency_test.spy");
-
-            if (!result.Success || result.SemanticInfo == null || result.Module == null)
-                return;
+            var (semanticInfo, analysed) = AnalyseAdmitted(source);
 
             var unresolved = new List<string>();
-            WalkExpressions(result.Module, expr =>
+            WalkExpressions(analysed, expr =>
             {
                 if (expr is Identifier { Name: var name } id
                     && name != "print" && name != "len" && name != "abs"
                     && name != "range" && name != "None"
                     && name != "True" && name != "False")
                 {
-                    var symbol = result.SemanticInfo.GetIdentifierSymbol(id);
+                    var symbol = semanticInfo.GetIdentifierSymbol(id);
                     if (symbol == null)
                     {
                         unresolved.Add($"'{name}' at line {id.LineStart}");
@@ -105,6 +101,8 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
 
         _output.WriteLine($"Symbol resolution consistency: {errors.Count} programs with unresolved references");
         Assert.Empty(errors);
@@ -113,35 +111,39 @@ public class SemanticInfoConsistencyTests
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithCollections()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithCollections");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)));
-        AssertAllExpressionsResolved(gen, iter: 30);
+                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 30);
     }
 
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithOptionals()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithOptionals");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2)));
-        AssertAllExpressionsResolved(gen, iter: 30);
+                GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2)), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 30);
     }
 
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithClasses()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithClasses");
         var gen = SemanticFilter.WellTypedProgram(
-            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2));
-        AssertAllExpressionsResolved(gen, iter: 20);
+            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 20);
     }
 
     [Fact]
     public void AllExpressions_HaveResolvedTypes_WithFunctions()
     {
+        var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithFunctions");
         var gen = SemanticFilter.WellTypedProgram(
-            GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2));
-        AssertAllExpressionsResolved(gen, iter: 20);
+            GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2), sink);
+        AssertAllExpressionsResolved(gen, sink, iter: 20);
     }
 
     [Fact]
@@ -149,23 +151,20 @@ public class SemanticInfoConsistencyTests
     {
         var errors = new List<string>();
 
+        var sink = new RejectionSink("SemanticInfoConsistency.ExpressionTypes_AreConsistentWithNodeKind");
         var gen = SemanticFilter.WellTypedProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "consistency_test.spy");
-
-            if (!result.Success || result.SemanticInfo == null || result.Module == null)
-                return;
+            var (semanticInfo, analysed) = AnalyseAdmitted(source);
 
             var mismatches = new List<string>();
-            WalkExpressions(result.Module, expr =>
+            WalkExpressions(analysed, expr =>
             {
-                var type = result.SemanticInfo.GetExpressionType(expr);
+                var type = semanticInfo.GetExpressionType(expr);
                 if (type == null || type is UnknownType)
                     return;
 
@@ -197,26 +196,24 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
 
         _output.WriteLine($"Type consistency: {errors.Count} programs with type/node mismatches");
         Assert.Empty(errors);
     }
 
-    private void AssertAllExpressionsResolved(Gen<Module> gen, int iter)
+    private void AssertAllExpressionsResolved(Gen<Module> gen, RejectionSink sink, int iter)
     {
         var errors = new List<string>();
 
         gen.Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "consistency_test.spy");
-
-            if (!result.Success || result.SemanticInfo == null || result.Module == null)
-                return;
+            var (semanticInfo, analysed) = AnalyseAdmitted(source);
 
             var unresolved = new List<string>();
-            WalkExpressions(result.Module, expr =>
+            WalkExpressions(analysed, expr =>
             {
                 // SuperExpression, NoneLiteral, and the "super"/"self" identifiers
                 // are not assigned expression types in SemanticInfo by design
@@ -230,10 +227,10 @@ public class SemanticInfoConsistencyTests
                 if (expr is Identifier { Name: "super" or "self" })
                     return;
                 if (expr is Identifier ident
-                    && result.SemanticInfo.GetIdentifierSymbol(ident) is TypeSymbol)
+                    && semanticInfo.GetIdentifierSymbol(ident) is TypeSymbol)
                     return;
 
-                var type = result.SemanticInfo.GetExpressionType(expr);
+                var type = semanticInfo.GetExpressionType(expr);
                 if (type == null || type is UnknownType)
                 {
                     unresolved.Add($"{expr.GetType().Name} at line {expr.LineStart}");
@@ -249,9 +246,27 @@ public class SemanticInfoConsistencyTests
                         $"Source:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: iter);
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
 
         _output.WriteLine($"SemanticInfo consistency: {errors.Count} programs with unresolved types");
         Assert.Empty(errors);
+    }
+
+    /// <summary>Re-analyses a program the filter ADMITTED: a refusal, or a clean result without semantic
+    /// info or a module, is a red — before #2288 such a sample returned silently.</summary>
+    private static (SemanticInfo SemanticInfo, Module Module) AnalyseAdmitted(string source)
+    {
+        var result = new Sharpy.Compiler.Compiler().Analyze(source, "consistency_test.spy");
+        if (!result.Success)
+        {
+            throw new Exception("A program the filter admitted no longer analyses clean: "
+                + string.Join("; ", result.Diagnostics.GetErrors().Select(d => $"{d.Code}: {d.Message}"))
+                + $"\n{source}");
+        }
+        if (result.SemanticInfo == null || result.Module == null)
+            throw new Exception($"An admitted program analysed clean without semantic info or a module:\n{source}");
+        return (result.SemanticInfo, result.Module);
     }
 
     private static void WalkExpressions(Node node, Action<Expression> visitor)

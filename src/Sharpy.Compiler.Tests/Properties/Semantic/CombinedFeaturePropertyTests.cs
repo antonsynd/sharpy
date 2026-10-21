@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using CsCheck;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -22,10 +23,9 @@ public class CombinedFeaturePropertyTests
     [Fact]
     public void AsyncGenerator_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("CombinedFeature.AsyncGenerator_CompilesClean");
 
-        Gen.OneOfConst("int", "str").Select(yieldType =>
+        var gen = Gen.OneOfConst("int", "str").Select(yieldType =>
         {
             Expression yieldExpr = yieldType == "int"
                 ? new IntegerLiteral { Value = "42" }
@@ -70,36 +70,20 @@ public class CombinedFeaturePropertyTests
                     asyncGenFunc,
                     new FunctionDef { Name = "main", IsAsync = true, Body = mainBody })
             };
-        }).Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            Interlocked.Increment(ref total);
+        });
+        SemanticFilter.WellTypedProgram(gen, sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "combined_test.spy");
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }
-            catch
-            {
-                // Swallow
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Async generator: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Async generator pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
     public void DecoratedAsyncFunction_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("CombinedFeature.DecoratedAsyncFunction_CompilesClean");
 
-        Gen.OneOfConst("int", "str", "bool").Select(retType =>
+        var gen = Gen.OneOfConst("int", "str", "bool").Select(retType =>
         {
             Expression returnExpr = retType switch
             {
@@ -173,65 +157,32 @@ public class CombinedFeaturePropertyTests
                     classDef,
                     new FunctionDef { Name = "main", IsAsync = true, Body = mainBody })
             };
-        }).Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            Interlocked.Increment(ref total);
+        });
+        SemanticFilter.WellTypedProgram(gen, sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "combined_test.spy");
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }
-            catch
-            {
-                // Swallow
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Decorated async function: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Decorated async function pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
     public void InterfaceWithExceptions_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("CombinedFeature.InterfaceWithExceptions_CompilesClean");
 
-        Gen.Const(BuildInterfaceWithExceptionModule()).Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            Interlocked.Increment(ref total);
+        SemanticFilter.WellTypedProgram(Gen.Const(BuildInterfaceWithExceptionModule()), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "combined_test.spy");
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }
-            catch
-            {
-                // Swallow
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Interface with exceptions: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Interface with exceptions pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
     public void DecoratedClassImplementingInterface_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("CombinedFeature.DecoratedClassImplementingInterface_CompilesClean");
 
-        Gen.Int[1, 3].Select(fieldCount =>
+        var gen = Gen.Int[1, 3].Select(fieldCount =>
         {
             var ifaceDef = new InterfaceDef
             {
@@ -326,27 +277,12 @@ public class CombinedFeaturePropertyTests
                     classDef,
                     new FunctionDef { Name = "main", Body = mainBody })
             };
-        }).Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            Interlocked.Increment(ref total);
+        });
+        SemanticFilter.WellTypedProgram(gen, sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "combined_test.spy");
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }
-            catch
-            {
-                // Swallow
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Decorated class implementing interface: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Decorated class implementing interface pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     private static Module BuildInterfaceWithExceptionModule()

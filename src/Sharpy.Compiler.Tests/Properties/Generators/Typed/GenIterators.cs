@@ -108,9 +108,30 @@ internal static class GenIterators
         };
     }
 
+    /// <summary>
+    /// A hand-written iterator class (<c>__next__</c> bounded by <c>raise StopIteration()</c>) that
+    /// <c>main</c> iterates with <c>for v in c</c>. <paramref name="complete"/> adds
+    /// <c>def __iter__(self) -> Self: return self</c> — the pairing <c>dunder_methods.md</c> names —
+    /// so the complete program analyses clean (and runs, printing the element twice); the incomplete
+    /// one differs in that ONE method and draws SPY0320 (not iterable) at the loop. The cursor field
+    /// is declared at class level (<c>classes.md</c>: every instance field is) so the class itself is
+    /// never the refused fact (#2288 G3: the old program drew SPY0203 for an undeclared
+    /// <c>self.index</c>, and its <c>__iter__</c> had no return annotation, SPY0260).
+    /// </summary>
     private static Module BuildIterProtocolModule(string yieldType, bool complete)
     {
+        static MemberAccess SelfIndex() => new()
+        {
+            Object = new Identifier { Name = "self" },
+            Member = "index"
+        };
+
         var methods = ImmutableArray.CreateBuilder<Statement>();
+        methods.Add(new VariableDeclaration
+        {
+            Name = "index",
+            Type = new TypeAnnotation { Name = "int" }
+        });
         methods.Add(new FunctionDef
         {
             Name = "__init__",
@@ -118,11 +139,7 @@ internal static class GenIterators
             Body = ImmutableArray.Create<Statement>(
                 new Assignment
                 {
-                    Target = new MemberAccess
-                    {
-                        Object = new Identifier { Name = "self" },
-                        Member = "index"
-                    },
+                    Target = SelfIndex(),
                     Value = new IntegerLiteral { Value = "0" }
                 })
         });
@@ -133,6 +150,30 @@ internal static class GenIterators
             Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
             ReturnType = new TypeAnnotation { Name = yieldType },
             Body = ImmutableArray.Create<Statement>(
+                new IfStatement
+                {
+                    Test = new BinaryOp
+                    {
+                        Operator = BinaryOperator.GreaterThanOrEqual,
+                        Left = SelfIndex(),
+                        Right = new IntegerLiteral { Value = "2" }
+                    },
+                    ThenBody = ImmutableArray.Create<Statement>(
+                        new RaiseStatement
+                        {
+                            Exception = new FunctionCall
+                            {
+                                Function = new Identifier { Name = "StopIteration" },
+                                Arguments = ImmutableArray<Expression>.Empty
+                            }
+                        })
+                },
+                new Assignment
+                {
+                    Target = SelfIndex(),
+                    Operator = AssignmentOperator.PlusAssign,
+                    Value = new IntegerLiteral { Value = "1" }
+                },
                 new ReturnStatement
                 {
                     Value = yieldType switch
@@ -150,6 +191,7 @@ internal static class GenIterators
             {
                 Name = "__iter__",
                 Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                ReturnType = new TypeAnnotation { Name = "Self" },
                 Body = ImmutableArray.Create<Statement>(
                     new ReturnStatement { Value = new Identifier { Name = "self" } })
             });
@@ -171,13 +213,19 @@ internal static class GenIterators
                     Arguments = ImmutableArray<Expression>.Empty
                 }
             },
-            new ExpressionStatement
+            new ForStatement
             {
-                Expression = new FunctionCall
-                {
-                    Function = new Identifier { Name = "print" },
-                    Arguments = ImmutableArray.Create<Expression>(new Identifier { Name = "c" })
-                }
+                Target = new Identifier { Name = "v" },
+                Iterator = new Identifier { Name = "c" },
+                Body = ImmutableArray.Create<Statement>(
+                    new ExpressionStatement
+                    {
+                        Expression = new FunctionCall
+                        {
+                            Function = new Identifier { Name = "print" },
+                            Arguments = ImmutableArray.Create<Expression>(new Identifier { Name = "v" })
+                        }
+                    })
             });
 
         var moduleBody = ImmutableArray.CreateBuilder<Statement>();

@@ -1,5 +1,5 @@
 using CsCheck;
-using Sharpy.Compiler.Tests.Helpers;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -19,175 +19,124 @@ public class ImportResolutionPropertyTests
         _output = output;
     }
 
+    /// <summary>
+    /// Every raw <c>GenImports.ImportingModule</c> pair compiles clean as one project (or is a pinned known
+    /// red). Before #2288 the lane passed with half its pairs refused.
+    /// </summary>
     [Fact]
     public void ImportedFunction_IsCallable()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ImportResolution.ImportedFunction_IsCallable");
 
-        GenImports.ImportingModule(TypeEnv.Default, fuel: 1)
-            .Sample(pair =>
-            {
-                Interlocked.Increment(ref tested);
+        SemanticFilter.CompilableProject(GenImports.ImportingModule(TypeEnv.Default, fuel: 1),
+                pair => new[] { ("main.spy", pair.MainSource), ("lib.spy", pair.LibSource) }, sink)
+            .Sample(_ => { }, iter: 20);
 
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("main.spy", pair.MainSource)
-                    .AddSourceFile("lib.spy", pair.LibSource)
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }, iter: 20);
-
-        _output.WriteLine($"Imported function callable: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Import resolution rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// Every raw <c>GenImports.MultiFileProgram</c> pair compiles clean as one project. Before #2288 the
+    /// lane passed with half its pairs refused.
+    /// </summary>
     [Fact]
     public void MultiFileProgram_CompilesClean()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ImportResolution.MultiFileProgram_CompilesClean");
 
-        GenImports.MultiFileProgram(TypeEnv.Default, fuel: 1)
-            .Sample(pair =>
-            {
-                Interlocked.Increment(ref tested);
+        SemanticFilter.CompilableProject(GenImports.MultiFileProgram(TypeEnv.Default, fuel: 1),
+                pair => new[] { ("main.spy", pair.Main), ("lib.spy", pair.Lib) }, sink)
+            .Sample(_ => { }, iter: 20);
 
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("main.spy", pair.Main)
-                    .AddSourceFile("lib.spy", pair.Lib)
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }, iter: 20);
-
-        _output.WriteLine($"Multi-file compilation: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Multi-file pass rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>from lib import Widget</c> of a one-field class, for each field type: every pair compiles clean.
+    /// Before #2288 the lane passed with half its pairs refused.
+    /// </summary>
     [Fact]
     public void ImportedClass_IsInstantiable()
     {
-        int tested = 0;
-        int passed = 0;
+        var sink = new RejectionSink("ImportResolution.ImportedClass_IsInstantiable");
 
-        Gen.OneOfConst("int", "str", "bool").Select(fieldType =>
-        {
-            var lib = $"class Widget:\n    value: {fieldType}\n\n    def __init__(self, value: {fieldType}):\n        self.value = value\n";
-            var main = $"from lib import Widget\n\ndef main():\n    w = Widget({GenImports_DefaultLiteral(fieldType)})\n    print(w.value)\n";
-            return (Main: main, Lib: lib);
-        }).Sample(pair =>
-        {
-            Interlocked.Increment(ref tested);
+        SemanticFilter.CompilableProject(Gen.OneOfConst("int", "str", "bool").Select(fieldType =>
+                {
+                    var lib = $"class Widget:\n    value: {fieldType}\n\n    def __init__(self, value: {fieldType}):\n        self.value = value\n";
+                    var main = $"from lib import Widget\n\ndef main():\n    w = Widget({GenImports_DefaultLiteral(fieldType)})\n    print(w.value)\n";
+                    return (Main: main, Lib: lib);
+                }),
+                pair => new[] { ("main.spy", pair.Main), ("lib.spy", pair.Lib) }, sink)
+            .Sample(_ => { }, iter: 20);
 
-            using var helper = new ProjectCompilationHelper(_output);
-            helper.WithRootNamespace("Test")
-                .AddSourceFile("main.spy", pair.Main)
-                .AddSourceFile("lib.spy", pair.Lib)
-                .CreateProjectFile();
-
-            var result = helper.Compile();
-            if (result.Success)
-                Interlocked.Increment(ref passed);
-        }, iter: 20);
-
-        _output.WriteLine($"Imported class instantiation: {passed}/{tested} passed");
-        Assert.True(passed > tested / 2,
-            $"Imported class instantiation rate too low: {passed}/{tested}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>
+    /// <c>from lib1 import f</c> beside <c>from lib2 import f</c> draws exactly SPY0204 on every
+    /// sample, judged through the multi-file front-end of the refusal seam (#2288). Before #2288 the
+    /// lane counted any failed compile or any <c>SPY0</c>-prefixed code, and passed at half the samples.
+    /// </summary>
     [Fact]
     public void NameCollision_IsDetected()
     {
-        int tested = 0;
-        int detected = 0;
+        var verdicts = ErrorInjector.JudgeSamples(GenImports.NameCollisionPair(TypeEnv.Default, fuel: 1),
+            quad => ErrorInjector.JudgeProject(
+                new[] { ("main.spy", quad.Main), ("lib1.spy", quad.Lib1), ("lib2.spy", quad.Lib2) },
+                "SPY0204", CompilerDiagnosticSeverity.Error, null, "name collision between two imports"),
+            iter: 20);
+        _output.WriteLine($"Name collision: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} drew SPY0204");
 
-        GenImports.NameCollisionPair(TypeEnv.Default, fuel: 1)
-            .Sample(quad =>
-            {
-                Interlocked.Increment(ref tested);
-
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("main.spy", quad.Main)
-                    .AddSourceFile("lib1.spy", quad.Lib1)
-                    .AddSourceFile("lib2.spy", quad.Lib2)
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                if (!result.Success || result.Diagnostics.GetAll().Any(
-                    d => d.Code.StartsWith("SPY0")))
-                    Interlocked.Increment(ref detected);
-            }, iter: 20);
-
-        _output.WriteLine($"Name collision detection: {detected}/{tested} detected");
-        Assert.True(detected > tested / 2,
-            $"Name collision detection rate too low: {detected}/{tested}");
+        Assert.True(verdicts.Tested > 0, "No name collision programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} name collision programs misjudged; the first:\n{verdicts.First}");
     }
 
+    /// <summary>
+    /// Two modules importing each other draw exactly SPY0302 on every sample (#2288). Before #2288
+    /// any failed compile counted.
+    /// </summary>
     [Fact]
     public void CircularImport_IsRejected()
     {
-        int tested = 0;
-        int rejected = 0;
+        var verdicts = ErrorInjector.JudgeSamples(GenImports.CircularImportPair(TypeEnv.Default, fuel: 1),
+            pair => ErrorInjector.JudgeProject(
+                new[]
+                {
+                    ("file_a.spy", pair.FileA),
+                    ("file_b.spy", pair.FileB),
+                    ("main.spy", "from file_a import helper_a\n\ndef main():\n    print(helper_a())\n")
+                },
+                "SPY0302", CompilerDiagnosticSeverity.Error, null, "circular import"),
+            iter: 20);
+        _output.WriteLine($"Circular import: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} drew SPY0302");
 
-        GenImports.CircularImportPair(TypeEnv.Default, fuel: 1)
-            .Sample(pair =>
-            {
-                Interlocked.Increment(ref tested);
-
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("file_a.spy", pair.FileA)
-                    .AddSourceFile("file_b.spy", pair.FileB)
-                    .AddSourceFile("main.spy", "from file_a import helper_a\n\ndef main():\n    print(helper_a())\n")
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                if (!result.Success)
-                    Interlocked.Increment(ref rejected);
-            }, iter: 20);
-
-        _output.WriteLine($"Circular import rejection: {rejected}/{tested} rejected");
-        Assert.Equal(tested, rejected);
+        Assert.True(verdicts.Tested > 0, "No circular import programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} circular import programs misjudged; the first:\n{verdicts.First}");
     }
 
+    /// <summary>
+    /// An import <c>main</c> never uses draws exactly the SPY0452 warning and no error on every sample
+    /// — the WARNING arm of the seam (#2288). Before #2288 the lane counted samples that drew the
+    /// warning at all, beside anything else, and passed at half of them.
+    /// </summary>
     [Fact]
     public void UnusedImport_ProducesWarning()
     {
-        int tested = 0;
-        int warned = 0;
+        var verdicts = ErrorInjector.JudgeSamples(GenImports.UnusedImportProgram(TypeEnv.Default, fuel: 1),
+            pair => ErrorInjector.JudgeProject(
+                new[] { ("main.spy", pair.Main), ("lib.spy", pair.Lib) },
+                "SPY0452", CompilerDiagnosticSeverity.Warning, null, "unused import"),
+            iter: 20);
+        _output.WriteLine($"Unused import: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} drew warning SPY0452");
 
-        GenImports.UnusedImportProgram(TypeEnv.Default, fuel: 1)
-            .Sample(pair =>
-            {
-                Interlocked.Increment(ref tested);
-
-                using var helper = new ProjectCompilationHelper(_output);
-                helper.WithRootNamespace("Test")
-                    .AddSourceFile("main.spy", pair.Main)
-                    .AddSourceFile("lib.spy", pair.Lib)
-                    .CreateProjectFile();
-
-                var result = helper.Compile();
-                var warnings = result.Diagnostics.GetAll()
-                    .Where(d => d.Code == "SPY0452")
-                    .ToList();
-                if (warnings.Count > 0)
-                    Interlocked.Increment(ref warned);
-            }, iter: 20);
-
-        _output.WriteLine($"Unused import warning: {warned}/{tested} warned");
-        Assert.True(warned > tested / 2,
-            $"Unused import warning rate too low: {warned}/{tested}");
+        Assert.True(verdicts.Tested > 0, "No unused import programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} unused import programs misjudged; the first:\n{verdicts.First}");
     }
 
     private static string GenImports_DefaultLiteral(string type) => type switch

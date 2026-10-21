@@ -42,27 +42,23 @@ public class DecoratorPropertyTests
         Assert.Equal(set.Total, set.Passed);
     }
 
+    /// <summary>
+    /// Each invalid combination is a conflicting-access-modifier pair, so every sample must draw
+    /// exactly SPY0430 (ConflictingAccessModifiers) — the combination rule itself, not an incidental
+    /// single-decorator error (#1031) — judged through the one refusal seam (#2288): the lane used to
+    /// compare codes itself, which also admitted a second error beside SPY0430.
+    /// </summary>
     [Fact]
     public void DecoratorStacking_InvalidCombinations()
     {
-        var set = RunSamples(GenDecorators.ModuleWithDecoratorStack(valid: false));
+        var verdicts = ErrorInjector.JudgeSamples(GenDecorators.ModuleWithDecoratorStack(valid: false),
+            source => ErrorInjector.JudgeSource(source, "SPY0430", CompilerDiagnosticSeverity.Error, null,
+                "conflicting access-modifier decorators"), iter: 50);
+        _output.WriteLine($"Invalid decorator stacking: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} drew SPY0430");
 
-        // Each invalid combination is a conflicting-access-modifier pair, so every
-        // sample must be rejected with ConflictingAccessModifiers (SPY0430) — the
-        // combination rule itself, not an incidental single-decorator error. Assert
-        // the specific code, not mere !Success (which passed for the wrong reason
-        // when the corpus used unsupported/unknown spellings — #1031).
-        string expectedCode = DiagnosticCodes.Validation.ConflictingAccessModifiers;
-        int withExpected = set.Samples.Count(
-            s => s.Diagnostics.Any(d => d.Code == expectedCode));
-
-        PrintFailures($"Invalid combos missing {expectedCode}", set,
-            s => s.Diagnostics.All(d => d.Code != expectedCode));
-        _output.WriteLine("Diagnostic codes seen: " + string.Join(", ",
-            set.Samples.SelectMany(s => s.Diagnostics)
-                .Select(d => d.Code ?? "----").Distinct().OrderBy(c => c)));
-
-        Assert.Equal(set.Total, withExpected);
+        Assert.True(verdicts.Tested > 0, "No invalid decorator stacks were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} invalid decorator stacks misjudged; the first:\n{verdicts.First}");
     }
 
     [Fact]

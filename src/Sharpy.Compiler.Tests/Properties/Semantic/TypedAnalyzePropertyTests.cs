@@ -18,41 +18,29 @@ public class TypedAnalyzePropertyTests
         _output = output;
     }
 
+    /// <summary>
+    /// <c>GenTyped.TypedProgram</c> over three bindings: every raw sample analyses clean (or is a
+    /// pinned known red — the #2169 nested-conditional cell). Before #2288 the lane passed with half
+    /// its samples refused, and a throw was swallowed.
+    /// </summary>
     [Fact]
     public void TypedProgram_AnalyzesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var sink = new RejectionSink("TypedAnalyze.TypedProgram_AnalyzesClean");
 
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-        {
-            var env = new TypeEnv()
-                .WithBinding("x", "int")
-                .WithBinding("s", "str")
-                .WithBinding("flag", "bool");
-            return GenTyped.TypedProgram(env, type, fuel: 2);
-        }).Sample(module =>
-        {
-            Interlocked.Increment(ref total);
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+        SemanticFilter.WellTypedProgram(
+                Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                {
+                    var env = new TypeEnv()
+                        .WithBinding("x", "int")
+                        .WithBinding("s", "str")
+                        .WithBinding("flag", "bool");
+                    return GenTyped.TypedProgram(env, type, fuel: 2);
+                }), sink)
+            .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "typed_test.spy");
-
-                if (result.Success)
-                    Interlocked.Increment(ref passed);
-            }
-            catch
-            {
-                // Swallow — focus on pass rate, not crashes
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
-
-        _output.WriteLine($"Typed analysis: {passed}/{total} analyzed clean");
-        Assert.True(passed > total / 2,
-            $"Typed analysis pass rate too low: {passed}/{total}");
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     [Fact]
@@ -67,7 +55,8 @@ public class TypedAnalyzePropertyTests
             return GenTyped.TypedProgram(env, type, fuel: 2);
         });
 
-        var filtered = SemanticFilter.WellTypedProgram(baseGen);
+        var sink = new RejectionSink("TypedAnalyze.FilteredTypedProgram_AnalyzesClean");
+        var filtered = SemanticFilter.WellTypedProgram(baseGen, sink);
 
         int count = 0;
         filtered.Sample(module =>
@@ -82,6 +71,8 @@ public class TypedAnalyzePropertyTests
                     $"Filtered program should analyze clean but got errors:\n{source}");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
         _output.WriteLine($"Filtered typed analysis: {count} programs all analyzed clean");
     }
 

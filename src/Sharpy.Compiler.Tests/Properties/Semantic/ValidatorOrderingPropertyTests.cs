@@ -59,10 +59,11 @@ public class ValidatorOrderingPropertyTests
 
         // Generate well-typed programs that analyze cleanly (they include a main()), so every
         // sampled program actually exercises the validators.
+        var sink = new RejectionSink("ValidatorOrdering.ValidationDiagnostics_AreRegistrationOrderIndependent");
         var gen = Gen.Select(
             SemanticFilter.WellTypedProgram(
                 Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                    GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true))),
+                    GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)), sink),
             Gen.Int,
             (module, shuffleSeed) => (module, shuffleSeed));
 
@@ -130,6 +131,8 @@ public class ValidatorOrderingPropertyTests
             Interlocked.Increment(ref compared);
         }, print: s => $"shuffle seed {s.shuffleSeed}{Environment.NewLine}"
                        + Sharpy.Compiler.Pretty.Unparser.Unparse(s.module), iter: 30);
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
 
         _output.WriteLine("Validator registration ordering: " + compared + "/" + total + " programs compared");
     }

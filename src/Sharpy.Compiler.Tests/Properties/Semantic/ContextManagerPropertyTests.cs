@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
@@ -43,32 +44,32 @@ public class ContextManagerPropertyTests
             "AsyncContextManager_CompilesClean");
     }
 
+    /// <summary>
+    /// Every sample of a `with` over a class with no <c>__enter__</c>/<c>__exit__</c> draws exactly
+    /// SPY0324 through <see cref="ErrorInjector.JudgeSource"/> (#2288): before, ANY failed analysis
+    /// in half the samples passed the lane and a throw was swallowed.
+    /// </summary>
     [Fact]
     public void MissingEnterOrExit_ProducesDiagnostic()
     {
-        int total = 0;
-        int diagnosed = 0;
+        int tested = 0;
+        var failures = new List<string>();
 
         GenContextManagers.MissingEnterOrExitProgram()
             .Sample(source =>
             {
-                Interlocked.Increment(ref total);
-
-                try
+                Interlocked.Increment(ref tested);
+                if (ErrorInjector.JudgeSource(source, "SPY0324", CompilerDiagnosticSeverity.Error, null,
+                        "with over a non-context-manager") is { } failure)
                 {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "context_test.spy");
-                    if (!result.Success)
-                        Interlocked.Increment(ref diagnosed);
-                }
-                catch
-                {
-                    // Swallow
+                    lock (failures)
+                        failures.Add(failure);
                 }
             }, iter: 50);
 
-        _output.WriteLine($"Missing enter/exit diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 2,
-            $"Missing enter/exit diagnostic rate too low: {diagnosed}/{total}");
+        _output.WriteLine($"with over a non-context-manager: {tested - failures.Count}/{tested} drew SPY0324");
+        Assert.True(tested > 0, "No missing-enter/exit samples were generated");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} missing-enter/exit samples misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 }

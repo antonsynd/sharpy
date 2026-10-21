@@ -47,7 +47,9 @@ internal static class GenAsync
             var moduleBody = ImmutableArray.CreateBuilder<Statement>();
             moduleBody.Add(asyncFunc);
             moduleBody.Add(syncFunc);
-            moduleBody.Add(BuildAsyncMain("process"));
+            // main calls the sync `process()` synchronously: awaiting it (the old `await process()`)
+            // was a second broken fact — SPY0274 "cannot await non-Task type" beside SPY0273 (#2288).
+            moduleBody.Add(BuildSyncMainPrinting("process"));
             return new Module { Body = moduleBody.ToImmutable() };
         });
 
@@ -144,6 +146,26 @@ internal static class GenAsync
             Body = ImmutableArray.Create<Statement>(new ReturnStatement { Value = returnExpr })
         };
     }
+
+    private static FunctionDef BuildSyncMainPrinting(string funcToCall) =>
+        new()
+        {
+            Name = "main",
+            IsAsync = false,
+            Body = ImmutableArray.Create<Statement>(
+                new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "print" },
+                        Arguments = ImmutableArray.Create<Expression>(new FunctionCall
+                        {
+                            Function = new Identifier { Name = funcToCall },
+                            Arguments = ImmutableArray<Expression>.Empty
+                        })
+                    }
+                })
+        };
 
     private static FunctionDef BuildAsyncMain(string funcToCall)
     {

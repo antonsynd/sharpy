@@ -16,6 +16,13 @@ internal static class GenTyped
             (2, CompositeOfType(env, targetType, fuel - 1)));
     }
 
+    // `int` is 32-bit and a product of literals is folded at compile time: an overflowing constant is
+    // SPY0348 (#1234), a refusal by design. At fuel 2 an int expression multiplies at most four
+    // literal leaves, so each stays <= 200 (200^4 < 2^31). GenLiterals.Integer's [0, 10000] drew
+    // `1410 * 1629 * 4183` — a program wrong by the spec, so a generator defect (#2288 G4).
+    private static readonly Gen<Expression> IntLiteral =
+        Gen.Long[0, 200].Select(v => (Expression)new IntegerLiteral { Value = v.ToString() });
+
     private static Gen<Expression> LeafOfType(TypeEnv env, string targetType)
     {
         var vars = env.VarsOfType(targetType);
@@ -26,8 +33,8 @@ internal static class GenTyped
         return targetType switch
         {
             "int" => varGen != null
-                ? Gen.OneOf(GenLiterals.Integer.Select(x => (Expression)x), varGen)
-                : GenLiterals.Integer.Select(x => (Expression)x),
+                ? Gen.OneOf(IntLiteral, varGen)
+                : IntLiteral,
             "str" => varGen != null
                 ? Gen.OneOf(GenLiterals.SimpleString.Select(x => (Expression)x), varGen)
                 : GenLiterals.SimpleString.Select(x => (Expression)x),
@@ -152,7 +159,8 @@ internal static class GenTyped
                             Gen.Const(ImmutableArray<Statement>.Empty),
                             (acc, gen) => Gen.Select(acc, gen, (arr, s) => arr.Add(s))))
                 : Gen.Const(ImmutableArray<Statement>.Empty),
-            (expr, stmts) =>
+            withStatements && fuel > 0 ? ConstDeclaration() : Gen.Const((Statement?)null),
+            (expr, stmts, constDecl) =>
             {
                 var printCall = new FunctionCall
                 {
@@ -170,6 +178,8 @@ internal static class GenTyped
                         InitialValue = DefaultValueForType(binding.Value)
                     });
                 }
+                if (constDecl is not null)
+                    body.Add(constDecl);
                 body.AddRange(stmts);
                 body.Add(new ExpressionStatement { Expression = printCall });
 
@@ -184,11 +194,49 @@ internal static class GenTyped
                 };
             });
 
+    /// <summary>The name of the <c>const</c> binding <see cref="TypedProgram(TypeEnv, string, int, bool)"/>
+    /// may declare in <c>main</c>. Never in the env: no generated statement assigns or reads it, so the
+    /// binding stays assign-once by construction.</summary>
+    public const string ConstName = "LIMIT";
+
+    /// <summary>
+    /// Half the statement programs declare one local <c>const LIMIT: T = literal</c>
+    /// (statements.md §Constants; <see cref="VariableDeclaration.IsConst"/>) after the env bindings —
+    /// the construct <c>ErrorInjector.InjectConstReassignment</c> breaks (#2288 Phase 4).
+    /// </summary>
+    private static Gen<Statement?> ConstDeclaration() =>
+        Gen.Bool.SelectMany(declare => declare
+            ? Gen.OneOf(
+                GenLiterals.Integer.Select(v => ConstOf("int", v)),
+                GenLiterals.SimpleString.Select(v => ConstOf("str", v)),
+                GenLiterals.Boolean.Select(v => ConstOf("bool", v)))
+            : Gen.Const((Statement?)null));
+
+    private static Statement? ConstOf(string type, Expression value) => new VariableDeclaration
+    {
+        Name = ConstName,
+        Type = TypeAnnotationForType(type),
+        InitialValue = value,
+        IsConst = true
+    };
+
+    /// <summary>
+    /// One statement of <c>main</c>. When the env has <c>T?</c> bindings, <see cref="NarrowedBlock"/>
+    /// is a fourth choice, weighted 3 of 6 (#2288 Phase 4 — its first caller): <c>if v is not None:
+    /// print(v)</c>, the construct <c>ErrorInjector.InjectUseInFailedNarrowingBranch</c> breaks. At
+    /// equal weight about one sample in five carried a block (18/100), too few for the injection lane.
+    /// </summary>
     public static Gen<Statement> StatementOfType(TypeEnv env, int fuel) =>
-        Gen.OneOf(
-            IfElseStatement(env, fuel),
-            ForRangeStatement(env, fuel),
-            AssignmentStatement(env, fuel));
+        HasOptionalVars(env)
+            ? Gen.Frequency(
+                (1, IfElseStatement(env, fuel)),
+                (1, ForRangeStatement(env, fuel)),
+                (1, AssignmentStatement(env, fuel)),
+                (3, NarrowedBlock(env, fuel)))
+            : Gen.OneOf(
+                IfElseStatement(env, fuel),
+                ForRangeStatement(env, fuel),
+                AssignmentStatement(env, fuel));
 
     public static Gen<Statement> IfElseStatement(TypeEnv env, int fuel) =>
         Gen.Frequency(
@@ -290,8 +338,13 @@ internal static class GenTyped
             });
     }
 
+    // A list literal in this generator never has an annotated slot (a print argument, a truthiness
+    // test, a conditional's branch, len()'s argument), and a slot-less `[]` has no element type —
+    // SPY0227 (collection_types.md §Element Type of a Literal; R-W refuses `[0, 0] if flag else []`
+    // too). So every generated literal is non-empty; `[]` appears only as the initializer of an
+    // annotated declaration (DefaultValueForType under TypeAnnotationForType) (#2288 G1).
     public static Gen<Expression> ListOfType(TypeEnv env, string elementType, int fuel) =>
-        ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
+        ExpressionOfType(env, elementType, fuel).Array[1, 3].Select(elems =>
             (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
 
     private static Gen<Expression> OptionalLeaf(TypeEnv env, string targetType, Gen<Expression>? varGen)
@@ -389,7 +442,7 @@ internal static class GenTyped
             });
 
     private static Gen<Expression> ListLiteralGen(string elementType) =>
-        Gen.Int[0, 3].Select(len =>
+        Gen.Int[1, 3].Select(len =>
         {
             var elements = Enumerable.Range(0, len)
                 .Select(_ => DefaultValueForType(elementType))
@@ -398,7 +451,7 @@ internal static class GenTyped
         });
 
     private static Gen<Expression> ListLiteralGen(string elementType, TypeEnv env, int fuel) =>
-        ExpressionOfType(env, elementType, fuel).Array[0, 3].Select(elems =>
+        ExpressionOfType(env, elementType, fuel).Array[1, 3].Select(elems =>
             (Expression)new ListLiteral { Elements = elems.ToImmutableArray() });
 
     public static Expression DefaultValue(string type) => DefaultValueForType(type);

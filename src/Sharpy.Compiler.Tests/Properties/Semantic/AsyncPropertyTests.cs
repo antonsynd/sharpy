@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
@@ -29,37 +30,36 @@ public class AsyncPropertyTests
             "AsyncFunction_CompilesWithAwait");
     }
 
+    /// <summary>
+    /// Every sample draws exactly SPY0273 through <see cref="ErrorInjector.JudgeSource"/> (#2288):
+    /// before, a quarter of the samples carrying SPY0273 among any other codes passed the lane, a
+    /// throw was swallowed, and every sample also drew SPY0274 because main awaited the sync
+    /// `process()` — the generator now calls it synchronously, so the await outside async is the
+    /// program's one broken fact.
+    /// </summary>
     [Fact]
     public void AwaitOutsideAsync_ProducesDiagnostic()
     {
-        int total = 0;
-        int diagnosed = 0;
+        int tested = 0;
+        var failures = new List<string>();
 
         GenAsync.ModuleWithAwaitOutsideAsync()
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
+                Interlocked.Increment(ref tested);
+                if (ErrorInjector.JudgeSource(source, "SPY0273", CompilerDiagnosticSeverity.Error, null,
+                        "await outside async") is { } failure)
                 {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "async_test.spy");
-                    if (!result.Success && result.Diagnostics.GetAll().Any(d =>
-                        d.Code == "SPY0273"))
-                    {
-                        Interlocked.Increment(ref diagnosed);
-                    }
-                }
-                catch
-                {
-                    // Swallow
+                    lock (failures)
+                        failures.Add(failure);
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Await outside async diagnostic: {diagnosed}/{total} diagnosed");
-        Assert.True(diagnosed > total / 4,
-            $"Await outside async diagnostic rate too low: {diagnosed}/{total}");
+        _output.WriteLine($"await outside async: {tested - failures.Count}/{tested} drew SPY0273");
+        Assert.True(tested > 0, "No await-outside-async samples were generated");
+        Assert.True(failures.Count == 0,
+            $"{failures.Count}/{tested} await-outside-async samples misjudged; the first:\n{failures.FirstOrDefault()}");
     }
 
     [Fact]

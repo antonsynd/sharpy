@@ -348,3 +348,20 @@ def test_default_paths_git_unavailable_exits_2(tmp_path, monkeypatch, capsys):
         mod._default_paths(_REPO)
     assert exc.value.code == 2
     assert "git not available" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("state", ["PULL_REQUEST", "MERGED", "UNKNOWN"])
+def test_knownred_cell_citing_a_non_open_issue_is_offence(tmp_path, state):
+    """Only an OPEN issue is a live cite: a pull request (merged or open) or an unknown state is red (#2288 P63 R2)."""
+    cs = '''
+    private static readonly KnownRedRefusal Pin =
+        new KnownRedRefusal("#1", "a pull request, not an issue");
+    '''
+    path = _write(tmp_path / "SomeTests.cs", cs)
+    assert mod.scan([path])[0].cites == [1]
+
+    with patch.object(mod, "query_states", _stub_states({1: state})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 1

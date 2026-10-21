@@ -161,6 +161,8 @@ public class ProcessGlobalStateConformanceTests
         // CsCheck Gen filters: the forced GC runs whenever the caller's property samples.
         new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedProgram", "Collect"),
         new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProgram", "Collect"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "WellTypedSource", "Collect"),
+        new("src/Sharpy.Compiler.Tests/Properties/Generators/Typed/SemanticFilter.cs", "Sharpy.Compiler.Tests.Properties.Generators.Typed.SemanticFilter", "CompilableProject", "Collect"),
     };
 
     /// <summary>
@@ -530,6 +532,7 @@ public class ProcessGlobalStateConformanceTests
                 PropertiesNs + "Semantic.DiagnosticSpanPropertyTests", PropertiesNs + "Semantic.ErrorCompletenessPropertyTests",
                 PropertiesNs + "Semantic.ExceptionPropertyTests", PropertiesNs + "Semantic.FStringPropertyTests",
                 PropertiesNs + "Semantic.FunctionSemanticsPropertyTests", PropertiesNs + "Semantic.GenericTypePropertyTests",
+                PropertiesNs + "Semantic.GeneratorMemberSoundnessPropertyTests",
                 PropertiesNs + "Semantic.ImportResolutionPropertyTests", PropertiesNs + "Semantic.InterfacePropertyTests",
                 PropertiesNs + "Semantic.IteratorPropertyTests", PropertiesNs + "Semantic.OperatorOverloadPropertyTests",
                 PropertiesNs + "Semantic.OverloadOrderIndependencePropertyTests", PropertiesNs + "Semantic.PatternMatchPropertyTests",
@@ -564,7 +567,7 @@ public class ProcessGlobalStateConformanceTests
     private const int ExpectedSerialCollections = 8;
 
     /// <summary>1 + 1 + 44 + 1 (Compiler; LoadContextRetention #2250) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
-    private const int ExpectedSerialMembers = 53;
+    private const int ExpectedSerialMembers = 54;
 
     [Fact]
     public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()

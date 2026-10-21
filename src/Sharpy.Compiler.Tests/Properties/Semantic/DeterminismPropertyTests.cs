@@ -80,9 +80,10 @@ public class DeterminismPropertyTests
     [Fact]
     public void TypedCompilation_ProducesIdenticalCSharp()
     {
+        var sink = new RejectionSink("Determinism.TypedCompilation_ProducesIdenticalCSharp");
         var gen = SemanticFilter.CompilableProgram(
             Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)));
+                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
         {
@@ -98,6 +99,8 @@ public class DeterminismPropertyTests
                     $"Generated C# differs between runs:\n{source}");
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        _output.WriteLine(sink.Summary);
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
     private static (bool success, int diagCount) Compile(string source)

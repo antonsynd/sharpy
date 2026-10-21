@@ -177,40 +177,34 @@ internal static class GenOperators
                 return string.Join("\n", lines) + "\n";
             });
 
-    public static Gen<string> InvalidDunderProgram() =>
-        Gen.Int[0, 2].Select(variant =>
-        {
-            var lines = variant switch
-            {
-                0 => new List<string>
-                {
-                    "class Bad:",
-                    "    def __add__(self) -> Bad:",
-                    "        return self",
-                    "",
-                    "def main():",
-                    "    pass",
-                },
-                1 => new List<string>
-                {
-                    "class Bad:",
-                    "    def __neg__(self, other: Bad) -> Bad:",
-                    "        return self",
-                    "",
-                    "def main():",
-                    "    pass",
-                },
-                _ => new List<string>
-                {
-                    "class Bad:",
-                    "    def __xyzzy__(self) -> Bad:",
-                    "        return self",
-                    "",
-                    "def main():",
-                    "    pass",
-                },
-            };
+    /// <summary>
+    /// An operator dunder with the wrong parameter count — binary <c>__add__(self)</c> or unary
+    /// <c>__neg__(self, other)</c> — as the program's one broken fact: SPY0321 (invalid operator
+    /// signature). Split from the old <c>InvalidDunderProgram</c>, whose third variant drew a
+    /// different code (#2288).
+    /// </summary>
+    public static Gen<string> WrongArityOperatorDunderProgram() =>
+        Gen.OneOfConst(
+            "    def __add__(self) -> Bad:",
+            "    def __neg__(self, other: Bad) -> Bad:").Select(BadClassProgram);
 
-            return string.Join("\n", lines) + "\n";
-        });
+    /// <summary>
+    /// A dunder name the language does not define (<c>__xyzzy__</c>) as the program's one broken
+    /// fact: SPY0414 (unknown dunder method).
+    /// </summary>
+    public static Gen<string> UnknownDunderProgram() =>
+        Gen.OneOfConst(
+            "    def __xyzzy__(self) -> Bad:",
+            "    def __frobnicate__(self, other: Bad) -> Bad:").Select(BadClassProgram);
+
+    private static string BadClassProgram(string methodHeader) =>
+        string.Join("\n", new[]
+        {
+            "class Bad:",
+            methodHeader,
+            "        return self",
+            "",
+            "def main():",
+            "    pass",
+        }) + "\n";
 }
