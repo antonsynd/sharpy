@@ -111,3 +111,66 @@ Two C1 survivors were applied by hand in a scratch worktree at 258a7b66a, in the
   - Ignore-list the message-text and logger-string mutants (the B and C buckets) with a reason.
   - Remove the `TokenizeAll` CS0165 safe-mode hole, so the score is not inflated by what Stryker could not compile.
 - **Survivors:** classes C1–C7 go to the next `/batch-issues` as class issues, never one issue per mutant.
+
+## Ignore list (P68)
+
+P68 (#2300) answered two of the pilot's preconditions. It removed the `TokenizeAll` CS0165 hole in e621d9e94, and it turned the message-text buckets into data with a reason per entry.
+
+- **The data:** `build_tools/stryker/lexer-ignore.json`, applied by `build_tools/stryker/triage.py`. The triage script prints `score`, `scoreIgnoringListed`, the survivor buckets and the C1–C7 class of each mutated method.
+- **Not used:** a global `ignore-mutations: ["string"]`, because it would also hide the `Keywords` table keys (C7) and the numeric-suffix roster (C1). `// Stryker disable` comments in production files are not used either.
+
+### What `ignore-methods` skips (measured)
+
+The Stryker docs do not say whether `ignore-methods` also skips mutations in the *arguments* of a matched call. A probe measured it.
+
+```bash
+bash build_tools/stryker/run.sh build_tools/stryker/lexer-probe.json <output-dir>
+```
+
+- **Probe config:** `build_tools/stryker/lexer-probe.json` is `lexer.json` with these changes:
+  - `mutate` is `Token.cs`, `LiteralSpans.cs` and `Lexer.Indentation.cs`. Neither of the first two files calls `ReportError`, so the probe was widened to `Lexer.Indentation.cs`, as the plan allowed.
+  - `"ignore-methods": ["ReportError", "LogInfo", "AddWarning", "AddError"]`.
+- **Where it ran:** a detached worktree at e621d9e94, through `run.sh`, holding the lock.
+- **Result: argument mutations are skipped.**
+  - `Lexer.Indentation.cs` has four `throw ReportError("…", _line, 1, code)` sites (lines 47, 51, 55, 72).
+  - Each site's message-string mutant is reported `Ignored`, with the reason "Removed by method filter". That is 4 of 4. The json still records them, so the triage script can count them.
+  - Log line: `2282 mutants got status Ignored. Reason: Removed by method filter`. That count covers all of `Sharpy.Compiler`, because Stryker applies the method filter before the `mutate` filter. It is not a Lexer figure.
+- **Not skipped:** two `_logger.LogIndentChange(…)` statement-removal mutants (`Lexer.Indentation.cs:175`, `:191`) survived. `LogIndentChange` is not in the list. Whether `ignore-methods` also drops the statement-removal mutant of the matched call itself was not probed. That is the next entry to measure.
+- **Score: 82.16 % @ e621d9e94 (measured)** over the three files.
+  - 144 killed, 31 timeout, 38 survived, 0 without coverage.
+  - 16 compile errors, 33 ignored: 29 block-already-covered and 4 method filter.
+  - `triage.py` gives `scoreIgnoringListed` 82.16 %. The data file's `within ReportError|…` entry matched 0, because Stryker had already removed those mutants.
+
+| File | Killed | Timeout | Survived | Ignored | Compile error |
+|---|---|---|---|---|---|
+| `Lexer.Indentation.cs` | 94 | 27 | 13 | 27 (4 method filter) | 6 |
+| `LiteralSpans.cs` | 46 | 4 | 12 | 5 | 10 |
+| `Token.cs` | 4 | 0 | 13 | 1 | 0 |
+
+- **Cost (measured):**
+  - **Wall clock:** 5,835 s (1 h 37 min), Stryker `Time Elapsed` 1:37:14.
+  - **Setup:** 24.5 min, including 17 min of per-test coverage capture over 2,217 tests. The pilot's whole setup was 12.5 min over 1,574 tests.
+  - **Testing:** 213 mutants in 72.8 min, about 20.5 s of wall clock per mutant at concurrency 4. The pilot's figure was about 8.8 s of wall clock per mutant (35 s per session ÷ 4).
+  - **Peak RSS:** 5.55 GB, the maximum single-process RSS that `/usr/bin/time -l` reports for the run. This is not the pilot's whole-machine sum.
+- **What the cost means for the full re-run (derived, not measured).**
+  - The P68 harnesses cover most of the Lexer, so under `perTest` almost every mutant now runs the corpus twin, the injection differential and the CPython numeric twin.
+  - At the probe's rate, the pilot's 2,929 tested mutants would take about 16.7 h, against the pilot's 7 h 10 min.
+  - Timeouts are 15 % of the probe's tested mutants. Each one costs the full timeout. In `Lexer.Indentation.cs` they are mostly infinite loops from a deleted `tempPos++` or `_position++`.
+  - The full re-run (P68 Phase 5 Task 3) needs an owner slot sized from this, not from the pilot's 7 h.
+
+**Decision:** `lexer.json` carries `ignore-methods` for the message and logger sinks. It is measured to skip the argument mutations, and those mutants are then not tested at all. The data file stays authoritative for what `ignore-methods` cannot express: the `CreateToken` operator `Value` entry, and sinks the config does not list, such as `ReportUnclosedField` and `ReportFieldEndedByQuote`.
+
+### Per-class mutation control (P68 Phase 5 Task 2)
+
+This control applies one recorded survivor-class mutant at a time in a private worktree at e621d9e94, and runs the Lexer filter for each (`FullyQualifiedName~Sharpy.Compiler.Tests.Lexer.|FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Lexer.`, 2217 tests). Each file is restored by a plain copy afterwards. Script and logs are in `.claude/tmp/p68/lead/ctl/` (measured).
+
+| Class | Mutant | Lexer filter |
+|---|---|---|
+| C1 numeric literals | `ReadHexNumber` trailing-underscore check off (`Lexer.Literals.cs`) | red, 1 failed (`NumericLiteralTwinTests.SharedGrammar_AgreesWithCPython`) |
+| C2 token positions | `>>` advances `_column` by 1, not 2 (`Lexer.cs`) | red, 7 failed |
+| C3 line endings | `ConsumeLineBreak` takes CRLF as one char (`Lexer.cs`) | red, 9 failed |
+| C4 f/t/df arms | `IsPreCloseNewline` call inverted (`Lexer.FStrings.cs`) | red, 46 failed |
+| C5 LiteralLoss scanner | the `{{` escaped-brace skip removed (`Lexer.LiteralLoss.cs`) | red, 2 failed |
+| C6 end of file | single-line `dr"…"` loop bound `<` → `<=` (`Lexer.Literals.cs`) | red, 2 failed |
+| C7 keyword roster | `"self"` removed from `_keywordNames` (`Lexer.cs`) | red, 1 failed |
+| — | all restored | green, 2214 passed / 0 failed / 3 skipped (the three #2337 df skips) |
