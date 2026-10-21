@@ -365,3 +365,29 @@ def test_knownred_cell_citing_a_non_open_issue_is_offence(tmp_path, state):
         with pytest.raises(SystemExit) as exc:
             mod.main()
         assert exc.value.code == 1
+
+
+@pytest.mark.parametrize("state", ["OPEN", "MERGED", "CLOSED"])
+def test_query_states_maps_a_pull_request_url_to_pull_request(state):
+    """`gh issue view` answers for a pull request too; query_states must name it PULL_REQUEST, so an
+    OPEN pull request cited as a tracker is red, not read as an open issue (#2288 verify)."""
+    def fake_run(args, **kwargs):
+        if args[:2] == ["gh", "--version"]:
+            return subprocess.CompletedProcess(args, 0, stdout="gh version 2\n", stderr="")
+        return subprocess.CompletedProcess(
+            args, 0, stdout=f"{state} https://github.com/antonsynd/sharpy/pull/1\n", stderr="")
+
+    with patch.object(mod.subprocess, "run", fake_run):
+        assert mod.query_states([1]) == {1: "PULL_REQUEST"}
+
+
+def test_query_states_keeps_an_issue_urls_state():
+    """The positive control: an issue url keeps its own state."""
+    def fake_run(args, **kwargs):
+        if args[:2] == ["gh", "--version"]:
+            return subprocess.CompletedProcess(args, 0, stdout="gh version 2\n", stderr="")
+        return subprocess.CompletedProcess(
+            args, 0, stdout="OPEN https://github.com/antonsynd/sharpy/issues/2287\n", stderr="")
+
+    with patch.object(mod.subprocess, "run", fake_run):
+        assert mod.query_states([2287]) == {2287: "OPEN"}

@@ -100,7 +100,7 @@ public class ClassInheritancePropertyTests
     public void SuperCall_ResolvesCorrectly()
     {
         var sink = new RejectionSink("ClassInheritance.SuperCall_ResolvesCorrectly");
-        int withSuper = 0;
+        int superCallsTested = 0;
 
         SemanticFilter.WellTypedProgram(GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2), sink)
             .Sample(module =>
@@ -109,40 +109,29 @@ public class ClassInheritancePropertyTests
                 if (!source.Contains("super().__init__"))
                     return;
 
-                Interlocked.Increment(ref withSuper);
+                Interlocked.Increment(ref superCallsTested);
                 var result = new Sharpy.Compiler.Compiler().Analyze(source, "class_test.spy");
                 if (result.SemanticInfo == null)
                     throw new Exception($"An admitted super() program has no semantic info:\n{source}");
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine(sink.Summary);
-        _output.WriteLine($"Super call resolution: {withSuper} admitted programs call super().__init__");
+        _output.WriteLine($"Super call resolution: {superCallsTested} admitted programs call super().__init__");
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
-        Assert.True(withSuper >= 1, "No sampled class program calls super().__init__ — the lane is vacuous");
+        Assert.True(superCallsTested >= 1, "No sampled class program calls super().__init__ — the lane is vacuous");
     }
 
+    /// <summary>Every RAW class program analyses without a throw or an internal compiler error
+    /// (<see cref="ErrorInjector.JudgeNoInternalError"/>); a refusal is allowed — the sample is
+    /// unfiltered. Before #2288 the lane swallowed every exception but one <c>Analyze</c> never throws.</summary>
     [Fact]
     public void ModuleWithClasses_NeverThrowsInternalError()
     {
-        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    compiler.Analyze(source, "class_test.spy");
-                }
-                catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-                {
-                    throw new Exception(
-                        $"InternalCompilerErrorException on class program:\n{source}\n{ex.Message}");
-                }
-                catch
-                {
-                    // Other exceptions are acceptable
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var verdicts = ErrorInjector.JudgeSamples(GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2),
+            source => ErrorInjector.JudgeNoInternalError(source, "class program"), iter: 50);
+        _output.WriteLine($"Class programs: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed without an internal error");
+        Assert.True(verdicts.Tested > 0, "No class programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} class programs crashed the compiler; the first:\n{verdicts.First}");
     }
 }

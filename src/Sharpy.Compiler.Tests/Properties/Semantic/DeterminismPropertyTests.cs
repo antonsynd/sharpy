@@ -92,8 +92,16 @@ public class DeterminismPropertyTests
             var result1 = CompileFull(source);
             var result2 = CompileFull(source);
 
-            if (result1.csharp != null && result2.csharp != null &&
-                result1.csharp != result2.csharp)
+            // The filter admitted the sample, so both runs must produce C# — a run without it (a
+            // throw or a refusal) is a failure, not a skipped comparison (#2288).
+            if (result1.csharp is null || result2.csharp is null)
+            {
+                throw new Exception(
+                    $"An admitted program produced no C# (run 1 success {result1.success}, run 2 success "
+                    + $"{result2.success}):\n{source}");
+            }
+
+            if (result1.csharp != result2.csharp)
             {
                 throw new Exception(
                     $"Generated C# differs between runs:\n{source}");
@@ -103,31 +111,19 @@ public class DeterminismPropertyTests
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    // A throw propagates and fails the sample: these used to return a sentinel, so two runs that
+    // both threw compared equal and an admitted program that threw was never compared (#2288).
     private static (bool success, int diagCount) Compile(string source)
     {
-        try
-        {
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Compile(source, "test.spy");
-            return (result.Success, result.Diagnostics?.ErrorCount ?? 0);
-        }
-        catch
-        {
-            return (false, -1);
-        }
+        var compiler = new Sharpy.Compiler.Compiler();
+        var result = compiler.Compile(source, "test.spy");
+        return (result.Success, result.Diagnostics?.ErrorCount ?? 0);
     }
 
     private static (bool success, List<Sharpy.Compiler.Diagnostics.CompilerDiagnostic> diagnostics, string? csharp) CompileFull(string source)
     {
-        try
-        {
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Compile(source, "test.spy");
-            return (result.Success, result.Diagnostics?.GetAll().ToList() ?? new(), result.GeneratedCSharpCode);
-        }
-        catch
-        {
-            return (false, new(), null);
-        }
+        var compiler = new Sharpy.Compiler.Compiler();
+        var result = compiler.Compile(source, "test.spy");
+        return (result.Success, result.Diagnostics?.GetAll().ToList() ?? new(), result.GeneratedCSharpCode);
     }
 }

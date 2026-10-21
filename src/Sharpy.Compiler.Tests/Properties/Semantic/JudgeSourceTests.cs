@@ -38,10 +38,49 @@ public class JudgeSourceTests
             f(True)
         """;
 
+    // Two match statements on bool, each missing a case: two SPY0463 warnings, no error.
+    private const string TwoNonExhaustiveMatches = """
+        def f(x: bool) -> None:
+            match x:
+                case True:
+                    print("yes")
+
+        def g(x: bool) -> None:
+            match x:
+                case False:
+                    print("no")
+
+        def main():
+            f(True)
+            g(False)
+        """;
+
+    // The warning beside an unrelated one (SPY0450, a statement after `return`): no error.
+    private const string NonExhaustiveMatchAndUnreachable = """
+        def f(x: bool) -> None:
+            match x:
+                case True:
+                    print("yes")
+
+        def main():
+            f(True)
+            return
+            print("never")
+        """;
+
     private const string ErrorProgram = """
         def main():
             let n: int = "x"
             print(n)
+        """;
+
+    // The error arm's code beside a second error (SPY0200, an undefined name): two broken facts —
+    // measured SPY0220 + SPY0200 with the built `sharpyc emit diagnostics` @ f10b8381f.
+    private const string ErrorProgramAndUndefinedName = """
+        def main():
+            let n: int = "x"
+            print(n)
+            print(undefined_name)
         """;
 
     private const string CleanProgram = """
@@ -51,7 +90,7 @@ public class JudgeSourceTests
         """;
 
     private static readonly ErrorInjector.KnownRedRefusal Pin =
-        new("#2288", "probe pin for the JudgeSource arms — never a real cell");
+        new("probe-pin", "probe pin for the JudgeSource arms — never a real cell, so it cites no issue");
 
     // (a) the warning arm accepts exactly one warning of the code with no error.
     [Fact]
@@ -69,6 +108,27 @@ public class JudgeSourceTests
             NonExhaustiveMatchAndError, "SPY0463", CompilerDiagnosticSeverity.Warning, null, "match statement");
         Assert.NotNull(failure);
         Assert.Contains("errors [SPY0220], warnings [SPY0463]", failure);
+    }
+
+    // (a) exactly ONE warning diagnostic (P63 Design Decision 6): two non-exhaustive matches are two
+    // SPY0463 warnings — one distinct code, but two broken facts, not the one the injection made.
+    [Fact]
+    public void WarningArm_TwoOfTheExpectedWarning_IsRefused()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            TwoNonExhaustiveMatches, "SPY0463", CompilerDiagnosticSeverity.Warning, null, "match statement");
+        Assert.NotNull(failure);
+        Assert.Contains("errors [nothing], warnings [SPY0463] (2 warning diagnostic(s))", failure);
+    }
+
+    // (a) an unrelated warning beside the expected one is not a catch either.
+    [Fact]
+    public void WarningArm_ExpectedWarningBesideAnUnrelatedWarning_IsRefused()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            NonExhaustiveMatchAndUnreachable, "SPY0463", CompilerDiagnosticSeverity.Warning, null, "match statement");
+        Assert.NotNull(failure);
+        Assert.Contains("errors [nothing], warnings [SPY0450, SPY0463] (2 warning diagnostic(s))", failure);
     }
 
     // (b) the error arm never reads warnings: the warning program drew no error.
@@ -96,6 +156,17 @@ public class JudgeSourceTests
             ErrorProgram, "SPY0222", CompilerDiagnosticSeverity.Error, null, "type mismatch");
         Assert.NotNull(failure);
         Assert.Contains("must draw exactly SPY0222, drew [SPY0220]", failure);
+    }
+
+    // (c) exactly ONE code on the error arm: the expected code beside a second error is not a catch —
+    // the injection broke one fact and the program draws two.
+    [Fact]
+    public void ErrorArm_ExpectedCodeBesideASecondError_IsRefused()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            ErrorProgramAndUndefinedName, "SPY0220", CompilerDiagnosticSeverity.Error, null, "type mismatch");
+        Assert.NotNull(failure);
+        Assert.Contains("must draw exactly SPY0220, drew [SPY0200, SPY0220]", failure);
     }
 
     // (c) an error is not a warning: the warning arm does not read the error list as its own.

@@ -1,7 +1,7 @@
 using CsCheck;
 using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Tests.Properties.Generators;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,128 +21,117 @@ public class CfgWellFormednessPropertyTests
     }
 
     /// <summary>
-    /// Builds control flow graphs from every function in randomly generated,
-    /// successfully-compiled programs and asserts structural invariants:
-    /// the entry block is labeled "entry"; entry and exit blocks are members
-    /// of the Blocks collection; every successor edge points to a block in the
-    /// graph; the exit block has no successors; and statement counts are
-    /// non-negative. Invariant violations are surfaced as failures while
-    /// unrelated compilation/parse errors (expected for random programs) are
-    /// swallowed.
+    /// Builds control flow graphs from every function in typed-generator programs that compile
+    /// clean and asserts structural invariants: the entry block is labeled "entry"; entry and exit
+    /// blocks are members of the Blocks collection; every successor edge points to a block in the
+    /// graph; the exit block has no successors; and statement counts are non-negative. The lane reads
+    /// <see cref="GenFunctions.ModuleWithFunctions"/> through <see cref="SemanticFilter"/> with a
+    /// <see cref="RejectionSink"/>: every raw sample compiles (or is a pinned known red), and a THROW
+    /// anywhere — compile, re-parse or CFG build — fails the sample. It used to sample the untyped
+    /// generator and skip what the compiler refused, which was every program with a function: the
+    /// lane checked 0 CFGs from 50 programs and passed (#2288). At least one CFG must be checked.
     /// </summary>
     [Fact]
     public void CfgFromCompiledPrograms_SatisfiesStructuralInvariants()
     {
         int total = 0;
-        int cfgsChecked = 0;
+        int cfgsTested = 0;
+        var sink = new RejectionSink("CfgWellFormedness.CfgFromCompiledPrograms_SatisfiesStructuralInvariants");
 
-        Gen.Int[2, 3].SelectMany(fuel =>
-        {
-            var ctx = GenContext.Default with { Fuel = fuel };
-            return GenSharpy.Module(ctx);
-        }).Sample(module =>
+        SemanticFilter.CompilableProgram(GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2), sink)
+            .Sample(module =>
         {
             Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-            try
+            // Re-parse to obtain FunctionDef AST nodes to feed the CFG builder.
+            var lexer = new Sharpy.Compiler.Lexer.Lexer(source);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens);
+            var parsed = parser.ParseModule();
+
+            int functions = 0;
+            foreach (var stmt in parsed.Body)
             {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Compile(source, "cfg_test.spy");
-                if (!result.Success)
-                    return;
+                if (stmt is not FunctionDef funcDef)
+                    continue;
+                functions++;
 
-                // Re-parse to obtain FunctionDef AST nodes to feed the CFG builder.
-                var lexer = new Sharpy.Compiler.Lexer.Lexer(source);
-                var tokens = lexer.TokenizeAll();
-                var parser = new Sharpy.Compiler.Parser.Parser(tokens);
-                var parsed = parser.ParseModule();
+                var builder = new ControlFlowGraphBuilder();
+                var cfg = builder.Build(funcDef);
 
-                foreach (var stmt in parsed.Body)
+                // Entry block exists and is labeled "entry".
+                if (cfg.Entry.Label != "entry")
+                    throw new CfgInvariantException(
+                        $"Entry block label is '{cfg.Entry.Label}', expected 'entry'");
+
+                // Exit block is labeled "exit".
+                if (cfg.Exit.Label != "exit")
+                    throw new CfgInvariantException(
+                        $"Exit block label is '{cfg.Exit.Label}', expected 'exit'");
+
+                // Entry and Exit are members of Blocks.
+                if (!cfg.Blocks.Contains(cfg.Entry))
+                    throw new CfgInvariantException("Entry block not in Blocks collection");
+                if (!cfg.Blocks.Contains(cfg.Exit))
+                    throw new CfgInvariantException("Exit block not in Blocks collection");
+
+                // Block IDs are unique.
+                var ids = new HashSet<int>();
+                foreach (var block in cfg.Blocks)
                 {
-                    if (stmt is not FunctionDef funcDef)
-                        continue;
-
-                    var builder = new ControlFlowGraphBuilder();
-                    var cfg = builder.Build(funcDef);
-
-                    // Entry block exists and is labeled "entry".
-                    if (cfg.Entry.Label != "entry")
-                        throw new CfgInvariantException(
-                            $"Entry block label is '{cfg.Entry.Label}', expected 'entry'");
-
-                    // Exit block is labeled "exit".
-                    if (cfg.Exit.Label != "exit")
-                        throw new CfgInvariantException(
-                            $"Exit block label is '{cfg.Exit.Label}', expected 'exit'");
-
-                    // Entry and Exit are members of Blocks.
-                    if (!cfg.Blocks.Contains(cfg.Entry))
-                        throw new CfgInvariantException("Entry block not in Blocks collection");
-                    if (!cfg.Blocks.Contains(cfg.Exit))
-                        throw new CfgInvariantException("Exit block not in Blocks collection");
-
-                    // Block IDs are unique.
-                    var ids = new HashSet<int>();
-                    foreach (var block in cfg.Blocks)
-                    {
-                        if (!ids.Add(block.Id))
-                            throw new CfgInvariantException($"Duplicate block id {block.Id}");
-                    }
-
-                    // Every successor edge points to a block in the graph, and
-                    // edges are symmetric (successor lists imply predecessor lists).
-                    var blockSet = new HashSet<BasicBlock>(cfg.Blocks);
-                    foreach (var block in cfg.Blocks)
-                    {
-                        foreach (var succ in block.Successors)
-                        {
-                            if (!blockSet.Contains(succ))
-                                throw new CfgInvariantException(
-                                    $"Block {block} has successor {succ} not in Blocks");
-                            if (!succ.Predecessors.Contains(block))
-                                throw new CfgInvariantException(
-                                    $"Successor {succ} of {block} is missing matching predecessor edge");
-                        }
-                    }
-
-                    // Exit has no successors.
-                    if (cfg.Exit.Successors.Count != 0)
-                        throw new CfgInvariantException(
-                            $"Exit block has {cfg.Exit.Successors.Count} successors");
-
-                    // Statement counts are non-negative (sanity).
-                    foreach (var block in cfg.Blocks)
-                    {
-                        if (block.Statements.Count < 0)
-                            throw new CfgInvariantException(
-                                $"Block {block} has negative statement count");
-                    }
-
-                    // Unreachable-block detection must return a subset of Blocks.
-                    foreach (var unreachable in cfg.FindUnreachableBlocks())
-                    {
-                        if (!blockSet.Contains(unreachable))
-                            throw new CfgInvariantException(
-                                "FindUnreachableBlocks returned a block not in Blocks");
-                    }
-
-                    Interlocked.Increment(ref cfgsChecked);
+                    if (!ids.Add(block.Id))
+                        throw new CfgInvariantException($"Duplicate block id {block.Id}");
                 }
+
+                // Every successor edge points to a block in the graph, and
+                // edges are symmetric (successor lists imply predecessor lists).
+                var blockSet = new HashSet<BasicBlock>(cfg.Blocks);
+                foreach (var block in cfg.Blocks)
+                {
+                    foreach (var succ in block.Successors)
+                    {
+                        if (!blockSet.Contains(succ))
+                            throw new CfgInvariantException(
+                                $"Block {block} has successor {succ} not in Blocks");
+                        if (!succ.Predecessors.Contains(block))
+                            throw new CfgInvariantException(
+                                $"Successor {succ} of {block} is missing matching predecessor edge");
+                    }
+                }
+
+                // Exit has no successors.
+                if (cfg.Exit.Successors.Count != 0)
+                    throw new CfgInvariantException(
+                        $"Exit block has {cfg.Exit.Successors.Count} successors");
+
+                // Statement counts are non-negative (sanity).
+                foreach (var block in cfg.Blocks)
+                {
+                    if (block.Statements.Count < 0)
+                        throw new CfgInvariantException(
+                            $"Block {block} has negative statement count");
+                }
+
+                // Unreachable-block detection must return a subset of Blocks.
+                foreach (var unreachable in cfg.FindUnreachableBlocks())
+                {
+                    if (!blockSet.Contains(unreachable))
+                        throw new CfgInvariantException(
+                            "FindUnreachableBlocks returned a block not in Blocks");
+                }
+
+                Interlocked.Increment(ref cfgsTested);
             }
-            catch (CfgInvariantException)
-            {
-                // Real invariant violation — propagate so the property fails.
-                throw;
-            }
-            catch (Exception)
-            {
-                // Compilation/parse/runtime failures are expected for random
-                // programs and are not what this property is testing.
-            }
+            if (functions == 0)
+                throw new CfgInvariantException($"ModuleWithFunctions drew a module without a function:\n{source}");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"CFG well-formedness: {cfgsChecked} CFGs checked from {total} programs");
+        _output.WriteLine(sink.Summary);
+        _output.WriteLine($"CFG well-formedness: {cfgsTested} CFGs checked from {total} programs");
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
+        // Applicability floor: a run that checks no CFG proves nothing (#2288).
+        Assert.True(cfgsTested > 0, $"no CFG was checked from {total} programs");
     }
 
     private sealed class CfgInvariantException : Exception
