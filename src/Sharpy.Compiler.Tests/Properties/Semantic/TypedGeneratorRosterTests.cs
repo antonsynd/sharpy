@@ -1601,7 +1601,7 @@ public class TypedGeneratorRosterTests
     private const int ExpectedByDesign = 21;
     private const int ExpectedNoConstruct = 4;
 
-    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287", "#2288", "#2324" };
+    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287", "#2324" };
 
     [Fact]
     public void Totality_CountsMatchTheLiteralAnchors()

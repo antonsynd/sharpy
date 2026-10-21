@@ -28,7 +28,4 @@ public static class AstDescendants
                 stack.Push(children[i]);
         }
     }
-
-    /// <summary>Every node below <paramref name="root"/>, excluding the root itself.</summary>
-    public static IEnumerable<Node> Descendants(Node root) => SelfAndDescendants(root).Skip(1);
 }
