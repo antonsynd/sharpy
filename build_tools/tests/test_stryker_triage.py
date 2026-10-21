@@ -483,3 +483,54 @@ def test_committed_ignore_list_against_the_real_lexer():
     assert any("TokenType.FStringExprEnd, \"}\"" in text(r) for r in kept)
     assert any("{ \"union\", TokenType.Union }" in text(r) for r in kept)
     assert all(r["invocation"] != "ReportError" for r in kept)
+
+
+# --------------------------------------------------------------------------- #
+# the guard: `within` is a FULL match over the callee name, and the list applies only to scored mutants
+# --------------------------------------------------------------------------- #
+_PREFIX_SRC = """namespace Sharpy.Compiler.Lexer;
+
+public partial class Lexer
+{
+    private void Trace()
+    {
+        LogInfo("listed message");
+        LogInfoVerbose("not a LogInfo call");
+        ReportError("compile-error message", 1, 1, "SPY0001");
+    }
+}
+"""
+
+
+def _single_file_report(mutants: list[tuple[str, str, str, str]]) -> dict:
+    """(id, needle, mutatorName, status) over _PREFIX_SRC."""
+    rows = [{"id": mid, "mutatorName": mutator, "replacement": "?", "location": _loc(_PREFIX_SRC, needle),
+             "status": status} for mid, needle, mutator, status in mutants]
+    return {"schemaVersion": "2", "files": {ROOT + "Lexer.cs": {"language": "cs", "source": _PREFIX_SRC,
+                                                                 "mutants": rows}}}
+
+
+def test_within_matches_the_whole_callee_name_never_a_prefix():
+    report = _single_file_report([
+        ("listed", '"listed message"', "String mutation", "Survived"),
+        ("prefix", '"not a LogInfo call"', "String mutation", "Survived"),
+    ])
+    ignore = {"entries": [{"mutator": "string", "within": "LogInfo", "reason": "message text"}]}
+    rows = _by_id(triage.triage(report, ignore))
+    assert rows["listed"]["status"] == "ignoredByList"
+    assert rows["prefix"]["status"] == "survived", "LogInfoVerbose is not LogInfo: `within` must fullmatch the callee"
+    assert rows["prefix"]["invocation"] == "LogInfoVerbose"
+
+
+def test_ignore_list_never_reclassifies_an_unscored_mutant():
+    report = _single_file_report([
+        ("compile-error", '"compile-error message"', "String mutation", "CompileError"),
+        ("scored", '"listed message"', "String mutation", "Killed"),
+    ])
+    ignore = {"entries": [{"mutator": "string", "within": "ReportError|LogInfo", "reason": "message text"}]}
+    r = triage.triage(report, ignore)
+    rows = _by_id(r)
+    assert rows["compile-error"]["status"] == "compileError", "a CompileError mutant is outside the score either way"
+    assert rows["scored"]["status"] == "ignoredByList"
+    assert (r["compileError"], r["ignoredByList"]) == (1, 1)
+    assert [e["matched"] for e in r["listedByEntry"]] == [1]

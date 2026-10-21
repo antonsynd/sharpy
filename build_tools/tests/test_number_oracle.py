@@ -37,6 +37,11 @@ from build_tools.differential_lex import number_oracle
         ("0B101", "int", "5"),
         ("0O755", "int", "493"),
         ("1e500", "float", "inf"),
+        # Integers of four or more digits: the value is plain decimal digits (no grouping), and
+        # a value past Int64 is exact.
+        ("1_000", "int", "1000"),
+        ("0xFFFF", "int", "65535"),
+        ("123_456_789_012_345_678_901", "int", "123456789012345678901"),
     ],
 )
 def test_numeric_constant_is_ok_with_kind_and_repr(source, kind, value):
