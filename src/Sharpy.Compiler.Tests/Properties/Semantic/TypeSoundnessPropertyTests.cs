@@ -33,23 +33,19 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
             var result = CompileAndExecuteWithGC(source);
 
+            // The sink admitted the program, so ANY failed run is a finding — a runtime throw, a
+            // Roslyn emit failure (empty stderr) or a Sharpy runtime error — never a sample filtered
+            // by the exception's name (#2288 verify: four .NET names admitted every other failure).
             if (!result.Success)
             {
-                var stderr = result.StandardError ?? "";
-                if (stderr.Contains("InvalidCastException") ||
-                    stderr.Contains("NullReferenceException") ||
-                    stderr.Contains("InvalidOperationException") ||
-                    stderr.Contains("ArrayTypeMismatchException"))
-                {
-                    lock (errors)
-                        errors.Add($"Runtime type error:\n{source}\nStderr: {stderr}");
-                }
+                lock (errors)
+                    errors.Add($"Compiled program failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}");
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
         Output.WriteLine(sink.Summary);
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
-        Output.WriteLine($"Type soundness: {total} programs executed, {errors.Count} runtime type errors");
+        Output.WriteLine($"Type soundness: {total} programs executed, {errors.Count} failed runs");
         Assert.Empty(errors);
     }
 
@@ -71,23 +67,19 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
             var result = CompileAndExecuteWithGC(source);
 
+            // The sink admitted the program, so ANY failed run is a finding — a runtime throw, a
+            // Roslyn emit failure (empty stderr) or a Sharpy runtime error — never a sample filtered
+            // by the exception's name (#2288 verify: four .NET names admitted every other failure).
             if (!result.Success)
             {
-                var stderr = result.StandardError ?? "";
-                if (stderr.Contains("InvalidCastException") ||
-                    stderr.Contains("NullReferenceException") ||
-                    stderr.Contains("InvalidOperationException") ||
-                    stderr.Contains("ArrayTypeMismatchException"))
-                {
-                    lock (errors)
-                        errors.Add($"Runtime type error:\n{source}\nStderr: {stderr}");
-                }
+                lock (errors)
+                    errors.Add($"Compiled program failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}");
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
         Output.WriteLine(sink.Summary);
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
-        Output.WriteLine($"Type soundness (collections): {total} programs executed, {errors.Count} runtime type errors");
+        Output.WriteLine($"Type soundness (collections): {total} programs executed, {errors.Count} failed runs");
         Assert.Empty(errors);
     }
 

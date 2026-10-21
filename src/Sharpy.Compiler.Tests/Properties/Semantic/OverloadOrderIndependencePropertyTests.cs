@@ -116,23 +116,17 @@ public class OverloadOrderIndependencePropertyTests
     /// Positions and messages are excluded so that reordering the overload declarations (which
     /// shifts line numbers of any per-overload diagnostic) is not itself a difference; a change in
     /// which overload wins still shows up as a change in the code multiset (the str-typed consumer
-    /// errors or not).
+    /// errors or not). A throw is not a signature: it propagates and fails the sample, so a compiler
+    /// throw that is identical in every declaration order cannot compare equal and pass (#2288 verify).
     /// </summary>
     private static string ResolutionSignature(string source)
     {
-        try
-        {
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Compile(source, "test.spy");
-            var codes = (result.Diagnostics?.GetAll() ?? Enumerable.Empty<Sharpy.Compiler.Diagnostics.CompilerDiagnostic>())
-                .Select(d => d.Code)
-                .OrderBy(c => c, StringComparer.Ordinal);
-            return $"success={result.Success};codes=[{string.Join(",", codes)}]";
-        }
-        catch (Exception ex)
-        {
-            return $"THREW:{ex.GetType().Name}";
-        }
+        var compiler = new Sharpy.Compiler.Compiler();
+        var result = compiler.Compile(source, "test.spy");
+        var codes = (result.Diagnostics?.GetAll() ?? Enumerable.Empty<Sharpy.Compiler.Diagnostics.CompilerDiagnostic>())
+            .Select(d => d.Code)
+            .OrderBy(c => c, StringComparer.Ordinal);
+        return $"success={result.Success};codes=[{string.Join(",", codes)}]";
     }
 
     private static string BuildSource(Engine engine, List<(string Param, string Ret, string Lit)> overloads, string argLiteral)
