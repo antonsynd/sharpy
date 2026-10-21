@@ -12,10 +12,20 @@ namespace Sharpy.Compiler.Tests.Lexer;
 public partial class LiteralLossScannerDifferentialTests
 {
     /// <summary>
-    /// Every <see cref="InjectionStride"/>-th cell of the generated sequence is lexed (fixed, never random); 1 = all.
-    /// The sequence is the ordered corpus × twins × lines × constructs, so the sample is a pure function of the tree.
+    /// Every <see cref="InjectionStride"/>-th BULK cell of the generated sequence is lexed (fixed, never random); every
+    /// other cell is lexed always. Bulk = the <c>dollar</c> and <c>tab</c> constructs on the as-is document and its
+    /// <c>@backtick</c> twin (one per line each: 184,641 of 284,952 generated cells @ 0d58024dd + the @walrus twin,
+    /// measured); the sparse constructs (<c>escape</c>,
+    /// <c>conversion</c>) and the targeted content twins (<c>@escaped-quote</c>, <c>@unbalanced-brace</c>,
+    /// <c>@field-split</c>, <c>@walrus</c>) — the cells that alone kill the scanner-arm mutants — are never sampled.
+    /// Each bulk construct has its own sequence (the ordered corpus × twins × lines), so the sample is even across the
+    /// two and a pure function of the tree. Stride 4 because the whole-solution gate measured this test at 96 s @ 2c15c47a0 (stride 1) against the plan's
+    /// 60 s per-class budget (Design Decision 10); stride 4 keeps 146,471 of the 284,952 cells (51 %, measured).
     /// </summary>
-    private const int InjectionStride = 1;
+    private const int InjectionStride = 4;
+
+    private static bool IsBulk(string twin, Injection cell) =>
+        cell.Construct is ("dollar" or "tab") && twin is ("" or "@backtick");
 
     /// <summary>The error constructs, in roster order (the <c>K</c> of the output line).</summary>
     private static readonly IReadOnlyList<(string Name, string Code)> InjectionConstructs = new[]
@@ -162,6 +172,12 @@ public partial class LiteralLossScannerDifferentialTests
     /// hole, <c>fstrings/multiline_hole_2022</c>): the f-string's line now ends inside an open field, so the scanner's
     /// field reading — nested literals, the enclosing quote (<c>ClosesOnItsLine</c>), escapes and braces in the text —
     /// decides <c>DroppedOpener</c> there. Built only when the document has such a field.</item>
+    /// <item><c>@walrus</c> — <c>; w__ := 0</c> appended after the last code token of every line that ends its logical
+    /// line with no comment, in a document that already spells a walrus: a depth-0 <c>:=</c> at the END of the given-up
+    /// text, after tokens of the line were read (the <c>escape</c>/<c>conversion</c> cells), that is NOT a header colon
+    /// (<c>DroppedLineContinues</c>' depth-0 colon arm must skip it — every fixture's walrus sits inside brackets or on a
+    /// header line, so a scanner that read <c>:=</c> as a colon agreed on every cell). Built only when the document has a
+    /// <c>:=</c> token.</item>
     /// </list>
     /// </summary>
     internal static IEnumerable<(string Twin, string Source)> Twins(CleanLineFacts facts)
@@ -241,6 +257,37 @@ public partial class LiteralLossScannerDifferentialTests
                 at = offset;
             }
             yield return ("@field-split", split.Append(source, at, source.Length - at).ToString());
+        }
+
+        if (facts.Tokens.Any(t => t.Type == TokenType.ColonAssign))
+        {
+            var walrus = new StringBuilder(source.Length + (facts.Lines.Count * 12));
+            at = 0;
+            for (var k = 0; k < facts.Lines.Count; k++)
+            {
+                var (lineStart, lineEnd) = facts.Lines[k];
+                if (!facts.HasCode(k) || facts.EndInsideLiteral(k))
+                    continue;
+                var codeEnd = -1;
+                var endsLogicalLine = false;
+                foreach (var token in facts.Tokens)
+                {
+                    if (token.Position < lineStart)
+                        continue;
+                    if (token.Position > lineEnd)
+                        break;
+                    if (token.Type == TokenType.Newline)
+                        endsLogicalLine = true;
+                    else if (token.Type is not (TokenType.Indent or TokenType.Dedent or TokenType.Eof) && token.Position < lineEnd)
+                        codeEnd = token.Position + token.Length;
+                }
+                if (!endsLogicalLine || codeEnd < 0 || codeEnd > lineEnd || source[codeEnd..lineEnd].Trim().Length > 0)
+                    continue;   // the logical line goes on, or a comment follows the code
+                walrus.Append(source, at, codeEnd - at).Append("; w__ := 0");
+                at = codeEnd;
+            }
+            if (at > 0)
+                yield return ("@walrus", walrus.Append(source, at, source.Length - at).ToString());
         }
     }
 
@@ -407,7 +454,8 @@ public partial class LiteralLossScannerDifferentialTests
         var cells = 0;
         var openerLines = 0;
         var closeLines = 0;
-        var sequence = 0;
+        var bulkSequence = new Dictionary<string, int>(StringComparer.Ordinal);   // per construct, so the sample is even
+        var sampledOut = 0;
 
         foreach (var (name, source) in corpus)
         {
@@ -434,8 +482,11 @@ public partial class LiteralLossScannerDifferentialTests
                 var lastSite = -1;
                 foreach (var cell in Injections(twinFacts))
                 {
-                    if (sequence++ % InjectionStride != 0)
+                    if (IsBulk(twin, cell) && (bulkSequence[cell.Construct] = bulkSequence.GetValueOrDefault(cell.Construct) + 1) % InjectionStride != 1)
+                    {
+                        sampledOut++;
                         continue;
+                    }
                     var offset = cell.Construct is "escape" or "conversion" ? $"@{cell.EditAt - twinFacts.Lines[cell.Line].Start}" : "";
                     var key = $"{name}:{cell.Line + 1}:{cell.Construct}{offset}{twin}";
                     universe.Add(key);
@@ -465,7 +516,7 @@ public partial class LiteralLossScannerDifferentialTests
         var (unlisted, stale, allowlisted) = allowlist.Ratchet(k => !ScannerAllowlist.IsShapeKey(k), universe, disagreements);
         clock.Stop();
         _output.WriteLine($"SCANNER-INJECT documents {documents} sites {sites} constructs {InjectionConstructs.Count} cells {cells} "
-            + $"disagreements {disagreements.Count} allowlisted {allowlisted} stride {InjectionStride}");
+            + $"disagreements {disagreements.Count} allowlisted {allowlisted} stride {InjectionStride} (bulk only; sampled out {sampledOut})");
         _output.WriteLine($"SCANNER-INJECT corpus {corpus.Count} clean {clean}; twins {string.Join(", ", perTwin.Select(t => $"{t.Key}={t.Value}"))} "
             + $"(rejected {rejectedTwins.Count}); cells per construct {string.Join(", ", perConstruct.Select(c => $"{c.Key}={c.Value}"))}; "
             + $"opener-crossing cells (DroppedOpener only) {openerLines}; close lines excluded {closeLines}; misfires {misfires.Count}; "
@@ -481,7 +532,7 @@ public partial class LiteralLossScannerDifferentialTests
 
         clean.Should().BeGreaterThan(3000, "the oracle's population is the fixture corpus");
         perConstruct.Where(c => c.Value == 0).Select(c => c.Key).Should().BeEmpty("every construct must reach the corpus");
-        perTwin.Keys.Should().Contain(new[] { "as-is", "backtick", "escaped-quote", "unbalanced-brace", "field-split" }, "every twin must be built");
+        perTwin.Keys.Should().Contain(new[] { "as-is", "backtick", "escaped-quote", "unbalanced-brace", "field-split", "walrus" }, "every twin must be built");
         misfires.Should().BeEmpty("a construct that does not abort exactly once on its line is outside the oracle");
         rejectedTwins.Should().BeEmpty("every twin is a clean document by construction");
         allowlist.Malformed.Should().BeEmpty();
