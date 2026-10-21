@@ -286,9 +286,12 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitConditionalExpression(ConditionalExpression node)
     {
-        VisitExprInContext(node.ThenValue, PrecConditional, isRightChild: false, parentIsRightAssoc: false);
+        // The then-value and the test are `??`-level operands (the parser reads both with
+        // ParseNullCoalesce, as CPython reads them as `or_test`), so a nested conditional, a lambda,
+        // a walrus or a `try`/`maybe` there is grouped; only the else-value is a full `test` (#2169).
+        VisitExprInContext(node.ThenValue, PrecNullCoalesce, isRightChild: false, parentIsRightAssoc: false);
         _w.Write(" if ");
-        Visit(node.Test);
+        VisitExprInContext(node.Test, PrecNullCoalesce, isRightChild: false, parentIsRightAssoc: false);
         _w.Write(" else ");
         VisitExprInContext(node.ElseValue, PrecConditional, isRightChild: true, parentIsRightAssoc: true);
     }

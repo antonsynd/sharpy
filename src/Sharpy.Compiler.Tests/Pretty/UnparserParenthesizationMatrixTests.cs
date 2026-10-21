@@ -26,8 +26,9 @@ namespace Sharpy.Compiler.Tests.PrettyTests;
 /// Python shares, the table's necessity verdicts were checked against python3's parser.</para>
 ///
 /// <para>Axes: binary operator (outer) × binary operator (inner) × side; unary operator × binary
-/// operator × side (and binary inside unary); postfix form × receiver kind. Hand-written axes, not
-/// generated: the ternary, lambda, walrus and cast forms (their operands are not plain
+/// operator × side (and binary inside unary); postfix form × receiver kind; and the conditional's
+/// operand kind × position × source (<see cref="ConditionalCells"/>, #2169). Hand-written axes, not
+/// generated: the lambda, walrus and cast forms as outer nodes (their operands are not plain
 /// precedence slots) and unary-in-unary — covered by <c>UnparserTests</c> and the corpus sweeps.</para>
 /// </summary>
 public class UnparserParenthesizationMatrixTests
@@ -159,6 +160,82 @@ public class UnparserParenthesizationMatrixTests
     public void Matrix_PinsTheLeftOperandOfPower(string label, string minimal)
     {
         Cells().Select(c => ((string)c[0], (string)c[2])).Should().Contain((label, minimal));
+    }
+
+    /// <summary>
+    /// The conditional <c>a if t else e</c> (#2169). Its then-value and test are <c>??</c>-level operands
+    /// (the parser reads both with <c>ParseNullCoalesce</c>, as CPython reads them as <c>or_test</c>);
+    /// only its else-value is a full <c>test</c>, where a nested conditional or a bare lambda sits bare.
+    /// A walrus, <c>try</c> or <c>maybe</c> is grouped in every position. Two sources per cell: the
+    /// SYNTHESIZED tree (normalised — no <c>Parenthesized</c> node, as a generator builds it) must
+    /// unparse to exactly the minimal spelling; the PARSED tree (it keeps the user's
+    /// <c>Parenthesized</c> node) must unparse to source that re-parses to the same tree. Necessity
+    /// verdicts for the forms Python shares (conditional, lambda, walrus, <c>or</c>) were checked
+    /// against python3's parser and <c>ast.unparse</c>.
+    /// </summary>
+    public static TheoryData<string, string, string, bool> ConditionalCells()
+    {
+        // (label, minimal spelling, grouped in the then-value and test, grouped in the else-value)
+        var operands = new (string Label, string Text, bool OperandNeeds, bool ElseNeeds)[]
+        {
+            ("conditional", "p if q else r", true, false),
+            // A parameter, so the cell is not the parameterless `lambda :` spacing cell (#2169, P22d).
+            ("lambda", "lambda z: p", true, false),
+            ("walrus", "y := p", true, true),
+            ("try", "try p", true, true),
+            ("maybe", "maybe p", true, true),
+            ("??", "p ?? r", false, false),
+            ("or", "p or r", false, false),
+        };
+        var positions = new (string Label, string Template, bool IsElse)[]
+        {
+            ("then", "{0} if t else e", false),
+            ("test", "a if {0} else e", false),
+            ("else", "a if t else {0}", true),
+        };
+
+        var cells = new TheoryData<string, string, string, bool>();
+        foreach (var (label, text, operandNeeds, elseNeeds) in operands)
+        {
+            foreach (var (position, template, isElse) in positions)
+            {
+                var full = string.Format(template, $"({text})");
+                var minimal = (isElse ? elseNeeds : operandNeeds) ? full : string.Format(template, text);
+                foreach (var synthesized in new[] { true, false })
+                    cells.Add($"{label} in {position} ({(synthesized ? "synthesized" : "parsed")})", full, minimal, synthesized);
+            }
+        }
+        return cells;
+    }
+
+    [Theory]
+    [MemberData(nameof(ConditionalCells))]
+    public void Unparse_ConditionalOperand_RoundTrips(string label, string full, string minimal, bool synthesized)
+    {
+        var fullModule = Parse($"x = {full}\n", out var fullErrors);
+        fullErrors.Should().BeEmpty($"{label}: the fully parenthesised spelling must parse");
+        var minimalModule = Parse($"x = {minimal}\n", out var minimalErrors);
+        minimalErrors.Should().BeEmpty($"{label}: the minimal spelling must parse — else the table is wrong about this cell");
+
+        var normalized = AstNormalizer.Instance.NormalizeModule(fullModule);
+        StructuralEqualityComparer.Instance.Equals(normalized, AstNormalizer.Instance.NormalizeModule(minimalModule))
+            .Should().BeTrue($"{label}: `{minimal}` must parse to the same tree as `{full}` — the grammar and the table disagree");
+
+        var written = Unparser.Unparse(synthesized ? normalized : fullModule);
+        if (synthesized)
+            written.Should().Be($"x = {minimal}\n", $"{label}: the unparser must write exactly the parentheses the grammar needs");
+
+        var reparsed = Parse(written, out var reparseErrors);
+        reparseErrors.Should().BeEmpty($"{label}: `{written.TrimEnd()}` must re-parse");
+        StructuralEqualityComparer.Instance.Equals(normalized, AstNormalizer.Instance.NormalizeModule(reparsed))
+            .Should().BeTrue($"{label}: `{written.TrimEnd()}` must re-parse to the tree of `{full}`");
+    }
+
+    [Fact]
+    public void ConditionalMatrix_CoversEveryAxis()
+    {
+        // 7 operand kinds × 3 positions × 2 sources, anchored literally.
+        ConditionalCells().Count.Should().Be(7 * 3 * 2);
     }
 
     private static SModule Parse(string source, out List<string> errors)

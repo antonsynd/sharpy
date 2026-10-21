@@ -200,7 +200,7 @@ internal sealed class RejectionSink
         Interlocked.Increment(ref _drawn);
     }
 
-    /// <summary><c>label: rejections k/N (pinned p [#2169 ×p], unexplained u)</c>.</summary>
+    /// <summary><c>label: rejections k/N (pinned p [#N ×p], unexplained u)</c>.</summary>
     public string Summary
     {
         get
