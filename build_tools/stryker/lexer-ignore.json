@@ -1,0 +1,16 @@
+{
+  "$comment": "R-GB (#2289) ignore list for the Lexer mutation score, applied by build_tools/stryker/triage.py (P68, #2300). 'within' is a regex over the CALLEE names a mutant sits inside (never the declaring method); every '|' alternative must name a method invoked in the scanned sources or the script exits 2. Against the P68 plan's Design Decision 9 @ 220259b51: LogDebug is dropped (invoked nowhere in src/Sharpy.Compiler/Lexer/), AddError is added (two dedented-string message literals in Lexer.Literals.cs reach the diagnostic bag through it directly, the same message-text class).",
+  "entries": [
+    {
+      "mutator": "string",
+      "within": "ReportError|AddError|LogInfo|AddWarning|ReportUnclosedField|ReportFieldEndedByQuote",
+      "reason": "diagnostic/logger message text — DEVIATION by default (python-fidelity-scope.md); no program's control flow reads it"
+    },
+    {
+      "mutator": "string",
+      "within": "CreateToken",
+      "fieldOf": "operator Value",
+      "reason": "an operator token's Value is read only inside parser error-message text (grep-only @ 258a7b66a)"
+    }
+  ]
+}
