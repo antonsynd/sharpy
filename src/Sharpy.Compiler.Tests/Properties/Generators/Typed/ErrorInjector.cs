@@ -47,10 +47,11 @@ internal static class ErrorInjector
     /// <list type="bullet">
     /// <item><c>Error</c>: the distinct error codes are exactly [<paramref name="expectedCode"/>]
     /// (warnings are not read). Pinned: no error at all.</item>
-    /// <item><c>Warning</c>: the distinct warning codes are exactly [<paramref name="expectedCode"/>]
-    /// AND there is no error — a warning lane whose program is also refused proves nothing about the
-    /// warning. Pinned: no error, and no warning of the code (no warning at all when the code is
-    /// null).</item>
+    /// <item><c>Warning</c>: exactly ONE warning DIAGNOSTIC, carrying <paramref name="expectedCode"/>, AND no
+    /// error — a warning lane whose program is also refused proves nothing about the warning, and two
+    /// warnings of the code are two broken facts, not the one the injection made (P63 Design Decision
+    /// 6: "exactly one diagnostic of the expected severity"). Pinned: no error, and no warning of the
+    /// code (no warning at all when the code is null).</item>
     /// </list>
     /// Expected codes are literal strings at the call site, never <c>DiagnosticCodes</c> constants —
     /// a renumbering mutation must stay live.
@@ -100,11 +101,13 @@ internal static class ErrorInjector
         var source = sourceForMessage;
         List<string> errors;
         List<string> warnings;
+        int warningDiagnostics;
         try
         {
             var (success, all) = analyse();
             errors = DistinctCodes(all.Where(d => d.IsError));
             warnings = DistinctCodes(all.Where(d => d.IsWarning));
+            warningDiagnostics = all.Count(d => d.IsWarning);
             if (!success && errors.Count == 0)
                 return $"Injected {label} failed analysis without an error code:\n{source}";
         }
@@ -116,7 +119,9 @@ internal static class ErrorInjector
         var isWarning = severity == CompilerDiagnosticSeverity.Warning;
         // The arm's own codes: errors on the error arm, warnings on the warning arm.
         var drew = Describe(isWarning ? warnings : errors);
-        var drewAll = isWarning ? $"errors [{Describe(errors)}], warnings [{drew}]" : $"[{drew}]";
+        var drewAll = isWarning
+            ? $"errors [{Describe(errors)}], warnings [{drew}] ({warningDiagnostics} warning diagnostic(s))"
+            : $"[{drew}]";
 
         if (pin is not null)
         {
@@ -135,9 +140,9 @@ internal static class ErrorInjector
             ?? throw new InvalidOperationException($"Injection {label} has neither an expected code nor a KnownRed pin");
         if (isWarning)
         {
-            return warnings is [var onlyWarning] && onlyWarning == expected && errors.Count == 0
+            return warningDiagnostics == 1 && warnings is [var onlyWarning] && onlyWarning == expected && errors.Count == 0
                 ? null
-                : $"Injected {label} must draw exactly warning {expected} and no error, drew {drewAll}:\n{source}";
+                : $"Injected {label} must draw exactly one warning, {expected}, and no error, drew {drewAll}:\n{source}";
         }
 
         return errors is [var only] && only == expected

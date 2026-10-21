@@ -38,6 +38,36 @@ public class JudgeSourceTests
             f(True)
         """;
 
+    // Two match statements on bool, each missing a case: two SPY0463 warnings, no error.
+    private const string TwoNonExhaustiveMatches = """
+        def f(x: bool) -> None:
+            match x:
+                case True:
+                    print("yes")
+
+        def g(x: bool) -> None:
+            match x:
+                case False:
+                    print("no")
+
+        def main():
+            f(True)
+            g(False)
+        """;
+
+    // The warning beside an unrelated one (SPY0450, a statement after `return`): no error.
+    private const string NonExhaustiveMatchAndUnreachable = """
+        def f(x: bool) -> None:
+            match x:
+                case True:
+                    print("yes")
+
+        def main():
+            f(True)
+            return
+            print("never")
+        """;
+
     private const string ErrorProgram = """
         def main():
             let n: int = "x"
@@ -69,6 +99,27 @@ public class JudgeSourceTests
             NonExhaustiveMatchAndError, "SPY0463", CompilerDiagnosticSeverity.Warning, null, "match statement");
         Assert.NotNull(failure);
         Assert.Contains("errors [SPY0220], warnings [SPY0463]", failure);
+    }
+
+    // (a) exactly ONE warning diagnostic (P63 Design Decision 6): two non-exhaustive matches are two
+    // SPY0463 warnings — one distinct code, but two broken facts, not the one the injection made.
+    [Fact]
+    public void WarningArm_TwoOfTheExpectedWarning_IsRefused()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            TwoNonExhaustiveMatches, "SPY0463", CompilerDiagnosticSeverity.Warning, null, "match statement");
+        Assert.NotNull(failure);
+        Assert.Contains("errors [nothing], warnings [SPY0463] (2 warning diagnostic(s))", failure);
+    }
+
+    // (a) an unrelated warning beside the expected one is not a catch either.
+    [Fact]
+    public void WarningArm_ExpectedWarningBesideAnUnrelatedWarning_IsRefused()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            NonExhaustiveMatchAndUnreachable, "SPY0463", CompilerDiagnosticSeverity.Warning, null, "match statement");
+        Assert.NotNull(failure);
+        Assert.Contains("errors [nothing], warnings [SPY0450, SPY0463] (2 warning diagnostic(s))", failure);
     }
 
     // (b) the error arm never reads warnings: the warning program drew no error.
