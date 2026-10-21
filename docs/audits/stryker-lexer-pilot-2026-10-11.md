@@ -159,7 +159,7 @@ bash build_tools/stryker/run.sh build_tools/stryker/lexer-probe.json <output-dir
   - Timeouts are 15 % of the probe's tested mutants. Each one costs the full timeout. In `Lexer.Indentation.cs` they are mostly infinite loops from a deleted `tempPos++` or `_position++`.
   - The full re-run (P68 Phase 5 Task 3) needs an owner slot sized from this, not from the pilot's 7 h.
 
-**Decision:** `lexer.json` carries `ignore-methods` for the message and logger sinks. It is measured to skip the argument mutations, and those mutants are then not tested at all. The data file stays authoritative for what `ignore-methods` cannot express: the `CreateToken` operator `Value` entry, and sinks the config does not list, such as `ReportUnclosedField` and `ReportFieldEndedByQuote`.
+**Decision:** `lexer.json` will carry `ignore-methods` for the message and logger sinks. It is added in P68 Phase 5 Task 3, before the re-run; `lexer.json` has no `ignore-methods` key @ 0d58024dd. The key is measured to skip the argument mutations, and those mutants are then not tested at all. The data file stays authoritative for what `ignore-methods` cannot express: the `CreateToken` operator `Value` entry, and sinks the config does not list, such as `ReportUnclosedField` and `ReportFieldEndedByQuote`.
 
 ### Per-class mutation control (P68 Phase 5 Task 2)
 
