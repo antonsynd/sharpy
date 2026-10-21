@@ -719,7 +719,7 @@ internal static class ErrorInjector
         return null;
     }
 
-    private static readonly KnownRedRefusal ExplicitInstantiationConstraintPin = new("#2212",
+    private static readonly KnownRedRefusal ExplicitInstantiationConstraintPin = new KnownRedRefusal("#2212",
         "analyses clean; run is SPY0908 CS0311 — a violated constraint at an explicit instantiation is refused by Roslyn, not Sharpy");
 
     private const string PlainClassName = "Plain";

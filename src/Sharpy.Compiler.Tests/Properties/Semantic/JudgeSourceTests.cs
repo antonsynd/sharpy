@@ -51,7 +51,7 @@ public class JudgeSourceTests
         """;
 
     private static readonly ErrorInjector.KnownRedRefusal Pin =
-        new("#2288", "probe pin for the JudgeSource arms — never a real cell");
+        new("probe-pin", "probe pin for the JudgeSource arms — never a real cell, so it cites no issue");
 
     // (a) the warning arm accepts exactly one warning of the code with no error.
     [Fact]
