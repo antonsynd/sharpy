@@ -1,7 +1,7 @@
 using CsCheck;
 using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Tests.Properties.Generators;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,35 +21,28 @@ public class CfgWellFormednessPropertyTests
     }
 
     /// <summary>
-    /// Builds control flow graphs from every function in randomly generated,
-    /// successfully-compiled programs and asserts structural invariants:
-    /// the entry block is labeled "entry"; entry and exit blocks are members
-    /// of the Blocks collection; every successor edge points to a block in the
-    /// graph; the exit block has no successors; and statement counts are
-    /// non-negative. A program the compiler refuses is skipped (the untyped
-    /// generator's programs are not well typed); a THROW anywhere — compile,
-    /// re-parse or CFG build — fails the sample: it used to be swallowed with the
-    /// refusals, so a crashing CFG builder passed (#2288).
+    /// Builds control flow graphs from every function in typed-generator programs that compile
+    /// clean and asserts structural invariants: the entry block is labeled "entry"; entry and exit
+    /// blocks are members of the Blocks collection; every successor edge points to a block in the
+    /// graph; the exit block has no successors; and statement counts are non-negative. The lane reads
+    /// <see cref="GenFunctions.ModuleWithFunctions"/> through <see cref="SemanticFilter"/> with a
+    /// <see cref="RejectionSink"/>: every raw sample compiles (or is a pinned known red), and a THROW
+    /// anywhere — compile, re-parse or CFG build — fails the sample. It used to sample the untyped
+    /// generator and skip what the compiler refused, which was every program with a function: the
+    /// lane checked 0 CFGs from 50 programs and passed (#2288). At least one CFG must be checked.
     /// </summary>
     [Fact]
     public void CfgFromCompiledPrograms_SatisfiesStructuralInvariants()
     {
         int total = 0;
-        int cfgsChecked = 0;
+        int cfgsTested = 0;
+        var sink = new RejectionSink("CfgWellFormedness.CfgFromCompiledPrograms_SatisfiesStructuralInvariants");
 
-        Gen.Int[2, 3].SelectMany(fuel =>
-        {
-            var ctx = GenContext.Default with { Fuel = fuel };
-            return GenSharpy.Module(ctx);
-        }).Sample(module =>
+        SemanticFilter.CompilableProgram(GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2), sink)
+            .Sample(module =>
         {
             Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Compile(source, "cfg_test.spy");
-            if (!result.Success)
-                return;
 
             // Re-parse to obtain FunctionDef AST nodes to feed the CFG builder.
             var lexer = new Sharpy.Compiler.Lexer.Lexer(source);
@@ -57,10 +50,12 @@ public class CfgWellFormednessPropertyTests
             var parser = new Sharpy.Compiler.Parser.Parser(tokens);
             var parsed = parser.ParseModule();
 
+            int functions = 0;
             foreach (var stmt in parsed.Body)
             {
                 if (stmt is not FunctionDef funcDef)
                     continue;
+                functions++;
 
                 var builder = new ControlFlowGraphBuilder();
                 var cfg = builder.Build(funcDef);
@@ -126,11 +121,17 @@ public class CfgWellFormednessPropertyTests
                             "FindUnreachableBlocks returned a block not in Blocks");
                 }
 
-                Interlocked.Increment(ref cfgsChecked);
+                Interlocked.Increment(ref cfgsTested);
             }
+            if (functions == 0)
+                throw new CfgInvariantException($"ModuleWithFunctions drew a module without a function:\n{source}");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"CFG well-formedness: {cfgsChecked} CFGs checked from {total} programs");
+        _output.WriteLine(sink.Summary);
+        _output.WriteLine($"CFG well-formedness: {cfgsTested} CFGs checked from {total} programs");
+        Assert.True(sink.Unexplained.Count == 0, sink.Report());
+        // Applicability floor: a run that checks no CFG proves nothing (#2288).
+        Assert.True(cfgsTested > 0, $"no CFG was checked from {total} programs");
     }
 
     private sealed class CfgInvariantException : Exception
