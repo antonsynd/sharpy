@@ -3,7 +3,7 @@
 # LiteralLossScannerDifferentialTests.Shapes_LexerFactsMatchTheirConstructionKnownTruth.
 #
 # Row format:  key # #NNNN reason
-#   injection cell:  <repo-relative .spy>:<1-based line>:<construct>[@<offset>][@backtick|@escaped-quote|@field-split]
+#   injection cell:  <repo-relative .spy>:<1-based line>:<construct>[@<offset>][@backtick|@escaped-quote|@unbalanced-brace|@field-split]
 #   shape cell:      <repo-relative .spy>[@wide|@cr]:<1-based line>:shape:<shape name>
 # A row without an issue cite fails; a row whose key is not in the generated universe fails; a row whose
 # cell agrees fails as stale (drain on fix). Every row is also a findings-ledger line. The file's presence
