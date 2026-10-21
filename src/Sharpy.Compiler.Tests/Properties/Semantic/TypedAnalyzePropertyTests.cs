@@ -76,31 +76,18 @@ public class TypedAnalyzePropertyTests
         _output.WriteLine($"Filtered typed analysis: {count} programs all analyzed clean");
     }
 
+    /// <summary>Every RAW typed program analyses without a throw or an internal compiler error
+    /// (<see cref="ErrorInjector.JudgeNoInternalError"/>); a refusal is allowed — the sample is
+    /// unfiltered. Before #2288 the lane swallowed every exception but one <c>Analyze</c> never throws.</summary>
     [Fact]
     public void TypedProgram_NeverThrowsInternalError()
     {
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-        {
-            var env = new TypeEnv();
-            return GenTyped.TypedProgram(env, type, fuel: 3);
-        }).Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                compiler.Analyze(source, "typed_test.spy");
-            }
-            catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-            {
-                throw new Exception(
-                    $"InternalCompilerErrorException on typed program:\n{source}\n{ex.Message}");
-            }
-            catch
-            {
-                // Other exceptions are acceptable for generated code
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
+        var verdicts = ErrorInjector.JudgeSamples(
+            Gen.OneOfConst("int", "str", "bool").SelectMany(type => GenTyped.TypedProgram(new TypeEnv(), type, fuel: 3)),
+            source => ErrorInjector.JudgeNoInternalError(source, "typed program"), iter: 100);
+        _output.WriteLine($"Typed programs: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed without an internal error");
+        Assert.True(verdicts.Tested > 0, "No typed programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} typed programs crashed the compiler; the first:\n{verdicts.First}");
     }
 }

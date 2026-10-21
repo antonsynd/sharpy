@@ -34,8 +34,125 @@ public class DiagnosticSpanPropertyTests
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-            try
+            // A throw fails the sample: it used to be swallowed, so a crash could hide a bad span (#2288).
+            var compiler = new Sharpy.Compiler.Compiler();
+            var result = compiler.Analyze(source, "span_test.spy");
+
+            var sourceLineCount = source.Split('\n').Length;
+
+            foreach (var diag in result.Diagnostics.GetAll())
             {
+                if (diag.Span.HasValue)
+                {
+                    var span = diag.Span.Value;
+                    if (span.Start < 0 || span.End > source.Length || span.Start > span.End)
+                    {
+                        lock (errors)
+                            errors.Add(
+                                $"Span out of bounds: {span} for source length {source.Length}, " +
+                                $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
+                    }
+                }
+
+                if (diag.Line.HasValue)
+                {
+                    if (diag.Line.Value < 1)
+                    {
+                        lock (errors)
+                            errors.Add(
+                                $"Line {diag.Line.Value} is less than 1 (1-based), " +
+                                $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
+                    }
+                    else if (diag.Line.Value > sourceLineCount)
+                    {
+                        lock (errors)
+                            errors.Add(
+                                $"Line {diag.Line.Value} exceeds source line count {sourceLineCount}, " +
+                                $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
+                    }
+                }
+
+                if (diag.Column.HasValue && diag.Column.Value < 0)
+                {
+                    lock (errors)
+                        errors.Add(
+                            $"Column {diag.Column.Value} is negative (0-based), " +
+                            $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
+                }
+            }
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
+
+        _output.WriteLine($"Diagnostic span bounds: {errors.Count} violations found");
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ErrorDiagnosticSpans_HaveNonNegativeLength()
+    {
+        var errors = new List<string>();
+
+        Gen.Int[1, 4].SelectMany(fuel =>
+        {
+            var ctx = GenContext.Default with { Fuel = fuel };
+            return GenSharpy.Module(ctx);
+        }).Sample(module =>
+        {
+            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+
+            // A throw fails the sample: it used to be swallowed, so a crash could hide a bad span (#2288).
+            var compiler = new Sharpy.Compiler.Compiler();
+            var result = compiler.Analyze(source, "span_test.spy");
+
+            foreach (var diag in result.Diagnostics.GetAll())
+            {
+                if (diag.Severity == CompilerDiagnosticSeverity.Error && diag.Span.HasValue)
+                {
+                    var span = diag.Span.Value;
+                    if (span.Length < 0)
+                    {
+                        lock (errors)
+                            errors.Add(
+                                $"Error diagnostic has negative-length span: {span}, " +
+                                $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
+                    }
+                }
+            }
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
+
+        _output.WriteLine($"Error diagnostic span length: {errors.Count} violations found");
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void TypedPrograms_DiagnosticSpans_AreWithinSourceBounds()
+    {
+        var errors = new List<string>();
+        int injected = 0;
+
+        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
+
+        var sink = new RejectionSink("DiagnosticSpan.TypedPrograms_DiagnosticSpans_AreWithinSourceBounds");
+        var wellTyped = SemanticFilter.WellTypedProgram(baseGen, sink);
+
+        var injectors = new Func<Module, ErrorInjector.InjectionResult?>[]
+        {
+            ErrorInjector.InjectTypeMismatchAssignment,
+            ErrorInjector.InjectUndefinedVariable,
+        };
+
+        wellTyped.Sample(module =>
+        {
+            foreach (var injector in injectors)
+            {
+                var injection = injector(module);
+                if (injection == null)
+                    continue;
+
+                Interlocked.Increment(ref injected);
+                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(injection.Mutated);
+
+                // A throw fails the sample: it used to be swallowed, so a crash could hide a bad span (#2288).
                 var compiler = new Sharpy.Compiler.Compiler();
                 var result = compiler.Analyze(source, "span_test.spy");
 
@@ -80,141 +197,6 @@ public class DiagnosticSpanPropertyTests
                                 $"Column {diag.Column.Value} is negative (0-based), " +
                                 $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
                     }
-                }
-            }
-            catch
-            {
-                // Swallow internal errors — focus on span validity, not crashes
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
-
-        _output.WriteLine($"Diagnostic span bounds: {errors.Count} violations found");
-        Assert.Empty(errors);
-    }
-
-    [Fact]
-    public void ErrorDiagnosticSpans_HaveNonNegativeLength()
-    {
-        var errors = new List<string>();
-
-        Gen.Int[1, 4].SelectMany(fuel =>
-        {
-            var ctx = GenContext.Default with { Fuel = fuel };
-            return GenSharpy.Module(ctx);
-        }).Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "span_test.spy");
-
-                foreach (var diag in result.Diagnostics.GetAll())
-                {
-                    if (diag.Severity == CompilerDiagnosticSeverity.Error && diag.Span.HasValue)
-                    {
-                        var span = diag.Span.Value;
-                        if (span.Length < 0)
-                        {
-                            lock (errors)
-                                errors.Add(
-                                    $"Error diagnostic has negative-length span: {span}, " +
-                                    $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Swallow internal errors — focus on span validity, not crashes
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
-
-        _output.WriteLine($"Error diagnostic span length: {errors.Count} violations found");
-        Assert.Empty(errors);
-    }
-
-    [Fact]
-    public void TypedPrograms_DiagnosticSpans_AreWithinSourceBounds()
-    {
-        var errors = new List<string>();
-        int injected = 0;
-
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
-
-        var sink = new RejectionSink("DiagnosticSpan.TypedPrograms_DiagnosticSpans_AreWithinSourceBounds");
-        var wellTyped = SemanticFilter.WellTypedProgram(baseGen, sink);
-
-        var injectors = new Func<Module, ErrorInjector.InjectionResult?>[]
-        {
-            ErrorInjector.InjectTypeMismatchAssignment,
-            ErrorInjector.InjectUndefinedVariable,
-        };
-
-        wellTyped.Sample(module =>
-        {
-            foreach (var injector in injectors)
-            {
-                var injection = injector(module);
-                if (injection == null)
-                    continue;
-
-                Interlocked.Increment(ref injected);
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(injection.Mutated);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "span_test.spy");
-
-                    var sourceLineCount = source.Split('\n').Length;
-
-                    foreach (var diag in result.Diagnostics.GetAll())
-                    {
-                        if (diag.Span.HasValue)
-                        {
-                            var span = diag.Span.Value;
-                            if (span.Start < 0 || span.End > source.Length || span.Start > span.End)
-                            {
-                                lock (errors)
-                                    errors.Add(
-                                        $"Span out of bounds: {span} for source length {source.Length}, " +
-                                        $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
-                            }
-                        }
-
-                        if (diag.Line.HasValue)
-                        {
-                            if (diag.Line.Value < 1)
-                            {
-                                lock (errors)
-                                    errors.Add(
-                                        $"Line {diag.Line.Value} is less than 1 (1-based), " +
-                                        $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
-                            }
-                            else if (diag.Line.Value > sourceLineCount)
-                            {
-                                lock (errors)
-                                    errors.Add(
-                                        $"Line {diag.Line.Value} exceeds source line count {sourceLineCount}, " +
-                                        $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
-                            }
-                        }
-
-                        if (diag.Column.HasValue && diag.Column.Value < 0)
-                        {
-                            lock (errors)
-                                errors.Add(
-                                    $"Column {diag.Column.Value} is negative (0-based), " +
-                                    $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
-                        }
-                    }
-                }
-                catch
-                {
-                    // Swallow internal errors — focus on span validity, not crashes
                 }
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);

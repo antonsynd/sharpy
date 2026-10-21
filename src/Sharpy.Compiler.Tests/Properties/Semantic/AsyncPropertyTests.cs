@@ -82,31 +82,25 @@ public class AsyncPropertyTests
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-                try
+                // A throw fails the sample: it used to be swallowed (#2288).
+                var compiler1 = new Sharpy.Compiler.Compiler();
+                var result1 = compiler1.Analyze(source, "async_test.spy");
+
+                var compiler2 = new Sharpy.Compiler.Compiler();
+                var result2 = compiler2.Analyze(source, "async_test.spy");
+
+                if (result1.Success != result2.Success)
                 {
-                    var compiler1 = new Sharpy.Compiler.Compiler();
-                    var result1 = compiler1.Analyze(source, "async_test.spy");
-
-                    var compiler2 = new Sharpy.Compiler.Compiler();
-                    var result2 = compiler2.Analyze(source, "async_test.spy");
-
-                    if (result1.Success != result2.Success)
-                    {
-                        lock (errors)
-                            errors.Add($"Success differs: {result1.Success} vs {result2.Success}");
-                    }
-
-                    var diags1 = result1.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c).ToList();
-                    var diags2 = result2.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c).ToList();
-                    if (!diags1.SequenceEqual(diags2))
-                    {
-                        lock (errors)
-                            errors.Add($"Diagnostics differ: [{string.Join(",", diags1)}] vs [{string.Join(",", diags2)}]");
-                    }
+                    lock (errors)
+                        errors.Add($"Success differs: {result1.Success} vs {result2.Success}");
                 }
-                catch
+
+                var diags1 = result1.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c).ToList();
+                var diags2 = result2.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c).ToList();
+                if (!diags1.SequenceEqual(diags2))
                 {
-                    // Swallow
+                    lock (errors)
+                        errors.Add($"Diagnostics differ: [{string.Join(",", diags1)}] vs [{string.Join(",", diags2)}]");
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 

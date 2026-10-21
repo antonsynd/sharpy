@@ -26,7 +26,7 @@ internal static class SemanticFilter
         {
             try
             {
-                return Admit(sink, () => Sharpy.Compiler.Pretty.Unparser.Unparse(module), module, AnalyseSingleFile);
+                return AdmitWellTyped(module, sink);
             }
             finally
             {
@@ -34,6 +34,15 @@ internal static class SemanticFilter
                 GC.WaitForPendingFinalizers();
             }
         });
+
+    /// <summary>
+    /// The admission rule of <see cref="WellTypedProgram"/> for ONE sample, without the forced GC — for a
+    /// lane that collects its own programs in a loop (the differential sweep's generated arm, which runs
+    /// in a parallel class): true when the unparsed <paramref name="module"/> <c>Analyze</c>s clean,
+    /// otherwise the sample is recorded on <paramref name="sink"/> exactly as the filter records it.
+    /// </summary>
+    public static bool AdmitWellTyped(Module module, RejectionSink sink) =>
+        Admit(sink, () => Sharpy.Compiler.Pretty.Unparser.Unparse(module), module, AnalyseSingleFile);
 
     /// <summary>Samples whose unparsed source <c>Compile</c>s clean (front end and C# emit).</summary>
     public static Gen<Module> CompilableProgram(Gen<Module> source, RejectionSink sink) =>

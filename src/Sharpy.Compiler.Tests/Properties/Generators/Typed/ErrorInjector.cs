@@ -170,6 +170,36 @@ internal static class ErrorInjector
         }
     }
 
+    /// <summary>
+    /// The no-crash verdict for a RAW sample — the one a <c>*NeverThrows*</c> lane reads (#2288):
+    /// null when analysing <paramref name="source"/> neither throws nor records an internal compiler
+    /// error (SPY0909, the code the compiler's last-chance handlers turn an escaped exception into),
+    /// otherwise why not. A refusal is NOT a failure here — the sample is unfiltered — but no throw is
+    /// ever acceptable: before, the lanes caught only <c>InternalCompilerErrorException</c> (which
+    /// <c>Analyze</c> never lets escape: it records SPY0909) and swallowed every other exception, so
+    /// they could not fail.
+    /// </summary>
+    public static string? JudgeNoInternalError(string source, string label)
+    {
+        try
+        {
+            var (_, all) = AnalyseSingleFile(source);
+            var internalErrors = all.Where(d => d.Code == InternalCompilerErrorCode).ToList();
+            return internalErrors.Count == 0
+                ? null
+                : $"Raw {label} drew an internal compiler error ({InternalCompilerErrorCode}): "
+                  + $"{internalErrors[0].Message}\n{source}";
+        }
+        catch (Exception e)
+        {
+            return $"Raw {label} threw {e.GetType().Name} — the compiler must never throw:\n{source}\n{e}";
+        }
+    }
+
+    /// <summary><c>DiagnosticCodes.Infrastructure.InternalCompilerError</c>, spelled literally (a
+    /// renumbering must stay a live mutation).</summary>
+    private const string InternalCompilerErrorCode = "SPY0909";
+
     /// <summary>What <see cref="JudgeSamples"/> saw: <see cref="Tested"/> samples judged,
     /// <see cref="Failures"/> non-null verdicts, <see cref="First"/> the first of them.</summary>
     public sealed record SampleVerdicts(int Tested, int Failures, string? First);

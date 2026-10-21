@@ -136,29 +136,19 @@ public class FunctionSemanticsPropertyTests
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
     }
 
+    /// <summary>Every RAW function program analyses without a throw or an internal compiler error
+    /// (<see cref="ErrorInjector.JudgeNoInternalError"/>); a refusal is allowed — the sample is
+    /// unfiltered. Before #2288 the lane swallowed every exception but one <c>Analyze</c> never throws.</summary>
     [Fact]
     public void ModuleWithFunctions_NeverThrowsInternalError()
     {
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenFunctions.ModuleWithFunctions(TypeEnv.WithFunctions, type, fuel: 2))
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    compiler.Analyze(source, "func_test.spy");
-                }
-                catch (Sharpy.Compiler.Diagnostics.InternalCompilerErrorException ex)
-                {
-                    throw new Exception(
-                        $"InternalCompilerErrorException on function program:\n{source}\n{ex.Message}");
-                }
-                catch
-                {
-                    // Other exceptions are acceptable
-                }
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var verdicts = ErrorInjector.JudgeSamples(
+            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                GenFunctions.ModuleWithFunctions(TypeEnv.WithFunctions, type, fuel: 2)),
+            source => ErrorInjector.JudgeNoInternalError(source, "function program"), iter: 50);
+        _output.WriteLine($"Function programs: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed without an internal error");
+        Assert.True(verdicts.Tested > 0, "No function programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} function programs crashed the compiler; the first:\n{verdicts.First}");
     }
 }

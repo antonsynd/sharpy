@@ -337,7 +337,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         if (limit <= FullPool)
         {
             var full = Fixtures(int.MaxValue);
-            return Compose(handpicked, full, Generated(FullPoolGeneratedTarget));
+            return Compose(handpicked, full, Generated(FullPoolGeneratedTarget).Programs);
         }
 
         // DIFF_EXEC_LIMIT=<n>: a subsample for fast local iteration. Split the remaining budget
@@ -349,7 +349,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var pool = Fixtures(fixtureTarget);
         // Any fixture budget the pool could not fill rolls over to the generated arm.
         generatedTarget += Math.Max(0, fixtureTarget - pool.Selected.Count);
-        return Compose(handpicked, pool, Generated(generatedTarget));
+        return Compose(handpicked, pool, Generated(generatedTarget).Programs);
     }
 
     private static Corpus Compose(List<Program> handpicked, FixturePool pool, List<Program> generated)
@@ -987,12 +987,22 @@ public class DifferentialExecutionTests : IntegrationTestBase
     /// <c>print(expr)</c> statements over int / str / bool / list results with fuel 1 (shallow enough
     /// that int arithmetic cannot overflow Sharpy's 32-bit <c>int</c> and masquerade as a divergence).
     /// Each candidate must compile in Sharpy and pass the subset filter.
+    /// <para>Nothing is dropped silently (#2288): a candidate Sharpy refuses or throws on is recorded on
+    /// a <see cref="RejectionSink"/> through <see cref="SemanticFilter.AdmitWellTyped"/> (the generated
+    /// lane's one admission rule), an admitted candidate whose re-parse fails or throws is a recorded
+    /// failure, and only the subset filter — a property of the ORACLE, not of the compiler — discards a
+    /// sample. <see cref="AssertGeneratedArmSound"/> turns any of them into a red, and the arm must reach
+    /// its target. Before, every one of those samples was a bare <c>return</c> and the 12-program target
+    /// was never checked.</para>
     /// </summary>
-    private static List<Program> Generated(int target)
+    private static GeneratedArm Generated(int target)
     {
         var results = new List<Program>();
+        var sink = new RejectionSink("DifferentialExecution.Generated");
+        var failures = new List<string>();
+        int outsideSubset = 0;
         if (target <= 0)
-            return results;
+            return new GeneratedArm(results, target, sink, failures, outsideSubset);
 
         var env = TypeEnv.WithCollections;
         var types = new[] { "int", "str", "bool", "list[int]", "list[str]" };
@@ -1020,39 +1030,84 @@ public class DifferentialExecutionTests : IntegrationTestBase
             if (results.Count >= target)
                 return;
 
-            string source;
-            try
-            { source = Sharpy.Compiler.Pretty.Unparser.Unparse(module); }
-            catch { return; }
+            // Gate 1: Sharpy accepts it (analysis-clean) — or the sink records why not.
+            if (!SemanticFilter.AdmitWellTyped(module, sink))
+                return;
+
+            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
             if (!seenSources.Add(source))
                 return;
 
-            // Gate 1: Sharpy accepts it (analysis-clean).
-            try
-            {
-                var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "gen_diff.spy");
-                if (!analysis.Success)
-                    return;
-            }
-            catch { return; }
-
-            // Gate 2: whole tree is in the shared executable subset (reparse then filter).
+            // Gate 2: whole tree is in the shared executable subset (reparse then filter). The program
+            // was just analysed clean, so a re-parse error or throw is a failure, not a skip.
+            Module reparsed;
             try
             {
                 var parser = new Sharpy.Compiler.Parser.Parser(
                     new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
-                var reparsed = parser.ParseModule();
-                if (parser.Diagnostics.HasErrors || !ExecSubsetFilter.IsInSharedSubset(reparsed))
+                reparsed = parser.ParseModule();
+                var parseErrors = parser.Diagnostics.GetErrors();
+                if (parseErrors.Count > 0)
+                {
+                    failures.Add($"an admitted program re-parses with [{string.Join(", ", parseErrors.Select(d => d.Code))}]:\n{source}");
                     return;
+                }
             }
-            catch { return; }
+            catch (Exception e)
+            {
+                failures.Add($"re-parsing an admitted program threw {e.GetType().Name}:\n{source}\n{e}");
+                return;
+            }
+
+            if (!ExecSubsetFilter.IsInSharedSubset(reparsed))
+            {
+                outsideSubset++;
+                return;
+            }
 
             results.Add(new Program($"generated::g{idx++:D4}", source));
-            // threads:1 keeps this collection loop single-threaded (results/seenSources are not
+            // threads:1 keeps this collection loop single-threaded (results/seenSources/failures are not
             // concurrent); seed pins determinism.
         }, seed: GeneratedSeed, iter: Math.Max(target * 12L, 96L), threads: 1);
 
-        return results;
+        var arm = new GeneratedArm(results, target, sink, failures, outsideSubset);
+        AssertGeneratedArmSound(arm);
+        return arm;
+    }
+
+    /// <summary>The generated arm's programs and what it discarded on the way (#2288).</summary>
+    private sealed record GeneratedArm(
+        List<Program> Programs, int Target, RejectionSink Sink, List<string> Failures, int OutsideSubset)
+    {
+        public string Summary =>
+            $"{Sink.Summary}; re-parse failures {Failures.Count}; outside the shared subset {OutsideSubset}; "
+            + $"programs {Programs.Count}/{Target}";
+    }
+
+    /// <summary>The generated arm dropped nothing silently and reached its target: no unexplained
+    /// rejection on the sink, no re-parse failure, and <see cref="GeneratedArm.Target"/> programs.</summary>
+    private static void AssertGeneratedArmSound(GeneratedArm arm)
+    {
+        Assert.True(arm.Sink.Unexplained.Count == 0, arm.Sink.Report());
+        Assert.True(arm.Failures.Count == 0,
+            $"{arm.Failures.Count} admitted generated program(s) failed to re-parse; the first:\n{arm.Failures.FirstOrDefault()}");
+        Assert.True(arm.Programs.Count == arm.Target,
+            $"The generated arm reached {arm.Programs.Count}/{arm.Target} programs ({arm.Summary}) — a sweep "
+            + "whose fuzz arm falls short compares fewer programs than it claims");
+    }
+
+    /// <summary>
+    /// The generated arm at its full-pool size, without the CPython oracle (the sweep's fact returns
+    /// early when <c>python3</c> is absent, so this is the arm's guard on every machine): every candidate
+    /// is admitted, pinned, or outside the shared subset, and the arm reaches
+    /// <see cref="FullPoolGeneratedTarget"/> programs.
+    /// </summary>
+    [Fact]
+    public void GeneratedArm_DropsNothingSilently_AndReachesItsTarget()
+    {
+        var arm = Generated(FullPoolGeneratedTarget);
+        Output.WriteLine(arm.Summary);
+        Assert.Equal(FullPoolGeneratedTarget, arm.Programs.Count);
     }
 
     // ----------------------------------------------------------------------------------------- //
