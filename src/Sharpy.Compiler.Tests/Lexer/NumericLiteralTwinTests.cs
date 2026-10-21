@@ -40,7 +40,8 @@ namespace Sharpy.Compiler.Tests.Lexer;
 /// excluded family is pinned to Sharpy's own token or diagnostic by
 /// <see cref="SharpyOnlyRows_LexAsTheSpecSays"/>.</para>
 /// <para><b>Ratchet.</b> A disagreement fails unless its spelling is a row of
-/// <c>numeric-literal-twin-allowlist.txt</c> (<c>spelling # #NNNN reason</c>). A row without a
+/// <c>numeric-literal-twin-allowlist.txt</c> (<c>spelling =&gt; pinned-verdict # #NNNN reason</c>); a
+/// disagreement whose Sharpy verdict differs from the row's pin fails. A row without a
 /// <c>#NNNN</c> cite fails, a row naming a spelling the matrix does not compare fails, and a row
 /// whose spelling now agrees fails as stale (drain on fix).</para>
 /// <para><b>Python absent:</b> a loud skip, unless <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI's
@@ -64,7 +65,7 @@ public class NumericLiteralTwinTests
 
     private sealed record Spelling(string Text, string Origin);
 
-    private static readonly string[] DecimalDigits = { "0", "1", "10", "12", "123", "00", "01" };
+    private static readonly string[] DecimalDigits = { "0", "1", "10", "12", "123", "1000", "00", "01" };
     private static readonly string[] FloatIntegerParts = { "0", "1", "12", "00", "01" };
     private static readonly string[] FractionDigits = { "5", "12", "05" };
     private static readonly string[] LeadingDotFractions = { "5", "12", "125", "05" };
@@ -349,7 +350,15 @@ public class NumericLiteralTwinTests
     // Allowlist
     // ===================================================================== //
 
-    private sealed record AllowlistRow(int Line, string Key, string Rest);
+    /// <summary>
+    /// One allowlist row: the spelling, the Sharpy verdict it pins (<see cref="Pin"/>), and the cite.
+    /// The pin keeps a row from absorbing a SECOND change on its own spelling: the row admits
+    /// today's disagreement, not any disagreement.
+    /// </summary>
+    private sealed record AllowlistRow(int Line, string Key, string Pinned, string Rest);
+
+    /// <summary>The verdict an allowlist row pins: the canonical value, or <c>refused</c>.</summary>
+    private static string Pin(Verdict v) => v.Ok ? v.Value : "refused";
 
     private static string AllowlistPath()
     {
@@ -368,9 +377,12 @@ public class NumericLiteralTwinTests
             if (line.Length == 0 || line.StartsWith('#'))
                 continue;
             int hash = line.IndexOf('#');
-            string key = (hash < 0 ? line : line[..hash]).Trim();
+            string head = (hash < 0 ? line : line[..hash]).Trim();
             string rest = hash < 0 ? "" : line[hash..];
-            rows.Add(new AllowlistRow(i + 1, key, rest));
+            int arrow = head.IndexOf("=>", StringComparison.Ordinal);
+            string key = (arrow < 0 ? head : head[..arrow]).Trim();
+            string pinned = arrow < 0 ? "" : head[(arrow + 2)..].Trim();
+            rows.Add(new AllowlistRow(i + 1, key, pinned, rest));
         }
         return rows;
     }
@@ -384,6 +396,8 @@ public class NumericLiteralTwinTests
         {
             if (!Regex.IsMatch(row.Rest, @"^#\s*#\d+\b", RegexOptions.CultureInvariant))
                 violations.Add($"line {row.Line}: '{row.Key}' has no '# #NNNN reason' issue cite");
+            if (!Regex.IsMatch(row.Pinned, @"^(?:refused|int:-?[0-9]+|float:-?[0-9]+)$", RegexOptions.CultureInvariant))
+                violations.Add($"line {row.Line}: '{row.Key}' pins no Sharpy verdict ('<spelling> => int:<n> | float:<bits> | refused # #NNNN reason')");
             if (!compared.Contains(row.Key))
                 violations.Add($"line {row.Line}: '{row.Key}' is not a spelling the twin compares (not enumerated, or Sharpy-only)");
             if (!seen.Add(row.Key))
@@ -437,11 +451,12 @@ public class NumericLiteralTwinTests
         // Positive control: the rules fire on rows built to break them.
         var broken = AllowlistShapeViolations(new[]
         {
-            new AllowlistRow(1, "01", "# no cite here"),
-            new AllowlistRow(2, "0x1p3", "# #2300 hex float is not in the matrix"),
-            new AllowlistRow(3, "12.", "# #2300 Sharpy-only spelling"),
+            new AllowlistRow(1, "01", "int:1", "# no cite here"),
+            new AllowlistRow(2, "0x1p3", "int:8", "# #2300 hex float is not in the matrix"),
+            new AllowlistRow(3, "12.", "refused", "# #2300 Sharpy-only spelling"),
+            new AllowlistRow(4, "00", "", "# #2300 no pinned verdict"),
         }, compared);
-        Assert.Equal(3, broken.Count);
+        Assert.Equal(4, broken.Count);
     }
 
     [Fact]
@@ -517,8 +532,10 @@ public class NumericLiteralTwinTests
             }
 
             stillDisagreeing.Add(s.Text);
-            if (allowed.ContainsKey(s.Text))
+            if (allowed.TryGetValue(s.Text, out var row))
             {
+                if (Pin(sharpy) != row.Pinned)
+                    failures.Add($"PIN allowlist line {row.Line}: {Show(s.Text)} pins Sharpy {row.Pinned} but Sharpy now gives {sharpy.Show()} — a second change on an allowlisted spelling is not absorbed  [{s.Origin}]");
                 allowlisted++;
                 continue;
             }

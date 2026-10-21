@@ -3,23 +3,26 @@
 # One row per TOKEN whose (line, column, position, length) does not map back to its source slice
 # because of a lexer position defect found at base. Format:
 #
-#   corpus <fixture path relative to its root> :: <TokenType>@L<line>:C<column> # #NNNN <reason>
-#   roster <EofConstructRosterTests construct name> :: <TokenType>@L<line>:C<column> # #NNNN <reason>
+#   corpus <fixture path relative to its root> :: <TokenType> '<Value>'@L<line>:C<column> <R-rules> # #NNNN <reason>
+#   roster <EofConstructRosterTests construct name> :: <TokenType> '<Value>'@L<line>:C<column> <R-rules> # #NNNN <reason>
 #
-# A row suppresses only the violations whose subject is that one token (type at that line and
-# column) in that one fixture or construct, in every twin or ending; any other violation there,
-# another token of the same type included, still fails. A row without an issue cite fails; a row
-# that suppresses nothing fails as stale (drain on fix). Rows leave when the cited issue is fixed.
+# A row suppresses only the violations whose subject is that one token (type and Value at that
+# line and column) AND whose rule (R1..R7, TokenPositionReconstruction) the row names, in that one
+# fixture or construct, in every twin or ending; any other violation there still fails — another
+# token of the same type, the same token with another Value, or a rule the row does not name (the
+# row admits today's defect, never a second one). A row without an issue cite fails; a row, or a
+# named rule, that suppresses nothing fails as stale (drain on fix). Rows leave when the cited
+# issue is fixed.
 
 # df""" closed on its own line: FStringEnd is stamped at the dropped pre-close newline
 # (L5:C24, slice "\n  ") instead of the closing quotes on line 6.
 
-corpus strings/d_string_fstring.spy :: FStringEnd@L5:C24 # #2338 df pre-close newline: FStringEnd positioned at the dropped newline, not the closing quotes
+corpus strings/d_string_fstring.spy :: FStringEnd '"""'@L5:C24 R3,R7 # #2338 df pre-close newline: FStringEnd positioned at the dropped newline, not the closing quotes
 
 # A line break read as an escape's operand is consumed without advancing the line: Eof claims
 # line 1 at the offset where line 2 starts (LF, CR endings) or line 2 where line 3 starts (LF LF).
 
-roster escape at EOF :: Eof@L1:C11 # #2338 line break consumed as an escape operand without advancing the line
-roster escape at EOF :: Eof@L2:C1 # #2338 line break consumed as an escape operand without advancing the line (LF LF ending)
-roster short hex escape at EOF :: Eof@L1:C11 # #2338 line break consumed inside a short hex escape without advancing the line
-roster short hex escape at EOF :: Eof@L2:C1 # #2338 line break consumed inside a short hex escape without advancing the line (LF LF ending)
+roster escape at EOF :: Eof ''@L1:C11 R1 # #2338 line break consumed as an escape operand without advancing the line
+roster escape at EOF :: Eof ''@L2:C1 R1 # #2338 line break consumed as an escape operand without advancing the line (LF LF ending)
+roster short hex escape at EOF :: Eof ''@L1:C11 R1 # #2338 line break consumed inside a short hex escape without advancing the line
+roster short hex escape at EOF :: Eof ''@L2:C1 R1 # #2338 line break consumed inside a short hex escape without advancing the line (LF LF ending)
