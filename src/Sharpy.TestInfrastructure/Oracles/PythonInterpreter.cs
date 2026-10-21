@@ -115,8 +115,8 @@ public sealed class PythonInterpreter
 
     /// <summary>
     /// Runs <paramref name="scriptPath"/> ONCE with <paramref name="jsonlLines"/> on stdin and
-    /// returns its non-empty stdout lines. A non-zero exit or a timeout throws with stderr in the
-    /// message.
+    /// returns its non-empty stdout lines. A non-zero exit, an exit before the whole batch was read, or a timeout throws
+    /// <see cref="InvalidOperationException"/> with stderr in the message.
     /// </summary>
     public List<string> RunBatch(string scriptPath, IEnumerable<string> jsonlLines, int timeoutMilliseconds = 120_000)
     {
@@ -162,9 +162,19 @@ public sealed class PythonInterpreter
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
 
-        foreach (var line in jsonlLines)
-            proc.StandardInput.WriteLine(line);
-        proc.StandardInput.Close();
+        // A script that exits before reading all of stdin (a crash, an import error) breaks the pipe; the write then
+        // throws IOException with no stderr. Stop writing and let the exit-code check below report the script's stderr.
+        var stdinBroken = false;
+        try
+        {
+            foreach (var line in jsonlLines)
+                proc.StandardInput.WriteLine(line);
+            proc.StandardInput.Close();
+        }
+        catch (IOException)
+        {
+            stdinBroken = true;
+        }
 
         if (!proc.WaitForExit(timeoutMilliseconds))
         {
@@ -180,6 +190,11 @@ public sealed class PythonInterpreter
         {
             throw new InvalidOperationException(
                 $"{Path.GetFileName(scriptPath)} exited {proc.ExitCode} under {Version}. stderr:\n{stderr}");
+        }
+        if (stdinBroken)
+        {
+            throw new InvalidOperationException(
+                $"{Path.GetFileName(scriptPath)} exited 0 under {Version} before reading the whole batch. stderr:\n{stderr}");
         }
 
         lock (stdout)

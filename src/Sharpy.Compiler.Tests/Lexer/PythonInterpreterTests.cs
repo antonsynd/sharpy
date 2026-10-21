@@ -85,6 +85,13 @@ public class PythonInterpreterTests
             var ex = Assert.Throws<InvalidOperationException>(() => python.RunBatch(fail, new[] { "x" }));
             Assert.Contains("exited 3", ex.Message);
             Assert.Contains("p68-oracle-broke", ex.Message);
+
+            // A script that exits without reading stdin, sent a batch larger than any pipe buffer: the write breaks the
+            // pipe, and the failure must still be the script's exit code and stderr, never a bare IOException.
+            var large = Enumerable.Repeat(new string('x', 1000), 2000);
+            var broken = Assert.Throws<InvalidOperationException>(() => python.RunBatch(fail, large));
+            Assert.Contains("exited 3", broken.Message);
+            Assert.Contains("p68-oracle-broke", broken.Message);
         }
         finally
         {
