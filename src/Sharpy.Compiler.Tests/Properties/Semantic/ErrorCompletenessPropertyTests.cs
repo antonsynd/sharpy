@@ -159,18 +159,18 @@ public class ErrorCompletenessPropertyTests
     [Fact]
     public void NarrowedProgram_AnalysesClean()
     {
-        int narrowed = 0;
+        int narrowedTested = 0;
         var verdicts = ErrorInjector.JudgeSamples(ProgramWithNarrowing(fuel: 1), module =>
         {
             if (HasNarrowedBlock(module))
-                Interlocked.Increment(ref narrowed);
+                Interlocked.Increment(ref narrowedTested);
             return ErrorInjector.JudgeClean(Sharpy.Compiler.Pretty.Unparser.Unparse(module), "narrowed Optional program");
         }, iter: 100, m => Sharpy.Compiler.Pretty.Unparser.Unparse(m));
 
         _output.WriteLine($"narrowed Optional program: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed clean; "
-            + $"{narrowed}/{verdicts.Tested} carry a NarrowedBlock");
+            + $"{narrowedTested}/{verdicts.Tested} carry a NarrowedBlock");
         Assert.True(verdicts.Tested > 0, "No narrowed Optional programs were generated");
-        Assert.True(narrowed > 0, $"0/{verdicts.Tested} samples carry a NarrowedBlock — the soundness claim does not reach it");
+        Assert.True(narrowedTested > 0, $"0/{verdicts.Tested} samples carry a NarrowedBlock — the soundness claim does not reach it");
         Assert.True(verdicts.First is null,
             $"{verdicts.Failures}/{verdicts.Tested} narrowed Optional programs refused; the first:\n{verdicts.First}");
     }

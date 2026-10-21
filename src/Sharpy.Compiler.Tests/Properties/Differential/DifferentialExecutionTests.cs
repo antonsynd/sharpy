@@ -249,7 +249,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
             Output.WriteLine($"  DIVERGENCE [{o.Verdict}] {o.Program.Key}: {o.Detail}");
 
         // Enumeration sanity — a corpus that shrank to nothing is itself a regression.
-        Assert.True(results.Count > 0, "No programs were compared.");
+        Assert.True(results.Count == programs.Count, "Not every program was classified.");
 
         // Per-module vacuity guard. Admitting a module to CPythonAvailableModules only gets its
         // fixtures PAST THE FILTER; it does not make them comparable. If CPython cannot import the

@@ -1209,7 +1209,7 @@ public class TypedGeneratorRosterTests
     // pin's code; any other parse error stays red. ParsePins_StillFire requires every pin to tolerate at
     // least one sample of the fixed-seed corpus, so a pin drains with its fix instead of going stale.
 
-    private sealed record RawControlResult(int RowsChecked, IReadOnlyList<string> Failures,
+    private sealed record RawControlResult(int RowsTested, IReadOnlyList<string> Failures,
         IReadOnlyDictionary<KnownGeneratorPins.ParsePin, int> PinHits, IReadOnlyList<(string Row, int Hits)> RowHits, string CorpusHash, TimeSpan Elapsed);
 
     private static readonly Lazy<RawControlResult> RawControl = new(RunRawControl);
@@ -1260,7 +1260,7 @@ public class TypedGeneratorRosterTests
 
     private void PrintRawControl(RawControlResult result)
     {
-        _output.WriteLine($"RAW control: {result.RowsChecked} Y-generated rows x {RawSamples} samples, more where a row raises it (seed {RawSeed}) "
+        _output.WriteLine($"RAW control: {result.RowsTested} Y-generated rows x {RawSamples} samples, more where a row raises it (seed {RawSeed}) "
             + $"in {result.Elapsed.TotalSeconds:F1} s; corpus sha256 {result.CorpusHash} (equal across processes iff the generators are reproducible)");
         foreach (var (pin, hits) in result.PinHits)
             _output.WriteLine($"  parse pin {pin.Pin.Issue} ({pin.Code}): {hits} sample source(s) tolerated");
@@ -1278,7 +1278,7 @@ public class TypedGeneratorRosterTests
     {
         var result = RawControl.Value;
         PrintRawControl(result);
-        Assert.True(result.RowsChecked > 0, "no Y-generated row was checked — the control is vacuous");
+        Assert.True(result.RowsTested > 0, "no Y-generated row was checked — the control is vacuous");
         Assert.True(result.Failures.Count == 0,
             $"{result.Failures.Count} Y-generated row(s) fail the raw control:\n  " + string.Join("\n  ", result.Failures));
     }
