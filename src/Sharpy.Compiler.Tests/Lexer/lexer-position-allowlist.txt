@@ -1,0 +1,17 @@
+# LexerCorpusTwinTests / EofConstructRosterTests allowlist (P68 Phase 2, rows C2/C3/C6 of the tests-only tracker).
+#
+# One row per TOKEN whose (line, column, position, length) does not map back to its source slice
+# because of a lexer position defect found at base. Format:
+#
+#   corpus <fixture path relative to its root> :: <TokenType>@L<line>:C<column> # #NNNN <reason>
+#   roster <EofConstructRosterTests construct name> :: <TokenType>@L<line>:C<column> # #NNNN <reason>
+#
+# A row suppresses only the violations whose subject is that one token (type at that line and
+# column) in that one fixture or construct, in every twin or ending; any other violation there,
+# another token of the same type included, still fails. A row without an issue cite fails; a row
+# that suppresses nothing fails as stale (drain on fix). Rows leave when the cited issue is fixed.
+
+# df""" closed on its own line: FStringEnd is stamped at the dropped pre-close newline
+# (L5:C24, slice "\n  ") instead of the closing quotes on line 6.
+
+corpus strings/d_string_fstring.spy :: FStringEnd@L5:C24 # #2338 df pre-close newline: FStringEnd positioned at the dropped newline, not the closing quotes
