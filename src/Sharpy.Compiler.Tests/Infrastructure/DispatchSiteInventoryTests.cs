@@ -263,6 +263,12 @@ public class DispatchSiteInventoryTests
         // statements still fall through to the emitter's SPY0510 ICE — so the row is a refusal-net
         // for the arms that exist, and the default's remaining gap is TODO(#2148) at the site.
         ["Semantic/Validation/TypeBodyStatementValidator.cs::TypeBodyStatementValidator.ClassifyTypeBodyStatement"] = "refusal-net:LetPositionRefusalTests",
+        // P21e (#2063, R-CS): the one declaration-position classifier. Its arms refuse a type
+        // definition outside the module body / a type body and an import outside the module body
+        // with SPY0708; the default arm is the declaring positions (NameResolver's) and every
+        // non-declaration statement. Netted per kind x position x name by the exact-error-set
+        // oracle of TypeDefinitionOwnSymbolMatrixTests.
+        ["Semantic/Validation/DeclarationPositionValidator.cs::DeclarationPositionValidator.ClassifyDeclaration"] = "refusal-net:TypeDefinitionOwnSymbolMatrixTests",
         // Import resolution
         ["Semantic/ImportResolver.ModuleLoading.cs::ImportResolver.ResolveModuleImports"] = "refusal-net:FileBasedIntegrationTests",
         // Package resolution

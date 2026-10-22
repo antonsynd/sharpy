@@ -105,6 +105,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 50**: `ModuleLevelValidator` — Entry point validation
 - **Order 51**: `TypeBodyStatementValidator` — Statements in a class/struct/interface/union body (`let` → SPY0340 with the field steer)
 - **Order 52**: `CircularImportUsageValidator` — Circular import usage detection
+- **Order 53**: `DeclarationPositionValidator` — Declaration positions: a type definition outside the module body / a type body, or an import outside the module body (function, block, class body), is SPY0708 (#2063, R-CS)
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 56**: `TransitionWarningValidator` — Transition hints for Python/C# behavioral differences
 - **Order 57**: `BuiltinNameShadowingValidator` — Value-position builtin shadowing (SPY0483)
