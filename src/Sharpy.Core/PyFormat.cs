@@ -535,6 +535,29 @@ namespace Sharpy
         /// </summary>
         private static bool IsSharpyDeclared(Type type)
         {
+            if (IsSharpyStamped(type))
+            {
+                return true;
+            }
+
+            Type top = type;
+            while (top.DeclaringType != null)
+            {
+                top = top.DeclaringType;
+            }
+
+            return top != type && top.IsAbstract && top.IsSealed;
+        }
+
+        /// <summary>
+        /// Whether the type or a type it is nested in carries a Sharpy name/module attribute — the
+        /// stamp the compiler puts on what it emits from Sharpy source. Narrower than
+        /// <see cref="IsSharpyDeclared"/>: a CLR type merely nested in a static class (LINQ's
+        /// <c>Enumerable+IteratorSelectIterator</c>) is not stamped, which is what keeps the
+        /// #2057 Sharpy-instance arm of <see cref="Builtins.Str(object)"/> off a plain sequence.
+        /// </summary>
+        internal static bool IsSharpyStamped(Type type)
+        {
             for (Type? current = type; current != null; current = current.DeclaringType)
             {
                 if (Attribute.IsDefined(current, typeof(SharpyNameAttribute), inherit: false)
@@ -542,11 +565,6 @@ namespace Sharpy
                     || Attribute.IsDefined(current, typeof(SharpyModuleTypeAttribute), inherit: false))
                 {
                     return true;
-                }
-
-                if (current.DeclaringType == null)
-                {
-                    return current != type && current.IsAbstract && current.IsSealed;
                 }
             }
 

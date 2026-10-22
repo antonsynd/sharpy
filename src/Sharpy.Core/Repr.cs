@@ -81,6 +81,14 @@ namespace Sharpy
                 return FormatValueTuple(obj, type);
             }
 
+            // Same two arms as Str's, in the same order: a Sharpy class instance before the plain
+            // sequence (#2057, R-HO), so a class with __iter__ reprs as `<mod.C object>` and is not
+            // consumed by being formatted.
+            if (TryFormatSharpyInstance(obj, out var sharpyInstanceRepr))
+            {
+                return sharpyInstanceRepr;
+            }
+
             // Same arm as Str's, for the same reason the exception arm above is in both places: a
             // container holding a plain CLR sequence must not render one way through print() and
             // another through repr() (#1453).
@@ -90,6 +98,7 @@ namespace Sharpy
             }
 
             // Python's default object.__repr__ for a Sharpy type that does not render itself (#2006).
+            // Reached by what TryFormatSharpyInstance leaves alone: compiler-generated or unstamped types.
             if (PyFormat.TryFormatInstanceFallback(obj, out var instanceRepr))
             {
                 return instanceRepr;

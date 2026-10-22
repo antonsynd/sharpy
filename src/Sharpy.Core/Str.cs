@@ -92,21 +92,59 @@ namespace Sharpy
                 return FormatValueTuple(x, type);
             }
 
+            // An instance of a Sharpy class is never a plain CLR sequence: it prints python's
+            // `<mod.C object>`, and formatting it never iterates it (#2057, R-HO). Before the
+            // sequence arm, or a class with __iter__ prints its items and consumes itself.
+            if (TryFormatSharpyInstance(x, out var sharpyInstanceStr))
+            {
+                return sharpyInstanceStr;
+            }
+
             // A plain CLR sequence renders as the list its semantic type says it is, rather than
-            // leaking the name of whatever LINQ node produced it (#1453). Last, so every arm above
-            // keeps precedence.
+            // leaking the name of whatever LINQ node produced it (#1453).
             if (TryFormatPlainClrSequence(x, out var sequenceStr))
             {
                 return sequenceStr;
             }
 
             // Python's default object.__str__ for a Sharpy type that does not render itself (#2006).
+            // Reached by what TryFormatSharpyInstance leaves alone: compiler-generated or unstamped types.
             if (PyFormat.TryFormatInstanceFallback(x, out var instanceStr))
             {
                 return instanceStr;
             }
 
             return x.ToString() ?? "";
+        }
+
+        /// <summary>
+        /// The Sharpy-instance arm <see cref="Str(object)"/> and <see cref="Repr(object)"/> both run
+        /// BEFORE <see cref="TryFormatPlainClrSequence"/> (#2057, R-HO): python's default
+        /// <c>&lt;mod.C object&gt;</c> for an instance of a Sharpy class that does not render
+        /// itself. A class with <c>__iter__</c> is emitted as <c>IEnumerable&lt;T&gt;</c> (and with
+        /// <c>__next__</c> as its own enumerator), so the sequence arm would print its items and
+        /// consume it — the loop after a <c>print(c)</c> saw nothing.
+        /// </summary>
+        /// <remarks>
+        /// The test is the compiler's stamp (<see cref="PyFormat.IsSharpyStamped"/>), not the
+        /// fallback's wider "nested in a static class" rule: LINQ's
+        /// <c>Enumerable+IteratorSelectIterator</c> is nested in the static <c>Enumerable</c> and is
+        /// exactly the plain sequence #1453 renders as a list. A compiler-generated type is not a
+        /// Sharpy class either: a generator's state machine is nested in the (stamped) type that
+        /// declares it, and is likewise the lazy sequence #1453's arm renders. Both are left to that
+        /// arm, unchanged.
+        /// </remarks>
+        private static bool TryFormatSharpyInstance(object x, out string formatted)
+        {
+            var type = x.GetType();
+            if (!PyFormat.IsSharpyStamped(type)
+                || Attribute.IsDefined(type, typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), inherit: false))
+            {
+                formatted = string.Empty;
+                return false;
+            }
+
+            return PyFormat.TryFormatInstanceFallback(x, out formatted);
         }
 
         /// <summary>
