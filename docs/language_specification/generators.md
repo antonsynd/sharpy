@@ -84,6 +84,13 @@ def g() -> Iterator[int]:
     yield 1
 ```
 
+**A generator object prints as itself and restarts per loop.** `print(g)` shows
+`<generator object gen>` (Python's text without the `at 0x…` address) and does not run the body.
+Because the object is an `IEnumerable<T>`, every `for` loop over the same `g` runs the body again
+from the start, where Python's generator is single-pass and a second loop sees nothing (the
+`generator-multi-pass` deviation). Call the generator function again for each pass to get the
+same output in both languages.
+
 ## Early Termination
 
 A bare `return` (without a value) terminates the generator early:

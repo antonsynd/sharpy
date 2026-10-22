@@ -34,6 +34,11 @@ class C(A, ISerializable, IComparable):
     pass
 ```
 
+**Core collection types are sealed.** `list`, `dict` and `set` are sealed .NET types, so a class
+cannot extend them, as Python's `class MyList(list)` does; extend by composition, or implement the
+sequence/mapping protocols (`__len__`, `__getitem__`, `__iter__`) on your own class. Such a base is
+refused (the `no-subclassing-core-collections` deviation).
+
 *Implementation*
 - *✅ Native - `: BaseClass`; `super().__init__()` → `: base()` or `base.Method()`*
 

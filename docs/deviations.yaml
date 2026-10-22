@@ -2270,3 +2270,58 @@ deviations:
         def main():
             print(1.0000000000000000000000000000001m)          # 1.0000000000000000000000000000
             print(1.0000000000000000000000000000001m == 1m)    # True
+
+  - id: no-subclassing-core-collections
+    code: SPY0325
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "A class may extend a builtin collection: `class MyList(list): pass` runs, `MyList()` is a list (`len(m)` is 0) and `type(m).__name__` is `MyList`."
+    sharpy_behavior: "`list`, `dict` and `set` are sealed .NET types (`Sharpy.List<T>` is `public sealed partial class`), so a class cannot extend them; extend by composition or implement the sequence/mapping protocols. The refusal today is SPY0325 naming an interface method the class does not implement (`'IList.count_of'` for `list[int]`, `'IDeepCopyable.deep_copy'` for `dict[str, int]`) — the wrong reason; a sealed-base refusal is planned (P31, #2143). Recorded under R-IE (#2143); unsealing the collections was rejected."
+    spec_ref: docs/language_specification/inheritance.md
+    existing_diagnostic: SPY0325
+    planned_diagnostic: "sealed-base refusal (P31, #2143)"
+    example:
+      python: |
+        class MyList(list): pass
+        m = MyList()
+        print(len(m), type(m).__name__)   # 0 MyList
+      sharpy: |
+        class MyList(list[int]):   # SPY0325: Class 'MyList' does not implement interface method 'IList.count_of'
+            pass
+
+  - id: generator-multi-pass
+    code: null
+    category: semantics
+    audience: python
+    severity: info
+    python_behavior: "A generator object is single-pass: a second `for` over the same object yields nothing, so two loops over `gen()` count 2 and the body runs once."
+    sharpy_behavior: "A generator function returns an `IEnumerable<T>` (generators.md), so every `for` over the same object runs the body again from the start: two loops count 4 and the body runs twice. Printing the object does not run it (`<generator object gen>`, #2057 R-IF). Recorded under R-IF (#2057); a single-pass wrapper was rejected (a runtime behaviour and interop surface users would depend on)."
+    spec_ref: docs/language_specification/generators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        def gen():
+            print("body ran")
+            yield 1
+            yield 2
+        g = gen()
+        n = 0
+        for x in g: n += 1
+        for x in g: n += 1
+        print(n)   # body ran, then 2
+      sharpy: |
+        def gen() -> int:
+            print("body ran")
+            yield 1
+            yield 2
+
+        def main():
+            g = gen()
+            n = 0
+            for x in g:
+                n += 1
+            for x in g:
+                n += 1
+            print(n)   # body ran, body ran, then 4

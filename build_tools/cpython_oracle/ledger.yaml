@@ -269,6 +269,14 @@ deviations:
   spec_ref: docs/language_specification/tagged_unions.md
   existing_diagnostic: SPY0113
   planned_diagnostic: null
+- id: generator-multi-pass
+  category: semantics
+  audience: python
+  severity: info
+  code: null
+  spec_ref: docs/language_specification/generators.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: global-nonlocal-keywords
   category: syntax
   audience: python
@@ -581,6 +589,14 @@ deviations:
   spec_ref: docs/language_specification/builtin_functions.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: no-subclassing-core-collections
+  category: syntax
+  audience: python
+  severity: error
+  code: SPY0325
+  spec_ref: docs/language_specification/inheritance.md
+  existing_diagnostic: SPY0325
+  planned_diagnostic: 'sealed-base refusal (P31, #2143)'
 - id: no-thread-args-kwargs
   category: stdlib
   audience: python
