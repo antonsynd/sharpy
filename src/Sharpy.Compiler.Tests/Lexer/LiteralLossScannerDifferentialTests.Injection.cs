@@ -19,8 +19,11 @@ public partial class LiteralLossScannerDifferentialTests
     /// <c>conversion</c>) and the targeted content twins (<c>@escaped-quote</c>, <c>@unbalanced-brace</c>,
     /// <c>@field-split</c>, <c>@walrus</c>) — the cells that alone kill the scanner-arm mutants — are never sampled.
     /// Each bulk construct has its own sequence (the ordered corpus × twins × lines), so the sample is even across the
-    /// two and a pure function of the tree. Stride 4 because the whole-solution gate measured this test at 96 s @ 2c15c47a0 (stride 1) against the plan's
-    /// 60 s per-class budget (Design Decision 10); stride 4 keeps 146,471 of the 284,952 cells (51 %, measured).
+    /// two and a pure function of the tree. Stride 4 keeps 146,471 of the 284,952 cells (51 %, measured) and halves the
+    /// CPU the test costs — it runs for nearly every lexer mutant under Stryker's perTest coverage. It does NOT bound the
+    /// in-gate wall clock: the gate measured 96 s @ 2c15c47a0 (stride 1) and 102 s @ be4664e8f (stride 4), while the
+    /// untouched Shapes test went 28 s → 83 s in the same runs, so in-gate durations are load, not cells. Quiet (the
+    /// Lexer filter alone): 6.3 s at stride 4 — the figure that measures the class against Design Decision 10's 60 s.
     /// </summary>
     private const int InjectionStride = 4;
 
