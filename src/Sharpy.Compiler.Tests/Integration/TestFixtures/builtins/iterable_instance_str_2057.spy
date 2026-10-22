@@ -1,0 +1,44 @@
+# A Sharpy class instance is never formatted as a sequence (#2057, R-HO): without __str__ or
+# __repr__ it prints <mod.C object> at every site, and formatting it never iterates it, so a
+# loop afterwards still sees every item.
+
+class Counter:
+    index: int
+
+    def __init__(self):
+        self.index = 0
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> str:
+        if self.index >= 2:
+            raise StopIteration()
+        self.index += 1
+        return "item"
+
+class Bag:
+    def __iter__(self) -> int:
+        yield 1
+        yield 2
+
+def main():
+    c = Counter()
+    print(str(c))
+    print(repr(c))
+    print(c)
+    print(f"{c}")
+    print([c])
+    n = 0
+    for v in c:
+        n += 1
+    print(n)
+
+    b = Bag()
+    print(b)
+    print(repr(b))
+    print([b])
+    total = 0
+    for x in b:
+        total += x
+    print(total)

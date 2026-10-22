@@ -41,14 +41,33 @@ public class PythonInterpreterTests
     }
 
     [Fact]
+    public void RequireOrSkip_RequiredAndMissing_Fails_NamingTheOracle()
+    {
+        var ex = Assert.Throws<PythonOracleMissingException>(
+            () => PythonInterpreter.RequireOrSkip(NoSuchInterpreter, required: true));
+        Assert.Contains(PythonInterpreter.RequireEnvironmentVariable, ex.Message);
+        Assert.Contains(NoSuchInterpreter[0], ex.Message);
+    }
+
+    [Fact]
+    public void RequireOrSkip_NotRequiredAndMissing_Skips()
+    {
+        // The skip verdict is a SkipException, which [SkippableFact] reports as Skipped — never a
+        // silent return that xunit counts Passed (#2342).
+        var ex = Assert.Throws<SkipException>(
+            () => PythonInterpreter.RequireOrSkip(NoSuchInterpreter, required: false));
+        Assert.Contains(NoSuchInterpreter[0], ex.Message);
+        Assert.Contains(PythonInterpreter.RequireEnvironmentVariable, ex.Message);
+    }
+
+    [SkippableFact]
     public void TryLocate_FindsAPinnedInterpreter_AndRefusesAnOlderMinimum()
     {
-        var python = PythonInterpreter.Locate(PythonInterpreter.DefaultCandidates, PythonInterpreter.Required);
-        if (python is null)
-        {
-            _output.WriteLine("SKIP: no Python 3.12+ interpreter (python3/python) on PATH; set SHARPY_REQUIRE_PYTHON_ORACLE=1 to make this a failure.");
-            return;
-        }
+        var python = PythonInterpreter.RequireOrSkip(minMinor: 12);
+
+        // The located verdict: the same interpreter, with the required flag either way, is returned.
+        Assert.Equal(python.Executable, PythonInterpreter.RequireOrSkip(new[] { python.Executable }, required: true).Executable);
+        Assert.Equal(python.Executable, PythonInterpreter.RequireOrSkip(new[] { python.Executable }, required: false).Executable);
 
         _output.WriteLine($"python oracle: {python.Executable} → {python.Version}");
         Assert.Matches(@"^Python \d+\.\d+", python.Version);
@@ -59,15 +78,10 @@ public class PythonInterpreterTests
         Assert.NotNull(PythonInterpreter.TryLocate(new[] { python.Executable }, minMinor: python.Minor));
     }
 
-    [Fact]
+    [SkippableFact]
     public void RunBatch_EchoesStdinLines_AndReportsStderrOnFailure()
     {
-        var python = PythonInterpreter.Locate(PythonInterpreter.DefaultCandidates, PythonInterpreter.Required);
-        if (python is null)
-        {
-            _output.WriteLine("SKIP: no Python 3.12+ interpreter (python3/python) on PATH.");
-            return;
-        }
+        var python = PythonInterpreter.RequireOrSkip(minMinor: 12);
 
         string dir = Path.Combine(Path.GetTempPath(), $"sharpy-p68-pyinterp-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);

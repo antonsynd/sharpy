@@ -26,6 +26,15 @@ precise = 3.141_592_653
   - `d` or `D` for `float64` (System.Double): `3.14d` (redundant but allowed)
   - `m` or `M` for `decimal` (System.Decimal): `3.14m`
 
+A suffix means the same on every spelling of a float — `.5f` is `0.5f`, and `1e5f` and `1_0.2_5m`
+take it too. The integer suffixes `L`, `u` and `ul` (see [Integer Literals](integer_literals.md))
+belong to integers; on a float literal they are refused (SPY0023), as in C#:
+
+```python
+# x = 3.14L                 # ERROR (SPY0023): Invalid numeric suffix: L (a float literal accepts only the float suffixes f, d and m)
+# y = 1e5u                  # ERROR (SPY0023): Invalid numeric suffix: u (a float literal accepts only the float suffixes f, d and m)
+```
+
 ## Narrowing an Unsuffixed Literal to `float32` or `decimal`
 
 An **unsuffixed** float literal may narrow to `float32` or `decimal` at **every** store
@@ -80,9 +89,34 @@ Two limits:
 - Only a **literal** narrows. A `float64`-typed *expression* or variable still requires an explicit
   cast: `x: float32 = y` is SPY0220 for `y: float`.
 - The value must be within `float32`'s range. `x: float32 = 1e40` is SPY0220, not a silent infinity.
+  The same holds for `decimal`, whose range is about ±7.9e28: `d: decimal = 1e29` is SPY0220.
 
 This is a deliberate divergence from C#, which rejects `float f = 0.1;` outright. Precision loss
 within range is accepted — writing the annotation is taken as asking for it.
+
+## A Literal Must Fit Its Own Type
+
+Whatever its spelling, a float literal must have a finite value in the type it resolves to —
+`float64` unsuffixed, `float32` with `f`, `decimal` with `m`. A literal outside that range is
+refused at compile time with SPY0210, the code an out-of-range integer literal draws, and never
+carried as an infinity. Python reads `1e400` as `inf`; Sharpy refuses it, because a silent infinity
+would flow on through arithmetic.
+
+```python
+def main() -> None:
+    big = 1.7976931348623157e308          # float64's largest value
+    print(big)                            # 1.7976931348623157e+308
+    f = 3.4028235e38f                     # float32's largest value
+    print(f)                              # 3.4028235e+38
+    m = 79228162514264337593543950335m    # decimal's largest value
+    print(m)                              # 79228162514264337593543950335
+    # x = 1e400                           # ERROR (SPY0210): Float literal '1e400' is too large for 'double'
+    # y = 1e39f                           # ERROR (SPY0210): Float literal '1e39' is too large for 'float'
+    # z = 1e29m                           # ERROR (SPY0210): Float literal '1e29' is too large for 'decimal'
+```
+
+A negated literal is checked by its digits, so `-1e400` is refused the same way. A literal too
+small to represent is not out of range: `1e-400` is `0.0`, as in Python.
 
 *Implementation*
 - *✅ Native - Direct mapping to C# float literals with compiler-inserted suffixes.*

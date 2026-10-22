@@ -2211,3 +2211,41 @@ deviations:
             t.start()
             t.join()
             print(t.ident > 0)       # True
+
+  - id: leading-zero-decimal-integer
+    code: null
+    category: syntax
+    audience: python
+    severity: none
+    python_behavior: "A decimal integer literal with a leading zero is a SyntaxError: `01`, `0_1` and `007` are `leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers`. An all-zero literal (`00`, `0_0`) is accepted."
+    sharpy_behavior: "Leading zeros are digits (C#'s rule — C# accepts `007` as 7): `01` and `0_1` lex as the integer 1 and `007` as 7, silently. An octal literal is `0o7` in both languages, so no Python program changes meaning — a Python refusal becomes a Sharpy acceptance. Ruled R-HT (#2300, P68 numeric twin; DEVIATION-by-default under python-fidelity-scope D5 a); refusing them was rejected."
+    spec_ref: docs/language_specification/integer_literals.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        print(01)        # SyntaxError: leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers
+        print(00, 0_0)   # 0 0
+      sharpy: |
+        def main():
+            print(01, 0_1, 007)   # 1 1 7
+            print(00, 0_0)        # 0 0
+
+  - id: identifier-letters-bmp-only
+    code: SPY0015
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "An identifier's letters are any Unicode code points with the XID_Start/XID_Continue property, including letters outside the Basic Multilingual Plane: `𝒳 = 1` (U+1D4B3 MATHEMATICAL SCRIPT CAPITAL X) binds `𝒳`."
+    sharpy_behavior: "Identifier letters are the letters of the Basic Multilingual Plane — C#'s identifier alphabet, whose letter test is per UTF-16 code unit (Axiom 1). `été = 1` is an identifier; `𝒳 = 1` is refused with SPY0015 `Unexpected character: '\\uD835'`, the message naming the lone high surrogate of the pair (it prints as U+FFFD `'�'` in a terminal). Ruled R-HW (#2300, P68 record round)."
+    spec_ref: docs/language_specification/identifiers.md
+    existing_diagnostic: SPY0015
+    planned_diagnostic: null
+    example:
+      python: |
+        𝒳 = 1
+        print(𝒳)        # 1
+      sharpy: |
+        def main():
+            𝒳 = 1         # SPY0015: Unexpected character: '�' (the lone high surrogate U+D835)
+        # control — a BMP letter: `été = 1` then `print(été)` prints 1

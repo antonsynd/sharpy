@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using SysThread = System.Threading.Thread;
 
 namespace Sharpy
 {
@@ -19,25 +17,44 @@ namespace Sharpy
         // stdlib-timeout-wait-saturates (R-FH, #2263).
         public const double TIMEOUT_MAX = 9223372036.0;
 
+        /// <summary>
+        /// Return the Thread object of the calling thread: the object <c>start()</c> was called
+        /// on, or the main thread. A thread the threading module did not start gets a daemon
+        /// <c>Dummy-N</c> thread, which stays in <c>enumerate()</c>.
+        /// </summary>
         public static Thread CurrentThread()
         {
-            return new Thread(SysThread.CurrentThread);
+            return ThreadRegistry.Current();
         }
 
+        /// <summary>
+        /// Return the number of Thread objects currently alive: the length of <c>enumerate()</c>.
+        /// </summary>
         public static int ActiveCount()
         {
-            return System.Diagnostics.Process.GetCurrentProcess().Threads.Count;
+            return ThreadRegistry.Count();
         }
 
+        /// <summary>
+        /// Return the main Thread object, named <c>MainThread</c>: the thread that first used the
+        /// threading module, which in a Sharpy program is the thread <c>main()</c> runs on.
+        /// </summary>
         public static Thread MainThread()
         {
-            return new Thread(SysThread.CurrentThread);
+            return ThreadRegistry.Main;
         }
 
+        /// <summary>
+        /// Return a list of every Thread object currently alive: the main thread, every started
+        /// thread that has not finished, and the dummy threads <c>current_thread()</c> created.
+        /// </summary>
         public static List<Thread> Enumerate()
         {
             var result = new List<Thread>();
-            result.Add(CurrentThread());
+            foreach (var thread in ThreadRegistry.Snapshot())
+            {
+                result.Add(thread);
+            }
             return result;
         }
 

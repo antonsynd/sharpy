@@ -303,6 +303,7 @@ public class CliOptionEffectSweepTests
         ["build --reference"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Build_Reference_BindsTheImport",
         ["build --module-path"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Build_ModulePath_ResolvesAnImport",
         ["build --server"] = "Sharpy.Cli.Tests.E2E.CompileServerE2ETests.Client_FallsBackToInProcess_WhenNoServerIsRunning",
+        ["build --no-deps"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.NoDeps_WritesTheAssemblyOnly",
 
         ["compile@.spy --output"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_ValidSource_ProducesDll",
         ["compile@.spyproj --output"] = "Sharpy.Cli.Tests.Commands.GeneratedCSharpLayoutTests.CompileProject_OutputOption_PlacesTheAssemblyAndItsCSharp",
@@ -315,7 +316,7 @@ public class CliOptionEffectSweepTests
         ["compile@.spyproj --module-path"] = "Sharpy.Cli.Tests.Commands.CompileOptionEffectTableTests.ModulePath_ResolvesABareReferenceName",
         ["compile@.spy --self-contained"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.SelfContained_Compile_PublishesTheReference",
         ["compile@.spy --no-deps"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_NoDeps_SkipsCopyingRuntimeDependencies",
-        ["compile@.spyproj --no-deps"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.Control_TheOptOuts_WriteTheAssemblyOnly",
+        ["compile@.spyproj --no-deps"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.NoDeps_WritesTheAssemblyOnly",
         ["compile@.spyproj --incremental"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileProject_Incremental_WritesTheIncrementalCache",
         ["compile@.spyproj --clean"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.CompileProject_Clean_DeletesBinAndObjFirst",
         ["compile@.spy --emit-csharp"] = "Sharpy.Cli.Tests.Commands.CompileCommandTests.Compile_EmitCSharp_WritesCSharpFileAlongsideDll",
@@ -335,6 +336,7 @@ public class CliOptionEffectSweepTests
         ["project --reference"] = "Sharpy.Cli.Tests.E2E.ProjectReferenceOptionTests.AReference_IsHonoured_AndAMissingOneIsSpy0305",
         ["project --module-path"] = "Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests.ProjectModulePathOption_ReachesImportResolution",
         ["project --incremental"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.Project_Incremental_WritesTheIncrementalCache",
+        ["project --no-deps"] = "Sharpy.Cli.Tests.E2E.ReferenceDeploymentMatrixTests.NoDeps_WritesTheAssemblyOnly",
 
         ["emit csharp --output"] = "Sharpy.Cli.Tests.Commands.EmitCommandTests.CSharp_WritesGeneratedFile",
         ["emit csharp --reference"] = "Sharpy.Cli.Tests.Commands.OptionEffectEvidenceTests.EmitCSharp_Reference_BindsTheImport",

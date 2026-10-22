@@ -12,6 +12,3 @@
 # fails; a row whose spelling now agrees fails as stale (drain on fix). A row leaves only by an
 # owner ruling: a deviation-ledger entry (the spelling moves to the twin's Sharpy-only table)
 # or a promoted lexer-defect issue (the row re-cites it and drains when the fix lands).
-
-01 => int:1 # #2300 leading-zero decimal integer — CPython refuses ("leading zeros in decimal integer literals are not permitted"), Sharpy lexes Integer 1; spec silent; DEVIATION-by-default (python-fidelity-scope D5 a) until ruled at /batch-issues
-0_1 => int:1 # #2300 the same leading-zero decimal integer cell spelled with a digit separator

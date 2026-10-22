@@ -490,8 +490,10 @@ internal partial class RoslynEmitter
             {
                 // from system import Math -> using Math = global::System.Math;
                 // Emit per-name type aliases with global:: prefix to avoid ambiguity.
-                // Skip generic types — C# cannot alias open generic types (e.g., IEquatable<T>),
-                // and the base class list already uses fully-qualified names.
+                // Skip generic types — C# cannot alias open generic types (CS0305: IEquatable<T>,
+                // the Action / Action<T> group), and the base class list already uses
+                // fully-qualified names. Which names those are is decided in semantic analysis and
+                // read off the imported symbol's CodeGenInfo (#2320).
                 // When ProjectNamespace is set, skip aliases entirely — identifier expressions
                 // use global:: qualified CLR names directly, avoiding shadowing conflicts
                 // (e.g., Sharpy.Math would shadow a using Math = global::System.Math alias).
@@ -503,12 +505,10 @@ internal partial class RoslynEmitter
                     // to ToNamespacePart("Guid") = "GUID". Look up AsName first so a CLR-backed
                     // symbol reaches its reflected clrType.Name.
                     var symbol = _context.LookupSymbol(importedName.AsName ?? importedName.Name);
-                    if (symbol is TypeSymbol { IsGeneric: true })
+                    if (symbol != null && GetCodeGenInfo(symbol) is { IsOpenGenericDefinition: true })
                         continue;
 
                     var clrTypeName = ResolveClrTypeName(symbol, importedName.Name);
-                    if (IsClrTypeGenericInNamespace(namespaceName, clrTypeName))
-                        continue;
 
                     var csharpName = importedName.AsName ?? clrTypeName;
                     var qualifiedName = $"global::{namespaceName}.{clrTypeName}";
@@ -576,33 +576,6 @@ internal partial class RoslynEmitter
         if (symbol is TypeSymbol { ClrType: { } clrType })
             return clrType.Name;
         return NameMangler.ToNamespacePart(fallbackName);
-    }
-
-    /// <summary>
-    /// Check whether the CLR type with the given name in the given namespace is a generic
-    /// type definition.  Used when emitting using-aliases for CLR imports: C# cannot alias
-    /// open generic types (CS0305), so we must skip them.  This directly queries the CLR
-    /// metadata rather than the symbol table, which may return a Sharpy type that shadows
-    /// the CLR name (e.g., Sharpy.IList vs System.Collections.Generic.IList&lt;T&gt;).
-    /// </summary>
-    private static bool IsClrTypeGenericInNamespace(string namespaceName, string typeName)
-    {
-        // TODO(#2320): Rule-2 cell — this is the emitter asking reflection a semantic question, which
-        // belongs in semantic analysis as a materialized fact (CodeGenInfo). Until it moves,
-        // it asks the FRAMEWORK visibility — a process constant — instead of every assembly the process
-        // has loaded; its only caller passes a .NET framework namespace (IsNetFrameworkNamespace).
-        var framework = Discovery.AssemblyVisibility.FrameworkOnly;
-
-        // Try with generic arity suffixes `1 through `4 (covers most BCL types)
-        for (int arity = 1; arity <= 4; arity++)
-        {
-            var fullName = $"{namespaceName}.{typeName}`{arity}";
-            var type = framework.ResolveType(fullName);
-            if (type != null && type.IsGenericTypeDefinition)
-                return true;
-        }
-
-        return false;
     }
 
     /// <summary>

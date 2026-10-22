@@ -34,9 +34,11 @@ namespace Sharpy.Compiler.Tests.Lexer;
 /// CPython like any other.</para>
 /// <para><b>Sharpy-only syntax</b> is never compared with CPython. The suffix roster and the
 /// imaginary <c>j</c> are excluded by construction (no generated spelling contains a roster
-/// letter after a number); the trailing-dot floats are excluded by <see cref="SharpyOnly"/>,
-/// a literal (predicate, spec sentence) table whose cells are still CHECKED — Sharpy must refuse
-/// them, and CPython must accept them (an exclusion CPython agrees with is over-broad). Every
+/// letter after a number); the trailing-dot floats and the leading-zero decimal integers are
+/// excluded by <see cref="SharpyOnly"/>, a literal (predicate, spec sentence, Sharpy verdict)
+/// table whose cells are still CHECKED — Sharpy must give the row's verdict (refuse a
+/// trailing-dot float, accept <c>01</c>), and CPython the opposite one (an exclusion CPython
+/// agrees with is over-broad). Every
 /// excluded family is pinned to Sharpy's own token or diagnostic by
 /// <see cref="SharpyOnlyRows_LexAsTheSpecSays"/>.</para>
 /// <para><b>Ratchet.</b> A disagreement fails unless its spelling is a row of
@@ -44,7 +46,7 @@ namespace Sharpy.Compiler.Tests.Lexer;
 /// disagreement whose Sharpy verdict differs from the row's pin fails. A row without a
 /// <c>#NNNN</c> cite fails, a row naming a spelling the matrix does not compare fails, and a row
 /// whose spelling now agrees fails as stale (drain on fix).</para>
-/// <para><b>Python absent:</b> a loud skip, unless <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI's
+/// <para><b>Python absent:</b> reported Skipped (<see cref="PythonInterpreter.RequireOrSkip(int)"/>, #2342), unless <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI's
 /// Compiler shards), where it fails.</para>
 /// </remarks>
 public class NumericLiteralTwinTests
@@ -105,14 +107,23 @@ public class NumericLiteralTwinTests
 
     /// <summary>
     /// Shared-grammar spellings whose Sharpy verdict is fixed by the spec, not by CPython. Each
-    /// cell matching a predicate must be refused by Sharpy AND accepted by CPython (else the
-    /// exclusion is over-broad); <see cref="SharpyOnlyRows_LexAsTheSpecSays"/> pins the tokens.
+    /// cell matching a predicate must get the row's Sharpy verdict (<c>SharpyAccepts</c>) AND the
+    /// opposite verdict from CPython (else the exclusion is over-broad);
+    /// <see cref="SharpyOnlyRows_LexAsTheSpecSays"/> pins the tokens.
     /// </summary>
-    private static readonly (string Name, Regex Predicate, string SpecSentence)[] SharpyOnly =
+    private static readonly (string Name, Regex Predicate, string SpecSentence, bool SharpyAccepts)[] SharpyOnly =
     {
         ("trailing-dot float",
             new Regex(@"^[0-9](?:_?[0-9])*\.(?:[eE][+-]?[0-9](?:_?[0-9])*)?$", RegexOptions.CultureInvariant),
-            "float_literals.md: \"Invalid - trailing decimal point without digit … # invalid = 5.   # ERROR: use 5.0 instead\""),
+            "float_literals.md: \"Invalid - trailing decimal point without digit … # invalid = 5.   # ERROR: use 5.0 instead\"",
+            false),
+        // A decimal INTEGER only: CPython accepts leading zeros in a float (01.5, 01e3), and an
+        // all-zero integer (00, 0_0), so neither is excluded.
+        ("leading-zero decimal integer",
+            new Regex(@"^(?=[0-9_]*[1-9])0(?:_?[0-9])+$", RegexOptions.CultureInvariant),
+            "integer_literals.md: \"Leading zeros are digits (C#'s rule): 007 is the decimal integer 7 and 0_1 is 1\" — "
+                + "docs/deviations.yaml leading-zero-decimal-integer (R-HT, #2300)",
+            true),
     };
 
     private static IEnumerable<Parts> BaseParts()
@@ -216,12 +227,14 @@ public class NumericLiteralTwinTests
         return all;
     }
 
-    private static string? ExclusionOf(string text)
+    private static string? ExclusionOf(string text) => SharpyOnlyRowOf(text)?.Name;
+
+    private static (string Name, Regex Predicate, string SpecSentence, bool SharpyAccepts)? SharpyOnlyRowOf(string text)
     {
-        foreach (var (name, predicate, _) in SharpyOnly)
+        foreach (var row in SharpyOnly)
         {
-            if (predicate.IsMatch(text))
-                return name;
+            if (row.Predicate.IsMatch(text))
+                return row;
         }
         return null;
     }
@@ -439,6 +452,17 @@ public class NumericLiteralTwinTests
         Assert.Null(ExclusionOf("1._5"));
         Assert.Null(ExclusionOf("1.5."));
         Assert.Null(ExclusionOf("0xFF."));
+
+        Assert.Equal("leading-zero decimal integer", ExclusionOf("01"));
+        Assert.Equal("leading-zero decimal integer", ExclusionOf("0_1"));
+        Assert.Equal("leading-zero decimal integer", ExclusionOf("007"));
+        Assert.Null(ExclusionOf("00"));     // all zeros: CPython accepts it, so it stays compared
+        Assert.Null(ExclusionOf("0_0"));
+        Assert.Null(ExclusionOf("0__1"));   // consecutive separators: both refuse, compared
+        Assert.Null(ExclusionOf("01_"));
+        Assert.Null(ExclusionOf("01.5"));   // a float: CPython accepts its leading zero
+        Assert.Null(ExclusionOf("01e3"));
+        Assert.Null(ExclusionOf("10"));
     }
 
     [Fact]
@@ -451,7 +475,7 @@ public class NumericLiteralTwinTests
         // Positive control: the rules fire on rows built to break them.
         var broken = AllowlistShapeViolations(new[]
         {
-            new AllowlistRow(1, "01", "int:1", "# no cite here"),
+            new AllowlistRow(1, "10", "int:10", "# no cite here"),
             new AllowlistRow(2, "0x1p3", "int:8", "# #2300 hex float is not in the matrix"),
             new AllowlistRow(3, "12.", "refused", "# #2300 Sharpy-only spelling"),
             new AllowlistRow(4, "00", "", "# #2300 no pinned verdict"),
@@ -459,7 +483,7 @@ public class NumericLiteralTwinTests
         Assert.Equal(4, broken.Count);
     }
 
-    [Fact]
+    [SkippableFact]
     public void SharedGrammar_AgreesWithCPython()
     {
         var stopwatch = Stopwatch.StartNew();
@@ -469,16 +493,10 @@ public class NumericLiteralTwinTests
         var shapeViolations = AllowlistShapeViolations(allowlist, compared);
         Assert.True(shapeViolations.Count == 0, string.Join("\n", shapeViolations));
 
-        var python = PythonInterpreter.Locate();
-        var script = PythonInterpreter.FindRepoFile("build_tools", "differential_lex", "number_oracle.py");
-        if (python is null || script is null)
-        {
-            string why = python is null ? "no Python 3.12+ interpreter (python3/python) on PATH" : "build_tools/differential_lex/number_oracle.py not found";
-            if (PythonInterpreter.Required)
-                Assert.Fail($"{why}, and {PythonInterpreter.RequireEnvironmentVariable}=1 makes the numeric twin's oracle required.");
-            _output.WriteLine($"SKIP: {why}; the numeric twin did not run. Set {PythonInterpreter.RequireEnvironmentVariable}=1 to make this a failure.");
-            return;
-        }
+        var python = PythonInterpreter.RequireOrSkip(minMinor: 12);
+        // The oracle script is IN the repository: its absence is a broken checkout, never a skip.
+        var script = PythonInterpreter.FindRepoFile("build_tools", "differential_lex", "number_oracle.py")
+            ?? throw new FileNotFoundException("build_tools/differential_lex/number_oracle.py not found under the repository root.");
 
         var requests = spellings.Select((s, i) => JsonSerializer.Serialize(new { id = i, source = s.Text }));
         var replies = python.RunBatch(script, requests);
@@ -511,14 +529,24 @@ public class NumericLiteralTwinTests
                     failures.Add($"FOLLOW {Show(s.Text)} + {name}: bare {sharpy.Show()} but followed {followed.Show()}  [{s.Origin}]");
             }
 
-            var exclusion = ExclusionOf(s.Text);
-            if (exclusion is not null)
+            if (SharpyOnlyRowOf(s.Text) is { } only)
             {
+                string exclusion = only.Name;
                 sharpyOnly++;
-                if (sharpy.Ok)
-                    failures.Add($"SHARPY-ONLY {Show(s.Text)} ({exclusion}): the spec refuses it, Sharpy lexes {sharpy.Show()}");
-                if (!cpython.Ok)
-                    failures.Add($"OVER-BROAD {Show(s.Text)} ({exclusion}): CPython refuses it too ({cpython.Detail}) — compare it instead of excluding it");
+                if (only.SharpyAccepts)
+                {
+                    if (!sharpy.Ok)
+                        failures.Add($"SHARPY-ONLY {Show(s.Text)} ({exclusion}): the spec accepts it, Sharpy gives {sharpy.Show()}");
+                    if (cpython.Ok)
+                        failures.Add($"OVER-BROAD {Show(s.Text)} ({exclusion}): CPython accepts it too ({cpython.Detail}) — compare it instead of excluding it");
+                }
+                else
+                {
+                    if (sharpy.Ok)
+                        failures.Add($"SHARPY-ONLY {Show(s.Text)} ({exclusion}): the spec refuses it, Sharpy lexes {sharpy.Show()}");
+                    if (!cpython.Ok)
+                        failures.Add($"OVER-BROAD {Show(s.Text)} ({exclusion}): CPython refuses it too ({cpython.Detail}) — compare it instead of excluding it");
+                }
                 continue;
             }
 
@@ -566,7 +594,46 @@ public class NumericLiteralTwinTests
 
     private static readonly string[] FloatSuffixes = { "f", "F", "d", "D", "m", "M" };
     private static readonly string[] IntegerSuffixes = { "l", "L", "u", "U", "ul", "UL", "uL", "Ul" };
-    private static readonly string[] InvalidSuffixes = { "lu", "x", "j" };
+
+    /// <summary>Not in either roster: <c>j</c>/<c>J</c> (no complex literal), <c>lu</c> (C# spelling the spec does not list), <c>x</c>.</summary>
+    private static readonly string[] InvalidSuffixes = { "j", "J", "lu", "x" };
+
+    private enum SpellingKind
+    {
+        /// <summary>Decimal digits, no <c>.</c>/exponent: takes integer AND float suffixes (<c>42L</c>, <c>42f</c>).</summary>
+        DecimalInteger,
+        /// <summary>A fraction or exponent, any spelling: takes only the float suffixes.</summary>
+        DecimalFloat,
+        Hex,
+        BinaryOrOctal,
+    }
+
+    /// <summary>
+    /// The suffix matrix's spelling axis (#2339): (source digits, the token value the lexer gives
+    /// them, kind). Every spelling of a kind must answer a suffix the same way — the leading-dot
+    /// <c>.5</c> exactly as <c>0.5</c> (float_literals.md: ".5 — Same as 0.5"), the exponent-only
+    /// <c>1e5</c> and the underscored spellings as their plain twins.
+    /// </summary>
+    private static readonly (string Source, string Value, SpellingKind Kind)[] SuffixSpellings =
+    {
+        ("42", "42", SpellingKind.DecimalInteger),
+        ("1_000", "1000", SpellingKind.DecimalInteger),
+        ("0.5", "0.5", SpellingKind.DecimalFloat),
+        ("3.14", "3.14", SpellingKind.DecimalFloat),
+        (".5", "0.5", SpellingKind.DecimalFloat),
+        (".1_5", "0.15", SpellingKind.DecimalFloat),
+        ("1e5", "1e5", SpellingKind.DecimalFloat),
+        ("1E+5", "1E+5", SpellingKind.DecimalFloat),
+        (".5e3", "0.5e3", SpellingKind.DecimalFloat),
+        ("1_0.2_5", "10.25", SpellingKind.DecimalFloat),
+        ("1_0e1_0", "10e10", SpellingKind.DecimalFloat),
+        ("0xFF", "0xFF", SpellingKind.Hex),
+        ("0xF_F", "0xFF", SpellingKind.Hex),
+        ("0b101", "0b101", SpellingKind.BinaryOrOctal),
+        ("0b1_01", "0b101", SpellingKind.BinaryOrOctal),
+        ("0o17", "0o17", SpellingKind.BinaryOrOctal),
+        ("0o1_7", "0o17", SpellingKind.BinaryOrOctal),
+    };
 
     /// <summary>
     /// (source, expected): expected is the token list without <c>Eof</c> as <c>Type 'Value'</c>
@@ -575,50 +642,62 @@ public class NumericLiteralTwinTests
     public static TheoryData<string, string> SharpyOnlyCases()
     {
         var data = new TheoryData<string, string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        void Add(string source, string expected)
+        {
+            if (seen.Add(source))
+                data.Add(source, expected);
+        }
         const string Refused = "error SPY0023";
 
-        // integer_literals.md: L/l, u/U, ul/UL on decimal integers; float_literals.md: f/F, d/D, m/M.
-        foreach (var s in IntegerSuffixes)
-            data.Add("42" + s, $"Integer '42{s}'");
-        foreach (var s in FloatSuffixes)
-            data.Add("42" + s, $"Float '42{s}'");
-        // float_literals.md: "3.14f" / "3.14d" / "3.14m". (An INTEGER suffix on a float is spec-silent
-        // and accepted by the lexer today — a findings-ledger line, deliberately not pinned here.)
-        foreach (var s in FloatSuffixes)
-            data.Add("3.14" + s, $"Float '3.14{s}'");
+        // kind {decimal int, decimal float, hex, binary/octal} × spelling (SuffixSpellings) × suffix
+        // {every integer suffix, every float suffix, j/J and the other non-roster suffixes, none} — the
+        // suffix rosters carry both cases. integer_literals.md: L/l, u/U, ul/UL, "The integer suffixes work
+        // on every base"; "A hex digit is never read as a suffix … 0xFFf is 0xFFF"; the float suffixes
+        // "apply to decimal literals only; on a binary or octal literal, and m on a hex literal, they are
+        // refused (SPY0023)". float_literals.md: f/F, d/D, m/M on floats; an integer suffix on a float is
+        // refused (SPY0023), as in C# (#2339).
+        foreach (var (source, value, kind) in SuffixSpellings)
+        {
+            string integerToken = $"Integer '{value}'";
+            string floatToken = $"Float '{value}'";
+            Add(source, kind == SpellingKind.DecimalFloat ? floatToken : integerToken);
 
-        // integer_literals.md: "The integer suffixes work on every base"; "A hex digit is never read as a
-        // suffix … 0xFFf is 0xFFF"; "on a binary or octal literal, and m on a hex literal, they are refused (SPY0023)".
-        foreach (var s in IntegerSuffixes)
-        {
-            data.Add("0xFF" + s, $"Integer '0xFF{s}'");
-            data.Add("0b101" + s, $"Integer '0b101{s}'");
-            data.Add("0o17" + s, $"Integer '0o17{s}'");
-        }
-        foreach (var s in FloatSuffixes)
-        {
-            data.Add("0b101" + s, Refused);
-            data.Add("0o17" + s, Refused);
-            data.Add("0xFF" + s, s is "m" or "M" ? Refused : $"Integer '0xFF{s}'");
-        }
+            foreach (var s in IntegerSuffixes)
+                Add(source + s, kind == SpellingKind.DecimalFloat ? Refused : $"Integer '{value}{s}'");
 
-        // Not in the roster: refused on every base.
-        foreach (var s in InvalidSuffixes)
-        {
-            foreach (var number in new[] { "42", "3.14", "0xFF", "0b101", "0o17" })
-                data.Add(number + s, Refused);
+            foreach (var s in FloatSuffixes)
+            {
+                Add(source + s, kind switch
+                {
+                    SpellingKind.DecimalInteger or SpellingKind.DecimalFloat => $"Float '{value}{s}'",
+                    SpellingKind.Hex when s is not ("m" or "M") => $"Integer '{value}{s}'",
+                    _ => Refused,
+                });
+            }
+
+            foreach (var s in InvalidSuffixes)
+                Add(source + s, Refused);
         }
 
         // float_literals.md: "Invalid - trailing decimal point without digit … ERROR: use 5.0 instead" —
-        // the lexer leaves the dot to the parser.
-        data.Add("1.", "Integer '1', Dot '.'");
-        data.Add("12.", "Integer '12', Dot '.'");
-        data.Add("1_000.", "Integer '1000', Dot '.'");
-        data.Add("1.e5", "Integer '1', Dot '.', Identifier 'e5'");
+        // the lexer leaves the dot to the parser, and a letter after the dot is a member name, never a
+        // suffix, for every suffix of either kind.
+        Add("1.", "Integer '1', Dot '.'");
+        Add("12.", "Integer '12', Dot '.'");
+        Add("1_000.", "Integer '1000', Dot '.'");
+        Add("1.e5", "Integer '1', Dot '.', Identifier 'e5'");
+        foreach (var s in IntegerSuffixes.Concat(FloatSuffixes).Concat(InvalidSuffixes))
+            Add("5." + s, $"Integer '5', Dot '.', Identifier '{s}'");
 
-        // No complex literal: the imaginary j is an invalid suffix.
-        data.Add("1j", Refused);
-        data.Add("1.5j", Refused);
+        // integer_literals.md: "Leading zeros are digits (C#'s rule): 007 is the decimal integer 7 and
+        // 0_1 is 1" — docs/deviations.yaml leading-zero-decimal-integer (R-HT, #2300); CPython refuses
+        // them, so they left the twin's allowlist for this table.
+        Add("01", "Integer '01'");
+        Add("0_1", "Integer '01'");
+        Add("007", "Integer '007'");
+        Add("0_0_7", "Integer '007'");
+        Add("01L", "Integer '01L'");
         return data;
     }
 

@@ -30,12 +30,7 @@ internal partial class TypeChecker
         SemanticType type = expr switch
         {
             IntegerLiteral il => ClassifyIntegerLiteral(il),
-            FloatLiteral fl => fl.Suffix?.ToUpperInvariant() switch
-            {
-                "F" => SemanticType.Float32,
-                "M" => SemanticType.Decimal,
-                _ => SemanticType.Double,
-            },
+            FloatLiteral fl => ClassifyFloatLiteral(fl),
             StringLiteral sl => CheckStringLiteral(sl),
             BytesLiteralExpression bytesLit => CheckBytesLiteral(bytesLit),
             BooleanLiteral => SemanticType.Bool,
@@ -233,9 +228,28 @@ internal partial class TypeChecker
         {
             AddError(result.ErrorMessage!,
                 il.LineStart, il.ColumnStart,
-                code: DiagnosticCodes.Semantic.IntegerLiteralOutOfRange,
+                code: DiagnosticCodes.Semantic.NumericLiteralOutOfRange,
                 span: il.Span);
             return result.Type;
+        }
+        return result.Type;
+    }
+
+    /// <summary>
+    /// A float literal is refused at its own type's range exactly as an integer literal is
+    /// (SPY0210, #2340): <c>1e400</c> is not a silent infinity, and neither <c>1e39f</c> nor
+    /// <c>1e29m</c> reaches code generation. The resolved type is returned either way, as
+    /// <see cref="ClassifyIntegerLiteral"/> does.
+    /// </summary>
+    private SemanticType ClassifyFloatLiteral(FloatLiteral fl)
+    {
+        var result = Shared.FloatLiteralClassifier.Classify(fl.Value, fl.Suffix);
+        if (result.IsError)
+        {
+            AddError(result.ErrorMessage!,
+                fl.LineStart, fl.ColumnStart,
+                code: DiagnosticCodes.Semantic.NumericLiteralOutOfRange,
+                span: fl.Span);
         }
         return result.Type;
     }

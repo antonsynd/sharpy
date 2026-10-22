@@ -16,7 +16,10 @@ digit      ::= '0'..'9'
 - Can contain letters, digits, and underscores
 - Case-sensitive: `myVar`, `myvar`, and `MYVAR` are different identifiers
 - Cannot be a keyword
-- Unicode letters are allowed but discouraged for interop
+- Unicode letters are allowed but discouraged for interop. They are the letters of the Basic
+  Multilingual Plane — C#'s identifier alphabet (Axiom 1): `été` is an identifier, while a letter
+  outside the BMP, such as `𝒳` (U+1D4B3), is refused with SPY0015 although Python accepts it
+  (deviation `identifier-letters-bmp-only` in `docs/deviations.yaml`)
 
 ## Examples
 

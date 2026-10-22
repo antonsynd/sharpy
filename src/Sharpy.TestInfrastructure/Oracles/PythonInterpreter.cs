@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using Xunit;
 
 namespace Sharpy.TestInfrastructure.Oracles;
 
@@ -11,7 +12,8 @@ namespace Sharpy.TestInfrastructure.Oracles;
 /// one today; retrofitting them is a chore note on #2300, not this helper's seam).
 /// </summary>
 /// <remarks>
-/// <para>Absence is a SKIP on a developer machine and a FAIL where the oracle is required:
+/// <para>Absence is a SKIP on a developer machine (xunit's <c>skipped</c> count, through
+/// <see cref="RequireOrSkip(int)"/>, #2342) and a FAIL where the oracle is required:
 /// <see cref="Required"/> reads <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c>, which CI sets on the
 /// Compiler shards, so a runner that lost its <c>setup-python</c> step cannot pass the twin
 /// vacuously. The <see cref="Locate(IReadOnlyList{string}, bool, int)"/> overload takes the
@@ -91,6 +93,29 @@ public sealed class PythonInterpreter
                 $"{RequireEnvironmentVariable}=1 makes the python oracle required: the twin FAILS rather than skips.");
         }
         return located;
+    }
+
+    /// <summary>
+    /// THE gate every python twin opens with (#2342, R-HZ): the located interpreter, or the test
+    /// reports SKIPPED — never PASSED — when none answers. Three verdicts: located → returned;
+    /// absent and not <see cref="Required"/> → <see cref="SkipException"/> (the test must be a
+    /// <c>[SkippableFact]</c>/<c>[SkippableTheory]</c>, which xunit then counts under
+    /// <c>skipped</c>); absent and required (<c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c>, CI) →
+    /// <see cref="PythonOracleMissingException"/>, a failure naming the oracle.
+    /// </summary>
+    public static PythonInterpreter RequireOrSkip(int minMinor = 12) => RequireOrSkip(DefaultCandidates, Required, minMinor);
+
+    /// <summary>
+    /// <see cref="RequireOrSkip(int)"/> over <paramref name="candidates"/> with the required flag
+    /// explicit, so a test can exercise each verdict without setting the process-global
+    /// environment variable.
+    /// </summary>
+    public static PythonInterpreter RequireOrSkip(IReadOnlyList<string> candidates, bool required, int minMinor = 12)
+    {
+        return Locate(candidates, required, minMinor)
+            ?? throw new SkipException(
+                $"No Python 3.{minMinor}+ interpreter among [{string.Join(", ", candidates)}] on PATH: the python twin " +
+                $"compared nothing and is SKIPPED. Set {RequireEnvironmentVariable}=1 to make this a failure.");
     }
 
     /// <summary>

@@ -53,6 +53,16 @@ namespace Sharpy.Stdlib.Tests.Spy
     {
     }
 
+    /// <summary>
+    /// Tests that construct, start or count threading.Thread objects: the Thread-N counter and the
+    /// enumerate() / active_count() registry are process-wide (#2261), and the concurrency cells
+    /// assert exact numbers and counts.
+    /// </summary>
+    [CollectionDefinition("ThreadingRegistry")]
+    public sealed class ThreadingRegistryCollection
+    {
+    }
+
     /// <summary>Tests that seed numpy.random and compare draws.</summary>
     [CollectionDefinition("NumpyRandomState")]
     public sealed class NumpyRandomStateCollection
@@ -88,6 +98,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyRandomTests
 {
     [Collection("NumpyRandomState")]
     public partial class NumpyRandomTestsModuleTests
+    {
+    }
+}
+
+namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
+{
+    [Collection("ThreadingRegistry")]
+    public partial class ThreadingModuleTestsModuleTests
     {
     }
 }

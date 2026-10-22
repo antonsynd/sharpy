@@ -1149,9 +1149,8 @@ public partial class Parser
             }
             catch (ParserAbortException)
             {
-                // Error already recorded. Skip to the next line within the enum body.
-                if (_diagnostics.ErrorCount >= _maxErrors)
-                    break;
+                // Error already recorded (the cap is enforced at RecordError, #2311).
+                // Skip to the next line within the enum body.
                 Synchronize(itemStart);
             }
             SkipNewlines();
@@ -1326,9 +1325,8 @@ public partial class Parser
             }
             catch (ParserAbortException)
             {
-                // Error already recorded. Skip to the next line within the union body.
-                if (_diagnostics.ErrorCount >= _maxErrors)
-                    break;
+                // Error already recorded (the cap is enforced at RecordError, #2311).
+                // Skip to the next line within the union body.
                 Synchronize(itemStart);
             }
             SkipNewlines();

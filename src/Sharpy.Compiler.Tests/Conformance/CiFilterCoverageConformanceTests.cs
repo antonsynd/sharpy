@@ -460,8 +460,11 @@ public class CiFilterCoverageConformanceTests
             var classTraits = CollectTraits(type);
             foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance))
             {
+                // Every xunit test attribute derives from FactAttribute ([Theory], and the
+                // [SkippableFact]/[SkippableTheory] of the python twins, #2342) — match by
+                // derivation, never by name, or a subclassed test drops out of the universe.
                 if (!method.GetCustomAttributesData().Any(a =>
-                        a.AttributeType.Name is "FactAttribute" or "TheoryAttribute"))
+                        typeof(FactAttribute).IsAssignableFrom(a.AttributeType)))
                     continue;
 
                 var merged = MergeTraits(classTraits, CollectTraits(method));

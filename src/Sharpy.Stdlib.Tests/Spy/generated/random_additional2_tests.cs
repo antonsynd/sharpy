@@ -75,12 +75,12 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
         {
 #line (36, 5) - (36, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             random.Seed(1);
-#line (37, 5) - (37, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-            double a = random.NextDouble();
+#line (37, 5) - (37, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
+            double a = random.Random();
 #line (38, 5) - (38, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             random.Seed(2);
-#line (39, 5) - (39, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-            double b = random.NextDouble();
+#line (39, 5) - (39, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
+            double b = random.Random();
 #line (41, 5) - (41, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             Xunit.Assert.NotEqual(b, a);
 #line hidden
@@ -293,7 +293,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
         }
 
         [Xunit.FactAttribute]
-        public void TestNextDoubleNeverReturns1()
+        public void TestRandomNeverReturns1()
         {
 #line (138, 5) - (138, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             random.Seed(42);
@@ -303,8 +303,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
             while (i < 1000)
 #line hidden
             {
-#line (141, 9) - (141, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                Xunit.Assert.True(random.NextDouble() < 1.0d);
+#line (141, 9) - (141, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
+                Xunit.Assert.True(random.Random() < 1.0d);
 #line (142, 9) - (142, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 i = i + 1;
 #line hidden
@@ -312,7 +312,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
         }
 
         [Xunit.FactAttribute]
-        public void TestNextDoubleStatisticalMeanApproximatesHalf()
+        public void TestRandomStatisticalMeanApproximatesHalf()
         {
 #line (146, 5) - (146, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             random.Seed(42);
@@ -326,8 +326,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
             while (i < n)
 #line hidden
             {
-#line (151, 9) - (151, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                total = total + random.NextDouble();
+#line (151, 9) - (151, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
+                total = total + random.Random();
 #line (152, 9) - (152, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 i = i + 1;
 #line hidden

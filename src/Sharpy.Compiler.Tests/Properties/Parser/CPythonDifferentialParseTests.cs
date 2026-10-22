@@ -6,6 +6,7 @@ using System.Text.Json;
 using CsCheck;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -58,15 +59,12 @@ public class CPythonDifferentialParseTests
             });
         });
 
-    [Fact]
+    [SkippableFact]
     public void SharedSubset_SharpyAndCPythonAgree()
     {
-        var python = PythonOracle.TryLocate();
-        if (python is null)
-        {
-            _output.WriteLine("SKIP: python3 >= 3.12 and compare_ast.py not both available.");
-            return;
-        }
+        PythonInterpreter.RequireOrSkip(minMinor: 12);
+        var python = PythonOracle.TryLocate()
+            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_parse/compare_ast.py was not found.");
 
         List<Sample> samples = CollectSubsetSamples(targetCount: 150, maxCandidates: 1500);
         Assert.True(samples.Count > 50,
@@ -143,7 +141,7 @@ public class CPythonDifferentialParseTests
     /// skeleton. Pins the exact cases the generator covers randomly so a regression fails loudly,
     /// and doubles as a fast oracle smoke test independent of generation randomness.
     /// </summary>
-    [Theory]
+    [SkippableTheory]
     [InlineData("f(lambda x: x[0], (a, b))")]
     [InlineData("first(lambda t: t[0], xs)")]
     [InlineData("x[a, b:c]")]
@@ -161,12 +159,9 @@ public class CPythonDifferentialParseTests
     [InlineData("x[lambda a: t : b]")]
     public void AnchoredSharedSubset_DualParsesWithMatchingSkeleton(string source)
     {
-        var python = PythonOracle.TryLocate();
-        if (python is null)
-        {
-            _output.WriteLine("SKIP: python3 >= 3.12 and compare_ast.py not both available.");
-            return;
-        }
+        PythonInterpreter.RequireOrSkip(minMinor: 12);
+        var python = PythonOracle.TryLocate()
+            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_parse/compare_ast.py was not found.");
 
         // Sharpy side.
         var tokens = new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll();

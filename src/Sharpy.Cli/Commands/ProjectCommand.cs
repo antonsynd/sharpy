@@ -11,7 +11,7 @@ internal static class ProjectCommand
 {
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
-        var command = new Command("project", "Build a Sharpy project from a .spyproj file. Writes the assembly only; `compile` deploys its runtime dependencies and references beside the output");
+        var command = new Command("project", "Build a Sharpy project from a .spyproj file. Copies its runtime dependencies and references beside the output, so it runs from there (--no-deps writes the assembly only)");
 
         var projFileArg = new Argument<FileInfo?>("project") { Description = "Path to .spyproj file (auto-discovers if not specified)", Arity = ArgumentArity.ZeroOrOne };
         var configOpt = new Option<string?>("--configuration") { Description = "Build configuration (Debug or Release)" };
@@ -21,10 +21,12 @@ internal static class ProjectCommand
         var incrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation (only recompile changed files)" };
         // `compile app.spyproj` takes these and `project` did not (a parse error), so the two project
         // commands diverged (#2223); both now merge them through CliHelpers.MergeCommandLineIntoProject.
-        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable); not deployed beside the output — `compile` deploys" };
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
+        // The spelling `compile` has always used (#2313 cell 0, R-HF c).
+        var noDepsOpt = new Option<bool>("--no-deps") { Description = "Skip copying runtime dependencies alongside the output" };
 
         command.Arguments.Add(projFileArg);
         command.Options.Add(configOpt);
@@ -33,6 +35,7 @@ internal static class ProjectCommand
         command.Options.Add(incrementalOpt);
         command.Options.Add(refOpt);
         command.Options.Add(modPathOpt);
+        command.Options.Add(noDepsOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -52,6 +55,7 @@ internal static class ProjectCommand
             var features = parseResult.GetValue(globals.EnableFeature);
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
+            var noDeps = parseResult.GetValue(noDepsOpt);
 
             // The input-kind refusal comes before anything is written or validated: a .spy (Sharpy
             // source, not XML) or a directory used to reach the XML loader as "Unexpected error:
@@ -68,7 +72,7 @@ internal static class ProjectCommand
             }
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features, reference, modulePath);
+            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features, reference, modulePath, noDeps);
         });
 
         root.Subcommands.Add(command);
@@ -89,7 +93,8 @@ internal static class ProjectCommand
         int? maxErrors = null,
         string[]? features = null,
         string[]? references = null,
-        string[]? modulePaths = null)
+        string[]? modulePaths = null,
+        bool noDeps = false)
     {
         FileInfo? resolvedProjectFile = projectFile;
 
@@ -109,7 +114,7 @@ internal static class ProjectCommand
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features, references, modulePaths);
+        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features, references, modulePaths, noDeps);
     }
 
     /// <summary>
@@ -151,7 +156,7 @@ internal static class ProjectCommand
         return true;
     }
 
-    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null, string[]? features = null, string[]? references = null, string[]? modulePaths = null)
+    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null, string[]? features = null, string[]? references = null, string[]? modulePaths = null, bool noDeps = false)
     {
         try
         {
@@ -189,9 +194,15 @@ internal static class ProjectCommand
             }
             Console.WriteLine();
 
+            // The deployment seed's user half, captured before the default references join the list
+            // below: the .spyproj's own <Reference> items plus the merged `-r` — the seed
+            // `compile app.spyproj` forms (#2223).
+            var userReferences = projectConfig.References.ToList();
+            var defaultReferences = CliHelpers.GetDefaultReferences();
+
             var compilerOptions = CompilerOptionsFactory.ForProject(
                 projectConfig,
-                defaultReferences: CliHelpers.GetDefaultReferences(),
+                defaultReferences: defaultReferences,
                 warningsAsErrors: warnAsError,
                 additionalSuppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
                 maxErrors: maxErrors ?? 0,
@@ -200,7 +211,7 @@ internal static class ProjectCommand
 
             // Inject CLI default references into ProjectConfig so AssemblyCompiler
             // can resolve types from Sharpy.Core/Stdlib during Roslyn compilation
-            DefaultReferences.ApplyTo(projectConfig, CliHelpers.GetDefaultReferences());
+            DefaultReferences.ApplyTo(projectConfig, defaultReferences);
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
 
@@ -224,6 +235,17 @@ internal static class ProjectCommand
                 var errors = result.Diagnostics.GetErrors();
                 CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error, projectConfig.EntryPoint);
                 return CliHelpers.MapFailureExitCode(errors);
+            }
+
+            // `project` deploys like `compile app.spyproj` (#2313 cell 0, R-HF c): the output runs
+            // in place, as `dotnet build`'s does. The project result does not expose per-module used
+            // assemblies, so — as there — every default reference seeds the closure, plus every user
+            // reference.
+            if (result.OutputAssemblyPath != null && !noDeps)
+            {
+                var outputDir = Path.GetDirectoryName(result.OutputAssemblyPath) ?? Directory.GetCurrentDirectory();
+                RuntimeDependencyHelper.CopyRuntimeDependencies(
+                    outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
             }
 
             Console.WriteLine("Build succeeded.");

@@ -1,0 +1,14 @@
+# #2321 cell 1 (R-HL): the module function is random.random(), as CPython spells it, by module
+# attribute and by from-import. python3 3.12.13 prints True three times; before the rename both
+# spellings were SPY0203 (the function was next_double).
+import random
+from random import random as draw
+
+
+def main() -> None:
+    print(0 <= random.random() < 1)
+    print(0 <= draw() < 1)
+    random.seed(3)
+    a = random.random()
+    random.seed(3)
+    print(a == random.random())

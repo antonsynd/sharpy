@@ -44,10 +44,10 @@ internal static class GlobalOptionProbes
     /// </summary>
     internal static readonly IReadOnlyDictionary<string, string> Invocations = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["build"] = "build \"{input}\" -o \"{out}/a.dll\"",
+        ["build"] = "build \"{input}\" -o \"{out}/a.dll\" --no-deps",
         ["compile"] = "compile \"{input}\" -o \"{out}/a.dll\" --no-deps",
         ["run"] = "run \"{input}\"",
-        ["project"] = "project \"{input}\"",
+        ["project"] = "project \"{input}\" --no-deps",
         ["emit tokens"] = "emit tokens \"{input}\"",
         ["emit ast"] = "emit ast \"{input}\"",
         ["emit parse"] = "emit parse \"{input}\"",

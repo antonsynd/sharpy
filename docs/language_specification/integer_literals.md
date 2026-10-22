@@ -12,6 +12,16 @@ million = 1_000_000
 billion = 1_000_000_000
 ```
 
+Leading zeros are digits (C#'s rule): `007` is the decimal integer 7 and `0_1` is 1. Python refuses
+both (`leading zeros in decimal integer literals are not permitted`); an octal literal is spelled
+`0o7` in both languages (deviation `leading-zero-decimal-integer` in `docs/deviations.yaml`).
+
+<!-- spec-sweep: output -->
+```python
+def main():
+    print(007, 0_1, 0o7)   # 7 1 7
+```
+
 ## Type Inference
 
 - Integer literals without a suffix are inferred as `int` (32-bit, `System.Int32`) by default

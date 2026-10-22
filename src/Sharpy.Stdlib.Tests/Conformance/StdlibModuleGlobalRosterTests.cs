@@ -36,7 +36,8 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// <para>A written static without a row is red (a new process-wide global needs its CPython model
 /// and synchronization named); a row the census no longer finds is red (stale — drain it). The
 /// totality is anchored to the literal <see cref="ExpectedWrittenGlobals"/>, counted at landing
-/// @ 486c9a88a (the plan's six plus two the census found), not derived from the scan. Each row is exercised at 1/2/8 threads by
+/// @ 486c9a88a (the plan's six plus two the census found) plus the two threading globals #2261 part 2
+/// added, not derived from the scan. Each row is exercised at 1/2/8 threads by
 /// <see cref="StdlibModuleGlobalConcurrencyTests"/>.</para>
 /// </summary>
 public class StdlibModuleGlobalRosterTests
@@ -89,13 +90,27 @@ public class StdlibModuleGlobalRosterTests
         new("Sharpy.TypedLoadContract.FieldCache", "src/Sharpy.Stdlib/TypedLoadContract.cs",
             "no CPython counterpart — an implementation cache whose value is a function of its key (the Type)",
             "ConcurrentDictionary", null),
+
+        // ---- Added by #2261 part 2 (threading's process-wide state) ----
+
+        // Threading/ThreadRegistry.cs; every unnamed Thread() and every dummy current_thread() draws a number.
+        // CPython 3.12 (verified): threading._counter = itertools.count(1), shared by Thread-N and Dummy-N.
+        new("Sharpy.ThreadRegistry._counter", "src/Sharpy.Stdlib/Threading/ThreadRegistry.cs",
+            ProcessWideUnderTheGil + " (threading._counter, an itertools.count)",
+            "Interlocked.Increment — the only write", null),
+        // Threading/ThreadRegistry.cs; start() adds, the thread's own body removes, current_thread() adds a dummy.
+        // CPython 3.12 (verified): threading._active / _limbo, dicts read and written under _active_limbo_lock.
+        new("Sharpy.ThreadRegistry._active", "src/Sharpy.Stdlib/Threading/ThreadRegistry.cs",
+            "process-wide module global (threading._active and _limbo, under _active_limbo_lock)",
+            "lock (ThreadRegistry.ActiveLock) around every read and write", null),
     };
 
     /// <summary>
     /// Written globals @ 486c9a88a, counted at landing — the totality anchor: the plan's six
-    /// (P54 cells 6–11) plus the two this census found (HTTPStatus._valueMap, TypedLoadContract.FieldCache).
+    /// (P54 cells 6–11) plus the two this census found (HTTPStatus._valueMap, TypedLoadContract.FieldCache)
+    /// — plus the two #2261 part 2 added (ThreadRegistry._counter, ThreadRegistry._active).
     /// </summary>
-    private const int ExpectedWrittenGlobals = 8;
+    private const int ExpectedWrittenGlobals = 10;
 
     /// <summary>
     /// Invoked member names that mutate their receiver — literal: the .NET collection mutators and

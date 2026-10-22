@@ -606,13 +606,21 @@ public class SemanticBinding
             // entry written earlier by import resolution — an aliased from-import's clone — carries
             // no layout; it gains the recorded one here, or the emitter would find none (#2102).
             var existing = _codeGenInfo[symbol];
+            var merged = existing;
             if (existing.NamespaceSegments == null && info.NamespaceSegments != null)
-                _codeGenInfo[symbol] = existing with
+                merged = merged with
                 {
                     IsNamespaceSibling = info.IsNamespaceSibling,
                     NamespaceSegments = info.NamespaceSegments,
                     MembersClassName = existing.MembersClassName ?? info.MembersClassName,
                 };
+            // The from-import's open-generic fact is recorded by CodeGenInfoComputer only, as the
+            // layout is: an aliased clone's earlier import-resolution entry gains it here, or
+            // `from system import Action as A` would alias an open generic group (#2320).
+            if (!merged.IsOpenGenericDefinition && info.IsOpenGenericDefinition)
+                merged = merged with { IsOpenGenericDefinition = true };
+            if (!ReferenceEquals(merged, existing))
+                _codeGenInfo[symbol] = merged;
         }
 
         // CLR-base-override marks are consumed at MaterializeCodeGenInfo, which runs on the

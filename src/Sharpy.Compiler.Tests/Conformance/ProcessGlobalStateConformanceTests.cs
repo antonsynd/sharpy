@@ -560,14 +560,14 @@ public class ProcessGlobalStateConformanceTests
             new[] { "Sharpy.Stdlib.Tests.StrftimeHostTimeZoneTests" }),
         ("Sharpy.Core.Tests", "ConsoleCapture",
             "Console.SetOut swaps a process-global writer while Core.Tests runs collections in parallel",
-            new[] { "Sharpy.Core.Tests.Print_Tests" }),
+            new[] { "Sharpy.Core.Tests.Print_Tests", "Sharpy.Core.Tests.SharpyInstanceFormattingTests" }),
     };
 
     /// <summary>Positive control: roster size counted by hand from the P2/P4/P5 audit (not from the array).</summary>
     private const int ExpectedSerialCollections = 8;
 
     /// <summary>1 + 1 + 44 + 1 (Compiler; LoadContextRetention #2250) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
-    private const int ExpectedSerialMembers = 54;
+    private const int ExpectedSerialMembers = 55;
 
     [Fact]
     public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()

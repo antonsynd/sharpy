@@ -20,10 +20,14 @@ internal static class CompileServerClient
     /// code on success (having written the server's captured stdout/stderr to the console), or
     /// <c>null</c> if no usable server responded — signalling the caller to compile in-process. The
     /// fallback reason is written to <paramref name="stderr"/> so the choice is visible.
+    /// <paramref name="usedAssemblyPaths"/> is the compile's runtime-dependency set, which the
+    /// caller deploys beside the output (empty when no server answered).
     /// </summary>
     public static int? TryRun(
-        string pipeName, CompileServerRequest request, TextWriter stdout, TextWriter stderr, bool verbose = false)
+        string pipeName, CompileServerRequest request, TextWriter stdout, TextWriter stderr,
+        out IReadOnlySet<string> usedAssemblyPaths, bool verbose = false)
     {
+        usedAssemblyPaths = new HashSet<string>();
         if (!TrySend(pipeName, request, out var response, out var failureReason) || response == null)
         {
             stderr.WriteLine($"sharpyc: no compile server on pipe '{pipeName}' ({failureReason}); compiling in-process.");
@@ -42,6 +46,7 @@ internal static class CompileServerClient
         if (verbose)
             WriteVerboseSummary(stderr, pipeName, response);
 
+        usedAssemblyPaths = new HashSet<string>(response.UsedAssemblyPaths, StringComparer.OrdinalIgnoreCase);
         return response.ExitCode;
     }
 

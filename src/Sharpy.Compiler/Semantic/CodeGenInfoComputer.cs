@@ -440,11 +440,23 @@ internal class CodeGenInfoComputer
                     // namespace of the file that DECLARES them — a package __init__ re-exporting a
                     // submodule's type does not move it (#2039).
                     IsNamespaceSibling = siblingSegments != null,
-                    NamespaceSegments = siblingSegments
+                    NamespaceSegments = siblingSegments,
+                    IsOpenGenericDefinition = symbol is TypeSymbol importedTypeSymbol
+                        && DenotesGenericDefinition(importedTypeSymbol),
                 });
             }
         }
     }
+
+    /// <summary>
+    /// Whether an imported type name denotes a generic type definition (#2320): its own type
+    /// parameters, or a generic member of the CLR arity group discovery recorded for the name.
+    /// The group is built by <c>ModuleRegistry.GetNamespaceTypes</c> from the registry's
+    /// visibility, so this reads a discovered fact and performs no reflection of its own.
+    /// </summary>
+    private static bool DenotesGenericDefinition(TypeSymbol type)
+        => type.IsGeneric
+           || (type.ClrArityGroup is { } group && group.Keys.Any(arity => arity > 0));
 
     private string DetermineCSharpNameForFromImport(string name, Symbol symbol, bool isNetModule)
     {

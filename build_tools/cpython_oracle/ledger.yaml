@@ -277,6 +277,14 @@ deviations:
   spec_ref: docs/language_specification/function_variadic_arguments.md
   existing_diagnostic: SPY0220
   planned_diagnostic: SPY0472
+- id: identifier-letters-bmp-only
+  category: syntax
+  audience: python
+  severity: error
+  code: SPY0015
+  spec_ref: docs/language_specification/identifiers.md
+  existing_diagnostic: SPY0015
+  planned_diagnostic: null
 - id: identity-with-value-types
   category: operators
   audience: python
@@ -380,6 +388,14 @@ deviations:
   code: SPY0433
   spec_ref: docs/language_specification/function_default_parameters.md
   existing_diagnostic: SPY0433
+  planned_diagnostic: null
+- id: leading-zero-decimal-integer
+  category: syntax
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/integer_literals.md
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: lru-cache-maxsize-saturates
   category: stdlib

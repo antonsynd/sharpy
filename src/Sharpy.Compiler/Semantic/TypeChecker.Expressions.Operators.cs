@@ -1256,15 +1256,20 @@ internal partial class TypeChecker
     private SemanticType CheckUnaryOp(UnaryOp unOp)
     {
         // Constant unary minus over an integer literal: classify by the negated magnitude
-        // so -2147483648 is int and -9223372036854775808 is long (#1304).
-        if (unOp.Operator == UnaryOperator.Minus && unOp.Operand is IntegerLiteral il)
+        // so -2147483648 is int and -9223372036854775808 is long (#1304). Only a SIGNED literal
+        // negates as a literal; `-1U` / `-1UL` are the unary operator over an unsigned operand and
+        // take the operator path below, exactly as `-v` does for a `uint32`/`uint64` variable —
+        // int64 and SPY0223, C#'s own answers (#2340: this arm typed `-1U` 'uint32' while C# typed
+        // it 'long', and passed `-1UL` to C# as CS0023, both SPY0908).
+        if (unOp.Operator == UnaryOperator.Minus && unOp.Operand is IntegerLiteral il
+            && Shared.IntegerLiteralClassifier.NegatesAsLiteral(il.Suffix))
         {
             var result = Shared.IntegerLiteralClassifier.ClassifyNegated(il.Value, il.Suffix);
             if (result.IsError)
             {
                 AddError(result.ErrorMessage!,
                     unOp.LineStart, unOp.ColumnStart,
-                    code: DiagnosticCodes.Semantic.IntegerLiteralOutOfRange,
+                    code: DiagnosticCodes.Semantic.NumericLiteralOutOfRange,
                     span: unOp.Span);
             }
             else if (result.Type == SemanticType.Int)

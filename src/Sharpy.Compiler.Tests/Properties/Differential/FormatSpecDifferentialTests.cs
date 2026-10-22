@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -110,15 +111,12 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
     private static string ColumnName(Column column) => column == Column.Engine ? "engine" : "static";
 
-    [Fact]
+    [SkippableFact]
     public void FormatSpec_DifferentialSweep_MatchesCPython()
     {
-        var oracle = PyOracle.TryLocate();
-        if (oracle is null)
-        {
-            Output.WriteLine("SKIP: python3 >= 3.12 and run_programs.py not both available.");
-            return;
-        }
+        PythonInterpreter.RequireOrSkip(minMinor: 12);
+        var oracle = PyOracle.TryLocate()
+            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_exec/run_programs.py was not found.");
 
         var sw = Stopwatch.StartNew();
         var cells = GenerateCells(TargetCells);
@@ -261,15 +259,12 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     /// rendering (template_strings.md), so its python program is the f-string's. No allowlist row may
     /// name a <c>grammar::</c> key: the stratum is total.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void FormatSpec_GrammarTotalityStratum_MatchesCPython()
     {
-        var oracle = PyOracle.TryLocate();
-        if (oracle is null)
-        {
-            Output.WriteLine("SKIP: python3 >= 3.12 and run_programs.py not both available.");
-            return;
-        }
+        PythonInterpreter.RequireOrSkip(minMinor: 12);
+        var oracle = PyOracle.TryLocate()
+            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_exec/run_programs.py was not found.");
 
         var cells = GrammarTotalityStratum().ToList();
         // Anchor to literals: 22 spec cells x 4 routes + 17 field cells, each in two columns.
