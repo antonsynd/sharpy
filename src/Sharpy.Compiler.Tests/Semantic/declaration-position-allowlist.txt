@@ -1,0 +1,471 @@
+# declaration-position allowlist (ratchet ledger) — TypeDefinitionOwnSymbolMatrixTests.
+#
+# One generated cell id per line (`<kind> × <position> × <name>`, or
+# `nested-def × <relation> × <signature> × <call>`), followed by `  # #<issue>`. A cell whose
+# verdict differs from the contract (ExpectedErrors / the nested-def expected sets, the
+# rest-equals-control clause, the cascade-absence clause, the block literal, or the execution of an
+# error-free program) fails the suite UNLESS its id is listed here. A listed cell that passes also
+# fails (STALE): delete its row when the fix lands. A row naming no generated cell fails.
+#
+# The contract (P21e — declaration-position totality; rulings R-CS, R-HJ, R-HK): a declaration has
+# ONE decided verdict at every position. Type definitions and imports outside the module body / a
+# type body are SPY0708; a builtin-named `type` alias is SPY0212 at every position; a nested `def`
+# re-declaring a name of its block or an enclosing/enclosed block is SPY0204.
+#
+# The rows are the base's red cells, CREATED by P21e Phase 1 and DRAINED by its Phases 2–4: the
+# type-definition / import position rows (incl. the class-cascade and enum cells) cite the class
+# tracker, the builtin-named alias and builtin-named nested-type rows cite the SPY0212 issue, the
+# nested-def rows cite the redeclaration issue. Never add a row without a measured red and a cite.
+# DO NOT DELETE THIS FILE: its presence arms the ratchet.
+
+# R-CS (#2063): a type definition or an import outside the module body / a type body is SPY0708.
+# The base answers SPY0202 "Class symbol for … not found", nothing at all (enum, imports), or the
+# validator cascade against the master `list`. Drains in P21e Phase 2.
+class × accessor-body × Foo  # #2063
+class × accessor-body × Fresh  # #2063
+class × accessor-body × str  # #2063
+class × async-def-body × Fresh  # #2063
+class × def-body × Foo  # #2063
+class × def-body × Fresh  # #2063
+class × def-body × str  # #2063
+class × for-in-def × Foo  # #2063
+class × for-in-def × Fresh  # #2063
+class × for-in-def × str  # #2063
+class × if-in-def × Foo  # #2063
+class × if-in-def × Fresh  # #2063
+class × if-in-def × str  # #2063
+class × interface-default-body × Fresh  # #2063
+class × match-in-def × Foo  # #2063
+class × match-in-def × Fresh  # #2063
+class × match-in-def × str  # #2063
+class × method-body × Foo  # #2063
+class × method-body × Fresh  # #2063
+class × method-body × str  # #2063
+class × module-try × Foo  # #2063
+class × module-try × Fresh  # #2063
+class × module-try × str  # #2063
+class × static-method-body × Fresh  # #2063
+class × try-in-def × Foo  # #2063
+class × try-in-def × Fresh  # #2063
+class × try-in-def × str  # #2063
+class × type-body-if × Foo  # #2063
+class × type-body-if × Fresh  # #2063
+class × type-body-if × str  # #2063
+class × union-method-body × Fresh  # #2063
+class × while-in-def × Foo  # #2063
+class × while-in-def × Fresh  # #2063
+class × while-in-def × str  # #2063
+class × with-in-def × Foo  # #2063
+class × with-in-def × Fresh  # #2063
+class × with-in-def × str  # #2063
+class-cascade × accessor-body × Foo  # #2063
+class-cascade × accessor-body × Fresh  # #2063
+class-cascade × accessor-body × list  # #2063
+class-cascade × def-body × Foo  # #2063
+class-cascade × def-body × Fresh  # #2063
+class-cascade × def-body × list  # #2063
+class-cascade × for-in-def × Foo  # #2063
+class-cascade × for-in-def × Fresh  # #2063
+class-cascade × for-in-def × list  # #2063
+class-cascade × if-in-def × Foo  # #2063
+class-cascade × if-in-def × Fresh  # #2063
+class-cascade × if-in-def × list  # #2063
+class-cascade × match-in-def × Foo  # #2063
+class-cascade × match-in-def × Fresh  # #2063
+class-cascade × match-in-def × list  # #2063
+class-cascade × method-body × Foo  # #2063
+class-cascade × method-body × Fresh  # #2063
+class-cascade × method-body × list  # #2063
+class-cascade × module-try × Foo  # #2063
+class-cascade × module-try × Fresh  # #2063
+class-cascade × module-try × list  # #2063
+class-cascade × try-in-def × Foo  # #2063
+class-cascade × try-in-def × Fresh  # #2063
+class-cascade × try-in-def × list  # #2063
+class-cascade × type-body-if × Foo  # #2063
+class-cascade × type-body-if × Fresh  # #2063
+class-cascade × type-body-if × list  # #2063
+class-cascade × while-in-def × Foo  # #2063
+class-cascade × while-in-def × Fresh  # #2063
+class-cascade × while-in-def × list  # #2063
+class-cascade × with-in-def × Foo  # #2063
+class-cascade × with-in-def × Fresh  # #2063
+class-cascade × with-in-def × list  # #2063
+class-const × accessor-body × Foo  # #2063
+class-const × accessor-body × Fresh  # #2063
+class-const × accessor-body × str  # #2063
+class-const × def-body × Foo  # #2063
+class-const × def-body × Fresh  # #2063
+class-const × def-body × str  # #2063
+class-const × for-in-def × Foo  # #2063
+class-const × for-in-def × Fresh  # #2063
+class-const × for-in-def × str  # #2063
+class-const × if-in-def × Foo  # #2063
+class-const × if-in-def × Fresh  # #2063
+class-const × if-in-def × str  # #2063
+class-const × match-in-def × Foo  # #2063
+class-const × match-in-def × Fresh  # #2063
+class-const × match-in-def × str  # #2063
+class-const × method-body × Foo  # #2063
+class-const × method-body × Fresh  # #2063
+class-const × method-body × str  # #2063
+class-const × module-try × Foo  # #2063
+class-const × module-try × Fresh  # #2063
+class-const × module-try × str  # #2063
+class-const × try-in-def × Foo  # #2063
+class-const × try-in-def × Fresh  # #2063
+class-const × try-in-def × str  # #2063
+class-const × type-body-if × Foo  # #2063
+class-const × type-body-if × Fresh  # #2063
+class-const × type-body-if × str  # #2063
+class-const × while-in-def × Foo  # #2063
+class-const × while-in-def × Fresh  # #2063
+class-const × while-in-def × str  # #2063
+class-const × with-in-def × Foo  # #2063
+class-const × with-in-def × Fresh  # #2063
+class-const × with-in-def × str  # #2063
+dataclass × accessor-body × Foo  # #2063
+dataclass × accessor-body × Fresh  # #2063
+dataclass × accessor-body × str  # #2063
+dataclass × def-body × Foo  # #2063
+dataclass × def-body × Fresh  # #2063
+dataclass × def-body × str  # #2063
+dataclass × for-in-def × Foo  # #2063
+dataclass × for-in-def × Fresh  # #2063
+dataclass × for-in-def × str  # #2063
+dataclass × if-in-def × Foo  # #2063
+dataclass × if-in-def × Fresh  # #2063
+dataclass × if-in-def × str  # #2063
+dataclass × match-in-def × Foo  # #2063
+dataclass × match-in-def × Fresh  # #2063
+dataclass × match-in-def × str  # #2063
+dataclass × method-body × Foo  # #2063
+dataclass × method-body × Fresh  # #2063
+dataclass × method-body × str  # #2063
+dataclass × module-try × Foo  # #2063
+dataclass × module-try × Fresh  # #2063
+dataclass × module-try × str  # #2063
+dataclass × try-in-def × Foo  # #2063
+dataclass × try-in-def × Fresh  # #2063
+dataclass × try-in-def × str  # #2063
+dataclass × type-body-if × Foo  # #2063
+dataclass × type-body-if × Fresh  # #2063
+dataclass × type-body-if × str  # #2063
+dataclass × while-in-def × Foo  # #2063
+dataclass × while-in-def × Fresh  # #2063
+dataclass × while-in-def × str  # #2063
+dataclass × with-in-def × Foo  # #2063
+dataclass × with-in-def × Fresh  # #2063
+dataclass × with-in-def × str  # #2063
+delegate × accessor-body × Foo  # #2063
+delegate × accessor-body × Fresh  # #2063
+delegate × accessor-body × str  # #2063
+delegate × def-body × Foo  # #2063
+delegate × def-body × Fresh  # #2063
+delegate × def-body × str  # #2063
+delegate × for-in-def × Foo  # #2063
+delegate × for-in-def × Fresh  # #2063
+delegate × for-in-def × str  # #2063
+delegate × if-in-def × Foo  # #2063
+delegate × if-in-def × Fresh  # #2063
+delegate × if-in-def × str  # #2063
+delegate × match-in-def × Foo  # #2063
+delegate × match-in-def × Fresh  # #2063
+delegate × match-in-def × str  # #2063
+delegate × method-body × Foo  # #2063
+delegate × method-body × Fresh  # #2063
+delegate × method-body × str  # #2063
+delegate × module-try × Foo  # #2063
+delegate × module-try × Fresh  # #2063
+delegate × module-try × str  # #2063
+delegate × try-in-def × Foo  # #2063
+delegate × try-in-def × Fresh  # #2063
+delegate × try-in-def × str  # #2063
+delegate × type-body-if × Foo  # #2063
+delegate × type-body-if × Fresh  # #2063
+delegate × type-body-if × str  # #2063
+delegate × while-in-def × Foo  # #2063
+delegate × while-in-def × Fresh  # #2063
+delegate × while-in-def × str  # #2063
+delegate × with-in-def × Foo  # #2063
+delegate × with-in-def × Fresh  # #2063
+delegate × with-in-def × str  # #2063
+enum × accessor-body × Foo  # #2063
+enum × accessor-body × Fresh  # #2063
+enum × accessor-body × str  # #2063
+enum × async-def-body × Fresh  # #2063
+enum × def-body × Foo  # #2063
+enum × def-body × Fresh  # #2063
+enum × def-body × str  # #2063
+enum × for-in-def × Foo  # #2063
+enum × for-in-def × Fresh  # #2063
+enum × for-in-def × str  # #2063
+enum × if-in-def × Foo  # #2063
+enum × if-in-def × Fresh  # #2063
+enum × if-in-def × str  # #2063
+enum × interface-default-body × Fresh  # #2063
+enum × match-in-def × Foo  # #2063
+enum × match-in-def × Fresh  # #2063
+enum × match-in-def × str  # #2063
+enum × method-body × Foo  # #2063
+enum × method-body × Fresh  # #2063
+enum × method-body × str  # #2063
+enum × module-try × Foo  # #2063
+enum × module-try × Fresh  # #2063
+enum × module-try × str  # #2063
+enum × static-method-body × Fresh  # #2063
+enum × try-in-def × Foo  # #2063
+enum × try-in-def × Fresh  # #2063
+enum × try-in-def × str  # #2063
+enum × type-body-if × Foo  # #2063
+enum × type-body-if × Fresh  # #2063
+enum × type-body-if × str  # #2063
+enum × union-method-body × Fresh  # #2063
+enum × while-in-def × Foo  # #2063
+enum × while-in-def × Fresh  # #2063
+enum × while-in-def × str  # #2063
+enum × with-in-def × Foo  # #2063
+enum × with-in-def × Fresh  # #2063
+enum × with-in-def × str  # #2063
+from-import × accessor-body × Foo  # #2063
+from-import × accessor-body × Fresh  # #2063
+from-import × accessor-body × str  # #2063
+from-import × def-body × Foo  # #2063
+from-import × def-body × Fresh  # #2063
+from-import × def-body × str  # #2063
+from-import × for-in-def × Foo  # #2063
+from-import × for-in-def × Fresh  # #2063
+from-import × for-in-def × str  # #2063
+from-import × if-in-def × Foo  # #2063
+from-import × if-in-def × Fresh  # #2063
+from-import × if-in-def × str  # #2063
+from-import × match-in-def × Foo  # #2063
+from-import × match-in-def × Fresh  # #2063
+from-import × match-in-def × str  # #2063
+from-import × method-body × Foo  # #2063
+from-import × method-body × Fresh  # #2063
+from-import × method-body × str  # #2063
+from-import × module-try × Foo  # #2063
+from-import × module-try × Fresh  # #2063
+from-import × module-try × str  # #2063
+from-import × try-in-def × Foo  # #2063
+from-import × try-in-def × Fresh  # #2063
+from-import × try-in-def × str  # #2063
+from-import × type-body × Foo  # #2063
+from-import × type-body × Fresh  # #2063
+from-import × type-body × str  # #2063
+from-import × type-body-if × Foo  # #2063
+from-import × type-body-if × Fresh  # #2063
+from-import × type-body-if × str  # #2063
+from-import × while-in-def × Foo  # #2063
+from-import × while-in-def × Fresh  # #2063
+from-import × while-in-def × str  # #2063
+from-import × with-in-def × Foo  # #2063
+from-import × with-in-def × Fresh  # #2063
+from-import × with-in-def × str  # #2063
+import × accessor-body × Foo  # #2063
+import × accessor-body × Fresh  # #2063
+import × accessor-body × str  # #2063
+import × async-def-body × Fresh  # #2063
+import × def-body × Foo  # #2063
+import × def-body × Fresh  # #2063
+import × def-body × str  # #2063
+import × for-in-def × Foo  # #2063
+import × for-in-def × Fresh  # #2063
+import × for-in-def × str  # #2063
+import × if-in-def × Foo  # #2063
+import × if-in-def × Fresh  # #2063
+import × if-in-def × str  # #2063
+import × interface-default-body × Fresh  # #2063
+import × match-in-def × Foo  # #2063
+import × match-in-def × Fresh  # #2063
+import × match-in-def × str  # #2063
+import × method-body × Foo  # #2063
+import × method-body × Fresh  # #2063
+import × method-body × str  # #2063
+import × module-try × Foo  # #2063
+import × module-try × Fresh  # #2063
+import × module-try × str  # #2063
+import × static-method-body × Fresh  # #2063
+import × try-in-def × Foo  # #2063
+import × try-in-def × Fresh  # #2063
+import × try-in-def × str  # #2063
+import × type-body × Foo  # #2063
+import × type-body × Fresh  # #2063
+import × type-body × str  # #2063
+import × type-body-if × Foo  # #2063
+import × type-body-if × Fresh  # #2063
+import × type-body-if × str  # #2063
+import × union-method-body × Fresh  # #2063
+import × while-in-def × Foo  # #2063
+import × while-in-def × Fresh  # #2063
+import × while-in-def × str  # #2063
+import × with-in-def × Foo  # #2063
+import × with-in-def × Fresh  # #2063
+import × with-in-def × str  # #2063
+interface × accessor-body × Foo  # #2063
+interface × accessor-body × Fresh  # #2063
+interface × accessor-body × str  # #2063
+interface × def-body × Foo  # #2063
+interface × def-body × Fresh  # #2063
+interface × def-body × str  # #2063
+interface × for-in-def × Foo  # #2063
+interface × for-in-def × Fresh  # #2063
+interface × for-in-def × str  # #2063
+interface × if-in-def × Foo  # #2063
+interface × if-in-def × Fresh  # #2063
+interface × if-in-def × str  # #2063
+interface × match-in-def × Foo  # #2063
+interface × match-in-def × Fresh  # #2063
+interface × match-in-def × str  # #2063
+interface × method-body × Foo  # #2063
+interface × method-body × Fresh  # #2063
+interface × method-body × str  # #2063
+interface × module-try × Foo  # #2063
+interface × module-try × Fresh  # #2063
+interface × module-try × str  # #2063
+interface × try-in-def × Foo  # #2063
+interface × try-in-def × Fresh  # #2063
+interface × try-in-def × str  # #2063
+interface × type-body-if × Foo  # #2063
+interface × type-body-if × Fresh  # #2063
+interface × type-body-if × str  # #2063
+interface × while-in-def × Foo  # #2063
+interface × while-in-def × Fresh  # #2063
+interface × while-in-def × str  # #2063
+interface × with-in-def × Foo  # #2063
+interface × with-in-def × Fresh  # #2063
+interface × with-in-def × str  # #2063
+struct × accessor-body × Foo  # #2063
+struct × accessor-body × Fresh  # #2063
+struct × accessor-body × str  # #2063
+struct × def-body × Foo  # #2063
+struct × def-body × Fresh  # #2063
+struct × def-body × str  # #2063
+struct × for-in-def × Foo  # #2063
+struct × for-in-def × Fresh  # #2063
+struct × for-in-def × str  # #2063
+struct × if-in-def × Foo  # #2063
+struct × if-in-def × Fresh  # #2063
+struct × if-in-def × str  # #2063
+struct × match-in-def × Foo  # #2063
+struct × match-in-def × Fresh  # #2063
+struct × match-in-def × str  # #2063
+struct × method-body × Foo  # #2063
+struct × method-body × Fresh  # #2063
+struct × method-body × str  # #2063
+struct × module-try × Foo  # #2063
+struct × module-try × Fresh  # #2063
+struct × module-try × str  # #2063
+struct × try-in-def × Foo  # #2063
+struct × try-in-def × Fresh  # #2063
+struct × try-in-def × str  # #2063
+struct × type-body-if × Foo  # #2063
+struct × type-body-if × Fresh  # #2063
+struct × type-body-if × str  # #2063
+struct × while-in-def × Foo  # #2063
+struct × while-in-def × Fresh  # #2063
+struct × while-in-def × str  # #2063
+struct × with-in-def × Foo  # #2063
+struct × with-in-def × Fresh  # #2063
+struct × with-in-def × str  # #2063
+suppress-class × def-body × Fresh  # #2063
+suppress-import × def-body × Fresh  # #2063
+union × accessor-body × Foo  # #2063
+union × accessor-body × Fresh  # #2063
+union × accessor-body × str  # #2063
+union × def-body × Foo  # #2063
+union × def-body × Fresh  # #2063
+union × def-body × str  # #2063
+union × for-in-def × Foo  # #2063
+union × for-in-def × Fresh  # #2063
+union × for-in-def × str  # #2063
+union × if-in-def × Foo  # #2063
+union × if-in-def × Fresh  # #2063
+union × if-in-def × str  # #2063
+union × match-in-def × Foo  # #2063
+union × match-in-def × Fresh  # #2063
+union × match-in-def × str  # #2063
+union × method-body × Foo  # #2063
+union × method-body × Fresh  # #2063
+union × method-body × str  # #2063
+union × module-try × Foo  # #2063
+union × module-try × Fresh  # #2063
+union × module-try × str  # #2063
+union × try-in-def × Foo  # #2063
+union × try-in-def × Fresh  # #2063
+union × try-in-def × str  # #2063
+union × type-body-if × Foo  # #2063
+union × type-body-if × Fresh  # #2063
+union × type-body-if × str  # #2063
+union × while-in-def × Foo  # #2063
+union × while-in-def × Fresh  # #2063
+union × while-in-def × str  # #2063
+union × with-in-def × Foo  # #2063
+union × with-in-def × Fresh  # #2063
+union × with-in-def × str  # #2063
+
+# #2319: a builtin-named `type` alias is SPY0212 at every position; a builtin-named nested type in a
+# type body is SPY0212 (the nested dispatcher skips the gate). Drains in P21e Phase 3.
+alias × accessor-body × int  # #2319
+alias × async-def-body × int  # #2319
+alias × def-body × int  # #2319
+alias × for-in-def × int  # #2319
+alias × if-in-def × int  # #2319
+alias × interface-default-body × int  # #2319
+alias × match-in-def × int  # #2319
+alias × method-body × int  # #2319
+alias × module-try × int  # #2319
+alias × static-method-body × int  # #2319
+alias × try-in-def × int  # #2319
+alias × type-body × int  # #2319
+alias × type-body-if × int  # #2319
+alias × union-method-body × int  # #2319
+alias × while-in-def × int  # #2319
+alias × with-in-def × int  # #2319
+class × type-body × str  # #2319
+class-cascade × type-body × list  # #2319
+class-const × type-body × str  # #2319
+dataclass × type-body × str  # #2319
+delegate × type-body × str  # #2319
+enum × type-body × str  # #2319
+interface × type-body × str  # #2319
+struct × type-body × str  # #2319
+union × type-body × str  # #2319
+
+# R-HJ (#2314): a nested def re-declaring a name of its block or an enclosing/enclosed block is
+# SPY0204 (+ SPY0220 at a call that fits only the refused def, D6). Drains in P21e Phase 4.
+nested-def × inner-first × different-sig × fits-first  # #2314
+nested-def × inner-first × different-sig × fits-second  # #2314
+nested-def × inner-first × different-sig × none  # #2314
+nested-def × inner-first × same-sig × fits-first  # #2314
+nested-def × inner-first × same-sig × fits-second  # #2314
+nested-def × inner-first × same-sig × none  # #2314
+nested-def × outer-first × different-sig × fits-first  # #2314
+nested-def × outer-first × different-sig × fits-second  # #2314
+nested-def × outer-first × different-sig × none  # #2314
+nested-def × outer-first × same-sig × fits-first  # #2314
+nested-def × outer-first × same-sig × fits-second  # #2314
+nested-def × outer-first × same-sig × none  # #2314
+nested-def × same × different-sig × fits-first  # #2314
+nested-def × same × different-sig × fits-second  # #2314
+nested-def × same × different-sig × none  # #2314
+nested-def × same × same-sig × fits-first  # #2314
+nested-def × same × same-sig × fits-second  # #2314
+nested-def × same × same-sig × none  # #2314
+
+# #2148: an `if` in a class body is SPY0510 at code generation, so an otherwise error-free
+# type-body-if program cannot run. Outside P21e (D8); drains with #2148.
+alias × type-body-if × Foo  # #2148
+alias × type-body-if × Fresh  # #2148
+
+# PROVISIONAL cite, pending the lead's class issue (findings ledger): a struct whose property has a
+# default AND an explicit setter is SPY0908 CS0100 under run (synthesized ctor `S(object size, int size = 0)`)
+# at every position. Outside P21e.
+struct × module × Fresh  # #2063
+struct × type-body × Foo  # #2063
+struct × type-body × Fresh  # #2063
+
+# PROVISIONAL cite, pending the lead's class issue (findings ledger): `type Foo = …` beside module
+# `class Foo` is reported twice by Analyze (NameResolver + TypeChecker; only Compile dedupes). Outside P21e.
+alias × module × Foo  # #2063
