@@ -433,8 +433,9 @@ internal partial class TypeChecker
     /// NameResolver declares the type definitions of a module body and of a type body (nested types,
     /// which the host's checker re-registers in the host's scope). A type definition anywhere else —
     /// in a function body, or inside a block (<c>if</c>/<c>for</c>/<c>while</c>/<c>try</c>/<c>with</c>/
-    /// <c>match</c>) — has no symbol: C# has no local types, so it is refused
-    /// (<see cref="ReportUndeclaredTypeDefinition"/>), never emitted. A bare name lookup there answered
+    /// <c>match</c>) — has no symbol: C# has no local types, so it is refused by
+    /// <c>DeclarationPositionValidator</c> (SPY0708) and declined here
+    /// (<see cref="SkipUndeclaredTypeDefinition"/>), never emitted. A bare name lookup there answered
     /// with whatever the name already meant — the master BuiltinRegistry's <c>str</c>, shared by every
     /// analysis on a CompilerApi, or an enclosing user type of the same name — and the checker then
     /// wrote that symbol: a later document on the same CompilerApi lost its <c>SPY0203</c> on
@@ -453,32 +454,19 @@ internal partial class TypeChecker
             : null;
 
     /// <summary>
-    /// The refusal for a type definition with no symbol of its own
-    /// (<see cref="LookupTypeDefinitionSymbol"/>): the <c>SPY0202</c> "symbol not found" a
-    /// function-local class already got when its name was unbound, now reached wherever the definition
-    /// has no declaration instead of binding to a same-named symbol (#2250). A duplicate definition
-    /// already carries NameResolver's refusal, so it gets no second diagnostic.
+    /// The checker's answer for a type definition with no symbol of its own
+    /// (<see cref="LookupTypeDefinitionSymbol"/>): DECLINE, silently. Every caller returns before writing
+    /// anything, so nothing is checked against a scope that is not the definition's (#2250), and no
+    /// diagnostic is reported here — the verdict has one owner per cause. A type definition outside the
+    /// module body or a type body is refused by <c>DeclarationPositionValidator</c> with SPY0708 (R-CS,
+    /// #2063; it replaced the "symbol for 'A' not found" SPY0202 this method used to report), and a
+    /// duplicate definition at a declaring position carries NameResolver's SPY0204. Should a position ever
+    /// slip past the validator, the definition reaches the emitter's SPY0510 arm — loud, never silent —
+    /// and <c>TypeDefinitionOwnSymbolMatrixTests</c> is the guard against that hole.
     /// </summary>
-    private void ReportUndeclaredTypeDefinition(Statement typeDefinition, string kind, string name)
+    private static void SkipUndeclaredTypeDefinition()
     {
-        if (IsDuplicateTypeDefinition(typeDefinition, name))
-            return;
-
-        AddError($"{kind} symbol for '{name}' not found", typeDefinition.LineStart, typeDefinition.ColumnStart,
-            code: DiagnosticCodes.Semantic.UndefinedType, span: typeDefinition.Span);
     }
-
-    /// <summary>
-    /// True when another definition of <paramref name="name"/> was declared in the CURRENT scope at a
-    /// declaring position (a module or type body, outside any function or block): NameResolver refused
-    /// this one as a duplicate, and a "not found" beside it would be a cascade on the same mistake.
-    /// </summary>
-    private bool IsDuplicateTypeDefinition(Statement typeDefinition, string name)
-        => _currentFunctionReturnType == null
-            && _controlFlowDepth == 0
-            && _symbolTable.Lookup(name, searchParents: false) is { } existing
-            && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(existing)
-            && !IsDeclaredBy(existing, typeDefinition);
 
     /// <summary>
     /// Resolve the return type for a function definition from its type annotation.
@@ -1231,7 +1219,7 @@ internal partial class TypeChecker
         var classSymbol = LookupTypeDefinitionSymbol(classDef, classDef.Name);
         if (classSymbol == null)
         {
-            ReportUndeclaredTypeDefinition(classDef, "Class", classDef.Name);
+            SkipUndeclaredTypeDefinition();
             return;
         }
 
@@ -1528,7 +1516,7 @@ internal partial class TypeChecker
         var structSymbol = LookupTypeDefinitionSymbol(structDef, structDef.Name);
         if (structSymbol == null)
         {
-            ReportUndeclaredTypeDefinition(structDef, "Struct", structDef.Name);
+            SkipUndeclaredTypeDefinition();
             return;
         }
 
@@ -1634,7 +1622,7 @@ internal partial class TypeChecker
         var interfaceSymbol = LookupTypeDefinitionSymbol(interfaceDef, interfaceDef.Name);
         if (interfaceSymbol == null)
         {
-            ReportUndeclaredTypeDefinition(interfaceDef, "Interface", interfaceDef.Name);
+            SkipUndeclaredTypeDefinition();
             return;
         }
 
@@ -1848,6 +1836,16 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking enum: {enumDef.Name}");
 
+        // The symbol declared FOR this definition, as every other type definition's checker requires
+        // (#2250): an enum outside a declaring position (SPY0708, DeclarationPositionValidator) or a
+        // duplicate (SPY0204, NameResolver) owns none, and its member values are not checked against a
+        // scope that is not the enum's.
+        if (LookupTypeDefinitionSymbol(enumDef, enumDef.Name) == null)
+        {
+            SkipUndeclaredTypeDefinition();
+            return;
+        }
+
         // Type-check enum member values so their types are stored in SemanticInfo
         // for downstream validation by EnumRulesValidator
         foreach (var member in enumDef.Members)
@@ -1867,7 +1865,7 @@ internal partial class TypeChecker
         var unionSymbol = LookupTypeDefinitionSymbol(unionDef, unionDef.Name);
         if (unionSymbol == null)
         {
-            ReportUndeclaredTypeDefinition(unionDef, "Union", unionDef.Name);
+            SkipUndeclaredTypeDefinition();
             return;
         }
 
@@ -1969,7 +1967,7 @@ internal partial class TypeChecker
         var delegateSymbol = LookupTypeDefinitionSymbol(delegateDef, delegateDef.Name);
         if (delegateSymbol == null)
         {
-            ReportUndeclaredTypeDefinition(delegateDef, "Delegate", delegateDef.Name);
+            SkipUndeclaredTypeDefinition();
             return;
         }
 
