@@ -77,15 +77,11 @@ internal static class ImplicitConversions
             || PrimitiveCatalog.GetPrimitiveInfo(initType)?.ClrType != typeof(double))
             return false;
 
-        // Non-throwing and range-checked in one step: a literal above float32's maximum becomes
-        // Infinity when narrowed, which is the refusal (`1e40` is SPY0220, never a crash), and an
-        // exponent form that fits (`1.5e2`) narrows exactly as a plain one does.
-        return double.TryParse(
-                literal.Value,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out var value)
-            && !double.IsInfinity((double)(float)value);
+        // The range question is the literal-typing arm's own (#2340): one seam answers "does this
+        // text have a finite float32 value" for `1e39f` and for `x: float32 = 1e39` alike. A miss
+        // is the refusal (`1e40` is SPY0220, never a crash), and an exponent form that fits
+        // (`1.5e2`) narrows exactly as a plain one does.
+        return Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(float));
     }
 
     /// <summary>
@@ -118,25 +114,18 @@ internal static class ImplicitConversions
             || PrimitiveCatalog.GetPrimitiveInfo(initType)?.ClrType != typeof(double))
             return false;
 
-        if (!double.TryParse(
-                literal.Value,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out var asDouble)
-            || !double.IsFinite(asDouble))
+        // FORM and RANGE are the literal-typing arm's own question (#2340): one seam answers
+        // "does this text have a decimal value" for `1e29m` and for `d: decimal = 1e29` alike.
+        if (!Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(double))
+            || !Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(decimal)))
         {
             return false;
         }
 
-        if (!decimal.TryParse(
-                literal.Value,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out var asDecimal))
-        {
-            return false;
-        }
-
+        // UNDERFLOW stays a narrowing-only question: an unsuffixed literal is a float64, and
+        // re-typing a non-zero one to a decimal zero would change its value.
+        var asDouble = double.Parse(literal.Value, NumberStyles.Float, CultureInfo.InvariantCulture);
+        var asDecimal = decimal.Parse(literal.Value, NumberStyles.Float, CultureInfo.InvariantCulture);
         return asDecimal != 0m || asDouble == 0.0;
     }
 }

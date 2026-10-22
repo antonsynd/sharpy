@@ -62,8 +62,18 @@ internal static class IntegerLiteralClassifier
     }
 
     /// <summary>
+    /// Whether a unary minus over an integer literal with <paramref name="suffix"/> is a negated
+    /// LITERAL (<see cref="ClassifyNegated"/>): unsuffixed or <c>L</c>. An unsigned literal has no
+    /// negative value in its own type, so <c>-1U</c> / <c>-1UL</c> are the unary operator over an
+    /// unsigned operand (int64 and a refusal, as C# types them), never a negated literal (#2340).
+    /// </summary>
+    public static bool NegatesAsLiteral(string? suffix)
+        => string.IsNullOrEmpty(suffix) || suffix.Equals("L", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Classifies a negated integer literal (unary minus over integer literal).
     /// The negated magnitude determines the type: -2147483648 fits int, -9223372036854775808 fits long.
+    /// Callers gate on <see cref="NegatesAsLiteral"/>; an unsigned suffix is classified unnegated.
     /// </summary>
     public static Result ClassifyNegated(string value, string? suffix)
     {
