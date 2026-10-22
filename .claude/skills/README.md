@@ -61,6 +61,7 @@ Plans live in `.claude/plans/` (repo-local, gitignored); per-batch plans created
 | `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a verified plan with coordinated agents, lead-owned gates, and mutation-tested guards |
 | `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation, fix gaps/bugs/regressions, and commit fixes |
 | `/compiler-audit` | `[focus-area]` | Run a comprehensive compiler health audit |
+| `/mojo-release-review` | `<version> [--no-issues] [--checkout]` | Review a Mojo release's notes against Sharpy: triage every item, probe the named surfaces against python3, record the review under `docs/design/mojo-release-reviews/`, file issues by class |
 
 ## Dogfooding
 
