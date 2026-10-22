@@ -1024,6 +1024,12 @@ public static class DiagnosticCodes
         // Refused at the interface declaration; a backtick-escaped spelling is a literal public
         // name (#2033, R-CA).
         public const string InterfaceMemberUnderscoreName = "SPY0707"; // Active (#2033)
-        // SPY0708-SPY0799: Available for new validation diagnostics
+        // A type definition (class, struct, interface, union, delegate, enum) or an import written
+        // outside a declaring position: a type definition anywhere but the module body or a type
+        // body (C# has no local types), an import anywhere but the module body (an import is a
+        // module-level fact). Refused by DeclarationPositionValidator instead of reaching the
+        // TypeChecker's "symbol not found" or the emitter's SPY0510 (#2063, R-CS).
+        public const string DeclarationOutsideDeclaringPosition = "SPY0708"; // Reserved — emitted by DeclarationPositionValidator (#2063, R-CS)
+        // SPY0709-SPY0799: Available for new validation diagnostics
     }
 }
