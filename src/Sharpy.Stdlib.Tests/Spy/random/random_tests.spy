@@ -28,19 +28,19 @@ import random
 @test
 def test_seed_produces_deterministic_results():
     random.seed(42)
-    first: float = random.next_double()
+    first: float = random.random()
     random.seed(42)
-    second: float = random.next_double()
+    second: float = random.random()
     assert first == second
 
-# --- next_double range ---
+# --- random() range ---
 
 @test
-def test_next_double_returns_value_in_range():
+def test_random_returns_value_in_range():
     random.seed(123)
     i: int = 0
     while i < 50:
-        value: float = random.next_double()
+        value: float = random.random()
         assert value >= 0.0
         assert value < 1.0
         i = i + 1

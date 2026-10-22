@@ -1,0 +1,8 @@
+# #2321 cell 1 (R-HL): next_double was the .NET name of random.random(); it is deleted (one way to
+# do it), so it is refused like any other missing module member. python3 3.12.13:
+# AttributeError: module 'random' has no attribute 'next_double'.
+import random
+
+
+def main() -> None:
+    print(random.next_double())

@@ -12,7 +12,7 @@ import random
 
 Initialize the random number generator with the given seed.
 
-### `random.next_double() -> float`
+### `random.random() -> float`
 
 Return the next random floating point number in the range [0.0, 1.0).
 

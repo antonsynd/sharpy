@@ -502,7 +502,7 @@ public class StdlibModuleGlobalConcurrencyTests
     /// then random() on another == the re-seeded draw (True, 0.32383276483316237); 8 threads x 2000
     /// draws after seed(7) are, as a multiset, exactly the first 16000 draws of the seed-7 stream
     /// (True), with 0 zeros; seed(i) on one thread then random() on another == the seed-i stream's
-    /// first value for every sampled i in [0, 2000) (True). Sharpy spells random() next_double().
+    /// first value for every sampled i in [0, 2000) (True).
     /// </summary>
     private sealed class RandomExerciser : GlobalExerciser
     {
@@ -512,7 +512,7 @@ public class StdlibModuleGlobalConcurrencyTests
         private static double[] Stream(int n, int seed = 7)
         {
             Sharpy.RandomModule.RandomModuleModule.Seed(seed);
-            return Enumerable.Range(0, n).Select(_ => Sharpy.RandomModule.RandomModuleModule.NextDouble()).ToArray();
+            return Enumerable.Range(0, n).Select(_ => Sharpy.RandomModule.RandomModuleModule.Random()).ToArray();
         }
 
         public override void Write(int threads, Tally tally)
@@ -523,7 +523,7 @@ public class StdlibModuleGlobalConcurrencyTests
                 for (var i = 0; i < Iterations; i++)
                     tally.Do(() => Sharpy.RandomModule.RandomModuleModule.Seed(7));
             });
-            var draw = OnFreshThread(Sharpy.RandomModule.RandomModuleModule.NextDouble);
+            var draw = OnFreshThread(Sharpy.RandomModule.RandomModuleModule.Random);
             tally.Check(() => draw == first, () => $"after every thread seeded 7 the next draw was {draw}, expected {first}");
         }
 
@@ -536,7 +536,7 @@ public class StdlibModuleGlobalConcurrencyTests
             {
                 draws[id] = new double[Iterations];
                 for (var i = 0; i < Iterations; i++)
-                    draws[id][i] = Sharpy.RandomModule.RandomModuleModule.NextDouble();
+                    draws[id][i] = Sharpy.RandomModule.RandomModuleModule.Random();
             });
             var all = draws.Where(d => d != null).SelectMany(d => d).ToArray();
             var outOfDomain = all.Count(d => !(d >= 0.0 && d < 1.0));
@@ -552,7 +552,7 @@ public class StdlibModuleGlobalConcurrencyTests
             var firsts = Enumerable.Range(0, Iterations).Select(seed => Stream(1, seed)[0]).ToArray();
             Handoff(threads, tally,
                 i => Sharpy.RandomModule.RandomModuleModule.Seed(i),
-                i => tally.Check(() => Sharpy.RandomModule.RandomModuleModule.NextDouble() == firsts[i],
+                i => tally.Check(() => Sharpy.RandomModule.RandomModuleModule.Random() == firsts[i],
                     () => $"iteration {i}: the draw after another thread's seed({i}) is not the seed-{i} stream's first value"));
         }
 

@@ -16,7 +16,7 @@ def seed(s: int) -> None:
     with _lock:
         _random = SysRandom(s)
 
-def next_double() -> float:
+def random() -> float:
     """Return the next random floating point number in the range [0.0, 1.0)."""
     with _lock:
         return _random.next_double()

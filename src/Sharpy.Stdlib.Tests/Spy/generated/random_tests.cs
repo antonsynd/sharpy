@@ -27,19 +27,19 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomTests
         {
 #line (30, 5) - (30, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
             random.Seed(42);
-#line (31, 5) - (31, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
-            double first = random.NextDouble();
+#line (31, 5) - (31, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+            double first = random.Random();
 #line (32, 5) - (32, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
             random.Seed(42);
-#line (33, 5) - (33, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
-            double second = random.NextDouble();
+#line (33, 5) - (33, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+            double second = random.Random();
 #line (34, 5) - (34, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
             Xunit.Assert.Equal(second, first);
 #line hidden
         }
 
         [Xunit.FactAttribute]
-        public void TestNextDoubleReturnsValueInRange()
+        public void TestRandomReturnsValueInRange()
         {
 #line (40, 5) - (40, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
             random.Seed(123);
@@ -49,8 +49,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomTests
             while (i < 50)
 #line hidden
             {
-#line (43, 9) - (43, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
-                double value = random.NextDouble();
+#line (43, 9) - (43, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+                double value = random.Random();
 #line (44, 9) - (44, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 Xunit.Assert.True(value >= 0.0d);
 #line (45, 9) - (45, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"

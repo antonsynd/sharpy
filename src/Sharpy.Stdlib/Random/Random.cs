@@ -39,7 +39,7 @@ namespace Sharpy.RandomModule
         /// <summary>
         /// Return the next random floating point number in the range [0.0, 1.0).
         /// </summary>
-        public static double NextDouble()
+        public static double Random()
         {
             {
                 var __ctx_1 = global::Sharpy.RandomModule.RandomModuleModule._Lock;
