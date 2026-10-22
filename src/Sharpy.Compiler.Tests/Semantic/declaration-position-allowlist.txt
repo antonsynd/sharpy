@@ -12,10 +12,11 @@
 # type body are SPY0708; a builtin-named `type` alias is SPY0212 at every position; a nested `def`
 # re-declaring a name of its block or an enclosing/enclosed block is SPY0204.
 #
-# The rows are the base's red cells, CREATED by P21e Phase 1 and DRAINED by its Phases 2–4: the
-# type-definition / import position rows (incl. the class-cascade and enum cells) cite the class
-# tracker, the builtin-named alias and builtin-named nested-type rows cite the SPY0212 issue, the
-# nested-def rows cite the redeclaration issue. Never add a row without a measured red and a cite.
+# The rows are the base's red cells, CREATED by P21e Phase 1. P21e's Phases 2–4 drain the rows citing
+# the class tracker (type-definition / import positions, incl. the class-cascade and enum cells, and the
+# double duplicate-alias report), the SPY0212 issue (builtin-named aliases and nested types) and the
+# redeclaration issue (nested defs). Two sections drain with OTHER issues, not in P21e: the class-body
+# `if` rows and the struct auto-constructor rows. Never add a row without a measured red and a cite.
 # DO NOT DELETE THIS FILE: its presence arms the ratchet.
 
 # R-CS (#2063): a type definition or an import outside the module body / a type body is SPY0708.
@@ -455,17 +456,20 @@ nested-def × same × same-sig × fits-second  # #2314
 nested-def × same × same-sig × none  # #2314
 
 # #2148: an `if` in a class body is SPY0510 at code generation, so an otherwise error-free
-# type-body-if program cannot run. Outside P21e (D8); drains with #2148.
+# type-body-if program cannot run. It is the host's failure, not the alias's: the test checks that each
+# row's control (the same host, `pass` for the alias) fails with the same SPY0510. Outside P21e (D8);
+# these rows drain with #2148, NOT in P21e.
 alias × type-body-if × Foo  # #2148
 alias × type-body-if × Fresh  # #2148
 
-# PROVISIONAL cite, pending the lead's class issue (findings ledger): a struct whose property has a
-# default AND an explicit setter is SPY0908 CS0100 under run (synthesized ctor `S(object size, int size = 0)`)
-# at every position. Outside P21e.
-struct × module × Fresh  # #2063
-struct × type-body × Foo  # #2063
-struct × type-body × Fresh  # #2063
+# #2021: a struct whose property has a default AND an explicit setter is SPY0908 CS0100 under run
+# (the emitter-synthesized ctor `S(object size, int size = 0)` has no semantic twin) at every
+# position. Outside P21e; drains with #2021 (cell posted on #2021, 2026-10-22).
+struct × module × Fresh  # #2021
+struct × type-body × Foo  # #2021
+struct × type-body × Fresh  # #2021
 
-# PROVISIONAL cite, pending the lead's class issue (findings ledger): `type Foo = …` beside module
-# `class Foo` is reported twice by Analyze (NameResolver + TypeChecker; only Compile dedupes). Outside P21e.
+# In-contract (one verdict per cell): `type Foo = …` beside module `class Foo` is reported twice by
+# Analyze — NameResolver refuses it, then the checker's RegisterScopedTypeAlias re-reports the same
+# SPY0204 (only Compile's DiagnosticBag dedupes). Drains in P21e Phase 3 (Task 1b).
 alias × module × Foo  # #2063

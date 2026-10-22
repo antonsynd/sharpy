@@ -58,7 +58,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>module-try</c>'s SPY0340 at the <c>try</c> is pinned as ONE SPY0340 at that line in the cell, not merely
 /// derived from (3). <b>Execution:</b> <c>Analyze</c> never runs code generation, so an SPY0510/SPY0908 is invisible
 /// to it (an enum in a def is silent under <c>Analyze</c> at the base); every cell whose whole program is expected
-/// error-free is compiled AND run, and must print <c>ok</c> with no SPY05xx/SPY09xx.</para>
+/// error-free is compiled AND run, and must print <c>ok</c> with no SPY05xx/SPY09xx. A cell that fails to run has its
+/// control run too, so the failure is attributed: the declaration's (the control runs) or the host's (the control fails
+/// the same way). A row citing #2148 (the class-body <c>if</c>) must be the host's — checked, never exempted.</para>
 ///
 /// <para><b>Ratchet.</b> <c>Semantic/declaration-position-allowlist.txt</c> lists the cell ids red at the base, each
 /// citing an issue. A listed cell that passes is STALE (red); an unlisted failing cell is red; a row naming no
@@ -244,6 +246,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
     internal sealed record Cell(
         string Kind, Family Family, string Position, string Name, string Source, string Control, string Runnable,
+        string RunnableControl,
         int FirstLine, int LastLine, int DefinitionLine, int Indent, int NameLine, int NameColumn,
         IReadOnlyList<(string Code, int Line, int Column)> BlockErrors, bool Edge)
     {
@@ -285,7 +288,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             .Select(b => (b.Code, prelude.Length + b.BeforeIndex + 1, b.Column)).ToList();
         return new Cell(kind.Kind, kind.Family, position.Name, spelled,
             Program(definition, name.MainBody), Program(placeholder, name.MainBody),
-            Program(definition, new[] { "    print(\"ok\")" }),
+            Program(definition, new[] { "    print(\"ok\")" }), Program(placeholder, new[] { "    print(\"ok\")" }),
             first, first + definition.Length - 1, first + keywordOffset, position.Indent,
             first + keywordOffset, nameIndex < 0 ? 0 : nameIndex + 2, blockErrors, edge);
     }
@@ -502,11 +505,26 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             {
                 ran++;
                 var run = CompileAndExecute(cell.Runnable);
-                var internalCodes = run.RawDiagnostics.Where(d => (d.Code ?? "").StartsWith("SPY05", StringComparison.Ordinal)
-                    || (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)).ToList();
+                var internalCodes = InternalCodes(run);
+                string? cellRun = null, controlRun = null;
                 if (!run.Success || internalCodes.Count > 0 || run.StandardOutput != "ok\n")
+                {
+                    // Attribute the failure: the control (the same host, `pass` for the definition) either runs — the
+                    // declaration's failure — or fails the same way — the host's.
+                    var controlExec = CompileAndExecute(cell.RunnableControl);
+                    cellRun = Fingerprint(internalCodes);
+                    controlRun = Fingerprint(InternalCodes(controlExec));
                     failures.Add($"did not run cleanly: success={run.Success} stdout=[{run.StandardOutput.TrimEnd()}] "
-                        + $"{Fingerprint(internalCodes)} {string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" ")}");
+                        + $"{cellRun} {string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" ")}"
+                        + (controlExec.Success ? " — the control runs" : $" — the control fails too [{controlRun}]"));
+                }
+
+                // A row citing #2148 claims the failure is the class-body `if`'s (an SPY0510 at the host), not the
+                // declaration's: its control must fail with the same internal codes at the same places.
+                if (allowlist.TryGetValue(cell.Id, out var hostCite) && hostCite.Contains("#2148", StringComparison.Ordinal)
+                    && (cellRun is null || cellRun != controlRun))
+                    problems.Add($"{cell.Id}: allowlisted as the host's failure (#2148), but under run the cell is [{cellRun}] "
+                        + $"and its control [{controlRun}] — the failure is not the host's");
             }
 
             if (failures.Count > 0)
@@ -735,6 +753,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
         return null;
     }
+
+    private static List<CompilerDiagnostic> InternalCodes(ExecutionResult run)
+        => run.RawDiagnostics.Where(d => (d.Code ?? "").StartsWith("SPY05", StringComparison.Ordinal)
+            || (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)).ToList();
 
     private static string Fingerprint(IEnumerable<CompilerDiagnostic> diagnostics)
         => string.Join(" ", diagnostics.Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal));
