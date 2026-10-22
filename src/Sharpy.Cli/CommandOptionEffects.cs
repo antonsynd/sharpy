@@ -244,6 +244,7 @@ internal static class CommandOptionEffects
                     ["--reference"] = H("a reference that cannot be found is SPY0305"),
                     ["--project-reference"] = R(CliHelpers.ProjectReferenceUnsupportedReason),
                     ["--module-path"] = H("a directory that does not exist is an error"),
+                    ["--no-deps"] = H("runtime dependencies are not copied beside the output"),
                     ["--server"] = H("compiles through a running 'sharpyc server'"),
                 }),
 
@@ -271,6 +272,7 @@ internal static class CommandOptionEffects
                     ["--incremental"] = H("unchanged files are not recompiled"),
                     ["--reference"] = H("added to the .spyproj's <Reference> items; a reference that cannot be found is SPY0305"),
                     ["--module-path"] = H("added to the .spyproj's <ModulePath> items; a directory that does not exist is an error"),
+                    ["--no-deps"] = H("runtime dependencies are not copied beside the output"),
                 }),
 
             ["emit tokens"] = Table(CommandPerforms.Lexes, new[] { InputKind.SpyFile },

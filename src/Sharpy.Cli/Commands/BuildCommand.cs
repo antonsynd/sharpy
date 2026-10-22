@@ -12,7 +12,7 @@ internal static class BuildCommand
 {
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
-        var command = new Command("build", "Compile a Sharpy source file to a binary or library. Writes the assembly only; `compile` deploys its runtime dependencies and references beside the output");
+        var command = new Command("build", "Compile a Sharpy source file to a binary or library. Copies its runtime dependencies and references beside the output, so it runs from there (--no-deps writes the assembly only)");
 
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to compile" };
         var typeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: exe)" };
@@ -20,12 +20,14 @@ internal static class BuildCommand
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
         outputOpt.Aliases.Add("-o");
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
-        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable); not deployed beside the output — `compile` deploys" };
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
         var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
+        // The spelling `compile` has always used (#2313 cell 0, R-HF c).
+        var noDepsOpt = new Option<bool>("--no-deps") { Description = "Skip copying runtime dependencies alongside the output" };
         var serverOpt = new Option<string?>("--server") { Description = "Compile via a keep-alive 'sharpyc server' on the given pipe (default pipe if no name); falls back to in-process if none is running", Arity = ArgumentArity.ZeroOrOne };
 
         command.Arguments.Add(inputArg);
@@ -34,6 +36,7 @@ internal static class BuildCommand
         command.Options.Add(refOpt);
         command.Options.Add(projRefOpt);
         command.Options.Add(modPathOpt);
+        command.Options.Add(noDepsOpt);
         command.Options.Add(serverOpt);
 
         command.SetAction((parseResult) =>
@@ -50,6 +53,7 @@ internal static class BuildCommand
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var projectReference = parseResult.GetValue(projRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
+            var noDeps = parseResult.GetValue(noDepsOpt);
             var logLevel = globals.ResolveLogLevel(parseResult);
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
@@ -89,19 +93,57 @@ internal static class BuildCommand
                 };
 
                 var serverExit = CompileServerClient.TryRun(
-                    pipeName, request, Console.Out, Console.Error, verbose: parseResult.GetValue(globals.Verbose));
+                    pipeName, request, Console.Out, Console.Error, out var serverUsedPaths, verbose: parseResult.GetValue(globals.Verbose));
                 if (serverExit.HasValue)
                 {
+                    // The server wrote the assembly; the deployment is the client's, as for `run --server`.
+                    if (serverExit.Value == 0 && !noDeps)
+                    {
+                        Deploy(OutputDirectory(output), serverUsedPaths, reference, modulePath);
+                    }
                     return serverExit.Value;
                 }
             }
 
             var compileResult = CompileToBinary(input, type, output, reference, modulePath, logger, metricsFormat, metricsOutput, out var failureExitCode, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
-            return compileResult == null ? failureExitCode : 0;
+            if (compileResult == null)
+            {
+                return failureExitCode;
+            }
+
+            if (!noDeps)
+            {
+                var outputDir = compileResult.OutputAssemblyPath != null
+                    ? Path.GetDirectoryName(compileResult.OutputAssemblyPath) ?? OutputDirectory(output)
+                    : OutputDirectory(output);
+                Deploy(outputDir, compileResult.UsedAssemblyPaths, reference, modulePath);
+            }
+            return 0;
         });
 
         root.Subcommands.Add(command);
     }
+
+    /// <summary>
+    /// `build` deploys like `compile` and `run` (#2313 cell 0, R-HF c): Sharpy.Core, the used
+    /// standard-library assemblies and every `-r` reference, with what sits beside each, are copied
+    /// beside the output, so it runs in place as `dotnet build`'s output does. The deployment seed's
+    /// user half is the `-r` list resolved exactly as <see cref="CompileToBinary"/> hands it to the
+    /// compiler — the same seed `compile` forms (#2223).
+    /// </summary>
+    static void Deploy(string outputDir, IReadOnlySet<string> usedAssemblyPaths, string[] references, string[] modulePaths)
+        => RuntimeDependencyHelper.CopyRuntimeDependencies(
+            outputDir, usedAssemblyPaths, CliHelpers.ResolveReferences(references, modulePaths));
+
+    /// <summary>
+    /// The directory `build` writes the assembly to: <c>-o</c>'s directory, else the working
+    /// directory — the rule <see cref="CompileToBinary"/> applies, and the one a server compile
+    /// applies with the client's working directory.
+    /// </summary>
+    static string OutputDirectory(FileInfo? output)
+        => output != null
+            ? Path.GetDirectoryName(output.FullName) ?? Directory.GetCurrentDirectory()
+            : Directory.GetCurrentDirectory();
 
     /// <summary>
     /// Compiles a Sharpy source file to a binary. Returns the <see cref="CompileResult"/>
@@ -145,9 +187,7 @@ internal static class BuildCommand
             var source = File.ReadAllText(inputFile.FullName);
 
             var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
-            var outputDir = output != null
-                ? Path.GetDirectoryName(output.FullName) ?? Directory.GetCurrentDirectory()
-                : Directory.GetCurrentDirectory();
+            var outputDir = OutputDirectory(output);
 
             var assemblyName = output != null
                 ? Path.GetFileNameWithoutExtension(output.Name)

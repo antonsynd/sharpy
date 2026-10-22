@@ -35,6 +35,7 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 - `-o, --output <path>` - Output file path
 - `-r, --reference <assembly>` - Add .NET assembly references (a path, or a file name found on a module path). A reference that resolves nowhere is an error (SPY0305). With `compile app.spyproj` and `project`, added to the project's own `<Reference>` items. Also taken by `emit diagnostics` and `emit hover`, so an entry importing a referenced library can be analysed.
 - `-p, --project-reference <project>` - Refused: sharpyc does not build .NET projects; build it with `dotnet build` and pass the assembly with `-r`
+- `--no-deps` - Write the assembly only: skip copying `Sharpy.Core.dll`, the standard-library assemblies and the references beside the output (also taken by `compile` and `project`)
 - `-m, --module-path <path>` - Additional module search paths (a relative path is relative to the working directory). An absolute import is resolved below each one, on every command that takes it (`run`, `compile`, `build`, `project`, `emit csharp`, `emit diagnostics`, `emit hover`; lexing and parsing need no search path, so `emit tokens`/`ast`/`parse` do not): with `-m mods`, `from helper import f` finds `mods/helper.spy` and `import pkg.mod` finds `mods/pkg/mod.spy`. A directory that does not exist is an error. With `compile app.spyproj` and `project`, added to the project's own `<ModulePath>` items.
 
 `compile` accepts both a `.spy` file and a `.spyproj`. Every option it accepts is either honoured, refused for that input kind, or documented in `--help` as ignored for it (`--type` for a `.spyproj`, `--incremental`/`--clean` for a `.spy` file; `--self-contained` is refused for a `.spyproj`) — its table is the `"compile"` table of `CommandOptionEffects`, the one option-to-effect registry for every command.
@@ -46,6 +47,7 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 - `--clean` - Delete bin/ and obj/ directories before building
 - `--emit-cs-to <dir>` - Save generated C# code to directory, mirroring each source's path relative to the project directory (`pkg/lib.spy` → `<dir>/pkg/lib.cs`)
 - `-r, --reference <assembly>` / `-m, --module-path <path>` - As for `compile app.spyproj`: added to the project's own `<Reference>`/`<ModulePath>` items; a reference that resolves nowhere is SPY0305 and a missing directory an error, before anything is built
+- `--no-deps` - Write the assembly only, as for `build` and `compile`
 
 ### Options by Command
 
@@ -53,10 +55,10 @@ Every option a command accepts — its own and the global ones — is honoured, 
 
 | Command | Input | `-r` / `-m` | Deploys references | Global options without effect |
 |---|---|---|---|---|
-| `build` | `.spy` | yes | no — writes the assembly only | none |
+| `build` | `.spy` | yes | yes, unless `--no-deps` | none |
 | `compile` | `.spy`, `.spyproj` | yes | yes, unless `--no-deps` | none |
 | `run` | `.spy` | yes | yes, beside the program it runs | none |
-| `project` | `.spyproj` | yes | no — writes the assembly only | none |
+| `project` | `.spyproj` | yes | yes, unless `--no-deps` | none |
 | `emit tokens` | `.spy` | no — lexing needs no references | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--enable-feature` |
 | `emit ast` | `.spy` | no — parsing needs no references | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--enable-feature` |
 | `emit parse` | `.spy` | no — parsing needs no references | — | `--metrics-format`, `--metrics-output`, `--warn-as-error`, `--nowarn`, `--enable-feature` |
@@ -176,8 +178,8 @@ Create a `.spyproj` file to define your multi-file Sharpy project:
 
 **Output Structure:**
 
-`project` writes the assembly only, under `bin/<Configuration>/net10.0/` in the `.spyproj`'s
-directory:
+`project` writes the assembly under `bin/<Configuration>/net10.0/` in the `.spyproj`'s directory,
+and deploys beside it what it needs to run:
 
 ```
 bin/
@@ -187,25 +189,27 @@ bin/
       MyApp.pdb                  # Debug only
       MyApp.deps.json
       MyApp.runtimeconfig.json
+      Sharpy.Core.dll
+      Sharpy.Stdlib.dll ...      # the standard-library assemblies and their dependencies
+      Greeter.dll                # each <Reference> or -r assembly
 ```
 
-Nothing else is written beside it: not `Sharpy.Core.dll`, not the standard-library assemblies, and
-not the project's `<Reference>` assemblies. `dotnet bin/Debug/net10.0/MyApp.exe` therefore fails to
-load them. `build` is the same for a single file: it writes the assembly only.
-
-`compile` and `run` deploy. Beside the assembly they copy `Sharpy.Core.dll`, the standard-library
-assemblies the program uses (every default one for a `.spyproj`), and every `-r` or `<Reference>`
-assembly whether the program uses it or not. Each copied assembly brings the dependencies that sit
-beside it, managed and native. The output directory then runs with `dotnet`:
+Every command that produces an assembly deploys, as `dotnet build` does: `build`, `compile`,
+`project` and `run` copy `Sharpy.Core.dll`, the standard-library assemblies the program uses (every
+default one for a `.spyproj`), and every `-r` or `<Reference>` assembly whether the program uses it
+or not. Each copied assembly brings the dependencies that sit beside it, managed and native. The
+output directory then runs with `dotnet`:
 
 ```bash
-sharpyc compile app.spyproj -o out/MyApp.dll    # or: sharpyc compile main.spy -r libs/Greeter.dll -o out/main.dll
-dotnet out/MyApp.dll
+sharpyc project app.spyproj                      # or: sharpyc build main.spy -r libs/Greeter.dll -o out/main.dll
+dotnet bin/Debug/net10.0/MyApp.exe
 ```
 
-`compile --no-deps` skips the copy. `compile --self-contained` and `run --self-contained` publish
-an executable that carries every reference. `compile` defaults to the `Release` configuration, so
-without `-o` it writes `bin/Release/net10.0/` for a `.spyproj` and `bin/Release/` for a `.spy`.
+`--no-deps` on `build`, `compile` or `project` skips the copy and writes the assembly only (with
+its `.pdb`, `.deps.json` and `.runtimeconfig.json`). `compile --self-contained` and
+`run --self-contained` publish an executable that carries every reference. `compile` defaults to
+the `Release` configuration, so without `-o` it writes `bin/Release/net10.0/` for a `.spyproj` and
+`bin/Release/` for a `.spy`; `build` without `-o` writes to the working directory.
 
 ## Implementation Status
 

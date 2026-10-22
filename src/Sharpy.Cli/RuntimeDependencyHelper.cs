@@ -7,8 +7,9 @@ namespace Sharpy.Cli;
 /// <summary>
 /// Copies the runtime dependencies (Sharpy.Core.dll, used stdlib assemblies, every explicit user
 /// reference, and their transitive dependencies — managed assemblies and native assets alike) needed to
-/// execute a compiled Sharpy assembly via <c>dotnet output.dll</c>. Shared by the <c>run</c>
-/// and <c>compile</c> commands.
+/// execute a compiled Sharpy assembly via <c>dotnet output.dll</c>. The one deployment seam of every
+/// producing command — <c>run</c>, <c>compile</c>, <c>build</c> and <c>project</c> (the last two since
+/// #2313 cell 0, R-HF c) — each of which but <c>run</c> skips it under <c>--no-deps</c>.
 ///
 /// <para>
 /// The dependency set is computed mechanically by <see cref="RuntimeClosureResolver"/> from the

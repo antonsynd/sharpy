@@ -11,21 +11,24 @@ namespace Sharpy.Cli.Tests.E2E;
 /// directory. The deployment set is the used closure plus every explicit reference, because a
 /// referenced Sharpy library's imports resolve through the CLR-namespace arms, which record no
 /// usage. Before the fix no route copied the library, and <c>dotnet out/main.dll</c> died with
-/// FileNotFoundException for it.
+/// FileNotFoundException for it. Every producing command deploys unless <c>--no-deps</c> (#2313
+/// cell 0, ruling R-HF c): <c>build</c> and <c>project</c> used to write the assembly only, so
+/// <c>dotnet bin/Debug/net10.0/App.exe</c> died with FileNotFoundException for Sharpy.Core.
 /// </summary>
 /// <remarks>
 /// <para>The matrix is reference source × route, wherever the source applies. The sources are
 /// <c>-r</c> as an absolute path, <c>-r</c> as a bare name found on <c>-m</c>,
 /// <c>&lt;Reference Include="abs"/&gt;</c>, and <c>&lt;Reference Include="Tablegreeter"&gt;</c> with a
 /// <c>&lt;HintPath&gt;</c> both absolute and relative to the .spyproj directory. The routes are
-/// <c>compile x.spy</c>, <c>compile x.spyproj</c>, <c>run</c> and <c>run --server</c> against a
-/// <c>sharpyc server</c> started for the cell. The <c>&lt;Reference&gt;</c> sources apply only to a
-/// .spyproj. Each cell asserts the output directory holds <c>Tablegreeter.dll</c> and that
-/// <c>dotnet &lt;out&gt;</c> prints the library's line; a run cell also reads the line after its
-/// banner.</para>
-/// <para>The controls are the documented opt-outs. <c>--no-deps</c> on <c>compile</c> (both kinds),
-/// <c>build</c> and <c>project</c> write the assembly only, so the library is absent although the
-/// assembly is present.</para>
+/// <c>compile x.spy</c>, <c>compile x.spyproj</c>, <c>build</c>, <c>project</c>, <c>run</c>, and
+/// <c>build --server</c> / <c>run --server</c> against a <c>sharpyc server</c> started for the
+/// cell. The <c>&lt;Reference&gt;</c> sources apply only to a .spyproj (<c>compile x.spyproj</c>,
+/// <c>project</c>). Each cell asserts the output directory holds <c>Tablegreeter.dll</c> and
+/// <c>Sharpy.Core.dll</c> and that <c>dotnet &lt;out&gt;</c>, run from that directory, prints the
+/// library's line; a run cell also reads the line after its banner.</para>
+/// <para>The <c>--no-deps</c> cells are the same matrix with the opt-out applied, on every route that
+/// takes it (all but <c>run</c>): the assembly is written — the positive control — and neither the
+/// library nor <c>Sharpy.Core.dll</c> is beside it.</para>
 /// <para>The two self-contained cells shell out to <c>dotnet publish</c>, so they are slow. They are
 /// untraited, like <see cref="SelfContainedDeploymentTests"/>, and run in the regular suite.</para>
 /// <para>Every process is the real <c>sharpyc.dll</c>, as in <see cref="StandaloneDeploymentTests"/>,
@@ -36,6 +39,7 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
     const string RunBanner = "=== Running Program ===";
     const string LibraryLine = "hello from lib";
     const string LibraryFile = "Tablegreeter.dll";
+    const string CoreFile = "Sharpy.Core.dll";
     const string GreeterMain = "from Tablegreeter import Greeter\n\ndef main():\n    print(Greeter().greet())\n";
 
     static readonly string CliDll = Path.Combine(AppContext.BaseDirectory, "sharpyc.dll");
@@ -50,19 +54,52 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
 
     public void Dispose() => _ws.Dispose();
 
+    static readonly string[] CommandLineSources = { "r-absolute", "r-bare-name+m" };
+    static readonly string[] ProjectItemSources = { "Reference Include", "Reference HintPath absolute", "Reference HintPath relative" };
+
+    /// <summary>Every (source, route) cell; for <c>--no-deps</c>, only the routes that take it.</summary>
+    static IEnumerable<(string Source, string Route)> AllCells(bool noDeps)
+    {
+        foreach (var source in CommandLineSources)
+        {
+            foreach (var route in new[] { "compile .spy", "compile .spyproj", "build", "build --server", "project", "run", "run --server" })
+            {
+                if (noDeps && route.StartsWith("run", StringComparison.Ordinal))
+                    continue; // `run` deploys beside the program it runs; it has no --no-deps.
+                yield return (source, route);
+            }
+        }
+
+        foreach (var source in ProjectItemSources)
+        {
+            foreach (var route in new[] { "compile .spyproj", "project" })
+                yield return (source, route);
+        }
+    }
+
     public static TheoryData<string, string> Cells()
     {
         var data = new TheoryData<string, string>();
-        foreach (var source in new[] { "r-absolute", "r-bare-name+m" })
-        {
-            foreach (var route in new[] { "compile .spy", "compile .spyproj", "run", "run --server" })
-                data.Add(source, route);
-        }
-
-        foreach (var source in new[] { "Reference Include", "Reference HintPath absolute", "Reference HintPath relative" })
-            data.Add(source, "compile .spyproj");
-
+        foreach (var (source, route) in AllCells(noDeps: false))
+            data.Add(source, route);
         return data;
+    }
+
+    public static TheoryData<string, string> NoDepsCells()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var (source, route) in AllCells(noDeps: true))
+            data.Add(source, route);
+        return data;
+    }
+
+    [Fact]
+    public void TheMatrix_HasEveryCell()
+    {
+        // Anchored to literals: 2 command-line sources × 7 routes + 3 project-item sources × 2 routes,
+        // and for --no-deps the same less the 2 × 2 run cells.
+        Cells().Count().Should().Be(20);
+        NoDepsCells().Count().Should().Be(16);
     }
 
     [Theory]
@@ -70,50 +107,12 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
     public void UserReference_IsDeployedBesideTheOutput_AndTheProgramRunsFromThere(string source, string route)
     {
         var cell = $"[{source} × {route}]";
-        var outDir = _ws.PathFor("out");
-        var (input, extraArgs) = Input(source, route);
-
-        string assembly;
-        if (route.StartsWith("compile", StringComparison.Ordinal))
-        {
-            assembly = Path.Combine(outDir, route == "compile .spy" ? "main.dll" : "App.dll");
-            var compile = ExecCli(new[] { "compile", input, "-o", assembly }.Concat(extraArgs).ToArray());
-            compile.ExitCode.Should().Be(0, $"{cell} compile\n{compile.StdOut}\n{compile.StdErr}");
-        }
-        else
-        {
-            assembly = Path.Combine(outDir, "main.exe");
-            var args = new[] { "run", input, "-o", assembly }.Concat(extraArgs).ToList();
-            ProcessResult run;
-            if (route == "run --server")
-            {
-                var pipe = "spy-rd-" + Guid.NewGuid().ToString("N")[..8];
-                using var server = StartServer(pipe);
-                try
-                {
-                    WaitUntilListening(pipe, server);
-                    args.Add($"--server={pipe}");
-                    run = ExecCli(args.ToArray());
-                }
-                finally
-                {
-                    TryShutdown(pipe);
-                    StopServer(server);
-                }
-
-                run.StdErr.Should().NotContain("compiling in-process", $"{cell} the server must serve the compile");
-            }
-            else
-            {
-                run = ExecCli(args.ToArray());
-            }
-
-            run.ExitCode.Should().Be(0, $"{cell} run\n{run.StdOut}\n{run.StdErr}");
-            AfterBanner(run.StdOut).Should().Be(LibraryLine, $"{cell} the program's own line follows the banner");
-        }
+        var assembly = Produce(source, route, noDeps: false, cell);
+        var outDir = Path.GetDirectoryName(assembly)!;
 
         File.Exists(assembly).Should().BeTrue($"{cell} the assembly is written");
         File.Exists(Path.Combine(outDir, LibraryFile)).Should().BeTrue($"{cell} the reference is deployed beside the output");
+        File.Exists(Path.Combine(outDir, CoreFile)).Should().BeTrue($"{cell} the runtime is deployed beside the output");
 
         var standalone = Exec(outDir, "dotnet", assembly);
         standalone.ExitCode.Should().Be(0, $"{cell} dotnet {Path.GetFileName(assembly)}\n{standalone.StdOut}\n{standalone.StdErr}");
@@ -121,51 +120,94 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
     }
 
     /// <summary>
-    /// The documented opt-outs write the assembly only. Each is the matching matrix cell with the
-    /// opt-out applied, so the assembly's presence is the positive control for the library's absence.
+    /// The documented opt-out writes the assembly only. Each cell is the matching matrix cell with
+    /// <c>--no-deps</c> applied, so the assembly's presence is the positive control for the absence of
+    /// the library and the runtime.
     /// </summary>
     [Theory]
-    [InlineData("compile .spy --no-deps")]
-    [InlineData("compile .spyproj --no-deps")]
-    [InlineData("build")]
-    [InlineData("project")]
-    public void Control_TheOptOuts_WriteTheAssemblyOnly(string control)
+    [MemberData(nameof(NoDepsCells))]
+    public void NoDeps_WritesTheAssemblyOnly(string source, string route)
+    {
+        var cell = $"[{source} × {route} --no-deps]";
+        var assembly = Produce(source, route, noDeps: true, cell);
+        var outDir = Path.GetDirectoryName(assembly)!;
+
+        File.Exists(assembly).Should().BeTrue($"{cell} the assembly is written (positive control)");
+        File.Exists(Path.Combine(outDir, LibraryFile)).Should().BeFalse($"{cell} writes the assembly only");
+        File.Exists(Path.Combine(outDir, CoreFile)).Should().BeFalse($"{cell} writes the assembly only");
+    }
+
+    /// <summary>
+    /// Runs <paramref name="route"/> on the cell's input and returns the path of the assembly it
+    /// wrote; a run cell also reads the program's own line after the banner.
+    /// </summary>
+    string Produce(string source, string route, bool noDeps, string cell)
     {
         var outDir = _ws.PathFor("out");
+        var (input, extraArgs) = Input(source, route);
+
         string assembly;
-        string assemblyDir;
-        ProcessResult result;
-        switch (control)
+        var args = new System.Collections.Generic.List<string>();
+        switch (route)
         {
-            case "compile .spy --no-deps":
-                assembly = Path.Combine(outDir, "main.dll");
-                result = ExecCli("compile", WriteMain(), "-r", _library.DllPath, "-o", assembly, "--no-deps");
-                break;
-            case "compile .spyproj --no-deps":
-                assembly = Path.Combine(outDir, "App.dll");
-                result = ExecCli("compile", WriteProject($"<Reference Include=\"{_library.DllPath}\" />"), "-o", assembly, "--no-deps");
+            case "compile .spy":
+            case "compile .spyproj":
+                assembly = Path.Combine(outDir, route == "compile .spy" ? "main.dll" : "App.dll");
+                args.AddRange(new[] { "compile", input, "-o", assembly });
                 break;
             case "build":
+            case "build --server":
                 assembly = Path.Combine(outDir, "main.dll");
-                result = ExecCli("build", WriteMain(), "-r", _library.DllPath, "-o", assembly);
+                args.AddRange(new[] { "build", input, "-o", assembly });
                 break;
             case "project":
-                var project = WriteProject($"<Reference Include=\"{_library.DllPath}\" />");
-                result = ExecCli("project", project);
-                // An exe project writes bin/<Configuration>/<TFM>/App.exe (ProjectConfig.OutputAssemblyPath).
-                var binDir = Path.Combine(Path.GetDirectoryName(project)!, "bin");
-                assembly = Directory.Exists(binDir)
-                    ? Directory.GetFiles(binDir, "App.exe", SearchOption.AllDirectories).FirstOrDefault() ?? Path.Combine(binDir, "App.exe")
-                    : Path.Combine(binDir, "App.exe");
+                // An exe project writes bin/<Configuration>/<TFM>/App.exe (ProjectConfig.OutputAssemblyPath);
+                // `project` takes no -o.
+                assembly = Path.Combine(Path.GetDirectoryName(input)!, "bin", "Debug", "net10.0", "App.exe");
+                args.AddRange(new[] { "project", input });
+                break;
+            case "run":
+            case "run --server":
+                assembly = Path.Combine(outDir, "main.exe");
+                args.AddRange(new[] { "run", input, "-o", assembly });
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(control), control, null);
+                throw new ArgumentOutOfRangeException(nameof(route), route, null);
         }
 
-        assemblyDir = Path.GetDirectoryName(assembly)!;
-        result.ExitCode.Should().Be(0, $"[{control}]\n{result.StdOut}\n{result.StdErr}");
-        File.Exists(assembly).Should().BeTrue($"[{control}] the assembly is written (positive control)");
-        File.Exists(Path.Combine(assemblyDir, LibraryFile)).Should().BeFalse($"[{control}] writes the assembly only");
+        args.AddRange(extraArgs);
+        if (noDeps)
+            args.Add("--no-deps");
+
+        ProcessResult result;
+        if (route.EndsWith("--server", StringComparison.Ordinal))
+        {
+            var pipe = "spy-rd-" + Guid.NewGuid().ToString("N")[..8];
+            using var server = StartServer(pipe);
+            try
+            {
+                WaitUntilListening(pipe, server);
+                args.Add($"--server={pipe}");
+                result = ExecCli(args.ToArray());
+            }
+            finally
+            {
+                TryShutdown(pipe);
+                StopServer(server);
+            }
+
+            result.StdErr.Should().NotContain("compiling in-process", $"{cell} the server must serve the compile");
+        }
+        else
+        {
+            result = ExecCli(args.ToArray());
+        }
+
+        result.ExitCode.Should().Be(0, $"{cell}\n{result.StdOut}\n{result.StdErr}");
+        if (route.StartsWith("run", StringComparison.Ordinal))
+            AfterBanner(result.StdOut).Should().Be(LibraryLine, $"{cell} the program's own line follows the banner");
+
+        return assembly;
     }
 
     [Fact]
@@ -201,7 +243,7 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
             _ => Array.Empty<string>(),
         };
 
-        if (route is "compile .spy" or "run" or "run --server")
+        if (route is "compile .spy" or "build" or "build --server" or "run" or "run --server")
             return (WriteMain(), commandLineReference);
 
         var projectDir = _ws.PathFor("app");

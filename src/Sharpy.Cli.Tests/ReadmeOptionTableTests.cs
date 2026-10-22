@@ -12,7 +12,7 @@ namespace Sharpy.Cli.Tests;
 /// "global options without effect" column say what the command's table says. The deployment column
 /// is prose the registry does not hold: it is pinned against the literal set of deploying commands
 /// (<see cref="DeployingCommands"/>, the callers of RuntimeDependencyHelper.CopyRuntimeDependencies),
-/// as are the `build`/`project` help sentences that say they write the assembly only
+/// as are the `build`/`project` help sentences that say they deploy unless `--no-deps`
 /// (ReferenceDeploymentMatrixTests observes the behaviour itself).
 /// </summary>
 public class ReadmeOptionTableTests
@@ -71,15 +71,21 @@ public class ReadmeOptionTableTests
 
     /// <summary>
     /// The commands whose action copies the runtime dependencies and user references beside the
-    /// output: the callers of RuntimeDependencyHelper.CopyRuntimeDependencies (#2223). `build` and
-    /// `project` write the assembly only. A literal, not derived from the registry, so the README
-    /// and help text are pinned against something other than themselves.
+    /// output: the callers of RuntimeDependencyHelper.CopyRuntimeDependencies (#2223) — every
+    /// producing command since `build` and `project` joined (#2313 cell 0, R-HF c). A literal, not
+    /// derived from the registry, so the README and help text are pinned against something other
+    /// than themselves.
     /// </summary>
-    internal static readonly IReadOnlySet<string> DeployingCommands = new HashSet<string>(StringComparer.Ordinal) { "compile", "run" };
+    internal static readonly IReadOnlySet<string> DeployingCommands = new HashSet<string>(StringComparer.Ordinal) { "build", "compile", "project", "run" };
 
-    internal static readonly IReadOnlySet<string> AssemblyOnlyCommands = new HashSet<string>(StringComparer.Ordinal) { "build", "project" };
+    /// <summary>The deploying commands that opt out with <c>--no-deps</c>; `run` deploys beside the program it runs.</summary>
+    internal static readonly IReadOnlySet<string> NoDepsCommands = new HashSet<string>(StringComparer.Ordinal) { "build", "compile", "project" };
 
+    /// <summary>The help sentence `build` and `project` carried while they wrote the assembly only (P46, 10d0b3d9a).</summary>
     const string AssemblyOnlySentence = "Writes the assembly only; `compile` deploys its runtime dependencies and references beside the output";
+
+    /// <summary>The help sentence of `build` and `project` now that they deploy.</summary>
+    const string DeploysSentence = "Copies its runtime dependencies and references beside the output, so it runs from there (--no-deps writes the assembly only)";
 
     /// <summary>Every way the README's "Deploys references" column disagrees with <see cref="DeployingCommands"/>.</summary>
     internal static System.Collections.Generic.List<string> DeployMismatches(string readme)
@@ -88,13 +94,11 @@ public class ReadmeOptionTableTests
         var problems = new System.Collections.Generic.List<string>();
         foreach (var (path, cell) in deploys)
         {
-            var expected = DeployingCommands.Contains(path) ? "yes"
-                : AssemblyOnlyCommands.Contains(path) ? "no"
-                : "—";
+            var expected = DeployingCommands.Contains(path) ? "yes" : "—";
             if (!cell.StartsWith(expected, StringComparison.Ordinal))
                 problems.Add($"`{path}`: the Deploys references cell says '{cell}', expected it to start with '{expected}'");
-            if (AssemblyOnlyCommands.Contains(path) && !cell.Contains("writes the assembly only", StringComparison.Ordinal))
-                problems.Add($"`{path}`: the Deploys references cell does not say it writes the assembly only: '{cell}'");
+            if (NoDepsCommands.Contains(path) && !cell.Contains("unless `--no-deps`", StringComparison.Ordinal))
+                problems.Add($"`{path}`: the Deploys references cell does not name the --no-deps opt-out: '{cell}'");
         }
 
         return problems;
@@ -185,31 +189,33 @@ public class ReadmeOptionTableTests
     {
         var readme = ReadmeText();
         var line = readme.Split('\n').Single(l => l.StartsWith("| `project` |", StringComparison.Ordinal));
-        var wrong = readme.Replace(line, line.Replace("| no — writes the assembly only |", "| yes |", StringComparison.Ordinal), StringComparison.Ordinal);
+        var wrong = readme.Replace(line, line.Replace("| yes, unless `--no-deps` |", "| no — writes the assembly only |", StringComparison.Ordinal), StringComparison.Ordinal);
 
         DeployMismatches(wrong).Should().HaveCount(2)
             .And.AllSatisfy(p => p.Should().StartWith("`project`:"));
     }
 
     /// <summary>
-    /// `build --help` and `project --help` say they write the assembly only and name `compile` as the
-    /// deploying command; their `-r` line says the reference is not deployed. The deploying commands'
-    /// help carries no such sentence (positive control: the sentence is specific, not boilerplate).
+    /// `build --help` and `project --help` say they deploy and name the `--no-deps` opt-out. No
+    /// deploying command's help carries the assembly-only sentence or the "not deployed" `-r` reason
+    /// `build` and `project` carried before #2313 cell 0; each one that takes `--no-deps` lists it
+    /// (the positive control for those absences).
     /// </summary>
     [Theory]
     [InlineData("build")]
     [InlineData("project")]
-    public void AnAssemblyOnlyCommand_SaysSoInItsHelp(string command)
+    public void ABuildCommand_SaysItDeploysInItsHelp(string command)
     {
         var help = CliTestHarness.Invoke($"{command} --help");
 
         help.ExitCode.Should().Be(0);
-        help.StdOut.Should().Contain(AssemblyOnlySentence);
-        help.StdOut.Should().Contain("not deployed beside the output", $"the -r line of `{command} --help` carries the deploy reason");
+        help.StdOut.Should().Contain(DeploysSentence);
     }
 
     [Theory]
+    [InlineData("build")]
     [InlineData("compile")]
+    [InlineData("project")]
     [InlineData("run")]
     public void ADeployingCommand_HasNoAssemblyOnlySentence(string command)
     {
@@ -218,5 +224,7 @@ public class ReadmeOptionTableTests
         help.ExitCode.Should().Be(0);
         help.StdOut.Should().NotContain(AssemblyOnlySentence);
         help.StdOut.Should().NotContain("not deployed beside the output");
+        if (NoDepsCommands.Contains(command))
+            help.StdOut.Should().Contain("--no-deps", $"`{command}` takes the opt-out");
     }
 }
