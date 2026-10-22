@@ -97,32 +97,24 @@ public class ReusedCompilerUsedAssembliesTests : IDisposable
     private IReadOnlySet<string> Used(Compiler compiler, string source, Entry entry, string step)
     {
         var path = Path.Combine(_root, $"{step}_{entry}.spy");
-        switch (entry)
+        var (success, diagnostics, used) = entry switch
         {
-            case Entry.Analyze:
-            {
-                var result = compiler.Analyze(source, path);
-                Assert.True(result.Success, $"{step}/{entry}: {string.Join("; ", result.Diagnostics.GetAll())}");
-                return result.UsedAssemblyPaths;
-            }
-            case Entry.Compile:
-            {
-                var result = compiler.Compile(source, path);
-                Assert.True(result.Success, $"{step}/{entry}: {string.Join("; ", result.Diagnostics.GetAll())}");
-                return result.UsedAssemblyPaths;
-            }
-            default:
-            {
-                var config = SyntheticProject.BuildConfig(source, path,
-                    CompilerOptionsFactory.ForCli(references: References(), assemblyName: "Program2343",
-                        outputAssemblyPath: Path.Combine(_root, $"{step}_project", "Program2343.dll")),
-                    NullLogger.Instance);
-                var result = compiler.CompileProject(config);
-                Assert.True(result.Success, $"{step}/{entry}: {string.Join("; ", result.Diagnostics.GetAll())}");
-                return result.UsedAssemblyPaths;
-            }
-        }
+            Entry.Analyze => Read(compiler.Analyze(source, path)),
+            Entry.Compile => Read(compiler.Compile(source, path)),
+            _ => ReadProject(compiler.CompileProject(SyntheticProject.BuildConfig(source, path,
+                CompilerOptionsFactory.ForCli(references: References(), assemblyName: "Program2343",
+                    outputAssemblyPath: Path.Combine(_root, $"{step}_project", "Program2343.dll")),
+                NullLogger.Instance))),
+        };
+        Assert.True(success, $"{step}/{entry}: {string.Join("; ", diagnostics)}");
+        return used;
     }
+
+    private static (bool, IEnumerable<object>, IReadOnlySet<string>) Read(CompilationResult result)
+        => (result.Success, result.Diagnostics.GetAll(), result.UsedAssemblyPaths);
+
+    private static (bool, IEnumerable<object>, IReadOnlySet<string>) ReadProject(ProjectCompilationResult result)
+        => (result.Success, result.Diagnostics.GetAll(), result.UsedAssemblyPaths);
 
     /// <summary>Sharpy.Core plus the stdlib as the test output carries it (one monolith or the per-module assemblies).</summary>
     private static string[] References()
