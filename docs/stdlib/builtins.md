@@ -2,6 +2,12 @@
 
 Functions available without any import.
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `count` | `int` | Gets the number of integers this range produces, matching Python's \`len(range(...))\`. Computed from the bounds and step without iterating, so it is safe to read before or independently of enumeration. |
+
 ## Functions
 
 ### `abs(x: int) -> int`

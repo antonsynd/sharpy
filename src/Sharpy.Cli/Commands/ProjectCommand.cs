@@ -237,15 +237,9 @@ internal static class ProjectCommand
                 return CliHelpers.MapFailureExitCode(errors);
             }
 
-            // `project` deploys like `compile app.spyproj` (#2313 cell 0, R-HF c): the output runs
-            // in place, as `dotnet build`'s does. The project result does not expose per-module used
-            // assemblies, so — as there — every default reference seeds the closure, plus every user
-            // reference.
-            if (result.OutputAssemblyPath != null && !noDeps)
+            if (!noDeps)
             {
-                var outputDir = Path.GetDirectoryName(result.OutputAssemblyPath) ?? Directory.GetCurrentDirectory();
-                RuntimeDependencyHelper.CopyRuntimeDependencies(
-                    outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
+                DeployOutput(result, defaultReferences, userReferences);
             }
 
             Console.WriteLine("Build succeeded.");
@@ -316,12 +310,14 @@ internal static class ProjectCommand
 
             // The server path has no --warn-as-error/--nowarn/--max-errors/--enable-feature to
             // layer, so the project's own settings are the whole story.
+            var userReferences = projectConfig.References.ToList();
+            var defaultReferences = CliHelpers.GetDefaultReferences();
             var compilerOptions = CompilerOptionsFactory.ForProject(
                 projectConfig,
-                defaultReferences: CliHelpers.GetDefaultReferences(),
+                defaultReferences: defaultReferences,
                 incremental: incremental);
 
-            DefaultReferences.ApplyTo(projectConfig, CliHelpers.GetDefaultReferences());
+            DefaultReferences.ApplyTo(projectConfig, defaultReferences);
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
             var result = compiler.CompileProject(projectConfig);
@@ -342,6 +338,10 @@ internal static class ProjectCommand
                 return CliHelpers.MapFailureExitCode(errors);
             }
 
+            // The server's `project` request deploys exactly as the in-process command does (#2313
+            // cell 0b, R-HF): the request carries no --no-deps, and the output runs in place.
+            DeployOutput(result, defaultReferences, userReferences);
+
             Console.WriteLine("Build succeeded.");
             Console.WriteLine($"Output: {result.OutputAssemblyPath}");
             return 0;
@@ -351,6 +351,23 @@ internal static class ProjectCommand
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             return CliHelpers.ExitInternalError;
         }
+    }
+
+    /// <summary>
+    /// `project` deploys like `compile app.spyproj` (#2313 cell 0, R-HF c): the output runs in
+    /// place, as `dotnet build`'s does. The project result does not expose per-module used
+    /// assemblies, so — as there — every default reference seeds the closure, plus every user
+    /// reference. The one deployment step of both routes, the command and the compile server's
+    /// `project` request (cell 0b).
+    /// </summary>
+    static void DeployOutput(ProjectCompilationResult result, IReadOnlyCollection<string> defaultReferences, IReadOnlyList<string> userReferences)
+    {
+        if (result.OutputAssemblyPath == null)
+            return;
+
+        var outputDir = Path.GetDirectoryName(result.OutputAssemblyPath) ?? Directory.GetCurrentDirectory();
+        RuntimeDependencyHelper.CopyRuntimeDependencies(
+            outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
     }
 
     static void CleanProject(ProjectConfig projectConfig)

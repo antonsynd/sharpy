@@ -7,6 +7,7 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 | Name | Type | Description |
 |------|------|-------------|
+| `is_read_only` | `bool` | Gets a value indicating whether the dictionary is read-only. Always false. |
 | `count` | `int` | Gets the number of key/value pairs in the dictionary. |
 
 ## Methods

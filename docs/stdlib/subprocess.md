@@ -88,6 +88,7 @@ Starts and manages a child process like Python's subprocess.Popen.
 | Name | Type | Description |
 |------|------|-------------|
 | `pid` | `int` | Gets the operating system process identifier. |
+| `returncode` | `int \| None` | Gets the process exit code, or null while the process is still running. |
 | `args` | `list[str]` | Gets the command arguments used to start the process. |
 | `stdin` | `StreamWriter \| None` | Gets the redirected standard input writer, if available. |
 | `stdout_stream` | `StreamReader \| None` | Gets the redirected standard output reader, if available. |

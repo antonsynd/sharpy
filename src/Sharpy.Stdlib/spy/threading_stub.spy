@@ -19,14 +19,9 @@ def main_thread() -> Thread:
     return ThreadingModule.main_thread()
 
 def enumerate() -> list[Thread]:
-    """Return a list of all Thread objects currently alive.
-
-    .NET does not track managed Thread wrapper objects globally, so this
-    returns only the calling thread.
-    """
-    result: list[Thread] = []
-    result.append(current_thread())
-    return result
+    """Return a list of every Thread object currently alive: the main thread, every started
+    thread that has not finished, and the dummy threads current_thread() created."""
+    return ThreadingModule.enumerate()
 
 def get_ident() -> int:
     """Return the thread identifier of the current thread."""

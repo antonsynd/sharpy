@@ -183,6 +183,12 @@ Exception raised for errors related to the database interface rather than the da
 
 Represents a row returned from a query when using `Sqlite3.Row` as the row factory.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `count` | `int` | Gets the number of columns in the row. |
+
 ### `keys() -> list[str]`
 
 Return a list of column names.

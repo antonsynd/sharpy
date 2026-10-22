@@ -10,6 +10,7 @@ namespace YieldFrom
 {
     public static partial class YieldFromModule
     {
+        [global::Sharpy.SharpyGenerator("inner")]
         public static System.Collections.Generic.IEnumerable<int> Inner()
         {
 #line (2, 5) - (2, 13) 12 "yield_from.spy"
@@ -19,6 +20,7 @@ namespace YieldFrom
 #line hidden
         }
 
+        [global::Sharpy.SharpyGenerator("outer")]
         public static System.Collections.Generic.IEnumerable<int> Outer()
         {
 #line (6, 5) - (6, 24) 12 "yield_from.spy"

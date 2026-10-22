@@ -261,6 +261,11 @@ internal partial class RoslynEmitter
             method = method.WithAttributeLists(methodAttributes);
         }
 
+        if (GeneratorStampFor(func) is { } generatorStamp)
+        {
+            method = method.AddAttributeLists(generatorStamp);
+        }
+
         if (isAsync)
         {
             method = method.AddModifiers(Token(SyntaxKind.AsyncKeyword));

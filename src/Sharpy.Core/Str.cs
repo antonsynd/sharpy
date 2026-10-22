@@ -130,13 +130,23 @@ namespace Sharpy
         /// fallback's wider "nested in a static class" rule: LINQ's
         /// <c>Enumerable+IteratorSelectIterator</c> is nested in the static <c>Enumerable</c> and is
         /// exactly the plain sequence #1453 renders as a list. A compiler-generated type is not a
-        /// Sharpy class either: a generator's state machine is nested in the (stamped) type that
-        /// declares it, and is likewise the lazy sequence #1453's arm renders. Both are left to that
-        /// arm, unchanged.
+        /// Sharpy class either — except a Sharpy generator's state machine, recognised through its
+        /// <see cref="SharpyGeneratorAttribute"/>-stamped iterator method (R-IF); an unstamped
+        /// iterator is still the lazy sequence #1453's arm renders.
         /// </remarks>
         private static bool TryFormatSharpyInstance(object x, out string formatted)
         {
             var type = x.GetType();
+
+            // A Sharpy generator object prints as python's `<generator object gen>` and its body
+            // does not run (#2057, R-IF). Its state machine is compiler-generated, so it is found
+            // through the stamped iterator method, not by the class stamp below.
+            if (PyFormat.SharpyGeneratorName(type) is { } generatorName)
+            {
+                formatted = "<generator object " + generatorName + ">";
+                return true;
+            }
+
             if (!PyFormat.IsSharpyStamped(type)
                 || Attribute.IsDefined(type, typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), inherit: false))
             {

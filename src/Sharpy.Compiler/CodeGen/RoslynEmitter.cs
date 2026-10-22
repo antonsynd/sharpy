@@ -585,6 +585,26 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
+    /// <c>[global::Sharpy.SharpyGenerator("K.items")]</c> for a generator function whose python
+    /// <c>__qualname__</c> lowering recorded (<see cref="Lowering.IrCompilation.GeneratorQualifiedNames"/>,
+    /// #2057, R-IF): the runtime reaches the method from the iterator's state machine (C#'s
+    /// <c>IteratorStateMachineAttribute</c>) and prints <c>&lt;generator object K.items&gt;</c> instead of
+    /// enumerating it. Null for every other function, and for an async generator — an
+    /// <c>async_generator</c> object, not this cell.
+    /// </summary>
+    private AttributeListSyntax? GeneratorStampFor(FunctionDef func)
+    {
+        if (func.IsAsync || _context.Ir.GeneratorQualifiedName(func) is not { } qualifiedName)
+            return null;
+
+        return AttributeList(SingletonSeparatedList(
+            Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyGenerator"),
+                AttributeArgumentList(SingletonSeparatedList(
+                    AttributeArgument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression, Literal(qualifiedName))))))));
+    }
+
+    /// <summary>
     /// Sets the generator scope flag and returns a disposable that restores the previous value.
     /// </summary>
     private GeneratorScope SetGeneratorScope(bool isGenerator)

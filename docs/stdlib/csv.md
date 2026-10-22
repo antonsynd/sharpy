@@ -28,6 +28,12 @@ Create a CSV DictWriter that writes to a TextWriter.
 
 Reads CSV data from a list of lines, parsing each line into a list of fields.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `line_num` | `int` |  |
+
 ## CsvWriter
 
 Writes CSV data to a TextWriter.
@@ -44,9 +50,21 @@ Write multiple rows of fields to the CSV output.
 
 Reads CSV data and maps each row to a dictionary keyed by field names.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `fieldnames` | `list[str] \| None` |  |
+
 ## CsvDictWriter
 
 Writes CSV data from dictionaries keyed by field names.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `fieldnames` | `list[str]` |  |
 
 ### `writeheader()`
 

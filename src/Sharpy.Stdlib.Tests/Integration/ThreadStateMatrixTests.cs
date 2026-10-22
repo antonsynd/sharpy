@@ -333,6 +333,114 @@ public class ThreadStateMatrixTests : StdlibIntegrationTestBase
         "main main_thread().name after the rename -> x"
     };
 
+    /// <summary>
+    /// #2261 part 3 (R-IG): an exception that escapes a thread's target or <c>run()</c> is reported
+    /// on stderr and the process continues — python's <c>threading.excepthook</c>. On .NET an
+    /// unhandled exception on any thread ended the process: <c>Unhandled exception.
+    /// Sharpy.ValueError: boom</c>, exit 134, <c>main</c>'s next line never printed.
+    /// Matrix: host {<c>Thread</c> target, <c>Timer</c> function, subclass <c>run</c>} with a Sharpy
+    /// exception, a CLR exception on a target, <c>SystemExit</c> (python's hook is silent), and the
+    /// <c>Timer(1e10)</c> cell (its wait raises <c>OverflowError</c> inside the timer thread,
+    /// #2263); plus daemon inheritance — <c>daemon</c> left as <c>None</c> takes the creating
+    /// thread's flag. COMPARED: the exit code, every <c>main</c> line, and each report's first and
+    /// last line. The traceback frames between them are deviation text (R-CI) and Sharpy prints
+    /// none.
+    /// <para>Expected lines are python3 3.12.13's (2026-10-22) for the same program less the CLR row
+    /// (python cannot raise one). That row adds one thread, so the later default name is
+    /// <c>Thread-6</c> where python's is <c>Thread-5</c>. Python's <c> (boom)</c> target suffix is
+    /// removed, as in <see cref="EveryThreadOperation_InEveryState_GivesPythonsVerdict"/> (R-FD,
+    /// #2105).</para>
+    /// </summary>
+    [Fact]
+    public void AnExceptionInAThread_IsReportedOnStderr_AndTheProcessContinues()
+    {
+        var program = string.Join("\n", new[]
+        {
+            "import threading",
+            "from system import InvalidOperationException",
+            "",
+            "",
+            "class Boom(threading.Thread):",
+            "    @override",
+            "    def run(self) -> None:",
+            "        raise KeyError(\"k\")",
+            "",
+            "",
+            "def boom() -> None:",
+            "    raise ValueError(\"boom\")",
+            "",
+            "",
+            "def clr() -> None:",
+            "    raise InvalidOperationException(\"clr\")",
+            "",
+            "",
+            "def leave() -> None:",
+            "    raise SystemExit(3)",
+            "",
+            "",
+            "def main() -> None:",
+            "    t = threading.Thread(boom)",
+            "    t.start()",
+            "    t.join()",
+            "    print(\"after Thread target\")",
+            "    tm = threading.Timer(0.01, boom)",
+            "    tm.start()",
+            "    tm.join()",
+            "    print(\"after Timer function\")",
+            "    s = Boom()",
+            "    s.start()",
+            "    s.join()",
+            "    print(\"after subclass run\")",
+            "    c = threading.Thread(clr)",
+            "    c.start()",
+            "    c.join()",
+            "    print(\"after CLR exception\")",
+            "    e = threading.Thread(leave)",
+            "    e.start()",
+            "    e.join()",
+            "    print(\"after SystemExit\")",
+            "    big = threading.Timer(1e10, lambda: None)",
+            "    big.start()",
+            "    big.join()",
+            "    print(\"after Timer(1e10)\")",
+            "    seen: list[bool] = []",
+            "    d = threading.Thread(lambda: seen.append(threading.Thread(lambda: None).daemon), daemon=True)",
+            "    d.start()",
+            "    d.join()",
+            "    print(f\"child of a daemon thread: daemon {seen[0]}\")",
+            "    print(f\"child of main: daemon {threading.Thread(lambda: None).daemon}\")",
+        }) + "\n";
+
+        var result = CompileAndExecute(program, executionTimeoutMs: 30_000);
+
+        Assert.True(result.Success,
+            $"the process must continue past every thread's exception and exit 0: {string.Join("; ", result.CompilationErrors)}\n{result.StandardError}");
+        Assert.Equal(new[]
+        {
+            "after Thread target",
+            "after Timer function",
+            "after subclass run",
+            "after CLR exception",
+            "after SystemExit",
+            "after Timer(1e10)",
+            "child of a daemon thread: daemon True",
+            "child of main: daemon False",
+        }, result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n').Split('\n'));
+        Assert.Equal(new[]
+        {
+            "Exception in thread Thread-1:",
+            "ValueError: boom",
+            "Exception in thread Thread-2:",
+            "ValueError: boom",
+            "Exception in thread Thread-3:",
+            "KeyError: 'k'",
+            "Exception in thread Thread-4:",
+            "InvalidOperationException: clr",
+            "Exception in thread Thread-6:",
+            "OverflowError: timestamp out of range for platform time_t",
+        }, result.StandardError.Replace("\r\n", "\n").TrimEnd('\n').Split('\n'));
+    }
+
     [Fact]
     public void EveryThreadOperation_InEveryState_GivesPythonsVerdict()
     {

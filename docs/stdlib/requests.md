@@ -77,6 +77,11 @@ Equivalent to Python's `requests.Response`.
 |------|------|-------------|
 | `status_code` | `int` | The HTTP status code returned by the server (e.g., 200, 404). |
 | `ok` | `bool` | True if the status code is in the 2xx range, false otherwise. Equivalent to Python's \`response.ok\`. |
+| `url` | `str` | The URL of the response (i.e., the final URL after redirects). |
+| `content` | `array[uint8]` | The raw response body as a byte array. Read once and cached. |
+| `text` | `str` | The response body decoded as a string using the response encoding. Lazily computed. |
+| `encoding` | `str` | The encoding of the response body, as advertised by the \`Content-Type\` charset parameter. Defaults to \`"utf-8"\` if not specified. |
+| `headers` | `dict[str, str]` | The response headers (both regular and content headers). Header values are joined with \`", "\` if there are multiple values for the same header. |
 
 ### `json() -> object | None`
 
@@ -126,7 +131,13 @@ A session for sending multiple HTTP requests with shared configuration
 
 | Name | Type | Description |
 |------|------|-------------|
+| `headers` | `dict[str, str]` | Persistent default headers sent with every request from this session. Per-request headers override these on conflict. |
+| `cookies` | `dict[str, str]` | User-managed cookies sent with every request from this session. Equivalent to Python's \`session.cookies\` for simple cases. |
 | `auth` | `tuple[str, str] \| None` | Default Basic auth credentials (username, password) sent with every request from this session. Per-request \`auth\` takes precedence, and an explicit \`Authorization\` header (per-request or session-level) also suppresses this default. |
+| `allow_redirects` | `bool` | Whether the session should follow HTTP redirects (3xx responses). Defaults to \`true\`. Setting this configures the underlying \`HttpClientHandler.AllowAutoRedirect\`. |
+| `max_redirects` | `int` | Maximum number of automatic redirects to follow. Defaults to 30. Setting this configures \`HttpClientHandler.MaxAutomaticRedirections\`. |
+| `proxies` | `dict[str, str] \| None` | Proxy configuration. Maps URI scheme (e.g., \`"http"\`, \`"https"\`) to a proxy URL. Setting this configures \`HttpClientHandler.Proxy\` with the HTTPS proxy if present, otherwise the HTTP proxy. Equivalent to Python's \`session.proxies\`. |
+| `verify` | `bool` | Whether to verify TLS server certificates. Defaults to \`true\`. Setting this to \`false\` disables certificate validation (DANGEROUS — only use for testing). |
 
 ### `get(url: str, headers: dict[str, str] | None = None, params_: dict[str, str] | None = None, json: object | None = None, data: dict[str, str] | None = None, timeout: float | None = None, auth: tuple[str, str] | None = None, files: dict[str, str] | None = None, stream: bool = False) -> Result[Response, RequestException]`
 

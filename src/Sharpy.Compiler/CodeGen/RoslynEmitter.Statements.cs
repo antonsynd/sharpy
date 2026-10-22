@@ -307,6 +307,11 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
 
+        if (GeneratorStampFor(func) is { } generatorStamp)
+        {
+            localFunc = localFunc.AddAttributeLists(generatorStamp);
+        }
+
         // Add type parameters if generic
         if (func.TypeParameters.Length > 0)
         {

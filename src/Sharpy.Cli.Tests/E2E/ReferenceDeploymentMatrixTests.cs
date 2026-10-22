@@ -55,6 +55,13 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
     public void Dispose() => _ws.Dispose();
 
     static readonly string[] CommandLineSources = { "r-absolute", "r-bare-name+m" };
+
+    /// <summary>
+    /// The compile server's <c>project</c> request (#2313 cell 0b), sent as a client of the protocol
+    /// does: no CLI command takes it, so the cell sends it through <see cref="CompileServerClient"/>.
+    /// Its references come from the .spyproj, so only the project-item sources apply.
+    /// </summary>
+    const string ServerProjectRequest = "project (server request)";
     static readonly string[] ProjectItemSources = { "Reference Include", "Reference HintPath absolute", "Reference HintPath relative" };
 
     /// <summary>Every (source, route) cell; for <c>--no-deps</c>, only the routes that take it.</summary>
@@ -72,8 +79,12 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
 
         foreach (var source in ProjectItemSources)
         {
-            foreach (var route in new[] { "compile .spyproj", "project" })
+            foreach (var route in new[] { "compile .spyproj", "project", ServerProjectRequest })
+            {
+                if (noDeps && route == ServerProjectRequest)
+                    continue; // the server's project request carries no --no-deps.
                 yield return (source, route);
+            }
         }
     }
 
@@ -96,9 +107,10 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
     [Fact]
     public void TheMatrix_HasEveryCell()
     {
-        // Anchored to literals: 2 command-line sources × 7 routes + 3 project-item sources × 2 routes,
-        // and for --no-deps the same less the 2 × 2 run cells.
-        Cells().Count().Should().Be(20);
+        // Anchored to literals: 2 command-line sources × 7 routes + 3 project-item sources × 3 routes
+        // (compile .spyproj, project, the server's project request), and for --no-deps the same less
+        // the 2 × 2 run cells and the 3 server-request cells (#2313 cell 0b).
+        Cells().Count().Should().Be(23);
         NoDepsCells().Count().Should().Be(16);
     }
 
@@ -161,6 +173,7 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
                 args.AddRange(new[] { "build", input, "-o", assembly });
                 break;
             case "project":
+            case ServerProjectRequest:
                 // An exe project writes bin/<Configuration>/<TFM>/App.exe (ProjectConfig.OutputAssemblyPath);
                 // `project` takes no -o.
                 assembly = Path.Combine(Path.GetDirectoryName(input)!, "bin", "Debug", "net10.0", "App.exe");
@@ -180,7 +193,30 @@ public sealed class ReferenceDeploymentMatrixTests : IClassFixture<ReferenceLibr
             args.Add("--no-deps");
 
         ProcessResult result;
-        if (route.EndsWith("--server", StringComparison.Ordinal))
+        if (route == ServerProjectRequest)
+        {
+            var pipe = "spy-rd-" + Guid.NewGuid().ToString("N")[..8];
+            using var server = StartServer(pipe);
+            try
+            {
+                WaitUntilListening(pipe, server);
+                var request = new CompileServerRequest
+                {
+                    Command = CompileServerProtocol.CommandProject,
+                    Input = Path.GetFullPath(input),
+                    WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(input)),
+                };
+                CompileServerClient.TrySend(pipe, request, out var response, out var error)
+                    .Should().BeTrue($"{cell} the server must answer: {error}");
+                result = new ProcessResult(response!.ExitCode, response.Stdout, response.Stderr);
+            }
+            finally
+            {
+                TryShutdown(pipe);
+                StopServer(server);
+            }
+        }
+        else if (route.EndsWith("--server", StringComparison.Ordinal))
         {
             var pipe = "spy-rd-" + Guid.NewGuid().ToString("N")[..8];
             using var server = StartServer(pipe);

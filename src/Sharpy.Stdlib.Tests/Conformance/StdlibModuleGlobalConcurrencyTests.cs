@@ -965,7 +965,9 @@ public class StdlibModuleGlobalConcurrencyTests
     /// get pairwise distinct numbers (True), each thread's own numbers increase (True), and the next
     /// Thread() afterwards is max + 1 (True) — no number is lost or repeated; a Thread() on one thread
     /// then a Thread() on another is the next number. Every read of the counter is the increment that
-    /// writes it, so "read" checks each thread's own sequence while the others write.
+    /// writes it, so "read" checks each thread's own sequence while the others write. The harness
+    /// passes daemon explicitly: Thread(daemon=None) reads current_thread(), which on a thread
+    /// threading did not start makes a Dummy-N that draws a number (python3 3.12 too, #2261 part 3).
     /// </summary>
     private sealed class ThreadNameExerciser : GlobalExerciser
     {
@@ -975,7 +977,7 @@ public class StdlibModuleGlobalConcurrencyTests
         // An unnamed, never-started Thread: the name is drawn from the counter at construction.
         private static int NextNumber()
         {
-            var name = new Sharpy.Thread().Name;
+            var name = new Sharpy.Thread(daemon: false).Name;
             return name.StartsWith("Thread-", StringComparison.Ordinal)
                 ? int.Parse(name.Substring("Thread-".Length), System.Globalization.CultureInfo.InvariantCulture)
                 : -1;
@@ -1038,7 +1040,8 @@ public class StdlibModuleGlobalConcurrencyTests
     /// read (True) while the others start theirs; a Thread started on one thread is in enumerate() on
     /// another (200 of 200), and is gone from it after the join (200 of 200). In Sharpy only the held
     /// Threads are added — the harness's own threads are not Sharpy Threads and never call
-    /// current_thread() — so the count is the baseline plus the held threads.
+    /// current_thread(), because every Thread here passes daemon explicitly (daemon=None reads it and
+    /// adds a Dummy-N, python3 3.12 too) — so the count is the baseline plus the held threads.
     /// </summary>
     private sealed class ThreadActiveExerciser : GlobalExerciser
     {
@@ -1057,7 +1060,7 @@ public class StdlibModuleGlobalConcurrencyTests
             {
                 for (var i = 0; i < Starts; i++)
                 {
-                    var thread = new Sharpy.Thread(() => { });
+                    var thread = new Sharpy.Thread(() => { }, daemon: false);
                     tally.Do(thread.Start);
                     tally.Do(() => thread.Join());
                     tally.Check(() => !Listed(thread), () => $"{thread.Name} is in enumerate() after its join");
@@ -1074,7 +1077,7 @@ public class StdlibModuleGlobalConcurrencyTests
             OnThreads(threads, tally, _ =>
             {
                 var hold = new Sharpy.Event();
-                var held = new Sharpy.Thread(() => hold.Wait());
+                var held = new Sharpy.Thread(() => hold.Wait(), daemon: false);
                 held.Start();
                 try
                 {
@@ -1104,7 +1107,7 @@ public class StdlibModuleGlobalConcurrencyTests
                 {
                     holds[i] = new Sharpy.Event();
                     var hold = holds[i];
-                    started[i] = new Sharpy.Thread(() => hold.Wait());
+                    started[i] = new Sharpy.Thread(() => hold.Wait(), daemon: false);
                     started[i].Start();
                 },
                 i =>

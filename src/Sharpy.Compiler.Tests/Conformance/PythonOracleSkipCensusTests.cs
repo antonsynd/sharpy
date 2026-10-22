@@ -13,9 +13,14 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <list type="number">
 /// <item>no string (plain or interpolated) starts with <c>SKIP:</c> — the write-and-return idiom
 /// that xunit counts Passed;</item>
-/// <item>a <c>[Fact]</c>/<c>[Theory]</c> that calls <see cref="PythonInterpreter.RequireOrSkip(int)"/>
+/// <item>a <c>[Fact]</c>/<c>[Theory]</c> that calls a <c>RequireOrSkip</c> gate
+/// (<see cref="PythonInterpreter.RequireOrSkip(int)"/> or <see cref="Sharpy.TestInfrastructure.TestPreconditions.RequireOrSkip"/>)
 /// is a <c>[SkippableFact]</c>/<c>[SkippableTheory]</c> — under a plain <c>[Fact]</c> the
-/// helper's <c>SkipException</c> is a FAILURE, not a skip.</item>
+/// helper's <c>SkipException</c> is a FAILURE, not a skip;</item>
+/// <item>no <c>WriteLine</c> writes a string containing "skipping" (any case) — the same
+/// write-and-return idiom for a NON-python precondition or, worse, a failed step (#2342 part 2,
+/// R-IH): a missing precondition calls <c>TestPreconditions.RequireOrSkip</c>, a failed step
+/// fails.</item>
 /// </list>
 /// Syntax-only (Roslyn parse, no compilation), so the scan cannot be blinded by a build setting.
 /// </summary>
@@ -68,6 +73,15 @@ public class PythonOracleSkipCensusTests
         _ => "",
     };
 
+    /// <summary>Every literal text of a string, holes dropped: <c>$"{why}; skipping"</c> → <c>"; skipping"</c>.</summary>
+    private static string AllText(SyntaxNode node) => node switch
+    {
+        LiteralExpressionSyntax lit when lit.IsKind(SyntaxKind.StringLiteralExpression) => lit.Token.ValueText,
+        InterpolatedStringExpressionSyntax interp => string.Concat(
+            interp.Contents.OfType<InterpolatedStringTextSyntax>().Select(t => t.TextToken.ValueText)),
+        _ => "",
+    };
+
     private static bool HasAttribute(MethodDeclarationSyntax method, params string[] names) =>
         method.AttributeLists.SelectMany(l => l.Attributes).Any(a =>
         {
@@ -88,6 +102,23 @@ public class PythonOracleSkipCensusTests
             {
                 int line = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                 violations.Add(new Violation(path, line, "a 'SKIP:' string — write-and-return counts Passed; call PythonInterpreter.RequireOrSkip"));
+            }
+        }
+
+        foreach (var call in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            var name = call.Expression switch
+            {
+                MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+                IdentifierNameSyntax id => id.Identifier.ValueText,
+                _ => "",
+            };
+            if (name == "WriteLine"
+                && call.ArgumentList.Arguments.Any(a => AllText(a.Expression).Contains("skipping", StringComparison.OrdinalIgnoreCase)))
+            {
+                int line = call.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                violations.Add(new Violation(path, line,
+                    "a 'skipping' note written instead of a verdict — a missing precondition calls TestPreconditions.RequireOrSkip; a failed step fails"));
             }
         }
 
@@ -173,10 +204,22 @@ public class PythonOracleSkipCensusTests
 
                 [Fact]
                 public void F() { Assert.Throws<SkipException>(() => PythonInterpreter.RequireOrSkip(none, required: false)); }
+
+                [Fact]
+                public void G() { if (!File.Exists(asset)) { _output.WriteLine("No native asset for this RID; skipping."); return; } }
+
+                [Fact]
+                public void H() { if (dll is null) { Output.WriteLine($"{why} — Skipping runtime test"); return; } }
+
+                [Fact]
+                public void I() { match.Should().NotBeNull("skipping it would match nothing"); }
+
+                [SkippableFact]
+                public void J() { TestPreconditions.RequireOrSkip(File.Exists(asset), "no asset"); }
             }
             """;
         var (violations, callers) = Scan("control.cs", Broken);
-        Assert.Equal(new[] { 9, 15, 18 }, violations.Select(v => v.Line).ToArray());
-        Assert.Equal(2, callers);
+        Assert.Equal(new[] { 9, 15, 18, 30, 33 }, violations.Select(v => v.Line).OrderBy(l => l).ToArray());
+        Assert.Equal(3, callers);
     }
 }

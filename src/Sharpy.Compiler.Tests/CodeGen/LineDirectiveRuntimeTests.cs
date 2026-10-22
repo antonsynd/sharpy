@@ -59,13 +59,7 @@ def main():
         generatedCSharp.Should().Contain($"\"{fileName}\"");
 
         // Phase 2: Compile C# to assembly WITH PDB support
-        var (assemblyPath, pdbPath, tempDir) = CompileCSharpToAssembly(generatedCSharp);
-
-        if (assemblyPath == null)
-        {
-            _output.WriteLine("Skipping runtime test: C# compilation failed");
-            return;
-        }
+        var (assemblyPath, _, tempDir) = CompileCSharpToAssembly(generatedCSharp);
 
         try
         {
@@ -117,13 +111,7 @@ def main():
         // Verify #line for line 3 is present (raise ValueError is on line 3)
         generatedCSharp.Should().Contain("#line (3,");
 
-        var (assemblyPath, pdbPath, tempDir) = CompileCSharpToAssembly(generatedCSharp);
-
-        if (assemblyPath == null)
-        {
-            _output.WriteLine("Skipping runtime test: C# compilation failed");
-            return;
-        }
+        var (assemblyPath, _, tempDir) = CompileCSharpToAssembly(generatedCSharp);
 
         try
         {
@@ -228,7 +216,13 @@ def main():
             "stack trace should reference lib.spy where the exception was raised");
     }
 
-    private (string? assemblyPath, string? pdbPath, string tempDir) CompileCSharpToAssembly(string csharpCode)
+    /// <summary>
+    /// Compiles the generated C# with a portable PDB. A failure is the test's own STEP failing — the
+    /// generated program this test exists to run did not compile — so it FAILS with Roslyn's
+    /// errors; it used to write "Skipping runtime test" and return, which xunit counted Passed
+    /// (#2342, R-IH).
+    /// </summary>
+    private (string assemblyPath, string pdbPath, string tempDir) CompileCSharpToAssembly(string csharpCode)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_line_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
@@ -309,11 +303,11 @@ def main():
                 .Select(d => d.ToString())
                 .ToList();
 
-            _output.WriteLine("C# compilation errors:");
-            foreach (var error in errors)
-                _output.WriteLine($"  {error}");
-
-            return (null, null, tempDir);
+            assemblyStream.Dispose();
+            pdbStream.Dispose();
+            CleanupTempDir(tempDir);
+            Assert.Fail("C# compilation of the generated program failed — the step this test exists to run:\n  "
+                + string.Join("\n  ", errors));
         }
 
         // Copy Sharpy.Core to temp dir

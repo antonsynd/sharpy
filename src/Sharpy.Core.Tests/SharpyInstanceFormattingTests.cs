@@ -207,15 +207,64 @@ public class SharpyInstanceFormattingTests : IDisposable
     }
 
     /// <summary>
-    /// Positive control for the compiler-generated exclusion: a generator function's state machine
-    /// is nested in a Sharpy module class, yet it is the lazy sequence #1453's arm renders as a list
-    /// — not a Sharpy class instance. python3 prints <c>&lt;generator object gen at …&gt;</c>; this
-    /// pins only that the #2057 cure leaves it where it was.
+    /// R-IF (#2057): a Sharpy generator object prints python's <c>&lt;generator object qualname&gt;</c>
+    /// (the <c>at 0x…</c> address omitted, R-CI) at every formatting site, and formatting it never
+    /// runs the body. The generator functions below mirror what the compiler emits (read from
+    /// <c>emit csharp</c>): a C# iterator method stamped <see cref="SharpyGeneratorAttribute"/> with
+    /// its python <c>__qualname__</c>. Before the cure the state machine was the plain sequence
+    /// #1453's arm printed — <c>[1, 2]</c>, the body run once per formatting site. python3 3.12:
+    /// <c>print(gen())</c> → <c>&lt;generator object gen at 0x…&gt;</c>, <c>K().items()</c> →
+    /// <c>&lt;generator object K.items at 0x…&gt;</c>, body not run.
+    /// </summary>
+    [Theory]
+    [InlineData("module-function", "str", "<generator object gen>")]
+    [InlineData("module-function", "repr", "<generator object gen>")]
+    [InlineData("module-function", "print", "<generator object gen>")]
+    [InlineData("module-function", "fstring-hole", "<generator object gen>")]
+    [InlineData("module-function", "list-element", "[<generator object gen>]")]
+    [InlineData("method", "str", "<generator object Bag.items>")]
+    [InlineData("method", "repr", "<generator object Bag.items>")]
+    [InlineData("method", "print", "<generator object Bag.items>")]
+    [InlineData("method", "fstring-hole", "<generator object Bag.items>")]
+    [InlineData("method", "list-element", "[<generator object Bag.items>]")]
+    [InlineData("generic-function", "str", "<generator object repeat>")]
+    [InlineData("generic-function", "list-element", "[<generator object repeat>]")]
+    [InlineData("local-function", "str", "<generator object main.<locals>.inner>")]
+    [InlineData("local-function", "repr", "<generator object main.<locals>.inner>")]
+    public void GeneratorObject_PrintsItsQualifiedName_AndTheBodyDoesNotRun(string producer, string site, string expected)
+    {
+        GeneratorModule.BodyRuns = 0;
+        IEnumerable value = producer switch
+        {
+            "module-function" => GeneratorModule.Gen(),
+            "method" => new StampedGeneratorOwner().Items(),
+            "generic-function" => GeneratorModule.Repeat("x"),
+            "local-function" => GeneratorModule.LocalGenerator(),
+            _ => throw new ArgumentOutOfRangeException(nameof(producer), producer, null),
+        };
+
+        var text = Format(value, site);
+
+        text.Should().Be(expected);
+        GeneratorModule.BodyRuns.Should().Be(0, "formatting a generator object must not run its body");
+        var seen = 0;
+        foreach (var unused in value)
+        {
+            seen++;
+        }
+
+        seen.Should().BeGreaterThan(0, "the generator still yields when iterated after it was formatted");
+    }
+
+    /// <summary>
+    /// Negative control for the generator arm: an iterator the compiler did NOT stamp (any CLR
+    /// iterator method — here one nested in a static class, as a Sharpy module function's is) is the
+    /// lazy sequence #1453 renders as the list its semantic type says it is.
     /// </summary>
     [Fact]
-    public void GeneratorFunctionResult_KeepsThePlainSequenceRendering()
+    public void UnstampedIterator_KeepsThePlainSequenceRendering()
     {
-        IEnumerable<int> generated = GeneratorModule.Gen();
+        IEnumerable<int> generated = UnstampedModule.Gen();
 
         Builtins.Str(generated).Should().Be("[1, 2]");
         Builtins.Repr(generated).Should().Be("[1, 2]");
@@ -240,8 +289,52 @@ public class SharpyInstanceFormattingTests : IDisposable
         Builtins.Repr(reversed).Should().Be("['c', 'b', 'a']");
     }
 
-    [SharpyModule("__main__")]
+    /// <summary>`def gen()`, `def repeat[T](v: T)`, and `def main()` declaring `def inner()`.</summary>
     public static class GeneratorModule
+    {
+        public static int BodyRuns;
+
+        [SharpyGenerator("gen")]
+        public static IEnumerable<int> Gen()
+        {
+            BodyRuns++;
+            yield return 1;
+            yield return 2;
+        }
+
+        [SharpyGenerator("repeat")]
+        public static IEnumerable<T> Repeat<T>(T value)
+        {
+            BodyRuns++;
+            yield return value;
+        }
+
+        public static IEnumerable<int> LocalGenerator()
+        {
+            [SharpyGenerator("main.<locals>.inner")]
+            static IEnumerable<int> Inner()
+            {
+                BodyRuns++;
+                yield return 3;
+            }
+
+            return Inner();
+        }
+    }
+
+    /// <summary>`class Bag` with the generator method `def items(self)`.</summary>
+    [SharpyModuleType("__main__", "Bag")]
+    public class StampedGeneratorOwner
+    {
+        [SharpyGenerator("Bag.items")]
+        public IEnumerable<int> Items()
+        {
+            GeneratorModule.BodyRuns++;
+            yield return 4;
+        }
+    }
+
+    public static class UnstampedModule
     {
         public static IEnumerable<int> Gen()
         {

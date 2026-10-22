@@ -68,6 +68,16 @@ Exception raised when a regex pattern is invalid.
 
 Compiled regular expression pattern, wrapping .NET Regex.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `pattern_str` | `str` |  |
+| `flags` | `int` |  |
+| `groups` | `int` |  |
+| `groupindex` | `dict[str, int]` |  |
+| `regex` | `Regex` |  |
+
 ### `search(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
 
 Scan through string looking for the first match.
@@ -115,6 +125,18 @@ Split string by the occurrences of the pattern.
 ## MatchResult
 
 Wraps a .NET Match with Python-compatible regex match API.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `string` | `str` |  |
+| `pattern` | `str` |  |
+| `pos` | `int` |  |
+| `endpos` | `int` |  |
+| `re` | `Pattern \| None` |  |
+| `lastindex` | `int \| None` |  |
+| `lastgroup` | `str \| None` |  |
 
 ### `group(n: int = 0) -> str | None`
 

@@ -42,7 +42,17 @@ Represents a UUID value with Python uuid.UUID-style properties.
 | Name | Type | Description |
 |------|------|-------------|
 | `hex` | `str` | Get the UUID as 32 lowercase hexadecimal digits. |
+| `int` | `int64` | Get the leading 64 bits of the UUID as an integer. |
+| `uuid_bytes` | `bytes` | Get the UUID as 16 RFC 4122 bytes. |
+| `version` | `int` | Get the UUID version number. |
+| `variant` | `str` | Get the UUID variant description. |
 | `urn` | `str` | Get the UUID as a URN string. |
+| `time_low` | `int64` | Get the low 32 bits of the time field. |
+| `time_mid` | `int` | Get the middle 16 bits of the time field. |
+| `time_hi_version` | `int` | Get the high time field including the version bits. |
+| `clock_seq_hi_variant` | `int` | Get the high clock sequence byte including the variant bits. |
+| `clock_seq_low` | `int` | Get the low clock sequence byte. |
+| `node` | `int64` | Get the 48-bit node value. |
 
 ### `__str__() -> str`
 

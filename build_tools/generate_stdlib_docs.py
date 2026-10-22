@@ -1167,6 +1167,23 @@ def _join_declaration(lines: list[str], start: int) -> tuple[str, int]:
     return result, j
 
 
+def _with_accessor_block(joined: str, lines: list[str], end_i: int) -> str:
+    """A property declaration line with the start of its accessor block when that block opens on
+    the next line — `public string Name` / `{` / `get => _name;` — so the property pattern sees
+    `{ get`. Without it a property whose braces sit on their own lines was not documented at all:
+    `threading.Thread` listed only `ident`, never its settable `name` and `daemon` (#2261 part 3).
+    """
+    if any(token in joined for token in ("=>", "{", ";", "(")):
+        return joined
+    following = [line.strip() for line in lines[end_i + 1:end_i + 3]]
+    if not following or not following[0].startswith("{"):
+        return joined
+    block = following[0]
+    if block == "{" and len(following) > 1:
+        block += " " + following[1]
+    return joined + " " + block
+
+
 # Regex patterns applied to joined (single-line) declarations
 # The type character classes include ':' so a fully-qualified return type
 # (`global::Sharpy.Iterator<T>`, emitted since every CLR-backed/Sharpy-namespace
@@ -1725,7 +1742,7 @@ def _parse_cs_text(
         # parentheses are not one)
         decl_part = joined.split("=>")[0].split("{")[0]
         if not _PARAM_LIST_RE.search(decl_part):
-            prop_match = _PROPERTY_PATTERN.match(joined)
+            prop_match = _PROPERTY_PATTERN.match(_with_accessor_block(joined, lines, end_i))
             if prop_match:
                 modifiers, ptype, pname = prop_match.groups()
                 doc_lines = _collect_doc_lines(lines, i)
