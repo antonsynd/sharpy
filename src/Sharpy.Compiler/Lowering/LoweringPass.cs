@@ -86,7 +86,8 @@ internal sealed partial class LoweringPass
         }
 
         // __qualname__'s nesting: a class contributes `C.`, a function `f.<locals>.` (Python's
-        // spelling), to everything declared inside it.
+        // spelling), to everything declared inside it. The switch is deliberately partial: only the
+        // statements that open a __qualname__ scope have an arm; every other statement adds nothing.
         var scopeName = statement switch
         {
             ClassDef classDef => classDef.Name + ".",

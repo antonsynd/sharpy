@@ -245,6 +245,8 @@ public class DispatchSiteInventoryTests
         // Lowering pass — dispatch over AST/IrNode types in lowering
         ["Lowering/LoweringPass.cs::LoweringPass.LowerChildren"] = "refusal-net:FileBasedIntegrationTests",
         ["Lowering/LoweringPass.cs::LoweringPass.LowerExpression"] = "refusal-net:FileBasedIntegrationTests",
+        // __qualname__ scopes (#2057): only class/struct/interface/enum/function statements open one.
+        ["Lowering/LoweringPass.cs::LoweringPass.LowerStatement"] = "documented-by-design:Lowering/LoweringPass.cs:LowerStatement",
         ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.TryFoldExpression"] = "refusal-net:FileBasedIntegrationTests",
         // Parser internals
         ["Parser/Parser.cs::Parser.DelSteerFor"] = "refusal-net:FileBasedIntegrationTests",
