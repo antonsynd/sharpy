@@ -20,10 +20,10 @@ internal class EqualityContractValidator : SemanticValidatorBase
             switch (stmt)
             {
                 case ClassDef classDef:
-                    ValidateClass(classDef, context);
+                    CheckEqOverloads(classDef, classDef.Name, classDef.Body, context);
                     break;
                 case StructDef structDef:
-                    ValidateStruct(structDef, context);
+                    CheckEqOverloads(structDef, structDef.Name, structDef.Body, context);
                     break;
                 default:
                     // walker-default-contract: any kind not listed above is deliberately ignored by
@@ -33,17 +33,8 @@ internal class EqualityContractValidator : SemanticValidatorBase
         }
     }
 
-    private void ValidateClass(ClassDef classDef, SemanticContext context)
-    {
-        CheckEqOverloads(classDef.Name, classDef.Body, context);
-    }
-
-    private void ValidateStruct(StructDef structDef, SemanticContext context)
-    {
-        CheckEqOverloads(structDef.Name, structDef.Body, context);
-    }
-
-    private void CheckEqOverloads(string typeName, IReadOnlyList<Statement> body, SemanticContext context)
+    private void CheckEqOverloads(
+        Statement declaration, string typeName, IReadOnlyList<Statement> body, SemanticContext context)
     {
         var eqMethods = new List<FunctionDef>();
         FunctionDef? hashMethod = null;
@@ -76,7 +67,7 @@ internal class EqualityContractValidator : SemanticValidatorBase
 
         // SPY0455: __eq__(object) without __hash__
         // Inherited __hash__ from a base class satisfies the contract (per .NET semantics).
-        if (hasObjectOverload && hashMethod == null && !HasInheritedDunder(typeName, DunderNames.Hash, context))
+        if (hasObjectOverload && hashMethod == null && !HasInheritedDunder(declaration, typeName, DunderNames.Hash, context))
         {
             var eqObj = eqMethods.First(IsObjectOverload);
             AddError(context,
@@ -89,7 +80,7 @@ internal class EqualityContractValidator : SemanticValidatorBase
 
         // SPY0456: __hash__ without __eq__(object)
         // Inherited __eq__(object) from a base class satisfies the contract.
-        if (hashMethod != null && !hasObjectOverload && !HasInheritedEqObject(typeName, context))
+        if (hashMethod != null && !hasObjectOverload && !HasInheritedEqObject(declaration, typeName, context))
         {
             AddError(context,
                 $"Class '{typeName}' defines '__hash__' but not '__eq__(self, other: object)'. " +
@@ -110,9 +101,12 @@ internal class EqualityContractValidator : SemanticValidatorBase
     /// <summary>
     /// Check if a dunder method (e.g., __hash__) is defined in any ancestor class.
     /// </summary>
-    private static bool HasInheritedDunder(string typeName, string dunderName, SemanticContext context)
+    private static bool HasInheritedDunder(
+        Statement declaration, string typeName, string dunderName, SemanticContext context)
     {
-        var typeSymbol = context.SymbolTable.Lookup(typeName) as TypeSymbol;
+        // The symbol declared FOR this definition (LookupDeclaredType, #2250) — never a same-named
+        // symbol a duplicate definition would find by name.
+        var typeSymbol = context.LookupDeclaredType(declaration, typeName);
         var baseType = typeSymbol?.BaseType;
         var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
         while (baseType != null && visited.Add(baseType))
@@ -131,9 +125,9 @@ internal class EqualityContractValidator : SemanticValidatorBase
     /// <summary>
     /// Check if __eq__(self, other: object) is defined in any ancestor class.
     /// </summary>
-    private static bool HasInheritedEqObject(string typeName, SemanticContext context)
+    private static bool HasInheritedEqObject(Statement declaration, string typeName, SemanticContext context)
     {
-        var typeSymbol = context.SymbolTable.Lookup(typeName) as TypeSymbol;
+        var typeSymbol = context.LookupDeclaredType(declaration, typeName);
         var baseType = typeSymbol?.BaseType;
         var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
         while (baseType != null && visited.Add(baseType))

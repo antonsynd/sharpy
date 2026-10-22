@@ -20,19 +20,8 @@
 # DO NOT DELETE THIS FILE: its presence arms the ratchet.
 
 # R-CS (#2063): a type definition or an import outside the module body / a type body is SPY0708.
-# The base answers SPY0202 "Class symbol for … not found", nothing at all (enum, imports), or the
-# validator cascade against the master `list`. Drains in P21e Phase 2.
-class-cascade × accessor-body × list  # #2063
-class-cascade × def-body × list  # #2063
-class-cascade × for-in-def × list  # #2063
-class-cascade × if-in-def × list  # #2063
-class-cascade × match-in-def × list  # #2063
-class-cascade × method-body × list  # #2063
-class-cascade × module-try × list  # #2063
-class-cascade × try-in-def × list  # #2063
-class-cascade × type-body-if × list  # #2063
-class-cascade × while-in-def × list  # #2063
-class-cascade × with-in-def × list  # #2063
+# DRAINED in P21e Phase 2 (DeclarationPositionValidator; the checker declines silently; the
+# LookupDeclaredType identity rule ends the master-`list` cascade). Do not re-add a row here.
 
 # #2319: a builtin-named `type` alias is SPY0212 at every position; a builtin-named nested type in a
 # type body is SPY0212 (the nested dispatcher skips the gate). Drains in P21e Phase 3.
