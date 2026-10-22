@@ -67,7 +67,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// reason; reproduced k/R @ sha</c> in <c>Conformance/in-process-isolation-allowlist.txt</c>. A red
 /// cell without a row fails; a row whose cell was exercised and reproduced in no repetition fails as
 /// stale (drain on fix) unless it is marked <c>probabilistic</c> — those are reported, not judged. A
-/// row whose cell the mode does not exercise (another thread count) is neither. Reports:
+/// row of another thread count is not judged; a row of a thread count the mode runs whose cell no
+/// schedule carries fails as unscheduled (R-ID, #2343: a row is never dropped by a sample that moved). Reports:
 /// <c>.claude/tmp/in-process-isolation-report.json</c> (GapDiscovery) and
 /// <c>.claude/tmp/in-process-isolation-slice-report.json</c> (regular slice).</para>
 /// </summary>
@@ -200,12 +201,61 @@ public class InProcessIsolationSweepTests
     /// with the library pair, carries every named program and probe under both operations and every
     /// trigger under analyze, and reads every probe once more after its last trigger; the regular
     /// trigger set is a head of the full one; every probe and the pair carry an oracle control.</summary>
+    /// <summary>
+    /// R-ID (#2343): adding a program moves only that program. Inserting a test name changes the
+    /// sample by at most that name, and inserting a sample member changes no thread's schedule except
+    /// by that member's own steps — the stride-by-index sample this replaced moved 194 of 213 members
+    /// for one new fixture. Membership and ranks are pure functions of a literal string:
+    /// <see cref="InProcessIsolationCorpus.StableHash"/> is pinned to FNV-1a's published vectors.
+    /// </summary>
+    [Fact]
+    public void Sample_AndSchedules_MoveOnlyTheInsertedProgram()
+    {
+        Assert.Equal(2166136261u, InProcessIsolationCorpus.StableHash(""));
+        Assert.Equal(0xe40c292cu, InProcessIsolationCorpus.StableHash("a"));
+        Assert.Equal(0xbf9cf968u, InProcessIsolationCorpus.StableHash("foobar"));
+
+        var names = Enumerable.Range(0, 4000).Select(i => $"corpus/fixture_{i:D4}").ToList();
+        var before = InProcessIsolationCorpus.SelectSample(names);
+        Assert.InRange(before.Count, 4000 / InProcessIsolationCorpus.SampleStride / 2, 4000 / InProcessIsolationCorpus.SampleStride * 2);
+        var inserted = 0;
+        foreach (var extra in Enumerable.Range(0, 64).Select(i => $"corpus/aaa_inserted_{i}"))
+        {
+            var after = InProcessIsolationCorpus.SelectSample(names.Append(extra));
+            Assert.Equal(before, after.Where(n => n != extra));
+            if (after.Contains(extra))
+                inserted++;
+        }
+
+        Assert.True(inserted > 0, "positive control: some inserted name must join the sample, or the schedule half below proves nothing");
+
+        var pair = new[]
+        {
+            new IsolationProgram(InProcessIsolationCorpus.ReferencedProgramId, "main.spy", ""),
+            new IsolationProgram(InProcessIsolationCorpus.UnreferencedProgramId, "main.spy", ""),
+        };
+        var roster = InProcessIsolationCorpus.Roster(full: false, pair);
+        var sample = InProcessIsolationCorpus.Sample;
+        var newcomer = new IsolationProgram("aaa/inserted_first", "x.spy", "");
+        var drawnSomewhere = false;
+        for (var t = 0; t < InProcessIsolationCorpus.ThreadSeeds.Length; t++)
+        {
+            var baseline = InProcessIsolationCorpus.Schedule(t, roster, sample).Select(s => $"{s.Program.Id}/{s.Operation}").ToList();
+            var grown = InProcessIsolationCorpus.Schedule(t, roster, new[] { newcomer }.Concat(sample).ToList())
+                .Select(s => $"{s.Program.Id}/{s.Operation}").ToList();
+            drawnSomewhere |= grown.Count > baseline.Count;
+            Assert.Equal(baseline, grown.Where(s => !s.StartsWith(newcomer.Id + "/", StringComparison.Ordinal)));
+        }
+
+        Assert.True(drawnSomewhere, "positive control: the newcomer must be drawn by at least one thread");
+    }
+
     [Fact]
     public void Schedules_AreSeededAndCarryTheRoster()
     {
         Assert.Equal(8, InProcessIsolationCorpus.ThreadSeeds.Distinct().Count());
         Assert.StartsWith(InProcessIsolationCorpus.Cell1FirstLine, InProcessIsolationCorpus.RegenerateCell1Program().Source, StringComparison.Ordinal);
-        Assert.True(InProcessIsolationCorpus.Sample.Count > 100, $"stride sample has {InProcessIsolationCorpus.Sample.Count} programs");
+        Assert.True(InProcessIsolationCorpus.Sample.Count > 100, $"hash-keyed sample has {InProcessIsolationCorpus.Sample.Count} programs");
 
         var pair = new[]
         {
@@ -356,6 +406,7 @@ public class InProcessIsolationSweepTests
 
         // 3. Classification: a cell is (program, sharing, threads, operation); red in a repetition when any observation is.
         var exercised = new HashSet<string>(StringComparer.Ordinal);
+        var cancelledCells = new HashSet<string>(StringComparer.Ordinal);
         var redByKey = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
         var example = new Dictionary<string, (string Oracle, string Observed)>(StringComparer.Ordinal);
         var cancelled = 0;
@@ -363,14 +414,15 @@ public class InProcessIsolationSweepTests
         foreach (var o in observations)
         {
             var solo = oracle[(KindOf(o.Sharing), o.Work.Program.Id, o.Work.Operation)];
+            var cell = $"{o.Work.Program.Id} {Name(o.Sharing)} {o.Threads} {Name(o.Work.Operation)}";
             if (o.Fingerprint.Cancelled || solo.Cancelled)
             {
                 cancelled++;
+                cancelledCells.Add(cell);
                 continue;
             }
 
             observed++;
-            var cell = $"{o.Work.Program.Id} {Name(o.Sharing)} {o.Threads} {Name(o.Work.Operation)}";
             exercised.Add(cell);
             var bucket = Classify(solo, o.Fingerprint, o.Threads);
             if (bucket == null)
@@ -391,6 +443,11 @@ public class InProcessIsolationSweepTests
         var allowlist = LoadAllowlist(InProcessIsolationCorpus.AllIds);
         var unlisted = reds.Where(r => !allowlist.ContainsKey(r.Key)).ToList();
         var notExercised = allowlist.Keys.Where(k => !exercised.Contains(CellOf(k))).OrderBy(k => k, StringComparer.Ordinal).ToList();
+        // A row of a thread count this mode runs whose cell no schedule carried: the sample or a thread's
+        // draws moved off it. Reported, never dropped (R-ID, #2343) — a cell only cancellations hid is not one.
+        var unscheduled = notExercised
+            .Where(k => threadCounts.Contains(int.Parse(k.Split(' ')[2])) && !cancelledCells.Contains(CellOf(k)))
+            .ToList();
         var silent = allowlist
             .Where(kv => exercised.Contains(CellOf(kv.Key)) && !redByKey.ContainsKey(kv.Key))
             .OrderBy(kv => kv.Key, StringComparer.Ordinal)
@@ -422,6 +479,7 @@ public class InProcessIsolationSweepTests
             stale,
             silentProbabilistic,
             notExercised,
+            unscheduled,
             oracle = oracle
                 .OrderBy(kv => kv.Key.Item2, StringComparer.Ordinal).ThenBy(kv => kv.Key.Item1).ThenBy(kv => kv.Key.Item3)
                 .Select(kv => new { kind = kv.Key.Item1.ToString(), program = kv.Key.Item2, operation = Name(kv.Key.Item3), fingerprint = kv.Value.ToString() }),
@@ -432,6 +490,8 @@ public class InProcessIsolationSweepTests
             $"{r.Key}: reproduced {r.Reds}/{r.Repetitions} — the {r.Bucket} is not allowlisted.\n      solo:     {r.Oracle}\n      observed: {r.Observed}"));
         problems.AddRange(stale.Select(k =>
             $"{k}: exercised and reproduced 0/{repetitions} — drain the row from Conformance/{AllowlistFileName} (or mark it `{Probabilistic}` with its measured k/R)."));
+        problems.AddRange(unscheduled.Select(k =>
+            $"{k}: this mode runs {k.Split(' ')[2]} thread(s) but no schedule carries the cell — the sample or a thread's draws moved off it; re-measure the defect and drain or re-pin the row."));
         Assert.True(problems.Count == 0,
             $"{problems.Count} in-process isolation violation(s) ({mode}):\n  " + string.Join("\n  ", problems)
             + $"\nReport: .claude/tmp/{reportFileName}");
@@ -626,13 +686,13 @@ public class InProcessIsolationSweepTests
         protected override Fingerprint Analyze(IsolationProgram program, CancellationToken cancellationToken)
         {
             var result = For(program).Analyze(program.Source, program.FileName, cancellationToken);
-            return Fingerprint.Of(result.Success, result.Diagnostics.GetAll(), result.ModuleRegistry?.GetUsedAssemblyPaths());
+            return Fingerprint.Of(result.Success, result.Diagnostics.GetAll(), result.UsedAssemblyPaths);
         }
 
         protected override Fingerprint Compile(IsolationProgram program, CancellationToken cancellationToken)
         {
             var result = For(program).Compile(program.Source, program.FileName, cancellationToken);
-            return Fingerprint.Of(result.Success, result.Diagnostics.GetAll(), result.ModuleRegistry?.GetUsedAssemblyPaths());
+            return Fingerprint.Of(result.Success, result.Diagnostics.GetAll(), result.UsedAssemblyPaths);
         }
     }
 

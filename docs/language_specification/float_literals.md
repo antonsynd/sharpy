@@ -89,7 +89,8 @@ Two limits:
 - Only a **literal** narrows. A `float64`-typed *expression* or variable still requires an explicit
   cast: `x: float32 = y` is SPY0220 for `y: float`.
 - The value must be within `float32`'s range. `x: float32 = 1e40` is SPY0220, not a silent infinity.
-  The same holds for `decimal`, whose range is about ±7.9e28: `d: decimal = 1e29` is SPY0220.
+  The same holds for `decimal`, whose range is about ±7.9e28: `d: decimal = 1e29` is SPY0220, and
+  so does a non-zero literal below decimal's smallest non-zero value: `d: decimal = 1e-30` is SPY0220.
 
 This is a deliberate divergence from C#, which rejects `float f = 0.1;` outright. Precision loss
 within range is accepted — writing the annotation is taken as asking for it.
@@ -113,10 +114,19 @@ def main() -> None:
     # x = 1e400                           # ERROR (SPY0210): Float literal '1e400' is too large for 'double'
     # y = 1e39f                           # ERROR (SPY0210): Float literal '1e39' is too large for 'float'
     # z = 1e29m                           # ERROR (SPY0210): Float literal '1e29' is too large for 'decimal'
+    tiny = 1e-28m                         # decimal's smallest non-zero value
+    print(tiny)                           # 0.0000000000000000000000000001
+    print(1e-400)                         # 0.0
+    # w = 1e-30m                          # ERROR (SPY0210): Float literal '1e-30' is too small for 'decimal': its value would be zero
 ```
 
-A negated literal is checked by its digits, so `-1e400` is refused the same way. A literal too
-small to represent is not out of range: `1e-400` is `0.0`, as in Python.
+A negated literal is checked by its digits, so `-1e400` is refused the same way. Below the smallest
+non-zero value the types part ways. A `float32` or `float64` literal too small to represent is IEEE
+zero, not out of range: `1e-400` is `0.0`, as in Python. A non-zero `decimal` literal whose value
+would be zero (`1e-30m`, `1.5e-29m`; decimal's smallest non-zero magnitude is `1e-28`) is refused
+with SPY0210, on the suffixed and the slot-narrowed spelling alike, because a decimal is chosen for
+exact values and a silent zero is the wrong one. A literal with more than decimal's 28–29
+significant digits is rounded, not refused (the `decimal-literal-28-digit-precision` deviation).
 
 *Implementation*
 - *✅ Native - Direct mapping to C# float literals with compiler-inserted suffixes.*

@@ -2632,6 +2632,13 @@ internal partial class TypeChecker
         var rightConverts = ImplicitConversions.IsImplicitIntegerConstantConversion(
             right, rightType, leftType, resolver);
 
+        // The converted constant's cast (#2344) is recorded — or forgotten — on every check, so a
+        // lambda body re-checked under other parameter types keeps no stale fact.
+        _semanticInfo.SetIntegerConstantCast(left,
+            leftConverts && !rightConverts && ImplicitConversions.RequiresConstantCast(leftType, rightType) ? rightType : null);
+        _semanticInfo.SetIntegerConstantCast(right,
+            rightConverts && !leftConverts && ImplicitConversions.RequiresConstantCast(rightType, leftType) ? leftType : null);
+
         if (leftConverts && !rightConverts)
             return (rightType, rightType);
         if (rightConverts && !leftConverts)

@@ -836,7 +836,9 @@ internal partial class TypeChecker
         return expr switch
         {
             IntegerLiteral il => Shared.IntegerLiteralClassifier.Classify(il.Value, il.Suffix).Type,
-            FloatLiteral fl => fl.Suffix?.ToUpperInvariant() == "F" ? BuiltinType.Float32 : BuiltinType.Double,
+            // The literal-typing arm's own table (#2344): a second one here had `f` and no `m`, so
+            // `lambda x: x * 1.5m` pre-typed `x` as float64.
+            FloatLiteral fl => Shared.FloatLiteralClassifier.TypeOf(fl.Suffix),
             StringLiteral => BuiltinType.Str,
             BooleanLiteral => BuiltinType.Bool,
             Identifier id => (_symbolTable.Lookup(id.Name) as VariableSymbol)?.Type,

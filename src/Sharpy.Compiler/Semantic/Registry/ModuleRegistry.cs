@@ -312,12 +312,28 @@ internal class ModuleRegistry
     }
 
     /// <summary>
-    /// Get the file paths of all assemblies that contributed modules actually
-    /// used during compilation. Sharpy.Core is always included.
+    /// The file paths of the assemblies whose modules the CURRENT compilation used — recorded since
+    /// the last <see cref="BeginCompilation"/>, or since construction for a registry built for one
+    /// compilation.
     /// </summary>
     public IReadOnlySet<string> GetUsedAssemblyPaths()
     {
         return new HashSet<string>(_usedAssemblyPaths.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Starts a compilation on a registry that outlives it: forgets the assemblies the previous
+    /// compilation used, so <see cref="GetUsedAssemblyPaths"/> answers for this one alone (#2343).
+    /// The used set is a per-compilation answer kept on a per-registry object; a
+    /// <see cref="Compiler"/> builds one registry and runs every compilation on it, so it calls
+    /// this at each entry point. Loaded assemblies, discovered symbols and caches are kept — they
+    /// are facts about the references, not about a program. A registry shared by CONCURRENT
+    /// compilations (<see cref="CompilerApi"/>'s analysis cache) has no per-compilation answer;
+    /// nothing reads its used set.
+    /// </summary>
+    public void BeginCompilation()
+    {
+        _usedAssemblyPaths.Clear();
     }
 
     /// <summary>

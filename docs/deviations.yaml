@@ -2249,3 +2249,24 @@ deviations:
         def main():
             𝒳 = 1         # SPY0015: Unexpected character: '�' (the lone high surrogate U+D835)
         # control — a BMP letter: `été = 1` then `print(été)` prints 1
+
+  - id: decimal-literal-28-digit-precision
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "`decimal.Decimal` keeps every digit of the text it is built from: `Decimal('1.0000000000000000000000000000001')` prints all 32 significant digits and is not equal to `Decimal(1)`. Python has no decimal literal; the context's 28-digit precision applies to arithmetic, not to construction."
+    sharpy_behavior: "A `decimal` literal is `System.Decimal` (Axiom 1): 28–29 significant digits, so a literal with more is rounded to the nearest representable value — `1.0000000000000000000000000000001m` is `1.0000000000000000000000000000` and equals `1m`, as in C#. Rounding is not refusal: only a non-zero literal whose value becomes ZERO is refused (SPY0210, `1e-30m`, R-IA). Recorded under R-IA (#2344)."
+    spec_ref: docs/language_specification/float_literals.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        d = Decimal('1.0000000000000000000000000000001')
+        print(d)                  # 1.0000000000000000000000000000001
+        print(d == Decimal(1))    # False
+      sharpy: |
+        def main():
+            print(1.0000000000000000000000000000001m)          # 1.0000000000000000000000000000
+            print(1.0000000000000000000000000000001m == 1m)    # True

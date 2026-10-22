@@ -269,7 +269,8 @@ public static class DiagnosticCodes
         public const string QuestionMarkInFinally = "SPY0211";           // Active
         // SPY0210: Numeric literal out of range for its own type. Integer literals since #1314
         // (never previously issued — established via full-history pickaxe, 3 comment-only commits:
-        // e98b3d7c4, 4738b9265, 5b40df995); float, float32 and decimal literals since #2340 (R-HU).
+        // e98b3d7c4, 4738b9265, 5b40df995); float, float32 and decimal literals since #2340 (R-HU);
+        // a non-zero decimal literal whose value would be zero since #2344 (R-IA).
         public const string NumericLiteralOutOfRange = "SPY0210";       // Active
         // Claims the SPY0212 reservation made for round-8 batch D. The bare spelling of a builtin
         // name always denotes the builtin — types and functions uniformly — so a user symbol with

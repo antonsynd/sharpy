@@ -113,6 +113,7 @@ public class Compiler
         // single shared definition of the merge (also used by CompilerApi.AnalyzeProject), so the
         // compile and analyze paths can never diverge (#1109). MaxErrors comes from options only.
         var projectOptions = ProjectOptionsMerge.Merge(_options, projectConfig);
+        _moduleRegistry?.BeginCompilation();
 
         // Resolve NuGet package references so their types are available during semantic analysis
         if (_moduleRegistry != null && projectConfig.PackageReferences.Count > 0)
@@ -183,6 +184,7 @@ public class Compiler
         bool preserveTrivia = false)
     {
         _logger.LogInfo($"Starting analysis of {filePath}");
+        _moduleRegistry?.BeginCompilation();
 
         var entryFilePath = File.Exists(filePath) ? Path.GetFullPath(filePath) : filePath;
 
@@ -230,6 +232,7 @@ public class Compiler
             SemanticInfo = entryUnit?.FileSemanticInfo ?? model.SemanticInfo,
             SemanticBinding = model.SemanticBinding,
             ModuleRegistry = _moduleRegistry,
+            UsedAssemblyPaths = UsedAssemblySnapshot(),
             GeneratedCSharpCode = null,
             Metrics = entryUnit?.Metrics,
             SourceText = new SourceText(sourceCode, originalFilePath),
@@ -237,6 +240,13 @@ public class Compiler
             CommentSpans = preserveTrivia ? entryUnit?.CommentSpans : null
         };
     }
+
+    /// <summary>
+    /// This compilation's used assemblies, copied when it ends: the registry is reused by the next
+    /// compilation, which starts by forgetting them (#2343).
+    /// </summary>
+    private IReadOnlySet<string> UsedAssemblySnapshot()
+        => _moduleRegistry?.GetUsedAssemblyPaths() ?? new HashSet<string>();
 
     public CompilationResult Compile(string sourceCode, string filePath) =>
         Compile(sourceCode, filePath, CancellationToken.None);
@@ -251,6 +261,7 @@ public class Compiler
     public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken)
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
+        _moduleRegistry?.BeginCompilation();
 
         // The entry file's source is fed in-memory (see SyntheticProject.BuildConfig) keyed by
         // the path below, so no temp file is created and the caller's path is preserved verbatim
@@ -336,6 +347,7 @@ public class Compiler
             SemanticInfo = model?.SemanticInfo,
             SemanticBinding = model?.SemanticBinding,
             ModuleRegistry = _moduleRegistry,
+            UsedAssemblyPaths = UsedAssemblySnapshot(),
             GeneratedCSharpCode = entryUnit?.GeneratedCSharp,
             GeneratedCSharpFiles = generatedFiles,
             Metrics = entryUnit?.Metrics,
@@ -365,6 +377,13 @@ public class CompilationResult
     public SemanticInfo? SemanticInfo { get; init; }
     public ISemanticQuery? SemanticQuery => SemanticInfo;
     internal ModuleRegistry? ModuleRegistry { get; init; }
+
+    /// <summary>
+    /// File paths of the stdlib/reference assemblies THIS compilation used, copied when it ended —
+    /// a later compilation on the same <see cref="Compiler"/> neither adds to it nor clears it (#2343).
+    /// </summary>
+    public IReadOnlySet<string> UsedAssemblyPaths { get; init; } = new HashSet<string>();
+
     public string? GeneratedCSharpCode { get; init; }
 
     /// <summary>
