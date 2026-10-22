@@ -1,0 +1,14 @@
+# Positive control for #2319: a fresh-named `type` alias in a function body and in a block
+# inside a function stays legal and block-scoped, and the program prints through each alias.
+def scale(n: int) -> str:
+    type Count = int
+    doubled: Count = n * 2
+    if doubled > 4:
+        type Label = str
+        tag: Label = "big"
+        return f"{tag}:{doubled}"
+    return f"small:{doubled}"
+
+def main() -> None:
+    print(scale(1))
+    print(scale(5))

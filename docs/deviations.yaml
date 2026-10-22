@@ -334,7 +334,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "A class statement may take any builtin name: `class double:` rebinds `double` in the module namespace, and annotations — which CPython does not resolve statically — are unaffected."
-    sharpy_behavior: "A TYPE declaration (class/struct/interface/enum/union/delegate) may not take the bare spelling of a builtin TYPE name. A type declaration enters the namespace annotations resolve through, so `x: double` would become ambiguous, and Sharpy resolves annotations statically. Backtick-escape the name to declare a user type with that spelling. Bindings in VALUE position are NOT refused — see `builtin-name-shadowing-in-value-position`."
+    sharpy_behavior: "A TYPE declaration (class/struct/interface/enum/union/delegate) or a `type` alias may not take the bare spelling of a builtin TYPE name, at every position — module, class body, function body, block. A type declaration enters the namespace annotations resolve through, so `x: double` would become ambiguous, and Sharpy resolves annotations statically. Backtick-escape the name to declare a user type or alias with that spelling. Bindings in VALUE position are NOT refused — see `builtin-name-shadowing-in-value-position`."
     spec_ref: docs/language_specification/name_mangling.md
     existing_diagnostic: SPY0212
     planned_diagnostic: null
