@@ -208,23 +208,88 @@ public class ReplSessionTests
     }
 
     [Fact]
-    public async Task EvaluateAsync_DecoratedImportMixedWithExpression_ClassifiedExecutable()
+    public async Task EvaluateAsync_DecoratedImportMixedWithExpression_ImportAtModuleLevelPrintInMain()
     {
         var session = new ReplSession();
 
-        // A submission mixing a (module-level) decorated import with an executable statement is
-        // classified executable overall — the `statements.All(IsModuleLevelStatement)` short-circuit
-        // on the non-module-level expression is unchanged by the unwrap.
+        // A submission mixing a decorated import with an executable statement is split (P21e route
+        // cell of R-CS, #2063): the import is registered at module level — where the user wrote it —
+        // and the executable statement is hoisted into main(). Hoisting the import into main() too
+        // would put it at a function position, which is SPY0708.
         var result = await session.EvaluateAsync("@suppress(\"SPY0452\")\nimport math\nprint(\"hi\")");
         Assert.True(result.Success, FormatDiagnostics(result));
         Assert.Equal("hi" + Environment.NewLine, result.Output);
 
-        // Hoisted into main() (indented), not registered at module level.
         var src = session.GetAccumulatedSource();
+        int suppressIdx = src.IndexOf("@suppress(\"SPY0452\")", StringComparison.Ordinal);
         int importIdx = src.IndexOf("import math", StringComparison.Ordinal);
         int mainIdx = src.IndexOf("def main", StringComparison.Ordinal);
-        Assert.True(importIdx > mainIdx && mainIdx >= 0,
-            $"mixed submission must be hoisted into main():\n{src}");
+        int printIdx = src.IndexOf("    print(\"hi\")", StringComparison.Ordinal);
+        Assert.True(suppressIdx >= 0 && suppressIdx < importIdx && importIdx < mainIdx,
+            $"the decorated import (decorator included) must sit at module level before main():\n{src}");
+        Assert.True(printIdx > mainIdx,
+            $"the executable statement must be hoisted into main():\n{src}");
+    }
+
+    // -------------------------------------------------------------------------
+    // Mixed-submission split (P21e route cell of R-CS, #2063): a mixed submission's imports and
+    // type definitions are registered at module level; everything else stays in main(); the two
+    // halves commit together, only on success.
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task EvaluateAsync_MixedImportAndUse_ImportIsUsableInTheSameSubmission()
+    {
+        var session = new ReplSession();
+
+        // Base: the import was hoisted into main(), bound nothing, and the use was SPY0200.
+        var result = await session.EvaluateAsync("import math\nprint(math.sqrt(16.0))");
+        Assert.True(result.Success, FormatDiagnostics(result));
+        Assert.Equal("4.0" + Environment.NewLine, result.Output);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_MixedClassAndUse_ClassIsDeclaredAtModuleLevel()
+    {
+        var session = new ReplSession();
+
+        // Base: the class was hoisted into main(), owned no symbol, and was SPY0202.
+        var result = await session.EvaluateAsync("class A:\n    x: int = 1\nprint(A().x)");
+        Assert.True(result.Success, FormatDiagnostics(result));
+        Assert.Equal("1" + Environment.NewLine, result.Output);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_FailedMixedSubmission_RegistersNeitherHalf()
+    {
+        var session = new ReplSession();
+
+        var failed = await session.EvaluateAsync("import math\nprint(undefined_name)");
+        Assert.False(failed.Success, "the submission uses an undefined name and must fail");
+
+        // The module-level half rolled back with the failed main() half.
+        Assert.DoesNotContain("import math", session.GetAccumulatedSource(), StringComparison.Ordinal);
+        Assert.Equal(0, session.EvaluationCount);
+
+        var use = await session.EvaluateAsync("math.sqrt(16.0)");
+        Assert.False(use.Success, "math was never imported, so its use must be refused");
+        Assert.Contains(use.Diagnostics, d => d.Code == "SPY0200");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_MixedDefCapturingAMainLocal_StaysInMain()
+    {
+        var session = new ReplSession();
+
+        // The split is narrow: a def stays in main() (as do aliases and executable statements), so
+        // it may capture main's locals exactly as before.
+        var result = await session.EvaluateAsync("x = 5\ndef f() -> int:\n    return x\nprint(f())");
+        Assert.True(result.Success, FormatDiagnostics(result));
+        Assert.Equal("5" + Environment.NewLine, result.Output);
+
+        var src = session.GetAccumulatedSource();
+        Assert.True(src.IndexOf("    def f() -> int:", StringComparison.Ordinal) > src.IndexOf("def main", StringComparison.Ordinal),
+            $"the def must stay inside main():\n{src}");
     }
 
     [Fact]
