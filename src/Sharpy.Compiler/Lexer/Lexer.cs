@@ -399,10 +399,16 @@ public partial class Lexer
         {
             _cancellationToken.ThrowIfCancellationRequested();
 
-            Token token;
             try
             {
-                token = NextToken();
+                // The token is read and kept inside the try, so no statement after it reads a variable the
+                // catch path leaves unassigned (Stryker's statement-removal mutant otherwise hits CS0165 and
+                // safe mode drops every mutation in this method — P68 Design Decision 8, #2300).
+                var token = NextToken();
+                tokens.Add(token);
+
+                if (token.Type == TokenType.Eof)
+                    break;
             }
             catch (LexerAbortException)
             {
@@ -454,11 +460,6 @@ public partial class Lexer
                 RecoverFromError(droppedFrom, resumesAfterUnclosedField);
                 continue;
             }
-
-            tokens.Add(token);
-
-            if (token.Type == TokenType.Eof)
-                break;
         }
 
         if (_preserveTrivia)

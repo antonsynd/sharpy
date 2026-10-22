@@ -152,15 +152,15 @@ public class ErrorCompletenessPropertyTests
     /// <c>GenTyped.NarrowedBlock</c>'s first caller is sound by construction (#2288 Phase 4): every
     /// RAW sample of <c>TypedProgram(WithOptionals, …, withStatements: true)</c> analyses clean —
     /// judged per sample, never filtered — and the share that carries a narrowing block is printed
-    /// and must be non-zero, so the soundness claim covers the block. Fuel 1: at fuel 2 the generator
-    /// can nest a conditional in a conditional's test, which the Unparser prints unparenthesized
-    /// (#2169) — a cell of that pin, not of this generator.
+    /// and must be non-zero, so the soundness claim covers the block. Fuel 2, so the generator nests
+    /// conditionals (held at fuel 1 while the Unparser wrote a conditional in a conditional's test
+    /// position without parentheses, #2169).
     /// </summary>
     [Fact]
     public void NarrowedProgram_AnalysesClean()
     {
         int narrowedTested = 0;
-        var verdicts = ErrorInjector.JudgeSamples(ProgramWithNarrowing(fuel: 1), module =>
+        var verdicts = ErrorInjector.JudgeSamples(ProgramWithNarrowing(fuel: 2), module =>
         {
             if (HasNarrowedBlock(module))
                 Interlocked.Increment(ref narrowedTested);

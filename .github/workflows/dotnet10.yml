@@ -353,6 +353,12 @@ jobs:
     name: Test Compiler (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
+    env:
+      # The numeric-literal twin (Sharpy.Compiler.Tests.Lexer.NumericLiteralTwinTests, #2300) FAILS
+      # instead of skipping when no Python 3.12+ interpreter is found: a runner that lost the
+      # "Setup Python" step below would otherwise pass the twin vacuously. Job level, so every shard
+      # inherits it. Only the new twin reads it today; the older differential twins still soft-skip.
+      SHARPY_REQUIRE_PYTHON_ORACLE: "1"
     strategy:
       fail-fast: false
       matrix:

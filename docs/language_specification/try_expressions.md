@@ -53,7 +53,7 @@ exception. In such cases, the result type is always `Result[T, Exception]` where
 
 **Precedence Rules:**
 
-The `try` expression has very low precedence (lower than `to`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
+The `try` expression has very low precedence (lower than `as!`/`as?`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
 
 ```python
 # try captures the full expression including arithmetic

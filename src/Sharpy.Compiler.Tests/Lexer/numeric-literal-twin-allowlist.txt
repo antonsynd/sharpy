@@ -1,0 +1,17 @@
+# NumericLiteralTwinTests allowlist (#2300, P68 Phase 1 — row C1).
+#
+# One row per numeric-literal spelling on which CPython 3.12 and the Sharpy lexer disagree at the
+# program altitude ("one numeric constant with the same value, or refused"). Format:
+#
+#   <spelling> => <Sharpy's verdict today: int:<n> | float:<IEEE bits> | refused> # #NNNN <reason>
+#
+# The pin is checked: if Sharpy's verdict on the spelling changes, the row fails (it admits
+# today's disagreement, never a second change on the same spelling).
+#
+# A row without a `# #NNNN` issue cite fails; a row naming a spelling the twin does not compare
+# fails; a row whose spelling now agrees fails as stale (drain on fix). A row leaves only by an
+# owner ruling: a deviation-ledger entry (the spelling moves to the twin's Sharpy-only table)
+# or a promoted lexer-defect issue (the row re-cites it and drains when the fix lands).
+
+01 => int:1 # #2300 leading-zero decimal integer — CPython refuses ("leading zeros in decimal integer literals are not permitted"), Sharpy lexes Integer 1; spec silent; DEVIATION-by-default (python-fidelity-scope D5 a) until ruled at /batch-issues
+0_1 => int:1 # #2300 the same leading-zero decimal integer cell spelled with a digit separator

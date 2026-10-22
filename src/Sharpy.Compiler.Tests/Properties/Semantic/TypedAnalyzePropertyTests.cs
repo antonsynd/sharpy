@@ -20,7 +20,7 @@ public class TypedAnalyzePropertyTests
 
     /// <summary>
     /// <c>GenTyped.TypedProgram</c> over three bindings: every raw sample analyses clean (or is a
-    /// pinned known red — the #2169 nested-conditional cell). Before #2288 the lane passed with half
+    /// pinned known red in <c>KnownGeneratorPins</c>). Before #2288 the lane passed with half
     /// its samples refused, and a throw was swallowed.
     /// </summary>
     [Fact]

@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.Tests.Lexer;
 /// spans lines". A document with a lexer error is outside the oracle (the lexer's spans stop at the abort),
 /// so the hand rows assert a clean lex first — a row that errors is a test defect, not a vacuous pass.
 /// </summary>
-public class LiteralLossScannerDifferentialTests
+public partial class LiteralLossScannerDifferentialTests
 {
     private readonly ITestOutputHelper _output;
 

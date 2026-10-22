@@ -1206,8 +1206,7 @@ public class TypedGeneratorRosterTests
     // The compiler-side defects the raw corpus draws are pinned ONCE, in KnownGeneratorPins (shared with
     // the generated lane's RejectionSink, #2288): a sample is tolerated (excluded from the corpus, counted,
     // printed) only when its PRE-unparse AST has the pinned shape AND every re-parse error carries the
-    // pin's code; any other parse error stays red. ParsePins_StillFire requires every pin to tolerate at
-    // least one sample of the fixed-seed corpus, so a pin drains with its fix instead of going stale.
+    // pin's code; any other parse error stays red. The roster is empty since the #2169 pin drained.
 
     private sealed record RawControlResult(int RowsTested, IReadOnlyList<string> Failures,
         IReadOnlyDictionary<KnownGeneratorPins.ParsePin, int> PinHits, IReadOnlyList<(string Row, int Hits)> RowHits, string CorpusHash, TimeSpan Elapsed);
@@ -1281,21 +1280,6 @@ public class TypedGeneratorRosterTests
         Assert.True(result.RowsTested > 0, "no Y-generated row was checked — the control is vacuous");
         Assert.True(result.Failures.Count == 0,
             $"{result.Failures.Count} Y-generated row(s) fail the raw control:\n  " + string.Join("\n  ", result.Failures));
-    }
-
-    /// <summary>Every parse pin still tolerates at least one sample: when the pinned defect is fixed the
-    /// pin goes red here and is dropped, never left behind as a silent exemption.</summary>
-    [Fact]
-    public void ParsePins_StillFire()
-    {
-        var result = RawControl.Value;
-        PrintRawControl(result);
-        var stale = result.PinHits.Where(kv => kv.Value == 0)
-            .Select(kv => $"{kv.Key.Pin.Issue} ({kv.Key.Code}): {kv.Key.Pin.Observed}")
-            .ToList();
-        Assert.True(stale.Count == 0,
-            "parse pin(s) tolerated no sample of the fixed-seed corpus — the defect is fixed; drop the pin:\n  "
-            + string.Join("\n  ", stale));
     }
 
     private sealed class RawSampleException(string message) : Exception(message);

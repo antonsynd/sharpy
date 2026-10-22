@@ -154,7 +154,7 @@ type *S* and target type *T*:
 
 `float` and `float64` are aliases for the 64-bit `double`. Narrowing conversions (e.g. `long → int`,
 `double → int`) are never implicit and never make a candidate applicable — they require an explicit
-`to` conversion at the call site.
+`as!` cast at the call site.
 
 If applicability leaves **zero** candidates, `SPY0354` (*no matching overload*) is reported. If it
 leaves exactly one, that candidate is selected. If it leaves more than one, betterness decides.

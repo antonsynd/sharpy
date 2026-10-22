@@ -12,9 +12,10 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 /// <para>
 /// A sample is explained by a pin only when its PRE-unparse AST has the pinned shape AND re-parsing
 /// the unparsed source yields parse errors that ALL carry the pin's code: any other parse error, any
-/// semantic refusal of a parseable program, and any throw stay unexplained. Each pin must keep
-/// firing (the roster's <c>ParsePins_StillFire</c>), so it drains with its fix instead of going
-/// stale silently. Pins are constructed as <c>new KnownRedRefusal("#N", …)</c> so
+/// semantic refusal of a parseable program, and any throw stay unexplained. The roster is empty
+/// since its one pin, the #2169 Unparser cell (a conditional in a conditional's test position
+/// written without parentheses), was fixed and deleted with its staleness guard (ruling R-HP). Pins
+/// are constructed as <c>new KnownRedRefusal("#N", …)</c> so
 /// <c>build_tools/allowlist_issue_state.py</c>'s <c>KNOWNRED_CELL_RE</c> sees the cite — a pin
 /// citing a CLOSED issue reddens the <c>/push</c> gate.
 /// </para>
@@ -25,11 +26,7 @@ internal static class KnownGeneratorPins
     /// produces, <paramref name="AstShape"/> the pre-unparse node shape that produces it.</summary>
     public sealed record ParsePin(KnownRedRefusal Pin, string Code, Func<Node, bool> AstShape);
 
-    public static readonly IReadOnlyList<ParsePin> ParsePins = new ParsePin[]
-    {
-        new(new KnownRedRefusal("#2169", "Unparser prints a conditional in a conditional's test position without parentheses → SPY0104"),
-            "SPY0104", n => n is ConditionalExpression { Test: ConditionalExpression }),
-    };
+    public static readonly IReadOnlyList<ParsePin> ParsePins = Array.Empty<ParsePin>();
 
     /// <summary>The pin that explains <paramref name="parseErrors"/> — the re-parse errors of the
     /// source unparsed from <paramref name="origin"/> — or null. An empty error list is never

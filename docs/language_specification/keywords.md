@@ -43,7 +43,6 @@ The following are reserved keywords in Sharpy:
 | `return` | Return statement |
 | `struct` | Struct declaration |
 | `True` | Boolean true literal |
-| `to` | Type coercion operator |
 | `try` | Try block |
 | `type` | Type alias declaration |
 | `while` | While loop |
