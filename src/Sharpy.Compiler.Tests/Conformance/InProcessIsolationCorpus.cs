@@ -67,9 +67,11 @@ internal sealed record IsolationRoster(
 ///   <c>System.IO</c> loads a trusted-platform assembly through the process-wide gate.</item>
 ///   <item><c>decorators/bracket_attr_import_used_1429</c> — a CLR attribute resolved through an
 ///   imported namespace (the attribute resolver's static presence cache).</item>
+///   <item><c>builtins_qualified_value_position_1463</c> — <c>import builtins</c>: the compilation
+///   records Sharpy.Core as a used assembly, and a reused <see cref="Compiler"/> used to report it for
+///   every later program (#2343); in every schedule, so the one-thread <c>order</c> bucket sees it.</item>
 /// </list>
-/// plus a stride-<see cref="SampleStride"/> sample of the single-file fixture corpus in ordinal
-/// test-name order (<see cref="Sample"/>).</para>
+/// plus a hash-keyed sample of the single-file fixture corpus (<see cref="Sample"/>).</para>
 ///
 /// <para><b>Triggers and probes</b> (the frozen-master seam, cells 2–3 and the F1/F2 type-definition
 /// twins): a trigger defines a builtin's name — <see cref="WarmInstanceTriggers.AllTexts"/> verbatim,
@@ -91,21 +93,26 @@ internal sealed record IsolationRoster(
 /// from the leaked copy. The namespace is unique per run so the unreferenced oracle, taken before any
 /// load of THIS run's library, cannot be answered by an earlier run's copy in the same process.</para>
 ///
-/// <para><b>Schedules</b> are seeded: thread <c>t</c> runs <see cref="Schedule"/> drawn from
-/// <c>new Random(ThreadSeeds[t])</c> — the library pair first, then every named program under both
-/// operations, every trigger under <c>analyze</c>, every probe under both operations and
-/// <see cref="SampleDrawsPerThread"/> draws from the sample, shuffled, then every probe once more under
-/// <c>analyze</c> (after the schedule's last trigger). The seeds are literals, so a schedule is the same
-/// in every mode, every repetition and every process; no unseeded <see cref="Random"/> and no
-/// <c>GetHashCode</c>.</para>
+/// <para><b>Schedules</b> are seeded: thread <c>t</c> runs <see cref="Schedule"/> keyed on
+/// <c>ThreadSeeds[t]</c> — the library pair first, then every named program under both operations,
+/// every trigger under <c>analyze</c>, every probe under both operations and the sample members the
+/// thread draws (about one in <see cref="SampleDrawStride"/>), ordered by a hash of the seed and the
+/// step, then every probe once more under <c>analyze</c> (after the schedule's last trigger). The seeds
+/// are literals, so a schedule is the same in every mode, every repetition and every process; no
+/// <see cref="Random"/> and no <c>GetHashCode</c>.</para>
+///
+/// <para><b>Stability (R-ID, #2343).</b> Sample membership, a thread's draws and a step's place in the
+/// order are each a <see cref="StableHash"/> of the program's own id — never its index among the
+/// others — so adding or deleting a fixture moves only that fixture. Under the stride-by-index sample
+/// it replaced, one new fixture moved 194 of 213 members and turned an unrelated cell red.</para>
 /// </summary>
 internal static class InProcessIsolationCorpus
 {
-    /// <summary>Every 16th single-file fixture (ordinal test-name order) joins the corpus.</summary>
+    /// <summary>A single-file fixture joins the sample when <see cref="StableHash"/> of its test name is <c>0 mod 16</c>.</summary>
     internal const int SampleStride = 16;
 
-    /// <summary>Sample draws per thread schedule, on top of the named roster's 12 steps.</summary>
-    internal const int SampleDrawsPerThread = 36;
+    /// <summary>A thread draws a sample member when <see cref="StableHash"/> of its seed and the member's id is <c>0 mod 6</c> (about 36 of ~215).</summary>
+    internal const int SampleDrawStride = 6;
 
     /// <summary>The fuzz seed and iteration of cell 1 (P41 P5.1, @ af6f30901).</summary>
     internal const int Cell1FuzzSeed = 2025;
@@ -128,6 +135,7 @@ internal static class InProcessIsolationCorpus
         "fstrings/format_no_dunder_format_refused_1988",
         "deferred_overload_annotated_pin_1589",
         "decorators/bracket_attr_import_used_1429",
+        "builtins_qualified_value_position_1463",
     };
 
     internal const string DriveInfoProgramId = "tpa/drive_info";
@@ -158,7 +166,7 @@ internal static class InProcessIsolationCorpus
     /// <summary>The literal roster, in roster order.</summary>
     internal static IReadOnlyList<IsolationProgram> Named => NamedValue.Value;
 
-    /// <summary>The stride sample of the single-file fixture corpus (named entries excluded).</summary>
+    /// <summary>The hash-keyed sample of the single-file fixture corpus (named entries excluded).</summary>
     internal static IReadOnlyList<IsolationProgram> Sample => SampleValue.Value;
 
     /// <summary>The typed probes, each with its oracle control.</summary>
@@ -197,15 +205,20 @@ internal static class InProcessIsolationCorpus
 
     /// <summary>
     /// Thread <paramref name="threadIndex"/>'s schedule over <paramref name="roster"/>: the library
-    /// pair (both operations, in roster order, first), then — shuffled on
-    /// <c>new Random(ThreadSeeds[threadIndex])</c> — every named program under both operations,
-    /// every trigger under <c>analyze</c>, every probe under both operations and
-    /// <see cref="SampleDrawsPerThread"/> (program, operation) draws from the sample; then every probe
-    /// under <c>analyze</c>, after the last trigger.
+    /// pair (both operations, in roster order, first), then — ordered by <see cref="StableHash"/> of
+    /// <c>ThreadSeeds[threadIndex]</c> and the step — every named program under both operations,
+    /// every trigger under <c>analyze</c>, every probe under both operations and the sample members
+    /// the thread draws (each under one operation, both picked by a hash of the seed and the id); then
+    /// every probe under <c>analyze</c>, after the last trigger. A step's draw and rank depend on its
+    /// own id alone, so a program entering or leaving the roster or the sample moves only itself.
     /// </summary>
     internal static IReadOnlyList<IsolationStep> Schedule(int threadIndex, IsolationRoster roster)
+        => Schedule(threadIndex, roster, Sample);
+
+    /// <summary><see cref="Schedule(int, IsolationRoster)"/> over an explicit sample (the stability guard's seam).</summary>
+    internal static IReadOnlyList<IsolationStep> Schedule(int threadIndex, IsolationRoster roster, IReadOnlyList<IsolationProgram> sample)
     {
-        var random = new Random(ThreadSeeds[threadIndex]);
+        var seed = ThreadSeeds[threadIndex];
         var steps = new List<IsolationStep>();
         foreach (var program in roster.LibraryPair)
         {
@@ -213,34 +226,49 @@ internal static class InProcessIsolationCorpus
             steps.Add(new IsolationStep(program, IsolationOperation.Compile));
         }
 
-        var head = steps.Count;
+        var body = new List<IsolationStep>();
         foreach (var program in roster.Named.Concat(roster.Probes))
         {
-            steps.Add(new IsolationStep(program, IsolationOperation.Analyze));
-            steps.Add(new IsolationStep(program, IsolationOperation.Compile));
+            body.Add(new IsolationStep(program, IsolationOperation.Analyze));
+            body.Add(new IsolationStep(program, IsolationOperation.Compile));
         }
 
         foreach (var program in roster.Triggers)
-            steps.Add(new IsolationStep(program, IsolationOperation.Analyze));
+            body.Add(new IsolationStep(program, IsolationOperation.Analyze));
 
-        for (var i = 0; i < SampleDrawsPerThread; i++)
+        foreach (var program in sample)
         {
-            var program = Sample[random.Next(Sample.Count)];
-            var operation = random.Next(2) == 0 ? IsolationOperation.Analyze : IsolationOperation.Compile;
-            steps.Add(new IsolationStep(program, operation));
+            if (StableHash($"{seed}:{program.Id}") % SampleDrawStride != 0)
+                continue;
+            var operation = StableHash($"{seed}:{program.Id}:operation") % 2 == 0 ? IsolationOperation.Analyze : IsolationOperation.Compile;
+            body.Add(new IsolationStep(program, operation));
         }
 
-        // Fisher–Yates over the body, on the same seeded generator.
-        for (var i = steps.Count - 1; i > head; i--)
-        {
-            var j = head + random.Next(i - head + 1);
-            (steps[i], steps[j]) = (steps[j], steps[i]);
-        }
+        steps.AddRange(body
+            .OrderBy(s => StableHash($"{seed}:{s.Program.Id}/{s.Operation}"))
+            .ThenBy(s => $"{s.Program.Id}/{s.Operation}", StringComparer.Ordinal));
 
         foreach (var program in roster.Probes)
             steps.Add(new IsolationStep(program, IsolationOperation.Analyze));
 
         return steps;
+    }
+
+    /// <summary>
+    /// 32-bit FNV-1a over the UTF-16 code units of <paramref name="text"/>: the same value in every
+    /// process and on every runtime, unlike <see cref="string.GetHashCode()"/>, which .NET randomizes
+    /// per process.
+    /// </summary>
+    internal static uint StableHash(string text)
+    {
+        var hash = 2166136261u;
+        foreach (var c in text)
+        {
+            hash ^= c;
+            hash *= 16777619u;
+        }
+
+        return hash;
     }
 
     // ================================================================
@@ -462,12 +490,21 @@ internal static class InProcessIsolationCorpus
 
     private static IReadOnlyList<IsolationProgram> BuildSample()
     {
+        var fixtures = SingleFileFixtures().ToDictionary(f => f.TestName, StringComparer.Ordinal);
+        return SelectSample(fixtures.Keys).Select(name => FromFixture(fixtures[name])).ToList();
+    }
+
+    /// <summary>
+    /// The sampled test names among <paramref name="testNames"/>, in ordinal order: the named roster
+    /// excluded, membership decided by each name's own <see cref="StableHash"/>.
+    /// </summary>
+    internal static IReadOnlyList<string> SelectSample(IEnumerable<string> testNames)
+    {
         var named = new HashSet<string>(NamedFixtureStems, StringComparer.Ordinal);
-        return SingleFileFixtures()
-            .Where(f => !named.Contains(f.TestName))
-            .OrderBy(f => f.TestName, StringComparer.Ordinal)
-            .Where((_, index) => index % SampleStride == 0)
-            .Select(FromFixture)
+        return testNames
+            .Where(name => !named.Contains(name))
+            .Where(name => StableHash(name) % SampleStride == 0)
+            .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
     }
 

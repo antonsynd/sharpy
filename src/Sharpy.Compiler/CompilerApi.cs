@@ -112,8 +112,7 @@ public sealed class CompilerApi
             Ast = result.Module,
             SemanticInfo = result.SemanticInfo,
             Metrics = result.Metrics,
-            UsedAssemblyPaths = result.ModuleRegistry?.GetUsedAssemblyPaths()
-                ?? (IReadOnlySet<string>)new HashSet<string>()
+            UsedAssemblyPaths = result.UsedAssemblyPaths
         };
     }
 
