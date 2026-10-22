@@ -230,53 +230,19 @@ def main():
         var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
         var syntaxTree = CSharpSyntaxTree.ParseText(csharpCode, parseOptions);
 
-        var references = new List<MetadataReference>
-        {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
-        };
-
-        // Add Sharpy.Core reference
-        string? runtimePath = null;
-        try
-        {
-            var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
-            var testDir = Path.GetDirectoryName(testAssemblyPath);
-
-            foreach (var targetFramework in new[] { "netstandard2.1", "netstandard2.0" })
-            {
-                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll");
-                runtimePath = Path.GetFullPath(runtimePath);
-
-                if (File.Exists(runtimePath))
-                {
-                    references.Add(MetadataReference.CreateFromFile(runtimePath));
-
-                    try
-                    {
-                        var netstandardAssembly = Assembly.Load("netstandard");
-                        references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
-                    }
-                    catch
-                    {
-                        var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
-                        var netstandardPath = Path.Combine(runtimeDir!, "netstandard.dll");
-                        if (File.Exists(netstandardPath))
-                        {
-                            references.Add(MetadataReference.CreateFromFile(netstandardPath));
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        catch
-        {
-            _output.WriteLine("Warning: Could not find Sharpy.Core");
-        }
+        // The shared framework's assemblies, and the Sharpy.Core this test process loaded (net10.0,
+        // copied beside it by the project reference) on every OS. The old probe looked for a
+        // netstandard2.1 Core that only a whole-solution build makes: the Windows CI job builds this
+        // project alone, found none, and the generated program failed to compile (CS0400) — hidden
+        // until #2342 by the write-and-return this method used to do.
+        var frameworkDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
+            .Split(Path.PathSeparator)
+            .Where(path => string.Equals(Path.GetDirectoryName(path), frameworkDir, StringComparison.OrdinalIgnoreCase))
+            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
+            .ToList();
+        var runtimePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
+        references.Add(MetadataReference.CreateFromFile(runtimePath));
 
         var compilation = CSharpCompilation.Create(
             "SharpyLineTest",
@@ -311,10 +277,7 @@ def main():
         }
 
         // Copy Sharpy.Core to temp dir
-        if (runtimePath != null && File.Exists(runtimePath))
-        {
-            File.Copy(runtimePath, Path.Combine(tempDir, "Sharpy.Core.dll"), overwrite: true);
-        }
+        File.Copy(runtimePath, Path.Combine(tempDir, "Sharpy.Core.dll"), overwrite: true);
 
         // Create runtimeconfig.json
         var runtimeConfig = @"{
