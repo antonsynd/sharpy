@@ -76,7 +76,6 @@ struct × module × Fresh  # #2021
 struct × type-body × Foo  # #2021
 struct × type-body × Fresh  # #2021
 
-# In-contract (one verdict per cell): `type Foo = …` beside module `class Foo` is reported twice by
-# Analyze — NameResolver refuses it, then the checker's RegisterScopedTypeAlias re-reports the same
-# SPY0204 (only Compile's DiagnosticBag dedupes). Drains in P21e Phase 3 (Task 1b).
-alias × module × Foo  # #2063
+# In-contract (one verdict per cell): `type Foo = …` beside module `class Foo` was reported twice by
+# Analyze. DRAINED in P21e Phase 3 (Task 1b: at a declaring position RegisterScopedTypeAlias no longer
+# re-reports a verdict NameResolver owns). Do not re-add a row here.
