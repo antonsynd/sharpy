@@ -15,6 +15,7 @@ namespace Sharpy.Itertools
     /// </summary>
     public static partial class ItertoolsModule
     {
+        [global::Sharpy.SharpyGenerator("_count_core")]
         internal static System.Collections.Generic.IEnumerable<int> _CountCore(int start, int step)
         {
             int n = start;
@@ -33,6 +34,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<int>(global::Sharpy.Itertools.ItertoolsModule._CountCore(start, step));
         }
 
+        [global::Sharpy.SharpyGenerator("_repeat_core")]
         internal static System.Collections.Generic.IEnumerable<T> _RepeatCore<T>(T elem, int n)
         {
             if (n < 0)
@@ -61,6 +63,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._RepeatCore<T>(elem, n));
         }
 
+        [global::Sharpy.SharpyGenerator("_cycle_core")]
         internal static System.Collections.Generic.IEnumerable<T> _CycleCore<T>(Sharpy.List<T> iterable)
         {
             Sharpy.List<T> saved = new global::Sharpy.List<T>(iterable);
@@ -87,6 +90,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._CycleCore<T>(iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_compress_core")]
         internal static System.Collections.Generic.IEnumerable<T> _CompressCore<T>(Sharpy.List<T> data, Sharpy.List<bool> selectors)
         {
             int i = 0;
@@ -111,6 +115,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._CompressCore<T>(data, selectors));
         }
 
+        [global::Sharpy.SharpyGenerator("_dropwhile_core")]
         internal static System.Collections.Generic.IEnumerable<T> _DropwhileCore<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             bool dropping = true;
@@ -140,6 +145,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._DropwhileCore<T>(predicate, iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_takewhile_core")]
         internal static System.Collections.Generic.IEnumerable<T> _TakewhileCore<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             foreach (var __loopVar_2 in iterable)
@@ -164,6 +170,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._TakewhileCore<T>(predicate, iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_filterfalse_core")]
         internal static System.Collections.Generic.IEnumerable<T> _FilterfalseCore<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             foreach (var __loopVar_3 in iterable)
@@ -184,6 +191,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._FilterfalseCore<T>(predicate, iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_islice_core")]
         internal static System.Collections.Generic.IEnumerable<T> _IsliceCore<T>(Sharpy.List<T> iterable, int stop)
         {
             int i = 0;
@@ -208,6 +216,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._IsliceCore<T>(iterable, stop));
         }
 
+        [global::Sharpy.SharpyGenerator("_islice_range_core")]
         internal static System.Collections.Generic.IEnumerable<T> _IsliceRangeCore<T>(Sharpy.List<T> iterable, int start, int stop, int step)
         {
             int i = 0;
@@ -238,6 +247,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._IsliceRangeCore<T>(iterable, start, stop, step));
         }
 
+        [global::Sharpy.SharpyGenerator("_pairwise_core")]
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T, T>> _PairwiseCore<T>(Sharpy.List<T> iterable)
         {
             Sharpy.List<T> items = new global::Sharpy.List<T>(iterable);
@@ -257,6 +267,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T, T>>(global::Sharpy.Itertools.ItertoolsModule._PairwiseCore<T>(iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_accumulate_core")]
         internal static System.Collections.Generic.IEnumerable<int> _AccumulateCore(Sharpy.List<int> iterable)
         {
             Sharpy.List<int> items = new global::Sharpy.List<int>(iterable);
@@ -284,6 +295,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<int>(global::Sharpy.Itertools.ItertoolsModule._AccumulateCore(iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_accumulate_core")]
         internal static System.Collections.Generic.IEnumerable<T> _AccumulateCore<T>(Sharpy.List<T> iterable, global::System.Func<T, T, T> func)
         {
             Sharpy.List<T> items = new global::Sharpy.List<T>(iterable);
@@ -311,6 +323,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._AccumulateCore(iterable, func));
         }
 
+        [global::Sharpy.SharpyGenerator("_accumulate_core")]
         internal static System.Collections.Generic.IEnumerable<T> _AccumulateCore<T>(Sharpy.List<T> iterable, global::System.Func<T, T, T> func, T initial)
         {
             T total = initial;
@@ -331,6 +344,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._AccumulateCore(iterable, func, initial));
         }
 
+        [global::Sharpy.SharpyGenerator("_chain_core")]
         internal static System.Collections.Generic.IEnumerable<T> _ChainCore<T>(Sharpy.List<T> first, Sharpy.List<T> second)
         {
             foreach (var __loopVar_7 in first)
@@ -354,6 +368,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._ChainCore<T>(first, second));
         }
 
+        [global::Sharpy.SharpyGenerator("_chain_core")]
         internal static System.Collections.Generic.IEnumerable<T> _ChainCore<T>(Sharpy.List<T> first, Sharpy.List<T> second, Sharpy.List<T> third)
         {
             foreach (var __loopVar_9 in first)
@@ -383,6 +398,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._ChainCore<T>(first, second, third));
         }
 
+        [global::Sharpy.SharpyGenerator("_chain_from_iterable_core")]
         internal static System.Collections.Generic.IEnumerable<T> _ChainFromIterableCore<T>(Sharpy.List<Sharpy.List<T>> iterables)
         {
             foreach (var __loopVar_12 in iterables)
@@ -404,6 +420,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._ChainFromIterableCore<T>(iterables));
         }
 
+        [global::Sharpy.SharpyGenerator("_starmap_core")]
         internal static System.Collections.Generic.IEnumerable<R> _StarmapCore<T1, T2, R>(global::System.Func<T1, T2, R> func, Sharpy.List<global::System.ValueTuple<T1, T2>> iterable)
         {
             foreach (var (a, b) in iterable)
@@ -420,6 +437,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<R>(global::Sharpy.Itertools.ItertoolsModule._StarmapCore<T1, T2, R>(func, iterable));
         }
 
+        [global::Sharpy.SharpyGenerator("_zip_longest_core")]
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T, T>> _ZipLongestCore<T>(Sharpy.List<T> first, Sharpy.List<T> second, T fillvalue)
         {
             int lenFirst = global::Sharpy.Builtins.Len(first);
@@ -446,6 +464,7 @@ namespace Sharpy.Itertools
         /// <summary>
         /// Make an iterator that returns consecutive keys and groups from the iterable.
         /// </summary>
+        [global::Sharpy.SharpyGenerator("groupby")]
         public static System.Collections.Generic.IEnumerable<global::System.ValueTuple<K, Sharpy.List<T>>> Groupby<T, K>(Sharpy.List<T> iterable, global::System.Func<T, K> key)
             where K : global::System.IEquatable<K>
         {
@@ -484,6 +503,7 @@ namespace Sharpy.Itertools
             yield return (currentKey, group);
         }
 
+        [global::Sharpy.SharpyGenerator("_product_core")]
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T1, T2>> _ProductCore<T1, T2>(Sharpy.List<T1> first, Sharpy.List<T2> second)
         {
             foreach (var __loopVar_14 in first)
@@ -505,6 +525,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T1, T2>>(global::Sharpy.Itertools.ItertoolsModule._ProductCore<T1, T2>(first, second));
         }
 
+        [global::Sharpy.SharpyGenerator("_product_core")]
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T1, T2, T3>> _ProductCore<T1, T2, T3>(Sharpy.List<T1> first, Sharpy.List<T2> second, Sharpy.List<T3> third)
         {
             foreach (var __loopVar_16 in first)
@@ -530,6 +551,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T1, T2, T3>>(global::Sharpy.Itertools.ItertoolsModule._ProductCore<T1, T2, T3>(first, second, third));
         }
 
+        [global::Sharpy.SharpyGenerator("_combinations_core")]
         internal static System.Collections.Generic.IEnumerable<Sharpy.List<T>> _CombinationsCore<T>(Sharpy.List<T> iterable, int r)
         {
             if (r < 0)
@@ -617,6 +639,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools.ItertoolsModule._CombinationsCore<T>(iterable, r));
         }
 
+        [global::Sharpy.SharpyGenerator("_permutations_core")]
         internal static System.Collections.Generic.IEnumerable<Sharpy.List<T>> _PermutationsCore<T>(Sharpy.List<T> iterable, int r)
         {
             Sharpy.List<T> pool = new global::Sharpy.List<T>(iterable);
@@ -727,6 +750,7 @@ namespace Sharpy.Itertools
             return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools.ItertoolsModule._PermutationsCore<T>(iterable, r));
         }
 
+        [global::Sharpy.SharpyGenerator("_combinations_with_replacement_core")]
         internal static System.Collections.Generic.IEnumerable<Sharpy.List<T>> _CombinationsWithReplacementCore<T>(Sharpy.List<T> iterable, int r)
         {
             if (r < 0)

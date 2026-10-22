@@ -55,7 +55,10 @@ internal sealed partial class LoweringPass
             irModules.Add(new IrModule(filePath, body.ToImmutable()));
         }
 
-        return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems, state.GeneratorFunctions);
+        return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems, state.GeneratorFunctions)
+        {
+            GeneratorQualifiedNames = state.GeneratorQualifiedNames,
+        };
     }
 
     private static IrStatement LowerStatement(Statement statement, SemanticInfo semanticInfo, LoweringState state)
@@ -64,7 +67,11 @@ internal sealed partial class LoweringPass
         // codegen consumers). The walk visits every FunctionDef — module, method, and nested — so
         // this captures them all. yield emission stays in the emitter (Roslyn builds the machine).
         if (statement is FunctionDef functionDef && semanticInfo.IsGenerator(functionDef))
+        {
             state.GeneratorFunctions.Add(functionDef);
+            // Python's __qualname__ (#2057, R-IF): the runtime prints `<generator object K.items>`.
+            state.GeneratorQualifiedNames[functionDef] = string.Concat(state.QualifiedNamePrefix) + functionDef.Name;
+        }
 
         if (statement is WithStatement withStatement)
             return LowerWithStatement(withStatement, semanticInfo, state);
@@ -78,7 +85,25 @@ internal sealed partial class LoweringPass
             return guard;
         }
 
+        // __qualname__'s nesting: a class contributes `C.`, a function `f.<locals>.` (Python's
+        // spelling), to everything declared inside it.
+        var scopeName = statement switch
+        {
+            ClassDef classDef => classDef.Name + ".",
+            StructDef structDef => structDef.Name + ".",
+            InterfaceDef interfaceDef => interfaceDef.Name + ".",
+            EnumDef enumDef => enumDef.Name + ".",
+            FunctionDef def => def.Name + ".<locals>.",
+            _ => null,
+        };
+        if (scopeName != null)
+            state.QualifiedNamePrefix.Add(scopeName);
+
         var children = LowerChildren(statement, semanticInfo, state);
+
+        if (scopeName != null)
+            state.QualifiedNamePrefix.RemoveAt(state.QualifiedNamePrefix.Count - 1);
+
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
         state.Index[statement] = ir;
         return ir;
@@ -297,6 +322,10 @@ internal sealed partial class LoweringPass
         public Dictionary<Node, IrNode> Index { get; } = new(ReferenceEqualityComparer.Instance);
         public Dictionary<WithItem, IrWithItem> WithItems { get; } = new(ReferenceEqualityComparer.Instance);
         public HashSet<FunctionDef> GeneratorFunctions { get; } = new(ReferenceEqualityComparer.Instance);
+        public Dictionary<FunctionDef, string> GeneratorQualifiedNames { get; } = new(ReferenceEqualityComparer.Instance);
+
+        /// <summary>The enclosing class/function segments of the statement being lowered (<c>C.</c>, <c>f.&lt;locals&gt;.</c>).</summary>
+        public List<string> QualifiedNamePrefix { get; } = new();
     }
 }
 
@@ -323,6 +352,9 @@ internal sealed record IrCompilation(
 
     private static readonly IReadOnlyDictionary<Expression, IrLoweredLoop> EmptyLoops =
         new Dictionary<Expression, IrLoweredLoop>(ReferenceEqualityComparer.Instance);
+
+    private static readonly IReadOnlyDictionary<FunctionDef, string> EmptyQualifiedNames =
+        new Dictionary<FunctionDef, string>(ReferenceEqualityComparer.Instance);
 
     private static readonly IReadOnlySet<ListLiteral> EmptyStackLiterals =
         new HashSet<ListLiteral>(ReferenceEqualityComparer.Instance);
@@ -365,6 +397,18 @@ internal sealed record IrCompilation(
     /// <c>SemanticInfo.IsGenerator</c> read (E2 #1056).
     /// </summary>
     public bool IsGenerator(FunctionDef functionDef) => GeneratorFunctions.Contains(functionDef);
+
+    /// <summary>
+    /// Python's <c>__qualname__</c> of each generator function (<c>gen</c>, <c>K.items</c>,
+    /// <c>main.&lt;locals&gt;.inner</c>), computed from the source nesting by the lowering walk.
+    /// Code generation stamps it on the emitted iterator method so the runtime prints a generator
+    /// object as python does, <c>&lt;generator object K.items&gt;</c>, without running it (#2057, R-IF).
+    /// </summary>
+    public IReadOnlyDictionary<FunctionDef, string> GeneratorQualifiedNames { get; init; } = EmptyQualifiedNames;
+
+    /// <summary>The <see cref="GeneratorQualifiedNames"/> entry of a generator function, or null.</summary>
+    public string? GeneratorQualifiedName(FunctionDef functionDef)
+        => GeneratorQualifiedNames.TryGetValue(functionDef, out var name) ? name : null;
 }
 
 /// <summary>

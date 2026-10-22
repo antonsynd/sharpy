@@ -549,6 +549,49 @@ namespace Sharpy
             return top != type && top.IsAbstract && top.IsSealed;
         }
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, string?> _generatorNames =
+            new System.Collections.Concurrent.ConcurrentDictionary<Type, string?>();
+
+        /// <summary>
+        /// The python <c>__qualname__</c> of the Sharpy generator function whose generator object has
+        /// type <paramref name="type"/>, or null (#2057, R-IF). A generator function is emitted as a C#
+        /// iterator method stamped <see cref="SharpyGeneratorAttribute"/>; its object is an instance of
+        /// the compiler-generated state machine nested in the method's declaring type, which C# links
+        /// back through <see cref="System.Runtime.CompilerServices.IteratorStateMachineAttribute"/> on
+        /// the method. LINQ's iterators and every unstamped iterator answer null.
+        /// </summary>
+        internal static string? SharpyGeneratorName(Type type)
+            => _generatorNames.GetOrAdd(type, FindSharpyGeneratorName);
+
+        private static string? FindSharpyGeneratorName(Type type)
+        {
+            Type? declaring = type.DeclaringType;
+            if (declaring == null
+                || !Attribute.IsDefined(type, typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), inherit: false))
+            {
+                return null;
+            }
+
+            // A generic iterator's state machine is a generic nested type; the attribute names its definition.
+            Type stateMachine = type.IsGenericType ? type.GetGenericTypeDefinition() : type;
+            const System.Reflection.BindingFlags all = System.Reflection.BindingFlags.DeclaredOnly
+                | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance;
+            foreach (var method in declaring.GetMethods(all))
+            {
+                var iterator = (System.Runtime.CompilerServices.IteratorStateMachineAttribute?)Attribute.GetCustomAttribute(
+                    method, typeof(System.Runtime.CompilerServices.IteratorStateMachineAttribute), inherit: false);
+                if (iterator?.StateMachineType == stateMachine)
+                {
+                    var stamp = (SharpyGeneratorAttribute?)Attribute.GetCustomAttribute(
+                        method, typeof(SharpyGeneratorAttribute), inherit: false);
+                    return stamp?.PythonQualifiedName;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Whether the type or a type it is nested in carries a Sharpy name/module attribute — the
         /// stamp the compiler puts on what it emits from Sharpy source. Narrower than

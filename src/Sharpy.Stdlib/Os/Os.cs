@@ -271,6 +271,7 @@ namespace Sharpy.OsModule
             throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
         }
 
+        [global::Sharpy.SharpyGenerator("_walk_core")]
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> _WalkCore(string top)
         {
             if (!global::System.IO.Directory.Exists(top))

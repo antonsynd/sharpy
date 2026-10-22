@@ -10,6 +10,7 @@ namespace YieldBasic
 {
     public static partial class YieldBasicModule
     {
+        [global::Sharpy.SharpyGenerator("count_up")]
         public static System.Collections.Generic.IEnumerable<int> CountUp(int n)
         {
 #line (2, 5) - (2, 10) 12 "yield_basic.spy"
