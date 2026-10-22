@@ -256,6 +256,127 @@ public class EmitterCarrierOnlyConformanceTests
         }
     }
 
+    // ---- the CLR-name visibility seam (#2320) ------------------------------------------------
+
+    /// <summary>The namespace root of the CLR-discovery layer, whose visibility seam CodeGen may not name.</summary>
+    private const string DiscoveryNamespaceRoot = "Sharpy.Compiler.Discovery";
+
+    /// <summary>
+    /// The emitter performs no reflection (Critical Rule 2), so it may not name the CLR-name
+    /// visibility seam: <c>AssemblyVisibility</c> — the ONE place a CLR name is resolved against
+    /// {framework} ∪ {the registry's references} (#2250) — or any discovery type whose own
+    /// surface carries it (a resolver handed the visibility to answer from). The deny set is
+    /// derived by reflection, so a resolver added tomorrow is denied the day it takes the seam.
+    ///
+    /// <para>The <see cref="CodeGenSources_NameOnlyMaterializedFactCarriers"/> deny universe is
+    /// the <c>Semantic</c> namespaces, so it never saw this: <c>IsClrTypeGenericInNamespace</c>
+    /// (<c>RoslynEmitter.CompilationUnit.cs</c>) asked <c>AssemblyVisibility.FrameworkOnly</c>
+    /// whether a <c>using</c> alias named an open generic, under a guard admitting any
+    /// <c>System.*</c> module — a referenced package in such a namespace was visible to the
+    /// checker and invisible there. The answer is now the imported symbol's
+    /// <c>CodeGenInfo.IsOpenGenericDefinition</c> (#2320).</para>
+    /// </summary>
+    [Fact]
+    public void CodeGenSources_NameNoClrVisibilitySeam()
+    {
+        var seam = VisibilitySeamNames();
+        seam.Should().Contain("AssemblyVisibility",
+            "the visibility seam is the type the deny set is anchored on; if it was renamed or moved "
+            + "out of the Discovery namespace this guard is derived from a type that no longer exists");
+
+        var violations = ScanCodeGenSources(seam, DiscoveryNamespaceSegments());
+        foreach (var violation in violations)
+            _output.WriteLine($"  {violation}");
+
+        violations.Should().BeEmpty(
+            "code generation performs no reflection: which CLR names are visible to this compilation "
+            + "is decided against the registry's visibility in discovery/semantic analysis and "
+            + "materialized for the emitter (CodeGenInfo / SemanticInfo). Seam types: "
+            + string.Join(", ", seam.OrderBy(n => n, StringComparer.Ordinal))
+            + "\nViolations:\n  " + string.Join("\n  ", violations));
+    }
+
+    /// <summary>
+    /// Positive and negative controls for <see cref="CodeGenSources_NameNoClrVisibilitySeam"/>:
+    /// the deleted emitter read, in every spelling it can take, is flagged; the name catalog
+    /// CodeGen legitimately consults (<c>ClrTypeBridge</c>, which answers from a static table)
+    /// is not in the seam set and is not flagged.
+    /// </summary>
+    [Fact]
+    public void SyntheticVisibilitySeamRead_IsFlagged()
+    {
+        var seam = VisibilitySeamNames();
+        var segments = DiscoveryNamespaceSegments();
+
+        var spellings = new (string Label, string Source)[]
+        {
+            ("the deleted #2320 read, namespace-qualified",
+                "class C { bool M(string n) { var framework = Discovery.AssemblyVisibility.FrameworkOnly; return framework.ResolveType(n) != null; } }"),
+            ("unqualified static read",
+                "class C { object M() => AssemblyVisibility.FrameworkOnly; }"),
+            ("fully qualified declaration",
+                "class C { private Sharpy.Compiler.Discovery.AssemblyVisibility _v; }"),
+        };
+        foreach (var (label, source) in spellings)
+        {
+            ScanSource("Mutation.cs", source, seam, segments).Should().NotBeEmpty(
+                $"a {label} is the emitter asking reflection a semantic question");
+        }
+
+        seam.Should().NotContain("ClrTypeBridge",
+            "ClrTypeBridge's surface takes no visibility — it is the Sharpy-name → C#-name catalog "
+            + "TypeSyntaxMapper reads, not a resolver");
+        ScanSource("Control.cs",
+                "class C { string? M(string n) => ClrTypeBridge.TryGetCSharpTypeName(n); }", seam, segments)
+            .Should().BeEmpty("a catalog lookup is not a visibility read");
+    }
+
+    /// <summary>
+    /// <c>AssemblyVisibility</c> and every type in the Discovery namespaces whose non-private
+    /// signature (property, field, method, constructor) carries it.
+    /// </summary>
+    private static HashSet<string> VisibilitySeamNames()
+    {
+        var discovery = DiscoveryUniverse();
+        var visibility = discovery.FirstOrDefault(t => t.Name == "AssemblyVisibility");
+        visibility.Should().NotBeNull("AssemblyVisibility is expected in the Discovery namespaces");
+
+        return discovery
+            .Where(t => t == visibility || SignatureTypes(t).Contains(visibility!))
+            .Select(SimpleName)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private static IReadOnlyList<Type> DiscoveryUniverse()
+    {
+        var assembly = typeof(SemanticInfo).Assembly;
+        Type?[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            types = ex.Types;
+        }
+
+        return types
+            .Where(t => t is not null)
+            .Select(t => t!)
+            .Where(t => t.Namespace is { } ns
+                        && (ns == DiscoveryNamespaceRoot
+                            || ns.StartsWith(DiscoveryNamespaceRoot + ".", StringComparison.Ordinal)))
+            .Where(t => !t.Name.Contains('<', StringComparison.Ordinal))
+            .ToList();
+    }
+
+    private static HashSet<string> DiscoveryNamespaceSegments()
+        => DiscoveryUniverse()
+            .Select(t => t.Namespace!)
+            .Distinct(StringComparer.Ordinal)
+            .SelectMany(ns => ns.Split('.'))
+            .ToHashSet(StringComparer.Ordinal);
+
     // ---- executable mutation cells (#1475, Task 3) --------------------------------------------
 
     /// <summary>

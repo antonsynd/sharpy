@@ -241,6 +241,19 @@ public sealed record CodeGenInfo
     public bool IsNamespaceSibling { get; init; }
 
     /// <summary>
+    /// For a from-imported type symbol: the imported name denotes a generic type DEFINITION — the
+    /// symbol's own type parameters, or, where a CLR namespace spells the name as a group of types
+    /// differing only in arity (<c>Action</c> / <c>Action`1</c>…, <see cref="TypeSymbol.ClrArityGroup"/>),
+    /// any generic member of that group. C# cannot alias an open generic type (CS0305), so code
+    /// generation emits no <c>using</c> alias for such an import (#2320). Decided here from the
+    /// arity group discovery built against the compilation registry's OWN visibility — the
+    /// framework set plus the registry's references — so a referenced package declaring a type in
+    /// a <c>System.*</c> namespace is seen exactly as the type checker sees it; the emitter used to
+    /// re-ask reflection against the framework set alone.
+    /// </summary>
+    public bool IsOpenGenericDefinition { get; init; }
+
+    /// <summary>
     /// Get the versioned C# name (includes version suffix for redeclared variables).
     /// </summary>
     public string GetVersionedCSharpName()
