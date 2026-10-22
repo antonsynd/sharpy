@@ -34,9 +34,11 @@ namespace Sharpy.Compiler.Tests.Lexer;
 /// CPython like any other.</para>
 /// <para><b>Sharpy-only syntax</b> is never compared with CPython. The suffix roster and the
 /// imaginary <c>j</c> are excluded by construction (no generated spelling contains a roster
-/// letter after a number); the trailing-dot floats are excluded by <see cref="SharpyOnly"/>,
-/// a literal (predicate, spec sentence) table whose cells are still CHECKED — Sharpy must refuse
-/// them, and CPython must accept them (an exclusion CPython agrees with is over-broad). Every
+/// letter after a number); the trailing-dot floats and the leading-zero decimal integers are
+/// excluded by <see cref="SharpyOnly"/>, a literal (predicate, spec sentence, Sharpy verdict)
+/// table whose cells are still CHECKED — Sharpy must give the row's verdict (refuse a
+/// trailing-dot float, accept <c>01</c>), and CPython the opposite one (an exclusion CPython
+/// agrees with is over-broad). Every
 /// excluded family is pinned to Sharpy's own token or diagnostic by
 /// <see cref="SharpyOnlyRows_LexAsTheSpecSays"/>.</para>
 /// <para><b>Ratchet.</b> A disagreement fails unless its spelling is a row of
@@ -105,14 +107,23 @@ public class NumericLiteralTwinTests
 
     /// <summary>
     /// Shared-grammar spellings whose Sharpy verdict is fixed by the spec, not by CPython. Each
-    /// cell matching a predicate must be refused by Sharpy AND accepted by CPython (else the
-    /// exclusion is over-broad); <see cref="SharpyOnlyRows_LexAsTheSpecSays"/> pins the tokens.
+    /// cell matching a predicate must get the row's Sharpy verdict (<c>SharpyAccepts</c>) AND the
+    /// opposite verdict from CPython (else the exclusion is over-broad);
+    /// <see cref="SharpyOnlyRows_LexAsTheSpecSays"/> pins the tokens.
     /// </summary>
-    private static readonly (string Name, Regex Predicate, string SpecSentence)[] SharpyOnly =
+    private static readonly (string Name, Regex Predicate, string SpecSentence, bool SharpyAccepts)[] SharpyOnly =
     {
         ("trailing-dot float",
             new Regex(@"^[0-9](?:_?[0-9])*\.(?:[eE][+-]?[0-9](?:_?[0-9])*)?$", RegexOptions.CultureInvariant),
-            "float_literals.md: \"Invalid - trailing decimal point without digit … # invalid = 5.   # ERROR: use 5.0 instead\""),
+            "float_literals.md: \"Invalid - trailing decimal point without digit … # invalid = 5.   # ERROR: use 5.0 instead\"",
+            false),
+        // A decimal INTEGER only: CPython accepts leading zeros in a float (01.5, 01e3), and an
+        // all-zero integer (00, 0_0), so neither is excluded.
+        ("leading-zero decimal integer",
+            new Regex(@"^(?=[0-9_]*[1-9])0(?:_?[0-9])+$", RegexOptions.CultureInvariant),
+            "integer_literals.md: \"Leading zeros are digits (C#'s rule): 007 is the decimal integer 7 and 0_1 is 1\" — "
+                + "docs/deviations.yaml leading-zero-decimal-integer (R-HT, #2300)",
+            true),
     };
 
     private static IEnumerable<Parts> BaseParts()
@@ -216,12 +227,14 @@ public class NumericLiteralTwinTests
         return all;
     }
 
-    private static string? ExclusionOf(string text)
+    private static string? ExclusionOf(string text) => SharpyOnlyRowOf(text)?.Name;
+
+    private static (string Name, Regex Predicate, string SpecSentence, bool SharpyAccepts)? SharpyOnlyRowOf(string text)
     {
-        foreach (var (name, predicate, _) in SharpyOnly)
+        foreach (var row in SharpyOnly)
         {
-            if (predicate.IsMatch(text))
-                return name;
+            if (row.Predicate.IsMatch(text))
+                return row;
         }
         return null;
     }
@@ -439,6 +452,17 @@ public class NumericLiteralTwinTests
         Assert.Null(ExclusionOf("1._5"));
         Assert.Null(ExclusionOf("1.5."));
         Assert.Null(ExclusionOf("0xFF."));
+
+        Assert.Equal("leading-zero decimal integer", ExclusionOf("01"));
+        Assert.Equal("leading-zero decimal integer", ExclusionOf("0_1"));
+        Assert.Equal("leading-zero decimal integer", ExclusionOf("007"));
+        Assert.Null(ExclusionOf("00"));     // all zeros: CPython accepts it, so it stays compared
+        Assert.Null(ExclusionOf("0_0"));
+        Assert.Null(ExclusionOf("0__1"));   // consecutive separators: both refuse, compared
+        Assert.Null(ExclusionOf("01_"));
+        Assert.Null(ExclusionOf("01.5"));   // a float: CPython accepts its leading zero
+        Assert.Null(ExclusionOf("01e3"));
+        Assert.Null(ExclusionOf("10"));
     }
 
     [Fact]
@@ -451,7 +475,7 @@ public class NumericLiteralTwinTests
         // Positive control: the rules fire on rows built to break them.
         var broken = AllowlistShapeViolations(new[]
         {
-            new AllowlistRow(1, "01", "int:1", "# no cite here"),
+            new AllowlistRow(1, "10", "int:10", "# no cite here"),
             new AllowlistRow(2, "0x1p3", "int:8", "# #2300 hex float is not in the matrix"),
             new AllowlistRow(3, "12.", "refused", "# #2300 Sharpy-only spelling"),
             new AllowlistRow(4, "00", "", "# #2300 no pinned verdict"),
@@ -511,14 +535,24 @@ public class NumericLiteralTwinTests
                     failures.Add($"FOLLOW {Show(s.Text)} + {name}: bare {sharpy.Show()} but followed {followed.Show()}  [{s.Origin}]");
             }
 
-            var exclusion = ExclusionOf(s.Text);
-            if (exclusion is not null)
+            if (SharpyOnlyRowOf(s.Text) is { } only)
             {
+                string exclusion = only.Name;
                 sharpyOnly++;
-                if (sharpy.Ok)
-                    failures.Add($"SHARPY-ONLY {Show(s.Text)} ({exclusion}): the spec refuses it, Sharpy lexes {sharpy.Show()}");
-                if (!cpython.Ok)
-                    failures.Add($"OVER-BROAD {Show(s.Text)} ({exclusion}): CPython refuses it too ({cpython.Detail}) — compare it instead of excluding it");
+                if (only.SharpyAccepts)
+                {
+                    if (!sharpy.Ok)
+                        failures.Add($"SHARPY-ONLY {Show(s.Text)} ({exclusion}): the spec accepts it, Sharpy gives {sharpy.Show()}");
+                    if (cpython.Ok)
+                        failures.Add($"OVER-BROAD {Show(s.Text)} ({exclusion}): CPython accepts it too ({cpython.Detail}) — compare it instead of excluding it");
+                }
+                else
+                {
+                    if (sharpy.Ok)
+                        failures.Add($"SHARPY-ONLY {Show(s.Text)} ({exclusion}): the spec refuses it, Sharpy lexes {sharpy.Show()}");
+                    if (!cpython.Ok)
+                        failures.Add($"OVER-BROAD {Show(s.Text)} ({exclusion}): CPython refuses it too ({cpython.Detail}) — compare it instead of excluding it");
+                }
                 continue;
             }
 
@@ -661,6 +695,15 @@ public class NumericLiteralTwinTests
         Add("1.e5", "Integer '1', Dot '.', Identifier 'e5'");
         foreach (var s in IntegerSuffixes.Concat(FloatSuffixes).Concat(InvalidSuffixes))
             Add("5." + s, $"Integer '5', Dot '.', Identifier '{s}'");
+
+        // integer_literals.md: "Leading zeros are digits (C#'s rule): 007 is the decimal integer 7 and
+        // 0_1 is 1" — docs/deviations.yaml leading-zero-decimal-integer (R-HT, #2300); CPython refuses
+        // them, so they left the twin's allowlist for this table.
+        Add("01", "Integer '01'");
+        Add("0_1", "Integer '01'");
+        Add("007", "Integer '007'");
+        Add("0_0_7", "Integer '007'");
+        Add("01L", "Integer '01L'");
         return data;
     }
 
