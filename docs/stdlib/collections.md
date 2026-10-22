@@ -36,6 +36,8 @@ Like Python's collections.ChainMap.
 | Name | Type | Description |
 |------|------|-------------|
 | `maps` | `list[dict[K, V]]` | The list of underlying mappings. |
+| `parents` | `ChainMap[K, V]` | A new ChainMap containing all maps except the first one. |
+| `count` | `int` | Gets the total number of unique keys across all maps. |
 
 ### `new_child(m: dict[K, V] | None = None) -> ChainMap[K, V]`
 

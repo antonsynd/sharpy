@@ -173,6 +173,7 @@ tracks insertion order plus the comments associated with each key.
 |------|------|-------------|
 | `map` | `dict[str, object \| None]` | The underlying \`dict[K, V]\` backing this mapping, exposed for serialization access. |
 | `keys` | `IReadOnlyList[str]` | The keys of this mapping, in insertion order. |
+| `values` | `IReadOnlyList[object \| None]` | The values of this mapping, in key insertion order. |
 | `count` | `int` | The number of key/value pairs in this mapping. |
 | `comments` | `IReadOnlyDictionary[str, CommentInfo]` | The comments associated with this mapping's keys, keyed by key name. |
 

@@ -60,6 +60,7 @@ Equivalent to Python's `http.client.HTTPResponse`.
 |------|------|-------------|
 | `status` | `int` |  |
 | `reason` | `str` |  |
+| `version` | `int` |  |
 
 ### `read() -> bytes`
 

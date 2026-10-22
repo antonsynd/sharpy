@@ -156,6 +156,10 @@ parsed URL: scheme, netloc, path, params, query, and fragment.
 | `params` | `str` | Parameters for the last path element (text after semicolon). |
 | `query` | `str` | Query component (text after '?'). |
 | `fragment` | `str` | Fragment identifier (text after '#'). |
+| `hostname` | `str \| None` | Lowercase hostname extracted from \`netloc\`, or null. |
+| `port` | `int \| None` | Port number extracted from \`netloc\`, or null. |
+| `username` | `str \| None` | Username extracted from \`netloc\`, or null. |
+| `password` | `str \| None` | Password extracted from \`netloc\`, or null. |
 
 ### `geturl() -> str`
 
@@ -175,6 +179,10 @@ parsed URL: scheme, netloc, path, query, and fragment (no params).
 | `path` | `str` | Hierarchical path (e.g. "/index.html"). |
 | `query` | `str` | Query component (text after '?'). |
 | `fragment` | `str` | Fragment identifier (text after '#'). |
+| `hostname` | `str \| None` | Lowercase hostname extracted from \`netloc\`, or null. |
+| `port` | `int \| None` | Port number extracted from \`netloc\`, or null. |
+| `username` | `str \| None` | Username extracted from \`netloc\`, or null. |
+| `password` | `str \| None` | Password extracted from \`netloc\`, or null. |
 
 ### `geturl() -> str`
 

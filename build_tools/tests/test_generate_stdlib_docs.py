@@ -668,6 +668,43 @@ class TestParseCsFile:
         assert members[0].kind == "property"
         assert members[0].name == "platform"
 
+    def test_property_whose_accessor_block_opens_on_the_next_line(self, tmp_path):
+        # #2261 part 3: `threading.Thread` listed only `ident`; its `name` and `daemon` open their
+        # accessor block on the next line, which the property pattern never saw.
+        cs = textwrap.dedent(
+            """\
+            public class Thread
+            {
+                /// <summary>The thread's name.</summary>
+                public string Name
+                {
+                    get => _name;
+                    set => _name = value;
+                }
+
+                public bool Daemon
+                {
+                    get
+                    {
+                        return _daemon;
+                    }
+                }
+
+                public int Ident => 1;
+
+                public void Start()
+                {
+                }
+            }
+        """
+        )
+        f = tmp_path / "Thread.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        properties = [m.name for m in members if m.kind == "property"]
+        assert properties == ["name", "daemon", "ident"]
+        assert [m.name for m in members if m.kind == "method"] == ["start"]
+
     def test_skips_operator(self, tmp_path):
         cs = textwrap.dedent(
             """\
@@ -2862,6 +2899,10 @@ _ROSTER_ALLOWLIST: dict[str, str] = {
     "IReadOnlyDictionary": "#2164",
     "IReadOnlyList": "#2164",
     "KeyValuePair": "#2164",
+    # re.Pattern's public `regex` property returns System.Text.RegularExpressions.Regex. It was never
+    # rendered until the generator documented properties whose accessor block opens on the next line
+    # (#2261 part 3); the same class of public-surface leak (cell posted on #2164).
+    "Regex": "#2164",
 }
 
 

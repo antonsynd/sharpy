@@ -38,7 +38,12 @@ namespace Sharpy
             _name = name;
         }
 
-        public Thread(Action? target = null, bool daemon = false, string? name = null)
+        /// <summary>
+        /// A thread that runs <paramref name="target"/>, or <see cref="Run"/> when there is none.
+        /// <paramref name="daemon"/> left as <c>None</c> inherits the creating thread's daemon flag, as
+        /// python's does (#2261 part 3): a thread created on a daemon thread is a daemon.
+        /// </summary>
+        public Thread(Action? target = null, bool? daemon = null, string? name = null)
         {
             _name = ThreadRegistry.NameOrDefault(name);
             _thread = new SysThread(() =>
@@ -54,14 +59,41 @@ namespace Sharpy
                         Run();
                     }
                 }
+                catch (Exception ex)
+                {
+                    ReportUnhandled(ex);
+                }
                 finally
                 {
                     ThreadRegistry.Unregister(this);
                 }
             });
-            _thread.IsBackground = daemon;
-            _daemon = daemon;
+            var isDaemon = daemon ?? ThreadRegistry.Current().Daemon;
+            _thread.IsBackground = isDaemon;
+            _daemon = isDaemon;
             _thread.Name = _name;
+        }
+
+        /// <summary>
+        /// python's <c>threading.excepthook</c> (#2261 part 3, R-IG): an exception escaping a thread's
+        /// target or <c>run()</c> is reported on stderr and the process continues — on .NET an
+        /// unhandled exception on any thread ends the process (exit 134). The report is CPython's first
+        /// and last lines, <c>Exception in thread NAME:</c> and <c>Type: message</c>; the traceback
+        /// frames between them are deviation text (R-CI). <see cref="SystemExit"/> ends the thread
+        /// silently, as python's hook ignores it.
+        /// </summary>
+        private void ReportUnhandled(Exception ex)
+        {
+            if (ex is SystemExit)
+            {
+                return;
+            }
+
+            var typeName = PyFormat.PyTypeName(ex.GetType());
+            var message = ex.Message;
+            var last = string.IsNullOrEmpty(message) ? typeName : typeName + ": " + message;
+            Console.Error.WriteLine("Exception in thread " + _name + ":" + Environment.NewLine + last);
+            Console.Error.Flush();
         }
 
         /// <summary>

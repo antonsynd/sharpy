@@ -141,6 +141,15 @@ Represents an XML element.
 Mirrors Python's xml.etree.ElementTree.Element.
 Wraps `XElement` and provides a Python-compatible API.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `tag` | `str` | Gets or sets the element tag name. Namespace-qualified tags are returned as \`{uri}local\`. |
+| `text` | `str \| None` | Gets or sets the text content before the first child element. In Python ElementTree, \`element.text\` is the text between the start tag and the first child (or end tag). |
+| `tail` | `str \| None` | Gets or sets the tail text after this element's end tag. In Python ElementTree, \`element.tail\` is the text between this element's end tag and the next sibling (or parent's end tag). |
+| `attrib` | `dict[str, str]` | Gets a dictionary of the element's attributes. Modifying the returned dictionary does not affect the element; use \`set\` to change attributes. |
+
 ### `get(key: str, default: str | None = None) -> str | None`
 
 Get the value of an attribute, or a default value if not found.

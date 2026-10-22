@@ -175,6 +175,8 @@ Misuse that depends on the thread's state raises `RuntimeError`, as in python:
 
 | Name | Type | Description |
 |------|------|-------------|
+| `name` | `str` | The thread's name: the one passed to the constructor, else \`Thread-N\` (N counts the unnamed threads created in the process, from 1); \`MainThread\` for the main thread. |
+| `daemon` | `bool` |  |
 | `ident` | `int` |  |
 
 ### `is_alive() -> bool`

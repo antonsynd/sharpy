@@ -6,6 +6,12 @@ Miscellaneous operating system interfaces.
 import os
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `environ` | `dict[str, str]` |  |
+
 ## Functions
 
 ### `os.remove(path: str)`

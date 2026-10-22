@@ -18,6 +18,9 @@ Immutable — all mutation methods return new Path instances.
 | `name` | `str` | The final component of the path. |
 | `stem` | `str` | The final component without its suffix. |
 | `suffix` | `str` | The file extension (including the dot). |
+| `suffixes` | `list[str]` | All suffixes of the final component. |
+| `parent` | `Path` | The logical parent of the path. |
+| `parts` | `list[str]` | The path components as a list. |
 | `root` | `str` | The root of the path (e.g., "/" on Unix). |
 | `anchor` | `str` | The concatenation of drive and root (e.g., "/" on Unix, "C:\\" on Windows). |
 | `is_absolute` | `bool` | Whether the path is absolute. |

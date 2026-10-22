@@ -42,6 +42,7 @@ Represents an incremental HMAC computation.
 |------|------|-------------|
 | `digest_size` | `int` | Get the digest size in bytes. |
 | `name` | `str` | Get the canonical algorithm name for this HMAC. |
+| `block_size` | `int` | Get the internal block size of the hash algorithm. |
 
 ### `update(data: str)`
 

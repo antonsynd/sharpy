@@ -22,8 +22,9 @@ namespace Sharpy.Stdlib.Tests.Integration;
 /// the deviation row <c>stdlib-timeout-wait-saturates</c> records how such a wait is capped.
 /// <c>http</c> and <c>requests</c> run only the values python refuses before it connects.
 /// Not cells: NaN (python is not uniform — <c>Semaphore(0).acquire(timeout=nan)</c> hangs);
-/// <c>Timer(1e10)</c> (python ends the timer thread with <c>OverflowError</c>, and an exception on a
-/// Sharpy thread ends the process, a #2261 cell); the value <c>Barrier.wait</c> returns (the phase
+/// <c>Timer(1e10)</c> (python ends the timer thread with <c>OverflowError</c>; its cell is
+/// <c>ThreadStateMatrixTests.AnExceptionInAThread_IsReportedOnStderr_AndTheProcessContinues</c>,
+/// where the report on stderr is compared); the value <c>Barrier.wait</c> returns (the phase
 /// number, not python's arrival index — filed by class). One cell is printed in a narrower form:
 /// after <c>join(1e10)</c> raises on an alive thread, CPython 3.12 reports <c>is_alive()</c> False
 /// although the thread still runs (its bpo-45274 handler releases the thread's own state lock), an

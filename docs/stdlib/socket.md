@@ -120,6 +120,14 @@ Raised for legacy address-related errors. Corresponds to Python's socket.herror.
 Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
 Supports TCP and UDP communication, socket options, and timeout handling.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `family` | `int` |  |
+| `type` | `int` |  |
+| `proto` | `int` |  |
+
 ### `connect(address: tuple[str, int])`
 
 Connect to a remote (host, port) address.

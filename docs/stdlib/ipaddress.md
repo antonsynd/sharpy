@@ -40,9 +40,12 @@ Represents an IPv4 address.
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv4 addresses. |
 | `is_private` | `bool` | Gets whether the address is in a private-use range. |
 | `is_loopback` | `bool` | Gets whether the address is a loopback address. |
+| `is_multicast` | `bool` | Gets whether the address is a multicast address. |
 | `is_reserved` | `bool` | Gets whether the address is in a reserved range. |
+| `is_link_local` | `bool` | Gets whether the address is a link-local address. |
 | `is_global` | `bool` | Gets whether the address is globally reachable. |
 | `is_unspecified` | `bool` | Gets whether the address is the unspecified address. |
+| `packed` | `bytes` | Gets the packed binary representation of the address. |
 | `compressed` | `str` | Gets the canonical string form of the address. |
 
 ### `to_int() -> int64`
@@ -65,7 +68,13 @@ Represents an IPv4 network.
 | `prefixlen` | `int` | Gets the network prefix length. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv4 networks. |
 | `network_address` | `IPv4Address` | Gets the network address. |
+| `broadcast_address` | `IPv4Address` | Gets the broadcast address. |
+| `netmask` | `IPv4Address` | Gets the network mask. |
+| `hostmask` | `IPv4Address` | Gets the host mask. |
 | `num_addresses` | `int64` | Gets the number of addresses in the network. |
+| `is_private` | `bool` | Gets whether the network is in a private-use range. |
+| `is_global` | `bool` | Gets whether the network is globally reachable. |
+| `is_reserved` | `bool` | Gets whether the network is in a reserved range. |
 | `is_loopback` | `bool` | Gets whether the network is a loopback network. |
 | `is_multicast` | `bool` | Gets whether the network is a multicast network. |
 | `is_link_local` | `bool` | Gets whether the network is link-local. |
@@ -121,9 +130,12 @@ Represents an IPv6 address.
 | `is_link_local` | `bool` | Gets whether the address is link-local. |
 | `is_site_local` | `bool` | Gets whether the address is site-local. |
 | `is_unspecified` | `bool` | Gets whether the address is the unspecified address. |
+| `is_reserved` | `bool` | Gets whether the address is in a reserved range. |
 | `is_global` | `bool` | Gets whether the address is globally reachable. |
 | `packed` | `bytes` | Gets the packed binary representation of the address. |
 | `compressed` | `str` | Gets the compressed string form of the address. |
+| `exploded` | `str` | Gets the fully expanded hexadecimal string form of the address. |
+| `ipv4_mapped` | `IPv4Address \| None` | Gets the embedded IPv4 address if this is an IPv4-mapped IPv6 address. |
 
 ### `to_int() -> BigInteger`
 
@@ -145,6 +157,11 @@ Represents an IPv6 network.
 | `prefixlen` | `int` | Gets the network prefix length. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv6 networks. |
 | `network_address` | `IPv6Address` | Gets the network address. |
+| `broadcast_address` | `IPv6Address` | Gets the last address in the network. |
+| `netmask` | `IPv6Address` | Gets the network mask. |
+| `hostmask` | `IPv6Address` | Gets the host mask. |
+| `num_addresses` | `BigInteger` | Gets the number of addresses in the network. |
+| `is_private` | `bool` | Gets whether the network is in a private-use range. |
 | `is_global` | `bool` | Gets whether the network is globally reachable. |
 | `is_loopback` | `bool` | Gets whether the network is a loopback network. |
 | `is_multicast` | `bool` | Gets whether the network is a multicast network. |
