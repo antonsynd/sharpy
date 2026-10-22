@@ -26,6 +26,13 @@ internal partial class RoslynEmitter
 
         var generated = GenerateExpressionCore(expr);
 
+        // Integer constant cast (#2344, R-IC): the TypeChecker converted this int64-typed constant by
+        // value to a type C# converts a `long` constant to only when told — `(uint)4294967295L`.
+        // Absent for every other expression, so the default path is byte-identical.
+        var constantCast = _context.SemanticInfo?.GetIntegerConstantCast(expr);
+        if (constantCast != null)
+            generated = EmittedTreePrecedence.Cast(_typeMapper.MapSemanticType(constantCast), generated);
+
         // Receiver unwrap (#1792): the TypeChecker accepted this expression as a protocol route's
         // receiver through the loose `T | None` view, and its payload is a C# value type — so the
         // value in hand is a `Nullable<T>` and the route's lowering (indexer, ItemN, Contains,

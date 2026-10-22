@@ -93,6 +93,18 @@ variable of that type would be. An unsuffixed literal too large for `int` is `in
 # b: int32 = 4294967296     # ERROR (SPY0220): Cannot assign type 'int64' to variable of type 'int32'
 ```
 
+An unsuffixed literal converts to an unsigned type by its **value**, wherever it is stored — an
+annotated variable, an argument, a return, a `const` — as C#'s `uint m = 0xFFFFFFFF;` does. Only a
+literal does: a suffixed or declared `int64` constant converts to `uint64` alone (C# §10.2.11).
+
+```python
+mask: uint32 = 0xFFFFFFFF    # 4294967295 — the literal's value fits uint32
+top: uint32 = 2147483648     # 2147483648
+print(mask, top)
+# big: uint32 = 4294967296   # ERROR (SPY0220): Cannot assign type 'int64' to variable of type 'uint32'
+# n: uint8 = 5L              # ERROR (SPY0220): Cannot assign type 'int64' to variable of type 'uint8'
+```
+
 When such a literal meets an operand of another type, the pair goes through C#'s binary numeric
 promotion (§12.4.7) — the same table `+`, `<` and `&` all use, tabulated in
 [Numeric Type Promotion](arithmetic_operators.md#numeric-type-promotion). A `uint64` operand

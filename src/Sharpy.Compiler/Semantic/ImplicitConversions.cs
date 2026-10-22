@@ -15,6 +15,15 @@ internal static class ImplicitConversions
     /// <summary>
     /// Whether <paramref name="value"/> is an integer constant expression whose folded value fits
     /// in <paramref name="target"/>'s range. Renamed from <c>IsImplicitConstantConversion</c>.
+    ///
+    /// <para>An UNSUFFIXED integer literal converts by VALUE to every unsigned type (R-IC, #2344):
+    /// <c>x: uint32 = 4294967295</c> and <c>m: uint32 = 0xFFFFFFFF</c> compile as C#'s
+    /// <c>uint x = 4294967295;</c> does. C# reaches that by typing the literal <c>uint</c> (the first
+    /// of int, uint, long, ulong its value fits); Sharpy types an unsuffixed literal above
+    /// <c>int32</c> as <c>int64</c> (<c>integer_literals.md</c>), so the value rule is what admits it.
+    /// A literal that does not fit keeps its own type. Any other <c>int64</c> constant — <c>5L</c>, a
+    /// <c>const L: int64</c>, <c>4294967296 - 1</c> — converts to <c>uint64</c> only, as C#'s
+    /// <c>long</c> constants do (§10.2.11, #1355).</para>
     /// </summary>
     public static bool IsImplicitIntegerConstantConversion(
         Expression? value,
@@ -34,7 +43,12 @@ internal static class ImplicitConversions
             return false;
 
         if (sourceInfo.ClrType == typeof(long))
-            return targetInfo.ClrType == typeof(ulong) && constant.Sign >= 0;
+        {
+            return targetInfo.Kind == PrimitiveCatalog.NumericKind.UnsignedInteger
+                && FitsInRange(constant, targetInfo)
+                && (targetInfo.ClrType == typeof(ulong)
+                    || Shared.AstHelper.UnwrapParenthesized(value) is IntegerLiteral { Suffix: null });
+        }
 
         if (sourceInfo.ClrType != typeof(int))
             return false;
@@ -43,6 +57,22 @@ internal static class ImplicitConversions
             && targetInfo.ClrType != typeof(int)
             && targetInfo.ClrType != typeof(long)
             && FitsInRange(constant, targetInfo);
+    }
+
+    /// <summary>
+    /// Whether a constant of <paramref name="source"/> admitted into <paramref name="target"/> by
+    /// <see cref="IsImplicitIntegerConstantConversion"/> needs the conversion spelled in C#: C#
+    /// §10.2.11 converts a <c>long</c> constant only to <c>ulong</c>, and an <c>int64</c> constant is
+    /// emitted with its <c>L</c> suffix, so <c>uint x = 4294967295L;</c> would be CS0266 (#2344).
+    /// </summary>
+    public static bool RequiresConstantCast(SemanticType source, SemanticType target)
+    {
+        var sourceInfo = PrimitiveCatalog.GetPrimitiveInfo(source);
+        var targetInfo = PrimitiveCatalog.GetPrimitiveInfo(target);
+        return sourceInfo?.ClrType == typeof(long)
+            && targetInfo != null
+            && targetInfo.ClrType != typeof(long)
+            && targetInfo.ClrType != typeof(ulong);
     }
 
     /// <summary>
@@ -99,7 +129,8 @@ internal static class ImplicitConversions
     ///   makes an exponent literal (<c>1.5e2</c>) a decimal literal at all.</item>
     ///   <item>RANGE — the same call returns false for <c>1e40</c>, above decimal's maximum.</item>
     ///   <item>UNDERFLOW — <c>1e-30</c> PARSES, to <c>0m</c>. Admitting it would store a silently
-    ///   wrong value, so a non-zero literal that becomes zero is refused.</item>
+    ///   wrong value, so a non-zero literal that becomes zero is refused — by the same
+    ///   <see cref="Shared.FloatLiteralClassifier.Check"/> the suffixed <c>1e-30m</c> asks (#2344).</item>
     /// </list>
     /// </summary>
     public static bool IsDecimalLiteralNarrowing(
@@ -114,18 +145,10 @@ internal static class ImplicitConversions
             || PrimitiveCatalog.GetPrimitiveInfo(initType)?.ClrType != typeof(double))
             return false;
 
-        // FORM and RANGE are the literal-typing arm's own question (#2340): one seam answers
-        // "does this text have a decimal value" for `1e29m` and for `d: decimal = 1e29` alike.
-        if (!Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(double))
-            || !Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(decimal)))
-        {
-            return false;
-        }
-
-        // UNDERFLOW stays a narrowing-only question: an unsuffixed literal is a float64, and
-        // re-typing a non-zero one to a decimal zero would change its value.
-        var asDouble = double.Parse(literal.Value, NumberStyles.Float, CultureInfo.InvariantCulture);
-        var asDecimal = decimal.Parse(literal.Value, NumberStyles.Float, CultureInfo.InvariantCulture);
-        return asDecimal != 0m || asDouble == 0.0;
+        // FORM, RANGE and UNDERFLOW are the literal-typing arm's own question (#2340, #2344): one
+        // seam answers "does this text have a decimal value" for `1e29m` / `1e-30m` and for
+        // `d: decimal = 1e29` / `d: decimal = 1e-30` alike.
+        return Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(double))
+            && Shared.FloatLiteralClassifier.Fits(literal.Value, typeof(decimal));
     }
 }

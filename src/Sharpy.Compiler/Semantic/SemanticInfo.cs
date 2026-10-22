@@ -271,6 +271,13 @@ public class SemanticInfo : ISemanticQuery
     // branches need no entry — their literals are re-typed and print their own suffix).
     private readonly ConcurrentDictionary<Expression, SemanticType> _conditionalBranchNarrowing = new(ReferenceEqualityComparer.Instance);
 
+    // #2344 (R-IC): an int64-typed integer constant converted by value to a type C# does not convert a
+    // `long` constant to (anything but ulong, §10.2.11) — `x: uint32 = 4294967295`, `u32 + 4294967295`.
+    // The emitter prints the int64 literal with its `L` suffix, so it casts the constant to the
+    // recorded type. Node-keyed on the CONSTANT expression; recorded by the store seam and by the
+    // operand rule (EffectiveOperandTypes).
+    private readonly ConcurrentDictionary<Expression, SemanticType> _integerConstantCasts = new(ReferenceEqualityComparer.Instance);
+
     // #1721: an argument bound to a `T | None` slot of an OVERLOADED callee, and the slot. Sharpy's
     // strict Optional refuses a bare `T` at a `T?` slot, so `{int?, int | None}` selects the
     // nullable overload by construction; Roslyn admits `T → Optional<T>` implicitly (Sharpy.Core's
@@ -1481,6 +1488,22 @@ public class SemanticInfo : ISemanticQuery
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
 
     /// <summary>
+    /// Records (or, with null, forgets) the type an int64-typed integer constant converts to by value
+    /// where C# needs the conversion spelled (#2344); the emitter casts the constant to it.
+    /// </summary>
+    public void SetIntegerConstantCast(Expression constant, SemanticType? targetType)
+    {
+        if (targetType == null)
+            _integerConstantCasts.TryRemove(constant, out _);
+        else
+            _integerConstantCasts[constant] = targetType;
+    }
+
+    /// <summary>The type an integer constant must be cast to, or null when C# converts it unaided.</summary>
+    public SemanticType? GetIntegerConstantCast(Expression constant)
+        => _integerConstantCasts.TryGetValue(constant, out var t) ? t : null;
+
+    /// <summary>
     /// Records that the checker added an <c>Optional</c> layer to the null-conditional access
     /// <paramref name="access"/> (a <c>MemberAccess</c>, or the <c>FunctionCall</c> of a
     /// null-conditional method call) because the member's (or called method's) own type was a bare
@@ -2267,6 +2290,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._conditionalBranchNarrowing)
             _conditionalBranchNarrowing.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._integerConstantCasts)
+            _integerConstantCasts.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._nullConditionalOptionalWraps)
             _nullConditionalOptionalWraps.TryAdd(kvp.Key, kvp.Value);

@@ -23,6 +23,13 @@ namespace Sharpy.Compiler.Shared;
 /// <c>f</c> suffix, so a double-rounded answer could disagree with the C# compiler at the
 /// boundary), and <c>decimal</c> is <see cref="decimal.TryParse(string, NumberStyles, IFormatProvider, out decimal)"/>
 /// under <see cref="NumberStyles.Float"/>, which is what admits an exponent form.</para>
+///
+/// <para><b>Below the smallest non-zero value (#2344, R-IA).</b> A non-zero <c>decimal</c> literal
+/// whose value becomes zero — <c>1e-30m</c>, <c>1.5e-29m</c>; decimal's smallest non-zero magnitude
+/// is 1e-28 — has no value in its type, so it is refused like one above the maximum, on the suffixed
+/// and the slot-narrowed spelling alike. <c>float32</c> and <c>float64</c> keep IEEE underflow to zero
+/// (<c>print(1e-400)</c> prints <c>0.0</c>, as CPython does). Rounding that keeps a non-zero value
+/// (<c>1.5e-28m</c>, or a 29th significant digit) is decimal's precision, not this question.</para>
 /// </summary>
 internal static class FloatLiteralClassifier
 {
@@ -44,35 +51,71 @@ internal static class FloatLiteralClassifier
     {
         var type = TypeOf(suffix);
         var clrType = PrimitiveCatalog.GetPrimitiveInfo(type)!.ClrType;
-        return Fits(value, clrType)
-            ? new Result(type, false, null)
-            : new Result(type, true, $"Float literal '{value}' is too large for '{CSharpName(clrType)}'");
+        return Check(value, clrType) switch
+        {
+            Verdict.Fits => new Result(type, false, null),
+            Verdict.TooSmall => new Result(type, true, $"Float literal '{value}' is too small for '{CSharpName(clrType)}': its value would be zero"),
+            _ => new Result(type, true, $"Float literal '{value}' is too large for '{CSharpName(clrType)}'"),
+        };
+    }
+
+    /// <summary>The answer of <see cref="Check"/>: a value in the type, none above its range, or a non-zero text that becomes zero.</summary>
+    public enum Verdict
+    {
+        Fits,
+        TooLarge,
+        TooSmall,
     }
 
     /// <summary>
-    /// Whether the float literal text <paramref name="value"/> has a finite value in
+    /// Whether the float literal text <paramref name="value"/> has a value in
     /// <paramref name="clrType"/> (<see cref="double"/>, <see cref="float"/> or
     /// <see cref="decimal"/>). The one range question for every float-literal position.
     /// </summary>
-    public static bool Fits(string value, Type clrType)
+    public static bool Fits(string value, Type clrType) => Check(value, clrType) == Verdict.Fits;
+
+    /// <summary>
+    /// <see cref="Fits"/> with the reason for a miss: <see cref="Verdict.TooLarge"/> (not finite in
+    /// <c>float</c>/<c>double</c>, outside <c>decimal</c>'s range) or <see cref="Verdict.TooSmall"/>
+    /// (a non-zero text whose <c>decimal</c> value is zero).
+    /// </summary>
+    public static Verdict Check(string value, Type clrType)
     {
         if (clrType == typeof(double))
         {
             return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
-                && double.IsFinite(d);
+                && double.IsFinite(d) ? Verdict.Fits : Verdict.TooLarge;
         }
 
         if (clrType == typeof(float))
         {
             return float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var f)
-                && float.IsFinite(f);
+                && float.IsFinite(f) ? Verdict.Fits : Verdict.TooLarge;
         }
 
         if (clrType == typeof(decimal))
-            return decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
+        {
+            if (!decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var m))
+                return Verdict.TooLarge;
+            return m == 0m && HasNonZeroDigit(value) ? Verdict.TooSmall : Verdict.Fits;
+        }
 
         throw new ArgumentException(
             $"A float literal resolves to double, float or decimal, never '{clrType}'.", nameof(clrType));
+    }
+
+    /// <summary>Whether the significand (the text before any exponent) names a non-zero value.</summary>
+    private static bool HasNonZeroDigit(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c is 'e' or 'E')
+                return false;
+            if (c is >= '1' and <= '9')
+                return true;
+        }
+
+        return false;
     }
 
     private static string CSharpName(Type clrType)

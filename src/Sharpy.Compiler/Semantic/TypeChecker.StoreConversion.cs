@@ -341,6 +341,11 @@ internal partial class TypeChecker
                 ApplyConditionalBranchVerdicts(position, value, targetType);
                 break;
 
+            case StoreVerdict.AcceptedConstantConversion when value != null
+                && ImplicitConversions.RequiresConstantCast(valueType, StoreSlotType(position, targetType)):
+                _semanticInfo.SetIntegerConstantCast(value, StoreSlotType(position, targetType));
+                break;
+
             case StoreVerdict.AcceptedNarrowedPassThrough when value != null:
                 // The read is the wrapper again: drop its accessor and narrowed type so the emitter
                 // prints `a`, not `a.Unwrap()`, and record the pass-through so the store site's
@@ -375,7 +380,9 @@ internal partial class TypeChecker
             var verdict = ClassifyStore(position, branch, branchType, targetType);
             ApplyAcceptedVerdict(position, verdict, branch, branchType, targetType);
 
-            if (verdict == StoreVerdict.AcceptedConstantConversion)
+            // An int64 constant's own cast (#2344) already gives the arm the slot type.
+            if (verdict == StoreVerdict.AcceptedConstantConversion
+                && _semanticInfo.GetIntegerConstantCast(branch) == null)
                 _semanticInfo.SetConditionalBranchNarrowing(branch, StoreSlotType(position, targetType));
         }
     }
