@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -42,18 +43,17 @@ public class UnparserFixtureRoundTripTests
                System.Text.RegularExpressions.Regex.IsMatch(source, @"\w+\(\s*_\s*[,)]");
     }
 
-    [Theory]
+    [SkippableTheory]
     [MemberData(nameof(GetRoundTripFixtures))]
     public void FixtureRoundTrip(string testName, string spyFilePath)
     {
         var source = File.ReadAllText(spyFilePath);
         _output.WriteLine($"Testing: {testName}");
 
-        if (UsesPartialApplicationDesugaring(source))
-        {
-            _output.WriteLine("  Skipping: uses partial application desugaring (|> with _ placeholder)");
-            return;
-        }
+        // A shape the unparser does not round-trip is a precondition this fixture lacks: it reports
+        // Skipped with the reason, never a write-and-return pass (#2342, R-IH).
+        TestPreconditions.RequireOrSkip(!UsesPartialApplicationDesugaring(source),
+            "uses partial application desugaring (|> with _ placeholder), which the unparser does not round-trip");
 
         var lexer = new SLexer(source);
         var tokens = lexer.TokenizeAll();
@@ -63,17 +63,17 @@ public class UnparserFixtureRoundTripTests
         {
             ast1 = parser.ParseModule();
         }
-        catch
+        catch (Exception ex)
         {
-            _output.WriteLine("  Parse failed on original source — skipping");
+            // Every row is a fixture that compiles (error-only fixtures are not rows), so a parse
+            // failure is the round trip's own first step failing — a failure, never a skip (#2342).
+            Assert.Fail($"Parsing the original fixture failed: {ex.Message}");
             return;
         }
 
-        if (parser.Diagnostics.HasErrors)
-        {
-            _output.WriteLine("  Parse produced errors — skipping");
-            return;
-        }
+        Assert.False(parser.Diagnostics.HasErrors,
+            "the original fixture must parse cleanly: "
+            + string.Join("; ", parser.Diagnostics.GetAll().Select(d => $"{d.Code}: {d.Message}")));
 
         var unparsed = Pretty.Unparser.Unparse(ast1);
         _output.WriteLine($"  Unparsed length: {unparsed.Length}");

@@ -1,5 +1,6 @@
 extern alias SharpyRT;
 
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -10,9 +11,9 @@ namespace Sharpy.Compiler.Tests;
 /// test host's own output directory, which is a framework-dependent build output: it contains
 /// the Sharpy stdlib monolith plus its transitive NuGet assemblies (MathNet, YamlDotNet,
 /// Tomlyn, Microsoft.Data.Sqlite, SQLitePCLRaw.*) and their native assets under
-/// <c>runtimes/&lt;rid&gt;/native/</c>, but never shared-framework assemblies. Tests that need
-/// assemblies which may not be present skip gracefully, mirroring
-/// <see cref="Integration.PerModuleAssemblyTests"/>.
+/// <c>runtimes/&lt;rid&gt;/native/</c>, but never shared-framework assemblies. A test whose
+/// assemblies this build does not carry reports Skipped through
+/// <see cref="TestPreconditions.RequireOrSkip"/> — never a write-and-return pass (#2342, R-IH).
 /// </summary>
 public class RuntimeClosureResolverTests
 {
@@ -33,15 +34,11 @@ public class RuntimeClosureResolverTests
     private static bool HasPrefix(IEnumerable<string> paths, string prefix) =>
         paths.Any(p => Path.GetFileName(p).StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
-    [Fact]
+    [SkippableFact]
     public void Monolith_Closure_ContainsMathNet()
     {
         var monolith = Path.Combine(CoreDir, "Sharpy.Stdlib.dll");
-        if (!File.Exists(monolith))
-        {
-            _output.WriteLine($"Monolith not found: {monolith}");
-            return;
-        }
+        TestPreconditions.RequireOrSkip(File.Exists(monolith), $"the stdlib monolith is not in this build's output: {monolith}");
 
         var closure = RuntimeClosureResolver.Resolve(new[] { monolith });
 
@@ -50,15 +47,11 @@ public class RuntimeClosureResolverTests
             "numpy's MathNet.Numerics.dll must be in the transitive closure");
     }
 
-    [Fact]
+    [SkippableFact]
     public void Monolith_Closure_ContainsYamlAndTomlyn()
     {
         var monolith = Path.Combine(CoreDir, "Sharpy.Stdlib.dll");
-        if (!File.Exists(monolith))
-        {
-            _output.WriteLine($"Monolith not found: {monolith}");
-            return;
-        }
+        TestPreconditions.RequireOrSkip(File.Exists(monolith), $"the stdlib monolith is not in this build's output: {monolith}");
 
         var closure = RuntimeClosureResolver.Resolve(new[] { monolith });
 
@@ -69,15 +62,11 @@ public class RuntimeClosureResolverTests
             "toml's Tomlyn.dll must be in the transitive closure");
     }
 
-    [Fact]
-    public void Monolith_Closure_ContainsSqliteManagedAndReportsNativeAsset()
+    [SkippableFact]
+    public void Monolith_Closure_ContainsSqliteManaged()
     {
         var monolith = Path.Combine(CoreDir, "Sharpy.Stdlib.dll");
-        if (!File.Exists(monolith))
-        {
-            _output.WriteLine($"Monolith not found: {monolith}");
-            return;
-        }
+        TestPreconditions.RequireOrSkip(File.Exists(monolith), $"the stdlib monolith is not in this build's output: {monolith}");
 
         var closure = RuntimeClosureResolver.Resolve(new[] { monolith });
 
@@ -99,29 +88,32 @@ public class RuntimeClosureResolverTests
             Assert.True(HasName(closure.ManagedAssemblies, "SQLitePCLRaw.provider.e_sqlite3.dll"),
                 "the forward walk from batteries_v2 must pull in the SQLitePCLRaw provider");
         }
-
-        // The e_sqlite3 native library ships per-RID under runtimes/<rid>/native/. Assert the
-        // resolver reports it only when the current RID's native layout is actually present.
-        if (ExpectedNativeAvailable(CoreDir, "e_sqlite3"))
-        {
-            Assert.Contains(closure.NativeAssets,
-                p => Path.GetFileName(p).Contains("e_sqlite3", StringComparison.OrdinalIgnoreCase));
-        }
-        else
-        {
-            _output.WriteLine("No e_sqlite3 native asset for the current RID; skipping native assertion.");
-        }
     }
 
-    [Fact]
+    /// <summary>
+    /// The e_sqlite3 native library ships per-RID under <c>runtimes/&lt;rid&gt;/native/</c>; the
+    /// resolver reports it when the current RID's native layout is present. A RID with no native
+    /// asset is a missing PRECONDITION and reports Skipped (#2342), never a pass.
+    /// </summary>
+    [SkippableFact]
+    public void Monolith_Closure_ReportsTheSqliteNativeAsset()
+    {
+        var monolith = Path.Combine(CoreDir, "Sharpy.Stdlib.dll");
+        TestPreconditions.RequireOrSkip(File.Exists(monolith), $"the stdlib monolith is not in this build's output: {monolith}");
+        TestPreconditions.RequireOrSkip(ExpectedNativeAvailable(CoreDir, "e_sqlite3"),
+            "this build output ships no e_sqlite3 native asset for the current RID");
+
+        var closure = RuntimeClosureResolver.Resolve(new[] { monolith });
+
+        Assert.Contains(closure.NativeAssets,
+            p => Path.GetFileName(p).Contains("e_sqlite3", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [SkippableFact]
     public void Monolith_Closure_ExcludesFrameworkAssemblies()
     {
         var monolith = Path.Combine(CoreDir, "Sharpy.Stdlib.dll");
-        if (!File.Exists(monolith))
-        {
-            _output.WriteLine($"Monolith not found: {monolith}");
-            return;
-        }
+        TestPreconditions.RequireOrSkip(File.Exists(monolith), $"the stdlib monolith is not in this build's output: {monolith}");
 
         var closure = RuntimeClosureResolver.Resolve(new[] { monolith });
 
@@ -143,16 +135,13 @@ public class RuntimeClosureResolverTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     public void PerModule_NumpyClosure_ContainsMathNet_WhenCoLocated()
     {
         var numpy = LocatePerModule("Sharpy.Stdlib.Numpy.dll");
         var mathNetSource = Path.Combine(CoreDir, "MathNet.Numerics.dll");
-        if (numpy is null || !File.Exists(mathNetSource))
-        {
-            _output.WriteLine("Numpy per-module DLL or MathNet.Numerics.dll not available; skipping.");
-            return;
-        }
+        TestPreconditions.RequireOrSkip(numpy is not null && File.Exists(mathNetSource),
+            "the Numpy per-module DLL or MathNet.Numerics.dll is not in this build's output");
 
         // Per-module build outputs do not co-locate transitive NuGet deps, so synthesize the
         // deployable layout the CLI copy path and deps.json generation actually operate over

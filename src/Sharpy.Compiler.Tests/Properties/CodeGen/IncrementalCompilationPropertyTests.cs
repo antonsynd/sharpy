@@ -74,12 +74,12 @@ public class IncrementalCompilationPropertyTests
                 helper.CreateProjectFile();
 
                 // First compile (populates cache)
+                // The fixed two-file program always compiles: a failed first compile is the test's own
+                // step failing, never a skip (#2342, R-IH — it used to write and return, a pass).
                 var firstResult = helper.Compile();
-                if (!firstResult.Success)
-                {
-                    _output.WriteLine("First compile failed, skipping");
-                    return;
-                }
+                Assert.True(firstResult.Success,
+                    "the first (cache-populating) compile of a valid program failed: "
+                    + string.Join("; ", firstResult.Diagnostics.GetAll().Select(d => $"{d.Code}: {d.Message}")));
 
                 // Modify lib.spy
                 helper.UpdateSourceFile("lib.spy", libSpyModified);
