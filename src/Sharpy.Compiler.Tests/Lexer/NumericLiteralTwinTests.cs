@@ -566,7 +566,46 @@ public class NumericLiteralTwinTests
 
     private static readonly string[] FloatSuffixes = { "f", "F", "d", "D", "m", "M" };
     private static readonly string[] IntegerSuffixes = { "l", "L", "u", "U", "ul", "UL", "uL", "Ul" };
-    private static readonly string[] InvalidSuffixes = { "lu", "x", "j" };
+
+    /// <summary>Not in either roster: <c>j</c>/<c>J</c> (no complex literal), <c>lu</c> (C# spelling the spec does not list), <c>x</c>.</summary>
+    private static readonly string[] InvalidSuffixes = { "j", "J", "lu", "x" };
+
+    private enum SpellingKind
+    {
+        /// <summary>Decimal digits, no <c>.</c>/exponent: takes integer AND float suffixes (<c>42L</c>, <c>42f</c>).</summary>
+        DecimalInteger,
+        /// <summary>A fraction or exponent, any spelling: takes only the float suffixes.</summary>
+        DecimalFloat,
+        Hex,
+        BinaryOrOctal,
+    }
+
+    /// <summary>
+    /// The suffix matrix's spelling axis (#2339): (source digits, the token value the lexer gives
+    /// them, kind). Every spelling of a kind must answer a suffix the same way — the leading-dot
+    /// <c>.5</c> exactly as <c>0.5</c> (float_literals.md: ".5 — Same as 0.5"), the exponent-only
+    /// <c>1e5</c> and the underscored spellings as their plain twins.
+    /// </summary>
+    private static readonly (string Source, string Value, SpellingKind Kind)[] SuffixSpellings =
+    {
+        ("42", "42", SpellingKind.DecimalInteger),
+        ("1_000", "1000", SpellingKind.DecimalInteger),
+        ("0.5", "0.5", SpellingKind.DecimalFloat),
+        ("3.14", "3.14", SpellingKind.DecimalFloat),
+        (".5", "0.5", SpellingKind.DecimalFloat),
+        (".1_5", "0.15", SpellingKind.DecimalFloat),
+        ("1e5", "1e5", SpellingKind.DecimalFloat),
+        ("1E+5", "1E+5", SpellingKind.DecimalFloat),
+        (".5e3", "0.5e3", SpellingKind.DecimalFloat),
+        ("1_0.2_5", "10.25", SpellingKind.DecimalFloat),
+        ("1_0e1_0", "10e10", SpellingKind.DecimalFloat),
+        ("0xFF", "0xFF", SpellingKind.Hex),
+        ("0xF_F", "0xFF", SpellingKind.Hex),
+        ("0b101", "0b101", SpellingKind.BinaryOrOctal),
+        ("0b1_01", "0b101", SpellingKind.BinaryOrOctal),
+        ("0o17", "0o17", SpellingKind.BinaryOrOctal),
+        ("0o1_7", "0o17", SpellingKind.BinaryOrOctal),
+    };
 
     /// <summary>
     /// (source, expected): expected is the token list without <c>Eof</c> as <c>Type 'Value'</c>
@@ -575,50 +614,53 @@ public class NumericLiteralTwinTests
     public static TheoryData<string, string> SharpyOnlyCases()
     {
         var data = new TheoryData<string, string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        void Add(string source, string expected)
+        {
+            if (seen.Add(source))
+                data.Add(source, expected);
+        }
         const string Refused = "error SPY0023";
 
-        // integer_literals.md: L/l, u/U, ul/UL on decimal integers; float_literals.md: f/F, d/D, m/M.
-        foreach (var s in IntegerSuffixes)
-            data.Add("42" + s, $"Integer '42{s}'");
-        foreach (var s in FloatSuffixes)
-            data.Add("42" + s, $"Float '42{s}'");
-        // float_literals.md: "3.14f" / "3.14d" / "3.14m". (An INTEGER suffix on a float is spec-silent
-        // and accepted by the lexer today — a findings-ledger line, deliberately not pinned here.)
-        foreach (var s in FloatSuffixes)
-            data.Add("3.14" + s, $"Float '3.14{s}'");
+        // kind {decimal int, decimal float, hex, binary/octal} × spelling (SuffixSpellings) × suffix
+        // {every integer suffix, every float suffix, j/J and the other non-roster suffixes, none} — the
+        // suffix rosters carry both cases. integer_literals.md: L/l, u/U, ul/UL, "The integer suffixes work
+        // on every base"; "A hex digit is never read as a suffix … 0xFFf is 0xFFF"; the float suffixes
+        // "apply to decimal literals only; on a binary or octal literal, and m on a hex literal, they are
+        // refused (SPY0023)". float_literals.md: f/F, d/D, m/M on floats; an integer suffix on a float is
+        // refused (SPY0023), as in C# (#2339).
+        foreach (var (source, value, kind) in SuffixSpellings)
+        {
+            string integerToken = $"Integer '{value}'";
+            string floatToken = $"Float '{value}'";
+            Add(source, kind == SpellingKind.DecimalFloat ? floatToken : integerToken);
 
-        // integer_literals.md: "The integer suffixes work on every base"; "A hex digit is never read as a
-        // suffix … 0xFFf is 0xFFF"; "on a binary or octal literal, and m on a hex literal, they are refused (SPY0023)".
-        foreach (var s in IntegerSuffixes)
-        {
-            data.Add("0xFF" + s, $"Integer '0xFF{s}'");
-            data.Add("0b101" + s, $"Integer '0b101{s}'");
-            data.Add("0o17" + s, $"Integer '0o17{s}'");
-        }
-        foreach (var s in FloatSuffixes)
-        {
-            data.Add("0b101" + s, Refused);
-            data.Add("0o17" + s, Refused);
-            data.Add("0xFF" + s, s is "m" or "M" ? Refused : $"Integer '0xFF{s}'");
-        }
+            foreach (var s in IntegerSuffixes)
+                Add(source + s, kind == SpellingKind.DecimalFloat ? Refused : $"Integer '{value}{s}'");
 
-        // Not in the roster: refused on every base.
-        foreach (var s in InvalidSuffixes)
-        {
-            foreach (var number in new[] { "42", "3.14", "0xFF", "0b101", "0o17" })
-                data.Add(number + s, Refused);
+            foreach (var s in FloatSuffixes)
+            {
+                Add(source + s, kind switch
+                {
+                    SpellingKind.DecimalInteger or SpellingKind.DecimalFloat => $"Float '{value}{s}'",
+                    SpellingKind.Hex when s is not ("m" or "M") => $"Integer '{value}{s}'",
+                    _ => Refused,
+                });
+            }
+
+            foreach (var s in InvalidSuffixes)
+                Add(source + s, Refused);
         }
 
         // float_literals.md: "Invalid - trailing decimal point without digit … ERROR: use 5.0 instead" —
-        // the lexer leaves the dot to the parser.
-        data.Add("1.", "Integer '1', Dot '.'");
-        data.Add("12.", "Integer '12', Dot '.'");
-        data.Add("1_000.", "Integer '1000', Dot '.'");
-        data.Add("1.e5", "Integer '1', Dot '.', Identifier 'e5'");
-
-        // No complex literal: the imaginary j is an invalid suffix.
-        data.Add("1j", Refused);
-        data.Add("1.5j", Refused);
+        // the lexer leaves the dot to the parser, and a letter after the dot is a member name, never a
+        // suffix, for every suffix of either kind.
+        Add("1.", "Integer '1', Dot '.'");
+        Add("12.", "Integer '12', Dot '.'");
+        Add("1_000.", "Integer '1000', Dot '.'");
+        Add("1.e5", "Integer '1', Dot '.', Identifier 'e5'");
+        foreach (var s in IntegerSuffixes.Concat(FloatSuffixes).Concat(InvalidSuffixes))
+            Add("5." + s, $"Integer '5', Dot '.', Identifier '{s}'");
         return data;
     }
 

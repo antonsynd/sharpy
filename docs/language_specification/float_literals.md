@@ -26,6 +26,15 @@ precise = 3.141_592_653
   - `d` or `D` for `float64` (System.Double): `3.14d` (redundant but allowed)
   - `m` or `M` for `decimal` (System.Decimal): `3.14m`
 
+A suffix means the same on every spelling of a float — `.5f` is `0.5f`, and `1e5f` and `1_0.2_5m`
+take it too. The integer suffixes `L`, `u` and `ul` (see [Integer Literals](integer_literals.md))
+belong to integers; on a float literal they are refused (SPY0023), as in C#:
+
+```python
+# x = 3.14L                 # ERROR (SPY0023): Invalid numeric suffix: L (a float literal accepts only the float suffixes f, d and m)
+# y = 1e5u                  # ERROR (SPY0023): Invalid numeric suffix: u (a float literal accepts only the float suffixes f, d and m)
+```
+
 ## Narrowing an Unsuffixed Literal to `float32` or `decimal`
 
 An **unsuffixed** float literal may narrow to `float32` or `decimal` at **every** store

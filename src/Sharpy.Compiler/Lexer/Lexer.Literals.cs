@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 
@@ -784,6 +785,9 @@ public partial class Lexer
                     throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
             }
 
+            // `.5f` is `0.5f` (float_literals.md: ".5 — Same as 0.5"): the same suffix table as every
+            // other path, never an early return that leaves the suffix to lex as an Identifier (#2339).
+            ReadNumericSuffix(sb, NumberSpelling.DecimalFloat, startLine, startColumn);
             return CreateToken(TokenType.Float, sb.ToString(), startLine, startColumn, startPosition);
         }
 
@@ -904,32 +908,11 @@ public partial class Lexer
                 throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
         }
 
-        // Check for suffix (f, L, ul, etc.)
-        if (_position < _source.Length && char.IsLetter(_source[_position]))
-        {
-            var suffix = _source[_position].ToString();
-            _position++;
-            _column++;
-
-            // Check for two-letter suffix (ul, UL)
-            if (_position < _source.Length && char.IsLetter(_source[_position]))
-            {
-                suffix += _source[_position];
-                _position++;
-                _column++;
-            }
-
-            // Validate suffix
-            var validSuffixes = new[] { "f", "F", "d", "D", "m", "M", "l", "L", "u", "U", "ul", "UL", "uL", "Ul" };
-            if (!validSuffixes.Contains(suffix))
-                throw ReportError($"Invalid numeric suffix: {suffix}", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumericSuffix);
-
-            sb.Append(suffix);
-
-            // Suffix on integer makes it that type, but we still parse as Float token if it has suffix
-            if (suffix.ToLower() == "f" || suffix.ToLower() == "d" || suffix.ToLower() == "m")
-                isFloat = true;
-        }
+        // A float suffix on integer digits makes the literal a float (`42f`); an integer suffix on a
+        // float spelling (`3.14L`, `1e5u`) is refused, never silently dropped (#2339).
+        var suffixKind = ReadNumericSuffix(sb, isFloat ? NumberSpelling.DecimalFloat : NumberSpelling.DecimalInteger, startLine, startColumn);
+        if (suffixKind == NumericSuffixKind.Float)
+            isFloat = true;
 
         var tokenType = isFloat ? TokenType.Float : TokenType.Integer;
         return CreateToken(tokenType, sb.ToString(), startLine, startColumn, startPosition);
@@ -981,30 +964,94 @@ public partial class Lexer
 
         // A hex digit is never a suffix: `0xFFf` is 0xFFF and `0x1D` is 29. The digit loop above
         // has already consumed every a-f/A-F, so what follows can only be an integer suffix.
-        ReadPrefixedIntegerSuffix(sb, "a hexadecimal", startLine, startColumn);
+        ReadNumericSuffix(sb, NumberSpelling.Hexadecimal, startLine, startColumn);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
 
-    /// <summary>
-    /// The integer suffixes a literal of ANY base accepts (#2208): the decimal integer roster of
-    /// <see cref="ReadNumber"/> minus the float suffixes (<c>f d m</c>), which make a decimal
-    /// literal a float and have no meaning on a hex, binary or octal literal (C# refuses
-    /// <c>0x1m</c> too). <c>f</c>/<c>d</c> are hex digits, so on a hex literal they never reach
-    /// this roster.
-    /// </summary>
-    private static readonly string[] IntegerSuffixes = { "l", "L", "u", "U", "ul", "UL", "uL", "Ul" };
+    /// <summary>The literal kind a numeric suffix belongs to (integer_literals.md, float_literals.md).</summary>
+    private enum NumericSuffixKind
+    {
+        Integer,
+        Float,
+    }
 
     /// <summary>
-    /// Reads the optional integer suffix after the digits of a <c>0x</c>/<c>0b</c>/<c>0o</c>
-    /// literal, the same way <see cref="ReadNumber"/> reads a decimal literal's suffix: up to two
-    /// letters, validated against <see cref="IntegerSuffixes"/>. Without this the suffix lexed as
-    /// a separate identifier and the statement failed with SPY0103 (#2208).
+    /// How a number's digits were spelled, which decides the suffix kinds it accepts
+    /// (<see cref="SpellingAccepts"/>) and names it in the refusal.
     /// </summary>
-    private void ReadPrefixedIntegerSuffix(StringBuilder sb, string articleAndBase, int startLine, int startColumn)
+    private enum NumberSpelling
+    {
+        /// <summary>Decimal digits with no <c>.</c> and no exponent: <c>42</c>, <c>1_000</c>.</summary>
+        DecimalInteger,
+        /// <summary>A decimal fraction or exponent: <c>3.14</c>, <c>.5</c>, <c>1e5</c>.</summary>
+        DecimalFloat,
+        Hexadecimal,
+        Binary,
+        Octal,
+    }
+
+    /// <summary>
+    /// THE numeric suffix table (#2339): every suffix the spec lists, keyed by the literal kind it
+    /// belongs to. Integer suffixes (integer_literals.md): <c>L</c>/<c>l</c>, <c>u</c>/<c>U</c>,
+    /// <c>ul</c>/<c>UL</c> (and the mixed-case <c>uL</c>/<c>Ul</c>). Float suffixes
+    /// (float_literals.md): <c>f</c>/<c>F</c>, <c>d</c>/<c>D</c>, <c>m</c>/<c>M</c>. Every
+    /// <see cref="ReadNumber"/> path consults it after its digits; anything else (<c>j</c>,
+    /// <c>lu</c>, <c>x</c>) is refused with SPY0023.
+    /// </summary>
+    private static readonly ImmutableDictionary<string, NumericSuffixKind> NumericSuffixes = new Dictionary<string, NumericSuffixKind>(StringComparer.Ordinal)
+    {
+        ["l"] = NumericSuffixKind.Integer,
+        ["L"] = NumericSuffixKind.Integer,
+        ["u"] = NumericSuffixKind.Integer,
+        ["U"] = NumericSuffixKind.Integer,
+        ["ul"] = NumericSuffixKind.Integer,
+        ["UL"] = NumericSuffixKind.Integer,
+        ["uL"] = NumericSuffixKind.Integer,
+        ["Ul"] = NumericSuffixKind.Integer,
+        ["f"] = NumericSuffixKind.Float,
+        ["F"] = NumericSuffixKind.Float,
+        ["d"] = NumericSuffixKind.Float,
+        ["D"] = NumericSuffixKind.Float,
+        ["m"] = NumericSuffixKind.Float,
+        ["M"] = NumericSuffixKind.Float,
+    }.ToImmutableDictionary(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Whether a spelling takes a suffix of <paramref name="kind"/>, as C# rules: decimal integer
+    /// digits take both kinds (<c>42L</c>; <c>42f</c> is a float); a float spelling takes only the
+    /// float suffixes (C# refuses <c>3.14L</c> and <c>1e5u</c>); a hex, binary or octal literal
+    /// takes only the integer suffixes (#2208 — C# refuses <c>0x1m</c>; <c>f</c>/<c>d</c> are hex
+    /// digits, so on a hex literal they never reach the table).
+    /// </summary>
+    private static bool SpellingAccepts(NumberSpelling spelling, NumericSuffixKind kind) => spelling switch
+    {
+        NumberSpelling.DecimalInteger => true,
+        NumberSpelling.DecimalFloat => kind == NumericSuffixKind.Float,
+        _ => kind == NumericSuffixKind.Integer,
+    };
+
+    /// <summary>The refusal's parenthetical: what the spelling does accept.</summary>
+    private static string AcceptedSuffixesNote(NumberSpelling spelling) => spelling switch
+    {
+        NumberSpelling.DecimalInteger => "",
+        NumberSpelling.DecimalFloat => " (a float literal accepts only the float suffixes f, d and m)",
+        NumberSpelling.Hexadecimal => " (a hexadecimal literal accepts only the integer suffixes u, l and ul)",
+        NumberSpelling.Binary => " (a binary literal accepts only the integer suffixes u, l and ul)",
+        _ => " (an octal literal accepts only the integer suffixes u, l and ul)",
+    };
+
+    /// <summary>
+    /// Reads the optional suffix after a number's digits — up to two letters — and validates it
+    /// against <see cref="NumericSuffixes"/> for <paramref name="spelling"/>. Returns the suffix's
+    /// kind, or <c>null</c> when no letter follows. Called by EVERY <see cref="ReadNumber"/> path
+    /// (decimal, leading-dot, hex, binary, octal) after its digits, so a suffix means the same on
+    /// every spelling of its kind (#2208, #2339).
+    /// </summary>
+    private NumericSuffixKind? ReadNumericSuffix(StringBuilder sb, NumberSpelling spelling, int startLine, int startColumn)
     {
         if (_position >= _source.Length || !char.IsLetter(_source[_position]))
-            return;
+            return null;
 
         var suffix = _source[_position].ToString();
         _position++;
@@ -1017,12 +1064,13 @@ public partial class Lexer
             _column++;
         }
 
-        if (!IntegerSuffixes.Contains(suffix))
+        if (!NumericSuffixes.TryGetValue(suffix, out var kind) || !SpellingAccepts(spelling, kind))
             throw ReportError(
-                $"Invalid numeric suffix: {suffix} ({articleAndBase} literal accepts only the integer suffixes u, l and ul)",
+                $"Invalid numeric suffix: {suffix}{AcceptedSuffixesNote(spelling)}",
                 startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumericSuffix);
 
         sb.Append(suffix);
+        return kind;
     }
 
     private Token ReadBinaryNumber(int startLine, int startColumn, int startPosition)
@@ -1074,7 +1122,7 @@ public partial class Lexer
         if (lastChar == '_')
             throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
 
-        ReadPrefixedIntegerSuffix(sb, "a binary", startLine, startColumn);
+        ReadNumericSuffix(sb, NumberSpelling.Binary, startLine, startColumn);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
@@ -1128,7 +1176,7 @@ public partial class Lexer
         if (lastChar == '_')
             throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
 
-        ReadPrefixedIntegerSuffix(sb, "an octal", startLine, startColumn);
+        ReadNumericSuffix(sb, NumberSpelling.Octal, startLine, startColumn);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
