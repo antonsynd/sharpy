@@ -9,6 +9,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Sharpy.TestInfrastructure.Integration;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -151,15 +152,12 @@ public class DifferentialExecutionTests : IntegrationTestBase
         return module;
     }
 
-    [Fact]
+    [SkippableFact]
     public void DifferentialExecution_SharedSubset_MatchesCPython()
     {
-        var oracle = PythonExecOracle.TryLocate();
-        if (oracle is null)
-        {
-            Output.WriteLine("SKIP: python3 >= 3.12 and run_programs.py not both available.");
-            return;
-        }
+        PythonInterpreter.RequireOrSkip(minMinor: 12);
+        var oracle = PythonExecOracle.TryLocate()
+            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_exec/run_programs.py was not found.");
 
         var sw = Stopwatch.StartNew();
         int limit = ReadIntEnv("DIFF_EXEC_LIMIT", FullPool);

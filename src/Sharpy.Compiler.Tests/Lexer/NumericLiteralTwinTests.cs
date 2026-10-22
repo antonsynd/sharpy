@@ -46,7 +46,7 @@ namespace Sharpy.Compiler.Tests.Lexer;
 /// disagreement whose Sharpy verdict differs from the row's pin fails. A row without a
 /// <c>#NNNN</c> cite fails, a row naming a spelling the matrix does not compare fails, and a row
 /// whose spelling now agrees fails as stale (drain on fix).</para>
-/// <para><b>Python absent:</b> a loud skip, unless <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI's
+/// <para><b>Python absent:</b> reported Skipped (<see cref="PythonInterpreter.RequireOrSkip(int)"/>, #2342), unless <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI's
 /// Compiler shards), where it fails.</para>
 /// </remarks>
 public class NumericLiteralTwinTests
@@ -483,7 +483,7 @@ public class NumericLiteralTwinTests
         Assert.Equal(4, broken.Count);
     }
 
-    [Fact]
+    [SkippableFact]
     public void SharedGrammar_AgreesWithCPython()
     {
         var stopwatch = Stopwatch.StartNew();
@@ -493,16 +493,10 @@ public class NumericLiteralTwinTests
         var shapeViolations = AllowlistShapeViolations(allowlist, compared);
         Assert.True(shapeViolations.Count == 0, string.Join("\n", shapeViolations));
 
-        var python = PythonInterpreter.Locate();
-        var script = PythonInterpreter.FindRepoFile("build_tools", "differential_lex", "number_oracle.py");
-        if (python is null || script is null)
-        {
-            string why = python is null ? "no Python 3.12+ interpreter (python3/python) on PATH" : "build_tools/differential_lex/number_oracle.py not found";
-            if (PythonInterpreter.Required)
-                Assert.Fail($"{why}, and {PythonInterpreter.RequireEnvironmentVariable}=1 makes the numeric twin's oracle required.");
-            _output.WriteLine($"SKIP: {why}; the numeric twin did not run. Set {PythonInterpreter.RequireEnvironmentVariable}=1 to make this a failure.");
-            return;
-        }
+        var python = PythonInterpreter.RequireOrSkip(minMinor: 12);
+        // The oracle script is IN the repository: its absence is a broken checkout, never a skip.
+        var script = PythonInterpreter.FindRepoFile("build_tools", "differential_lex", "number_oracle.py")
+            ?? throw new FileNotFoundException("build_tools/differential_lex/number_oracle.py not found under the repository root.");
 
         var requests = spellings.Select((s, i) => JsonSerializer.Serialize(new { id = i, source = s.Text }));
         var replies = python.RunBatch(script, requests);
