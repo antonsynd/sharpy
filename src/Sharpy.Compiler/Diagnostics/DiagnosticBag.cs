@@ -105,6 +105,8 @@ public class DiagnosticBag
     private readonly bool _warningsAsErrors;
     private int _errorCount;
     private int _warningCount;
+    private int? _errorCap;
+    private bool _errorCapNoted;
     private int _hintCount;
 
     /// <summary>
@@ -342,6 +344,33 @@ public class DiagnosticBag
         }
     }
 
+    /// <summary>
+    /// The most errors this bag keeps — the <c>--max-errors</c> count at the one sink every phase of
+    /// a compilation reaches (#2345, R-HD). Null (the default) keeps every error. Past the cap an
+    /// error is dropped and one SPY0905 "further errors suppressed" note is recorded, and a phase's
+    /// own SPY0905 merged in later is not repeated. A phase's own cap (the parser's, the type
+    /// checker's) still stops that phase early; this one is what makes the count one across phases:
+    /// name collection, import and type resolution, type checking and validation had no cap or each
+    /// their own, so <c>--max-errors 1</c> reported every SPY0202/SPY0204/SPY0300/SPY0403.
+    /// </summary>
+    public int? ErrorCap
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _errorCap;
+            }
+        }
+        set
+        {
+            lock (_lock)
+            {
+                _errorCap = value;
+            }
+        }
+    }
+
     public void Add(CompilerDiagnostic diagnostic)
     {
         // Stamp phase/producer provenance from the active scope (if any) before anything else,
@@ -374,6 +403,33 @@ public class DiagnosticBag
 
         lock (_lock)
         {
+            if (_errorCap is { } cap)
+            {
+                if (diagnostic.Code == DiagnosticCodes.Infrastructure.TooManyErrors)
+                {
+                    // One note per capped bag: a phase that stopped at its own cap brings its note.
+                    if (_errorCapNoted)
+                        return;
+                    _errorCapNoted = true;
+                }
+                else if (diagnostic.IsError && _errorCount >= cap)
+                {
+                    if (!_errorCapNoted)
+                    {
+                        _errorCapNoted = true;
+                        var note = new CompilerDiagnostic(
+                            $"Too many errors ({cap}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                            CompilerDiagnosticSeverity.Warning, diagnostic.Line, diagnostic.Column,
+                            FilePath: diagnostic.FilePath, Code: DiagnosticCodes.Infrastructure.TooManyErrors,
+                            Phase: diagnostic.Phase);
+                        _seenDiagnostics.Add(GetDeduplicationKey(note));
+                        _diagnostics.Add(note);
+                        _warningCount++;
+                    }
+                    return;
+                }
+            }
+
             if (!_seenDiagnostics.Add(key))
                 return; // Skip duplicate
 

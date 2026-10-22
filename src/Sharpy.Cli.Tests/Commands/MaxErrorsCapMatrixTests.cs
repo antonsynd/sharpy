@@ -30,9 +30,16 @@ namespace Sharpy.Cli.Tests.Commands;
 /// <para>
 /// The parser rows of every shape but the statement are the ones the defect reached (N + 1 at
 /// e7e0a0ef7); the statement rows, and every semantic row, are controls that already honoured the
-/// cap. The semantic phase has no enum/union rows: an undefined type in a union case is SPY0202,
-/// which does not honour the semantic cap at e7e0a0ef7 — a separate cell, outside this parser
-/// chore (reported with #2311's round).
+/// cap.
+/// </para>
+/// <para>
+/// <b>Every semantic phase (#2345).</b> The cap is ONE count at the project's diagnostic sink
+/// (<c>DiagnosticBag.ErrorCap</c>), so the phase axis gains the phases that had no cap of their
+/// own: type resolution (SPY0202 <c>x: Foo = 1</c>), name collection (SPY0204, a function or method
+/// defined twice), import resolution (SPY0300 <c>import nomodN</c>), validation (SPY0400, a mutable
+/// default) and a mixed program (SPY0202 and SPY0220 alternating — one count, not one per code).
+/// At 4d2221242 every one reported every error under <c>--max-errors 1</c>. Shapes are those each
+/// error can occupy; the default N is semantic analysis's 100.
 /// </para>
 /// </remarks>
 public class MaxErrorsCapMatrixTests
@@ -40,20 +47,30 @@ public class MaxErrorsCapMatrixTests
     private const int ParserDefault = 25;
     private const int SemanticDefault = 100;
 
-    private static readonly string[] Phases = { "parser", "semantic" };
+    private static readonly string[] Phases =
+        { "parser", "semantic", "type-resolution", "name-collection", "import", "validation", "mixed" };
     private static readonly string[] SharedShapes = { "statement", "def", "class", "nested" };
     private static readonly string[] ParserOnlyShapes = { "enum", "union" };
+
+    private static IEnumerable<string> ShapesOf(string phase) => phase switch
+    {
+        "parser" => SharedShapes.Concat(ParserOnlyShapes),
+        "semantic" or "type-resolution" => SharedShapes,
+        "name-collection" or "validation" => new[] { "statement", "class" },
+        "import" or "mixed" => new[] { "statement" },
+        _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null),
+    };
     private static readonly int?[] Caps = { 1, 2, null };
     private static readonly string[] Routes = { "emit parse", "emit diagnostics", "run", "build" };
 
     public static IEnumerable<object[]> Cells()
     {
         foreach (var phase in Phases)
-            foreach (var shape in phase == "parser" ? SharedShapes.Concat(ParserOnlyShapes) : SharedShapes)
+            foreach (var shape in ShapesOf(phase))
                 foreach (var cap in Caps)
                     foreach (var route in Routes)
                     {
-                        if (phase == "semantic" && route == "emit parse")
+                        if (phase != "parser" && route == "emit parse")
                             continue; // `emit parse` runs no semantic phase.
                         yield return new object[] { phase, shape, cap?.ToString() ?? "default", route };
                     }
@@ -62,9 +79,10 @@ public class MaxErrorsCapMatrixTests
     [Fact]
     public void Matrix_HasEveryCell()
     {
-        // Anchored to literals, not to the axis arrays: parser 6 shapes × 3 N × 4 routes = 72, plus
-        // semantic 4 shapes × 3 N × 3 routes (no `emit parse`) = 36.
-        Cells().Should().HaveCount(108);
+        // Anchored to literals, not to the axis arrays: parser 6 shapes × 3 N × 4 routes = 72; then
+        // × 3 N × 3 routes (no `emit parse`): semantic 4 shapes = 36, type-resolution 4 = 36,
+        // name-collection 2 = 18, import 1 = 9, validation 2 = 18, mixed 1 = 9 (#2345).
+        Cells().Should().HaveCount(198);
         Cells().Select(c => $"{c[0]}|{c[1]}|{c[2]}|{c[3]}").Should().OnlyHaveUniqueItems();
     }
 
@@ -113,7 +131,29 @@ public class MaxErrorsCapMatrixTests
         var sb = new StringBuilder();
         for (var i = 1; i <= count; i++)
         {
-            var bad = phase == "parser" ? $"x{i} = = {i}" : $"x{i}: int = undefined_{i}";
+            // Phases whose error is a whole declaration, not a statement.
+            var declaration = (phase, shape) switch
+            {
+                ("name-collection", "statement") => $"def d{i}() -> None:\n    pass\n\ndef d{i}() -> None:\n    pass\n\n",
+                ("name-collection", "class") => $"class C{i}:\n    def m(self) -> None:\n        pass\n\n    def m(self) -> None:\n        pass\n\n",
+                ("validation", "statement") => $"def f{i}(x: list[int] = []) -> None:\n    pass\n\n",
+                ("validation", "class") => $"class C{i}:\n    def m(self, x: list[int] = []) -> None:\n        pass\n\n",
+                ("import", _) => $"import nomod{i}\n",
+                _ => null,
+            };
+            if (declaration != null)
+            {
+                sb.Append(declaration);
+                continue;
+            }
+
+            var bad = phase switch
+            {
+                "parser" => $"x{i} = = {i}",
+                "type-resolution" => $"x{i}: Foo{i} = 1",
+                "mixed" => i % 2 == 0 ? $"x{i}: int = \"s\"" : $"x{i}: Foo{i} = 1",
+                _ => $"x{i}: int = undefined_{i}",
+            };
             sb.Append(shape switch
             {
                 "statement" => $"{bad}\n",

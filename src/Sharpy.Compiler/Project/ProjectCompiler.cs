@@ -61,6 +61,13 @@ internal partial class ProjectCompiler
     private DiagnosticBag _diagnostics = new();
 
     /// <summary>
+    /// The <c>--max-errors</c> count the project's diagnostic sink enforces across every phase
+    /// (#2345, R-HD): the explicit N, else semantic analysis's documented default of 100. The
+    /// parser keeps its own per-file default of 25 (<c>ProjectCompiler.Parsing</c>).
+    /// </summary>
+    private int SinkErrorCap => _maxErrors > 0 ? _maxErrors : 100;
+
+    /// <summary>
     /// Merges <paramref name="source"/> into <paramref name="target"/>, back-filling any
     /// still-<see cref="CompilerPhase.Unknown"/> diagnostic with <paramref name="phase"/> while
     /// preserving explicit phases and validator producers already stamped at the source.
@@ -209,7 +216,7 @@ internal partial class ProjectCompiler
         // every phase that iterates ProjectModel.Units sees a deterministic order.
         config.SourceFiles.Sort(StringComparer.Ordinal);
 
-        _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
+        _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings) { ErrorCap = SinkErrorCap };
         _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
 
