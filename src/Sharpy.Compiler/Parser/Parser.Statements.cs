@@ -998,13 +998,12 @@ public partial class Parser
                 var fromToken = Current;
                 Advance();
                 cause = ParseExpression(); // Parse for error recovery
-                _diagnostics.AddError(
+                RecordError(
                     "'raise ... from ...' is not supported in Sharpy. Use 'raise' without a cause.",
                     GetSpanFromToken(fromToken),
                     fromToken.Line,
                     fromToken.Column,
-                    code: DiagnosticCodes.Parser.RaiseFromNotSupported,
-                    phase: CompilerPhase.Parser);
+                    DiagnosticCodes.Parser.RaiseFromNotSupported);
             }
         }
 
@@ -1371,12 +1370,8 @@ public partial class Parser
             }
             catch (ParserAbortException)
             {
-                // Error already recorded in _diagnostics by ReportError()
-
-                // Stop after _maxErrors to avoid cascading false errors
-                if (_diagnostics.ErrorCount >= _maxErrors)
-                    break;
-
+                // Error already recorded in _diagnostics by ReportError(); the error cap is
+                // enforced there (RecordError), never at a recovery site (#2311).
                 // Panic-mode recovery: synchronize to next statement boundary
                 Synchronize(itemStart);
             }

@@ -55,15 +55,14 @@ public partial class Parser
             SkipNewlines();
             if (!IsAtEnd)
             {
-                _diagnostics.AddError(
+                RecordError(
                     $"Unexpected token '{Current.Value}' after expression",
                     CurrentSpan, Current.Line, Current.Column,
-                    code: DiagnosticCodes.Parser.UnexpectedToken,
-                    phase: CompilerPhase.Parser);
+                    DiagnosticCodes.Parser.UnexpectedToken);
             }
             return expr;
         }
-        catch (ParserAbortException)
+        catch (Exception e) when (e is ParserAbortException or ParserErrorLimitException)
         {
             return new Identifier
             {

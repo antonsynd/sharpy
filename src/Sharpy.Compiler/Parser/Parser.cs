@@ -22,6 +22,15 @@ public partial class Parser
     private class ParserAbortException : Exception { }
 
     /// <summary>
+    /// Thrown by <see cref="RecordError"/> the moment the error cap is reached. It is deliberately
+    /// NOT a <see cref="ParserAbortException"/>: no panic-mode recovery site catches it, so it
+    /// unwinds the whole parse to the public entry point, and nothing a recovery would report —
+    /// the enclosing suite's <c>Expected Dedent</c>, the next statement's error — is reported after
+    /// the Nth error (#2311).
+    /// </summary>
+    private sealed class ParserErrorLimitException : Exception { }
+
+    /// <summary>
     /// Record a parser error into diagnostics and return an exception for stack unwinding.
     /// Usage: <c>throw ReportError("msg", line, col, code);</c>
     /// When a token is available, pass its span for rich error rendering with underlines.
@@ -29,8 +38,30 @@ public partial class Parser
     private ParserAbortException ReportError(string message, int line, int column, string code,
         Text.TextSpan? span = null)
     {
-        _diagnostics.AddError(message, span, line, column, code: code, phase: CompilerPhase.Parser);
+        RecordError(message, span, line, column, code);
         return new ParserAbortException();
+    }
+
+    /// <summary>
+    /// The parser's one error-counting site: every parser error is recorded here, and the
+    /// <c>--max-errors</c> cap is enforced here and nowhere else (#2311). When this error is the
+    /// Nth, the SPY0905 note is recorded and a <see cref="ParserErrorLimitException"/> stops the
+    /// parse at once, so no recovery follows the Nth error. The cap used to be read at the
+    /// panic-mode catch sites, after the recovery that had already reported a cascade error,
+    /// so <c>--max-errors N</c> could report N+1.
+    /// </summary>
+    private void RecordError(string message, Text.TextSpan? span, int line, int column, string code)
+    {
+        _diagnostics.AddError(message, span, line, column, code: code, phase: CompilerPhase.Parser);
+        if (_diagnostics.ErrorCount < _maxErrors)
+            return;
+
+        _diagnostics.AddWarning(
+            $"Too many errors ({_maxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+            Current.Line, Current.Column,
+            code: DiagnosticCodes.Infrastructure.TooManyErrors,
+            phase: CompilerPhase.Parser);
+        throw new ParserErrorLimitException();
     }
 
     private readonly List<Token> _tokens;
@@ -518,40 +549,35 @@ public partial class Parser
         SkipNewlines();
 
         _lastLoopPosition = -1;
-        while (!IsAtEnd)
+        try
         {
-            if (!CheckLoopProgress())
-                break;
-
-            SkipNewlines();
-            if (IsAtEnd)
-                break;
-
-            var itemStart = _position;
-            try
+            while (!IsAtEnd)
             {
-                var stmt = ParseStatement();
-                statements.Add(stmt);
-            }
-            catch (ParserAbortException)
-            {
-                // Error already recorded in _diagnostics by ReportError()
-
-                // Stop after _maxErrors to avoid cascading false errors
-                if (_diagnostics.ErrorCount >= _maxErrors)
-                {
-                    _diagnostics.AddWarning(
-                        $"Too many errors ({_maxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
-                        Current.Line, Current.Column,
-                        code: DiagnosticCodes.Infrastructure.TooManyErrors,
-                        phase: CompilerPhase.Parser);
+                if (!CheckLoopProgress())
                     break;
-                }
 
-                // Panic-mode recovery: synchronize to next statement boundary
-                Synchronize(itemStart);
+                SkipNewlines();
+                if (IsAtEnd)
+                    break;
+
+                var itemStart = _position;
+                try
+                {
+                    var stmt = ParseStatement();
+                    statements.Add(stmt);
+                }
+                catch (ParserAbortException)
+                {
+                    // Error already recorded in _diagnostics by ReportError().
+                    // Panic-mode recovery: synchronize to next statement boundary
+                    Synchronize(itemStart);
+                }
+                SkipNewlines();
             }
-            SkipNewlines();
+        }
+        catch (ParserErrorLimitException)
+        {
+            // The error cap was reached at RecordError, which recorded the SPY0905 note.
         }
 
         var docString = TakeDocString(statements);
@@ -582,7 +608,7 @@ public partial class Parser
         {
             return ParseStatement();
         }
-        catch (ParserAbortException)
+        catch (Exception e) when (e is ParserAbortException or ParserErrorLimitException)
         {
             return new ExpressionStatement
             {
@@ -614,28 +640,33 @@ public partial class Parser
         SkipNewlines();
 
         _lastLoopPosition = -1;
-        while (!IsAtEnd)
+        try
         {
-            if (!CheckLoopProgress())
-                break;
-
-            SkipNewlines();
-            if (IsAtEnd)
-                break;
-
-            var itemStart = _position;
-            try
+            while (!IsAtEnd)
             {
-                var stmt = ParseStatement();
-                statements.Add(stmt);
-            }
-            catch (ParserAbortException)
-            {
-                if (_diagnostics.ErrorCount >= _maxErrors)
+                if (!CheckLoopProgress())
                     break;
-                Synchronize(itemStart);
+
+                SkipNewlines();
+                if (IsAtEnd)
+                    break;
+
+                var itemStart = _position;
+                try
+                {
+                    var stmt = ParseStatement();
+                    statements.Add(stmt);
+                }
+                catch (ParserAbortException)
+                {
+                    Synchronize(itemStart);
+                }
+                SkipNewlines();
             }
-            SkipNewlines();
+        }
+        catch (ParserErrorLimitException)
+        {
+            // The error cap was reached at RecordError, which recorded the SPY0905 note.
         }
 
         return statements;
