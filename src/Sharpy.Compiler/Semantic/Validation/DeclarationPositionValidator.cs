@@ -28,8 +28,12 @@ internal enum DeclarationSlot
 /// <para><b>Arms.</b> A type definition (<c>class</c>, <c>@dataclass class</c>, <c>struct</c>,
 /// <c>interface</c>, <c>union</c>, <c>delegate</c>, <c>enum</c>) anywhere but the module body or a type
 /// body is SPY0708 — C# has no local types, so the definition would own no symbol. An <c>import</c> /
-/// <c>from … import</c> anywhere but the module body is SPY0708 — an import is a module-level fact. The
-/// declaring positions themselves are NameResolver's (it declares the module body and type bodies). Every
+/// <c>from … import</c> anywhere but the module body is SPY0708 — an import is a module-level fact. A
+/// <c>type</c> alias whose bare name is a builtin type name is SPY0212 at every non-declaring position
+/// (#2319) — the same <c>BuiltinNameShadowing</c> classifier and text NameResolver's gate applies at the
+/// declaring positions, so each position has exactly one owner (plan D2); a fresh-named or
+/// backtick-escaped alias falls through (block-scoped, D7). The declaring positions themselves are
+/// NameResolver's (it declares the module body and type bodies). Every
 /// other statement falls through untouched; in particular a type body's executable statements are
 /// <see cref="TypeBodyStatementValidator"/>'s and #2148's, not this validator's (D8).</para>
 ///
@@ -222,6 +226,18 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
                     column: stmt.ColumnStart,
                     code: DiagnosticCodes.ValidationOverflow.DeclarationOutsideDeclaringPosition,
                     span: stmt.Span);
+                break;
+
+            case TypeAlias alias when !IsTypeDeclaring(position)
+                && BuiltinNameShadowing.Classify(
+                    Context.Builtins, alias.Name, alias.IsNameBacktickEscaped, isTypeDeclaration: true)
+                == BuiltinShadowVerdict.Refused:
+                // No span on purpose, as NameResolver's gate: the caret lands on the name token.
+                AddError(
+                    BuiltinNameShadowing.RefusalMessage(alias.Name),
+                    line: alias.NameLineStart,
+                    column: alias.NameColumnStart,
+                    code: BuiltinNameShadowing.RefusalCode);
                 break;
 
             default:
