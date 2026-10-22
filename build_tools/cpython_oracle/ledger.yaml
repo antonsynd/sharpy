@@ -157,6 +157,14 @@ deviations:
   spec_ref: docs/language_specification/fstrings.md
   existing_diagnostic: SPY0609
   planned_diagnostic: null
+- id: decimal-literal-28-digit-precision
+  category: types
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/float_literals.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: dict-spread-in-call
   category: syntax
   audience: python
