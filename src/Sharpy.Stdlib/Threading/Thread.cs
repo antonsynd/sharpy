@@ -25,39 +25,56 @@ namespace Sharpy
         // join after that returns without reading its timeout (#2263).
         private volatile bool _stopped;
 
-        internal Thread(SysThread thread)
+        // python's Thread._name: never None (#2261, R-FD). Kept here, not in SysThread.Name, which
+        // the wrapper of a thread this module did not create must not rename.
+        private string _name;
+
+        // The current_thread() / main_thread() wrapper of a running .NET thread (ThreadRegistry).
+        internal Thread(SysThread thread, string name, bool daemon)
         {
             _thread = thread;
             _started = 1;
-            _daemon = thread.IsBackground;
+            _daemon = daemon;
+            _name = name;
         }
 
         public Thread(Action? target = null, bool daemon = false, string? name = null)
         {
+            _name = ThreadRegistry.NameOrDefault(name);
             _thread = new SysThread(() =>
             {
-                if (target != null)
+                try
                 {
-                    target();
+                    if (target != null)
+                    {
+                        target();
+                    }
+                    else
+                    {
+                        Run();
+                    }
                 }
-                else
+                finally
                 {
-                    Run();
+                    ThreadRegistry.Unregister(this);
                 }
             });
             _thread.IsBackground = daemon;
             _daemon = daemon;
-            if (name != null)
-            {
-                _thread.Name = name;
-            }
+            _thread.Name = _name;
         }
 
-        public string? Name
+        /// <summary>
+        /// The thread's name: the one passed to the constructor, else <c>Thread-N</c> (N counts the
+        /// unnamed threads created in the process, from 1); <c>MainThread</c> for the main thread.
+        /// </summary>
+        public string Name
         {
-            get => _thread.Name;
-            set => _thread.Name = value;
+            get => _name;
+            set => _name = value;
         }
+
+        internal SysThread NativeThread => _thread;
 
         public bool Daemon
         {
@@ -91,7 +108,17 @@ namespace Sharpy
             {
                 throw new RuntimeError("threads can only be started once");
             }
-            _thread.Start();
+            // In enumerate() from start() on (python's _limbo), until the body's finally removes it.
+            ThreadRegistry.Register(this);
+            try
+            {
+                _thread.Start();
+            }
+            catch
+            {
+                ThreadRegistry.Unregister(this);
+                throw;
+            }
         }
 
         public void Join(double? timeout = null)

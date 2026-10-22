@@ -16,11 +16,23 @@ import threading
 
 ### `threading.current_thread() -> Thread`
 
+Return the Thread object of the calling thread: the object `start()` was called
+on, or the main thread. A thread the threading module did not start gets a daemon
+`Dummy-N` thread, which stays in `enumerate()`.
+
 ### `threading.active_count() -> int`
+
+Return the number of Thread objects currently alive: the length of `enumerate()`.
 
 ### `threading.main_thread() -> Thread`
 
+Return the main Thread object, named `MainThread`: the thread that first used the
+threading module, which in a Sharpy program is the thread `main()` runs on.
+
 ### `threading.enumerate() -> list[Thread]`
+
+Return a list of every Thread object currently alive: the main thread, every started
+thread that has not finished, and the dummy threads `current_thread()` created.
 
 ### `threading.lock() -> Lock`
 

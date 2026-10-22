@@ -78,6 +78,7 @@ public class StdlibModuleGlobalConcurrencyTests
     {
         new RandomExerciser(), new SocketExerciser(), new CalendarExerciser(), new XmlExerciser(),
         new LoggingExerciser(), new NumpyRandomExerciser(), new HttpStatusExerciser(), new TypedLoadCacheExerciser(),
+        new ThreadNameExerciser(), new ThreadActiveExerciser(),
     };
 
     public static IEnumerable<object[]> Matrix(string module)
@@ -102,7 +103,7 @@ public class StdlibModuleGlobalConcurrencyTests
         Assert.Equal(Exercisers.Length, Exercisers.Select(e => e.Module).Distinct().Count());
     }
 
-    /// <summary>Only the plan's six globals run every operation; a skipped operation names why it cannot race.</summary>
+    /// <summary>Only the plan's six globals and the two threading globals (#2261) run every operation; a skipped operation names why it cannot race.</summary>
     [Fact]
     public void EverySkippedOperation_NamesItsReason()
     {
@@ -116,7 +117,7 @@ public class StdlibModuleGlobalConcurrencyTests
         }
 
         Assert.Equal(
-            new[] { "calendar", "logging", "numpy.random", "random", "socket", "xml" },
+            new[] { "calendar", "logging", "numpy.random", "random", "socket", "threading (active)", "threading (names)", "xml" },
             Exercisers.Where(e => e.NotApplicable.Count == 0).Select(e => e.Module).OrderBy(m => m, StringComparer.Ordinal));
     }
 
@@ -202,6 +203,26 @@ public class StdlibModuleGlobalConcurrencyTests
 
         [Theory]
         [MemberData(nameof(Matrix), "http.HTTPStatus", MemberType = typeof(StdlibModuleGlobalConcurrencyTests))]
+        public void Cell(string operation, int threads) => Run(operation, threads);
+    }
+
+    [Collection("ThreadingRegistry")]
+    public sealed class ThreadNameCells : CellRunner
+    {
+        public ThreadNameCells(ITestOutputHelper output) : base(output, "threading (names)") { }
+
+        [Theory]
+        [MemberData(nameof(Matrix), "threading (names)", MemberType = typeof(StdlibModuleGlobalConcurrencyTests))]
+        public void Cell(string operation, int threads) => Run(operation, threads);
+    }
+
+    [Collection("ThreadingRegistry")]
+    public sealed class ThreadActiveCells : CellRunner
+    {
+        public ThreadActiveCells(ITestOutputHelper output) : base(output, "threading (active)") { }
+
+        [Theory]
+        [MemberData(nameof(Matrix), "threading (active)", MemberType = typeof(StdlibModuleGlobalConcurrencyTests))]
         public void Cell(string operation, int threads) => Run(operation, threads);
     }
 
@@ -935,6 +956,167 @@ public class StdlibModuleGlobalConcurrencyTests
                         () => $"HTTPStatus.FromValue({member.Value}) is not {member.Name}");
                 }
             });
+        }
+    }
+
+    /// <summary>
+    /// threading's name counter (#2261) — CPython 3.12 (verified 2026-10-22): threading._counter is
+    /// itertools.count(1), one __next__ per unnamed Thread; 8 threads x 2000 Thread() constructions
+    /// get pairwise distinct numbers (True), each thread's own numbers increase (True), and the next
+    /// Thread() afterwards is max + 1 (True) — no number is lost or repeated; a Thread() on one thread
+    /// then a Thread() on another is the next number. Every read of the counter is the increment that
+    /// writes it, so "read" checks each thread's own sequence while the others write.
+    /// </summary>
+    private sealed class ThreadNameExerciser : GlobalExerciser
+    {
+        public override string Field => "Sharpy.ThreadRegistry._counter";
+        public override string Module => "threading (names)";
+
+        // An unnamed, never-started Thread: the name is drawn from the counter at construction.
+        private static int NextNumber()
+        {
+            var name = new Sharpy.Thread().Name;
+            return name.StartsWith("Thread-", StringComparison.Ordinal)
+                ? int.Parse(name.Substring("Thread-".Length), System.Globalization.CultureInfo.InvariantCulture)
+                : -1;
+        }
+
+        public override void Write(int threads, Tally tally)
+        {
+            var before = NextNumber();
+            var numbers = new int[threads][];
+            OnThreads(threads, tally, id =>
+            {
+                numbers[id] = new int[Iterations];
+                for (var i = 0; i < Iterations; i++)
+                    numbers[id][i] = NextNumber();
+            });
+            var after = OnFreshThread(NextNumber);
+            var all = numbers.Where(n => n != null).SelectMany(n => n).ToArray();
+            var expected = Enumerable.Range(before + 1, threads * Iterations);
+            var misses = MultisetMisses(expected.Select(n => (double)n), all.Select(n => (double)n));
+            tally.Count(all.Length, misses,
+                $"{misses} of {all.Length} names are not Thread-{before + 1}..Thread-{before + threads * Iterations} exactly once (a lost or repeated number)");
+            tally.Check(() => after == before + threads * Iterations + 1,
+                () => $"after {threads * Iterations} constructions from Thread-{before} the next name is Thread-{after}, expected Thread-{before + threads * Iterations + 1}");
+        }
+
+        public override void Read(int threads, Tally tally)
+        {
+            OnThreads(threads, tally, _ =>
+            {
+                var previous = NextNumber();
+                for (var i = 0; i < Iterations; i++)
+                {
+                    var current = NextNumber();
+                    var seen = previous;
+                    tally.Check(() => current > seen, () => $"Thread-{current} after Thread-{seen} on the same thread");
+                    previous = current;
+                }
+            });
+        }
+
+        public override void CrossThread(int threads, Tally tally)
+        {
+            var written = new int[Iterations];
+            Handoff(threads, tally,
+                i => written[i] = NextNumber(),
+                i =>
+                {
+                    var read = NextNumber();
+                    tally.Check(() => read == written[i] + 1,
+                        () => $"iteration {i}: Thread-{read} after another thread's Thread-{written[i]}");
+                });
+        }
+    }
+
+    /// <summary>
+    /// threading's active registry (#2261) — CPython 3.12 (verified 2026-10-22): threading._active and
+    /// _limbo are dicts read and written under _active_limbo_lock. 8 threads x 250 start()/join() of a
+    /// Thread: none is in enumerate() after its join (0 of 2000), and active_count() is back to its
+    /// value before (1 → 1); 8 threads each holding one started Thread see it in enumerate() on every
+    /// read (True) while the others start theirs; a Thread started on one thread is in enumerate() on
+    /// another (200 of 200), and is gone from it after the join (200 of 200). In Sharpy only the held
+    /// Threads are added — the harness's own threads are not Sharpy Threads and never call
+    /// current_thread() — so the count is the baseline plus the held threads.
+    /// </summary>
+    private sealed class ThreadActiveExerciser : GlobalExerciser
+    {
+        public override string Field => "Sharpy.ThreadRegistry._active";
+        public override string Module => "threading (active)";
+
+        // A start()/join() costs a .NET thread; a quarter of the iterations keeps the 8-thread cell short.
+        private const int Starts = Iterations / 4;
+
+        private static bool Listed(Sharpy.Thread thread) => ThreadingModule.Enumerate().Contains(thread);
+
+        public override void Write(int threads, Tally tally)
+        {
+            var baseline = ThreadingModule.ActiveCount();
+            OnThreads(threads, tally, _ =>
+            {
+                for (var i = 0; i < Starts; i++)
+                {
+                    var thread = new Sharpy.Thread(() => { });
+                    tally.Do(thread.Start);
+                    tally.Do(() => thread.Join());
+                    tally.Check(() => !Listed(thread), () => $"{thread.Name} is in enumerate() after its join");
+                }
+            });
+            var after = ThreadingModule.ActiveCount();
+            tally.Check(() => after == baseline,
+                () => $"active_count() is {after} after every start()/join(), {baseline} before");
+        }
+
+        public override void Read(int threads, Tally tally)
+        {
+            var baseline = ThreadingModule.ActiveCount();
+            OnThreads(threads, tally, _ =>
+            {
+                var hold = new Sharpy.Event();
+                var held = new Sharpy.Thread(() => hold.Wait());
+                held.Start();
+                try
+                {
+                    for (var i = 0; i < Starts; i++)
+                    {
+                        var count = -1;
+                        tally.Check(() => Listed(held), () => $"{held.Name} (alive, started by this thread) is not in enumerate()");
+                        tally.Check(() => (count = ThreadingModule.ActiveCount()) >= baseline + 1 && count <= baseline + threads,
+                            () => $"active_count() read {count}; {baseline + 1}..{baseline + threads} expected");
+                    }
+                }
+                finally
+                {
+                    hold.Set();
+                    held.Join();
+                }
+            });
+        }
+
+        public override void CrossThread(int threads, Tally tally)
+        {
+            var baseline = ThreadingModule.ActiveCount();
+            var holds = new Sharpy.Event[Iterations];
+            var started = new Sharpy.Thread[Iterations];
+            Handoff(threads, tally,
+                i =>
+                {
+                    holds[i] = new Sharpy.Event();
+                    var hold = holds[i];
+                    started[i] = new Sharpy.Thread(() => hold.Wait());
+                    started[i].Start();
+                },
+                i =>
+                {
+                    var count = -1;
+                    tally.Check(() => Listed(started[i]), () => $"iteration {i}: a Thread another thread started is not in enumerate()");
+                    tally.Check(() => (count = ThreadingModule.ActiveCount()) == baseline + 1,
+                        () => $"iteration {i}: active_count() is {count} with one held thread, {baseline + 1} expected");
+                    holds[i].Set();
+                    tally.Do(() => started[i].Join());
+                    tally.Check(() => !Listed(started[i]), () => $"iteration {i}: the Thread is in enumerate() after its join");
+                });
         }
     }
 
