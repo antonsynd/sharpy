@@ -1,0 +1,10 @@
+# An enum defined inside a function body is refused like every other type definition: SPY0708,
+# not the code generator's SPY0510 internal error (#2063, R-CS; the folded #2316 enum cell).
+def helper() -> None:
+    enum Color:
+        RED = 1
+        GREEN = 2
+    print("helper")
+
+def main() -> None:
+    helper()

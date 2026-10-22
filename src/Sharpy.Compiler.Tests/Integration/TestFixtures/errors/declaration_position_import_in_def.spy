@@ -1,0 +1,9 @@
+# An import inside a function body is refused: an import is a module-level fact (#2063, R-CS).
+# The refused import binds nothing, so its use keeps the checker's own "undefined identifier"
+# (the cascade on the same mistake, plan D6) — both are pinned.
+def helper() -> list[int]:
+    import copy
+    return copy.deepcopy([1, 2])
+
+def main() -> None:
+    print(helper())
