@@ -358,8 +358,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// non-declaring position (a block-scoped alias, D7).</description></item>
     /// <item><term><c>import</c>/<c>from-import</c>/<c>suppress-import</c></term><description><c>module</c> → [] for
     /// all three names (measured silent at the base: <c>import copy as str</c> draws nothing, <c>import copy as
-    /// Foo</c> beside <c>class Foo</c> draws only the SPY0452 warning — pinned as measured; both are findings-ledger
-    /// rows, not cells of this contract); every other position → [SPY0708 @ keyword] (R-CS: "import at module
+    /// Foo</c> beside <c>class Foo</c> draws only the SPY0452 warning — pinned as measured; both are cells of #2359
+    /// (an import alias no declaration rule sees), not of this contract — a fix there moves these literals); every other position → [SPY0708 @ keyword] (R-CS: "import at module
     /// level").</description></item>
     /// </list>
     /// <c>module-try</c>'s SPY0340 at the <c>try</c> is the block's verdict, not the declaration's (D7): it is off the
