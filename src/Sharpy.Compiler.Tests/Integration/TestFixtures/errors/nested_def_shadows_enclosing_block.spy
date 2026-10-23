@@ -1,0 +1,13 @@
+# A nested-block `def f` that shadows a def of the enclosing block of the same function is SPY0204
+# (R-HJ, #2314): the emitter does not version local functions, so it was CS0136 behind SPY0908.
+def helper() -> None:
+    def f(x: int) -> int:
+        return x + 1
+    if True:
+        def f(x: int) -> int:
+            return x + 2
+        print(f(1))
+    print(f(1))
+
+def main() -> None:
+    helper()

@@ -1,0 +1,14 @@
+# Positive control for R-HJ (#2314): defs of one name in SIBLING blocks of a function are fresh
+# bindings, and each block calls its own.
+def helper() -> None:
+    if True:
+        def f(x: int) -> int:
+            return x + 1
+        print(f(1))
+    if True:
+        def f(x: str) -> str:
+            return x + "!"
+        print(f("a"))
+
+def main() -> None:
+    helper()

@@ -25,6 +25,39 @@ def min_max(values: list[int]) -> tuple[int, int]:
 - Return type can be omitted for `-> None` functions (functions without a return type annotation implicitly return nothing, i.e. C# `void`)
 - Parameters with defaults must come after required parameters
 
+## Nested functions
+
+A `def` may be nested in a function body or in a block inside one. Overload sets live at module and type level only: a nested `def` may not re-declare a name that a `def` of the same function already declares in the same block, in an enclosing block, or in an enclosed block (`SPY0204`). Defs of one name in sibling blocks — the branches of an `if`, the arms of a `match`, the clauses of a `try` — are separate bindings, and an inner `def`'s body is a function of its own.
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+def describe(n: int) -> str:
+    def label(x: int) -> str:
+        return f"int {x}"
+    def label(x: str) -> str:      # ERROR SPY0204: function 'label' is already defined in this scope
+        return f"str {x}"
+    return label(n)
+
+def main() -> None:
+    print(describe(1))
+```
+
+<!-- spec-sweep: output "2\na!" -->
+```python
+def helper() -> None:
+    if True:
+        def f(x: int) -> int:
+            return x + 1
+        print(f(1))
+    if True:
+        def f(x: str) -> str:      # a sibling block: a fresh binding
+            return x + "!"
+        print(f("a"))
+
+def main() -> None:
+    helper()
+```
+
 ## Parameters
 
 See [function_parameters.md](function_parameters.md).
@@ -35,6 +68,7 @@ A function body can be empty or serve as a placeholder using several forms:
 
 **Valid Empty/Placeholder Bodies:**
 
+<!-- spec-sweep: fragment -->
 ```python
 # Ellipsis (preferred for abstract/interface methods)
 # If present on non-abstract methods, it is lowered as
@@ -79,6 +113,7 @@ def explicit_placeholder(self):
 - **Placeholder during development**: Use `...` or `pass` with a descriptive docstring
 - **Documentation-only**: Docstring alone is valid but consider adding `pass` or `...` for clarity
 
+<!-- spec-sweep: fragment -->
 ```python
 interface IProcessor:
     def process(self, data: bytes) -> bytes:
