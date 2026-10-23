@@ -193,49 +193,71 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return centered in a string of length <paramref name="width"/>.
+        /// Return centered in a string of length <paramref name="width"/>. When the margin
+        /// and the width are both odd, the extra fill character goes on the LEFT (CPython's
+        /// <c>unicode_center</c>: <c>left = marg // 2 + (marg &amp; width &amp; 1)</c>).
         /// Python: <c>str.center(width, fillchar)</c>
         /// </summary>
-        public static string Center(this string s, int width, char fillchar = ' ')
+        /// <exception cref="TypeError"><paramref name="fillchar"/> is not exactly one character long.</exception>
+        public static string Center(this string s, int width, string fillchar = " ")
         {
+            char fill = FillChar(fillchar, "center");
             if (s.Length >= width)
             {
                 return s;
             }
 
-            int totalPadding = width - s.Length;
-            int leftPadding = totalPadding / 2;
-            int rightPadding = totalPadding - leftPadding;
+            int margin = width - s.Length;
+            int left = margin / 2 + (margin & width & 1);
 
-            return new string(fillchar, leftPadding) + s + new string(fillchar, rightPadding);
+            return new string(fill, left) + s + new string(fill, margin - left);
         }
 
         /// <summary>
         /// Return left-justified in a string of length <paramref name="width"/>.
         /// Python: <c>str.ljust(width, fillchar)</c>
         /// </summary>
-        public static string Ljust(this string s, int width, char fillchar = ' ')
+        /// <exception cref="TypeError"><paramref name="fillchar"/> is not exactly one character long.</exception>
+        public static string Ljust(this string s, int width, string fillchar = " ")
         {
+            char fill = FillChar(fillchar, "ljust");
             if (s.Length >= width)
             {
                 return s;
             }
 
-            return s.PadRight(width, fillchar);
+            return s.PadRight(width, fill);
         }
 
         /// <summary>
         /// Return right-justified in a string of length <paramref name="width"/>.
         /// Python: <c>str.rjust(width, fillchar)</c>
         /// </summary>
-        public static string Rjust(this string s, int width, char fillchar = ' ')
+        /// <exception cref="TypeError"><paramref name="fillchar"/> is not exactly one character long.</exception>
+        public static string Rjust(this string s, int width, string fillchar = " ")
         {
+            char fill = FillChar(fillchar, "rjust");
             if (s.Length >= width)
             {
                 return s;
             }
 
-            return s.PadLeft(width, fillchar);
+            return s.PadLeft(width, fill);
+        }
+
+        // The Python API's fill parameter is a one-character str (#2347, R-IT); one UTF-16
+        // code unit, as len() counts it. Validated before the width check, as CPython does.
+        private static char FillChar(string fillchar, string method)
+        {
+            if (fillchar == null)
+            {
+                throw TypeError.ArgNone(method, "fillchar");
+            }
+            if (fillchar.Length != 1)
+            {
+                throw new TypeError("The fill character must be exactly one character long");
+            }
+            return fillchar[0];
         }
 
         /// <summary>

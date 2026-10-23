@@ -15,8 +15,14 @@
 | `decimal` | `System.Decimal` | 128-bit | High-precision decimal |
 | `bool` | `System.Boolean` | - | `True` or `False` |
 | `str` | `System.String` | - | Immutable Unicode string |
-| `char` | `System.Char` | 16-bit | Single Unicode character |
+| `char` | `System.Char` | 16-bit | Interop spelling: Sharpy sees it as a one-character `str` (see below) |
 | `object` | `System.Object` | - | Base type for all types |
+
+`char` is the interop spelling of a one-character `str`, not a separate type: a `char` annotation
+denotes `str`, a CLR `System.Char` value reaches Sharpy as a one-character `str`, and a
+one-character `str` literal is the one argument Sharpy converts into a CLR `char` parameter (#1291,
+#1402). Python APIs that take a character — `str.center`, `ljust` and `rjust`'s `fillchar` — take a
+`str` and raise `TypeError` unless it is exactly one character long.
 
 There are aliases present that help ease both Python and C# developers at the cost of consistency.
 

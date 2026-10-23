@@ -136,20 +136,22 @@ public class StrTransformTests
     [Fact]
     public void Ljust_WithFillChar()
     {
-        "hi".Ljust(5, '-').Should().Be("hi---");
+        "hi".Ljust(5, "-").Should().Be("hi---");
     }
 
     [Fact]
     public void Rjust_WithFillChar()
     {
-        "hi".Rjust(5, '-').Should().Be("---hi");
+        "hi".Rjust(5, "-").Should().Be("---hi");
     }
 
     [Fact]
-    public void Center_OddPadding_ExtraOnRight()
+    public void Center_OddMarginOddWidth_ExtraOnLeft()
     {
-        // Python: "hi".center(5) == " hi  " — one extra pad on right when odd
-        "hi".Center(5).Should().Be(" hi  ");
+        // python3: "hi".center(5) == '  hi ' — CPython puts the odd pad on the LEFT when the
+        // margin and the width are both odd (#2347); "abc".center(6) == ' abc  ' (width even)
+        "hi".Center(5).Should().Be("  hi ");
+        "abc".Center(6).Should().Be(" abc  ");
     }
 
     #endregion

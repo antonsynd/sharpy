@@ -67,20 +67,34 @@ Python: `str.rstrip()`
 Return a copy with trailing characters in *chars* removed.
 Python: `str.rstrip(chars)`
 
-### `center(width: int, fillchar: char = ' ') -> str`
+### `center(width: int, fillchar: str = " ") -> str`
 
-Return centered in a string of length *width*.
+Return centered in a string of length *width*. When the margin
+and the width are both odd, the extra fill character goes on the LEFT (CPython's
+`unicode_center`: `left = marg // 2 + (marg & width & 1)`).
 Python: `str.center(width, fillchar)`
 
-### `ljust(width: int, fillchar: char = ' ') -> str`
+**Raises:**
+
+- `TypeError` -- *fillchar* is not exactly one character long.
+
+### `ljust(width: int, fillchar: str = " ") -> str`
 
 Return left-justified in a string of length *width*.
 Python: `str.ljust(width, fillchar)`
 
-### `rjust(width: int, fillchar: char = ' ') -> str`
+**Raises:**
+
+- `TypeError` -- *fillchar* is not exactly one character long.
+
+### `rjust(width: int, fillchar: str = " ") -> str`
 
 Return right-justified in a string of length *width*.
 Python: `str.rjust(width, fillchar)`
+
+**Raises:**
+
+- `TypeError` -- *fillchar* is not exactly one character long.
 
 ### `zfill(width: int) -> str`
 
