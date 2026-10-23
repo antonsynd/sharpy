@@ -103,15 +103,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Parse string to int with an explicit base (2, 8, 10, or 16); a matching
-        /// <c>0x</c>/<c>0o</c>/<c>0b</c> prefix is accepted.
-        /// </summary>
-        public static int Int(string s, int @base)
-        {
-            return (int)NumericText.ToSigned(s, @base, int.MinValue, int.MaxValue, "int");
-        }
-
-        /// <summary>
         /// Convert byte to int
         /// </summary>
         public static int Int(byte b)

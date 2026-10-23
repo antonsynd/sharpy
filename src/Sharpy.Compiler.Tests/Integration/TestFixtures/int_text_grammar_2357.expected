@@ -1,9 +1,11 @@
 1000
-255
-255
--3
+-1234
+33
 1000.5
-ValueError 1__0
-ValueError _1
-ValueError 1_
-ValueError 0x
+-25.01
+ValueError '1__0'
+ValueError '_1'
+ValueError '1_'
+ValueError '0x10'
+ValueError '1 0'
+ValueError ''

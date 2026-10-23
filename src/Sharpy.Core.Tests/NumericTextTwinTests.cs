@@ -427,10 +427,12 @@ public class NumericTextTwinTests
 
     private static readonly IntType[] Types =
     {
-        new("int", int.MinValue, int.MaxValue, (s, b) => Builtins.Int(s, b), s => Builtins.Int(s)),
+        // int and int64 take no base argument (an arity-2 overload would make `map(int, xs)` an
+        // ambiguous overload group); their base rows read the one parser directly.
+        new("int", int.MinValue, int.MaxValue, (s, b) => (int)NumericText.ToSigned(s, b, int.MinValue, int.MaxValue, "int"), s => Builtins.Int(s)),
         new("int8", sbyte.MinValue, sbyte.MaxValue, (s, b) => Builtins.Int8(s, b), s => Builtins.Int8(s)),
         new("int16", short.MinValue, short.MaxValue, (s, b) => Builtins.Int16(s, b), s => Builtins.Int16(s)),
-        new("int64", long.MinValue, long.MaxValue, (s, b) => Builtins.Long(s, b), s => Builtins.Long(s)),
+        new("int64", long.MinValue, long.MaxValue, (s, b) => NumericText.ToSigned(s, b, long.MinValue, long.MaxValue, "long"), s => Builtins.Long(s)),
         new("uint8", byte.MinValue, byte.MaxValue, (s, b) => Builtins.UInt8(s, b), s => Builtins.UInt8(s)),
         new("uint16", ushort.MinValue, ushort.MaxValue, (s, b) => Builtins.UInt16(s, b), s => Builtins.UInt16(s)),
         new("uint32", uint.MinValue, uint.MaxValue, (s, b) => Builtins.UInt32(s, b), s => Builtins.UInt32(s)),

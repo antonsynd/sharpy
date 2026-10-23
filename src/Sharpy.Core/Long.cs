@@ -89,15 +89,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Parse string to long with an explicit base (2, 8, 10, or 16); a matching
-        /// <c>0x</c>/<c>0o</c>/<c>0b</c> prefix is accepted.
-        /// </summary>
-        public static long Long(string s, int @base)
-        {
-            return NumericText.ToSigned(s, @base, long.MinValue, long.MaxValue, "long");
-        }
-
-        /// <summary>
         /// Convert byte to long
         /// </summary>
         public static long Long(byte b)
