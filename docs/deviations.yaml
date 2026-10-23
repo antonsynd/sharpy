@@ -2348,3 +2348,21 @@ deviations:
                 print(int('2147483648'))
             except OverflowError:
                 print("OverflowError")       # OverflowError
+
+  - id: semicolon-statement-separator
+    code: SPY0150
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`;` separates simple statements on one logical line: `a = 1; b = 2` binds both, a trailing `;` is allowed, and `if True: print(1); print(2)` runs both calls as the suite."
+    sharpy_behavior: "A newline is the only statement separator. A `;` where a statement ends or begins — between statements, trailing, leading, `;;`, or after a block header's `:` — is SPY0150 \"';' does not separate statements in Sharpy; put each statement on its own line\", in a module, a block body and a REPL line alike. One layout for the formatter and readers (the \"multiple ways to do the same thing\" anti-pattern). (Python's one-line suite `if True: print(1)` is refused separately, SPY0102.) Ruled R-IO (#2355); promoting `simple_stmts` was rejected."
+    spec_ref: docs/language_specification/source_files.md
+    existing_diagnostic: SPY0150
+    planned_diagnostic: null
+    example:
+      python: |
+        a = 1; b = 2
+        print(a, b)   # 1 2
+      sharpy: |
+        def main():
+            a = 1; b = 2   # SPY0150: ';' does not separate statements in Sharpy; put each statement on its own line

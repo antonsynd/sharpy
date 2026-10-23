@@ -1,0 +1,4 @@
+# #2355 (R-IO): `;` does not separate statements; the refusal names it at the semicolon.
+def main():
+    a = 1; b = 2
+    print(a, b)

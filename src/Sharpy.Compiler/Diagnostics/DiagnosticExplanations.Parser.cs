@@ -264,5 +264,10 @@ public static partial class DiagnosticExplanations
             "'...' (Ellipsis) was used in a type position. Python's typing module accepts '...' inside 'tuple[int, ...]' (a homogeneous tuple of runtime arity) and 'Callable[..., T]', but Sharpy's tuples are fixed-arity and it has no 'Callable' type, so '...' never denotes a type. Support for runtime-arity tuples is tracked separately.",
             "t: tuple[int, ...] = (1, 2, 3)",
             "Use a fixed-arity tuple, or an owned/read-only sequence type:\n  t: tuple[int, int, int] = (1, 2, 3)\n  t: list[int] = [1, 2, 3]\n  t: IEnumerable[int] = [1, 2, 3]");
+
+        Add(dict, DiagnosticCodes.Parser.SemicolonStatementSeparator, "';' does not separate statements", "Parser",
+            "A ';' appeared where a statement ends or begins. Python accepts ';' between simple statements on one line ('a = 1; b = 2'); Sharpy does not: every statement goes on its own line, so there is one layout for the formatter and for readers. The refusal is recorded in docs/deviations.yaml (semicolon-statement-separator).",
+            "a = 1; b = 2",
+            "Put each statement on its own line:\n  a = 1\n  b = 2");
     }
 }

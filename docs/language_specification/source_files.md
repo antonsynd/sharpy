@@ -65,6 +65,9 @@ Newlines are significant in Sharpy and terminate statements:
 2. Except inside brackets `()`, `[]`, `{}`
 3. Except after backslash `\` continuation
 4. Newlines inside string literals are literal newlines
+5. A newline is the only statement separator: `;` does not separate statements (`a = 1; b = 2` is
+   SPY0150 — put each statement on its own line). Python's `;`-separated simple statements are a
+   recorded deviation (`semicolon-statement-separator` in `docs/deviations.yaml`, R-IO).
 
 ```python
 # Newline terminates statement

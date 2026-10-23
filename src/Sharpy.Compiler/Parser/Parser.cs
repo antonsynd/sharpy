@@ -483,7 +483,9 @@ public partial class Parser
         if (next != TokenType.Colon)
             return false;
 
-        if (Peek(2).Type is TokenType.Newline or TokenType.Eof or TokenType.Dedent or TokenType.Indent)
+        // `try:` / `else:` headers, including one a stray `;` follows (`try:;`, #2355) — no type
+        // annotation starts with `;`.
+        if (Peek(2).Type is TokenType.Newline or TokenType.Eof or TokenType.Dedent or TokenType.Indent or TokenType.Semicolon)
             return false;
 
         return Current.Type != TokenType.Lambda || LineHasTopLevelAssignFrom(2);
@@ -1036,6 +1038,10 @@ public partial class Parser
 
     private Statement ParseStatementCore()
     {
+        // A leading ';' (`;a = 1`, `;;`) is a statement separator too (#2355).
+        if (Current.Type == TokenType.Semicolon)
+            throw SemicolonSeparatorError();
+
         // Decorators (for functions, classes, structs)
         if (Current.Type == TokenType.At)
             return ParseDecoratedStatement();

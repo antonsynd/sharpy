@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0149
-    /// Reserved: SPY0150-SPY0199
+    /// Active: SPY0100-SPY0150
+    /// Reserved: SPY0151-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -242,7 +242,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0150-SPY0199: Reserved for future parser diagnostics
+        #region Semicolon in statement position (SPY0150)
+
+        public const string SemicolonStatementSeparator = "SPY0150"; // Active (#2355, R-IO)
+
+        #endregion
+
+        // SPY0151-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>
