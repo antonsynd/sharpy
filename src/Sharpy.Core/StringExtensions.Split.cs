@@ -36,7 +36,7 @@ namespace Sharpy
             int i = 0;
             while (i < s.Length)
             {
-                while (i < s.Length && char.IsWhiteSpace(s[i]))
+                while (i < s.Length && StringHelpers.IsPythonSpace(s[i]))
                 {
                     i++;
                 }
@@ -45,7 +45,7 @@ namespace Sharpy
                     break;
                 }
                 int start = i;
-                while (i < s.Length && !char.IsWhiteSpace(s[i]))
+                while (i < s.Length && !StringHelpers.IsPythonSpace(s[i]))
                 {
                     i++;
                 }

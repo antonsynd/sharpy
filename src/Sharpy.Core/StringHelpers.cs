@@ -12,6 +12,16 @@ namespace Sharpy
     public static class StringHelpers
     {
         /// <summary>
+        /// Python's "is this a space" predicate (<c>str.isspace</c>, no-argument
+        /// <c>split</c>/<c>strip</c>): Unicode <c>White_Space</c>, which is
+        /// <see cref="char.IsWhiteSpace(char)"/>, plus the four information separators
+        /// U+001C–U+001F that CPython counts (bidi class B/S) and .NET does not.
+        /// Every Core <c>str</c> whitespace site reads this one predicate (#2348).
+        /// </summary>
+        internal static bool IsPythonSpace(char c) =>
+            char.IsWhiteSpace(c) || (c >= '\u001C' && c <= '\u001F');
+
+        /// <summary>
         /// Repeats a string a specified number of times.
         /// Python: <c>"ab" * 3  # "ababab"</c>
         /// </summary>

@@ -128,7 +128,7 @@ namespace Sharpy
         /// Return a copy with leading and trailing whitespace removed.
         /// Python: <c>str.strip()</c>
         /// </summary>
-        public static string Strip(this string s) => s.Trim();
+        public static string Strip(this string s) => Lstrip(Rstrip(s));
 
         /// <summary>
         /// Return a copy with leading and trailing characters in
@@ -146,7 +146,15 @@ namespace Sharpy
         /// Return a copy with leading whitespace removed.
         /// Python: <c>str.lstrip()</c>
         /// </summary>
-        public static string Lstrip(this string s) => s.TrimStart();
+        public static string Lstrip(this string s)
+        {
+            int start = 0;
+            while (start < s.Length && StringHelpers.IsPythonSpace(s[start]))
+            {
+                start++;
+            }
+            return s.Substring(start);
+        }
 
         /// <summary>
         /// Return a copy with leading characters in <paramref name="chars"/> removed.
@@ -163,7 +171,15 @@ namespace Sharpy
         /// Return a copy with trailing whitespace removed.
         /// Python: <c>str.rstrip()</c>
         /// </summary>
-        public static string Rstrip(this string s) => s.TrimEnd();
+        public static string Rstrip(this string s)
+        {
+            int end = s.Length;
+            while (end > 0 && StringHelpers.IsPythonSpace(s[end - 1]))
+            {
+                end--;
+            }
+            return s.Substring(0, end);
+        }
 
         /// <summary>
         /// Return a copy with trailing characters in <paramref name="chars"/> removed.
