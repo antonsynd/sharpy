@@ -36,6 +36,14 @@ internal class EqualityContractValidator : SemanticValidatorBase
     private void CheckEqOverloads(
         Statement declaration, string typeName, IReadOnlyList<Statement> body, SemanticContext context)
     {
+        // The symbol declared FOR this definition (LookupDeclaredType, #2250) — never a same-named
+        // symbol a duplicate definition would find by name. A definition that owns no symbol (a
+        // duplicate, refused with SPY0204) has no ancestry to check the inherited halves against,
+        // so no rule applies: its refusal is the duplicate's, not a contract violation (#2063).
+        var typeSymbol = context.LookupDeclaredType(declaration, typeName);
+        if (typeSymbol == null)
+            return;
+
         var eqMethods = new List<FunctionDef>();
         FunctionDef? hashMethod = null;
 
@@ -67,7 +75,7 @@ internal class EqualityContractValidator : SemanticValidatorBase
 
         // SPY0455: __eq__(object) without __hash__
         // Inherited __hash__ from a base class satisfies the contract (per .NET semantics).
-        if (hasObjectOverload && hashMethod == null && !HasInheritedDunder(declaration, typeName, DunderNames.Hash, context))
+        if (hasObjectOverload && hashMethod == null && !HasInheritedDunder(typeSymbol, DunderNames.Hash))
         {
             var eqObj = eqMethods.First(IsObjectOverload);
             AddError(context,
@@ -80,7 +88,7 @@ internal class EqualityContractValidator : SemanticValidatorBase
 
         // SPY0456: __hash__ without __eq__(object)
         // Inherited __eq__(object) from a base class satisfies the contract.
-        if (hashMethod != null && !hasObjectOverload && !HasInheritedEqObject(declaration, typeName, context))
+        if (hashMethod != null && !hasObjectOverload && !HasInheritedEqObject(typeSymbol))
         {
             AddError(context,
                 $"Class '{typeName}' defines '__hash__' but not '__eq__(self, other: object)'. " +
@@ -101,13 +109,9 @@ internal class EqualityContractValidator : SemanticValidatorBase
     /// <summary>
     /// Check if a dunder method (e.g., __hash__) is defined in any ancestor class.
     /// </summary>
-    private static bool HasInheritedDunder(
-        Statement declaration, string typeName, string dunderName, SemanticContext context)
+    private static bool HasInheritedDunder(TypeSymbol typeSymbol, string dunderName)
     {
-        // The symbol declared FOR this definition (LookupDeclaredType, #2250) — never a same-named
-        // symbol a duplicate definition would find by name.
-        var typeSymbol = context.LookupDeclaredType(declaration, typeName);
-        var baseType = typeSymbol?.BaseType;
+        var baseType = typeSymbol.BaseType;
         var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
         while (baseType != null && visited.Add(baseType))
         {
@@ -125,10 +129,9 @@ internal class EqualityContractValidator : SemanticValidatorBase
     /// <summary>
     /// Check if __eq__(self, other: object) is defined in any ancestor class.
     /// </summary>
-    private static bool HasInheritedEqObject(Statement declaration, string typeName, SemanticContext context)
+    private static bool HasInheritedEqObject(TypeSymbol typeSymbol)
     {
-        var typeSymbol = context.LookupDeclaredType(declaration, typeName);
-        var baseType = typeSymbol?.BaseType;
+        var baseType = typeSymbol.BaseType;
         var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
         while (baseType != null && visited.Add(baseType))
         {

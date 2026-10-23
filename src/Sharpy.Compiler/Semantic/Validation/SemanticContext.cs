@@ -68,7 +68,7 @@ internal class SemanticContext
     /// duplicate, refused with SPY0204) otherwise answered with whatever the name already meant — the
     /// master <c>list</c>, or an enclosing user type — and every validator then ran its checks against
     /// that symbol (SPY0701 "both at line  and line", SPY0325 against the master). Every caller
-    /// early-returns on null.</para>
+    /// treats null as "no rule applies" — an early return, or an empty member set.</para>
     /// </summary>
     public TypeSymbol? LookupDeclaredType(Parser.Ast.Statement declaration, string name)
         => (DeclaredTypes?.SymbolFor(declaration, name, SymbolTable) ?? SymbolTable.LookupType(name)) is { } candidate

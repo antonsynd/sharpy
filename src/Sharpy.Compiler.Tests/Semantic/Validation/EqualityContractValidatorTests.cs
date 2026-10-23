@@ -295,4 +295,43 @@ struct Point:
         Assert.Single(errors);
         Assert.Equal(DiagnosticCodes.Validation.EqObjectWithoutHash, errors[0].Code);
     }
+
+    /// <summary>
+    /// A duplicate class owns no symbol of its own (NameResolver refuses it with SPY0204), so the
+    /// inherited-half rules have no ancestry to check against and are not applied — before the fix
+    /// the null symbol read as "nothing inherited" and the duplicate drew a false SPY0455 although
+    /// its base supplies <c>__hash__</c> (#2063). <c>Plain</c> is the positive control: the same
+    /// validator, on the same module, still reports a real SPY0455.
+    /// </summary>
+    [Fact]
+    public void DuplicateClass_OwnsNoSymbol_NoEqualityContractCascade()
+    {
+        var code = @"
+class Base:
+    def __hash__(self) -> int:
+        return 1
+
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class Plain:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class Foo(Base):
+    pass
+
+class Foo(Base):
+    def __eq__(self, other: object) -> bool:
+        return True
+";
+        var (module, context) = Parse(code);
+
+        var validator = new EqualityContractValidator();
+        validator.Validate(module, context);
+
+        var error = Assert.Single(context.Diagnostics.GetErrors());
+        Assert.Equal(DiagnosticCodes.Validation.EqObjectWithoutHash, error.Code);
+        Assert.Contains("'Plain'", error.Message);
+    }
 }
