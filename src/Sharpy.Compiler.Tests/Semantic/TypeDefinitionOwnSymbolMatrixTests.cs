@@ -60,7 +60,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// to it (an enum in a def is silent under <c>Analyze</c> at the base); every cell whose whole program is expected
 /// error-free is compiled AND run, and must print <c>ok</c> with no SPY05xx/SPY09xx. A cell that fails to run has its
 /// control run too, so the failure is attributed: the declaration's (the control runs) or the host's (the control fails
-/// the same way). A row citing #2148 (the class-body <c>if</c>) must be the host's — checked, never exempted.</para>
+/// the same way). A row citing #2148 (the class-body <c>if</c>) must be the host's — checked, never exempted; a row
+/// citing #2021 (the struct auto-constructor) must fail with SPY0908 CS0100 and nothing else — checked too.</para>
 ///
 /// <para><b>Ratchet.</b> <c>Semantic/declaration-position-allowlist.txt</c> lists the cell ids red at the base, each
 /// citing an issue. A listed cell that passes is STALE (red); an unlisted failing cell is red; a row naming no
@@ -526,6 +527,13 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     problems.Add($"{cell.Id}: allowlisted as the host's failure (#2148), but under run the cell is [{cellRun}] "
                         + $"and its control [{controlRun}] — the failure is not the host's");
 
+                // A row citing #2021 claims the failure is the struct auto-constructor's duplicate parameter: the
+                // run must fail with SPY0908 carrying CS0100, nothing else, so a different failure in these
+                // otherwise error-free cells is red rather than absorbed by the row.
+                if (allowlist.TryGetValue(cell.Id, out var structCite) && structCite.Contains("#2021", StringComparison.Ordinal)
+                    && !IsStructCtorDuplicate(run, internalCodes))
+                    problems.Add($"{cell.Id}: allowlisted as the struct auto-constructor CS0100 (#2021), but under run the cell is "
+                        + $"success={run.Success} [{Fingerprint(internalCodes)}] {string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" ")}");
             }
 
             if (failures.Count > 0)
@@ -793,6 +801,13 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
         return null;
     }
+
+    /// <summary>#2021's fingerprint: the run fails, its only internal diagnostics are SPY0908, and one names CS0100.</summary>
+    private static bool IsStructCtorDuplicate(ExecutionResult run, List<CompilerDiagnostic> internalCodes)
+        => !run.Success
+           && internalCodes.Count > 0
+           && internalCodes.All(d => d.Code == "SPY0908")
+           && internalCodes.Any(d => d.Message.Contains("CS0100", StringComparison.Ordinal));
 
     private static List<CompilerDiagnostic> InternalCodes(ExecutionResult run)
         => run.RawDiagnostics.Where(d => (d.Code ?? "").StartsWith("SPY05", StringComparison.Ordinal)
