@@ -1005,6 +1005,10 @@ public static class DiagnosticCodes
         // A module whose emitted namespace is the full name of a .NET type it uses: the namespace
         // declared in the compiled source shadows the referenced type (#2039).
         public const string ModuleNamespaceShadowsClrType = "SPY0615"; // Active (#2039)
+        // A struct whose field graph holds the struct itself BY VALUE — directly, through another
+        // struct, a tuple, `T?`/`T | None`, `Result`, or a generic struct's type argument — has no
+        // finite layout (Roslyn's CS0523). Refused at the field that starts the cycle (#2354).
+        public const string StructLayoutCycle = "SPY0616"; // Active (#2354)
     }
 
     /// <summary>

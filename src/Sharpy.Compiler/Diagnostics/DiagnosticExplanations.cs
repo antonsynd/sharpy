@@ -414,6 +414,19 @@ public static partial class DiagnosticExplanations
             "Rename the source file (or the directory) so no module namespace equals the type's full name " +
             "(foo.spy -> foo_main.spy).");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.StructLayoutCycle,
+            "Struct contains itself by value", "Semantic",
+            "A struct is stored inline wherever it is used, so a struct whose fields hold the struct itself " +
+            "BY VALUE would be infinitely large. That happens through a field of the struct's own type, " +
+            "through another struct, a tuple, an optional ('Node?', 'Node | None'), a 'Result', or a " +
+            "generic struct instantiated with it ('Box[Node]'). Collections and classes hold a reference, " +
+            "so 'list[Node]', 'dict[str, Node]' or a class-typed field break the cycle. Reported at the " +
+            "field that starts the cycle, with the chain of fields that closes it.",
+            "struct Node:\n    value: int\n    nxt: Node   # SPY0616",
+            "Hold the struct through a reference type, or make it a class:\n" +
+            "  struct Node:\n      value: int\n      kids: list[Node]\n\n" +
+            "  class Node:\n      value: int\n      nxt: Node | None");
+
         return dict;
     }
 
