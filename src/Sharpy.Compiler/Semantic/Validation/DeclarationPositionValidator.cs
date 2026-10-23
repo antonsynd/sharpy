@@ -37,7 +37,8 @@ internal enum DeclarationSlot
 /// block, or an enclosed block is SPY0204 at the later def (R-HJ, #2314): the emitter spells every local
 /// function by its name with no versioning, so C# would see CS0128 (same block) or CS0136 (nested blocks).
 /// Sibling blocks — <c>if</c>/<c>elif</c>/<c>else</c> bodies, <c>try</c>/handlers/<c>else</c>/<c>finally</c>,
-/// <c>match</c> cases, a loop body and its <c>else</c> — are fresh bindings, and an inner def's body is a
+/// a loop body and its <c>else</c> — are fresh bindings; the arms of one <c>match</c> are ONE block (the
+/// emitter lowers them to one C# <c>switch</c>, one declaration space); and an inner def's body is a
 /// function of its own. Methods in a type body and module-level overload sets are NameResolver's. The
 /// declaring positions themselves are NameResolver's (it declares the module body and type bodies). Every
 /// other statement falls through untouched; in particular a type body's executable statements are
@@ -189,8 +190,15 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
     public override void VisitMatchStatement(MatchStatement node)
     {
         var block = BlockOf(_enclosing);
+
+        // For the nested-def arm, ALL arms of one `match` are ONE block: the emitter lowers a match to
+        // one C# `switch`, whose sections share a declaration space, and local functions are not
+        // versioned — so a def repeated across arms was CS0128 behind SPY0908 (lead ruling on the
+        // P21e verifier finding, the R-HJ measured branch). Every other sibling shape stays free.
+        var shared = block == DeclarationSlot.FunctionBlock ? NewFunctionBlock() : null;
         foreach (var matchCase in node.Cases)
-            WalkBody(matchCase.Body, block);
+            WalkBody(matchCase.Body, block, shared);
+        MergeIntoParent(shared);
     }
 
     // ── Everything else ──────────────────────────────────────────────────────────────────────────────
@@ -213,13 +221,17 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
             WalkBody(children, BlockOf(_enclosing));
     }
 
-    private void WalkBody(ImmutableArray<Statement> body, DeclarationSlot position)
+    /// <param name="body">The statement list.</param>
+    /// <param name="position">Its position.</param>
+    /// <param name="sharedBlock">A def block several lists share (the arms of one <c>match</c>); its
+    /// owner merges it into the parent once, after the last list. Null: this list gets its own block.</param>
+    private void WalkBody(ImmutableArray<Statement> body, DeclarationSlot position, DefBlock? sharedBlock = null)
     {
         var saved = _enclosing;
-        var block = position switch
+        var block = sharedBlock ?? position switch
         {
             DeclarationSlot.FunctionBody => new DefBlock(parent: null),
-            DeclarationSlot.FunctionBlock => new DefBlock(_defBlocks.Count > 0 ? _defBlocks.Peek() : null),
+            DeclarationSlot.FunctionBlock => NewFunctionBlock(),
             _ => null,
         };
         _defBlocks.Push(block);
@@ -231,13 +243,23 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
         }
 
         _defBlocks.Pop();
+        if (sharedBlock == null)
+            MergeIntoParent(block);
+
+        _enclosing = saved;
+    }
+
+    /// <summary>A block of the function being walked, child of the innermost list.</summary>
+    private DefBlock NewFunctionBlock() => new(_defBlocks.Count > 0 ? _defBlocks.Peek() : null);
+
+    /// <summary>A finished block's defs become its parent's <see cref="DefBlock.DeclaredBelow"/>.</summary>
+    private static void MergeIntoParent(DefBlock? block)
+    {
         if (block?.Parent is { } parent)
         {
             parent.DeclaredBelow.UnionWith(block.Declared);
             parent.DeclaredBelow.UnionWith(block.DeclaredBelow);
         }
-
-        _enclosing = saved;
     }
 
     /// <summary>The position of a block opened at <paramref name="position"/>.</summary>

@@ -1,0 +1,15 @@
+# Defs of one name in two arms of one `match` are SPY0204 at the later def: the arms lower to one C#
+# `switch`, one declaration space, and local functions are not versioned (CS0128 behind SPY0908 before).
+def run(v: int) -> str:
+    match v:
+        case 1:
+            def f() -> str:
+                return "one"
+            return f()
+        case _:
+            def f() -> str:
+                return "other"
+            return f()
+
+def main() -> None:
+    print(run(1))

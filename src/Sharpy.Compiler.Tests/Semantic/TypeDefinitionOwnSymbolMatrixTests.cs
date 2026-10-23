@@ -417,9 +417,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(12 * 13 * 3, MatrixCells().Count());
         // Host axis: 4 hosts × {class, enum, import, alias} × Fresh + alias × int; spelling axis: 3 spellings × 2 positions.
         Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
-        Assert.Equal(4 * 2 * 3, NestedDefCells().Count());
+        Assert.Equal(7 * 2 * 3, NestedDefCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id)).ToList();
-        Assert.Equal(12 * 13 * 3 + 26 + 24, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(12 * 13 * 3 + 26 + 42, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -525,6 +525,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     && (cellRun is null || cellRun != controlRun))
                     problems.Add($"{cell.Id}: allowlisted as the host's failure (#2148), but under run the cell is [{cellRun}] "
                         + $"and its control [{controlRun}] — the failure is not the host's");
+
             }
 
             if (failures.Count > 0)
@@ -551,7 +552,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// Block relation {same block, sibling blocks, nested outer-first, nested inner-first} × signature {same
+    /// Block relation {same block, sibling blocks (two <c>if</c>s), sibling <c>if</c>/<c>else</c> branches, sibling
+    /// <c>try</c> body / <c>except</c> handler, nested outer-first, nested inner-first, two arms of one <c>match</c>}
+    /// × signature {same
     /// <c>(x: int)</c> twice, different <c>(x: int)</c>/<c>(x: str)</c>} × call {fits first, fits second, none}. Each
     /// def returns a literal tag, <c>"first"</c> / <c>"second"</c>, and the call prints it.
     ///
@@ -560,15 +563,20 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// block after the inner block; for nested inner-first in the inner block after the inner def. That is D6's
     /// premise ("the first def is the binding"). Under the same signature a call that fits one def fits both, so
     /// "fits first" and "fits second" spell the same call (<c>f(1)</c>); both ids are kept so the axis stays total.
-    /// For sibling blocks the call axis maps to {block A calls its def, block B calls its def, no call}.</para>
+    /// For sibling blocks the call axis maps to {block A calls its def, block B calls its def, no call}; the
+    /// <c>if</c>/<c>else</c> pair sits in a two-pass loop and the <c>try</c> body raises into its handler, so BOTH
+    /// branches run. For <c>match</c> arms the call sits in the first arm after its def — where the checker binds
+    /// the first def (measured).</para>
     ///
-    /// <para><b>Expected</b> (R-HJ + D6): sibling → runs, stdout = the tag of the def its call binds, then
-    /// <c>end</c>; every other relation → [SPY0204 @ the later def's name token] + [SPY0220 @ the call's argument —
-    /// the base's anchor for an argument mismatch] iff the call fits only the later (refused) def; no SPY09xx.</para>
+    /// <para><b>Expected</b> (R-HJ + D6): the three sibling relations → run, stdout = the tag of the def its call
+    /// binds, then <c>end</c>; every other relation → [SPY0204 @ the later def's name token] + [SPY0220 @ the call's
+    /// argument — the base's anchor for an argument mismatch] iff the call fits only the later (refused) def; no
+    /// SPY09xx. The arms of one <c>match</c> are ONE scope for nested defs (lead ruling: the emitter lowers them to
+    /// one C# <c>switch</c>, one declaration space, and local functions are not versioned — CS0128 at the base).</para>
     /// </summary>
     internal static IEnumerable<NestedDefCell> NestedDefCells()
     {
-        foreach (var relation in new[] { "same", "sibling", "outer-first", "inner-first" })
+        foreach (var relation in new[] { "same", "sibling", "sibling-else", "sibling-except", "outer-first", "inner-first", "match-arms" })
         {
             foreach (var signature in new[] { "same-sig", "different-sig" })
             {
@@ -613,6 +621,38 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                             if (call == "fits-second")
                                 Call(8, secondArg);
                             break;
+                        case "sibling-else":
+                            lines.Add("    for k in range(2):");
+                            lines.Add("        if k == 0:");
+                            Def(12, false);
+                            if (call == "fits-first")
+                                Call(12, "1");
+                            lines.Add("        else:");
+                            Def(12, true);
+                            if (call == "fits-second")
+                                Call(12, secondArg);
+                            break;
+                        case "sibling-except":
+                            lines.Add("    try:");
+                            Def(8, false);
+                            if (call == "fits-first")
+                                Call(8, "1");
+                            lines.Add("        raise ValueError(\"go\")");
+                            lines.Add("    except ValueError:");
+                            Def(8, true);
+                            if (call == "fits-second")
+                                Call(8, secondArg);
+                            break;
+                        case "match-arms":
+                            lines.Add("    v: int = 0");
+                            lines.Add("    match v:");
+                            lines.Add("        case 0:");
+                            Def(12, false);
+                            if (call != "none")
+                                Call(12, arg);
+                            lines.Add("        case _:");
+                            Def(12, true);
+                            break;
                         case "outer-first":
                             Def(4, false);
                             lines.Add("    if True:");
@@ -632,7 +672,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     lines.AddRange(new[] { "", "def main() -> None:", "    helper()", "    print(\"end\")", "" });
                     var source = string.Join("\n", lines);
 
-                    if (relation == "sibling")
+                    if (relation.StartsWith("sibling", StringComparison.Ordinal))
                     {
                         var stdout = call switch { "fits-first" => "first\nend\n", "fits-second" => "second\nend\n", _ => "end\n" };
                         yield return new NestedDefCell(relation, signature, call, source, Array.Empty<(string, int, int)>(), stdout);
