@@ -1640,31 +1640,34 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// documents again). A PERMANENT known-limit pin, EXACT, measured in FULL mode at P22h Phase 2 Task 2 (@ ac3235c2a + the
     /// task's diff; the comment twin splits statements across lines, hence its F4 surplus): a shrink is a
     /// repair the clean twin gained, a growth a new pre-existing lost repair — change the literal in the same commit and
-    /// say which. The wide twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
+    /// say which. P21e (plan-f8f73c, 2026-10-23): +7 on every non-zero pin — growth, all from P21e's 13 new fixture
+    /// stems (control @ c8d4babe1 with those fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the census
+    /// asserts the previous literals, identity full = 474, 16520/0). The wide
+    /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
     /// </summary>
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
-            [(Identity, Full)] = 474,
-            [(Identity, RangeWhole)] = 474,
-            [(Identity, RangeLine)] = 470,
-            [(Identity, OnType)] = 470,
-            [(Comment, Full)] = 1620,
-            [(Comment, RangeWhole)] = 1620,
-            [(Comment, RangeLine)] = 1616,
-            [(Comment, OnType)] = 1616,
-            [(Crlf, Full)] = 474,
-            [(Crlf, RangeWhole)] = 474,
-            [(Crlf, RangeLine)] = 470,
-            [(Crlf, OnType)] = 470,
-            [(Cr, Full)] = 474,
-            [(Cr, RangeWhole)] = 474,
-            [(Cr, RangeLine)] = 470,
-            [(Cr, OnType)] = 470,
-            [(Wide, Full)] = 474,
-            [(Wide, RangeWhole)] = 474,
+            [(Identity, Full)] = 481,
+            [(Identity, RangeWhole)] = 481,
+            [(Identity, RangeLine)] = 477,
+            [(Identity, OnType)] = 477,
+            [(Comment, Full)] = 1627,
+            [(Comment, RangeWhole)] = 1627,
+            [(Comment, RangeLine)] = 1623,
+            [(Comment, OnType)] = 1623,
+            [(Crlf, Full)] = 481,
+            [(Crlf, RangeWhole)] = 481,
+            [(Crlf, RangeLine)] = 477,
+            [(Crlf, OnType)] = 477,
+            [(Cr, Full)] = 481,
+            [(Cr, RangeWhole)] = 481,
+            [(Cr, RangeLine)] = 477,
+            [(Cr, OnType)] = 477,
+            [(Wide, Full)] = 481,
+            [(Wide, RangeWhole)] = 481,
             [(Wide, RangeLine)] = 0,
             [(Wide, OnType)] = 0,
         };
@@ -2769,7 +2772,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(RangeLine, Comment)] = 12,       // 46/402 (11.44%)
             [(RangeWhole, Wide)] = 1,          // 0/3286 (0.00%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
             [(RangeStatement, Wide)] = 5,      // 311/6837 (4.55%) @ 17aba6fb6
-            [(RangeBlock, Wide)] = 31,         // 4064/13121 (30.97%) @ 17aba6fb6
+            [(RangeBlock, Wide)] = 32,         // 4098/13188 (31.07%) @ c8d4babe1 (P21e) — was 31 (4064/13121, 30.97% @ 17aba6fb6); corpus growth only: the same compiler without P21e's 13 new fixtures measures 4070/13135 (30.99%), and P21e changed no lexer/parser/formatter/LSP code — those fixtures' blank-separated nested blocks are refused by construction on this twin
             [(RangeLine, Wide)] = 54,          // 18565/34870 (53.24%) @ 17aba6fb6 — 13197/35101 (37.60%) @ f58a75158, before R-ET kept blank lines
         };
 
