@@ -439,10 +439,10 @@ public class ParserNegativeTests
     [Fact]
     public void RejectsMultipleStatementsOnOneLine()
     {
-        // Semicolons are not statement separators
+        // Semicolons are not statement separators — refused by name, SPY0150 (#2355, R-IO)
         var source = "x = 1; y = 2";
         var errors = ParseExpectingError(source);
-        errors.Should().Contain("Expected end of statement");
+        errors.Should().Contain("';' does not separate statements in Sharpy");
     }
 
     #endregion

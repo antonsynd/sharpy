@@ -490,4 +490,26 @@ public class ReplSessionTests
         => result.Diagnostics.Count == 0
             ? "(no diagnostics)"
             : string.Join("\n", result.Diagnostics.Select(d => d.ToString()));
+
+    // #2355 (R-IO): a `;` in a REPL line is the same named refusal as in a file — SPY0150 at the
+    // semicolon (the file/block contexts are Parser/SemicolonSeparatorMatrixTests).
+    [Theory]
+    [InlineData("a = 1; b = 2", 6)]
+    [InlineData("print(1);", 9)]
+    [InlineData(";print(1)", 1)]
+    [InlineData("x = 1;; y = 2", 6)]
+    public async Task Semicolon_IsTheOneNamedRefusal(string input, int column)
+    {
+        var session = new ReplSession();
+
+        var result = await session.EvaluateAsync(input);
+
+        Assert.False(result.Success);
+        var errors = result.Diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).ToList();
+        var error = Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Parser.SemicolonStatementSeparator, error.Code);
+        Assert.Equal(1, error.Line);
+        Assert.Equal(column, error.Column);
+    }
+
 }

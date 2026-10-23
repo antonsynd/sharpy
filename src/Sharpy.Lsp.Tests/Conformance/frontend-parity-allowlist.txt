@@ -78,6 +78,7 @@ compile::types/tuple_ellipsis_refused_1852   # drain-exempt: '...' in a type pos
 compile::types/callable_ellipsis_refused_1852   # drain-exempt: Callable[..., int] (#1852): compile stops at SPY0149, Analyze recovers and continues (+SPY0200) — #1360 block
 compile::errors/escaped_accessor_is_a_name_2166   # drain-exempt: escaped `get` is a property name (#2166): compile stops at SPY0104, Analyze recovers and continues (+SPY0203) — #1360 block
 compile::errors/escaped_new_is_a_name_2166   # drain-exempt: escaped `new` is a constraint type name (#2166): compile stops at SPY0104, Analyze recovers and continues (+SPY0200) — #1360 block
+compile::errors/semicolon_statement_separator_2355   # drain-exempt: `;` separator (#2355, R-IO): compile stops at SPY0150, Analyze recovers and continues (+SPY0200 for the dropped `a`/`b`) — #1360 block
 
 # --- P53 LSP project mode (#2242) — drained in plan-6ce1a5 Phases 2–4 ---
 #

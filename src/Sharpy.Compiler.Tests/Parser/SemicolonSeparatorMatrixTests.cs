@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Services;
 using Xunit;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;
@@ -17,7 +15,8 @@ namespace Sharpy.Compiler.Tests.Parser;
 ///
 /// <para>The matrix is separator position {between simple statements, trailing, leading,
 /// <c>;;</c>, after a block header's <c>:</c>} × simple-statement kind × context {module, def
-/// body, class body, loop body, REPL line}. Every cell must produce exactly ONE parser error,
+/// body, class body, loop body} (the REPL line is <c>ReplSessionTests.Semicolon_IsTheOneNamedRefusal</c>,
+/// in the ConsoleCapture collection). Every cell must produce exactly ONE parser error,
 /// SPY0150, at the first <c>;</c>'s own (line, column), derived from the generated source.
 /// Before #2355 the same cells were SPY0100 (leading), SPY0102 (after a header) or SPY0103 (the
 /// rest), none of which said why.</para>
@@ -125,20 +124,5 @@ public class SemicolonSeparatorMatrixTests
     {
         foreach (var stmt in StatementKinds)
             ParseErrors("a = 0\n" + stmt + "\npass\n").Should().BeEmpty(stmt);
-    }
-
-    [Theory]
-    [InlineData("a = 1; b = 2", 6)]
-    [InlineData("print(1);", 9)]
-    [InlineData(";print(1)", 1)]
-    [InlineData("x = 1;; y = 2", 6)]
-    public async Task ReplLine_IsTheOneNamedRefusal(string input, int column)
-    {
-        var result = await new ReplSession().EvaluateAsync(input);
-
-        result.Success.Should().BeFalse();
-        result.Diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
-            .Select(d => (d.Code, d.Line, d.Column))
-            .Should().Equal(((string?)DiagnosticCodes.Parser.SemicolonStatementSeparator, (int?)1, (int?)column));
     }
 }
