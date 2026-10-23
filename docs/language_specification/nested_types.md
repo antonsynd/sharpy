@@ -117,6 +117,18 @@ public class LinkedList
 
 - **Static nesting only**: No Java-style inner class `outer` reference
 - Nested types are statically nested — they do not capture an implicit reference to an enclosing instance
+- **Declaring positions only**: types are declared at module level or in a type body. A type definition (`class`, `struct`, `interface`, `union`, `delegate`, `enum`) in a function body or in a block (`if`, `for`, `while`, `try`, `with`, `match`) is refused (`SPY0708`) — C# has no local types. Declare it at module level, or nest it in a class.
+
+<!-- spec-sweep: error SPY0708 -->
+```python
+def build() -> None:
+    class Point:          # ERROR SPY0708: a class cannot be declared inside a function or a block
+        x: int = 0
+    print("built")
+
+def main() -> None:
+    build()
+```
 
 ## See Also
 
