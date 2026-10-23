@@ -2,5 +2,5 @@
 -7
 invalid literal for int() with base 10: ''
 invalid literal for int() with base 10: '   '
-invalid literal for int() with base 10: '99999999999'
+Value 99999999999 is out of range for int
 5

@@ -14,30 +14,10 @@ namespace Sharpy
         /// </summary>
         public static Result<double, ValueError> Parse(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                return Result<double, ValueError>.Err(
-                    new ValueError($"could not convert string to float: '{s}'"));
-            }
-
-            s = s.Trim();
-
-            // CPython's special spellings first, so this seam and Builtins.Double(string) accept
-            // exactly the same set (#1203). Trimming above is what makes "  inf  " work.
-            if (TryParseSpecialFloat(s, out double special))
-            {
-                return Result<double, ValueError>.Ok(special);
-            }
-
-            // NumberStyles.Float already includes AllowExponent; both seams pass this same value.
-            if (double.TryParse(s, NumberStyles.Float,
-                CultureInfo.InvariantCulture, out double result))
-            {
-                return Result<double, ValueError>.Ok(result);
-            }
-
-            return Result<double, ValueError>.Err(
-                new ValueError($"could not convert string to float: '{s}'"));
+            // One grammar with Builtins.Double(string) (#1203, #2357).
+            return NumericText.TryParseFloat(s, out double result)
+                ? Result<double, ValueError>.Ok(result)
+                : Result<double, ValueError>.Err(new ValueError($"could not convert string to float: '{s}'"));
         }
 
         /// <summary>
@@ -46,16 +26,17 @@ namespace Sharpy
         /// </summary>
         /// <remarks>
         /// <para>This is the single acceptance table for special float values; both string-to-double
-        /// seams (<c>Builtins.Double(string)</c> and <see cref="Parse"/>) consult it before handing
-        /// off to <c>double.TryParse</c>, so the two cannot drift in which spellings they accept.</para>
+        /// seams (<c>Builtins.Double(string)</c> and <see cref="Parse"/>) reach it through
+        /// <c>NumericText.TryParseFloat</c>, so the two cannot drift in which spellings they accept.</para>
         /// <para>Only the abbreviated <c>inf</c>/<c>-inf</c>/<c>+inf</c> forms are new capability:
         /// <c>double.TryParse</c> with <see cref="CultureInfo.InvariantCulture"/> already matches
         /// that culture's <c>Infinity</c>/<c>NaN</c> symbols case-insensitively and honours a leading
         /// sign, so the full <c>infinity</c> and every <c>nan</c> spelling parsed before this
         /// predicate existed. They are routed through here anyway so the accepted set is one
         /// testable list rather than an inherited BCL detail (#1203).</para>
-        /// <para><paramref name="trimmed"/> is expected to be already trimmed — both callers
-        /// <c>Trim()</c> first, which is what makes <c>"  inf  "</c> work. The predicate itself does
+        /// <para><paramref name="trimmed"/> is expected to be already trimmed — its one caller,
+        /// <c>NumericText.TryParseFloat</c>, normalizes and strips first, which is what makes
+        /// <c>"  inf  "</c> work. The predicate itself does
         /// no whitespace handling and deliberately accepts nothing CPython rejects: <c>"in f"</c>
         /// and <c>"infinit"</c> stay <c>ValueError</c>s.</para>
         /// </remarks>

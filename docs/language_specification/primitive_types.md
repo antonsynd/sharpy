@@ -76,6 +76,13 @@ uint8("0xff", 16)  # 255
 int16("0b1010", 2) # 10
 ```
 
+Every string conversion reads CPython's numeric-text grammar: surrounding whitespace, an optional
+sign, a `0x`/`0o`/`0b` prefix only when it matches the explicit base, PEP 515 single underscores
+between digits (`int("1_000")` is 1000, `float("1_000.5")` is 1000.5), and Unicode decimal digits.
+Malformed text raises `ValueError`; well-formed text that does not fit the target width raises
+`OverflowError` — including `int("2147483648")`, since `int` is 32-bit (deviation
+`int-text-out-of-range`, `docs/deviations.yaml`).
+
 Aliases are transparent in call position — `sbyte("42")` compiles identically to `int8("42")`,
 resolved by CLR type identity rather than by spelling.
 

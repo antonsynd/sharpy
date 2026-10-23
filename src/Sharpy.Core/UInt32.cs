@@ -93,24 +93,7 @@ namespace Sharpy
         /// </summary>
         public static uint UInt32(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for uint32() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
-            {
-                throw new ValueError($"invalid literal for uint32() with base 10: '{s}'");
-            }
-
-            if (result < uint.MinValue || result > uint.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint32");
-            }
-
-            return (uint)result;
+            return (uint)NumericText.ToUnsigned(s, 10, uint.MaxValue, "uint32");
         }
 
         /// <summary>
@@ -118,12 +101,7 @@ namespace Sharpy
         /// </summary>
         public static uint UInt32(string s, int @base)
         {
-            long result = ParseIntWithBase(s, @base, "uint32");
-            if (result < uint.MinValue || result > uint.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint32");
-            }
-            return (uint)result;
+            return (uint)NumericText.ToUnsigned(s, @base, uint.MaxValue, "uint32");
         }
 
         /// <summary>

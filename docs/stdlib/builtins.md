@@ -1238,6 +1238,11 @@ Convert decimal to int (truncates)
 
 Parse string to int
 
+### `int(s: str, base: int) -> int`
+
+Parse string to int with an explicit base (2, 8, 10, or 16); a matching
+`0x`/`0o`/`0b` prefix is accepted.
+
 ### `int(b: uint8) -> int`
 
 Convert byte to int
@@ -1584,6 +1589,11 @@ Convert decimal to long (truncates)
 ### `long(s: str) -> int64`
 
 Parse string to long
+
+### `long(s: str, base: int) -> int64`
+
+Parse string to long with an explicit base (2, 8, 10, or 16); a matching
+`0x`/`0o`/`0b` prefix is accepted.
 
 ### `long(b: uint8) -> int64`
 

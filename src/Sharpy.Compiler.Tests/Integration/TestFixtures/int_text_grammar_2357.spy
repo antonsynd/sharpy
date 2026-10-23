@@ -1,0 +1,14 @@
+# #2357: int() and float() read CPython's numeric-text grammar — PEP 515 underscores between
+# digits, a base prefix matching an explicit base, surrounding whitespace — and int(s, base)
+# binds for the 32-bit int as it does for every sized int.
+def main():
+    print(int("1_000"))
+    print(int("ff", 16))
+    print(int("0x_ff", 16))
+    print(int(" -0b1_1 ", 2))
+    print(float("1_000.5"))
+    for text in ["1__0", "_1", "1_", "0x"]:
+        try:
+            print(int(text, 16))
+        except ValueError:
+            print("ValueError", text)

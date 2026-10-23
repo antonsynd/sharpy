@@ -93,24 +93,7 @@ namespace Sharpy
         /// </summary>
         public static ushort UInt16(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for uint16() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
-            {
-                throw new ValueError($"invalid literal for uint16() with base 10: '{s}'");
-            }
-
-            if (result < ushort.MinValue || result > ushort.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint16");
-            }
-
-            return (ushort)result;
+            return (ushort)NumericText.ToUnsigned(s, 10, ushort.MaxValue, "uint16");
         }
 
         /// <summary>
@@ -118,12 +101,7 @@ namespace Sharpy
         /// </summary>
         public static ushort UInt16(string s, int @base)
         {
-            long result = ParseIntWithBase(s, @base, "uint16");
-            if (result < ushort.MinValue || result > ushort.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint16");
-            }
-            return (ushort)result;
+            return (ushort)NumericText.ToUnsigned(s, @base, ushort.MaxValue, "uint16");
         }
 
         /// <summary>

@@ -85,19 +85,16 @@ namespace Sharpy
         /// </summary>
         public static long Long(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for long() with base 10: '{s}'");
-            }
+            return NumericText.ToSigned(s, 10, long.MinValue, long.MaxValue, "long");
+        }
 
-            s = s.Trim();
-
-            if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
-            {
-                throw new ValueError($"invalid literal for long() with base 10: '{s}'");
-            }
-
-            return result;
+        /// <summary>
+        /// Parse string to long with an explicit base (2, 8, 10, or 16); a matching
+        /// <c>0x</c>/<c>0o</c>/<c>0b</c> prefix is accepted.
+        /// </summary>
+        public static long Long(string s, int @base)
+        {
+            return NumericText.ToSigned(s, @base, long.MinValue, long.MaxValue, "long");
         }
 
         /// <summary>

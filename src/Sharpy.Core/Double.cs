@@ -62,22 +62,8 @@ namespace Sharpy
         /// </summary>
         public static double Double(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"could not convert string to float: '{s}'");
-            }
-
-            s = s.Trim();
-
-            // CPython's special spellings first, so this seam and DoubleParse.Parse accept exactly
-            // the same set (#1203). Trimming above is what makes "  inf  " work.
-            if (DoubleParse.TryParseSpecialFloat(s, out double special))
-            {
-                return special;
-            }
-
-            // NumberStyles.Float already includes AllowExponent; both seams pass this same value.
-            if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
+            // One grammar with DoubleParse.Parse (#1203, #2357).
+            if (!NumericText.TryParseFloat(s, out double result))
             {
                 throw new ValueError($"could not convert string to float: '{s}'");
             }

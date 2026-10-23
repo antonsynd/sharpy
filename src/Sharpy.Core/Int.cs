@@ -99,19 +99,16 @@ namespace Sharpy
         /// </summary>
         public static int Int(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for int() with base 10: '{s}'");
-            }
+            return (int)NumericText.ToSigned(s, 10, int.MinValue, int.MaxValue, "int");
+        }
 
-            s = s.Trim();
-
-            if (!int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
-            {
-                throw new ValueError($"invalid literal for int() with base 10: '{s}'");
-            }
-
-            return result;
+        /// <summary>
+        /// Parse string to int with an explicit base (2, 8, 10, or 16); a matching
+        /// <c>0x</c>/<c>0o</c>/<c>0b</c> prefix is accepted.
+        /// </summary>
+        public static int Int(string s, int @base)
+        {
+            return (int)NumericText.ToSigned(s, @base, int.MinValue, int.MaxValue, "int");
         }
 
         /// <summary>

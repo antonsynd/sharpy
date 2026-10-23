@@ -93,19 +93,7 @@ namespace Sharpy
         /// </summary>
         public static ulong UInt64(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for uint64() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!ulong.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong result))
-            {
-                throw new ValueError($"invalid literal for uint64() with base 10: '{s}'");
-            }
-
-            return result;
+            return (ulong)NumericText.ToUnsigned(s, 10, ulong.MaxValue, "uint64");
         }
 
         /// <summary>
@@ -113,12 +101,7 @@ namespace Sharpy
         /// </summary>
         public static ulong UInt64(string s, int @base)
         {
-            long result = ParseIntWithBase(s, @base, "uint64");
-            if (result < 0)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint64");
-            }
-            return (ulong)result;
+            return (ulong)NumericText.ToUnsigned(s, @base, ulong.MaxValue, "uint64");
         }
 
         /// <summary>
