@@ -1,0 +1,9 @@
+# An import inside a class body is refused — a type body is not module level (#2063, R-CS).
+# At the base this was the code generator's SPY0510 internal error.
+class Host:
+    import copy
+    tag: int = 0
+
+def main() -> None:
+    h: Host = Host()
+    print(h.tag)

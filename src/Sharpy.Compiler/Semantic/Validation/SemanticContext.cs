@@ -58,9 +58,24 @@ internal class SemanticContext
     /// A lookup by NAME ALONE — a decorator's name, a type reference, an annotation — is a different
     /// question and correctly keeps using <c>SymbolTable.LookupType</c>: there is no declaration
     /// node to resolve through.</para>
+    ///
+    /// <para><b>Identity, not names (the P54 rule, #2250; #2316 cell 3).</b> The answer is the symbol
+    /// declared FOR <paramref name="declaration"/> or null: a candidate qualifies only if it is not a
+    /// builtin and <see cref="Symbol.IsDeclaredAt"/> the declaration — the same predicate the
+    /// TypeChecker's <c>IsDeclaredBy</c> applies before writing a definition's symbol. It is applied to
+    /// the index's answer and to the by-name fallback alike, because both resolve by NAME: a definition
+    /// that owns no symbol (a type definition in a function body or a block, refused with SPY0708; a
+    /// duplicate, refused with SPY0204) otherwise answered with whatever the name already meant — the
+    /// master <c>list</c>, or an enclosing user type — and every validator then ran its checks against
+    /// that symbol (SPY0701 "both at line  and line", SPY0325 against the master). Every caller
+    /// treats null as "no rule applies" — an early return, or an empty member set.</para>
     /// </summary>
     public TypeSymbol? LookupDeclaredType(Parser.Ast.Statement declaration, string name)
-        => DeclaredTypes?.SymbolFor(declaration, name, SymbolTable) ?? SymbolTable.LookupType(name);
+        => (DeclaredTypes?.SymbolFor(declaration, name, SymbolTable) ?? SymbolTable.LookupType(name)) is { } candidate
+           && !Builtins.IsBuiltinSymbol(candidate)
+           && candidate.IsDeclaredAt(declaration)
+            ? candidate
+            : null;
 
     // Diagnostics collection
     public DiagnosticBag Diagnostics { get; }

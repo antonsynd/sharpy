@@ -1,0 +1,9 @@
+# A class defined inside a function body is refused (C# has no local types): SPY0708 at the
+# `class` keyword, and nothing else — no "symbol not found" (#2063, R-CS).
+def helper() -> None:
+    class Foo:
+        x: int = 0
+    print("helper")
+
+def main() -> None:
+    helper()

@@ -55,6 +55,33 @@ A nested alias emits no runtime member of its own: like a module-level alias it 
 lowered by inline expansion / a `using` alias, so `Box.Ints` is `list[int]` in
 every position.
 
+## Builtin type names
+
+A `type` alias may not take a builtin type name at any position — module, class body, function body or block; escape the name with backticks to opt in. This is the same rule that applies to a class, struct, interface, enum, union or delegate declaration (SPY0212, see [Name Mangling](name_mangling.md)): an alias enters the namespace annotations resolve through, so a bare `int` would no longer mean one thing.
+
+<!-- spec-sweep: error SPY0212 -->
+```python
+def convert() -> None:
+    type int = str        # ERROR SPY0212: 'int' is a builtin type name
+    print("converted")
+
+def main() -> None:
+    convert()
+```
+
+The backtick-escaped spelling declares a user alias with that name, and a fresh name needs no escape:
+
+<!-- spec-sweep: output "converted" -->
+```python
+def convert() -> None:
+    type `int` = str      # the escaped spelling opts in: a user alias named int
+    label: `int` = "converted"
+    print(label)
+
+def main() -> None:
+    convert()
+```
+
 ## Transparency
 
 An alias is the target type in every position, including call position:

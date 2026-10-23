@@ -142,8 +142,7 @@ public class ReplSession
 
         // Step 2: Build the cumulative source (including the new snippet) and
         // compile/run it as a single in-memory module.
-        string? newModuleSnippet = classification.Kind == InputKind.ModuleLevel ? classification.Source : null;
-        string? newStatementSnippet = classification.Kind == InputKind.Statement ? classification.Source : null;
+        var (newModuleSnippet, newStatementSnippet) = classification.Snippets();
 
         var fullSource = BuildFullSource(newModuleSnippet, newStatementSnippet);
 
@@ -168,7 +167,9 @@ public class ReplSession
             newOutput = pipelineResult.Output;
         }
 
-        // Commit the snippet to history and update the output baseline.
+        // Commit the snippet to history and update the output baseline. Both halves of a
+        // split mixed submission are committed here, together, and only on success: a failed
+        // evaluation returns above, so neither half persists (atomic rollback).
         if (newModuleSnippet != null)
             _moduleLevelSnippets.Add(newModuleSnippet);
         if (newStatementSnippet != null)
@@ -228,7 +229,81 @@ public class ReplSession
             return new InputClassification(InputKind.Statement, $"print({input.TrimEnd()})");
         }
 
-        return new InputClassification(InputKind.Statement, input.TrimEnd());
+        return SplitMixedSubmission(input, statements);
+    }
+
+    /// <summary>
+    /// A MIXED submission (some statements module-level, some executable) is hoisted into the
+    /// synthesized <c>main()</c> — except its imports and type definitions, which are split out and
+    /// registered at module level (P21e route cell of R-CS, #2063). The user wrote them at top level;
+    /// hoisting them into <c>main()</c> would synthesize a function position around them, where a type
+    /// definition or an import is SPY0708 (DeclarationPositionValidator). At the base they were broken
+    /// there anyway: the import bound nothing (SPY0200 at a use) and the class owned no symbol (SPY0202).
+    ///
+    /// <para>The split is deliberately NARROW: a <c>def</c>, a <c>type</c> alias, a variable declaration
+    /// and every executable statement stay in <c>main()</c> in source order exactly as before, because
+    /// a nested def or alias there is legal and may capture <c>main</c>'s locals. Each split-out
+    /// statement keeps its own source lines — from its first decorator (or its keyword) to the line
+    /// before the next statement — and the two halves are committed together, only on success
+    /// (<see cref="EvaluateCore"/>).</para>
+    /// </summary>
+    private static InputClassification SplitMixedSubmission(string input, IReadOnlyList<Statement> statements)
+    {
+        var lines = input.Split('\n');
+        var module = new StringBuilder();
+        var executable = new StringBuilder();
+        for (var i = 0; i < statements.Count; i++)
+        {
+            var first = FirstLine(statements[i]);
+            var last = i + 1 < statements.Count ? FirstLine(statements[i + 1]) - 1 : lines.Length;
+            var target = IsHoistedToModuleLevel(statements[i]) ? module : executable;
+            for (var line = first; line <= last && line <= lines.Length; line++)
+                target.Append(lines[line - 1].TrimEnd('\r')).Append('\n');
+        }
+
+        var moduleSource = module.ToString().TrimEnd();
+        return new InputClassification(
+            InputKind.Statement,
+            executable.ToString().TrimEnd(),
+            moduleSource.Length > 0 ? moduleSource : null);
+    }
+
+    /// <summary>
+    /// The statements of a mixed submission registered at module level: an import, or a type
+    /// definition (class, struct, interface, union, delegate, enum — the declaration kinds
+    /// <see cref="StatementExtensions.TryGetNestedDeclaration"/> names, minus the alias). A
+    /// statement-scoped <c>@suppress</c> wrapper is transparent; a type decorator such as
+    /// <c>@dataclass</c> is part of the definition.
+    /// </summary>
+    private static bool IsHoistedToModuleLevel(Statement statement)
+    {
+        var stmt = statement.UnwrapDecorated();
+        return stmt is ImportStatement or FromImportStatement
+            || (stmt.TryGetNestedDeclaration(out var declaration)
+                && declaration.Kind != NestedDeclarationKind.Alias);
+    }
+
+    /// <summary>
+    /// The 1-based first source line of a top-level statement: a <c>@suppress</c> wrapper already
+    /// starts at its first decorator; a definition's own decorators (<c>@dataclass</c>, <c>@static</c>)
+    /// are carried on the definition and precede its keyword line.
+    /// </summary>
+    private static int FirstLine(Statement statement)
+    {
+        var first = statement.LineStart;
+        var stmt = statement.UnwrapDecorated();
+        var decorators = stmt.TryGetNestedDeclaration(out var declaration)
+            ? declaration.Decorators
+            : stmt is FunctionDef function
+                ? function.Decorators
+                : stmt is PropertyDef property ? property.Decorators : ImmutableArray<Decorator>.Empty;
+        foreach (var decorator in decorators)
+        {
+            if (decorator.LineStart > 0 && decorator.LineStart < first)
+                first = decorator.LineStart;
+        }
+
+        return first;
     }
 
     private static bool IsModuleLevelStatement(Statement stmt) => stmt.UnwrapDecorated() switch
@@ -458,8 +533,7 @@ public class ReplSession
         if (preParseDiagnostics.Count > 0)
             return new ReplFrontEndProbe(ReplInputClassification.PreParseError, false, preParseDiagnostics);
 
-        string? newModuleSnippet = classification.Kind == InputKind.ModuleLevel ? classification.Source : null;
-        string? newStatementSnippet = classification.Kind == InputKind.Statement ? classification.Source : null;
+        var (newModuleSnippet, newStatementSnippet) = classification.Snippets();
         var fullSource = BuildFullSource(newModuleSnippet, newStatementSnippet);
 
         var result = RunReplProjectCompiler(fullSource, cancellationToken);
@@ -620,9 +694,19 @@ public class ReplSession
         Statement,
     }
 
-    private readonly record struct InputClassification(InputKind Kind, string Source)
+    /// <param name="Kind">Where <paramref name="Source"/> goes.</param>
+    /// <param name="Source">The snippet: module level, or the body appended to <c>main()</c>.</param>
+    /// <param name="HoistedModuleSource">For a split mixed submission (<see cref="SplitMixedSubmission"/>),
+    /// its imports and type definitions, registered at module level alongside the statement snippet.</param>
+    private readonly record struct InputClassification(InputKind Kind, string Source, string? HoistedModuleSource = null)
     {
         public static InputClassification Empty => new(InputKind.Statement, string.Empty);
+
+        /// <summary>The (module-level, main-body) snippets this classification contributes — one
+        /// reading shared by evaluation and the front-end probe so the two cannot drift.</summary>
+        public (string? Module, string? Statement) Snippets() => Kind == InputKind.ModuleLevel
+            ? (Source, null)
+            : (HoistedModuleSource, Source);
     }
 
     /// <summary>

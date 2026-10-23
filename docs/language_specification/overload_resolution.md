@@ -12,6 +12,8 @@ simply rebinds the name, so `def f(x)` followed by `def f(x, y)` leaves only the
 and `f(1)` raises `TypeError`. Sharpy instead keeps every same-named declaration as a distinct
 overload and resolves the call at compile time, matching C#. See
 [Function and Method Overloading](method_overloading.md) for the declaration rules and restrictions.
+Overload sets are declared at module and type level only: a nested `def` that repeats a name inside one
+function is an error, not an overload (see [Nested functions](function_definition.md#nested-functions)).
 
 ## Model
 
@@ -305,6 +307,7 @@ g(d)       # "structured"  — a constructed type beats a bare type parameter
 g(v=d)     # "structured"
 ```
 
+<!-- spec-sweep: error SPY0353 -->
 ```python
 def bad(x: int, y: float) -> None: ...
 def bad(x: float, y: int) -> None: ...
@@ -416,6 +419,7 @@ call is refused as that argument's type mismatch (`SPY0220`) rather than as an o
 (`SPY0354`). There is nothing to choose between the candidates at that point, and the concrete
 mismatch is what the caller has to fix:
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 def main() -> None:
     xs: list[uint64] = [1, 2, 3]
@@ -433,6 +437,7 @@ message.
 
 Candidates that accept **different** types at that index are all named:
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 class C:
     def __init__(self):

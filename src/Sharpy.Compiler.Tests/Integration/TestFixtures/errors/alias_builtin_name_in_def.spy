@@ -1,0 +1,10 @@
+# A `type` alias in a function body may not take a builtin type name (SPY0212, #2319).
+# The refused alias is ignored, so its use keeps the checker's own mismatch (the cascade on
+# the same mistake, plan D6) — both are pinned.
+def convert() -> None:
+    type int = str
+    label: int = "x"
+    print(label)
+
+def main() -> None:
+    convert()

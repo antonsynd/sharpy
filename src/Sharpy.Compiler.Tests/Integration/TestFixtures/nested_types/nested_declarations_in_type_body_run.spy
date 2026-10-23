@@ -1,0 +1,33 @@
+# Positive control for the declaration-position contract (P21e, #2063): the DECLARING positions
+# still declare. A nested class, a nested enum and a nested `type` alias in a class body, and a
+# function-local `type Fresh = ...` in a method, all compile and run.
+enum Shade:
+    LIGHT = 1
+    DARK = 2
+
+class Outer:
+    class Inner:
+        v: int
+
+        def __init__(self, v: int) -> None:
+            self.v = v
+
+    enum Mode:
+        FAST = 10
+        SLOW = 20
+
+    type Label = str
+
+    def describe(self, m: Outer.Mode) -> str:
+        type Fresh = int
+        n: Fresh = 7
+        tag: Outer.Label = "inner"
+        i: Outer.Inner = Outer.Inner(n * 6)
+        speed: str = "slow" if m == Outer.Mode.SLOW else "fast"
+        return f"{tag}:{i.v}:{speed}"
+
+def main() -> None:
+    o: Outer = Outer()
+    print(o.describe(Outer.Mode.SLOW))
+    print(o.describe(Outer.Mode.FAST))
+    print(Shade.DARK.value)

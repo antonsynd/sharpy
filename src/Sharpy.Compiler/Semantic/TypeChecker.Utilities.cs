@@ -3078,6 +3078,18 @@ internal partial class TypeChecker
     /// Used to re-register class-scoped aliases (which are first registered during Pass 1
     /// in a scope that no longer exists) and to register function-scoped aliases.
     /// </summary>
+    /// <remarks>
+    /// <para><b>One owner per verdict.</b> At a DECLARING position — the module body or a type body,
+    /// outside any function and any block — NameResolver's <c>ResolveTypeAliasDeclaration</c> already
+    /// decided this alias: declared it, or refused it with the same three diagnostics this method
+    /// would raise (no type, both kinds of type, already defined; identical text and codes). Here the
+    /// alias is then only (re-)registered when it is valid and its name is free, and nothing is
+    /// reported: a refusal NameResolver made is not reported a second time (P21e; `type Foo = …` beside
+    /// a module <c>class Foo</c> was SPY0204 twice under <c>Analyze</c>). Elsewhere — a function body
+    /// or a block, which NameResolver never walks — this method is the alias's only owner and reports
+    /// as before. The position test is the one <c>CheckFunction</c> uses to recognise a def NameResolver
+    /// did not declare.</para>
+    /// </remarks>
     private void RegisterScopedTypeAlias(TypeAlias typeAlias)
     {
         // Skip if already defined in current scope. This guard is needed because class/struct
@@ -3086,20 +3098,31 @@ internal partial class TypeChecker
         if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) is TypeAliasSymbol)
             return;
 
+        // NameResolver owns the verdicts at a declaring position (see remarks).
+        var reportHere = _currentFunctionReturnType != null || _controlFlowDepth > 0;
+
         // Validate that exactly one of Type or FunctionType is set
         if (typeAlias.Type == null && typeAlias.FunctionType == null)
         {
-            AddError($"Type alias '{typeAlias.Name}' must have a type",
-                typeAlias.LineStart, typeAlias.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
+            if (reportHere)
+            {
+                AddError($"Type alias '{typeAlias.Name}' must have a type",
+                    typeAlias.LineStart, typeAlias.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
+            }
+
             return;
         }
 
         if (typeAlias.Type != null && typeAlias.FunctionType != null)
         {
-            AddError($"Type alias '{typeAlias.Name}' cannot have both Type and FunctionType",
-                typeAlias.LineStart, typeAlias.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
+            if (reportHere)
+            {
+                AddError($"Type alias '{typeAlias.Name}' cannot have both Type and FunctionType",
+                    typeAlias.LineStart, typeAlias.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
+            }
+
             return;
         }
 
@@ -3107,9 +3130,13 @@ internal partial class TypeChecker
         var existing = _symbolTable.Lookup(typeAlias.Name, searchParents: false);
         if (existing != null)
         {
-            AddError($"Type alias '{typeAlias.Name}' is already defined",
-                typeAlias.LineStart, typeAlias.ColumnStart,
-                code: DiagnosticCodes.Semantic.DuplicateDefinition, span: typeAlias.Span);
+            if (reportHere)
+            {
+                AddError($"Type alias '{typeAlias.Name}' is already defined",
+                    typeAlias.LineStart, typeAlias.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DuplicateDefinition, span: typeAlias.Span);
+            }
+
             return;
         }
 

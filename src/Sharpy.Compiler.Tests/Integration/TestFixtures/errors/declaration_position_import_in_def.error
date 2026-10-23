@@ -1,0 +1,3 @@
+SPY0708: an import is not allowed inside a function; import at module level @5:5
+SPY0200: Undefined identifier 'copy' @6:12
+!count 2

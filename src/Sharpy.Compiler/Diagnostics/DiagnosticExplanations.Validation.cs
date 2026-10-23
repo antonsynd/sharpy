@@ -1088,5 +1088,18 @@ public static partial class DiagnosticExplanations
             "Drop the underscore (`def area(self) -> float: ...`), or backtick-escape the name to keep " +
             "the spelling as a public member (`def `_area`(self) -> float: ...`, implemented as " +
             "`def `_area`(self) -> float:` in the class).");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.DeclarationOutsideDeclaringPosition,
+            "Declaration outside a declaring position", "Validation",
+            "Types are declared at module level or inside another type, and imports at module " +
+            "level. A class, struct, interface, union, delegate or enum written inside a function " +
+            "body or inside a block (`if`, `for`, `while`, `try`, `with`, `match`) is refused because " +
+            "C# has no local types: the definition would have no symbol of its own. An `import` or " +
+            "`from ... import` anywhere but the module body \u2014 a function, a block, or a class " +
+            "body \u2014 is refused because an import is a fact about the whole module, not a binding " +
+            "of the scope it is written in. Python allows both; Sharpy follows C# here (#2063).",
+            "def f() -> None:\n    class A:  # SPY0708\n        pass",
+            "Move the type definition to module level, or nest it directly in a class body " +
+            "(`class Outer:` / `    class A:`), and move the import to the top of the file.");
     }
 }

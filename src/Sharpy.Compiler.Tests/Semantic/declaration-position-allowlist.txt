@@ -1,0 +1,63 @@
+# declaration-position allowlist (ratchet ledger) — TypeDefinitionOwnSymbolMatrixTests.
+#
+# One generated cell id per line (`<kind> × <position> × <name>`, or
+# `nested-def × <relation> × <signature> × <call>`), followed by `  # #<issue>`. A cell whose
+# verdict differs from the contract (ExpectedErrors / the nested-def expected sets, the
+# rest-equals-control clause, the cascade-absence clause, the block literal, or the execution of an
+# error-free program) fails the suite UNLESS its id is listed here. A listed cell that passes also
+# fails (STALE): delete its row when the fix lands. A row naming no generated cell fails.
+#
+# The contract (P21e — declaration-position totality; rulings R-CS, R-HJ, R-HK): a declaration has
+# ONE decided verdict at every position. Type definitions and imports outside the module body / a
+# type body are SPY0708; a builtin-named `type` alias is SPY0212 at every position; a nested `def`
+# re-declaring a name of its block or an enclosing/enclosed block is SPY0204.
+#
+# The rows are the base's red cells, CREATED by P21e Phase 1. P21e's Phases 2–4 drain the rows citing
+# the class tracker (type-definition / import positions, incl. the class-cascade and enum cells, and the
+# double duplicate-alias report), the SPY0212 issue (builtin-named aliases and nested types) and the
+# redeclaration issue (nested defs). Two sections drain with OTHER issues, not in P21e: the class-body
+# `if` rows and the struct auto-constructor rows. Never add a row without a measured red and a cite.
+# DO NOT DELETE THIS FILE: its presence arms the ratchet.
+
+# R-CS (#2063): a type definition or an import outside the module body / a type body is SPY0708.
+# DRAINED in P21e Phase 2 (DeclarationPositionValidator; the checker declines silently; the
+# LookupDeclaredType identity rule ends the master-`list` cascade). Do not re-add a row here.
+
+# #2319: a builtin-named `type` alias is SPY0212 at every position; a builtin-named nested type in a
+# type body is SPY0212. DRAINED in P21e Phase 3 (the gate in ResolveNestedTypeDeclaration; the
+# DeclarationPositionValidator alias arm). Do not re-add a row here.
+
+# R-HJ (#2314): a nested def re-declaring a name of its block or an enclosing/enclosed block is
+# SPY0204 (+ SPY0220 at a call that fits only the refused def, D6). DRAINED in P21e Phase 4
+# (DeclarationPositionValidator's nested-def arm). Do not re-add a row here.
+
+# #2148: an `if` in a class body is SPY0510 at code generation, so an otherwise error-free
+# type-body-if program cannot run. It is the host's failure, not the alias's: the test checks that each
+# row's control (the same host, `pass` for the alias) fails with the same SPY0510. Outside P21e (D8);
+# these rows drain with #2148, NOT in P21e.
+alias × type-body-if × Foo  # #2148
+alias × type-body-if × Fresh  # #2148
+
+# #2021: a struct whose property has a default AND an explicit setter is SPY0908 CS0100 under run
+# (the emitter-synthesized ctor `S(object size, int size = 0)` has no semantic twin) at every
+# position. Outside P21e; drains with #2021 (cell posted on #2021, 2026-10-22).
+struct × module × Fresh  # #2021
+struct × type-body × Foo  # #2021
+struct × type-body × Fresh  # #2021
+
+# #2361: the arms of one `match` are sibling blocks (owner ruling at the P21e verify round, 2026-10-23,
+# reverting the lead's one-scope ruling D5b), so a nested def per arm is a fresh binding. When the match
+# lowers to one C# `switch` (no loop transfer, no hoisted guard), the sections share one declaration space
+# and local functions are not versioned: SPY0908 CS0128 under run (the same at base 03eee7528). The test
+# REQUIRES that fingerprint for these rows. The is-chain twins (`sibling-match-break`) run green. Drains
+# with #2361 (local-function name versioning), NOT in P21e.
+nested-def × sibling-match × same-sig × fits-first  # #2361
+nested-def × sibling-match × same-sig × fits-second  # #2361
+nested-def × sibling-match × same-sig × none  # #2361
+nested-def × sibling-match × different-sig × fits-first  # #2361
+nested-def × sibling-match × different-sig × fits-second  # #2361
+nested-def × sibling-match × different-sig × none  # #2361
+
+# In-contract (one verdict per cell): `type Foo = …` beside module `class Foo` was reported twice by
+# Analyze. DRAINED in P21e Phase 3 (Task 1b: at a declaring position RegisterScopedTypeAlias no longer
+# re-reports a verdict NameResolver owns). Do not re-add a row here.

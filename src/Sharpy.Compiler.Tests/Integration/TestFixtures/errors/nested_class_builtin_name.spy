@@ -1,0 +1,8 @@
+# A class nested in a class body may not take a builtin type name either (SPY0212, #2319):
+# the nested-declaration dispatcher applies the same gate as the module body.
+class Host:
+    class int:
+        label: str = "nested"
+
+def main() -> None:
+    print("main")

@@ -1,0 +1,18 @@
+# A `@dataclass class list:` inside a `while` in a function (#2316 cell 3, folded onto #2063):
+# exactly one SPY0708. The definition owns no symbol, so no validator runs against the master
+# `list` — no duplicate-dunder SPY0701 with an empty location, no SPY0325 against the master.
+def helper() -> None:
+    n: int = 0
+    while n < 1:
+        @dataclass
+        class list:
+            x: int
+            def __getitem__(self, key: int) -> str:
+                return "a"
+            def __getitem__(self, key: int) -> int:
+                return 0
+        n = n + 1
+    print("helper")
+
+def main() -> None:
+    helper()

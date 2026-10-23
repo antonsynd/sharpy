@@ -1,0 +1,11 @@
+# A second nested `def f` in the same block of one function is SPY0204 at the later def (R-HJ,
+# #2314): C# local functions cannot overload, so it was CS0128 behind SPY0908.
+def helper() -> None:
+    def f(x: int) -> int:
+        return x + 1
+    def f(x: str) -> str:
+        return x + "!"
+    print(f(1))
+
+def main() -> None:
+    helper()

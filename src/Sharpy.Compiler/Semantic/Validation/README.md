@@ -19,6 +19,9 @@ of semantic rules.
 ### Validators (ordered by execution priority)
 
 - `ModuleLevelValidator.cs` (Order 50) - Entry point rules, module-level type annotations
+- `TypeBodyStatementValidator.cs` (Order 51) - Statements in a class/struct/interface/union body (`let` is SPY0340)
+- `CircularImportUsageValidator.cs` (Order 52) - Deferred circular import usage
+- `DeclarationPositionValidator.cs` (Order 53) - Declaration positions, three arms: a type definition outside the module body / a type body, or an import outside the module body, is SPY0708; a builtin-named `type` alias at a non-declaring position is SPY0212; a nested `def` re-declaring a name of the same function (same block, enclosing/enclosed block, another arm of the same `match`) is SPY0204
 - `NamingConventionValidator.cs` (Order 55) - Naming convention checks
 - `DecoratorValidator.cs` (Order 60) - Decorator usage validation
 - `SignatureValidator.cs` (Order 150) - Dunder method signatures, protocol conformance

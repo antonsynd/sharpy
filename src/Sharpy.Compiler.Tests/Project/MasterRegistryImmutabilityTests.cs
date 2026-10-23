@@ -640,10 +640,11 @@ public class MasterRegistryImmutabilityTests
     /// <summary>
     /// The verifier's F2 cell and its siblings (P54 #2250 @ effba7776): a type definition in a block or a function body
     /// — a class, a <c>@dataclass</c> class, a struct, an interface, a union, a delegate, each named <c>str</c> — is
-    /// REFUSED (SPY0202: it has no symbol of its own, C# has no local types; plus SPY0340 for a module-level block) and
-    /// never reaches an internal error: the dataclass text was SPY0909 (PhaseViolationException on the frozen master
-    /// <c>str</c>) at effba7776. The SPY0202 is the positive control for the absence of SPY09xx — the checker reached the
-    /// definition.
+    /// REFUSED (SPY0708 since P21e — a type definition outside a declaring position, R-CS; it was the checker's SPY0202
+    /// from P54 until P21e — plus SPY0340 for a module-level block) and never reaches an internal error: the dataclass text
+    /// was SPY0909 (PhaseViolationException on the frozen master <c>str</c>) at effba7776. The SPY0708 is the positive
+    /// control for the absence of SPY09xx — the ValidationPipeline that reports it runs after the checker's whole walk, so
+    /// the checker reached (and declined) the definition.
     /// </summary>
     [Fact]
     public void WarmInstanceTriggers_TypeDefinitionsAreRefusedWithoutAnInternalError()
@@ -656,8 +657,8 @@ public class MasterRegistryImmutabilityTests
             _output.WriteLine($"{name}: {string.Join(" ", codes)}");
             if (codes.Any(c => c.StartsWith("SPY09", StringComparison.Ordinal)))
                 problems.Add($"{name}: an internal error ({string.Join(" ", codes)})");
-            if (!codes.Contains("SPY0202"))
-                problems.Add($"{name}: the type definition was not refused with SPY0202 ({string.Join(" ", codes)})");
+            if (!codes.Contains("SPY0708"))
+                problems.Add($"{name}: the type definition was not refused with SPY0708 ({string.Join(" ", codes)})");
             if (text.StartsWith("try:", StringComparison.Ordinal) && !codes.Contains("SPY0340"))
                 problems.Add($"{name}: the module-level block was not refused with SPY0340 ({string.Join(" ", codes)})");
         }

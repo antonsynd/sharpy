@@ -1,0 +1,2 @@
+SPY0708: an enum cannot be declared inside a function or a block; declare it at module or class level @4:5
+!count 1

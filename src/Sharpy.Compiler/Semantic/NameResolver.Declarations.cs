@@ -12,7 +12,8 @@ internal partial class NameResolver
         // repeated in each Resolve*Declaration: a rule enumerated per site is a rule with a hole in
         // it the moment a declaration form is added (#1241). Refused declarations still fall
         // through to their resolver so the symbol exists for later passes — suppressing it would
-        // turn one deliberate diagnostic into a cascade of "undefined name" noise.
+        // turn one deliberate diagnostic into a cascade of "undefined name" noise. The nested
+        // dispatcher (ResolveNestedTypeDeclaration, a type body) applies the same gate the same way.
         RefuseBuiltinTypeNameShadowing(statement);
 
         switch (statement)
@@ -65,6 +66,9 @@ internal partial class NameResolver
 
     /// <summary>
     /// Refuses a TYPE declaration that takes the bare spelling of a builtin type name (SPY0212).
+    /// Applied by BOTH declaring dispatchers — <see cref="ResolveDeclaration"/> (the module body) and
+    /// <see cref="ResolveNestedTypeDeclaration"/> (a type body); the non-declaring positions of a
+    /// <c>type</c> alias are <c>DeclarationPositionValidator</c>'s, with the same classifier and text.
     /// </summary>
     /// <remarks>
     /// Only the refusal lives here. Its value-position sibling is a warning and belongs to
@@ -640,6 +644,12 @@ internal partial class NameResolver
     {
         if (!statement.TryGetNestedDeclaration(out var declaration))
             return;
+
+        // The builtin-type-name gate (SPY0212), exactly as ResolveDeclaration applies it to the
+        // module body: a nested class, struct, interface, enum, union, delegate or `type` alias may
+        // not take a builtin type name either (#2319). The refused declaration still falls through to
+        // its resolver below, so it owns its symbol and later passes see one diagnostic, not a cascade.
+        RefuseBuiltinTypeNameShadowing(statement);
 
         // The declaration is resolved by the same module-level resolver its top-level twin uses —
         // the seven kinds diverge only in where the resulting symbol is stored (NestedTypes vs.

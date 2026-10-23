@@ -1134,7 +1134,8 @@ def main() -> int:
         var helper = CreateHelper();
         helper.WithRootNamespace("CombinedIsolationAliasesTest");
 
-        // Two packages with same-named modules, using function-scoped type alias
+        // Two packages with same-named modules, using function-scoped type alias. The alias takes
+        // a fresh name: a builtin type name (`Result`, `int`, …) is SPY0212 at every position (#2319).
         helper.AddPackage("pkg_a", "");
         helper.AddPackageFile("pkg_a", "models.spy", @"
 def get_value() -> int:
@@ -1152,9 +1153,9 @@ import pkg_a.models
 import pkg_b.models
 
 def main():
-    type Result = int
-    a: Result = pkg_a.models.get_value()
-    b: Result = pkg_b.models.get_value()
+    type Value = int
+    a: Value = pkg_a.models.get_value()
+    b: Value = pkg_b.models.get_value()
     print(a)
     print(b)
 ");

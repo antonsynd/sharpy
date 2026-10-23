@@ -15,6 +15,18 @@ result = m.sqrt(16.0)
 *Implementation*
 - *✅ Native - `using Namespace;` or `using Alias = Namespace;`*
 
+An import is a module-level statement: it binds a name for the whole module. An `import` or `from … import` inside a function, a block or a class body is refused (`SPY0708`); write it at the top of the file.
+
+<!-- spec-sweep: error SPY0708 -->
+```python
+def area(r: float) -> float:
+    import math           # ERROR SPY0708: an import is not allowed inside a function
+    return 3.14159 * r * r
+
+def main() -> None:
+    print(area(1.0))
+```
+
 ## From-Import Statement
 
 ```python
