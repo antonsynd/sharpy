@@ -1644,7 +1644,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// stems (control @ c8d4babe1 with those fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the census
     /// asserts the previous literals, identity full = 474, 16520/0). P21e verify round (2026-10-23): −1 on every
     /// non-zero pin — a shrink, the one stem the owner's revert of D5b removed (errors/nested_def_redefined_match_arms;
-    /// measured @ 8fc618b22, every census asserting: identity full = 480). The wide
+    /// measured @ 8fc618b22, every census asserting: identity full = 480). Call-29 chores band (2026-10-23): +2 on the
+    /// four comment pins only — growth, from the band's two new runnable fixture stems (strings/str_padding_fill_2347,
+    /// int_text_grammar_2357; control @ 9fd3f4200 with those two fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the
+    /// comment census asserts the previous literals, 3311/0). The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1656,10 +1659,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 480,
             [(Identity, RangeLine)] = 476,
             [(Identity, OnType)] = 476,
-            [(Comment, Full)] = 1626,
-            [(Comment, RangeWhole)] = 1626,
-            [(Comment, RangeLine)] = 1622,
-            [(Comment, OnType)] = 1622,
+            [(Comment, Full)] = 1628,
+            [(Comment, RangeWhole)] = 1628,
+            [(Comment, RangeLine)] = 1624,
+            [(Comment, OnType)] = 1624,
             [(Crlf, Full)] = 480,
             [(Crlf, RangeWhole)] = 480,
             [(Crlf, RangeLine)] = 476,
