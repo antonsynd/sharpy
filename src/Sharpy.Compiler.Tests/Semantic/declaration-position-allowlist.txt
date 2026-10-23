@@ -28,25 +28,8 @@
 # DeclarationPositionValidator alias arm). Do not re-add a row here.
 
 # R-HJ (#2314): a nested def re-declaring a name of its block or an enclosing/enclosed block is
-# SPY0204 (+ SPY0220 at a call that fits only the refused def, D6). Drains in P21e Phase 4.
-nested-def × inner-first × different-sig × fits-first  # #2314
-nested-def × inner-first × different-sig × fits-second  # #2314
-nested-def × inner-first × different-sig × none  # #2314
-nested-def × inner-first × same-sig × fits-first  # #2314
-nested-def × inner-first × same-sig × fits-second  # #2314
-nested-def × inner-first × same-sig × none  # #2314
-nested-def × outer-first × different-sig × fits-first  # #2314
-nested-def × outer-first × different-sig × fits-second  # #2314
-nested-def × outer-first × different-sig × none  # #2314
-nested-def × outer-first × same-sig × fits-first  # #2314
-nested-def × outer-first × same-sig × fits-second  # #2314
-nested-def × outer-first × same-sig × none  # #2314
-nested-def × same × different-sig × fits-first  # #2314
-nested-def × same × different-sig × fits-second  # #2314
-nested-def × same × different-sig × none  # #2314
-nested-def × same × same-sig × fits-first  # #2314
-nested-def × same × same-sig × fits-second  # #2314
-nested-def × same × same-sig × none  # #2314
+# SPY0204 (+ SPY0220 at a call that fits only the refused def, D6). DRAINED in P21e Phase 4
+# (DeclarationPositionValidator's nested-def arm). Do not re-add a row here.
 
 # #2148: an `if` in a class body is SPY0510 at code generation, so an otherwise error-free
 # type-body-if program cannot run. It is the host's failure, not the alias's: the test checks that each

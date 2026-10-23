@@ -32,8 +32,14 @@ internal enum DeclarationSlot
 /// <c>type</c> alias whose bare name is a builtin type name is SPY0212 at every non-declaring position
 /// (#2319) — the same <c>BuiltinNameShadowing</c> classifier and text NameResolver's gate applies at the
 /// declaring positions, so each position has exactly one owner (plan D2); a fresh-named or
-/// backtick-escaped alias falls through (block-scoped, D7). The declaring positions themselves are
-/// NameResolver's (it declares the module body and type bodies). Every
+/// backtick-escaped alias falls through (block-scoped, D7). A nested <c>def</c> (in a function body or a
+/// block of one) whose name a def of the SAME function already declared in the same block, an enclosing
+/// block, or an enclosed block is SPY0204 at the later def (R-HJ, #2314): the emitter spells every local
+/// function by its name with no versioning, so C# would see CS0128 (same block) or CS0136 (nested blocks).
+/// Sibling blocks — <c>if</c>/<c>elif</c>/<c>else</c> bodies, <c>try</c>/handlers/<c>else</c>/<c>finally</c>,
+/// <c>match</c> cases, a loop body and its <c>else</c> — are fresh bindings, and an inner def's body is a
+/// function of its own. Methods in a type body and module-level overload sets are NameResolver's. The
+/// declaring positions themselves are NameResolver's (it declares the module body and type bodies). Every
 /// other statement falls through untouched; in particular a type body's executable statements are
 /// <see cref="TypeBodyStatementValidator"/>'s and #2148's, not this validator's (D8).</para>
 ///
@@ -77,6 +83,44 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
 
     /// <summary>The position of the list holding the statement being visited.</summary>
     private DeclarationSlot _enclosing = DeclarationSlot.ModuleBody;
+
+    /// <summary>
+    /// The block tree of the function being walked, innermost list on top: a <see cref="DefBlock"/> for a
+    /// function body (a root — no parent) or a block of one (parent = the enclosing list), and null for
+    /// any other list (module, type body, and their blocks), so a function's blocks never see another
+    /// function's defs.
+    /// </summary>
+    private readonly Stack<DefBlock?> _defBlocks = new();
+
+    /// <summary>
+    /// One statement list of a function, for the nested-def arm. <see cref="Declared"/> holds the defs
+    /// written directly in it; <see cref="DeclaredBelow"/> the defs of its already-walked descendant
+    /// blocks (merged in when each descendant ends), which is what makes the inner-first order visible.
+    /// A sibling's defs reach only the common parent's <see cref="DeclaredBelow"/>, never the sibling.
+    /// </summary>
+    private sealed class DefBlock
+    {
+        public DefBlock(DefBlock? parent) => Parent = parent;
+
+        public DefBlock? Parent { get; }
+        public HashSet<string> Declared { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> DeclaredBelow { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>True when a def of <paramref name="name"/> already stands in this block, an enclosing
+        /// block, or an already-walked enclosed block of the same function.</summary>
+        public bool Conflicts(string name)
+        {
+            if (Declared.Contains(name) || DeclaredBelow.Contains(name))
+                return true;
+            for (var ancestor = Parent; ancestor != null; ancestor = ancestor.Parent)
+            {
+                if (ancestor.Declared.Contains(name))
+                    return true;
+            }
+
+            return false;
+        }
+    }
 
     public override void VisitModule(Module node) => WalkBody(node.Body, DeclarationSlot.ModuleBody);
 
@@ -172,11 +216,25 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
     private void WalkBody(ImmutableArray<Statement> body, DeclarationSlot position)
     {
         var saved = _enclosing;
+        var block = position switch
+        {
+            DeclarationSlot.FunctionBody => new DefBlock(parent: null),
+            DeclarationSlot.FunctionBlock => new DefBlock(_defBlocks.Count > 0 ? _defBlocks.Peek() : null),
+            _ => null,
+        };
+        _defBlocks.Push(block);
         foreach (var statement in body)
         {
             ClassifyDeclaration(statement, position);
             _enclosing = position;
             Visit(statement);
+        }
+
+        _defBlocks.Pop();
+        if (block?.Parent is { } parent)
+        {
+            parent.DeclaredBelow.UnionWith(block.Declared);
+            parent.DeclaredBelow.UnionWith(block.DeclaredBelow);
         }
 
         _enclosing = saved;
@@ -240,11 +298,39 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
                     code: BuiltinNameShadowing.RefusalCode);
                 break;
 
+            case FunctionDef def when position is DeclarationSlot.FunctionBody or DeclarationSlot.FunctionBlock:
+                DeclareNestedDef(def);
+                break;
+
             default:
                 // A declaration at a declaring position (NameResolver's), and every non-declaration
                 // statement, falls through untouched.
                 break;
         }
+    }
+
+    /// <summary>
+    /// Records a nested def in its block, refusing it with SPY0204 when the same function already declared
+    /// its name in this block, an enclosing block or an enclosed one (R-HJ). The caret is on the name
+    /// token (no span: a span wins over line/column at every consumer, and the def's span starts at
+    /// <c>def</c>). The refused def is not recorded, so a third def of the name is refused once, too.
+    /// </summary>
+    private void DeclareNestedDef(FunctionDef def)
+    {
+        if (_defBlocks.Count == 0 || _defBlocks.Peek() is not { } block)
+            return;
+
+        if (block.Conflicts(def.Name))
+        {
+            AddError(
+                $"function '{def.Name}' is already defined in this scope",
+                line: def.NameLineStart,
+                column: def.NameColumnStart,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition);
+            return;
+        }
+
+        block.Declared.Add(def.Name);
     }
 
     /// <summary>The module body and a type body declare types; nothing else does (C# has no local types).</summary>
