@@ -27,7 +27,7 @@ def min_max(values: list[int]) -> tuple[int, int]:
 
 ## Nested functions
 
-A `def` may be nested in a function body or in a block inside one. Overload sets live at module and type level only: a nested `def` may not re-declare a name that a `def` of the same function already declares in the same block, in an enclosing block, or in an enclosed block (`SPY0204`). Defs of one name in sibling blocks — the branches of an `if`, the clauses of a `try`, a loop body and its `else` — are separate bindings, and an inner `def`'s body is a function of its own. The arms of one `match` share ONE scope for nested defs (they lower to a single C# `switch`), so a `def` repeated across arms is `SPY0204` too.
+A `def` may be nested in a function body or in a block inside one. Overload sets live at module and type level only: a nested `def` may not re-declare a name that a `def` of the same function already declares in the same block, in an enclosing block, or in an enclosed block (`SPY0204`). Defs of one name in sibling blocks — the branches of an `if`, the clauses of a `try`, the arms of a `match`, a loop body and its `else` — are separate bindings, and an inner `def`'s body is a function of its own.
 
 <!-- spec-sweep: error SPY0204 -->
 ```python

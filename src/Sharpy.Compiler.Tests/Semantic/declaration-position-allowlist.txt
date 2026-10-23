@@ -45,6 +45,19 @@ struct × module × Fresh  # #2021
 struct × type-body × Foo  # #2021
 struct × type-body × Fresh  # #2021
 
+# #2361: the arms of one `match` are sibling blocks (owner ruling at the P21e verify round, 2026-10-23,
+# reverting the lead's one-scope ruling D5b), so a nested def per arm is a fresh binding. When the match
+# lowers to one C# `switch` (no loop transfer, no hoisted guard), the sections share one declaration space
+# and local functions are not versioned: SPY0908 CS0128 under run (the same at base 03eee7528). The test
+# REQUIRES that fingerprint for these rows. The is-chain twins (`sibling-match-break`) run green. Drains
+# with #2361 (local-function name versioning), NOT in P21e.
+nested-def × sibling-match × same-sig × fits-first  # #2361
+nested-def × sibling-match × same-sig × fits-second  # #2361
+nested-def × sibling-match × same-sig × none  # #2361
+nested-def × sibling-match × different-sig × fits-first  # #2361
+nested-def × sibling-match × different-sig × fits-second  # #2361
+nested-def × sibling-match × different-sig × none  # #2361
+
 # In-contract (one verdict per cell): `type Foo = …` beside module `class Foo` was reported twice by
 # Analyze. DRAINED in P21e Phase 3 (Task 1b: at a declaring position RegisterScopedTypeAlias no longer
 # re-reports a verdict NameResolver owns). Do not re-add a row here.

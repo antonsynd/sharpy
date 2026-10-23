@@ -418,9 +418,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(12 * 13 * 3, MatrixCells().Count());
         // Host axis: 4 hosts × {class, enum, import, alias} × Fresh + alias × int; spelling axis: 3 spellings × 2 positions.
         Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
-        Assert.Equal(7 * 2 * 3, NestedDefCells().Count());
+        Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id)).ToList();
-        Assert.Equal(12 * 13 * 3 + 26 + 42, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(12 * 13 * 3 + 26 + 48, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -561,7 +561,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// Block relation {same block, sibling blocks (two <c>if</c>s), sibling <c>if</c>/<c>else</c> branches, sibling
-    /// <c>try</c> body / <c>except</c> handler, nested outer-first, nested inner-first, two arms of one <c>match</c>}
+    /// <c>try</c> body / <c>except</c> handler, two arms of one <c>match</c> (lowered to a C# <c>switch</c>), the same
+    /// arms with a loop <c>break</c> in one (lowered to an is-chain), nested outer-first, nested inner-first}
     /// × signature {same
     /// <c>(x: int)</c> twice, different <c>(x: int)</c>/<c>(x: str)</c>} × call {fits first, fits second, none}. Each
     /// def returns a literal tag, <c>"first"</c> / <c>"second"</c>, and the call prints it.
@@ -572,19 +573,20 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// premise ("the first def is the binding"). Under the same signature a call that fits one def fits both, so
     /// "fits first" and "fits second" spell the same call (<c>f(1)</c>); both ids are kept so the axis stays total.
     /// For sibling blocks the call axis maps to {block A calls its def, block B calls its def, no call}; the
-    /// <c>if</c>/<c>else</c> pair sits in a two-pass loop and the <c>try</c> body raises into its handler, so BOTH
-    /// branches run. For <c>match</c> arms the call sits in the first arm after its def — where the checker binds
-    /// the first def (measured).</para>
+    /// <c>if</c>/<c>else</c> pair and the <c>match</c> sit in a two-pass loop and the <c>try</c> body raises into its
+    /// handler, so BOTH branches run.</para>
     ///
-    /// <para><b>Expected</b> (R-HJ + D6): the three sibling relations → run, stdout = the tag of the def its call
+    /// <para><b>Expected</b> (R-HJ + D6): the five sibling relations → run, stdout = the tag of the def its call
     /// binds, then <c>end</c>; every other relation → [SPY0204 @ the later def's name token] + [SPY0220 @ the call's
     /// argument — the base's anchor for an argument mismatch] iff the call fits only the later (refused) def; no
-    /// SPY09xx. The arms of one <c>match</c> are ONE scope for nested defs (lead ruling: the emitter lowers them to
-    /// one C# <c>switch</c>, one declaration space, and local functions are not versioned — CS0128 at the base).</para>
+    /// SPY09xx. The arms of one <c>match</c> are sibling blocks like any other (owner ruling at the P21e verify
+    /// round, 2026-10-23, reverting the lead's one-scope ruling D5b). Whatever the lowering: the switch-lowered
+    /// arms are SPY0908 CS0128 today because local functions are not versioned, and those rows cite their class
+    /// issue with that exact fingerprint required.</para>
     /// </summary>
     internal static IEnumerable<NestedDefCell> NestedDefCells()
     {
-        foreach (var relation in new[] { "same", "sibling", "sibling-else", "sibling-except", "outer-first", "inner-first", "match-arms" })
+        foreach (var relation in new[] { "same", "sibling", "sibling-else", "sibling-except", "sibling-match", "sibling-match-break", "outer-first", "inner-first" })
         {
             foreach (var signature in new[] { "same-sig", "different-sig" })
             {
@@ -651,15 +653,20 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                             if (call == "fits-second")
                                 Call(8, secondArg);
                             break;
-                        case "match-arms":
-                            lines.Add("    v: int = 0");
-                            lines.Add("    match v:");
-                            lines.Add("        case 0:");
-                            Def(12, false);
-                            if (call != "none")
-                                Call(12, arg);
-                            lines.Add("        case _:");
-                            Def(12, true);
+                        case "sibling-match":
+                        case "sibling-match-break":
+                            lines.Add("    for v in range(2):");
+                            lines.Add("        match v:");
+                            lines.Add("            case 0:");
+                            Def(16, false);
+                            if (call == "fits-first")
+                                Call(16, "1");
+                            lines.Add("            case _:");
+                            Def(16, true);
+                            if (call == "fits-second")
+                                Call(16, secondArg);
+                            if (relation == "sibling-match-break")
+                                lines.Add("                break");
                             break;
                         case "outer-first":
                             Def(4, false);
@@ -722,7 +729,17 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             if (cell.ExpectedStdout is { } stdout)
             {
                 var run = CompileAndExecute(cell.Source);
-                if (run.RawDiagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)))
+                var internalCodes = InternalCodes(run);
+
+                // A row citing the local-function collision issue claims the switch-lowered `match` arms' C# collision:
+                // the run must fail with SPY0908 carrying CS0128 and nothing else. Any other internal error — in that
+                // row or any other — is red, never absorbed.
+                var collisionRow = allowlist.TryGetValue(cell.Id, out var collisionCite)
+                    && collisionCite.Contains(LocalFunctionCollisionIssue, StringComparison.Ordinal);
+                if (collisionRow && !IsLocalFunctionCollision(run, internalCodes))
+                    problems.Add($"{cell.Id}: allowlisted as the local-function collision CS0128 ({LocalFunctionCollisionIssue}), but under run "
+                        + $"the cell is success={run.Success} [{Fingerprint(internalCodes)}] {string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" ")}");
+                else if (!collisionRow && run.RawDiagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)))
                     problems.Add($"{cell.Id}: an internal error under run: {Fingerprint(run.RawDiagnostics)}");
                 if (!run.Success || run.StandardOutput != stdout)
                     failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{stdout.ReplaceLineEndings("\\n")}] "
@@ -801,6 +818,17 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
         return null;
     }
+
+    /// <summary>The issue the switch-lowered sibling-<c>match</c> rows cite: a nested def per arm collides in C#.</summary>
+    private const string LocalFunctionCollisionIssue = "#2361";
+
+    /// <summary>That issue's fingerprint: the run fails, its only internal diagnostics are SPY0908, and one names
+    /// CS0128 (two local functions <c>F</c> in the one declaration space of a C# <c>switch</c>).</summary>
+    private static bool IsLocalFunctionCollision(ExecutionResult run, List<CompilerDiagnostic> internalCodes)
+        => !run.Success
+           && internalCodes.Count > 0
+           && internalCodes.All(d => d.Code == "SPY0908")
+           && internalCodes.Any(d => d.Message.Contains("CS0128", StringComparison.Ordinal));
 
     /// <summary>#2021's fingerprint: the run fails, its only internal diagnostics are SPY0908, and one names CS0100.</summary>
     private static bool IsStructCtorDuplicate(ExecutionResult run, List<CompilerDiagnostic> internalCodes)
