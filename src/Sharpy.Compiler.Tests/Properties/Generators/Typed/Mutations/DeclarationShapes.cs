@@ -145,6 +145,27 @@ internal static class DeclarationShapes
             });
     }
 
+    /// <summary>
+    /// The first call statement of <c>main</c> becomes a conditional expression statement over two copies of
+    /// the call (<c>print(x) if True else print(x)</c>): a value-producing expression used as a statement —
+    /// SPY0603 <c>ExpressionStatementNotDiscardable</c> (#1622), measured by the P63b verifier.
+    /// </summary>
+    public static Module? ConditionalExpressionStatement(ProgramFacts facts)
+    {
+        var statement = MainOf(facts)?.Body.OfType<ExpressionStatement>().FirstOrDefault(s => s.Expression is FunctionCall);
+        return statement is null
+            ? null
+            : AstRewriter.Replace(facts.Module, statement, new ExpressionStatement
+            {
+                Expression = new ConditionalExpression
+                {
+                    Test = new BooleanLiteral { Value = true },
+                    ThenValue = statement.Expression,
+                    ElseValue = statement.Expression with { },
+                }
+            });
+    }
+
     /// <summary>The by-design control for an expression statement: <c>main</c> gains <c>42</c> as a statement.</summary>
     public static Module? ExpressionStatementOfAnyValue(ProgramFacts facts) =>
         MainOf(facts) is { } main

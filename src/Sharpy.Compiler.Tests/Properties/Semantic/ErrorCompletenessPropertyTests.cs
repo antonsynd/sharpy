@@ -467,6 +467,12 @@ public class ErrorCompletenessPropertyTests
     public void InterfaceMemberRemoved_OfOneOfTwoInterfaces_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectInterfaceMemberRemoved, "interface member removed (two interfaces)", GenInterfaces.ModuleWithMultipleInterfaces());
 
+    /// <summary>P63b (#2324): a call statement of <c>main</c> rewritten <c>call if True else call</c> — a
+    /// value-producing expression as a statement, SPY0603 (row: statements.md expression statement).</summary>
+    [Fact]
+    public void ConditionalExpressionStatement_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectConditionalExpressionStatement, "conditional expression statement", MutationBases.TypedStatements());
+
     /// <summary>P63b (#2324): a <c>try</c> whose handlers go subclass → base, reordered base first: the
     /// subclass handler is dead, Sharpy accepts it and Roslyn refuses it (SPY0908 CS0160) — a KnownRed pin
     /// on #2363.</summary>

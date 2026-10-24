@@ -172,6 +172,11 @@ internal static partial class ErrorInjector
     public static InjectionResult? InjectOverrideWithoutBaseMember(Module module) =>
         Lane(MutationLanes.OverrideWithoutBaseMember(module), "SPY0248");
 
+    /// <summary>A call statement of <c>main</c> rewritten as a conditional expression statement — a value used
+    /// as a statement (SPY0603, #1622; statements.md does not name the refusal).</summary>
+    public static InjectionResult? InjectConditionalExpressionStatement(Module module) =>
+        Lane(MutationLanes.ConditionalExpressionStatement(module), "SPY0603");
+
     /// <summary>A local renamed camelCase — the one WARNING lane (SPY0453 at warning severity).</summary>
     public static InjectionResult? InjectCamelCaseLocal(Module module) =>
         MutationLanes.CamelCaseLocal(module) is { } mutated

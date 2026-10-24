@@ -871,7 +871,8 @@ public class TypedGeneratorRosterTests
         // statements.md
         new("statements.md", "Expression Statement", "expression statement",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is ExpressionStatement),
-            new ByDesign("statements.md §Expression Statement l.5: any expression can be a statement — no typing surface of its own; census control ExpressionStatementOfAnyValue @ TypedStatements analyses clean (P63b, #2324)")),
+            // declaration shape — a hand lane (DeclarationShapes); the refusal SPY0603 (#1622) is one statements.md does not name
+            new YInjected("ErrorInjector.InjectConditionalExpressionStatement", "SPY0603", CompilerDiagnosticSeverity.Error)),
         new("statements.md", "Declaration Keywords", "let declarations",
             new KnownRedRow("#2287", "no typed generator emits let"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -1880,10 +1881,10 @@ public class TypedGeneratorRosterTests
     private const int ExpectedSpecFiles = 125;
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 103;
-    private const int ExpectedYInjected = 89;
+    private const int ExpectedYInjected = 90;
     private const int ExpectedN = 181;
     private const int ExpectedKnownRed = 5;
-    private const int ExpectedByDesign = 18;
+    private const int ExpectedByDesign = 17;
     private const int ExpectedNoConstruct = 4;
 
     private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287", "#2324" };

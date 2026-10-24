@@ -100,6 +100,7 @@ internal static class MutationLanes
     public static Module? MainParameter(Module m) => MutateModule(m, DeclarationShapes.MainParameter);
     public static Module? DunderWrongReturnType(Module m) => MutateModule(m, DeclarationShapes.DunderWrongReturnType);
     public static Module? ExpressionStatementOfAnyValue(Module m) => MutateModule(m, DeclarationShapes.ExpressionStatementOfAnyValue);
+    public static Module? ConditionalExpressionStatement(Module m) => MutateModule(m, DeclarationShapes.ConditionalExpressionStatement);
 
     // ---- the multi-file lane ------------------------------------------------------------------
 
@@ -141,7 +142,8 @@ internal static class MutationLanes
             (nameof(ReturnValueInImplicitNoneDef), ReturnValueInImplicitNoneDef),
             (nameof(CamelCaseLocal), CamelCaseLocal),
             (nameof(MainParameter), MainParameter),
-            (nameof(ExpressionStatementOfAnyValue), ExpressionStatementOfAnyValue)),
+            (nameof(ExpressionStatementOfAnyValue), ExpressionStatementOfAnyValue),
+            (nameof(ConditionalExpressionStatement), ConditionalExpressionStatement)),
         Over("TypedCollections", MutationBases.TypedCollections,
             (nameof(WrongTypedListInitializer), WrongTypedListInitializer),
             (nameof(TypeArgumentArity), TypeArgumentArity),

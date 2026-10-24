@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 /// <c>ErrorInjector.Mutations.cs</c> with the code its row draws at ≥ 99 %; two codes is a bad injection
 /// or a cascade cell; CLEAN is a by-design candidate or a missing refusal; a throw is an ICE cell. Runs
 /// only when <see cref="PropertyIterations.Variable"/> is set (skipped in the suite and the gate); set
-/// <c>SHARPY_CENSUS_OUT</c> to a file path to keep the full table.
+/// <c>SHARPY_CENSUS_OUT</c> to a file path to keep the table (appended row by row) and <c>SHARPY_CENSUS_FILTER</c> to run a chunk.
 /// </summary>
 [Trait("Category", "Property")]
 [Trait("Category", "Census")]
@@ -35,30 +35,37 @@ public class MutationCensus
     {
         Skip.IfNot(PropertyIterations.Override is not null, $"set {PropertyIterations.Variable} to run the mutation census");
         var iter = PropertyIterations.Override!.Value;
-        var filter = Environment.GetEnvironmentVariable("SHARPY_CENSUS_FILTER");
+        // SHARPY_CENSUS_FILTER: '|'-separated substrings of "Lane @ Base" (a chunk of the matrix — a whole
+        // 600-sample census outruns the dotnet wrapper's silence watchdog, so it runs in chunks).
+        var filters = (Environment.GetEnvironmentVariable("SHARPY_CENSUS_FILTER") ?? "")
+            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        bool Selected(string key) => filters.Length == 0 || filters.Any(f => key.Contains(f, StringComparison.Ordinal));
+        var path = Environment.GetEnvironmentVariable("SHARPY_CENSUS_OUT");
         var report = new StringBuilder();
-        report.AppendLine($"# Mutation census — {iter} samples per row");
-        report.AppendLine();
+        void Emit(string text)
+        {
+            report.AppendLine(text);
+            if (path is { Length: > 0 })
+                File.AppendAllText(path, text + "\n"); // each row lands as it completes
+        }
+        Emit($"# Mutation census — {iter} samples per row{(filters.Length > 0 ? $" (filter: {string.Join(" | ", filters)})" : "")}\n");
         int rows = 0;
 
         foreach (var row in MutationLanes.Census)
         {
-            if (filter is { Length: > 0 } && !$"{row.Lane} @ {row.Base}".Contains(filter, StringComparison.Ordinal))
+            if (!Selected($"{row.Lane} @ {row.Base}"))
                 continue;
             rows++;
-            report.AppendLine(Measure(row.Lane, row.Base, row.Generator(), row.Mutate, iter));
+            Emit(Measure(row.Lane, row.Base, row.Generator(), row.Mutate, iter));
         }
 
-        if (filter is not { Length: > 0 } || "WrongTypedLibraryConstant @ ImportingModule".Contains(filter, StringComparison.Ordinal))
+        if (Selected("WrongTypedLibraryConstant @ ImportingModule"))
         {
             rows++;
-            report.AppendLine(MeasureProject(iter));
+            Emit(MeasureProject(iter));
         }
 
-        var text = report.ToString();
-        _output.WriteLine(text);
-        if (Environment.GetEnvironmentVariable("SHARPY_CENSUS_OUT") is { Length: > 0 } path)
-            File.WriteAllText(path, text);
+        _output.WriteLine(report.ToString());
         Assert.True(rows > 0, "the census measured no row");
     }
 

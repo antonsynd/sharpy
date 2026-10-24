@@ -47,6 +47,10 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// this scanner (its positive-control literals ARE the banned spellings), the seam's own directory
 /// (<c>Generators/Typed/</c>: the injector, the filter, the mutation generator and its census) and the
 /// seam's own tests (<c>JudgeSourceTests</c>). Under <see cref="MinimumUniverse"/> files fails loud.</para>
+/// <para><b>Known limits</b> (syntax, not data flow — the residue on #2324): a verdict copied into a second local
+/// and tested there, arithmetic hoisted into a local before an <c>x &gt; 0</c> floor, and the two shape
+/// exemptions (two <c>.Success</c> reads compared, two <c>.Code</c> reads compared) when one side is a fixed
+/// known-good run rather than a second run of the same program.</para>
 /// <para><b>Allowlist</b>: one literal row per (file, rule) with the exact current count, each citing an
 /// issue; drained to zero by P63b.</para>
 /// </summary>
@@ -233,6 +237,14 @@ public class PropertyOracleConformanceTests
                     _ = ErrorInjector.JudgeClean(s, "l"); // R5
                     while (ErrorInjector.JudgeNoInternalError(s, "l") is not null) { } // R5
                     var lost = ErrorInjector.JudgeSamples(gen, s => ErrorInjector.JudgeClean(s, "l"), iter: 1); // R5
+                    n += ErrorInjector.JudgeClean(s, "l") switch { null => 1, _ => 0 }; // R5
+                    if (ErrorInjector.JudgeClean(s, "l") is { } f1) failures.Add(f1); else passed++; // R5
+                    Console.WriteLine(ErrorInjector.JudgeSamples(gen, s => ErrorInjector.JudgeClean(s, "l"), iter: 1)); // R5
+                    if (Record.Exception(() => Run()) is null) passed++; // R5
+                    ok = r is { Success: false }; // R2
+                    var (accepted, all) = PropertyAnalysis.AnalyseSingleFile(s); // R2
+                    ok = $"{d.Code}".EndsWith("0273"); // R3
+                    ok = $"{d.Code}" == expectedText; // R3
                 }
 
                 void VerdictThroughALocal()
@@ -282,12 +294,22 @@ public class PropertyOracleConformanceTests
                     Assert.Null(ErrorInjector.JudgeClean(source, "x"));
                     var thrown = Record.Exception(() => Run());
                     Assert.Contains(expected, text);
+                    if (Record.Exception(() => Run()) is { } thrownAgain) failures.Add(thrownAgain.Message);
+                    var message = $"drew {d.Code} at {d.Line}";
+                    var joined = $"A: [{a.Code}]\n" + $"B: [{b.Code}]";
                     var verdicts = ErrorInjector.JudgeSamples(gen, s => ErrorInjector.JudgeClean(s, "l"), iter: 1);
                     Assert.True(verdicts.First is null, "");
                     Assert.True(sink.Unexplained.Count == 0, sink.Report());
                 }
 
                 string? Lane(string s) => ErrorInjector.JudgeClean(s, "returned");
+
+                string? Reparent(string s)
+                {
+                    if (Record.Exception(() => Run()) is { } unreachable)
+                        return $"unreachable: {unreachable.Message}";
+                    return null;
+                }
 
                 void Draws(Gen<string> gen) => AssertEveryDraw(gen, "SPY0417");
 
@@ -383,13 +405,27 @@ public class PropertyOracleConformanceTests
                 case SubpatternSyntax { NameColon.Name.Identifier.ValueText: "Code" } sub:
                     Hit(CodeLiteralFlow, sub);
                     break;
+                case SubpatternSyntax { NameColon.Name.Identifier.ValueText: var member } sub when VerdictMembers.Contains(member):
+                    Hit(VerdictRead, sub);
+                    break;
+                case SubpatternSyntax { ExpressionColon.Expression: IdentifierNameSyntax { Identifier.ValueText: var member2 } } sub
+                    when VerdictMembers.Contains(member2):
+                    Hit(VerdictRead, sub);
+                    break;
                 case InvocationExpressionSyntax invocation:
                     if (IsAssertion(invocation, out var assertion))
                         NumericBounds(invocation, assertion, Hit);
                     if (IsFluentBound(invocation))
                         Hit(NumericBound, invocation);
-                    if (SeamVerdicts.Contains(Name(invocation)) && !IsConsumed(invocation, root))
+                    if ((SeamVerdicts.Contains(Name(invocation)) || IsRecordException(invocation)) && !IsConsumed(invocation, root))
                         Hit(VerdictTested, invocation);
+                    // the seam's raw analysis (success flag + diagnostics) is the verdict surface itself
+                    if (invocation.Expression is MemberAccessExpressionSyntax
+                        {
+                            Expression: IdentifierNameSyntax { Identifier.ValueText: "PropertyAnalysis" },
+                            Name.Identifier.ValueText: "AnalyseSingleFile" or "AnalyseProject",
+                        })
+                        Hit(VerdictRead, invocation);
                     if (Name(invocation) == "JudgeSamples" && !SampleVerdictsAsserted(invocation))
                         Hit(VerdictTested, invocation);
                     break;
@@ -414,8 +450,11 @@ public class PropertyOracleConformanceTests
     /// another <c>.Code</c> (two runs) or with <c>null</c>.</summary>
     private static bool IsLegalCodeRead(ExpressionSyntax access)
     {
-        if (access.Ancestors().TakeWhile(a => a is not StatementSyntax).Any(a => a is InterpolationSyntax))
-            return true;
+        // printed: inside an interpolation hole whose string is not itself inspected (`$"{d.Code}".EndsWith(…)`
+        // or compared is a code read in disguise)
+        if (access.Ancestors().TakeWhile(a => a is not StatementSyntax).OfType<InterpolatedStringExpressionSyntax>().FirstOrDefault() is { } text)
+            return text.Parent is not (MemberAccessExpressionSyntax or ConditionalAccessExpressionSyntax)
+                && !(text.Parent is BinaryExpressionSyntax b0 && (b0.IsKind(SyntaxKind.EqualsExpression) || b0.IsKind(SyntaxKind.NotEqualsExpression)));
         var outer = access.Parent is ConditionalAccessExpressionSyntax c && ReferenceEquals(c.WhenNotNull, access) ? c : (SyntaxNode)access;
         if (outer.Parent is BinaryExpressionSyntax b && (b.IsKind(SyntaxKind.EqualsExpression) || b.IsKind(SyntaxKind.NotEqualsExpression)))
         {
@@ -569,6 +608,8 @@ public class PropertyOracleConformanceTests
             case BinaryExpressionSyntax:
             case PrefixUnaryExpressionSyntax:
             case ConditionalExpressionSyntax:
+            case SwitchExpressionSyntax:
+            case SwitchStatementSyntax:
                 return false; // tested
             case EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax local }:
                 return !LocalIsTested(local);
@@ -576,6 +617,14 @@ public class PropertyOracleConformanceTests
                 return true;
         }
     }
+
+    /// <summary><c>Record.Exception(…)</c>: the thrown-or-not verdict of a call; consumed like a seam verdict.</summary>
+    private static bool IsRecordException(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is MemberAccessExpressionSyntax
+        {
+            Expression: IdentifierNameSyntax { Identifier.ValueText: "Record" },
+            Name.Identifier.ValueText: "Exception",
+        };
 
     /// <summary><c>verdict is { } x</c> (or <c>is string x</c>) whose branch adds <c>x</c> to a collection or
     /// asserts on it — a recorded verdict, not a tested one.</summary>
@@ -589,14 +638,20 @@ public class PropertyOracleConformanceTests
         };
         if (designation is null || pattern.Parent is not IfStatementSyntax branch)
             return false;
+        // an `else` that counts turns the binding back into a test (`… is { } f) record(f); else passed++;`)
+        if (branch.Else?.Statement.DescendantNodesAndSelf().Any(n => n is PostfixUnaryExpressionSyntax or PrefixUnaryExpressionSyntax
+            { RawKind: (int)SyntaxKind.PreIncrementExpression } or AssignmentExpressionSyntax { RawKind: (int)SyntaxKind.AddAssignmentExpression }
+                || n is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Increment" } }) == true)
+            return false;
         bool Mentions(SyntaxNode n) => n.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(id => id.Identifier.ValueText == designation);
         return branch.Statement.DescendantNodesAndSelf().Any(n => n switch
         {
             // recorded into a collection or asserted on
             InvocationExpressionSyntax i => (Name(i) is "Add" or "Enqueue" or "TryAdd" || IsAssertion(i, out _))
                 && i.ArgumentList.Arguments.Any(a => Mentions(a.Expression)),
-            // thrown: the sample fails with the verdict as its message
+            // thrown: the sample fails with the verdict as its message; returned: the caller receives it
             ThrowStatementSyntax { Expression: { } thrown } => Mentions(thrown),
+            ReturnStatementSyntax { Expression: { } returned } => Mentions(returned),
             _ => false,
         });
     }
@@ -624,8 +679,10 @@ public class PropertyOracleConformanceTests
     /// <c>.First</c> reaches an assertion.</summary>
     private static bool SampleVerdictsAsserted(InvocationExpressionSyntax judgeSamples)
     {
-        if (judgeSamples.Parent is ReturnStatementSyntax or ArrowExpressionClauseSyntax or ArgumentSyntax)
+        if (judgeSamples.Parent is ReturnStatementSyntax or ArrowExpressionClauseSyntax)
             return true;
+        if (judgeSamples.Parent is ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax call } })
+            return IsAssertion(call, out _);
         if (judgeSamples.Parent is not EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax local })
             return false;
         var name = local.Identifier.ValueText;
