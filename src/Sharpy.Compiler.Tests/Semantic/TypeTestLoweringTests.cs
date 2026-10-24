@@ -11,6 +11,7 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -349,7 +350,7 @@ def main() -> None:
 
     private static List<TypeTestLowering> TypeTestLowerings(Module module, SemanticInfo info)
     {
-        return Descendants(module)
+        return AstDescendants.SelfAndDescendants(module)
             .OfType<FunctionCall>()
             .Where(c => c.Arguments.Length == 2)
             .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
@@ -395,15 +396,5 @@ def main() -> None:
         typeChecker.CheckModule(module);
 
         return (module, semanticInfo, typeChecker.Diagnostics.GetErrors().ToList());
-    }
-
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
     }
 }

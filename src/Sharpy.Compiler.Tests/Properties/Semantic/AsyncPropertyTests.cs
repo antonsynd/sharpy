@@ -82,25 +82,14 @@ public class AsyncPropertyTests
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-                // A throw fails the sample: it used to be swallowed (#2288).
-                var compiler1 = new Sharpy.Compiler.Compiler();
-                var result1 = compiler1.Analyze(source, "async_test.spy");
-
-                var compiler2 = new Sharpy.Compiler.Compiler();
-                var result2 = compiler2.Analyze(source, "async_test.spy");
-
-                if (result1.Success != result2.Success)
+                // A throw fails the sample: it used to be swallowed (#2288). Two analyses must agree on
+                // success and every diagnostic (PropertyAnalysis.Fingerprint compares runs, judges nothing).
+                var first = PropertyAnalysis.Fingerprint(source);
+                var second = PropertyAnalysis.Fingerprint(source);
+                if (first != second)
                 {
                     lock (errors)
-                        errors.Add($"Success differs: {result1.Success} vs {result2.Success}");
-                }
-
-                var diags1 = result1.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c).ToList();
-                var diags2 = result2.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c).ToList();
-                if (!diags1.SequenceEqual(diags2))
-                {
-                    lock (errors)
-                        errors.Add($"Diagnostics differ: [{string.Join(",", diags1)}] vs [{string.Join(",", diags2)}]");
+                        errors.Add($"Two analyses disagree:\nrun 1: {first}\nrun 2: {second}");
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 

@@ -6,7 +6,7 @@ using Sharpy.Compiler.Tests.Helpers;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
-internal static class ErrorInjector
+internal static partial class ErrorInjector
 {
     /// <summary>
     /// An injected program and the ONE code it must draw (#2288). The code is exact, never a
@@ -176,6 +176,28 @@ internal static class ErrorInjector
     }
 
     /// <summary>
+    /// The diagnostic-free verdict (#2324, P63b): null when <paramref name="source"/> analyses successfully with
+    /// no error AND no warning, otherwise why not — the variance lanes' acceptance (a warning there is a finding).
+    /// </summary>
+    public static string? JudgeNoDiagnostic(string source, string label)
+    {
+        try
+        {
+            var (success, all) = AnalyseSingleFile(source);
+            var drawn = all.Where(d => d.IsError || d.IsWarning)
+                .Select(d => $"{(d.IsError ? "error" : "warning")} {d.Code}: {d.Message}")
+                .ToList();
+            return success && drawn.Count == 0
+                ? null
+                : $"{label} sample must analyse with no diagnostic, drew [{string.Join("; ", drawn)}]:\n{source}";
+        }
+        catch (Exception e)
+        {
+            return $"{label} sample threw {e.GetType().Name}:\n{source}\n{e}";
+        }
+    }
+
+    /// <summary>
     /// The no-crash verdict for a RAW sample — the one a <c>*NeverThrows*</c> lane reads (#2288):
     /// null when analysing <paramref name="source"/> neither throws nor records an internal compiler
     /// error (SPY0909, the code the compiler's last-chance handlers turn an escaped exception into),
@@ -238,27 +260,16 @@ internal static class ErrorInjector
         return new SampleVerdicts(tested, failures, first);
     }
 
-    /// <summary>The one in-process analysis both verdicts read: the property host's
-    /// <c>Compiler().Analyze</c> (no stdlib references — a lane's expected code is measured here).</summary>
-    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source)
-    {
-        var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
-        return (analysis.Success, analysis.Diagnostics.GetAll().ToList());
-    }
+    /// <summary>The one in-process analysis both verdicts read (<see cref="PropertyAnalysis"/>): the
+    /// property host's <c>Compiler().Analyze</c> (no stdlib references — a lane's expected code is measured here).</summary>
+    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source) =>
+        PropertyAnalysis.AnalyseSingleFile(source);
 
     /// <summary>The multi-file analysis: one project, root namespace <c>Test</c>, compiled by
     /// <see cref="ProjectCompilationHelper.Compile()"/> (the import lanes' route).</summary>
     private static (bool Success, List<CompilerDiagnostic> All) AnalyseProject(
-        IReadOnlyList<(string Path, string Content)> files)
-    {
-        using var helper = new ProjectCompilationHelper();
-        helper.WithRootNamespace("Test");
-        foreach (var (path, content) in files)
-            helper.AddSourceFile(path, content);
-        helper.CreateProjectFile();
-        var result = helper.Compile();
-        return (result.Success, result.Diagnostics.GetAll().ToList());
-    }
+        IReadOnlyList<(string Path, string Content)> files) =>
+        PropertyAnalysis.AnalyseProject(files);
 
     private static string DescribeProject(IReadOnlyList<(string Path, string Content)> files) =>
         string.Join("\n", files.Select(f => $"# --- {f.Path}\n{f.Content}"));

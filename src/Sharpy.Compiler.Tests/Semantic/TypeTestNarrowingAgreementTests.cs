@@ -8,6 +8,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -106,7 +107,7 @@ def f(x: object) -> int:
     {
         var (module, info) = Analyze(source);
 
-        var typeTests = Descendants(module)
+        var typeTests = AstDescendants.SelfAndDescendants(module)
             .OfType<FunctionCall>()
             .Where(c => c.Arguments.Length == 2)
             .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
@@ -116,7 +117,7 @@ def f(x: object) -> int:
 
         typeTests.Should().ContainSingle($"the {shape} probe contains exactly one classified type test");
 
-        var casts = Descendants(module)
+        var casts = AstDescendants.SelfAndDescendants(module)
             .OfType<Expression>()
             .Select(info.GetNarrowedReadLowering)
             .Where(l => l is { Kind: NarrowedReadKind.Cast })
@@ -207,7 +208,7 @@ def f(x: object) -> bool:
     {
         var (module, info) = Analyze(source);
 
-        var isOperatorTests = Descendants(module)
+        var isOperatorTests = AstDescendants.SelfAndDescendants(module)
             .OfType<TypeCheck>()
             .Select(tc => info.GetTypeTestLowering(tc.CheckType))
             .Where(l => l != null)
@@ -217,7 +218,7 @@ def f(x: object) -> bool:
         isOperatorTests.Should().ContainSingle(
             $"the {shape} probe contains exactly one classified is-operator test");
 
-        var isinstanceTests = Descendants(module)
+        var isinstanceTests = AstDescendants.SelfAndDescendants(module)
             .OfType<FunctionCall>()
             .Where(c => c.Arguments.Length == 2)
             .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
@@ -267,7 +268,7 @@ def f(a: Animal, flag: bool) -> str:
 
         // `a.speak()` type-checking at all is the assertion: Animal has no speak(), so the read only
         // resolves if the fact survived the join. Analyze() already rejected any diagnostic.
-        var narrowedReads = Descendants(module)
+        var narrowedReads = AstDescendants.SelfAndDescendants(module)
             .OfType<Expression>()
             .Select(info.GetNarrowedReadLowering)
             .Where(l => l is { Kind: NarrowedReadKind.Cast })
@@ -368,15 +369,5 @@ def f(x: object, flag: bool) -> int:
         typeChecker.CheckModule(module);
 
         return typeChecker.Diagnostics.GetErrors().ToList();
-    }
-
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
     }
 }

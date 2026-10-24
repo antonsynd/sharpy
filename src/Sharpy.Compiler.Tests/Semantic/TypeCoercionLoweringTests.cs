@@ -7,6 +7,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -295,7 +296,7 @@ def f(x: int) -> float32:
     {
         var (module, info) = Analyze(source);
 
-        var coercions = Descendants(module).OfType<TypeCoercion>().ToList();
+        var coercions = AstDescendants.SelfAndDescendants(module).OfType<TypeCoercion>().ToList();
         coercions.Should().ContainSingle("each probe has exactly one safe cast");
 
         return info.GetTypeCoercionLowering(coercions[0]);
@@ -331,15 +332,5 @@ def f(x: int) -> float32:
             "safe-cast probe programs must type-check cleanly");
 
         return (module, semanticInfo);
-    }
-
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
     }
 }

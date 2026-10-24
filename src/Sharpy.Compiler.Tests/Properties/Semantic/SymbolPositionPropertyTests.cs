@@ -259,13 +259,8 @@ public class SymbolPositionPropertyTests
     /// before #2288 such a sample returned silently.</summary>
     private static Sharpy.Compiler.CompilationResult AnalyseAdmitted(string source)
     {
-        var result = new Sharpy.Compiler.Compiler().Analyze(source, "position_test.spy");
-        if (!result.Success)
-        {
-            throw new Exception("A program the filter admitted no longer analyses clean: "
-                + string.Join("; ", result.Diagnostics.GetErrors().Select(d => $"{d.Code}: {d.Message}"))
-                + $"\n{source}");
-        }
+        // A refusal throws with its codes (PropertyAnalysis.AnalyseClean) and fails the sample.
+        var result = PropertyAnalysis.AnalyseClean(source, "an admitted program's re-analysis");
         if (result.SymbolTable == null)
             throw new Exception($"An admitted program analysed clean without a symbol table:\n{source}");
         return result;

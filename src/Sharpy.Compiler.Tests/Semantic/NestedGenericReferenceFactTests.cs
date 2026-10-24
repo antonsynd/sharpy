@@ -6,6 +6,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -39,19 +40,9 @@ public class NestedGenericReferenceFactTests
         return (module, semanticInfo);
     }
 
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
-    }
-
     /// <summary>The single <c>qualifier.member[...]</c> index access in the analyzed source.</summary>
     private static IndexAccess MemberQualifiedIndexAccess(Module module) =>
-        Descendants(module).OfType<IndexAccess>().Single(ia => ia.Object is MemberAccess);
+        AstDescendants.SelfAndDescendants(module).OfType<IndexAccess>().Single(ia => ia.Object is MemberAccess);
 
     [Fact]
     public void NestedGenericTypeReference_RecordsNestedTypeRefFact()
@@ -127,7 +118,7 @@ def use() -> None:
         var (module, info) = Analyze(source);
 
         // A.B.C[int]: the index access's object is the whole A.B.C member-access chain.
-        var indexAccess = Descendants(module).OfType<IndexAccess>().Single(ia => ia.Object is MemberAccess);
+        var indexAccess = AstDescendants.SelfAndDescendants(module).OfType<IndexAccess>().Single(ia => ia.Object is MemberAccess);
         var reference = info.GetGenericReference(indexAccess);
 
         reference.Should().NotBeNull("the resolver walks the whole member-access chain");
@@ -154,7 +145,7 @@ def use(e: Registry.Entry) -> None:
 ";
         var (module, info) = Analyze(source);
 
-        foreach (var indexAccess in Descendants(module).OfType<IndexAccess>())
+        foreach (var indexAccess in AstDescendants.SelfAndDescendants(module).OfType<IndexAccess>())
             info.GetGenericReference(indexAccess).Should().BeNull();
     }
 

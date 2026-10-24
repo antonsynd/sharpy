@@ -30,12 +30,18 @@ public class CfgWellFormednessPropertyTests
     /// anywhere — compile, re-parse or CFG build — fails the sample. It used to sample the untyped
     /// generator and skip what the compiler refused, which was every program with a function: the
     /// lane checked 0 CFGs from 50 programs and passed (#2288). At least one CFG must be checked.
+    /// The invariants are vacuous over straight-line bodies — the edge-symmetry check never met a loop, so
+    /// a broken for-loop back edge stayed green here (#2324) — so the lane also counts the CFGs that carry
+    /// a back edge (an edge into a block on the DFS stack from entry) and a branch (a block with two or
+    /// more successors that is not a loop header), prints their share, and requires each to be met.
     /// </summary>
     [Fact]
     public void CfgFromCompiledPrograms_SatisfiesStructuralInvariants()
     {
         int total = 0;
         int cfgsTested = 0;
+        int backEdgeCfgsTested = 0;
+        int branchCfgsTested = 0;
         var sink = new RejectionSink("CfgWellFormedness.CfgFromCompiledPrograms_SatisfiesStructuralInvariants");
 
         SemanticFilter.CompilableProgram(GenFunctions.ModuleWithFunctions(TypeEnv.Default, "int", fuel: 2), sink)
@@ -121,6 +127,12 @@ public class CfgWellFormednessPropertyTests
                             "FindUnreachableBlocks returned a block not in Blocks");
                 }
 
+                var loopHeaders = BackEdgeTargets(cfg);
+                if (loopHeaders.Count > 0)
+                    Interlocked.Increment(ref backEdgeCfgsTested);
+                if (cfg.Blocks.Any(b => b.Successors.Count >= 2 && !loopHeaders.Contains(b)))
+                    Interlocked.Increment(ref branchCfgsTested);
+
                 Interlocked.Increment(ref cfgsTested);
             }
             if (functions == 0)
@@ -129,9 +141,47 @@ public class CfgWellFormednessPropertyTests
 
         _output.WriteLine(sink.Summary);
         _output.WriteLine($"CFG well-formedness: {cfgsTested} CFGs checked from {total} programs");
+        _output.WriteLine(
+            $"CFG reach: back-edge CFGs {backEdgeCfgsTested}/{cfgsTested}, branch CFGs {branchCfgsTested}/{cfgsTested}");
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
         // Applicability floor: a run that checks no CFG proves nothing (#2288).
         Assert.True(cfgsTested > 0, $"no CFG was checked from {total} programs");
+        // Reach floors: the invariants must meet a loop and a branch, or edge symmetry is unexercised.
+        Assert.True(backEdgeCfgsTested > 0, $"no checked CFG had a back edge ({cfgsTested} CFGs)");
+        Assert.True(branchCfgsTested > 0, $"no checked CFG had a branch ({cfgsTested} CFGs)");
+    }
+
+    /// <summary>The targets of the back edges of <paramref name="cfg"/>: blocks a successor edge re-enters
+    /// while they are still on the depth-first stack from the entry (iterative, over successor edges).</summary>
+    private static HashSet<BasicBlock> BackEdgeTargets(ControlFlowGraph cfg)
+    {
+        var targets = new HashSet<BasicBlock>();
+        var onStack = new HashSet<BasicBlock>();
+        var visited = new HashSet<BasicBlock> { cfg.Entry };
+        var stack = new Stack<(BasicBlock Block, int Next)>();
+        stack.Push((cfg.Entry, 0));
+        onStack.Add(cfg.Entry);
+        while (stack.Count > 0)
+        {
+            var (block, next) = stack.Pop();
+            if (next < block.Successors.Count)
+            {
+                stack.Push((block, next + 1));
+                var succ = block.Successors[next];
+                if (onStack.Contains(succ))
+                    targets.Add(succ);
+                else if (visited.Add(succ))
+                {
+                    onStack.Add(succ);
+                    stack.Push((succ, 0));
+                }
+            }
+            else
+            {
+                onStack.Remove(block);
+            }
+        }
+        return targets;
     }
 
     private sealed class CfgInvariantException : Exception

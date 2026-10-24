@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using CsCheck;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
@@ -22,25 +21,13 @@ public class DecoratorPropertyTests
     }
 
     [Fact]
-    public void ValidDecorator_CompilesClean()
-    {
-        var set = RunSamples(GenDecorators.ModuleWithDecoratedFunction(validDecorator: true));
+    public void ValidDecorator_CompilesClean() =>
+        AssertEverySampleAnalysesClean(GenDecorators.ModuleWithDecoratedFunction(validDecorator: true), "valid decorator");
 
-        PrintFailures("Valid decorator compilation", set, s => !s.Success);
-        // The valid corpus is valid by construction, so every sample must compile.
-        // PrintFailures above dumps source + diagnostics for any that don't (#1031).
-        Assert.Equal(set.Total, set.Passed);
-    }
-
+    /// <summary>Deterministic single valid module (Service.@virtual compute) — must analyse clean.</summary>
     [Fact]
-    public void DecoratorStacking_ValidCombinations()
-    {
-        var set = RunSamples(GenDecorators.ModuleWithDecoratorStack(valid: true));
-
-        PrintFailures("Valid decorator stacking", set, s => !s.Success);
-        // Deterministic single valid module (Service.@virtual compute) — must compile.
-        Assert.Equal(set.Total, set.Passed);
-    }
+    public void DecoratorStacking_ValidCombinations() =>
+        AssertEverySampleAnalysesClean(GenDecorators.ModuleWithDecoratorStack(valid: true), "valid decorator stack");
 
     /// <summary>
     /// Each invalid combination is a conflicting-access-modifier pair, so every sample must draw
@@ -61,16 +48,14 @@ public class DecoratorPropertyTests
             $"{verdicts.Failures}/{verdicts.Tested} invalid decorator stacks misjudged; the first:\n{verdicts.First}");
     }
 
+    /// <summary>Field counts 1-4 are all valid dataclasses — every sample must analyse clean.</summary>
     [Fact]
-    public void DataclassDecorator_GeneratesCorrectMembers()
-    {
-        var set = RunSamples(GenDecorators.ModuleWithDataclass());
+    public void DataclassDecorator_GeneratesCorrectMembers() =>
+        AssertEverySampleAnalysesClean(GenDecorators.ModuleWithDataclass(), "dataclass");
 
-        PrintFailures("Dataclass decorator", set, s => !s.Success);
-        // Field counts 1-4 are all valid dataclasses — must compile.
-        Assert.Equal(set.Total, set.Passed);
-    }
-
+    /// <summary>Two analyses of each sample agree: success, and every diagnostic's code, position and
+    /// message (<see cref="PropertyAnalysis.Fingerprint"/> — the lane compares two runs and judges nothing).
+    /// A throw fails the sample.</summary>
     [Fact]
     public void BuiltinDecorators_BehaviorConsistent()
     {
@@ -80,29 +65,12 @@ public class DecoratorPropertyTests
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-
-                try
-                {
-                    var compiler1 = new Sharpy.Compiler.Compiler();
-                    var result1 = compiler1.Analyze(source, "decorator_test.spy");
-
-                    var compiler2 = new Sharpy.Compiler.Compiler();
-                    var result2 = compiler2.Analyze(source, "decorator_test.spy");
-
-                    if (result1.Success != result2.Success)
-                    {
-                        lock (errors)
-                            errors.Add(
-                                $"Success differs: {result1.Success} vs {result2.Success}\n" +
-                                $"Source:\n{source}\n" +
-                                $"Run 1 diagnostics:\n{FormatDiagnostics(result1.Diagnostics)}\n" +
-                                $"Run 2 diagnostics:\n{FormatDiagnostics(result2.Diagnostics)}");
-                    }
-                }
-                catch (Exception ex)
+                var first = PropertyAnalysis.Fingerprint(source);
+                var second = PropertyAnalysis.Fingerprint(source);
+                if (first != second)
                 {
                     lock (errors)
-                        errors.Add($"Exception on:\n{source}\n{ex}");
+                        errors.Add($"Two analyses disagree on:\n{source}\nrun 1: {first}\nrun 2: {second}");
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
@@ -112,81 +80,15 @@ public class DecoratorPropertyTests
         Assert.Empty(errors);
     }
 
-    // -- Instrumentation helpers -------------------------------------------------
-    //
-    // Failures used to be silently swallowed (uncounted `!Success`, empty `catch`),
-    // which hid #1031: the generator emitted invalid programs into a "valid" corpus.
-    // These helpers capture each sample's source + diagnostics so a failing round
-    // prints exactly what the compiler rejected.
-
-    private readonly record struct DiagInfo(string? Code, string Message, int? Line, int? Column)
+    /// <summary>Every sample of <paramref name="gen"/> analyses clean through <see cref="ErrorInjector.JudgeClean"/>
+    /// — judged per sample; the first refused source (with its codes) is the failure (#1031 is why the old
+    /// helpers printed every captured failure: a "valid" corpus that emitted invalid programs).</summary>
+    private void AssertEverySampleAnalysesClean(Gen<Module> gen, string label)
     {
-        public override string ToString() =>
-            $"    [{Code ?? "----"}] ({Line?.ToString() ?? "?"},{Column?.ToString() ?? "?"}) {Message}";
-    }
-
-    private sealed record CompileSample(
-        string Source,
-        bool Success,
-        IReadOnlyList<DiagInfo> Diagnostics,
-        string? Exception);
-
-    private sealed class SampleSet
-    {
-        public int Total;
-        public int Passed;
-        public readonly ConcurrentBag<CompileSample> Samples = new();
-    }
-
-    private static IReadOnlyList<DiagInfo> Describe(DiagnosticBag bag) =>
-        bag.GetAll()
-            .Select(d => new DiagInfo(d.Code, d.Message, d.Line, d.Column))
-            .ToList();
-
-    private static string FormatDiagnostics(DiagnosticBag bag) =>
-        string.Join("\n", Describe(bag).Select(d => d.ToString()));
-
-    private static SampleSet RunSamples(Gen<Module> gen, int iter = 50)
-    {
-        var set = new SampleSet();
-
-        gen.Sample(module =>
-        {
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            Interlocked.Increment(ref set.Total);
-
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Analyze(source, "decorator_test.spy");
-                if (result.Success)
-                    Interlocked.Increment(ref set.Passed);
-                set.Samples.Add(new CompileSample(
-                    source, result.Success, Describe(result.Diagnostics), null));
-            }
-            catch (Exception ex)
-            {
-                set.Samples.Add(new CompileSample(
-                    source, false, Array.Empty<DiagInfo>(), ex.ToString()));
-            }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: iter);
-
-        return set;
-    }
-
-    private void PrintFailures(string label, SampleSet set, Func<CompileSample, bool> isFailure)
-    {
-        var failures = set.Samples.Where(isFailure).ToList();
-        _output.WriteLine($"{label}: {set.Passed}/{set.Total} passed, {failures.Count} captured failure(s)");
-
-        foreach (var failure in failures)
-        {
-            _output.WriteLine("---- CAPTURED FAILURE ----");
-            _output.WriteLine(failure.Source);
-            if (failure.Exception != null)
-                _output.WriteLine("EXCEPTION: " + failure.Exception);
-            foreach (var diagnostic in failure.Diagnostics)
-                _output.WriteLine(diagnostic.ToString());
-        }
+        var verdicts = ErrorInjector.JudgeSamples(gen, source => ErrorInjector.JudgeClean(source, label), iter: 50);
+        _output.WriteLine($"{label}: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed clean");
+        Assert.True(verdicts.Tested > 0, $"No {label} programs were sampled");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} {label} programs refused; the first:\n{verdicts.First}");
     }
 }

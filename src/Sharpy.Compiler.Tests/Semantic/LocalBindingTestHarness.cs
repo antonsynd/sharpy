@@ -4,6 +4,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -110,23 +111,13 @@ internal static class LocalBindingTestHarness
         return false;
     }
 
-    public static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var d in Descendants(child))
-                yield return d;
-        }
-    }
-
     /// <summary>The recorded binding kind of a node, or null when none was recorded.</summary>
     public static TargetBindingKind? BindingOf(this Analysis a, Node node)
         => a.Info.GetTargetBinding(node)?.Kind;
 
     /// <summary>The <paramref name="occurrence"/>-th (0-based) assignment whose target is the identifier <paramref name="name"/>.</summary>
     public static Identifier AssignmentTarget(this Analysis a, string name, int occurrence)
-        => Descendants(a.Module).OfType<Assignment>()
+        => AstDescendants.SelfAndDescendants(a.Module).OfType<Assignment>()
             .Select(x => x.Target as Identifier)
             .Where(id => id != null && id.Name == name)
             .ElementAt(occurrence)!;

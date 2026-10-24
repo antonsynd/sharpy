@@ -10,6 +10,7 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -309,21 +310,11 @@ def main() -> None:
     private static List<(Expression Node, NarrowedReadLowering Lowering)> ReadsWithLowering(
         Module module, SemanticInfo info)
     {
-        return Descendants(module)
+        return AstDescendants.SelfAndDescendants(module)
             .OfType<Expression>()
             .Select(e => (Node: e, Lowering: info.GetNarrowedReadLowering(e)))
             .Where(x => x.Lowering != null)
             .Select(x => (x.Node, x.Lowering!))
             .ToList();
-    }
-
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
     }
 }

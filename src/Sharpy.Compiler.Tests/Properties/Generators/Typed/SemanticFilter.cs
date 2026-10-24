@@ -90,16 +90,7 @@ internal static class SemanticFilter
             {
                 var projectFiles = files(sample);
                 return Admit(sink, () => string.Join("\n", projectFiles.Select(f => $"# --- {f.Path}\n{f.Content}")),
-                    origin: null, _ =>
-                    {
-                        using var helper = new ProjectCompilationHelper();
-                        helper.WithRootNamespace("Test");
-                        foreach (var (path, content) in projectFiles)
-                            helper.AddSourceFile(path, content);
-                        helper.CreateProjectFile();
-                        var result = helper.Compile();
-                        return (result.Success, result.Diagnostics.GetAll().ToList());
-                    });
+                    origin: null, _ => PropertyAnalysis.AnalyseProject(projectFiles));
             }
             finally
             {
@@ -108,11 +99,8 @@ internal static class SemanticFilter
             }
         });
 
-    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source)
-    {
-        var result = new Sharpy.Compiler.Compiler().Analyze(source, "filter_test.spy");
-        return (result.Success, result.Diagnostics.GetAll().ToList());
-    }
+    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source) =>
+        PropertyAnalysis.AnalyseSingleFile(source);
 
     /// <summary>The one admission rule: render the sample, run the compiler, and either accept it or
     /// record why not. A throw anywhere (render or compile) is a rejection with its exception, never
@@ -141,15 +129,32 @@ internal static class SemanticFilter
 
             var pin = origin is null ? null : KnownGeneratorPins.Explain(origin, source);
             sink.Reject(new RejectionSink.Rejection(source, errors, null, pin));
-            return false;
         }
         catch (Exception e)
         {
             sink.Reject(new RejectionSink.Rejection(source, Array.Empty<string>(), e, null));
-            return false;
         }
+        ThrowIfEverySampleIsRefused(sink);
+        return false;
+    }
+
+    /// <summary>
+    /// A generator whose every sample is refused makes CsCheck's <c>Where</c> give up after
+    /// <see cref="Check.WhereLimit"/> rejected draws with "Failing Where max count" — a red that names no
+    /// code and no source (#2324, P63b Decision 13). One draw before that, with no sample accepted yet,
+    /// the filter throws <see cref="RejectionBudgetExceeded"/> carrying the sink's report instead: the code
+    /// buckets and the first refused sources.
+    /// </summary>
+    private static void ThrowIfEverySampleIsRefused(RejectionSink sink)
+    {
+        if (sink.Accepted == 0 && sink.Rejections.Count >= Check.WhereLimit - 1)
+            throw new RejectionBudgetExceeded(sink.Report());
     }
 }
+
+/// <summary>Every sample the filter drew was refused: the message is the sink's report (#2324).</summary>
+internal sealed class RejectionBudgetExceeded(string report)
+    : Exception("every sample of a filtered generator was refused — " + report);
 
 /// <summary>
 /// What <see cref="SemanticFilter"/> discarded (#2288): one <see cref="Rejection"/> per refused or
@@ -192,7 +197,16 @@ internal sealed class RejectionSink
     /// <summary>Rejections no declared pin explains — the property's red.</summary>
     public IReadOnlyList<Rejection> Unexplained => Rejections.Where(r => r.Pin is null).ToList();
 
-    internal void Accept() => Interlocked.Increment(ref _drawn);
+    /// <summary>Every sample the filter admitted.</summary>
+    public int Accepted => Volatile.Read(ref _accepted);
+
+    private int _accepted;
+
+    internal void Accept()
+    {
+        Interlocked.Increment(ref _accepted);
+        Interlocked.Increment(ref _drawn);
+    }
 
     internal void Reject(Rejection rejection)
     {

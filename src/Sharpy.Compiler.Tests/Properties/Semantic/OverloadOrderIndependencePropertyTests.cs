@@ -1,4 +1,5 @@
 using CsCheck;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -119,15 +120,7 @@ public class OverloadOrderIndependencePropertyTests
     /// errors or not). A throw is not a signature: it propagates and fails the sample, so a compiler
     /// throw that is identical in every declaration order cannot compare equal and pass (#2288 verify).
     /// </summary>
-    private static string ResolutionSignature(string source)
-    {
-        var compiler = new Sharpy.Compiler.Compiler();
-        var result = compiler.Compile(source, "test.spy");
-        var codes = (result.Diagnostics?.GetAll() ?? Enumerable.Empty<Sharpy.Compiler.Diagnostics.CompilerDiagnostic>())
-            .Select(d => d.Code)
-            .OrderBy(c => c, StringComparer.Ordinal);
-        return $"success={result.Success};codes=[{string.Join(",", codes)}]";
-    }
+    private static string ResolutionSignature(string source) => PropertyAnalysis.CodeSignature(source);
 
     private static string BuildSource(Engine engine, List<(string Param, string Ret, string Lit)> overloads, string argLiteral)
     {

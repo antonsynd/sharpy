@@ -63,12 +63,8 @@ public class TypedAnalyzePropertyTests
         {
             Interlocked.Increment(ref count);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "typed_test.spy");
-
-            if (!result.Success)
-                throw new Exception(
-                    $"Filtered program should analyze clean but got errors:\n{source}");
+            // The filter admitted it: a second analysis must agree (a refusal throws with its codes).
+            PropertyAnalysis.AnalyseClean(source, "a filtered typed program's re-analysis");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine(sink.Summary);
@@ -78,16 +74,43 @@ public class TypedAnalyzePropertyTests
 
     /// <summary>Every RAW typed program analyses without a throw or an internal compiler error
     /// (<see cref="ErrorInjector.JudgeNoInternalError"/>); a refusal is allowed — the sample is
-    /// unfiltered. Before #2288 the lane swallowed every exception but one <c>Analyze</c> never throws.</summary>
-    [Fact]
-    public void TypedProgram_NeverThrowsInternalError()
+    /// unfiltered. Before #2288 the lane swallowed every exception but one <c>Analyze</c> never throws.
+    /// It samples the SAME configurations the acceptance lanes do — <see cref="TypeEnv.Default"/>,
+    /// <see cref="TypeEnv.WithOptionals"/>, <see cref="TypeEnv.WithCollections"/> and
+    /// <see cref="TypeEnv.WithGenerics"/>, each at fuel 2 with statements — beside the bare
+    /// <c>new TypeEnv()</c> fuel-3 expression config it always had: before #2324 it sampled only the
+    /// bare config, so a crash on a statement or an optional/collection binding was out of its reach.
+    /// Each config is judged and reported on its own, so one config's floor cannot hide behind another's.</summary>
+    [Theory]
+    [InlineData("bare-fuel3")]
+    [InlineData("Default")]
+    [InlineData("WithOptionals")]
+    [InlineData("WithCollections")]
+    [InlineData("WithGenerics")]
+    public void TypedProgram_NeverThrowsInternalError(string config)
     {
-        var verdicts = ErrorInjector.JudgeSamples(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type => GenTyped.TypedProgram(new TypeEnv(), type, fuel: 3)),
-            source => ErrorInjector.JudgeNoInternalError(source, "typed program"), iter: 100);
-        _output.WriteLine($"Typed programs: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed without an internal error");
-        Assert.True(verdicts.Tested > 0, "No typed programs were sampled");
+        var verdicts = ErrorInjector.JudgeSamples(NeverThrowsConfig(config),
+            source => ErrorInjector.JudgeNoInternalError(source, $"typed program ({config})"), iter: 100);
+        _output.WriteLine($"Typed programs ({config}): {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed without an internal error");
+        Assert.True(verdicts.Tested > 0, $"No typed programs were sampled ({config})");
         Assert.True(verdicts.First is null,
-            $"{verdicts.Failures}/{verdicts.Tested} typed programs crashed the compiler; the first:\n{verdicts.First}");
+            $"{verdicts.Failures}/{verdicts.Tested} typed programs ({config}) crashed the compiler; the first:\n{verdicts.First}");
     }
+
+    /// <summary>The configurations <see cref="TypedProgram_NeverThrowsInternalError"/> samples; the
+    /// result types are the ones the acceptance lanes over the same env draw.</summary>
+    private static Gen<Sharpy.Compiler.Parser.Ast.Module> NeverThrowsConfig(string config) => config switch
+    {
+        "bare-fuel3" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(new TypeEnv(), type, fuel: 3)),
+        "Default" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)),
+        "WithOptionals" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2, withStatements: true)),
+        "WithCollections" => Gen.OneOfConst("int", "str", "list[int]").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true)),
+        "WithGenerics" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            GenTyped.TypedProgram(TypeEnv.WithGenerics, type, fuel: 2, withStatements: true)),
+        _ => throw new ArgumentOutOfRangeException(nameof(config), config, "unknown NeverThrows config"),
+    };
 }

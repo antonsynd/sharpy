@@ -257,13 +257,8 @@ public class SemanticInfoConsistencyTests
     /// info or a module, is a red — before #2288 such a sample returned silently.</summary>
     private static (SemanticInfo SemanticInfo, Module Module) AnalyseAdmitted(string source)
     {
-        var result = new Sharpy.Compiler.Compiler().Analyze(source, "consistency_test.spy");
-        if (!result.Success)
-        {
-            throw new Exception("A program the filter admitted no longer analyses clean: "
-                + string.Join("; ", result.Diagnostics.GetErrors().Select(d => $"{d.Code}: {d.Message}"))
-                + $"\n{source}");
-        }
+        // A refusal throws with its codes (PropertyAnalysis.AnalyseClean) and fails the sample.
+        var result = PropertyAnalysis.AnalyseClean(source, "an admitted program's re-analysis");
         if (result.SemanticInfo == null || result.Module == null)
             throw new Exception($"An admitted program analysed clean without semantic info or a module:\n{source}");
         return (result.SemanticInfo, result.Module);

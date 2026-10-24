@@ -74,39 +74,10 @@ public class VariancePropertyTests
     /// </summary>
     private void AssertEverySampleIsDiagnosticFree(Gen<string> gen, string label)
     {
-        int tested = 0;
-        var failures = new List<string>();
-
-        gen.Sample(source =>
-        {
-            Interlocked.Increment(ref tested);
-            string? failure;
-            try
-            {
-                var result = new Sharpy.Compiler.Compiler().Analyze(source, "variance_test.spy");
-                var drawn = result.Diagnostics.GetAll()
-                    .Where(d => d.IsError || d.IsWarning)
-                    .Select(d => $"{(d.IsError ? "error" : "warning")} {d.Code}: {d.Message}")
-                    .ToList();
-                failure = result.Success && drawn.Count == 0
-                    ? null
-                    : $"{label} sample must analyse with no diagnostic, drew [{string.Join("; ", drawn)}]:\n{source}";
-            }
-            catch (Exception e)
-            {
-                failure = $"{label} sample threw {e.GetType().Name}:\n{source}\n{e}";
-            }
-
-            if (failure is not null)
-            {
-                lock (failures)
-                    failures.Add(failure);
-            }
-        }, iter: 50);
-
-        _output.WriteLine($"{label}: {tested - failures.Count}/{tested} analysed with no diagnostic");
-        Assert.True(tested > 0, $"No {label} samples were generated");
-        Assert.True(failures.Count == 0,
-            $"{failures.Count}/{tested} {label} samples drew a diagnostic; the first:\n{failures.FirstOrDefault()}");
+        var verdicts = ErrorInjector.JudgeSamples(gen, source => ErrorInjector.JudgeNoDiagnostic(source, label), iter: 50);
+        _output.WriteLine($"{label}: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed with no diagnostic");
+        Assert.True(verdicts.Tested > 0, $"No {label} samples were generated");
+        Assert.True(verdicts.First is null,
+            $"{verdicts.Failures}/{verdicts.Tested} {label} samples drew a diagnostic; the first:\n{verdicts.First}");
     }
 }

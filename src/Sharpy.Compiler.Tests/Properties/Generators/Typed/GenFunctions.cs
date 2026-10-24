@@ -185,9 +185,25 @@ internal static class GenFunctions
             });
     }
 
+    /// <summary>
+    /// A function body: 0–2 statements of <see cref="GenTyped.StatementOfType"/> over the parameter env,
+    /// then <c>return &lt;expr&gt;</c>. The statements are the branches (<c>if</c>/<c>else</c>) and
+    /// <c>for i in range(n)</c> loops the CFG lane needs: a straight-line body has no back edge and no
+    /// branch, so <c>CfgWellFormednessPropertyTests</c>' edge-symmetry check never met a loop and a broken
+    /// for-loop back edge stayed green there (#2324 Decision 12). At fuel 0 the body is the bare return.
+    /// </summary>
     private static Gen<ImmutableArray<Statement>> BodyForReturnType(TypeEnv env, string returnType, int fuel) =>
-        GenTyped.ExpressionOfType(env, returnType, fuel).Select(expr =>
-            ImmutableArray.Create<Statement>(new ReturnStatement { Value = expr }));
+        Gen.Select(
+            fuel > 0
+                ? Gen.Int[0, 2].SelectMany(n =>
+                    Enumerable.Range(0, n)
+                        .Select(_ => GenTyped.StatementOfType(env, fuel - 1))
+                        .Aggregate(
+                            Gen.Const(ImmutableArray<Statement>.Empty),
+                            (acc, gen) => Gen.Select(acc, gen, (arr, s) => arr.Add(s))))
+                : Gen.Const(ImmutableArray<Statement>.Empty),
+            GenTyped.ExpressionOfType(env, returnType, fuel),
+            (stmts, expr) => stmts.Add(new ReturnStatement { Value = expr }));
 
     private static Gen<(string Name, string Type)> ParameterGen(int index)
     {

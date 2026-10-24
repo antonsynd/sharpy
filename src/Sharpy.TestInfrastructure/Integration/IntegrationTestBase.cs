@@ -157,6 +157,21 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
+    /// The run verdict the property lanes consume (#2324, P63b — the oracle scan bans reading
+    /// <see cref="ExecutionResult.Success"/> in a property file): null when <paramref name="result"/> ran
+    /// successfully, otherwise why not — the compile errors, the exception and stderr, with the source.
+    /// </summary>
+    protected static string? JudgeRun(ExecutionResult result, string source, string label) =>
+        result.Success
+            ? null
+            : $"{label} failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}";
+
+    /// <summary>The run's outcome as DATA for a differential comparison (it ran to completion: compiled, did not
+    /// throw, did not time out) — not a verdict on Sharpy alone; the differential sweep compares it with
+    /// CPython's outcome (#2324, P63b).</summary>
+    protected static bool RanToCompletion(ExecutionResult result) => result.Success && !result.TimedOut;
+
+    /// <summary>
     /// Compiles and executes, then forces a gen-2 GC to release Roslyn compilation state.
     /// Use in tight loops (property tests) to prevent memory buildup.
     /// </summary>

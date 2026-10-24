@@ -30,16 +30,11 @@ public class DeterminismPropertyTests
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-            var result1 = Compile(source);
-            var result2 = Compile(source);
-
-            if (result1.diagCount != result2.diagCount)
-                throw new Exception(
-                    $"Non-deterministic diagnostic count: {result1.diagCount} vs {result2.diagCount}");
-
-            if (result1.success != result2.success)
-                throw new Exception(
-                    $"Non-deterministic compilation: {result1.success} vs {result2.success}");
+            // Two full compiles agree on success, every diagnostic and the C# (a throw fails the sample).
+            var first = PropertyAnalysis.CompileFingerprint(source);
+            var second = PropertyAnalysis.CompileFingerprint(source);
+            if (first != second)
+                throw new Exception($"Non-deterministic compilation of:\n{source}\nrun 1: {first}\nrun 2: {second}");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
     }
 
@@ -96,9 +91,7 @@ public class DeterminismPropertyTests
             // throw or a refusal) is a failure, not a skipped comparison (#2288).
             if (result1.csharp is null || result2.csharp is null)
             {
-                throw new Exception(
-                    $"An admitted program produced no C# (run 1 success {result1.success}, run 2 success "
-                    + $"{result2.success}):\n{source}");
+                throw new Exception($"An admitted program produced no C# in one of two runs:\n{source}");
             }
 
             if (result1.csharp != result2.csharp)
@@ -113,17 +106,10 @@ public class DeterminismPropertyTests
 
     // A throw propagates and fails the sample: these used to return a sentinel, so two runs that
     // both threw compared equal and an admitted program that threw was never compared (#2288).
-    private static (bool success, int diagCount) Compile(string source)
+    private static (List<Sharpy.Compiler.Diagnostics.CompilerDiagnostic> diagnostics, string? csharp) CompileFull(string source)
     {
         var compiler = new Sharpy.Compiler.Compiler();
         var result = compiler.Compile(source, "test.spy");
-        return (result.Success, result.Diagnostics?.ErrorCount ?? 0);
-    }
-
-    private static (bool success, List<Sharpy.Compiler.Diagnostics.CompilerDiagnostic> diagnostics, string? csharp) CompileFull(string source)
-    {
-        var compiler = new Sharpy.Compiler.Compiler();
-        var result = compiler.Compile(source, "test.spy");
-        return (result.Success, result.Diagnostics?.GetAll().ToList() ?? new(), result.GeneratedCSharpCode);
+        return (result.Diagnostics?.GetAll().ToList() ?? new(), result.GeneratedCSharpCode);
     }
 }
