@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,150 +10,78 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
 /// <summary>
-/// Source-scan backstop for the typed-generator refusal oracles (#2288, P63 Design Decision 7):
-/// <c>ErrorInjector.JudgeSource</c>/<c>Judge</c> is the ONE refusal verdict, and the weak shapes
-/// that made the property lanes pass vacuously — prefix judging, thresholds, pass-counter lower
-/// bounds, any-failure counting, two-bucket sums, a <c>catch</c> that counts as a pass or swallows a
-/// throw, a <c>HasErrors</c> verdict, and a second judging core comparing diagnostic codes outside the
-/// seam — must not be re-typed.
-/// <para>
-/// <b>Universe</b>: every <c>*.cs</c> directly in <c>Properties/Semantic</c>, and every <c>*.cs</c> under
-/// <c>src/Sharpy.Compiler.Tests/Properties/**</c> whose text
-/// names the typed generator namespace, computed by the scan (no hand list), minus this scanner and the files inside
-/// that namespace's own directory (<c>ErrorInjector</c> and <c>SemanticFilter</c> ARE the seam). A
-/// universe under <see cref="MinimumUniverse"/> files fails loud — a broken path or marker would
-/// otherwise scan nothing and pass.
-/// </para>
-/// <para>
-/// <b>Unit</b>: the banned regexes run over the file's WHITESPACE-NORMALIZED token stream (Roslyn: every
-/// run of trivia — spaces, newlines, comments — collapses to one space), so a spelling split over
-/// lines (<c>!r.Success</c> / <c>|| …</c>) is one statement's text, and a comment is never a hit. A hit
-/// is reported at the line of its first token with its enclosing statement. String literals are
-/// scanned (the codes live there). The syntax rules (lower bounds, catches, <c>HasErrors</c>, code
-/// literals) read the tree itself.
-/// </para>
-/// <para>
-/// <b>Deliberate exclusions</b> (each a benign look-alike in the positive control):
-/// <c>Assert.True(tested &gt; 0)</c> — a lower bound is banned only on a counter that is not an
-/// applicability counter: the exempt names are <see cref="ApplicabilityCounters"/> (a counter, or the
-/// receiver of its <c>.Count</c>/<c>.Length</c>, whose name ends in one of them counts samples that
-/// REACHED the oracle, never samples that passed it); <c>=&gt; n / 2</c> — a lambda arrow is not a
-/// comparison; <c>.Code != null</c> / <c>== null</c> — a null guard compares no code;
-/// <c>a.Code != b.Code</c> — two runs of the compiler compared with each other (the determinism
-/// oracle), not a verdict against an expected code; <c>{d.Code}</c> — reading a code to PRINT it;
-/// <c>.ExitCode != 0</c> — not a diagnostic code; a code literal passed to the seam
-/// (<c>JudgeSource(src, "SPY0273", …)</c>, <c>new InjectionResult(m, "SPY0220")</c>);
-/// <c>Assert.False(x.HasErrors)</c> — an acceptance check; <c>if (errors.Count &gt; 0)</c> — a failure
-/// check outside an assertion; a <c>catch</c> that RECORDS (a throw, an <c>Assert</c>, a call named
-/// one of <see cref="RecordVerbs"/>, or a return/assignment of a message string or of the caught
-/// exception); a <c>catch</c> whose <c>try</c> never reaches the pipeline under test
-/// (<see cref="PipelineCalls"/>/<see cref="PipelineTypes"/> — e.g. killing the CPython oracle's
-/// process).
-/// </para>
-/// <para>
-/// <b>Not expressed</b>: the plan's "<c>new Compiler().Analyze(</c> outside the seam" spelling — every
-/// soundness lane analyses its accepted program that way, so the call alone cannot be banned without
-/// banning the accepted-program lane; a second core is caught where it JUDGES, by
-/// <see cref="CodeCompare"/> and <see cref="CodeLiteral"/>. A filter of an UNTYPED generator's refusals
-/// (<c>if (!result.Success) return;</c> over <c>GenSharpy</c>) is not a refusal verdict and is not banned.
-/// </para>
-/// <para>
-/// <b>Allowlist</b>: one literal row per (file, spelling) with the exact current count, each citing
-/// an issue; a hit the rows do not cover is red, a row whose count exceeds its hits is red (it must
-/// shrink as the lane is migrated), a row naming a file outside the universe is red. The P63 lanes
-/// drain it to zero.
-/// </para>
+/// Source-scan backstop for the typed-generator oracles (#2288 P63 Design Decision 7; rewritten by P63b,
+/// #2324 Decision 7): <c>ErrorInjector.JudgeSource</c>/<c>Judge</c>/<c>JudgeProject</c>/<c>JudgeClean</c>/
+/// <c>JudgeNoInternalError</c> and the <c>SemanticFilter</c> sink are the ONE verdict seam, and a lane outside
+/// it may only consume their verdicts. The rules ban five IDEAS, read from the Roslyn syntax tree, with no
+/// name-list exemption (the verify round found 43 re-spellings the old token regexes missed and three
+/// exemptions — a counter-name suffix list, a "records" heuristic, a pipeline-call name list — that were
+/// their own subject):
+/// <list type="bullet">
+/// <item><b>R1 <see cref="NoCatch"/></b> — no <c>catch</c>: a throw is judged by the seam (which reports it),
+/// or recorded by <c>Record.Exception</c>; process and file plumbing lives in a file that does not name the
+/// typed generators.</item>
+/// <item><b>R2 <see cref="VerdictRead"/></b> — no read of a verdict surface (<c>.Success</c>,
+/// <c>.HasErrors</c>, <c>.IsError</c>, <c>.IsWarning</c>) on any receiver; by shape only, both operands of
+/// one <c>==</c>/<c>!=</c> reading the same member (two runs compared — the determinism lanes) is not a
+/// verdict.</item>
+/// <item><b>R3 <see cref="CodeLiteralFlow"/></b> — a code literal (<c>"SPY0273"</c>, a <c>"SPY…"</c> or
+/// <c>"^SPY…"</c> prefix), a <c>DiagnosticCodes</c> member, or a <c>.Code</c> read flows only INTO the seam:
+/// a literal is legal as an argument of <see cref="CodeSinks"/> (or of a same-file helper that hands that
+/// parameter to one), or under <c>allowedCodes:</c>; a <c>.Code</c> read is legal in an interpolation hole
+/// (printing it), compared with another <c>.Code</c> (two runs) or with <c>null</c>.</item>
+/// <item><b>R4 <see cref="NumericBound"/></b> — inside an assertion, the only numeric comparisons are
+/// <c>x &gt; 0</c> and (in)equality of two values with no arithmetic; <c>&gt;=</c>, <c>&lt;</c>,
+/// <c>&lt;=</c>, a non-zero bound, <c>!= 0</c>, arithmetic, <c>Assert.InRange</c>,
+/// <c>Assert.NotEqual(0, …)</c> and <c>== 0</c> under <c>Assert.False</c> are thresholds and lower bounds
+/// in disguise. <c>x &gt; 0</c> stays legal: the counter it floors cannot be a pass counter, because R5
+/// forbids forming the boolean a pass counter increments on.</item>
+/// <item><b>R5 <see cref="VerdictTested"/></b> — a seam verdict is consumed, never tested: returned,
+/// added to a collection, asserted, or bound by <c>is { } x</c> in a branch that records it; a null test of
+/// it (or of a local holding it) in an <c>if</c>/<c>while</c>/conditional, a verdict discarded
+/// (<c>Judge(…);</c>, <c>_ = …</c>), and a <c>SampleVerdicts</c> local whose <c>.First</c> never reaches an
+/// assertion are hits.</item>
+/// </list>
+/// <para><b>Universe</b>: every <c>*.cs</c> directly in <c>Properties/Semantic</c>, and every <c>*.cs</c>
+/// under <c>Properties/**</c> whose text names the typed generator namespace, computed by the scan, minus
+/// this scanner (its positive-control literals ARE the banned spellings), the seam's own directory
+/// (<c>Generators/Typed/</c>: the injector, the filter, the mutation generator and its census) and the
+/// seam's own tests (<c>JudgeSourceTests</c>). Under <see cref="MinimumUniverse"/> files fails loud.</para>
+/// <para><b>Allowlist</b>: one literal row per (file, rule) with the exact current count, each citing an
+/// issue; drained to zero by P63b.</para>
 /// </summary>
 public class PropertyOracleConformanceTests
 {
     private const int MinimumUniverse = 20;
 
-    private const string Prefix = "prefix";
-    private const string Threshold = "threshold";
-    private const string LowerBound = "lower-bound";
-    private const string AnyFailure = "any-failure";
-    private const string TwoBucket = "two-bucket";
-    private const string CatchIncrement = "catch-increment";
-    private const string CodeCompare = "code-compare";
-    private const string CodeLiteral = "code-literal";
-    private const string HasErrorsVerdict = "has-errors";
-    private const string SwallowCatch = "swallow-catch";
+    private const string NoCatch = "R1-no-catch";
+    private const string VerdictRead = "R2-verdict-read";
+    private const string CodeLiteralFlow = "R3-code-literal-flow";
+    private const string NumericBound = "R4-numeric-bound";
+    private const string VerdictTested = "R5-verdict-tested";
 
-    private static readonly (string Id, Regex Pattern)[] BannedPatterns =
+    private static readonly string[] AllIds = { NoCatch, VerdictRead, CodeLiteralFlow, NumericBound, VerdictTested };
+
+    private static readonly HashSet<string> VerdictMembers = new(StringComparer.Ordinal) { "Success", "HasErrors", "IsError", "IsWarning" };
+
+    /// <summary>The seam's verdicts: a call of one of these returns a judgment R5 says must be consumed.</summary>
+    private static readonly HashSet<string> SeamVerdicts = new(StringComparer.Ordinal)
     {
-        // Prefix judging: a code family is not a code.
-        (Prefix, new Regex(@"StartsWith\(\s*""SPY", RegexOptions.Compiled)),
-        // Thresholds: `> total / 4`, `> tested / 2`, `>= analyzed / 2`, `> (total / 2)`, `passed * 2 > total`,
-        // `total / 2 < passed` — a fraction of the samples may fail: a division by a sample count or a
-        // multiplied counter compared with a COUNTER (`x * 2) > 2` and a relative tolerance
-        // `/ av) <= RelTol` are not). The look-behind keeps `=>` (lambda), `->` and shifts out.
-        (Threshold, new Regex(
-            @"(?<![=\-<>])>(?!>)=?\s*\(?\s*[A-Za-z_][\w\.]*\s*/\s*[\w\.]+"
-            + @"|\b[A-Za-z_][\w\.]*\s*\*\s*\d+\s*\)?\s*>(?!>)=?\s*\(?\s*[A-Za-z_]"
-            + @"|\b\d+\s*\*\s*[A-Za-z_][\w\.]*\s*\)?\s*>(?!>)=?\s*\(?\s*[A-Za-z_]"
-            + @"|[\w\.\)]\s*/\s*\d+\s*\)?\s*<(?![<])=?\s*\(?\s*[A-Za-z_]",
-            RegexOptions.Compiled)),
-        // Lower bounds on a pass counter outside an assertion (inside one, the syntax rule judges every
-        // counter): one success anywhere satisfies it.
-        (LowerBound, new Regex(@"\b(?:passed|diagnosed|rejected|caught)\s*>\s*0\b", RegexOptions.Compiled)),
-        // Any-failure counting: a refusal for an unrelated reason passes for the one under test.
-        (AnyFailure, new Regex(@"!\s*[A-Za-z_][\w\.]*\.Success\s*\|\|", RegexOptions.Compiled)),
-        // Two-bucket sums: one accepted VALID program satisfies the refusal lane.
-        (TwoBucket, new Regex(@"\b[A-Za-z_]\w*\s*\+\s*[A-Za-z_]\w*\s*>\s*0\b", RegexOptions.Compiled)),
-        // A second judging core: a diagnostic code compared outside the seam. Excludes the null
-        // guard and code-vs-code comparison of two runs (see the class comment).
-        (CodeCompare, new Regex(
-            @"\.Code\s*(?:==|!=)(?>\s*)(?!null\b)(?![\w\[\]\.]*\.Code\b)|\.Code\??\.(?:StartsWith|EndsWith|Contains|Equals)\(|\.Code\s+is\s+(?:not\s+)?""",
-            RegexOptions.Compiled)),
+        "Judge", "JudgeSource", "JudgeProject", "JudgeClean", "JudgeNoInternalError", "JudgeNoDiagnostic", "JudgeRun",
     };
 
-    private static readonly string[] AllIds =
+    /// <summary>Where a code literal may flow: the seam's verdict calls and the records that carry an
+    /// expected code into it (the roster's lanes and pins).</summary>
+    private static readonly HashSet<string> CodeSinks = new(StringComparer.Ordinal)
     {
-        Prefix, Threshold, LowerBound, AnyFailure, TwoBucket, CatchIncrement, CodeCompare, CodeLiteral,
-        HasErrorsVerdict, SwallowCatch,
-    };
-
-    /// <summary>Counters a lower bound may floor: each counts samples that REACHED the oracle (or the
-    /// corpus a sweep compares), never samples that passed it — the applicability floor every lane
-    /// keeps. Matched case-insensitively as the counter's name or its suffix (<c>verdicts.Tested</c>,
-    /// <c>superCallsTested</c>, <c>programs.Count</c>).</summary>
-    private static readonly string[] ApplicabilityCounters =
-        { "tested", "total", "admitted", "compared", "injected", "programs" };
-
-    /// <summary>A diagnostic-code literal passed to one of these is a code compared outside the seam.</summary>
-    private static readonly HashSet<string> CodeComparingCalls = new(StringComparer.Ordinal)
-    {
-        "Equal", "NotEqual", "Contains", "DoesNotContain", "Equals", "StartsWith", "EndsWith", "Single",
-        "SingleOrDefault", "First", "FirstOrDefault", "Any", "All", "Count", "Where", "IndexOf", "SequenceEqual",
-        "Remove", "Same",
-    };
-
-    /// <summary>A <c>try</c> that calls one of these (or constructs a <see cref="PipelineTypes"/>) reaches
-    /// the pipeline under test, so its <c>catch</c> must record what it caught.</summary>
-    private static readonly HashSet<string> PipelineCalls = new(StringComparer.Ordinal)
-    {
-        "Analyze", "Compile", "CompileAndExecute", "CompileToCSharp", "Unparse", "ParseModule", "TokenizeAll",
-        "Validate", "Judge", "JudgeSource", "JudgeProject",
-    };
-
-    private static readonly HashSet<string> PipelineTypes = new(StringComparer.Ordinal)
-    {
-        "Compiler", "Parser", "Lexer", "ControlFlowGraphBuilder", "ProjectCompilationHelper",
-    };
-
-    /// <summary>A call named one of these inside a <c>catch</c> records what was caught (a failure list,
-    /// a sink, a sweep's exclusion counter).</summary>
-    private static readonly HashSet<string> RecordVerbs = new(StringComparer.Ordinal)
-    {
-        "Add", "AddRange", "Enqueue", "TryAdd", "Reject", "Exclude", "Fail", "Record",
+        "JudgeSource", "JudgeProject", "InjectionResult", "ProjectInjectionResult", "KnownRedRefusal", "KnownRedRow",
+        "YInjected", "KnownRedSpecCode", "ProseCrossReference",
     };
 
     /// <summary>
-    /// Every current hit, by (file relative to <c>Properties/</c>, spelling) with its exact count.
-    /// Seeded @ 8e0791f85 (34 rows, 64 hits) and drained to ZERO by P63: Phase 2 Task 3 moved every
-    /// refusal lane onto <c>ErrorInjector.JudgeSource</c>/<c>Judge</c>, Phase 3 turned every threshold
-    /// soundness lane and every skip of a refused sample into a <c>RejectionSink</c> assertion (#2288).
-    /// A new row needs an issue and drains on fix, like every ratchet.
+    /// Every current hit, by (file relative to <c>Properties/</c>, rule) with its exact count, each citing an
+    /// issue; a hit the rows do not cover is red, a row whose count exceeds its hits is red (shrink it), a
+    /// row naming a file outside the universe is red. Drained to zero by P63b (#2324).
     /// </summary>
     private static readonly (string File, string SpellingId, int Count, string Issue)[] Allowlist =
     {
@@ -173,7 +100,7 @@ public class PropertyOracleConformanceTests
         var propertiesRoot = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler.Tests", "Properties");
         var universe = Universe(propertiesRoot);
         _output.WriteLine($"universe {universe.Count} files under {propertiesRoot}");
-        Assert.True(universe.Count >= MinimumUniverse,
+        Assert.True(universe.Count > MinimumUniverse - 1,
             $"The typed-generator consumer universe has {universe.Count} files (< {MinimumUniverse}): the scan "
             + "lost its root or its namespace marker and would pass vacuously.");
 
@@ -184,9 +111,7 @@ public class PropertyOracleConformanceTests
         foreach (var hit in hits)
             _output.WriteLine($"  hit {hit.File}:{hit.Line} [{hit.Id}] {hit.Text}");
 
-        var actual = hits
-            .GroupBy(h => (h.File, h.Id))
-            .ToDictionary(g => g.Key, g => g.Count());
+        var actual = hits.GroupBy(h => (h.File, h.Id)).ToDictionary(g => g.Key, g => g.Count());
         var failures = new List<string>();
 
         foreach (var row in Allowlist)
@@ -194,7 +119,7 @@ public class PropertyOracleConformanceTests
             if (!universe.Contains(row.File))
                 failures.Add($"allowlist row ({row.File}, {row.SpellingId}) names a file outside the universe");
             if (!AllIds.Contains(row.SpellingId))
-                failures.Add($"allowlist row ({row.File}, {row.SpellingId}) names an unknown spelling id");
+                failures.Add($"allowlist row ({row.File}, {row.SpellingId}) names an unknown rule id");
             if (!Regex.IsMatch(row.Issue, @"^#\d+$"))
                 failures.Add($"allowlist row ({row.File}, {row.SpellingId}) cites '{row.Issue}', not an issue number");
             var have = actual.GetValueOrDefault((row.File, row.SpellingId));
@@ -206,9 +131,7 @@ public class PropertyOracleConformanceTests
         foreach (var group in Allowlist.GroupBy(r => (r.File, r.SpellingId)).Where(g => g.Count() > 1))
             failures.Add($"allowlist has {group.Count()} rows for ({group.Key.File}, {group.Key.SpellingId})");
 
-        var allowed = Allowlist
-            .GroupBy(r => (r.File, r.SpellingId))
-            .ToDictionary(g => g.Key, g => g.Sum(r => r.Count));
+        var allowed = Allowlist.GroupBy(r => (r.File, r.SpellingId)).ToDictionary(g => g.Key, g => g.Sum(r => r.Count));
         foreach (var ((file, id), count) in actual.OrderBy(kv => kv.Key.File, StringComparer.Ordinal))
         {
             var allowedCount = allowed.GetValueOrDefault((file, id));
@@ -216,20 +139,20 @@ public class PropertyOracleConformanceTests
             {
                 var lines = string.Join(", ", hits.Where(h => h.File == file && h.Id == id).Select(h => h.Line));
                 failures.Add($"{file} has {count} [{id}] hit(s) (lines {lines}), the allowlist covers {allowedCount} — "
-                    + "judge the lane through ErrorInjector.JudgeSource/Judge instead");
+                    + "consume a seam verdict (ErrorInjector.Judge*/JudgeClean, SemanticFilter + sink) instead");
             }
         }
 
-        _output.WriteLine($"allowlist rows {Allowlist.Length}, hits {hits.Count}");
+        _output.WriteLine($"allowlist rows {Allowlist.Length}, hits {hits.Count} "
+            + $"({string.Join(", ", AllIds.Select(id => $"{id} {hits.Count(h => h.Id == id)}"))})");
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
     /// <summary>
-    /// Positive control: each banned spelling once → exactly that id; each benign look-alike → nothing.
-    /// A scanner whose patterns no longer match the real spellings fails here, not silently. The second
-    /// half of <c>Banned()</c> is the verify round's evasions (#2288 F1): a spelling split over lines,
-    /// parenthesized and multiplied thresholds, lower bounds on any counter, code literals compared
-    /// outside the seam, a <c>HasErrors</c> verdict, and swallowing catches.
+    /// Positive control: every line of <c>Banned()</c> carries the rule it must trip in a trailing
+    /// <c>// R&lt;n&gt;</c> comment and draws a hit of that rule (the old scan's banned and evasion spellings,
+    /// the 43 the verify round planted, the three exemptions that were their own subject, and a
+    /// <c>passed &gt; 0</c> on a counter a verdict increments); every line of <c>Benign()</c> draws nothing.
     /// </summary>
     [Fact]
     public void Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike()
@@ -239,51 +162,84 @@ public class PropertyOracleConformanceTests
             {
                 void Banned()
                 {
-                    ok = name.StartsWith("SPY0");
-                    Assert.True(diagnosed > total / 4, "");
-                    Assert.True(passed > tested / 2, "");
-                    Assert.True(analyzed > analyzed / 2, "");
-                    Assert.True(resolved > passed / 2, "");
-                    Assert.True(matched >= tested / 2, "");
-                    Assert.True(passed > 0, "");
-                    Assert.True(caught > 0, "");
-                    if (!result.Success || other) { }
-                    Assert.True(insidePassed + outsideDiagnosed > 0, "");
-                    try { Run(); } catch { Interlocked.Increment(ref diagnosedCount); }
-                    try { Run(); } catch (Exception) { passedCount++; }
-                    ok = d.Code == "SPY0273";
-                    ok = d.Code != expectedCode;
-                    ok = d.Code.Contains("02");
-                    ok = d.Code?.EndsWith("20") == true;
-                    ok = d.Code is "SPY0463";
+                    ok = name.StartsWith("SPY0"); // R3
+                    if (!result.Success || other) { } // R2
+                    try { Run(); } catch { Interlocked.Increment(ref diagnosedCount); } // R1
+                    try { Run(); } catch (Exception) { passedCount++; } // R1
+                    ok = d.Code == "SPY0273"; // R3
+                    ok = d.Code != expectedCode; // R3
+                    ok = d.Code.Contains("02"); // R3
+                    ok = d.Code?.EndsWith("20") == true; // R3
+                    ok = d.Code is "SPY0463"; // R3
+                    Assert.True(diagnosed > total / 4, ""); // R4
+                    Assert.True(passed > (total / 2), ""); // R4
+                    Assert.True(passed * 2 > total, ""); // R4
+                    Assert.True(total / 2 < passed, ""); // R4
+                    Assert.True(matched >= tested / 2, ""); // R4
+                    Assert.True(diagnosed >= 1, ""); // R4
+                    Assert.True(diagnosed != 0, ""); // R4
+                    Assert.True(insidePassed + outsideDiagnosed > 0, ""); // R4
+                    Assert.Equal("SPY0273", diagnostics.First().Code); // R3
+                    ok = codes.Contains("SPY0273"); // R3
+                    Assert.Contains("SPY0273", diagnostics.Select(d => d.Code)); // R3
+                    ok = string.Equals(d.Code, "SPY0273"); // R3
+                    ok = codes[0] == "SPY0273"; // R3
+                    if (result.Diagnostics.HasErrors) diagnosed++; // R2
+                    Assert.True(result.Diagnostics.HasErrors, ""); // R2
+                    try { new Sharpy.Compiler.Compiler().Analyze(source, "a.spy"); } catch { } // R1
+                    try { Analyze(source); } catch { return null; } // R1
+                    try { text = Unparser.Unparse(module); } catch { return (false, -1); } // R1
+                    if (!analysis.Success) return; // R2
+                    Assert.False(r.Success); // R2
+                    if (!(r.Success)) n++; // R2
+                    if (r.Success == false) n++; // R2
+                    n += r.Success ? 0 : 1; // R2
+                    if (!r.Success) n = n + 1; // R2
+                    ok = r?.IsError == true; // R2
+                    ok = all.Any(x => x.IsWarning); // R2
+                    Assert.True(diagnosed >= tested * 0.5, ""); // R4
+                    Assert.True((double)diagnosed / tested > 0.25, ""); // R4
+                    Assert.True(passed > floor, ""); // R4
+                    Assert.NotEqual(0, diagnosed); // R4
+                    Assert.False(diagnosed == 0); // R4
+                    Assert.InRange(passed, 1, total); // R4
+                    Assert.True(passed < total, ""); // R4
+                    Assert.True(passed <= total, ""); // R4
+                    Assert.True(passed > 3, ""); // R4
+                    examined.Should().BeGreaterThanOrEqualTo(10, "a floor"); // R4
+                    diagnosed.Should().NotBe(0); // R4
+                    passed.Should().BeGreaterThan(total / 4); // R4
+                    ok = codes[0][..3] == "SPY"; // R3
+                    Assert.Matches("^SPY02", d.Code); // R3
+                    ok = "SPY0273".Equals(d.Code); // R3
+                    var k = d.Code switch { "SPY0273" => 1, _ => 0 }; // R3
+                    ok = d is { Code: "SPY0273" }; // R3
+                    ok = new[] { "SPY0273" }.Contains(d.Code); // R3
+                    ok = expected.Contains(d.Code); // R3
+                    ok = DiagnosticCodes.Semantic.TypeMismatch == got; // R3
+                    try { Run(); } catch (Exception e) { _ = e; } // R1
+                    try { Helper(src); } catch { } // R1
+                    try { Analyze(s); } catch (Exception e) { return $"{e}"; } // R1
+                    try { Helper(source); } catch { return null; } // R1
+                    try { proc.Kill(); } catch { } // R1
+                    if (ErrorInjector.JudgeClean(s, "l") is null) passedTotal++; // R5
+                    if (ErrorInjector.JudgeSource(s, "SPY0220", CompilerDiagnosticSeverity.Error, null, "l") is not null) refusedPrograms.Add(s); // R5
+                    if (ErrorInjector.JudgeClean(s, "l") == null) passed++; // R5
+                    ok = ErrorInjector.JudgeClean(s, "l") != null ? a : b; // R5
+                    ErrorInjector.Judge(injection, "l"); // R5
+                    var dropped = ErrorInjector.JudgeClean(s, "l") ?? "x"; // R5
+                    if (dropped is null) passed++;
+                    if (JudgeRun(run, s, "l") is { } ran) Console.WriteLine(ran); // R5
+                    _ = ErrorInjector.JudgeClean(s, "l"); // R5
+                    while (ErrorInjector.JudgeNoInternalError(s, "l") is not null) { } // R5
+                    var lost = ErrorInjector.JudgeSamples(gen, s => ErrorInjector.JudgeClean(s, "l"), iter: 1); // R5
                 }
 
-                void Evasions()
+                void VerdictThroughALocal()
                 {
-                    if (!analysis.Success
-                        || analysis.Module is null)
-                        return;
-                    Assert.True(diagnosed
-                        > total / 4, "");
-                    Assert.True(passed > (total / 2), "");
-                    Assert.True(passed * 2 > total, "");
-                    Assert.True(total / 2 < passed, "");
-                    Assert.True(handled > 0, "");
-                    Assert.True(diagnosed >= 1, "");
-                    Assert.True(diagnosed != 0, "");
-                    Assert.NotEmpty(refusedSamples);
-                    if (!result.Success) Interlocked.Increment(ref diagnosed);
-                    Assert.Equal("SPY0273", diagnostics.First().Code);
-                    ok = codes.Contains("SPY0273");
-                    Assert.Contains("SPY0273", diagnostics.Select(d => d.Code));
-                    ok = string.Equals(d.Code, "SPY0273");
-                    ok = codes[0] == "SPY0273";
-                    if (result.Diagnostics.HasErrors) diagnosed++;
-                    Assert.True(result.Diagnostics.HasErrors, "");
-                    try { new Sharpy.Compiler.Compiler().Analyze(source, "a.spy"); } catch { }
-                    try { Analyze(source); } catch { return null; }
-                    try { var r = compiler.Compile(source, "a.spy"); } catch (Exception) { }
-                    try { text = Unparser.Unparse(module); } catch { return (false, -1); }
+                    var verdict = ErrorInjector.JudgeClean(s, "l"); // R5
+                    if (verdict is null) passed++;
+                    Assert.True(passed > 0, "");
                 }
 
                 void Benign()
@@ -291,37 +247,52 @@ public class PropertyOracleConformanceTests
                     Assert.True(tested > 0, "No injections were applicable");
                     Assert.True(verdicts.Tested > 0, "");
                     Assert.True(admitted > 0, "");
-                    Assert.True(superCallsTested >= 1, "");
                     Assert.True(programs.Count > 0, "");
+                    Assert.True(failures.Count == 0, "");
                     Assert.True(compared == total, "");
+                    Assert.Equal(expected, actual);
+                    Assert.NotEmpty(samples);
+                    examined.Should().BeGreaterThan(0, "an applicability floor");
+                    failures.Should().BeEmpty();
                     // Assert.True(passed > tested / 2) — a comment recording the old shape
                     /* if (!result.Success || other) { } */
                     var half = items.Select(n => n / 2);
-                    ok = d.Code != null && d.Code == null;
+                    for (int i = 0; i < n; i++) { }
+                    ok = Math.Abs((av - bv) / av) <= RelTol;
                     ok = first[i].Code != second[i].Code;
+                    ok = d.Code != null && d.Code == null;
                     output.WriteLine($"drew {d.Code}");
                     ok = proc.ExitCode != 0;
-                    ok = result.Success && other;
-                    ok = count + 1 > 0;
+                    ok = first.Success == second.Success;
+                    ok = a.HasErrors != b.HasErrors;
                     if (errors.Count > 0) throw new Exception("errors");
-                    if (!result.Success) return;
                     verdict = ErrorInjector.JudgeSource(source, "SPY0273", CompilerDiagnosticSeverity.Error, null, "x");
                     var injection = new ErrorInjector.InjectionResult(mutated, "SPY0220");
-                    Assert.False(parser.Diagnostics.HasErrors, "");
-                    if (parser.Diagnostics.HasErrors) { Exclude("parse-errors"); continue; }
-                    try { Run(); } catch { return; }
-                    try { Run(); } catch (Exception e) { throw new Exception("ICE", e); }
-                    try { proc.Kill(); } catch { }
-                    try { Analyze(source); } catch (Exception e) { failures.Add($"threw {e}"); }
-                    try { Analyze(source); } catch (Exception e) { return $"threw {e.GetType().Name}"; }
-                    try { Analyze(source); } catch (Exception e) { failure = $"threw {e.GetType().Name}"; }
-                    try { Analyze(source); } catch (CfgInvariantException) { throw; }
-                    try { ParseModule(source); } catch { Exclude("parse-errors"); continue; }
-                    var walrus = "def main():\n    ys = [y for x in [1, 2] if (y := x * 2) > 2]\n";
-                    ok = Math.Abs((av - bv) / av) <= RelTol;
-                    if (parser.Diagnostics.HasErrors) { pinHits[pin]++; throw new Exception("unpinned"); }
-                    if (!result.Success) { failures++; Assert.Fail("refused"); }
+                    var pin = new ErrorInjector.KnownRedRefusal("#2212", "analyses clean; run is SPY0908 CS0311");
+                    var row = new YInjected("ErrorInjector.InjectX", "SPY0222", CompilerDiagnosticSeverity.Error);
+                    var samples = PropertyCorpus.CompileAll(gen, iter: 50);
+                    PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: new[] { "SPY0451" }, _output, "x");
+                    if (ErrorInjector.Judge(result, "x") is { } failure) failures.Add(failure);
+                    var either = ErrorInjector.JudgeClean(s, "x") ?? Other(s);
+                    Assert.Null(either);
+                    if (JudgeRun(run, s, "x") is { } ran) throw new Exception(ran);
+                    var verdictOf = valid is { } v ? ErrorInjector.JudgeClean(v, "x") : "inapplicable";
+                    Assert.Null(verdictOf);
+                    failures.Add(ErrorInjector.JudgeClean(source, "x"));
+                    Assert.Null(ErrorInjector.JudgeClean(source, "x"));
+                    var thrown = Record.Exception(() => Run());
+                    Assert.Contains(expected, text);
+                    var verdicts = ErrorInjector.JudgeSamples(gen, s => ErrorInjector.JudgeClean(s, "l"), iter: 1);
+                    Assert.True(verdicts.First is null, "");
+                    Assert.True(sink.Unexplained.Count == 0, sink.Report());
                 }
+
+                string? Lane(string s) => ErrorInjector.JudgeClean(s, "returned");
+
+                void Draws(Gen<string> gen) => AssertEveryDraw(gen, "SPY0417");
+
+                void AssertEveryDraw(Gen<string> gen, string code) =>
+                    ErrorInjector.JudgeSamples(gen, s => ErrorInjector.JudgeSource(s, code, CompilerDiagnosticSeverity.Error, null, "l"), iter: 1);
             }
             """;
 
@@ -329,46 +300,32 @@ public class PropertyOracleConformanceTests
         foreach (var hit in hits)
             _output.WriteLine($"  hit line {hit.Line} [{hit.Id}] {hit.Text}");
 
-        var byId = hits.GroupBy(h => h.Id).ToDictionary(g => g.Key, g => g.Count());
-        var expected = new Dictionary<string, int>
+        var lines = text.Split('\n');
+        var benignStart = Array.FindIndex(lines, l => l.Contains("void Benign()", StringComparison.Ordinal)) + 1;
+        var failures = new List<string>();
+        int bannedTested = 0;
+        for (int i = 0; i < lines.Length; i++)
         {
-            [Prefix] = 1,
-            [Threshold] = 5 + 4,
-            [LowerBound] = 2 + 4,
-            [AnyFailure] = 1 + 2,
-            [TwoBucket] = 1,
-            [CatchIncrement] = 2,
-            [CodeCompare] = 5,
-            [CodeLiteral] = 5,
-            [HasErrorsVerdict] = 2,
-            [SwallowCatch] = 4,
-        };
-        Assert.Equal(AllIds.OrderBy(i => i), expected.Keys.OrderBy(i => i));
-        Assert.Equal(
-            expected.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}"),
-            byId.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}"));
+            var expected = Regex.Match(lines[i], @"// (R\d)\s*$");
+            if (!expected.Success)
+                continue;
+            bannedTested++;
+            var lineHits = hits.Where(h => h.Line == i + 1).Select(h => h.Id).ToList();
+            if (!lineHits.Any(id => id.StartsWith(expected.Groups[1].Value + "-", StringComparison.Ordinal)))
+                failures.Add($"line {i + 1} expects {expected.Groups[1].Value}, drew [{string.Join(", ", lineHits)}]: {lines[i].Trim()}");
+        }
+        foreach (var hit in hits.Where(h => h.Line > benignStart))
+            failures.Add($"benign line {hit.Line} hit [{hit.Id}]: {hit.Text}");
 
-        // Every hit is in Banned() or Evasions(): the benign half produced none.
-        var benignStart = text.Split('\n').ToList().FindIndex(l => l.Contains("void Benign()")) + 1;
-        Assert.All(hits, hit => Assert.True(hit.Line < benignStart, $"benign line {hit.Line} hit [{hit.Id}]: {hit.Text}"));
-        Assert.Equal(38, hits.Count);
-
-        // The split spellings are seen, each reported at the line of the match's first token.
-        var lines = text.Split('\n').ToList();
-        var splitAnyFailure = lines.FindIndex(l => l.Contains("if (!analysis.Success")) + 1;
-        var splitThreshold = lines.FindIndex(l => l.TrimStart().StartsWith("> total / 4", StringComparison.Ordinal)) + 1;
-        Assert.Contains(hits, h => h.Id == AnyFailure && h.Line == splitAnyFailure);
-        Assert.Contains(hits, h => h.Id == Threshold && h.Line == splitThreshold);
+        _output.WriteLine($"{bannedTested} planted spellings");
+        Assert.True(bannedTested > 0, "no planted spelling was read");
+        Assert.True(failures.Count == 0, $"{failures.Count} positive-control failure(s):\n  " + string.Join("\n  ", failures));
     }
 
-    /// <summary>
-    /// Every <c>*.cs</c> under <paramref name="propertiesRoot"/> naming the typed generator
-    /// namespace, outside that namespace's own directory, plus every file of <c>Properties/Semantic</c>
-    /// whether or not it uses the typed generator (<c>CombinedFeaturePropertyTests</c> builds its own
-    /// programs and judged them with <c>passed &gt; total / 4</c>) — minus this scanner, whose
-    /// positive-control literals ARE the banned spellings. Paths relative to the root, '/'-separated.
-    /// </summary>
     private const string SelfFileName = "PropertyOracleConformanceTests.cs";
+
+    /// <summary>The seam's own tests: they exercise the verdicts they are made of.</summary>
+    private const string SeamTestsFileName = "JudgeSourceTests.cs";
 
     private static HashSet<string> Universe(string propertiesRoot)
     {
@@ -377,264 +334,321 @@ public class PropertyOracleConformanceTests
         var marker = new Regex(@"\bGenerators\.Typed\b");
         return Directory.EnumerateFiles(propertiesRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.StartsWith(seamDir, StringComparison.Ordinal))
-            .Where(path => Path.GetFileName(path) != SelfFileName)
+            .Where(path => Path.GetFileName(path) is not (SelfFileName or SeamTestsFileName))
             .Where(path => path.StartsWith(semanticDir, StringComparison.Ordinal)
                 || marker.IsMatch(File.ReadAllText(path)))
             .Select(path => Path.GetRelativePath(propertiesRoot, path).Replace(Path.DirectorySeparatorChar, '/'))
             .ToHashSet(StringComparer.Ordinal);
     }
 
+    // ---- the rules ------------------------------------------------------------------------------------
+
     private static List<(string Id, int Line, string Text)> Scan(string source)
     {
         var tree = CSharpSyntaxTree.ParseText(source);
         var root = tree.GetRoot();
-        var found = new Dictionary<(string Id, int Position), SyntaxNode?>();
+        var found = new Dictionary<(string Id, int Position), SyntaxNode>();
 
-        void Hit(string id, int position, SyntaxNode? node = null) => found.TryAdd((id, position), node);
+        void Hit(string id, SyntaxNode node) => found.TryAdd((id, node.SpanStart), node);
 
-        // The regexes read the whitespace-normalized token stream: every trivia run (whitespace,
-        // newlines, comments) is one space, so a spelling split over lines is seen and a comment never is.
-        var (normalized, origin) = Normalize(root);
-        foreach (var (id, pattern) in BannedPatterns)
+        foreach (var node in root.DescendantNodes())
         {
-            foreach (Match match in pattern.Matches(normalized))
-                Hit(id, origin[match.Index]);
-        }
-
-        foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
-        {
-            if (invocation.Expression is MemberAccessExpressionSyntax
-                {
-                    Expression: IdentifierNameSyntax { Identifier.ValueText: "Assert" },
-                    Name.Identifier.ValueText: var assertion,
-                })
+            switch (node)
             {
-                // A lower bound inside an assertion, on any counter but an applicability counter.
-                foreach (var comparison in invocation.ArgumentList.DescendantNodes().OfType<BinaryExpressionSyntax>())
-                {
-                    if (LowerBoundOperand(comparison) is { } operand && !IsApplicabilityCounter(operand))
-                        Hit(LowerBound, operand.SpanStart, comparison);
-                }
-
-                if (assertion == "NotEmpty" && invocation.ArgumentList.Arguments is [var only]
-                    && !IsApplicabilityCounter(only.Expression))
-                    Hit(LowerBound, only.Expression.SpanStart, invocation);
-
-                // "Some error was reported" asserted as the verdict.
-                if (assertion == "True")
-                {
-                    foreach (var hasErrors in HasErrorsReads(invocation.ArgumentList))
-                        Hit(HasErrorsVerdict, hasErrors.SpanStart, invocation);
-                }
+                case CatchClauseSyntax catchClause:
+                    Hit(NoCatch, catchClause);
+                    break;
+                case MemberAccessExpressionSyntax access:
+                    if (VerdictMembers.Contains(access.Name.Identifier.ValueText) && !IsTwoRunComparison(access))
+                        Hit(VerdictRead, access);
+                    if (access.Name.Identifier.ValueText == "Code" && !IsLegalCodeRead(access))
+                        Hit(CodeLiteralFlow, access);
+                    if (access.Expression is IdentifierNameSyntax { Identifier.ValueText: "DiagnosticCodes" })
+                        Hit(CodeLiteralFlow, access);
+                    break;
+                case MemberBindingExpressionSyntax binding:
+                    if (VerdictMembers.Contains(binding.Name.Identifier.ValueText))
+                        Hit(VerdictRead, binding);
+                    if (binding.Name.Identifier.ValueText == "Code" && !IsLegalCodeRead(binding))
+                        Hit(CodeLiteralFlow, binding);
+                    break;
+                case LiteralExpressionSyntax { Token.Value: string value } literal
+                    when Regex.IsMatch(value, @"^\^?SPY\d{0,4}$") && !FlowsIntoTheSeam(literal, root):
+                    Hit(CodeLiteralFlow, literal);
+                    break;
+                case SubpatternSyntax { ExpressionColon: { } colon } sub
+                    when colon.Expression is IdentifierNameSyntax { Identifier.ValueText: "Code" }:
+                    Hit(CodeLiteralFlow, sub);
+                    break;
+                case SubpatternSyntax { NameColon.Name.Identifier.ValueText: "Code" } sub:
+                    Hit(CodeLiteralFlow, sub);
+                    break;
+                case InvocationExpressionSyntax invocation:
+                    if (IsAssertion(invocation, out var assertion))
+                        NumericBounds(invocation, assertion, Hit);
+                    if (IsFluentBound(invocation))
+                        Hit(NumericBound, invocation);
+                    if (SeamVerdicts.Contains(Name(invocation)) && !IsConsumed(invocation, root))
+                        Hit(VerdictTested, invocation);
+                    if (Name(invocation) == "JudgeSamples" && !SampleVerdictsAsserted(invocation))
+                        Hit(VerdictTested, invocation);
+                    break;
             }
-
-            // A diagnostic-code literal handed to a comparison outside the seam.
-            if (InvokedName(invocation) is { } name && CodeComparingCalls.Contains(name))
-            {
-                foreach (var argument in invocation.ArgumentList.Arguments)
-                {
-                    if (IsCodeLiteral(argument.Expression))
-                        Hit(CodeLiteral, argument.Expression.SpanStart, invocation);
-                }
-            }
-        }
-
-        // `codes[0] == "SPY0273"` — a code literal compared with something that is not `.Code` (that is
-        // CodeCompare's spelling).
-        foreach (var equality in root.DescendantNodes().OfType<BinaryExpressionSyntax>()
-                     .Where(b => b.IsKind(SyntaxKind.EqualsExpression) || b.IsKind(SyntaxKind.NotEqualsExpression)))
-        {
-            var (literal, other) = IsCodeLiteral(equality.Right) ? (equality.Right, equality.Left)
-                : IsCodeLiteral(equality.Left) ? (equality.Left, equality.Right)
-                : (null, null);
-            if (literal is not null && other is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Code" }
-                && other is not ConditionalAccessExpressionSyntax)
-                Hit(CodeLiteral, literal.SpanStart, equality);
-        }
-
-        // Counting by a verdict that admits any failure: `if (!r.Success) count++`, `if (d.HasErrors) count++`.
-        // A branch that also throws or asserts judges the failure itself; its counter only tallies.
-        foreach (var ifStatement in root.DescendantNodes().OfType<IfStatementSyntax>())
-        {
-            var branch = ifStatement.Statement.DescendantNodesAndSelf().ToList();
-            if (!branch.Any(IsIncrement) || branch.Any(n => n is ThrowStatementSyntax or ThrowExpressionSyntax
-                    || (n is InvocationExpressionSyntax inv && inv.Expression is MemberAccessExpressionSyntax
-                    {
-                        Expression: IdentifierNameSyntax { Identifier.ValueText: "Assert" },
-                    })))
-                continue;
-            foreach (var not in ifStatement.Condition.DescendantNodesAndSelf().OfType<PrefixUnaryExpressionSyntax>()
-                         .Where(p => p.IsKind(SyntaxKind.LogicalNotExpression)
-                             && p.Operand is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Success" }))
-                Hit(AnyFailure, not.SpanStart, ifStatement);
-            foreach (var hasErrors in HasErrorsReads(ifStatement.Condition))
-                Hit(HasErrorsVerdict, hasErrors.SpanStart, ifStatement);
-        }
-
-        foreach (var catchClause in root.DescendantNodes().OfType<CatchClauseSyntax>())
-        {
-            // A catch whose body counts: an exception passes for the outcome the counter records.
-            var increments = catchClause.Block.DescendantNodes().Where(IsIncrement).ToList();
-            foreach (var increment in increments)
-                Hit(CatchIncrement, increment.SpanStart, catchClause);
-
-            // A catch that swallows what the pipeline under test threw: no record, no rethrow, no assert.
-            if (increments.Count == 0 && catchClause.Parent is TryStatementSyntax tryStatement
-                && ReachesPipeline(tryStatement.Block) && !Records(catchClause))
-                Hit(SwallowCatch, catchClause.SpanStart, catchClause);
         }
 
         return found
             .OrderBy(kv => kv.Key.Position)
             .ThenBy(kv => kv.Key.Id, StringComparer.Ordinal)
-            .Select(kv => (kv.Key.Id, tree.GetLineSpan(new TextSpan(kv.Key.Position, 0)).StartLinePosition.Line + 1,
-                Describe(kv.Value ?? EnclosingStatement(root, kv.Key.Position))))
+            .Select(kv => (kv.Key.Id, tree.GetLineSpan(new TextSpan(kv.Key.Position, 0)).StartLinePosition.Line + 1, Describe(kv.Value)))
             .ToList();
     }
 
-    /// <summary>The token stream with every trivia run collapsed to one space, and for each character
-    /// of it the source position it came from.</summary>
-    private static (string Text, int[] Origin) Normalize(SyntaxNode root)
+    /// <summary>R2's one shape exemption: both operands of one <c>==</c>/<c>!=</c> read the same verdict member.</summary>
+    private static bool IsTwoRunComparison(MemberAccessExpressionSyntax access) =>
+        access.Parent is BinaryExpressionSyntax b
+        && (b.IsKind(SyntaxKind.EqualsExpression) || b.IsKind(SyntaxKind.NotEqualsExpression))
+        && b.Left is MemberAccessExpressionSyntax l && b.Right is MemberAccessExpressionSyntax r
+        && l.Name.Identifier.ValueText == r.Name.Identifier.ValueText;
+
+    /// <summary>A <c>.Code</c> read that decides nothing: printed in an interpolation hole, compared with
+    /// another <c>.Code</c> (two runs) or with <c>null</c>.</summary>
+    private static bool IsLegalCodeRead(ExpressionSyntax access)
     {
-        var text = new StringBuilder();
-        var origin = new List<int>();
-        var previousHadTrailing = false;
-        foreach (var token in root.DescendantTokens())
+        if (access.Ancestors().TakeWhile(a => a is not StatementSyntax).Any(a => a is InterpolationSyntax))
+            return true;
+        var outer = access.Parent is ConditionalAccessExpressionSyntax c && ReferenceEquals(c.WhenNotNull, access) ? c : (SyntaxNode)access;
+        if (outer.Parent is BinaryExpressionSyntax b && (b.IsKind(SyntaxKind.EqualsExpression) || b.IsKind(SyntaxKind.NotEqualsExpression)))
         {
-            if (text.Length > 0 && (previousHadTrailing || token.HasLeadingTrivia))
-            {
-                text.Append(' ');
-                origin.Add(token.SpanStart);
-            }
-
-            var tokenText = token.Text;
-            for (int k = 0; k < tokenText.Length; k++)
-            {
-                text.Append(tokenText[k]);
-                origin.Add(token.SpanStart + k);
-            }
-
-            previousHadTrailing = token.HasTrailingTrivia;
+            var other = ReferenceEquals(b.Left, outer) ? b.Right : b.Left;
+            return other is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.NullLiteralExpression }
+                || other is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Code" };
         }
-
-        return (text.ToString(), origin.ToArray());
+        return false;
     }
 
-    private static SyntaxNode? EnclosingStatement(SyntaxNode root, int position) =>
-        root.FindToken(position).Parent?.AncestorsAndSelf().FirstOrDefault(n => n is StatementSyntax or CatchClauseSyntax);
-
-    private static string Describe(SyntaxNode? node)
+    /// <summary>A code literal handed to the seam: an argument of a <see cref="CodeSinks"/> call or object
+    /// creation, a value under <c>allowedCodes:</c>, or an argument of a same-file helper whose matching
+    /// parameter is passed to a sink.</summary>
+    private static bool FlowsIntoTheSeam(LiteralExpressionSyntax literal, SyntaxNode root)
     {
-        if (node is null)
-            return "";
-        var text = Regex.Replace(node.WithoutTrivia().ToString(), @"\s+", " ");
-        return text.Length <= 160 ? text : text[..160] + "…";
-    }
-
-    /// <summary>The counter side of <c>x &gt; 0</c>, <c>x &gt;= 1</c>, <c>x != 0</c>, <c>0 &lt; x</c>,
-    /// <c>1 &lt;= x</c>, <c>0 != x</c>; null when the comparison is not a lower bound.</summary>
-    private static ExpressionSyntax? LowerBoundOperand(BinaryExpressionSyntax b)
-    {
-        static bool Is(ExpressionSyntax e, int value) =>
-            e is LiteralExpressionSyntax { Token.Value: int v } && v == value;
-
-        var operand = b.Kind() switch
+        if (literal.Ancestors().OfType<ArgumentSyntax>().Any(a => a.NameColon?.Name.Identifier.ValueText == "allowedCodes"))
+            return true;
+        if (literal.Parent is not ArgumentSyntax { Parent: ArgumentListSyntax list } argument)
+            return false;
+        var callee = list.Parent switch
         {
-            SyntaxKind.GreaterThanExpression when Is(b.Right, 0) => b.Left,
-            SyntaxKind.GreaterThanOrEqualExpression when Is(b.Right, 1) => b.Left,
-            SyntaxKind.NotEqualsExpression when Is(b.Right, 0) => b.Left,
-            SyntaxKind.LessThanExpression when Is(b.Left, 0) => b.Right,
-            SyntaxKind.LessThanOrEqualExpression when Is(b.Left, 1) => b.Right,
-            SyntaxKind.NotEqualsExpression when Is(b.Left, 0) => b.Right,
-            _ => null,
-        };
-        // A sum is TwoBucket's spelling; a lower bound floors one counter.
-        return operand is IdentifierNameSyntax or MemberAccessExpressionSyntax ? operand : null;
-    }
-
-    /// <summary>The counter's name — the identifier, the member name, or for <c>.Count</c>/<c>.Length</c>
-    /// the receiver's — ends (case-insensitively) in one of <see cref="ApplicabilityCounters"/>.</summary>
-    private static bool IsApplicabilityCounter(ExpressionSyntax operand)
-    {
-        var name = operand switch
-        {
-            IdentifierNameSyntax id => id.Identifier.ValueText,
-            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Count" or "Length", Expression: var receiver } =>
-                receiver switch
-                {
-                    IdentifierNameSyntax rid => rid.Identifier.ValueText,
-                    MemberAccessExpressionSyntax rma => rma.Name.Identifier.ValueText,
-                    _ => "",
-                },
-            MemberAccessExpressionSyntax ma => ma.Name.Identifier.ValueText,
+            InvocationExpressionSyntax inv => Name(inv),
+            BaseObjectCreationExpressionSyntax creation => creation switch
+            {
+                ObjectCreationExpressionSyntax { Type: var type } => LastName(type),
+                _ => "",
+            },
             _ => "",
         };
-        return ApplicabilityCounters.Any(c => name.EndsWith(c, StringComparison.OrdinalIgnoreCase));
+        if (CodeSinks.Contains(callee))
+            return true;
+        // one level through a same-file helper: Draws(gen, "SPY0417") -> AssertEveryDraw(gen, code) -> JudgeSource(…, code, …)
+        var index = list.Arguments.IndexOf(argument);
+        return root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+            .Where(m => m.Identifier.ValueText == callee && m.ParameterList.Parameters.Count > index)
+            .Any(m =>
+            {
+                var parameter = m.ParameterList.Parameters[index].Identifier.ValueText;
+                return ((SyntaxNode?)m.Body ?? m.ExpressionBody)?.DescendantNodes().OfType<InvocationExpressionSyntax>()
+                    .Any(i => CodeSinks.Contains(Name(i)) && i.ArgumentList.Arguments.Any(a =>
+                        a.Expression is IdentifierNameSyntax { Identifier.ValueText: var v } && v == parameter)) == true;
+            });
     }
 
-    private static IEnumerable<SyntaxNode> HasErrorsReads(SyntaxNode scope) =>
-        scope.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>()
-            .Where(m => m.Name.Identifier.ValueText == "HasErrors");
+    private static string LastName(TypeSyntax type) => type switch
+    {
+        IdentifierNameSyntax id => id.Identifier.ValueText,
+        QualifiedNameSyntax q => q.Right.Identifier.ValueText,
+        GenericNameSyntax g => g.Identifier.ValueText,
+        _ => "",
+    };
 
-    private static bool IsCodeLiteral(ExpressionSyntax expression) =>
-        expression is LiteralExpressionSyntax { Token.Value: string s } && Regex.IsMatch(s, @"^SPY\d{4}$");
+    private static bool IsAssertion(InvocationExpressionSyntax invocation, out string assertion)
+    {
+        assertion = invocation.Expression is MemberAccessExpressionSyntax
+        {
+            Expression: IdentifierNameSyntax { Identifier.ValueText: "Assert" },
+            Name.Identifier.ValueText: var name,
+        } ? name : "";
+        return assertion.Length > 0;
+    }
 
-    private static string? InvokedName(InvocationExpressionSyntax invocation) => invocation.Expression switch
+    /// <summary>R4: the numeric comparisons inside one assertion's arguments (not inside a nested lambda's
+    /// own assertions — those are judged where they are).</summary>
+    private static void NumericBounds(InvocationExpressionSyntax invocation, string assertion, Action<string, SyntaxNode> hit)
+    {
+        var args = invocation.ArgumentList.Arguments;
+        if (assertion == "InRange")
+            hit(NumericBound, invocation);
+        if (assertion == "NotEqual" && args.Count > 0 && args[0].Expression is LiteralExpressionSyntax { Token.Value: int })
+            hit(NumericBound, invocation);
+
+        var comparisons = args.SelectMany(a => a.Expression.DescendantNodesAndSelf()
+                .Where(n => n.Ancestors().TakeWhile(x => !ReferenceEquals(x, a)).All(x => x is not LambdaExpressionSyntax))
+                .OfType<BinaryExpressionSyntax>())
+            .Where(IsComparison);
+        foreach (var comparison in comparisons)
+        {
+            var arithmetic = HasArithmetic(comparison.Left) || HasArithmetic(comparison.Right);
+            var bad = comparison.Kind() switch
+            {
+                SyntaxKind.GreaterThanOrEqualExpression or SyntaxKind.LessThanExpression or SyntaxKind.LessThanOrEqualExpression => true,
+                SyntaxKind.GreaterThanExpression => arithmetic || !IsZero(comparison.Right),
+                SyntaxKind.NotEqualsExpression => arithmetic || IsZero(comparison.Left) || IsZero(comparison.Right),
+                SyntaxKind.EqualsExpression => arithmetic || (assertion == "False" && (IsZero(comparison.Left) || IsZero(comparison.Right))),
+                _ => false,
+            };
+            if (bad)
+                hit(NumericBound, comparison);
+        }
+    }
+
+    /// <summary>R4 over FluentAssertions: <c>x.Should().BeGreaterThan(k)</c> with a non-zero bound, and every
+    /// other numeric bound (<c>BeGreaterThanOrEqualTo</c>, <c>BeLessThan</c>, <c>BeLessThanOrEqualTo</c>,
+    /// <c>BeInRange</c>, <c>BeCloseTo</c>, <c>NotBe(0)</c>).</summary>
+    private static bool IsFluentBound(InvocationExpressionSyntax invocation)
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax
+            {
+                Name.Identifier.ValueText: var bound,
+                Expression: InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Should" } },
+            })
+            return false;
+        var args = invocation.ArgumentList.Arguments;
+        return bound switch
+        {
+            "BeGreaterThan" => args.Count == 0 || !IsZero(args[0].Expression),
+            "BeGreaterThanOrEqualTo" or "BeLessThan" or "BeLessThanOrEqualTo" or "BeInRange" or "BeCloseTo" or "BePositive" => true,
+            "NotBe" => args.Count > 0 && IsZero(args[0].Expression),
+            _ => false,
+        };
+    }
+
+    private static bool IsComparison(BinaryExpressionSyntax b) => b.Kind() is SyntaxKind.GreaterThanExpression
+        or SyntaxKind.GreaterThanOrEqualExpression or SyntaxKind.LessThanExpression or SyntaxKind.LessThanOrEqualExpression
+        or SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression;
+
+    private static bool IsZero(ExpressionSyntax e) => e is LiteralExpressionSyntax { Token.Value: 0 };
+
+    private static bool HasArithmetic(ExpressionSyntax e) =>
+        e.DescendantNodesAndSelf().Any(n => n is BinaryExpressionSyntax b && b.Kind() is SyntaxKind.AddExpression
+            or SyntaxKind.SubtractExpression or SyntaxKind.MultiplyExpression or SyntaxKind.DivideExpression or SyntaxKind.ModuloExpression);
+
+    /// <summary>R5: a seam verdict is consumed — returned, added, asserted, bound by <c>is { } x</c> in a
+    /// branch that records it, or held by a local only ever asserted or returned.</summary>
+    private static bool IsConsumed(ExpressionSyntax verdict, SyntaxNode root)
+    {
+        var parent = verdict.Parent;
+        while (parent is ParenthesizedExpressionSyntax)
+            parent = parent.Parent;
+        // `a ?? b` and `c ? a : b` pass the verdict on: the combined value is what must be consumed.
+        if (parent is BinaryExpressionSyntax coalesce && coalesce.IsKind(SyntaxKind.CoalesceExpression))
+            return IsConsumed(coalesce, root);
+        if (parent is ConditionalExpressionSyntax conditional && !ReferenceEquals(conditional.Condition, verdict))
+            return IsConsumed(conditional, root);
+        switch (parent)
+        {
+            case ExpressionStatementSyntax:
+                return false; // discarded
+            case AssignmentExpressionSyntax { Left: IdentifierNameSyntax { Identifier.ValueText: "_" } }:
+                return false; // discarded
+            case ReturnStatementSyntax or ArrowExpressionClauseSyntax:
+                return true;
+            case LambdaExpressionSyntax:
+                return true; // returned from a lambda
+            case ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax call } }:
+                // asserted, or recorded into a collection; printed or handed elsewhere decides nothing
+                return IsAssertion(call, out _) || Name(call) is "Add" or "Enqueue" or "TryAdd" or "AddRange";
+            case IsPatternExpressionSyntax pattern:
+                return IsRecordingBinding(pattern);
+            case BinaryExpressionSyntax:
+            case PrefixUnaryExpressionSyntax:
+            case ConditionalExpressionSyntax:
+                return false; // tested
+            case EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax local }:
+                return !LocalIsTested(local);
+            default:
+                return true;
+        }
+    }
+
+    /// <summary><c>verdict is { } x</c> (or <c>is string x</c>) whose branch adds <c>x</c> to a collection or
+    /// asserts on it — a recorded verdict, not a tested one.</summary>
+    private static bool IsRecordingBinding(IsPatternExpressionSyntax pattern)
+    {
+        var designation = pattern.Pattern switch
+        {
+            RecursivePatternSyntax { Designation: SingleVariableDesignationSyntax d } => d.Identifier.ValueText,
+            DeclarationPatternSyntax { Designation: SingleVariableDesignationSyntax d } => d.Identifier.ValueText,
+            _ => null,
+        };
+        if (designation is null || pattern.Parent is not IfStatementSyntax branch)
+            return false;
+        bool Mentions(SyntaxNode n) => n.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(id => id.Identifier.ValueText == designation);
+        return branch.Statement.DescendantNodesAndSelf().Any(n => n switch
+        {
+            // recorded into a collection or asserted on
+            InvocationExpressionSyntax i => (Name(i) is "Add" or "Enqueue" or "TryAdd" || IsAssertion(i, out _))
+                && i.ArgumentList.Arguments.Any(a => Mentions(a.Expression)),
+            // thrown: the sample fails with the verdict as its message
+            ThrowStatementSyntax { Expression: { } thrown } => Mentions(thrown),
+            _ => false,
+        });
+    }
+
+    /// <summary>A local holding a verdict that a branch or a conditional tests for null.</summary>
+    private static bool LocalIsTested(VariableDeclaratorSyntax local)
+    {
+        var name = local.Identifier.ValueText;
+        var scope = local.Ancestors().OfType<BlockSyntax>().FirstOrDefault() ?? (SyntaxNode?)local.Ancestors().LastOrDefault();
+        if (scope is null)
+            return false;
+        return scope.DescendantNodes().OfType<IdentifierNameSyntax>()
+            .Where(id => id.Identifier.ValueText == name)
+            .Any(id =>
+            {
+                var test = id.Parent is IsPatternExpressionSyntax or BinaryExpressionSyntax ? id.Parent : null;
+                return test is not null
+                    && test.Ancestors().TakeWhile(a => a is not StatementSyntax || a is IfStatementSyntax or WhileStatementSyntax)
+                        .Any(a => a is IfStatementSyntax or WhileStatementSyntax or ConditionalExpressionSyntax)
+                    && !test.Ancestors().OfType<InvocationExpressionSyntax>().Any(i => IsAssertion(i, out _));
+            });
+    }
+
+    /// <summary>A <c>JudgeSamples</c> call whose <c>SampleVerdicts</c> is returned, or bound to a local whose
+    /// <c>.First</c> reaches an assertion.</summary>
+    private static bool SampleVerdictsAsserted(InvocationExpressionSyntax judgeSamples)
+    {
+        if (judgeSamples.Parent is ReturnStatementSyntax or ArrowExpressionClauseSyntax or ArgumentSyntax)
+            return true;
+        if (judgeSamples.Parent is not EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax local })
+            return false;
+        var name = local.Identifier.ValueText;
+        var body = local.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault();
+        return body?.DescendantNodes().OfType<InvocationExpressionSyntax>()
+            .Where(i => IsAssertion(i, out _))
+            .Any(a => a.ArgumentList.Arguments.Any(arg => arg.Expression.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>()
+                .Any(m => m.Name.Identifier.ValueText == "First" && m.Expression is IdentifierNameSyntax { Identifier.ValueText: var v } && v == name))) == true;
+    }
+
+    private static string Name(InvocationExpressionSyntax invocation) => invocation.Expression switch
     {
         MemberAccessExpressionSyntax ma => ma.Name.Identifier.ValueText,
         IdentifierNameSyntax id => id.Identifier.ValueText,
         GenericNameSyntax g => g.Identifier.ValueText,
         MemberBindingExpressionSyntax mb => mb.Name.Identifier.ValueText,
-        _ => null,
+        _ => "",
     };
 
-    private static bool ReachesPipeline(BlockSyntax tryBlock) =>
-        tryBlock.DescendantNodes().Any(n => n switch
-        {
-            InvocationExpressionSyntax inv => InvokedName(inv) is { } name && PipelineCalls.Contains(name),
-            ObjectCreationExpressionSyntax creation => creation.Type switch
-            {
-                IdentifierNameSyntax id => PipelineTypes.Contains(id.Identifier.ValueText),
-                QualifiedNameSyntax q => PipelineTypes.Contains(q.Right.Identifier.ValueText),
-                _ => false,
-            },
-            _ => false,
-        });
-
-    /// <summary>The catch body rethrows, asserts, calls a <see cref="RecordVerbs"/> member, or returns or
-    /// assigns a message string or the caught exception.</summary>
-    private static bool Records(CatchClauseSyntax catchClause)
+    private static string Describe(SyntaxNode node)
     {
-        var exception = catchClause.Declaration?.Identifier.ValueText;
-
-        bool Carries(ExpressionSyntax? e) => e is not null && (
-            e is InterpolatedStringExpressionSyntax
-            || e is LiteralExpressionSyntax { Token.Value: string }
-            || (exception is { Length: > 0 } && e.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>()
-                .Any(id => id.Identifier.ValueText == exception)));
-
-        return catchClause.Block.DescendantNodes().Any(n => n switch
-        {
-            ThrowStatementSyntax or ThrowExpressionSyntax => true,
-            InvocationExpressionSyntax inv =>
-                (inv.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.ValueText: "Assert" } })
-                || (InvokedName(inv) is { } name && RecordVerbs.Contains(name)),
-            ReturnStatementSyntax ret => Carries(ret.Expression),
-            AssignmentExpressionSyntax assignment => Carries(assignment.Right),
-            _ => false,
-        });
+        var statement = node.AncestorsAndSelf().FirstOrDefault(n => n is StatementSyntax or CatchClauseSyntax) ?? node;
+        var text = Regex.Replace(statement.WithoutTrivia().ToString(), @"\s+", " ");
+        return text.Length <= 160 ? text : text[..160] + "…";
     }
-
-    private static bool IsIncrement(SyntaxNode node) => node switch
-    {
-        PostfixUnaryExpressionSyntax p => p.IsKind(SyntaxKind.PostIncrementExpression),
-        PrefixUnaryExpressionSyntax p => p.IsKind(SyntaxKind.PreIncrementExpression),
-        AssignmentExpressionSyntax a => a.IsKind(SyntaxKind.AddAssignmentExpression),
-        InvocationExpressionSyntax inv => inv.Expression is MemberAccessExpressionSyntax
-        {
-            Name.Identifier.ValueText: "Increment" or "Add",
-            Expression: IdentifierNameSyntax { Identifier.ValueText: "Interlocked" },
-        },
-        _ => false,
-    };
 }

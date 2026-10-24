@@ -134,14 +134,8 @@ public class MutationSitesTests
                 foreach (var site in MutationSites.Enumerate(module))
                 {
                     sitesTested++;
-                    try
-                    {
-                        AstRewriter.Replace(module, site.Target, site.Target with { });
-                    }
-                    catch (AstRewriter.UnreachableNodeException e)
-                    {
-                        failures.Add($"{baseLabel} {site.Position}/{site.Family} ({site.Describe}): {e.Message}");
-                    }
+                    if (Record.Exception(() => AstRewriter.Replace(module, site.Target, site.Target with { })) is { } unreachable)
+                        failures.Add($"{baseLabel} {site.Position}/{site.Family} ({site.Describe}): {unreachable.Message}");
                 }
             }
         }

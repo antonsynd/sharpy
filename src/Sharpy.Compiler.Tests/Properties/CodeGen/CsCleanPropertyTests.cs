@@ -61,19 +61,16 @@ public class CsCleanPropertyTests
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Compile(source, "cs_clean_test.spy");
+            var result = PropertyAnalysis.CompileJudged(source, out var refusal);
 
             // WellTypedProgram gates on Analyze(); this calls Compile(). The gap between them is
             // codegen — so a sample landing here is a program semantic analysis ACCEPTED and
             // compilation then rejected, which is a defect of the same family this test hunts
             // (#1432's sibling). Each arm is its own recorded failure, asserted below — never a
             // skipped sample (#2288).
-            if (!result.Success)
+            if (refusal is { } failure)
             {
-                var first = result.Diagnostics.GetErrors().FirstOrDefault();
-                analyzedButNotCompiled.Add(
-                    $"{(first is null ? "(no error diagnostic)" : $"{first.Code}: {first.Message}")}\n{source}");
+                analyzedButNotCompiled.Add(failure);
                 return;
             }
 
@@ -108,7 +105,7 @@ public class CsCleanPropertyTests
                     $"=== Generated C# ===\n{result.GeneratedCSharpCode}\n" +
                     $"=== CS diagnostics ===\n  {detail}");
             }
-        }, print: SafeUnparse, iter: 100);
+        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
 
         _output.WriteLine(sink.Summary);
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
@@ -117,7 +114,8 @@ public class CsCleanPropertyTests
 
         // Same floor, same reason as ILCompilesPropertyTests: with every sample skipped, "no CS
         // leaks found" and "nothing was looked at" are indistinguishable greens (#1432).
-        examined.Should().BeGreaterThanOrEqualTo(MinimumExaminedSamples,
+        // The oracle scan admits only a > 0 floor (#2324, P63b R4); it was >= 10, a threshold in disguise.
+        examined.Should().BeGreaterThan(0,
             "a skipped sample witnesses nothing; this suite is one of the two the leak corpus "
             + "leans on, so an empty corpus must fail rather than pass");
 
@@ -126,22 +124,5 @@ public class CsCleanPropertyTests
             + "between the two is code generation");
     }
 
-    /// <summary>
-    /// Minimum number of semantic-clean programs that must actually reach Roslyn emit. Set well
-    /// below the observed rate: the generator is random, so a floor next to the measured value
-    /// would flake, while any collapse toward the vacuous 0 fails loudly.
-    /// </summary>
-    private const int MinimumExaminedSamples = 10;
 
-    private static string SafeUnparse(Sharpy.Compiler.Parser.Ast.Module m)
-    {
-        try
-        {
-            return Sharpy.Compiler.Pretty.Unparser.Unparse(m);
-        }
-        catch (Exception ex)
-        {
-            return $"<unparse failed: {ex.GetType().Name}: {ex.Message}>";
-        }
-    }
 }

@@ -53,10 +53,8 @@ public class BuiltinShadowingPropertyTests : IntegrationTestBase
 
                 ExecutionResult result = CompileAndExecute(source);
 
-                if (!result.Success)
-                    throw new Exception(
-                        $"User generic '{name}[{c.Type}]' shadowing a builtin failed to compile " +
-                        $"(builtin-shadow regression): {result.StandardError}");
+                if (JudgeRun(result, source, $"User generic '{name}[{c.Type}]' shadowing a builtin (builtin-shadow regression)") is { } failure)
+                    throw new Exception(failure);
 
                 var actual = result.StandardOutput.TrimEnd();
                 if (actual != c.Expected)

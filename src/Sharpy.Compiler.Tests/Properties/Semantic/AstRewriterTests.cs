@@ -50,23 +50,19 @@ public class AstRewriterTests
             var tested = new HashSet<Type>();
             foreach (var source in RawSources(generator))
             {
-                Module parsed;
-                try
+                Module? parsed = null;
+                if (Record.Exception(() => parsed = AstRewriter.Parse(source)) is { } refused)
                 {
-                    parsed = AstRewriter.Parse(source);
-                }
-                catch (InvalidOperationException e)
-                {
-                    unparsed.Add($"{label}: {e.Message}");
+                    unparsed.Add($"{label}: {refused.Message}");
                     continue;
                 }
 
-                foreach (var node in AstRewriter.Descendants(parsed).Skip(1))
+                foreach (var node in AstRewriter.Descendants(parsed!).Skip(1))
                 {
                     if (!tested.Add(node.GetType()))
                         continue;
                     kindsTested[node.GetType().Name] = kindsTested.GetValueOrDefault(node.GetType().Name) + 1;
-                    if (Reparent(parsed, node) is { } failure)
+                    if (Reparent(parsed!, node) is { } failure)
                         failures.Add($"{label}: {failure}\n{source}");
                 }
             }
@@ -88,15 +84,11 @@ public class AstRewriterTests
     private static string? Reparent(Module root, Node node)
     {
         var copy = node with { };
-        Module rebuilt;
-        try
-        {
-            rebuilt = AstRewriter.Replace(root, node, copy);
-        }
-        catch (AstRewriter.UnreachableNodeException e)
-        {
-            return $"{node.GetType().Name}: {e.Message}";
-        }
+        Module? rebuilt = null;
+        if (Record.Exception(() => rebuilt = AstRewriter.Replace(root, node, copy)) is { } unreachable)
+            return $"{node.GetType().Name}: {unreachable.Message}";
+        if (rebuilt is null)
+            return $"{node.GetType().Name}: the rewriter returned no module";
         var reachable = AstRewriter.Descendants(rebuilt).ToList();
         if (!reachable.Any(n => ReferenceEquals(n, copy)))
             return $"{node.GetType().Name}: the copy is not in the rebuilt module";

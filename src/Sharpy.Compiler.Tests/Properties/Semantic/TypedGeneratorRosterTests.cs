@@ -72,8 +72,8 @@ public class TypedGeneratorRosterTests
     /// construct the member draws too rarely for 40 samples to hold a margin.</summary>
     public sealed record Y(string Member, Func<object> Generator, Func<Node, bool> Predicate, int Samples = RawSamples) : Lane;
 
-    /// <summary>Injected: <paramref name="Member"/> breaks the construct and the program draws exactly <paramref name="Code"/>.</summary>
-    public sealed record YInjected(string Member, string Code, CompilerDiagnosticSeverity Severity) : Lane;
+    /// <summary>Injected: <paramref name="Member"/> breaks the construct and the program draws exactly <paramref name="ExpectedCode"/>.</summary>
+    public sealed record YInjected(string Member, string ExpectedCode, CompilerDiagnosticSeverity Severity) : Lane;
 
     /// <summary>N or pinned: the lane is not proven today and <paramref name="Issue"/> owns it.</summary>
     public sealed record KnownRedRow(string Issue, string Observed) : Lane;
@@ -1028,8 +1028,9 @@ public class TypedGeneratorRosterTests
             .Select(f => f!)
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
-        Assert.True(files.Count >= 100,
-            $"Only {files.Count} spec files under {SpecDir} — a degraded path would make the roster pass vacuously");
+        // An exact anchor, bumped with the spec file that moves it: a degraded path reads fewer files, a
+        // new file needs its row (the oracle scan admits no threshold — #2324, P63b R4; it was >= 100).
+        Assert.Equal(ExpectedSpecFiles, files.Count);
         return files;
     }
 
@@ -1156,8 +1157,8 @@ public class TypedGeneratorRosterTests
                     break;
                 case YInjected yi:
                     CheckMember(row, laneName, yi.Member);
-                    if (!DiagnosticCode.IsMatch(yi.Code))
-                        problems.Add($"{row.File} '{row.Construct}': '{yi.Code}' is not a literal SPY code");
+                    if (!DiagnosticCode.IsMatch(yi.ExpectedCode))
+                        problems.Add($"{row.File} '{row.Construct}': '{yi.ExpectedCode}' is not a literal SPY code");
                     if (laneName != "Injected")
                         problems.Add($"{row.File} '{row.Construct}': a YInjected lane belongs in Injected");
                     break;
@@ -1240,19 +1241,12 @@ public class TypedGeneratorRosterTests
             if (row.Generated is not Y y)
                 continue;
             rowsChecked++;
-            List<Module> corpus;
-            try
+            // The seam's raw-corpus runner reports a throw (generator, unparser, parser) or an unpinned
+            // parse error as a failure message; it never throws (#2324: no catch outside the seam).
+            var (corpus, failure) = RawCorpus.Draw(y.Generator(), y.Samples, RawSeed, pinHits, corpusHash);
+            if (failure is not null)
             {
-                corpus = RawCorpus(y.Generator(), y.Samples, pinHits, corpusHash);
-            }
-            catch (RawSampleException e)
-            {
-                failures.Add($"{row.File} '{row.Construct}' ({y.Member}): {e.Message}");
-                continue;
-            }
-            catch (Exception e)
-            {
-                failures.Add($"{row.File} '{row.Construct}' ({y.Member}): generator threw {Unwrap(e)}");
+                failures.Add($"{row.File} '{row.Construct}' ({y.Member}): {failure}");
                 continue;
             }
 
@@ -1293,124 +1287,6 @@ public class TypedGeneratorRosterTests
         Assert.True(result.RowsTested > 0, "no Y-generated row was checked — the control is vacuous");
         Assert.True(result.Failures.Count == 0,
             $"{result.Failures.Count} Y-generated row(s) fail the raw control:\n  " + string.Join("\n  ", result.Failures));
-    }
-
-    private sealed class RawSampleException(string message) : Exception(message);
-
-    private static string Unwrap(Exception e) =>
-        e is TargetInvocationException { InnerException: { } inner } ? Unwrap(inner) : $"{e.GetType().Name}: {e.Message}";
-
-    /// <summary>Draws <see cref="RawSamples"/> values from a boxed <c>Gen&lt;T&gt;</c> and re-parses every
-    /// <see cref="Node"/> / <c>string</c> it carries (a tuple's items each).</summary>
-    private static List<Module> RawCorpus(object gen, int count, Dictionary<KnownGeneratorPins.ParsePin, int> pinHits,
-        System.Security.Cryptography.IncrementalHash corpusHash)
-    {
-        var elementType = GenElementType(gen.GetType())
-            ?? throw new RawSampleException($"generator is {gen.GetType().Name}, not a CsCheck Gen<T>");
-        var draw = typeof(TypedGeneratorRosterTests)
-            .GetMethod(nameof(Draw), BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(elementType);
-        var samples = (List<object>)draw.Invoke(null, new object[] { gen, count })!;
-
-        var modules = new List<Module>();
-        foreach (var sample in samples)
-        {
-            foreach (var (source, origin) in SourcesOf(sample))
-            {
-                corpusHash.AppendData(System.Text.Encoding.UTF8.GetBytes(source + "\u0000"));
-                if (Reparse(source, origin, pinHits) is { } module)
-                    modules.Add(module);
-            }
-        }
-        return modules;
-    }
-
-    private static Type? GenElementType(Type? type)
-    {
-        for (var t = type; t != null; t = t.BaseType)
-        {
-            if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Gen<>))
-                return t.GetGenericArguments()[0];
-        }
-        return null;
-    }
-
-    private static List<object> Draw<T>(Gen<T> gen, int count)
-    {
-        var pcg = new PCG(1u, RawSeed);
-        var samples = new List<object>(count);
-        for (int i = 0; i < count; i++)
-            samples.Add(gen.Generate(pcg, null, out _)!);
-        return samples;
-    }
-
-    /// <summary>The source texts a sample carries, each with the AST it was unparsed from (null for a
-    /// source-text generator).</summary>
-    private static IEnumerable<(string Source, Node? Origin)> SourcesOf(object sample)
-    {
-        switch (sample)
-        {
-            case string s:
-                yield return (s, null);
-                break;
-            case Node node:
-                string text;
-                try
-                {
-                    text = node is Module m
-                        ? Sharpy.Compiler.Pretty.Unparser.Unparse(m)
-                        : Sharpy.Compiler.Pretty.Unparser.Unparse(node);
-                }
-                catch (Exception e)
-                {
-                    throw new RawSampleException($"Unparser threw {Unwrap(e)} on a {node.GetType().Name}");
-                }
-                yield return (text, node);
-                break;
-            case System.Runtime.CompilerServices.ITuple tuple:
-                for (int i = 0; i < tuple.Length; i++)
-                {
-                    if (tuple[i] is string or Node)
-                    {
-                        foreach (var item in SourcesOf(tuple[i]!))
-                            yield return item;
-                    }
-                }
-                break;
-            default:
-                throw new RawSampleException($"sample of type {sample.GetType().Name} carries no Node or source text");
-        }
-    }
-
-    private static Module? Reparse(string source, Node? origin, Dictionary<KnownGeneratorPins.ParsePin, int> pinHits)
-    {
-        try
-        {
-            var parser = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
-            var module = parser.ParseModule();
-            if (parser.Diagnostics.HasErrors)
-            {
-                var errors = parser.Diagnostics.GetErrors().ToList();
-                var pin = origin == null ? null : KnownGeneratorPins.Match(origin, errors);
-                if (pin != null)
-                {
-                    pinHits[pin]++;
-                    return null;
-                }
-                throw new RawSampleException("the generated source does not parse ("
-                    + string.Join("; ", errors.Select(d => $"{d.Code}: {d.Message}"))
-                    + "):\n" + source);
-            }
-            return module;
-        }
-        catch (RawSampleException)
-        {
-            throw;
-        }
-        catch (Exception e)
-        {
-            throw new RawSampleException($"the parser threw {Unwrap(e)} on:\n{source}");
-        }
     }
 
     // ---- Roster ↔ property links (#2288 verify F3) ------------------------------------------------
@@ -1503,8 +1379,8 @@ public class TypedGeneratorRosterTests
                 var codes = bodies.SelectMany(m => m.Literals).Where(l => DiagnosticCode.IsMatch(l)).Distinct().ToList();
                 if (bodies.Count == 0)
                     problems.Add($"{yi.Member}: no such method in {InjectorFilePrefix}*.cs");
-                else if (codes is not [var only] || only != yi.Code)
-                    problems.Add($"{yi.Member}: the roster says {yi.Code}, the injector's body draws [{string.Join(", ", codes)}]");
+                else if (codes is not [var only] || only != yi.ExpectedCode)
+                    problems.Add($"{yi.Member}: the roster says {yi.ExpectedCode}, the injector's body draws [{string.Join(", ", codes)}]");
                 var warns = bodies.Any(m => m.References.Contains("CompilerDiagnosticSeverity.Warning"));
                 if (warns != (yi.Severity == CompilerDiagnosticSeverity.Warning))
                     problems.Add($"{yi.Member}: the roster says {yi.Severity}, the injector {(warns ? "names" : "does not name")} a Warning severity");
@@ -1517,16 +1393,16 @@ public class TypedGeneratorRosterTests
             }
 
             var backing = index.Methods
-                .Where(m => m.References.Contains(yi.Member) && m.Literals.Contains(yi.Code))
+                .Where(m => m.References.Contains(yi.Member) && m.Literals.Contains(yi.ExpectedCode))
                 .Where(m => index.Closure(m).Any(c => c.References.Contains(severity)))
                 .Where(m => index.ClosureInvocationNodes(m).Any(i => RefusalVerdicts.Contains(PropertySourceIndex.InvokedName(i))
                     && index.IsConsumed(m, i)))
                 .ToList();
             if (backing.Count == 0)
-                problems.Add($"{yi.Member} ({yi.Code}, {yi.Severity}): no property method names the member and \"{yi.Code}\" "
+                problems.Add($"{yi.Member} ({yi.ExpectedCode}, {yi.Severity}): no property method names the member and \"{yi.ExpectedCode}\" "
                     + $"in one body and reaches the refusal seam at {severity} with its verdict consumed (asserted, never discarded)");
             else
-                _output.WriteLine($"  {yi.Member} {yi.Code} {yi.Severity} <- {string.Join(", ", backing)}");
+                _output.WriteLine($"  {yi.Member} {yi.ExpectedCode} {yi.Severity} <- {string.Join(", ", backing)}");
         }
 
         Assert.Equal(ExpectedYInjected, checkedRows);
@@ -1622,12 +1498,12 @@ public class TypedGeneratorRosterTests
     /// in a file the generator does emit. The type name carries <c>KnownRed</c> and the cite is the first
     /// argument, so <c>build_tools/allowlist_issue_state.py</c>'s <c>KNOWNRED_CELL_RE</c> reads every row
     /// (a closed cite is red at <c>/push</c>).</summary>
-    public sealed record KnownRedSpecCode(string Issue, string File, string Code);
+    public sealed record KnownRedSpecCode(string Issue, string File, string ExpectedCode);
 
     /// <summary>A code a spec file names only as a cross-reference to <paramref name="ReferencedFile"/>'s
     /// construct; that file must itself name the code AND claim it by a row — the exemption is never its own
     /// subject.</summary>
-    public sealed record ProseCrossReference(string File, string Code, string ReferencedFile);
+    public sealed record ProseCrossReference(string File, string ExpectedCode, string ReferencedFile);
 
     /// <summary>Seeded @ the P63b spec-code commit from the spec text and the roster: every (file, code) pair
     /// with no claiming row. A ratchet — a row whose pair a roster row now claims, or whose file no longer
@@ -1930,7 +1806,7 @@ public class TypedGeneratorRosterTests
             .SelectMany(r => new[] { r.Generated, r.Injected })
             .SelectMany(l => l switch
             {
-                YInjected yi => new[] { yi.Code },
+                YInjected yi => new[] { yi.ExpectedCode },
                 KnownRedRow kr => SpecCode.Matches(kr.Observed).Select(m => m.Value).ToArray(),
                 _ => Array.Empty<string>(),
             })
@@ -1950,8 +1826,8 @@ public class TypedGeneratorRosterTests
         var named = universe.ToDictionary(f => f,
             f => SpecCode.Matches(File.ReadAllText(Path.Combine(SpecDir, f))).Select(m => m.Value).ToHashSet(StringComparer.Ordinal),
             StringComparer.Ordinal);
-        var cited = UnclaimedSpecCodes.ToLookup(r => (r.File, r.Code));
-        var prose = ProseCrossReferences.ToLookup(r => (r.File, r.Code));
+        var cited = UnclaimedSpecCodes.ToLookup(r => (r.File, r.ExpectedCode));
+        var prose = ProseCrossReferences.ToLookup(r => (r.File, r.ExpectedCode));
         var problems = new List<string>();
         int pairsTested = 0, claimed = 0;
 
@@ -1974,19 +1850,19 @@ public class TypedGeneratorRosterTests
         foreach (var row in UnclaimedSpecCodes)
         {
             if (!IssueCite.IsMatch(row.Issue))
-                problems.Add($"UnclaimedSpecCodes ({row.File}, {row.Code}): cite '{row.Issue}' is not #N");
-            if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.Code))
-                problems.Add($"UnclaimedSpecCodes ({row.File}, {row.Code}): the file does not name the code — stale row");
+                problems.Add($"UnclaimedSpecCodes ({row.File}, {row.ExpectedCode}): cite '{row.Issue}' is not #N");
+            if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.ExpectedCode))
+                problems.Add($"UnclaimedSpecCodes ({row.File}, {row.ExpectedCode}): the file does not name the code — stale row");
         }
-        foreach (var dup in UnclaimedSpecCodes.GroupBy(r => (r.File, r.Code)).Where(g => g.Count() > 1))
-            problems.Add($"UnclaimedSpecCodes ({dup.Key.File}, {dup.Key.Code}): {dup.Count()} rows");
+        foreach (var dup in UnclaimedSpecCodes.GroupBy(r => (r.File, r.ExpectedCode)).Where(g => g.Count() > 1))
+            problems.Add($"UnclaimedSpecCodes ({dup.Key.File}, {dup.Key.ExpectedCode}): {dup.Count()} rows");
         foreach (var row in ProseCrossReferences)
         {
-            if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.Code))
-                problems.Add($"ProseCrossReference ({row.File}, {row.Code}): the file does not name the code");
-            if (!named.TryGetValue(row.ReferencedFile, out var referenced) || !referenced.Contains(row.Code)
-                || !ClaimedCodes(row.ReferencedFile).Contains(row.Code))
-                problems.Add($"ProseCrossReference ({row.File}, {row.Code}) -> {row.ReferencedFile}: that file must name the code and claim it by a row");
+            if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.ExpectedCode))
+                problems.Add($"ProseCrossReference ({row.File}, {row.ExpectedCode}): the file does not name the code");
+            if (!named.TryGetValue(row.ReferencedFile, out var referenced) || !referenced.Contains(row.ExpectedCode)
+                || !ClaimedCodes(row.ReferencedFile).Contains(row.ExpectedCode))
+                problems.Add($"ProseCrossReference ({row.File}, {row.ExpectedCode}) -> {row.ReferencedFile}: that file must name the code and claim it by a row");
         }
 
         _output.WriteLine($"spec codes: {named.Count(n => n.Value.Count > 0)} files name codes; {pairsTested} (file, code) pairs; "
@@ -2001,6 +1877,7 @@ public class TypedGeneratorRosterTests
     // Counted at landing and bumped in the same commit as the row that moves them. N = lanes citing the
     // generator tracker (#2287 P62; #2324's 62 rows drained by P63b, 2026-10-24); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
+    private const int ExpectedSpecFiles = 125;
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 103;
     private const int ExpectedYInjected = 89;

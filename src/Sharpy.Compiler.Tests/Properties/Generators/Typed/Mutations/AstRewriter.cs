@@ -82,6 +82,15 @@ internal static class AstRewriter
         }
     }
 
+    /// <summary>Parses <paramref name="source"/>; null when it has a parse error (a parser THROW propagates —
+    /// it is a defect, not a refusal).</summary>
+    public static Module? ParseOrNull(string source)
+    {
+        var parser = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
+        var module = parser.ParseModule();
+        return parser.Diagnostics.HasErrors ? null : module;
+    }
+
     /// <summary>Every node's nearest node ancestor (by reference), through <see cref="Descendants"/>' walk.</summary>
     public static Dictionary<Node, Node> Parents(Node root)
     {

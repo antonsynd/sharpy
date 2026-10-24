@@ -176,6 +176,28 @@ internal static partial class ErrorInjector
     }
 
     /// <summary>
+    /// The diagnostic-free verdict (#2324, P63b): null when <paramref name="source"/> analyses successfully with
+    /// no error AND no warning, otherwise why not — the variance lanes' acceptance (a warning there is a finding).
+    /// </summary>
+    public static string? JudgeNoDiagnostic(string source, string label)
+    {
+        try
+        {
+            var (success, all) = AnalyseSingleFile(source);
+            var drawn = all.Where(d => d.IsError || d.IsWarning)
+                .Select(d => $"{(d.IsError ? "error" : "warning")} {d.Code}: {d.Message}")
+                .ToList();
+            return success && drawn.Count == 0
+                ? null
+                : $"{label} sample must analyse with no diagnostic, drew [{string.Join("; ", drawn)}]:\n{source}";
+        }
+        catch (Exception e)
+        {
+            return $"{label} sample threw {e.GetType().Name}:\n{source}\n{e}";
+        }
+    }
+
+    /// <summary>
     /// The no-crash verdict for a RAW sample — the one a <c>*NeverThrows*</c> lane reads (#2288):
     /// null when analysing <paramref name="source"/> neither throws nor records an internal compiler
     /// error (SPY0909, the code the compiler's last-chance handlers turn an escaped exception into),

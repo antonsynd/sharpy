@@ -81,13 +81,8 @@ public class GenericTypePropertyTests : IntegrationTestBase
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                var result = new Sharpy.Compiler.Compiler().Compile(source, "generic_test.spy");
-                if (!result.Success)
-                {
-                    throw new Exception("A generic program that analyses clean does not compile: "
-                        + string.Join("; ", result.Diagnostics.GetErrors().Select(d => $"{d.Code}: {d.Message}"))
-                        + $"\n{source}");
-                }
+                // A program that analyses clean must compile (a refusal throws with its codes).
+                var result = PropertyAnalysis.CompileClean(source, "a generic program that analyses clean");
                 if (result.GeneratedCSharpCode?.Contains("Box<") != true)
                     throw new Exception($"The generated C# never instantiates Box<…>:\n{source}\n{result.GeneratedCSharpCode}");
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
@@ -119,9 +114,8 @@ public class GenericTypePropertyTests : IntegrationTestBase
 
         var source = Sharpy.Compiler.Pretty.Unparser.Unparse(GenGenerics.ConstraintModule(3, 7, 5));
         var run = CompileAndExecute(source, "generic_constraint.spy");
-        _output.WriteLine($"Generic constraint (run): success={run.Success}, stdout={run.StandardOutput.Replace("\n", "\\n")}");
-        Assert.True(run.Success,
-            $"The constrained generic program must run:\n{source}\n{string.Join("\n", run.CompilationErrors)}\n{run.StandardError}");
+        _output.WriteLine($"Generic constraint (run): stdout={run.StandardOutput.Replace("\n", "\\n")}");
+        Assert.Null(JudgeRun(run, source, "The constrained generic program"));
         Assert.Equal("7\n5\n", run.StandardOutput);
     }
 

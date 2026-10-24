@@ -112,8 +112,7 @@ public class ClassInheritancePropertyTests
         var sink = new RejectionSink("ClassInheritance.SuperCall_ResolvesCorrectly");
         int superCallsTested = 0;
         int discriminatingSuperCallsTested = 0;
-        int failures = 0;
-        string? firstFailure = null;
+        var misresolved = new List<string>();
 
         SemanticFilter.WellTypedProgram(GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2), sink)
             .Sample(module =>
@@ -123,22 +122,21 @@ public class ClassInheritancePropertyTests
                     return;
 
                 Interlocked.Increment(ref superCallsTested);
-                var failure = ErrorInjector.JudgeClean(source, "super() program")
-                    ?? SuperInitResolutionFailure(source, ref discriminatingSuperCallsTested);
-                if (failure is not null)
+                if ((ErrorInjector.JudgeClean(source, "super() program")
+                        ?? SuperInitResolutionFailure(source, ref discriminatingSuperCallsTested)) is { } failure)
                 {
-                    Interlocked.Increment(ref failures);
-                    Interlocked.CompareExchange(ref firstFailure, failure, null);
+                    lock (misresolved)
+                        misresolved.Add(failure);
                 }
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine(sink.Summary);
-        _output.WriteLine($"Super call resolution: {superCallsTested - failures}/{superCallsTested} admitted programs resolve super().__init__ to the base __init__ ({discriminatingSuperCallsTested} with a derived signature that differs)");
+        _output.WriteLine($"Super call resolution: {superCallsTested - misresolved.Count}/{superCallsTested} admitted programs resolve super().__init__ to the base __init__ ({discriminatingSuperCallsTested} with a derived signature that differs)");
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
-        Assert.True(superCallsTested >= 1, "No sampled class program calls super().__init__ — the lane is vacuous");
-        Assert.True(firstFailure is null,
-            $"{failures}/{superCallsTested} super().__init__ programs misresolved; the first:\n{firstFailure}");
-        Assert.True(discriminatingSuperCallsTested >= 1,
+        Assert.True(superCallsTested > 0, "No sampled class program calls super().__init__ — the lane is vacuous");
+        Assert.True(misresolved.Count == 0,
+            $"{misresolved.Count}/{superCallsTested} super().__init__ programs misresolved; the first:\n{misresolved.FirstOrDefault()}");
+        Assert.True(discriminatingSuperCallsTested > 0,
             $"No super().__init__ sample had a derived __init__ signature that differs from the base's ({superCallsTested} tested) — base and derived resolution are indistinguishable");
     }
 

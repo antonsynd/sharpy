@@ -36,10 +36,10 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             // The sink admitted the program, so ANY failed run is a finding — a runtime throw, a
             // Roslyn emit failure (empty stderr) or a Sharpy runtime error — never a sample filtered
             // by the exception's name (#2288 verify: four .NET names admitted every other failure).
-            if (!result.Success)
+            if (JudgeRun(result, source, "Compiled program") is { } failure)
             {
                 lock (errors)
-                    errors.Add($"Compiled program failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}");
+                    errors.Add(failure);
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
@@ -70,10 +70,10 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             // The sink admitted the program, so ANY failed run is a finding — a runtime throw, a
             // Roslyn emit failure (empty stderr) or a Sharpy runtime error — never a sample filtered
             // by the exception's name (#2288 verify: four .NET names admitted every other failure).
-            if (!result.Success)
+            if (JudgeRun(result, source, "Compiled program") is { } failure)
             {
                 lock (errors)
-                    errors.Add($"Compiled program failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}");
+                    errors.Add(failure);
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 15);
 
@@ -100,14 +100,10 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
             Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "optional_test.spy");
-
-            if (!result.Success)
+            if (ErrorInjector.JudgeClean(source, "optional program") is { } failure)
             {
                 lock (errors)
-                    errors.Add($"Analysis failed:\n{source}\nDiagnostics: " +
-                        string.Join("; ", result.Diagnostics?.GetAll().Select(d => d.Message) ?? Array.Empty<string>()));
+                    errors.Add(failure);
             }
         }, print: m => m == null ? "<null>" : Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
@@ -135,10 +131,10 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
 
                 // The filter already proved the program compiles, so a failed run is a runtime throw
                 // of a well-typed generated program — a finding, never a sample to skip (#2288).
-                if (!result.Success)
+                if (JudgeRun(result, source, $"Compiled {resultType} program") is { } failure)
                 {
                     lock (errors)
-                        errors.Add($"Compiled {resultType} program failed to run: {string.Join("; ", result.CompilationErrors)} {result.Exception?.Message} {result.StandardError}\nSource:\n{source}");
+                        errors.Add(failure);
                     return;
                 }
 

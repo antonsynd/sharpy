@@ -63,12 +63,8 @@ public class TypedAnalyzePropertyTests
         {
             Interlocked.Increment(ref count);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-            var compiler = new Sharpy.Compiler.Compiler();
-            var result = compiler.Analyze(source, "typed_test.spy");
-
-            if (!result.Success)
-                throw new Exception(
-                    $"Filtered program should analyze clean but got errors:\n{source}");
+            // The filter admitted it: a second analysis must agree (a refusal throws with its codes).
+            PropertyAnalysis.AnalyseClean(source, "a filtered typed program's re-analysis");
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
         _output.WriteLine(sink.Summary);

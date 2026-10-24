@@ -187,11 +187,9 @@ public class ValidatorOrderingPropertyTests
     {
         var logger = NullLogger.Instance;
 
-        var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "validator_order_test.spy");
-        var errors = analysis.Diagnostics.GetErrors().Select(d => d.Code ?? "(no code)").Distinct().ToList();
-        failure = errors.Count > 0 ? $"re-analysis drew [{string.Join(", ", errors)}]"
-            : !analysis.Success ? "re-analysis failed without an error code"
-            : analysis.Module is null ? "re-analysis produced no module"
+        // A refused re-analysis throws with its codes (PropertyAnalysis.AnalyseClean) and fails the sample.
+        var analysis = PropertyAnalysis.AnalyseClean(source, "validator-ordering re-analysis");
+        failure = analysis.Module is null ? "re-analysis produced no module"
             : analysis.SymbolTable is null ? "re-analysis produced no symbol table"
             : analysis.SemanticInfo is null ? "re-analysis produced no semantic info"
             : null;
@@ -216,7 +214,7 @@ public class ValidatorOrderingPropertyTests
 
         return context.Diagnostics
             .GetAll()
-            .Select(d => d.Code + "@" + d.Line + ":" + d.Column + ":" + d.Message)
+            .Select(d => $"{d.Code}@{d.Line}:{d.Column}:{d.Message}")
             .Distinct()
             .OrderBy(c => c, StringComparer.Ordinal)
             .ToList();

@@ -1,3 +1,4 @@
+using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Helpers;
 
@@ -27,6 +28,74 @@ internal static class PropertyAnalysis
         helper.CreateProjectFile();
         var result = helper.Compile();
         return (result.Success, result.Diagnostics.GetAll().ToList());
+    }
+
+    /// <summary>A run-to-run fingerprint of analysing <paramref name="source"/>: the success flag and every
+    /// diagnostic (code, position, message) in a stable order — for the determinism lanes, which compare two
+    /// runs and judge nothing (#2324: the oracle scan bans reading a verdict or a code in a property file).</summary>
+    public static string Fingerprint(string source)
+    {
+        var (success, all) = AnalyseSingleFile(source);
+        return $"success={success}; " + string.Join(" | ", all
+            .Select(d => $"{d.Code}@{d.Line}:{d.Column}:{d.Message}")
+            .OrderBy(d => d, StringComparer.Ordinal));
+    }
+
+    /// <summary><see cref="Fingerprint"/> for a full compile (front end and C# emit): the success flag, every
+    /// diagnostic, and the generated C#.</summary>
+    public static string CompileFingerprint(string source)
+    {
+        var result = new Sharpy.Compiler.Compiler().Compile(source, "test.spy");
+        return $"success={result.Success}; " + string.Join(" | ", result.Diagnostics.GetAll()
+                .Select(d => $"{d.Code}@{d.Line}:{d.Column}:{d.Message}")
+                .OrderBy(d => d, StringComparer.Ordinal))
+            + "\n" + result.GeneratedCSharpCode;
+    }
+
+    /// <summary>A full compile's success flag and the sorted multiset of its diagnostic codes — positions and
+    /// messages excluded (the overload-order lane compares declaration orders whose line numbers differ).</summary>
+    public static string CodeSignature(string source)
+    {
+        var result = new Sharpy.Compiler.Compiler().Compile(source, "test.spy");
+        var codes = result.Diagnostics.GetAll().Select(d => d.Code).OrderBy(c => c, StringComparer.Ordinal);
+        return $"success={result.Success};codes=[{string.Join(",", codes)}]";
+    }
+
+    /// <summary>The analysis of a program the caller's filter admitted, for a lane that reads its semantic
+    /// facts; THROWS (with the codes) when it does not analyse clean — a throw fails the sample.</summary>
+    public static CompilationResult AnalyseClean(string source, string label)
+    {
+        var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
+        var errors = analysis.Diagnostics.GetAll().Where(d => d.IsError).ToList();
+        if (!analysis.Success || errors.Count > 0)
+            throw new InvalidOperationException($"{label}: a program the filter admitted no longer analyses clean: "
+                + string.Join("; ", errors.Select(d => $"{d.Code}: {d.Message}")) + $"\n{source}");
+        return analysis;
+    }
+
+    /// <summary>The compilation (front end and C# emit) of a program, and in <paramref name="refusal"/> why it
+    /// did not compile clean (its first error and the source), or null — for a lane that records a refusal as a
+    /// finding and reads the generated C# otherwise.</summary>
+    public static CompilationResult CompileJudged(string source, out string? refusal)
+    {
+        var result = new Sharpy.Compiler.Compiler().Compile(source, "cs_clean_test.spy");
+        var first = result.Diagnostics.GetAll().FirstOrDefault(d => d.IsError);
+        refusal = result.Success && first is null
+            ? null
+            : $"{(first is null ? "(no error diagnostic)" : $"{first.Code}: {first.Message}")}\n{source}";
+        return result;
+    }
+
+    /// <summary>The compilation (front end and C# emit) of a program; THROWS (with the codes) when it does not
+    /// compile clean.</summary>
+    public static CompilationResult CompileClean(string source, string label)
+    {
+        var result = new Sharpy.Compiler.Compiler().Compile(source, "injection.spy");
+        var errors = result.Diagnostics.GetAll().Where(d => d.IsError).ToList();
+        if (!result.Success || errors.Count > 0)
+            throw new InvalidOperationException($"{label}: does not compile: "
+                + string.Join("; ", errors.Select(d => $"{d.Code}: {d.Message}")) + $"\n{source}");
+        return result;
     }
 
     /// <summary>What an analysis drew, by severity, for the census: distinct error codes, distinct warning
