@@ -6,7 +6,7 @@ using Sharpy.Compiler.Tests.Helpers;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
-internal static class ErrorInjector
+internal static partial class ErrorInjector
 {
     /// <summary>
     /// An injected program and the ONE code it must draw (#2288). The code is exact, never a
@@ -238,27 +238,16 @@ internal static class ErrorInjector
         return new SampleVerdicts(tested, failures, first);
     }
 
-    /// <summary>The one in-process analysis both verdicts read: the property host's
-    /// <c>Compiler().Analyze</c> (no stdlib references — a lane's expected code is measured here).</summary>
-    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source)
-    {
-        var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "injection.spy");
-        return (analysis.Success, analysis.Diagnostics.GetAll().ToList());
-    }
+    /// <summary>The one in-process analysis both verdicts read (<see cref="PropertyAnalysis"/>): the
+    /// property host's <c>Compiler().Analyze</c> (no stdlib references — a lane's expected code is measured here).</summary>
+    private static (bool Success, List<CompilerDiagnostic> All) AnalyseSingleFile(string source) =>
+        PropertyAnalysis.AnalyseSingleFile(source);
 
     /// <summary>The multi-file analysis: one project, root namespace <c>Test</c>, compiled by
     /// <see cref="ProjectCompilationHelper.Compile()"/> (the import lanes' route).</summary>
     private static (bool Success, List<CompilerDiagnostic> All) AnalyseProject(
-        IReadOnlyList<(string Path, string Content)> files)
-    {
-        using var helper = new ProjectCompilationHelper();
-        helper.WithRootNamespace("Test");
-        foreach (var (path, content) in files)
-            helper.AddSourceFile(path, content);
-        helper.CreateProjectFile();
-        var result = helper.Compile();
-        return (result.Success, result.Diagnostics.GetAll().ToList());
-    }
+        IReadOnlyList<(string Path, string Content)> files) =>
+        PropertyAnalysis.AnalyseProject(files);
 
     private static string DescribeProject(IReadOnlyList<(string Path, string Content)> files) =>
         string.Join("\n", files.Select(f => $"# --- {f.Path}\n{f.Content}"));

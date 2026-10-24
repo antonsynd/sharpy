@@ -540,6 +540,7 @@ public class ProcessGlobalStateConformanceTests
                 PropertiesNs + "Semantic.TypeSoundnessPropertyTests", PropertiesNs + "Semantic.TypedAnalyzePropertyTests",
                 PropertiesNs + "Semantic.ValidatorOrderingPropertyTests", PropertiesNs + "Semantic.VariancePropertyTests",
                 PropertiesNs + "Stress.LargeProgramPropertyTests",
+                PropertiesNs + "Generators.Typed.MutationCensus",
             }),
         ("Sharpy.Compiler.Tests", "LoadContextRetention",
             "forces full GCs to measure the per-reference-set load contexts a long-lived host retains (#2250); a forced collection stalls every concurrently running test (#2254)",
@@ -566,8 +567,8 @@ public class ProcessGlobalStateConformanceTests
     /// <summary>Positive control: roster size counted by hand from the P2/P4/P5 audit (not from the array).</summary>
     private const int ExpectedSerialCollections = 8;
 
-    /// <summary>1 + 1 + 44 + 1 (Compiler; LoadContextRetention #2250) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
-    private const int ExpectedSerialMembers = 55;
+    /// <summary>1 + 1 + 46 + 1 (Compiler; LoadContextRetention #2250; PropertySerial gained MutationCensus, #2324) + 1 + 3 + 1 (Stdlib) + 2 (Core), counted by hand; the WallClockWindow row (#2179 P5.1) drained with #2251.</summary>
+    private const int ExpectedSerialMembers = 56;
 
     [Fact]
     public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()
