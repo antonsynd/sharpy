@@ -93,24 +93,7 @@ namespace Sharpy
         /// </summary>
         public static short Int16(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for int16() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
-            {
-                throw new ValueError($"invalid literal for int16() with base 10: '{s}'");
-            }
-
-            if (result < short.MinValue || result > short.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for int16");
-            }
-
-            return (short)result;
+            return (short)NumericText.ToSigned(s, 10, short.MinValue, short.MaxValue, "int16");
         }
 
         /// <summary>
@@ -118,12 +101,7 @@ namespace Sharpy
         /// </summary>
         public static short Int16(string s, int @base)
         {
-            long result = ParseIntWithBase(s, @base, "int16");
-            if (result < short.MinValue || result > short.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for int16");
-            }
-            return (short)result;
+            return (short)NumericText.ToSigned(s, @base, short.MinValue, short.MaxValue, "int16");
         }
 
         /// <summary>

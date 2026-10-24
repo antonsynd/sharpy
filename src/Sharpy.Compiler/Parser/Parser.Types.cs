@@ -771,6 +771,8 @@ public partial class Parser
     /// </summary>
     private void ExpectNewline()
     {
+        if (Current.Type == TokenType.Semicolon)
+            throw SemicolonSeparatorError();
         if (Current.Type == TokenType.Newline)
             Advance();
         else if (!IsAtEnd)
@@ -787,11 +789,23 @@ public partial class Parser
         // 2. Dedent (last statement in a block)
         // 3. EOF (last statement in file)
         // 4. Previous token was Dedent (block-consuming expression like match ended)
+        if (Current.Type == TokenType.Semicolon)
+            throw SemicolonSeparatorError();
         if (Current.Type == TokenType.Newline)
             Advance();
         else if (Current.Type != TokenType.Dedent && !IsAtEnd && Previous.Type != TokenType.Dedent)
             throw ReportError($"Expected end of statement, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedEndOfStatement, span: CurrentSpan);
     }
+
+    /// <summary>
+    /// A <c>;</c> where a statement ends (<c>a = 1; b = 2</c>, <c>a = 1;</c>), where one begins
+    /// (<c>;a = 1</c>, the second of <c>;;</c>), or after a block header's <c>:</c>. No Sharpy
+    /// production contains <c>;</c>, so these three sites are every position a separator can take;
+    /// one named refusal with the steer replaces the generic SPY0100/SPY0102/SPY0103 (R-IO, #2355).
+    /// </summary>
+    private ParserAbortException SemicolonSeparatorError() =>
+        ReportError("';' does not separate statements in Sharpy; put each statement on its own line",
+            Current.Line, Current.Column, DiagnosticCodes.Parser.SemicolonStatementSeparator, span: CurrentSpan);
 
     private void SkipNewlines()
     {

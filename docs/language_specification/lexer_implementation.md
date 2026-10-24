@@ -237,7 +237,7 @@ The lexer produces the following token categories:
 | `DOUBLE_QUESTION` | `??` |
 | `COLON` | `:` |
 | `COMMA` | `,` |
-| `SEMICOLON` | `;` (for inline compound statements) |
+| `SEMICOLON` | `;` (no production uses it; in statement position the parser refuses it with SPY0150) |
 
 ### Delimiter Tokens
 

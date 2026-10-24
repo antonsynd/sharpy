@@ -11,8 +11,6 @@
 # loops are unrolled; every case was verified against Sharpy's actual output.
 #
 # Omitted (Sharpy API/axiom divergences the AST classifier cannot see):
-#   - .center/.ljust/.rjust with a custom fillchar: the fill parameter is a CLR `char`,
-#     not expressible from a .spy single-char str literal (SPY0354); default-fill only.
 #   - str.count(sub, start[, end]): Sharpy count() takes a single arg (SPY0224); the
 #     range-limited count rows are dropped (find/index DO take start[,end]).
 #   - codecs / encode-decode (utf7/utf8/idna), %-formatting (__mod__), huge width/precision,
@@ -64,7 +62,7 @@ def test_swapcase():
     assert "HeLLo cOmpUteRs".swapcase() == "hEllO CoMPuTErS"
     assert "Hello World".swapcase() == "hELLO wORLD"
 
-# --- test_center / test_ljust / test_rjust (space-fill only) / test_zfill ---
+# --- test_center / test_ljust / test_rjust / test_zfill ---
 
 @test
 def test_center():
@@ -72,6 +70,7 @@ def test_center():
     assert "abc".center(6) == " abc  "
     assert "abc".center(3) == "abc"
     assert "abc".center(2) == "abc"
+    assert "abc".center(10, "*") == "***abc****"
 
 @test
 def test_ljust():
@@ -79,6 +78,7 @@ def test_ljust():
     assert "abc".ljust(6) == "abc   "
     assert "abc".ljust(3) == "abc"
     assert "abc".ljust(2) == "abc"
+    assert "abc".ljust(10, "*") == "abc*******"
 
 @test
 def test_rjust():
@@ -86,6 +86,7 @@ def test_rjust():
     assert "abc".rjust(6) == "   abc"
     assert "abc".rjust(3) == "abc"
     assert "abc".rjust(2) == "abc"
+    assert "abc".rjust(10, "*") == "*******abc"
 
 @test
 def test_zfill():

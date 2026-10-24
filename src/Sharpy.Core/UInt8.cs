@@ -93,24 +93,7 @@ namespace Sharpy
         /// </summary>
         public static byte UInt8(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for uint8() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
-            {
-                throw new ValueError($"invalid literal for uint8() with base 10: '{s}'");
-            }
-
-            if (result < byte.MinValue || result > byte.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint8");
-            }
-
-            return (byte)result;
+            return (byte)NumericText.ToUnsigned(s, 10, byte.MaxValue, "uint8");
         }
 
         /// <summary>
@@ -118,12 +101,7 @@ namespace Sharpy
         /// </summary>
         public static byte UInt8(string s, int @base)
         {
-            long result = ParseIntWithBase(s, @base, "uint8");
-            if (result < byte.MinValue || result > byte.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for uint8");
-            }
-            return (byte)result;
+            return (byte)NumericText.ToUnsigned(s, @base, byte.MaxValue, "uint8");
         }
 
         /// <summary>

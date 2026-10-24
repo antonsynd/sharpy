@@ -99,19 +99,7 @@ namespace Sharpy
         /// </summary>
         public static int Int(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for int() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
-            {
-                throw new ValueError($"invalid literal for int() with base 10: '{s}'");
-            }
-
-            return result;
+            return (int)NumericText.ToSigned(s, 10, int.MinValue, int.MaxValue, "int");
         }
 
         /// <summary>

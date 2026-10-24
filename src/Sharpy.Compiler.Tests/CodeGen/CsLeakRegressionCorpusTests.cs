@@ -287,6 +287,20 @@ public class CsLeakRegressionCorpusTests
             def main() -> None:
                 print(3794 * 1973 * 948)
             """);
+
+        // #2354 — a struct holding itself by value (directly, or through `T?` = Optional<T>)
+        // has no finite layout: CS0523 behind SPY0908. Now refused by SPY0616 before codegen.
+        yield return Case("#2354-struct-layout-cycle", """
+            struct Node:
+                value: int
+                nxt: Node?
+
+            struct Leaf:
+                me: Leaf
+
+            def main() -> None:
+                print("built")
+            """);
     }
 
     [Theory]

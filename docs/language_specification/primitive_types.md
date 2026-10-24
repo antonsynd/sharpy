@@ -15,8 +15,14 @@
 | `decimal` | `System.Decimal` | 128-bit | High-precision decimal |
 | `bool` | `System.Boolean` | - | `True` or `False` |
 | `str` | `System.String` | - | Immutable Unicode string |
-| `char` | `System.Char` | 16-bit | Single Unicode character |
+| `char` | `System.Char` | 16-bit | Interop spelling: Sharpy sees it as a one-character `str` (see below) |
 | `object` | `System.Object` | - | Base type for all types |
+
+`char` is the interop spelling of a one-character `str`, not a separate type: a `char` annotation
+denotes `str`, a CLR `System.Char` value reaches Sharpy as a one-character `str`, and a
+one-character `str` literal is the one argument Sharpy converts into a CLR `char` parameter (#1291,
+#1402). Python APIs that take a character — `str.center`, `ljust` and `rjust`'s `fillchar` — take a
+`str` and raise `TypeError` unless it is exactly one character long.
 
 There are aliases present that help ease both Python and C# developers at the cost of consistency.
 
@@ -69,6 +75,13 @@ int8("0x7f", 16)   # 127
 uint8("0xff", 16)  # 255
 int16("0b1010", 2) # 10
 ```
+
+Every string conversion reads CPython's numeric-text grammar: surrounding whitespace, an optional
+sign, a `0x`/`0o`/`0b` prefix only when it matches the explicit base, PEP 515 single underscores
+between digits (`int("1_000")` is 1000, `float("1_000.5")` is 1000.5), and Unicode decimal digits.
+Malformed text raises `ValueError`; well-formed text that does not fit the target width raises
+`OverflowError` — including `int("2147483648")`, since `int` is 32-bit (deviation
+`int-text-out-of-range`, `docs/deviations.yaml`).
 
 Aliases are transparent in call position — `sbyte("42")` compiles identically to `int8("42")`,
 resolved by CLR type identity rather than by spelling.

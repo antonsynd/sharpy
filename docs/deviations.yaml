@@ -2325,3 +2325,44 @@ deviations:
             for x in g:
                 n += 1
             print(n)   # body ran, body ran, then 4
+
+  - id: int-text-out-of-range
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`int(text)` is arbitrary precision: any well-formed integer text parses, so `int('2147483648')` is 2147483648."
+    sharpy_behavior: "`int` is 32-bit (`System.Int32`), so `int('2147483648')` raises `OverflowError` — the text is well formed and does not fit; malformed text stays `ValueError`. Every sized conversion (`int8` … `int64`, `uint8` … `uint64`) raises `OverflowError` for well-formed text outside its range, and `int64('2147483648')` parses. `int.parse` is typed `int !ValueError`, so it returns an `Err(ValueError)` that names the range instead of calling the literal invalid. The grammar itself is CPython's (surrounding whitespace, sign, a base prefix matching the explicit base, PEP 515 underscores, Unicode decimal digits). Ruled R-IS (#2357); a `ValueError` with a \"too large\" message was rejected."
+    spec_ref: docs/language_specification/primitive_types.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        print(int('2147483648'))     # 2147483648
+        print(int('1_000'))          # 1000
+      sharpy: |
+        def main():
+            print(int('1_000'))              # 1000
+            print(int64('2147483648'))       # 2147483648
+            try:
+                print(int('2147483648'))
+            except OverflowError:
+                print("OverflowError")       # OverflowError
+
+  - id: semicolon-statement-separator
+    code: SPY0150
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "`;` separates simple statements on one logical line: `a = 1; b = 2` binds both, a trailing `;` is allowed, and `if True: print(1); print(2)` runs both calls as the suite."
+    sharpy_behavior: "A newline is the only statement separator. A `;` where a statement ends or begins — between statements, trailing, leading, `;;`, or after a block header's `:` — is SPY0150 \"';' does not separate statements in Sharpy; put each statement on its own line\", in a module, a block body and a REPL line alike. One layout for the formatter and readers (the \"multiple ways to do the same thing\" anti-pattern). (Python's one-line suite `if True: print(1)` is refused separately, SPY0102.) Ruled R-IO (#2355); promoting `simple_stmts` was rejected."
+    spec_ref: docs/language_specification/source_files.md
+    existing_diagnostic: SPY0150
+    planned_diagnostic: null
+    example:
+      python: |
+        a = 1; b = 2
+        print(a, b)   # 1 2
+      sharpy: |
+        def main():
+            a = 1; b = 2   # SPY0150: ';' does not separate statements in Sharpy; put each statement on its own line

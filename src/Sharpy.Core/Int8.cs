@@ -95,24 +95,7 @@ namespace Sharpy
         /// </summary>
         public static sbyte Int8(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                throw new ValueError($"invalid literal for int8() with base 10: '{s}'");
-            }
-
-            s = s.Trim();
-
-            if (!long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
-            {
-                throw new ValueError($"invalid literal for int8() with base 10: '{s}'");
-            }
-
-            if (result < sbyte.MinValue || result > sbyte.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for int8");
-            }
-
-            return (sbyte)result;
+            return (sbyte)NumericText.ToSigned(s, 10, sbyte.MinValue, sbyte.MaxValue, "int8");
         }
 
         /// <summary>
@@ -120,12 +103,7 @@ namespace Sharpy
         /// </summary>
         public static sbyte Int8(string s, int @base)
         {
-            long result = ParseIntWithBase(s, @base, "int8");
-            if (result < sbyte.MinValue || result > sbyte.MaxValue)
-            {
-                throw new OverflowError($"Value {result} is out of range for int8");
-            }
-            return (sbyte)result;
+            return (sbyte)NumericText.ToSigned(s, @base, sbyte.MinValue, sbyte.MaxValue, "int8");
         }
 
         /// <summary>

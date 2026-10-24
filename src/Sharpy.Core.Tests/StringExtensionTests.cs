@@ -299,7 +299,7 @@ public class StringExtensionTests
     [Fact]
     public void Center_WithFillchar()
     {
-        "hi".Center(10, '-').Should().Be("----hi----");
+        "hi".Center(10, "-").Should().Be("----hi----");
     }
 
     [Fact]

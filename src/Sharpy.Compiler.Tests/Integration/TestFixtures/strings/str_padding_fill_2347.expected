@@ -1,0 +1,10 @@
+[***ab**]
+[ab--]
+[--ab]
+[..hi.]
+[  hi ]
+[ abc  ]
+[  abcd ]
+[ hi  ]
+[-0005]
+TypeError: The fill character must be exactly one character long

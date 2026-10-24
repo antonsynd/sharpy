@@ -321,6 +321,12 @@ Structs are stored **inline** wherever they are declared:
 
 This provides excellent cache locality and performance, but can be inefficient for large structs.
 
+Because a struct is stored inline, it cannot contain itself by value — through a field of its own
+type, another struct, a tuple, `T?`, `T | None`, `Result[T, E]`, or a generic struct's type
+argument (`Box[Node]`). Such a struct is refused with SPY0616 at the field that starts the cycle.
+Collections and classes hold a reference, so `kids: list[Node]` is fine, and so is making `Node` a
+class.
+
 ### Avoiding Copies with Parameter Modifiers
 
 For large structs or performance-critical code, use parameter modifiers to avoid expensive copies:

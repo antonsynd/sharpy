@@ -1,0 +1,13 @@
+# #2357: int() and float() read CPython's numeric-text grammar — PEP 515 underscores between
+# digits, surrounding whitespace, Unicode decimal digits — and malformed text is ValueError.
+def main():
+    print(int("1_000"))
+    print(int(" -1_234 "))
+    print(int("٣٣"))
+    print(float("1_000.5"))
+    print(float(" -2_5.0_1 "))
+    for text in ["1__0", "_1", "1_", "0x10", "1 0", ""]:
+        try:
+            print(int(text))
+        except ValueError:
+            print("ValueError", repr(text))

@@ -14,21 +14,7 @@ namespace Sharpy
         /// </summary>
         public static Result<int, ValueError> Parse(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
-            {
-                return Result<int, ValueError>.Err(
-                    new ValueError($"invalid literal for int() with base 10: '{s}'"));
-            }
-
-            s = s.Trim();
-
-            if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
-            {
-                return Result<int, ValueError>.Ok(result);
-            }
-
-            return Result<int, ValueError>.Err(
-                new ValueError($"invalid literal for int() with base 10: '{s}'"));
+            return NumericText.TryToInt32(s);
         }
     }
 }

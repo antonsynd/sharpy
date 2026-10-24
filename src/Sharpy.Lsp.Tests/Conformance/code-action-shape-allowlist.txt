@@ -14,7 +14,7 @@
 # #2294 synthesized type spellings (Extract method parameter inference, Extract variable annotation);
 # #2296 code actions that are not meaning-preserving (diagnostics of every other action).
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
-extract-method identity diagnostics 2882 7018dedacc00e623 832 757407cc3a896119 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method identity diagnostics 2884 0e5f6a16eb218340 833 0f855ab8c1176e34 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 540 2197944340525138 540 2197944340525138 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable identity diagnostics 220 88ce9452651014a6 41 92370514d76502bc # #2294 adds SPY0220 (and 257 other cells)
 extract-variable identity parse 56 8009d0bb498adc30 56 8009d0bb498adc30 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -28,7 +28,7 @@ remove-import identity diagnostics 18 b5484e02da1684c7 4 c64f809e53e1ecee # #229
 rename identity diagnostics 39 d4ed777069cdda21 4 02aeed9aec22452e # #2296 adds SPY0200 (and 33 other cells)
 to-if identity diagnostics 4 35d1e4876190ef73 1 96a879de4c764cb2 # #2296 adds SPY0402 (and 4 other cells)
 wrap-try identity diagnostics 2317 f00300e867e8f728 377 2482becc6fdaa598 # #2296 adds SPY0200 (and 770 other cells)
-extract-method crlf diagnostics 2882 7018dedacc00e623 104 bdc0e0b6a23d90b3 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method crlf diagnostics 2884 0e5f6a16eb218340 104 bdc0e0b6a23d90b3 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method crlf parse 540 2197944340525138 71 ab416fe32a0e1d44 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable crlf diagnostics 220 88ce9452651014a6 9 579d0c58dbf30210 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable crlf parse 56 8009d0bb498adc30 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -42,7 +42,7 @@ remove-import crlf diagnostics 18 b5484e02da1684c7 0 - # #2296 removes an error
 rename crlf diagnostics 39 d4ed777069cdda21 0 - # #2296 adds SPY0200 (and 33 other cells)
 to-if crlf diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0402 (and 4 other cells)
 wrap-try crlf diagnostics 2317 f00300e867e8f728 51 dc33e60edb181a8d # #2296 adds SPY0200 (and 770 other cells)
-extract-method cr diagnostics 2882 7018dedacc00e623 106 84f086ef82d71563 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method cr diagnostics 2884 0e5f6a16eb218340 106 84f086ef82d71563 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method cr parse 540 2197944340525138 71 ab416fe32a0e1d44 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable cr diagnostics 220 88ce9452651014a6 4 b1013f49688ce6db # #2294 adds SPY0220 (and 257 other cells)
 extract-variable cr parse 56 8009d0bb498adc30 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -56,7 +56,7 @@ remove-import cr diagnostics 18 b5484e02da1684c7 0 - # #2296 removes an error
 rename cr diagnostics 39 d4ed777069cdda21 0 - # #2296 adds SPY0200 (and 33 other cells)
 to-if cr diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0402 (and 4 other cells)
 wrap-try cr diagnostics 2317 f00300e867e8f728 50 751a80830ccf7134 # #2296 adds SPY0200 (and 770 other cells)
-extract-method comment diagnostics 2882 7018dedacc00e623 119 ff6550044212717d # #2294 adds SPY0202 (and 5590 other cells)
+extract-method comment diagnostics 2884 0e5f6a16eb218340 120 488727050cd2432b # #2294 adds SPY0202 (and 5590 other cells)
 extract-method comment parse 540 2197944340525138 71 ab416fe32a0e1d44 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable comment diagnostics 220 88ce9452651014a6 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable comment parse 56 8009d0bb498adc30 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)

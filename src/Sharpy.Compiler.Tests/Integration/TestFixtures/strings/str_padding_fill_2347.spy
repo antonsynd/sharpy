@@ -1,0 +1,17 @@
+# #2347: center/ljust/rjust take the Python API's one-character str fill (R-IT);
+# center puts the odd pad on the LEFT when margin and width are both odd.
+def main():
+    print("[" + "ab".center(7, "*") + "]")
+    print("[" + "ab".ljust(4, "-") + "]")
+    print("[" + "ab".rjust(4, "-") + "]")
+    fill: str = "."
+    print("[" + "hi".center(5, fill) + "]")
+    print("[" + "hi".center(5) + "]")
+    print("[" + "abc".center(6) + "]")
+    print("[" + "abcd".center(7) + "]")
+    print(f"[{'hi':^5}]")
+    print("[" + "-5".zfill(5) + "]")
+    try:
+        print("ab".center(7, "**"))
+    except TypeError as e:
+        print("TypeError:", e)

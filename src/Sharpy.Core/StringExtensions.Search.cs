@@ -419,7 +419,7 @@ namespace Sharpy
                 return false;
             foreach (char c in s)
             {
-                if (!char.IsWhiteSpace(c))
+                if (!StringHelpers.IsPythonSpace(c))
                     return false;
             }
             return true;
