@@ -9,6 +9,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
@@ -382,18 +383,10 @@ public class RoslynEmitterOperatorLoweringTests
     {
         var analysis = EmitterTestPipeline.Analyze(EmitterTestPipeline.Parse(source));
         analysis.TypeChecker.Diagnostics.GetErrors().Should().BeEmpty();
-        var assignment = analysis.Module.GetChildNodes().SelectMany(Descendants).OfType<Assignment>()
+        var assignment = analysis.Module.GetChildNodes().SelectMany(AstDescendants.SelfAndDescendants).OfType<Assignment>()
             .Single(a => a.Operator == op);
         analysis.SemanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind));
         return analysis.Emitter.GenerateCompilationUnit(analysis.Module).NormalizeWhitespace().ToFullString();
-    }
-
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        yield return node;
-        foreach (var child in node.GetChildNodes())
-            foreach (var d in Descendants(child))
-                yield return d;
     }
 
     private const string AugmentedFloorDivideSource = @"

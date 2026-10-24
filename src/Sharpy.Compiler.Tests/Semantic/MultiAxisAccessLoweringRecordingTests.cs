@@ -7,6 +7,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -48,18 +49,8 @@ public class MultiAxisAccessLoweringRecordingTests
         return result;
     }
 
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var d in Descendants(child))
-                yield return d;
-        }
-    }
-
     private static MultiAxisAccess SingleMultiAxis(SemanticResult result)
-        => Descendants(result.Ast!).OfType<MultiAxisAccess>().Single();
+        => AstDescendants.SelfAndDescendants(result.Ast!).OfType<MultiAxisAccess>().Single();
 
     private static string Describe(SemanticResult result)
         => string.Join(" ;; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}"));
@@ -84,8 +75,8 @@ def main() -> None:
 
         result.Diagnostics.Where(d => d.IsError)
             .Should().BeEmpty(Describe(result));
-        Descendants(result.Ast!).OfType<MultiAxisAccess>().Should().BeEmpty();
-        var access = Descendants(result.Ast!).OfType<IndexAccess>()
+        AstDescendants.SelfAndDescendants(result.Ast!).OfType<MultiAxisAccess>().Should().BeEmpty();
+        var access = AstDescendants.SelfAndDescendants(result.Ast!).OfType<IndexAccess>()
             .Single(ia => ia.Object is Identifier { Name: "a" });
         access.Index.Should().BeOfType<TupleLiteral>();
     }

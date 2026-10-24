@@ -4,6 +4,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Tests.Integration;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -106,7 +107,7 @@ public class TargetBindingRecordingTests
         LocalBindingTestHarness.Analysis a, BlockKinds.Spelling spelling)
     {
         var result = new System.Collections.Generic.List<(string, Node, VariableSymbol?)>();
-        var nodes = LocalBindingTestHarness.Descendants(a.Module).ToList();
+        var nodes = AstDescendants.SelfAndDescendants(a.Module).ToList();
         switch (spelling.Id)
         {
             case "annotated" or "let-annotated":
@@ -181,7 +182,7 @@ public class TargetBindingRecordingTests
     public void ForTarget_Declares()
     {
         var a = LocalBindingTestHarness.Analyze("def main() -> None:\n    for i in range(3):\n        pass\n");
-        var target = LocalBindingTestHarness.Descendants(a.Module).OfType<ForStatement>().Single().Target;
+        var target = AstDescendants.SelfAndDescendants(a.Module).OfType<ForStatement>().Single().Target;
         a.BindingOf(target).Should().Be(TargetBindingKind.Declares);
     }
 
@@ -190,7 +191,7 @@ public class TargetBindingRecordingTests
     {
         var a = LocalBindingTestHarness.Analyze(
             "def main() -> None:\n    d: dict[str, int] = {\"a\": 1}\n    for k, v in d.items():\n        pass\n");
-        var tuple = (TupleLiteral)LocalBindingTestHarness.Descendants(a.Module).OfType<ForStatement>().Single().Target;
+        var tuple = (TupleLiteral)AstDescendants.SelfAndDescendants(a.Module).OfType<ForStatement>().Single().Target;
         foreach (var element in tuple.Elements)
             a.BindingOf(element).Should().Be(TargetBindingKind.Declares);
     }
@@ -199,7 +200,7 @@ public class TargetBindingRecordingTests
     public void ComprehensionTarget_Declares()
     {
         var a = LocalBindingTestHarness.Analyze("def main() -> None:\n    ys: list[int] = [i for i in range(3)]\n");
-        var target = LocalBindingTestHarness.Descendants(a.Module).OfType<ForClause>().Single().Target;
+        var target = AstDescendants.SelfAndDescendants(a.Module).OfType<ForClause>().Single().Target;
         a.BindingOf(target).Should().Be(TargetBindingKind.Declares);
     }
 
@@ -207,7 +208,7 @@ public class TargetBindingRecordingTests
     public void MatchCapture_Declares()
     {
         var a = LocalBindingTestHarness.Analyze("def main() -> None:\n    match 7:\n        case n:\n            pass\n");
-        var pattern = LocalBindingTestHarness.Descendants(a.Module).OfType<BindingPattern>().Single();
+        var pattern = AstDescendants.SelfAndDescendants(a.Module).OfType<BindingPattern>().Single();
         a.BindingOf(pattern).Should().Be(TargetBindingKind.Declares);
     }
 
@@ -216,7 +217,7 @@ public class TargetBindingRecordingTests
     {
         var a = LocalBindingTestHarness.Analyze(
             "def main() -> None:\n    if (n := 1) > 0:\n        pass\n    if (n := 2) > 0:\n        pass\n");
-        var walruses = LocalBindingTestHarness.Descendants(a.Module).OfType<WalrusExpression>().ToList();
+        var walruses = AstDescendants.SelfAndDescendants(a.Module).OfType<WalrusExpression>().ToList();
         a.BindingOf(walruses[0]).Should().Be(TargetBindingKind.Declares);
         a.BindingOf(walruses[1]).Should().Be(TargetBindingKind.Rebinds);
         var second = a.Info.GetWalrusSymbol(walruses[1])!;
@@ -229,7 +230,7 @@ public class TargetBindingRecordingTests
     {
         var a = LocalBindingTestHarness.Analyze(
             "def main() -> None:\n    x = 10\n    if (x := 30) > 0:\n        pass\n");
-        var walrus = LocalBindingTestHarness.Descendants(a.Module).OfType<WalrusExpression>().Single();
+        var walrus = AstDescendants.SelfAndDescendants(a.Module).OfType<WalrusExpression>().Single();
         a.BindingOf(walrus).Should().Be(TargetBindingKind.Rebinds);
         a.Info.GetBindingChain(a.Info.GetWalrusSymbol(walrus)!)[0]
             .Should().BeSameAs(a.Info.GetIdentifierSymbol(a.AssignmentTarget("x", 0)));
@@ -241,7 +242,7 @@ public class TargetBindingRecordingTests
         var a = LocalBindingTestHarness.Analyze(
             "def tp(s: str, r: out int) -> bool:\n    r = 1\n    return True\n\n"
             + "def main() -> None:\n    if tp(\"1\", out v: int):\n        pass\n    if tp(\"2\", out v: int):\n        pass\n");
-        var outs = LocalBindingTestHarness.Descendants(a.Module).OfType<ModifiedArgument>()
+        var outs = AstDescendants.SelfAndDescendants(a.Module).OfType<ModifiedArgument>()
             .Where(m => m.InlineName != null).ToList();
         a.BindingOf(outs[0]).Should().Be(TargetBindingKind.Declares);
         a.BindingOf(outs[1]).Should().Be(TargetBindingKind.Rebinds);

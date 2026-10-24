@@ -12,6 +12,7 @@ using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 using static Sharpy.Compiler.Tests.Conformance.LetEmissionInvarianceTests.Instrument;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 // The instrument runs as ShardCount classes Shard0..Shard7 plus one Controls class, all in a NAMESPACE
 // named LetEmissionInvarianceTests, so `~LetEmissionInvarianceTests` and the Conformance CI shard select
@@ -485,17 +486,7 @@ internal static class Instrument
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var parser = new global::Sharpy.Compiler.Parser.Parser(lexer.TokenizeAll(), NullLogger.Instance);
         var module = parser.ParseModule();
-        return Descendants(module).Count(n => n is Assignment { IsLet: true } or VariableDeclaration { IsLet: true });
-    }
-
-    internal static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var d in Descendants(child))
-                yield return d;
-        }
+        return AstDescendants.SelfAndDescendants(module).Count(n => n is Assignment { IsLet: true } or VariableDeclaration { IsLet: true });
     }
 
     // ================================================================

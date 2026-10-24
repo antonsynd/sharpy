@@ -6,6 +6,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -39,23 +40,13 @@ public class NonNegativeIndexLoweringTests
         return (module, semanticInfo);
     }
 
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var d in Descendants(child))
-                yield return d;
-        }
-    }
-
     /// <summary>
     /// The lowering recorded for the (single) <c>obj[...]</c> access whose object is <paramref name="objectName"/>.
     /// </summary>
     private static IndexAccessLowering LoweringOf(string source, string objectName)
     {
         var (module, info) = Analyze(source);
-        var access = Descendants(module).OfType<IndexAccess>()
+        var access = AstDescendants.SelfAndDescendants(module).OfType<IndexAccess>()
             .Single(ia => ia.Object is Identifier id && id.Name == objectName);
         // Reads the materialized fact directly (E2 #1056 renamed the accessor to a lowering-facing
         // name); this verifies the TypeChecker's computation, upstream of the IR.

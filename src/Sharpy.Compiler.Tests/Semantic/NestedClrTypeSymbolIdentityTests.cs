@@ -4,6 +4,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.TestInfrastructure;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -104,19 +105,9 @@ public class NestedClrTypeSymbolIdentityTests
     /// </summary>
     private static TypeSymbol? ValueRouteSymbol(SemanticResult analysis)
     {
-        var access = Descendants(analysis.Ast!)
+        var access = AstDescendants.SelfAndDescendants(analysis.Ast!)
             .OfType<MemberAccess>()
             .Single(m => m.Member == "SpecialFolder");
         return (analysis.SemanticInfo!.GetExpressionType(access) as UserDefinedType)?.Symbol;
-    }
-
-    private static IEnumerable<Node> Descendants(Node root)
-    {
-        foreach (var child in root.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
     }
 }

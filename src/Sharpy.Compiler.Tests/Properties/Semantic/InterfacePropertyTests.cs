@@ -71,14 +71,18 @@ public class InterfacePropertyTests
             "ProtocolSynthesis_AddsInterfaceForDunder");
     }
 
+    /// <summary>An ACCEPTANCE lane: every <see cref="GenInterfaces.ModuleWithInterfaceHierarchy"/> sample
+    /// (an interface extending another, implemented by a class) analyses clean. It was named
+    /// <c>InterfaceConflict_DetectedInHierarchy</c>, but no generator emits a conflicting hierarchy, so it
+    /// never detected one; a detection lane for a conflict is a #2287 roster row (#2324).</summary>
     [Fact]
-    public void InterfaceConflict_DetectedInHierarchy()
+    public void InterfaceHierarchy_AnalysesClean()
     {
         var samples = PropertyCorpus.CompileAll(
             GenInterfaces.ModuleWithInterfaceHierarchy(),
             m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
-            "InterfaceConflict_DetectedInHierarchy");
+            "InterfaceHierarchy_AnalysesClean");
     }
 
     [Fact]

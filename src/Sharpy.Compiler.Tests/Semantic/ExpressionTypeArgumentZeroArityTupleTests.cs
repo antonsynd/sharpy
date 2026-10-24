@@ -7,6 +7,7 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -44,23 +45,13 @@ public class ExpressionTypeArgumentZeroArityTupleTests
         return (module, semanticInfo, typeChecker.Diagnostics);
     }
 
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
-    }
-
     /// <summary>The generic reference recorded for the callee of the single call to <paramref name="calleeName"/>.</summary>
     private static GenericReference CalleeReference(string source, string calleeName)
     {
         var (module, info, diagnostics) = Analyze(source);
         diagnostics.GetErrors().Should().BeEmpty("every row is a program that must type-check");
 
-        var callee = Descendants(module).OfType<FunctionCall>()
+        var callee = AstDescendants.SelfAndDescendants(module).OfType<FunctionCall>()
             .Select(call => call.Function)
             .OfType<IndexAccess>()
             .Single(ia => ia.Object is Identifier { } id && id.Name == calleeName);

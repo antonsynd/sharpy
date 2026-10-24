@@ -10,6 +10,7 @@ using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -174,7 +175,7 @@ public class ModuleMemberResolutionFactTests
         using var helper = CreateProject();
         var (ast, info) = Analyze(view, helper);
 
-        var accesses = Descendants(ast).OfType<MemberAccess>().ToList();
+        var accesses = AstDescendants.SelfAndDescendants(ast).OfType<MemberAccess>().ToList();
         var failures = new List<string>();
 
         foreach (var cell in Cells)
@@ -259,7 +260,7 @@ public class ModuleMemberResolutionFactTests
         var result = NewApi().Analyze(source);
         AssertNoErrors("builtins", result.Diagnostics);
         var info = result.SemanticInfo!;
-        var accesses = Descendants(result.Ast!).OfType<MemberAccess>().ToList();
+        var accesses = AstDescendants.SelfAndDescendants(result.Ast!).OfType<MemberAccess>().ToList();
 
         foreach (var spelling in new[] { "builtins.dict", "builtins.int" })
         {
@@ -279,12 +280,4 @@ public class ModuleMemberResolutionFactTests
         MemberAccess ma => Spell(ma.Object) + "." + (ma.IsMemberBacktickEscaped ? "`" + ma.Member + "`" : ma.Member),
         _ => "<" + expression.GetType().Name + ">",
     };
-
-    private static IEnumerable<Node> Descendants(Node root)
-    {
-        yield return root;
-        foreach (var child in root.GetChildNodes())
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-    }
 }

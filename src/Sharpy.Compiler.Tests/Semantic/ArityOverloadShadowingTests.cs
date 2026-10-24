@@ -7,6 +7,7 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -39,18 +40,8 @@ public class ArityOverloadShadowingTests
         return (module, symbolTable, semanticInfo, typeChecker.Diagnostics);
     }
 
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var d in Descendants(child))
-                yield return d;
-        }
-    }
-
     private static IndexAccess? FindGenericRef(Module module, string name) =>
-        Descendants(module).OfType<IndexAccess>()
+        AstDescendants.SelfAndDescendants(module).OfType<IndexAccess>()
             .FirstOrDefault(ia => ia.Object is Identifier id && id.Name == name);
 
     [Fact]

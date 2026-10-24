@@ -7,6 +7,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Xunit;
+using Sharpy.Compiler.Tests.Infrastructure;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -35,7 +36,7 @@ def describe(r: int !str) -> None:
             print(e)
 ");
 
-        var okPattern = Descendants(module)
+        var okPattern = AstDescendants.SelfAndDescendants(module)
             .OfType<Pattern>()
             .First(p => info.GetPatternUnionCase(p)?.Name == "Ok");
 
@@ -60,7 +61,7 @@ def describe(r: int !str) -> None:
             print(e)
 ");
 
-        var okPositional = Descendants(module)
+        var okPositional = AstDescendants.SelfAndDescendants(module)
             .OfType<PositionalPattern>()
             .First(p => info.GetPatternUnionCase(p)?.Name == "Ok");
 
@@ -82,7 +83,7 @@ def describe(r: int !str) -> None:
             print(e)
 ");
 
-        var okPattern = Descendants(module)
+        var okPattern = AstDescendants.SelfAndDescendants(module)
             .OfType<Pattern>()
             .First(p => info.GetPatternUnionCase(p)?.Name == "Ok");
 
@@ -116,15 +117,5 @@ def describe(r: int !str) -> None:
         typeChecker.CheckModule(module);
 
         return (module, semanticInfo);
-    }
-
-    private static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var descendant in Descendants(child))
-                yield return descendant;
-        }
     }
 }
