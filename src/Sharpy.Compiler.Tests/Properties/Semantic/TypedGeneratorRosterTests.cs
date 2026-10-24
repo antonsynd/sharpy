@@ -312,14 +312,14 @@ public class TypedGeneratorRosterTests
         // decorators.md
         new("decorators.md", "Method Modifiers", "@virtual base method and @override in the derived class",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => Decorated(n, "override")),
-            new KnownRedRow("#2143", "analyses clean; `run` is SPY0908 CS0508 — no override signature check for a Sharpy base")),
+            new KnownRedRow("#2143", "analyses clean; `run` is SPY0908 CS0508 — no override signature check for a Sharpy base (ErrorInjector.InjectOverrideSignatureMismatch)")),
         new("decorators.md", "Method Modifiers", "@override @final",
             new Y("GenDecorators.ModuleWithDecoratedFunction", () => GenDecorators.ModuleWithDecoratedFunction(validDecorator: true), n => Decorated(n, "final")),
             // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
             new YInjected("ErrorInjector.InjectOverrideWithoutBaseMember", "SPY0248", CompilerDiagnosticSeverity.Error)),
         new("decorators.md", "Method Modifiers", "@abstract method in an @abstract class",
             new KnownRedRow("#2287", "no typed generator emits @abstract (only ErrorInjector.InjectMissingAbstractImplementation writes it)"),
-            new KnownRedRow("#2143", "analyses clean; `run` is SPY0908 CS0534 — no missing-abstract-member check for a Sharpy base")),
+            new KnownRedRow("#2143", "analyses clean; `run` is SPY0908 CS0534 — no missing-abstract-member check for a Sharpy base (ErrorInjector.InjectMissingAbstractImplementation)")),
         new("decorators.md", "Access Modifiers", "access-modifier decorators",
             new KnownRedRow("#2287", "no typed generator emits a valid access modifier (GenDecorators uses them only in conflicting pairs)"),
             new YInjected("GenDecorators.ModuleWithDecoratorStack", "SPY0430", CompilerDiagnosticSeverity.Error)),
@@ -1411,6 +1411,58 @@ public class TypedGeneratorRosterTests
             $"{problems.Count} YInjected row(s) are not backed by their property:\n  " + string.Join("\n  ", problems));
     }
 
+    private static readonly Regex PinnedInjector = new(@"\((ErrorInjector\.Inject\w+)\)");
+
+    /// <summary>
+    /// Every injected <see cref="KnownRedRow"/> that pins a compiler cell (an issue outside
+    /// <see cref="GeneratorTrackers"/>) is the claim of a real pin lane (#2324 verify round: deleting a pin's
+    /// member and its property left the roster green): its observation names <c>(ErrorInjector.Member)</c>,
+    /// the member's body constructs <c>KnownRedRefusal</c> citing the row's issue, and some property method
+    /// references the member with a closure reaching <c>ErrorInjector.Judge</c>, its verdict consumed.
+    /// </summary>
+    [Fact]
+    public void KnownRedRow_InjectedPinsAreBackedByTheirPinLane()
+    {
+        var index = PropertySources.Value;
+        var injector = PropertySourceIndex.Load(PropertiesRoot, file => file.StartsWith(InjectorFilePrefix, StringComparison.Ordinal));
+        var problems = new List<string>();
+        var checkedRows = 0;
+
+        foreach (var row in Rows)
+        {
+            if (row.Injected is not KnownRedRow kr || GeneratorTrackers.Contains(kr.Issue))
+                continue;
+            checkedRows++;
+            if (!PinnedInjector.IsMatch(kr.Observed))
+            {
+                problems.Add($"{row.File} \"{row.Construct}\": pin {kr.Issue} names no (ErrorInjector.Member) lane");
+                continue;
+            }
+            var qualified = PinnedInjector.Match(kr.Observed).Groups[1].Value;
+            var member = qualified.Split('.')[1];
+            var bodies = injector.Methods.Where(m => m.Name == member).ToList();
+            var cites = bodies.SelectMany(m => m.Body.DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ObjectCreationExpressionSyntax>())
+                .Where(c => c.Type.ToString() == "KnownRedRefusal")
+                .Select(c => c.ArgumentList?.Arguments.FirstOrDefault()?.Expression)
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.LiteralExpressionSyntax>()
+                .Select(l => l.Token.ValueText)
+                .Distinct()
+                .ToList();
+            if (bodies.Count == 0)
+                problems.Add($"{qualified}: no such method in {InjectorFilePrefix}*.cs");
+            else if (cites is not [var only] || only != kr.Issue)
+                problems.Add($"{qualified}: the roster pins {kr.Issue}, the injector's KnownRedRefusal cites [{string.Join(", ", cites)}]");
+            if (!index.Methods.Any(m => m.References.Contains(qualified)
+                    && index.ClosureInvocationNodes(m).Any(i => PropertySourceIndex.InvokedName(i) == "ErrorInjector.Judge"
+                        && index.IsConsumed(m, i))))
+                problems.Add($"{qualified}: no property method references it and reaches ErrorInjector.Judge with its verdict consumed");
+        }
+
+        Assert.Equal(ExpectedKnownRed, checkedRows);
+        Assert.True(problems.Count == 0,
+            $"{problems.Count} KnownRed pin row(s) are not backed by their pin lane:\n  " + string.Join("\n  ", problems));
+    }
+
     /// <summary>
     /// Every <see cref="Y"/> row's generator CONFIGURATION is sampled by a property that accepts every sample
     /// (#2324, P63b Decision 8 — the name-only link let a neutered lane keep backing its row): some property
@@ -1823,10 +1875,7 @@ public class TypedGeneratorRosterTests
     [Fact]
     public void SpecCodes_EveryNamedCodeIsClaimedByARow()
     {
-        var universe = UniverseFiles();
-        var named = universe.ToDictionary(f => f,
-            f => SpecCode.Matches(File.ReadAllText(Path.Combine(SpecDir, f))).Select(m => m.Value).ToHashSet(StringComparer.Ordinal),
-            StringComparer.Ordinal);
+        var named = SpecNamedCodes();
         var cited = UnclaimedSpecCodes.ToLookup(r => (r.File, r.ExpectedCode));
         var prose = ProseCrossReferences.ToLookup(r => (r.File, r.ExpectedCode));
         var problems = new List<string>();
@@ -1857,7 +1906,26 @@ public class TypedGeneratorRosterTests
         }
         foreach (var dup in UnclaimedSpecCodes.GroupBy(r => (r.File, r.ExpectedCode)).Where(g => g.Count() > 1))
             problems.Add($"UnclaimedSpecCodes ({dup.Key.File}, {dup.Key.ExpectedCode}): {dup.Count()} rows");
-        foreach (var row in ProseCrossReferences)
+        problems.AddRange(ProseProblems(ProseCrossReferences, named));
+
+        _output.WriteLine($"spec codes: {named.Count(n => n.Value.Count > 0)} files name codes; {pairsTested} (file, code) pairs; "
+            + $"{claimed} claimed by a roster row; {UnclaimedSpecCodes.Length} cited ({UnclaimedSpecCodes.Count(r => r.Issue == "#2287")} #2287, "
+            + $"{UnclaimedSpecCodes.Count(r => r.Issue == "#2324")} #2324); {ProseCrossReferences.Length} prose cross-reference(s) (measured)");
+        Assert.True(pairsTested > 0, "no spec file names a code — the universe or the pattern is broken");
+        Assert.True(problems.Count == 0, $"{problems.Count} spec-code problem(s):\n  " + string.Join("\n  ", problems.Take(40)));
+    }
+
+    private static Dictionary<string, HashSet<string>> SpecNamedCodes() =>
+        UniverseFiles().ToDictionary(f => f,
+            f => SpecCode.Matches(File.ReadAllText(Path.Combine(SpecDir, f))).Select(m => m.Value).ToHashSet(StringComparer.Ordinal),
+            StringComparer.Ordinal);
+
+    /// <summary>A <see cref="ProseCrossReference"/> exempts its pair only when its own file names the code and
+    /// the referenced file names AND claims it — the exemption is never its own subject.</summary>
+    private static List<string> ProseProblems(IEnumerable<ProseCrossReference> rows, IReadOnlyDictionary<string, HashSet<string>> named)
+    {
+        var problems = new List<string>();
+        foreach (var row in rows)
         {
             if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.ExpectedCode))
                 problems.Add($"ProseCrossReference ({row.File}, {row.ExpectedCode}): the file does not name the code");
@@ -1865,12 +1933,33 @@ public class TypedGeneratorRosterTests
                 || !ClaimedCodes(row.ReferencedFile).Contains(row.ExpectedCode))
                 problems.Add($"ProseCrossReference ({row.File}, {row.ExpectedCode}) -> {row.ReferencedFile}: that file must name the code and claim it by a row");
         }
+        return problems;
+    }
 
-        _output.WriteLine($"spec codes: {named.Count(n => n.Value.Count > 0)} files name codes; {pairsTested} (file, code) pairs; "
-            + $"{claimed} claimed by a roster row; {UnclaimedSpecCodes.Length} cited ({UnclaimedSpecCodes.Count(r => r.Issue == "#2287")} #2287, "
-            + $"{UnclaimedSpecCodes.Count(r => r.Issue == "#2324")} #2324); {ProseCrossReferences.Length} prose cross-reference(s) (measured)");
-        Assert.True(pairsTested > 0, "no spec file names a code — the universe or the pattern is broken");
-        Assert.True(problems.Count == 0, $"{problems.Count} spec-code problem(s):\n  " + string.Join("\n  ", problems.Take(40)));
+    /// <summary>
+    /// The prose exemption's standing positive control (#2324 verify round: <see cref="ProseCrossReferences"/>
+    /// is empty, so its check ran only under a one-off mutation). Over the real spec text, a cross-reference
+    /// to a file that names and claims the code is admitted, and the same pair pointed at a file that names the
+    /// code but claims it by no row is refused.
+    /// </summary>
+    [Fact]
+    public void ProseCrossReference_AdmitsOnlyAFileThatClaimsTheCode()
+    {
+        var named = SpecNamedCodes();
+        var planted = (
+            from code in named.Values.SelectMany(c => c).Distinct().OrderBy(c => c, StringComparer.Ordinal)
+            let claiming = named.Keys.Where(f => named[f].Contains(code) && ClaimedCodes(f).Contains(code)).OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault()
+            let unclaiming = named.Keys.Where(f => named[f].Contains(code) && !ClaimedCodes(f).Contains(code)).OrderBy(f => f, StringComparer.Ordinal).ToList()
+            where claiming is not null && unclaiming is [_, _, ..]
+            select (code, claiming, source: unclaiming[0], unclaimed: unclaiming[1])).FirstOrDefault();
+        Assert.True(planted.code is not null, "no code is named by one claiming and two unclaiming spec files — the control has no input");
+
+        var admitted = ProseProblems(new[] { new ProseCrossReference(planted.source, planted.code, planted.claiming) }, named);
+        var refused = ProseProblems(new[] { new ProseCrossReference(planted.source, planted.code, planted.unclaimed) }, named);
+        _output.WriteLine($"{planted.code}: {planted.source} -> {planted.claiming} admitted ({admitted.Count} problems); "
+            + $"-> {planted.unclaimed} refused ({refused.Count} problems)");
+        Assert.Empty(admitted);
+        Assert.Single(refused);
     }
 
     // ---- Totality (Task 4) -------------------------------------------------------------------

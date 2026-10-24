@@ -72,6 +72,26 @@ internal static partial class ErrorInjector
     public static InjectionResult? InjectSuperInitArity(Module module) =>
         Lane(MutationLanes.SuperInitArityPlusOne(module), "SPY0224");
 
+    /// <summary>A user constructor's argument replaced by a literal its parameter refuses.</summary>
+    public static InjectionResult? InjectWrongTypedConstructorArgument(Module module) =>
+        Lane(MutationLanes.WrongTypedConstructorArgument(module), "SPY0220");
+
+    /// <summary>A <c>super().__init__(…)</c> argument replaced by a literal the base constructor's parameter refuses.</summary>
+    public static InjectionResult? InjectWrongTypedSuperInitArgument(Module module) =>
+        Lane(MutationLanes.WrongTypedSuperInitArgument(module), "SPY0220");
+
+    /// <summary>A user constructor called with one argument more than its <c>__init__</c> takes.</summary>
+    public static InjectionResult? InjectConstructorArity(Module module) =>
+        Lane(MutationLanes.ConstructorArityPlusOne(module), "SPY0224");
+
+    /// <summary>A user method called with one argument more than it takes.</summary>
+    public static InjectionResult? InjectMethodArity(Module module) =>
+        Lane(MutationLanes.MethodArityPlusOne(module), "SPY0224");
+
+    /// <summary><c>str(…)</c> (a fixed-arity builtin) called with one argument more than it takes.</summary>
+    public static InjectionResult? InjectFixedArityBuiltinArity(Module module) =>
+        Lane(MutationLanes.StrBuiltinArityPlusOne(module), "SPY0224");
+
     // ---- member names -----------------------------------------------------------------------------
 
     public static InjectionResult? InjectUndefinedMember(Module module) =>
@@ -108,6 +128,10 @@ internal static partial class ErrorInjector
     public static InjectionResult? InjectUndefinedTypeAtReturn(Module module) =>
         Lane(MutationLanes.UndefinedTypeAtReturn(module), "SPY0202");
 
+    /// <summary>A local declaration's annotation naming an undefined type.</summary>
+    public static InjectionResult? InjectUndefinedTypeAtDeclaration(Module module) =>
+        Lane(MutationLanes.UndefinedTypeAtDeclaration(module), "SPY0202");
+
     /// <summary>A generic annotation (base, declaration) with one type argument too many.</summary>
     public static InjectionResult? InjectTypeArgumentArity(Module module) =>
         Lane(MutationLanes.TypeArgumentArity(module), "SPY0224");
@@ -117,6 +141,10 @@ internal static partial class ErrorInjector
     public static InjectionResult? InjectWrongTypedReassignment(Module module) =>
         Lane(MutationLanes.WrongTypedReassignment(module), "SPY0220");
 
+    /// <summary>An annotated declaration's initializer replaced by a literal its annotation refuses.</summary>
+    public static InjectionResult? InjectWrongTypedDeclarationInitializer(Module module) =>
+        Lane(MutationLanes.WrongTypedDeclarationInitializer(module), "SPY0220");
+
     /// <summary>A <c>list[T]</c> declaration initialized with a list of an element its annotation refuses.</summary>
     public static InjectionResult? InjectWrongTypedListInitializer(Module module) =>
         Lane(MutationLanes.WrongTypedListInitializer(module), "SPY0220");
@@ -125,6 +153,10 @@ internal static partial class ErrorInjector
 
     public static InjectionResult? InjectWrongTypedReturnValue(Module module) =>
         Lane(MutationLanes.WrongTypedReturn(module), "SPY0260");
+
+    /// <summary>A <c>return value</c> in a def with a non-None return type dropped to a bare <c>return</c>.</summary>
+    public static InjectionResult? InjectDroppedReturnValue(Module module) =>
+        Lane(MutationLanes.DroppedReturn(module), "SPY0260");
 
     public static InjectionResult? InjectReturnValueInImplicitNoneDef(Module module) =>
         Lane(MutationLanes.ReturnValueInImplicitNoneDef(module), "SPY0260");
@@ -206,6 +238,14 @@ internal static partial class ErrorInjector
         MutationLanes.WrongTypedDataclassArgument(module) is { } mutated
             ? new InjectionResult(mutated, null, new KnownRedRefusal("#2021",
                 "analyses clean; run is SPY0908 CS1503 — the @dataclass constructor has no semantic signature"))
+            : null;
+
+    /// <summary>A <c>@dataclass</c> constructed with one argument fewer than it has fields: the synthesized
+    /// constructor has no semantic signature.</summary>
+    public static InjectionResult? InjectDataclassArity(Module module) =>
+        MutationLanes.DataclassArityMinusOne(module) is { } mutated
+            ? new InjectionResult(mutated, null, new KnownRedRefusal("#2021",
+                "analyses clean; run is SPY0908 CS7036 — the @dataclass constructor has no semantic signature"))
             : null;
 
     // ---- the multi-file lane ------------------------------------------------------------------------

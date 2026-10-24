@@ -158,12 +158,6 @@ internal sealed class ProgramFacts
         return false;
     }
 
-    /// <summary>A builtin scalar type string, or a class/interface this program declares.</summary>
-    public bool IsKnownConcrete(string? type) =>
-        type is not null && (BuiltinTypes.Contains(type) || _types.ContainsKey(type)
-            || type.StartsWith("list[", StringComparison.Ordinal) || type.StartsWith("tuple[", StringComparison.Ordinal)
-            || type.EndsWith('?'));
-
     // ---- scopes -----------------------------------------------------------------------------
 
     private Dictionary<string, string> BuildScope(FunctionDef def)
