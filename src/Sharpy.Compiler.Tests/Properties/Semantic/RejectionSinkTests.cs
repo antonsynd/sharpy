@@ -23,7 +23,7 @@ public class RejectionSinkTests
         _output = output;
     }
 
-    /// <summary>Every sample reads a name nothing defines (SPY0200): the failure names SPY0200 and the source.</summary>
+    /// <summary>Every sample reads a name nothing defines: the failure names the sink's refusal codes and the source.</summary>
     [Fact]
     public void AnAlwaysRefusedGenerator_FailsWithTheSinksReport()
     {
@@ -48,7 +48,9 @@ public class RejectionSinkTests
 
         var text = thrown?.ToString() ?? "(nothing thrown)";
         _output.WriteLine(text.Length > 2000 ? text[..2000] : text);
-        Assert.Contains("SPY0200", text, StringComparison.Ordinal);
+        // The failure carries the sink's own bucket (its refusal codes, read from the sink — a code literal
+        // here would be a second judging core) and a refused source.
+        Assert.Contains("unexplained by bucket: " + sink.Unexplained[0].Describe(), text, StringComparison.Ordinal);
         Assert.Contains("undefined_", text, StringComparison.Ordinal);
     }
 }
