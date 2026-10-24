@@ -49,7 +49,10 @@ public class RejectionSinkTests
         var text = thrown?.ToString() ?? "(nothing thrown)";
         _output.WriteLine(text.Length > 2000 ? text[..2000] : text);
         // The failure carries the sink's own bucket (its refusal codes, read from the sink — a code literal
-        // here would be a second judging core) and a refused source.
+        // here would be a second judging core) and a refused source. The bucket must hold a code: a sink that
+        // recorded none describes itself as "refused without an error code" and would match its own text.
+        Assert.True(sink.Unexplained.Count > 0, "the sink recorded no rejection");
+        Assert.True(sink.Unexplained[0].Codes.Count > 0, $"the sink's rejection carries no code: {sink.Unexplained[0].Describe()}");
         Assert.Contains("unexplained by bucket: " + sink.Unexplained[0].Describe(), text, StringComparison.Ordinal);
         Assert.Contains("undefined_", text, StringComparison.Ordinal);
     }
