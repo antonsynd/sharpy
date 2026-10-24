@@ -620,6 +620,9 @@ public class ErrorCompletenessPropertyTests
     /// source equals its input's is a failure too: the mutation never reached the judged text (#2324 —
     /// every f-string lane judged the valid program until the rewriter dropped stale captured holes).
     /// <see cref="PropertyIterations.Injection"/> samples (100; <c>SHARPY_PROPERTY_ITER</c> overrides).
+    /// The injector runs on each raw draw BEFORE the well-typed filter, and only a draw it applies to is
+    /// analysed (#2324, R-IX): before, every draw was analysed first and most lanes' injectors then
+    /// returned null, so a lane applicable to a tenth of its base paid ten analyses per judged sample.
     /// </summary>
     private void RunInjectionTest(
         Func<Module, ErrorInjector.InjectionResult?> injector,
@@ -635,11 +638,12 @@ public class ErrorCompletenessPropertyTests
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
 
         var sink = new RejectionSink($"ErrorCompleteness base generator ({label})");
-        var wellTyped = SemanticFilter.WellTypedProgram(baseGen, sink);
+        var drawn = baseGen.Select(module => (Module: module, Result: injector(module)));
+        var wellTyped = SemanticFilter.WellTypedProgram(drawn, draw => draw.Result is null ? null : draw.Module, sink);
 
-        wellTyped.Sample(module =>
+        wellTyped.Sample(draw =>
         {
-            var result = injector(module);
+            var (module, result) = draw;
             if (result == null)
                 return;
 
@@ -658,7 +662,7 @@ public class ErrorCompletenessPropertyTests
                 lock (failures)
                     failures.Add(failure);
             }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: PropertyIterations.Injection);
+        }, print: draw => Sharpy.Compiler.Pretty.Unparser.Unparse(draw.Module), iter: PropertyIterations.Injection);
 
         _output.WriteLine(sink.Summary);
         Assert.True(sink.Unexplained.Count == 0, sink.Report());
