@@ -112,10 +112,12 @@ public class TypedGeneratorRosterTests
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
     /// <summary><c>ErrorCompletenessPropertyTests.NarrowedProgram_AnalysesClean</c> — the first caller of
-    /// <c>GenTyped.NarrowedBlock</c> (statements, an env with Optionals).</summary>
+    /// <c>GenTyped.NarrowedBlock</c> (statements, an env with Optionals) — at the fuel it samples (2; this
+    /// helper said 1, a configuration no acceptance property sampled — found by the argument-identity link,
+    /// #2324).</summary>
     private static Gen<Module> TypedOptionalStatements() =>
         Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 1, withStatements: true));
+            GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2, withStatements: true));
 
     /// <summary><c>ClassInheritancePropertyTests</c>.</summary>
     private static Gen<Module> Classes() => GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2);
@@ -440,7 +442,7 @@ public class TypedGeneratorRosterTests
             new Y("GenFunctions.ModuleWithFunctions", () => Functions(), n => CallTo(n, "compute", "process", "transform")),
             new YInjected("ErrorInjector.InjectUndefinedFunctionCall", "SPY0200", CompilerDiagnosticSeverity.Error)),
         new("expressions.md", "Index Access", "list[index]",
-            new Y("GenTyped.ListSubscript", () => GenTyped.ListSubscript(TypeEnv.WithCollections, "int"), n => n is IndexAccess),
+            new Y("GenTyped.ListSubscript", () => Gen.OneOfConst("int", "str").SelectMany(element => GenTyped.ListSubscript(TypeEnv.WithCollections, element)), n => n is IndexAccess),
             new YInjected("ErrorInjector.InjectWrongTypedIndex", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // extended_numeric_literals.md
@@ -1507,19 +1509,21 @@ public class TypedGeneratorRosterTests
                     problems.Add($"{yi.Member}: the roster says {yi.Severity}, the injector {(warns ? "names" : "does not name")} a Warning severity");
 
                 if (!index.Methods.Any(m => m.References.Contains(yi.Member)
-                        && index.ClosureInvocations(m).Any(i => i.Name == "ErrorInjector.Judge")))
-                    problems.Add($"{yi.Member}: no property method references it and reaches ErrorInjector.Judge");
+                        && index.ClosureInvocationNodes(m).Any(i => PropertySourceIndex.InvokedName(i) == "ErrorInjector.Judge"
+                            && index.IsConsumed(m, i))))
+                    problems.Add($"{yi.Member}: no property method references it and reaches ErrorInjector.Judge with its verdict consumed");
                 continue;
             }
 
             var backing = index.Methods
                 .Where(m => m.References.Contains(yi.Member) && m.Literals.Contains(yi.Code))
                 .Where(m => index.Closure(m).Any(c => c.References.Contains(severity)))
-                .Where(m => index.ClosureInvocations(m).Any(i => RefusalVerdicts.Contains(i.Name)))
+                .Where(m => index.ClosureInvocationNodes(m).Any(i => RefusalVerdicts.Contains(PropertySourceIndex.InvokedName(i))
+                    && index.IsConsumed(m, i)))
                 .ToList();
             if (backing.Count == 0)
                 problems.Add($"{yi.Member} ({yi.Code}, {yi.Severity}): no property method names the member and \"{yi.Code}\" "
-                    + $"in one body and reaches the refusal seam at {severity}");
+                    + $"in one body and reaches the refusal seam at {severity} with its verdict consumed (asserted, never discarded)");
             else
                 _output.WriteLine($"  {yi.Member} {yi.Code} {yi.Severity} <- {string.Join(", ", backing)}");
         }
@@ -1530,34 +1534,61 @@ public class TypedGeneratorRosterTests
     }
 
     /// <summary>
-    /// Every <see cref="Y"/> row's member is sampled by a property that ACCEPTS every sample (Design
-    /// Decision 5: the roster's raw control proves presence, the property proves acceptance): some
-    /// property method references the member and its closure reaches one of
-    /// <see cref="AcceptanceVerdicts"/>.
+    /// Every <see cref="Y"/> row's generator CONFIGURATION is sampled by a property that accepts every sample
+    /// (#2324, P63b Decision 8 — the name-only link let a neutered lane keep backing its row): some property
+    /// method calls the row's member with the SAME normalized arguments the row's lambda passes (following
+    /// same-file helpers on both sides, named arguments placed by parameter, lambda parameters as <c>_</c>),
+    /// its closure reaches one of <see cref="AcceptanceVerdicts"/>, and that verdict is CONSUMED — asserted,
+    /// never discarded (<see cref="PropertySourceIndex.IsConsumed"/>).
     /// </summary>
     [Fact]
     public void YGenerated_RowsAreBackedByAnAcceptanceProperty()
     {
         var index = PropertySources.Value;
+        var members = GeneratorMembers();
+        var roster = PropertySourceIndex.Load(PropertiesRoot, file => file == RosterFile);
         var problems = new List<string>();
-        var membersTested = Rows.Select(r => r.Generated).OfType<Y>().Select(y => y.Member).Distinct().OrderBy(m => m, StringComparer.Ordinal).ToList();
+        var callsTested = new HashSet<PropertySourceIndex.GeneratorCall>();
+        var backingByCall = new Dictionary<PropertySourceIndex.GeneratorCall, List<PropertySourceIndex.Method>>();
+        var callsByMethod = index.Methods.ToDictionary(m => m, m => index.GeneratorCalls(m.File, m.Body, members).ToHashSet());
 
-        foreach (var member in membersTested)
+        foreach (var (label, line, generator) in roster.YRowGenerators(RosterFile))
         {
-            var backing = index.Methods
-                .Where(m => m.References.Contains(member)
-                    && index.ClosureInvocations(m).Any(i => IsAcceptance(m, i.Name, i.Arguments)))
-                .ToList();
-            if (backing.Count == 0)
-                problems.Add($"{member}: no property method samples it and reaches an acceptance verdict");
-            else
-                _output.WriteLine($"  {member} <- {string.Join(", ", backing.Take(3))}{(backing.Count > 3 ? $" (+{backing.Count - 3})" : "")}");
+            var calls = roster.GeneratorCalls(RosterFile, generator, members).Where(c => c.Member == label).ToList();
+            if (calls.Count == 0)
+            {
+                problems.Add($"line {line}: the row's lambda calls no {label}");
+                continue;
+            }
+            foreach (var call in calls)
+            {
+                if (!callsTested.Add(call))
+                    continue;
+                var backing = index.Methods
+                    .Where(m => callsByMethod[m].Contains(call))
+                    .Where(m => index.ClosureInvocationNodes(m).Any(i =>
+                        IsAcceptance(m, PropertySourceIndex.InvokedName(i), i.ArgumentList) && index.IsConsumed(m, i)))
+                    .ToList();
+                backingByCall[call] = backing;
+                if (backing.Count == 0)
+                    problems.Add($"line {line}: no property samples {call} and consumes an acceptance verdict");
+            }
         }
 
-        Assert.True(membersTested.Count > 0, "no Y-generated member was checked — the link is vacuous");
+        foreach (var (call, backing) in backingByCall.OrderBy(kv => kv.Key.ToString(), StringComparer.Ordinal))
+            _output.WriteLine($"  {call} <- {string.Join(", ", backing.Take(3))}{(backing.Count > 3 ? $" (+{backing.Count - 3})" : "")}");
+        Assert.True(callsTested.Count > 0, "no Y-generated configuration was checked — the link is vacuous");
         Assert.True(problems.Count == 0,
-            $"{problems.Count} Y-generated member(s) have no acceptance property:\n  " + string.Join("\n  ", problems));
+            $"{problems.Count} Y-generated configuration(s) have no acceptance property:\n  " + string.Join("\n  ", problems));
     }
+
+    /// <summary>Every public static member of a type in the generator namespace, by <c>Type.Member</c>.</summary>
+    private static IReadOnlyDictionary<string, MethodInfo[]> GeneratorMembers() =>
+        typeof(GenTyped).Assembly.GetTypes()
+            .Where(t => t.Namespace == GeneratorsNamespace && !t.IsNested && !t.Name.StartsWith("<", StringComparison.Ordinal))
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static).Select(m => (Name: $"{t.Name}.{m.Name}", Method: m)))
+            .GroupBy(m => m.Name, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.Method).ToArray(), StringComparer.Ordinal);
 
     /// <summary>
     /// Every <see cref="Y"/> row's label is the generator member its lambda calls — read from this file's
