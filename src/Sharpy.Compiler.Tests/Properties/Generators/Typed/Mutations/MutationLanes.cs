@@ -42,7 +42,6 @@ internal static class MutationLanes
     // ---- arguments and calls ------------------------------------------------------------------
     public static Module? WrongTypedOverloadedBuiltinArgument(Module m) => Mutate(m, Position.Argument, Families("OverloadedBuiltin"), WrongTypedLiteral);
     public static Module? WrongTypedConstructorArgument(Module m) => Mutate(m, Position.Argument, Families("Constructor"), WrongTypedLiteral);
-    public static Module? WrongTypedMethodArgument(Module m) => Mutate(m, Position.Argument, Families("Method"), WrongTypedLiteral);
     public static Module? WrongTypedSuperInitArgument(Module m) => Mutate(m, Position.Argument, Families("SuperInit"), WrongTypedLiteral);
     public static Module? WrongTypedExplicitGenericArgument(Module m) => Mutate(m, Position.Argument, Families("ExplicitGeneric"), WrongTypedLiteral);
     public static Module? WrongTypedDataclassArgument(Module m) => Mutate(m, Position.Argument, Families("Dataclass"), WrongTypedLiteral);

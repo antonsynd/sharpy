@@ -297,6 +297,36 @@ public class ErrorCompletenessPropertyTests
     public void SuperInitArity_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectSuperInitArity, "super().__init__ with an extra argument", MutationBases.Classes());
 
+    /// <summary>P63b (#2324): a user constructor's argument replaced by a literal its parameter refuses — SPY0220.</summary>
+    [Fact]
+    public void WrongTypedConstructorArgument_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectWrongTypedConstructorArgument, "wrong-typed constructor argument", MutationBases.Classes());
+
+    /// <summary>P63b (#2324): <c>Vec("s", …)</c> inside a user operator's body — SPY0220.</summary>
+    [Fact]
+    public void WrongTypedConstructorArgument_OfAUserOperatorType_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectWrongTypedConstructorArgument, "wrong-typed constructor argument of a user operator type", MutationBases.Parsed(GenOperators.BinaryOperatorProgram()));
+
+    /// <summary>P63b (#2324): a <c>super().__init__(…)</c> argument replaced by a literal the base constructor's parameter refuses — SPY0220.</summary>
+    [Fact]
+    public void WrongTypedSuperInitArgument_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectWrongTypedSuperInitArgument, "wrong-typed super().__init__ argument", MutationBases.Classes());
+
+    /// <summary>P63b (#2324): a user constructor called with one argument more than its <c>__init__</c> takes — SPY0224.</summary>
+    [Fact]
+    public void ConstructorArity_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectConstructorArity, "constructor with an extra argument", MutationBases.Classes());
+
+    /// <summary>P63b (#2324): a user method called with one argument more than it takes — SPY0224.</summary>
+    [Fact]
+    public void MethodArity_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectMethodArity, "method with an extra argument", MutationBases.Classes());
+
+    /// <summary>P63b (#2324): <c>str(n, 0)</c> in an f-string hole — SPY0224 (row: str() / int() conversion).</summary>
+    [Fact]
+    public void FixedArityBuiltinArity_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectFixedArityBuiltinArity, "str() with an extra argument", MutationBases.Parsed(GenFStrings.FStringWithNestedCalls()));
+
     /// <summary>P63b (#2324): a field or method read renamed to a member no class declares — SPY0203.</summary>
     [Fact]
     public void UndefinedMember_IsRejected() =>
@@ -357,6 +387,11 @@ public class ErrorCompletenessPropertyTests
     public void UndefinedTypeAtReturn_OfAGenerator_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectUndefinedTypeAtReturn, "undefined element-type annotation of a generator", GenIterators.ModuleWithGenerator(valid: true));
 
+    /// <summary>P63b (#2324): a local declaration's annotation naming an undefined type (<c>x: Nope_xyz = 0</c>) — SPY0202.</summary>
+    [Fact]
+    public void UndefinedTypeAtDeclaration_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectUndefinedTypeAtDeclaration, "undefined declaration type", MutationBases.TypedStatements());
+
     /// <summary>P63b (#2324): <c>class Factory(IProducer[int, int])</c> — SPY0224.</summary>
     [Fact]
     public void TypeArgumentArity_OfAGenericInterfaceBase_IsRejected() =>
@@ -372,6 +407,11 @@ public class ErrorCompletenessPropertyTests
     public void WrongTypedReassignment_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectWrongTypedReassignment, "wrong-typed reassignment", MutationBases.TypedStatements());
 
+    /// <summary>P63b (#2324): an annotated declaration's initializer replaced by a literal its annotation refuses — SPY0220.</summary>
+    [Fact]
+    public void WrongTypedDeclarationInitializer_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectWrongTypedDeclarationInitializer, "wrong-typed declaration initializer", MutationBases.TypedStatements());
+
     /// <summary>P63b (#2324): a <c>list[T]</c> declaration initialized with an element its annotation refuses — SPY0220.</summary>
     [Fact]
     public void WrongTypedListInitializer_IsRejected() =>
@@ -381,6 +421,11 @@ public class ErrorCompletenessPropertyTests
     [Fact]
     public void WrongTypedReturnValue_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectWrongTypedReturnValue, "wrong-typed return value", MutationBases.Functions());
+
+    /// <summary>P63b (#2324): a <c>return value</c> in a def with a non-None return type dropped to a bare <c>return</c> — SPY0260.</summary>
+    [Fact]
+    public void DroppedReturnValue_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectDroppedReturnValue, "dropped return value", MutationBases.Functions());
 
     /// <summary>P63b (#2324): <c>main</c> (no return annotation) gains <c>return 1</c> — SPY0260.</summary>
     [Fact]
@@ -489,6 +534,11 @@ public class ErrorCompletenessPropertyTests
     [Fact]
     public void DataclassWrongArgument_IsPinned() =>
         RunInjectionTest(ErrorInjector.InjectDataclassWrongArgument, "@dataclass constructed with a wrong argument", GenDecorators.ModuleWithDataclass());
+
+    /// <summary>P63b (#2324): a <c>@dataclass</c> constructed with one argument fewer than it has fields: SPY0908 CS7036 — a KnownRed pin on #2021.</summary>
+    [Fact]
+    public void DataclassArity_IsPinned() =>
+        RunInjectionTest(ErrorInjector.InjectDataclassArity, "@dataclass constructed with a missing argument", GenDecorators.ModuleWithDataclass());
 
     /// <summary>P63b (#2324): the library's module-level typed constant stores a literal its annotation
     /// refuses, in a two-file project — SPY0220.</summary>
