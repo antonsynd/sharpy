@@ -36,6 +36,30 @@ internal static class SemanticFilter
         });
 
     /// <summary>
+    /// Samples whose <paramref name="program"/> <c>Analyze</c>s clean, where a sample the caller will not
+    /// read as a program — <paramref name="program"/> returns null — passes WITHOUT analysis and without
+    /// reaching <paramref name="sink"/> (#2324, R-IX). An injection lane draws its base and decides
+    /// applicability on the raw AST first, so a lane that applies to a tenth of its base's samples pays a
+    /// tenth of the analyses instead of all of them; the samples it judges are the same draws. The forced
+    /// GC follows each analysis, as in the other filters.
+    /// </summary>
+    public static Gen<T> WellTypedProgram<T>(Gen<T> source, Func<T, Module?> program, RejectionSink sink) =>
+        source.Where(sample =>
+        {
+            if (program(sample) is not { } module)
+                return true;
+            try
+            {
+                return AdmitWellTyped(module, sink);
+            }
+            finally
+            {
+                GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+                GC.WaitForPendingFinalizers();
+            }
+        });
+
+    /// <summary>
     /// The admission rule of <see cref="WellTypedProgram"/> for ONE sample, without the forced GC — for a
     /// lane that collects its own programs in a loop (the differential sweep's generated arm, which runs
     /// in a parallel class): true when the unparsed <paramref name="module"/> <c>Analyze</c>s clean,
