@@ -41,10 +41,10 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// (2026-10-24) — to <see cref="YInjected"/>, to a compiler pin, or to <see cref="ByDesign"/> with its spec line
 /// and census control; compiler cells pinned by an injection cite their tracker (#2143, #2335, #2021, #2363). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
 /// re-<c>let</c> is <see cref="ByDesign"/> by <c>variable_scoping.md</c> §Variable Shadowing.</item>
-/// <item><b>NoConstruct exemption</b> — allowed only for a file whose fenced Sharpy blocks
-/// (<c>```python</c>/<c>spy</c>/<c>sharpy</c>, the fences <c>build_tools/spec_blocks.py</c> reads) are all
-/// marked <c>spec-sweep: fragment</c> or <c>spec-sweep: error</c> on the line above, or absent: a file
-/// with a compiled example defines something, so the exemption cannot be its own subject.</item>
+/// <item><b>NoConstruct exemption</b> — allowed only for a file with NO fenced Sharpy block
+/// (<c>```python</c>/<c>spy</c>/<c>sharpy</c>, the fences <c>build_tools/spec_blocks.py</c> reads), whatever
+/// its marker: an example — compiled, fragment or an error-marked refusal — shows a construct, so the
+/// exemption cannot be its own subject (#2324: compiled-only admitted a file of refusal examples).</item>
 /// <item><b>RAW positive control</b> — every Y-generated row draws 40 samples at a fixed seed from the
 /// UNFILTERED member, unparses <see cref="Node"/> output (each <see cref="Node"/>/<c>string</c> item of a
 /// tuple), re-parses with the real parser, and requires its predicate to hit at least one node; a throw
@@ -241,7 +241,7 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
         new("collection_types.md", "Collection Types", "tuple literal and tuple[...] annotation",
             new Y("GenMatchPatterns.MatchWithNestedPatterns", () => GenMatchPatterns.MatchWithNestedPatterns(), n => n is TupleLiteral),
-            new ByDesign("no typing surface")),
+            new KnownRedRow("#2287", "the file refuses SPY0149 (a `tuple[T, ...]` annotation), a parser refusal no typed generator draws — was ByDesign, wrong by the file's prose (P63b spec-code ratchet)")),
         new("collection_types.md", "Slicing", "slices",
             new KnownRedRow("#2287", "no typed generator emits a slice"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -463,7 +463,7 @@ public class TypedGeneratorRosterTests
         // float_literals.md
         new("float_literals.md", "Float Literals", "float literals",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is FloatLiteral, Samples: 100),
-            new ByDesign("no typing surface")),
+            new KnownRedRow("#2324", "the file refuses SPY0210 (a float literal out of its type's range) and SPY0220 (a literal outside a narrower slot's range); generated, no injected lane breaks them — was ByDesign, wrong by the file's prose (P63b spec-code ratchet)")),
 
         // for_statement.md
         new("for_statement.md", "For Loop", "for i in range(n)",
@@ -602,7 +602,7 @@ public class TypedGeneratorRosterTests
         // integer_literals.md
         new("integer_literals.md", "Integer Literals", "integer literals",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is IntegerLiteral),
-            new ByDesign("no typing surface")),
+            new KnownRedRow("#2324", "the file refuses SPY0220 (a literal outside its slot's range, an unsigned suffix in a signed slot) and SPY0222 (an unsigned literal against a signed operand); generated, no injected lane breaks them — was ByDesign, wrong by the file's prose (P63b spec-code ratchet)")),
 
         // interface_default_methods.md
         new("interface_default_methods.md", "Interface Default Methods", "interface methods with a default body",
@@ -723,7 +723,7 @@ public class TypedGeneratorRosterTests
         // name_mangling.md
         new("name_mangling.md", "Name Mangling", "snake_case to PascalCase collisions and acronyms",
             new KnownRedRow("#2287", "no typed generator emits a mangling collision or acronym case"),
-            new ByDesign("no typing surface")),
+            new KnownRedRow("#2287", "not generated, so no injection can break it; the file refuses SPY0212 (a type named for a builtin) and warns SPY0453 (consecutive underscores) and SPY0483 (a builtin shadowed in value position) — was ByDesign, wrong by the file's prose (P63b spec-code ratchet)")),
 
         // name_shadowing.md
         new("name_shadowing.md", "3. Builtin names in *value* position — permitted, warned (SPY0483)", "builtin name shadowed in value position",
@@ -749,7 +749,7 @@ public class TypedGeneratorRosterTests
         // none_literal.md
         new("none_literal.md", "None Literal", "None",
             new Y("GenTyped.TypedProgram", () => TypedOptionals(), n => n is NoneLiteral),
-            new ByDesign("no typing surface")),
+            new KnownRedRow("#2324", "the file refuses SPY0604 (a bare None stored to T?); generated, no injected lane breaks it — was ByDesign, wrong by the file's prose (P63b spec-code ratchet)")),
 
         // null_coalescing_assignment.md
         new("null_coalescing_assignment.md", "Null-Coalescing Assignment Operator", "??=",
@@ -1063,9 +1063,8 @@ public class TypedGeneratorRosterTests
         return result;
     }
 
-    /// <summary>Line numbers of the fenced Sharpy blocks that build_tools/spec_blocks.py would compile
-    /// (no fragment/error marker on the line above the fence).</summary>
-    private static List<int> CompiledBlockLines(string file)
+    /// <summary>Line numbers of every fenced Sharpy block, whatever its marker.</summary>
+    private static List<int> SharpyBlockLines(string file)
     {
         var lines = File.ReadAllLines(Path.Combine(SpecDir, file));
         var result = new List<int>();
@@ -1081,7 +1080,7 @@ public class TypedGeneratorRosterTests
             if (!lines[i].StartsWith("```", StringComparison.Ordinal))
                 continue;
             inFence = true;
-            if (SharpyFence.IsMatch(lines[i]) && (i == 0 || !ExemptMarker.IsMatch(lines[i - 1])))
+            if (SharpyFence.IsMatch(lines[i]))
                 result.Add(i + 1);
         }
         return result;
@@ -1201,10 +1200,12 @@ public class TypedGeneratorRosterTests
                 problems.Add($"{group.Key}: a NoConstruct row must be the file's only row");
             if (!universe.Contains(group.Key))
                 continue;
-            var compiled = CompiledBlockLines(group.Key);
-            if (compiled.Count > 0)
-                problems.Add($"{group.Key}: NoConstruct, but the file has {compiled.Count} compiled Sharpy block(s) "
-                    + $"(fence line(s) {string.Join(", ", compiled)}) — a compiled example defines a construct; row it");
+            // ANY Sharpy block, marked or not (#2324, P63b): an error-marked example shows a refusal of a
+            // construct, and a fragment shows the construct — compiled-only let a file of refusal examples pass.
+            var blocks = SharpyBlockLines(group.Key);
+            if (blocks.Count > 0)
+                problems.Add($"{group.Key}: NoConstruct, but the file has {blocks.Count} Sharpy block(s) "
+                    + $"(fence line(s) {string.Join(", ", blocks)}) — an example (compiled, fragment or error) shows a construct; row it");
         }
 
         Assert.True(problems.Count == 0,
@@ -1614,6 +1615,387 @@ public class TypedGeneratorRosterTests
             $"{problems.Count} Y row(s) label a member their generator does not call:\n  " + string.Join("\n  ", problems));
     }
 
+    // ---- Spec-named codes (#2324, P63b Decision 10) ------------------------------------------------
+
+    /// <summary>A code a spec file names that no roster row of the file claims, and the issue that owns the
+    /// missing lane: #2287 for a lexer/parser code or a file no typed generator emits, #2324 for a typed code
+    /// in a file the generator does emit. The type name carries <c>KnownRed</c> and the cite is the first
+    /// argument, so <c>build_tools/allowlist_issue_state.py</c>'s <c>KNOWNRED_CELL_RE</c> reads every row
+    /// (a closed cite is red at <c>/push</c>).</summary>
+    public sealed record KnownRedSpecCode(string Issue, string File, string Code);
+
+    /// <summary>A code a spec file names only as a cross-reference to <paramref name="ReferencedFile"/>'s
+    /// construct; that file must itself name the code AND claim it by a row — the exemption is never its own
+    /// subject.</summary>
+    public sealed record ProseCrossReference(string File, string Code, string ReferencedFile);
+
+    /// <summary>Seeded @ the P63b spec-code commit from the spec text and the roster: every (file, code) pair
+    /// with no claiming row. A ratchet — a row whose pair a roster row now claims, or whose file no longer
+    /// names the code, is red (drain on fix).</summary>
+    private static readonly KnownRedSpecCode[] UnclaimedSpecCodes =
+    {
+        new KnownRedSpecCode("#2324", "arithmetic_operators.md", "SPY0220"),
+        new KnownRedSpecCode("#2324", "arithmetic_operators.md", "SPY0223"),
+        new KnownRedSpecCode("#2324", "arithmetic_operators.md", "SPY0328"),
+        new KnownRedSpecCode("#2324", "arithmetic_operators.md", "SPY0348"),
+        new KnownRedSpecCode("#2287", "assignment_operators.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "assignment_operators.md", "SPY0222"),
+        new KnownRedSpecCode("#2287", "assignment_operators.md", "SPY0276"),
+        new KnownRedSpecCode("#2324", "async_programming.md", "SPY0274"),
+        new KnownRedSpecCode("#2324", "async_programming.md", "SPY0358"),
+        new KnownRedSpecCode("#2287", "bitwise_operators.md", "SPY0213"),
+        new KnownRedSpecCode("#2287", "bitwise_operators.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "bitwise_operators.md", "SPY0222"),
+        new KnownRedSpecCode("#2287", "bitwise_operators.md", "SPY0348"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0220"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0230"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0342"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0344"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0345"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0349"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0386"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0609"),
+        new KnownRedSpecCode("#2324", "builtin_functions.md", "SPY0613"),
+        new KnownRedSpecCode("#2324", "classes.md", "SPY0384"),
+        new KnownRedSpecCode("#2324", "classes.md", "SPY0385"),
+        new KnownRedSpecCode("#2324", "classes.md", "SPY0400"),
+        new KnownRedSpecCode("#2324", "collection_types.md", "SPY0222"),
+        new KnownRedSpecCode("#2324", "collection_types.md", "SPY0320"),
+        new KnownRedSpecCode("#2324", "collection_types.md", "SPY0602"),
+        new KnownRedSpecCode("#2287", "comprehensions.md", "SPY0147"),
+        new KnownRedSpecCode("#2287", "comprehensions.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "comprehensions.md", "SPY0358"),
+        new KnownRedSpecCode("#2287", "comprehensions.md", "SPY0704"),
+        new KnownRedSpecCode("#2324", "context_managers.md", "SPY0239"),
+        new KnownRedSpecCode("#2324", "context_managers.md", "SPY0266"),
+        new KnownRedSpecCode("#2324", "context_managers.md", "SPY0600"),
+        new KnownRedSpecCode("#2324", "context_managers.md", "SPY0703"),
+        new KnownRedSpecCode("#2287", "conversion_operators.md", "SPY0436"),
+        new KnownRedSpecCode("#2287", "conversion_operators.md", "SPY0437"),
+        new KnownRedSpecCode("#2287", "conversion_operators.md", "SPY0438"),
+        new KnownRedSpecCode("#2287", "conversion_operators.md", "SPY0439"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0380"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0381"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0382"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0383"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0400"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0401"),
+        new KnownRedSpecCode("#2324", "dataclass.md", "SPY0706"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0301"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0322"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0415"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0425"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0442"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0443"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0444"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0464"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0466"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0480"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0495"),
+        new KnownRedSpecCode("#2324", "decorators.md", "SPY0707"),
+        new KnownRedSpecCode("#2287", "del_statement.md", "SPY0144"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0201"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0322"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0450"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0451"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0452"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0480"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0481"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY0482"),
+        new KnownRedSpecCode("#2287", "diagnostic_suppression.md", "SPY9999"),
+        new KnownRedSpecCode("#2287", "dotnet_interop.md", "SPY0203"),
+        new KnownRedSpecCode("#2287", "dotnet_interop.md", "SPY0229"),
+        new KnownRedSpecCode("#2287", "dotnet_interop.md", "SPY0248"),
+        new KnownRedSpecCode("#2287", "dotnet_interop.md", "SPY0320"),
+        new KnownRedSpecCode("#2287", "dotnet_interop.md", "SPY0336"),
+        new KnownRedSpecCode("#2287", "dstrings.md", "SPY0029"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0203"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0220"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0222"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0260"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0331"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0427"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0454"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0522"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY0604"),
+        new KnownRedSpecCode("#2324", "dunder_methods.md", "SPY1001"),
+        new KnownRedSpecCode("#2324", "dunder_methods_recommendations.md", "SPY0201"),
+        new KnownRedSpecCode("#2324", "dunder_methods_recommendations.md", "SPY0301"),
+        new KnownRedSpecCode("#2324", "dunder_methods_recommendations.md", "SPY0454"),
+        new KnownRedSpecCode("#2287", "ellipsis_literal.md", "SPY0149"),
+        new KnownRedSpecCode("#2287", "enums.md", "SPY0525"),
+        new KnownRedSpecCode("#2287", "events.md", "SPY0496"),
+        new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0272"),
+        new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0702"),
+        new KnownRedSpecCode("#2287", "feature_roadmap.md", "SPY0130"),
+        new KnownRedSpecCode("#2287", "feature_roadmap.md", "SPY0302"),
+        new KnownRedSpecCode("#2287", "float_literals.md", "SPY0023"),
+        new KnownRedSpecCode("#2324", "for_statement.md", "SPY0227"),
+        new KnownRedSpecCode("#2287", "fstrings.md", "SPY0021"),
+        new KnownRedSpecCode("#2324", "fstrings.md", "SPY0234"),
+        new KnownRedSpecCode("#2324", "fstrings.md", "SPY0522"),
+        new KnownRedSpecCode("#2324", "fstrings.md", "SPY0613"),
+        new KnownRedSpecCode("#2324", "fstrings.md", "SPY1001"),
+        new KnownRedSpecCode("#2287", "function_default_parameters.md", "SPY0229"),
+        new KnownRedSpecCode("#2287", "function_default_parameters.md", "SPY0326"),
+        new KnownRedSpecCode("#2287", "function_default_parameters.md", "SPY0401"),
+        new KnownRedSpecCode("#2324", "function_definition.md", "SPY0204"),
+        new KnownRedSpecCode("#2324", "function_parameters.md", "SPY0353"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0104"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0277"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0279"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0280"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0339"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0342"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0346"),
+        new KnownRedSpecCode("#2287", "function_types.md", "SPY0486"),
+        new KnownRedSpecCode("#2287", "function_variadic_arguments.md", "SPY0496"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY0265"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY0267"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY0268"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY0269"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY0270"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY0703"),
+        new KnownRedSpecCode("#2324", "generators.md", "SPY1001"),
+        new KnownRedSpecCode("#2324", "generic_variance.md", "SPY0220"),
+        new KnownRedSpecCode("#2324", "generics.md", "SPY0229"),
+        new KnownRedSpecCode("#2324", "generics.md", "SPY0339"),
+        new KnownRedSpecCode("#2324", "generics.md", "SPY0604"),
+        new KnownRedSpecCode("#2324", "generics.md", "SPY0705"),
+        new KnownRedSpecCode("#2287", "identifiers.md", "SPY0015"),
+        new KnownRedSpecCode("#2324", "identity_operators.md", "SPY0349"),
+        new KnownRedSpecCode("#2324", "identity_operators.md", "SPY0465"),
+        new KnownRedSpecCode("#2324", "import_statements.md", "SPY0708"),
+        new KnownRedSpecCode("#2287", "integer_literals.md", "SPY0023"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY0248"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY0266"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY0413"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY0464"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY0607"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY0707"),
+        new KnownRedSpecCode("#2324", "interfaces.md", "SPY1001"),
+        new KnownRedSpecCode("#2287", "keywords.md", "SPY0101"),
+        new KnownRedSpecCode("#2287", "keywords.md", "SPY0144"),
+        new KnownRedSpecCode("#2287", "lexer_implementation.md", "SPY0150"),
+        new KnownRedSpecCode("#2287", "literal_string.md", "SPY0103"),
+        new KnownRedSpecCode("#2287", "literal_string.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "literal_string.md", "SPY0222"),
+        new KnownRedSpecCode("#2287", "match_statement.md", "SPY0102"),
+        new KnownRedSpecCode("#2287", "match_statement.md", "SPY0125"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0224"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0242"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0345"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0361"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0363"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0468"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0498"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0605"),
+        new KnownRedSpecCode("#2324", "match_statement.md", "SPY0908"),
+        new KnownRedSpecCode("#2287", "membership_operators.md", "SPY0222"),
+        new KnownRedSpecCode("#2287", "membership_operators.md", "SPY0320"),
+        new KnownRedSpecCode("#2287", "method_overloading.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "method_overloading.md", "SPY0244"),
+        new KnownRedSpecCode("#2287", "method_overloading.md", "SPY0353"),
+        new KnownRedSpecCode("#2287", "method_overloading.md", "SPY0354"),
+        new KnownRedSpecCode("#2287", "method_overloading.md", "SPY0355"),
+        new KnownRedSpecCode("#2287", "method_overloading.md", "SPY0701"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0305"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0313"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0520"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0522"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0523"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0526"),
+        new KnownRedSpecCode("#2287", "module_system.md", "SPY0615"),
+        new KnownRedSpecCode("#2287", "name_shadowing.md", "SPY0212"),
+        new KnownRedSpecCode("#2287", "name_shadowing.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "name_shadowing.md", "SPY0453"),
+        new KnownRedSpecCode("#2287", "name_shadowing.md", "SPY0483"),
+        new KnownRedSpecCode("#2287", "name_shadowing.md", "SPY0492"),
+        new KnownRedSpecCode("#2287", "nested_types.md", "SPY0708"),
+        new KnownRedSpecCode("#2287", "null_coalescing_assignment.md", "SPY0146"),
+        new KnownRedSpecCode("#2287", "null_coalescing_assignment.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "null_coalescing_assignment.md", "SPY0222"),
+        new KnownRedSpecCode("#2287", "null_coalescing_assignment.md", "SPY0244"),
+        new KnownRedSpecCode("#2287", "nullable_types.md", "SPY0229"),
+        new KnownRedSpecCode("#2287", "nullable_types.md", "SPY0604"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0220"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0224"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0234"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0235"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0353"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0354"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0355"),
+        new KnownRedSpecCode("#2287", "overload_resolution.md", "SPY0370"),
+        new KnownRedSpecCode("#2287", "parameter_modifiers.md", "SPY0103"),
+        new KnownRedSpecCode("#2287", "parameter_modifiers.md", "SPY0104"),
+        new KnownRedSpecCode("#2287", "properties.md", "SPY0148"),
+        new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0405"),
+        new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0407"),
+        new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0496"),
+        new KnownRedSpecCode("#2287", "question_mark_operator.md", "SPY0211"),
+        new KnownRedSpecCode("#2287", "question_mark_operator.md", "SPY0460"),
+        new KnownRedSpecCode("#2287", "question_mark_operator.md", "SPY0461"),
+        new KnownRedSpecCode("#2287", "question_mark_operator.md", "SPY0462"),
+        new KnownRedSpecCode("#2287", "question_mark_operator.md", "SPY0480"),
+        new KnownRedSpecCode("#2287", "source_files.md", "SPY0150"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0445"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0446"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0447"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0550"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0551"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0552"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0553"),
+        new KnownRedSpecCode("#2287", "source_generators.md", "SPY0554"),
+        new KnownRedSpecCode("#2287", "spread_operator.md", "SPY0239"),
+        new KnownRedSpecCode("#2287", "statements.md", "SPY0103"),
+        new KnownRedSpecCode("#2287", "statements.md", "SPY0104"),
+        new KnownRedSpecCode("#2324", "statements.md", "SPY0340"),
+        new KnownRedSpecCode("#2324", "statements.md", "SPY0600"),
+        new KnownRedSpecCode("#2287", "static_methods.md", "SPY0322"),
+        new KnownRedSpecCode("#2287", "string_literals.md", "SPY0103"),
+        new KnownRedSpecCode("#2287", "structs.md", "SPY0283"),
+        new KnownRedSpecCode("#2287", "structs.md", "SPY0400"),
+        new KnownRedSpecCode("#2287", "structs.md", "SPY0415"),
+        new KnownRedSpecCode("#2287", "structs.md", "SPY0435"),
+        new KnownRedSpecCode("#2287", "structs.md", "SPY0616"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0102"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0200"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0212"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0227"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0401"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0453"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0485"),
+        new KnownRedSpecCode("#2287", "tagged_unions.md", "SPY0608"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0212"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0220"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0326"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0480"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0498"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0604"),
+        new KnownRedSpecCode("#2324", "tagged_unions_optional.md", "SPY0608"),
+        new KnownRedSpecCode("#2287", "tagged_unions_result.md", "SPY0480"),
+        new KnownRedSpecCode("#2287", "template_strings.md", "SPY0203"),
+        new KnownRedSpecCode("#2287", "template_strings.md", "SPY0609"),
+        new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0225"),
+        new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0229"),
+        new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0239"),
+        new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0338"),
+        new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0356"),
+        new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0604"),
+        new KnownRedSpecCode("#2287", "type_aliases.md", "SPY0212"),
+        new KnownRedSpecCode("#2287", "type_annotation_shorthand.md", "SPY0114"),
+        new KnownRedSpecCode("#2324", "type_annotations.md", "SPY0227"),
+        new KnownRedSpecCode("#2324", "type_annotations.md", "SPY0614"),
+        new KnownRedSpecCode("#2287", "type_casting.md", "SPY0243"),
+        new KnownRedSpecCode("#2287", "type_casting.md", "SPY0334"),
+        new KnownRedSpecCode("#2287", "type_casting.md", "SPY0610"),
+        new KnownRedSpecCode("#2324", "type_narrowing.md", "SPY0229"),
+        new KnownRedSpecCode("#2324", "type_narrowing.md", "SPY0276"),
+        new KnownRedSpecCode("#2324", "type_narrowing.md", "SPY0337"),
+        new KnownRedSpecCode("#2324", "type_narrowing.md", "SPY0345"),
+        new KnownRedSpecCode("#2324", "type_narrowing.md", "SPY0604"),
+        new KnownRedSpecCode("#2287", "type_parameter_defaults.md", "SPY0224"),
+        new KnownRedSpecCode("#2287", "type_parameter_defaults.md", "SPY0347"),
+        new KnownRedSpecCode("#2287", "type_parameter_defaults.md", "SPY0395"),
+        new KnownRedSpecCode("#2287", "type_parameter_defaults.md", "SPY0396"),
+        new KnownRedSpecCode("#2287", "type_parameter_defaults.md", "SPY0908"),
+        new KnownRedSpecCode("#2287", "typing_equivalences.md", "SPY0149"),
+        new KnownRedSpecCode("#2287", "unittest.md", "SPY0448"),
+        new KnownRedSpecCode("#2287", "unittest.md", "SPY0449"),
+        new KnownRedSpecCode("#2287", "unittest.md", "SPY0469"),
+        new KnownRedSpecCode("#2287", "unittest.md", "SPY0522"),
+        new KnownRedSpecCode("#2287", "variable_declaration.md", "SPY0104"),
+        new KnownRedSpecCode("#2324", "variable_declaration.md", "SPY0331"),
+        new KnownRedSpecCode("#2324", "variable_declaration.md", "SPY0340"),
+        new KnownRedSpecCode("#2324", "variable_declaration.md", "SPY0600"),
+        new KnownRedSpecCode("#2287", "variable_scoping.md", "SPY0134"),
+        new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0200"),
+        new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0290"),
+        new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0468"),
+        new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0606"),
+        new KnownRedSpecCode("#2287", "walrus_operator.md", "SPY0600"),
+        new KnownRedSpecCode("#2287", "walrus_operator.md", "SPY0704"),
+    };
+
+    private static readonly ProseCrossReference[] ProseCrossReferences =
+    {
+    };
+
+    private static readonly Regex SpecCode = new(@"SPY\d{4}");
+
+    /// <summary>The codes a roster row of <paramref name="file"/> claims: its YInjected codes and the codes
+    /// its KnownRedRow observations name.</summary>
+    private static HashSet<string> ClaimedCodes(string file) =>
+        Rows.Where(r => r.File == file)
+            .SelectMany(r => new[] { r.Generated, r.Injected })
+            .SelectMany(l => l switch
+            {
+                YInjected yi => new[] { yi.Code },
+                KnownRedRow kr => SpecCode.Matches(kr.Observed).Select(m => m.Value).ToArray(),
+                _ => Array.Empty<string>(),
+            })
+            .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Every SPY code a spec file's text names is claimed (#2324 worklist item 3 — about 7 of 30 sampled
+    /// roster verdicts contradicted their file's own refusal prose): by a YInjected row of that file with the
+    /// code, a KnownRedRow of that file whose observation names it, a <see cref="ProseCrossReference"/> to a
+    /// file that names and claims it, or an <see cref="UnclaimedSpecCodes"/> cite. Stale rows are red: a
+    /// cited pair a row now claims, a pair the file no longer names, a duplicate, a malformed cite.
+    /// </summary>
+    [Fact]
+    public void SpecCodes_EveryNamedCodeIsClaimedByARow()
+    {
+        var universe = UniverseFiles();
+        var named = universe.ToDictionary(f => f,
+            f => SpecCode.Matches(File.ReadAllText(Path.Combine(SpecDir, f))).Select(m => m.Value).ToHashSet(StringComparer.Ordinal),
+            StringComparer.Ordinal);
+        var cited = UnclaimedSpecCodes.ToLookup(r => (r.File, r.Code));
+        var prose = ProseCrossReferences.ToLookup(r => (r.File, r.Code));
+        var problems = new List<string>();
+        int pairsTested = 0, claimed = 0;
+
+        foreach (var (file, codes) in named)
+        {
+            var claims = ClaimedCodes(file);
+            foreach (var code in codes.OrderBy(c => c, StringComparer.Ordinal))
+            {
+                pairsTested++;
+                var byRow = claims.Contains(code);
+                if (byRow)
+                    claimed++;
+                if (byRow && cited.Contains((file, code)))
+                    problems.Add($"{file} {code}: a roster row claims it — drop its UnclaimedSpecCodes row (drain on fix)");
+                if (!byRow && !cited.Contains((file, code)) && !prose.Contains((file, code)))
+                    problems.Add($"{file} names {code} and no roster row claims it — add a lane, a KnownRedRow naming it, or a cited UnclaimedSpecCodes row");
+            }
+        }
+
+        foreach (var row in UnclaimedSpecCodes)
+        {
+            if (!IssueCite.IsMatch(row.Issue))
+                problems.Add($"UnclaimedSpecCodes ({row.File}, {row.Code}): cite '{row.Issue}' is not #N");
+            if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.Code))
+                problems.Add($"UnclaimedSpecCodes ({row.File}, {row.Code}): the file does not name the code — stale row");
+        }
+        foreach (var dup in UnclaimedSpecCodes.GroupBy(r => (r.File, r.Code)).Where(g => g.Count() > 1))
+            problems.Add($"UnclaimedSpecCodes ({dup.Key.File}, {dup.Key.Code}): {dup.Count()} rows");
+        foreach (var row in ProseCrossReferences)
+        {
+            if (!named.TryGetValue(row.File, out var codes) || !codes.Contains(row.Code))
+                problems.Add($"ProseCrossReference ({row.File}, {row.Code}): the file does not name the code");
+            if (!named.TryGetValue(row.ReferencedFile, out var referenced) || !referenced.Contains(row.Code)
+                || !ClaimedCodes(row.ReferencedFile).Contains(row.Code))
+                problems.Add($"ProseCrossReference ({row.File}, {row.Code}) -> {row.ReferencedFile}: that file must name the code and claim it by a row");
+        }
+
+        _output.WriteLine($"spec codes: {named.Count(n => n.Value.Count > 0)} files name codes; {pairsTested} (file, code) pairs; "
+            + $"{claimed} claimed by a roster row; {UnclaimedSpecCodes.Length} cited ({UnclaimedSpecCodes.Count(r => r.Issue == "#2287")} #2287, "
+            + $"{UnclaimedSpecCodes.Count(r => r.Issue == "#2324")} #2324); {ProseCrossReferences.Length} prose cross-reference(s) (measured)");
+        Assert.True(pairsTested > 0, "no spec file names a code — the universe or the pattern is broken");
+        Assert.True(problems.Count == 0, $"{problems.Count} spec-code problem(s):\n  " + string.Join("\n  ", problems.Take(40)));
+    }
+
     // ---- Totality (Task 4) -------------------------------------------------------------------
 
     // Counted at landing and bumped in the same commit as the row that moves them. N = lanes citing the
@@ -1622,12 +2004,12 @@ public class TypedGeneratorRosterTests
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 103;
     private const int ExpectedYInjected = 89;
-    private const int ExpectedN = 176;
+    private const int ExpectedN = 181;
     private const int ExpectedKnownRed = 5;
-    private const int ExpectedByDesign = 23;
+    private const int ExpectedByDesign = 18;
     private const int ExpectedNoConstruct = 4;
 
-    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287" };
+    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287", "#2324" };
 
     [Fact]
     public void Totality_CountsMatchTheLiteralAnchors()
