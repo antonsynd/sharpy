@@ -871,7 +871,8 @@ public class TypedGeneratorRosterTests
         // statements.md
         new("statements.md", "Expression Statement", "expression statement",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is ExpressionStatement),
-            // declaration shape — a hand lane (DeclarationShapes); the refusal SPY0603 (#1622) is one statements.md does not name
+            // declaration shape — a hand lane (DeclarationShapes); the refusal SPY0603 (#1622) is the one statements.md's
+            // §Expression Statement states (R-IW, #2286)
             new YInjected("ErrorInjector.InjectConditionalExpressionStatement", "SPY0603", CompilerDiagnosticSeverity.Error)),
         new("statements.md", "Declaration Keywords", "let declarations",
             new KnownRedRow("#2287", "no typed generator emits let"),

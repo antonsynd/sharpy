@@ -2,13 +2,48 @@
 
 ## Expression Statement
 
-Any expression can be a statement:
+An expression can be a statement; its value, if it has one, is discarded:
 
 <!-- spec-sweep: fragment -->
 ```python
 print("Hello")
 obj.method()
 list.append(item)
+```
+
+Three expression forms are refused as statements with SPY0603. Python evaluates each as a no-op;
+none of them has a value the generated C# can discard, so Sharpy reports them at compile time:
+
+- **A non-call expression of type `None`** — in practice a conditional expression whose arms are
+  calls to functions returning `None`. It has no value to discard; write the branch as an `if`
+  statement. A call (`f()`) or an `await` of type `None` is an ordinary statement.
+- **A lambda** — as a statement it builds a function and drops it; call it or bind it to a name.
+  A `_` placeholder partial application (`f(_)`) is a lambda too, with the same verdict.
+- **A module reference** — `math` alone on a line does nothing.
+
+The `None` literal as a statement is accepted and does nothing, and a bare reference to a function
+or method (`obj.method` without the call) is accepted with a warning that the call is missing.
+
+<!-- spec-sweep: error SPY0603 -->
+```python
+import math
+
+def main() -> None:
+    flag = True
+    print(1) if flag else print(2)   # error SPY0603: expression statement of type 'None' must be a call; write the branch as an if statement
+    lambda: 1                        # error SPY0603: a lambda cannot be an expression statement; call it or bind it to a name
+    math                             # error SPY0603: a module reference cannot be an expression statement
+```
+
+The `if` statement is the spelling of the branch:
+
+```python
+def main() -> None:
+    flag = True
+    if flag:
+        print(1)
+    else:
+        print(2)
 ```
 
 The examples in the rest of this page use these declarations:

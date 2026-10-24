@@ -2366,3 +2366,29 @@ deviations:
       sharpy: |
         def main():
             a = 1; b = 2   # SPY0150: ';' does not separate statements in Sharpy; put each statement on its own line
+
+  - id: none-typed-expression-statement
+    code: SPY0603
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "Any expression is a statement and is evaluated for its effect: `print(1) if flag else print(2)` runs one branch, and a bare `lambda: 1` or `math` on its own line is a no-op."
+    sharpy_behavior: "An expression statement must have a value the generated C# can discard, or be a call or `await`. A non-call expression of type `None` (a conditional whose arms are calls returning `None`), a lambda (including a `_` placeholder partial application) and a module reference are refused with SPY0603, whose message steers to the `if` statement, the call, or a binding. The `None` literal statement is elided and a bare method reference is elided with warning SPY0480. Ruled R-IW (#2286, the direction record of #1622: each of these was a C# error behind SPY0908 before); lowering the conditional to `if`/`else` was rejected for now and stacks later."
+    spec_ref: docs/language_specification/statements.md
+    existing_diagnostic: SPY0603
+    planned_diagnostic: null
+    example:
+      python: |
+        import math
+        flag = True
+        print(1) if flag else print(2)   # 1
+        lambda: 1                        # no-op
+        math                             # no-op
+      sharpy: |
+        import math
+
+        def main():
+            flag = True
+            print(1) if flag else print(2)   # SPY0603: expression statement of type 'None' must be a call; write the branch as an if statement
+            lambda: 1                        # SPY0603: a lambda cannot be an expression statement; call it or bind it to a name
+            math                             # SPY0603: a module reference cannot be an expression statement
