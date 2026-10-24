@@ -35,11 +35,11 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// <item><b>Cite rules</b> (owner, 2026-10-15): a construct no typed generator emits cites #2287 (P62's
 /// grammar-driven generator); a generator member that emits the construct but has no consuming
 /// property cites #2288 ("wired in-plan"); an injection Phase 4 of P63 adds cites #2288
-/// ("Phase 4 adds the injection"); a weak refusal lane Phase 2 re-judges cites #2288; a construct that is
-/// generated, has a refusal, and has no injection outside Phase 4's eight lanes cites #2324 (the
-/// injection-reach residue tracker) with the verbatim Observed
-/// <c>"generated; no injection breaks it — outside Phase 4's eight lanes"</c>; compiler cells pinned
-/// by an injection cite their tracker (#2143). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
+/// ("Phase 4 adds the injection"); a weak refusal lane Phase 2 re-judges cites #2288; the 62 constructs that
+/// were generated, had a refusal and had no injection cited #2324 until P63b's mutation lanes
+/// (<c>ErrorInjector.Mutations.cs</c> over <c>Generators/Typed/Mutations/</c>) drained them by measurement
+/// (2026-10-24) — to <see cref="YInjected"/>, to a compiler pin, or to <see cref="ByDesign"/> with its spec line
+/// and census control; compiler cells pinned by an injection cite their tracker (#2143, #2335, #2021, #2363). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
 /// re-<c>let</c> is <see cref="ByDesign"/> by <c>variable_scoping.md</c> §Variable Shadowing.</item>
 /// <item><b>NoConstruct exemption</b> — allowed only for a file whose fenced Sharpy blocks
 /// (<c>```python</c>/<c>spy</c>/<c>sharpy</c>, the fences <c>build_tools/spec_blocks.py</c> reads) are all
@@ -148,7 +148,7 @@ public class TypedGeneratorRosterTests
         // arithmetic_operators.md
         new("arithmetic_operators.md", "Arithmetic Operators", "+ - * on int/float operands",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => BinOp(n, BinaryOperator.Subtract, BinaryOperator.Multiply), Samples: 100),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedArithmeticOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
         new("arithmetic_operators.md", "Division Operator `/`", "true division /",
             new KnownRedRow("#2287", "no typed generator emits /"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -207,13 +207,13 @@ public class TypedGeneratorRosterTests
             new YInjected("ErrorInjector.InjectMissingArgument", "SPY0224", CompilerDiagnosticSeverity.Error)),
         new("builtin_functions.md", "Collection Functions", "range()",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => CallTo(n, "range")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectOverloadedBuiltinWrongArgument", "SPY0354", CompilerDiagnosticSeverity.Error)),
         new("builtin_functions.md", "Mathematical Functions", "abs()",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => CallTo(n, "abs")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectOverloadedBuiltinWrongArgument", "SPY0354", CompilerDiagnosticSeverity.Error)),
         new("builtin_functions.md", "Type Conversion", "str() / int() conversion",
             new Y("GenFStrings.FStringWithNestedCalls", () => GenFStrings.FStringWithNestedCalls(), n => CallTo(n, "str", "int")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectOverloadedBuiltinWrongArgument", "SPY0354", CompilerDiagnosticSeverity.Error)),
         new("builtin_functions.md", "Type Checking", "isinstance()",
             new KnownRedRow("#2287", "no typed generator emits isinstance"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -225,7 +225,7 @@ public class TypedGeneratorRosterTests
         // classes.md
         new("classes.md", "Basic Class Definition", "class with typed fields, __init__ and methods",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is ClassDef c && c.Body.OfType<VariableDeclaration>().Any(v => v.Type != null)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedField", "SPY0203", CompilerDiagnosticSeverity.Error)),
         new("classes.md", "Field Initializer Expressions", "field with an initializer in the class body",
             new KnownRedRow("#2287", "no typed generator emits a field initializer"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -233,7 +233,7 @@ public class TypedGeneratorRosterTests
         // collection_types.md
         new("collection_types.md", "Collection Types", "list literal",
             new Y("GenTyped.TypedProgram", () => TypedCollections(), n => n is ListLiteral),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedListInitializer", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("collection_types.md", "Collection Types", "dict and set literals",
             new KnownRedRow("#2287", "no typed generator emits a dict or set literal"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -258,7 +258,7 @@ public class TypedGeneratorRosterTests
         new("comparison_operators.md", "Comparison Operators", "== != < <= > >= on numeric operands",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => BinOp(n, BinaryOperator.Equal, BinaryOperator.NotEqual,
                 BinaryOperator.LessThan, BinaryOperator.LessThanOrEqual, BinaryOperator.GreaterThan, BinaryOperator.GreaterThanOrEqual), Samples: 100),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedComparisonOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
 
         // comprehensions.md
         new("comprehensions.md", "List Comprehensions", "comprehensions",
@@ -279,18 +279,20 @@ public class TypedGeneratorRosterTests
             new YInjected("GenContextManagers.MissingEnterOrExitProgram", "SPY0324", CompilerDiagnosticSeverity.Error)),
         new("context_managers.md", "`as` Targets", "with ... as name, the name used in the body",
             new Y("GenContextManagers.ContextManagerWithAsBinding", () => GenContextManagers.ContextManagerWithAsBinding(), n => n is WithStatement w && w.Items.Any(i => i.Target != null)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedNameAtWithTarget", "SPY0200", CompilerDiagnosticSeverity.Error)),
         new("context_managers.md", "Async Context Managers", "async with over __aenter__/__aexit__",
             new Y("GenContextManagers.AsyncContextManagerProgram", () => GenContextManagers.AsyncContextManagerProgram(), n => n is WithStatement { IsAsync: true }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectAsyncWithOverSyncManager", "SPY0324", CompilerDiagnosticSeverity.Error)),
         new("context_managers.md", "`__exit__` Signature Variants", "zero-argument __exit__(self)",
             new Y("GenContextManagers.ValidContextManagerProgram", () => GenContextManagers.ValidContextManagerProgram(), n => n is FunctionDef { Name: "__exit__", Parameters.Length: 1 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectExitArity", "SPY0320", CompilerDiagnosticSeverity.Error)),
 
         // conventions.md
         new("conventions.md", "Function Return Type Annotations", "omitted return annotation (implicit -> None)",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is FunctionDef { Name: "main", ReturnType: null }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectReturnValueInImplicitNoneDef", "SPY0260", CompilerDiagnosticSeverity.Error)),
 
         // conversion_operators.md
         new("conversion_operators.md", "Conversion Operators", "__implicit__ / __explicit__",
@@ -300,7 +302,7 @@ public class TypedGeneratorRosterTests
         // dataclass.md
         new("dataclass.md", "Basic Usage", "@dataclass class constructed positionally",
             new Y("GenDecorators.ModuleWithDataclass", () => GenDecorators.ModuleWithDataclass(), n => Decorated(n, "dataclass")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new KnownRedRow("#2021", "analyses clean; run is SPY0908 CS1503 — the @dataclass constructor has no semantic signature (ErrorInjector.InjectDataclassWrongArgument)")),
         new("dataclass.md", "Field Defaults", "dataclass field defaults",
             new KnownRedRow("#2287", "no typed generator emits a dataclass field default"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -311,7 +313,8 @@ public class TypedGeneratorRosterTests
             new KnownRedRow("#2143", "analyses clean; `run` is SPY0908 CS0508 — no override signature check for a Sharpy base")),
         new("decorators.md", "Method Modifiers", "@override @final",
             new Y("GenDecorators.ModuleWithDecoratedFunction", () => GenDecorators.ModuleWithDecoratedFunction(validDecorator: true), n => Decorated(n, "final")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectOverrideWithoutBaseMember", "SPY0248", CompilerDiagnosticSeverity.Error)),
         new("decorators.md", "Method Modifiers", "@abstract method in an @abstract class",
             new KnownRedRow("#2287", "no typed generator emits @abstract (only ErrorInjector.InjectMissingAbstractImplementation writes it)"),
             new KnownRedRow("#2143", "analyses clean; `run` is SPY0908 CS0534 — no missing-abstract-member check for a Sharpy base")),
@@ -354,7 +357,7 @@ public class TypedGeneratorRosterTests
         // dunder_invocation_rules.md
         new("dunder_invocation_rules.md", "Dunders Are Definition-Only", "a dunder reached through its operator, never called by name",
             new Y("GenOperators.BinaryOperatorProgram", () => GenOperators.BinaryOperatorProgram(), n => BinOp(n, BinaryOperator.Add, BinaryOperator.Subtract, BinaryOperator.Multiply, BinaryOperator.Modulo)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectDunderCalledByName", "SPY0427", CompilerDiagnosticSeverity.Error)),
 
         // dunder_methods.md
         new("dunder_methods.md", "Arithmetic Operators", "arithmetic and unary dunder definitions",
@@ -362,7 +365,8 @@ public class TypedGeneratorRosterTests
             new YInjected("GenOperators.WrongArityOperatorDunderProgram", "SPY0321", CompilerDiagnosticSeverity.Error)),
         new("dunder_methods.md", "Comparison Operators", "comparison dunder definitions",
             new Y("GenOperators.ComparisonOperatorProgram", () => GenOperators.ComparisonOperatorProgram(), n => DefNamed(n, "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectDunderWrongReturnType", "SPY0321", CompilerDiagnosticSeverity.Error)),
         new("dunder_methods.md", "Special Methods", "__len__ / __bool__ protocol synthesis",
             new Y("GenInterfaces.ModuleWithProtocolDunder", () => Gen.OneOfConst("__len__", "__bool__").SelectMany(GenInterfaces.ModuleWithProtocolDunder), n => DefNamed(n, "__len__", "__bool__")),
             new YInjected("ErrorInjector.InjectProtocolDunderRemoved", "SPY0320", CompilerDiagnosticSeverity.Error)),
@@ -373,7 +377,8 @@ public class TypedGeneratorRosterTests
         // dunder_methods_recommendations.md
         new("dunder_methods_recommendations.md", "1. Equality Contract (`__eq__` / `__hash__`)", "user __eq__",
             new Y("GenOperators.ComparisonOperatorProgram", () => GenOperators.ComparisonOperatorProgram(), n => DefNamed(n, "__eq__")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectDunderWrongReturnType", "SPY0321", CompilerDiagnosticSeverity.Error)),
 
         // ellipsis_literal.md
         new("ellipsis_literal.md", "Ellipsis Literal", "... as a placeholder body",
@@ -393,19 +398,22 @@ public class TypedGeneratorRosterTests
         // exception_handling.md
         new("exception_handling.md", "Try/Except/Finally", "try/except with a typed, named handler",
             new Y("GenExceptions.ModuleWithTryExcept", () => GenExceptions.ModuleWithTryExcept(handlerCount: 1), n => n is TryStatement t && t.Handlers.Any(h => h.ExceptionType != null && h.Name != null)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectHandlerTypeNotException", "SPY0399", CompilerDiagnosticSeverity.Error)),
         new("exception_handling.md", "Try/Except/Finally", "nested try",
             new Y("GenExceptions.ModuleWithNestedTry", () => GenExceptions.ModuleWithNestedTry(), n => n is TryStatement t && t.Body.Any(s => s is TryStatement)),
             new ByDesign("no typing surface")),
         new("exception_handling.md", "Raise Statement", "raise of a constructed exception",
             new Y("GenExceptions.ModuleWithRaiseExpression", () => GenExceptions.ModuleWithRaiseExpression(), n => n is RaiseStatement { Exception: not null }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectRaiseNonException", "SPY0242", CompilerDiagnosticSeverity.Error)),
         new("exception_handling.md", "Raise Statement", "bare raise inside an except block",
             new Y("GenExceptions.ModuleWithBareRaise", () => GenExceptions.ModuleWithBareRaise(insideExcept: true), n => n is RaiseStatement { Exception: null }),
             new YInjected("GenExceptions.ModuleWithBareRaise", "SPY0242", CompilerDiagnosticSeverity.Error)),
         new("exception_handling.md", "Exception Type Hierarchy", "subclass handler before its base",
             new Y("GenExceptions.ModuleWithExceptionHierarchy", () => GenExceptions.ModuleWithExceptionHierarchy(), n => n is TryStatement { Handlers.Length: >= 2 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new KnownRedRow("#2363", "analyses clean; run is SPY0908 CS0160 — handler reachability is left to Roslyn (ErrorInjector.InjectHandlerOrderBaseFirst)")),
         new("exception_handling.md", "Exception Filters (`when`)", "except ... when",
             new KnownRedRow("#2287", "no typed generator emits an exception filter"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -421,10 +429,10 @@ public class TypedGeneratorRosterTests
         // expressions.md
         new("expressions.md", "Conditional Expression (Ternary)", "a if c else b",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is ConditionalExpression),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectMismatchedConditionalBranch", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("expressions.md", "Member Access", "obj.member",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is MemberAccess),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedMember", "SPY0203", CompilerDiagnosticSeverity.Error)),
         new("expressions.md", "Function Calls", "call to a user function: argument count",
             new Y("GenFunctions.ModuleWithFunctions", () => Functions(), n => CallTo(n, "compute", "process", "transform")),
             new YInjected("ErrorInjector.InjectWrongFunctionArgCount", "SPY0224", CompilerDiagnosticSeverity.Error)),
@@ -433,7 +441,7 @@ public class TypedGeneratorRosterTests
             new YInjected("ErrorInjector.InjectUndefinedFunctionCall", "SPY0200", CompilerDiagnosticSeverity.Error)),
         new("expressions.md", "Index Access", "list[index]",
             new Y("GenTyped.ListSubscript", () => GenTyped.ListSubscript(TypeEnv.WithCollections, "int"), n => n is IndexAccess),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedIndex", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // extended_numeric_literals.md
         new("extended_numeric_literals.md", "Extended Numeric Literals", "suffixed / based numeric literals",
@@ -458,18 +466,18 @@ public class TypedGeneratorRosterTests
         // for_statement.md
         new("for_statement.md", "For Loop", "for i in range(n)",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is ForStatement),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectOverloadedBuiltinWrongArgument", "SPY0354", CompilerDiagnosticSeverity.Error)),
 
         // fstrings.md
         new("fstrings.md", "F-Strings (Formatted String Literals)", "f-string with an expression hole",
             new Y("GenFStrings.FStringWithArithmetic", () => GenFStrings.FStringWithArithmetic(), n => n is FStringLiteral f && f.Parts.Any(p => p.Expression is BinaryOp)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedNameInFStringHole", "SPY0200", CompilerDiagnosticSeverity.Error)),
         new("fstrings.md", "Format Spec Grammar", "format spec in a hole",
             new Y("GenFStrings.FStringWithFormatSpecs", () => GenFStrings.FStringWithFormatSpecs(), n => n is FStringLiteral f && f.Parts.Any(p => p.Spec != null)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectStrHoleUnderNumericSpec", "SPY0609", CompilerDiagnosticSeverity.Error)),
         new("fstrings.md", "Interpolation Hole Type", "method call in a hole",
             new Y("GenFStrings.FStringWithMethodCalls", () => GenFStrings.FStringWithMethodCalls(), n => n is FStringLiteral f && f.Parts.Any(p => p.Expression is FunctionCall)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedMethod", "SPY0203", CompilerDiagnosticSeverity.Error)),
 
         // function_default_parameters.md
         new("function_default_parameters.md", "Function Default Parameters", "default parameter values",
@@ -479,7 +487,7 @@ public class TypedGeneratorRosterTests
         // function_definition.md
         new("function_definition.md", "Function Definition", "def with typed parameters and a return annotation",
             new Y("GenFunctions.ModuleWithFunctions", () => Functions(), n => n is FunctionDef { ReturnType: not null, Name: "compute" or "process" or "transform" }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedTypeAtParameter", "SPY0202", CompilerDiagnosticSeverity.Error)),
 
         // function_parameters.md
         new("function_parameters.md", "Function Parameters", "typed positional parameters bound at a call",
@@ -502,13 +510,13 @@ public class TypedGeneratorRosterTests
         // generators.md
         new("generators.md", "Syntax", "generator function with yield",
             new Y("GenIterators.ModuleWithGenerator", () => GenIterators.ModuleWithGenerator(valid: true), n => n is YieldStatement { IsFrom: false }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedYield", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("generators.md", "Syntax", "yield from",
             new Y("GenIterators.ModuleWithYieldFrom", () => GenIterators.ModuleWithYieldFrom(), n => n is YieldStatement { IsFrom: true }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectYieldFromNonIterable", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("generators.md", "Return Type Annotation", "element-type annotation on a generator",
             new Y("GenIterators.ModuleWithGenerator", () => GenIterators.ModuleWithGenerator(valid: true), n => n is FunctionDef { ReturnType: not null } f && f.Body.OfType<YieldStatement>().Any()),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedTypeAtReturn", "SPY0202", CompilerDiagnosticSeverity.Error)),
 
         // generic_variance.md
         new("generic_variance.md", "Covariance (`out T`)", "out T on an interface",
@@ -530,13 +538,13 @@ public class TypedGeneratorRosterTests
             new YInjected("GenGenerics.WrongTypeArgCountProgram", "SPY0224", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Generic Classes", "generic class deriving a generic base",
             new Y("GenGenerics.GenericWithInheritanceProgram", () => GenGenerics.GenericWithInheritanceProgram(TypeEnv.WithGenerics, fuel: 2), n => n is ClassDef c && c.TypeParameters.Length > 0 && c.BaseClasses.Any(b => b.TypeArguments.Length > 0)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedTypeAtTypeArgument", "SPY0202", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Generic Functions", "def identity[T]",
             new Y("GenGenerics.GenericFunctionProgram", () => GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2), n => n is FunctionDef { TypeParameters.Length: > 0 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedTypeAtParameter", "SPY0202", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Generic Function Instantiation", "identity[int](...)",
             new Y("GenGenerics.GenericFunctionProgram", () => GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2), n => n is FunctionCall { Function: IndexAccess { Object: Identifier { Name: "identity" } } }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedExplicitGenericArgument", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("generics.md", "Type Constraints", "type-parameter constraint",
             new Y("GenGenerics.GenericConstraintProgram", () => GenGenerics.GenericConstraintProgram(TypeEnv.WithGenerics, fuel: 1), n => n is ClassDef { TypeParameters: [{ Constraints.Length: > 0 }, ..] } || n is FunctionDef { TypeParameters: [{ Constraints.Length: > 0 }, ..] }),
             new YInjected("ErrorInjector.InjectConstraintViolationAtInferredCall", "SPY0237", CompilerDiagnosticSeverity.Error)),
@@ -555,12 +563,12 @@ public class TypedGeneratorRosterTests
         // identity_operators.md
         new("identity_operators.md", "Identity Operators", "x is None / x is not None",
             new Y("GenTyped.TypedProgram", () => TypedOptionals(), n => IsNoneTest(n), Samples: 100),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new ByDesign("identity_operators.md names SPY0349 (`is <Type>`, l.42) and SPY0465 (both operands value types, l.86); `v is None` on a non-Optional names neither — census control NonOptionalIdentityOperand @ TypedOptionals analyses clean (P63b, #2324)")),
 
         // if_statement.md
         new("if_statement.md", "If Statement", "if / else",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is IfStatement { ElseBody.Length: > 0 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectNoFalsyCaseTruthTest", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // import_statements.md
         new("import_statements.md", "From-Import Statement", "from lib import name",
@@ -581,13 +589,13 @@ public class TypedGeneratorRosterTests
         // inheritance.md
         new("inheritance.md", "Single Class Inheritance", "class Derived(Base)",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is ClassDef { BaseClasses.Length: 1 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectOverrideWithoutBaseMember", "SPY0248", CompilerDiagnosticSeverity.Error)),
         new("inheritance.md", "The `super()` Function", "super().__init__(...)",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is SuperExpression),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectSuperInitArity", "SPY0224", CompilerDiagnosticSeverity.Error)),
         new("inheritance.md", "Multiple Interface Implementation", "class implementing two interfaces",
             new Y("GenInterfaces.ModuleWithMultipleInterfaces", () => GenInterfaces.ModuleWithMultipleInterfaces(), n => n is ClassDef { BaseClasses.Length: >= 2 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectInterfaceMemberRemoved", "SPY0325", CompilerDiagnosticSeverity.Error)),
 
         // integer_literals.md
         new("integer_literals.md", "Integer Literals", "integer literals",
@@ -605,10 +613,10 @@ public class TypedGeneratorRosterTests
             new YInjected("ErrorInjector.InjectInterfaceMemberRemoved", "SPY0325", CompilerDiagnosticSeverity.Error)),
         new("interfaces.md", "Interface Inheritance", "interface deriving an interface",
             new Y("GenInterfaces.ModuleWithInterfaceHierarchy", () => GenInterfaces.ModuleWithInterfaceHierarchy(), n => n is InterfaceDef { BaseInterfaces.Length: > 0 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedTypeAtBase", "SPY0202", CompilerDiagnosticSeverity.Error)),
         new("interfaces.md", "Generic Interfaces", "interface I[T]",
             new Y("GenVariance.CovariantInterfaceProgram", () => GenVariance.CovariantInterfaceProgram(), n => n is InterfaceDef { TypeParameters.Length: > 0 }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectTypeArgumentArity", "SPY0224", CompilerDiagnosticSeverity.Error)),
 
         // introduction.md
         NoConstructRow("introduction.md", "Introduction",
@@ -637,14 +645,14 @@ public class TypedGeneratorRosterTests
         // logical_operators.md
         new("logical_operators.md", "Logical Operators", "and / or",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => BinOp(n, BinaryOperator.And, BinaryOperator.Or), Samples: 100),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectNoFalsyCaseLogicalOperand", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("logical_operators.md", "Truthiness", "if on a non-bool operand",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is IfStatement
             {
                 Test: IntegerLiteral or StringLiteral or ListLiteral or Identifier { Name: "x" or "y" or "s" }
                     or BinaryOp { Operator: BinaryOperator.Subtract or BinaryOperator.Multiply }
             }, Samples: 200),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectNoFalsyCaseTruthTest", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // loop_else.md
         new("loop_else.md", "Loop Else Clause", "for/while else",
@@ -654,28 +662,28 @@ public class TypedGeneratorRosterTests
         // match_statement.md
         new("match_statement.md", "Match Statement", "match statement with a wildcard arm",
             new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is MatchStatement m && m.Cases.Any(c => c.Pattern is WildcardPattern)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectIrrefutableArmFirst", "SPY0700", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Guard Patterns", "case p if guard",
             new Y("GenMatchPatterns.MatchWithGuards", () => GenMatchPatterns.MatchWithGuards(), n => (n is MatchStatement m && m.Cases.Any(c => c.Guard != null)) || n is GuardPattern),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectNoFalsyCaseGuard", "SPY0241", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Supported Patterns", "or-patterns",
             new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is OrPattern),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectOrPatternBindingMismatch", "SPY0359", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Supported Patterns", "list patterns with a star capture",
             new Y("GenMatchPatterns.MatchWithListPatterns", () => GenMatchPatterns.MatchWithListPatterns(), n => n is ListPattern l && l.Elements.Any(e => e is StarPattern)),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectListPatternElementOfOtherType", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Supported Patterns", "and-patterns",
             new Y("GenMatchPatterns.MatchWithAndPatterns", () => GenMatchPatterns.MatchWithAndPatterns(), n => n is AndPattern),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectAndPatternDuplicateCapture", "SPY0372", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Positional Patterns", "class patterns case C()",
             new Y("GenMatchPatterns.MatchWithTypePatterns", () => GenMatchPatterns.MatchWithTypePatterns(), n => n is PositionalPattern { Type: not null } or TypePattern),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedTypeAtPatternHead", "SPY0202", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Tuple Patterns", "tuple patterns",
             new Y("GenMatchPatterns.MatchWithNestedPatterns", () => GenMatchPatterns.MatchWithNestedPatterns(), n => n is TuplePattern),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectTuplePatternExtraElement", "SPY0257", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Constant Patterns", "literal constant patterns",
             new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is LiteralPattern),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectLiteralPatternOfOtherType", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("match_statement.md", "Exhaustiveness Checking", "non-exhaustive match statement (warning)",
             new Y("GenMatchPatterns.MatchWithOrPatterns", () => GenMatchPatterns.MatchWithOrPatterns(), n => n is MatchStatement m && m.Cases[^1].Pattern is WildcardPattern),
             new YInjected("GenMatchPatterns.MatchNonExhaustive", "SPY0463", CompilerDiagnosticSeverity.Warning)),
@@ -728,7 +736,8 @@ public class TypedGeneratorRosterTests
         // naming_conventions.md
         new("naming_conventions.md", "Compile-Time Enforcement", "naming-convention warning",
             new ByDesign("every generated identifier follows the convention; the rule is a property of names, not a construct"),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new YInjected("ErrorInjector.InjectCamelCaseLocal", "SPY0453", CompilerDiagnosticSeverity.Warning)),
 
         // nested_types.md
         new("nested_types.md", "Nested Types", "nested type declarations",
@@ -763,13 +772,13 @@ public class TypedGeneratorRosterTests
         // operator_overloading.md
         new("operator_overloading.md", "Arithmetic Operators", "binary operator on a user type",
             new Y("GenOperators.BinaryOperatorProgram", () => GenOperators.BinaryOperatorProgram(), n => n is BinaryOp { Left: Identifier { Name: "a" }, Right: Identifier { Name: "b" } }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedArithmeticOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
         new("operator_overloading.md", "Arithmetic Operators", "unary operator on a user type",
             new Y("GenOperators.UnaryOperatorProgram", () => GenOperators.UnaryOperatorProgram(), n => n is UnaryOp { Operand: Identifier { Name: "v" } }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedUnaryOperand", "SPY0223", CompilerDiagnosticSeverity.Error)),
         new("operator_overloading.md", "Comparison Operators", "comparison operator on a user type",
             new Y("GenOperators.ComparisonOperatorProgram", () => GenOperators.ComparisonOperatorProgram(), n => n is BinaryOp { Left: Identifier { Name: "a" }, Right: Identifier { Name: "b" } }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedComparisonOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
 
         // operator_precedence.md
         new("operator_precedence.md", "Operator Precedence", "additive over multiplicative",
@@ -813,7 +822,8 @@ public class TypedGeneratorRosterTests
         // program_entry_point.md
         new("program_entry_point.md", "Entry Point Function", "def main()",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => DefNamed(n, "main")),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
+            new KnownRedRow("#2335", "analyses clean; run is SPY0908 CS1558 — main's parameter list is left to Roslyn (ErrorInjector.InjectMainParameter)")),
 
         // properties*.md
         new("properties.md", "Properties", "properties",
@@ -839,7 +849,7 @@ public class TypedGeneratorRosterTests
         // return_statement.md
         new("return_statement.md", "Return Statement", "return of a typed value",
             new Y("GenFunctions.ModuleWithFunctions", () => Functions(), n => n is ReturnStatement { Value: not null }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedReturnValue", "SPY0260", CompilerDiagnosticSeverity.Error)),
 
         // source_files.md
         new("source_files.md", "Source Files", "encoding, line joining and logical lines",
@@ -859,7 +869,7 @@ public class TypedGeneratorRosterTests
         // statements.md
         new("statements.md", "Expression Statement", "expression statement",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is ExpressionStatement),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new ByDesign("statements.md §Expression Statement l.5: any expression can be a statement — no typing surface of its own; census control ExpressionStatementOfAnyValue @ TypedStatements analyses clean (P63b, #2324)")),
         new("statements.md", "Declaration Keywords", "let declarations",
             new KnownRedRow("#2287", "no typed generator emits let"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -868,7 +878,7 @@ public class TypedGeneratorRosterTests
             new YInjected("ErrorInjector.InjectConstReassignment", "SPY0225", CompilerDiagnosticSeverity.Error)),
         new("statements.md", "Module-Level Declaration Rules", "module-level typed constant",
             new Y("GenImports.ImportingModule", () => GenImports.ImportingModule(TypeEnv.Default, fuel: 1), n => n is Module m && m.Body.OfType<VariableDeclaration>().Any()),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedLibraryConstant", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // static_methods.md
         new("static_methods.md", "Static Methods", "self-less (static) methods",
@@ -884,12 +894,12 @@ public class TypedGeneratorRosterTests
         new("string_operators.md", "String Operators", "str + str",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is BinaryOp { Operator: BinaryOperator.Add } b
                 && (b.Left is StringLiteral or Identifier { Name: "s" } || b.Right is StringLiteral or Identifier { Name: "s" }), Samples: 100),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedArithmeticOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
 
         // string_type.md
         new("string_type.md", "String Method Availability", "str.upper() / lower() / strip()",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is FunctionCall { Function: MemberAccess { Member: "upper" or "lower" or "strip" } }, Samples: 100),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectUndefinedMethod", "SPY0203", CompilerDiagnosticSeverity.Error)),
 
         // structs.md
         new("structs.md", "Structs", "structs",
@@ -938,7 +948,7 @@ public class TypedGeneratorRosterTests
         // type_annotations.md
         new("type_annotations.md", "Type Annotations", "list[int] annotation",
             new Y("GenTyped.TypedProgram", () => TypedCollections(), n => n is VariableDeclaration { Type: { Name: "list", TypeArguments.Length: 1 } }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectTypeArgumentArity", "SPY0224", CompilerDiagnosticSeverity.Error)),
         new("type_annotations.md", "Nullability and Optional Type Syntax", "T? annotation",
             new Y("GenTyped.TypedProgram", () => TypedOptionals(), n => n is VariableDeclaration { Type.IsOptional: true }),
             new YInjected("ErrorInjector.InjectOptionalStoreWithoutNarrowing", "SPY0220", CompilerDiagnosticSeverity.Error)),
@@ -988,7 +998,7 @@ public class TypedGeneratorRosterTests
         // variable_scoping.md
         new("variable_scoping.md", "Assignment Statement", "reassignment of a declared local",
             new Y("GenTyped.TypedProgram", () => TypedStatements(), n => n is Assignment { Target: Identifier }),
-            new KnownRedRow("#2324", "generated; no injection breaks it — outside Phase 4's eight lanes")),
+            new YInjected("ErrorInjector.InjectWrongTypedReassignment", "SPY0220", CompilerDiagnosticSeverity.Error)),
         new("variable_scoping.md", "Variable Shadowing", "same-scope re-let",
             new KnownRedRow("#2287", "no typed generator emits let"),
             new ByDesign("same-scope re-let is valid by spec (let always introduces a new variable); control: `def main(): let x = 1; let x = 2; print(x)` runs and prints 2 @ f8c37f986")),
@@ -1410,7 +1420,8 @@ public class TypedGeneratorRosterTests
 
     private const string RosterFile = "Semantic/TypedGeneratorRosterTests.cs";
     private const string GeneratorDirectory = "Generators/Typed/";
-    private const string InjectorFile = "Generators/Typed/ErrorInjector.cs";
+    /// <summary>The injector's files: <c>ErrorInjector.cs</c> and its partials (<c>ErrorInjector.Mutations.cs</c>, #2324).</summary>
+    private const string InjectorFilePrefix = "Generators/Typed/ErrorInjector";
 
     private static readonly Lazy<PropertySourceIndex> PropertySources = new(() => PropertySourceIndex.Load(PropertiesRoot,
         file => file != RosterFile && !file.StartsWith(GeneratorDirectory, StringComparison.Ordinal)));
@@ -1471,7 +1482,7 @@ public class TypedGeneratorRosterTests
     public void YInjected_RowsAreBackedByTheirRefusalProperty()
     {
         var index = PropertySources.Value;
-        var injector = PropertySourceIndex.Load(PropertiesRoot, file => file == InjectorFile);
+        var injector = PropertySourceIndex.Load(PropertiesRoot, file => file.StartsWith(InjectorFilePrefix, StringComparison.Ordinal));
         var problems = new List<string>();
         var checkedRows = 0;
 
@@ -1488,7 +1499,7 @@ public class TypedGeneratorRosterTests
                 var bodies = injector.Methods.Where(m => m.Name == member).ToList();
                 var codes = bodies.SelectMany(m => m.Literals).Where(l => DiagnosticCode.IsMatch(l)).Distinct().ToList();
                 if (bodies.Count == 0)
-                    problems.Add($"{yi.Member}: no such method in {InjectorFile}");
+                    problems.Add($"{yi.Member}: no such method in {InjectorFilePrefix}*.cs");
                 else if (codes is not [var only] || only != yi.Code)
                     problems.Add($"{yi.Member}: the roster says {yi.Code}, the injector's body draws [{string.Join(", ", codes)}]");
                 var warns = bodies.Any(m => m.References.Contains("CompilerDiagnosticSeverity.Warning"));
@@ -1575,17 +1586,17 @@ public class TypedGeneratorRosterTests
     // ---- Totality (Task 4) -------------------------------------------------------------------
 
     // Counted at landing and bumped in the same commit as the row that moves them. N = lanes citing the
-    // generator trackers (#2287 P62, #2288 this plan, #2324 injection reach); KnownRed = lanes pinning a
+    // generator tracker (#2287 P62; #2324's 62 rows drained by P63b, 2026-10-24); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedRows = 202;
     private const int ExpectedYGenerated = 103;
-    private const int ExpectedYInjected = 32;
-    private const int ExpectedN = 238;
-    private const int ExpectedKnownRed = 2;
-    private const int ExpectedByDesign = 21;
+    private const int ExpectedYInjected = 89;
+    private const int ExpectedN = 176;
+    private const int ExpectedKnownRed = 5;
+    private const int ExpectedByDesign = 23;
     private const int ExpectedNoConstruct = 4;
 
-    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287", "#2324" };
+    private static readonly HashSet<string> GeneratorTrackers = new(StringComparer.Ordinal) { "#2287" };
 
     [Fact]
     public void Totality_CountsMatchTheLiteralAnchors()
