@@ -321,6 +321,10 @@ internal partial class ImportResolver
         bool isRegistryOwnBinding,
         Action<ImportBindingDiagnostic> report)
     {
+        // A builtin function name's SPY0484 says the import TOOK EFFECT ("a bare 'print' here names the module"),
+        // so it is reported only once the name is bound: a refused import draws its SPY0204 alone, an idempotent
+        // re-import (nothing newly bound) draws nothing — the first import already warned.
+        ImportBindingDiagnostic? warning = null;
         if (alias != null && !isRegistryOwnBinding)
         {
             // The escape of the spelling that binds: the `as` name, or the plain spelling's first
@@ -343,11 +347,11 @@ internal partial class ImportResolver
                         BuiltinNameShadowing.RefusalCode, IsError: true));
                     return false;
                 case BuiltinShadowVerdict.Warned:
-                    report(new ImportBindingDiagnostic(
+                    warning = new ImportBindingDiagnostic(
                         binding.Form == ImportBindingForm.FromImport
                             ? BuiltinNameShadowing.FromImportWarningMessage(registerName, warningTarget ?? registerName)
                             : BuiltinNameShadowing.ModuleImportWarningMessage(registerName, binding.Display),
-                        DiagnosticCodes.Validation.BuiltinRebornByExplicitImport, IsError: false));
+                        DiagnosticCodes.Validation.BuiltinRebornByExplicitImport, IsError: false);
                     break;
             }
         }
@@ -356,6 +360,8 @@ internal partial class ImportResolver
         if (symbolTable.TryDefine(symbol))
         {
             scope.RecordImportBinding(registerName, binding with { IsStar = alias == null });
+            if (warning is { } bound)
+                report(bound);
             return true;
         }
 

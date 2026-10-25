@@ -575,14 +575,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
         // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
-        // {str, print, `str`}, + 2 builtins-module names, + the plain builtin type name, + the dotted root × 2 orders,
-        // + the star import × {var, const, def} × 2 orders.
-        Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 1 + 2 + 3 * 2, ImportBindingCells().Count());
+        // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
+        // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders.
+        Assert.Equal(4 * (2 + 8 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2, ImportBindingCells().Count());
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + alias→alias × {type-body, module}.
         Assert.Equal(7 * 4 + 2, AliasRedeclarationCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48 + 89 + 30, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 48 + 95 + 30, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1016,7 +1016,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// <c>from copy import deepcopy as N</c>} × order {collider first, import first} (fresh and the repeated import have
     /// one order), plus — for the <c>as</c> spellings — the bound name {<c>str</c>, <c>print</c>, <c>`str`</c>}, the
     /// <c>builtins</c> module's own bindings <c>from builtins import len</c> / <c>str</c>, and the dotted root
-    /// <c>import os</c> + <c>import os.path</c> in both orders; and the star spelling <c>from math import *</c> ×
+    /// <c>import os</c> + <c>import os.path</c> in both orders; for the <c>as</c> spellings also <c>print</c> beside a
+    /// <c>def print</c> (both orders) and <c>print</c> imported twice; and the star spelling <c>from math import *</c> ×
     /// {module variable, const, def} named <c>pi</c>, both orders. Every program's <c>main</c> prints <c>ok</c> (nothing
     /// else uses the binding, D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is
     /// honoured) and the dotted root (which prints <c>len(os.path.join("a", "b"))</c>).
@@ -1032,7 +1033,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// → errors [], warnings [SPY0484 @ ImportAlias] (c4/c9); the <c>builtins</c> module's own binding shadows nothing
     /// → [] with no SPY0484 (d4/d5) — the absence's positive control is the <c>from-import-as × print</c> cell's
     /// SPY0484, asserted unconditionally (hard). Fresh, the repeated import (idempotent) and the dotted root (merge) →
-    /// [] and run. A star import refuses no declaration: the star cells are [] and print the LOCAL's <c>1</c>, not
+    /// [] and run. A refused import draws its SPY0204 alone: beside <c>def print</c> the warnings are the def's
+    /// SPY0483 only, never a SPY0484 claiming the import took effect; <c>print</c> imported twice warns once (the second
+    /// is idempotent). A star import refuses no declaration: the star cells are [] and print the LOCAL's <c>1</c>, not
     /// <c>math.pi</c> (star × property is left out — the import silently wins there, #2371). Warnings are compared over
     /// <see cref="VerdictWarnings"/>; errors over the whole program.</para>
     /// </summary>
@@ -1101,6 +1104,22 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 (_, _) => none, (_, s) => new[] { ("SPY0484", s, ImportAliasColumn(print)) }, body: "pass", stdout: "");
             yield return Make(spelling.Name, "escaped-str", "none", Array.Empty<string>(), new[] { spelling.Line("`str`") },
                 (_, _) => none);
+
+            // A refused import draws its SPY0204 alone — no SPY0484 claiming it rebinds the name (R3 of the P21f
+            // verify round); the def's own SPY0483 at its name is the only shadowing warning, in both orders.
+            var printDef = new[] { "def print(x: int) -> None:", "    pass" };
+            foreach (var order in new[] { "collider-first", "import-first" })
+            {
+                var colliderFirst = order == "collider-first";
+                yield return Make(spelling.Name, "print-def", order,
+                    colliderFirst ? printDef : new[] { print }, colliderFirst ? new[] { print } : printDef,
+                    (f, s) => new[] { ("SPY0204", colliderFirst ? s : f, ImportAliasColumn(print)) },
+                    (f, s) => new[] { ("SPY0483", colliderFirst ? f : s, 5) }, body: "pass", stdout: "");
+            }
+
+            // The same builtin-function-name import twice binds once and warns once: the second is idempotent.
+            yield return Make(spelling.Name, "print", "twice", new[] { print }, new[] { print },
+                (_, _) => none, (f, _) => new[] { ("SPY0484", f, ImportAliasColumn(print)) }, body: "pass", stdout: "");
         }
 
         // A star import keeps its rule (outside R-II's four spellings): a module-level declaration of a star-imported

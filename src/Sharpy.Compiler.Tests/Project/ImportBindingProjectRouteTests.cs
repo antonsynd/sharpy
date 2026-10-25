@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Tests.Project;
 /// pins the matrix on one file; this class pins the multi-file twin — an import of a PROJECT module
 /// (<c>lib.spy</c>, bound through <c>ResolveImportSymbol</c>'s Phase 3 originals), the dotted-root merge
 /// (<c>import os</c> + <c>import os.path</c>, both orders), the module-variable cell (c18), the star import a
-/// module variable re-declares, and the
+/// module variable re-declares, the refused import that draws no SPY0484, the idempotent re-import that warns once, and the
 /// plain-vs-alias split of a builtin TYPE name (a plain <c>from lib import double</c> is warned and
 /// runs; <c>from lib import helper as double</c> is refused).
 /// </summary>
@@ -60,6 +60,14 @@ public class ImportBindingProjectRouteTests
             errors: new string[0], stdout: "5\n");
         yield return Cell("var × star (stdlib module)", "from math import *\npi: float = 1.5\n\ndef main() -> None:\n    print(pi)\n",
             errors: new string[0], stdout: "1.5\n");
+        // A refused import draws its SPY0204 alone (no SPY0484 claiming it rebinds the name); the def keeps its SPY0483.
+        yield return Cell("def print × import-as print (refused, no SPY0484)",
+            "import lib as print\n\ndef print(x: int) -> None:\n    pass\n\ndef main() -> None:\n    pass\n",
+            new[] { "SPY0204@1:8" }, warnings: new[] { "SPY0483@3:5" });
+        // An idempotent re-import binds nothing new and warns once.
+        yield return Cell("from-import-as print twice (one SPY0484)",
+            "from lib import helper as print\nfrom lib import helper as print\n\ndef main() -> None:\n    pass\n",
+            errors: new string[0], warnings: new[] { "SPY0484@1:17" }, stdout: "");
         yield return Cell("fresh", "from lib import helper\n\ndef main() -> None:\n    print(helper())\n",
             errors: new string[0], stdout: "1\n");
         yield return Cell("same from-import twice",
