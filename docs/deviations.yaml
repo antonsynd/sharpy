@@ -334,7 +334,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "A class statement may take any builtin name: `class double:` rebinds `double` in the module namespace, and annotations — which CPython does not resolve statically — are unaffected."
-    sharpy_behavior: "A TYPE declaration (class/struct/interface/enum/union/delegate) or a `type` alias may not take the bare spelling of a builtin TYPE name, at every position — module, class body, function body, block. A type declaration enters the namespace annotations resolve through, so `x: double` would become ambiguous, and Sharpy resolves annotations statically. Backtick-escape the name to declare a user type or alias with that spelling. Bindings in VALUE position are NOT refused — see `builtin-name-shadowing-in-value-position`."
+    sharpy_behavior: "A TYPE declaration (class/struct/interface/enum/union/delegate) or a `type` alias may not take the bare spelling of a builtin TYPE name, at every position — module, class body, function body, block. A type declaration enters the namespace annotations resolve through, so `x: double` would become ambiguous, and Sharpy resolves annotations statically. Backtick-escape the name to declare a user type or alias with that spelling. An import ALIAS (`import math as str`, `from math import pi as str`) is refused the same way (R-II, #2359): it would make every bare `str` in the file mean the import; the backtick-escaped alias is the opt-in. A plain `from m import x` whose library name spells a builtin type is warned (SPY0484), not refused — the importer did not choose the name. Bindings in VALUE position are NOT refused — see `builtin-name-shadowing-in-value-position`."
     spec_ref: docs/language_specification/name_mangling.md
     existing_diagnostic: SPY0212
     planned_diagnostic: null
@@ -356,6 +356,28 @@ deviations:
 
         def main():
             print(`double`(3).v)  # 3
+
+  - id: module-binding-collision-refused
+    code: SPY0204
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "A module-level name is rebound by whichever statement runs last: `import math as m` followed by `def m(): ...` leaves `m` the function; `type A = str` then `type A = int` leaves `A` the `int` alias; `import math as mm` then `import copy as mm` leaves `mm` the `copy` module."
+    sharpy_behavior: "An import binding collides like every module binding (R-II, #2359): an import whose name a class, def, `type` alias, const, module property or module variable of the same module already takes — or that another import binds to a different module or symbol — is SPY0204, whatever the source order (the module body is declared before imports bind); the refused import binds nothing. A `type` alias re-declared in one scope is SPY0204 at every position (#2360). Re-importing the same thing is idempotent, and `import os` with `import os.path` share one `os` binding. .NET has no last-binding-wins rule for these names, so Sharpy refuses rather than rebinds (R-HJ, R-CY)."
+    spec_ref: docs/language_specification/import_statements.md
+    existing_diagnostic: SPY0204
+    planned_diagnostic: null
+    example:
+      python: |
+        import math as m
+        def m():
+            return 1
+        print(m())  # 1
+      sharpy: |
+        import math as m       # ERROR SPY0204: 'm' is already defined in this module (function, line 3)
+
+        def m() -> int:
+            return 1
 
   - id: builtin-name-shadowing-in-value-position
     code: SPY0483

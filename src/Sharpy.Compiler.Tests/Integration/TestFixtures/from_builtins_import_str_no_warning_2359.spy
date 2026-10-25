@@ -1,0 +1,11 @@
+# #1322 / #2359 (d5): a name imported out of the `builtins` module binds the registry's own symbol,
+# so `from builtins import str` shadows nothing — not the SPY0212 an import alias spelling a builtin
+# type name draws, and not SPY0484 (the empty .warning pins the absence; its positive control is
+# import_alias_builtin_function_name_2359, whose .warning carries SPY0484). At ce482aa20 this warned
+# SPY0484 ("a bare 'str' here calls 'builtins.str'") — warned → silent. The d4 twin (`len`) is
+# builtins_from_import_resolves.
+from builtins import str
+
+def main() -> None:
+    s: str = str(42)
+    print(s + "!")

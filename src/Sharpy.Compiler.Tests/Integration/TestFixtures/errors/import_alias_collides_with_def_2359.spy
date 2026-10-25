@@ -1,0 +1,10 @@
+# #2359 (R-II): `import copy as m` beside a module-level `def m` is SPY0204 at the import.
+# Direction record: the import-math-as-m twin ran 1 @ ce482aa20 (the def silently won); worked → refused
+# per R-II (Python rebinds; .NET has no later-binding-wins rule for module bindings).
+import copy as m
+
+def m() -> int:
+    return 1
+
+def main() -> None:
+    print(m())

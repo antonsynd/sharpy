@@ -477,6 +477,14 @@ deviations:
   spec_ref: docs/language_specification/collection_types.md
   existing_diagnostic: SPY0222
   planned_diagnostic: null
+- id: module-binding-collision-refused
+  category: scoping
+  audience: python
+  severity: error
+  code: SPY0204
+  spec_ref: docs/language_specification/import_statements.md
+  existing_diagnostic: SPY0204
+  planned_diagnostic: null
 - id: module-level-executable-statement
   category: semantics
   audience: python
@@ -620,6 +628,14 @@ deviations:
   code: SPY0338
   spec_ref: docs/language_specification/tuple_unpacking.md
   existing_diagnostic: SPY0338
+  planned_diagnostic: null
+- id: none-typed-expression-statement
+  category: syntax
+  audience: python
+  severity: error
+  code: SPY0603
+  spec_ref: docs/language_specification/statements.md
+  existing_diagnostic: SPY0603
   planned_diagnostic: null
 - id: np-split-nonpositive-sections-valueerror
   category: stdlib

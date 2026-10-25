@@ -1,0 +1,12 @@
+# #2359 (R-II): an import binds a module-level name and collides like every module binding — the
+# class is declared before imports bind, so the import is refused whatever the source order.
+# Direction record (the import-math-as-Foo twin, Foo.pi): SPY0908 CS0117 ('Foo' does not contain a definition for 'Pi') @ ce482aa20 —
+# ICE → diagnostic. The refused import binds nothing, so `Foo` stays the class; the refusal is
+# the only diagnostic (`!count 1`).
+class Foo:
+    pass
+
+import copy as Foo
+
+def main() -> None:
+    print(Foo.deepcopy(1))

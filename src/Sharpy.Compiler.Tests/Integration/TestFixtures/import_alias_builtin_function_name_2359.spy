@@ -1,0 +1,8 @@
+# #2359 (R-II): an import that binds a builtin FUNCTION name is honoured with SPY0484 — the
+# import-kind spelling of the SPY0483 verdict `def print` draws. At ce482aa20 it drew only the
+# SPY0452 unused-import warning. The builtin stays reachable through `builtins`.
+import copy as print
+import builtins
+
+def main() -> None:
+    builtins.print(print.deepcopy(3))

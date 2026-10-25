@@ -1,0 +1,2 @@
+SPY0204: 'Foo' is already defined in this module (class, line 6); import under another name @9:8
+!count 1
