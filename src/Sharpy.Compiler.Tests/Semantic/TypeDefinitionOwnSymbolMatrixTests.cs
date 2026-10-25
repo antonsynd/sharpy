@@ -53,7 +53,11 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>@static</c> method body, an interface default-method body, a union method body and an <c>async def</c> body, ×
 /// kind {class, enum, import, alias} × name {Fresh; and <c>int</c> for alias}; the SPELLING axis — a
 /// <c>@suppress</c>-decorated class and import (through <c>UnwrapDecorated</c>) and the backtick-escaped
-/// <c>type `int` = str</c> (the sanctioned route: LEGAL, expected []), each at <c>module</c> and <c>def-body</c>.
+/// <c>type `int` = str</c> (the sanctioned route: LEGAL, expected []), each at <c>module</c> and <c>def-body</c>; and
+/// the SELF-ACCESSOR cells — <c>property get</c>/<c>property set</c> spelling <c>self</c> and using it at every
+/// non-declaring position but <c>module-try</c>, an <c>event add</c>/<c>remove</c> pair using <c>self</c> at every
+/// position but the type-body ones — whose exact sets (one SPY0708 per accessor) make clause (2s) and the checker's
+/// decline falsifiable.
 /// Each cell is analysed on ONE <see cref="CompilerApi"/> beside its CONTROL — the same program with the definition's
 /// lines replaced by <c>pass</c> (a comment at <c>module</c>, where <c>pass</c> is itself SPY0340), so every line
 /// keeps its number.</para>
@@ -245,6 +249,37 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         }),
     };
 
+    /// <summary>
+    /// The self-accessor edge kinds (verify round, W3/W4): an accessor that spells <c>self</c> and whose body uses it,
+    /// at a host that is not a type body. The matrix's function-hosted accessors take no <c>self</c>, so the checker's
+    /// decline (<c>TypeChecker.CheckStatement</c>: no <c>CheckModuleProperty</c>/<c>CheckClassProperty</c>/<c>CheckEvent</c>
+    /// at a non-declaring position, and no <c>CheckEvent</c> outside a type body) had no generator cell that a second
+    /// owner's SPY0232 would redden: these cells are that guard. Property accessors are built at every non-declaring
+    /// position but <c>module-try</c> (a module-level accessor with <c>self</c> is SPY0232's own verdict — the positive
+    /// control); the event pair at every position but the type-body ones, <c>module</c> included.
+    /// </summary>
+    private static readonly KindSpec[] SelfAccessorKinds =
+    {
+        new("property-get-self", Family.Member, n => new[]
+        {
+            $"property get {n}(self) -> int:",
+            "    print(self)",
+            "    return 0",
+        }),
+        new("property-set-self", Family.Member, n => new[]
+        {
+            $"property set {n}(self, v: int):",
+            "    print(self)",
+        }),
+        new("event-add-self", Family.Member, n => new[]
+        {
+            $"event add {n}(self, handler: Action[int]):",
+            "    print(self)",
+            $"event remove {n}(self, handler: Action[int]):",
+            "    print(self)",
+        }),
+    };
+
     /// <summary>The spelling-axis edge kinds: a <c>@suppress</c>-decorated class and import.</summary>
     private static readonly KindSpec[] SpellingKinds =
     {
@@ -407,7 +442,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     yield return Build(kind, position, name, Spell(kind.Kind, name.Name), edge: false);
     }
 
-    /// <summary>The edge cells: host axis (4 hosts × 5 kind/name pairs) and spelling axis (3 spellings × 2 positions).</summary>
+    /// <summary>The edge cells: host axis (4 hosts × 5 kind/name pairs), spelling axis (3 spellings × 2 positions) and
+    /// the self-accessor cells (2 property accessors × 9 positions + the event pair × 11).</summary>
     internal static IEnumerable<Cell> EdgeCells()
     {
         var fresh = Names.Single(n => n.Name == "Fresh");
@@ -426,12 +462,17 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 yield return Build(kind, position, fresh, "Fresh", edge: true);
             yield return Build(Kinds.Single(x => x.Kind == "alias"), position, fresh, "`int`", edge: true);
         }
+
+        foreach (var kind in SelfAccessorKinds)
+            foreach (var position in Positions.Where(p => p.Name is not ("type-body" or "type-body-if")
+                         && (kind.Kind == "event-add-self" || !DeclaringPositions.Contains(p.Name) && p.Name != "module-try")))
+                yield return Build(kind, position, fresh, "Fresh", edge: true);
     }
 
     internal static IEnumerable<Cell> Cells() => MatrixCells().Concat(EdgeCells());
 
     private static Family FamilyOf(string kind)
-        => Kinds.Concat(SpellingKinds).Single(k => k.Kind == kind).Family;
+        => Kinds.Concat(SpellingKinds).Concat(SelfAccessorKinds).Single(k => k.Kind == kind).Family;
 
     /// <summary>
     /// The CONTRACT in code — the post-fix verdict of every cell, never the base's answer (the base's reds are the
@@ -521,7 +562,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     var isEvent = kind.StartsWith("event-", StringComparison.Ordinal);
                     if (position == "module" && !isEvent)
                         return name == "Foo" ? new[] { ("SPY0204", At.Keyword) } : Array.Empty<(string, At)>();
-                    return kind == "event-add"
+                    return kind is "event-add" or "event-add-self"
                         ? new[] { ("SPY0708", At.Keyword), ("SPY0708", At.SecondAccessor) }
                         : new[] { ("SPY0708", At.Keyword) };
                 }
@@ -572,7 +613,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(18 * 13 * 3, MatrixCells().Count());
         Assert.Equal(6 * 13 * 3, MatrixCells().Count(c => c.Family == Family.Member));
         // Host axis: 4 hosts × {class, enum, import, alias} × Fresh + alias × int; spelling axis: 3 spellings × 2 positions.
-        Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
+        Assert.Equal(4 * 5 + 3 * 2 + 2 * 9 + 11, EdgeCells().Count());
+        Assert.Equal(3, SelfAccessorKinds.Length);
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
         // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
         // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
@@ -583,7 +625,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(7 * 4 + 3 + 1, AliasRedeclarationCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48 + 95 + 32, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 95 + 32, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
