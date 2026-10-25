@@ -26,7 +26,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>P21f</b> (#2360, #2362, #2359; rulings R-IJ, R-IK, R-II) extends the contract to three more declaration
 /// kinds: a MEMBER declaration (<c>property</c>, <c>event</c>) outside a type body is SPY0708 (a property is also legal
 /// at module level); an IMPORT binding is a module binding that collides like any other (SPY0204), refuses a builtin
-/// type name (SPY0212) and warns on a builtin function name (SPY0484) — <c>ImportBindingCells</c>; a <c>type</c>
+/// type name (SPY0212) and warns on a builtin function name (SPY0484) — <see cref="ImportBindingCells"/>; a <c>type</c>
 /// alias RE-DECLARED in one scope is SPY0204 at every position — <c>AliasRedeclarationCells</c>.</para>
 ///
 /// <para><b>Matrix</b> (generated). Kind (18 = P21e's 12 + P21f's six member kinds): <c>class</c> and <c>struct</c> (each carrying the mixed auto/setter
@@ -570,8 +570,12 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // Host axis: 4 hosts × {class, enum, import, alias} × Fresh + alias × int; spelling axis: 3 spellings × 2 positions.
         Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
-        var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48, ids.Distinct(StringComparer.Ordinal).Count());
+        // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
+        // {str, print, `str`}, + 2 builtins-module names, + the dotted root × 2 orders.
+        Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 2, ImportBindingCells().Count());
+        var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
+            .Concat(ImportBindingCells().Select(c => c.Id)).ToList();
+        Assert.Equal(18 * 13 * 3 + 26 + 48 + 82, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -956,6 +960,216 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     }
 
     // ---------------------------------------------------------------------------------------------------------------
+    // The import-binding sub-matrix (P21f D4/D5/D7b, R-II, #2359).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /// <summary>Set by the import-binding test: its cells import Stdlib's <c>math</c> and <c>os</c> (the plan's measured
+    /// programs), so its runs reference Sharpy.Stdlib as well as Sharpy.Core. xUnit builds one instance per test, so the
+    /// flag never reaches another test's runs.</summary>
+    private bool _withStdlib;
+
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+        => _withStdlib ? new[] { SharpyStdlibReference.Location } : Enumerable.Empty<string>();
+
+    internal sealed record ImportBindingCell(
+        string Spelling, string Collider, string Order, string Source,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedWarnings, string? ExpectedStdout)
+    {
+        public string Id => $"import-binding × {Spelling} × {Collider} × {Order}";
+    }
+
+    /// <summary>The four import spellings: (id, the import line for a bound name, the name a plain spelling binds).</summary>
+    private static readonly (string Name, Func<string, string> Line, string? FixedName)[] ImportSpellings =
+    {
+        ("import-as", n => $"import math as {n}", null),
+        ("import", _ => "import math", "math"),
+        ("from-import-as", n => $"from math import pi as {n}", null),
+        ("from-import", _ => "from math import pi", "pi"),
+    };
+
+    /// <summary>The colliders spelled beside the import, in both source orders: a module-level declaration of every
+    /// kind, a module variable, and another module's import under the same name in both import spellings.</summary>
+    private static readonly (string Name, Func<string, string[]> Lines)[] ImportColliders =
+    {
+        ("class", n => new[] { $"class {n}:", "    pass" }),
+        ("def", n => new[] { $"def {n}() -> int:", "    return 1" }),
+        ("alias", n => new[] { $"type {n} = int" }),
+        ("const", n => new[] { $"const {n}: int = 1" }),
+        ("property", n => new[] { $"property {n}: int = 0" }),
+        ("var", n => new[] { $"{n}: int = 1" }),
+        ("other-import", n => new[] { $"import copy as {n}" }),
+        ("other-from-import", n => new[] { $"from copy import deepcopy as {n}" }),
+    };
+
+    /// <summary>
+    /// Import spelling {<c>import math as N</c>, <c>import math</c> (N = <c>math</c>), <c>from math import pi as N</c>,
+    /// <c>from math import pi</c> (N = <c>pi</c>)} × collider {fresh, <c>class N</c>, <c>def N</c>, <c>type N = int</c>,
+    /// <c>const N</c>, <c>property N</c>, <c>N: int = 1</c>, the same import again, <c>import copy as N</c>,
+    /// <c>from copy import deepcopy as N</c>} × order {collider first, import first} (fresh and the repeated import have
+    /// one order), plus — for the <c>as</c> spellings — the bound name {<c>str</c>, <c>print</c>, <c>`str`</c>}, the
+    /// <c>builtins</c> module's own bindings <c>from builtins import len</c> / <c>str</c>, and the dotted root
+    /// <c>import os</c> + <c>import os.path</c> in both orders. Every program's <c>main</c> prints <c>ok</c> (nothing
+    /// else uses the binding, D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is
+    /// honoured) and the dotted root (which prints <c>len(os.path.join("a", "b"))</c>).
+    ///
+    /// <para><b>Expected</b> (D4/D5). The pipeline declares the module body BEFORE it binds imports, so an import is
+    /// always the later binding against a declaration, whatever the source order: class / def / alias / const /
+    /// property → [SPY0204 @ the import's ImportAlias] in BOTH orders. A module variable is declared by the checker
+    /// AFTER the imports, so it is the later binding in both orders: [SPY0204 @ the variable] (c18, pinned). Two imports
+    /// bind in source order: [SPY0204 @ the later one's ImportAlias] (c15, e5, g2; d11 is the from/from cell). A
+    /// builtin type name → [SPY0212 @ ImportAlias] (the escaped <c>`str`</c> is the opt-in: []); a builtin function name
+    /// → errors [], warnings [SPY0484 @ ImportAlias] (c4/c9); the <c>builtins</c> module's own binding shadows nothing
+    /// → [] with no SPY0484 (d4/d5) — the absence's positive control is the <c>from-import-as × print</c> cell's
+    /// SPY0484, asserted unconditionally (hard). Fresh, the repeated import (idempotent) and the dotted root (merge) →
+    /// [] and run. Warnings are compared over <see cref="VerdictWarnings"/>; errors over the whole program.</para>
+    /// </summary>
+    internal static IEnumerable<ImportBindingCell> ImportBindingCells()
+    {
+        const string bound = "mm";
+        string[] Main(string body) => new[] { "", "def main() -> None:", "    " + body, "" };
+
+        ImportBindingCell Make(string spelling, string collider, string order, string[] first, string[] second,
+            Func<int, int, (string, int, int)[]> errors, Func<int, int, (string, int, int)[]>? warnings = null,
+            string body = "print(\"ok\")", string? stdout = "ok\n")
+        {
+            var lines = first.Concat(second).Concat(Main(body)).ToArray();
+            // 1-based lines of the first and second group's first line.
+            var firstLine = 1;
+            var secondLine = first.Length + 1;
+            var expected = errors(firstLine, secondLine);
+            return new ImportBindingCell(spelling, collider, order, string.Join("\n", lines), expected,
+                warnings?.Invoke(firstLine, secondLine) ?? Array.Empty<(string, int, int)>(),
+                expected.Length == 0 ? stdout : null);
+        }
+
+        foreach (var spelling in ImportSpellings)
+        {
+            var name = spelling.FixedName ?? bound;
+            var import = spelling.Line(name);
+            var aliasColumn = ImportAliasColumn(import);
+            var none = Array.Empty<(string, int, int)>();
+
+            yield return Make(spelling.Name, "fresh", "none", Array.Empty<string>(), new[] { import }, (_, _) => none);
+            yield return Make(spelling.Name, "same-import", "twice", new[] { import }, new[] { import }, (_, _) => none);
+
+            foreach (var collider in ImportColliders)
+            {
+                var colliderLines = collider.Lines(name);
+                foreach (var order in new[] { "collider-first", "import-first" })
+                {
+                    var colliderFirst = order == "collider-first";
+                    var first = colliderFirst ? colliderLines : new[] { import };
+                    var second = colliderFirst ? new[] { import } : colliderLines;
+                    Func<int, int, (string, int, int)[]> errors = collider.Name switch
+                    {
+                        // The variable is the later binding in both orders; SPY0204 at its name (column 1).
+                        "var" => (f, s) => new[] { ("SPY0204", colliderFirst ? f : s, 1) },
+                        // Two imports bind in source order: the later one is refused.
+                        "other-import" or "other-from-import" => (f, s) => new[]
+                        {
+                            ("SPY0204", s, ImportAliasColumn(second[0])),
+                        },
+                        // A declaration is bound first whatever the order: the import is refused.
+                        _ => (f, s) => new[] { ("SPY0204", colliderFirst ? s : f, aliasColumn) },
+                    };
+                    yield return Make(spelling.Name, collider.Name, order, first, second, errors);
+                }
+            }
+
+            if (spelling.FixedName != null)
+                continue;
+
+            // The bound name spells a builtin: a type name is refused, a function name warns, the escape opts in.
+            var str = spelling.Line("str");
+            yield return Make(spelling.Name, "str", "none", Array.Empty<string>(), new[] { str },
+                (_, s) => new[] { ("SPY0212", s, ImportAliasColumn(str)) });
+            var print = spelling.Line("print");
+            yield return Make(spelling.Name, "print", "none", Array.Empty<string>(), new[] { print },
+                (_, _) => none, (_, s) => new[] { ("SPY0484", s, ImportAliasColumn(print)) }, body: "pass", stdout: "");
+            yield return Make(spelling.Name, "escaped-str", "none", Array.Empty<string>(), new[] { spelling.Line("`str`") },
+                (_, _) => none);
+        }
+
+        // The builtins module's own binding (#1322) shadows nothing.
+        foreach (var name in new[] { "len", "str" })
+            yield return Make("from-builtins", name, "none", Array.Empty<string>(), new[] { $"from builtins import {name}" },
+                (_, _) => Array.Empty<(string, int, int)>());
+
+        // The dotted root: `import os` and `import os.path` merge into one `os` binding, in both orders (D4 i —
+        // dotted-first binds a structural parent with no FilePath).
+        foreach (var order in new[] { "root-first", "dotted-first" })
+        {
+            var first = order == "root-first" ? "import os" : "import os.path";
+            var second = order == "root-first" ? "import os.path" : "import os";
+            yield return Make("import-dotted", "os-root", order, new[] { first }, new[] { second },
+                (_, _) => Array.Empty<(string, int, int)>(), body: "print(len(os.path.join(\"a\", \"b\")))", stdout: "3\n");
+        }
+    }
+
+    [Fact]
+    public void ImportBinding_HasOneVerdictPerCollider()
+    {
+        _withStdlib = true;
+        var allowlist = LoadAllowlist(out var problems);
+        var api = new CompilerApi(null, new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location });
+        var red = new List<string>();
+        var ran = 0;
+        var shadowControlArmed = false;
+        foreach (var cell in ImportBindingCells())
+        {
+            var result = api.Analyze(cell.Source, CancellationToken.None);
+            var line = $"{cell.Id}: {Fingerprint(result.Diagnostics)}";
+            Output.WriteLine(line);
+            var failures = new List<string>();
+
+            if (result.Diagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)))
+                problems.Add($"{line} — an internal error");
+
+            var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actual = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")
+                .OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
+                failures.Add($"errors are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]");
+
+            // The shadowing warnings, over the whole program: the `print` cells' SPY0484 present, every other cell's
+            // absent — the builtins-module cells included (their absence is the d4/d5 claim).
+            var shadow = result.Diagnostics.Where(d => !d.IsError && VerdictWarnings.Contains(d.Code ?? "")).ToList();
+            var expectedWarnings = cell.ExpectedWarnings.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actualWarnings = shadow.Select(d => $"{d.Code}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expectedWarnings.SequenceEqual(actualWarnings, StringComparer.Ordinal))
+                failures.Add($"shadowing warnings are [{string.Join(" ", actualWarnings)}], expected [{string.Join(" ", expectedWarnings)}]");
+
+            // The positive control of the builtins-module absence: the same probe (SPY0484 anywhere) hits a builtin
+            // function name imported out of a module that is not `builtins` (c9, measured at the base).
+            if (cell.Spelling == "from-import-as" && cell.Collider == "print")
+                shadowControlArmed = shadow.Any(d => d.Code == "SPY0484");
+
+            if (cell.ExpectedStdout is { } stdout && expected.Count == 0)
+            {
+                ran++;
+                var run = CompileAndExecute(cell.Source);
+                if (run.RawDiagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)
+                        || (d.Code ?? "").StartsWith("SPY05", StringComparison.Ordinal)))
+                    failures.Add($"an internal error under run: {Fingerprint(InternalCodes(run))}");
+                if (!run.Success || run.StandardOutput != stdout)
+                    failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{stdout.ReplaceLineEndings("\\n")}] "
+                        + string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" "));
+            }
+
+            if (failures.Count > 0)
+                Output.WriteLine($"    red: {string.Join("; ", failures)}");
+            Ratchet(cell.Id, failures, allowlist, problems, red);
+        }
+
+        if (!shadowControlArmed)
+            problems.Add("import-binding × from-import-as × print × none draws no SPY0484: the builtins-module cells' SPY0484 absence is vacuous");
+
+        Output.WriteLine($"{ImportBindingCells().Count()} import-binding cells, {ran} executed, {red.Count} allowlisted red");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
     // The allowlist ratchet.
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -980,7 +1194,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         problems = new List<string>();
         var path = FindAllowlistPath()
             ?? throw new InvalidOperationException($"Semantic/{AllowlistFileName} is missing. Its presence is what arms the ratchet.");
-        var universe = new HashSet<string>(Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id)), StringComparer.Ordinal);
+        var universe = new HashSet<string>(
+            Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
+                .Concat(ImportBindingCells().Select(c => c.Id)),
+            StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
         {
