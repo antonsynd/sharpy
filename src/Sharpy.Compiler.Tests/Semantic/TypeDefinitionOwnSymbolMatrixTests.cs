@@ -27,7 +27,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// kinds: a MEMBER declaration (<c>property</c>, <c>event</c>) outside a type body is SPY0708 (a property is also legal
 /// at module level); an IMPORT binding is a module binding that collides like any other (SPY0204), refuses a builtin
 /// type name (SPY0212) and warns on a builtin function name (SPY0484) — <see cref="ImportBindingCells"/>; a <c>type</c>
-/// alias RE-DECLARED in one scope is SPY0204 at every position — <c>AliasRedeclarationCells</c>.</para>
+/// alias RE-DECLARED in one scope is SPY0204 at every position — <see cref="AliasRedeclarationCells"/>.</para>
 ///
 /// <para><b>Matrix</b> (generated). Kind (18 = P21e's 12 + P21f's six member kinds): <c>class</c> and <c>struct</c> (each carrying the mixed auto/setter
 /// property whose backing field was P54's measured write), <c>@dataclass class</c>, <c>interface</c>, <c>union</c>,
@@ -573,9 +573,11 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
         // {str, print, `str`}, + 2 builtins-module names, + the dotted root × 2 orders.
         Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 2, ImportBindingCells().Count());
+        // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + alias→alias × {type-body, module}.
+        Assert.Equal(7 * 4 + 2, AliasRedeclarationCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
-            .Concat(ImportBindingCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48 + 82, ids.Distinct(StringComparer.Ordinal).Count());
+            .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
+        Assert.Equal(18 * 13 * 3 + 26 + 48 + 82 + 30, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1170,6 +1172,136 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     }
 
     // ---------------------------------------------------------------------------------------------------------------
+    // The alias-redeclaration sub-matrix (P21f D2/D2b/D7c, R-IJ, #2360).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    internal sealed record AliasRedeclarationCell(
+        string Relation, string Position, string Source,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors, string? ExpectedStdout)
+    {
+        public string Id => $"alias-redeclaration × {Relation} × {Position}";
+    }
+
+    /// <summary>(relation, its lines unindented, the 0-based index of the refused line and the column offset of its
+    /// diagnostic from the indent — or -1 for a legal relation —, the stdout of a legal relation).</summary>
+    private static readonly (string Name, string[] Lines, int Refused, int ColumnOffset, string? Stdout)[] AliasRelations =
+    {
+        ("alias-then-alias", new[] { "type A = str", "type A = int" }, 1, 1, null),
+        ("alias-then-def", new[] { "type A = str", "def A() -> int:", "    return 1" }, 1, 5, null),
+        ("def-then-alias", new[] { "def A() -> int:", "    return 1", "type A = str" }, 2, 1, null),
+        ("var-then-alias", new[] { "A: int = 1", "type A = str" }, 1, 1, null),
+        ("nested-outer-first", new[]
+        {
+            "type A = str", "if True:", "    type A = int", "    x: A = 5", "    print(x)", "y: A = \"s\"", "print(y)",
+        }, -1, 0, "5\ns\n"),
+        ("nested-inner-first", new[]
+        {
+            "if True:", "    type A = int", "    x: A = 5", "    print(x)", "type A = str", "y: A = \"s\"", "print(y)",
+        }, -1, 0, "5\ns\n"),
+        ("sibling-blocks", new[]
+        {
+            "if True:", "    type A = str", "    y: A = \"s\"", "    print(y)", "if True:", "    type A = int", "    x: A = 5", "    print(x)",
+        }, -1, 0, "s\n5\n"),
+    };
+
+    /// <summary>(position, the lines before the relation, its indent, the lines after, main's body, the block's own
+    /// error as (code, 0-based index into Before, column) or null).</summary>
+    private static readonly (string Name, string[] Before, int Indent, string[] After, string Main, (string Code, int Index, int Column)? Block)[] AliasPositions =
+    {
+        ("def-body", new[] { "def helper() -> None:" }, 4, Array.Empty<string>(), "helper()", null),
+        ("if-in-def", new[] { "def helper() -> None:", "    if True:" }, 8, Array.Empty<string>(), "helper()", null),
+        ("method-body", new[] { "class Host:", "    def m(self) -> None:" }, 8, Array.Empty<string>(), "Host().m()", null),
+        ("module-try", new[] { "try:" }, 4, new[] { "except Exception:", "    pass" }, "print(\"ok\")", ("SPY0340", 0, 1)),
+        ("type-body", new[] { "class Host:", "    tag: int = 0" }, 4, Array.Empty<string>(), "print(\"ok\")", null),
+        ("module", Array.Empty<string>(), 0, Array.Empty<string>(), "print(\"ok\")", null),
+    };
+
+    /// <summary>
+    /// Relation {same-block alias→alias, alias→def, def→alias, variable→alias; nested outer-first, nested inner-first,
+    /// sibling blocks} × position {def body, an <c>if</c> in a def, a method body, a module <c>try:</c>} plus
+    /// alias→alias at the declaring positions {type body, module} (their controls, a3/a4). A legal relation prints
+    /// through both aliases (<c>x: A = 5</c> / <c>y: A = "s"</c>), so a dropped or leaked alias is a SPY0220 or a
+    /// different stdout, never the same <c>5</c>/<c>s</c>.
+    ///
+    /// <para><b>Expected</b> (D2/D2b). An alias re-declared in ONE scope is SPY0204 at every position, at the later
+    /// statement's keyword (the checker's "Type alias 'A' is already defined", as NameResolver's at module/type body);
+    /// a def after a same-block alias is SPY0204 at the def's name token ("function 'A' is already defined in this
+    /// scope" — the validator's nested-def rule widened to alias names); def→alias and variable→alias are the
+    /// checker's existing SPY0204 (d3/d9 — controls). A nested block may shadow (B2) and sibling blocks are fresh
+    /// bindings: [] and the program runs with the pinned stdout. <c>module-try</c> adds its block literal SPY0340 at
+    /// the <c>try</c> and runs nothing. The generator's cells carry no use after a refusal (D8: cascades are the hand
+    /// fixtures').</para>
+    /// </summary>
+    internal static IEnumerable<AliasRedeclarationCell> AliasRedeclarationCells()
+    {
+        foreach (var position in AliasPositions)
+        {
+            foreach (var relation in AliasRelations)
+            {
+                if (position.Name is "type-body" or "module" && relation.Name != "alias-then-alias")
+                    continue;
+                var body = relation.Lines.Select(l => new string(' ', position.Indent) + l);
+                var lines = position.Before.Concat(body).Concat(position.After)
+                    .Concat(new[] { "", "def main() -> None:", "    " + position.Main, "" }).ToArray();
+                var expected = new List<(string, int, int)>();
+                if (position.Block is { } block)
+                    expected.Add((block.Code, block.Index + 1, block.Column));
+                if (relation.Refused >= 0)
+                    expected.Add(("SPY0204", position.Before.Length + relation.Refused + 1, position.Indent + relation.ColumnOffset));
+                var stdout = expected.Count == 0 ? relation.Stdout : null;
+                yield return new AliasRedeclarationCell(relation.Name, position.Name, string.Join("\n", lines), expected, stdout);
+            }
+        }
+    }
+
+    [Fact]
+    public void AliasRedeclaration_HasOneVerdictPerRelation()
+    {
+        var allowlist = LoadAllowlist(out var problems);
+        var api = new CompilerApi(null, new[] { SharpyCoreReference.Location });
+        var red = new List<string>();
+        var ran = 0;
+        foreach (var cell in AliasRedeclarationCells())
+        {
+            var result = api.Analyze(cell.Source, CancellationToken.None);
+            var line = $"{cell.Id}: {Fingerprint(result.Diagnostics)}";
+            Output.WriteLine(line);
+            var failures = new List<string>();
+
+            if (result.Diagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)))
+                problems.Add($"{line} — an internal error");
+
+            var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actual = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")
+                .OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
+                failures.Add($"errors are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]");
+
+            var shadow = result.Diagnostics.Where(d => !d.IsError && VerdictWarnings.Contains(d.Code ?? "")).ToList();
+            if (shadow.Count > 0)
+                failures.Add($"shadowing warnings [{Fingerprint(shadow)}], expected none");
+
+            if (cell.ExpectedStdout is { } stdout)
+            {
+                ran++;
+                var run = CompileAndExecute(cell.Source);
+                if (InternalCodes(run).Count > 0)
+                    failures.Add($"an internal error under run: {Fingerprint(InternalCodes(run))}");
+                if (!run.Success || run.StandardOutput != stdout)
+                    failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{stdout.ReplaceLineEndings("\\n")}] "
+                        + string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" "));
+            }
+
+            if (failures.Count > 0)
+                Output.WriteLine($"    red: {string.Join("; ", failures)}");
+            Ratchet(cell.Id, failures, allowlist, problems, red);
+        }
+
+        Output.WriteLine($"{AliasRedeclarationCells().Count()} alias-redeclaration cells, {ran} executed, {red.Count} allowlisted red");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
     // The allowlist ratchet.
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -1196,7 +1328,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             ?? throw new InvalidOperationException($"Semantic/{AllowlistFileName} is missing. Its presence is what arms the ratchet.");
         var universe = new HashSet<string>(
             Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
-                .Concat(ImportBindingCells().Select(c => c.Id)),
+                .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)),
             StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
