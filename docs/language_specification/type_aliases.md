@@ -84,7 +84,7 @@ def main() -> None:
 
 ## Redeclaration
 
-An alias declares a name in its scope, once. A second `type` alias of the same name in the same scope is an error (SPY0204) at every position: the module body, a class body, a function body or a block. So is a nested `def` that re-declares an alias written earlier in its own block. Python rebinds the name; in Sharpy one scope gives a name one meaning, as it does for every other declaration.
+An alias declares a name in its scope, once. A second `type` alias of the same name in the same scope is an error (SPY0204) at every position: the module body, a class body, a function body or a block. So is a nested `def` that re-declares an alias written earlier in its own block, and a method of a class body that shares its name with an alias of the same body, in either order. Python rebinds the name; in Sharpy one scope gives a name one meaning, as it does for every other declaration.
 
 <!-- spec-sweep: error SPY0204 -->
 ```python

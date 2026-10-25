@@ -295,8 +295,14 @@ internal partial class ImportResolver
     /// from-import source again → nothing (idempotent); a different from-import source → SPY0204
     /// "already imported from" (#514's text); another module → SPY0204 "already bound to module"; a
     /// module-level declaration → SPY0204 "already defined in this module (kind, line)". A refused
-    /// import binds NOTHING, so the declaration keeps its meaning. A star import keeps its rule: it
-    /// never displaces a declaration and collides only with another source's from-import.</para>
+    /// import binds NOTHING, so the declaration keeps its meaning. A module VARIABLE is the one
+    /// module binding declared AFTER the imports (by the type checker), so against it the import
+    /// binds and the variable is refused (the checker's SPY0204 at the variable). A star import keeps
+    /// its rule, outside R-II's four spellings: a module-level declaration of a star-imported name
+    /// takes the name over (nothing is reported here, and a module variable re-declares a
+    /// star-imported variable, see <see cref="ImportBinding.IsStar"/>), and a star import collides only
+    /// with another source's from-import. A module property is the known exception: there the
+    /// star-imported name silently wins (#2371).</para>
     /// <para><b>Builtin names</b>, decided by <see cref="BuiltinNameShadowing.Classify(Registry.BuiltinRegistry, string, bool, bool)"/>
     /// as a TYPE-namespace binding (an import is visible in annotation position): a builtin type name
     /// or tagged-union constructor under an ALIAS the importer chose (<c>import math as str</c>,
