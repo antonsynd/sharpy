@@ -345,13 +345,6 @@ primitive_types.md::412c2923ce  # SPY0346 first #1952
 program_entry_point.md::08fda2fe5d  # SPY0200 first #1952
 program_entry_point.md::3e9510358b  # SPY0200 first #1952
 program_entry_point.md::daa5d09e86  # SPY0200 first #1952
-properties_function_style.md::4538adfdac  # SPY0407 first #1952
-properties_function_style.md::86bb0df588  # SPY0496 first #1952
-properties_function_style.md::b43ba33646  # SPY0406 first #1952
-properties_function_style.md::c8231a5042  # SPY0203 first #1952
-properties_function_style.md::d61225a7b3  # SPY0232 first #1952
-properties_function_style.md::ec45a38dac  # SPY0290 first #1952
-properties_function_style.md::f31d92c964  # SPY0202 first #1952
 properties_inheritance.md::7553d3f5f3  # SPY0203 first #1952
 properties_inheritance.md::7695a1ea67  # SPY0493 first #1952
 properties_inheritance.md::b20a3d0647  # SPY0202 first #1952

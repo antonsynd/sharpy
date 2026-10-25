@@ -82,6 +82,145 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
             + "    c = C()\n    c.v = 6\n    print(c.v)\n", "6"),
     };
 
+    // ---- #2370 (R-JD): a setter's return annotation is the accessor's return, never the property's type ----
+    // Closed axes: accessor shape {set-only, get-then-set, set-then-get} × host {class, struct,
+    // interface, module} × the setter's return annotation {none, `-> None`, `-> int`} = 36 cells. Every
+    // cell types the property by the setter's VALUE parameter (`v: int`): `-> None` and none run, and
+    // `-> int` is SPY0496 at each annotated setter (the interface declares and implements one, so two).
+    // Before the fix a set-only `-> None` was SPY0220 "Cannot assign type 'int32' to 'None'" (class,
+    // struct, interface) or SPY0908 CS0547 (module; any host with no store), a set-then-get pair with
+    // `-> None` was SPY0260 + SPY0220, and `-> int` was silently ignored and ran.
+    public static readonly string[] SetterShapes = { "set_only", "get_then_set", "set_then_get" };
+    public static readonly string[] SetterHosts = { "class", "struct", "interface", "module" };
+    public static readonly string[] SetterAnnotations = { "none", "none_annotated", "int_annotated" };
+
+    private static string SetterAnnotationText(string annotation) => annotation switch
+    {
+        "none" => "",
+        "none_annotated" => " -> None",
+        "int_annotated" => " -> int",
+        _ => throw new ArgumentOutOfRangeException(nameof(annotation), annotation, null),
+    };
+
+    /// <summary>The cell's program: a setter printing its value and, for the pair shapes, a getter
+    /// returning 7; <c>main</c> stores 5 and, for the pairs, prints the property.</summary>
+    private static string SetterCellSource(string shape, string host, string annotation)
+    {
+        bool module = host == "module";
+        string self = module ? "" : "self, ";
+        string selfOnly = module ? "" : "self";
+        string ann = SetterAnnotationText(annotation);
+        string setter = $"property set fresh({self}v: int){ann}:\n    print(v)\n";
+        string getter = $"property get fresh({selfOnly}) -> int:\n    return 7\n";
+        string members = shape switch
+        {
+            "set_only" => setter,
+            "get_then_set" => getter + "\n" + setter,
+            "set_then_get" => setter + "\n" + getter,
+            _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, null),
+        };
+        bool pair = shape != "set_only";
+        static string Indent(string s) => string.Join("\n", s.Split('\n').Select(l => l.Length == 0 ? l : "    " + l));
+        string read = pair ? (module ? "    print(fresh)\n" : "    print(h.fresh)\n") : "";
+        switch (host)
+        {
+            case "module":
+                return members + "\ndef main() -> None:\n    fresh = 5\n" + read;
+            case "interface":
+                // The interface declares the same accessors body-less; the class implements them.
+                string declared = shape switch
+                {
+                    "set_only" => $"property set fresh(self, v: int){ann}\n",
+                    "get_then_set" => $"property get fresh(self) -> int\nproperty set fresh(self, v: int){ann}\n",
+                    _ => $"property set fresh(self, v: int){ann}\nproperty get fresh(self) -> int\n",
+                };
+                return "interface IHost:\n" + Indent(declared) + "\nclass Host(IHost):\n" + Indent(members)
+                    + "\ndef main() -> None:\n    h: IHost = Host()\n    h.fresh = 5\n" + read;
+            default:
+                return $"{host} Host:\n    tag: int = 0\n\n" + Indent(members)
+                    + "\ndef main() -> None:\n    h = Host()\n    h.fresh = 5\n" + read;
+        }
+    }
+
+    /// <summary>A pinned red cell of another class, by fingerprint; it fails when the cell turns green
+    /// (drain on fix). The construction is what <c>check_allowlist_issue_state.sh</c> reads as a cite.</summary>
+    private sealed record KnownRedInterfacePair(string Issue, string Fingerprint);
+
+    // #2067 (P30): an INTERFACE's body-less get+set pair is emitted as two C# properties — CS0102 +
+    // CS0229 behind SPY0908 — whatever the setter's annotation (the bare setter too; measured
+    // @ 67d1a8b99). Not this arm's defect; the cells stay in the matrix, pinned.
+    private static readonly KnownRedInterfacePair InterfacePairPin = new KnownRedInterfacePair("#2067", "CS0102");
+
+    public static IEnumerable<object[]> SetterCells() =>
+        from shape in SetterShapes
+        from host in SetterHosts
+        from annotation in SetterAnnotations
+        select new object[] { shape, host, annotation };
+
+    [Theory]
+    [MemberData(nameof(SetterCells))]
+    public void SetterReturnAnnotation_IsTheAccessorsReturn_NeverThePropertysType(string shape, string host, string annotation)
+    {
+        var cell = $"{shape} × {host} × {annotation}";
+        var source = SetterCellSource(shape, host, annotation);
+        var result = CompileAndExecute(source);
+        var all = string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code} {d.Line}:{d.Column} {d.Message}"));
+        var errors = result.RawDiagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).ToList();
+
+        if (host == "interface" && shape != "set_only" && annotation != "int_annotated")
+        {
+            result.Success.Should().BeFalse($"[{cell}] the {InterfacePairPin.Issue} pin drains — delete it: {all}");
+            errors.Should().OnlyContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, $"[{cell}] {all}");
+            errors.Should().Contain(d => d.Message.Contains(InterfacePairPin.Fingerprint), $"[{cell}] {all}");
+            return;
+        }
+
+        errors.Select(d => d.Code).Should().NotContain(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, $"[{cell}] never SPY0908");
+
+        if (annotation == "int_annotated")
+        {
+            result.Success.Should().BeFalse($"[{cell}] a setter's `-> int` is refused, never ignored");
+            // Exactly one SPY0496 per annotated setter, at its annotation, and nothing else (#2075).
+            var expectedPositions = source.Split('\n')
+                .Select((line, index) => (line, index))
+                .Where(x => x.line.TrimStart().StartsWith("property set ", StringComparison.Ordinal) && x.line.Contains("-> int"))
+                .Select(x => (Line: x.index + 1, Column: x.line.IndexOf("-> int", StringComparison.Ordinal) + 4))
+                .ToList();
+            expectedPositions.Should().HaveCount(host == "interface" ? 2 : 1, $"[{cell}] the cell's own setter count");
+            errors.Should().OnlyContain(d => d.Code == DiagnosticCodes.Validation.AccessorParameterNotExpressible, $"[{cell}] {all}");
+            errors.Select(d => (d.Line, d.Column)).Should().BeEquivalentTo(expectedPositions, $"[{cell}] {all}");
+        }
+        else
+        {
+            result.Success.Should().BeTrue($"[{cell}] {all}");
+            result.StandardOutput.Trim().Should().Be(shape == "set_only" ? "5" : "5\n7", $"[{cell}] the setter ran with the stored value");
+        }
+    }
+
+    /// <summary>
+    /// The accessors' written order never decides the property's type (#2370, R-JD): with a getter
+    /// typed <c>int</c> and a setter typed <c>str</c>, both orders type the property <c>int</c> (the
+    /// getter's annotation first) and refuse the store of a <c>str</c>. Taking the first-written
+    /// accessor typed the set-then-get order <c>str</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("get_then_set")]
+    [InlineData("set_then_get")]
+    public void AccessorWrittenOrder_DoesNotDecideThePropertyType(string order)
+    {
+        const string getter = "    property get v(self) -> int:\n        return 7\n";
+        const string setter = "    property set v(self, x: str):\n        print(x)\n";
+        var source = "class C:\n" + (order == "get_then_set" ? getter + "\n" + setter : setter + "\n" + getter)
+            + "\ndef main() -> None:\n    c = C()\n    c.v = \"s\"\n    print(c.v)\n";
+        var result = CompileAndExecute(source);
+
+        var errors = result.RawDiagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).ToList();
+        errors.Should().ContainSingle($"[{order}] {string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message))}");
+        errors[0].Code.Should().Be(DiagnosticCodes.Semantic.TypeMismatch);
+        errors[0].Message.Should().Be("Cannot assign type 'str' to 'int32'");
+        errors[0].Line.Should().Be(source.Split('\n').ToList().FindIndex(l => l.Contains("c.v = \"s\"")) + 1, $"[{order}] at the store");
+    }
+
     public static IEnumerable<object[]> Refused() => RefusedCells.Keys.Select(k => new object[] { k });
     public static IEnumerable<object[]> Controls() => ControlCells.Keys.Select(k => new object[] { k });
     public static IEnumerable<object[]> WrappedReturns() => WrappedReturnCells.Keys.Select(k => new object[] { k });
@@ -143,5 +282,6 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
         RefusedCells.Should().HaveCount(13);
         WrappedReturnCells.Should().HaveCount(8);
         ControlCells.Should().HaveCount(8);
+        SetterCells().Should().HaveCount(36, "3 shapes × 4 hosts × 3 setter annotations (#2370)");
     }
 }

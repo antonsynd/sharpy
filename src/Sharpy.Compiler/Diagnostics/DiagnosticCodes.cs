@@ -819,8 +819,10 @@ public static class DiagnosticCodes
         // One code, because it is one rule: a property or event accessor receives exactly the
         // value C# hands it — a setter/init gets the implicit `value`, a getter gets nothing —
         // so `self` plus at most one value parameter is the entire expressible shape. A variadic
-        // and a getter's extra parameter are the two ways to leave it.
-        public const string AccessorParameterNotExpressible = "SPY0496"; // Active (#1406, #1405)
+        // and a getter's extra parameter are the two ways to leave it through the parameters; a
+        // setter's return annotation other than `None` is the way through the return (#2370,
+        // R-JD) — a setter returns nothing to C#, and the property's type is its value parameter's.
+        public const string AccessorParameterNotExpressible = "SPY0496"; // Active (#1406, #1405, #2370)
 
         // `Self` in a VARIANT position of an interface member — nested in a generic argument,
         // tuple element, or wrapped optional/nullable (`list[Self]`, `Self?`) — has no sound

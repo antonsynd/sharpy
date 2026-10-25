@@ -900,7 +900,7 @@ public static partial class DiagnosticExplanations
             "brackets — '@abstract', '@final', '@override' and '@static' are decorators, not attributes.");
 
         Add(dict, DiagnosticCodes.Validation.AccessorParameterNotExpressible,
-            "Accessor parameter list is not expressible",
+            "Accessor signature is not expressible",
             "Validation",
             "A Sharpy accessor's parameter list must be expressible as a C# accessor's: 'self', " +
             "plus exactly one value parameter for a setter or init accessor and none for a getter. " +
@@ -913,15 +913,23 @@ public static partial class DiagnosticExplanations
             "with a type error about the element ('Type 'int' does not support len()') that said " +
             "nothing about the real mistake. Wrapping it as an array instead would have type-checked " +
             "and then emitted a length call against a single value, so refusing the declaration is " +
-            "the honest resolution.",
+            "the honest resolution. The same rule covers a setter's return: a setter returns nothing " +
+            "to C#, so its return annotation can only be 'None' (or be left off). The property's type " +
+            "is the setter's VALUE parameter's, never its return annotation's — '-> int' on a setter " +
+            "names a value that is never returned, and is refused rather than ignored.",
             "class Reading:\n"
             + "    property set samples(self, *values: int):   # SPY0496 — no variadic accessor exists\n"
             + "        print(len(values))\n\n"
             + "    property get scale(self, factor: int) -> int:   # SPY0496 — a getter takes only self\n"
-            + "        return factor",
+            + "        return factor\n\n"
+            + "    property set level(self, v: int) -> int:   # SPY0496 — a setter returns nothing\n"
+            + "        print(v)",
             "Take a single value and let the caller pass a collection:\n"
             + "property set samples(self, values: list[int]):\n"
             + "    print(len(values))\n\n"
+            + "A setter's return annotation is 'None' or nothing; its value parameter types the property:\n"
+            + "property set level(self, v: int) -> None:\n"
+            + "    print(v)\n\n"
             + "For a getter that needs an argument, write a method instead — that is what a method is:\n"
             + "def scaled(self, factor: int) -> int:\n"
             + "    return factor\n\n"

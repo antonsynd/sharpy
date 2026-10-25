@@ -2254,6 +2254,22 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Resolves a setter's or init accessor's return annotation in a RETURN position, so it is
+    /// recorded (<c>None</c> → void) for PropertyValidator's rule 9, which refuses anything but
+    /// <c>None</c> there (SPY0496). It is the accessor's return and never the property's type —
+    /// <see cref="StatementExtensions.DeclaredTypeAnnotation(PropertyDef)"/> is (#2370, R-JD).
+    /// Resolved for body-less (abstract, interface) accessors too, which no body check reaches.
+    /// </summary>
+    private void ResolveWriteAccessorReturnAnnotation(PropertyDef propDef)
+    {
+        if (propDef.IsFunctionStyle && propDef.ReturnType != null
+            && propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init)
+        {
+            _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
+        }
+    }
+
+    /// <summary>
     /// Type-checks a module-level property declaration (#844).
     /// Resolves the property type onto the VariableSymbol registered by
     /// NameResolver.ResolveModulePropertyDeclaration, then checks the accessor
@@ -2267,32 +2283,17 @@ internal partial class TypeChecker
 
         bool isSetter = propDef.Accessor == PropertyAccessor.Set;
 
-        // Resolve the declared property type from the accessor signature,
-        // mirroring class-level ResolvePropertyTypes.
-        SemanticType propertyType;
-        if (propDef.IsFunctionStyle)
-        {
-            if (propDef.ReturnType != null && !isSetter)
-            {
-                // Getter: type comes from the return annotation
-                // A getter's return annotation IS the property's type — a value position (#2004).
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Value);
-            }
-            else if (isSetter && propDef.Parameters.Length > 0)
-            {
-                // Setter: type comes from the value parameter (last parameter)
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type, AnnotationPosition.Value);
-            }
-            else
-            {
-                propertyType = SemanticType.Unknown;
-            }
-        }
-        else
-        {
-            // Auto-property: type comes from the type annotation
-            propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type, AnnotationPosition.Value);
-        }
+        ResolveWriteAccessorReturnAnnotation(propDef);
+
+        // The property's type comes from its declaring annotation — the auto-property's type, a
+        // getter's return, a setter's value parameter — the one syntax fact the class arm and the
+        // emitter read too (#2370, R-JD). A getter's return annotation IS the property's type — a
+        // value position (#2004). An unannotated slot is Unknown (an auto-property then infers
+        // from its initializer below).
+        var declaredAnnotation = propDef.DeclaredTypeAnnotation();
+        SemanticType propertyType = declaredAnnotation != null
+            ? _typeResolver.ResolveTypeAnnotation(declaredAnnotation, AnnotationPosition.Value)
+            : SemanticType.Unknown;
 
         // Auto-property: check the default value against the declared type,
         // inferring the type from the initializer when no annotation is given
@@ -2439,26 +2440,17 @@ internal partial class TypeChecker
         bool isSetter = propDef.Accessor == PropertyAccessor.Set
             || propDef.Accessor == PropertyAccessor.Init;
 
+        ResolveWriteAccessorReturnAnnotation(propDef);
+
         // The declared property type was resolved by ResolvePropertyTypes
         var propSymbol = _currentClass.Properties.FirstOrDefault(p => p.Name == propDef.Name);
         var propertyType = propSymbol?.Type ?? SemanticType.Unknown;
 
-        // Fallback: re-resolve from this accessor's annotation if the merged
-        // symbol type is still unknown (e.g. resolution from another accessor failed)
-        if (propertyType is UnknownType)
-        {
-            if (propDef.IsFunctionStyle && propDef.ReturnType != null)
-            {
-                // A getter's return annotation is the property's type (a value position); a setter's
-                // or init accessor's `-> None` is a true return (#2004).
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType,
-                    isSetter ? AnnotationPosition.Return : AnnotationPosition.Value);
-            }
-            else if (!propDef.IsFunctionStyle && propDef.Type != null)
-            {
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type, AnnotationPosition.Value);
-            }
-        }
+        // Fallback: re-resolve from this accessor's declaring annotation if the merged symbol type
+        // is still unknown (e.g. resolution from another accessor failed). A setter's return
+        // annotation is never that annotation (#2370, R-JD).
+        if (propertyType is UnknownType && propDef.DeclaredTypeAnnotation() is { } declaredAnnotation)
+            propertyType = _typeResolver.ResolveTypeAnnotation(declaredAnnotation, AnnotationPosition.Value);
 
         // Auto-property: check the default value against the declared type
         if (!propDef.IsFunctionStyle)
@@ -2676,42 +2668,19 @@ internal partial class TypeChecker
             var propSymbol = typeSymbol.Properties[i];
             if (propSymbol.Type is UnknownType)
             {
-                // Find the corresponding PropertyDef in the AST
-                var propDef = body
+                // The declaring annotation across every accessor of the name — the getter's or the
+                // auto-property's first, then a setter's value parameter — so the accessors' written
+                // order does not decide the type, and a setter's `-> None` is never the type
+                // (#2370, R-JD; it was taken from whichever PropertyDef came first, and a setter's
+                // return annotation stood in for the property's type).
+                var declaredAnnotation = body
                     .OfType<PropertyDef>()
-                    .FirstOrDefault(p => p.Name == propSymbol.Name);
+                    .Where(p => p.Name == propSymbol.Name)
+                    .DeclaredTypeAnnotation();
 
-                if (propDef != null)
+                if (declaredAnnotation != null)
                 {
-                    SemanticType resolvedType;
-                    if (propDef.IsFunctionStyle)
-                    {
-                        // For function-style properties, type comes from ReturnType (getter) or parameter type (setter)
-                        if (propDef.ReturnType != null)
-                        {
-                            // A getter's return annotation is the property's type (a value position);
-                            // a setter's or init accessor's `-> None` is a true return (#2004).
-                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType,
-                                propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init
-                                    ? AnnotationPosition.Return
-                                    : AnnotationPosition.Value);
-                        }
-                        else if (propDef.Parameters.Length > 1)
-                        {
-                            // Setter: second parameter is the value (first is self)
-                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type, AnnotationPosition.Value);
-                        }
-                        else
-                        {
-                            resolvedType = SemanticType.Unknown;
-                        }
-                    }
-                    else
-                    {
-                        // Auto-property: type comes from type annotation
-                        resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Type, AnnotationPosition.Value);
-                    }
-
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(declaredAnnotation, AnnotationPosition.Value);
                     if (resolvedType != SemanticType.Unknown)
                     {
                         typeSymbol.Properties[i] = propSymbol with { Type = resolvedType };

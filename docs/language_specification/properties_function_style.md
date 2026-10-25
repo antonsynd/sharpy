@@ -7,11 +7,12 @@ For properties requiring custom logic (validation, transformation, computation),
 You can combine an auto-property declaration with a custom getter, setter, or both. The auto-property declaration defines the type and a backing field (`_name`), while the custom accessor provides the logic:
 
 ```python
-# Auto-getter generated, custom setter validates
-property name: str
-property set name(self, value: str):
-    if len(value) > 0:
-        self._name = value
+class User:
+    # Auto-getter generated, custom setter validates
+    property name: str = ""
+    property set name(self, value: str):
+        if len(value) > 0:
+            self._name = value
 ```
 
 **Semantics:**
@@ -74,15 +75,13 @@ public float Diagonal {
 
 ```python
 class Temperature:
-    _celsius: float = 0.0
-
     # Function-style setter with validation
     property set celsius(self, value: float):
         if value < -273.15:
             raise ValueError("Temperature below absolute zero")
         self._celsius = value
 
-    # The auto half supplies the storage — do NOT also declare `_celsius`
+    # The auto half supplies the storage (`_celsius`) — do NOT also declare it
     property celsius: float = 0.0
 ```
 
@@ -117,8 +116,25 @@ class Box:
         self._value = v
 ```
 
-Two shapes leave that constraint, and both are refused with **SPY0496**:
+A setter also returns nothing to C#, so its return annotation, when written, is `None` — the
+accessor's own return, never the property's type. The property's type is always the value
+parameter's, so this set-only property is an `int` property:
 
+<!-- spec-sweep: output "5" -->
+```python
+class Gauge:
+    # `-> None` is the setter's own return; the property's type is `v`'s: int
+    property set level(self, v: int) -> None:
+        print(v)
+
+def main() -> None:
+    g = Gauge()
+    g.level = 5
+```
+
+Three shapes leave that constraint, and each is refused with **SPY0496**:
+
+<!-- spec-sweep: error SPY0496 -->
 ```python
 class Broken:
     # ❌ A getter receives no value, so `factor` has nothing to denote —
@@ -129,6 +145,10 @@ class Broken:
     # ❌ An accessor has no argument list to vary
     property set samples(self, *values: int):
         print(len(values))
+
+    # ❌ A setter returns nothing to C# — its return annotation is `None` or nothing
+    property set level(self, v: int) -> int:
+        print(v)
 ```
 
 The rule applies wherever a property is declared: in a class, a struct, an interface, a nested type,
@@ -140,6 +160,7 @@ See [Function Variadic Arguments](function_variadic_arguments.md#not-in-a-proper
 
 Getters and setters can have different visibility:
 
+<!-- spec-sweep: output -->
 ```python
 class Counter:
     _value: int = 0
@@ -160,11 +181,18 @@ class Counter:
     def reset(self):
         self.value = 0
 
-# Usage
-c = Counter()
-print(c.value)    # OK: public getter
-c.increment()     # OK: internal modification via public method
-c.value = 10      # ERROR: setter is private
+def main() -> None:
+    c = Counter()
+    print(c.value)    # 0
+    c.increment()     # the public method modifies it through the private setter
+    print(c.value)    # 1
+```
+
+Outside the class the setter is not accessible:
+
+<!-- spec-sweep: fragment -->
+```python
+c.value = 10      # ❌ ERROR: the setter of 'value' is private to Counter
 ```
 
 **With Auto-Properties:**
@@ -201,8 +229,10 @@ public int Value {
 
 Use `@static` decorator for class-level properties. Static properties take no `self` parameter:
 
+<!-- spec-sweep: output -->
 ```python
 class AppConfig:
+    @static
     _debug_mode: bool = False
     _instance_count: int = 0
 
@@ -227,10 +257,10 @@ class AppConfig:
     property get debug_mode() -> bool:
         return AppConfig._debug_mode
 
-# Usage
-print(AppConfig.version)           # "1.0.0"
-AppConfig.debug_mode = True
-print(AppConfig.is_debug_enabled)  # True
+def main() -> None:
+    print(AppConfig.version)           # 1.0.0
+    AppConfig.debug_mode = True
+    print(AppConfig.is_debug_enabled)  # True
 ```
 
 **Static Property Rules:**
@@ -275,6 +305,7 @@ property set debug_mode(value: bool):
 property default_timeout: float = 30.0
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Usage from another module
 import os
@@ -319,6 +350,7 @@ public static partial class OsModule
 
 A property and a method cannot share the same name within a class:
 
+<!-- spec-sweep: error SPY0406 -->
 ```python
 class Example:
     _value: int = 0

@@ -447,29 +447,14 @@ internal partial class RoslynEmitter
         var first = propGroup[0];
         var propertyName = NameCasing.ResolveMethod(first.Name, first.IsNameBacktickEscaped);
 
-        // Determine property type from getter's return type or setter's parameter type
-        TypeSyntax propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        // The property's type is its declaring annotation across the accessors — the getter's
+        // first, then a setter's value parameter — the same syntax fact the checker typed it from;
+        // a setter's `-> None` is never it (#2370, R-JD).
         var getterProp = propGroup.FirstOrDefault(p => p.Accessor == PropertyAccessor.Get);
-        var setterProp = propGroup.FirstOrDefault(p => p.Accessor == PropertyAccessor.Set || p.Accessor == PropertyAccessor.Init);
-
-        if (getterProp?.ReturnType != null)
-        {
-            propertyType = _typeMapper.MapType(getterProp.ReturnType);
-        }
-        else if (setterProp != null)
-        {
-            // Infer type from setter's non-self parameter type
-            var valueParam = setterProp.Parameters
-                .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
-            if (valueParam?.Type != null)
-            {
-                propertyType = _typeMapper.MapType(valueParam.Type);
-            }
-        }
-        else if (first.ReturnType != null)
-        {
-            propertyType = _typeMapper.MapType(first.ReturnType);
-        }
+        var declaredAnnotation = propGroup.DeclaredTypeAnnotation();
+        TypeSyntax propertyType = declaredAnnotation != null
+            ? _typeMapper.MapType(declaredAnnotation)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         // Determine property-level modifiers from the getter (or first property)
         var modifierSource = getterProp ?? first;
@@ -865,7 +850,9 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// The C# type of a single-accessor function-style property, read from the annotation the user
-    /// WROTE: a getter's return type, else a setter's value-parameter type.
+    /// WROTE that declares it: a getter's return type, a setter's value-parameter type — never a
+    /// setter's return annotation, which made <c>property set p(self, v: int) -&gt; None</c> a C#
+    /// <c>void</c> property (CS0547; #2370, R-JD).
     ///
     /// <para>The setter arm is what was missing (#1405): consulting only <c>ReturnType</c> then
     /// <c>Type</c> — both null for a setter — fell through to <c>object</c>, so
@@ -876,19 +863,9 @@ internal partial class RoslynEmitter
     /// type parameters (it is what the combined-accessor generator has always used).</para>
     /// </summary>
     private TypeSyntax FunctionStylePropertyType(PropertyDef propDef)
-    {
-        if (propDef.ReturnType != null)
-            return _typeMapper.MapType(propDef.ReturnType);
-        if (propDef.Type != null)
-            return _typeMapper.MapType(propDef.Type);
-
-        var valueParam = propDef.Parameters.FirstOrDefault(p =>
-            !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
-        if (valueParam?.Type != null)
-            return _typeMapper.MapType(valueParam.Type);
-
-        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
-    }
+        => propDef.DeclaredTypeAnnotation() is { } declaredAnnotation
+            ? _typeMapper.MapType(declaredAnnotation)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
     /// <summary>
     /// Generates a C# property with a function-style body (custom getter/setter).

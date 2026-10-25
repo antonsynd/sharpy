@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -65,6 +66,47 @@ public static class StatementExtensions
     /// </remarks>
     public static Statement UnwrapDecorated(this Statement stmt)
         => stmt is DecoratedStatement decorated ? decorated.Statement : stmt;
+
+    /// <summary>
+    /// The annotation that declares <paramref name="prop"/>'s TYPE: an auto-property's
+    /// <c>Type</c>, a getter's return annotation, a setter's or init accessor's VALUE parameter.
+    /// Null when that slot is unannotated. The one authority every reader of a property's type
+    /// consults — the checker's class and module arms, the emitter, hover (#2370, R-JD) — so a
+    /// setter's return annotation can never stand in for the property's type: it is the accessor's
+    /// return, <c>-&gt; None</c> or nothing (SPY0496 refuses anything else). Before this, three of
+    /// six readers took a setter's <c>-&gt; None</c> as the type, and a set-only property became
+    /// C# <c>void</c> (CS0547) or a <c>None</c>-typed property (SPY0220 at every store).
+    /// </summary>
+    public static TypeAnnotation? DeclaredTypeAnnotation(this PropertyDef prop)
+    {
+        if (!prop.IsFunctionStyle)
+            return prop.Type;
+
+        if (prop.Accessor is PropertyAccessor.Set or PropertyAccessor.Init)
+        {
+            // The value parameter is the last one that is not the receiver; a module-level setter
+            // has no receiver at all.
+            return prop.Parameters.LastOrDefault(p =>
+                !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))?.Type;
+        }
+
+        return prop.ReturnType ?? prop.Type;
+    }
+
+    /// <summary>
+    /// The declaring annotation of ONE property spelled by several <see cref="PropertyDef"/>s
+    /// (an auto-property beside custom accessors, a split getter and setter): the getter's or the
+    /// auto-property's annotation first, then a setter's or init accessor's value parameter —
+    /// whatever order the accessors were written in, so a setter declared before its getter types
+    /// the property exactly as the reverse order does (#2370, R-JD). The checker types the
+    /// property and the emitter spells it through this one rule.
+    /// </summary>
+    public static TypeAnnotation? DeclaredTypeAnnotation(this IEnumerable<PropertyDef> accessors)
+        => accessors
+            .OrderBy(p => p.IsFunctionStyle && p.Accessor is PropertyAccessor.Set or PropertyAccessor.Init ? 1 : 0)
+            .Select(p => p.DeclaredTypeAnnotation())
+            .FirstOrDefault(a => a != null);
 
     /// <summary>
     /// Classifies <paramref name="stmt"/> as one of the seven type-declaring statement kinds — the
