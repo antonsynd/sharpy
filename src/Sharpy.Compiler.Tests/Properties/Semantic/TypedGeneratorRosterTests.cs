@@ -1765,6 +1765,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "properties.md", "SPY0148"),
         new KnownRedSpecCode("#2287", "properties.md", "SPY0708"),
         new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0405"),
+        new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0406"),
         new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0407"),
         new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0496"),
         new KnownRedSpecCode("#2287", "question_mark_operator.md", "SPY0211"),
