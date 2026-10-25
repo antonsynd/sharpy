@@ -1,0 +1,18 @@
+# #2359 (R-II): a `type` alias spelling a builtin FUNCTION name binds that name for the rest of its
+# scope exactly as `def print` does, so it draws the same SPY0483 warning — at module level and in a
+# function body (one warning each, pinned by `!count`-free substring lines in the .warning). At
+# ce482aa20 both were silent. The program runs: the alias is honoured, and print is called through
+# `builtins`.
+import builtins
+
+type print = str
+
+def show() -> None:
+    type len = int
+    n: len = 3
+    builtins.print(n)
+
+def main() -> None:
+    s: print = "alias"
+    builtins.print(s)
+    show()

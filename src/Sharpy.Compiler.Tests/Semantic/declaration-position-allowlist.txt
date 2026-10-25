@@ -83,17 +83,16 @@ nested-def × sibling-match × different-sig × none  # #2361
 # is unwarned; every import collision is silent (a module variable re-declaring a FROM-imported
 # name included — the import-as/plain twins are SPY0204, c18); `import math as str` is silent;
 # `import math as print` is unwarned; `from math import pi as str`, its backtick-escaped twin and
-# `from builtins import len`/`str` warn SPY0484. CREATED by P21f Phase 1; drains in P21f Phase 4.
-property-field × module × str  # #2359
-property-get × module × str  # #2359
-property-set × module × str  # #2359
-property-observer × module × str  # #2359 (SPY0483) + #2369 (SPY0909 under run)
+# `from builtins import len`/`str` warn SPY0484. CREATED by P21f Phase 1. DRAINED in P21f Phase 4
+# (ImportResolver.BindImportName in both compile routes; the checker's imported-name arm;
+# BuiltinNameShadowingValidator's module-property arm). Do not re-add a row here.
 
 # #2369: a module-level property observer whose body holds an expression statement is SPY0909 under run
 # ("No StatementLowering recorded for expression statement") — the module-level observer body is never
 # checked; a `pass` body runs. The verdict at module (legal) is P21f's; the ICE is not — outside P21f,
 # drains with #2369.
 property-observer × module × Fresh  # #2369
+property-observer × module × str  # #2369 (its SPY0483 is green since P21f Phase 4)
 
 # #2360 (R-IJ): a `type` alias re-declared in one scope is SPY0204 at every position (the checker's
 # RegisterScopedTypeAlias compares declarations, not names), and a def after a same-block alias is SPY0204

@@ -1,0 +1,13 @@
+# #2359 (R-II): a MODULE-level property is a module binding read bare, so a builtin spelling warns
+# SPY0483 like `len = 5`; a class member named the same (reached through `self.`) stays silent.
+# At ce482aa20 the module-level properties were silent.
+import builtins
+
+property print: int = 1
+
+class Box:
+    property len: int = 2
+
+def main() -> None:
+    builtins.print(print)
+    builtins.print(Box().len)
