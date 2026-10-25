@@ -1,0 +1,8 @@
+# An event declared at module level is SPY0708 naming the declaration kind — events live only in a
+# class, struct or interface body (#2362, R-IK). Direction record (`sharpyc run` @ 797925e06):
+# SPY0340 "Executable statements are not allowed at module level" (ModuleLevelValidator filed the
+# declaration as executable); now one verdict with one owner, and no SPY0340 (message → message).
+event changed: Action[int]
+
+def main() -> None:
+    print("ok")

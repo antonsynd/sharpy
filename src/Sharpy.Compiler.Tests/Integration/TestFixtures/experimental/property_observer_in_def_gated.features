@@ -1,0 +1,2 @@
+# Enables the experimental store-time property observers (before_set / after_set).
+property_observers

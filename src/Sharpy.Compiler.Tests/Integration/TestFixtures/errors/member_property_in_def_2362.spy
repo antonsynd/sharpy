@@ -1,0 +1,10 @@
+# A field-style property declared in a function body is SPY0708 naming the declaration kind
+# (#2362, R-IK; DeclarationPositionValidator). It used to be silently dropped: without the use below
+# the program ran (`sharpyc run` @ 797925e06: worked → refused). The dropped member leaves `size`
+# unbound, so the use keeps its SPY0200 — the pinned cascade (P21f D8; #2075's).
+def helper() -> None:
+    property size: int = 0
+    print(size)
+
+def main() -> None:
+    helper()

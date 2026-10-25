@@ -15,10 +15,23 @@ Sharpy supports two property forms:
 - **Auto-properties** generate a backing field automatically (opaque to the user)
 - **Function-style properties** require the user to provide their own backing field (or compute the value)
 
+**Where a property may be declared:** a property, in either form, is a member of a class, struct or interface body. A property may also be declared at module level (see [Module-Level Properties](properties_function_style.md#module-level-properties)). A property declared anywhere else, such as in a function body or a block (`if`, `for`, `while`, `try`, `with`, `match`), is an error (SPY0708). It would belong to no host.
+
+<!-- spec-sweep: error SPY0708 -->
+```python
+def configure() -> None:
+    property size: int = 0   # ERROR SPY0708: a property declaration is not allowed inside a function
+    print("configured")
+
+def main() -> None:
+    configure()
+```
+
 ## Auto-Properties
 
 Auto-properties generate a backing field and accessors automatically:
 
+<!-- spec-sweep: fragment -->
 ```python
 class Person:
     # Read-write (default, has both get and set)
@@ -192,6 +205,7 @@ For complete details on virtual, abstract, and override properties, covariant re
 
 **Decorator placement:**
 
+<!-- spec-sweep: fragment -->
 ```python
 @static
 @virtual

@@ -1,0 +1,3 @@
+SPY0331: property observers ('before_set' / 'after_set') requires experimental feature 'property_observers' @6:5
+SPY0708: a property declaration is not allowed inside a function; declare it in a class, struct or interface body, or at module level @6:5
+!count 2

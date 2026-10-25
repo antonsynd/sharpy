@@ -1,0 +1,11 @@
+# A function-style event accessor declared in a method body is SPY0708 naming the declaration kind
+# (#2362, R-IK). Direction record (`sharpyc run` @ 797925e06): the emitter's SPY0510 "unrecognized
+# statement type 'EventDef'" — an internal error (ICE → diagnostic).
+class Host:
+    def m(self) -> None:
+        event add changed(self, handler: Action[int]):
+            pass
+        print("m")
+
+def main() -> None:
+    Host().m()

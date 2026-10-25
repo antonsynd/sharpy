@@ -348,9 +348,7 @@ primitive_types.md::412c2923ce  # SPY0346 first #1952
 program_entry_point.md::08fda2fe5d  # SPY0200 first #1952
 program_entry_point.md::3e9510358b  # SPY0200 first #1952
 program_entry_point.md::daa5d09e86  # SPY0200 first #1952
-properties.md::0f22441582  # SPY0200 first #1952
 properties.md::2cad2b350f  # SPY0203 first #1952
-properties.md::36c5d183b0  # SPY0204 first #1952
 properties_function_style.md::4538adfdac  # SPY0407 first #1952
 properties_function_style.md::86bb0df588  # SPY0496 first #1952
 properties_function_style.md::b43ba33646  # SPY0406 first #1952

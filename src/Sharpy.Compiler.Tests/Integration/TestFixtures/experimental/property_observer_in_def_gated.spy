@@ -1,0 +1,12 @@
+# The observer form of a property declared in a function body is SPY0708 like every other property
+# form (#2362, R-IK): observers are an attribute of the same PropertyDef node. Direction record
+# (`sharpyc run` @ 797925e06): with the feature enabled, the property was silently dropped and the
+# program ran (worked → refused). The ungated twin also draws the gate's SPY0331 at the same node.
+def helper() -> None:
+    property health: int = 100
+        before_set(v):
+            print(v)
+    print("helper")
+
+def main() -> None:
+    helper()
