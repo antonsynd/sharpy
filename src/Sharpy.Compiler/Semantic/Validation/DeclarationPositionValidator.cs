@@ -32,7 +32,12 @@ internal enum DeclarationSlot
 /// <c>type</c> alias whose bare name is a builtin type name is SPY0212 at every non-declaring position
 /// (#2319) — the same <c>BuiltinNameShadowing</c> classifier and text NameResolver's gate applies at the
 /// declaring positions, so each position has exactly one owner (plan D2); a fresh-named or
-/// backtick-escaped alias falls through (block-scoped, D7). A nested <c>def</c> (in a function body or a
+/// backtick-escaped alias falls through (block-scoped, D7). A member declaration (#2362, R-IK) — a
+/// <c>property</c> in any form (field-style, <c>get</c>/<c>set</c>/<c>init</c> accessor, the observer form)
+/// anywhere but a type body or the module body, an <c>event</c> (auto or an <c>add</c>/<c>remove</c>
+/// accessor) anywhere but a type body — is SPY0708 naming the kind: a property or an event is a member of
+/// its host (module-level properties are spec'd, #844; there is no module-level event), so in a function
+/// or a block it would belong to nothing. Each accessor statement is its own verdict. A nested <c>def</c> (in a function body or a
 /// block of one) whose name a def of the SAME function already declared in the same block, an enclosing
 /// block, or an enclosed block is SPY0204 at the later def (R-HJ, #2314): the emitter spells every local
 /// function by its name with no versioning, so C# would see CS0128 (same block) or CS0136 (nested blocks).
@@ -320,6 +325,13 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
                     aliasBlock.Aliases.Add(alias.Name);
                 break;
 
+            case PropertyDef when position is not (DeclarationSlot.TypeBody or DeclarationSlot.ModuleBody):
+                RefuseMember(stmt, "property", position);
+                break;
+            case EventDef when position != DeclarationSlot.TypeBody:
+                RefuseMember(stmt, "event", position);
+                break;
+
             case FunctionDef def when position is DeclarationSlot.FunctionBody or DeclarationSlot.FunctionBlock:
                 DeclareNestedDef(def);
                 break;
@@ -377,6 +389,32 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
             column: definition.ColumnStart,
             code: DiagnosticCodes.ValidationOverflow.DeclarationOutsideDeclaringPosition,
             span: definition.Span);
+
+    private void RefuseMember(Statement member, string kind, DeclarationSlot position)
+        => AddError(
+            MemberMessage(kind, position),
+            line: member.LineStart,
+            column: member.ColumnStart,
+            code: DiagnosticCodes.ValidationOverflow.DeclarationOutsideDeclaringPosition,
+            span: member.Span);
+
+    /// <summary>
+    /// The SPY0708 text for a member declaration outside its declaring positions (R-IK: the declaration kind
+    /// in the message). A property is legal in a type body and at module level; an event only in a type body.
+    /// </summary>
+    internal static string MemberMessage(string kind, DeclarationSlot position)
+    {
+        var where = position switch
+        {
+            DeclarationSlot.FunctionBody => "inside a function",
+            DeclarationSlot.TypeBodyBlock => "inside a class body block",
+            DeclarationSlot.ModuleBody => "in the module body",
+            _ => "inside a block",
+        };
+        return kind == "event"
+            ? $"an event declaration is not allowed {where}; an event is only allowed in a class, struct or interface body"
+            : $"a property declaration is not allowed {where}; declare it in a class, struct or interface body, or at module level";
+    }
 
     /// <summary>The SPY0708 text for a type definition outside a declaring position (R-CS).</summary>
     internal static string TypeDefinitionMessage(string kind)

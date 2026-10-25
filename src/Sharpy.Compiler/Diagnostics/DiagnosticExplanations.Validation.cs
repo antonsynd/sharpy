@@ -1097,9 +1097,14 @@ public static partial class DiagnosticExplanations
             "C# has no local types: the definition would have no symbol of its own. An `import` or " +
             "`from ... import` anywhere but the module body \u2014 a function, a block, or a class " +
             "body \u2014 is refused because an import is a fact about the whole module, not a binding " +
-            "of the scope it is written in. Python allows both; Sharpy follows C# here (#2063).",
+            "of the scope it is written in. Python allows both; Sharpy follows C# here (#2063). " +
+            "A member declaration is refused the same way (#2362): a `property` (field-style, an " +
+            "accessor, or the observer form) or an `event` written in a function body or a block " +
+            "belongs to no host. Properties are also legal at module level; events only in a class, " +
+            "struct or interface body.",
             "def f() -> None:\n    class A:  # SPY0708\n        pass",
             "Move the type definition to module level, or nest it directly in a class body " +
-            "(`class Outer:` / `    class A:`), and move the import to the top of the file.");
+            "(`class Outer:` / `    class A:`), and move the import to the top of the file. Declare " +
+            "a property or an event in the class it belongs to (a property may also live at module level).");
     }
 }

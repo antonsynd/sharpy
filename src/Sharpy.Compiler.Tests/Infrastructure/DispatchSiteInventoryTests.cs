@@ -270,7 +270,7 @@ public class DispatchSiteInventoryTests
         // positions (NameResolver's) and every non-declaration statement. P21f (#2362, #2360) adds a
         // member arm per kind — a property outside a type body and the module body, an event outside
         // a type body (SPY0708 naming the kind; R-IK) — and widens the nested-def arm to a same-block
-        // type alias name (SPY0204, D2b). Netted per kind x position x name (the six member kinds
+        // type alias name (SPY0204, D2b; also in a module block). Netted per kind x position x name (the six member kinds
         // included), per nested-def block relation and per alias-redeclaration relation x position, by
         // the exact-error-set oracle of TypeDefinitionOwnSymbolMatrixTests; its import-binding
         // sub-matrix nets the import seam, which is not this classifier.
