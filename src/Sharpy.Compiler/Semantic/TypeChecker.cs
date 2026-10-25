@@ -1190,20 +1190,31 @@ internal partial class TypeChecker
                 RegisterScopedTypeAlias(typeAlias);
                 break;
 
-            case PropertyDef propDef when _currentClass == null:
+            case PropertyDef propDef when _currentClass == null && !AtNonDeclaringPosition:
                 // Module-level property: resolve its type and check the accessor
                 // body / default value (#844)
                 CheckModuleProperty(propDef);
                 break;
 
-            case PropertyDef propDef when _currentClass != null:
+            case PropertyDef propDef when _currentClass != null && !AtNonDeclaringPosition:
                 // Class/struct/interface property: declared types are resolved via
                 // ResolvePropertyTypes; check the accessor body / default value (#849)
                 CheckClassProperty(propDef);
                 break;
 
-            case EventDef eventDef:
+            case EventDef eventDef when _currentClass != null && !AtNonDeclaringPosition:
+                // An event is a member of a class/struct/interface body, and only there.
                 CheckEvent(eventDef);
+                break;
+
+            case PropertyDef or EventDef:
+                // DECLINE, silently: a property in a function body or a block, and an event anywhere but a
+                // type body, is DeclarationPositionValidator's SPY0708 (#2362, R-IK) — one owner per verdict.
+                // Checking it here put a second verdict beside the refusal (CheckModuleProperty's SPY0232
+                // "Module-level properties cannot have a 'self' parameter" for an accessor in a def) or
+                // silently accepted a member the program then dropped (CheckClassProperty on a property in
+                // a method body). The same rationale as SkipUndeclaredTypeDefinition; codegen is skipped on
+                // the refusal, and the emitter's PropertyDef no-emit / EventDef SPY0510 arms stay backstops.
                 break;
 
             case MatchStatement matchStmt:

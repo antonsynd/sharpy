@@ -72,9 +72,12 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                     // These are valid module-level declarations
                     break;
 
-                case EventDef eventDef:
-                    // Events are not allowed at module level — only inside class/struct/interface
-                    executableStatements.Add(eventDef);
+                case EventDef:
+                    // A declaration, not an executable statement. A module-level event IS refused — events
+                    // live only in a class/struct/interface body — but that verdict is
+                    // DeclarationPositionValidator's SPY0708 naming the kind (#2362, R-IK); this arm used to
+                    // file it as executable (SPY0340), a wrong-kind second message. Listed explicitly because
+                    // the default arm below files every unlisted statement as executable.
                     break;
 
                 // `let` introduces a LOCAL binding; module scope is const-only (#1974, R-BL). Both

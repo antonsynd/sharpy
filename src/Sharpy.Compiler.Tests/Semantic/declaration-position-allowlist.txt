@@ -72,12 +72,6 @@ nested-def × sibling-match × different-sig × none  # #2361
 # observer form are dropped, an accessor is accepted by CheckModuleProperty / CheckClassProperty, an event
 # reaches the emitter's SPY0510 under run); a module-level event is SPY0340 "Executable statements…" (two
 # for the add/remove pair). CREATED by P21f Phase 1; drains in P21f Phase 3.
-event-auto × module × str  # #2362
-event-auto × module × Foo  # #2362
-event-auto × module × Fresh  # #2362
-event-add × module × str  # #2362
-event-add × module × Foo  # #2362
-event-add × module × Fresh  # #2362
 
 # #2359 (R-II): an import binding is a module binding — a same-module class/def/alias/const/property or
 # another module under its name is SPY0204 at the later binding, a builtin type name is SPY0212 (the
