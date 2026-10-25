@@ -163,7 +163,7 @@ internal partial class TypeChecker
         // symbol yet. Without this, the lookup below found whatever the name already meant: for a
         // builtin's name inside a `try:` body that was the MASTER registry's symbol, which the
         // signature writes then retyped for every later document on the same CompilerApi (#2250).
-        if (_currentFunctionReturnType != null || _controlFlowDepth > 0)
+        if (AtNonDeclaringPosition)
         {
             var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
             if (existingSymbol == null)

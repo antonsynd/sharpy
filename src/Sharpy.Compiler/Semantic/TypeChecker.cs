@@ -262,6 +262,16 @@ internal partial class TypeChecker
     private bool _currentFunctionIsAsync = false;
 
     private int _controlFlowDepth = 0;
+
+    /// <summary>
+    /// True inside a function body or inside a block (try/if/for/while/with/match) — the positions
+    /// NameResolver never walks, so a declaration met there was not declared (or refused) by it. The
+    /// one position test every checker arm uses to tell a declaration it owns from one NameResolver or
+    /// <c>DeclarationPositionValidator</c> owns: <c>CheckFunction</c> (declare a nested def's own
+    /// symbol), <c>RegisterScopedTypeAlias</c> (report here), and the member arms of
+    /// <c>CheckStatement</c> (decline) (P21e, P21f).
+    /// </summary>
+    private bool AtNonDeclaringPosition => _currentFunctionReturnType != null || _controlFlowDepth > 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
 
     // Symbols of range(...)-loop induction variables currently in scope that are provably >= 0
