@@ -682,21 +682,6 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// Merge exports from a source module into a target module.
-    /// Used to combine nested module structures when the same root is imported multiple times.
-    ///
-    /// The merge rule (first import wins, recursing into nested modules present on both sides)
-    /// lives in <see cref="ModuleExports.MergeFrom"/>, which moves the value-position lookup and
-    /// the types-only lookup together — the mirror cannot be dropped here because there is no
-    /// second dictionary to forget (#1135, #1145).
-    ///
-    /// Internal (not private) so the merge seam can be unit-tested directly; static because it
-    /// touches no instance state.
-    /// </summary>
-    internal static void MergeModuleExports(ModuleSymbol target, ModuleSymbol source)
-        => target.Exports.MergeFrom(source.Exports, firstImportWins: true);
-
-    /// <summary>
     /// After cycle filtering, compute all symbol names imported across cycle boundaries.
     /// The ImportResolver only tracks symbols from stubs (one side of the cycle),
     /// but we need to flag runtime usage on BOTH sides.
