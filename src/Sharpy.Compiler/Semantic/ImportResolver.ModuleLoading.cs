@@ -27,13 +27,9 @@ internal partial class ImportResolver
             UpdateCurrentModule(currentModulePath);
         _logger.LogInfo("Starting import resolution");
         var importCount = 0;
-        // Tracks which module each symbol name was imported from, used only by
-        // from-imports. Plain `import` statements register a ModuleSymbol whose
-        // name is the module itself, so name collisions are module-vs-module (handled
-        // by SymbolTable.TryDefine). From-imports pull individual symbols into the
-        // current scope, where the same name can arrive from different modules —
-        // importedSymbolSources detects that conflict and emits a diagnostic.
-        var importedSymbolSources = new Dictionary<string, string>();
+        // Every import spelling binds its name through BindImportName, which records the binding
+        // on the scope — that record is how a later binding of the name tells an import of the same
+        // thing (merge / idempotent) from a collision (SPY0204, #514, #2359).
 
         foreach (var statement in module.Body)
         {
@@ -78,7 +74,12 @@ internal partial class ImportResolver
                             NameDeclarationLine = importAlias.LineStart,
                             NameDeclarationColumn = importAlias.ColumnStart
                         };
-                        symbolTable.TryDefine(aliasedModule);
+                        BindImportName(symbolTable, aliasedModule, importAlias.AsName, importAlias,
+                            new ImportBinding(ImportBindingForm.ModuleAlias,
+                                moduleInfo.CanonicalModuleName ?? moduleInfo.Path, importAlias.Name, _currentModulePath),
+                            warningTarget: null, isRegistryOwnBinding: false,
+                            diagnostic => ReportImportBinding(diagnostic, importAlias.LineStart,
+                                importAlias.ColumnStart, importAlias.Span ?? import.Span));
                     }
                     else
                     {
@@ -123,7 +124,13 @@ internal partial class ImportResolver
                             currentModule = parentModule;
                         }
 
-                        symbolTable.TryDefine(currentModule);
+                        // Two plain imports of one root merge (`import os` + `import os.path`, either
+                        // order) — the project route's rule, now both routes' (BindImportName).
+                        BindImportName(symbolTable, currentModule, parts[0], importAlias,
+                            new ImportBinding(ImportBindingForm.ModuleRoot, parts[0], parts[0], _currentModulePath),
+                            warningTarget: null, isRegistryOwnBinding: false,
+                            diagnostic => ReportImportBinding(diagnostic, importAlias.LineStart,
+                                importAlias.ColumnStart, importAlias.Span ?? import.Span));
                     }
                 }
             }
@@ -156,7 +163,7 @@ internal partial class ImportResolver
 
                             _logger.LogDebug($"  Defining symbol (import *): {name}");
                             var defined = TryDefineFromImport(symbolTable, symbol, name, sourceModule,
-                                importedSymbolSources, fromImport, importAlias: null);
+                                fromImport, importAlias: null);
 
                             if (moduleInfo.IsStub)
                                 _deferredCycleSymbols.Add(name);
@@ -175,23 +182,8 @@ internal partial class ImportResolver
                             var lookupName = importAlias.Name;
                             var registerName = importAlias.AsName ?? importAlias.Name;
 
-                            // Say it in the file where the rebinding takes effect (#1324). SPY0483
-                            // already warns at the DECLARATION, but that is the library's file,
-                            // which the consumer may never open — and the consumer is the one whose
-                            // `len(xs)` now means something else.
-                            if (BuiltinNameShadowing.ShadowsBuiltin(symbolTable.BuiltinRegistry, registerName))
-                            {
-                                AddWarning(
-                                    $"'{registerName}' is a builtin name; this import rebinds it in "
-                                    + $"this file, so a bare '{registerName}' here calls "
-                                    + $"'{fromImport.Module}.{registerName}' and not the builtin. The "
-                                    + $"builtin stays reachable as 'builtins.{registerName}' (add "
-                                    + "'import builtins'), or import under an alias to keep both.",
-                                    importAlias.LineStart, importAlias.ColumnStart,
-                                    code: DiagnosticCodes.Validation.BuiltinRebornByExplicitImport,
-                                    span: importAlias.Span);
-                            }
-
+                            // The builtin-name verdicts (SPY0212 / SPY0484, #1324, R-II) are
+                            // BindImportName's, decided where the name binds.
                             if (reExportedSymbols.TryGetValue(lookupName, out var symbol))
                             {
                                 _logger.LogDebug($"  Defining imported symbol: {lookupName} as {registerName} ({symbol.Kind})");
@@ -248,8 +240,11 @@ internal partial class ImportResolver
                                     if (symbol is FunctionSymbol clonedFunc && importedOverloads is { Count: > 0 })
                                         symbol = clonedFunc with { OriginSymbol = importedOverloads[0] };
                                 }
+                                // The registry's own binding under its own name shadows nothing (#1322).
                                 var defined = TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
-                                    importedSymbolSources, fromImport, importAlias);
+                                    fromImport, importAlias, lookupName,
+                                    isRegistryOwnBinding: registryBinding != null
+                                        && string.Equals(registerName, lookupName, StringComparison.Ordinal));
 
                                 if (moduleInfo.IsStub)
                                     _deferredCycleSymbols.Add(registerName);
@@ -265,7 +260,7 @@ internal partial class ImportResolver
                                 // Fallback: error recovery modules may register symbols under alias name
                                 _logger.LogDebug($"  Defining imported symbol (alias fallback): {registerName} ({symbol.Kind})");
                                 var defined = TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
-                                    importedSymbolSources, fromImport, importAlias);
+                                    fromImport, importAlias);
 
                                 if (moduleInfo.IsStub)
                                     _deferredCycleSymbols.Add(registerName);

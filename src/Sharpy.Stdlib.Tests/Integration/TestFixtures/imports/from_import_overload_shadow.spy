@@ -1,4 +1,7 @@
-# Test that a user-defined function shadows imported overloaded functions
+# #1525 → #2359 (R-II): a module-level def that re-declares a from-imported name is SPY0204 at
+# the import — an import binding collides like every module binding. Direction record: this
+# program ran `hello-world` @ ce482aa20 (the def silently shadowed the imported overloads);
+# worked → refused per R-II.
 from os.path import join
 
 def join(a: str, b: str) -> str:

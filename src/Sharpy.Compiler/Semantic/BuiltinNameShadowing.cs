@@ -105,6 +105,43 @@ internal static class BuiltinNameShadowing
     }
 
     /// <summary>
+    /// The refusal message (SPY0212) for an IMPORT binding a builtin type name or a tagged-union
+    /// constructor (<c>import math as str</c>, <c>from math import pi as None</c>; R-II, #2359). An
+    /// import enters the name into the file's module scope, where it would displace the builtin for
+    /// every bare use in the file — so it is refused like a type declaration, and the escape is named.
+    /// </summary>
+    public static string ImportRefusalMessage(string name)
+    {
+        if (name is "Some" or "None" or "Ok" or "Err")
+            return $"'{name}' is a builtin tagged-union constructor; binding it to an import would shadow "
+                + $"the builtin form in this file. Import under another name, or write the alias "
+                + $"backtick-escaped: `{name}`";
+
+        return $"'{name}' is a builtin type name; binding it to an import would make every bare '{name}' "
+            + $"in this file mean the import. Import under another name, or write the alias "
+            + $"backtick-escaped: `{name}`";
+    }
+
+    /// <summary>
+    /// The warning (SPY0484) for a FROM-import binding a builtin function name: the bare spelling now
+    /// calls <paramref name="target"/> (<c>module.name</c>, the imported symbol).
+    /// </summary>
+    public static string FromImportWarningMessage(string name, string target) =>
+        $"'{name}' is a builtin name; this import rebinds it in this file, so a bare '{name}' here "
+        + $"calls '{target}' and not the builtin. The builtin stays reachable as 'builtins.{name}' (add "
+        + "'import builtins'), or import under an alias to keep both.";
+
+    /// <summary>
+    /// The warning (SPY0484) for a MODULE import binding a builtin function name
+    /// (<c>import math as print</c>, R-II): the bare spelling now names the module, which is not
+    /// callable — so the from-import wording ("calls 'math.print'") would be wrong here.
+    /// </summary>
+    public static string ModuleImportWarningMessage(string name, string module) =>
+        $"'{name}' is a builtin name; this import binds module '{module}' to it in this file, so a bare "
+        + $"'{name}' here names the module and not the builtin. The builtin stays reachable as "
+        + $"'builtins.{name}' (add 'import builtins'), or import under another name to keep both.";
+
+    /// <summary>
     /// True when binding <paramref name="name"/> would displace a builtin, in either namespace.
     /// The declaration-site classifier above answers a richer question (refuse vs warn vs allow);
     /// this is the plain "does this name belong to a builtin" predicate that the import path needs,

@@ -279,24 +279,4 @@ internal partial class ImportResolver
         _diagnostics.AddPhaseError(errorMessage, CompilerPhase.ImportResolution,
             span: span, line: line, column: column, filePath: _currentModulePath, code: code);
     }
-
-    /// <summary>
-    /// Checks whether a from-import symbol name was already imported from a different module.
-    /// Returns the name of the existing source module if a duplicate is detected, or null otherwise.
-    /// Same-module re-imports (idempotent) return null (not a conflict).
-    /// Shared between <see cref="ImportResolver"/> (single-file) and ProjectCompiler (multi-file).
-    /// </summary>
-    internal static string? FindDuplicateFromImportSource(
-        string registerName,
-        string sourceModule,
-        Dictionary<string, string> importedSources)
-    {
-        if (importedSources.TryGetValue(registerName, out var existingModule)
-            && !string.Equals(existingModule, sourceModule, StringComparison.Ordinal))
-        {
-            return existingModule;
-        }
-
-        return null;
-    }
 }

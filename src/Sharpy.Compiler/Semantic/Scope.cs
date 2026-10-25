@@ -163,6 +163,19 @@ public class Scope
         return _symbols.ContainsKey(name);
     }
 
+    private Dictionary<string, ImportBinding>? _importBindings;
+
+    /// <summary>
+    /// Records that an import bound <paramref name="name"/> in THIS scope (#2359). Written only by
+    /// <see cref="ImportResolver.BindImportName"/>; see <see cref="ImportBinding"/>.
+    /// </summary>
+    internal void RecordImportBinding(string name, ImportBinding binding)
+        => (_importBindings ??= new Dictionary<string, ImportBinding>(StringComparer.Ordinal))[name] = binding;
+
+    /// <summary>The import that bound <paramref name="name"/> in THIS scope, or null when no import did.</summary>
+    internal ImportBinding? LookupImportBinding(string name)
+        => _importBindings != null && _importBindings.TryGetValue(name, out var binding) ? binding : null;
+
     /// <summary>
     /// Replaces the binding that <paramref name="previous"/> occupies, in this scope or a parent
     /// scope, with <paramref name="updated"/>.
@@ -252,6 +265,7 @@ public class Scope
         if (_symbols.ContainsKey(name))
         {
             _symbols.Remove(name);
+            _importBindings?.Remove(name);
             return true;
         }
 

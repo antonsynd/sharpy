@@ -2811,22 +2811,38 @@ internal partial class TypeChecker
     /// so every reachable path that defines a <see cref="VariableSymbol"/> must check first.
     /// Variable-over-variable rebinding stays allowed (Python-like re-binding).
     /// </summary>
+    /// <remarks>
+    /// An IMPORTED variable is not one this file declared: <c>from math import pi as K</c> then
+    /// <c>K: int = 1</c> re-declares an import binding, which collides like every module binding
+    /// (R-II, #2359) — the import-as / plain spellings already reached the <c>module</c> arm, the
+    /// from-import spellings bind a <see cref="VariableSymbol"/> and were silently replaced. The
+    /// import seam records each binding on its scope (<see cref="Scope.LookupImportBinding"/>); only
+    /// THIS file's imports count, because the single-file pipeline type-checks an imported module in
+    /// the entry file's table.
+    /// </remarks>
     private bool TryReportNonVariableRedefinition(string name, int line, int column, Text.TextSpan? span)
     {
         var existing = _symbolTable.Lookup(name, searchParents: false);
-        if (existing is null or VariableSymbol)
+        if (existing is null)
+            return false;
+
+        if (existing is VariableSymbol
+            && (_symbolTable.CurrentScope.LookupImportBinding(name) is not { } import
+                || (import.FilePath != null && _currentFilePath != null
+                    && !string.Equals(import.FilePath, _currentFilePath, StringComparison.Ordinal))))
             return false;
 
         var kind = existing switch
         {
-            FunctionSymbol => "function",
-            TypeSymbol => "type",
-            ModuleSymbol => "module",
-            TypeAliasSymbol => "type alias",
-            TypeParameterSymbol => "type parameter",
-            _ => "symbol",
+            VariableSymbol => "an imported name",
+            FunctionSymbol => "a function",
+            TypeSymbol => "a type",
+            ModuleSymbol => "a module",
+            TypeAliasSymbol => "a type alias",
+            TypeParameterSymbol => "a type parameter",
+            _ => "a symbol",
         };
-        AddError($"Cannot bind '{name}': it is already defined as a {kind} in this scope",
+        AddError($"Cannot bind '{name}': it is already defined as {kind} in this scope",
             line, column, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: span);
         return true;
     }

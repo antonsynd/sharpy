@@ -1,6 +1,6 @@
 """HTTP modules — status codes, connections, and responses."""
 
-from sharpy import HTTPStatus, HTTPException, InvalidURL, NotConnected, HTTPConnection, HTTPSConnection, HTTPResponse
+from sharpy import HTTPException, InvalidURL, NotConnected
 
 HTTP_PORT: int = 80
 HTTPS_PORT: int = 443

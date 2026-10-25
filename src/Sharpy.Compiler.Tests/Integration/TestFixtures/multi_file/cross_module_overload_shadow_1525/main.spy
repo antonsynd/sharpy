@@ -1,4 +1,7 @@
-# #1525: a local function with the same name shadows the imported overloads.
+# #1525 → #2359 (R-II): a module-level def that re-declares a from-imported name is SPY0204 at
+# the import — an import binding collides like every module binding. Direction record: this
+# program ran `local:42` @ ce482aa20 (the def silently shadowed the imported overloads);
+# worked → refused per R-II. The import binds nothing, so `describe` is the local def.
 from lib import describe
 
 def describe(x: int) -> str:

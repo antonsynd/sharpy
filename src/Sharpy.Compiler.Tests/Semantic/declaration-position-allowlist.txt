@@ -88,68 +88,6 @@ property-field × module × str  # #2359
 property-get × module × str  # #2359
 property-set × module × str  # #2359
 property-observer × module × str  # #2359 (SPY0483) + #2369 (SPY0909 under run)
-import-binding × import-as × class × collider-first  # #2359
-import-binding × import-as × class × import-first  # #2359
-import-binding × import-as × def × collider-first  # #2359
-import-binding × import-as × def × import-first  # #2359
-import-binding × import-as × alias × collider-first  # #2359
-import-binding × import-as × alias × import-first  # #2359
-import-binding × import-as × const × collider-first  # #2359
-import-binding × import-as × const × import-first  # #2359
-import-binding × import-as × property × collider-first  # #2359
-import-binding × import-as × property × import-first  # #2359
-import-binding × import-as × other-import × collider-first  # #2359
-import-binding × import-as × other-import × import-first  # #2359
-import-binding × import-as × other-from-import × collider-first  # #2359
-import-binding × import-as × other-from-import × import-first  # #2359
-import-binding × import-as × str × none  # #2359
-import-binding × import-as × print × none  # #2359
-import-binding × import × class × collider-first  # #2359
-import-binding × import × class × import-first  # #2359
-import-binding × import × def × collider-first  # #2359
-import-binding × import × def × import-first  # #2359
-import-binding × import × alias × collider-first  # #2359
-import-binding × import × alias × import-first  # #2359
-import-binding × import × const × collider-first  # #2359
-import-binding × import × const × import-first  # #2359
-import-binding × import × property × collider-first  # #2359
-import-binding × import × property × import-first  # #2359
-import-binding × import × other-import × collider-first  # #2359
-import-binding × import × other-import × import-first  # #2359
-import-binding × import × other-from-import × collider-first  # #2359
-import-binding × import × other-from-import × import-first  # #2359
-import-binding × from-import-as × class × collider-first  # #2359
-import-binding × from-import-as × class × import-first  # #2359
-import-binding × from-import-as × def × collider-first  # #2359
-import-binding × from-import-as × def × import-first  # #2359
-import-binding × from-import-as × alias × collider-first  # #2359
-import-binding × from-import-as × alias × import-first  # #2359
-import-binding × from-import-as × const × collider-first  # #2359
-import-binding × from-import-as × const × import-first  # #2359
-import-binding × from-import-as × property × collider-first  # #2359
-import-binding × from-import-as × property × import-first  # #2359
-import-binding × from-import-as × var × collider-first  # #2359
-import-binding × from-import-as × var × import-first  # #2359
-import-binding × from-import-as × other-import × collider-first  # #2359
-import-binding × from-import-as × other-import × import-first  # #2359
-import-binding × from-import-as × str × none  # #2359
-import-binding × from-import-as × escaped-str × none  # #2359
-import-binding × from-import × class × collider-first  # #2359
-import-binding × from-import × class × import-first  # #2359
-import-binding × from-import × def × collider-first  # #2359
-import-binding × from-import × def × import-first  # #2359
-import-binding × from-import × alias × collider-first  # #2359
-import-binding × from-import × alias × import-first  # #2359
-import-binding × from-import × const × collider-first  # #2359
-import-binding × from-import × const × import-first  # #2359
-import-binding × from-import × property × collider-first  # #2359
-import-binding × from-import × property × import-first  # #2359
-import-binding × from-import × var × collider-first  # #2359
-import-binding × from-import × var × import-first  # #2359
-import-binding × from-import × other-import × collider-first  # #2359
-import-binding × from-import × other-import × import-first  # #2359
-import-binding × from-builtins × len × none  # #2359
-import-binding × from-builtins × str × none  # #2359
 
 # #2369: a module-level property observer whose body holds an expression statement is SPY0909 under run
 # ("No StatementLowering recorded for expression statement") — the module-level observer body is never

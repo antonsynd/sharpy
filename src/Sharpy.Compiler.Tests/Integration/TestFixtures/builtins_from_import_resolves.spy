@@ -7,7 +7,10 @@
 # list[int] with nothing to separate them: SPY0353 for a program whose only sin was naming the
 # builtin it wanted.
 #
-# SPY0484 still fires -- the import DOES rebind the name in this file, which is worth saying.
+# No SPY0484 (#2359, plan D5 d4): binding the registry's own symbol rebinds nothing — the bare
+# `len` and the imported one are the same object — so the warning this fixture used to pin ("a bare
+# 'len' here calls 'builtins.len' and not the builtin", @ ce482aa20) was false; warned → silent.
+# The empty .warning pins the absence; its positive control is import_alias_builtin_function_name_2359.
 from builtins import len
 
 

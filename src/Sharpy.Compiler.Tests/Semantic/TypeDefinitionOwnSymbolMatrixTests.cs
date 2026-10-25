@@ -461,10 +461,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// ("Type alias 'Foo' is already defined", measured; ONE — <c>Analyze</c> returns it twice at the base because
     /// NameResolver and the TypeChecker both report it and only <c>Compile</c>'s bag dedupes), [] at <c>type-body</c> (measured: runs) and at every
     /// non-declaring position (a block-scoped alias, D7).</description></item>
-    /// <item><term><c>import</c>/<c>from-import</c>/<c>suppress-import</c></term><description><c>module</c> → [] for
-    /// all three names (measured silent at the base: <c>import copy as str</c> draws nothing, <c>import copy as
-    /// Foo</c> beside <c>class Foo</c> draws only the SPY0452 warning — pinned as measured; both are cells of #2359
-    /// (an import alias no declaration rule sees), not of this contract — a fix there moves these literals); every other position → [SPY0708 @ keyword] (R-CS: "import at module
+    /// <item><term><c>import</c>/<c>from-import</c>/<c>suppress-import</c></term><description><c>module</c> → an
+    /// import binding is a module binding (R-II, #2359): builtin (<c>str</c>) → [SPY0212 @ ImportAlias] (a builtin type
+    /// name; the backtick-escaped alias is the opt-in), Foo → [SPY0204 @ ImportAlias] (beside <c>class Foo</c>, which is
+    /// declared before imports bind), Fresh → []; every other position → [SPY0708 @ keyword] (R-CS: "import at module
     /// level").</description></item>
     /// <item><term>member — <c>property-field</c>/<c>-get</c>/<c>-set</c>/<c>-observer</c> (P21f D3/D7a, R-IK)</term>
     /// <description><c>type-body</c> → [] for all three names (a member named <c>str</c> or <c>Foo</c> is reached
@@ -508,7 +508,11 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 return Array.Empty<(string, At)>();
 
             case Family.Import:
-                return position == "module" ? Array.Empty<(string, At)>() : new[] { ("SPY0708", At.Keyword) };
+                if (position != "module")
+                    return new[] { ("SPY0708", At.Keyword) };
+                if (builtin)
+                    return new[] { ("SPY0212", At.ImportAlias) };
+                return name == "Foo" ? new[] { ("SPY0204", At.ImportAlias) } : Array.Empty<(string, At)>();
 
             case Family.Member:
                 {
@@ -572,12 +576,12 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
         // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
         // {str, print, `str`}, + 2 builtins-module names, + the dotted root × 2 orders.
-        Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 2, ImportBindingCells().Count());
+        Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 1 + 2, ImportBindingCells().Count());
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + alias→alias × {type-body, module}.
         Assert.Equal(7 * 4 + 2, AliasRedeclarationCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48 + 82 + 30, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 48 + 83 + 30, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1020,7 +1024,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// property → [SPY0204 @ the import's ImportAlias] in BOTH orders. A module variable is declared by the checker
     /// AFTER the imports, so it is the later binding in both orders: [SPY0204 @ the variable] (c18, pinned). Two imports
     /// bind in source order: [SPY0204 @ the later one's ImportAlias] (c15, e5, g2; d11 is the from/from cell). A
-    /// builtin type name → [SPY0212 @ ImportAlias] (the escaped <c>`str`</c> is the opt-in: []); a builtin function name
+    /// builtin type name under an <c>as</c> spelling → [SPY0212 @ ImportAlias] (the escaped <c>`str`</c> is the opt-in: []),
+    /// under a PLAIN from-import (<c>from System.Collections.Generic import IList</c> — the exporter's name) → errors [],
+    /// warnings [SPY0484 @ ImportAlias], and it runs; a builtin function name
     /// → errors [], warnings [SPY0484 @ ImportAlias] (c4/c9); the <c>builtins</c> module's own binding shadows nothing
     /// → [] with no SPY0484 (d4/d5) — the absence's positive control is the <c>from-import-as × print</c> cell's
     /// SPY0484, asserted unconditionally (hard). Fresh, the repeated import (idempotent) and the dotted root (merge) →
@@ -1097,6 +1103,15 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         foreach (var name in new[] { "len", "str" })
             yield return Make("from-builtins", name, "none", Array.Empty<string>(), new[] { $"from builtins import {name}" },
                 (_, _) => Array.Empty<(string, int, int)>());
+
+        // A PLAIN from-import whose exporter's name spells a builtin TYPE (the registry knows `IList`) is warned and
+        // honoured, not refused: the importer did not choose the name (owner ruling at P21f Phase 4, option b — the
+        // refusal is the `as` spellings' only, the `str` cells above). The project-route twin is `from lib import
+        // double` (ImportBindingProjectRouteTests).
+        var plainType = "from System.Collections.Generic import IList";
+        yield return Make("from-import", "builtin-type-name", "none", Array.Empty<string>(), new[] { plainType },
+            (_, _) => Array.Empty<(string, int, int)>(),
+            (_, s) => new[] { ("SPY0484", s, ImportAliasColumn(plainType)) });
 
         // The dotted root: `import os` and `import os.path` merge into one `os` binding, in both orders (D4 i —
         // dotted-first binds a structural parent with no FilePath).

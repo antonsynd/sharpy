@@ -795,7 +795,11 @@ public static partial class DiagnosticExplanations
             "is refused at the use site (SPY0492) and this one is only a warning. It is said here, " +
             "at the import, rather than only at the declaration (SPY0483), because the declaration " +
             "lives in the LIBRARY's file: a library and its consumer are by definition two files, " +
-            "and the consumer is the one whose 'len(xs)' now calls something else.",
+            "and the consumer is the one whose 'len(xs)' now calls something else. The same warning " +
+            "covers 'import M as print' (the bare spelling then names the module) and a plain " +
+            "'from M import double' whose library name spells a builtin TYPE; an alias the importer " +
+            "chose that spells a builtin TYPE name ('import math as str') is refused instead " +
+            "(SPY0212). A name imported out of 'builtins' is the builtin itself and draws nothing.",
             "from shadowlib import len\n\ndef main() -> None:\n    xs: list[int] = [1, 2, 3]\n    print(len(xs))  # shadowlib.len, not the builtin",
             "If the rebinding is what you want, nothing needs to change — this is a warning, not a " +
             "refusal. To keep both names, import under an alias:\n    from shadowlib import len as " +
