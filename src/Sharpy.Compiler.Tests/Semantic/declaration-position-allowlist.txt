@@ -365,7 +365,3 @@ property-observer × module × Fresh  # #2369
 # Analyze: the second alias is silently dropped and the def after an alias draws nothing — in a def body,
 # an `if` in a def, a method body and a module `try:` (where only the block's SPY0340 fires). CREATED by
 # P21f Phase 1; drains in P21f Phase 2.
-alias-redeclaration × alias-then-def × def-body  # #2360
-alias-redeclaration × alias-then-def × if-in-def  # #2360
-alias-redeclaration × alias-then-def × method-body  # #2360
-alias-redeclaration × alias-then-def × module-try  # #2360

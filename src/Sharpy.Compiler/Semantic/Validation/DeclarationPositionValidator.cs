@@ -36,6 +36,11 @@ internal enum DeclarationSlot
 /// block of one) whose name a def of the SAME function already declared in the same block, an enclosing
 /// block, or an enclosed block is SPY0204 at the later def (R-HJ, #2314): the emitter spells every local
 /// function by its name with no versioning, so C# would see CS0128 (same block) or CS0136 (nested blocks).
+/// A def whose name a <c>type</c> alias written earlier in the SAME block already holds is SPY0204 too (#2360),
+/// in a function body, a block of one, or a module block (where the checker, not NameResolver, declares the
+/// def): an alias is block-scoped and emits no C#, so only the same block collides — an inner def shadowing an
+/// enclosing alias is legal (B2), and in a module block only the alias relation is decided here (a def
+/// re-declaring a def there is outside R-HJ).
 /// Sibling blocks — <c>if</c>/<c>elif</c>/<c>else</c> bodies, <c>try</c>/handlers/<c>else</c>/<c>finally</c>,
 /// <c>match</c> cases, a loop body and its <c>else</c> — are fresh bindings, and an inner def's body is a
 /// function of its own. Methods in a type body and module-level overload sets are NameResolver's. The
@@ -86,8 +91,9 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
 
     /// <summary>
     /// The block tree of the function being walked, innermost list on top: a <see cref="DefBlock"/> for a
-    /// function body (a root — no parent) or a block of one (parent = the enclosing list), and null for
-    /// any other list (module, type body, and their blocks), so a function's blocks never see another
+    /// function body (a root — no parent) or a block of one (parent = the enclosing list), a module block
+    /// (alias names only, #2360; parent = an enclosing module block), and null for any other list (the
+    /// module body, a type body, and a type body's blocks), so a function's blocks never see another
     /// function's defs.
     /// </summary>
     private readonly Stack<DefBlock?> _defBlocks = new();
@@ -106,11 +112,17 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
         public HashSet<string> Declared { get; } = new(StringComparer.Ordinal);
         public HashSet<string> DeclaredBelow { get; } = new(StringComparer.Ordinal);
 
+        /// <summary>The <c>type</c> aliases written directly in this block, before the statement being
+        /// classified (#2360). Never merged upward: an alias is block-scoped, so a def in another block —
+        /// enclosing, enclosed or sibling — does not collide with it (B2).</summary>
+        public HashSet<string> Aliases { get; } = new(StringComparer.Ordinal);
+
         /// <summary>True when a def of <paramref name="name"/> already stands in this block, an enclosing
-        /// block, or an already-walked enclosed block of the same function.</summary>
+        /// block, or an already-walked enclosed block of the same function — or a <c>type</c> alias of the
+        /// name stands earlier in this same block.</summary>
         public bool Conflicts(string name)
         {
-            if (Declared.Contains(name) || DeclaredBelow.Contains(name))
+            if (Declared.Contains(name) || DeclaredBelow.Contains(name) || Aliases.Contains(name))
                 return true;
             for (var ancestor = Parent; ancestor != null; ancestor = ancestor.Parent)
             {
@@ -219,7 +231,8 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
         var block = position switch
         {
             DeclarationSlot.FunctionBody => new DefBlock(parent: null),
-            DeclarationSlot.FunctionBlock => new DefBlock(_defBlocks.Count > 0 ? _defBlocks.Peek() : null),
+            DeclarationSlot.FunctionBlock or DeclarationSlot.ModuleBlock
+                => new DefBlock(_defBlocks.Count > 0 ? _defBlocks.Peek() : null),
             _ => null,
         };
         _defBlocks.Push(block);
@@ -298,8 +311,24 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
                     code: BuiltinNameShadowing.RefusalCode);
                 break;
 
+            case TypeAlias alias when position is DeclarationSlot.FunctionBody or DeclarationSlot.FunctionBlock
+                or DeclarationSlot.ModuleBlock:
+                // A fresh or escaped alias the arm above let through: recorded so a later def of its name in
+                // this block is refused (#2360). A second alias of the name is the checker's SPY0204
+                // (RegisterScopedTypeAlias), not this validator's.
+                if (_defBlocks.Count > 0 && _defBlocks.Peek() is { } aliasBlock)
+                    aliasBlock.Aliases.Add(alias.Name);
+                break;
+
             case FunctionDef def when position is DeclarationSlot.FunctionBody or DeclarationSlot.FunctionBlock:
                 DeclareNestedDef(def);
+                break;
+
+            case FunctionDef def when position is DeclarationSlot.ModuleBlock:
+                // In a module block only the alias relation is this validator's (#2360); a def re-declaring a
+                // def there is outside R-HJ, so the def is not recorded.
+                if (_defBlocks.Count > 0 && _defBlocks.Peek() is { } moduleBlock && moduleBlock.Aliases.Contains(def.Name))
+                    RefuseRedeclaredDef(def);
                 break;
 
             default:
@@ -311,7 +340,8 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
 
     /// <summary>
     /// Records a nested def in its block, refusing it with SPY0204 when the same function already declared
-    /// its name in this block, an enclosing block or an enclosed one (R-HJ). The caret is on the name
+    /// its name in this block, an enclosing block or an enclosed one (R-HJ), or a <c>type</c> alias of the
+    /// name stands earlier in this block (#2360). The caret is on the name
     /// token (no span: a span wins over line/column at every consumer, and the def's span starts at
     /// <c>def</c>). The refused def is not recorded, so a third def of the name is refused once, too.
     /// </summary>
@@ -322,16 +352,19 @@ internal sealed class DeclarationPositionValidator : ValidatingAstWalker
 
         if (block.Conflicts(def.Name))
         {
-            AddError(
-                $"function '{def.Name}' is already defined in this scope",
-                line: def.NameLineStart,
-                column: def.NameColumnStart,
-                code: DiagnosticCodes.Semantic.DuplicateDefinition);
+            RefuseRedeclaredDef(def);
             return;
         }
 
         block.Declared.Add(def.Name);
     }
+
+    private void RefuseRedeclaredDef(FunctionDef def)
+        => AddError(
+            $"function '{def.Name}' is already defined in this scope",
+            line: def.NameLineStart,
+            column: def.NameColumnStart,
+            code: DiagnosticCodes.Semantic.DuplicateDefinition);
 
     /// <summary>The module body and a type body declare types; nothing else does (C# has no local types).</summary>
     private static bool IsTypeDeclaring(DeclarationSlot position)
