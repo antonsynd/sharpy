@@ -2818,7 +2818,10 @@ internal partial class TypeChecker
     /// from-import spellings bind a <see cref="VariableSymbol"/> and were silently replaced. The
     /// import seam records each binding on its scope (<see cref="Scope.LookupImportBinding"/>); only
     /// THIS file's imports count, because the single-file pipeline type-checks an imported module in
-    /// the entry file's table.
+    /// the entry file's table. A STAR import's name does not count either: <c>from math import *</c>
+    /// then <c>e: int = 5</c> re-declares the star-imported default, as a const or def of the name
+    /// takes it over (<see cref="ImportBinding.IsStar"/>; a star import never displaces a module-level
+    /// declaration, and its names never refuse one).
     /// </remarks>
     private bool TryReportNonVariableRedefinition(string name, int line, int column, Text.TextSpan? span)
     {
@@ -2827,7 +2830,7 @@ internal partial class TypeChecker
             return false;
 
         if (existing is VariableSymbol
-            && (_symbolTable.CurrentScope.LookupImportBinding(name) is not { } import
+            && (_symbolTable.CurrentScope.LookupImportBinding(name) is not { IsStar: false } import
                 || (import.FilePath != null && _currentFilePath != null
                     && !string.Equals(import.FilePath, _currentFilePath, StringComparison.Ordinal))))
             return false;

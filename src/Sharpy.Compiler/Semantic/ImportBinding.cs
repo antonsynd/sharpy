@@ -25,4 +25,12 @@ internal enum ImportBindingForm
 /// (SPY0204, R-II). The type checker reads it too: a module variable declared after the imports
 /// re-declares an imported name, whatever symbol kind the import bound.
 /// </remarks>
-internal sealed record ImportBinding(ImportBindingForm Form, string Identity, string Display, string? FilePath);
+internal sealed record ImportBinding(ImportBindingForm Form, string Identity, string Display, string? FilePath)
+{
+    /// <summary>
+    /// The name was bound by <c>from m import *</c>. A star-imported name is a default a module-level
+    /// declaration of the file may take over (a module variable re-declares it, as before #2359), never
+    /// a binding that refuses the declaration — the type checker's module-variable arm reads this.
+    /// </summary>
+    public bool IsStar { get; init; }
+}

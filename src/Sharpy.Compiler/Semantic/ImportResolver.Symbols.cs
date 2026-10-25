@@ -355,7 +355,7 @@ internal partial class ImportResolver
         var scope = symbolTable.CurrentScope;
         if (symbolTable.TryDefine(symbol))
         {
-            scope.RecordImportBinding(registerName, binding);
+            scope.RecordImportBinding(registerName, binding with { IsStar = alias == null });
             return true;
         }
 

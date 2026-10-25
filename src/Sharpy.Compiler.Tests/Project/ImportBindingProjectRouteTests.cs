@@ -11,7 +11,8 @@ namespace Sharpy.Compiler.Tests.Project;
 /// declaration-position generator (<c>TypeDefinitionOwnSymbolMatrixTests.ImportBinding_HasOneVerdictPerCollider</c>)
 /// pins the matrix on one file; this class pins the multi-file twin — an import of a PROJECT module
 /// (<c>lib.spy</c>, bound through <c>ResolveImportSymbol</c>'s Phase 3 originals), the dotted-root merge
-/// (<c>import os</c> + <c>import os.path</c>, both orders), the module-variable cell (c18) and the
+/// (<c>import os</c> + <c>import os.path</c>, both orders), the module-variable cell (c18), the star import a
+/// module variable re-declares, and the
 /// plain-vs-alias split of a builtin TYPE name (a plain <c>from lib import double</c> is warned and
 /// runs; <c>from lib import helper as double</c> is refused).
 /// </summary>
@@ -29,7 +30,9 @@ public class ImportBindingProjectRouteTests
         + "    return 1\n"
         + "\n"
         + "def double(x: int) -> int:\n"
-        + "    return x * 2\n";
+        + "    return x * 2\n"
+        + "\n"
+        + "level: int = 9\n";
 
     private const string MainOk = "\ndef main() -> None:\n    print(\"ok\")\n";
 
@@ -51,6 +54,12 @@ public class ImportBindingProjectRouteTests
         yield return Cell("var × import-as (c18)", "K: int = 1\nimport math as K\n" + MainOk, new[] { "SPY0204@1:1" });
         yield return Cell("var × from-import-as", "from math import pi as K\nK: int = 1\n" + MainOk,
             new[] { "SPY0204@2:1" });
+        // A star import keeps its rule: a module variable re-declares the star-imported name (as at the base),
+        // for a project module's variable and a Stdlib one alike.
+        yield return Cell("var × star (project module)", "from lib import *\nlevel: int = 5\n\ndef main() -> None:\n    print(level)\n",
+            errors: new string[0], stdout: "5\n");
+        yield return Cell("var × star (stdlib module)", "from math import *\npi: float = 1.5\n\ndef main() -> None:\n    print(pi)\n",
+            errors: new string[0], stdout: "1.5\n");
         yield return Cell("fresh", "from lib import helper\n\ndef main() -> None:\n    print(helper())\n",
             errors: new string[0], stdout: "1\n");
         yield return Cell("same from-import twice",

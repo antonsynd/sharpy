@@ -575,13 +575,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
         // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
-        // {str, print, `str`}, + 2 builtins-module names, + the dotted root × 2 orders.
-        Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 1 + 2, ImportBindingCells().Count());
+        // {str, print, `str`}, + 2 builtins-module names, + the plain builtin type name, + the dotted root × 2 orders,
+        // + the star import × {var, const, def} × 2 orders.
+        Assert.Equal(4 * (2 + 8 * 2) + 2 * 3 + 2 + 1 + 2 + 3 * 2, ImportBindingCells().Count());
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + alias→alias × {type-body, module}.
         Assert.Equal(7 * 4 + 2, AliasRedeclarationCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48 + 83 + 30, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 48 + 89 + 30, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1015,7 +1016,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// <c>from copy import deepcopy as N</c>} × order {collider first, import first} (fresh and the repeated import have
     /// one order), plus — for the <c>as</c> spellings — the bound name {<c>str</c>, <c>print</c>, <c>`str`</c>}, the
     /// <c>builtins</c> module's own bindings <c>from builtins import len</c> / <c>str</c>, and the dotted root
-    /// <c>import os</c> + <c>import os.path</c> in both orders. Every program's <c>main</c> prints <c>ok</c> (nothing
+    /// <c>import os</c> + <c>import os.path</c> in both orders; and the star spelling <c>from math import *</c> ×
+    /// {module variable, const, def} named <c>pi</c>, both orders. Every program's <c>main</c> prints <c>ok</c> (nothing
     /// else uses the binding, D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is
     /// honoured) and the dotted root (which prints <c>len(os.path.join("a", "b"))</c>).
     ///
@@ -1030,7 +1032,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// → errors [], warnings [SPY0484 @ ImportAlias] (c4/c9); the <c>builtins</c> module's own binding shadows nothing
     /// → [] with no SPY0484 (d4/d5) — the absence's positive control is the <c>from-import-as × print</c> cell's
     /// SPY0484, asserted unconditionally (hard). Fresh, the repeated import (idempotent) and the dotted root (merge) →
-    /// [] and run. Warnings are compared over <see cref="VerdictWarnings"/>; errors over the whole program.</para>
+    /// [] and run. A star import refuses no declaration: the star cells are [] and print the LOCAL's <c>1</c>, not
+    /// <c>math.pi</c> (star × property is left out — the import silently wins there, #2371). Warnings are compared over
+    /// <see cref="VerdictWarnings"/>; errors over the whole program.</para>
     /// </summary>
     internal static IEnumerable<ImportBindingCell> ImportBindingCells()
     {
@@ -1097,6 +1101,23 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 (_, _) => none, (_, s) => new[] { ("SPY0484", s, ImportAliasColumn(print)) }, body: "pass", stdout: "");
             yield return Make(spelling.Name, "escaped-str", "none", Array.Empty<string>(), new[] { spelling.Line("`str`") },
                 (_, _) => none);
+        }
+
+        // A star import keeps its rule (outside R-II's four spellings): a module-level declaration of a star-imported
+        // name takes it over, in either order — a module variable re-declares the star-imported default like a const
+        // or a def does (R1 of the P21f verify round: the module-variable cell ran `1` at the base and must again).
+        // A module property is left out: star × property is the pre-existing silent-wrong #2371 (the import wins).
+        foreach (var collider in ImportColliders.Where(c => c.Name is "var" or "const" or "def"))
+        {
+            foreach (var order in new[] { "collider-first", "import-first" })
+            {
+                var colliderLines = collider.Lines("pi");
+                var star = new[] { "from math import *" };
+                yield return Make("from-import-star", collider.Name, order,
+                    order == "collider-first" ? colliderLines : star, order == "collider-first" ? star : colliderLines,
+                    (_, _) => Array.Empty<(string, int, int)>(),
+                    body: collider.Name == "def" ? "print(pi())" : "print(pi)", stdout: "1\n");
+            }
         }
 
         // The builtins module's own binding (#1322) shadows nothing.
