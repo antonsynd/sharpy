@@ -578,11 +578,12 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
         // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders.
         Assert.Equal(4 * (2 + 8 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2, ImportBindingCells().Count());
-        // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + alias→alias × {type-body, module}.
-        Assert.Equal(7 * 4 + 2, AliasRedeclarationCells().Count());
+        // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
+        // def→alias} × type-body + alias→alias × module.
+        Assert.Equal(7 * 4 + 3 + 1, AliasRedeclarationCells().Count());
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 48 + 95 + 30, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 48 + 95 + 32, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1274,7 +1275,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// <summary>
     /// Relation {same-block alias→alias, alias→def, def→alias, variable→alias; nested outer-first, nested inner-first,
     /// sibling blocks} × position {def body, an <c>if</c> in a def, a method body, a module <c>try:</c>} plus
-    /// alias→alias at the declaring positions {type body, module} (their controls, a3/a4). A legal relation prints
+    /// alias→alias at the declaring positions {type body, module} (their controls, a3/a4) and alias→def / def→alias in
+    /// a type body (members are walked in source order there: the later of a method and a same-named alias is refused —
+    /// the method at its name, the alias at its keyword). A legal relation prints
     /// through both aliases (<c>x: A = 5</c> / <c>y: A = "s"</c>), so a dropped or leaked alias is a SPY0220 or a
     /// different stdout, never the same <c>5</c>/<c>s</c>.
     ///
@@ -1293,7 +1296,11 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         {
             foreach (var relation in AliasRelations)
             {
-                if (position.Name is "type-body" or "module" && relation.Name != "alias-then-alias")
+                // A type body walks its members in source order, so both alias↔def orders are spellable there (the
+                // later one is refused: the method at its name, the alias at its keyword); a module hoists its defs.
+                if (position.Name == "module" && relation.Name != "alias-then-alias")
+                    continue;
+                if (position.Name == "type-body" && relation.Name is not ("alias-then-alias" or "alias-then-def" or "def-then-alias"))
                     continue;
                 var body = relation.Lines.Select(l => new string(' ', position.Indent) + l);
                 var lines = position.Before.Concat(body).Concat(position.After)

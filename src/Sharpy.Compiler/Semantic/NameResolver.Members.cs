@@ -196,6 +196,14 @@ internal partial class NameResolver
             // Only register the first overload in the symbol table
             if (!_symbolTable.TryDefine(funcSymbol))
             {
+                // An overload shares the slot with a METHOD; a `type` alias already holding the name
+                // is a second meaning for one name in one scope — SPY0204 at the method's name, as a
+                // def after a same-block alias is in a function body (an alias re-declared in one
+                // scope, #2360). The reverse order is ResolveTypeAliasDeclaration's "already defined".
+                if (_symbolTable.Lookup(method.Name, searchParents: false) is TypeAliasSymbol)
+                    AddError($"Method '{owningType.Name}.{method.Name}' is already defined as a type alias in this type body",
+                        method.NameLineStart, method.NameColumnStart,
+                        code: DiagnosticCodes.Semantic.DuplicateDefinition);
                 _logger.LogDebug($"Method overload registered (not in symbol table): {owningType.Name}.{method.Name}");
             }
         }
