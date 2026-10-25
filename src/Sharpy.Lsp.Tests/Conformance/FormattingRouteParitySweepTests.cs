@@ -1647,7 +1647,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// measured @ 8fc618b22, every census asserting: identity full = 480). Call-29 chores band (2026-10-23): +2 on the
     /// four comment pins only — growth, from the band's two new runnable fixture stems (strings/str_padding_fill_2347,
     /// int_text_grammar_2357; control @ 9fd3f4200 with those two fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the
-    /// comment census asserts the previous literals, 3311/0). The wide
+    /// comment census asserts the previous literals, 3311/0). P21f (plan-43f241, 2026-10-25): +4 on every non-zero
+    /// identity/crlf/cr/wide pin and +10 on the four comment pins — growth, all from P21f's 18 new fixture stems (the
+    /// #2359/#2360/#2362 fixtures); control @ 4f254e771 with those fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1:
+    /// every census asserts the previous literals (identity full = 480). The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1655,24 +1658,24 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
-            [(Identity, Full)] = 480,
-            [(Identity, RangeWhole)] = 480,
-            [(Identity, RangeLine)] = 476,
-            [(Identity, OnType)] = 476,
-            [(Comment, Full)] = 1628,
-            [(Comment, RangeWhole)] = 1628,
-            [(Comment, RangeLine)] = 1624,
-            [(Comment, OnType)] = 1624,
-            [(Crlf, Full)] = 480,
-            [(Crlf, RangeWhole)] = 480,
-            [(Crlf, RangeLine)] = 476,
-            [(Crlf, OnType)] = 476,
-            [(Cr, Full)] = 480,
-            [(Cr, RangeWhole)] = 480,
-            [(Cr, RangeLine)] = 476,
-            [(Cr, OnType)] = 476,
-            [(Wide, Full)] = 480,
-            [(Wide, RangeWhole)] = 480,
+            [(Identity, Full)] = 484,
+            [(Identity, RangeWhole)] = 484,
+            [(Identity, RangeLine)] = 480,
+            [(Identity, OnType)] = 480,
+            [(Comment, Full)] = 1638,
+            [(Comment, RangeWhole)] = 1638,
+            [(Comment, RangeLine)] = 1634,
+            [(Comment, OnType)] = 1634,
+            [(Crlf, Full)] = 484,
+            [(Crlf, RangeWhole)] = 484,
+            [(Crlf, RangeLine)] = 480,
+            [(Crlf, OnType)] = 480,
+            [(Cr, Full)] = 484,
+            [(Cr, RangeWhole)] = 484,
+            [(Cr, RangeLine)] = 480,
+            [(Cr, OnType)] = 480,
+            [(Wide, Full)] = 484,
+            [(Wide, RangeWhole)] = 484,
             [(Wide, RangeLine)] = 0,
             [(Wide, OnType)] = 0,
         };
