@@ -1,7 +1,8 @@
 # declaration-position allowlist (ratchet ledger) — TypeDefinitionOwnSymbolMatrixTests.
 #
-# One generated cell id per line (`<kind> × <position> × <name>`, or
-# `nested-def × <relation> × <signature> × <call>`), followed by `  # #<issue>`. A cell whose
+# One generated cell id per line (`<kind> × <position> × <name>`,
+# `nested-def × <relation> × <signature> × <call>`, `import-binding × <spelling> × <collider> × <order>`
+# or `alias-redeclaration × <relation> × <position>`), followed by `  # #<issue>`. A cell whose
 # verdict differs from the contract (ExpectedErrors / the nested-def expected sets, the
 # rest-equals-control clause, the cascade-absence clause, the block literal, or the execution of an
 # error-free program) fails the suite UNLESS its id is listed here. A listed cell that passes also
@@ -10,7 +11,9 @@
 # The contract (P21e — declaration-position totality; rulings R-CS, R-HJ, R-HK): a declaration has
 # ONE decided verdict at every position. Type definitions and imports outside the module body / a
 # type body are SPY0708; a builtin-named `type` alias is SPY0212 at every position; a nested `def`
-# re-declaring a name of its block or an enclosing/enclosed block is SPY0204.
+# re-declaring a name of its block or an enclosing/enclosed block is SPY0204. P21f (R-IJ, R-IK, R-II)
+# extends it to member declarations (#2362), import bindings (#2359) and alias redeclaration (#2360);
+# its rows are the sections at the end of this file.
 #
 # The rows are the base's red cells, CREATED by P21e Phase 1. P21e's Phases 2–4 drain the rows citing
 # the class tracker (type-definition / import positions, incl. the class-cascade and enum cells, and the
@@ -61,3 +64,232 @@ nested-def × sibling-match × different-sig × none  # #2361
 # In-contract (one verdict per cell): `type Foo = …` beside module `class Foo` was reported twice by
 # Analyze. DRAINED in P21e Phase 3 (Task 1b: at a declaring position RegisterScopedTypeAlias no longer
 # re-reports a verdict NameResolver owns). Do not re-add a row here.
+
+# #2362 (R-IK): a member declaration — `property` (field-style, get, set, observer) or `event` (auto, an
+# add/remove pair) — outside a type body is SPY0708 with the declaration kind in the message; a property
+# is also legal at module level, an event is not (one SPY0708 per accessor statement). Measured @
+# ce482aa20 under Analyze: silent at every function and block position (a field-style property and the
+# observer form are dropped, an accessor is accepted by CheckModuleProperty / CheckClassProperty, an event
+# reaches the emitter's SPY0510 under run); a module-level event is SPY0340 "Executable statements…" (two
+# for the add/remove pair). CREATED by P21f Phase 1; drains in P21f Phase 3.
+property-field × module-try × str  # #2362
+property-field × module-try × Foo  # #2362
+property-field × module-try × Fresh  # #2362
+property-field × type-body-if × str  # #2362
+property-field × type-body-if × Foo  # #2362
+property-field × type-body-if × Fresh  # #2362
+property-field × method-body × str  # #2362
+property-field × method-body × Foo  # #2362
+property-field × method-body × Fresh  # #2362
+property-field × accessor-body × str  # #2362
+property-field × accessor-body × Foo  # #2362
+property-field × accessor-body × Fresh  # #2362
+property-field × def-body × str  # #2362
+property-field × def-body × Foo  # #2362
+property-field × def-body × Fresh  # #2362
+property-field × if-in-def × str  # #2362
+property-field × if-in-def × Foo  # #2362
+property-field × if-in-def × Fresh  # #2362
+property-field × for-in-def × str  # #2362
+property-field × for-in-def × Foo  # #2362
+property-field × for-in-def × Fresh  # #2362
+property-field × while-in-def × str  # #2362
+property-field × while-in-def × Foo  # #2362
+property-field × while-in-def × Fresh  # #2362
+property-field × try-in-def × str  # #2362
+property-field × try-in-def × Foo  # #2362
+property-field × try-in-def × Fresh  # #2362
+property-field × with-in-def × str  # #2362
+property-field × with-in-def × Foo  # #2362
+property-field × with-in-def × Fresh  # #2362
+property-field × match-in-def × str  # #2362
+property-field × match-in-def × Foo  # #2362
+property-field × match-in-def × Fresh  # #2362
+property-get × module-try × str  # #2362
+property-get × module-try × Foo  # #2362
+property-get × module-try × Fresh  # #2362
+property-get × type-body-if × str  # #2362
+property-get × type-body-if × Foo  # #2362
+property-get × type-body-if × Fresh  # #2362
+property-get × method-body × str  # #2362
+property-get × method-body × Foo  # #2362
+property-get × method-body × Fresh  # #2362
+property-get × accessor-body × str  # #2362
+property-get × accessor-body × Foo  # #2362
+property-get × accessor-body × Fresh  # #2362
+property-get × def-body × str  # #2362
+property-get × def-body × Foo  # #2362
+property-get × def-body × Fresh  # #2362
+property-get × if-in-def × str  # #2362
+property-get × if-in-def × Foo  # #2362
+property-get × if-in-def × Fresh  # #2362
+property-get × for-in-def × str  # #2362
+property-get × for-in-def × Foo  # #2362
+property-get × for-in-def × Fresh  # #2362
+property-get × while-in-def × str  # #2362
+property-get × while-in-def × Foo  # #2362
+property-get × while-in-def × Fresh  # #2362
+property-get × try-in-def × str  # #2362
+property-get × try-in-def × Foo  # #2362
+property-get × try-in-def × Fresh  # #2362
+property-get × with-in-def × str  # #2362
+property-get × with-in-def × Foo  # #2362
+property-get × with-in-def × Fresh  # #2362
+property-get × match-in-def × str  # #2362
+property-get × match-in-def × Foo  # #2362
+property-get × match-in-def × Fresh  # #2362
+property-set × module-try × str  # #2362
+property-set × module-try × Foo  # #2362
+property-set × module-try × Fresh  # #2362
+property-set × type-body-if × str  # #2362
+property-set × type-body-if × Foo  # #2362
+property-set × type-body-if × Fresh  # #2362
+property-set × method-body × str  # #2362
+property-set × method-body × Foo  # #2362
+property-set × method-body × Fresh  # #2362
+property-set × accessor-body × str  # #2362
+property-set × accessor-body × Foo  # #2362
+property-set × accessor-body × Fresh  # #2362
+property-set × def-body × str  # #2362
+property-set × def-body × Foo  # #2362
+property-set × def-body × Fresh  # #2362
+property-set × if-in-def × str  # #2362
+property-set × if-in-def × Foo  # #2362
+property-set × if-in-def × Fresh  # #2362
+property-set × for-in-def × str  # #2362
+property-set × for-in-def × Foo  # #2362
+property-set × for-in-def × Fresh  # #2362
+property-set × while-in-def × str  # #2362
+property-set × while-in-def × Foo  # #2362
+property-set × while-in-def × Fresh  # #2362
+property-set × try-in-def × str  # #2362
+property-set × try-in-def × Foo  # #2362
+property-set × try-in-def × Fresh  # #2362
+property-set × with-in-def × str  # #2362
+property-set × with-in-def × Foo  # #2362
+property-set × with-in-def × Fresh  # #2362
+property-set × match-in-def × str  # #2362
+property-set × match-in-def × Foo  # #2362
+property-set × match-in-def × Fresh  # #2362
+property-observer × module-try × str  # #2362
+property-observer × module-try × Foo  # #2362
+property-observer × module-try × Fresh  # #2362
+property-observer × type-body-if × str  # #2362
+property-observer × type-body-if × Foo  # #2362
+property-observer × type-body-if × Fresh  # #2362
+property-observer × method-body × str  # #2362
+property-observer × method-body × Foo  # #2362
+property-observer × method-body × Fresh  # #2362
+property-observer × accessor-body × str  # #2362
+property-observer × accessor-body × Foo  # #2362
+property-observer × accessor-body × Fresh  # #2362
+property-observer × def-body × str  # #2362
+property-observer × def-body × Foo  # #2362
+property-observer × def-body × Fresh  # #2362
+property-observer × if-in-def × str  # #2362
+property-observer × if-in-def × Foo  # #2362
+property-observer × if-in-def × Fresh  # #2362
+property-observer × for-in-def × str  # #2362
+property-observer × for-in-def × Foo  # #2362
+property-observer × for-in-def × Fresh  # #2362
+property-observer × while-in-def × str  # #2362
+property-observer × while-in-def × Foo  # #2362
+property-observer × while-in-def × Fresh  # #2362
+property-observer × try-in-def × str  # #2362
+property-observer × try-in-def × Foo  # #2362
+property-observer × try-in-def × Fresh  # #2362
+property-observer × with-in-def × str  # #2362
+property-observer × with-in-def × Foo  # #2362
+property-observer × with-in-def × Fresh  # #2362
+property-observer × match-in-def × str  # #2362
+property-observer × match-in-def × Foo  # #2362
+property-observer × match-in-def × Fresh  # #2362
+event-auto × module × str  # #2362
+event-auto × module × Foo  # #2362
+event-auto × module × Fresh  # #2362
+event-auto × module-try × str  # #2362
+event-auto × module-try × Foo  # #2362
+event-auto × module-try × Fresh  # #2362
+event-auto × type-body-if × str  # #2362
+event-auto × type-body-if × Foo  # #2362
+event-auto × type-body-if × Fresh  # #2362
+event-auto × method-body × str  # #2362
+event-auto × method-body × Foo  # #2362
+event-auto × method-body × Fresh  # #2362
+event-auto × accessor-body × str  # #2362
+event-auto × accessor-body × Foo  # #2362
+event-auto × accessor-body × Fresh  # #2362
+event-auto × def-body × str  # #2362
+event-auto × def-body × Foo  # #2362
+event-auto × def-body × Fresh  # #2362
+event-auto × if-in-def × str  # #2362
+event-auto × if-in-def × Foo  # #2362
+event-auto × if-in-def × Fresh  # #2362
+event-auto × for-in-def × str  # #2362
+event-auto × for-in-def × Foo  # #2362
+event-auto × for-in-def × Fresh  # #2362
+event-auto × while-in-def × str  # #2362
+event-auto × while-in-def × Foo  # #2362
+event-auto × while-in-def × Fresh  # #2362
+event-auto × try-in-def × str  # #2362
+event-auto × try-in-def × Foo  # #2362
+event-auto × try-in-def × Fresh  # #2362
+event-auto × with-in-def × str  # #2362
+event-auto × with-in-def × Foo  # #2362
+event-auto × with-in-def × Fresh  # #2362
+event-auto × match-in-def × str  # #2362
+event-auto × match-in-def × Foo  # #2362
+event-auto × match-in-def × Fresh  # #2362
+event-add × module × str  # #2362
+event-add × module × Foo  # #2362
+event-add × module × Fresh  # #2362
+event-add × module-try × str  # #2362
+event-add × module-try × Foo  # #2362
+event-add × module-try × Fresh  # #2362
+event-add × type-body-if × str  # #2362
+event-add × type-body-if × Foo  # #2362
+event-add × type-body-if × Fresh  # #2362
+event-add × method-body × str  # #2362
+event-add × method-body × Foo  # #2362
+event-add × method-body × Fresh  # #2362
+event-add × accessor-body × str  # #2362
+event-add × accessor-body × Foo  # #2362
+event-add × accessor-body × Fresh  # #2362
+event-add × def-body × str  # #2362
+event-add × def-body × Foo  # #2362
+event-add × def-body × Fresh  # #2362
+event-add × if-in-def × str  # #2362
+event-add × if-in-def × Foo  # #2362
+event-add × if-in-def × Fresh  # #2362
+event-add × for-in-def × str  # #2362
+event-add × for-in-def × Foo  # #2362
+event-add × for-in-def × Fresh  # #2362
+event-add × while-in-def × str  # #2362
+event-add × while-in-def × Foo  # #2362
+event-add × while-in-def × Fresh  # #2362
+event-add × try-in-def × str  # #2362
+event-add × try-in-def × Foo  # #2362
+event-add × try-in-def × Fresh  # #2362
+event-add × with-in-def × str  # #2362
+event-add × with-in-def × Foo  # #2362
+event-add × with-in-def × Fresh  # #2362
+event-add × match-in-def × str  # #2362
+event-add × match-in-def × Foo  # #2362
+event-add × match-in-def × Fresh  # #2362
+
+# #2359 (R-II): an import binding is a module binding — a same-module class/def/alias/const/property or
+# another module under its name is SPY0204 at the later binding, a builtin type name is SPY0212 (the
+# backtick opt-in stays legal), a builtin function name is SPY0484 for every import spelling, and the
+# builtins module's own binding shadows nothing; a module-level property spelling a builtin name warns
+# SPY0483 (a value-position module binding). Measured @ ce482aa20 under Analyze: `property str` at module
+# is unwarned. CREATED by P21f Phase 1; drains in P21f Phase 4.
+property-field × module × str  # #2359
+property-get × module × str  # #2359
+property-set × module × str  # #2359
+property-observer × module × str  # #2359 (SPY0483) + #2369 (SPY0909 under run)
+
+# #2369: a module-level property observer whose body holds an expression statement is SPY0909 under run
+# ("No StatementLowering recorded for expression statement") — the module-level observer body is never
+# checked; a `pass` body runs. The verdict at module (legal) is P21f's; the ICE is not — outside P21f,
+# drains with #2369.
+property-observer × module × Fresh  # #2369
