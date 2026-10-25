@@ -1,6 +1,9 @@
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
+using LexerNs = Sharpy.Compiler.Lexer;
+using ParserNs = Sharpy.Compiler.Parser;
 
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
@@ -91,6 +94,103 @@ public class JudgeSourceTests
 
     private static readonly ErrorInjector.KnownRedRefusal Pin =
         new("probe-pin", "probe pin for the JudgeSource arms — never a real cell, so it cites no issue");
+
+    // ---- the #2075 cascade pin (R-JE) ------------------------------------------------------------
+    // The issue's own program, measured with the built sharpyc `emit diagnostics` @ a78e3aa71:
+    // SPY0202 at the annotation + SPY0220 "If condition must be boolean, got 'int8'" at the condition.
+    private const string AbsOfUnknownInCondition = """
+        def compute(arg0: Nope_xyz) -> bool:
+            if abs(arg0):
+                arg0 = 15
+            return False
+
+        def main():
+            print(1)
+        """;
+
+    // The second face of the same cell: abs(Unknown) stored back as int8, then met by an int in a
+    // conditional expression — SPY0202 + SPY0227 (measured @ a78e3aa71; first seen at 2000 samples).
+    private const string AbsOfUnknownBesideAnInt = """
+        def compute(arg0: Nope_xyz) -> int:
+            arg0 = abs(arg0)
+            arg0 = 90 if False else arg0
+            return 187
+
+        def main():
+            print(1)
+        """;
+
+    // The same cascade beside an unrelated third error (SPY0200): the pin tolerates only its own faces.
+    private const string AbsOfUnknownInConditionAndUndefinedName = """
+        def compute(arg0: Nope_xyz) -> bool:
+            if abs(arg0):
+                arg0 = 15
+            return False
+
+        def main():
+            print(undefined_name)
+        """;
+
+    // The drain signal, per face: the first time a face stops cascading (the sentinel, P17 phase 1), this
+    // fails and that face — or AbsOfUnknownCascade with its lane attachment — is dropped.
+    [Theory]
+    [InlineData(nameof(AbsOfUnknownInCondition), "SPY0220")]
+    [InlineData(nameof(AbsOfUnknownBesideAnInt), "SPY0227")]
+    public void CascadePin_EachFaceStillCascades(string program, string face)
+    {
+        var source = program == nameof(AbsOfUnknownInCondition) ? AbsOfUnknownInCondition : AbsOfUnknownBesideAnInt;
+        Assert.Contains(face, ErrorInjector.AbsOfUnknownCascade.Tolerated);
+        var unpinned = ErrorInjector.JudgeSource(
+            source, "SPY0202", CompilerDiagnosticSeverity.Error, null, "undefined parameter type");
+        Assert.True(unpinned is not null && unpinned.Contains($"drew [SPY0202, {face}]", StringComparison.Ordinal),
+            $"{ErrorInjector.AbsOfUnknownCascade.Issue}'s abs(Unknown) {face} face no longer fires — drop it from "
+            + $"ErrorInjector.AbsOfUnknownCascade (the pin itself when no face is left). Unpinned verdict: {unpinned ?? "accepted"}");
+    }
+
+    [Theory]
+    [InlineData(nameof(AbsOfUnknownInCondition))]
+    [InlineData(nameof(AbsOfUnknownBesideAnInt))]
+    public void CascadePin_AcceptsTheExpectedCodePlusAToleratedFace(string program)
+    {
+        var source = program == nameof(AbsOfUnknownInCondition) ? AbsOfUnknownInCondition : AbsOfUnknownBesideAnInt;
+        Assert.Null(ErrorInjector.JudgeSource(
+            source, "SPY0202", CompilerDiagnosticSeverity.Error, null, "undefined parameter type",
+            ErrorInjector.AbsOfUnknownCascade));
+    }
+
+    [Fact]
+    public void CascadePin_RefusesAThirdCode()
+    {
+        var failure = ErrorInjector.JudgeSource(
+            AbsOfUnknownInConditionAndUndefinedName, "SPY0202", CompilerDiagnosticSeverity.Error, null,
+            "undefined parameter type", ErrorInjector.AbsOfUnknownCascade);
+        Assert.NotNull(failure);
+        Assert.Contains("drew [SPY0200, SPY0202, SPY0220]", failure);
+    }
+
+    // Positive control: the arm is keyed on the pinned code, not on "any second code".
+    [Fact]
+    public void CascadePin_ToleratesOnlyItsOwnCode()
+    {
+        var otherCode = new ErrorInjector.KnownRedCascade("probe-pin", new[] { "SPY0354" }, "probe — never a real cell");
+        Assert.NotNull(ErrorInjector.JudgeSource(
+            AbsOfUnknownInCondition, "SPY0202", CompilerDiagnosticSeverity.Error, null, "undefined parameter type", otherCode));
+    }
+
+    // The lane attaches the pin on the measured shape only — abs of the mutated parameter — and every
+    // other sample of the lane is judged exactly.
+    [Theory]
+    [InlineData("def compute(arg0: int) -> bool:\n    if abs(arg0):\n        arg0 = 15\n    return False\n", true)]
+    [InlineData("def compute(arg0: int) -> bool:\n    if arg0 > 0:\n        return True\n    return False\n", false)]
+    [InlineData("def compute(arg0: int) -> bool:\n    if len(str(arg0)) > 0:\n        return True\n    return False\n", false)]
+    public void CascadePin_IsAttachedOnlyOnTheAbsOfTheMutatedParameterShape(string baseSource, bool pinned)
+    {
+        var tokens = new LexerNs.Lexer(baseSource).TokenizeAll();
+        var module = new ParserNs.Parser(tokens).ParseModule();
+        var result = ErrorInjector.InjectUndefinedTypeAtParameter(module);
+        Assert.NotNull(result);
+        Assert.Equal(pinned, result!.KnownCascade is not null);
+    }
 
     // (a) the warning arm accepts exactly one warning of the code with no error.
     [Fact]

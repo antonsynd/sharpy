@@ -16,17 +16,31 @@ internal static partial class ErrorInjector
     /// to still analyse clean, so the first refusal fails the row and the pin drains with its issue.
     /// <see cref="ExpectedDiagnosticCode"/> is null only on a pin whose refusal has no code yet.
     /// <see cref="Severity"/> is the severity the code is drawn at — <c>Error</c> unless the one
-    /// broken fact is a warning (SPY0463); see <see cref="JudgeSource"/>.
+    /// broken fact is a warning (SPY0463); see <see cref="JudgeSource"/>. <see cref="KnownCascade"/>
+    /// pins a follow-on code the compiler draws today beside the expected one, on one measured shape.
     /// </summary>
     public record InjectionResult(
         Module Mutated,
         string? ExpectedDiagnosticCode,
         KnownRedRefusal? KnownRed = null,
-        CompilerDiagnosticSeverity Severity = CompilerDiagnosticSeverity.Error);
+        CompilerDiagnosticSeverity Severity = CompilerDiagnosticSeverity.Error,
+        KnownRedCascade? KnownCascade = null);
 
     /// <summary>A refusal the compiler does not make today: <paramref name="Issue"/> tracks it, and
     /// <paramref name="Observed"/> says what happens instead.</summary>
     public sealed record KnownRedRefusal(string Issue, string Observed);
+
+    /// <summary>
+    /// A cascade the compiler draws today (#2075, R-JE): beside the injection's one code, follow-on
+    /// codes from <paramref name="Tolerated"/> — the MEASURED faces of one known cell of
+    /// <paramref name="Issue"/> ("one mistake, one diagnostic" broken by the compiler, not by the
+    /// injection breaking a second fact). Attached by a lane only on the measured shape that draws it,
+    /// so every other sample of the lane is still judged exactly; under it the verdict accepts the
+    /// expected code alone, or the expected code plus tolerated codes, and refuses any other code. It
+    /// drains with the error sentinel (P17 phase 1, R-AZ); the deterministic facts on each face's
+    /// program fail the first time it stops cascading.
+    /// </summary>
+    public sealed record KnownRedCascade(string Issue, string[] Tolerated, string Observed);
 
     /// <summary>
     /// Unparses the injected program and judges it through <see cref="JudgeSource"/> at the
@@ -36,7 +50,8 @@ internal static partial class ErrorInjector
     public static string? Judge(InjectionResult injection, string label)
     {
         var source = Sharpy.Compiler.Pretty.Unparser.Unparse(injection.Mutated);
-        return JudgeSource(source, injection.ExpectedDiagnosticCode, injection.Severity, injection.KnownRed, label);
+        return JudgeSource(source, injection.ExpectedDiagnosticCode, injection.Severity, injection.KnownRed, label,
+            injection.KnownCascade);
     }
 
     /// <summary>
@@ -61,8 +76,9 @@ internal static partial class ErrorInjector
         string? expectedCode,
         CompilerDiagnosticSeverity severity,
         KnownRedRefusal? pin,
-        string label) =>
-        JudgeDiagnostics(() => AnalyseSingleFile(source), source, expectedCode, severity, pin, label);
+        string label,
+        KnownRedCascade? cascade = null) =>
+        JudgeDiagnostics(() => AnalyseSingleFile(source), source, expectedCode, severity, pin, label, cascade);
 
     /// <summary>
     /// The multi-file front-end of the same verdict: compiles <paramref name="files"/> (relative
@@ -92,11 +108,16 @@ internal static partial class ErrorInjector
         string? expectedCode,
         CompilerDiagnosticSeverity severity,
         KnownRedRefusal? pin,
-        string label)
+        string label,
+        KnownRedCascade? cascade = null)
     {
         if (severity is not (CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning))
             throw new ArgumentOutOfRangeException(nameof(severity), severity,
                 "A refusal lane is judged at Error or Warning severity");
+        if (cascade is not null && (pin is not null || severity != CompilerDiagnosticSeverity.Error))
+            throw new ArgumentException(
+                "A cascade pin rides an error-arm injection that has an expected code, never a KnownRed refusal pin",
+                nameof(cascade));
 
         var source = sourceForMessage;
         List<string> errors;
@@ -145,9 +166,18 @@ internal static partial class ErrorInjector
                 : $"Injected {label} must draw exactly one warning, {expected}, and no error, drew {drewAll}:\n{source}";
         }
 
-        return errors is [var only] && only == expected
-            ? null
-            : $"Injected {label} must draw exactly {expected}, drew {drewAll}:\n{source}";
+        if (errors is [var only] && only == expected)
+            return null;
+
+        // The pinned cascade (#2075, R-JE): the expected code plus follow-ons from the tolerated faces only.
+        if (cascade is not null && errors.Contains(expected)
+            && errors.All(c => c == expected || cascade.Tolerated.Contains(c)))
+            return null;
+
+        var allowed = cascade is null
+            ? expected
+            : $"{expected} (or {expected} + [{string.Join(", ", cascade.Tolerated)}], pinned on {cascade.Issue})";
+        return $"Injected {label} must draw exactly {allowed}, drew {drewAll}:\n{source}";
     }
 
     /// <summary>
