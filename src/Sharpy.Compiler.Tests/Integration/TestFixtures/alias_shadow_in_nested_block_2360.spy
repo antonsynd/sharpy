@@ -1,0 +1,14 @@
+# The positive control for alias redeclaration (#2360): an alias in a NESTED block shadows the
+# function's alias of the same name (B2), and the outer alias is back in force after the block.
+# A dropped inner alias would refuse `x: A = 5`; a leaked one would refuse `y: A = "s"`.
+def helper() -> None:
+    type A = str
+    if True:
+        type A = int
+        x: A = 5
+        print(x)
+    y: A = "s"
+    print(y)
+
+def main() -> None:
+    helper()

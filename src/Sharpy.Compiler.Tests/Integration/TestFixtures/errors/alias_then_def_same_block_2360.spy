@@ -1,0 +1,13 @@
+# A nested def that re-declares a `type` alias of the same block is SPY0204 at the def's name
+# (#2360, R-IJ; DeclarationPositionValidator). It used to be silent: the def was dropped and `A()`
+# meant `str()`. Direction record (`sharpyc run` @ 797925e06): without the call the program ran with
+# the def dropped (worked → refused); with it, only the SPY0224 below. The alias stays in force, so the
+# call keeps that SPY0224 — the pinned cascade (P21f D8; #2075's).
+def helper() -> None:
+    type A = str
+    def A() -> int:
+        return 1
+    print(A())
+
+def main() -> None:
+    helper()

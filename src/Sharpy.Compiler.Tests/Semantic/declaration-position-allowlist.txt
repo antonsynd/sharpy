@@ -364,4 +364,5 @@ property-observer × module × Fresh  # #2369
 # at the def's name (DeclarationPositionValidator's block records alias names). Measured @ ce482aa20 under
 # Analyze: the second alias is silently dropped and the def after an alias draws nothing — in a def body,
 # an `if` in a def, a method body and a module `try:` (where only the block's SPY0340 fires). CREATED by
-# P21f Phase 1; drains in P21f Phase 2.
+# P21f Phase 1; DRAINED in P21f Phase 2 (RegisterScopedTypeAlias's declaration-identity guard; the
+# DeclarationPositionValidator block's alias names). Do not re-add a row here.
