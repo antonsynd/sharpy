@@ -159,7 +159,12 @@ public class StdlibDocFieldNameBindingTests : StdlibIntegrationTestBase
         emit($"import {page.Module}");
         foreach (var sub in page.Submodules.Distinct())
             emit($"import {sub}");
-        foreach (var type in page.TypeSections.Distinct())
+        // A type named like the module's root (`datetime.datetime`, `socket.socket`) is not imported: the
+        // `import` above already binds that name, and a second binding of it is SPY0204 (#2359, R-II).
+        // Before P21f the from-import silently lost to the module, so the rows always bound against the
+        // module — skipping it keeps exactly the program the harness measured.
+        var root = page.Module.Split('.')[0];
+        foreach (var type in page.TypeSections.Distinct().Where(t => t != root))
             emit($"from {page.Module} import {type}");
     }
 

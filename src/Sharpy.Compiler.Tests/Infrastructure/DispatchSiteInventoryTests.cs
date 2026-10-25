@@ -267,9 +267,13 @@ public class DispatchSiteInventoryTests
         // definition outside the module body / a type body and an import outside the module body
         // (SPY0708), a builtin-named alias at a non-declaring position (SPY0212), and a nested def
         // re-declaring a name of the same function (SPY0204); the default arm is the declaring
-        // positions (NameResolver's) and every non-declaration statement. Netted per kind x position
-        // x name, and per nested-def block relation, by the exact-error-set oracle of
-        // TypeDefinitionOwnSymbolMatrixTests.
+        // positions (NameResolver's) and every non-declaration statement. P21f (#2362, #2360) adds a
+        // member arm per kind — a property outside a type body and the module body, an event outside
+        // a type body (SPY0708 naming the kind; R-IK) — and widens the nested-def arm to a same-block
+        // type alias name (SPY0204, D2b; also in a module block). Netted per kind x position x name (the six member kinds
+        // included), per nested-def block relation and per alias-redeclaration relation x position, by
+        // the exact-error-set oracle of TypeDefinitionOwnSymbolMatrixTests; its import-binding
+        // sub-matrix nets the import seam, which is not this classifier.
         ["Semantic/Validation/DeclarationPositionValidator.cs::DeclarationPositionValidator.ClassifyDeclaration"] = "refusal-net:TypeDefinitionOwnSymbolMatrixTests",
         // Import resolution
         ["Semantic/ImportResolver.ModuleLoading.cs::ImportResolver.ResolveModuleImports"] = "refusal-net:FileBasedIntegrationTests",

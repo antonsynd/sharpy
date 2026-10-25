@@ -232,7 +232,14 @@ public class GenerateExpressionReentryTests
     // +1: interop/clr_overload_string_compare_1843 (CLR interop, no builtins import in the sweep)
     // +1: logical/coalesce_nullable_control_1819 (?? operator needs nullable resolution)
     // -1: optional_result/result_annotation_payload_forms fixed by Phase 6's spec rewrite
-    private const int MaxUncompilableFixtures = 15;
+    // +4 → 19 for P21f's #2359 fixtures (from_builtins_import_str_no_warning_2359,
+    // import_alias_builtin_function_name_2359, import_alias_escaped_builtin_type_name_2359,
+    // module_property_builtin_name_2359, type_alias_builtin_function_name_2359): every one fails here with
+    // SPY0300 "Cannot find module 'builtins'" or "'copy'" — this seam registers neither the builtins module
+    // nor Sharpy.Stdlib — exactly as the 14 older entries do (all 19 measured SPY0300 @ c7c7f4d53 + the P21f
+    // verify-round fixes). The 14 older entries are pre-P21f fixtures P21f did not change, so the base held 14
+    // against a ratchet of 15 (derived, not measured at the base): five new names move the ratchet by four.
+    private const int MaxUncompilableFixtures = 19;
 
     // ----------------------------------------------------------------------------------------- //
 

@@ -15,8 +15,9 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// measured, not assumed.</para>
 ///
 /// <para><strong>What counts as value position.</strong> Anything that binds a name usable bare as
-/// a value: module and local variables, constants, parameters, for-targets, and function
-/// declarations. A CLASS MEMBER does not — a field or method is reached through <c>self.</c>, so it
+/// a value: module and local variables, constants, parameters, for-targets, function
+/// declarations, module-level properties and <c>type</c> aliases (a builtin FUNCTION name only — a
+/// builtin TYPE name is the alias's SPY0212, R-II, #2359). A CLASS MEMBER does not — a field or method is reached through <c>self.</c>, so it
 /// never competes with a builtin for a bare spelling, and warning on <c>class Order: def id(self)</c>
 /// would be noise about a collision that cannot happen. A method's PARAMETERS are value position,
 /// which is why <c>def __init__(self, id: int)</c> is warned: inside that body, <c>id</c> is the
@@ -42,6 +43,17 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
 
     /// <summary>Assignment targets already reported in the body currently being visited.</summary>
     private HashSet<string> _assignedNamesWarned = new(StringComparer.Ordinal);
+
+    /// <summary>The module body's own statements (decorated ones unwrapped), by reference.</summary>
+    private readonly HashSet<Statement> _moduleBody = new(ReferenceEqualityComparer.Instance);
+
+    public override void Validate(Module module, SemanticContext context)
+    {
+        _moduleBody.Clear();
+        foreach (var statement in module.Body)
+            _moduleBody.Add(statement.UnwrapDecorated());
+        base.Validate(module, context);
+    }
 
     public override void VisitClassDef(ClassDef node) => VisitTypeDeclaration(node, node.Name,
         node.IsNameBacktickEscaped, () => base.VisitClassDef(node));
@@ -156,6 +168,38 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
         }
 
         base.VisitWithStatement(node);
+    }
+
+    /// <summary>
+    /// <c>type print = str</c> binds <c>print</c> for the rest of its scope exactly as <c>def print</c>
+    /// does — a builtin FUNCTION name is warned SPY0483 at every position (R-II, #2359). A builtin
+    /// TYPE name classifies as Refused, which <see cref="Warn"/> ignores for a type declaration:
+    /// SPY0212 for an alias is NameResolver's / DeclarationPositionValidator's (#2319).
+    /// </summary>
+    public override void VisitTypeAlias(TypeAlias node)
+    {
+        Warn(node.Name, node.IsNameBacktickEscaped, node.NameLineStart, node.NameColumnStart,
+            span: null, isTypeDeclaration: true);
+
+        base.VisitTypeAlias(node);
+    }
+
+    /// <summary>
+    /// A MODULE-level property is a module binding read bare (<c>property print: int = 1</c> then
+    /// <c>print</c>), so a builtin spelling is warned SPY0483 like <c>len = 5</c> (R-II, #2359). A
+    /// class member is reached through <c>self.</c> and stays silent, as fields and methods do.
+    /// </summary>
+    public override void VisitPropertyDef(PropertyDef node)
+    {
+        // Module level only: a property anywhere else is not a declaration at all (SPY0708,
+        // DeclarationPositionValidator), so it binds nothing to warn about.
+        if (!_inTypeBody && _moduleBody.Contains(node))
+        {
+            Warn(node.Name, node.IsNameBacktickEscaped, node.NameLineStart, node.NameColumnStart,
+                node.Span, isTypeDeclaration: false);
+        }
+
+        base.VisitPropertyDef(node);
     }
 
     public override void VisitTryStatement(TryStatement node)

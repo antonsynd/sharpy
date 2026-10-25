@@ -1,0 +1,6 @@
+# #2359 (R-II): the backtick-escaped alias is the opt-in — it is not refused and the module is
+# reached through the escaped name. Positive control for import_alias_builtin_type_name_2359.
+import copy as `str`
+
+def main() -> None:
+    print(`str`.deepcopy(5))

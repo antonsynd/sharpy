@@ -1,0 +1,13 @@
+# A `type` alias re-declared in one function body is SPY0204 at the second alias (#2360, R-IJ).
+# The checker used to skip any alias whose NAME was already an alias in the scope, so the second
+# alias was silently dropped: this program ran into the SPY0220 below with no word about `type A = int`.
+# The first alias stays in force, so the use keeps its SPY0220 against `str` — the pinned cascade
+# (P21f D8; "one mistake, one diagnostic" is #2075's).
+def helper() -> None:
+    type A = str
+    type A = int
+    x: A = 5
+    print(x)
+
+def main() -> None:
+    helper()

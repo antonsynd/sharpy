@@ -2811,22 +2811,41 @@ internal partial class TypeChecker
     /// so every reachable path that defines a <see cref="VariableSymbol"/> must check first.
     /// Variable-over-variable rebinding stays allowed (Python-like re-binding).
     /// </summary>
+    /// <remarks>
+    /// An IMPORTED variable is not one this file declared: <c>from math import pi as K</c> then
+    /// <c>K: int = 1</c> re-declares an import binding, which collides like every module binding
+    /// (R-II, #2359) — the import-as / plain spellings already reached the <c>module</c> arm, the
+    /// from-import spellings bind a <see cref="VariableSymbol"/> and were silently replaced. The
+    /// import seam records each binding on its scope (<see cref="Scope.LookupImportBinding"/>); only
+    /// THIS file's imports count, because the single-file pipeline type-checks an imported module in
+    /// the entry file's table. A STAR import's name does not count either: <c>from math import *</c>
+    /// then <c>e: int = 5</c> re-declares the star-imported default, as a const or def of the name
+    /// takes it over (<see cref="ImportBinding.IsStar"/>; a star import never displaces a module-level
+    /// declaration, and its names never refuse one).
+    /// </remarks>
     private bool TryReportNonVariableRedefinition(string name, int line, int column, Text.TextSpan? span)
     {
         var existing = _symbolTable.Lookup(name, searchParents: false);
-        if (existing is null or VariableSymbol)
+        if (existing is null)
+            return false;
+
+        if (existing is VariableSymbol
+            && (_symbolTable.CurrentScope.LookupImportBinding(name) is not { IsStar: false } import
+                || (import.FilePath != null && _currentFilePath != null
+                    && !string.Equals(import.FilePath, _currentFilePath, StringComparison.Ordinal))))
             return false;
 
         var kind = existing switch
         {
-            FunctionSymbol => "function",
-            TypeSymbol => "type",
-            ModuleSymbol => "module",
-            TypeAliasSymbol => "type alias",
-            TypeParameterSymbol => "type parameter",
-            _ => "symbol",
+            VariableSymbol => "an imported name",
+            FunctionSymbol => "a function",
+            TypeSymbol => "a type",
+            ModuleSymbol => "a module",
+            TypeAliasSymbol => "a type alias",
+            TypeParameterSymbol => "a type parameter",
+            _ => "a symbol",
         };
-        AddError($"Cannot bind '{name}': it is already defined as a {kind} in this scope",
+        AddError($"Cannot bind '{name}': it is already defined as {kind} in this scope",
             line, column, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: span);
         return true;
     }
@@ -3089,17 +3108,28 @@ internal partial class TypeChecker
     /// or a block, which NameResolver never walks — this method is the alias's only owner and reports
     /// as before. The position test is the one <c>CheckFunction</c> uses to recognise a def NameResolver
     /// did not declare.</para>
+    ///
+    /// <para><b>The same declaration, not the same name.</b> A class/struct/interface body
+    /// pre-registers its aliases before field type resolution (<c>TypeChecker.Definitions.cs</c>), and
+    /// <c>CheckStatement</c> then meets the SAME <see cref="TypeAlias"/> node again in the body pass;
+    /// that second visit is the only one skipped, and it is recognised by declaration identity
+    /// (<see cref="Symbol.IsDeclaredAt"/>). A same-named SECOND alias in the scope is a redeclaration
+    /// and falls into the "already defined" arm below. The guard used to compare names
+    /// (<c>is TypeAliasSymbol</c>), so <c>type A = str</c> / <c>type A = int</c> in one function body
+    /// silently dropped the second alias and every later use was checked against the first (#2360). At
+    /// a declaring position the second alias is NameResolver's SPY0204 and stays unreported here; a
+    /// nested block opens its own scope, so an inner alias of the same name still shadows (B2).</para>
     /// </remarks>
     private void RegisterScopedTypeAlias(TypeAlias typeAlias)
     {
-        // Skip if already defined in current scope. This guard is needed because class/struct
-        // bodies pre-register aliases before field type resolution (TypeChecker.Definitions.cs),
-        // then CheckStatement processes the same TypeAlias node again during the full body pass.
-        if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) is TypeAliasSymbol)
+        // The same node met a second time (type-body pre-registration, then the body pass): already
+        // registered. A same-NAMED alias declared at another node is a redeclaration (see remarks).
+        if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) is TypeAliasSymbol registered
+            && registered.IsDeclaredAt(typeAlias))
             return;
 
         // NameResolver owns the verdicts at a declaring position (see remarks).
-        var reportHere = _currentFunctionReturnType != null || _controlFlowDepth > 0;
+        var reportHere = AtNonDeclaringPosition;
 
         // Validate that exactly one of Type or FunctionType is set
         if (typeAlias.Type == null && typeAlias.FunctionType == null)

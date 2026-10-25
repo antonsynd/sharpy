@@ -287,8 +287,13 @@ name collision. For example, a project whose root namespace is `Poison` may defi
 before universal qualification, produced a `CS0118` "is a namespace but is used like a type" error).
 The same holds inside a type body: a method of `class C` that reads a module variable its own field
 shadows (python resolves the bare name to the module) is emitted `global::<Root>.Lib.LibModule.V` —
-a bare `Lib.V` there would name the namespace. A local top-level definition that shadows an imported
-name of the same spelling is left unqualified, so the local binding still wins.
+a bare `Lib.V` there would name the namespace. A local top-level definition does not share a
+spelling with a named import (`import m`, `import m as n`, `from m import x`, `from m import x as n`):
+such an import binds a module-level name and collides like any other module binding (`SPY0204` — see
+[import_statements.md](import_statements.md#an-import-binds-a-module-level-name)), so a local
+top-level name is the module's own and is emitted unqualified. A star import never displaces a
+module-level declaration either: the declaration takes the star-imported name over and is emitted
+unqualified (a module property is the known exception, #2371).
 
 `SPY0520` (a type named like its file) is retired: with types beside the members class, no module
 class exists for a type to collide with.

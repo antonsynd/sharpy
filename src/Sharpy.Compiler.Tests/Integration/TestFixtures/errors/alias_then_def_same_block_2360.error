@@ -1,0 +1,3 @@
+SPY0204: function 'A' is already defined in this scope @8:9
+SPY0224: Function expects 1 arguments but got 0 @10:11
+!count 2

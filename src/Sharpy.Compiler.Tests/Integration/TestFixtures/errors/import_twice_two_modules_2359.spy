@@ -1,0 +1,8 @@
+# #2359 (R-II): two imports binding different modules under one name — the later one is SPY0204.
+# Direction record (the math + copy twin): SPY0908 CS1537 ("The using alias 'mm' appeared previously") @ ce482aa20 —
+# ICE → diagnostic. The refused import binds nothing, so `mm` stays the copy module.
+import copy as mm
+import operator as mm
+
+def main() -> None:
+    print(mm.deepcopy(1))

@@ -1,0 +1,2 @@
+SPY0212: 'str' is a builtin type name; binding it to an import would make every bare 'str' in this file mean the import @6:8
+!count 1

@@ -1,0 +1,3 @@
+SPY0708: a property declaration is not allowed inside a function; declare it in a class, struct or interface body, or at module level @6:5
+SPY0200: Undefined identifier 'size' @7:11
+!count 2

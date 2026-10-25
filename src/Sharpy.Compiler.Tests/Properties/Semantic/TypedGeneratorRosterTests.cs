@@ -1655,6 +1655,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "ellipsis_literal.md", "SPY0149"),
         new KnownRedSpecCode("#2287", "enums.md", "SPY0525"),
         new KnownRedSpecCode("#2287", "events.md", "SPY0496"),
+        new KnownRedSpecCode("#2287", "events.md", "SPY0708"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0272"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0702"),
         new KnownRedSpecCode("#2287", "feature_roadmap.md", "SPY0130"),
@@ -1695,6 +1696,9 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "identifiers.md", "SPY0015"),
         new KnownRedSpecCode("#2324", "identity_operators.md", "SPY0349"),
         new KnownRedSpecCode("#2324", "identity_operators.md", "SPY0465"),
+        new KnownRedSpecCode("#2324", "import_statements.md", "SPY0212"),
+        new KnownRedSpecCode("#2324", "import_statements.md", "SPY0483"),
+        new KnownRedSpecCode("#2324", "import_statements.md", "SPY0484"),
         new KnownRedSpecCode("#2324", "import_statements.md", "SPY0708"),
         new KnownRedSpecCode("#2287", "integer_literals.md", "SPY0023"),
         new KnownRedSpecCode("#2324", "interfaces.md", "SPY0248"),
@@ -1759,6 +1763,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "parameter_modifiers.md", "SPY0103"),
         new KnownRedSpecCode("#2287", "parameter_modifiers.md", "SPY0104"),
         new KnownRedSpecCode("#2287", "properties.md", "SPY0148"),
+        new KnownRedSpecCode("#2287", "properties.md", "SPY0708"),
         new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0405"),
         new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0407"),
         new KnownRedSpecCode("#2287", "properties_function_style.md", "SPY0496"),
@@ -1812,6 +1817,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0338"),
         new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0356"),
         new KnownRedSpecCode("#2287", "tuple_unpacking.md", "SPY0604"),
+        new KnownRedSpecCode("#2287", "type_aliases.md", "SPY0204"),
         new KnownRedSpecCode("#2287", "type_aliases.md", "SPY0212"),
         new KnownRedSpecCode("#2287", "type_annotation_shorthand.md", "SPY0114"),
         new KnownRedSpecCode("#2324", "type_annotations.md", "SPY0227"),
@@ -1849,6 +1855,9 @@ public class TypedGeneratorRosterTests
 
     private static readonly ProseCrossReference[] ProseCrossReferences =
     {
+        // module_system.md §Name Qualification in Generated C# cites the import-binding collision only by link; the construct and
+        // its claiming row (GenImports.NameCollisionPair, SPY0204) are import_statements.md's.
+        new ProseCrossReference("module_system.md", "SPY0204", "import_statements.md"),
     };
 
     private static readonly Regex SpecCode = new(@"SPY\d{4}");

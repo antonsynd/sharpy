@@ -1,4 +1,3 @@
-using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using Xunit;
@@ -6,8 +5,11 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.Project;
 
 /// <summary>
-/// Seam-level tests for <see cref="ProjectCompiler.MergeModuleExports"/>, which combines nested
-/// module structures when the same root module is imported more than once.
+/// Seam-level tests for the root-merge rule — <see cref="ModuleExports.MergeFrom"/> with
+/// <c>firstImportWins: true</c> — which combines nested module structures when the same root module
+/// is imported more than once. Its caller is <c>ImportResolver.BindImportName</c>, the import-binding
+/// seam of both compile routes (P21f, #2359); the class keeps the name of the
+/// <c>ProjectCompiler.MergeModuleExports</c> wrapper it used to call.
 ///
 /// Regression guard for #1135: the merge must carry the types-only
 /// <see cref="ModuleSymbol.ExportedTypes"/> mirror as well as <see cref="ModuleSymbol.Exports"/>.
@@ -41,7 +43,7 @@ public class ProjectCompilerMergeModuleExportsTests
         var source = MakeModule("sqlite3");
         source.Exports.Add("Row", rowType);
 
-        ProjectCompiler.MergeModuleExports(target, source);
+        target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
         // Exports keeps first-import-wins: the value symbol is not overwritten by the type.
         Assert.Same(existingValue, target.Exports["Row"]);
@@ -67,7 +69,7 @@ public class ProjectCompilerMergeModuleExportsTests
         source.Exports.Add("added", newValue);
         source.Exports.Add("Added", newType);
 
-        ProjectCompiler.MergeModuleExports(target, source);
+        target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
         Assert.Same(existingValue, target.Exports["existing"]);
         Assert.Same(newValue, target.Exports["added"]);
@@ -86,7 +88,7 @@ public class ProjectCompilerMergeModuleExportsTests
         var source = MakeModule("pkg");
         source.Exports.Add("Row", sourceType);
 
-        ProjectCompiler.MergeModuleExports(target, source);
+        target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
         // First-import-wins for the mirror too: the pre-existing type is retained.
         Assert.Same(targetType, target.ExportedTypes["Row"]);
@@ -106,7 +108,7 @@ public class ProjectCompilerMergeModuleExportsTests
         source.Exports.Add("helper", valueOnly);
         source.Exports.Add("Row", rowType);
 
-        ProjectCompiler.MergeModuleExports(target, source);
+        target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
         Assert.Same(valueOnly, target.Exports["helper"]);
         Assert.Same(rowType, target.Exports["Row"]);
@@ -129,7 +131,7 @@ public class ProjectCompilerMergeModuleExportsTests
         var source = MakeModule("lib");
         source.Exports.Add("math", sourceNested);
 
-        ProjectCompiler.MergeModuleExports(target, source);
+        target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
         // The existing nested module is preserved (recursion merges into it, not replaces it)...
         Assert.Same(targetNested, target.Exports["math"]);

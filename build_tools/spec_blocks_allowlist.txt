@@ -200,8 +200,6 @@ identifiers.md::6c22e23336  # SPY0023 first #1952
 identifiers.md::ba2deddbbf  # SPY0300 first #1952
 identity_operators.md::c5d42f1042  # SPY0349 first #1952
 if_statement.md::f89456acef  # SPY0200 first #1952
-import_statements.md::097c2ca1c3  # SPY0200 first #1952
-import_statements.md::350bf92e49  # SPY0200 first #1952
 indentation.md::f5c6531017  # SPY0012 first #1952
 inheritance.md::074e3da2a5  # SPY0285 first #1952
 inheritance.md::550cd441ca  # SPY0202 first #1952
@@ -348,9 +346,7 @@ primitive_types.md::412c2923ce  # SPY0346 first #1952
 program_entry_point.md::08fda2fe5d  # SPY0200 first #1952
 program_entry_point.md::3e9510358b  # SPY0200 first #1952
 program_entry_point.md::daa5d09e86  # SPY0200 first #1952
-properties.md::0f22441582  # SPY0200 first #1952
 properties.md::2cad2b350f  # SPY0203 first #1952
-properties.md::36c5d183b0  # SPY0204 first #1952
 properties_function_style.md::4538adfdac  # SPY0407 first #1952
 properties_function_style.md::86bb0df588  # SPY0496 first #1952
 properties_function_style.md::b43ba33646  # SPY0406 first #1952

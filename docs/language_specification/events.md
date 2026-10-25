@@ -483,6 +483,7 @@ obj.OnChange -= myHandler;
 2. **Cannot assign to events** — only `+=` and `-=` are allowed from outside
 3. **Cannot invoke events directly from outside** — must use raise method
 4. **Event handlers should not throw exceptions** — unhandled exceptions propagate to caller
+5. **Events are declared only in a class, struct or interface body.** An event declared anywhere else is an error (SPY0708). That includes an auto-event or an `event add`/`event remove` accessor in a function body, in a block, or at module level. An event is a member of its host, and there is no module-level event.
 
 ```python
 class Foo:
@@ -499,6 +500,18 @@ foo.on_bar = handler  # ERROR: Cannot assign to event
 
 # ❌ Invalid: invoke from outside
 foo.on_bar.invoke(foo, args)  # ERROR: Cannot invoke event from outside class
+```
+
+<!-- spec-sweep: error SPY0708 -->
+```python
+event changed: Action[int]   # ERROR SPY0708: an event declaration is not allowed in the module body
+
+def setup() -> None:
+    event ready: Action[int]  # ERROR SPY0708: an event declaration is not allowed inside a function
+    print("setup")
+
+def main() -> None:
+    setup()
 ```
 
 ## Event Syntax Summary

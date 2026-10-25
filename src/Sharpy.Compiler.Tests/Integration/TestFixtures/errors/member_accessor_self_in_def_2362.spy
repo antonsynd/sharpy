@@ -1,0 +1,12 @@
+# A function-style property accessor declared in a function body is ONE SPY0708 naming the
+# declaration kind (#2362, R-IK). Direction record (`sharpyc run` @ 797925e06): SPY0232 "Module-level
+# properties cannot have a 'self' parameter" — a message naming a host that is not module level,
+# because the checker treated every property outside a class as module-level. The checker now
+# declines a property at a non-declaring position, so SPY0232 does not also fire (message → message).
+def helper() -> None:
+    property get size(self) -> int:
+        return 0
+    print("helper")
+
+def main() -> None:
+    helper()

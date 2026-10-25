@@ -1,0 +1,9 @@
+# #2359 (R-II): an import ALIAS spelling a builtin TYPE name is SPY0212 — every bare `str` in the
+# file would otherwise mean the module. Direction record: the math twin (str.pi) ran 3.141592653589793
+# @ ce482aa20 (and a later `str(5)` was SPY0230 "'str' is not callable (type: module 'str')");
+# worked → refused per R-II. The refused import binds nothing, so `str(5)` is the builtin again.
+# Positive control: import_alias_escaped_builtin_type_name_2359 (the escaped alias runs).
+import copy as str
+
+def main() -> None:
+    print(str(5))

@@ -174,8 +174,12 @@ internal partial class ProjectCompiler
 
             // Enter per-module scope so imported symbols register in the correct scope
             SymbolTable.EnterModuleScope(unit.ModulePath);
-            // Track from-imported symbol sources per-file for duplicate detection (#514)
-            var importedSymbolSources = new Dictionary<string, string>();
+            // Every import spelling binds through ImportResolver.BindImportName — the seam the
+            // single-file route binds through too (#2359, the #1145 one-site-of-two shape) — which
+            // records each binding on the module scope (#514's duplicate rule reads that record).
+            void Report(ImportResolver.ImportBindingDiagnostic diagnostic, int line, int column,
+                Text.TextSpan? span)
+                => ReportImportBinding(diagnostic, line, column, span, unit.FilePath);
             try
             {
 
@@ -220,7 +224,14 @@ internal partial class ProjectCompiler
                                     Documentation = moduleInfo.Module?.DocString
                                         ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                                 };
-                                SymbolTable.TryDefine(aliasedModule);
+                                ImportResolver.BindImportName(SymbolTable, aliasedModule, importAlias.AsName,
+                                    importAlias,
+                                    new ImportBinding(ImportBindingForm.ModuleAlias,
+                                        moduleInfo.CanonicalModuleName ?? moduleInfo.Path, importAlias.Name,
+                                        unit.FilePath),
+                                    warningTarget: null, isRegistryOwnBinding: false,
+                                    d => Report(d, importAlias.LineStart, importAlias.ColumnStart,
+                                        importAlias.Span ?? import.Span));
                                 continue;
                             }
 
@@ -263,18 +274,14 @@ internal partial class ProjectCompiler
                                 currentModule = parentModule;
                             }
 
-                            // Register the root module (or merge with existing if it exists)
-                            var rootName = parts[0];
-                            var existingSymbol = SymbolTable.Lookup(rootName, searchParents: false);
-                            if (existingSymbol is ModuleSymbol existingModule)
-                            {
-                                // Merge: add the new nested exports to the existing module
-                                MergeModuleExports(existingModule, currentModule);
-                            }
-                            else
-                            {
-                                SymbolTable.TryDefine(currentModule);
-                            }
+                            // Register the root module; a second plain import of the same root merges
+                            // into it (`import os` + `import os.path`), anything else under the name is
+                            // a collision — both decided by BindImportName.
+                            ImportResolver.BindImportName(SymbolTable, currentModule, parts[0], importAlias,
+                                new ImportBinding(ImportBindingForm.ModuleRoot, parts[0], parts[0], unit.FilePath),
+                                warningTarget: null, isRegistryOwnBinding: false,
+                                d => Report(d, importAlias.LineStart, importAlias.ColumnStart,
+                                    importAlias.Span ?? import.Span));
                         }
                     }
                     else if (scanned is FromImportStatement fromImport)
@@ -316,15 +323,12 @@ internal partial class ProjectCompiler
                                         SymbolTable.AmbiguousGlobImports[name] = fromImport.Module;
 
                                     var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
-                                    if (!SymbolTable.TryDefine(symbolToRegister))
+                                    if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, name, alias: null,
+                                            new ImportBinding(ImportBindingForm.FromImport, sourceModule, sourceModule,
+                                                unit.FilePath),
+                                            warningTarget: null, isRegistryOwnBinding: false,
+                                            d => Report(d, fromImport.LineStart, fromImport.ColumnStart, fromImport.Span)))
                                     {
-                                        ReportDuplicateFromImport(name, sourceModule, importedSymbolSources,
-                                            fromImport, importAlias: null, unit.FilePath);
-                                    }
-                                    else
-                                    {
-                                        importedSymbolSources[name] = sourceModule;
-
                                         // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                         if (ImportResolver.OverloadsFor(moduleInfo, name) is { Count: > 1 } overloads)
                                         {
@@ -341,29 +345,8 @@ internal partial class ProjectCompiler
                                     var lookupName = importAlias.Name;
                                     var symbolName = importAlias.AsName ?? importAlias.Name;
 
-                                    // Say the rebinding in the file where it takes effect (#1324).
-                                    // SPY0483 fires at the DECLARATION, which lives in the library's
-                                    // file — and a library and its consumer are by definition two
-                                    // files, so the consumer may never see it. Emitted on this path
-                                    // for the same reason the star-import recording above is: this
-                                    // is the loop multi-file compilation actually runs.
-                                    if (BuiltinNameShadowing.ShadowsBuiltin(SymbolTable.BuiltinRegistry, symbolName))
-                                    {
-                                        _diagnostics.AddWarning(
-                                            $"'{symbolName}' is a builtin name; this import rebinds it "
-                                            + $"in this file, so a bare '{symbolName}' here calls "
-                                            + $"'{fromImport.Module}.{symbolName}' and not the builtin. "
-                                            + $"The builtin stays reachable as 'builtins.{symbolName}' "
-                                            + "(add 'import builtins'), or import under an alias to "
-                                            + "keep both.",
-                                            importAlias.Span,
-                                            importAlias.LineStart,
-                                            importAlias.ColumnStart,
-                                            unit.FilePath,
-                                            code: DiagnosticCodes.Validation.BuiltinRebornByExplicitImport,
-                                            phase: CompilerPhase.ImportResolution);
-                                    }
-
+                                    // The builtin-name verdicts (SPY0212 / SPY0484, #1324, R-II) are
+                                    // BindImportName's, decided where the name binds — as in ImportResolver.
                                     if (symbolsToImport.TryGetValue(lookupName, out var symbol) ||
                                         (lookupName != symbolName && symbolsToImport.TryGetValue(symbolName, out symbol)))
                                     {
@@ -414,15 +397,17 @@ internal partial class ProjectCompiler
                                             symbolToRegister = aliasFunc with { OriginSymbol = importedOverloads[0] };
                                         }
 
-                                        if (!SymbolTable.TryDefine(symbolToRegister))
+                                        // The registry's own binding under its own name shadows nothing (#1322).
+                                        if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, symbolName,
+                                                importAlias,
+                                                new ImportBinding(ImportBindingForm.FromImport, sourceModule,
+                                                    sourceModule, unit.FilePath),
+                                                warningTarget: $"{fromImport.Module}.{lookupName}",
+                                                isRegistryOwnBinding: registryBinding != null
+                                                    && string.Equals(symbolName, lookupName, StringComparison.Ordinal),
+                                                d => Report(d, importAlias.LineStart, importAlias.ColumnStart,
+                                                    importAlias.Span ?? fromImport.Span)))
                                         {
-                                            ReportDuplicateFromImport(symbolName, sourceModule, importedSymbolSources,
-                                                fromImport, importAlias, unit.FilePath);
-                                        }
-                                        else
-                                        {
-                                            importedSymbolSources[symbolName] = sourceModule;
-
                                             // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                             if (importedOverloads is { Count: > 1 })
                                             {
@@ -540,28 +525,24 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// Reports a duplicate from-import error if the symbol was previously imported from a different module.
-    /// Same-module re-imports (idempotent) are silently skipped.
-    /// Uses shared detection logic from <see cref="ImportResolver.FindDuplicateFromImportSource"/>.
+    /// Reports a verdict of <see cref="ImportResolver.BindImportName"/> for <paramref name="filePath"/>:
+    /// an error goes to the project's global bag as well (with the file named, as the single-file
+    /// resolver names it), a warning to the file's diagnostics only.
     /// </summary>
-    private void ReportDuplicateFromImport(
-        string registerName,
-        string sourceModule,
-        Dictionary<string, string> importedSources,
-        FromImportStatement fromImport,
-        ImportAlias? importAlias,
-        string filePath)
+    private void ReportImportBinding(ImportResolver.ImportBindingDiagnostic diagnostic, int line, int column,
+        Text.TextSpan? span, string filePath)
     {
-        var existingModule = ImportResolver.FindDuplicateFromImportSource(
-            registerName, sourceModule, importedSources);
-        if (existingModule != null)
+        if (diagnostic.IsError)
         {
-            var line = importAlias?.LineStart ?? fromImport.LineStart;
-            var column = importAlias?.ColumnStart ?? fromImport.ColumnStart;
-            var message = $"'{registerName}' is already imported from '{existingModule}' (in {Path.GetFileName(filePath)})";
-            _projectModel!.GlobalDiagnostics.AddError(message, code: DiagnosticCodes.Semantic.DuplicateDefinition);
-            _diagnostics.AddError(message, line, column, filePath,
-                code: DiagnosticCodes.Semantic.DuplicateDefinition, phase: CompilerPhase.ImportResolution);
+            var message = $"{diagnostic.Message} (in {Path.GetFileName(filePath)})";
+            _projectModel!.GlobalDiagnostics.AddError(message, code: diagnostic.Code);
+            _diagnostics.AddError(message, span, line, column, filePath,
+                code: diagnostic.Code, phase: CompilerPhase.ImportResolution);
+        }
+        else
+        {
+            _diagnostics.AddWarning(diagnostic.Message, span, line, column, filePath,
+                code: diagnostic.Code, phase: CompilerPhase.ImportResolution);
         }
     }
 
@@ -592,7 +573,10 @@ internal partial class ProjectCompiler
             foreach (var (_, unit) in _projectModel.Units)
             {
                 var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
-                if (moduleScope != null)
+                // Never the IMPORTING module's own scope: a same-named declaration there is what the
+                // import collides with (SPY0204, #2359), not the declaration it imports — substituting
+                // it made `const pi` + `from math import pi` bind the const to itself, silently.
+                if (moduleScope != null && !ReferenceEquals(moduleScope, SymbolTable.CurrentScope))
                 {
                     var original = moduleScope.Lookup(originalName, searchParent: false);
                     if (original != null && original.GetType() == reExported.GetType())
@@ -696,21 +680,6 @@ internal partial class ProjectCompiler
                 ? new List<FunctionSymbol> { single }
                 : null);
     }
-
-    /// <summary>
-    /// Merge exports from a source module into a target module.
-    /// Used to combine nested module structures when the same root is imported multiple times.
-    ///
-    /// The merge rule (first import wins, recursing into nested modules present on both sides)
-    /// lives in <see cref="ModuleExports.MergeFrom"/>, which moves the value-position lookup and
-    /// the types-only lookup together — the mirror cannot be dropped here because there is no
-    /// second dictionary to forget (#1135, #1145).
-    ///
-    /// Internal (not private) so the merge seam can be unit-tested directly; static because it
-    /// touches no instance state.
-    /// </summary>
-    internal static void MergeModuleExports(ModuleSymbol target, ModuleSymbol source)
-        => target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
     /// <summary>
     /// After cycle filtering, compute all symbol names imported across cycle boundaries.

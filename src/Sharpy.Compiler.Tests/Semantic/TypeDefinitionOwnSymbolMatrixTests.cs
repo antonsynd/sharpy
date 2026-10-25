@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Shared;
 using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -22,7 +23,13 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// the control, module <c>Foo</c>'s members equal the control". R-HK extended it into the declaration-position
 /// generator; P54's rest-equals-control and <c>Foo</c>-members clauses still hold and are kept.</para>
 ///
-/// <para><b>Matrix</b> (generated). Kind (12): <c>class</c> and <c>struct</c> (each carrying the mixed auto/setter
+/// <para><b>P21f</b> (#2360, #2362, #2359; rulings R-IJ, R-IK, R-II) extends the contract to three more declaration
+/// kinds: a MEMBER declaration (<c>property</c>, <c>event</c>) outside a type body is SPY0708 (a property is also legal
+/// at module level); an IMPORT binding is a module binding that collides like any other (SPY0204), refuses a builtin
+/// type name (SPY0212) and warns on a builtin function name (SPY0484) — <see cref="ImportBindingCells"/>; a <c>type</c>
+/// alias RE-DECLARED in one scope is SPY0204 at every position — <see cref="AliasRedeclarationCells"/>.</para>
+///
+/// <para><b>Matrix</b> (generated). Kind (18 = P21e's 12 + P21f's six member kinds): <c>class</c> and <c>struct</c> (each carrying the mixed auto/setter
 /// property whose backing field was P54's measured write), <c>@dataclass class</c>, <c>interface</c>, <c>union</c>,
 /// <c>delegate</c>, <c>class-const</c> (a non-constant <c>const X</c>, whose body <c>ConstEligibility</c> once walked
 /// against the enclosing <c>Foo</c>), <c>enum</c>, <c>alias</c> (<c>type N = str</c>; the builtin column spells
@@ -31,7 +38,12 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>math</c>: this harness references Sharpy.Core only, where <c>math</c> is SPY0300 (the CLI measured both modules
 /// to the same silent shapes) — <c>class-cascade</c> (a class that
 /// legitimately draws SPY0701 — a SAME-CLR-key duplicate <c>__getitem__</c> pair — and SPY0325 — <c>(IShape)</c> with
-/// <c>area</c> unimplemented; a different-key pair draws no SPY0701, measured). × Position (13): <c>module</c>,
+/// <c>area</c> unimplemented; a different-key pair draws no SPY0701, measured), and the member kinds
+/// <c>property-field</c> (<c>property N: int = 0</c>), <c>property-get</c>, <c>property-set</c> (accessors spell
+/// <c>self</c> only at <c>type-body</c>/<c>type-body-if</c>; module-level and function-hosted accessors take none),
+/// <c>property-observer</c> (the field form + <c>before_set(v):</c>, analysed and run with the experimental
+/// <c>property_observers</c> feature per cell), <c>event-auto</c> (<c>event N: Action[int]</c>) and
+/// <c>event-add</c> (an <c>event add</c>/<c>event remove</c> pair with <c>self</c>). × Position (13): <c>module</c>,
 /// <c>module-try</c>, <c>type-body</c> (directly in <c>class Host:</c>), <c>type-body-if</c>, <c>method-body</c>,
 /// <c>accessor-body</c> (<c>property get</c>), <c>def-body</c>, and <c>if</c>/<c>for</c>/<c>while</c>/<c>try</c>/
 /// <c>with</c>/<c>match</c> in a def (each block runs once — no constant-false condition the checker could skip). ×
@@ -41,14 +53,22 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>@static</c> method body, an interface default-method body, a union method body and an <c>async def</c> body, ×
 /// kind {class, enum, import, alias} × name {Fresh; and <c>int</c> for alias}; the SPELLING axis — a
 /// <c>@suppress</c>-decorated class and import (through <c>UnwrapDecorated</c>) and the backtick-escaped
-/// <c>type `int` = str</c> (the sanctioned route: LEGAL, expected []), each at <c>module</c> and <c>def-body</c>.
+/// <c>type `int` = str</c> (the sanctioned route: LEGAL, expected []), each at <c>module</c> and <c>def-body</c>; and
+/// the SELF-ACCESSOR cells — <c>property get</c>/<c>property set</c> spelling <c>self</c> and using it at every
+/// non-declaring position but <c>module-try</c>, an <c>event add</c>/<c>remove</c> pair using <c>self</c> at every
+/// position but the type-body ones — whose exact sets (one SPY0708 per accessor) make clause (2s) and the checker's
+/// decline falsifiable.
 /// Each cell is analysed on ONE <see cref="CompilerApi"/> beside its CONTROL — the same program with the definition's
 /// lines replaced by <c>pass</c> (a comment at <c>module</c>, where <c>pass</c> is itself SPY0340), so every line
 /// keeps its number.</para>
 ///
 /// <para><b>Oracle per cell.</b> (1) No SPY09xx (hard — never allowlisted). (2) The ERROR diagnostics on the
 /// definition's lines (decorators included) equal <see cref="ExpectedErrors"/> exactly, as a multiset of code + line +
-/// column; warnings on those lines are not compared. (3) Every diagnostic off the definition's lines equals the
+/// column; warnings on those lines are not compared, except for the member kinds: (2w) their builtin-name shadowing
+/// warnings (<see cref="VerdictWarnings"/>) on those lines equal <see cref="ExpectedWarnings"/>, and (2s) no SPY0232
+/// ("Module-level properties cannot have a 'self' parameter") appears anywhere in a member cell not at
+/// <c>module</c>/<c>module-try</c> — its positive control, a module-level <c>property get size(self)</c> showing
+/// SPY0232, is asserted unconditionally. (3) Every diagnostic off the definition's lines equals the
 /// control's (<c>main</c> reads <c>s._size</c> / <c>f._size</c>, so a written <c>str</c> or <c>Foo</c> changes it).
 /// (4) Module <c>Foo</c>'s members equal the control's (hard). (5) <c>class-cascade</c> at a non-declaring position:
 /// SPY0701 and SPY0325 ABSENT anywhere — its positive control, <c>class-cascade × module × Fresh</c> showing both, is
@@ -65,8 +85,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///
 /// <para><b>Ratchet.</b> <c>Semantic/declaration-position-allowlist.txt</c> lists the cell ids red at the base, each
 /// citing an issue. A listed cell that passes is STALE (red); an unlisted failing cell is red; a row naming no
-/// generated cell is red. Clauses (1), (4) and the control sanity check are never exempted. The allowlist drains to
-/// empty across P21e.</para>
+/// generated cell is red. Clauses (1), (4), the positive controls and the control sanity check are never exempted.
+/// P21e's rows drained; the rows left cite issues outside the contract, and P21f's rows (created by its Phase 1)
+/// drain across its Phases 2–4.</para>
 /// </summary>
 public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 {
@@ -79,6 +100,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         TypeDefinition,
         Alias,
         Import,
+        Member,
     }
 
     /// <summary>Where an expected diagnostic lands, resolved per cell by <see cref="Resolve"/>.</summary>
@@ -92,68 +114,85 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
         /// <summary><c>class-cascade</c>'s second <c>__getitem__</c> (keyword line + 3, the <c>def</c>'s column).</summary>
         SecondDunder,
+
+        /// <summary><c>event-add</c>'s <c>event remove</c> accessor (keyword line + 2, the keyword's column).</summary>
+        SecondAccessor,
+
+        /// <summary>The import's <c>ImportAlias</c> node — the module name of <c>import m as N</c>, the imported name of
+        /// <c>from m import x as N</c> (where SPY0484 lands, and where an import-binding verdict lands, D4).</summary>
+        ImportAlias,
     }
 
-    /// <summary>(kind, family, the definition's lines for a spelled name, unindented).</summary>
-    private static readonly (string Kind, Family Family, Func<string, string[]> Lines)[] Kinds =
+    /// <summary>A kind of the matrix: its family, the definition's lines for a spelled name (unindented), the lines a
+    /// type-body position spells instead (a member accessor takes <c>self</c> only in a type body — module-level and
+    /// function-hosted spellings take none, so SPY0232 never enters an expected set), and the experimental features the
+    /// kind needs (the observer form's <c>property_observers</c>, passed per cell to <c>Analyze</c> and the run).</summary>
+    internal sealed record KindSpec(
+        string Kind, Family Family, Func<string, string[]> Lines, Func<string, string[]>? TypeBodyLines = null,
+        FeatureFlags? Features = null);
+
+    private static readonly FeatureFlags ObserverFeatures = FeatureFlags.None.Enable("property_observers");
+
+    /// <summary>The kinds of the position matrix: P21e's 12 and P21f's six member kinds.</summary>
+    private static readonly KindSpec[] Kinds =
     {
-        ("class", Family.TypeDefinition, n => new[]
+        new("class", Family.TypeDefinition, n => new[]
         {
             $"class {n}:",
             "    property size: int = 0",
             "    property set size(self, v: int) -> None:",
             "        self._size = v",
         }),
-        ("dataclass", Family.TypeDefinition, n => new[]
+        new("dataclass", Family.TypeDefinition, n => new[]
         {
             "@dataclass",
             $"class {n}:",
             "    x: int",
         }),
-        ("struct", Family.TypeDefinition, n => new[]
+        new("struct", Family.TypeDefinition, n => new[]
         {
             $"struct {n}:",
             "    property size: int = 0",
             "    property set size(self, v: int) -> None:",
             "        self._size = v",
         }),
-        ("interface", Family.TypeDefinition, n => new[]
+        new("interface", Family.TypeDefinition, n => new[]
         {
             $"interface {n}:",
             "    def probe(self, value: int) -> int: ...",
         }),
-        ("union", Family.TypeDefinition, n => new[]
+        new("union", Family.TypeDefinition, n => new[]
         {
             $"union {n}:",
             "    case Probe(value: int)",
         }),
-        ("delegate", Family.TypeDefinition, n => new[]
+        new("delegate", Family.TypeDefinition, n => new[]
         {
             $"delegate {n}(value: int) -> int",
         }),
-        ("class-const", Family.TypeDefinition, n => new[]
+        new("class-const", Family.TypeDefinition, n => new[]
         {
             $"class {n}:",
             "    const X: int = len(\"abc\")",
         }),
-        ("enum", Family.TypeDefinition, n => new[]
+        new("enum", Family.TypeDefinition, n => new[]
         {
             $"enum {n}:",
             "    A = 1",
         }),
-        ("alias", Family.Alias, n => new[]
+        new("alias", Family.Alias, n => new[]
         {
             $"type {n} = str",
         }),
-        ("import", Family.Import, n => new[]
+        new("import", Family.Import, n => new[]
         {
             n == "Fresh" ? "import copy" : $"import copy as {n}",
         }),
-        ("from-import", Family.Import, n => new[]
+        new("from-import", Family.Import, n => new[]
         {
             n == "Fresh" ? "from copy import deepcopy" : $"from copy import deepcopy as {n}",
         }),
-        ("class-cascade", Family.TypeDefinition, n => new[]
+        new("class-cascade", Family.TypeDefinition, n => new[]
         {
             $"class {n}(IShape):",
             "    def __getitem__(self, key: int) -> str:",
@@ -161,18 +200,96 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             "    def __getitem__(self, key: int) -> int:",
             "        return 0",
         }),
+
+        // P21f (#2362, R-IK): the member kinds. A property is legal in a type body and at module level (#844); an
+        // event only in a type body; anywhere else both are SPY0708.
+        new("property-field", Family.Member, n => new[]
+        {
+            $"property {n}: int = 0",
+        }),
+        new("property-get", Family.Member, n => new[]
+        {
+            $"property get {n}() -> int:",
+            "    return 0",
+        }, TypeBodyLines: n => new[]
+        {
+            $"property get {n}(self) -> int:",
+            "    return 0",
+        }),
+        // The setter carries no `-> None`: a set-only property annotated `-> None` takes `void` as its type (CS0547, a
+        // finding of its own) — the spec's spelling is the unannotated one (properties_function_style.md).
+        new("property-set", Family.Member, n => new[]
+        {
+            $"property set {n}(v: int):",
+            "    print(v)",
+        }, TypeBodyLines: n => new[]
+        {
+            $"property set {n}(self, v: int):",
+            "    print(v)",
+        }),
+        new("property-observer", Family.Member, n => new[]
+        {
+            $"property {n}: int = 0",
+            "    before_set(v):",
+            "        print(v)",
+        }, Features: ObserverFeatures),
+        new("event-auto", Family.Member, n => new[]
+        {
+            $"event {n}: Action[int]",
+        }),
+        // A function-style event is an add/remove PAIR — an `event add` alone is SPY0420 in a type body — and each
+        // accessor is its own statement, so a refusal is one SPY0708 per accessor. Event accessors have no
+        // module-level (self-less) form, so `self` is spelled at every position.
+        new("event-add", Family.Member, n => new[]
+        {
+            $"event add {n}(self, handler: Action[int]):",
+            "    pass",
+            $"event remove {n}(self, handler: Action[int]):",
+            "    pass",
+        }),
+    };
+
+    /// <summary>
+    /// The self-accessor edge kinds (verify round, W3/W4): an accessor that spells <c>self</c> and whose body uses it,
+    /// at a host that is not a type body. The matrix's function-hosted accessors take no <c>self</c>, so the checker's
+    /// decline (<c>TypeChecker.CheckStatement</c>: no <c>CheckModuleProperty</c>/<c>CheckClassProperty</c>/<c>CheckEvent</c>
+    /// at a non-declaring position, and no <c>CheckEvent</c> outside a type body) had no generator cell that a second
+    /// owner's SPY0232 would redden: these cells are that guard. Property accessors are built at every non-declaring
+    /// position but <c>module-try</c> (a module-level accessor with <c>self</c> is SPY0232's own verdict — the positive
+    /// control); the event pair at every position but the type-body ones, <c>module</c> included.
+    /// </summary>
+    private static readonly KindSpec[] SelfAccessorKinds =
+    {
+        new("property-get-self", Family.Member, n => new[]
+        {
+            $"property get {n}(self) -> int:",
+            "    print(self)",
+            "    return 0",
+        }),
+        new("property-set-self", Family.Member, n => new[]
+        {
+            $"property set {n}(self, v: int):",
+            "    print(self)",
+        }),
+        new("event-add-self", Family.Member, n => new[]
+        {
+            $"event add {n}(self, handler: Action[int]):",
+            "    print(self)",
+            $"event remove {n}(self, handler: Action[int]):",
+            "    print(self)",
+        }),
     };
 
     /// <summary>The spelling-axis edge kinds: a <c>@suppress</c>-decorated class and import.</summary>
-    private static readonly (string Kind, Family Family, Func<string, string[]> Lines)[] SpellingKinds =
+    private static readonly KindSpec[] SpellingKinds =
     {
-        ("suppress-class", Family.TypeDefinition, n => new[]
+        new("suppress-class", Family.TypeDefinition, n => new[]
         {
             "@suppress(\"SPY0453\")",
             $"class {n}:",
             "    x: int = 0",
         }),
-        ("suppress-import", Family.Import, n => new[]
+        new("suppress-import", Family.Import, n => new[]
         {
             "@suppress(\"SPY0452\")",
             n == "Fresh" ? "import copy" : $"import copy as {n}",
@@ -249,7 +366,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         string Kind, Family Family, string Position, string Name, string Source, string Control, string Runnable,
         string RunnableControl,
         int FirstLine, int LastLine, int DefinitionLine, int Indent, int NameLine, int NameColumn,
-        IReadOnlyList<(string Code, int Line, int Column)> BlockErrors, bool Edge)
+        IReadOnlyList<(string Code, int Line, int Column)> BlockErrors, bool Edge, FeatureFlags Features,
+        int ImportAliasColumn)
     {
         public string Id => $"{Kind} × {Position} × {Name}";
     }
@@ -267,11 +385,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     };
 
     private static Cell Build(
-        (string Kind, Family Family, Func<string, string[]> Lines) kind, Position position,
+        KindSpec kind, Position position,
         (string Name, string[] Prelude, string[] MainBody) name, string spelled, bool edge)
     {
         var prelude = name.Prelude.Concat(SharedPrelude).ToArray();
-        var definition = kind.Lines(spelled).Select(l => new string(' ', position.Indent) + l).ToArray();
+        var lines = kind.TypeBodyLines != null && position.Name is "type-body" or "type-body-if"
+            ? kind.TypeBodyLines(spelled)
+            : kind.Lines(spelled);
+        var definition = lines.Select(l => new string(' ', position.Indent) + l).ToArray();
         var placeholder = definition.Select(_ => new string(' ', position.Indent) + position.Placeholder).ToArray();
         string Program(string[] body, string[] mainBody) => string.Join("\n",
             prelude.Concat(position.Before).Concat(body).Concat(position.After)
@@ -291,10 +412,28 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             Program(definition, name.MainBody), Program(placeholder, name.MainBody),
             Program(definition, new[] { "    print(\"ok\")" }), Program(placeholder, new[] { "    print(\"ok\")" }),
             first, first + definition.Length - 1, first + keywordOffset, position.Indent,
-            first + keywordOffset, nameIndex < 0 ? 0 : nameIndex + 2, blockErrors, edge);
+            first + keywordOffset, nameIndex < 0 ? 0 : nameIndex + 2, blockErrors, edge,
+            kind.Features ?? FeatureFlags.None, ImportAliasColumn(keywordLine));
     }
 
-    /// <summary>The 12 × 13 × 3 matrix cells.</summary>
+    /// <summary>The 1-based column of an import line's <c>ImportAlias</c> node: the module name after <c>import </c>, or the
+    /// imported name after <c>from m import </c>; 0 for a line that is not an import.</summary>
+    internal static int ImportAliasColumn(string line)
+    {
+        var indent = line.Length - line.TrimStart().Length;
+        var text = line.TrimStart();
+        if (text.StartsWith("import ", StringComparison.Ordinal))
+            return indent + "import ".Length + 1;
+        if (text.StartsWith("from ", StringComparison.Ordinal))
+        {
+            var at = text.IndexOf(" import ", StringComparison.Ordinal);
+            return at < 0 ? 0 : indent + at + " import ".Length + 1;
+        }
+
+        return 0;
+    }
+
+    /// <summary>The 18 × 13 × 3 matrix cells.</summary>
     internal static IEnumerable<Cell> MatrixCells()
     {
         foreach (var kind in Kinds)
@@ -303,7 +442,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     yield return Build(kind, position, name, Spell(kind.Kind, name.Name), edge: false);
     }
 
-    /// <summary>The edge cells: host axis (4 hosts × 5 kind/name pairs) and spelling axis (3 spellings × 2 positions).</summary>
+    /// <summary>The edge cells: host axis (4 hosts × 5 kind/name pairs), spelling axis (3 spellings × 2 positions) and
+    /// the self-accessor cells (2 property accessors × 9 positions + the event pair × 11).</summary>
     internal static IEnumerable<Cell> EdgeCells()
     {
         var fresh = Names.Single(n => n.Name == "Fresh");
@@ -322,12 +462,17 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 yield return Build(kind, position, fresh, "Fresh", edge: true);
             yield return Build(Kinds.Single(x => x.Kind == "alias"), position, fresh, "`int`", edge: true);
         }
+
+        foreach (var kind in SelfAccessorKinds)
+            foreach (var position in Positions.Where(p => p.Name is not ("type-body" or "type-body-if")
+                         && (kind.Kind == "event-add-self" || !DeclaringPositions.Contains(p.Name) && p.Name != "module-try")))
+                yield return Build(kind, position, fresh, "Fresh", edge: true);
     }
 
     internal static IEnumerable<Cell> Cells() => MatrixCells().Concat(EdgeCells());
 
     private static Family FamilyOf(string kind)
-        => Kinds.Concat(SpellingKinds).Single(k => k.Kind == kind).Family;
+        => Kinds.Concat(SpellingKinds).Concat(SelfAccessorKinds).Single(k => k.Kind == kind).Family;
 
     /// <summary>
     /// The CONTRACT in code — the post-fix verdict of every cell, never the base's answer (the base's reds are the
@@ -357,11 +502,21 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// ("Type alias 'Foo' is already defined", measured; ONE — <c>Analyze</c> returns it twice at the base because
     /// NameResolver and the TypeChecker both report it and only <c>Compile</c>'s bag dedupes), [] at <c>type-body</c> (measured: runs) and at every
     /// non-declaring position (a block-scoped alias, D7).</description></item>
-    /// <item><term><c>import</c>/<c>from-import</c>/<c>suppress-import</c></term><description><c>module</c> → [] for
-    /// all three names (measured silent at the base: <c>import copy as str</c> draws nothing, <c>import copy as
-    /// Foo</c> beside <c>class Foo</c> draws only the SPY0452 warning — pinned as measured; both are cells of #2359
-    /// (an import alias no declaration rule sees), not of this contract — a fix there moves these literals); every other position → [SPY0708 @ keyword] (R-CS: "import at module
+    /// <item><term><c>import</c>/<c>from-import</c>/<c>suppress-import</c></term><description><c>module</c> → an
+    /// import binding is a module binding (R-II, #2359): builtin (<c>str</c>) → [SPY0212 @ ImportAlias] (a builtin type
+    /// name; the backtick-escaped alias is the opt-in), Foo → [SPY0204 @ ImportAlias] (beside <c>class Foo</c>, which is
+    /// declared before imports bind), Fresh → []; every other position → [SPY0708 @ keyword] (R-CS: "import at module
     /// level").</description></item>
+    /// <item><term>member — <c>property-field</c>/<c>-get</c>/<c>-set</c>/<c>-observer</c> (P21f D3/D7a, R-IK)</term>
+    /// <description><c>type-body</c> → [] for all three names (a member named <c>str</c> or <c>Foo</c> is reached
+    /// through <c>self.</c>); <c>module</c> → [] for builtin and Fresh (module-level properties are spec'd, #844), [SPY0204
+    /// @ keyword] for Foo ("Property 'Foo' is already defined" — NameResolver's module-property duplicate rule,
+    /// measured at the base); every other position → [SPY0708 @ keyword] (refused by position: no SPY0232 "Module-level
+    /// properties…", no checker verdict on the body).</description></item>
+    /// <item><term>member — <c>event-auto</c>/<c>event-add</c></term><description><c>type-body</c> → []; every other
+    /// position INCLUDING <c>module</c> → [SPY0708 @ keyword] — one per accessor statement, so <c>event-add</c>'s
+    /// add/remove pair is [SPY0708 @ keyword, SPY0708 @ the <c>event remove</c> keyword] (no SPY0340 "Executable
+    /// statements…" at module: the verdict has one owner).</description></item>
     /// </list>
     /// <c>module-try</c>'s SPY0340 at the <c>try</c> is the block's verdict, not the declaration's (D7): it is off the
     /// definition's lines and pinned separately as a block literal.
@@ -394,11 +549,48 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 return Array.Empty<(string, At)>();
 
             case Family.Import:
-                return position == "module" ? Array.Empty<(string, At)>() : new[] { ("SPY0708", At.Keyword) };
+                if (position != "module")
+                    return new[] { ("SPY0708", At.Keyword) };
+                if (builtin)
+                    return new[] { ("SPY0212", At.ImportAlias) };
+                return name == "Foo" ? new[] { ("SPY0204", At.ImportAlias) } : Array.Empty<(string, At)>();
+
+            case Family.Member:
+                {
+                    if (position == "type-body")
+                        return Array.Empty<(string, At)>();
+                    var isEvent = kind.StartsWith("event-", StringComparison.Ordinal);
+                    if (position == "module" && !isEvent)
+                        return name == "Foo" ? new[] { ("SPY0204", At.Keyword) } : Array.Empty<(string, At)>();
+                    return kind is "event-add" or "event-add-self"
+                        ? new[] { ("SPY0708", At.Keyword), ("SPY0708", At.SecondAccessor) }
+                        : new[] { ("SPY0708", At.Keyword) };
+                }
 
             default:
                 throw new InvalidOperationException(kind);
         }
+    }
+
+    /// <summary>The builtin-name shadowing verdicts — the only warnings the P21f clauses compare. Naming (SPY0453) and
+    /// usage (SPY0451/SPY0452) lints are not verdicts of this contract and are not compared.</summary>
+    internal static readonly HashSet<string> VerdictWarnings = new(StringComparer.Ordinal) { "SPY0483", "SPY0484" };
+
+    /// <summary>
+    /// The WARNING verdicts on the definition's lines, compared (as a multiset over <see cref="VerdictWarnings"/>) for
+    /// the member kinds only — P21e's kinds keep their error-only oracle. A module-level property is a value-position
+    /// module binding, so a builtin FUNCTION-or-type spelling warns SPY0483 like <c>len = 5</c> (D5, f3: measured silent
+    /// at the base); a class member is reached through <c>self.</c> and stays silent; a refused member (SPY0708) draws
+    /// nothing else.
+    /// </summary>
+    internal static IReadOnlyList<(string Code, At Where)> ExpectedWarnings(string kind, string position, string name)
+    {
+        if (FamilyOf(kind) != Family.Member)
+            return Array.Empty<(string, At)>();
+        var isProperty = kind.StartsWith("property-", StringComparison.Ordinal);
+        return isProperty && position == "module" && BuiltinSpellings.Contains(name)
+            ? new[] { ("SPY0483", At.Name) }
+            : Array.Empty<(string, At)>();
     }
 
     private static (int Line, int Column) Resolve(Cell cell, At where) => where switch
@@ -406,21 +598,34 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         At.Keyword => (cell.DefinitionLine, cell.Indent + 1),
         At.Name => (cell.NameLine, cell.NameColumn),
         At.SecondDunder => (cell.DefinitionLine + 3, cell.Indent + 5),
+        At.SecondAccessor => (cell.DefinitionLine + 2, cell.Indent + 1),
+        At.ImportAlias => (cell.DefinitionLine, cell.ImportAliasColumn),
         _ => throw new InvalidOperationException(where.ToString()),
     };
 
     [Fact]
     public void Cells_CoverEveryAxis_AnchoredToLiterals()
     {
-        Assert.Equal(12, Kinds.Length);
+        Assert.Equal(18, Kinds.Length);
+        Assert.Equal(6, Kinds.Count(k => k.Family == Family.Member));
         Assert.Equal(13, Positions.Length);
         Assert.Equal(3, Names.Length);
-        Assert.Equal(12 * 13 * 3, MatrixCells().Count());
+        Assert.Equal(18 * 13 * 3, MatrixCells().Count());
+        Assert.Equal(6 * 13 * 3, MatrixCells().Count(c => c.Family == Family.Member));
         // Host axis: 4 hosts × {class, enum, import, alias} × Fresh + alias × int; spelling axis: 3 spellings × 2 positions.
-        Assert.Equal(4 * 5 + 3 * 2, EdgeCells().Count());
+        Assert.Equal(4 * 5 + 3 * 2 + 2 * 9 + 11, EdgeCells().Count());
+        Assert.Equal(3, SelfAccessorKinds.Length);
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
-        var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id)).ToList();
-        Assert.Equal(12 * 13 * 3 + 26 + 48, ids.Distinct(StringComparer.Ordinal).Count());
+        // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
+        // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
+        // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders.
+        Assert.Equal(4 * (2 + 8 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2, ImportBindingCells().Count());
+        // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
+        // def→alias} × type-body + alias→alias × module.
+        Assert.Equal(7 * 4 + 3 + 1, AliasRedeclarationCells().Count());
+        var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
+            .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 95 + 32, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -434,11 +639,22 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var red = new List<string>();
         var ran = 0;
         var cascadeControlArmed = false;
+
+        // The positive control of the SPY0232-absence clause (P21f): the probe — any SPY0232 in the result — hits a
+        // module-level accessor that spells `self` (measured at the base), so its absence in a member cell is not
+        // vacuous. Hard: never allowlisted.
+        var selfControl = api.Analyze(SelfAccessorControlSource, CancellationToken.None);
+        if (!selfControl.Diagnostics.Any(IsSelfAtModuleLevel))
+            problems.Add($"the SPY0232 positive control (a module-level `property get size(self)`) draws no SPY0232 "
+                + $"[{Fingerprint(selfControl.Diagnostics)}]: the member cells' SPY0232-absence clause is vacuous");
+
         foreach (var cell in Cells())
         {
-            var result = api.Analyze(cell.Source, CancellationToken.None);
-            if (!controls.TryGetValue(cell.Control, out var control))
-                controls[cell.Control] = control = api.Analyze(cell.Control, CancellationToken.None);
+            var options = OptionsFor(cell.Features);
+            var result = api.Analyze(cell.Source, options, CancellationToken.None);
+            var controlKey = $"{string.Join(",", cell.Features.EnabledFeatures)}|{cell.Control}";
+            if (!controls.TryGetValue(controlKey, out var control))
+                controls[controlKey] = control = api.Analyze(cell.Control, options, CancellationToken.None);
             var line = $"{cell.Id}: {Fingerprint(result.Diagnostics)}";
             Output.WriteLine(line);
             var failures = new List<string>();
@@ -467,6 +683,29 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 .Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
             if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
                 failures.Add($"errors on the definition are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]");
+
+            if (cell.Family == Family.Member)
+            {
+                // (2w) the builtin-name shadowing WARNINGS on the definition's lines (member kinds only).
+                var expectedWarnings = ExpectedWarnings(cell.Kind, cell.Position, cell.Name)
+                    .Select(e => { var (l, c) = Resolve(cell, e.Where); return $"{e.Code}@{l}:{c}"; })
+                    .OrderBy(s => s, StringComparer.Ordinal).ToList();
+                var actualWarnings = result.Diagnostics
+                    .Where(d => !d.IsError && OnDefinition(d) && VerdictWarnings.Contains(d.Code ?? ""))
+                    .Select(d => $"{d.Code}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+                if (!expectedWarnings.SequenceEqual(actualWarnings, StringComparer.Ordinal))
+                    failures.Add($"shadowing warnings on the definition are [{string.Join(" ", actualWarnings)}], "
+                        + $"expected [{string.Join(" ", expectedWarnings)}]");
+
+                // (2s) no "Module-level properties cannot have a 'self' parameter" for a host that is not module
+                // level — anywhere in the program; armed by the positive control above.
+                if (cell.Position is not ("module" or "module-try"))
+                {
+                    var selfErrors = result.Diagnostics.Where(IsSelfAtModuleLevel).ToList();
+                    if (selfErrors.Count > 0)
+                        failures.Add($"SPY0232 names a module-level host that is not module level: {Fingerprint(selfErrors)}");
+                }
+            }
 
             // (3) the rest equals the control.
             var others = Fingerprint(result.Diagnostics.Where(d => !OnDefinition(d)));
@@ -505,14 +744,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             if (expected.Count == 0 && cell.BlockErrors.Count == 0)
             {
                 ran++;
-                var run = CompileAndExecute(cell.Runnable);
+                var run = CompileAndExecute(cell.Runnable, features: cell.Features);
                 var internalCodes = InternalCodes(run);
                 string? cellRun = null, controlRun = null;
                 if (!run.Success || internalCodes.Count > 0 || run.StandardOutput != "ok\n")
                 {
                     // Attribute the failure: the control (the same host, `pass` for the definition) either runs — the
                     // declaration's failure — or fails the same way — the host's.
-                    var controlExec = CompileAndExecute(cell.RunnableControl);
+                    var controlExec = CompileAndExecute(cell.RunnableControl, features: cell.Features);
                     cellRun = Fingerprint(internalCodes);
                     controlRun = Fingerprint(InternalCodes(controlExec));
                     failures.Add($"did not run cleanly: success={run.Success} stdout=[{run.StandardOutput.TrimEnd()}] "
@@ -546,6 +785,21 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
         Output.WriteLine($"{Cells().Count()} cells, {ran} executed, {red.Count} allowlisted red");
         Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    /// <summary>The SPY0232 positive control: a module-level accessor that spells <c>self</c>.</summary>
+    private const string SelfAccessorControlSource =
+        "property get size(self) -> int:\n    return 0\n\ndef main() -> None:\n    print(\"ok\")\n";
+
+    /// <summary>The probe of the SPY0232-absence clause, shared with its positive control.</summary>
+    private static bool IsSelfAtModuleLevel(CompilerDiagnostic d) => d.Code == "SPY0232";
+
+    /// <summary>The library-analysis options <c>Analyze</c> uses by default, with the cell's experimental features.</summary>
+    private static CompilerOptions OptionsFor(FeatureFlags features)
+    {
+        var options = CompilerOptionsFactory.ForLibraryAnalysis();
+        options.Features = features;
+        return options;
     }
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -756,6 +1010,402 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     }
 
     // ---------------------------------------------------------------------------------------------------------------
+    // The import-binding sub-matrix (P21f D4/D5/D7b, R-II, #2359).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /// <summary>Set by the import-binding test: its cells import Stdlib's <c>math</c> and <c>os</c> (the plan's measured
+    /// programs), so its runs reference Sharpy.Stdlib as well as Sharpy.Core. xUnit builds one instance per test, so the
+    /// flag never reaches another test's runs.</summary>
+    private bool _withStdlib;
+
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+        => _withStdlib ? new[] { SharpyStdlibReference.Location } : Enumerable.Empty<string>();
+
+    internal sealed record ImportBindingCell(
+        string Spelling, string Collider, string Order, string Source,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedWarnings, string? ExpectedStdout)
+    {
+        public string Id => $"import-binding × {Spelling} × {Collider} × {Order}";
+    }
+
+    /// <summary>The four import spellings: (id, the import line for a bound name, the name a plain spelling binds).</summary>
+    private static readonly (string Name, Func<string, string> Line, string? FixedName)[] ImportSpellings =
+    {
+        ("import-as", n => $"import math as {n}", null),
+        ("import", _ => "import math", "math"),
+        ("from-import-as", n => $"from math import pi as {n}", null),
+        ("from-import", _ => "from math import pi", "pi"),
+    };
+
+    /// <summary>The colliders spelled beside the import, in both source orders: a module-level declaration of every
+    /// kind, a module variable, and another module's import under the same name in both import spellings.</summary>
+    private static readonly (string Name, Func<string, string[]> Lines)[] ImportColliders =
+    {
+        ("class", n => new[] { $"class {n}:", "    pass" }),
+        ("def", n => new[] { $"def {n}() -> int:", "    return 1" }),
+        ("alias", n => new[] { $"type {n} = int" }),
+        ("const", n => new[] { $"const {n}: int = 1" }),
+        ("property", n => new[] { $"property {n}: int = 0" }),
+        ("var", n => new[] { $"{n}: int = 1" }),
+        ("other-import", n => new[] { $"import copy as {n}" }),
+        ("other-from-import", n => new[] { $"from copy import deepcopy as {n}" }),
+    };
+
+    /// <summary>
+    /// Import spelling {<c>import math as N</c>, <c>import math</c> (N = <c>math</c>), <c>from math import pi as N</c>,
+    /// <c>from math import pi</c> (N = <c>pi</c>)} × collider {fresh, <c>class N</c>, <c>def N</c>, <c>type N = int</c>,
+    /// <c>const N</c>, <c>property N</c>, <c>N: int = 1</c>, the same import again, <c>import copy as N</c>,
+    /// <c>from copy import deepcopy as N</c>} × order {collider first, import first} (fresh and the repeated import have
+    /// one order), plus — for the <c>as</c> spellings — the bound name {<c>str</c>, <c>print</c>, <c>`str`</c>}, the
+    /// <c>builtins</c> module's own bindings <c>from builtins import len</c> / <c>str</c>, and the dotted root
+    /// <c>import os</c> + <c>import os.path</c> in both orders; for the <c>as</c> spellings also <c>print</c> beside a
+    /// <c>def print</c> (both orders) and <c>print</c> imported twice; and the star spelling <c>from math import *</c> ×
+    /// {module variable, const, def} named <c>pi</c>, both orders. Every program's <c>main</c> prints <c>ok</c> (nothing
+    /// else uses the binding, D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is
+    /// honoured) and the dotted root (which prints <c>len(os.path.join("a", "b"))</c>).
+    ///
+    /// <para><b>Expected</b> (D4/D5). The pipeline declares the module body BEFORE it binds imports, so an import is
+    /// always the later binding against a declaration, whatever the source order: class / def / alias / const /
+    /// property → [SPY0204 @ the import's ImportAlias] in BOTH orders. A module variable is declared by the checker
+    /// AFTER the imports, so it is the later binding in both orders: [SPY0204 @ the variable] (c18, pinned). Two imports
+    /// bind in source order: [SPY0204 @ the later one's ImportAlias] (c15, e5, g2; d11 is the from/from cell). A
+    /// builtin type name under an <c>as</c> spelling → [SPY0212 @ ImportAlias] (the escaped <c>`str`</c> is the opt-in: []),
+    /// under a PLAIN from-import (<c>from System.Collections.Generic import IList</c> — the exporter's name) → errors [],
+    /// warnings [SPY0484 @ ImportAlias], and it runs; a builtin function name
+    /// → errors [], warnings [SPY0484 @ ImportAlias] (c4/c9); the <c>builtins</c> module's own binding shadows nothing
+    /// → [] with no SPY0484 (d4/d5) — the absence's positive control is the <c>from-import-as × print</c> cell's
+    /// SPY0484, asserted unconditionally (hard). Fresh, the repeated import (idempotent) and the dotted root (merge) →
+    /// [] and run. A refused import draws its SPY0204 alone: beside <c>def print</c> the warnings are the def's
+    /// SPY0483 only, never a SPY0484 claiming the import took effect; <c>print</c> imported twice warns once (the second
+    /// is idempotent). A star import refuses no declaration: the star cells are [] and print the LOCAL's <c>1</c>, not
+    /// <c>math.pi</c> (star × property is left out — the import silently wins there, #2371). Warnings are compared over
+    /// <see cref="VerdictWarnings"/>; errors over the whole program.</para>
+    /// </summary>
+    internal static IEnumerable<ImportBindingCell> ImportBindingCells()
+    {
+        const string bound = "mm";
+        string[] Main(string body) => new[] { "", "def main() -> None:", "    " + body, "" };
+
+        ImportBindingCell Make(string spelling, string collider, string order, string[] first, string[] second,
+            Func<int, int, (string, int, int)[]> errors, Func<int, int, (string, int, int)[]>? warnings = null,
+            string body = "print(\"ok\")", string? stdout = "ok\n")
+        {
+            var lines = first.Concat(second).Concat(Main(body)).ToArray();
+            // 1-based lines of the first and second group's first line.
+            var firstLine = 1;
+            var secondLine = first.Length + 1;
+            var expected = errors(firstLine, secondLine);
+            return new ImportBindingCell(spelling, collider, order, string.Join("\n", lines), expected,
+                warnings?.Invoke(firstLine, secondLine) ?? Array.Empty<(string, int, int)>(),
+                expected.Length == 0 ? stdout : null);
+        }
+
+        foreach (var spelling in ImportSpellings)
+        {
+            var name = spelling.FixedName ?? bound;
+            var import = spelling.Line(name);
+            var aliasColumn = ImportAliasColumn(import);
+            var none = Array.Empty<(string, int, int)>();
+
+            yield return Make(spelling.Name, "fresh", "none", Array.Empty<string>(), new[] { import }, (_, _) => none);
+            yield return Make(spelling.Name, "same-import", "twice", new[] { import }, new[] { import }, (_, _) => none);
+
+            foreach (var collider in ImportColliders)
+            {
+                var colliderLines = collider.Lines(name);
+                foreach (var order in new[] { "collider-first", "import-first" })
+                {
+                    var colliderFirst = order == "collider-first";
+                    var first = colliderFirst ? colliderLines : new[] { import };
+                    var second = colliderFirst ? new[] { import } : colliderLines;
+                    Func<int, int, (string, int, int)[]> errors = collider.Name switch
+                    {
+                        // The variable is the later binding in both orders; SPY0204 at its name (column 1).
+                        "var" => (f, s) => new[] { ("SPY0204", colliderFirst ? f : s, 1) },
+                        // Two imports bind in source order: the later one is refused.
+                        "other-import" or "other-from-import" => (f, s) => new[]
+                        {
+                            ("SPY0204", s, ImportAliasColumn(second[0])),
+                        },
+                        // A declaration is bound first whatever the order: the import is refused.
+                        _ => (f, s) => new[] { ("SPY0204", colliderFirst ? s : f, aliasColumn) },
+                    };
+                    yield return Make(spelling.Name, collider.Name, order, first, second, errors);
+                }
+            }
+
+            if (spelling.FixedName != null)
+                continue;
+
+            // The bound name spells a builtin: a type name is refused, a function name warns, the escape opts in.
+            var str = spelling.Line("str");
+            yield return Make(spelling.Name, "str", "none", Array.Empty<string>(), new[] { str },
+                (_, s) => new[] { ("SPY0212", s, ImportAliasColumn(str)) });
+            var print = spelling.Line("print");
+            yield return Make(spelling.Name, "print", "none", Array.Empty<string>(), new[] { print },
+                (_, _) => none, (_, s) => new[] { ("SPY0484", s, ImportAliasColumn(print)) }, body: "pass", stdout: "");
+            yield return Make(spelling.Name, "escaped-str", "none", Array.Empty<string>(), new[] { spelling.Line("`str`") },
+                (_, _) => none);
+
+            // A refused import draws its SPY0204 alone — no SPY0484 claiming it rebinds the name (R3 of the P21f
+            // verify round); the def's own SPY0483 at its name is the only shadowing warning, in both orders.
+            var printDef = new[] { "def print(x: int) -> None:", "    pass" };
+            foreach (var order in new[] { "collider-first", "import-first" })
+            {
+                var colliderFirst = order == "collider-first";
+                yield return Make(spelling.Name, "print-def", order,
+                    colliderFirst ? printDef : new[] { print }, colliderFirst ? new[] { print } : printDef,
+                    (f, s) => new[] { ("SPY0204", colliderFirst ? s : f, ImportAliasColumn(print)) },
+                    (f, s) => new[] { ("SPY0483", colliderFirst ? f : s, 5) }, body: "pass", stdout: "");
+            }
+
+            // The same builtin-function-name import twice binds once and warns once: the second is idempotent.
+            yield return Make(spelling.Name, "print", "twice", new[] { print }, new[] { print },
+                (_, _) => none, (f, _) => new[] { ("SPY0484", f, ImportAliasColumn(print)) }, body: "pass", stdout: "");
+        }
+
+        // A star import keeps its rule (outside R-II's four spellings): a module-level declaration of a star-imported
+        // name takes it over, in either order — a module variable re-declares the star-imported default like a const
+        // or a def does (R1 of the P21f verify round: the module-variable cell ran `1` at the base and must again).
+        // A module property is left out: star × property is the pre-existing silent-wrong #2371 (the import wins).
+        foreach (var collider in ImportColliders.Where(c => c.Name is "var" or "const" or "def"))
+        {
+            foreach (var order in new[] { "collider-first", "import-first" })
+            {
+                var colliderLines = collider.Lines("pi");
+                var star = new[] { "from math import *" };
+                yield return Make("from-import-star", collider.Name, order,
+                    order == "collider-first" ? colliderLines : star, order == "collider-first" ? star : colliderLines,
+                    (_, _) => Array.Empty<(string, int, int)>(),
+                    body: collider.Name == "def" ? "print(pi())" : "print(pi)", stdout: "1\n");
+            }
+        }
+
+        // The builtins module's own binding (#1322) shadows nothing.
+        foreach (var name in new[] { "len", "str" })
+            yield return Make("from-builtins", name, "none", Array.Empty<string>(), new[] { $"from builtins import {name}" },
+                (_, _) => Array.Empty<(string, int, int)>());
+
+        // A PLAIN from-import whose exporter's name spells a builtin TYPE (the registry knows `IList`) is warned and
+        // honoured, not refused: the importer did not choose the name (owner ruling at P21f Phase 4, option b — the
+        // refusal is the `as` spellings' only, the `str` cells above). The project-route twin is `from lib import
+        // double` (ImportBindingProjectRouteTests).
+        var plainType = "from System.Collections.Generic import IList";
+        yield return Make("from-import", "builtin-type-name", "none", Array.Empty<string>(), new[] { plainType },
+            (_, _) => Array.Empty<(string, int, int)>(),
+            (_, s) => new[] { ("SPY0484", s, ImportAliasColumn(plainType)) });
+
+        // The dotted root: `import os` and `import os.path` merge into one `os` binding, in both orders (D4 i —
+        // dotted-first binds a structural parent with no FilePath).
+        foreach (var order in new[] { "root-first", "dotted-first" })
+        {
+            var first = order == "root-first" ? "import os" : "import os.path";
+            var second = order == "root-first" ? "import os.path" : "import os";
+            yield return Make("import-dotted", "os-root", order, new[] { first }, new[] { second },
+                (_, _) => Array.Empty<(string, int, int)>(), body: "print(len(os.path.join(\"a\", \"b\")))", stdout: "3\n");
+        }
+    }
+
+    [Fact]
+    public void ImportBinding_HasOneVerdictPerCollider()
+    {
+        _withStdlib = true;
+        var allowlist = LoadAllowlist(out var problems);
+        var api = new CompilerApi(null, new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location });
+        var red = new List<string>();
+        var ran = 0;
+        var shadowControlArmed = false;
+        foreach (var cell in ImportBindingCells())
+        {
+            var result = api.Analyze(cell.Source, CancellationToken.None);
+            var line = $"{cell.Id}: {Fingerprint(result.Diagnostics)}";
+            Output.WriteLine(line);
+            var failures = new List<string>();
+
+            if (result.Diagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)))
+                problems.Add($"{line} — an internal error");
+
+            var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actual = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")
+                .OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
+                failures.Add($"errors are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]");
+
+            // The shadowing warnings, over the whole program: the `print` cells' SPY0484 present, every other cell's
+            // absent — the builtins-module cells included (their absence is the d4/d5 claim).
+            var shadow = result.Diagnostics.Where(d => !d.IsError && VerdictWarnings.Contains(d.Code ?? "")).ToList();
+            var expectedWarnings = cell.ExpectedWarnings.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actualWarnings = shadow.Select(d => $"{d.Code}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expectedWarnings.SequenceEqual(actualWarnings, StringComparer.Ordinal))
+                failures.Add($"shadowing warnings are [{string.Join(" ", actualWarnings)}], expected [{string.Join(" ", expectedWarnings)}]");
+
+            // The positive control of the builtins-module absence: the same probe (SPY0484 anywhere) hits a builtin
+            // function name imported out of a module that is not `builtins` (c9, measured at the base).
+            if (cell.Spelling == "from-import-as" && cell.Collider == "print")
+                shadowControlArmed = shadow.Any(d => d.Code == "SPY0484");
+
+            if (cell.ExpectedStdout is { } stdout && expected.Count == 0)
+            {
+                ran++;
+                var run = CompileAndExecute(cell.Source);
+                if (run.RawDiagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)
+                        || (d.Code ?? "").StartsWith("SPY05", StringComparison.Ordinal)))
+                    failures.Add($"an internal error under run: {Fingerprint(InternalCodes(run))}");
+                if (!run.Success || run.StandardOutput != stdout)
+                    failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{stdout.ReplaceLineEndings("\\n")}] "
+                        + string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" "));
+            }
+
+            if (failures.Count > 0)
+                Output.WriteLine($"    red: {string.Join("; ", failures)}");
+            Ratchet(cell.Id, failures, allowlist, problems, red);
+        }
+
+        if (!shadowControlArmed)
+            problems.Add("import-binding × from-import-as × print × none draws no SPY0484: the builtins-module cells' SPY0484 absence is vacuous");
+
+        Output.WriteLine($"{ImportBindingCells().Count()} import-binding cells, {ran} executed, {red.Count} allowlisted red");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // The alias-redeclaration sub-matrix (P21f D2/D2b/D7c, R-IJ, #2360).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    internal sealed record AliasRedeclarationCell(
+        string Relation, string Position, string Source,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors, string? ExpectedStdout)
+    {
+        public string Id => $"alias-redeclaration × {Relation} × {Position}";
+    }
+
+    /// <summary>(relation, its lines unindented, the 0-based index of the refused line and the column offset of its
+    /// diagnostic from the indent — or -1 for a legal relation —, the stdout of a legal relation).</summary>
+    private static readonly (string Name, string[] Lines, int Refused, int ColumnOffset, string? Stdout)[] AliasRelations =
+    {
+        ("alias-then-alias", new[] { "type A = str", "type A = int" }, 1, 1, null),
+        ("alias-then-def", new[] { "type A = str", "def A() -> int:", "    return 1" }, 1, 5, null),
+        ("def-then-alias", new[] { "def A() -> int:", "    return 1", "type A = str" }, 2, 1, null),
+        ("var-then-alias", new[] { "A: int = 1", "type A = str" }, 1, 1, null),
+        ("nested-outer-first", new[]
+        {
+            "type A = str", "if True:", "    type A = int", "    x: A = 5", "    print(x)", "y: A = \"s\"", "print(y)",
+        }, -1, 0, "5\ns\n"),
+        ("nested-inner-first", new[]
+        {
+            "if True:", "    type A = int", "    x: A = 5", "    print(x)", "type A = str", "y: A = \"s\"", "print(y)",
+        }, -1, 0, "5\ns\n"),
+        ("sibling-blocks", new[]
+        {
+            "if True:", "    type A = str", "    y: A = \"s\"", "    print(y)", "if True:", "    type A = int", "    x: A = 5", "    print(x)",
+        }, -1, 0, "s\n5\n"),
+    };
+
+    /// <summary>(position, the lines before the relation, its indent, the lines after, main's body, the block's own
+    /// error as (code, 0-based index into Before, column) or null).</summary>
+    private static readonly (string Name, string[] Before, int Indent, string[] After, string Main, (string Code, int Index, int Column)? Block)[] AliasPositions =
+    {
+        ("def-body", new[] { "def helper() -> None:" }, 4, Array.Empty<string>(), "helper()", null),
+        ("if-in-def", new[] { "def helper() -> None:", "    if True:" }, 8, Array.Empty<string>(), "helper()", null),
+        ("method-body", new[] { "class Host:", "    def m(self) -> None:" }, 8, Array.Empty<string>(), "Host().m()", null),
+        ("module-try", new[] { "try:" }, 4, new[] { "except Exception:", "    pass" }, "print(\"ok\")", ("SPY0340", 0, 1)),
+        ("type-body", new[] { "class Host:", "    tag: int = 0" }, 4, Array.Empty<string>(), "print(\"ok\")", null),
+        ("module", Array.Empty<string>(), 0, Array.Empty<string>(), "print(\"ok\")", null),
+    };
+
+    /// <summary>
+    /// Relation {same-block alias→alias, alias→def, def→alias, variable→alias; nested outer-first, nested inner-first,
+    /// sibling blocks} × position {def body, an <c>if</c> in a def, a method body, a module <c>try:</c>} plus
+    /// alias→alias at the declaring positions {type body, module} (their controls, a3/a4) and alias→def / def→alias in
+    /// a type body (members are walked in source order there: the later of a method and a same-named alias is refused —
+    /// the method at its name, the alias at its keyword). A legal relation prints
+    /// through both aliases (<c>x: A = 5</c> / <c>y: A = "s"</c>), so a dropped or leaked alias is a SPY0220 or a
+    /// different stdout, never the same <c>5</c>/<c>s</c>.
+    ///
+    /// <para><b>Expected</b> (D2/D2b). An alias re-declared in ONE scope is SPY0204 at every position, at the later
+    /// statement's keyword (the checker's "Type alias 'A' is already defined", as NameResolver's at module/type body);
+    /// a def after a same-block alias is SPY0204 at the def's name token ("function 'A' is already defined in this
+    /// scope" — the validator's nested-def rule widened to alias names); def→alias and variable→alias are the
+    /// checker's existing SPY0204 (d3/d9 — controls). A nested block may shadow (B2) and sibling blocks are fresh
+    /// bindings: [] and the program runs with the pinned stdout. <c>module-try</c> adds its block literal SPY0340 at
+    /// the <c>try</c> and runs nothing. The generator's cells carry no use after a refusal (D8: cascades are the hand
+    /// fixtures').</para>
+    /// </summary>
+    internal static IEnumerable<AliasRedeclarationCell> AliasRedeclarationCells()
+    {
+        foreach (var position in AliasPositions)
+        {
+            foreach (var relation in AliasRelations)
+            {
+                // A type body walks its members in source order, so both alias↔def orders are spellable there (the
+                // later one is refused: the method at its name, the alias at its keyword); a module hoists its defs.
+                if (position.Name == "module" && relation.Name != "alias-then-alias")
+                    continue;
+                if (position.Name == "type-body" && relation.Name is not ("alias-then-alias" or "alias-then-def" or "def-then-alias"))
+                    continue;
+                var body = relation.Lines.Select(l => new string(' ', position.Indent) + l);
+                var lines = position.Before.Concat(body).Concat(position.After)
+                    .Concat(new[] { "", "def main() -> None:", "    " + position.Main, "" }).ToArray();
+                var expected = new List<(string, int, int)>();
+                if (position.Block is { } block)
+                    expected.Add((block.Code, block.Index + 1, block.Column));
+                if (relation.Refused >= 0)
+                    expected.Add(("SPY0204", position.Before.Length + relation.Refused + 1, position.Indent + relation.ColumnOffset));
+                var stdout = expected.Count == 0 ? relation.Stdout : null;
+                yield return new AliasRedeclarationCell(relation.Name, position.Name, string.Join("\n", lines), expected, stdout);
+            }
+        }
+    }
+
+    [Fact]
+    public void AliasRedeclaration_HasOneVerdictPerRelation()
+    {
+        var allowlist = LoadAllowlist(out var problems);
+        var api = new CompilerApi(null, new[] { SharpyCoreReference.Location });
+        var red = new List<string>();
+        var ran = 0;
+        foreach (var cell in AliasRedeclarationCells())
+        {
+            var result = api.Analyze(cell.Source, CancellationToken.None);
+            var line = $"{cell.Id}: {Fingerprint(result.Diagnostics)}";
+            Output.WriteLine(line);
+            var failures = new List<string>();
+
+            if (result.Diagnostics.Any(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)))
+                problems.Add($"{line} — an internal error");
+
+            var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actual = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")
+                .OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
+                failures.Add($"errors are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]");
+
+            var shadow = result.Diagnostics.Where(d => !d.IsError && VerdictWarnings.Contains(d.Code ?? "")).ToList();
+            if (shadow.Count > 0)
+                failures.Add($"shadowing warnings [{Fingerprint(shadow)}], expected none");
+
+            if (cell.ExpectedStdout is { } stdout)
+            {
+                ran++;
+                var run = CompileAndExecute(cell.Source);
+                if (InternalCodes(run).Count > 0)
+                    failures.Add($"an internal error under run: {Fingerprint(InternalCodes(run))}");
+                if (!run.Success || run.StandardOutput != stdout)
+                    failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{stdout.ReplaceLineEndings("\\n")}] "
+                        + string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" "));
+            }
+
+            if (failures.Count > 0)
+                Output.WriteLine($"    red: {string.Join("; ", failures)}");
+            Ratchet(cell.Id, failures, allowlist, problems, red);
+        }
+
+        Output.WriteLine($"{AliasRedeclarationCells().Count()} alias-redeclaration cells, {ran} executed, {red.Count} allowlisted red");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
     // The allowlist ratchet.
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -780,7 +1430,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         problems = new List<string>();
         var path = FindAllowlistPath()
             ?? throw new InvalidOperationException($"Semantic/{AllowlistFileName} is missing. Its presence is what arms the ratchet.");
-        var universe = new HashSet<string>(Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id)), StringComparer.Ordinal);
+        var universe = new HashSet<string>(
+            Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
+                .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)),
+            StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
         {

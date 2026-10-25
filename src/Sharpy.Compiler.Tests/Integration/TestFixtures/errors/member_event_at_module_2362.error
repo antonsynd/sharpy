@@ -1,0 +1,2 @@
+SPY0708: an event declaration is not allowed in the module body; an event is only allowed in a class, struct or interface body @5:1
+!count 1

@@ -795,7 +795,11 @@ public static partial class DiagnosticExplanations
             "is refused at the use site (SPY0492) and this one is only a warning. It is said here, " +
             "at the import, rather than only at the declaration (SPY0483), because the declaration " +
             "lives in the LIBRARY's file: a library and its consumer are by definition two files, " +
-            "and the consumer is the one whose 'len(xs)' now calls something else.",
+            "and the consumer is the one whose 'len(xs)' now calls something else. The same warning " +
+            "covers 'import M as print' (the bare spelling then names the module) and a plain " +
+            "'from M import double' whose library name spells a builtin TYPE; an alias the importer " +
+            "chose that spells a builtin TYPE name ('import math as str') is refused instead " +
+            "(SPY0212). A name imported out of 'builtins' is the builtin itself and draws nothing.",
             "from shadowlib import len\n\ndef main() -> None:\n    xs: list[int] = [1, 2, 3]\n    print(len(xs))  # shadowlib.len, not the builtin",
             "If the rebinding is what you want, nothing needs to change — this is a warning, not a " +
             "refusal. To keep both names, import under an alias:\n    from shadowlib import len as " +
@@ -1097,9 +1101,14 @@ public static partial class DiagnosticExplanations
             "C# has no local types: the definition would have no symbol of its own. An `import` or " +
             "`from ... import` anywhere but the module body \u2014 a function, a block, or a class " +
             "body \u2014 is refused because an import is a fact about the whole module, not a binding " +
-            "of the scope it is written in. Python allows both; Sharpy follows C# here (#2063).",
+            "of the scope it is written in. Python allows both; Sharpy follows C# here (#2063). " +
+            "A member declaration is refused the same way (#2362): a `property` (field-style, an " +
+            "accessor, or the observer form) or an `event` written in a function body or a block " +
+            "belongs to no host. Properties are also legal at module level; events only in a class, " +
+            "struct or interface body.",
             "def f() -> None:\n    class A:  # SPY0708\n        pass",
             "Move the type definition to module level, or nest it directly in a class body " +
-            "(`class Outer:` / `    class A:`), and move the import to the top of the file.");
+            "(`class Outer:` / `    class A:`), and move the import to the top of the file. Declare " +
+            "a property or an event in the class it belongs to (a property may also live at module level).");
     }
 }
