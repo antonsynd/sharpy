@@ -1115,22 +1115,22 @@ internal partial class TypeChecker
 
         // A declaration NameResolver owns had its collision verdict there, ONE owner (P21g, #2360):
         // a type-body field or const (the member seam, TryDeclareMember) and a module const
-        // (ResolveConstantDeclaration). A holder that is not a variable — a nested type, alias, type
-        // parameter, function — or, in a type body, a const under a non-const field, means it was
-        // REFUSED there. Reporting it again here drew SPY0204 twice under Analyze (24 member pairs;
-        // for a field before a same-named alias, the second at the EARLIER line, because the type
-        // body's aliases are registered before its fields are checked), and SPY0225 beside SPY0204
-        // for a field over a const. Decline silently and bind nothing: the first meaning stays in
-        // force (D10).
+        // (ResolveConstantDeclaration). A holder that is not the declaration's OWN symbol — a nested
+        // type, alias, type parameter, function, an earlier field or const, a module property —
+        // means it was REFUSED there. Reporting it again here drew SPY0204 twice under Analyze (24
+        // member pairs; for a field before a same-named alias, the second at the EARLIER line,
+        // because the type body's aliases are registered before its fields are checked; a module
+        // const after a module property once the property arm below refuses), and SPY0225 beside
+        // SPY0204 for a field over a const. Decline silently and bind nothing: the first meaning
+        // stays in force (D10).
         if (existingSymbol != null && IsNameResolverOwnedDeclaration(varDecl)
-            && (existingSymbol is not VariableSymbol
-                || (!varDecl.IsConst && existingSymbol is VariableSymbol { IsConstant: true }
-                    && SymbolTable.IsClassLikeScope(_symbolTable.CurrentScope.Name))))
+            && !existingSymbol.IsDeclaredAt(varDecl))
             return;
 
         // A hoisted def/class with this name makes the declaration a duplicate definition —
         // Scope.Define would throw on the collision.
-        if (TryReportNonVariableRedefinition(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span))
+        if (TryReportNonVariableRedefinition(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span,
+                declares: true))
             return;
 
         // For constants:

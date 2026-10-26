@@ -1,0 +1,7 @@
+Cannot bind 'size': it is already defined as a module property in this scope @6:1
+Cannot bind 'count': it is already defined as a module property in this scope @8:1
+Cannot bind 'level': it is already defined as a module property in this scope @13:1
+Cannot bind 'mark': it is already defined as a module property in this scope @17:1
+Cannot bind 'helper': it is already defined as a function in this scope @21:1
+Cannot redefine constant variable 'limit' @24:1
+!count 6

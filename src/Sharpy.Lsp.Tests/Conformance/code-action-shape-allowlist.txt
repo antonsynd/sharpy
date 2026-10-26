@@ -14,7 +14,7 @@
 # #2294 synthesized type spellings (Extract method parameter inference, Extract variable annotation);
 # #2296 code actions that are not meaning-preserving (diagnostics of every other action).
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
-extract-method identity diagnostics 2896 d56ed31245366257 833 a9ce37dad250e591 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method identity diagnostics 2898 6d1d2ff4711f5bdd 833 a9ce37dad250e591 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 553 61bf1fd15f8c0698 553 61bf1fd15f8c0698 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable identity diagnostics 220 88ce9452651014a6 41 92370514d76502bc # #2294 adds SPY0220 (and 257 other cells)
 extract-variable identity parse 56 8009d0bb498adc30 56 8009d0bb498adc30 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -23,12 +23,12 @@ inline-function identity diagnostics 45 08d2287b43ce13a6 14 636bc0dd9745c36b # #
 inline-variable identity diagnostics 135 71afc4a6fd5baf08 17 173fdc65948fe12b # #2296 removes an error (and 118 other cells)
 organize-imports identity diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore identity diagnostics 7 aef8d5f7d19d8d95 1 47ec1f14bc7f4d75 # #2296 removes an error (and 6 other cells)
-remove-annotation identity diagnostics 519 c3940a5f51c3069c 91 0589405297fbebe0 # #2296 adds SPY0227 (and 518 other cells)
+remove-annotation identity diagnostics 520 c84abab1c31c81d8 91 0589405297fbebe0 # #2296 adds SPY0227 (and 518 other cells)
 remove-import identity diagnostics 18 b5484e02da1684c7 4 c64f809e53e1ecee # #2296 removes an error
-rename identity diagnostics 42 a0d0f2f91bdc65ff 5 15f4ccba7bc6d7a7 # #2296 adds SPY0200 (and 33 other cells)
+rename identity diagnostics 43 0b4dd0da726ab0d1 5 15f4ccba7bc6d7a7 # #2296 adds SPY0200 (and 33 other cells)
 to-if identity diagnostics 4 35d1e4876190ef73 1 96a879de4c764cb2 # #2296 adds SPY0402 (and 4 other cells)
 wrap-try identity diagnostics 2320 6e903b80f8a9c3bb 378 526c06aa41274450 # #2296 adds SPY0200 (and 770 other cells)
-extract-method crlf diagnostics 2896 d56ed31245366257 104 bdc0e0b6a23d90b3 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method crlf diagnostics 2898 6d1d2ff4711f5bdd 104 bdc0e0b6a23d90b3 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method crlf parse 553 61bf1fd15f8c0698 73 42a0e756d438371c # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable crlf diagnostics 220 88ce9452651014a6 9 579d0c58dbf30210 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable crlf parse 56 8009d0bb498adc30 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -37,12 +37,12 @@ inline-function crlf diagnostics 45 08d2287b43ce13a6 1 0dca4479e9842c20 # #2296 
 inline-variable crlf diagnostics 135 71afc4a6fd5baf08 14 a68f1660603c7c0b # #2296 removes an error (and 118 other cells)
 organize-imports crlf diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore crlf diagnostics 7 aef8d5f7d19d8d95 0 - # #2296 removes an error (and 6 other cells)
-remove-annotation crlf diagnostics 519 c3940a5f51c3069c 9 589fc84f1e1bef7d # #2296 adds SPY0227 (and 518 other cells)
+remove-annotation crlf diagnostics 520 c84abab1c31c81d8 9 589fc84f1e1bef7d # #2296 adds SPY0227 (and 518 other cells)
 remove-import crlf diagnostics 18 b5484e02da1684c7 0 - # #2296 removes an error
-rename crlf diagnostics 42 a0d0f2f91bdc65ff 0 - # #2296 adds SPY0200 (and 33 other cells)
+rename crlf diagnostics 43 0b4dd0da726ab0d1 0 - # #2296 adds SPY0200 (and 33 other cells)
 to-if crlf diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0402 (and 4 other cells)
 wrap-try crlf diagnostics 2320 6e903b80f8a9c3bb 51 dc33e60edb181a8d # #2296 adds SPY0200 (and 770 other cells)
-extract-method cr diagnostics 2896 d56ed31245366257 106 84f086ef82d71563 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method cr diagnostics 2898 6d1d2ff4711f5bdd 106 84f086ef82d71563 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method cr parse 553 61bf1fd15f8c0698 73 42a0e756d438371c # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable cr diagnostics 220 88ce9452651014a6 4 b1013f49688ce6db # #2294 adds SPY0220 (and 257 other cells)
 extract-variable cr parse 56 8009d0bb498adc30 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -51,12 +51,12 @@ inline-function cr diagnostics 45 08d2287b43ce13a6 0 - # #2296 removes an error 
 inline-variable cr diagnostics 135 71afc4a6fd5baf08 2 bb3587a72ffd5a3e # #2296 removes an error (and 118 other cells)
 organize-imports cr diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore cr diagnostics 7 aef8d5f7d19d8d95 1 f2393f38b6f205e2 # #2296 removes an error (and 6 other cells)
-remove-annotation cr diagnostics 519 c3940a5f51c3069c 27 4ea9b045a28530f6 # #2296 adds SPY0227 (and 518 other cells)
+remove-annotation cr diagnostics 520 c84abab1c31c81d8 28 f5e2a04365575bfd # #2296 adds SPY0227 (and 518 other cells)
 remove-import cr diagnostics 18 b5484e02da1684c7 0 - # #2296 removes an error
-rename cr diagnostics 42 a0d0f2f91bdc65ff 0 - # #2296 adds SPY0200 (and 33 other cells)
+rename cr diagnostics 43 0b4dd0da726ab0d1 0 - # #2296 adds SPY0200 (and 33 other cells)
 to-if cr diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0402 (and 4 other cells)
 wrap-try cr diagnostics 2320 6e903b80f8a9c3bb 50 751a80830ccf7134 # #2296 adds SPY0200 (and 770 other cells)
-extract-method comment diagnostics 2896 d56ed31245366257 120 488727050cd2432b # #2294 adds SPY0202 (and 5590 other cells)
+extract-method comment diagnostics 2898 6d1d2ff4711f5bdd 120 488727050cd2432b # #2294 adds SPY0202 (and 5590 other cells)
 extract-method comment parse 553 61bf1fd15f8c0698 73 42a0e756d438371c # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable comment diagnostics 220 88ce9452651014a6 5 8d44ec83ca2ddff1 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable comment parse 56 8009d0bb498adc30 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
@@ -64,8 +64,8 @@ implement comment diagnostics 46 3c4b326389297fda 0 - # #2296 adds SPY0224,SPY05
 inline-variable comment diagnostics 135 71afc4a6fd5baf08 3 0807b1d4b10d3b3b # #2296 removes an error (and 117 other cells)
 organize-imports comment diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore comment diagnostics 7 aef8d5f7d19d8d95 0 - # #2296 removes an error (and 6 other cells)
-remove-annotation comment diagnostics 335 bf702ef1f0a484e2 28 fea4201873be93cd # #2296 adds SPY0227 (and 381 other cells)
+remove-annotation comment diagnostics 336 b93c2d6f74ab71a2 29 69502caf599acee4 # #2296 adds SPY0227 (and 381 other cells)
 remove-import comment diagnostics 18 b5484e02da1684c7 0 - # #2296 removes an error
-rename comment diagnostics 42 a0d0f2f91bdc65ff 0 - # #2296 adds SPY0200 (and 33 other cells)
+rename comment diagnostics 43 0b4dd0da726ab0d1 0 - # #2296 adds SPY0200 (and 33 other cells)
 to-if comment diagnostics 4 35d1e4876190ef73 0 - # #2296 adds SPY0222 (and 4 other cells)
 wrap-try comment diagnostics 2320 07f95ef47c66b376 35 38f8ad50c4d3275c # #2296 adds SPY0200 (and 772 other cells)

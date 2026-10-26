@@ -2822,14 +2822,22 @@ internal partial class TypeChecker
     /// then <c>e: int = 5</c> re-declares the star-imported default, as a const or def of the name
     /// takes it over (<see cref="ImportBinding.IsStar"/>; a star import never displaces a module-level
     /// declaration, and its names never refuse one).
+    /// <para>A module PROPERTY is a module binding too, not a rebindable variable (P21g D4, #2360):
+    /// <c>property size: int = 0</c> then <c>size: int = 4</c> — in either source order, since
+    /// NameResolver binds the property and the checker declares the variable after it — is SPY0204 at
+    /// the variable, as a variable over a def is; it was CS0102 + CS0229 behind SPY0908 (both members
+    /// emitted). Only a DECLARATION (<paramref name="declares"/>) refuses on it: every other store
+    /// that reaches a module property's scope is executable at module level, and SPY0340's.</para>
     /// </remarks>
-    private bool TryReportNonVariableRedefinition(string name, int line, int column, Text.TextSpan? span)
+    private bool TryReportNonVariableRedefinition(string name, int line, int column, Text.TextSpan? span,
+        bool declares = false)
     {
         var existing = _symbolTable.Lookup(name, searchParents: false);
         if (existing is null)
             return false;
 
-        if (existing is VariableSymbol
+        bool redeclaresModuleProperty = declares && existing is VariableSymbol { IsModuleProperty: true };
+        if (existing is VariableSymbol && !redeclaresModuleProperty
             && (_symbolTable.CurrentScope.LookupImportBinding(name) is not { IsStar: false } import
                 || (import.FilePath != null && _currentFilePath != null
                     && !string.Equals(import.FilePath, _currentFilePath, StringComparison.Ordinal))))
@@ -2837,6 +2845,7 @@ internal partial class TypeChecker
 
         var kind = existing switch
         {
+            VariableSymbol { IsModuleProperty: true } => "a module property",
             VariableSymbol => "an imported name",
             FunctionSymbol => "a function",
             TypeSymbol => "a type",

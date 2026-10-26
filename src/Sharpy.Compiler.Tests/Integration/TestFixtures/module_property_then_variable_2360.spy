@@ -1,0 +1,28 @@
+# P21g D4 (#2360): a module variable re-declaring a module property is SPY0204 at the VARIABLE, in either
+# source order (NameResolver binds the property in pass 1; the checker declares the variable later), as a
+# variable over a def is (the control below). Each cell was CS0102 + CS0229 behind SPY0908 — both members
+# were emitted. The const twin is SPY0225, a different rule (control). One name per cell.
+property size: int = 0
+size: int = 4
+
+count: int = 4
+property count: int = 0
+
+property get level() -> int:
+    return 1
+level: int = 2
+
+property set mark(v: int):
+    print(v)
+mark: int = 3
+
+def helper() -> int:
+    return 1
+helper: int = 5
+
+const limit: int = 1
+limit: int = 6
+
+
+def main() -> None:
+    print("unreachable")

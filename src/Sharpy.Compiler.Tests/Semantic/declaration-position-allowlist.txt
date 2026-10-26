@@ -135,7 +135,7 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # DRAINED by P21g Phase 2 Task 1 (the member seam, NameResolver.TryDeclareMember / ResolveTypeBodyMember):
 # every "silent: runs", "ice …", "SPY0909 under Analyze", "twice", "+SPY0225", "+SPY0701" and "legal merge
 # refused" row. DRAINED by P21g Phase 2 Task 2 (D3: SPY0405/0406/0421/0422 retired into SPY0204): every
-# validator-coded row. LEFT: the module property × variable rows (D4, Phase 2 Task 3), the interface
+# validator-coded row. DRAINED by P21g Phase 2 Task 3 (D4): the module property × variable rows. LEFT: the interface
 # legal merges (the emitter writes one C# property per interface PropertyDef — a CodeGen seam) and the two
 # struct auto-half + GETTER rows (CS0100 in the struct auto-constructor).
 member-pair × struct × property-field → property-get  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
@@ -146,12 +146,6 @@ member-pair × interface × property-get → property-field  # #2360 legal merge
 member-pair × interface × property-get → property-set  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-set → property-field  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-set → property-get  # #2360 legal merge; ice CS0102 CS0229
-member-pair × module × var → property-field  # #2360 ice CS0102
-member-pair × module × var → property-get  # #2360 ice CS0102
-member-pair × module × var → property-set  # #2360 ice CS0102
-member-pair × module × property-field → var  # #2360 ice CS0102
-member-pair × module × property-get → var  # #2360 ice CS0102
-member-pair × module × property-set → var  # #2360 ice CS0102
 
 # #2371: a star import never displaces a declaration of the importing file, whatever its kind.
 # Measured @ 75c65ee29: beside `from math import *` a module property `pi` (field-style or a getter),
