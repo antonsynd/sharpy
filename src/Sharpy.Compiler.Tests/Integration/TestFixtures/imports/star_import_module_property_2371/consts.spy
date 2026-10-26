@@ -1,0 +1,5 @@
+level: int = 9
+rank: int = 8
+
+def twice(x: int) -> int:
+    return x * 2

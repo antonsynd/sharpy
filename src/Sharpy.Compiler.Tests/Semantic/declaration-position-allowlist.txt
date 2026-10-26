@@ -209,15 +209,8 @@ member-pair × module × property-set → var  # #2360 ice CS0102
 
 # #2371: a star import never displaces a declaration of the importing file, whatever its kind.
 # Measured @ 75c65ee29: beside `from math import *` a module property `pi` (field-style or a getter),
-# in either order, prints math.pi (3.141592653589793), not the local's 1 — the checker binds the local,
-# the emitter re-qualifies it through the star module (its own-member list names defs and variables
-# only); the project twin (`from lib import *` + `property level: int = 5`, lib's `level` is 9) prints
-# 9 on a cold build and on the `--incremental` warm rebuild. Class, alias, enum, var, const and def
-# beside the star print the local's value (green). CREATED by P21g Phase 1; drains in P21g Phase 4
-# (the star-bound-names fact, D5).
-import-binding × from-import-star × property-field × collider-first  # #2371 prints math.pi
-import-binding × from-import-star × property-field × import-first  # #2371 prints math.pi
-import-binding × from-import-star × property-get × collider-first  # #2371 prints math.pi
-import-binding × from-import-star × property-get × import-first  # #2371 prints math.pi
-project × star × property (project module)  # #2371 prints 9
-project × star × property (incremental)  # #2371 prints 9 on the warm rebuild
+# in either order, printed math.pi, not the local's 1 — the checker bound the local, the emitter
+# re-qualified it through the star module (its own-member list named defs and variables only); the
+# project twin printed lib's 9 cold and on the `--incremental` warm rebuild. CREATED by P21g Phase 1;
+# DRAINED in P21g Phase 4 (D5: the emitter reads the names the star BOUND, recorded in Phase 4 —
+# SemanticInfo.GetStarImportBoundNames — instead of the module's export list). Do not re-add a row here.

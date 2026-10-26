@@ -323,6 +323,11 @@ internal partial class RoslynEmitter
     /// collide with a user namespace, and their members stay reachable through the kept
     /// <c>using static</c> / type-alias directives. Imported TYPES are not recorded either — they
     /// qualify through the type-naming path.</para>
+    ///
+    /// <para>A <c>from m import *</c> registers exactly the names semantic analysis recorded it BOUND
+    /// (<see cref="SemanticInfo.GetStarImportBoundNames"/>, #2371) — never the module's export list — so
+    /// a declaration of this file that spells a star-exported name keeps its own name, whatever its
+    /// kind.</para>
     /// </summary>
     private void RegisterFromImportMembers(Module module)
     {
@@ -391,11 +396,11 @@ internal partial class RoslynEmitter
 
             if (fromImport.ImportAll)
             {
-                // `from m import *`: the module's exported members are bound bare in this scope and
-                // lost the `using static` that resolved them — qualify each through the same map. The
-                // registered symbol is the one the scope actually binds the name to (LookupSymbol),
-                // not the re-export wrapper recorded for codegen, so the reference site's resolved
-                // symbol matches the map key.
+                // `from m import *`: the names the star BOUND (recorded by semantic analysis, #2371)
+                // are bare in this scope and lost the `using static` that resolved them — qualify each
+                // through the same map. The registered symbol is the one the scope actually binds the
+                // name to (LookupSymbol), not the re-export wrapper recorded for codegen, so the
+                // reference site's resolved symbol matches the map key.
                 foreach (var name in GetWildcardImportedMemberNames(fromImport))
                     Register(name, _context.LookupSymbol(name));
             }
@@ -426,42 +431,22 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The exported member NAMES a <c>from m import *</c> binds into this scope. Read from the
-    /// re-export table populated during import resolution (for both plain and package-init wildcards),
-    /// falling back to the resolved <see cref="ModuleSymbol.Exports"/>.
+    /// The exported member NAMES a <c>from m import *</c> bound into this file's module scope — the
+    /// names semantic analysis recorded where the star binds (<see cref="SemanticInfo.GetStarImportBoundNames"/>),
+    /// and nothing else: a star-exported name a declaration of this file keeps (a def, variable, const,
+    /// class, alias or module property) was never bound to the star, so it is not qualified through the
+    /// star module (#2371). A star import with no record is an internal error — the emitter derives no
+    /// binding (Rule 2).
     /// </summary>
-    private IEnumerable<string> GetWildcardImportedMemberNames(FromImportStatement fromImport)
+    private IReadOnlyList<string> GetWildcardImportedMemberNames(FromImportStatement fromImport)
     {
-        var reExported = GetReExportedSymbols(fromImport);
-        if (reExported != null)
-        {
-            foreach (var name in reExported.Keys)
-                yield return name;
-            yield break;
-        }
+        if (_context.SemanticInfo?.GetStarImportBoundNames(fromImport) is { } boundNames)
+            return boundNames;
 
-        var moduleSymbol = ResolveWildcardModule(fromImport);
-        if (moduleSymbol == null)
-            yield break;
-
-        foreach (var name in moduleSymbol.Exports.Keys)
-            yield return name;
-    }
-
-    /// <summary>
-    /// Resolves the <see cref="ModuleSymbol"/> a <c>from m import *</c> targets: the module may be in
-    /// scope by name, or reachable through the resolved module path recorded during import resolution.
-    /// </summary>
-    private ModuleSymbol? ResolveWildcardModule(FromImportStatement fromImport)
-    {
-        if (_context.LookupSymbol(fromImport.Module) is ModuleSymbol direct)
-            return direct;
-
-        var resolvedPath = GetResolvedModulePath(fromImport);
-        if (resolvedPath != null && _context.LookupSymbol(resolvedPath) is ModuleSymbol byPath)
-            return byPath;
-
-        return null;
+        throw new Sharpy.Compiler.Diagnostics.InternalCompilerErrorException("RoslynEmitter",
+            $"star-binding fact missing (#2371, Rule 2): no bound names recorded on 'from {fromImport.Module} import *' "
+            + $"(semanticInfo={(_context.SemanticInfo == null ? "null" : "set")}, file='{_context.SourceFilePath}')",
+            fromImport);
     }
 
     private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)

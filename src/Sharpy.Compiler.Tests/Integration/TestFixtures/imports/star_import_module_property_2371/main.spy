@@ -1,0 +1,15 @@
+# #2371: a star import never displaces a declaration of the importing file, whatever its kind. A module
+# property that spells a star-exported name keeps it in both property forms and both source orders: the
+# local value prints (1, 2), not the star module's (9, 8). `twice` is the positive control — a
+# star-exported name no declaration keeps still binds to, and is qualified through, the star module.
+property get rank() -> int:
+    return 2
+
+from consts import *
+
+property level: int = 1
+
+def main() -> None:
+    print(level)
+    print(rank)
+    print(twice(21))
