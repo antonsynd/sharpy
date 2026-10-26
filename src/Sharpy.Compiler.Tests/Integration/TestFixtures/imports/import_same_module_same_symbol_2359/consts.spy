@@ -1,0 +1,3 @@
+pi: float = 3.25
+e: float = 2.5
+tau: float = 6.5

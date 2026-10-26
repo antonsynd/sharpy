@@ -1,0 +1,11 @@
+# K1 (#2359): two from-imports of ONE module that bind DIFFERENT symbols under one name collide —
+# an import's identity is the symbol it names, never its module. The later import is refused at its
+# ImportAlias, with or without an `as` on the first; the first binding keeps the name.
+from consts import pi as a
+from consts import e as a
+from consts import pi
+from consts import e as pi
+
+def main() -> None:
+    print(a)
+    print(pi)

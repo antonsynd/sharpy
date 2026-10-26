@@ -242,8 +242,16 @@ internal partial class ImportResolver
             ?? fromImport.ResolvedModulePath;
     }
 
-    /// <summary>A verdict <see cref="BindImportName"/> decided; the caller reports it at its own location.</summary>
-    internal readonly record struct ImportBindingDiagnostic(string Message, string Code, bool IsError);
+    /// <summary>
+    /// A verdict <see cref="BindImportName"/> decided. The caller reports it at the binding's own
+    /// location unless <see cref="At"/> names another import's site — the explicit import a star
+    /// import collides with when the star comes second (R-IZ).
+    /// </summary>
+    internal readonly record struct ImportBindingDiagnostic(
+        string Message, string Code, bool IsError, ImportBindingSite? At = null);
+
+    /// <summary>A source site a verdict is reported at (an import's <c>ImportAlias</c> or statement).</summary>
+    internal readonly record struct ImportBindingSite(int Line, int Column, Text.TextSpan? Span);
 
     /// <summary>
     /// Binds the module-level name an import introduces — THE seam for every import spelling
@@ -260,17 +268,23 @@ internal partial class ImportResolver
     /// (CS0117 / CS1537 / CS0119 behind SPY0908). The verdict on a failed bind, by what holds the
     /// name: the same declaration again → nothing; two plain imports of one root (<c>import os</c> +
     /// <c>import os.path</c>, either order) → the exports merge; the same module or the same
-    /// from-import source again → nothing (idempotent); a different from-import source → SPY0204
-    /// "already imported from" (#514's text); another module → SPY0204 "already bound to module"; a
-    /// module-level declaration → SPY0204 "already defined in this module (kind, line)". A refused
-    /// import binds NOTHING, so the declaration keeps its meaning. A module VARIABLE is the one
-    /// module binding declared AFTER the imports (by the type checker), so against it the import
-    /// binds and the variable is refused (the checker's SPY0204 at the variable). A star import keeps
-    /// its rule, outside R-II's four spellings: a module-level declaration of a star-imported name
-    /// takes the name over (nothing is reported here, and a module variable re-declares a
-    /// star-imported variable, see <see cref="ImportBinding.IsStar"/>), and a star import collides only
-    /// with another source's from-import. A module property is the known exception: there the
-    /// star-imported name silently wins (#2371).</para>
+    /// exported SYMBOL again → nothing (idempotent — a from-import's identity is
+    /// <c>"{module}.{exported name}"</c>, so <c>from math import *</c> + <c>from math import pi</c>
+    /// is one binding); a from-import of a different symbol, from another module OR THE SAME one
+    /// (K1, #2359) → SPY0204 "already names 'm.x'"; another module → SPY0204 "already bound to
+    /// module"; a module-level declaration → SPY0204 "already defined in this module (kind, line)".
+    /// A refused import binds NOTHING, so the declaration keeps its meaning. A module VARIABLE is the
+    /// one module binding declared AFTER the imports (by the type checker), so against it the import
+    /// binds and the variable is refused (the checker's SPY0204 at the variable).</para>
+    /// <para><b>A star import</b> (<c>from m import *</c>) never refuses a module-level declaration:
+    /// a declaration of the file that spells a star-exported name takes the name over (nothing is
+    /// reported here, and a module variable re-declares a star-imported variable, see
+    /// <see cref="ImportBinding.IsStar"/>). Against another IMPORT it collides like any binding, and
+    /// the verdict lands on the EXPLICIT import (R-IZ): an explicit import of a different symbol
+    /// under a star-exported name is SPY0204 at its <c>ImportAlias</c> whichever comes first — when
+    /// the star comes second the verdict carries the prior binding's recorded site
+    /// (<see cref="ImportBindingDiagnostic.At"/>), with no reordering of the binding pass. Two stars
+    /// exporting one name from different sources are SPY0204 at the second star.</para>
     /// <para><b>Builtin names</b>, decided by <see cref="BuiltinNameShadowing.Classify(Registry.BuiltinRegistry, string, bool, bool)"/>
     /// as a TYPE-namespace binding (an import is visible in annotation position): a builtin type name
     /// or tagged-union constructor under an ALIAS the importer chose (<c>import math as str</c>,
@@ -341,24 +355,26 @@ internal partial class ImportResolver
 
         var collision = CollisionMessage(scope.Lookup(registerName, searchParent: false),
             scope.LookupImportBinding(registerName), symbol, binding, registerName, isStar: alias == null);
-        if (collision != null)
-            report(new ImportBindingDiagnostic(collision, DiagnosticCodes.Semantic.DuplicateDefinition, IsError: true));
+        if (collision is { } refused)
+            report(new ImportBindingDiagnostic(refused.Message, DiagnosticCodes.Semantic.DuplicateDefinition,
+                IsError: true, refused.At));
         return false;
     }
 
     /// <summary>
-    /// The SPY0204 text for an import whose name is already bound in its scope, or null when the
-    /// second binding is the same thing again (see <see cref="BindImportName"/>). Merges a plain
-    /// import's root into the one already bound as a side effect.
+    /// The SPY0204 text for an import whose name is already bound in its scope — with the site to
+    /// report it at when that is not the incoming binding's own — or null when the second binding is
+    /// the same thing again (see <see cref="BindImportName"/>). Merges a plain import's root into the
+    /// one already bound as a side effect.
     /// </summary>
-    private static string? CollisionMessage(
+    private static (string Message, ImportBindingSite? At)? CollisionMessage(
         Symbol? existing, ImportBinding? prior, Symbol incoming, ImportBinding binding, string name, bool isStar)
     {
         if (existing == null)
             return null;
 
-        // Two imports: decided by what each import NAMES (#514's rule compares the source modules, so two
-        // sources re-exporting one declaration still collide), never by the bound symbols' identity.
+        // Two imports: decided by what each import NAMES (#514's rule: two sources re-exporting one declaration
+        // still collide; K1: one module's two symbols collide), never by the bound symbols' identity.
         if (prior != null)
         {
             // `import os` + `import os.path` (either order): a plain import binds the ROOT segment, so two
@@ -377,12 +393,29 @@ internal partial class ImportResolver
             if (prior.Form == binding.Form && string.Equals(prior.Identity, binding.Identity, StringComparison.Ordinal))
                 return null;
 
-            if (prior.Form == ImportBindingForm.FromImport)
-                return $"'{name}' is already imported from '{prior.Display}'";
+            // R-IZ: a star import and an explicit import of another symbol under one name — the EXPLICIT import is
+            // refused, in either order; when the star comes second the verdict lands on the prior's recorded site.
+            if (prior.IsStar != isStar)
+            {
+                var (explicitImport, starImport) = isStar ? (prior, binding) : (binding, prior);
+                var starModule = SourceModuleOf(starImport, name);
+                var message = $"'{name}' is imported explicitly ('{ExplicitSpelling(explicitImport, name)}', line "
+                    + $"{explicitImport.Line}) and also exported by 'from {starModule} import *' (line {starImport.Line}); "
+                    + $"write '{starModule}.{name}', or drop the star import";
+                return (message, isStar ? new ImportBindingSite(prior.Line, prior.Column, prior.Span) : null);
+            }
 
-            return isStar
-                ? null
-                : $"'{name}' is already bound to module '{prior.Display}' in this module; import under another name";
+            // Two star imports of different sources export one name: refused at the second star.
+            if (prior.IsStar && isStar)
+                return ($"'{name}' is exported by both 'from {SourceModuleOf(prior, name)} import *' (line {prior.Line}) "
+                    + $"and 'from {SourceModuleOf(binding, name)} import *'; drop one star import", null);
+
+            if (prior.Form == ImportBindingForm.FromImport)
+                return ($"'{name}' already names '{prior.Display}' (imported at line {prior.Line}); "
+                    + $"import '{binding.Display}' under another name", null);
+
+            return ($"'{name}' is already bound to module '{prior.Display}' in this module; import under another name",
+                null);
         }
 
         // A star import never displaces a module-level declaration (unchanged; outside R-II's spellings).
@@ -391,8 +424,35 @@ internal partial class ImportResolver
             return null;
 
         var line = existing.EffectiveNameLine ?? existing.DeclarationLine;
-        return $"'{name}' is already defined in this module ({DeclarationKindWord(existing)}"
-            + (line is { } l ? $", line {l}" : "") + "); import under another name";
+        return ($"'{name}' is already defined in this module ({DeclarationKindWord(existing)}"
+            + (line is { } l ? $", line {l}" : "") + "); import under another name", null);
+    }
+
+    /// <summary>The module a from-import binding names <paramref name="name"/> out of — its identity is
+    /// <c>"{module}.{exported name}"</c>, and a star binds every export under its own name.</summary>
+    private static string SourceModuleOf(ImportBinding fromImport, string name)
+        => fromImport.Identity.EndsWith("." + name, StringComparison.Ordinal)
+            ? fromImport.Identity[..^(name.Length + 1)]
+            : fromImport.Identity;
+
+    /// <summary>The source spelling of an explicit import binding <paramref name="name"/>, as a diagnostic quotes it.</summary>
+    private static string ExplicitSpelling(ImportBinding binding, string name)
+    {
+        switch (binding.Form)
+        {
+            case ImportBindingForm.ModuleAlias:
+                return $"import {binding.Display} as {name}";
+            case ImportBindingForm.ModuleRoot:
+                return $"import {binding.Display}";
+            default:
+                var dot = binding.Display.LastIndexOf('.');
+                var (module, exported) = dot <= 0
+                    ? (binding.Display, name)
+                    : (binding.Display[..dot], binding.Display[(dot + 1)..]);
+                return string.Equals(exported, name, StringComparison.Ordinal)
+                    ? $"from {module} import {exported}"
+                    : $"from {module} import {exported} as {name}";
+        }
     }
 
     /// <summary>Two module bindings of one module: the same file or the same canonical module name.</summary>

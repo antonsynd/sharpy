@@ -1448,7 +1448,7 @@ def main():
 
         Assert.False(result.Success, "Expected compilation to fail due to duplicate from-import");
         Assert.Contains(result.Diagnostics.GetErrors(),
-            d => d.Message.Contains("already imported", StringComparison.OrdinalIgnoreCase));
+            d => d.Message.Contains("already names 'pkg_a.helper.Config'", StringComparison.Ordinal));
     }
 
     [Fact]

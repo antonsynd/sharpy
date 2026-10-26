@@ -1,1 +1,1 @@
-already imported from
+SPY0204: 'Helper' is exported by both 'from mod_a import *' (line 1) and 'from mod_b import *'; drop one star import @2:1

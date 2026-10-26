@@ -1,0 +1,3 @@
+SPY0204: 'pi' is imported explicitly ('import copy as pi', line 5) and also exported by 'from consts import *' (line 4); write 'consts.pi', or drop the star import @5:8
+SPY0204: 'tau' is imported explicitly ('from consts import e as tau', line 6) and also exported by 'from consts import *' (line 4); write 'consts.tau', or drop the star import @6:20
+!count 2

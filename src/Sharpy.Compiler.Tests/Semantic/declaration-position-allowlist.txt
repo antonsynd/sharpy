@@ -370,23 +370,6 @@ member-pair × module × property-set → var  # #2360 ice CS0102
 member-pair × enum × member → member  # #2360 ice CS0102
 member-pair × union × case → method  # #2360 ice CS0102
 
-# #2359 (R-IZ, K1): an import binding collides like every module binding — two from-imports of ONE
-# module that bind DIFFERENT symbols under one name collide (SPY0204 at the later import's
-# ImportAlias), and an explicit import of another source that spells a star-exported name is refused
-# at the EXPLICIT import's ImportAlias in BOTH orders. Measured @ 75c65ee29 under Analyze (single-file)
-# and on the project route (ids `project × …`, ImportBindingProjectRouteTests): a from-import's
-# identity is its MODULE, so `from math import pi as mm` + `from math import e as mm` is silent in both
-# orders, and so is `from math import e as pi` beside `from math import *` (r25); an explicit import
-# FIRST and the star second is silent for `import copy as pi` (k3b) and lands at the STAR (2:1) for
-# `from copy import deepcopy as pi` (k3c); the star-first order is already refused at the explicit
-# import (k3a, green). CREATED by P21g Phase 1; drains in P21g Phase 3 (ImportBinding identity + site,
-# CollisionMessage's star arm, D6/D7).
-import-binding × import-as × star × import-first  # #2359 k3b: silent
-import-binding × from-import-as × star × import-first  # #2359 k3c: SPY0204 at the star
-import-binding × from-math-import-e-as-pi × star × import-first  # #2359 r25: SPY0204 at the star
-project × star × import-as (K3, explicit first)  # #2359 k3b: silent
-project × star × from-import-as (K3, explicit first)  # #2359 k3c: SPY0204 at the star
-
 # #2371: a star import never displaces a declaration of the importing file, whatever its kind.
 # Measured @ 75c65ee29: beside `from math import *` a module property `pi` (field-style or a getter),
 # in either order, prints math.pi (3.141592653589793), not the local's 1 — the checker binds the local,

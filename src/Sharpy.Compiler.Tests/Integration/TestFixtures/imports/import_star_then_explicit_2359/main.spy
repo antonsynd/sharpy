@@ -1,0 +1,9 @@
+# R-IZ (#2359): an explicit import of another symbol under a star-exported name is refused at the
+# EXPLICIT import. The star comes first here: the explicit import is the later binding (k3a; and the
+# same module's other symbol, r25).
+from consts import *
+import copy as pi
+from consts import e as tau
+
+def main() -> None:
+    print("ok")

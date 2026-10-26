@@ -1,0 +1,3 @@
+SPY0204: 'a' already names 'consts.pi' (imported at line 4); import 'consts.e' under another name @5:20
+SPY0204: 'pi' already names 'consts.pi' (imported at line 6); import 'consts.e' under another name @7:20
+!count 2

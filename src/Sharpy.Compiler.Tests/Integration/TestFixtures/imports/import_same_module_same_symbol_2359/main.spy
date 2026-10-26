@@ -1,0 +1,11 @@
+# The positive control of import_same_module_other_symbol_2359: importing the SAME symbol of one module
+# again — explicitly, or by a star import of the module — names one thing, so it is idempotent (r23).
+from consts import pi
+from consts import pi
+from consts import *
+from consts import pi as a
+from consts import pi as a
+
+def main() -> None:
+    print(pi)
+    print(a)

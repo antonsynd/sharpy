@@ -1,0 +1,3 @@
+SPY0204: 'e' is imported explicitly ('import copy as e', line 4) and also exported by 'from consts import *' (line 6); write 'consts.e', or drop the star import @4:8
+SPY0204: 'pi' is imported explicitly ('from copy import deepcopy as pi', line 5) and also exported by 'from consts import *' (line 6); write 'consts.pi', or drop the star import @5:18
+!count 2

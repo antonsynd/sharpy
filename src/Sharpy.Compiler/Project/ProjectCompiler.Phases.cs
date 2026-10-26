@@ -540,12 +540,18 @@ internal partial class ProjectCompiler
 
     /// <summary>
     /// Reports a verdict of <see cref="ImportResolver.BindImportName"/> for <paramref name="filePath"/>:
-    /// an error goes to the project's global bag as well (with the file named, as the single-file
-    /// resolver names it), a warning to the file's diagnostics only.
+    /// an error goes to the project's global bag as well (with the file named), a warning to the file's
+    /// diagnostics only. The location is the binding's own (the caller's <paramref name="line"/> /
+    /// <paramref name="column"/> / <paramref name="span"/>) unless the verdict names another import's
+    /// site (<see cref="ImportResolver.ImportBindingDiagnostic.At"/> — R-IZ: an explicit import refused
+    /// when the star import comes second), which then holds for every bag the verdict reaches.
     /// </summary>
     private void ReportImportBinding(ImportResolver.ImportBindingDiagnostic diagnostic, int line, int column,
         Text.TextSpan? span, string filePath)
     {
+        if (diagnostic.At is { } at)
+            (line, column, span) = (at.Line, at.Column, at.Span);
+
         if (diagnostic.IsError)
         {
             var message = $"{diagnostic.Message} (in {Path.GetFileName(filePath)})";

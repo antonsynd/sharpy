@@ -1,0 +1,9 @@
+# R-IZ (#2359): the star comes SECOND here, and the explicit import is still the one refused, at its own
+# ImportAlias — not at the star (k3b: `import copy as e` was silent; k3c: `from copy import deepcopy as pi`
+# was refused at the star).
+import copy as e
+from copy import deepcopy as pi
+from consts import *
+
+def main() -> None:
+    print("ok")
