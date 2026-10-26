@@ -217,12 +217,18 @@ internal partial class ProjectCompiler
                                     FilePath = moduleInfo.Path,
                                     Exports = ImportResolver.BuildExportsFor(moduleInfo),
                                     FunctionOverloads = ImportResolver.BuildFunctionOverloadsFor(moduleInfo),
+                                    // A module that failed to resolve binds an error-recovery module, so
+                                    // a use of the alias draws nothing beyond the SPY0300 (the root-cause
+                                    // mark is keyed by the MODULE name, which the alias does not spell).
+                                    IsErrorRecovery = moduleInfo.IsErrorRecovery,
                                     IsNetModule = moduleInfo.IsNetModule,
                                     CanonicalModuleName = moduleInfo.CanonicalModuleName,
                                     NetNamespaceName = moduleInfo.NetNamespaceName,
                                     CSharpNamespace = moduleInfo.CSharpNamespace,
                                     Documentation = moduleInfo.Module?.DocString
-                                        ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
+                                        ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name),
+                                    NameDeclarationLine = importAlias.LineStart,
+                                    NameDeclarationColumn = importAlias.ColumnStart
                                 };
                                 ImportResolver.BindImportName(SymbolTable, aliasedModule, importAlias.AsName,
                                     importAlias,
@@ -247,12 +253,15 @@ internal partial class ProjectCompiler
                                 FilePath = moduleInfo.Path,
                                 Exports = ImportResolver.BuildExportsFor(moduleInfo),
                                 FunctionOverloads = ImportResolver.BuildFunctionOverloadsFor(moduleInfo),
+                                IsErrorRecovery = moduleInfo.IsErrorRecovery,
                                 IsNetModule = moduleInfo.IsNetModule,
                                 CanonicalModuleName = moduleInfo.CanonicalModuleName,
                                 NetNamespaceName = moduleInfo.NetNamespaceName,
                                 CSharpNamespace = moduleInfo.CSharpNamespace,
                                 Documentation = moduleInfo.Module?.DocString
-                                    ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
+                                    ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name),
+                                NameDeclarationLine = importAlias.LineStart,
+                                NameDeclarationColumn = importAlias.ColumnStart
                             };
 
                             // Build nested structure from inside out. The structural parents
@@ -268,8 +277,12 @@ internal partial class ProjectCompiler
                                     Kind = SymbolKind.Module,
                                     FilePath = "", // Parent modules don't have their own file
                                     Exports = new ModuleExports { { currentModule.Name, currentModule } },
-                                    // Only IsNetModule needed — parent is structural; NetNamespaceName/CSharpNamespace live on the leaf
-                                    IsNetModule = moduleInfo.IsNetModule
+                                    // Structural: NetNamespaceName/CSharpNamespace live on the leaf. The
+                                    // recovery flag rides on every segment (`import a.b` binds `a`).
+                                    IsErrorRecovery = moduleInfo.IsErrorRecovery,
+                                    IsNetModule = moduleInfo.IsNetModule,
+                                    NameDeclarationLine = importAlias.LineStart,
+                                    NameDeclarationColumn = importAlias.ColumnStart
                                 };
                                 currentModule = parentModule;
                             }
