@@ -837,8 +837,13 @@ internal partial class ImportResolver
                 }
             }
 
-            // Store re-exported symbols
-            if (reExportedSymbols.Count > 0)
+            // Store re-exported symbols. A STAR import's set is exactly the names it binds, so it is
+            // recorded even when EMPTY (a module whose every export is `_`-prefixed binds nothing):
+            // null means "not resolved", and a reader that finds no record falls back to the module's
+            // unfiltered exports — which bound `_` names and ICEd (CS0103 behind SPY0908, P21g W1).
+            // A named import keeps the non-empty rule: its empty set is the unresolved names, which
+            // ProjectCompiler Phase 4's alias fallback still reads from the module's exports.
+            if (fromImport.ImportAll || reExportedSymbols.Count > 0)
             {
                 _logger.LogDebug($"[ImportResolver]   Storing {reExportedSymbols.Count} re-exported symbols");
                 _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
