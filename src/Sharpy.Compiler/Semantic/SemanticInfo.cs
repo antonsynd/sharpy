@@ -330,6 +330,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Node, ModuleLayout> _moduleLayouts =
         new(ReferenceEqualityComparer.Instance);
 
+    // Per `from m import *`: the exported names the star actually BOUND in the importing file's module
+    // scope — the names ImportResolver.BindImportName returned true for in ProjectCompiler Phase 4 (an
+    // empty list when none bound). A declaration of the file that spells a star-exported name keeps the
+    // name (the binder refuses the star there), so it is absent here and the emitter does not qualify it
+    // through the star module (#2371). Recorded on the unit in Phase 4, copied into the per-file info when
+    // Phase 5 creates it, read by the emitter — Critical Rule 2 pattern (b).
+    private readonly ConcurrentDictionary<FromImportStatement, IReadOnlyList<string>> _starImportBoundNames =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbol AND the scrutinee union's substituted
     // type-argument vector. Used when a PositionalPattern/TypePattern/PropertyPattern/MemberAccessPattern
     // matches a union case. The vector is what the emitter needs to spell the closed case type
@@ -1660,6 +1669,20 @@ public class SemanticInfo : ISemanticQuery
     public ModuleLayout? GetModuleLayout(Node node) =>
         _moduleLayouts.TryGetValue(node, out var layout) ? layout : null;
 
+    /// <summary>
+    /// Records the names a <c>from m import *</c> bound in its file's module scope (#2371) — an empty
+    /// list when it bound none.
+    /// </summary>
+    public void SetStarImportBoundNames(FromImportStatement starImport, IReadOnlyList<string> boundNames) =>
+        _starImportBoundNames[starImport] = boundNames;
+
+    /// <summary>
+    /// The names a <c>from m import *</c> bound in its file's module scope, or null when nothing was
+    /// recorded for it (#2371) — an absence the emitter treats as an internal error.
+    /// </summary>
+    public IReadOnlyList<string>? GetStarImportBoundNames(FromImportStatement starImport) =>
+        _starImportBoundNames.TryGetValue(starImport, out var names) ? names : null;
+
     public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
         _returnLowerings[ret] = lowering;
 
@@ -2308,6 +2331,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._moduleLayouts)
             _moduleLayouts.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._starImportBoundNames)
+            _starImportBoundNames.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);

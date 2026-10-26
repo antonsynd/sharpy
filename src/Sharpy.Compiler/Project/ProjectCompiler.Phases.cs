@@ -302,6 +302,9 @@ internal partial class ProjectCompiler
                     {
                         var moduleInfo = ImportResolver.ResolveFromImport(fromImport,
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
+                        // A star import of a module that did not resolve bound nothing (#2371).
+                        if (fromImport.ImportAll && moduleInfo == null)
+                            unit.StarImportBoundNames[fromImport] = Array.Empty<string>();
                         if (moduleInfo != null)
                         {
                             // Use ReExportedSymbols which have DefiningModule set for cross-module type references
@@ -326,7 +329,11 @@ internal partial class ProjectCompiler
                             {
                                 // Star-imported names that displace a builtin are RECORDED here and
                                 // reported where they are used, not here (#1324, C#'s CS0104 rule).
-                                // This is the one place a star import binds its names.
+                                // This is the one place a star import binds its names — so the names it
+                                // BOUND are recorded here too, for the emitter (#2371, D5 (i)): a name a
+                                // declaration of this file keeps is refused to the star and absent.
+                                var boundNames = new List<string>();
+                                unit.StarImportBoundNames[fromImport] = boundNames;
                                 foreach (var (name, symbol) in symbolsToImport)
                                 {
                                     if (BuiltinNameShadowing.ShadowsBuiltin(SymbolTable.BuiltinRegistry, name))
@@ -343,6 +350,7 @@ internal partial class ProjectCompiler
                                             warningTarget: null, isRegistryOwnBinding: false,
                                             d => Report(d, fromImport.LineStart, fromImport.ColumnStart, fromImport.Span)))
                                     {
+                                        boundNames.Add(name);
                                         // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                         if (ImportResolver.OverloadsFor(moduleInfo, name) is { Count: > 1 } overloads)
                                         {
@@ -875,6 +883,10 @@ internal partial class ProjectCompiler
                 localSemanticInfo.CurrentFilePath =
                     IsNullPathEntryFile(config, unit) ? null : unit.FilePath;
                 unit.FileSemanticInfo = localSemanticInfo;
+                // The names each star import bound, recorded on the unit in Phase 4 (before this
+                // per-file info existed) — copied in so MergeFrom carries them to code generation (#2371).
+                foreach (var (starImport, boundNames) in unit.StarImportBoundNames)
+                    localSemanticInfo.SetStarImportBoundNames(starImport, boundNames);
 
                 // Create per-file SemanticBinding for isolation
                 // Inheritance data is already materialized onto Symbol properties (Phase 4b),
