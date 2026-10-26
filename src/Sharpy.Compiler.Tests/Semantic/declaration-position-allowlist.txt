@@ -51,6 +51,12 @@ alias × type-body-if × Fresh  # #2148
 struct × module × Fresh  # #2021
 struct × type-body × Foo  # #2021
 struct × type-body × Fresh  # #2021
+# P21g Phase 1 (lead ruling 2026-10-25): the member-pair matrix's struct auto-half + function-style
+# SETTER merge, both orders, is legal (properties_function_style.md:88) and is this same shape — a
+# property default beside an explicit setter — SPY0908 CS0100 under run @ 75c65ee29. Drains with #2021,
+# NOT in P21g.
+member-pair × struct × property-field → property-set  # #2021 legal merge; struct ctor CS0100
+member-pair × struct × property-set → property-field  # #2021 legal merge; struct ctor CS0100
 
 # #2361: the arms of one `match` are sibling blocks (owner ruling at the P21e verify round, 2026-10-23,
 # reverting the lead's one-scope ruling D5b), so a nested def per arm is a fresh binding. When the match
@@ -121,8 +127,10 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # dedupes, so `run` shows one); const × field adds SPY0225 and the same-signature method twin adds
 # SPY0701 in a class or struct body ("+SPY0225", "+SPY0701"); the interface's property merges are
 # CS0102 ("legal merge; ice") and the module's auto-half + getter merge is refused ("legal merge
-# refused"). The four struct merge rows are the struct auto-constructor CS0100 (#2021; the test
-# requires that fingerprint) and drain with #2021, NOT in P21g. CREATED by P21g Phase 1; the #2360
+# refused"). The struct auto-half + SETTER merges are #2021's default + setter CS0100 and live in
+# the #2021 section above; the struct auto-half + GETTER merges are CS0100 too but not that shape, so
+# they cite #2360 (lead ruling 2026-10-25). The +SPY0701 rows are #1654's dunder check firing on a
+# non-dunder name; Phase 2 decides whether the seam drains them. CREATED by P21g Phase 1; the #2360
 # rows drain in P21g Phase 2 (TryDeclareMember, D2/D3/D4).
 member-pair × class × nested-class → nested-class  # #2360 SPY0909 under Analyze
 member-pair × class × nested-class → method  # #2360 ice CS0102
@@ -187,7 +195,7 @@ member-pair × class × alias → property-field  # #2360 silent: runs
 member-pair × class × alias → property-get  # #2360 silent: runs
 member-pair × class × alias → property-set  # #2360 silent: runs
 member-pair × class × alias → event-auto  # #2360 silent: runs
-member-pair × class × method → method-same-sig  # #2360 +SPY0701
+member-pair × class × method → method-same-sig  # #2360 +SPY0701 (DuplicateDunderSignature on a non-dunder name: a double report)
 member-pair × class × type-param → method  # #2360 ice CS0102
 member-pair × class × type-param → field  # #2360 twice
 member-pair × class × type-param → const  # #2360 twice
@@ -227,15 +235,14 @@ member-pair × struct × property-field → method  # #2360 SPY0406 at the earli
 member-pair × struct × property-field → field  # #2360 SPY0405 at the earlier
 member-pair × struct × property-field → const  # #2360 SPY0405 at the earlier
 member-pair × struct × property-field → property-field  # #2360 ice CS0100 CS0161 CS0176 CS0229 CS1007
-member-pair × struct × property-field → property-get  # #2021 legal merge; struct ctor CS0100
-member-pair × struct × property-field → property-set  # #2021 legal merge; struct ctor CS0100
+member-pair × struct × property-field → property-get  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
 member-pair × struct × property-field → event-auto  # #2360 ice CS0102 CS0229
 member-pair × struct × property-field → alias  # #2360 silent: runs
 member-pair × struct × property-get → nested-class  # #2360 ice CS0102
 member-pair × struct × property-get → method  # #2360 SPY0406 at the earlier
 member-pair × struct × property-get → field  # #2360 SPY0405 at the earlier
 member-pair × struct × property-get → const  # #2360 SPY0405 at the earlier
-member-pair × struct × property-get → property-field  # #2021 legal merge; struct ctor CS0100
+member-pair × struct × property-get → property-field  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
 member-pair × struct × property-get → property-get  # #2360 ice CS1007
 member-pair × struct × property-get → event-auto  # #2360 ice CS0102
 member-pair × struct × property-get → alias  # #2360 silent: runs
@@ -243,7 +250,6 @@ member-pair × struct × property-set → nested-class  # #2360 ice CS0102
 member-pair × struct × property-set → method  # #2360 SPY0406 at the earlier
 member-pair × struct × property-set → field  # #2360 SPY0405 at the earlier
 member-pair × struct × property-set → const  # #2360 SPY0405 at the earlier
-member-pair × struct × property-set → property-field  # #2021 legal merge; struct ctor CS0100
 member-pair × struct × property-set → property-set  # #2360 ice CS1007
 member-pair × struct × property-set → event-auto  # #2360 ice CS0102
 member-pair × struct × property-set → alias  # #2360 silent: runs
@@ -262,7 +268,7 @@ member-pair × struct × alias → property-field  # #2360 silent: runs
 member-pair × struct × alias → property-get  # #2360 silent: runs
 member-pair × struct × alias → property-set  # #2360 silent: runs
 member-pair × struct × alias → event-auto  # #2360 silent: runs
-member-pair × struct × method → method-same-sig  # #2360 +SPY0701
+member-pair × struct × method → method-same-sig  # #2360 +SPY0701 (DuplicateDunderSignature on a non-dunder name: a double report)
 member-pair × struct × type-param → method  # #2360 ice CS0102
 member-pair × struct × type-param → field  # #2360 twice
 member-pair × struct × type-param → const  # #2360 twice
