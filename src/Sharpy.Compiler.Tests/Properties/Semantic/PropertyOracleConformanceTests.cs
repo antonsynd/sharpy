@@ -78,7 +78,7 @@ public class PropertyOracleConformanceTests
     /// expected code into it (the roster's lanes and pins).</summary>
     private static readonly HashSet<string> CodeSinks = new(StringComparer.Ordinal)
     {
-        "JudgeSource", "JudgeProject", "InjectionResult", "ProjectInjectionResult", "KnownRedRefusal", "KnownRedRow",
+        "JudgeSource", "JudgeProject", "InjectionResult", "ProjectInjectionResult", "KnownRedRefusal", "KnownRedCascade", "KnownRedRow",
         "YInjected", "KnownRedSpecCode", "ProseCrossReference",
     };
 

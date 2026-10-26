@@ -22,7 +22,8 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// 6. @final cannot be combined with @abstract or @virtual (SPY0410)
 /// 7. @override property must have matching virtual/abstract base property (SPY0411)
 /// 8. Init properties without defaults must be assigned in every constructor (SPY0426)
-/// 9. An accessor's parameter list must be expressible as a C# accessor's (SPY0496)
+/// 9. An accessor's signature must be expressible as a C# accessor's (SPY0496): its parameter
+///    list, and a setter's return annotation — <c>None</c> or nothing (#2370, R-JD)
 /// </summary>
 internal class PropertyValidator : SemanticValidatorBase
 {
@@ -51,7 +52,10 @@ internal class PropertyValidator : SemanticValidatorBase
         // PropertyDef is never visited at all, and the interface arm runs only the observer rule
         // (#1406).
         foreach (var propDef in EnumerateAllProperties(module.Body))
+        {
             ValidateAccessorParameterShape(propDef);
+            ValidateWriteAccessorReturn(propDef);
+        }
     }
 
     /// <summary>
@@ -183,6 +187,34 @@ internal class PropertyValidator : SemanticValidatorBase
         // More than one value parameter on a setter is the same rule's third face, but nothing in
         // the corpus reaches it and the parser may not admit it; left unreported rather than
         // guessed at.
+    }
+
+    /// <summary>
+    /// Rule 9's return face (#2370, R-JD): a setter returns nothing to C#, so its return annotation
+    /// is <c>None</c> or absent. The property's type is the value parameter's
+    /// (<see cref="StatementExtensions.DeclaredTypeAnnotation(PropertyDef)"/>), so any other
+    /// annotation is a type the accessor can never return — it was silently ignored. Reads the
+    /// annotation as the checker resolved it in a return position, so an alias of <c>None</c> is
+    /// <c>None</c>; an annotation that failed to resolve was already reported and is not reported
+    /// again. (A function-style <c>init</c> accessor is SPY0408 and never reaches here meaningfully.)
+    /// </summary>
+    private void ValidateWriteAccessorReturn(PropertyDef propDef)
+    {
+        if (!propDef.IsFunctionStyle || propDef.Accessor != PropertyAccessor.Set || propDef.ReturnType is not { } annotation)
+            return;
+
+        var resolved = _context.SemanticInfo.GetTypeAnnotation(annotation);
+        if (resolved is null or UnknownType or VoidType || _context.SemanticInfo.IsAnnotationErrorRecovery(annotation))
+            return;
+
+        AddError(_context,
+            $"The 'set' accessor of property '{propDef.Name}' returns nothing to C#, so its return "
+            + $"annotation can only be 'None'; '{resolved.GetDisplayName()}' is never returned. The "
+            + "property's type is the value parameter's — drop the return annotation, or write a "
+            + "method if the operation must produce a value.",
+            annotation.LineStart, annotation.ColumnStart,
+            code: DiagnosticCodes.Validation.AccessorParameterNotExpressible,
+            span: annotation.Span);
     }
 
     private void ValidateTypeBody(Statement declaration, string typeName, IReadOnlyList<Statement> body)

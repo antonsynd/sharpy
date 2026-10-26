@@ -633,6 +633,8 @@ public class ErrorCompletenessPropertyTests
         var failures = new List<string>();
         var sources = new HashSet<string>(StringComparer.Ordinal);
         ErrorInjector.KnownRedRefusal? pin = null;
+        ErrorInjector.KnownRedCascade? cascade = null;
+        int onCascadeShape = 0;
 
         var baseGen = overrideGen ?? Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
@@ -649,6 +651,11 @@ public class ErrorCompletenessPropertyTests
 
             Interlocked.Increment(ref tested);
             pin = result.KnownRed;
+            if (result.KnownCascade is { } known)
+            {
+                cascade = known;
+                Interlocked.Increment(ref onCascadeShape);
+            }
             var mutatedSource = Sharpy.Compiler.Pretty.Unparser.Unparse(result.Mutated);
             lock (sources)
                 sources.Add(mutatedSource);
@@ -669,6 +676,9 @@ public class ErrorCompletenessPropertyTests
         _output.WriteLine(pin is null
             ? $"Error completeness ({label}): {tested - failures.Count}/{tested} drew the expected code ({sources.Count} distinct mutated sources)"
             : $"Error completeness ({label}): KnownRed {pin.Issue} — {tested - failures.Count}/{tested} still unrefused ({pin.Observed}; {sources.Count} distinct mutated sources)");
+        if (cascade is not null)
+            _output.WriteLine($"Error completeness ({label}): KnownRedCascade {cascade.Issue} — {onCascadeShape}/{tested} on the pinned shape, "
+                + $"judged with [{string.Join(", ", cascade.Tolerated)}] tolerated ({cascade.Observed})");
         Assert.True(tested > 0, $"No {label} injections were applicable");
         Assert.True(failures.Count == 0,
             $"{failures.Count}/{tested} {label} injections misjudged; the first:\n{failures.FirstOrDefault()}");

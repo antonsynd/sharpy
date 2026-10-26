@@ -439,12 +439,12 @@ public sealed class HoverService
                         return SymbolFormatter.FormatParameterWithDocs(param.Name, param.Type != null
                             ? query.GetTypeAnnotation(param.Type) : null);
 
-                    // Property type info
-                    var typeStr = propDef.Type != null
-                        ? query.GetTypeAnnotation(propDef.Type)?.GetDisplayName() ?? "unknown"
-                        : propDef.ReturnType != null
-                            ? query.GetTypeAnnotation(propDef.ReturnType)?.GetDisplayName() ?? "unknown"
-                            : "unknown";
+                    // Property type info: the declaring annotation — a setter's value parameter,
+                    // never its `-> None` (#2370, R-JD)
+                    var declaredAnnotation = propDef.DeclaredTypeAnnotation();
+                    var typeStr = declaredAnnotation != null
+                        ? query.GetTypeAnnotation(declaredAnnotation)?.GetDisplayName() ?? "unknown"
+                        : "unknown";
                     return $"```sharpy\n(property) {propDef.Name}: {typeStr}\n```";
                 }
 

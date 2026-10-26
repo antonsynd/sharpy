@@ -304,6 +304,10 @@ class CustomControl(BaseControl):
 ### Abstract Events
 
 ```python
+class UpdateEventArgs(EventArgs):
+    pass
+
+@abstract
 class BasePublisher:
     @abstract
     event on_update: EventHandler[UpdateEventArgs]

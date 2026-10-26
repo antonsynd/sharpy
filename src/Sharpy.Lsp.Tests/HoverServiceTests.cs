@@ -667,6 +667,21 @@ public class HoverServiceTests
         _hoverService.GetHoverMarkdown(result, 6, 14).Should().NotBeNull().And.Contain("Point");
     }
 
+    /// <summary>
+    /// #2370 (R-JD): a setter's <c>-&gt; None</c> is the accessor's return, never the property's type —
+    /// hovering a set-only property's declared name shows its value parameter's type. Hover read
+    /// the return annotation and showed <c>None</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("class Gauge:\n    property set level(self, v: int) -> None:\n        print(v)\n\ndef main() -> None:\n    g = Gauge()\n    g.level = 5", 2, 18)]
+    [InlineData("property set level(v: int) -> None:\n    print(v)\n\ndef main() -> None:\n    level = 5", 1, 14)]
+    public void SetOnlyProperty_AnnotatedNone_HoversTheValueParameterType(string source, int line, int column)
+    {
+        var result = _api.Analyze(source);
+        var markdown = _hoverService.GetHoverMarkdown(result, line, column);
+        markdown.Should().NotBeNull().And.Contain("level: int").And.NotContain("None");
+    }
+
     [Fact]
     public void PropertyPattern_TypeHead_HoversTheClass()
     {

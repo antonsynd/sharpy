@@ -114,7 +114,44 @@ internal static partial class ErrorInjector
     // ---- annotations ------------------------------------------------------------------------------
 
     public static InjectionResult? InjectUndefinedTypeAtParameter(Module module) =>
-        Lane(MutationLanes.UndefinedTypeAtParameter(module), "SPY0202");
+        WithAbsOfUnknownCascadePin(Lane(MutationLanes.UndefinedTypeAtParameter(module), "SPY0202"));
+
+    /// <summary>
+    /// #2075 (R-JE): an undefined parameter type leaves the parameter Unknown, and <c>abs(p)</c> on it
+    /// is typed by abs's FIRST overload, int8 — never Unknown. Two measured faces of that one cell
+    /// (built sharpyc @ a78e3aa71): in a condition, SPY0220 "If condition must be boolean, got 'int8' —
+    /// has no falsy case"; stored back into the parameter and later met by an <c>int</c> in a
+    /// conditional expression, SPY0227 "no best common type". Over 17 builtins called on an
+    /// undefined-typed argument in an <c>if</c> and a <c>while</c> test only <c>abs</c> cascades with
+    /// SPY0220 (<c>sum</c> draws SPY0354, a shape this lane never generates). Before the pin the lane
+    /// was red on ~1 seed in 80 (the SPY0220 face, the P21f gate @ 6a0b507f1) and the SPY0227 face
+    /// surfaced at 2000 samples.
+    /// </summary>
+    internal static readonly KnownRedCascade AbsOfUnknownCascade = new KnownRedCascade("#2075", new[] { "SPY0220", "SPY0227" },
+        "abs(<parameter of an undefined type>) is typed int8: refused as a condition, or with no best common type beside an int");
+
+    /// <summary>Attaches <see cref="AbsOfUnknownCascade"/> only when a function of the mutated module
+    /// passes a parameter annotated with the injected undefined type to <c>abs</c>.</summary>
+    private static InjectionResult? WithAbsOfUnknownCascadePin(InjectionResult? result)
+    {
+        if (result is null)
+            return null;
+
+        bool shape = Sharpy.Compiler.Tests.Infrastructure.AstDescendants.SelfAndDescendants(result.Mutated)
+            .OfType<FunctionDef>()
+            .Any(function =>
+            {
+                var unknown = function.Parameters
+                    .Where(p => p.Type?.Name == PositionMutations.UndefinedType)
+                    .Select(p => p.Name)
+                    .ToHashSet(StringComparer.Ordinal);
+                return unknown.Count > 0
+                    && Sharpy.Compiler.Tests.Infrastructure.AstDescendants.SelfAndDescendants(function).Any(n =>
+                        n is FunctionCall { Function: Identifier { Name: "abs" } } call
+                        && call.Arguments.Any(a => a is Identifier id && unknown.Contains(id.Name)));
+            });
+        return shape ? result with { KnownCascade = AbsOfUnknownCascade } : result;
+    }
 
     public static InjectionResult? InjectUndefinedTypeAtBase(Module module) =>
         Lane(MutationLanes.UndefinedTypeAtBase(module), "SPY0202");

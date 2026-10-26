@@ -145,6 +145,7 @@ For complete details on function-style properties, static properties, mixed acce
 Properties participate in inheritance using `@virtual`, `@abstract`, `@override`, and `@final` decorators:
 
 ```python
+@abstract
 class Shape:
     @abstract
     property get area(self) -> float:
@@ -155,6 +156,11 @@ class Shape:
         return "Shape"
 
 class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        self.radius = radius
+
     @override
     property get area(self) -> float:
         return 3.14159 * self.radius ** 2
