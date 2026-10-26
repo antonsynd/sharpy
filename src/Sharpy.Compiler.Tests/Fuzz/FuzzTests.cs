@@ -46,10 +46,11 @@ public class FuzzTests
     [InlineData(9999)]
     public void Lexer_RandomTokens_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var failures = new List<string>();
 
-        for (int i = 0; i < 100; i++)
+        var iterations = FuzzBudget.Iterations(100);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateRandomTokens();
             try
@@ -60,13 +61,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/100):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -85,10 +86,11 @@ public class FuzzTests
     [InlineData(512)]
     public void Lexer_StressInputs_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var failures = new List<string>();
 
-        for (int i = 0; i < 50; i++)
+        var iterations = FuzzBudget.Iterations(50);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateLexerStress();
             try
@@ -98,13 +100,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/50):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -124,12 +126,13 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_ValidLookingPrograms_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
         var timeouts = new List<string>();
 
-        for (int i = 0; i < 50; i++)
+        var iterations = FuzzBudget.Iterations(50);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateValidLooking();
             try
@@ -137,30 +140,30 @@ public class FuzzTests
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
                 var result = compiler.Compile(input, "fuzz_test.spy", cts.Token);
                 if (WasCancelled(result))
-                    timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
+                    timeouts.Add($"{FuzzBudget.Label(seed)}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
                 // Success or failure with diagnostics are both fine.
                 // We only care that it doesn't throw.
             }
             catch (OperationCanceledException)
             {
-                timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
+                timeouts.Add($"{FuzzBudget.Label(seed)}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (timeouts.Count > 0)
         {
-            _output.WriteLine($"Timeouts ({timeouts.Count}/50):");
+            _output.WriteLine($"Timeouts ({timeouts.Count}/{iterations}):");
             foreach (var t in timeouts)
                 _output.WriteLine(t);
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/50):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -181,12 +184,13 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_SyntaxErrors_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
         var timeouts = new List<string>();
 
-        for (int i = 0; i < 50; i++)
+        var iterations = FuzzBudget.Iterations(50);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateWithSyntaxErrors();
             try
@@ -194,29 +198,29 @@ public class FuzzTests
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
                 var result = compiler.Compile(input, "fuzz_error.spy", cts.Token);
                 if (WasCancelled(result))
-                    timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
+                    timeouts.Add($"{FuzzBudget.Label(seed)}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
                 // Most of these should fail - that's expected
             }
             catch (OperationCanceledException)
             {
-                timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
+                timeouts.Add($"{FuzzBudget.Label(seed)}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (timeouts.Count > 0)
         {
-            _output.WriteLine($"Timeouts ({timeouts.Count}/50):");
+            _output.WriteLine($"Timeouts ({timeouts.Count}/{iterations}):");
             foreach (var t in timeouts)
                 _output.WriteLine(t);
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/50):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -238,12 +242,13 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_RandomTokens_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
         var timeouts = new List<string>();
 
-        for (int i = 0; i < 50; i++)
+        var iterations = FuzzBudget.Iterations(50);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateRandomTokens();
             try
@@ -251,28 +256,28 @@ public class FuzzTests
                 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
                 var result = compiler.Compile(input, "fuzz_random.spy", cts.Token);
                 if (WasCancelled(result))
-                    timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
+                    timeouts.Add($"{FuzzBudget.Label(seed)}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (OperationCanceledException)
             {
-                timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
+                timeouts.Add($"{FuzzBudget.Label(seed)}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (timeouts.Count > 0)
         {
-            _output.WriteLine($"Timeouts ({timeouts.Count}/50):");
+            _output.WriteLine($"Timeouts ({timeouts.Count}/{iterations}):");
             foreach (var t in timeouts)
                 _output.WriteLine(t);
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/50):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -368,11 +373,12 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_ClassHierarchies_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
 
-        for (int i = 0; i < 30; i++)
+        var iterations = FuzzBudget.Iterations(30);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateClassHierarchy();
             try
@@ -386,13 +392,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/30):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -412,11 +418,12 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_GenericUsage_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
 
-        for (int i = 0; i < 30; i++)
+        var iterations = FuzzBudget.Iterations(30);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateGenericUsage();
             try
@@ -430,13 +437,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/30):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -456,11 +463,12 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_TypeAnnotations_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
 
-        for (int i = 0; i < 30; i++)
+        var iterations = FuzzBudget.Iterations(30);
+        for (int i = 0; i < iterations; i++)
         {
             var input = fuzzer.GenerateTypeAnnotations();
             try
@@ -474,13 +482,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/30):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -500,7 +508,7 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_MutatedPrograms_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharpyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(FuzzBudget.Seed(seed));
         var compiler = new Compiler();
         var failures = new List<string>();
         var validPrograms = new[]
@@ -512,7 +520,8 @@ public class FuzzTests
             "def fib(n: int) -> int:\n    if n <= 1:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\ndef main():\n    print(fib(10))\n",
         };
 
-        for (int i = 0; i < 100; i++)
+        var iterations = FuzzBudget.Iterations(100);
+        for (int i = 0; i < iterations; i++)
         {
             var baseProgram = validPrograms[i % validPrograms.Length];
             var mutated = fuzzer.MutateProgram(baseProgram);
@@ -528,13 +537,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(mutated)}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(mutated)}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/100):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
@@ -551,10 +560,11 @@ public class FuzzTests
     [InlineData(99999)]
     public void Lexer_RandomBytes_NeverThrowsUnhandledException(int seed)
     {
-        var random = new System.Random(seed);
+        var random = new System.Random(FuzzBudget.Seed(seed));
         var failures = new List<string>();
 
-        for (int i = 0; i < 200; i++)
+        var iterations = FuzzBudget.Iterations(200);
+        for (int i = 0; i < iterations; i++)
         {
             var length = random.Next(1, 500);
             var bytes = new byte[length];
@@ -572,13 +582,13 @@ public class FuzzTests
             }
             catch (Exception ex)
             {
-                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}");
+                failures.Add($"{FuzzBudget.Label(seed)}, iteration {i}: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
         if (failures.Count > 0)
         {
-            _output.WriteLine($"Failures ({failures.Count}/200):");
+            _output.WriteLine($"Failures ({failures.Count}/{iterations}):");
             foreach (var f in failures)
                 _output.WriteLine(f);
         }
