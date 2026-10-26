@@ -1,0 +1,15 @@
+# P21g (#2360): an auto half that fills a slot already filled by an auto half is a second meaning —
+# SPY0204 at the later declaration. Its complementary twin (an auto getter + an auto setter) is the
+# spec block properties_function_style.md "With Auto-Properties", which the spec-block gate checks.
+class Twice:
+    property get name: str = "a"
+    property get name: str = "b"
+
+
+class Both:
+    property tag: str = "a"
+    property set tag: str
+
+
+def main() -> None:
+    print("unreachable")

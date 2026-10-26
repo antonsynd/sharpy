@@ -503,9 +503,9 @@ internal partial class NameResolver
                 if (existingProp.DeclarationSpan == propDef.Span)
                     return;
 
-                // The type-body merge rule (D2 (b)): a complementary half merges — an auto half, a
-                // function-style getter and a function-style setter, each at most once — and a form
-                // twice is a duplicate. The accessor FLAGS cannot tell an auto property from a function-style
+                // The type-body merge rule (D2 (b), AccessorDeclarations.Admits): a complementary half
+                // merges — at most one auto and one function-style half per accessor slot — and a slot
+                // filled twice in one category is a duplicate. The accessor FLAGS cannot tell an auto property from a function-style
                 // getter (both set HasPropertyGetter), which refused `property A: int = 5` + `property
                 // get A()` while `property set A()` merged; the recorded forms can.
                 var form = AccessorDeclarations.FormOf(propDef);
@@ -745,19 +745,27 @@ internal partial class NameResolver
     };
 
     /// <summary>
-    /// The accessor halves declared so far for one property or event name: which FORMS the body has
-    /// spelled (an auto declaration, a function-style getter/adder, a function-style setter/remover)
-    /// and the first declaration's line. The merge rule reads the forms, which the merged
-    /// <see cref="PropertySymbol"/> flags cannot tell apart (an auto property and a function-style
-    /// getter both set <c>HasGetter</c>).
+    /// The accessor halves declared so far for one property or event name, as the accessor SLOTS
+    /// they fill, and the first declaration's line. A half is AUTO (field-style: it declares the type
+    /// and default and owns the backing field) or FUNCTION-STYLE (a body), and fills the getter slot,
+    /// the setter slot, or both: <c>property A: T</c> is an auto half of both slots, <c>property get A:
+    /// T</c> an auto getter, <c>property set A: T</c> / <c>property init A: T</c> an auto setter,
+    /// <c>property get A(self)</c> a function-style getter, <c>property set A(self, v)</c> a
+    /// function-style setter. The merged <see cref="PropertySymbol"/> flags cannot tell these apart
+    /// (an auto property and a function-style getter both set <c>HasGetter</c>), so the forms are
+    /// recorded here.
     /// </summary>
     private sealed class AccessorDeclarations
     {
+        [Flags]
         internal enum Form
         {
-            Auto,
-            Get,
-            Set,
+            None = 0,
+            AutoGet = 1,
+            AutoSet = 2,
+            FunctionGet = 4,
+            FunctionSet = 8,
+            Auto = AutoGet | AutoSet,
         }
 
         internal AccessorDeclarations(bool isEvent, int line)
@@ -768,69 +776,48 @@ internal partial class NameResolver
 
         internal bool IsEvent { get; }
         internal int Line { get; }
-        private bool _auto;
-        private bool _get;
-        private bool _set;
+        private Form _filled;
 
-        /// <summary>A property's form: auto (any field-style spelling, <c>property get A: T</c>
-        /// included), else its function-style accessor — <c>set</c> and <c>init</c> are both the
-        /// write half.</summary>
+        /// <summary>A property's half: the slots it fills (see the class summary) — <c>set</c> and
+        /// <c>init</c> are both the write slot.</summary>
         internal static Form FormOf(PropertyDef propDef)
-            => !propDef.IsFunctionStyle ? Form.Auto
-                : propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init ? Form.Set
-                : Form.Get;
+        {
+            bool writes = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
+            if (propDef.IsFunctionStyle)
+                return writes ? Form.FunctionSet : Form.FunctionGet;
+            return propDef.Accessor == PropertyAccessor.Get ? Form.AutoGet
+                : writes ? Form.AutoSet
+                : Form.Auto;
+        }
 
-        /// <summary>An event's form: auto, else <c>add</c> (<see cref="Form.Get"/>) or <c>remove</c>
-        /// (<see cref="Form.Set"/>).</summary>
+        /// <summary>An event's half: an auto event fills both slots; <c>add</c> is the getter slot's
+        /// function-style twin and <c>remove</c> the setter slot's.</summary>
         internal static Form FormOf(EventDef eventDef)
             => !eventDef.IsFunctionStyle ? Form.Auto
-                : eventDef.Accessor == EventAccessor.Remove ? Form.Set
-                : Form.Get;
+                : eventDef.Accessor == EventAccessor.Remove ? Form.FunctionSet
+                : Form.FunctionGet;
 
         /// <summary>
-        /// Whether <paramref name="incoming"/> is a complementary half (D2 (b)/(c)). A property: each
-        /// FORM at most once — an auto half (it declares the type and default and owns the backing
-        /// field, <c>properties_function_style.md</c> "paired with an auto-property of the same name
-        /// supplying the complementary half"), a function-style getter, a function-style setter, in any
-        /// combination (auto + getter + setter is the fixture <c>property_mixed_auto_both_custom</c>);
-        /// a form twice is the duplicate (CS0161/CS1007 behind SPY0908 before). An event: <c>add</c> +
-        /// <c>remove</c> only — an auto event already has both.
+        /// Whether <paramref name="incoming"/> is a complementary half (D2 (b)/(c)): it fills no slot
+        /// already filled by a half of its own category. A property: at most one auto half and at most
+        /// one function-style half per slot, in any combination — split auto halves (<c>property get
+        /// name: str</c> + <c>@private property set name: str</c>, the spec's "Mixed Access Modifiers"),
+        /// an auto half beside function-style accessors (<c>properties_function_style.md</c> "paired with
+        /// an auto-property of the same name supplying the complementary half"; auto + getter + setter
+        /// is the fixture <c>property_mixed_auto_both_custom</c>), a function-style getter + setter. A
+        /// slot filled twice in one category is the duplicate (CS0161/CS1007 behind SPY0908 before). An
+        /// event: <c>add</c> + <c>remove</c> only — an auto event already fills both slots and takes no
+        /// other half.
         /// </summary>
         internal bool Admits(Form incoming)
         {
             if (IsEvent)
-            {
-                return incoming switch
-                {
-                    Form.Get => !_auto && !_get,
-                    Form.Set => !_auto && !_set,
-                    _ => false,
-                };
-            }
+                return (incoming & Form.Auto) == 0 && (_filled & Form.Auto) == 0 && (_filled & incoming) == 0;
 
-            return incoming switch
-            {
-                Form.Auto => !_auto,
-                Form.Get => !_get,
-                _ => !_set,
-            };
+            return (_filled & incoming) == 0;
         }
 
-        internal void Add(Form form)
-        {
-            switch (form)
-            {
-                case Form.Auto:
-                    _auto = true;
-                    break;
-                case Form.Get:
-                    _get = true;
-                    break;
-                default:
-                    _set = true;
-                    break;
-            }
-        }
+        internal void Add(Form form) => _filled |= form;
     }
 
     /// <summary>Accessor declarations per type body (properties and events), keyed by the owner symbol

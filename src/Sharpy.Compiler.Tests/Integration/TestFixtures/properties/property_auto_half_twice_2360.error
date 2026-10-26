@@ -1,0 +1,2 @@
+'name' is already declared in 'Twice' as a property (line 5); one name has one meaning in a type body @6:5
+'tag' is already declared in 'Both' as a property (line 10); one name has one meaning in a type body @11:5
