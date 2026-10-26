@@ -623,9 +623,24 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
         // def→alias} × type-body + alias→alias × module.
         Assert.Equal(7 * 4 + 3 + 1, AliasRedeclarationCells().Count());
+        // Member pairs (P21g): 9 type-body kinds × 3 hosts, 8 module kinds.
+        Assert.Equal(9, TypeBodyMemberKinds.Length);
+        Assert.Equal(8, ModuleMemberKinds.Length);
+        Assert.Equal(3, TypeBodyHosts.Length);
+        // Per type-body host: 9 alone + 9 × 9 ordered pairs + the same-signature twin + type-param × 9; module: 8 alone
+        // + 8 × 8 + the same-signature def twin; enum: alone + member twice; union: method alone, overload,
+        // same-signature twin, case × method.
+        Assert.Equal(3 * (9 + 9 * 9 + 1 + 9) + (8 + 8 * 8 + 1) + 2 + 4, MemberPairCells().Count());
+        Assert.Equal(3 * 9 + 8 + 1 + 1, MemberPairCells().Count(c => c.Id.StartsWith("member-alone × ", StringComparison.Ordinal)));
+        Assert.Equal(3 * 9, MemberPairCells().Count(c => c.Id.Contains(" × type-param → ", StringComparison.Ordinal)));
+        // Legal (expected [], run): per type-body host 6 property merges (3 pairs × 2 orders) + the overload; module
+        // the same 7 + var × var.
+        Assert.Equal(3 * 7 + 8, MemberPairCells().Count(c => c.Id.StartsWith("member-pair × ", StringComparison.Ordinal)
+            && c.Host is "class" or "struct" or "interface" or "module" && c.ExpectedErrors.Count == 0));
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
-            .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 95 + 32, ids.Distinct(StringComparer.Ordinal).Count());
+            .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
+            .Concat(MemberPairCells().Select(c => c.Id)).ToList();
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 95 + 32 + 379, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1406,6 +1421,422 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     }
 
     // ---------------------------------------------------------------------------------------------------------------
+    // The member-pair sub-matrix (P21g D9 (i), R-JA, R-JB, #2360).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    internal sealed record MemberPairCell(
+        string Id, string Host, string Source,
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors, string? ExpectedStdout);
+
+    /// <summary>A member kind of the pair matrix: its lines declaring <c>A</c> (unindented; a type-body accessor
+    /// spells <c>self</c>, a module-level one does not), where its verdict lands (D2's position rule — the
+    /// declaration's first token, or the name token for a method), the statements of <c>main</c> that use it ALONE and
+    /// what they print, and — for the interface host — the members the implementing class needs.</summary>
+    internal sealed record MemberKind(
+        string Kind, string[] Lines, At Where, string[] Use, string Stdout, string[]? ImplLines = null);
+
+    /// <summary>The nine type-body member kinds (class, struct and interface hosts). Every kind's alone use prints a
+    /// value of its own (1–9), so a dropped or displaced member is a different stdout or an error, never <c>ok</c>.</summary>
+    private static readonly MemberKind[] TypeBodyMemberKinds =
+    {
+        new("nested-class", new[] { "class A:", "    tag: int = 1" }, At.Keyword, new[] { "print(Host.A().tag)" }, "1"),
+        new("method", new[] { "def A(self) -> int:", "    return 2" }, At.Name, new[] { "print(h.A())" }, "2"),
+        new("field", new[] { "A: int = 3" }, At.Name, new[] { "print(h.A)" }, "3"),
+        new("const", new[] { "const A: int = 4" }, At.Keyword, new[] { "print(Host.A)" }, "4"),
+        new("property-field", new[] { "property A: int = 5" }, At.Keyword, new[] { "print(h.A)" }, "5",
+            ImplLines: new[] { "property A: int = 5" }),
+        new("property-get", new[] { "property get A(self) -> int:", "    return 6" }, At.Keyword, new[] { "print(h.A)" }, "6"),
+        // The setter carries no `-> None` (the spec's spelling; see the matrix's property-set kind).
+        new("property-set", new[] { "property set A(self, v: int):", "    print(v)" }, At.Keyword, new[] { "h.A = 7" }, "7"),
+        new("event-auto", new[] { "event A: Action[int]" }, At.Keyword, new[] { "h.A += show", "h.A -= show", "print(8)" }, "8",
+            ImplLines: new[] { "event A: Action[int]" }),
+        new("alias", new[] { "type A = str" }, At.Keyword, new[] { "x: Host.A = \"9\"", "print(x)" }, "9"),
+    };
+
+    /// <summary>The eight module-level declaration kinds. A module <c>def</c>'s verdict lands at its keyword (the
+    /// existing "Function 'A' is already defined with the same signature", measured — the only cell a def is the later
+    /// binding in); a module variable's at its name, column 1.</summary>
+    private static readonly MemberKind[] ModuleMemberKinds =
+    {
+        new("class", new[] { "class A:", "    tag: int = 1" }, At.Keyword, new[] { "print(A().tag)" }, "1"),
+        new("def", new[] { "def A() -> int:", "    return 2" }, At.Keyword, new[] { "print(A())" }, "2"),
+        new("alias", new[] { "type A = str" }, At.Keyword, new[] { "x: A = \"9\"", "print(x)" }, "9"),
+        new("const", new[] { "const A: int = 4" }, At.Keyword, new[] { "print(A)" }, "4"),
+        new("var", new[] { "A: int = 3" }, At.Name, new[] { "print(A)" }, "3"),
+        new("property-field", new[] { "property A: int = 5" }, At.Keyword, new[] { "print(A)" }, "5"),
+        new("property-get", new[] { "property get A() -> int:", "    return 6" }, At.Keyword, new[] { "print(A)" }, "6"),
+        new("property-set", new[] { "property set A(v: int):", "    print(v)" }, At.Keyword, new[] { "A = 7" }, "7"),
+    };
+
+    /// <summary>The type-body hosts of the pair matrix (every one generic-capable, measured: <c>class Host[A]</c>,
+    /// <c>struct Host[A]</c> and <c>interface Host[A]</c> each compile and run).</summary>
+    private static readonly string[] TypeBodyHosts = { "class", "struct", "interface" };
+
+    /// <summary>The second method of a same-kind method pair: a DIFFERENT signature (an overload — legal), or the same
+    /// signature (a separate relation, <c>method-same-sig</c>).</summary>
+    private static string[] SecondMethod(bool module, bool sameSignature) => (module, sameSignature) switch
+    {
+        (false, false) => new[] { "def A(self, x: int) -> int:", "    return x" },
+        (false, true) => new[] { "def A(self) -> int:", "    return 3" },
+        (true, false) => new[] { "def A(x: int) -> int:", "    return x" },
+        (true, true) => new[] { "def A() -> int:", "    return 3" },
+    };
+
+    /// <summary>
+    /// The LEGAL pairs and what reading through both halves prints (<paramref name="receiver"/> is <c>h.</c> in a type
+    /// body, empty at module level): a function-style getter + setter (<c>properties_function_style.md</c> "both a
+    /// function-style getter and setter"; module level "Split accessors are merged … following the same rules as
+    /// class-level split accessors"); an AUTO half + a function-style getter or setter (<c>:88</c>, "A function-style
+    /// accessor may also be paired with an auto-property of the same name supplying the complementary half" — D2 (b));
+    /// a method or def overload (different signatures). Each in both orders. Every other pair is refused.
+    /// </summary>
+    private static (string[] Use, string Stdout)? LegalPair(string a, string b, string receiver)
+    {
+        var pair = string.Join("+", new[] { a, b }.OrderBy(k => k, StringComparer.Ordinal));
+        var write = new[] { $"{receiver}A = 7", $"print({receiver}A)" };
+        return pair switch
+        {
+            // The setter prints the written 7; the getter returns its own 6.
+            "property-get+property-set" => (write, "7\n6\n"),
+            // The auto half's setter takes the write; the function-style getter's 6 is what reads.
+            "property-field+property-get" => (write, "6\n"),
+            // The function-style setter prints 7 and stores nothing; the auto half's getter reads its default 5.
+            "property-field+property-set" => (write, "7\n5\n"),
+            "method+method" or "def+def" => (new[] { $"print({receiver}A())", $"print({receiver}A(5))" }, "2\n5\n"),
+            _ => null,
+        };
+    }
+
+    /// <summary>The 0-based column offset of the name <c>A</c> in a declaration's first line.</summary>
+    private static int NameOffset(string line) => Regex.Match(line, @"(?<!\w)A(?!\w)").Index;
+
+    private static (int Line, int Column) MemberPosition(MemberKind kind, int line, int indent)
+        => kind.Where == At.Name ? (line, indent + NameOffset(kind.Lines[0]) + 1) : (line, indent + 1);
+
+    /// <summary>
+    /// The member-pair cells: host {module, class, struct, interface} × kind A × kind B (every ordered pair, same-kind
+    /// included) — 9 type-body kinds × 3 hosts, 8 module kinds —, <c>type-param</c> (the <c>Host[A]</c> head, always the
+    /// earlier declaration) as kind A beside each type-body kind in each host, the same-signature method/def twin as its
+    /// own relation per host, one <c>member-alone</c> control per kind per host, and the host EDGES: the enum (member
+    /// twice, and alone) and the union (its method alone, a method overload, the same-signature twin, and a case beside a
+    /// same-named method). The union's <c>alias → method</c> pair the plan names is NOT spellable — a <c>type</c> alias in
+    /// a union body is SPY0104 "Expected Case" alone (measured), a host rule — so it is not a cell; the union's other
+    /// member kinds are refused by the same parser rule.
+    ///
+    /// <para><b>Expected</b> (D2, D4, D9; R-JB: in one body a name has ONE meaning). A refused pair is ONE SPY0204 at the
+    /// LATER declaration, at the later kind's position (D2: a nested type, alias, property, event or const at its first
+    /// token; a method at its name token; a field or module variable at its name). Type bodies are walked in source
+    /// order, so the later is B. At module level the later is the later BINDING: a def is hoisted (always earlier), a
+    /// variable is declared by the checker after every other declaration (always later), everything else is source
+    /// order. The legal pairs (<see cref="LegalPair"/>) are [] and run, printing through both halves. Pinned controls:
+    /// the same-signature method twin is [SPY0355 @ the second <c>def</c>] (the existing overload rule, r6) and a
+    /// module def twin [SPY0204 @ the second <c>def</c>]; module <c>const</c> × <c>var</c> is [SPY0225 @ the variable]
+    /// in both orders; module <c>var</c> × <c>var</c> is [] and runs (legal rebinding — the bindings plan's, #1974, not
+    /// this contract's; its <c>main</c> prints <c>ok</c>, so the cell pins the verdict, not the rebinding's value). No
+    /// expected set holds SPY0405/SPY0406/SPY0421/SPY0422 (D3 retires them; asserted, hard), and no cell may draw a
+    /// SPY09xx under <c>Analyze</c> (hard). The alone controls are [] and run: a class or struct host is instantiated
+    /// (<c>Host()</c>), an interface host through <c>class Impl(Host)</c> carrying the members an interface leaves
+    /// abstract (the auto property and the auto event); the interface FIELD's alone control prints <c>ok</c> without a
+    /// use — a non-const interface field is an abstract property no implementer can satisfy (findings ledger, outside
+    /// this contract). A refused cell's <c>main</c> prints <c>ok</c> and uses nothing (D10: cascades are the hand
+    /// fixtures').</para>
+    /// </summary>
+    internal static IEnumerable<MemberPairCell> MemberPairCells()
+    {
+        // `show` is the alone event control's handler; every cell carries it so line numbers are uniform.
+        var prelude = new[] { "def show(v: int) -> None:", "    print(v)", "" };
+        return TypeBodyPairCells(prelude).Concat(ModulePairCells(prelude)).Concat(EdgeMemberPairCells(prelude));
+    }
+
+    /// <summary>One program: the prelude, the host head, the members (indented under a head), the interface
+    /// implementer of a running cell, and <c>main</c>. Returns the source and each member's 1-based first line.</summary>
+    private static (string Source, int[] MemberLines) MemberProgram(
+        string[] prelude, string[]? header, IReadOnlyList<string[]> members, string[]? implementer, string[] mainBody)
+    {
+        var indent = header == null ? "" : "    ";
+        var lines = new List<string>(prelude);
+        if (header != null)
+            lines.AddRange(header);
+        var memberLines = new int[members.Count];
+        for (var i = 0; i < members.Count; i++)
+        {
+            memberLines[i] = lines.Count + 1;
+            lines.AddRange(members[i].Select(l => indent + l));
+        }
+
+        lines.Add("");
+        if (implementer != null)
+        {
+            lines.AddRange(implementer);
+            lines.Add("");
+        }
+
+        lines.Add("def main() -> None:");
+        lines.AddRange(mainBody.Select(l => "    " + l));
+        lines.Add("");
+        return (string.Join("\n", lines), memberLines);
+    }
+
+    /// <summary>The statements that construct <c>h</c> for a running type-body cell, and the interface implementer.</summary>
+    private static (string[] Construct, string[]? Implementer) Receiver(string host, IEnumerable<MemberKind> kinds)
+    {
+        if (host != "interface")
+            return (new[] { "h: Host = Host()" }, null);
+        var impl = kinds.SelectMany(k => k.ImplLines ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).ToList();
+        var body = impl.Count == 0 ? new[] { "    pass" } : impl.Select(l => "    " + l).ToArray();
+        return (new[] { "h: Host = Impl()" }, new[] { "class Impl(Host):" }.Concat(body).ToArray());
+    }
+
+    private static IEnumerable<MemberPairCell> TypeBodyPairCells(string[] prelude)
+    {
+        var okMain = new[] { "print(\"ok\")" };
+        foreach (var host in TypeBodyHosts)
+        {
+            var header = new[] { $"{host} Host:" };
+
+            // The alone controls: each kind compiles in the host and runs through its use.
+            foreach (var kind in TypeBodyMemberKinds)
+            {
+                // The interface field: no use reaches it (an abstract property no implementer satisfies — ledgered).
+                var noUse = host == "interface" && kind.Kind == "field";
+                var (construct, implementer) = Receiver(host, new[] { kind });
+                var main = noUse ? okMain : construct.Concat(kind.Use).ToArray();
+                var (source, _) = MemberProgram(prelude, header, new[] { kind.Lines }, noUse ? null : implementer, main);
+                yield return new MemberPairCell($"member-alone × {host} × {kind.Kind}", host, source,
+                    Array.Empty<(string, int, int)>(), noUse ? "ok\n" : kind.Stdout + "\n");
+            }
+
+            foreach (var a in TypeBodyMemberKinds)
+            {
+                foreach (var b in TypeBodyMemberKinds)
+                {
+                    var bLines = a.Kind == "method" && b.Kind == "method" ? SecondMethod(module: false, sameSignature: false) : b.Lines;
+                    var legal = LegalPair(a.Kind, b.Kind, "h.");
+                    var id = $"member-pair × {host} × {a.Kind} → {b.Kind}";
+                    if (legal is { } run)
+                    {
+                        var (construct, implementer) = Receiver(host, new[] { a, b });
+                        var (source, _) = MemberProgram(prelude, header, new[] { a.Lines, bLines }, implementer,
+                            construct.Concat(run.Use).ToArray());
+                        yield return new MemberPairCell(id, host, source, Array.Empty<(string, int, int)>(), run.Stdout);
+                    }
+                    else
+                    {
+                        var (source, at) = MemberProgram(prelude, header, new[] { a.Lines, bLines }, null, okMain);
+                        var (line, column) = MemberPosition(b, at[1], 4);
+                        yield return new MemberPairCell(id, host, source, new[] { ("SPY0204", line, column) }, null);
+                    }
+                }
+            }
+
+            // The same-signature method twin: the existing overload rule, SPY0355 at the second `def`.
+            {
+                var method = TypeBodyMemberKinds.Single(k => k.Kind == "method");
+                var (source, at) = MemberProgram(prelude, header,
+                    new[] { method.Lines, SecondMethod(module: false, sameSignature: true) }, null, okMain);
+                yield return new MemberPairCell($"member-pair × {host} × method → method-same-sig", host, source,
+                    new[] { ("SPY0355", at[1], 5) }, null);
+            }
+
+            // The type parameter: declared by the head, always the earlier declaration.
+            foreach (var b in TypeBodyMemberKinds)
+            {
+                var (source, at) = MemberProgram(prelude, new[] { $"{host} Host[A]:" }, new[] { b.Lines }, null, okMain);
+                var (line, column) = MemberPosition(b, at[0], 4);
+                yield return new MemberPairCell($"member-pair × {host} × type-param → {b.Kind}", host, source,
+                    new[] { ("SPY0204", line, column) }, null);
+            }
+        }
+    }
+
+    private static IEnumerable<MemberPairCell> ModulePairCells(string[] prelude)
+    {
+        var okMain = new[] { "print(\"ok\")" };
+        foreach (var kind in ModuleMemberKinds)
+        {
+            var (source, _) = MemberProgram(prelude, null, new[] { kind.Lines }, null, kind.Use);
+            yield return new MemberPairCell($"member-alone × module × {kind.Kind}", "module", source,
+                Array.Empty<(string, int, int)>(), kind.Stdout + "\n");
+        }
+
+        foreach (var a in ModuleMemberKinds)
+        {
+            foreach (var b in ModuleMemberKinds)
+            {
+                var bLines = a.Kind == "def" && b.Kind == "def" ? SecondMethod(module: true, sameSignature: false) : b.Lines;
+                var id = $"member-pair × module × {a.Kind} → {b.Kind}";
+                var legal = LegalPair(a.Kind, b.Kind, "");
+                if (legal is { } run)
+                {
+                    var (source, _) = MemberProgram(prelude, null, new[] { a.Lines, bLines }, null, run.Use);
+                    yield return new MemberPairCell(id, "module", source, Array.Empty<(string, int, int)>(), run.Stdout);
+                    continue;
+                }
+
+                var (program, at) = MemberProgram(prelude, null, new[] { a.Lines, bLines }, null, okMain);
+                if (a.Kind == "var" && b.Kind == "var")
+                {
+                    // Legal rebinding (the bindings plan's, #1974): pinned as measured — [] and it runs.
+                    yield return new MemberPairCell(id, "module", program, Array.Empty<(string, int, int)>(), "ok\n");
+                    continue;
+                }
+
+                // The later BINDING: a variable is always later, a def always earlier, else source order.
+                var bLater = b.Kind == "var" || (a.Kind != "var" && (a.Kind == "def" || b.Kind != "def"));
+                var later = bLater ? (Kind: b, Line: at[1]) : (Kind: a, Line: at[0]);
+                var (line, column) = MemberPosition(later.Kind, later.Line, 0);
+                var code = (a.Kind, b.Kind) is ("const", "var") or ("var", "const") ? "SPY0225" : "SPY0204";
+                yield return new MemberPairCell(id, "module", program, new[] { (code, line, column) }, null);
+            }
+        }
+
+        // The same-signature def twin: the existing rule, SPY0204 at the second `def`'s keyword.
+        {
+            var def = ModuleMemberKinds.Single(k => k.Kind == "def");
+            var (source, at) = MemberProgram(prelude, null, new[] { def.Lines, SecondMethod(module: true, sameSignature: true) }, null, okMain);
+            yield return new MemberPairCell("member-pair × module × def → def-same-sig", "module", source,
+                new[] { ("SPY0204", at[1], 1) }, null);
+        }
+    }
+
+    private static IEnumerable<MemberPairCell> EdgeMemberPairCells(string[] prelude)
+    {
+        var okMain = new[] { "print(\"ok\")" };
+
+        // The enum host: its one member kind, twice (SPY0204 at the second member's name) and alone.
+        var enumHeader = new[] { "enum Host:" };
+        {
+            var (source, _) = MemberProgram(prelude, enumHeader, new[] { new[] { "A = 1" } }, null, new[] { "print(Host.A)" });
+            yield return new MemberPairCell("member-alone × enum × member", "enum", source, Array.Empty<(string, int, int)>(), "Host.A\n");
+        }
+        {
+            var (source, at) = MemberProgram(prelude, enumHeader, new[] { new[] { "A = 1" }, new[] { "A = 2" } }, null, okMain);
+            yield return new MemberPairCell("member-pair × enum × member → member", "enum", source, new[] { ("SPY0204", at[1], 5) }, null);
+        }
+
+        // The union host: it registers methods only (its walk hands NameResolver nothing else).
+        var unionHeader = new[] { "union Host:", "    case P(v: int)", "" };
+        var method = TypeBodyMemberKinds.Single(k => k.Kind == "method");
+        var construct = new[] { "h: Host = Host.P(1)" };
+        {
+            var (source, _) = MemberProgram(prelude, unionHeader, new[] { method.Lines }, null, construct.Concat(method.Use).ToArray());
+            yield return new MemberPairCell("member-alone × union × method", "union", source, Array.Empty<(string, int, int)>(), "2\n");
+        }
+        {
+            var run = LegalPair("method", "method", "h.")!.Value;
+            var (source, _) = MemberProgram(prelude, unionHeader, new[] { method.Lines, SecondMethod(module: false, sameSignature: false) },
+                null, construct.Concat(run.Use).ToArray());
+            yield return new MemberPairCell("member-pair × union × method → method", "union", source, Array.Empty<(string, int, int)>(), run.Stdout);
+        }
+        {
+            var (source, at) = MemberProgram(prelude, unionHeader, new[] { method.Lines, SecondMethod(module: false, sameSignature: true) },
+                null, okMain);
+            yield return new MemberPairCell("member-pair × union × method → method-same-sig", "union", source,
+                new[] { ("SPY0355", at[1], 5) }, null);
+        }
+        {
+            // A case and a method of one name: the case is the earlier declaration (the union's head).
+            var (source, at) = MemberProgram(prelude, new[] { "union Host:", "    case A(v: int)", "" }, new[] { method.Lines }, null, okMain);
+            var (line, column) = MemberPosition(method, at[0], 4);
+            yield return new MemberPairCell("member-pair × union × case → method", "union", source, new[] { ("SPY0204", line, column) }, null);
+        }
+    }
+
+    /// <summary>A failed run's internal codes with the C# error ids their messages carry (<c>SPY0908[CS0102]</c>).</summary>
+    private static string RunFingerprint(ExecutionResult run)
+    {
+        var internalCodes = InternalCodes(run);
+        if (internalCodes.Count == 0)
+            return $"refused [{string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" ")}]";
+        return string.Join(" ", internalCodes.Select(d =>
+        {
+            var cs = Regex.Matches(d.Message, @"CS\d{4}").Select(m => m.Value).Distinct(StringComparer.Ordinal).OrderBy(c => c, StringComparer.Ordinal);
+            return $"{d.Code}[{string.Join(",", cs)}]";
+        }).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal));
+    }
+
+    /// <summary>The validator codes D3 retires into SPY0204: never in an expected set.</summary>
+    private static readonly HashSet<string> RetiredMemberConflictCodes = new(StringComparer.Ordinal) { "SPY0405", "SPY0406", "SPY0421", "SPY0422" };
+
+    [Fact]
+    public void MemberPair_HasOneVerdictPerKindPair()
+    {
+        var allowlist = LoadAllowlist(out var problems);
+        var api = new CompilerApi(null, new[] { SharpyCoreReference.Location });
+        var red = new List<string>();
+        var ran = 0;
+        foreach (var cell in MemberPairCells())
+        {
+            // Hard: the contract in code names one verdict, SPY0204 — never a retired per-pair code.
+            if (cell.ExpectedErrors.Any(e => RetiredMemberConflictCodes.Contains(e.Code)))
+                problems.Add($"{cell.Id}: the expected set names a retired member-conflict code");
+
+            var result = api.Analyze(cell.Source, CancellationToken.None);
+            var line = $"{cell.Id}: {Fingerprint(result.Diagnostics)}";
+            Output.WriteLine(line);
+            var failures = new List<string>();
+
+            // An internal error under Analyze is red, never green — but unlike the other sub-matrices it is RATCHETED,
+            // not hard: the base's nested-type twins crash NameResolver (SPY0909 "Symbol 'A' is already defined in this
+            // scope", measured @ 75c65ee29), and those rows drain with the member seam (#2360). The exact-set oracle
+            // reads the SPY0909 too, so a row cannot hide a new internal error in another cell.
+            var internalUnderAnalyze = result.Diagnostics.Where(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)).ToList();
+            if (internalUnderAnalyze.Count > 0)
+                failures.Add($"an internal error under Analyze: {string.Join(" | ", internalUnderAnalyze.Select(d => d.Message)).ReplaceLineEndings(" ")}");
+
+            var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actual = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")
+                .OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
+            {
+                // A refusal the analysis does not make: say what the program does under run (an ICE, or it runs), so a
+                // red line tells the SPY0908 net from a silent second meaning. Diagnostic text only.
+                var underRun = "";
+                if (actual.Count == 0 && cell.ExpectedStdout is null)
+                {
+                    var silent = CompileAndExecute(cell.Source);
+                    underRun = silent.Success
+                        ? $" — under run it RUNS, stdout=[{silent.StandardOutput.ReplaceLineEndings("\\n")}]"
+                        : $" — under run: {RunFingerprint(silent)}";
+                }
+
+                failures.Add($"errors are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]{underRun}");
+            }
+
+            var shadow = result.Diagnostics.Where(d => !d.IsError && VerdictWarnings.Contains(d.Code ?? "")).ToList();
+            if (shadow.Count > 0)
+                failures.Add($"shadowing warnings [{Fingerprint(shadow)}], expected none");
+
+            if (cell.ExpectedStdout is { } stdout)
+            {
+                ran++;
+                var run = CompileAndExecute(cell.Source);
+                var internalCodes = InternalCodes(run);
+                if (internalCodes.Count > 0)
+                    failures.Add($"an internal error under run: {RunFingerprint(run)} "
+                        + string.Join(" | ", internalCodes.Select(d => d.Message)).ReplaceLineEndings(" "));
+                if (!run.Success || run.StandardOutput != stdout)
+                    failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{stdout.ReplaceLineEndings("\\n")}] "
+                        + string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" "));
+
+                // A row citing #2021 claims the struct auto-constructor's duplicate parameter: the run must fail with
+                // SPY0908 carrying CS0100 and nothing else.
+                if (allowlist.TryGetValue(cell.Id, out var structCite) && structCite.Contains("#2021", StringComparison.Ordinal)
+                    && !IsStructCtorDuplicate(run, internalCodes))
+                    problems.Add($"{cell.Id}: allowlisted as the struct auto-constructor CS0100 (#2021), but under run the cell is "
+                        + $"success={run.Success} [{Fingerprint(internalCodes)}] {string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" ")}");
+            }
+
+            if (failures.Count > 0)
+                Output.WriteLine($"    red: {string.Join("; ", failures)}");
+            Ratchet(cell.Id, failures, allowlist, problems, red);
+        }
+
+        Output.WriteLine($"{MemberPairCells().Count()} member-pair cells, {ran} executed, {red.Count} allowlisted red");
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
     // The allowlist ratchet.
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -1432,7 +1863,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             ?? throw new InvalidOperationException($"Semantic/{AllowlistFileName} is missing. Its presence is what arms the ratchet.");
         var universe = new HashSet<string>(
             Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
-                .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id)),
+                .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
+                .Concat(MemberPairCells().Select(c => c.Id)),
             StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
