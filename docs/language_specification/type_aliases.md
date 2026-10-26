@@ -84,7 +84,7 @@ def main() -> None:
 
 ## Redeclaration
 
-An alias declares a name in its scope, once. A second `type` alias of the same name in the same scope is an error (SPY0204) at every position: the module body, a class body, a function body or a block. So is a nested `def` that re-declares an alias written earlier in its own block, and a method of a class body that shares its name with an alias of the same body, in either order. Python rebinds the name; in Sharpy one scope gives a name one meaning, as it does for every other declaration.
+An alias declares a name in its scope, once. A second `type` alias of the same name in the same scope is an error (SPY0204) at every position: the module body, a class body, a function body or a block. So is a nested `def` that re-declares an alias written earlier in its own block, and any member of a type body (class, struct or interface) that shares its name with an alias of the same body, in either order: a method, field, `const`, property, event or nested type. The later of the two declarations is refused. Python rebinds the name; in Sharpy one scope gives a name one meaning, as it does for every other declaration.
 
 <!-- spec-sweep: error SPY0204 -->
 ```python
@@ -95,6 +95,16 @@ def convert() -> None:
 
 def main() -> None:
     convert()
+```
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+class Box:
+    type Label = str
+    property Label: int = 3   # ERROR SPY0204: 'Label' is already declared in 'Box' as a type alias (line 2); one name has one meaning in a type body
+
+def main() -> None:
+    print("unreachable")
 ```
 
 A nested block is a scope of its own, so an alias declared inside it may shadow an alias of the enclosing scope. The outer alias is back in force after the block:

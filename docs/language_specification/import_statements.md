@@ -54,12 +54,52 @@ def main() -> None:
     print(k)
 ```
 
-A star import (`from m import *`) is outside this rule. It never refuses a module-level declaration: a class, def or `const` of the importing module that spells a star-imported name takes the name over, and so does a module variable that re-declares a star-imported variable. The module's own declaration is the one used. A module-level property is the known exception: there the star-imported name currently wins (#2371).
+An import names the symbol it imports, not only its module. So two from-imports of one module that bind different symbols under one name collide: `from math import pi as a` followed by `from math import e as a` is refused at the second import. Importing the same symbol under the same name twice stays harmless.
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+from math import pi as a
+from math import e as a   # ERROR SPY0204: 'a' already names 'math.pi' (imported at line 1); import 'math.e' under another name
+
+def main() -> None:
+    print(a)
+```
+
+A star import (`from m import *`) never refuses a module-level declaration. A class, def, enum, `type` alias, `const` or module-level property of the importing module that spells a star-imported name takes the name over, whatever its kind and source order, and so does a module variable that re-declares a star-imported variable. The module's own declaration is the one used.
 
 <!-- spec-sweep: output "1.5" -->
 ```python
 from math import *
 pi: float = 1.5
+
+def main() -> None:
+    print(pi)
+```
+
+<!-- spec-sweep: output "5" -->
+```python
+from math import *
+property e: int = 5       # the module's own property keeps the name; math.e is not used
+
+def main() -> None:
+    print(e)
+```
+
+An explicit import is a name the importer chose, so beside a star import it collides like any other import. An explicit import of a different source that spells a star-exported name is refused (`SPY0204`, at the explicit import), in either source order. Write the qualified name (`math.pi`), or drop the star import. An explicit import of the very symbol the star import binds is harmless.
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+import copy as pi         # ERROR SPY0204: 'pi' is imported explicitly ('import copy as pi', line 1) and also exported by 'from math import *' (line 2); write 'math.pi', or drop the star import
+from math import *
+
+def main() -> None:
+    print(pi)
+```
+
+<!-- spec-sweep: output "3.141592653589793" -->
+```python
+from math import *
+from math import pi       # the symbol the star import already binds: harmless
 
 def main() -> None:
     print(pi)

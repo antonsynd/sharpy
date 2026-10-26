@@ -321,6 +321,16 @@ os.debug_mode = True
 - **Auto-property form**: `property name: T = default` generates a backing field and both accessors, exactly like the class-level auto-property form.
 - **Split accessors are merged**: a separate `property get name() ...` and `property set name(value: T):` for the same name combine into a single property, following the same rules as class-level split accessors (type must match across accessors; a get-only property is read-only).
 - Access modifiers (`@private`, `@internal`, ...) apply per accessor, as at class level.
+- **A module property is a module binding**: its name has one meaning in the module. A module variable of the same name is refused (`SPY0204`, at the variable) in either source order, as a variable beside a def is.
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+property size: int = 0
+size: int = 4             # ERROR SPY0204: Cannot bind 'size': it is already defined as a module property in this scope
+
+def main() -> None:
+    print(size)
+```
 
 **Code generation:** Module-level properties are emitted as `public static` properties on the module's members class (`<Stem>Module` inside the module's namespace — `OsModule` for `os.spy`; see `module_system.md`), alongside module-level functions and variables:
 
@@ -346,9 +356,18 @@ public static partial class OsModule
 }
 ```
 
-## Property and Method Name Conflicts
+## One Name, One Meaning in a Type Body
 
-A property and a method cannot share the same name within a class:
+In a class, struct or interface body a name has one meaning. A second declaration of the name is refused (`SPY0204`) whatever the two kinds are (method, field, `const`, property, event, nested type or `type` alias), in either order. The diagnostic is at the later declaration and names the kind and line of the earlier one. Python rebinds the name to whichever definition runs last. Sharpy refuses, because one name in a .NET type names one member, method overloads apart (deviation `module-binding-collision-refused`).
+
+The only declarations that share a name are the parts of one member:
+
+- a function-style getter and a function-style setter of one property (`property get` + `property set`);
+- an auto-property beside a function-style accessor that supplies a complementary half (see [Function-Style Setter](#function-style-setter));
+- split auto halves, such as `property get name: str` beside `@private property set name: str` (see [Mixed Access Modifiers](#mixed-access-modifiers));
+- methods with different signatures, which are overloads (see [Method Overloading](method_overloading.md)).
+
+A part declared twice, such as two getters, two setters or one auto-property written twice, is refused like any other pair.
 
 <!-- spec-sweep: error SPY0204 -->
 ```python
@@ -362,6 +381,9 @@ class Example:
     # ❌ ERROR - method cannot have same name as property
     def value(self) -> int:
         return self._value
+
+def main() -> None:
+    print(Example().value)
 ```
 
 **Compiler Error:**
@@ -369,9 +391,42 @@ class Example:
 ```
 error[SPY0204]: 'value' is already declared in 'Example' as a property (line 5); one name has one meaning in a type body
   --> example.spy:9:9
-   |
- 9 |     def value(self) -> int:
-   |         ^
+    |
+  9 |     def value(self) -> int:
+    |         ^
+    |
+```
+
+The rule does not depend on a method being one of the two. A property and an event of one name are refused the same way:
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+delegate Handler(value: int) -> None
+
+class Sensor:
+    property changed: int = 0
+    event changed: Handler    # ERROR SPY0204: 'changed' is already declared in 'Sensor' as a property (line 4); one name has one meaning in a type body
+
+def main() -> None:
+    print(Sensor().changed)
+```
+
+An auto-property and a function-style setter of the same name are one property. The auto half gives the type, the default and the storage, and the function-style half replaces its setter:
+
+<!-- spec-sweep: output -->
+```python
+class Counter:
+    property count: int = 0                # auto half: type, default and storage
+
+    property set count(self, value: int):  # function-style half: the setter
+        self._count = max(value, 0)
+
+def main() -> None:
+    c = Counter()
+    c.count = 5
+    print(c.count)        # 5
+    c.count = -3
+    print(c.count)        # 0
 ```
 
 ## See Also
