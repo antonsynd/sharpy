@@ -31,9 +31,14 @@ public static partial class DiagnosticExplanations
             "Check the type definition for available members. Fix the member name or add the missing member to the type. On a Sharpy builtin, use the Sharpy spelling the diagnostic steers to.");
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateDefinition, "Duplicate definition", "Semantic",
-            "A name was defined more than once in the same scope. Each name can only be defined once per scope (function, class, or module level).",
-            "x: int = 1\nx: str = \"hello\"  # duplicate",
-            "Use a different name or remove the duplicate definition.");
+            "A name was defined more than once in the same scope. A name has one meaning per scope (function, block, class body or module). "
+            + "In a class, struct or interface body, any two members of one name are refused at the later declaration, in either order, whatever their kinds: method, field, const, property, event, nested type or type alias. "
+            + "Only the parts of one member share a name: a function-style getter and setter, an auto-property beside a function-style accessor, split auto halves, and method overloads. "
+            + "In a module, an import binds a module-level name and collides like every other module binding: two imports that bind different symbols under one name (two from-imports of one module included), "
+            + "an import beside a class, def, type alias, const or module property of that name, and a module variable beside a def, a module property or an import are refused. "
+            + "A star import never displaces a declaration of the importing module, but an explicit import of a different source that spells a star-exported name is refused at the explicit import, in either order.",
+            "class Widget:\n    size: int = 0\n\n    def size(self) -> int:  # 'size' is already declared in 'Widget' as a field\n        return 1",
+            "Use a different name or remove the duplicate definition. For an import that collides, import the symbol under another name ('from math import e as euler'); beside a star import, write the qualified name ('math.pi') or drop the star import.");
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateParameter, "Duplicate parameter", "Semantic",
             "A function or method has two parameters with the same name.",
