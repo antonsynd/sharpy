@@ -11,6 +11,14 @@ public class EventValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
+        var (module, context, _) = ParseWithResolver(code);
+        return (module, context);
+    }
+
+    /// <summary>As <see cref="Parse"/>, also handing back NameResolver's diagnostics — where the member
+    /// seam's SPY0204 is reported (P21g D3: SPY0421/SPY0422 retired into it).</summary>
+    private (Module module, SemanticContext context, DiagnosticBag resolverDiagnostics) ParseWithResolver(string code)
+    {
         var lexer = new Sharpy.Compiler.Lexer.Lexer(code);
         var tokens = lexer.TokenizeAll();
         var parser = new Sharpy.Compiler.Parser.Parser(tokens);
@@ -29,7 +37,7 @@ public class EventValidatorTests
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         var context = new SemanticContext(symbolTable, semanticInfo, typeResolver);
-        return (module, context);
+        return (module, context, nameResolver.Diagnostics);
     }
 
     [Fact]
@@ -48,8 +56,13 @@ class Publisher:
         Assert.False(context.Diagnostics.HasErrors);
     }
 
+    // SPY0421 / SPY0422 RETIRED into SPY0204 (P21g D3, #2360): an event sharing its name with a field or a
+    // method is the member seam's verdict — ONE SPY0204 at the LATER declaration, reported by NameResolver —
+    // and the validator says nothing about it. The resolver's refusal on the same input is the positive
+    // control for the validator's silence.
+
     [Fact]
-    public void EventConflictsWithField_EmitsError()
+    public void EventAfterField_IsTheMemberSeamsDuplicateDefinition_AtTheEvent()
     {
         var code = @"
 delegate MyHandler(sender: object, data: str) -> None
@@ -58,17 +71,18 @@ class Publisher:
     on_change: int = 0
     event on_change: MyHandler
 ";
-        var (module, context) = Parse(code);
+        var (module, context, resolverDiagnostics) = ParseWithResolver(code);
         var validator = new EventValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("conflicts with a field"));
+        var refusal = Assert.Single(resolverDiagnostics.GetErrors());
+        Assert.Equal(DiagnosticCodes.Semantic.DuplicateDefinition, refusal.Code);
+        Assert.Equal((6, 5), (refusal.Line, refusal.Column));
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(), e => e.Code == DiagnosticCodes.Validation.EventFieldNameConflict);
     }
 
     [Fact]
-    public void EventConflictsWithMethod_EmitsError()
+    public void EventAfterMethod_IsTheMemberSeamsDuplicateDefinition_AtTheEvent()
     {
         var code = @"
 delegate MyHandler(sender: object, data: str) -> None
@@ -79,13 +93,14 @@ class Publisher:
 
     event on_change: MyHandler
 ";
-        var (module, context) = Parse(code);
+        var (module, context, resolverDiagnostics) = ParseWithResolver(code);
         var validator = new EventValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("conflicts with a method"));
+        var refusal = Assert.Single(resolverDiagnostics.GetErrors());
+        Assert.Equal(DiagnosticCodes.Semantic.DuplicateDefinition, refusal.Code);
+        Assert.Equal((8, 5), (refusal.Line, refusal.Column));
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(), e => e.Code == DiagnosticCodes.Validation.EventMethodNameConflict);
     }
 
     /// <summary>

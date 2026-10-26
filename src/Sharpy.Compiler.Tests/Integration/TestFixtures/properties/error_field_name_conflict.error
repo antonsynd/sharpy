@@ -1,1 +1,1 @@
-conflicts with a field of the same name
+'name' is already declared in 'Foo' as a field (line 2); one name has one meaning in a type body @4:5

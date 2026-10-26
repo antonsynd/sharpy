@@ -56,9 +56,10 @@ public class MemberKindValidatorTotalityTests
     }
 
     /// <summary>
-    /// <c>ValidateInterfaceEvents</c> dispatches on <c>member</c> to collect fields, methods,
-    /// and events for interface-level event validation. Same arm set as
-    /// <see cref="EventValidator_ValidateTypeBody_Arms"/> — both collect the member triple.
+    /// <c>ValidateInterfaceEvents</c> dispatches on <c>member</c> to collect the events for
+    /// interface-level event validation. Same arm set as
+    /// <see cref="EventValidator_ValidateTypeBody_Arms"/>. The field and method arms went with
+    /// SPY0421/SPY0422 (retired into the member seam's SPY0204, P21g D3, #2360).
     /// </summary>
     [Fact]
     public void EventValidator_ValidateInterfaceEvents_Arms()
@@ -66,13 +67,14 @@ public class MemberKindValidatorTotalityTests
         AssertArmsMatch(
             "src/Sharpy.Compiler/Semantic/Validation/EventValidator.cs",
             "ValidateInterfaceEvents",
-            new HashSet<string> { "VariableDeclaration", "FunctionDef", "EventDef" },
+            new HashSet<string> { "EventDef" },
             "EventValidator.ValidateInterfaceEvents");
     }
 
     /// <summary>
-    /// <c>ValidateTypeBody</c> in EventValidator dispatches on <c>member</c> to collect fields,
-    /// methods, and events for class/struct-level event validation.
+    /// <c>ValidateTypeBody</c> in EventValidator dispatches on <c>member</c> to collect the events
+    /// for class/struct-level event validation (its field and method arms went with SPY0421/SPY0422,
+    /// retired into the member seam's SPY0204, P21g D3, #2360).
     /// </summary>
     [Fact]
     public void EventValidator_ValidateTypeBody_Arms()
@@ -80,7 +82,7 @@ public class MemberKindValidatorTotalityTests
         AssertArmsMatch(
             "src/Sharpy.Compiler/Semantic/Validation/EventValidator.cs",
             "ValidateTypeBody",
-            new HashSet<string> { "VariableDeclaration", "FunctionDef", "EventDef" },
+            new HashSet<string> { "EventDef" },
             "EventValidator.ValidateTypeBody");
     }
 
@@ -125,7 +127,8 @@ public class MemberKindValidatorTotalityTests
 
     /// <summary>
     /// <c>ValidateTypeBody</c> in PropertyValidator dispatches on <c>member</c> to collect
-    /// fields, methods, and properties for property validation.
+    /// fields (the SPY0407 backing-field collision) and properties for property validation. Its
+    /// method arm went with SPY0405/SPY0406 (retired into the member seam's SPY0204, P21g D3, #2360).
     /// </summary>
     [Fact]
     public void PropertyValidator_ValidateTypeBody_Arms()
@@ -133,7 +136,7 @@ public class MemberKindValidatorTotalityTests
         AssertArmsMatch(
             "src/Sharpy.Compiler/Semantic/Validation/PropertyValidator.cs",
             "ValidateTypeBody",
-            new HashSet<string> { "VariableDeclaration", "FunctionDef", "PropertyDef" },
+            new HashSet<string> { "VariableDeclaration", "PropertyDef" },
             "PropertyValidator.ValidateTypeBody");
     }
 

@@ -1,6 +1,6 @@
 @abstract method 'm' in non-abstract class 'Abs' — declare the class @abstract or remove the @abstract modifier @35:9
 Duplicate CLR-mapped signature for '__init__' in 'DupCtor' @43:9
-Property 'value' in 'PropField' conflicts with a field of the same name @51:9
+'value' is already declared in 'PropField' as a field (line 49); one name has one meaning in a type body @51:9
 Struct 'Pt' constructor must initialize all fields. Missing initialization for: 'y' @59:9
 Cannot assign to @final field 'v' outside of 'Fin' constructor @69:13
 Class 'Bad' does not implement interface method 'IShape.area' @73:5

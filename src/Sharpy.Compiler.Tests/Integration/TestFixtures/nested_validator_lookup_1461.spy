@@ -43,8 +43,8 @@ class Outer:
         def __init__(self, b: int):
             pass
 
-    # PropertyValidator — SPY0405. Reaching this row also needed the walk itself: this validator
-    # stopped at module.Body, so nested types were unreachable AND unresolvable.
+    # The member seam — SPY0204 at the later declaration (PropertyValidator's SPY0405 retired into it,
+    # P21g D3, #2360); NameResolver walks a nested type's body as it walks a top-level one.
     class PropField:
         value: int = 0
 

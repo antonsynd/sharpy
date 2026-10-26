@@ -87,7 +87,7 @@ class Temperature:
 
 It is possible to have both a function-style getter and setter. A function-style accessor may also be paired with an **auto-property of the same name** supplying the complementary half: the auto half declares the type and the default, and it synthesizes the backing field, which the function-style accessors reach by its underscored snake_case spelling (`self._celsius` for `property celsius`).
 
-Because the auto half owns that field, declaring a field whose name mangles to the same C# identifier is refused (SPY0405 family, code SPY0407) rather than emitting a duplicate member. Drop the declaration and move its default onto the property.
+Because the auto half owns that field, declaring a field whose name mangles to the same C# identifier is refused (code SPY0407) rather than emitting a duplicate member. Drop the declaration and move its default onto the property.
 
 **Important:** Function-style accessors on their own do **not** generate a backing field. Either pair them with an auto-property of the same name, as above, or provide your own storage under a different name.
 
@@ -350,7 +350,7 @@ public static partial class OsModule
 
 A property and a method cannot share the same name within a class:
 
-<!-- spec-sweep: error SPY0406 -->
+<!-- spec-sweep: error SPY0204 -->
 ```python
 class Example:
     _value: int = 0
@@ -367,11 +367,11 @@ class Example:
 **Compiler Error:**
 
 ```
-error: 'value' is already defined as a property in this class
-  --> example.spy:10:5
+error[SPY0204]: 'value' is already declared in 'Example' as a property (line 5); one name has one meaning in a type body
+  --> example.spy:9:9
    |
-10 |     def value(self) -> int:
-   |         ^^^^^ method name conflicts with property on line 6
+ 9 |     def value(self) -> int:
+   |         ^
 ```
 
 ## See Also

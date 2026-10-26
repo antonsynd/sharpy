@@ -12,6 +12,14 @@ public class PropertyValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
+        var (module, context, _) = ParseWithResolver(code);
+        return (module, context);
+    }
+
+    /// <summary>As <see cref="Parse"/>, also handing back NameResolver's diagnostics — where the member
+    /// seam's SPY0204 is reported (P21g D3: SPY0405/SPY0406 retired into it).</summary>
+    private (Module module, SemanticContext context, DiagnosticBag resolverDiagnostics) ParseWithResolver(string code)
+    {
         var lexer = new Sharpy.Compiler.Lexer.Lexer(code);
         var tokens = lexer.TokenizeAll();
         var parser = new Sharpy.Compiler.Parser.Parser(tokens);
@@ -33,15 +41,18 @@ public class PropertyValidatorTests
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         var context = new SemanticContext(symbolTable, semanticInfo, typeResolver);
-        return (module, context);
+        return (module, context, nameResolver.Diagnostics);
     }
 
     // ===========================
-    // SPY0405: Property/Field name conflict
+    // SPY0405 / SPY0406 RETIRED into SPY0204 (P21g D3, #2360): a property sharing its name with a field
+    // or a method is the member seam's verdict — ONE SPY0204 at the LATER declaration, reported by
+    // NameResolver — and the validator says nothing about it. The resolver's refusal on the same input
+    // is the positive control for the validator's silence.
     // ===========================
 
     [Fact]
-    public void PropertyConflictsWithField_ReportsError()
+    public void PropertyAfterField_IsTheMemberSeamsDuplicateDefinition_AtTheProperty()
     {
         var code = @"
 class Foo:
@@ -50,23 +61,22 @@ class Foo:
     property get name(self) -> str:
         return ""hello""
 ";
-        var (module, context) = Parse(code);
+        var (module, context, resolverDiagnostics) = ParseWithResolver(code);
 
         var validator = new PropertyValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        var errors = context.Diagnostics.GetErrors();
-        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.PropertyFieldNameConflict);
+        var refusal = Assert.Single(resolverDiagnostics.GetErrors());
+        Assert.Equal(DiagnosticCodes.Semantic.DuplicateDefinition, refusal.Code);
+        Assert.Equal((5, 5), (refusal.Line, refusal.Column));
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(), e => e.Code == DiagnosticCodes.Validation.PropertyFieldNameConflict);
     }
 
-    // ===========================
-    // SPY0406: Property/Method name conflict
-    // ===========================
-
     [Fact]
-    public void PropertyConflictsWithMethod_ReportsError()
+    public void MethodAfterProperty_IsTheMemberSeamsDuplicateDefinition_AtTheMethodName()
     {
+        // The validator positioned SPY0406 at the PROPERTY whatever the order — here the earlier
+        // declaration. The member seam refuses the later one, the method, at its name token.
         var code = @"
 class Foo:
     property get name(self) -> str:
@@ -75,14 +85,15 @@ class Foo:
     def name(self) -> str:
         return ""world""
 ";
-        var (module, context) = Parse(code);
+        var (module, context, resolverDiagnostics) = ParseWithResolver(code);
 
         var validator = new PropertyValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        var errors = context.Diagnostics.GetErrors();
-        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.PropertyMethodNameConflict);
+        var refusal = Assert.Single(resolverDiagnostics.GetErrors());
+        Assert.Equal(DiagnosticCodes.Semantic.DuplicateDefinition, refusal.Code);
+        Assert.Equal((6, 9), (refusal.Line, refusal.Column));
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(), e => e.Code == DiagnosticCodes.Validation.PropertyMethodNameConflict);
     }
 
     // ===========================

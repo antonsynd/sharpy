@@ -10,8 +10,8 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///
 /// Rules:
 /// 1. Function-style event must have both add and remove accessors (SPY0420)
-/// 2. Event cannot have the same name as a field (SPY0421)
-/// 3. Event cannot have the same name as a method (SPY0422)
+/// (an event sharing its name with a field or method is the member seam's SPY0204 at the later
+/// declaration, NameResolver.TryDeclareMember — SPY0421/SPY0422 retired into it, P21g D3, #2360)
 /// 4. @abstract event must have ellipsis body (SPY0423)
 /// 5. @final cannot be combined with @abstract or @virtual (SPY0410, reuses property code)
 /// 6. @override event must have matching virtual/abstract base event (future)
@@ -168,21 +168,13 @@ internal class EventValidator : SemanticValidatorBase
 
     private void ValidateTypeBody(string typeName, IReadOnlyList<Statement> body, TypeSymbol? ownerSymbol)
     {
-        // Collect fields, methods, and events from the body
-        var fieldNames = new HashSet<string>();
-        var methodNames = new HashSet<string>();
+        // Collect events from the body
         var eventDefs = new List<EventDef>();
 
         foreach (var member in body)
         {
             switch (member)
             {
-                case VariableDeclaration varDecl:
-                    fieldNames.Add(varDecl.Name);
-                    break;
-                case FunctionDef funcDef:
-                    methodNames.Add(funcDef.Name);
-                    break;
                 case EventDef eventDef:
                     eventDefs.Add(eventDef);
                     break;
@@ -204,8 +196,6 @@ internal class EventValidator : SemanticValidatorBase
         // Check each event definition
         foreach (var eventDef in eventDefs)
         {
-            ValidateEventAgainstFields(typeName, eventDef, fieldNames);
-            ValidateEventAgainstMethods(typeName, eventDef, methodNames);
             ValidateAbstractEventBody(typeName, eventDef);
             ValidateFinalNotWithAbstractOrVirtual(typeName, eventDef);
             ValidateMixedEscapeOverride(eventDef, ownerSymbol);
@@ -254,8 +244,6 @@ internal class EventValidator : SemanticValidatorBase
 
     private void ValidateInterfaceEvents(string typeName, IReadOnlyList<Statement> body)
     {
-        var fieldNames = new HashSet<string>();
-        var methodNames = new HashSet<string>();
         var eventDefs = new List<EventDef>();
         var eventGroups = new Dictionary<string, List<EventDef>>();
 
@@ -263,12 +251,6 @@ internal class EventValidator : SemanticValidatorBase
         {
             switch (member)
             {
-                case VariableDeclaration varDecl:
-                    fieldNames.Add(varDecl.Name);
-                    break;
-                case FunctionDef funcDef:
-                    methodNames.Add(funcDef.Name);
-                    break;
                 case EventDef eventDef:
                     eventDefs.Add(eventDef);
                     if (!eventGroups.TryGetValue(eventDef.Name, out var group))
@@ -284,8 +266,6 @@ internal class EventValidator : SemanticValidatorBase
         foreach (var eventDef in eventDefs)
         {
             ValidateAbstractEventBody(typeName, eventDef);
-            ValidateEventAgainstFields(typeName, eventDef, fieldNames);
-            ValidateEventAgainstMethods(typeName, eventDef, methodNames);
         }
 
         foreach (var (eventName, group) in eventGroups)
@@ -323,36 +303,6 @@ internal class EventValidator : SemanticValidatorBase
                 removeDef.LineStart, removeDef.ColumnStart,
                 code: DiagnosticCodes.Validation.UnpairedEventAccessor,
                 span: removeDef.Span);
-        }
-    }
-
-    /// <summary>
-    /// Rule 2: Event cannot share a name with a field.
-    /// </summary>
-    private void ValidateEventAgainstFields(string typeName, EventDef eventDef, HashSet<string> fieldNames)
-    {
-        if (fieldNames.Contains(eventDef.Name))
-        {
-            AddError(_context,
-                $"Event '{eventDef.Name}' in '{typeName}' conflicts with a field of the same name",
-                eventDef.LineStart, eventDef.ColumnStart,
-                code: DiagnosticCodes.Validation.EventFieldNameConflict,
-                span: eventDef.Span);
-        }
-    }
-
-    /// <summary>
-    /// Rule 3: Event cannot share a name with a method.
-    /// </summary>
-    private void ValidateEventAgainstMethods(string typeName, EventDef eventDef, HashSet<string> methodNames)
-    {
-        if (methodNames.Contains(eventDef.Name))
-        {
-            AddError(_context,
-                $"Event '{eventDef.Name}' in '{typeName}' conflicts with a method of the same name",
-                eventDef.LineStart, eventDef.ColumnStart,
-                code: DiagnosticCodes.Validation.EventMethodNameConflict,
-                span: eventDef.Span);
         }
     }
 

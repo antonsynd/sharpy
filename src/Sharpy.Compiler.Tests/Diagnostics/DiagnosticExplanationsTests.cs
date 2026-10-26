@@ -193,6 +193,23 @@ public class DiagnosticExplanationsTests
         Assert.Contains("SPY0610", explanation.Description);
     }
 
+    [Theory]
+    [InlineData("SPY0405")]
+    [InlineData("SPY0406")]
+    [InlineData("SPY0421")]
+    [InlineData("SPY0422")]
+    public void MemberNameConflictCodes_AreRetiredIntoDuplicateDefinition(string code)
+    {
+        // SPY0405/SPY0406/SPY0421/SPY0422 retired (P21g D3, #2360): a property or event sharing its name
+        // with a field or method is the member seam's SPY0204 at the later declaration. No site emits them.
+        var explanation = DiagnosticExplanations.Get(code);
+
+        Assert.NotNull(explanation);
+        Assert.Equal(code, explanation!.Code);
+        Assert.Contains("RETIRED", explanation.Description);
+        Assert.Contains("SPY0204", explanation.Description);
+    }
+
     [Fact]
     public void GenericTypeInPattern_IsRetiredIntoTheClosedSpelling()
     {

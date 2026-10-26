@@ -1,1 +1,1 @@
-conflicts with a method of the same name
+'on_change' is already declared in 'Publisher' as a method (line 5); one name has one meaning in a type body @8:5

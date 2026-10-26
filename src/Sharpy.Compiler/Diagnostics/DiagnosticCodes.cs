@@ -615,8 +615,8 @@ public static class DiagnosticCodes
         public const string InvalidNullCoalesce = "SPY0404";        // Active
 
         // Property validation (SPY0405-SPY0412)
-        public const string PropertyFieldNameConflict = "SPY0405";  // Active
-        public const string PropertyMethodNameConflict = "SPY0406"; // Active
+        public const string PropertyFieldNameConflict = "SPY0405";  // Retired — folded into DuplicateDefinition (SPY0204), the member seam (P21g D3, #2360)
+        public const string PropertyMethodNameConflict = "SPY0406"; // Retired — folded into DuplicateDefinition (SPY0204), the member seam (P21g D3, #2360)
         public const string MixedAutoAndFunctionStyleProperty = "SPY0407"; // Active
         public const string InitOnlyFunctionStyleProperty = "SPY0408"; // Active
         public const string AbstractPropertyMustHaveEllipsisBody = "SPY0409"; // Active
@@ -642,8 +642,8 @@ public static class DiagnosticCodes
 
         // Event validation (SPY0420-SPY0423)
         public const string UnpairedEventAccessor = "SPY0420";      // Active
-        public const string EventFieldNameConflict = "SPY0421";     // Active
-        public const string EventMethodNameConflict = "SPY0422";    // Active
+        public const string EventFieldNameConflict = "SPY0421";     // Retired — folded into DuplicateDefinition (SPY0204), the member seam (P21g D3, #2360)
+        public const string EventMethodNameConflict = "SPY0422";    // Retired — folded into DuplicateDefinition (SPY0204), the member seam (P21g D3, #2360)
         public const string AbstractEventWithBody = "SPY0423";      // Active
         public const string EventAccessorAbstractnessDisagreement = "SPY0424"; // Active
 

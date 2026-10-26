@@ -57,19 +57,29 @@ public static partial class DiagnosticExplanations
             "x: int = 42\ny: int = x ?? 0  # x is never null",
             "Only use ?? with Optional types:\n  x: Optional[int] = get_value()\n  y: int = x ?? 0");
 
-        // ── Validation errors: Property validation (SPY0405-SPY0415) ───
+        // ── Validation errors: Property validation (SPY0405-SPY0415; SPY0405/SPY0406 retired into SPY0204) ───
 
         Add(dict, DiagnosticCodes.Validation.PropertyFieldNameConflict,
             "Property conflicts with field name",
             "Validation",
-            "A property has the same name as a field in the same class or struct. Properties and fields occupy the same namespace and cannot share names.",
+            "RETIRED (P21g D3, #2360): folded into SPY0204 (duplicate definition). In one type body a name has one "
+            + "meaning: a second declaration of a name under ANY pair of member kinds — field, const, method, "
+            + "property, event, nested type, alias — is SPY0204 at the LATER declaration, reported by the "
+            + "member-declaration seam. No site emits SPY0405 any longer; this explanation is retained only for "
+            + "historical lookups. "
+            + "A property has the same name as a field in the same class or struct. Properties and fields occupy the same namespace and cannot share names.",
             "class Foo:\n    name: str\n    property get name(self) -> str:\n        return self._name",
             "Rename the field or the property to avoid the conflict.");
 
         Add(dict, DiagnosticCodes.Validation.PropertyMethodNameConflict,
             "Property conflicts with method name",
             "Validation",
-            "A property has the same name as a method in the same class or struct. Properties and methods cannot share names because they both generate members on the C# type.",
+            "RETIRED (P21g D3, #2360): folded into SPY0204 (duplicate definition). In one type body a name has one "
+            + "meaning: a second declaration of a name under ANY pair of member kinds — field, const, method, "
+            + "property, event, nested type, alias — is SPY0204 at the LATER declaration, reported by the "
+            + "member-declaration seam. No site emits SPY0406 any longer; this explanation is retained only for "
+            + "historical lookups. "
+            + "A property has the same name as a method in the same class or struct. Properties and methods cannot share names because they both generate members on the C# type.",
             "class Foo:\n    property get name(self) -> str:\n        return self._name\n    def name(self) -> str:\n        return self._name",
             "Rename the method or the property to avoid the conflict.");
 
@@ -191,12 +201,22 @@ public static partial class DiagnosticExplanations
             "Add the missing accessor or use auto-event syntax:\nevent add on_click(self, handler: EventHandler):\n    pass\nevent remove on_click(self, handler: EventHandler):\n    pass");
 
         Add(dict, DiagnosticCodes.Validation.EventFieldNameConflict, "Event conflicts with field name", "Validation",
-            "An event has the same name as a field in the same class or struct. Events and fields occupy the same namespace and cannot share names.",
+            "RETIRED (P21g D3, #2360): folded into SPY0204 (duplicate definition). In one type body a name has one "
+            + "meaning: a second declaration of a name under ANY pair of member kinds — field, const, method, "
+            + "property, event, nested type, alias — is SPY0204 at the LATER declaration, reported by the "
+            + "member-declaration seam. No site emits SPY0421 any longer; this explanation is retained only for "
+            + "historical lookups. "
+            + "An event has the same name as a field in the same class or struct. Events and fields occupy the same namespace and cannot share names.",
             "class Button:\n    on_click: str  # field\n    event on_click: EventHandler  # error: conflicts with field",
             "Rename either the field or the event to avoid the conflict.");
 
         Add(dict, DiagnosticCodes.Validation.EventMethodNameConflict, "Event conflicts with method name", "Validation",
-            "An event has the same name as a method in the same class or struct. Events and methods occupy the same namespace and cannot share names.",
+            "RETIRED (P21g D3, #2360): folded into SPY0204 (duplicate definition). In one type body a name has one "
+            + "meaning: a second declaration of a name under ANY pair of member kinds — field, const, method, "
+            + "property, event, nested type, alias — is SPY0204 at the LATER declaration, reported by the "
+            + "member-declaration seam. No site emits SPY0422 any longer; this explanation is retained only for "
+            + "historical lookups. "
+            + "An event has the same name as a method in the same class or struct. Events and methods occupy the same namespace and cannot share names.",
             "class Button:\n    def on_click(self) -> None: pass  # method\n    event on_click: EventHandler  # error: conflicts with method",
             "Rename either the method or the event to avoid the conflict.");
 

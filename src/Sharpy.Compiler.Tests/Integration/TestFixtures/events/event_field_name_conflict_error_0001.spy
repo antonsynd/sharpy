@@ -1,4 +1,4 @@
-# Event cannot share name with a field (SPY0421)
+# Event cannot share name with a field: SPY0204 at the later declaration (SPY0421 retired, P21g D3, #2360)
 delegate MyHandler(sender: object, data: str) -> None
 
 class Publisher:

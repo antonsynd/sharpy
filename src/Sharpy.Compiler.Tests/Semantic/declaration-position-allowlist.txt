@@ -134,72 +134,18 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # rows drain in P21g Phase 2 (TryDeclareMember, D2/D3/D4).
 # DRAINED by P21g Phase 2 Task 1 (the member seam, NameResolver.TryDeclareMember / ResolveTypeBodyMember):
 # every "silent: runs", "ice …", "SPY0909 under Analyze", "twice", "+SPY0225", "+SPY0701" and "legal merge
-# refused" row. LEFT: the validator-coded rows below (SPY0405/0406/0421/0422 beside the seam's SPY0204 —
-# drain with D3, Phase 2 Task 2), the module property × variable rows (D4, Phase 2 Task 3), the interface
+# refused" row. DRAINED by P21g Phase 2 Task 2 (D3: SPY0405/0406/0421/0422 retired into SPY0204): every
+# validator-coded row. LEFT: the module property × variable rows (D4, Phase 2 Task 3), the interface
 # legal merges (the emitter writes one C# property per interface PropertyDef — a CodeGen seam) and the two
 # struct auto-half + GETTER rows (CS0100 in the struct auto-constructor).
-member-pair × class × method → property-field  # #2360 SPY0406
-member-pair × class × method → property-get  # #2360 SPY0406
-member-pair × class × method → property-set  # #2360 SPY0406
-member-pair × class × method → event-auto  # #2360 SPY0422
-member-pair × class × field → property-field  # #2360 SPY0405
-member-pair × class × field → property-get  # #2360 SPY0405
-member-pair × class × field → property-set  # #2360 SPY0405
-member-pair × class × field → event-auto  # #2360 SPY0421
-member-pair × class × const → property-field  # #2360 SPY0405
-member-pair × class × const → property-get  # #2360 SPY0405
-member-pair × class × const → property-set  # #2360 SPY0405
-member-pair × class × const → event-auto  # #2360 SPY0421
-member-pair × class × property-field → method  # #2360 SPY0406 at the earlier
-member-pair × class × property-field → field  # #2360 SPY0405 at the earlier
-member-pair × class × property-field → const  # #2360 SPY0405 at the earlier
-member-pair × class × property-get → method  # #2360 SPY0406 at the earlier
-member-pair × class × property-get → field  # #2360 SPY0405 at the earlier
-member-pair × class × property-get → const  # #2360 SPY0405 at the earlier
-member-pair × class × property-set → method  # #2360 SPY0406 at the earlier
-member-pair × class × property-set → field  # #2360 SPY0405 at the earlier
-member-pair × class × property-set → const  # #2360 SPY0405 at the earlier
-member-pair × class × event-auto → method  # #2360 SPY0422 at the earlier
-member-pair × class × event-auto → field  # #2360 SPY0421 at the earlier
-member-pair × class × event-auto → const  # #2360 SPY0421 at the earlier
-member-pair × struct × method → property-field  # #2360 SPY0406
-member-pair × struct × method → property-get  # #2360 SPY0406
-member-pair × struct × method → property-set  # #2360 SPY0406
-member-pair × struct × method → event-auto  # #2360 SPY0422
-member-pair × struct × field → property-field  # #2360 SPY0405
-member-pair × struct × field → property-get  # #2360 SPY0405
-member-pair × struct × field → property-set  # #2360 SPY0405
-member-pair × struct × field → event-auto  # #2360 SPY0421
-member-pair × struct × const → property-field  # #2360 SPY0405
-member-pair × struct × const → property-get  # #2360 SPY0405
-member-pair × struct × const → property-set  # #2360 SPY0405
-member-pair × struct × const → event-auto  # #2360 SPY0421
-member-pair × struct × property-field → method  # #2360 SPY0406 at the earlier
-member-pair × struct × property-field → field  # #2360 SPY0405 at the earlier
-member-pair × struct × property-field → const  # #2360 SPY0405 at the earlier
 member-pair × struct × property-field → property-get  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-get → method  # #2360 SPY0406 at the earlier
-member-pair × struct × property-get → field  # #2360 SPY0405 at the earlier
-member-pair × struct × property-get → const  # #2360 SPY0405 at the earlier
 member-pair × struct × property-get → property-field  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-set → method  # #2360 SPY0406 at the earlier
-member-pair × struct × property-set → field  # #2360 SPY0405 at the earlier
-member-pair × struct × property-set → const  # #2360 SPY0405 at the earlier
-member-pair × struct × event-auto → method  # #2360 SPY0422 at the earlier
-member-pair × struct × event-auto → field  # #2360 SPY0421 at the earlier
-member-pair × struct × event-auto → const  # #2360 SPY0421 at the earlier
-member-pair × interface × method → event-auto  # #2360 SPY0422
-member-pair × interface × field → event-auto  # #2360 SPY0421
-member-pair × interface × const → event-auto  # #2360 SPY0421
 member-pair × interface × property-field → property-get  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-field → property-set  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-get → property-field  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-get → property-set  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-set → property-field  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-set → property-get  # #2360 legal merge; ice CS0102 CS0229
-member-pair × interface × event-auto → method  # #2360 SPY0422 at the earlier
-member-pair × interface × event-auto → field  # #2360 SPY0421 at the earlier
-member-pair × interface × event-auto → const  # #2360 SPY0421 at the earlier
 member-pair × module × var → property-field  # #2360 ice CS0102
 member-pair × module × var → property-get  # #2360 ice CS0102
 member-pair × module × var → property-set  # #2360 ice CS0102
