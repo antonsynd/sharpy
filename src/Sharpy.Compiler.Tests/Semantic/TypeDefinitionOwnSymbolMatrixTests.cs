@@ -616,10 +616,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(4 * 5 + 3 * 2 + 2 * 9 + 11, EdgeCells().Count());
         Assert.Equal(3, SelfAccessorKinds.Length);
         Assert.Equal(8 * 2 * 3, NestedDefCells().Count());
-        // Import binding: 4 spellings × (fresh + repeated import + 8 colliders × 2 orders), + 2 `as` spellings ×
+        // Import binding: 4 spellings × (fresh + repeated import + 10 colliders × 2 orders), + 2 `as` spellings ×
         // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
-        // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders.
-        Assert.Equal(4 * (2 + 8 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2, ImportBindingCells().Count());
+        // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders, + the star import ×
+        // {class, alias, property-field, property-get, enum} × 2 orders (P21g), + `from math import e as pi` × star × 2.
+        Assert.Equal(10, ImportColliders.Length);
+        Assert.Equal(5, StarDeclarations.Length);
+        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2, ImportBindingCells().Count());
+        Assert.Equal(4 * 2 * 2 + 2, ImportBindingCells().Count(c => c.Collider is "same-module-other-symbol" or "star"));
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
         // def→alias} × type-body + alias→alias × module.
         Assert.Equal(7 * 4 + 3 + 1, AliasRedeclarationCells().Count());
@@ -640,7 +644,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 95 + 32 + 379, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 379, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1044,17 +1048,21 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         public string Id => $"import-binding × {Spelling} × {Collider} × {Order}";
     }
 
-    /// <summary>The four import spellings: (id, the import line for a bound name, the name a plain spelling binds).</summary>
-    private static readonly (string Name, Func<string, string> Line, string? FixedName)[] ImportSpellings =
+    /// <summary>The four import spellings: (id, the import line for a bound name, the name a plain spelling binds, the
+    /// spelling's line beside the <c>star</c> collider — an <c>as</c> spelling binds the star-exported <c>pi</c> to
+    /// ANOTHER source (<c>copy</c>), a plain spelling keeps its own line).</summary>
+    private static readonly (string Name, Func<string, string> Line, string? FixedName, string StarLine)[] ImportSpellings =
     {
-        ("import-as", n => $"import math as {n}", null),
-        ("import", _ => "import math", "math"),
-        ("from-import-as", n => $"from math import pi as {n}", null),
-        ("from-import", _ => "from math import pi", "pi"),
+        ("import-as", n => $"import math as {n}", null, "import copy as pi"),
+        ("import", _ => "import math", "math", "import math"),
+        ("from-import-as", n => $"from math import pi as {n}", null, "from copy import deepcopy as pi"),
+        ("from-import", _ => "from math import pi", "pi", "from math import pi"),
     };
 
     /// <summary>The colliders spelled beside the import, in both source orders: a module-level declaration of every
-    /// kind, a module variable, and another module's import under the same name in both import spellings.</summary>
+    /// kind, a module variable, another module's import under the same name in both import spellings, the SAME module's
+    /// other symbol under the same name (K1), and the star import of the module (R-IZ; its line is the spelling's
+    /// <c>StarLine</c>).</summary>
     private static readonly (string Name, Func<string, string[]> Lines)[] ImportColliders =
     {
         ("class", n => new[] { $"class {n}:", "    pass" }),
@@ -1065,6 +1073,20 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         ("var", n => new[] { $"{n}: int = 1" }),
         ("other-import", n => new[] { $"import copy as {n}" }),
         ("other-from-import", n => new[] { $"from copy import deepcopy as {n}" }),
+        ("same-module-other-symbol", n => new[] { $"from math import e as {n}" }),
+        ("star", _ => new[] { "from math import *" }),
+    };
+
+    /// <summary>The declaration kinds beside a star import (#2371) beyond the variable, const and def colliders: each
+    /// named <c>pi</c> (a <c>math</c> export) and read through a <c>main</c> that prints the LOCAL's value, which the
+    /// star's <c>math.pi</c> would not print — (kind, lines, main's body, stdout).</summary>
+    private static readonly (string Name, string[] Lines, string Body, string Stdout)[] StarDeclarations =
+    {
+        ("class", new[] { "class pi:", "    tag: int = 1" }, "print(pi().tag)", "1\n"),
+        ("alias", new[] { "type pi = int" }, "x: pi = 7\nprint(x)", "7\n"),
+        ("property-field", new[] { "property pi: int = 1" }, "print(pi)", "1\n"),
+        ("property-get", new[] { "property get pi() -> int:", "    return 1" }, "print(pi)", "1\n"),
+        ("enum", new[] { "enum pi:", "    A = 1" }, "print(pi.A)", "pi.A\n"),
     };
 
     /// <summary>
@@ -1075,16 +1097,27 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// one order), plus — for the <c>as</c> spellings — the bound name {<c>str</c>, <c>print</c>, <c>`str`</c>}, the
     /// <c>builtins</c> module's own bindings <c>from builtins import len</c> / <c>str</c>, and the dotted root
     /// <c>import os</c> + <c>import os.path</c> in both orders; for the <c>as</c> spellings also <c>print</c> beside a
-    /// <c>def print</c> (both orders) and <c>print</c> imported twice; and the star spelling <c>from math import *</c> ×
-    /// {module variable, const, def} named <c>pi</c>, both orders. Every program's <c>main</c> prints <c>ok</c> (nothing
-    /// else uses the binding, D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is
-    /// honoured) and the dotted root (which prints <c>len(os.path.join("a", "b"))</c>).
+    /// <c>def print</c> (both orders) and <c>print</c> imported twice; the star spelling <c>from math import *</c> ×
+    /// {module variable, const, def, class, alias, field-style property, getter property, enum} named <c>pi</c>, both
+    /// orders; and <c>from math import e as pi</c> beside the star (r25), both orders. P21g (#2359, R-IZ) added the
+    /// <c>same-module-other-symbol</c> collider (<c>from math import e as N</c>: K1) and the <c>star</c> collider (the
+    /// spelling's <c>StarLine</c> beside <c>from math import *</c>: an <c>as</c> spelling binds <c>pi</c> to
+    /// <c>copy</c>, a plain spelling keeps its line — <c>import math</c> (u10) and the idempotent
+    /// <c>from math import pi</c> (r23)). Every program's <c>main</c> prints <c>ok</c> (nothing else uses the binding,
+    /// D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is honoured), the dotted root
+    /// (which prints <c>len(os.path.join("a", "b"))</c>), the idempotent star cell (<c>print(pi)</c>) and the star ×
+    /// declaration cells (the local's value).
     ///
     /// <para><b>Expected</b> (D4/D5). The pipeline declares the module body BEFORE it binds imports, so an import is
     /// always the later binding against a declaration, whatever the source order: class / def / alias / const /
     /// property → [SPY0204 @ the import's ImportAlias] in BOTH orders. A module variable is declared by the checker
     /// AFTER the imports, so it is the later binding in both orders: [SPY0204 @ the variable] (c18, pinned). Two imports
-    /// bind in source order: [SPY0204 @ the later one's ImportAlias] (c15, e5, g2; d11 is the from/from cell). A
+    /// bind in source order: [SPY0204 @ the later one's ImportAlias] (c15, e5, g2; d11 is the from/from cell) — and so
+    /// do two imports of ONE module that bind DIFFERENT symbols (K1: <c>same-module-other-symbol</c>, k1a/k1b). An
+    /// explicit import of another source that spells a star-exported name is refused at the EXPLICIT import's
+    /// ImportAlias in BOTH orders (R-IZ: k3a/k3b/k3c; r25 for <c>from math import e as pi</c>); a plain
+    /// <c>import math</c> beside its star binds no export (u10) and a plain <c>from math import pi</c> beside it names
+    /// the same symbol (r23, idempotent): [] and run. A
     /// builtin type name under an <c>as</c> spelling → [SPY0212 @ ImportAlias] (the escaped <c>`str`</c> is the opt-in: []),
     /// under a PLAIN from-import (<c>from System.Collections.Generic import IList</c> — the exporter's name) → errors [],
     /// warnings [SPY0484 @ ImportAlias], and it runs; a builtin function name
@@ -1093,14 +1126,15 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// SPY0484, asserted unconditionally (hard). Fresh, the repeated import (idempotent) and the dotted root (merge) →
     /// [] and run. A refused import draws its SPY0204 alone: beside <c>def print</c> the warnings are the def's
     /// SPY0483 only, never a SPY0484 claiming the import took effect; <c>print</c> imported twice warns once (the second
-    /// is idempotent). A star import refuses no declaration: the star cells are [] and print the LOCAL's <c>1</c>, not
-    /// <c>math.pi</c> (star × property is left out — the import silently wins there, #2371). Warnings are compared over
-    /// <see cref="VerdictWarnings"/>; errors over the whole program.</para>
+    /// is idempotent). A star import never displaces a declaration of the importing file, whatever its kind (#2371):
+    /// the star × declaration cells are [] and print the LOCAL's value (<c>1</c>, <c>7</c>, <c>pi.A</c>), not
+    /// <c>math.pi</c>. Warnings are compared over <see cref="VerdictWarnings"/>; errors over the whole program.</para>
     /// </summary>
     internal static IEnumerable<ImportBindingCell> ImportBindingCells()
     {
         const string bound = "mm";
-        string[] Main(string body) => new[] { "", "def main() -> None:", "    " + body, "" };
+        string[] Main(string body) => new[] { "", "def main() -> None:" }
+            .Concat(body.Split('\n').Select(l => "    " + l)).Append("").ToArray();
 
         ImportBindingCell Make(string spelling, string collider, string order, string[] first, string[] second,
             Func<int, int, (string, int, int)[]> errors, Func<int, int, (string, int, int)[]>? warnings = null,
@@ -1129,24 +1163,39 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             foreach (var collider in ImportColliders)
             {
                 var colliderLines = collider.Lines(name);
+                // Beside the star, the spelling's line is its StarLine (an `as` spelling binds `pi` to `copy`).
+                var spelled = collider.Name == "star" ? spelling.StarLine : import;
                 foreach (var order in new[] { "collider-first", "import-first" })
                 {
                     var colliderFirst = order == "collider-first";
-                    var first = colliderFirst ? colliderLines : new[] { import };
-                    var second = colliderFirst ? new[] { import } : colliderLines;
+                    var first = colliderFirst ? colliderLines : new[] { spelled };
+                    var second = colliderFirst ? new[] { spelled } : colliderLines;
+                    var body = "print(\"ok\")";
+                    var stdout = "ok\n";
                     Func<int, int, (string, int, int)[]> errors = collider.Name switch
                     {
                         // The variable is the later binding in both orders; SPY0204 at its name (column 1).
                         "var" => (f, s) => new[] { ("SPY0204", colliderFirst ? f : s, 1) },
-                        // Two imports bind in source order: the later one is refused.
-                        "other-import" or "other-from-import" => (f, s) => new[]
+                        // Two imports bind in source order: the later one is refused — another module's, or the same
+                        // module's other symbol (K1: identity is what the import NAMES).
+                        "other-import" or "other-from-import" or "same-module-other-symbol" => (f, s) => new[]
                         {
                             ("SPY0204", s, ImportAliasColumn(second[0])),
                         },
+                        // R-IZ: an explicit import of another source that spells a star-exported name is refused at
+                        // the EXPLICIT import, in both orders. A plain spelling binds no other export (`import math`,
+                        // u10) or the same symbol (`from math import pi`, r23): legal, and it runs.
+                        "star" when spelling.FixedName == null => (f, s) => new[]
+                        {
+                            ("SPY0204", colliderFirst ? s : f, ImportAliasColumn(spelled)),
+                        },
+                        "star" => (_, _) => none,
                         // A declaration is bound first whatever the order: the import is refused.
                         _ => (f, s) => new[] { ("SPY0204", colliderFirst ? s : f, aliasColumn) },
                     };
-                    yield return Make(spelling.Name, collider.Name, order, first, second, errors);
+                    if (collider.Name == "star" && spelling.FixedName == "pi")
+                        (body, stdout) = ("print(pi)", "3.141592653589793\n");
+                    yield return Make(spelling.Name, collider.Name, order, first, second, errors, body: body, stdout: stdout);
                 }
             }
 
@@ -1182,19 +1231,40 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
         // A star import keeps its rule (outside R-II's four spellings): a module-level declaration of a star-imported
         // name takes it over, in either order — a module variable re-declares the star-imported default like a const
-        // or a def does (R1 of the P21f verify round: the module-variable cell ran `1` at the base and must again).
-        // A module property is left out: star × property is the pre-existing silent-wrong #2371 (the import wins).
+        // or a def does (R1 of the P21f verify round: the module-variable cell ran `1` at the base and must again), and
+        // so does every other declaration kind: class, alias, both property forms, enum (#2371).
+        var star = new[] { "from math import *" };
         foreach (var collider in ImportColliders.Where(c => c.Name is "var" or "const" or "def"))
         {
             foreach (var order in new[] { "collider-first", "import-first" })
             {
                 var colliderLines = collider.Lines("pi");
-                var star = new[] { "from math import *" };
                 yield return Make("from-import-star", collider.Name, order,
                     order == "collider-first" ? colliderLines : star, order == "collider-first" ? star : colliderLines,
                     (_, _) => Array.Empty<(string, int, int)>(),
                     body: collider.Name == "def" ? "print(pi())" : "print(pi)", stdout: "1\n");
             }
+        }
+
+        foreach (var declaration in StarDeclarations)
+        {
+            foreach (var order in new[] { "collider-first", "import-first" })
+            {
+                yield return Make("from-import-star", declaration.Name, order,
+                    order == "collider-first" ? declaration.Lines : star, order == "collider-first" ? star : declaration.Lines,
+                    (_, _) => Array.Empty<(string, int, int)>(), body: declaration.Body, stdout: declaration.Stdout);
+            }
+        }
+
+        // r25: the same module's OTHER symbol under a star-exported name is an explicit import of another source (K1's
+        // identity under R-IZ) — refused at the explicit import in both orders.
+        const string otherSymbol = "from math import e as pi";
+        foreach (var order in new[] { "collider-first", "import-first" })
+        {
+            var starFirst = order == "collider-first";
+            yield return Make("from-math-import-e-as-pi", "star", order,
+                starFirst ? star : new[] { otherSymbol }, starFirst ? new[] { otherSymbol } : star,
+                (f, s) => new[] { ("SPY0204", starFirst ? s : f, ImportAliasColumn(otherSymbol)) });
         }
 
         // The builtins module's own binding (#1322) shadows nothing.
@@ -1843,7 +1913,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     internal const string AllowlistFileName = "declaration-position-allowlist.txt";
     private static readonly Regex IssueCite = new(@"#\d+", RegexOptions.CultureInvariant);
 
-    private static void Ratchet(string id, List<string> failures, IReadOnlyDictionary<string, string> allowlist,
+    internal static void Ratchet(string id, List<string> failures, IReadOnlyDictionary<string, string> allowlist,
         List<string> problems, List<string> red)
     {
         var listed = allowlist.TryGetValue(id, out var cite);
@@ -1855,8 +1925,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             problems.Add($"{id}: passes but is allowlisted ({cite}) — STALE: delete its row from Semantic/{AllowlistFileName}");
     }
 
-    /// <summary>Cell id → cite. A row must cite an issue (<c>#\d+</c>), name a generated cell, and appear once.</summary>
-    private static Dictionary<string, string> LoadAllowlist(out List<string> problems)
+    /// <summary>Cell id → cite. A row must cite an issue (<c>#\d+</c>), name a generated cell, and appear once. The
+    /// universe includes the project-route cells of <c>ImportBindingProjectRouteTests</c> (ids <c>project × …</c>), which
+    /// ratchet over this file too (P21g).</summary>
+    internal static Dictionary<string, string> LoadAllowlist(out List<string> problems)
     {
         problems = new List<string>();
         var path = FindAllowlistPath()
@@ -1864,7 +1936,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var universe = new HashSet<string>(
             Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
                 .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
-                .Concat(MemberPairCells().Select(c => c.Id)),
+                .Concat(MemberPairCells().Select(c => c.Id))
+                .Concat(global::Sharpy.Compiler.Tests.Project.ImportBindingProjectRouteTests.CellIds()),
             StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
