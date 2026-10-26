@@ -230,14 +230,14 @@ internal partial class ProjectCompiler
                                     NameDeclarationLine = importAlias.LineStart,
                                     NameDeclarationColumn = importAlias.ColumnStart
                                 };
+                                var aliasSite = importAlias.Span ?? import.Span;
                                 ImportResolver.BindImportName(SymbolTable, aliasedModule, importAlias.AsName,
                                     importAlias,
                                     new ImportBinding(ImportBindingForm.ModuleAlias,
                                         moduleInfo.CanonicalModuleName ?? moduleInfo.Path, importAlias.Name,
-                                        unit.FilePath),
+                                        unit.FilePath, importAlias.LineStart, importAlias.ColumnStart, aliasSite),
                                     warningTarget: null, isRegistryOwnBinding: false,
-                                    d => Report(d, importAlias.LineStart, importAlias.ColumnStart,
-                                        importAlias.Span ?? import.Span));
+                                    d => Report(d, importAlias.LineStart, importAlias.ColumnStart, aliasSite));
                                 continue;
                             }
 
@@ -290,11 +290,12 @@ internal partial class ProjectCompiler
                             // Register the root module; a second plain import of the same root merges
                             // into it (`import os` + `import os.path`), anything else under the name is
                             // a collision — both decided by BindImportName.
+                            var rootSite = importAlias.Span ?? import.Span;
                             ImportResolver.BindImportName(SymbolTable, currentModule, parts[0], importAlias,
-                                new ImportBinding(ImportBindingForm.ModuleRoot, parts[0], parts[0], unit.FilePath),
+                                new ImportBinding(ImportBindingForm.ModuleRoot, parts[0], parts[0], unit.FilePath,
+                                    importAlias.LineStart, importAlias.ColumnStart, rootSite),
                                 warningTarget: null, isRegistryOwnBinding: false,
-                                d => Report(d, importAlias.LineStart, importAlias.ColumnStart,
-                                    importAlias.Span ?? import.Span));
+                                d => Report(d, importAlias.LineStart, importAlias.ColumnStart, rootSite));
                         }
                     }
                     else if (scanned is FromImportStatement fromImport)
@@ -332,9 +333,13 @@ internal partial class ProjectCompiler
                                         SymbolTable.AmbiguousGlobImports[name] = fromImport.Module;
 
                                     var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
+                                    // A from-import's identity is the symbol it names (K1, #2359): two imports
+                                    // of one module that bind different symbols under one name collide.
+                                    var exported = $"{sourceModule}.{name}";
                                     if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, name, alias: null,
-                                            new ImportBinding(ImportBindingForm.FromImport, sourceModule, sourceModule,
-                                                unit.FilePath),
+                                            new ImportBinding(ImportBindingForm.FromImport, exported, exported,
+                                                unit.FilePath, fromImport.LineStart, fromImport.ColumnStart,
+                                                fromImport.Span),
                                             warningTarget: null, isRegistryOwnBinding: false,
                                             d => Report(d, fromImport.LineStart, fromImport.ColumnStart, fromImport.Span)))
                                     {
@@ -404,15 +409,18 @@ internal partial class ProjectCompiler
                                         }
 
                                         // The registry's own binding under its own name shadows nothing (#1322).
+                                        // The identity is the exported symbol, never the alias (K1, #2359).
+                                        var exported = $"{sourceModule}.{lookupName}";
+                                        var itemSite = importAlias.Span ?? fromImport.Span;
                                         if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, symbolName,
                                                 importAlias,
-                                                new ImportBinding(ImportBindingForm.FromImport, sourceModule,
-                                                    sourceModule, unit.FilePath),
+                                                new ImportBinding(ImportBindingForm.FromImport, exported, exported,
+                                                    unit.FilePath, importAlias.LineStart, importAlias.ColumnStart,
+                                                    itemSite),
                                                 warningTarget: $"{fromImport.Module}.{lookupName}",
                                                 isRegistryOwnBinding: registryBinding != null
                                                     && string.Equals(symbolName, lookupName, StringComparison.Ordinal),
-                                                d => Report(d, importAlias.LineStart, importAlias.ColumnStart,
-                                                    importAlias.Span ?? fromImport.Span)))
+                                                d => Report(d, importAlias.LineStart, importAlias.ColumnStart, itemSite)))
                                         {
                                             // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                             if (importedOverloads is { Count: > 1 })

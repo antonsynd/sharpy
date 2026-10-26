@@ -382,14 +382,8 @@ member-pair × union × case → method  # #2360 ice CS0102
 # import (k3a, green). CREATED by P21g Phase 1; drains in P21g Phase 3 (ImportBinding identity + site,
 # CollisionMessage's star arm, D6/D7).
 import-binding × import-as × star × import-first  # #2359 k3b: silent
-import-binding × from-import-as × same-module-other-symbol × collider-first  # #2359 K1: silent
-import-binding × from-import-as × same-module-other-symbol × import-first  # #2359 K1: silent
 import-binding × from-import-as × star × import-first  # #2359 k3c: SPY0204 at the star
-import-binding × from-import × same-module-other-symbol × collider-first  # #2359 k1b: silent
-import-binding × from-import × same-module-other-symbol × import-first  # #2359 k1b: silent
-import-binding × from-math-import-e-as-pi × star × collider-first  # #2359 r25: silent
-import-binding × from-math-import-e-as-pi × star × import-first  # #2359 r25: silent
-project × same module other symbol × from-import-as (K1)  # #2359 K1: silent
+import-binding × from-math-import-e-as-pi × star × import-first  # #2359 r25: SPY0204 at the star
 project × star × import-as (K3, explicit first)  # #2359 k3b: silent
 project × star × from-import-as (K3, explicit first)  # #2359 k3c: SPY0204 at the star
 
