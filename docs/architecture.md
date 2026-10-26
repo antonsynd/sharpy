@@ -250,4 +250,4 @@ Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 
 ## CI/CD
 
-`.github/workflows/`: `dotnet10.yml` (tests on .NET 10), `docs.yml` (mkdocs + playground), `python-build-tools.yml` (pytest for `build_tools/`), `benchmarks.yml`, `cross-language-benchmarks.yml`, `vscode-extension.yml`, `auto-tag.yml`, `release.yml`. An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
+`.github/workflows/`: `dotnet10.yml` (tests on .NET 10), `docs.yml` (mkdocs + playground), `python-build-tools.yml` (pytest for `build_tools/`), `benchmarks.yml`, `cross-language-benchmarks.yml`, `nightly.yml` (property tests on a time budget and the fuzz suite at a higher scale, fresh seeds each night), `vscode-extension.yml`, `auto-tag.yml`, `release.yml`. An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
