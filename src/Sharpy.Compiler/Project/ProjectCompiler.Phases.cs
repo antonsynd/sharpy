@@ -174,9 +174,9 @@ internal partial class ProjectCompiler
 
             // Enter per-module scope so imported symbols register in the correct scope
             SymbolTable.EnterModuleScope(unit.ModulePath);
-            // Every import spelling binds through ImportResolver.BindImportName — the seam the
-            // single-file route binds through too (#2359, the #1145 one-site-of-two shape) — which
-            // records each binding on the module scope (#514's duplicate rule reads that record).
+            // Every import spelling binds through ImportResolver.BindImportName — the one seam, on
+            // the one compile route (#2359; R-JC deleted the single-file route) — which records each
+            // binding on the module scope (#514's duplicate rule reads that record).
             void Report(ImportResolver.ImportBindingDiagnostic diagnostic, int line, int column,
                 Text.TextSpan? span)
                 => ReportImportBinding(diagnostic, line, column, span, unit.FilePath);
@@ -325,11 +325,7 @@ internal partial class ProjectCompiler
                             {
                                 // Star-imported names that displace a builtin are RECORDED here and
                                 // reported where they are used, not here (#1324, C#'s CS0104 rule).
-                                // This has to happen on this path as well as in ImportResolver:
-                                // multi-file compilation binds star-imported symbols here and never
-                                // runs the single-file one, so recording only there would cover
-                                // exactly the case that cannot arise — a library and its consumer
-                                // are by definition two files. Same one-site-of-two shape as #1145.
+                                // This is the one place a star import binds its names.
                                 foreach (var (name, symbol) in symbolsToImport)
                                 {
                                     if (BuiltinNameShadowing.ShadowsBuiltin(SymbolTable.BuiltinRegistry, name))
@@ -359,7 +355,7 @@ internal partial class ProjectCompiler
                                     var symbolName = importAlias.AsName ?? importAlias.Name;
 
                                     // The builtin-name verdicts (SPY0212 / SPY0484, #1324, R-II) are
-                                    // BindImportName's, decided where the name binds — as in ImportResolver.
+                                    // BindImportName's, decided where the name binds.
                                     if (symbolsToImport.TryGetValue(lookupName, out var symbol) ||
                                         (lookupName != symbolName && symbolsToImport.TryGetValue(symbolName, out symbol)))
                                     {
@@ -368,9 +364,7 @@ internal partial class ProjectCompiler
                                         // A name imported out of the builtins module binds the
                                         // REGISTRY's own symbol, not the CLR-discovered export that
                                         // happens to implement it — identity is what every builtin
-                                        // dispatch decision reads (#1322). Applied on this path as
-                                        // well as in ImportResolver, for the reason the two notes
-                                        // above give: this is the loop compilation actually runs.
+                                        // dispatch decision reads (#1322).
                                         var registryBinding = BuiltinNameShadowing.RegistryBindingFor(
                                             SymbolTable.BuiltinRegistry, moduleInfo, lookupName);
 
@@ -399,8 +393,7 @@ internal partial class ProjectCompiler
                                         // OriginSymbol can point into the same object graph the
                                         // overload list uses — the shadow check decides by root-origin
                                         // reference identity, and the bound clone and the list come
-                                        // from different graphs on this path (#1525). Mirrors the
-                                        // ModuleLoading.cs stamp at its registration seam.
+                                        // from different graphs on this path (#1525).
                                         var importedOverloads = registryBinding?.Overloads
                                             ?? ImportResolver.OverloadsFor(moduleInfo, lookupName);
                                         if (importAlias.AsName != null && registryBinding == null

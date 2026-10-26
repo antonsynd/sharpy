@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Tests.Project;
 /// Seam-level tests for the root-merge rule — <see cref="ModuleExports.MergeFrom"/> with
 /// <c>firstImportWins: true</c> — which combines nested module structures when the same root module
 /// is imported more than once. Its caller is <c>ImportResolver.BindImportName</c>, the import-binding
-/// seam of both compile routes (P21f, #2359); the class keeps the name of the
+/// seam (P21f, #2359; ProjectCompiler Phase 4 is its one route); the class keeps the name of the
 /// <c>ProjectCompiler.MergeModuleExports</c> wrapper it used to call.
 ///
 /// Regression guard for #1135: the merge must carry the types-only

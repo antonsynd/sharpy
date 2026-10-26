@@ -507,7 +507,7 @@ def main() -> None:
             + "spelling `from lib import blen` is refused with SPY0301 'Module lib has no exported "
             + "symbol blen', so there is no imported view to mirror",
         ["Symbol.OriginSymbol"] = "provenance of the BINDING — set by CreateReExportSymbol and "
-            + "CloneSymbolWithName to trace back to the original declaration for identity-based "
+            + "the from-import alias binding to trace back to the original declaration for identity-based "
             + "shadow dispatch (#1525). Null by construction on every declaration; set only on "
             + "import-boundary clones, which are file-local bindings",
 

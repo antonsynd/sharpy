@@ -242,46 +242,14 @@ internal partial class ImportResolver
             ?? fromImport.ResolvedModulePath;
     }
 
-    /// <summary>
-    /// Defines a from-imported symbol through <see cref="BindImportName"/> and reports what it
-    /// decides at the import item (or, for a star import, at the statement).
-    /// </summary>
-    private bool TryDefineFromImport(
-        SymbolTable symbolTable,
-        Symbol symbol,
-        string registerName,
-        string sourceModule,
-        FromImportStatement fromImport,
-        ImportAlias? importAlias,
-        string? lookupName = null,
-        bool isRegistryOwnBinding = false)
-    {
-        var line = importAlias?.LineStart ?? fromImport.LineStart;
-        var column = importAlias?.ColumnStart ?? fromImport.ColumnStart;
-        var span = importAlias?.Span ?? fromImport.Span;
-        return BindImportName(symbolTable, symbol, registerName, importAlias,
-            new ImportBinding(ImportBindingForm.FromImport, sourceModule, sourceModule, _currentModulePath),
-            warningTarget: $"{fromImport.Module}.{lookupName ?? registerName}", isRegistryOwnBinding,
-            diagnostic => ReportImportBinding(diagnostic, line, column, span));
-    }
-
-    /// <summary>Reports a verdict of <see cref="BindImportName"/> on this resolver's bag.</summary>
-    private void ReportImportBinding(ImportBindingDiagnostic diagnostic, int line, int column, Text.TextSpan? span)
-    {
-        if (diagnostic.IsError)
-            AddError(diagnostic.Message, line, column, code: diagnostic.Code, span: span);
-        else
-            AddWarning(diagnostic.Message, line, column, code: diagnostic.Code, span: span);
-    }
-
-    /// <summary>A verdict <see cref="BindImportName"/> decided; each route reports it with its own plumbing.</summary>
+    /// <summary>A verdict <see cref="BindImportName"/> decided; the caller reports it at its own location.</summary>
     internal readonly record struct ImportBindingDiagnostic(string Message, string Code, bool IsError);
 
     /// <summary>
     /// Binds the module-level name an import introduces — THE seam for every import spelling
     /// (<c>import m as N</c>, <c>import a.b</c>, <c>from m import x [as N]</c>, <c>from m import *</c>)
-    /// in BOTH compile routes (single-file <see cref="ResolveAllImports"/>, multi-file
-    /// <c>ProjectCompiler</c>). Returns true when the name was newly bound.
+    /// on the one compile route (<c>ProjectCompiler</c> Phase 4 — every command compiles through it).
+    /// Returns true when the name was newly bound.
     /// </summary>
     /// <remarks>
     /// <para><b>An import binding is a module binding (R-II, #2359).</b> The module body is declared
@@ -459,19 +427,4 @@ internal partial class ImportResolver
         ModuleSymbol => "module",
         _ => "declaration",
     };
-
-    /// <summary>
-    /// Clones a symbol with a new name, used for alias registration.
-    /// </summary>
-    private static Symbol CloneSymbolWithName(Symbol symbol, string newName)
-    {
-        return symbol switch
-        {
-            FunctionSymbol func => func with { Name = newName, OriginSymbol = symbol },
-            TypeSymbol type => type with { Name = newName, OriginSymbol = symbol },
-            VariableSymbol var => var with { Name = newName, OriginSymbol = symbol },
-            ModuleSymbol mod => mod with { Name = newName, OriginSymbol = symbol },
-            _ => symbol
-        };
-    }
 }

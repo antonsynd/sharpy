@@ -20,7 +20,7 @@ internal enum ImportBindingForm
 /// </summary>
 /// <remarks>
 /// Recorded on the <see cref="Scope"/> by <see cref="ImportResolver.BindImportName"/> — the one seam
-/// every import spelling in both compile routes binds through — so a later binding of the same name
+/// every import spelling binds through (ProjectCompiler Phase 4) — so a later binding of the same name
 /// can tell an import from a declaration: two imports of one thing merge, anything else collides
 /// (SPY0204, R-II). The type checker reads it too: a module variable declared after the imports
 /// re-declares an imported name, whatever symbol kind the import bound.

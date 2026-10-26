@@ -287,113 +287,6 @@ internal class FileCompilationPipeline
         return new NameResolveResult(nameResolver);
     }
 
-    /// <summary>
-    /// Phase 3b: Import resolution. Resolves imports, registers symbols, resolves
-    /// inheritance (after imports so imported base types are available), and
-    /// materializes inheritance data.
-    /// </summary>
-    public ImportResolveResult ResolveImports(
-        Module module,
-        NameResolver nameResolver,
-        string filePath,
-        ModuleRegistry? moduleRegistry,
-        CancellationToken cancellationToken = default)
-    {
-        var moduleSearchPaths = moduleRegistry?.GetModulePaths()?.ToArray() ?? Array.Empty<string>();
-        var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
-        var importResolver = new ImportResolver(_logger, moduleRegistry, moduleResolver,
-            semanticBinding: _semanticBinding);
-
-        var currentDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
-        // Coarse-stamp import-resolution diagnostics with CompilerPhase.ImportResolution.
-        using (importResolver.Diagnostics.BeginPhaseScope(CompilerPhase.ImportResolution))
-        {
-            importResolver.ResolveAllImports(module, _symbolTable, currentDir, cancellationToken,
-                currentModulePath: filePath);
-        }
-
-        // Resolve inheritance after imports so imported base types are available. Inheritance
-        // errors belong to the name-resolution phase (they land on the NameResolver's bag).
-        using (nameResolver.Diagnostics.BeginPhaseScope(CompilerPhase.NameResolution))
-        {
-            nameResolver.ResolveInheritance(cancellationToken);
-        }
-        // SPY0607 (the closure gate) is an inheritance refusal, so it lands on the same bag.
-        ResolveImportedInheritanceAndMaterialize(importResolver, nameResolver.Diagnostics);
-
-        return new ImportResolveResult(importResolver);
-    }
-
-    /// <summary>
-    /// Type-check imported .spy modules so that SemanticInfo is populated for
-    /// all their expressions. Without this, GetExpressionSemanticType() returns
-    /// null for cross-module AST nodes during codegen.
-    /// </summary>
-    public void TypeCheckImportedModules(
-        ImportResolver importResolver,
-        string entryFilePath,
-        DiagnosticBag diagnostics,
-        CancellationToken cancellationToken = default,
-        ModuleRegistry? moduleRegistry = null)
-    {
-        foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
-        {
-            if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(entryFilePath),
-                StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (moduleInfo.IsNetModule || moduleInfo.IsErrorRecovery || moduleInfo.Module == null)
-                continue;
-
-            // Temporarily register the module's own exported symbols so that
-            // same-module references can be resolved during type checking.
-            var addedSymbols = new List<string>();
-            foreach (var (name, sym) in moduleInfo.ExportedSymbols)
-            {
-                if (_symbolTable.Lookup(name, searchParents: false) == null)
-                {
-                    _symbolTable.TryDefine(sym);
-                    addedSymbols.Add(name);
-                }
-            }
-
-            var moduleTypeResolver = new TypeResolver(_symbolTable, _semanticInfo, _logger, cancellationToken);
-            var modulePipeline = ValidationPipelineFactory.CreateDefault(_logger);
-            var moduleTypeChecker = new TypeChecker(
-                _symbolTable, _semanticInfo, moduleTypeResolver, _logger, modulePipeline)
-            {
-                CurrentFilePath = modulePath,
-                SemanticBinding = _semanticBinding,
-                ContinueAfterError = true,
-                ModuleRegistry = moduleRegistry
-            };
-            using (moduleTypeChecker.Diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking))
-            {
-                moduleTypeChecker.CheckModule(
-                    moduleInfo.Module,
-                    computeCodeGenInfo: true,
-                    isEntryPoint: false,
-                    cancellationToken);
-            }
-
-            // Clean up temporarily added symbols
-            foreach (var name in addedSymbols)
-            {
-                _symbolTable.Remove(name);
-            }
-
-            // Only merge warnings from imported module type-checking. Errors are
-            // expected when the module has its own imports not in our SymbolTable.
-            foreach (var diag in moduleTypeChecker.Diagnostics.GetAll())
-            {
-                if (diag.Severity != CompilerDiagnosticSeverity.Error)
-                {
-                    diagnostics.Add(diag);
-                }
-            }
-        }
-    }
-
 }
 
 // ----- Result Structs -----
@@ -442,21 +335,6 @@ internal readonly struct NameResolveResult
 
     public NameResolver NameResolver { get; }
     public DiagnosticBag Diagnostics => NameResolver.Diagnostics;
-    public bool HasErrors => Diagnostics.HasErrors;
-}
-
-/// <summary>
-/// Result of import resolution via <see cref="FileCompilationPipeline.ResolveImports"/>.
-/// </summary>
-internal readonly struct ImportResolveResult
-{
-    public ImportResolveResult(ImportResolver importResolver)
-    {
-        ImportResolver = importResolver;
-    }
-
-    public ImportResolver ImportResolver { get; }
-    public DiagnosticBag Diagnostics => ImportResolver.Diagnostics;
     public bool HasErrors => Diagnostics.HasErrors;
 }
 

@@ -2817,8 +2817,8 @@ internal partial class TypeChecker
     /// (R-II, #2359) — the import-as / plain spellings already reached the <c>module</c> arm, the
     /// from-import spellings bind a <see cref="VariableSymbol"/> and were silently replaced. The
     /// import seam records each binding on its scope (<see cref="Scope.LookupImportBinding"/>); only
-    /// THIS file's imports count, because the single-file pipeline type-checks an imported module in
-    /// the entry file's table. A STAR import's name does not count either: <c>from math import *</c>
+    /// THIS file's imports count — the record names its importing file, and a binding another file
+    /// recorded is not this file's import. A STAR import's name does not count either: <c>from math import *</c>
     /// then <c>e: int = 5</c> re-declares the star-imported default, as a const or def of the name
     /// takes it over (<see cref="ImportBinding.IsStar"/>; a star import never displaces a module-level
     /// declaration, and its names never refuse one).
