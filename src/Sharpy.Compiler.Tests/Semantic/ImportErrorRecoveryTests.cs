@@ -3,6 +3,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -19,6 +20,15 @@ public class ImportErrorRecoveryTests : IntegrationTestBase
     public ImportErrorRecoveryTests(ITestOutputHelper output) : base(output)
     {
     }
+
+    /// <summary>Analyzes through the live route (CompilerApi → ProjectCompiler Phase 4).</summary>
+    private static SemanticResult AnalyzeLive(string source)
+        => new CompilerApi(null, new[] { SharpyCoreReference.Location }).Analyze(source);
+
+    /// <summary>Every error as <c>code@line:col</c>, sorted.</summary>
+    private static List<string> ErrorCodes(SemanticResult result)
+        => result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code}@{d.Line}:{d.Column}")
+            .OrderBy(x => x, StringComparer.Ordinal).ToList();
 
     [Fact]
     public void FromImport_ModuleNotFound_NoUndefinedIdentifierError()
@@ -164,27 +174,19 @@ def greet():
     [Fact]
     public void ErrorRecoverySymbol_HasCorrectProperties()
     {
-        // Verify error recovery symbols have the correct properties set
-        var logger = NullLogger.Instance;
-        var builtinRegistry = new BuiltinRegistry();
-        var resolver = new ImportResolver(logger);
-        var symbolTable = new SymbolTable(builtinRegistry);
+        // A from-import of a missing module binds an error-recovery symbol for each name, so the
+        // name's use draws no SPY0200 — exactly one SPY0300, at the import.
+        var result = AnalyzeLive("from nonexistent import foo\n\ndef main() -> None:\n    foo(42)\n");
 
-        // Parse a module with a failed import
-        var source = "from nonexistent import foo";
-        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, logger);
-        var tokens = lexer.TokenizeAll();
-        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-        var module = parser.ParseModule();
-
-        // Resolve imports - this should create error recovery symbols
-        resolver.ResolveAllImports(module, symbolTable, null);
-
-        // The symbol should exist and be marked as error recovery
-        var symbol = symbolTable.Lookup("foo");
+        Assert.Equal(new[] { "SPY0300@1:1" }, ErrorCodes(result));
+        var symbol = result.SymbolTable!.Lookup("foo");
         Assert.NotNull(symbol);
         Assert.True(symbol.IsErrorRecovery);
         Assert.Equal("nonexistent", symbol.OriginalModule);
+
+        // Positive control on the same use: with no import binding the name, the instrument sees
+        // the SPY0200 the recovery suppresses.
+        Assert.Equal(new[] { "SPY0200@4:5" }, ErrorCodes(AnalyzeLive("\n\ndef main() -> None:\n    foo(42)\n")));
     }
 
     [Fact]
@@ -270,27 +272,26 @@ def main():
     [Fact]
     public void RegularImport_ErrorRecoveryModule_HasCorrectProperties()
     {
-        // Verify error recovery modules from regular imports have the correct properties
-        var logger = NullLogger.Instance;
-        var builtinRegistry = new BuiltinRegistry();
-        var resolver = new ImportResolver(logger);
-        var symbolTable = new SymbolTable(builtinRegistry);
+        // A plain import of a missing module binds an error-recovery MODULE, so a member access on
+        // it draws no SPY0200 — exactly one SPY0300, at the import.
+        var result = AnalyzeLive("import nonexistent\n\ndef main() -> None:\n    nonexistent.foo(42)\n");
 
-        // Parse a module with a failed regular import
-        var source = "import nonexistent";
-        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, logger);
-        var tokens = lexer.TokenizeAll();
-        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-        var module = parser.ParseModule();
-
-        // Resolve imports - this should create error recovery module
-        resolver.ResolveAllImports(module, symbolTable, null);
-
-        // The module symbol should exist and be marked as error recovery
-        var symbol = symbolTable.Lookup("nonexistent");
+        Assert.Equal(new[] { "SPY0300@1:8" }, ErrorCodes(result));
+        var symbol = result.SymbolTable!.Lookup("nonexistent");
         Assert.NotNull(symbol);
         Assert.IsType<ModuleSymbol>(symbol);
         Assert.True(symbol.IsErrorRecovery);
+
+        // Positive control on the same use: without the import the module name is SPY0200.
+        Assert.Equal(new[] { "SPY0200@4:5" }, ErrorCodes(AnalyzeLive("\n\ndef main() -> None:\n    nonexistent.foo(42)\n")));
+
+        // The ALIAS spelling: the root-cause mark is keyed by the module name, which `ne` does not
+        // spell, so only the bound module's recovery flag keeps `ne.foo` from cascading (SPY0203).
+        var aliased = AnalyzeLive("import nonexistent as ne\n\ndef main() -> None:\n    ne.foo(42)\n");
+        Assert.Equal(new[] { "SPY0300@1:8" }, ErrorCodes(aliased));
+        var aliasSymbol = aliased.SymbolTable!.Lookup("ne");
+        Assert.NotNull(aliasSymbol);
+        Assert.True(aliasSymbol.IsErrorRecovery);
     }
 
     [Fact]

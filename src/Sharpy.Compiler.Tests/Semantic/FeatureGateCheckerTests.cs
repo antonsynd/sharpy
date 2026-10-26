@@ -7,6 +7,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.Compiler.Text;
 using Xunit;
 
@@ -117,34 +118,44 @@ public class FeatureGateCheckerTests
         diags.Where(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled).Should().BeEmpty();
     }
 
+    /// <summary>
+    /// Compiles <paramref name="source"/> as a one-file project on the live route (ProjectCompiler:
+    /// Phase 4 records the file's <c>from __future__ import</c> features) and returns the effective
+    /// feature set the semantic phase uses for that file, with the file's own parsed AST.
+    /// </summary>
+    private static (FeatureFlags Features, Module Ast, IReadOnlyList<CompilerDiagnostic> Diagnostics)
+        CompileLive(string source)
+    {
+        using var helper = new ProjectCompilationHelper()
+            .WithRootNamespace("FeatureGateLive").WithOutputType("exe").WithEntryPoint("main.spy");
+        helper.AddSourceFile("main.spy", source, isEntryPoint: true);
+        var result = helper.Compile();
+        var unit = result.ProjectModel!.Units.Values.Single(u => Path.GetFileName(u.FilePath) == "main.spy");
+        var features = result.ImportResolver!.GetEffectiveFeatures(result.EffectiveFeatures, unit.FilePath);
+        return (features, unit.Ast!, result.Diagnostics.GetAll());
+    }
+
     [Fact]
     public void GatedConstruct_EnabledViaFutureImport_ReportsNothing()
     {
         // End-to-end union path: `from __future__ import __test_feature` must satisfy the gate
-        // exactly as a compilation-wide flag would. Mirrors the union performed in Compiler.cs.
-        const string source =
-            "from __future__ import __test_feature\n\n\ndef main() -> None:\n    pass\n";
-        const string filePath = "test.spy";
-
-        var module = ParseModule(source);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var pipeline = new FileCompilationPipeline(
-            symbolTable, new SemanticInfo(), new SemanticBinding(), NullLogger.Instance);
-
-        var nameResult = pipeline.ResolveNames(module);
-        var importResult = pipeline.ResolveImports(module, nameResult.NameResolver, filePath, moduleRegistry: null);
-
-        var fileFeatures = FeatureFlags.None.Enable(
-            importResult.ImportResolver.GetFileFutureFeatures(filePath).EnabledFeatures);
-        fileFeatures.IsEnabled("__test_feature").Should().BeTrue("the future import should enable it");
+        // exactly as a compilation-wide flag would — the features come from the compile route
+        // itself, and the test-only gate (the production registry is empty) runs against them.
+        var (features, ast, _) = CompileLive(
+            "from __future__ import __test_feature\n\n\ndef main() -> None:\n    pass\n");
+        features.IsEnabled("__test_feature").Should().BeTrue("the future import should enable it");
 
         var diagnostics = new DiagnosticBag();
-        new FeatureGateChecker(diagnostics, fileFeatures, filePath, GatePass).Check(module);
-
+        new FeatureGateChecker(diagnostics, features, "main.spy", GatePass).Check(ast);
         diagnostics.GetAll().Where(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled)
             .Should().BeEmpty();
+
+        // Positive control: the same construct without the future import is gated.
+        var (ungated, ungatedAst, _) = CompileLive("\n\n\ndef main() -> None:\n    pass\n");
+        ungated.IsEnabled("__test_feature").Should().BeFalse();
+        var controlDiagnostics = new DiagnosticBag();
+        new FeatureGateChecker(controlDiagnostics, ungated, "main.spy", GatePass).Check(ungatedAst);
+        controlDiagnostics.GetAll().Should().ContainSingle(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled);
     }
 
     [Fact]
@@ -152,20 +163,10 @@ public class FeatureGateCheckerTests
     {
         // Regression guard: SPY0330 behavior for an unknown future feature is unchanged and
         // is distinct from the new SPY0331 gate diagnostic.
-        const string source =
-            "from __future__ import not_a_real_feature\n\n\ndef main() -> None:\n    pass\n";
-        const string filePath = "test.spy";
+        var (_, _, diagnostics) = CompileLive(
+            "from __future__ import not_a_real_feature\n\n\ndef main() -> None:\n    pass\n");
 
-        var module = ParseModule(source);
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var pipeline = new FileCompilationPipeline(
-            symbolTable, new SemanticInfo(), new SemanticBinding(), NullLogger.Instance);
-
-        var nameResult = pipeline.ResolveNames(module);
-        var importResult = pipeline.ResolveImports(module, nameResult.NameResolver, filePath, moduleRegistry: null);
-
-        importResult.ImportResolver.Diagnostics.GetAll()
-            .Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UnknownFutureFeature);
+        diagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UnknownFutureFeature);
+        diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled);
     }
 }

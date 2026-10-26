@@ -2,6 +2,7 @@ using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 
 using Sharpy.TestInfrastructure;
@@ -243,38 +244,29 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
     [Fact]
     public void Workflow_ModuleFunctionOverloads_ThreadedToModuleSymbol()
     {
-        var registry = new ModuleRegistry(cache: _cache);
-        registry.LoadReference(SharpyCoreReference.Location);
-        registry.LoadReference(SharpyStdlibReference.Location);
+        // `import os.path` on the live route (CompilerApi → ProjectCompiler Phase 4) threads the
+        // module's overload set onto the bound ModuleSymbol...
+        const string source = "import os.path\n\ndef main() -> None:\n    print(len(os.path.join(\"a\", \"b\")))\n"
+            + "    print(len(os.path.join(\"a\", \"b\", \"c\")))\n";
+        var api = new CompilerApi(null, new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location });
+        var analysis = api.Analyze(source);
+        Assert.True(analysis.Success, string.Join("\n", analysis.Diagnostics.Select(d => $"{d.Code} {d.Message}")));
 
-        var logger = Sharpy.Compiler.Logging.NullLogger.Instance;
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var semanticBinding = new SemanticBinding();
-
-        var importResolver = new ImportResolver(logger, moduleRegistry: registry,
-            semanticBinding: semanticBinding);
-
-        // Act - Resolve os.path via import statement
-        var source = "import os.path\n\ndef main():\n    pass\n";
-        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, logger);
-        var tokens = lexer.TokenizeAll();
-        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, logger);
-        var module = parser.ParseModule();
-
-        importResolver.ResolveAllImports(module, symbolTable, "/test");
-
-        // Assert - ModuleSymbol should have FunctionOverloads populated
-        var osSymbol = symbolTable.Lookup("os", searchParents: false) as ModuleSymbol;
+        var osSymbol = analysis.SymbolTable!.Lookup("os", searchParents: false) as ModuleSymbol;
         Assert.NotNull(osSymbol);
-
         var pathSymbol = osSymbol.Exports["path"] as ModuleSymbol;
         Assert.NotNull(pathSymbol);
         Assert.True(pathSymbol.FunctionOverloads.ContainsKey("join"),
             "ModuleSymbol.FunctionOverloads should contain 'join'");
+        Assert.True(pathSymbol.FunctionOverloads["join"].Count >= 2,
+            $"Expected at least 2 overloads for join in FunctionOverloads, got {pathSymbol.FunctionOverloads["join"].Count}");
 
-        var joinOverloads = pathSymbol.FunctionOverloads["join"];
-        Assert.True(joinOverloads.Count >= 2,
-            $"Expected at least 2 overloads for join in FunctionOverloads, got {joinOverloads.Count}");
+        // ...so both arities resolve and run (lengths, not paths: the separator is the platform's).
+        using var helper = new ProjectCompilationHelper()
+            .WithRootNamespace("OverloadThreading").WithOutputType("exe").WithEntryPoint("main.spy");
+        helper.AddSourceFile("main.spy", source, isEntryPoint: true);
+        var run = helper.CompileAndExecute();
+        Assert.True(run.Success, string.Join("\n", run.CompilationErrors) + run.StandardError);
+        Assert.Equal("3\n5\n", run.StandardOutput);
     }
 }

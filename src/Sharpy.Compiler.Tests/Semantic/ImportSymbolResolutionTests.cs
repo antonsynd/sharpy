@@ -3,6 +3,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Semantic;
@@ -743,220 +744,104 @@ def __private_func():
 
     #endregion
 
-    #region ResolveAllImports Tests
+    #region Import binding on the live route
+
+    // Every import binds through ProjectCompiler Phase 4 (the one route — the single-file import
+    // route was deleted, P21g task 0, R-JC). These tests assert the
+    // OBSERVABLE each binding produces — the program runs with the bound name, and a name the
+    // import did NOT bind draws SPY0200 at its use — rather than reading a symbol table that only
+    // the deleted route populated.
+
+    private static ProjectCompilationResult CompileWithModule(ProjectCompilationHelper helper,
+        string moduleName, string moduleSource, string mainSource)
+    {
+        helper.WithRootNamespace("ImportBindingLive").WithOutputType("exe").WithEntryPoint("main.spy");
+        helper.AddSourceFile($"{moduleName}.spy", moduleSource);
+        helper.AddSourceFile("main.spy", mainSource, isEntryPoint: true);
+        helper.CreateProjectFile();
+        return helper.Compile();
+    }
+
+    private static string RunWithModule(string moduleName, string moduleSource, string mainSource)
+    {
+        using var helper = new ProjectCompilationHelper();
+        var compiled = CompileWithModule(helper, moduleName, moduleSource, mainSource);
+        Assert.True(compiled.Success, Describe(compiled));
+        var run = helper.CompileAndExecute();
+        Assert.True(run.Success, string.Join("\n", run.CompilationErrors) + run.StandardError);
+        return run.StandardOutput;
+    }
+
+    /// <summary>Every error in the project, as <c>code@file:line:col</c>, sorted.</summary>
+    private static List<string> ErrorsOf(string moduleName, string moduleSource, string mainSource)
+    {
+        using var helper = new ProjectCompilationHelper();
+        var compiled = CompileWithModule(helper, moduleName, moduleSource, mainSource);
+        return compiled.Diagnostics.GetErrors()
+            .Select(d => $"{d.Code}@{Path.GetFileName(d.FilePath)}:{d.Line}:{d.Column}")
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
+    }
+
+    private static string Describe(ProjectCompilationResult result)
+        => string.Join("\n", result.Diagnostics.GetAll().Select(d => $"{d.Code} {d.FilePath}:{d.Line}:{d.Column} {d.Message}"));
 
     [Fact]
-    public void ResolveAllImports_FromImport_RegistersSymbolsInSymbolTable()
+    public void FromImport_BindsEveryNamedSymbol()
     {
-        CreateModuleFile("mathlib", @"
-def add(a: int, b: int) -> int:
-    return a + b
-
-PI: float = 3.14
-");
-
-        var resolver = new ImportResolver(_logger);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-
-        var fromImport = new FromImportStatement
-        {
-            Module = "mathlib",
-            Names = new List<ImportAlias>
-            {
-                new ImportAlias { Name = "add", AsName = null, LineStart = 1, ColumnStart = 1 },
-                new ImportAlias { Name = "PI", AsName = null, LineStart = 1, ColumnStart = 1 }
-            }.ToImmutableArray(),
-            ImportAll = false,
-            LineStart = 1,
-            ColumnStart = 1
-        };
-
-        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
-
-        resolver.ResolveAllImports(module, symbolTable, _testDir);
-
-        Assert.False(resolver.Diagnostics.HasErrors);
-        var addSymbol = symbolTable.Lookup("add");
-        Assert.NotNull(addSymbol);
-        Assert.Equal(SymbolKind.Function, addSymbol.Kind);
-        var piSymbol = symbolTable.Lookup("PI");
-        Assert.NotNull(piSymbol);
-        Assert.Equal(SymbolKind.Variable, piSymbol.Kind);
+        const string mathlib = "def add(a: int, b: int) -> int:\n    return a + b\n\nPI: float = 3.14\n";
+        var stdout = RunWithModule("mathlib", mathlib,
+            "from mathlib import add, PI\n\ndef main() -> None:\n    print(add(1, 2))\n    print(PI)\n");
+        Assert.Equal("3\n3.14\n", stdout);
     }
 
     [Fact]
-    public void ResolveAllImports_ImportStatement_RegistersModuleSymbol()
+    public void ImportStatement_BindsTheModuleName()
     {
-        CreateModuleFile("utils", @"
-def helper():
-    pass
-");
-
-        var resolver = new ImportResolver(_logger);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-
-        var importStmt = new ImportStatement
-        {
-            Names = new List<ImportAlias>
-            {
-                new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 }
-            }.ToImmutableArray(),
-            LineStart = 1,
-            ColumnStart = 1
-        };
-
-        var module = new Module { Body = ImmutableArray.Create<Statement>(importStmt) };
-
-        resolver.ResolveAllImports(module, symbolTable, _testDir);
-
-        Assert.False(resolver.Diagnostics.HasErrors);
-        var moduleSymbol = symbolTable.Lookup("utils");
-        Assert.NotNull(moduleSymbol);
-        Assert.Equal(SymbolKind.Module, moduleSymbol.Kind);
+        const string utils = "def helper() -> int:\n    return 7\n";
+        var stdout = RunWithModule("utils", utils,
+            "import utils\n\ndef main() -> None:\n    print(utils.helper())\n");
+        Assert.Equal("7\n", stdout);
     }
 
     [Fact]
-    public void ResolveAllImports_AliasedImport_RegistersAlias()
+    public void AliasedImport_BindsTheAliasOnly()
     {
-        CreateModuleFile("mymod", @"
-def foo():
-    pass
-");
-
-        var resolver = new ImportResolver(_logger);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-
-        var importStmt = new ImportStatement
-        {
-            Names = new List<ImportAlias>
-            {
-                new ImportAlias { Name = "mymod", AsName = "m", LineStart = 1, ColumnStart = 1 }
-            }.ToImmutableArray(),
-            LineStart = 1,
-            ColumnStart = 1
-        };
-
-        var module = new Module { Body = ImmutableArray.Create<Statement>(importStmt) };
-
-        resolver.ResolveAllImports(module, symbolTable, _testDir);
-
-        Assert.False(resolver.Diagnostics.HasErrors);
-        // Should be registered under the alias, not the original name
-        var moduleSymbol = symbolTable.Lookup("m");
-        Assert.NotNull(moduleSymbol);
-        Assert.Equal(SymbolKind.Module, moduleSymbol.Kind);
+        const string mymod = "def foo() -> int:\n    return 5\n";
+        Assert.Equal("5\n", RunWithModule("mymod", mymod,
+            "import mymod as m\n\ndef main() -> None:\n    print(m.foo())\n"));
+        // The original spelling is not bound: its use is SPY0200, and nothing else is reported.
+        Assert.Equal(new[] { "SPY0200@main.spy:4:11" }, ErrorsOf("mymod", mymod,
+            "import mymod as m\n\ndef main() -> None:\n    print(mymod.foo())\n"));
     }
 
     [Fact]
-    public void ResolveAllImports_FromImportAlias_RegistersUnderAlias()
+    public void FromImportAlias_BindsTheAliasOnly()
     {
-        CreateModuleFile("aliasmod", @"
-def original_func():
-    pass
-");
-
-        var resolver = new ImportResolver(_logger);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-
-        var fromImport = new FromImportStatement
-        {
-            Module = "aliasmod",
-            Names = new List<ImportAlias>
-            {
-                new ImportAlias { Name = "original_func", AsName = "aliased_func", LineStart = 1, ColumnStart = 1 }
-            }.ToImmutableArray(),
-            ImportAll = false,
-            LineStart = 1,
-            ColumnStart = 1
-        };
-
-        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
-
-        resolver.ResolveAllImports(module, symbolTable, _testDir);
-
-        Assert.False(resolver.Diagnostics.HasErrors);
-        // Should be registered under the alias, not the original name
-        var aliasedSymbol = symbolTable.Lookup("aliased_func");
-        Assert.NotNull(aliasedSymbol);
-        Assert.Equal(SymbolKind.Function, aliasedSymbol.Kind);
+        const string aliasmod = "def original_func() -> int:\n    return 4\n";
+        Assert.Equal("4\n", RunWithModule("aliasmod", aliasmod,
+            "from aliasmod import original_func as aliased_func\n\ndef main() -> None:\n    print(aliased_func())\n"));
+        Assert.Equal(new[] { "SPY0200@main.spy:4:11" }, ErrorsOf("aliasmod", aliasmod,
+            "from aliasmod import original_func as aliased_func\n\ndef main() -> None:\n    print(original_func())\n"));
     }
 
     [Fact]
-    public void ResolveAllImports_ImportAll_RegistersPublicSymbols()
+    public void ImportAll_BindsPublicSymbolsOnly()
     {
-        CreateModuleFile("allmod", @"
-def public_func():
-    pass
-
-def _private_func():
-    pass
-");
-
-        var resolver = new ImportResolver(_logger);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-
-        var fromImport = new FromImportStatement
-        {
-            Module = "allmod",
-            Names = ImmutableArray<ImportAlias>.Empty,
-            ImportAll = true,
-            LineStart = 1,
-            ColumnStart = 1
-        };
-
-        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
-
-        resolver.ResolveAllImports(module, symbolTable, _testDir);
-
-        Assert.False(resolver.Diagnostics.HasErrors);
-        Assert.NotNull(symbolTable.Lookup("public_func"));
-        // Private symbols should NOT be registered by import *
-        Assert.Null(symbolTable.Lookup("_private_func"));
+        const string allmod = "def public_func() -> int:\n    return 1\n\ndef _private_func() -> int:\n    return 2\n";
+        Assert.Equal("1\n", RunWithModule("allmod", allmod,
+            "from allmod import *\n\ndef main() -> None:\n    print(public_func())\n"));
+        // A star import binds no underscore name.
+        Assert.Equal(new[] { "SPY0200@main.spy:4:11" }, ErrorsOf("allmod", allmod,
+            "from allmod import *\n\ndef main() -> None:\n    print(_private_func())\n"));
     }
 
     [Fact]
-    public void ResolveAllImports_ImportAll_AllPrivateModule_RegistersNothing()
+    public void ImportAll_AllPrivateModule_BindsNothing()
     {
-        CreateModuleFile("privatemod", @"
-def _internal():
-    pass
-
-def _helper():
-    pass
-");
-
-        var resolver = new ImportResolver(_logger);
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-
-        var fromImport = new FromImportStatement
-        {
-            Module = "privatemod",
-            Names = ImmutableArray<ImportAlias>.Empty,
-            ImportAll = true,
-            LineStart = 1,
-            ColumnStart = 1
-        };
-
-        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
-
-        resolver.ResolveAllImports(module, symbolTable, _testDir);
-
-        Assert.False(resolver.Diagnostics.HasErrors);
-        // Neither private symbol should be registered
-        Assert.Null(symbolTable.Lookup("_internal"));
-        Assert.Null(symbolTable.Lookup("_helper"));
+        const string privatemod = "def _internal() -> int:\n    return 1\n\ndef _helper() -> int:\n    return 2\n";
+        // Each name is unbound at its use; the star import itself reports nothing.
+        Assert.Equal(new[] { "SPY0200@main.spy:4:11", "SPY0200@main.spy:5:11" }, ErrorsOf("privatemod", privatemod,
+            "from privatemod import *\n\ndef main() -> None:\n    print(_internal())\n    print(_helper())\n"));
     }
 
     #endregion
