@@ -1,4 +1,4 @@
-# Cross-Language Benchmark Results (2026-10-19)
+# Cross-Language Benchmark Results (2026-10-26)
 
 **Runner:** `ubuntu-latest` | **Python:** 3.12 | **.NET:** 10.0 | **Runs:** 10 (median) + warmup | **Stats:** mean, median, stdev, p90, p99
 
@@ -6,44 +6,44 @@
 
 | Benchmark | Python | Sharpy | C# | Spy/Py | Spy/C# |
 |-----------|--------|--------|-----|--------|--------|
-| fibonacci | 204ms | 42ms | 27ms | 0.21x | 1.58x |
-| list_comprehensions | 57ms | 55ms | 82ms | 0.97x | 0.67x |
-| matrix_multiply | 749ms | 157ms | 37ms | 0.21x | 4.23x |
-| matrix_multiply_numpy | FAIL | FAIL | 1.01s | — | — |
-| sorting | 176ms | 146ms | 226ms | 0.83x | 0.65x |
-| string_ops | 163ms | 173ms | 202ms | 1.06x | 0.86x |
+| fibonacci | 109ms | 25ms | 29ms | 0.23x | 0.86x |
+| list_comprehensions | 30ms | 35ms | 76ms | 1.17x | 0.46x |
+| matrix_multiply | 381ms | 80ms | 39ms | 0.21x | 2.07x |
+| matrix_multiply_numpy | FAIL | FAIL | 1.20s | — | — |
+| sorting | 96ms | 86ms | 180ms | 0.90x | 0.48x |
+| string_ops | 92ms | 98ms | 147ms | 1.07x | 0.67x |
 
 ## Compilation Time
 
 | Benchmark | Python (.pyc) | Sharpy (cold) | Sharpy (warm) | Sharpy (server) | C# (dotnet build) | Spy/C# |
 |-----------|---------------|---------------|---------------|-----------------|-------------------|--------|
-| fibonacci | 499us | 2.32s | 1.98s | 229ms | 1.10s | 2.10x |
-| list_comprehensions | 510us | 2.46s | 2.11s | 212ms | 1.11s | 2.21x |
-| matrix_multiply | 682us | 2.53s | 2.17s | 243ms | 1.09s | 2.31x |
-| matrix_multiply_numpy | 527us | — | — | — | 1.27s | — |
-| sorting | 496us | 2.59s | 2.18s | 226ms | 1.10s | 2.36x |
-| string_ops | 391us | 2.38s | 2.04s | 210ms | 1.09s | 2.18x |
+| fibonacci | 394us | 1.19s | 1.02s | 131ms | 1.15s | 1.04x |
+| list_comprehensions | 373us | 1.27s | 1.09s | 133ms | 1.14s | 1.11x |
+| matrix_multiply | 494us | 1.31s | 1.11s | 143ms | 1.08s | 1.22x |
+| matrix_multiply_numpy | 427us | — | — | — | 1.28s | — |
+| sorting | 333us | 1.35s | 1.13s | 145ms | 1.56s | 0.86x |
+| string_ops | 323us | 1.26s | 1.06s | 133ms | 1.08s | 1.17x |
 
 ## Execution Time Distribution
 
 | Benchmark | Lang | Mean | Median | Stdev | P90 | P99 | Min | Max | N |
 |-----------|------|------|--------|-------|-----|-----|-----|-----|---|
-| fibonacci | Python | 204ms | 204ms | 2ms | 205ms | 207ms | 201ms | 208ms | 10 |
-| fibonacci | Sharpy | 42ms | 42ms | 303us | 42ms | 42ms | 41ms | 42ms | 10 |
-| fibonacci | C# | 27ms | 27ms | 780us | 28ms | 28ms | 25ms | 28ms | 10 |
-| list_comprehensions | Python | 57ms | 57ms | 920us | 58ms | 58ms | 55ms | 58ms | 10 |
-| list_comprehensions | Sharpy | 55ms | 55ms | 341us | 55ms | 55ms | 54ms | 55ms | 10 |
-| list_comprehensions | C# | 83ms | 82ms | 4ms | 83ms | 92ms | 79ms | 93ms | 10 |
-| matrix_multiply | Python | 781ms | 749ms | 61ms | 901ms | 902ms | 744ms | 902ms | 10 |
-| matrix_multiply | Sharpy | 162ms | 157ms | 12ms | 182ms | 189ms | 156ms | 190ms | 10 |
-| matrix_multiply | C# | 38ms | 37ms | 3ms | 39ms | 47ms | 36ms | 47ms | 10 |
-| matrix_multiply_numpy | C# | 1.03s | 1.01s | 73ms | 1.12s | 1.15s | 945ms | 1.15s | 10 |
-| sorting | Python | 176ms | 176ms | 1ms | 177ms | 178ms | 174ms | 178ms | 10 |
-| sorting | Sharpy | 146ms | 146ms | 708us | 147ms | 147ms | 145ms | 147ms | 10 |
-| sorting | C# | 228ms | 226ms | 6ms | 237ms | 241ms | 224ms | 241ms | 10 |
-| string_ops | Python | 163ms | 163ms | 2ms | 166ms | 167ms | 160ms | 167ms | 10 |
-| string_ops | Sharpy | 173ms | 173ms | 724us | 173ms | 174ms | 171ms | 174ms | 10 |
-| string_ops | C# | 202ms | 202ms | 2ms | 204ms | 205ms | 200ms | 206ms | 10 |
+| fibonacci | Python | 109ms | 109ms | 815us | 110ms | 110ms | 107ms | 110ms | 10 |
+| fibonacci | Sharpy | 26ms | 25ms | 899us | 26ms | 28ms | 25ms | 28ms | 10 |
+| fibonacci | C# | 29ms | 29ms | 767us | 30ms | 30ms | 28ms | 30ms | 10 |
+| list_comprehensions | Python | 30ms | 30ms | 231us | 30ms | 30ms | 30ms | 30ms | 10 |
+| list_comprehensions | Sharpy | 35ms | 35ms | 631us | 36ms | 36ms | 34ms | 36ms | 10 |
+| list_comprehensions | C# | 76ms | 76ms | 466us | 76ms | 77ms | 75ms | 77ms | 10 |
+| matrix_multiply | Python | 384ms | 381ms | 6ms | 392ms | 397ms | 380ms | 398ms | 10 |
+| matrix_multiply | Sharpy | 80ms | 80ms | 523us | 81ms | 81ms | 79ms | 81ms | 10 |
+| matrix_multiply | C# | 39ms | 39ms | 563us | 40ms | 40ms | 39ms | 40ms | 10 |
+| matrix_multiply_numpy | C# | 1.17s | 1.20s | 69ms | 1.22s | 1.26s | 1.04s | 1.27s | 10 |
+| sorting | Python | 96ms | 96ms | 651us | 97ms | 98ms | 96ms | 98ms | 10 |
+| sorting | Sharpy | 86ms | 86ms | 542us | 87ms | 88ms | 86ms | 88ms | 10 |
+| sorting | C# | 180ms | 180ms | 4ms | 183ms | 189ms | 177ms | 190ms | 10 |
+| string_ops | Python | 90ms | 92ms | 3ms | 92ms | 94ms | 84ms | 94ms | 10 |
+| string_ops | Sharpy | 98ms | 98ms | 709us | 99ms | 100ms | 97ms | 100ms | 10 |
+| string_ops | C# | 146ms | 147ms | 2ms | 149ms | 149ms | 143ms | 149ms | 10 |
 
 ## Performance Trend
 
@@ -54,4 +54,4 @@
 > **Sharpy (cold)** = single-file compile with no cache; **Sharpy (warm)** = `--incremental` one-file `.spyproj` compile with the symbol cache present; **Sharpy (server)** = end-to-end `sharpyc build --server` compile through a persistent keep-alive process ([#1049](https://github.com/antonsynd/sharpy/issues/1049), D2), which reuses the process-lifetime `MetadataReference`/overload-index caches across compiles.
 
 ---
-*Generated by CI on 2026-10-19*
+*Generated by CI on 2026-10-26*
