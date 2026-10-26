@@ -163,49 +163,22 @@ internal partial class NameResolver
 
         owningType.Methods.Add(funcSymbol);
 
-        // Register constructors (__init__ methods)
-        // For constructors, we allow multiple overloads with the same name
+        // The member seam (P21g D2, #2360): the first method of a name claims it; a later method of
+        // the name is an OVERLOAD (the holder is a method — constructors, operator/protocol dunders
+        // and regular methods alike); any other holder is a second meaning, SPY0204 at this method's
+        // name. A refused method stays in Methods so the checker still sees its body — the scope
+        // keeps the FIRST meaning (D10).
+        if (TryDeclareMember(method.Name, funcSymbol, owningType, mergesWith: null,
+                method.NameLineStart, method.NameColumnStart, span: null) == MemberClaim.Overload)
+        {
+            _logger.LogDebug($"Method overload registered (not in symbol table): {owningType.Name}.{method.Name}");
+        }
+
+        // Constructors (__init__) may be overloaded; every overload is tracked in Constructors.
         if (method.Name == DunderNames.Init)
         {
             owningType.Constructors.Add(funcSymbol);
             _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Length})");
-
-            // Only register the first __init__ in the symbol table to avoid duplicate name errors
-            // All overloads are tracked in the Constructors list. TryDefine: a field named
-            // __init__ may already occupy the slot — a user error surfaced by validation, and
-            // Define would throw on the collision.
-            if (owningType.Constructors.Count == 1 && !_symbolTable.TryDefine(funcSymbol))
-            {
-                _logger.LogDebug($"Constructor not registered in symbol table (name collision): {owningType.Name}.__init__");
-            }
-        }
-        else if (OperatorRegistry.IsOperatorDunder(method.Name) ||
-                 ProtocolRegistry.IsProtocolDunder(method.Name))
-        {
-            // For operator and protocol dunder methods, allow multiple overloads
-            // Only register the first overload in the symbol table to avoid duplicate name errors
-            // All overloads are tracked in the OperatorMethods/ProtocolMethods dictionaries
-            if (!_symbolTable.TryDefine(funcSymbol))
-            {
-                _logger.LogDebug($"Method overload registered (not in symbol table): {owningType.Name}.{method.Name}");
-            }
-        }
-        else
-        {
-            // For regular methods, allow overloads (multiple methods with the same name)
-            // Only register the first overload in the symbol table
-            if (!_symbolTable.TryDefine(funcSymbol))
-            {
-                // An overload shares the slot with a METHOD; a `type` alias already holding the name
-                // is a second meaning for one name in one scope — SPY0204 at the method's name, as a
-                // def after a same-block alias is in a function body (an alias re-declared in one
-                // scope, #2360). The reverse order is ResolveTypeAliasDeclaration's "already defined".
-                if (_symbolTable.Lookup(method.Name, searchParents: false) is TypeAliasSymbol)
-                    AddError($"Method '{owningType.Name}.{method.Name}' is already defined as a type alias in this type body",
-                        method.NameLineStart, method.NameColumnStart,
-                        code: DiagnosticCodes.Semantic.DuplicateDefinition);
-                _logger.LogDebug($"Method overload registered (not in symbol table): {owningType.Name}.{method.Name}");
-            }
         }
 
         // Track regular method overloads in MethodOverloads dictionary
@@ -274,23 +247,6 @@ internal partial class NameResolver
         bool isStatic = classification.IsStatic;
         bool isFinal = classification.IsFinal;
 
-        // A field colliding with an existing same-name member (method, nested type, const)
-        // is a duplicate definition — Scope.Define treats the collision as a compiler-bug
-        // invariant and throws, so report it here instead. Non-const field-over-field
-        // redefinition stays allowed (Scope.Define replaces it), as does shadowing builtins
-        // (which have no source location).
-        var existingMember = _symbolTable.Lookup(field.Name, searchParents: false);
-        bool collides = existingMember != null
-            && existingMember.DeclarationLine != null
-            && !(existingMember is VariableSymbol { IsConstant: false } && !field.IsConst);
-        if (collides)
-        {
-            AddError($"Field '{field.Name}' conflicts with a member of the same name in '{owningType.Name}'",
-                field.LineStart, field.ColumnStart,
-                code: DiagnosticCodes.Semantic.DuplicateDefinition, span: field.Span);
-            return;
-        }
-
         var varSymbol = new VariableSymbol
         {
             Name = field.Name,
@@ -311,13 +267,44 @@ internal partial class NameResolver
             NameDeclarationColumnEnd = field.NameColumnEnd
         };
 
-        owningType.Fields.Add(varSymbol);
-        _symbolTable.Define(varSymbol);
+        // The member seam (P21g D2, #2360): a field over ANY same-named member — a field included
+        // (field × field was a silent Scope.Define replacement and CS0102 under run) — is SPY0204 at
+        // the field's name. A const field takes the keyword position, which is its statement start.
+        var (line, column) = field.IsConst
+            ? (field.LineStart, field.ColumnStart)
+            : (field.NameLineStart, field.NameColumnStart);
+        if (TryDeclareMember(field.Name, varSymbol, owningType, mergesWith: null, line, column, field.Span)
+            != MemberClaim.Declared)
+            return;
+
+        // An interface's NON-const field claims its name like every member, but is not a Fields
+        // entry: the interface walk never registered one (only its consts), and what such a field
+        // IS for the checker is outside this seam (findings ledger, P21g Phase 1).
+        if (owningType.TypeKind != TypeKind.Interface || field.IsConst)
+            owningType.Fields.Add(varSymbol);
     }
 
     private void ResolvePropertyDeclaration(PropertyDef propDef, TypeSymbol owningType)
     {
         _logger.LogDebug($"Resolving property declaration: {owningType.Name}.{propDef.Name}");
+
+        // The member seam (P21g D2 (b), #2360): a property over a same-named PROPERTY merges when it
+        // brings the complementary half (AccessorDeclarations.Admits); a duplicate half, or any other
+        // holder, is SPY0204 at the property keyword. An explicit-interface implementation
+        // (`property IShape.area`) is not a member of the type's own namespace — C# reaches it only
+        // through the interface — so it claims no name and keeps the by-name merge it had.
+        var form = AccessorDeclarations.FormOf(propDef);
+        if (propDef.ExplicitInterface == null)
+        {
+            var claim = TryDeclareMember(propDef.Name, member: null, owningType,
+                mergesWith: holder => holder is AccessorDeclarations { IsEvent: false } declared && declared.Admits(form),
+                propDef.LineStart, propDef.ColumnStart, propDef.Span);
+            if (claim == MemberClaim.Refused)
+                return;
+            if (claim == MemberClaim.Declared)
+                RecordAccessorDeclarations(owningType, propDef.Name, isEvent: false, propDef.LineStart);
+            AccessorDeclarationsOf(owningType, propDef.Name)!.Add(form);
+        }
 
         // Check if a property with this name already exists (for combining getter/setter)
         var existingProp = owningType.Properties.FirstOrDefault(p => p.Name == propDef.Name);
@@ -383,6 +370,21 @@ internal partial class NameResolver
     private void ResolveEventDeclaration(EventDef eventDef, TypeSymbol owningType)
     {
         _logger.LogDebug($"Resolving event declaration: {owningType.Name}.{eventDef.Name}");
+
+        // The member seam (P21g D2 (c), #2360): an event over a same-named EVENT merges only when it
+        // is the complementary function-style accessor (`event add` beside `event remove`); an auto
+        // event twice — silently merged away before, so `event e: Action[int]` + `event e:
+        // Action[str]` ran with the second type dropped — or any other holder is SPY0204 at the
+        // event keyword.
+        var form = AccessorDeclarations.FormOf(eventDef);
+        var claim = TryDeclareMember(eventDef.Name, member: null, owningType,
+            mergesWith: holder => holder is AccessorDeclarations { IsEvent: true } declared && declared.Admits(form),
+            eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
+        if (claim == MemberClaim.Refused)
+            return;
+        if (claim == MemberClaim.Declared)
+            RecordAccessorDeclarations(owningType, eventDef.Name, isEvent: true, eventDef.LineStart);
+        AccessorDeclarationsOf(owningType, eventDef.Name)!.Add(form);
 
         // Check if an event with this name already exists (for merging add/remove accessors)
         var existingEvent = owningType.Events.FirstOrDefault(e => e.Name == eventDef.Name);
@@ -501,8 +503,15 @@ internal partial class NameResolver
                 if (existingProp.DeclarationSpan == propDef.Span)
                     return;
 
-                bool duplicateAccessor = (hasGetter && existingProp.HasPropertyGetter)
-                    || (hasSetter && existingProp.HasPropertySetter);
+                // The type-body merge rule (D2 (b)): a complementary half merges — an auto half, a
+                // function-style getter and a function-style setter, each at most once — and a form
+                // twice is a duplicate. The accessor FLAGS cannot tell an auto property from a function-style
+                // getter (both set HasPropertyGetter), which refused `property A: int = 5` + `property
+                // get A()` while `property set A()` merged; the recorded forms can.
+                var form = AccessorDeclarations.FormOf(propDef);
+                bool duplicateAccessor = _modulePropertyAccessors.TryGetValue(existingProp, out var declared)
+                    ? !declared.Admits(form)
+                    : (hasGetter && existingProp.HasPropertyGetter) || (hasSetter && existingProp.HasPropertySetter);
                 if (duplicateAccessor)
                 {
                     AddError($"Property '{propDef.Name}' is already defined",
@@ -511,6 +520,7 @@ internal partial class NameResolver
                     return;
                 }
 
+                declared?.Add(form);
                 existingProp.HasPropertyGetter |= hasGetter;
                 existingProp.HasPropertySetter |= hasSetter;
                 return;
@@ -550,6 +560,9 @@ internal partial class NameResolver
         };
 
         _symbolTable.Define(propSymbol);
+        var accessors = new AccessorDeclarations(isEvent: false, propDef.LineStart);
+        accessors.Add(AccessorDeclarations.FormOf(propDef));
+        _modulePropertyAccessors[propSymbol] = accessors;
     }
 
     private void ResolveTypeAliasDeclaration(TypeAlias typeAlias)
@@ -582,4 +595,255 @@ internal partial class NameResolver
         _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias, _currentFilePath));
     }
 
+    // -----------------------------------------------------------------------------------------------
+    // The member-declaration seam (P21g D2, #2360, R-JB): in one type body a name has ONE meaning.
+    // -----------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The ONE dispatcher a type body's member statements go through — the class, struct, interface
+    /// and union walks each hand it their statements (the union walk only its methods: a union body
+    /// spells nothing else, SPY0104), so a member kind is registered by one arm in every host and
+    /// cannot skip <see cref="TryDeclareMember"/> in a host whose walk forgot it. Per-host LEGALITY
+    /// (a <c>let</c>, an interface method's body) stays where it is; this only registers.
+    /// </summary>
+    private void ResolveTypeBodyMember(Statement statement, TypeSymbol owner)
+    {
+        switch (statement)
+        {
+            case FunctionDef method:
+                // An interface method may not carry an implementation (only `...` or `pass`).
+                if (owner.TypeKind == TypeKind.Interface)
+                    ValidateInterfaceMethod(method, owner.Name);
+                ResolveMethodDeclaration(method, owner);
+                break;
+
+            case VariableDeclaration { IsLet: true }:
+                // A `let` in a type body is refused (SPY0340) by TypeBodyStatementValidator; it
+                // must not also register a field (#1974).
+                break;
+
+            case VariableDeclaration field:
+                ResolveFieldDeclaration(field, owner);
+                break;
+
+            case PropertyDef propDef:
+                ResolvePropertyDeclaration(propDef, owner);
+                break;
+
+            case EventDef eventDef:
+                ResolveEventDeclaration(eventDef, owner);
+                break;
+
+            default:
+                // One classifier decides the seven type-declaring kinds (#1729, R-I); anything else in
+                // a type body is a statement later passes own.
+                if (statement.TryGetNestedDeclaration(out _))
+                    ResolveNestedTypeDeclaration(statement, owner);
+                break;
+        }
+    }
+
+    /// <summary>What <see cref="TryDeclareMember"/> did with a member's name.</summary>
+    private enum MemberClaim
+    {
+        /// <summary>The name was free; the member now holds it.</summary>
+        Declared,
+
+        /// <summary>A method of the name already holds it, and the incoming member is a method.</summary>
+        Overload,
+
+        /// <summary>The holder accepted the incoming declaration as its complementary accessor half.</summary>
+        Merged,
+
+        /// <summary>A second meaning: reported SPY0204 at the incoming declaration.</summary>
+        Refused,
+    }
+
+    /// <summary>
+    /// The only place a type-body member's NAME is claimed. The holder decides: (a) a method holder
+    /// and a method incoming is an overload (same-signature duplicates stay SPY0355, the overload
+    /// table's rule); (b)/(c) a property or event holder that <paramref name="mergesWith"/> accepts is
+    /// the complementary accessor half; (d) any other holder — field over field included — is SPY0204
+    /// at the LATER declaration, at <paramref name="line"/>:<paramref name="column"/> (D2's per-kind
+    /// position: a method's name token, a field's name, every other kind's first token).
+    /// </summary>
+    /// <param name="member">The symbol entering the type scope, or null for a member that is not a
+    /// <see cref="Symbol"/> (a property or event — <see cref="AccessorDeclarations"/> records them —, or
+    /// a nested type whose own resolver defines its symbol).</param>
+    /// <remarks>
+    /// Properties and events are standalone records, not <see cref="Symbol"/>s, so they cannot enter
+    /// the scope; <see cref="MemberHolderOf"/> is the ONE holder lookup and reads the scope, then the
+    /// owner's recorded accessor declarations. Mutating this method's refusal arm away turns every
+    /// refused member pair green-silent in every host — that is the guard's mutation (Phase 2 (a)).
+    /// </remarks>
+    private MemberClaim TryDeclareMember(
+        string name, Symbol? member, TypeSymbol owner, Func<object, bool>? mergesWith,
+        int line, int column, Text.TextSpan? span)
+    {
+        // A holder with no source position is a builtin, which a declaration may shadow
+        // (Scope.Define replaces it) — a type scope holds none today; the rule is Scope.Define's.
+        if (MemberHolderOf(name, owner) is not { } holder
+            || holder.Holder is Symbol { DeclarationLine: null })
+        {
+            if (member != null)
+                _symbolTable.Define(member);
+            return MemberClaim.Declared;
+        }
+
+        if (member is FunctionSymbol && holder.Holder is FunctionSymbol)
+            return MemberClaim.Overload;
+
+        if (mergesWith != null && mergesWith(holder.Holder))
+            return MemberClaim.Merged;
+
+        AddError(MemberConflictMessage(name, owner, holder.Kind, holder.Line), line, column,
+            code: DiagnosticCodes.Semantic.DuplicateDefinition, span: span);
+        return MemberClaim.Refused;
+    }
+
+    /// <summary>The one SPY0204 text for a second meaning of a name in a type body.</summary>
+    private static string MemberConflictMessage(string name, TypeSymbol owner, string holderKind, int? holderLine)
+        => $"'{name}' is already declared in '{owner.Name}' as {holderKind}"
+           + (holderLine is int priorLine ? $" (line {priorLine})" : string.Empty)
+           + "; one name has one meaning in a type body";
+
+    /// <summary>What holds a name in the type body being walked, and how the refusal names it.</summary>
+    private readonly record struct MemberHolder(object Holder, string Kind, int? Line);
+
+    /// <summary>
+    /// The ONE holder lookup of the seam: the type scope (methods, fields, consts, nested types,
+    /// aliases, type parameters, union cases), then the owner's property and event declarations,
+    /// which are not <see cref="Symbol"/>s and so never enter a scope.
+    /// </summary>
+    private MemberHolder? MemberHolderOf(string name, TypeSymbol owner)
+    {
+        if (_symbolTable.Lookup(name, searchParents: false) is { } symbol)
+            return new MemberHolder(symbol, MemberKindPhrase(symbol, owner), symbol.DeclarationLine);
+
+        if (AccessorDeclarationsOf(owner, name) is { } accessors)
+            return new MemberHolder(accessors, accessors.IsEvent ? "an event" : "a property", accessors.Line);
+
+        return null;
+    }
+
+    /// <summary>How the refusal names the member already holding a name.</summary>
+    private static string MemberKindPhrase(Symbol holder, TypeSymbol owner) => holder switch
+    {
+        VariableSymbol { IsConstant: true } => "a constant",
+        VariableSymbol => "a field",
+        FunctionSymbol => "a method",
+        TypeAliasSymbol => "a type alias",
+        TypeParameterSymbol => "a type parameter",
+        TypeSymbol nested when owner.UnionCases.Contains(nested) => "a union case",
+        TypeSymbol { TypeKind: TypeKind.Struct } => "a nested struct",
+        TypeSymbol { TypeKind: TypeKind.Interface } => "a nested interface",
+        TypeSymbol { TypeKind: TypeKind.Enum } => "a nested enum",
+        TypeSymbol { TypeKind: TypeKind.Union } => "a nested union",
+        TypeSymbol { TypeKind: TypeKind.Delegate } => "a nested delegate",
+        TypeSymbol => "a nested class",
+        _ => "a member",
+    };
+
+    /// <summary>
+    /// The accessor halves declared so far for one property or event name: which FORMS the body has
+    /// spelled (an auto declaration, a function-style getter/adder, a function-style setter/remover)
+    /// and the first declaration's line. The merge rule reads the forms, which the merged
+    /// <see cref="PropertySymbol"/> flags cannot tell apart (an auto property and a function-style
+    /// getter both set <c>HasGetter</c>).
+    /// </summary>
+    private sealed class AccessorDeclarations
+    {
+        internal enum Form
+        {
+            Auto,
+            Get,
+            Set,
+        }
+
+        internal AccessorDeclarations(bool isEvent, int line)
+        {
+            IsEvent = isEvent;
+            Line = line;
+        }
+
+        internal bool IsEvent { get; }
+        internal int Line { get; }
+        private bool _auto;
+        private bool _get;
+        private bool _set;
+
+        /// <summary>A property's form: auto (any field-style spelling, <c>property get A: T</c>
+        /// included), else its function-style accessor — <c>set</c> and <c>init</c> are both the
+        /// write half.</summary>
+        internal static Form FormOf(PropertyDef propDef)
+            => !propDef.IsFunctionStyle ? Form.Auto
+                : propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init ? Form.Set
+                : Form.Get;
+
+        /// <summary>An event's form: auto, else <c>add</c> (<see cref="Form.Get"/>) or <c>remove</c>
+        /// (<see cref="Form.Set"/>).</summary>
+        internal static Form FormOf(EventDef eventDef)
+            => !eventDef.IsFunctionStyle ? Form.Auto
+                : eventDef.Accessor == EventAccessor.Remove ? Form.Set
+                : Form.Get;
+
+        /// <summary>
+        /// Whether <paramref name="incoming"/> is a complementary half (D2 (b)/(c)). A property: each
+        /// FORM at most once — an auto half (it declares the type and default and owns the backing
+        /// field, <c>properties_function_style.md</c> "paired with an auto-property of the same name
+        /// supplying the complementary half"), a function-style getter, a function-style setter, in any
+        /// combination (auto + getter + setter is the fixture <c>property_mixed_auto_both_custom</c>);
+        /// a form twice is the duplicate (CS0161/CS1007 behind SPY0908 before). An event: <c>add</c> +
+        /// <c>remove</c> only — an auto event already has both.
+        /// </summary>
+        internal bool Admits(Form incoming)
+        {
+            if (IsEvent)
+            {
+                return incoming switch
+                {
+                    Form.Get => !_auto && !_get,
+                    Form.Set => !_auto && !_set,
+                    _ => false,
+                };
+            }
+
+            return incoming switch
+            {
+                Form.Auto => !_auto,
+                Form.Get => !_get,
+                _ => !_set,
+            };
+        }
+
+        internal void Add(Form form)
+        {
+            switch (form)
+            {
+                case Form.Auto:
+                    _auto = true;
+                    break;
+                case Form.Get:
+                    _get = true;
+                    break;
+                default:
+                    _set = true;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Accessor declarations per type body (properties and events), keyed by the owner symbol
+    /// (reference identity — <see cref="Symbol"/> overrides record equality) and the member name.</summary>
+    private readonly Dictionary<(TypeSymbol Owner, string Name), AccessorDeclarations> _accessorDeclarations = new();
+
+    /// <summary>Accessor declarations per MODULE property symbol — the same merge rule at module level
+    /// ("split accessors are merged … following the same rules as class-level split accessors").</summary>
+    private readonly Dictionary<VariableSymbol, AccessorDeclarations> _modulePropertyAccessors = new();
+
+    private void RecordAccessorDeclarations(TypeSymbol owner, string name, bool isEvent, int line)
+        => _accessorDeclarations[(owner, name)] = new AccessorDeclarations(isEvent, line);
+
+    private AccessorDeclarations? AccessorDeclarationsOf(TypeSymbol owner, string name)
+        => _accessorDeclarations.GetValueOrDefault((owner, name));
 }

@@ -1846,13 +1846,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             Output.WriteLine(line);
             var failures = new List<string>();
 
-            // An internal error under Analyze is red, never green — but unlike the other sub-matrices it is RATCHETED,
-            // not hard: the base's nested-type twins crash NameResolver (SPY0909 "Symbol 'A' is already defined in this
-            // scope", measured @ 75c65ee29), and those rows drain with the member seam (#2360). The exact-set oracle
-            // reads the SPY0909 too, so a row cannot hide a new internal error in another cell.
+            // An internal error under Analyze is HARD, as in the other sub-matrices — never allowlisted. It was
+            // ratcheted while the base's nested-type twins crashed the checker's type-scope re-registration (SPY0909
+            // "Symbol 'A' is already defined in this scope", measured @ 75c65ee29); the member seam drained those rows
+            // (P21g Phase 2, #2360), so an allowlist row can no longer stand in front of a crash.
             var internalUnderAnalyze = result.Diagnostics.Where(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)).ToList();
             if (internalUnderAnalyze.Count > 0)
-                failures.Add($"an internal error under Analyze: {string.Join(" | ", internalUnderAnalyze.Select(d => d.Message)).ReplaceLineEndings(" ")}");
+                problems.Add($"{cell.Id}: an internal error under Analyze (hard, never allowlisted): "
+                    + string.Join(" | ", internalUnderAnalyze.Select(d => d.Message)).ReplaceLineEndings(" "));
 
             var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
             var actual = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}")

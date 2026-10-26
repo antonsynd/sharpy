@@ -1113,6 +1113,21 @@ internal partial class TypeChecker
         // Check if symbol already exists in current scope
         var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
 
+        // A declaration NameResolver owns had its collision verdict there, ONE owner (P21g, #2360):
+        // a type-body field or const (the member seam, TryDeclareMember) and a module const
+        // (ResolveConstantDeclaration). A holder that is not a variable — a nested type, alias, type
+        // parameter, function — or, in a type body, a const under a non-const field, means it was
+        // REFUSED there. Reporting it again here drew SPY0204 twice under Analyze (24 member pairs;
+        // for a field before a same-named alias, the second at the EARLIER line, because the type
+        // body's aliases are registered before its fields are checked), and SPY0225 beside SPY0204
+        // for a field over a const. Decline silently and bind nothing: the first meaning stays in
+        // force (D10).
+        if (existingSymbol != null && IsNameResolverOwnedDeclaration(varDecl)
+            && (existingSymbol is not VariableSymbol
+                || (!varDecl.IsConst && existingSymbol is VariableSymbol { IsConstant: true }
+                    && SymbolTable.IsClassLikeScope(_symbolTable.CurrentScope.Name))))
+            return;
+
         // A hoisted def/class with this name makes the declaration a duplicate definition —
         // Scope.Define would throw on the collision.
         if (TryReportNonVariableRedefinition(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span))
@@ -2506,6 +2521,22 @@ internal partial class TypeChecker
             if (field.IsConstant)
                 _symbolTable.TryDefine(field);
         }
+    }
+
+    /// <summary>
+    /// Whether NameResolver declared (or refused) <paramref name="varDecl"/> before the checker saw
+    /// it: a field or const directly in a type body, or a const directly in the module body. Never a
+    /// <c>let</c> (refused in a type body by TypeBodyStatementValidator, never registered), never a
+    /// declaration under a block or a function (<see cref="AtNonDeclaringPosition"/>), whose
+    /// verdicts are the checker's own.
+    /// </summary>
+    private bool IsNameResolverOwnedDeclaration(VariableDeclaration varDecl)
+    {
+        if (varDecl.IsLet || AtNonDeclaringPosition)
+            return false;
+        var scopeName = _symbolTable.CurrentScope.Name;
+        return SymbolTable.IsClassLikeScope(scopeName)
+            || (varDecl.IsConst && SymbolTable.ClassifyScope(scopeName) == SymbolTable.ScopeKind.Module);
     }
 
     private void TryFoldConstantValue(

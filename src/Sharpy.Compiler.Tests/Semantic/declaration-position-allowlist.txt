@@ -132,243 +132,80 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # they cite #2360 (lead ruling 2026-10-25). The +SPY0701 rows are #1654's dunder check firing on a
 # non-dunder name; Phase 2 decides whether the seam drains them. CREATED by P21g Phase 1; the #2360
 # rows drain in P21g Phase 2 (TryDeclareMember, D2/D3/D4).
-member-pair × class × nested-class → nested-class  # #2360 SPY0909 under Analyze
-member-pair × class × nested-class → method  # #2360 ice CS0102
-member-pair × class × nested-class → field  # #2360 twice
-member-pair × class × nested-class → const  # #2360 twice
-member-pair × class × nested-class → property-field  # #2360 ice CS0102
-member-pair × class × nested-class → property-get  # #2360 ice CS0102
-member-pair × class × nested-class → property-set  # #2360 ice CS0102
-member-pair × class × nested-class → event-auto  # #2360 ice CS0102
-member-pair × class × nested-class → alias  # #2360 SPY0909 under Analyze
+# DRAINED by P21g Phase 2 Task 1 (the member seam, NameResolver.TryDeclareMember / ResolveTypeBodyMember):
+# every "silent: runs", "ice …", "SPY0909 under Analyze", "twice", "+SPY0225", "+SPY0701" and "legal merge
+# refused" row. LEFT: the validator-coded rows below (SPY0405/0406/0421/0422 beside the seam's SPY0204 —
+# drain with D3, Phase 2 Task 2), the module property × variable rows (D4, Phase 2 Task 3), the interface
+# legal merges (the emitter writes one C# property per interface PropertyDef — a CodeGen seam) and the two
+# struct auto-half + GETTER rows (CS0100 in the struct auto-constructor).
 member-pair × class × method → property-field  # #2360 SPY0406
 member-pair × class × method → property-get  # #2360 SPY0406
 member-pair × class × method → property-set  # #2360 SPY0406
 member-pair × class × method → event-auto  # #2360 SPY0422
-member-pair × class × field → method  # #2360 ice CS0102
-member-pair × class × field → field  # #2360 ice CS0102
 member-pair × class × field → property-field  # #2360 SPY0405
 member-pair × class × field → property-get  # #2360 SPY0405
 member-pair × class × field → property-set  # #2360 SPY0405
 member-pair × class × field → event-auto  # #2360 SPY0421
-member-pair × class × field → alias  # #2360 twice, one at the earlier
-member-pair × class × const → method  # #2360 ice CS0102
-member-pair × class × const → field  # #2360 +SPY0225
 member-pair × class × const → property-field  # #2360 SPY0405
 member-pair × class × const → property-get  # #2360 SPY0405
 member-pair × class × const → property-set  # #2360 SPY0405
 member-pair × class × const → event-auto  # #2360 SPY0421
-member-pair × class × const → alias  # #2360 twice, one at the earlier
-member-pair × class × property-field → nested-class  # #2360 ice CS0102
 member-pair × class × property-field → method  # #2360 SPY0406 at the earlier
 member-pair × class × property-field → field  # #2360 SPY0405 at the earlier
 member-pair × class × property-field → const  # #2360 SPY0405 at the earlier
-member-pair × class × property-field → property-field  # #2360 ice CS0161 CS1007
-member-pair × class × property-field → event-auto  # #2360 ice CS0102
-member-pair × class × property-field → alias  # #2360 silent: runs
-member-pair × class × property-get → nested-class  # #2360 ice CS0102
 member-pair × class × property-get → method  # #2360 SPY0406 at the earlier
 member-pair × class × property-get → field  # #2360 SPY0405 at the earlier
 member-pair × class × property-get → const  # #2360 SPY0405 at the earlier
-member-pair × class × property-get → property-get  # #2360 ice CS1007
-member-pair × class × property-get → event-auto  # #2360 ice CS0102
-member-pair × class × property-get → alias  # #2360 silent: runs
-member-pair × class × property-set → nested-class  # #2360 ice CS0102
 member-pair × class × property-set → method  # #2360 SPY0406 at the earlier
 member-pair × class × property-set → field  # #2360 SPY0405 at the earlier
 member-pair × class × property-set → const  # #2360 SPY0405 at the earlier
-member-pair × class × property-set → property-set  # #2360 ice CS1007
-member-pair × class × property-set → event-auto  # #2360 ice CS0102
-member-pair × class × property-set → alias  # #2360 silent: runs
-member-pair × class × event-auto → nested-class  # #2360 ice CS0102
 member-pair × class × event-auto → method  # #2360 SPY0422 at the earlier
 member-pair × class × event-auto → field  # #2360 SPY0421 at the earlier
 member-pair × class × event-auto → const  # #2360 SPY0421 at the earlier
-member-pair × class × event-auto → property-field  # #2360 ice CS0102
-member-pair × class × event-auto → property-get  # #2360 ice CS0102
-member-pair × class × event-auto → property-set  # #2360 ice CS0102
-member-pair × class × event-auto → event-auto  # #2360 silent: runs
-member-pair × class × event-auto → alias  # #2360 silent: runs
-member-pair × class × alias → field  # #2360 twice
-member-pair × class × alias → const  # #2360 twice
-member-pair × class × alias → property-field  # #2360 silent: runs
-member-pair × class × alias → property-get  # #2360 silent: runs
-member-pair × class × alias → property-set  # #2360 silent: runs
-member-pair × class × alias → event-auto  # #2360 silent: runs
-member-pair × class × method → method-same-sig  # #2360 +SPY0701 (DuplicateDunderSignature on a non-dunder name: a double report)
-member-pair × class × type-param → method  # #2360 ice CS0102
-member-pair × class × type-param → field  # #2360 twice
-member-pair × class × type-param → const  # #2360 twice
-member-pair × class × type-param → property-field  # #2360 ice CS0102
-member-pair × class × type-param → property-get  # #2360 ice CS0102
-member-pair × class × type-param → property-set  # #2360 ice CS0102
-member-pair × class × type-param → event-auto  # #2360 ice CS0102
-member-pair × struct × nested-class → nested-class  # #2360 SPY0909 under Analyze
-member-pair × struct × nested-class → method  # #2360 ice CS0102
-member-pair × struct × nested-class → field  # #2360 twice
-member-pair × struct × nested-class → const  # #2360 twice
-member-pair × struct × nested-class → property-field  # #2360 ice CS0102 CS0229
-member-pair × struct × nested-class → property-get  # #2360 ice CS0102
-member-pair × struct × nested-class → property-set  # #2360 ice CS0102
-member-pair × struct × nested-class → event-auto  # #2360 ice CS0102
-member-pair × struct × nested-class → alias  # #2360 SPY0909 under Analyze
 member-pair × struct × method → property-field  # #2360 SPY0406
 member-pair × struct × method → property-get  # #2360 SPY0406
 member-pair × struct × method → property-set  # #2360 SPY0406
 member-pair × struct × method → event-auto  # #2360 SPY0422
-member-pair × struct × field → method  # #2360 ice CS0102 CS1656
-member-pair × struct × field → field  # #2360 ice CS0100 CS0102 CS0229
 member-pair × struct × field → property-field  # #2360 SPY0405
 member-pair × struct × field → property-get  # #2360 SPY0405
 member-pair × struct × field → property-set  # #2360 SPY0405
 member-pair × struct × field → event-auto  # #2360 SPY0421
-member-pair × struct × field → alias  # #2360 twice, one at the earlier
-member-pair × struct × const → method  # #2360 ice CS0102
-member-pair × struct × const → field  # #2360 +SPY0225
 member-pair × struct × const → property-field  # #2360 SPY0405
 member-pair × struct × const → property-get  # #2360 SPY0405
 member-pair × struct × const → property-set  # #2360 SPY0405
 member-pair × struct × const → event-auto  # #2360 SPY0421
-member-pair × struct × const → alias  # #2360 twice, one at the earlier
-member-pair × struct × property-field → nested-class  # #2360 ice CS0102 CS0229
 member-pair × struct × property-field → method  # #2360 SPY0406 at the earlier
 member-pair × struct × property-field → field  # #2360 SPY0405 at the earlier
 member-pair × struct × property-field → const  # #2360 SPY0405 at the earlier
-member-pair × struct × property-field → property-field  # #2360 ice CS0100 CS0161 CS0176 CS0229 CS1007
 member-pair × struct × property-field → property-get  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-field → event-auto  # #2360 ice CS0102 CS0229
-member-pair × struct × property-field → alias  # #2360 silent: runs
-member-pair × struct × property-get → nested-class  # #2360 ice CS0102
 member-pair × struct × property-get → method  # #2360 SPY0406 at the earlier
 member-pair × struct × property-get → field  # #2360 SPY0405 at the earlier
 member-pair × struct × property-get → const  # #2360 SPY0405 at the earlier
 member-pair × struct × property-get → property-field  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-get → property-get  # #2360 ice CS1007
-member-pair × struct × property-get → event-auto  # #2360 ice CS0102
-member-pair × struct × property-get → alias  # #2360 silent: runs
-member-pair × struct × property-set → nested-class  # #2360 ice CS0102
 member-pair × struct × property-set → method  # #2360 SPY0406 at the earlier
 member-pair × struct × property-set → field  # #2360 SPY0405 at the earlier
 member-pair × struct × property-set → const  # #2360 SPY0405 at the earlier
-member-pair × struct × property-set → property-set  # #2360 ice CS1007
-member-pair × struct × property-set → event-auto  # #2360 ice CS0102
-member-pair × struct × property-set → alias  # #2360 silent: runs
-member-pair × struct × event-auto → nested-class  # #2360 ice CS0102
 member-pair × struct × event-auto → method  # #2360 SPY0422 at the earlier
 member-pair × struct × event-auto → field  # #2360 SPY0421 at the earlier
 member-pair × struct × event-auto → const  # #2360 SPY0421 at the earlier
-member-pair × struct × event-auto → property-field  # #2360 ice CS0102 CS0229
-member-pair × struct × event-auto → property-get  # #2360 ice CS0102
-member-pair × struct × event-auto → property-set  # #2360 ice CS0102
-member-pair × struct × event-auto → event-auto  # #2360 silent: runs
-member-pair × struct × event-auto → alias  # #2360 silent: runs
-member-pair × struct × alias → field  # #2360 twice
-member-pair × struct × alias → const  # #2360 twice
-member-pair × struct × alias → property-field  # #2360 silent: runs
-member-pair × struct × alias → property-get  # #2360 silent: runs
-member-pair × struct × alias → property-set  # #2360 silent: runs
-member-pair × struct × alias → event-auto  # #2360 silent: runs
-member-pair × struct × method → method-same-sig  # #2360 +SPY0701 (DuplicateDunderSignature on a non-dunder name: a double report)
-member-pair × struct × type-param → method  # #2360 ice CS0102
-member-pair × struct × type-param → field  # #2360 twice
-member-pair × struct × type-param → const  # #2360 twice
-member-pair × struct × type-param → property-field  # #2360 ice CS0102
-member-pair × struct × type-param → property-get  # #2360 ice CS0102
-member-pair × struct × type-param → property-set  # #2360 ice CS0102
-member-pair × struct × type-param → event-auto  # #2360 ice CS0102
-member-pair × interface × nested-class → nested-class  # #2360 SPY0909 under Analyze
-member-pair × interface × nested-class → method  # #2360 ice CS0102
-member-pair × interface × nested-class → field  # #2360 ice CS0102
-member-pair × interface × nested-class → const  # #2360 twice
-member-pair × interface × nested-class → property-field  # #2360 ice CS0102
-member-pair × interface × nested-class → property-get  # #2360 ice CS0102
-member-pair × interface × nested-class → property-set  # #2360 ice CS0102
-member-pair × interface × nested-class → event-auto  # #2360 ice CS0102
-member-pair × interface × nested-class → alias  # #2360 SPY0909 under Analyze
-member-pair × interface × method → field  # #2360 ice CS0102
-member-pair × interface × method → property-field  # #2360 ice CS0102
-member-pair × interface × method → property-get  # #2360 ice CS0102
-member-pair × interface × method → property-set  # #2360 ice CS0102
 member-pair × interface × method → event-auto  # #2360 SPY0422
-member-pair × interface × field → nested-class  # #2360 ice CS0102
-member-pair × interface × field → method  # #2360 ice CS0102
-member-pair × interface × field → field  # #2360 ice CS0102
-member-pair × interface × field → const  # #2360 ice CS0102
-member-pair × interface × field → property-field  # #2360 ice CS0102
-member-pair × interface × field → property-get  # #2360 ice CS0102
-member-pair × interface × field → property-set  # #2360 ice CS0102
 member-pair × interface × field → event-auto  # #2360 SPY0421
-member-pair × interface × field → alias  # #2360 silent: runs
-member-pair × interface × const → method  # #2360 ice CS0102
-member-pair × interface × const → field  # #2360 ice CS0102
-member-pair × interface × const → property-field  # #2360 ice CS0102
-member-pair × interface × const → property-get  # #2360 ice CS0102
-member-pair × interface × const → property-set  # #2360 ice CS0102
 member-pair × interface × const → event-auto  # #2360 SPY0421
-member-pair × interface × const → alias  # #2360 twice, one at the earlier
-member-pair × interface × property-field → nested-class  # #2360 ice CS0102
-member-pair × interface × property-field → method  # #2360 ice CS0102
-member-pair × interface × property-field → field  # #2360 ice CS0102
-member-pair × interface × property-field → const  # #2360 ice CS0102
-member-pair × interface × property-field → property-field  # #2360 ice CS0102
 member-pair × interface × property-field → property-get  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-field → property-set  # #2360 legal merge; ice CS0102 CS0229
-member-pair × interface × property-field → event-auto  # #2360 ice CS0102
-member-pair × interface × property-field → alias  # #2360 silent: runs
-member-pair × interface × property-get → nested-class  # #2360 ice CS0102
-member-pair × interface × property-get → method  # #2360 ice CS0102
-member-pair × interface × property-get → field  # #2360 ice CS0102
-member-pair × interface × property-get → const  # #2360 ice CS0102
 member-pair × interface × property-get → property-field  # #2360 legal merge; ice CS0102 CS0229
-member-pair × interface × property-get → property-get  # #2360 ice CS0102
 member-pair × interface × property-get → property-set  # #2360 legal merge; ice CS0102 CS0229
-member-pair × interface × property-get → event-auto  # #2360 ice CS0102
-member-pair × interface × property-get → alias  # #2360 silent: runs
-member-pair × interface × property-set → nested-class  # #2360 ice CS0102
-member-pair × interface × property-set → method  # #2360 ice CS0102
-member-pair × interface × property-set → field  # #2360 ice CS0102
-member-pair × interface × property-set → const  # #2360 ice CS0102
 member-pair × interface × property-set → property-field  # #2360 legal merge; ice CS0102 CS0229
 member-pair × interface × property-set → property-get  # #2360 legal merge; ice CS0102 CS0229
-member-pair × interface × property-set → property-set  # #2360 ice CS0102
-member-pair × interface × property-set → event-auto  # #2360 ice CS0102
-member-pair × interface × property-set → alias  # #2360 silent: runs
-member-pair × interface × event-auto → nested-class  # #2360 ice CS0102
 member-pair × interface × event-auto → method  # #2360 SPY0422 at the earlier
 member-pair × interface × event-auto → field  # #2360 SPY0421 at the earlier
 member-pair × interface × event-auto → const  # #2360 SPY0421 at the earlier
-member-pair × interface × event-auto → property-field  # #2360 ice CS0102
-member-pair × interface × event-auto → property-get  # #2360 ice CS0102
-member-pair × interface × event-auto → property-set  # #2360 ice CS0102
-member-pair × interface × event-auto → event-auto  # #2360 silent: runs
-member-pair × interface × event-auto → alias  # #2360 silent: runs
-member-pair × interface × alias → field  # #2360 silent: runs
-member-pair × interface × alias → const  # #2360 twice
-member-pair × interface × alias → property-field  # #2360 silent: runs
-member-pair × interface × alias → property-get  # #2360 silent: runs
-member-pair × interface × alias → property-set  # #2360 silent: runs
-member-pair × interface × alias → event-auto  # #2360 silent: runs
-member-pair × interface × type-param → method  # #2360 ice CS0102
-member-pair × interface × type-param → field  # #2360 ice CS0102
-member-pair × interface × type-param → const  # #2360 twice
-member-pair × interface × type-param → property-field  # #2360 ice CS0102
-member-pair × interface × type-param → property-get  # #2360 ice CS0102
-member-pair × interface × type-param → property-set  # #2360 ice CS0102
-member-pair × interface × type-param → event-auto  # #2360 ice CS0102
-member-pair × module × class → const  # #2360 twice
-member-pair × module × def → const  # #2360 twice
-member-pair × module × alias → const  # #2360 twice
-member-pair × module × const → def  # #2360 twice
 member-pair × module × var → property-field  # #2360 ice CS0102
 member-pair × module × var → property-get  # #2360 ice CS0102
 member-pair × module × var → property-set  # #2360 ice CS0102
 member-pair × module × property-field → var  # #2360 ice CS0102
-member-pair × module × property-field → property-get  # #2360 legal merge refused
 member-pair × module × property-get → var  # #2360 ice CS0102
-member-pair × module × property-get → property-field  # #2360 legal merge refused
 member-pair × module × property-set → var  # #2360 ice CS0102
-member-pair × enum × member → member  # #2360 ice CS0102
-member-pair × union × case → method  # #2360 ice CS0102
 
 # #2371: a star import never displaces a declaration of the importing file, whatever its kind.
 # Measured @ 75c65ee29: beside `from math import *` a module property `pi` (field-style or a getter),

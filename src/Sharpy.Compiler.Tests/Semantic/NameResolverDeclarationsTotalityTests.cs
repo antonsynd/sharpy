@@ -187,6 +187,90 @@ public class NameResolverDeclarationsTotalityTests
             $"  Missing: {string.Join(", ", ResolveNestedTypeDeclaration_Handled.Except(switchArms))}");
     }
 
+    // --- ResolveTypeBodyMember (P21g D2, #2360) ---
+
+    private const string MembersSourceFile =
+        "src/Sharpy.Compiler/Semantic/NameResolver.Members.cs";
+
+    // The one member dispatcher every type-body walk (class, struct, interface, union) hands its
+    // statements to. Its case arms are the member kinds; the seven type-declaring kinds reach
+    // ResolveNestedTypeDeclaration through the default arm's classifier (TryGetNestedDeclaration).
+    private static readonly HashSet<string> ResolveTypeBodyMember_Handled = new()
+    {
+        nameof(FunctionDef),
+        nameof(VariableDeclaration),
+        nameof(PropertyDef),
+        nameof(EventDef),
+    };
+
+    private static readonly HashSet<string> ResolveTypeBodyMember_ViaNestedClassifier = new()
+    {
+        nameof(ClassDef),
+        nameof(StructDef),
+        nameof(InterfaceDef),
+        nameof(EnumDef),
+        nameof(UnionDef),
+        nameof(DelegateDef),
+        nameof(TypeAlias),
+    };
+
+    private static readonly HashSet<string> ResolveTypeBodyMember_Skipped = new()
+    {
+        nameof(ExpressionStatement),
+        nameof(DecoratedStatement),
+        nameof(Assignment),
+        nameof(AssertStatement),
+        nameof(PassStatement),
+        nameof(BreakStatement),
+        nameof(ContinueStatement),
+        nameof(ReturnStatement),
+        nameof(YieldStatement),
+        nameof(RaiseStatement),
+        nameof(IfStatement),
+        nameof(WhileStatement),
+        nameof(ForStatement),
+        nameof(TryStatement),
+        nameof(WithStatement),
+        nameof(DeferStatement),
+        nameof(ImportStatement),
+        nameof(FromImportStatement),
+        nameof(MatchStatement),
+    };
+
+    [Fact]
+    public void ResolveTypeBodyMember_AllStatementSubtypes_AreClassified()
+    {
+        var all = GetConcreteStatementNames();
+        var classified = new HashSet<string>(ResolveTypeBodyMember_Handled);
+        classified.UnionWith(ResolveTypeBodyMember_ViaNestedClassifier);
+        classified.UnionWith(ResolveTypeBodyMember_Skipped);
+
+        Assert.Empty(all.Where(n => !classified.Contains(n)).ToList());
+        Assert.Empty(classified.Where(n => !all.Contains(n)).ToList());
+    }
+
+    [Fact]
+    public void ResolveTypeBodyMember_SwitchArms_MatchClassification()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(MembersSourceFile, "ResolveTypeBodyMember");
+        Assert.NotEmpty(switchArms);
+
+        Assert.True(switchArms.SetEquals(ResolveTypeBodyMember_Handled),
+            $"ResolveTypeBodyMember switch arms differ from expected.\n" +
+            $"  Extra: {string.Join(", ", switchArms.Except(ResolveTypeBodyMember_Handled))}\n" +
+            $"  Missing: {string.Join(", ", ResolveTypeBodyMember_Handled.Except(switchArms))}");
+    }
+
+    [Fact]
+    public void ResolveTypeBodyMember_NestedClassifierKinds_AreTheNestedDispatchersKinds()
+    {
+        // The default arm hands a statement to ResolveNestedTypeDeclaration when the classifier says
+        // it declares a type; the kinds that dispatcher resolves are exactly the ones this one routes.
+        Assert.True(ResolveTypeBodyMember_ViaNestedClassifier.SetEquals(ResolveNestedTypeDeclaration_Handled));
+        Assert.Empty(ResolveTypeBodyMember_Handled.Intersect(ResolveTypeBodyMember_ViaNestedClassifier).ToList());
+        Assert.Empty(ResolveTypeBodyMember_Handled.Intersect(ResolveTypeBodyMember_Skipped).ToList());
+    }
+
     [Fact]
     public void ClassificationSets_AreDisjoint()
     {

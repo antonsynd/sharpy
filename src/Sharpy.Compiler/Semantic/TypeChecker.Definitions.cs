@@ -1211,6 +1211,17 @@ internal partial class TypeChecker
             _semanticInfo.SetTypeAnnotation(source, resolved, boundSymbol: null); // cache update — recursive call recorded
     }
 
+    /// <summary>
+    /// Whether NameResolver DECLARED <paramref name="alias"/> in <paramref name="host"/>'s body — it is
+    /// the declaration of one of the host's <see cref="TypeSymbol.NestedTypeAliases"/>. An alias the
+    /// member seam REFUSED (a second meaning of a name, P21g D2, #2360) is not re-registered in the
+    /// checker's type scope: registering it there put the refused alias beside the nested type of the
+    /// same name, whose re-registration then threw (SPY0909 "Symbol 'A' is already defined"), and made
+    /// a field declared BEFORE the alias report a second SPY0204 at the earlier line.
+    /// </summary>
+    private static bool IsDeclaredTypeBodyAlias(TypeSymbol host, TypeAlias alias)
+        => host.NestedTypeAliases.Any(declared => declared.IsDeclaredAt(alias));
+
     private void CheckClass(ClassDef classDef)
     {
         _logger.LogDebug($"Type checking class: {classDef.Name}");
@@ -1251,7 +1262,7 @@ internal partial class TypeChecker
         // we re-register here so they're visible during type checking)
         foreach (var statement in classDef.Body)
         {
-            if (statement is TypeAlias typeAlias)
+            if (statement is TypeAlias typeAlias && IsDeclaredTypeBodyAlias(classSymbol, typeAlias))
             {
                 RegisterScopedTypeAlias(typeAlias);
             }
@@ -1546,7 +1557,7 @@ internal partial class TypeChecker
         // Re-register struct-scoped type aliases in this scope
         foreach (var statement in structDef.Body)
         {
-            if (statement is TypeAlias typeAlias)
+            if (statement is TypeAlias typeAlias && IsDeclaredTypeBodyAlias(structSymbol, typeAlias))
             {
                 RegisterScopedTypeAlias(typeAlias);
             }
@@ -1654,7 +1665,7 @@ internal partial class TypeChecker
         // used bare inside the interface — `type Id = int` then `-> Id` — was SPY0202 (#1729, n09b).
         foreach (var statement in interfaceDef.Body)
         {
-            if (statement is TypeAlias typeAlias)
+            if (statement is TypeAlias typeAlias && IsDeclaredTypeBodyAlias(interfaceSymbol, typeAlias))
             {
                 RegisterScopedTypeAlias(typeAlias);
             }

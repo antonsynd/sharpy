@@ -174,38 +174,9 @@ internal partial class NameResolver
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // The one member dispatcher every type-body walk hands its statements to (P21g D2, #2360).
         foreach (var statement in classDef.Body)
-        {
-            if (statement is FunctionDef method)
-            {
-                ResolveMethodDeclaration(method, typeSymbol);
-            }
-            else if (statement is VariableDeclaration { IsLet: true })
-            {
-                // A `let` in a type body is refused (SPY0340) by TypeBodyStatementValidator; it
-                // must not also register a field (#1974).
-            }
-            else if (statement is VariableDeclaration field)
-            {
-                ResolveFieldDeclaration(field, typeSymbol);
-            }
-            else if (statement is PropertyDef propDef)
-            {
-                ResolvePropertyDeclaration(propDef, typeSymbol);
-            }
-            else if (statement is EventDef eventDef)
-            {
-                ResolveEventDeclaration(eventDef, typeSymbol);
-            }
-            else if (statement.TryGetNestedDeclaration(out _))
-            {
-                // One classifier decides the seven type-declaring kinds; union/delegate/alias
-                // now route here beside class/struct/interface/enum instead of falling through
-                // to a "symbol not found" downstream (#1729, R-I). The alias case both registers
-                // the name in this class scope (bare-inside use) and records it on the host.
-                ResolveNestedTypeDeclaration(statement, typeSymbol);
-            }
-        }
+            ResolveTypeBodyMember(statement, typeSymbol);
 
         _symbolTable.ExitScope();
     }
@@ -266,35 +237,9 @@ internal partial class NameResolver
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // See ResolveClassDeclaration — the one member dispatcher.
         foreach (var statement in structDef.Body)
-        {
-            if (statement is FunctionDef method)
-            {
-                ResolveMethodDeclaration(method, typeSymbol);
-            }
-            else if (statement is VariableDeclaration { IsLet: true })
-            {
-                // A `let` in a type body is refused (SPY0340) by TypeBodyStatementValidator; it
-                // must not also register a field (#1974).
-            }
-            else if (statement is VariableDeclaration field)
-            {
-                ResolveFieldDeclaration(field, typeSymbol);
-            }
-            else if (statement is PropertyDef propDef)
-            {
-                ResolvePropertyDeclaration(propDef, typeSymbol);
-            }
-            else if (statement is EventDef eventDef)
-            {
-                ResolveEventDeclaration(eventDef, typeSymbol);
-            }
-            else if (statement.TryGetNestedDeclaration(out _))
-            {
-                // See ResolveClassDeclaration — the same seven-kind classifier, one route.
-                ResolveNestedTypeDeclaration(statement, typeSymbol);
-            }
-        }
+            ResolveTypeBodyMember(statement, typeSymbol);
 
         _symbolTable.ExitScope();
     }
@@ -355,35 +300,12 @@ internal partial class NameResolver
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // The one member dispatcher (P21g D2, #2360). An interface's methods are validated there (no
+        // implementation), and its non-const fields claim their names without becoming Fields — the
+        // walk this replaced registered only consts, and what a non-const interface field IS is not
+        // the seam's question.
         foreach (var statement in interfaceDef.Body)
-        {
-            if (statement is FunctionDef method)
-            {
-                // Validate that interface methods have no implementation (only ... or pass)
-                ValidateInterfaceMethod(method, interfaceDef.Name);
-                ResolveMethodDeclaration(method, typeSymbol);
-            }
-            else if (statement is PropertyDef propDef)
-            {
-                ResolvePropertyDeclaration(propDef, typeSymbol);
-            }
-            else if (statement is EventDef eventDef)
-            {
-                ResolveEventDeclaration(eventDef, typeSymbol);
-            }
-            else if (statement is VariableDeclaration { IsConst: true } constField)
-            {
-                ResolveFieldDeclaration(constField, typeSymbol);
-            }
-            else if (statement.TryGetNestedDeclaration(out _))
-            {
-                // The interface host now routes through the same classifier, so a nested alias
-                // registers in the interface scope (bare-inside use, n09b) exactly as it does in a
-                // class body — it was SPY0202 here before because the interface loop had no alias
-                // arm at all (#1729, R-I).
-                ResolveNestedTypeDeclaration(statement, typeSymbol);
-            }
-        }
+            ResolveTypeBodyMember(statement, typeSymbol);
 
         _symbolTable.ExitScope();
     }
@@ -515,6 +437,18 @@ internal partial class NameResolver
         // Type is left as Unknown here; it will be set during type checking.
         foreach (var member in enumDef.Members)
         {
+            // One name, one meaning in an enum body too (P21g, #2360): a member twice is SPY0204 at
+            // the second, in the member seam's words — it was CS0102 behind SPY0908. An enum body
+            // has no scope of its own, so the prior member is found among the Fields registered so
+            // far; the second is not registered (the first meaning stays in force, D10).
+            if (typeSymbol.Fields.FirstOrDefault(f => f.Name == member.Name) is { } prior)
+            {
+                AddError(MemberConflictMessage(member.Name, typeSymbol, "an enum member", prior.DeclarationLine),
+                    member.LineStart, member.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DuplicateDefinition, span: member.Span);
+                continue;
+            }
+
             typeSymbol.Fields.Add(new VariableSymbol
             {
                 Name = member.Name,
@@ -627,12 +561,18 @@ internal partial class NameResolver
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // A case claims its name in the union body, so a method of the case's name is a second
+        // meaning (SPY0204 at the method) rather than CS0102 behind SPY0908 (#2360). A case name
+        // already held (a type parameter, a case twice) keeps the verdict it had: the claim is silent.
+        foreach (var caseSymbol in unionSymbol.UnionCases)
+            _symbolTable.TryDefine(caseSymbol);
+
+        // The union walk hands the member dispatcher its methods only: a union body spells nothing
+        // else (a `type` alias there is SPY0104 "Expected Case", the parser's host rule).
         foreach (var statement in unionDef.Body)
         {
-            if (statement is FunctionDef method)
-            {
-                ResolveMethodDeclaration(method, unionSymbol);
-            }
+            if (statement is FunctionDef)
+                ResolveTypeBodyMember(statement, unionSymbol);
         }
 
         _symbolTable.ExitScope();
@@ -650,6 +590,16 @@ internal partial class NameResolver
         // not take a builtin type name either (#2319). The refused declaration still falls through to
         // its resolver below, so it owns its symbol and later passes see one diagnostic, not a cascade.
         RefuseBuiltinTypeNameShadowing(statement);
+
+        // The member seam (P21g D2, #2360): a nested type or alias over ANY same-named member of the
+        // type body — a property or event included, which the resolver's own scope check cannot see
+        // — is SPY0204 at its keyword in the seam's words, and is not resolved: a second nested
+        // class of one name used to join NestedTypes beside the first and crash the checker's
+        // re-registration (SPY0909). The resolver's own "already defined" check below then guards
+        // the module body alone.
+        if (TryDeclareMember(declaration.Name, member: null, enclosingType, mergesWith: null,
+                statement.LineStart, statement.ColumnStart, statement.Span) == MemberClaim.Refused)
+            return;
 
         // The declaration is resolved by the same module-level resolver its top-level twin uses —
         // the seven kinds diverge only in where the resulting symbol is stored (NestedTypes vs.

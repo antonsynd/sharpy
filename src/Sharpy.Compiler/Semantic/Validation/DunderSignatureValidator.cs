@@ -70,9 +70,18 @@ internal class DunderSignatureValidator : SemanticValidatorBase
 
         foreach (var (name, overloads) in groups)
         {
-            if (overloads.Count < 2)
+            // A regular method's group is the overload set NameResolver ACCEPTED: a twin with the
+            // same source signature was already refused there (SPY0355, the overload table's rule)
+            // and is not an overload, so it is not a CLR collision either — one mistake, one
+            // diagnostic (P21g, #2360: the same-signature twin drew SPY0355 and SPY0701). Dunders keep
+            // the raw list: NameResolver's signature check skips them, so this is their one owner.
+            var group = !DunderDetector.IsDunderMethod(name)
+                && typeSymbol.MethodOverloads.TryGetValue(name, out var accepted)
+                    ? accepted.ToList()
+                    : overloads;
+            if (group.Count < 2)
                 continue;
-            CheckGroupForClrCollisions(context, typeSymbol.Name, name, overloads);
+            CheckGroupForClrCollisions(context, typeSymbol.Name, name, group);
         }
     }
 

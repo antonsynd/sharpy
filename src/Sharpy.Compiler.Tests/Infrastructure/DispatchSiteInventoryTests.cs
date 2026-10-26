@@ -112,6 +112,8 @@ public class DispatchSiteInventoryTests
         // NameResolver — declaration resolution
         ["Semantic/NameResolver.Declarations.cs::NameResolver.ResolveDeclaration"] = "guarded-by:NameResolverDeclarationsTotalityTests",
         ["Semantic/NameResolver.Declarations.cs::NameResolver.ResolveNestedTypeDeclaration"] = "guarded-by:NameResolverDeclarationsTotalityTests",
+        // The one type-body member dispatcher (P21g D2, #2360).
+        ["Semantic/NameResolver.Members.cs::NameResolver.ResolveTypeBodyMember"] = "guarded-by:NameResolverDeclarationsTotalityTests",
 
         // NarrowingFlowAnalysis — narrowing recognizers
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.Recognize"] = "guarded-by:NarrowingFlowAnalysisTotalityTests",
