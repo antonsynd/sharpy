@@ -297,7 +297,9 @@ internal partial class NameResolver
         if (propDef.ExplicitInterface == null)
         {
             var claim = TryDeclareMember(propDef.Name, member: null, owningType,
-                mergesWith: holder => holder is AccessorDeclarations { IsEvent: false } declared && declared.Admits(form),
+                mergesWith: holder => holder is PropertySymbol
+                    && AccessorDeclarationsOf(owningType, propDef.Name) is { IsEvent: false } declared
+                    && declared.Admits(form),
                 propDef.LineStart, propDef.ColumnStart, propDef.Span);
             if (claim == MemberClaim.Refused)
                 return;
@@ -306,7 +308,9 @@ internal partial class NameResolver
             AccessorDeclarationsOf(owningType, propDef.Name)!.Add(form);
         }
 
-        // Check if a property with this name already exists (for combining getter/setter)
+        // The record a merge REPLACES (getter + setter combined into one PropertySymbol). Not a
+        // verdict: whether this declaration may join it was MemberHolderOf's and Admits' above; this
+        // finds the object to rewrite (and keeps an explicit-interface half's by-name merge).
         var existingProp = owningType.Properties.FirstOrDefault(p => p.Name == propDef.Name);
 
         bool isStatic = propDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
@@ -378,7 +382,9 @@ internal partial class NameResolver
         // event keyword.
         var form = AccessorDeclarations.FormOf(eventDef);
         var claim = TryDeclareMember(eventDef.Name, member: null, owningType,
-            mergesWith: holder => holder is AccessorDeclarations { IsEvent: true } declared && declared.Admits(form),
+            mergesWith: holder => holder is EventSymbol
+                && AccessorDeclarationsOf(owningType, eventDef.Name) is { IsEvent: true } declared
+                && declared.Admits(form),
             eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
         if (claim == MemberClaim.Refused)
             return;
@@ -386,7 +392,8 @@ internal partial class NameResolver
             RecordAccessorDeclarations(owningType, eventDef.Name, isEvent: true, eventDef.LineStart);
         AccessorDeclarationsOf(owningType, eventDef.Name)!.Add(form);
 
-        // Check if an event with this name already exists (for merging add/remove accessors)
+        // The record a merge REPLACES (add + remove combined into one EventSymbol). Not a verdict:
+        // MemberHolderOf and Admits above decided whether this declaration may join it.
         var existingEvent = owningType.Events.FirstOrDefault(e => e.Name == eventDef.Name);
 
         bool isStatic = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
@@ -668,12 +675,12 @@ internal partial class NameResolver
     /// position: a method's name token, a field's name, every other kind's first token).
     /// </summary>
     /// <param name="member">The symbol entering the type scope, or null for a member that is not a
-    /// <see cref="Symbol"/> (a property or event — <see cref="AccessorDeclarations"/> records them —, or
-    /// a nested type whose own resolver defines its symbol).</param>
+    /// <see cref="Symbol"/> (a property or event — it lives in the owner's Properties/Events —, or a
+    /// nested type whose own resolver defines its symbol).</param>
     /// <remarks>
     /// Properties and events are standalone records, not <see cref="Symbol"/>s, so they cannot enter
     /// the scope; <see cref="MemberHolderOf"/> is the ONE holder lookup and reads the scope, then the
-    /// owner's recorded accessor declarations. Mutating this method's refusal arm away turns every
+    /// owner's Properties, then its Events. Mutating this method's refusal arm away turns every
     /// refused member pair green-silent in every host — that is the guard's mutation (Phase 2 (a)).
     /// </remarks>
     private MemberClaim TryDeclareMember(
@@ -712,16 +719,26 @@ internal partial class NameResolver
 
     /// <summary>
     /// The ONE holder lookup of the seam: the type scope (methods, fields, consts, nested types,
-    /// aliases, type parameters, union cases), then the owner's property and event declarations,
-    /// which are not <see cref="Symbol"/>s and so never enter a scope.
+    /// aliases, type parameters, union cases) ?? the owner's <see cref="TypeSymbol.Properties"/> ??
+    /// its <see cref="TypeSymbol.Events"/>. PropertySymbol and EventSymbol are not
+    /// <see cref="Symbol"/>s (standalone records), so they never enter a scope and are read where
+    /// they live (D2 correction, lead ruling (a)); no arm consults the scope or those lists for a
+    /// verdict on its own. An explicit-interface property (<c>property IShape.area</c>) is not a
+    /// member of the type's own namespace and holds no name. The accessor-slot record
+    /// (<see cref="AccessorDeclarations"/>) is the merge's bookkeeping, read only once a property or
+    /// event holder was found here — for <see cref="AccessorDeclarations.Admits"/> and the line the
+    /// refusal quotes.
     /// </summary>
     private MemberHolder? MemberHolderOf(string name, TypeSymbol owner)
     {
         if (_symbolTable.Lookup(name, searchParents: false) is { } symbol)
             return new MemberHolder(symbol, MemberKindPhrase(symbol, owner), symbol.DeclarationLine);
 
-        if (AccessorDeclarationsOf(owner, name) is { } accessors)
-            return new MemberHolder(accessors, accessors.IsEvent ? "an event" : "a property", accessors.Line);
+        if (owner.Properties.FirstOrDefault(p => p.Name == name && p.ExplicitInterface == null) is { } property)
+            return new MemberHolder(property, "a property", AccessorDeclarationsOf(owner, name)?.Line);
+
+        if (owner.Events.FirstOrDefault(e => e.Name == name) is { } @event)
+            return new MemberHolder(@event, "an event", AccessorDeclarationsOf(owner, name)?.Line);
 
         return null;
     }
@@ -820,8 +837,11 @@ internal partial class NameResolver
         internal void Add(Form form) => _filled |= form;
     }
 
-    /// <summary>Accessor declarations per type body (properties and events), keyed by the owner symbol
-    /// (reference identity — <see cref="Symbol"/> overrides record equality) and the member name.</summary>
+    /// <summary>The merge's accessor-slot bookkeeping per type-body property or event, keyed by the owner
+    /// symbol (reference identity — <see cref="Symbol"/> overrides record equality) and the member name.
+    /// Not a name registry: <see cref="MemberHolderOf"/> finds the holder in the owner's lists, and this
+    /// is read only after it has (the slots a merged record's flags cannot tell apart, and its first
+    /// line).</summary>
     private readonly Dictionary<(TypeSymbol Owner, string Name), AccessorDeclarations> _accessorDeclarations = new();
 
     /// <summary>Accessor declarations per MODULE property symbol — the same merge rule at module level
