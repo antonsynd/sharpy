@@ -204,10 +204,10 @@ member-chain × interface × property-field → property-set → property-set  #
 # A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
 # struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under
 # run @ 9aae96977 — a write-only auto property has no C# auto shape. NOT a cell of plan-16cca3's Current
-# State (found by this generator's alone control, P21h Phase 1); cited to #2382, the split-half emission
-# class, and LEDGERED for the lead to file or rule — it does not drain in P21h unless the plan adopts it.
-member-alone × class × property-auto-set  # #2382 (ledgered, outside plan-16cca3) lone auto set half; ice CS8051
-member-alone × struct × property-auto-set  # #2382 (ledgered, outside plan-16cca3) lone auto set half; ice CS8051
+# State (found by this generator's alone control, P21h Phase 1); filed as its own class tracker #2395
+# (owner decision: synthesize a backing field, or refuse) — it does not drain in P21h.
+member-alone × class × property-auto-set  # #2395 lone auto set half; ice CS8051
+member-alone × struct × property-auto-set  # #2395 lone auto set half; ice CS8051
 
 # #2067: an interface's function-style event with default `add`/`remove` bodies is SPY0908 CS0535 under
 # run — the emitter writes an abstract `event Action<int> A;` and drops the bodies, so `class Impl(Host):
@@ -247,8 +247,8 @@ explicit-member × class × explicit-property → property-get  # #2390 R-JH; SI
 explicit-member × class × property-get → explicit-property  # #2390 R-JH; SILENT WRONG: runs printing 6|6, not 6|10 (the explicit read returns the bare getter's value)
 explicit-member × class × explicit-property → property-auto-get  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
 explicit-member × class × property-auto-get → explicit-property  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
-explicit-member × class × explicit-property → property-auto-set  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
-explicit-member × class × property-auto-set → explicit-property  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
+explicit-member × class × explicit-property → property-auto-set  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — re-cite #2395 when it drains from #2390)
+explicit-member × class × property-auto-set → explicit-property  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — re-cite #2395 when it drains from #2390)
 explicit-member × class × explicit-property → explicit-property  # #2390 R-JH; silent, ice CS1007 under run (r03: one key, two declarations)
 explicit-member × class × explicit-property → explicit-property-ihost2  # #2390 R-JH; ice CS1007 (r04: two interfaces' explicit members grouped by name)
 explicit-member × struct × explicit-property → method  # #2390 R-JH; SPY0230 "not callable" (m1: the access lookup finds the explicit member first)
@@ -259,8 +259,8 @@ explicit-member × struct × explicit-property → property-get  # #2390 R-JH; S
 explicit-member × struct × property-get → explicit-property  # #2390 R-JH; SILENT WRONG: runs printing 6|6, not 6|10 (the explicit read returns the bare getter's value)
 explicit-member × struct × explicit-property → property-auto-get  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
 explicit-member × struct × property-auto-get → explicit-property  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
-explicit-member × struct × explicit-property → property-auto-set  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
-explicit-member × struct × property-auto-set → explicit-property  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
+explicit-member × struct × explicit-property → property-auto-set  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — re-cite #2395 when it drains from #2390)
+explicit-member × struct × property-auto-set → explicit-property  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — re-cite #2395 when it drains from #2390)
 explicit-member × struct × explicit-property → explicit-property  # #2390 R-JH; silent, ice CS1007 under run (r03: one key, two declarations)
 explicit-member × struct × explicit-property → explicit-property-ihost2  # #2390 R-JH; ice CS1007 (r04: two interfaces' explicit members grouped by name)
 
