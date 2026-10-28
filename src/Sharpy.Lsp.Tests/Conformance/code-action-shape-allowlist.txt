@@ -27,7 +27,7 @@ remove-annotation identity diagnostics 520 c84abab1c31c81d8 91 0589405297fbebe0 
 remove-import identity diagnostics 18 b5484e02da1684c7 4 c64f809e53e1ecee # #2296 removes an error
 rename identity diagnostics 43 0b4dd0da726ab0d1 5 15f4ccba7bc6d7a7 # #2296 adds SPY0200 (and 33 other cells)
 to-if identity diagnostics 4 35d1e4876190ef73 1 96a879de4c764cb2 # #2296 adds SPY0402 (and 4 other cells)
-wrap-try identity diagnostics 2320 6e903b80f8a9c3bb 378 526c06aa41274450 # #2296 adds SPY0200 (and 770 other cells)
+wrap-try identity diagnostics 2320 6e903b80f8a9c3bb 377 169f41837367282b # #2296 adds SPY0200 (and 770 other cells)
 extract-method crlf diagnostics 2898 6d1d2ff4711f5bdd 104 bdc0e0b6a23d90b3 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method crlf parse 553 61bf1fd15f8c0698 73 42a0e756d438371c # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable crlf diagnostics 220 88ce9452651014a6 9 579d0c58dbf30210 # #2294 adds SPY0220 (and 257 other cells)

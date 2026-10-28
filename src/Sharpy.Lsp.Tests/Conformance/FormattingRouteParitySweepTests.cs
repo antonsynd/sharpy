@@ -1653,7 +1653,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// every census asserts the previous literals (identity full = 480). P21g (plan-cbdf79, 2026-10-27): +1 on every
     /// non-zero pin — growth, from lane G's one new runnable fixture stem (interfaces/interface_property_split_accessors_2360);
     /// control @ 091126d8c + lane G's diff with that fixture removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: every census
-    /// asserts the previous literals (identity full = 484), 16695/0. The wide
+    /// asserts the previous literals (identity full = 484), 16695/0. P21g verify round (2026-10-28): +1 on the four comment
+    /// pins only — growth, from the round's new fixture stem events/event_function_style_then_auto_2360; control
+    /// @ 21da3431f with that fixture removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: every census asserts the previous
+    /// literals, 16710/0 (with it present: 16714/1, comment full = 1640). The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1665,10 +1668,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1639,
-            [(Comment, RangeWhole)] = 1639,
-            [(Comment, RangeLine)] = 1635,
-            [(Comment, OnType)] = 1635,
+            [(Comment, Full)] = 1640,
+            [(Comment, RangeWhole)] = 1640,
+            [(Comment, RangeLine)] = 1636,
+            [(Comment, OnType)] = 1636,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,
