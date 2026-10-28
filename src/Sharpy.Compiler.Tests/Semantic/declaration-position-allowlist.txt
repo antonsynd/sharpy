@@ -4,6 +4,7 @@
 # `nested-def × <relation> × <signature> × <call>`, `import-binding × <spelling> × <collider> × <order>`,
 # `alias-redeclaration × <relation> × <position>`, `member-pair × <host> × <A> → <B>`,
 # `member-alone × <host> × <kind>`, `member-chain × <host> × <A> → <B>+<C>` / `… → <B> → <C>`,
+# `explicit-member × <host> × <A> → <B>`,
 # or `project × <id>` for ImportBindingProjectRouteTests' cells),
 # followed by `  # #<issue>` (a row may append a short tag naming its measured shape). A cell whose
 # verdict differs from the contract (ExpectedErrors / the nested-def expected sets, the
@@ -227,6 +228,41 @@ member-pair × interface × event-remove → event-add  # #2067 interface event 
 member-pair × union × case → case  # #2390 R-JI; SPY0365 instead of SPY0204
 member-pair × union × case → case-after-def  # #2390 R-JI; SPY0365 instead of SPY0204
 member-pair × union × type-param → case  # #2390 R-JI; silent, ice CS0102 under run
+# #2390 (R-JH): an explicit interface implementation claims no bare name — the member key is (Name,
+# ExplicitInterface) — so `property IHost.A: int = 10` beside any type-body kind named `A` is [] and runs,
+# printing through both members; the explicit member twice is ONE SPY0204 at the later; explicit members
+# of two interfaces are two keys. Measured @ 9aae96977 (Analyze, then run) on ExplicitMemberCells, class and
+# struct hosts implementing `interface IHost: property A: int`: a bare method is SPY0230 "int32 is not
+# callable" (m1); a bare auto property / auto getter / auto setter is SPY0908 CS1007 (+ CS0161, CS0535,
+# CS0736 …: the emitter groups by Name, r01); a bare function-style GETTER runs and prints 6|6 instead of
+# 6|10 — SILENT WRONG, the explicit member's read is the bare getter's; the explicit member twice is silent
+# and CS1007 (r03); IHost.A + IHost2.A is CS1007 (r04). Green at the base: field (r02), const, nested class
+# (r10), alias, auto event (r07), the event accessor pair, the function-style setter, and the explicit split
+# halves (r05). CREATED by P21h Phase 1 Task 2; drains in P21h Phase 3 (D5).
+explicit-member × class × explicit-property → method  # #2390 R-JH; SPY0230 "not callable" (m1: the access lookup finds the explicit member first)
+explicit-member × class × method → explicit-property  # #2390 R-JH; SPY0230 "not callable" (m1: the access lookup finds the explicit member first)
+explicit-member × class × explicit-property → property-field  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × class × property-field → explicit-property  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × class × explicit-property → property-get  # #2390 R-JH; SILENT WRONG: runs printing 6|6, not 6|10 (the explicit read returns the bare getter's value)
+explicit-member × class × property-get → explicit-property  # #2390 R-JH; SILENT WRONG: runs printing 6|6, not 6|10 (the explicit read returns the bare getter's value)
+explicit-member × class × explicit-property → property-auto-get  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × class × property-auto-get → explicit-property  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × class × explicit-property → property-auto-set  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
+explicit-member × class × property-auto-set → explicit-property  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
+explicit-member × class × explicit-property → explicit-property  # #2390 R-JH; silent, ice CS1007 under run (r03: one key, two declarations)
+explicit-member × class × explicit-property → explicit-property-ihost2  # #2390 R-JH; ice CS1007 (r04: two interfaces' explicit members grouped by name)
+explicit-member × struct × explicit-property → method  # #2390 R-JH; SPY0230 "not callable" (m1: the access lookup finds the explicit member first)
+explicit-member × struct × method → explicit-property  # #2390 R-JH; SPY0230 "not callable" (m1: the access lookup finds the explicit member first)
+explicit-member × struct × explicit-property → property-field  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × struct × property-field → explicit-property  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × struct × explicit-property → property-get  # #2390 R-JH; SILENT WRONG: runs printing 6|6, not 6|10 (the explicit read returns the bare getter's value)
+explicit-member × struct × property-get → explicit-property  # #2390 R-JH; SILENT WRONG: runs printing 6|6, not 6|10 (the explicit read returns the bare getter's value)
+explicit-member × struct × explicit-property → property-auto-get  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × struct × property-auto-get → explicit-property  # #2390 R-JH; ice CS1007 (r01: the emitter groups by Name)
+explicit-member × struct × explicit-property → property-auto-set  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
+explicit-member × struct × property-auto-set → explicit-property  # #2390 R-JH; ice CS0161 + CS0736/CS1061 (grouped by name; after R-JH the lone auto set half's CS8051 remains — ledgered)
+explicit-member × struct × explicit-property → explicit-property  # #2390 R-JH; silent, ice CS1007 under run (r03: one key, two declarations)
+explicit-member × struct × explicit-property → explicit-property-ihost2  # #2390 R-JH; ice CS1007 (r04: two interfaces' explicit members grouped by name)
 
 # #2075 (R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the FIRST half
 # (the refused declaration GROUP draws one verdict; its later half is silent); a third half beside a merged

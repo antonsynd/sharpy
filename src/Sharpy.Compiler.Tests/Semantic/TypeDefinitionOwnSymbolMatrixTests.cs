@@ -637,9 +637,13 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // Per type-body host: K alone + K × K ordered pairs + the same-signature twin + type-param × K (K = 13, 13, 15);
         // the two-defaults pair × 2 orders × {class, struct}; module: 8 alone + 8 × 8 + the same-signature def twin;
         // enum: alone + member twice; union: method alone, overload, same-signature twin, case × method, case × case
-        // (adjacent and after a def), type-param × case; chains: 3 hosts × (5 heads × 3 split pairs + 3 third-half).
+        // (adjacent and after a def), type-param × case; chains: 3 hosts × (5 heads × 3 split pairs + 3 third-half);
+        // explicit members: {class, struct} × (13 kinds × 2 orders + explicit twice + two interfaces + split halves).
         Assert.Equal(2 * (13 + 13 * 13 + 1 + 13) + (15 + 15 * 15 + 1 + 15) + 2 * 2 + (8 + 8 * 8 + 1) + 2 + 4 + 3
-            + 3 * (5 * 3 + 3), MemberPairCells().Count());
+            + 3 * (5 * 3 + 3) + 2 * (13 * 2 + 3), MemberPairCells().Count());
+        Assert.Equal(2 * (13 * 2 + 3), MemberPairCells().Count(c => c.Id.StartsWith("explicit-member × ", StringComparison.Ordinal)));
+        // R-JH: an explicit member claims no bare name — every explicit cell runs but the same-key twin per host.
+        Assert.Equal(2 * (13 * 2 + 2), ExplicitMemberCells().Count(c => c.ExpectedErrors.Count == 0 && c.ExpectedStdout != null));
         Assert.Equal(2 * 13 + 15 + 8 + 1 + 1, MemberPairCells().Count(c => c.Id.StartsWith("member-alone × ", StringComparison.Ordinal)));
         Assert.Equal(2 * 13 + 15 + 1, MemberPairCells().Count(c => c.Id.Contains(" × type-param → ", StringComparison.Ordinal)));
         Assert.Equal(3 * (5 * 3 + 3), MemberPairCells().Count(c => c.Id.StartsWith("member-chain × ", StringComparison.Ordinal)));
@@ -664,7 +668,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 788, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 846, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1777,7 +1781,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // `show` is the alone event control's handler; every cell carries it so line numbers are uniform.
         var prelude = new[] { "def show(v: int) -> None:", "    print(v)", "" };
         return TypeBodyPairCells(prelude).Concat(ModulePairCells(prelude)).Concat(EdgeMemberPairCells(prelude))
-            .Concat(MemberChainCells());
+            .Concat(MemberChainCells()).Concat(ExplicitMemberCells());
     }
 
     /// <summary>One program: the prelude, the host head, the members (indented under a head), the interface
@@ -1956,6 +1960,72 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 var (line, column) = MemberPosition(chain[refusedAt], at[refusedAt], 4);
                 yield return new MemberPairCell($"member-chain × {host} × {string.Join(" → ", spelled)}", host, source,
                     new[] { (refusedAt == 1 ? "SPY0617" : "SPY0204", line, column) }, null);
+            }
+        }
+    }
+
+    /// <summary>The explicit-interface property of the sub-matrix (D9 (ii)): it implements <c>IHost.A</c> and claims no
+    /// bare name, so its use goes through the interface. It prints <c>10</c> — a value no bare kind prints (the plan's
+    /// <c>4</c> is the <c>const</c> kind's, so a read that reached the bare const would not discriminate).</summary>
+    private static readonly MemberKind ExplicitProperty =
+        new("explicit-property", new[] { "property IHost.A: int = 10" }, At.Keyword, new[] { "i: IHost = h", "print(i.A)" }, "10");
+
+    /// <summary>
+    /// The explicit-interface sub-matrix (P21h D9 (ii), R-JH, #2390): host {class, struct} implementing <c>interface
+    /// IHost: property A: int</c> × <c>explicit-property</c> (<c>property IHost.A: int = 4</c>) beside every type-body
+    /// kind, in both orders — ids <c>explicit-member × &lt;host&gt; × &lt;A&gt; → &lt;B&gt;</c>. An explicit
+    /// implementation claims no bare name (R-JH: the member key is <c>(Name, ExplicitInterface)</c>), so every such pair
+    /// is [] and runs, printing through BOTH members: the bare kind's alone use, then <c>10</c> through the interface (an
+    /// event accessor's kind is its add/remove pair, as in its alone control). Three more cells per host: the explicit
+    /// member twice — [SPY0204 @ the later] (r03: one key, two declarations); an <c>IHost2.A</c> explicit member beside
+    /// the <c>IHost.A</c> one — [] and runs <c>10\n20</c> (r04: two keys); the explicit function-style split halves —
+    /// [] and runs <c>7\n8</c> (r05: the explicit key keeps the merge).
+    /// </summary>
+    internal static IEnumerable<MemberPairCell> ExplicitMemberCells()
+    {
+        var prelude = new[]
+        {
+            "def show(v: int) -> None:", "    print(v)", "",
+            "interface IHost:", "    property A: int", "",
+            "interface IHost2:", "    property A: int", "",
+        };
+        foreach (var host in new[] { "class", "struct" })
+        {
+            var header = new[] { $"{host} Host(IHost):" };
+            var construct = new[] { "h: Host = Host()" };
+            foreach (var kind in TypeBodyMemberKinds)
+            {
+                var bare = AloneMembers(kind);
+                foreach (var explicitFirst in new[] { true, false })
+                {
+                    var members = explicitFirst ? new[] { ExplicitProperty.Lines }.Concat(bare).ToArray() : bare.Append(ExplicitProperty.Lines).ToArray();
+                    var (source, _) = MemberProgram(prelude, header, members, null, construct.Concat(kind.Use).Concat(ExplicitProperty.Use).ToArray());
+                    var id = explicitFirst
+                        ? $"explicit-member × {host} × {ExplicitProperty.Kind} → {kind.Kind}"
+                        : $"explicit-member × {host} × {kind.Kind} → {ExplicitProperty.Kind}";
+                    yield return new MemberPairCell(id, host, source, Array.Empty<(string, int, int)>(), $"{kind.Stdout}\n{ExplicitProperty.Stdout}\n");
+                }
+            }
+
+            {
+                var (source, at) = MemberProgram(prelude, header, new[] { ExplicitProperty.Lines, ExplicitProperty.Lines }, null, new[] { "print(\"ok\")" });
+                var (line, column) = MemberPosition(ExplicitProperty, at[1], 4);
+                yield return new MemberPairCell($"explicit-member × {host} × explicit-property → explicit-property", host, source,
+                    new[] { ("SPY0204", line, column) }, null);
+            }
+            {
+                var (source, _) = MemberProgram(prelude, new[] { $"{host} Host(IHost, IHost2):" },
+                    new[] { ExplicitProperty.Lines, new[] { "property IHost2.A: int = 20" } }, null,
+                    construct.Concat(ExplicitProperty.Use).Concat(new[] { "j: IHost2 = h", "print(j.A)" }).ToArray());
+                yield return new MemberPairCell($"explicit-member × {host} × explicit-property → explicit-property-ihost2", host, source,
+                    Array.Empty<(string, int, int)>(), "10\n20\n");
+            }
+            {
+                var (source, _) = MemberProgram(prelude, header,
+                    new[] { new[] { "property get IHost.A(self) -> int:", "    return 8" }, new[] { "property set IHost.A(self, v: int):", "    print(v)" } },
+                    null, construct.Concat(new[] { "i: IHost = h", "i.A = 7", "print(i.A)" }).ToArray());
+                yield return new MemberPairCell($"explicit-member × {host} × explicit-get → explicit-set", host, source,
+                    Array.Empty<(string, int, int)>(), "7\n8\n");
             }
         }
     }
