@@ -2083,11 +2083,12 @@ internal partial class TypeChecker
             typeArgs = resolvedTypeArgs;
         }
 
+        typeSymbol ??= DenotedOverloadOwner(memberAccess, objectType);
         if (typeSymbol == null)
             return null;
 
         // Walk the hierarchy looking for overloads
-        var overloads = FindMethodOverloadsInHierarchy(typeSymbol, memberAccess.Member);
+        var overloads = OverloadSetForReceiver(memberAccess, typeSymbol);
         if (overloads == null || overloads.Count <= 1)
             return null;
 
@@ -2152,6 +2153,33 @@ internal partial class TypeChecker
         if (isNullConditionalCall)
             return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
         return returnType;
+    }
+
+    /// <summary>
+    /// The type a member call's receiver DENOTES, when none of the value-type arms of
+    /// <see cref="ResolveUserMethodOverload"/> sees it: a bare type name (<c>C.make(...)</c>) types its
+    /// identifier as the constructor reference, not a <see cref="UserDefinedType"/> (#432), so the
+    /// overload pass found no type and the call was validated against the member seam's FIRST
+    /// <c>@static</c> overload — <c>C.make("abc")</c> beside <c>C.make(1)</c> was SPY0220 (#2391).
+    /// Answered by the ONE type-denoting classifier,
+    /// <see cref="DenotedTypeSymbolOf"/>, which an alias receiver (<c>type K = C</c> then <c>K.make</c>)
+    /// already reached through its normalized UDT.
+    /// </summary>
+    private TypeSymbol? DenotedOverloadOwner(MemberAccess memberAccess, SemanticType objectType)
+        => DenotedTypeSymbolOf(memberAccess.Object, objectType) is var (symbol, _) ? symbol : null;
+
+    /// <summary>
+    /// The overload set a member call selects from: every overload of the member in the hierarchy, or
+    /// — when the receiver denotes a TYPE — only its static half, the half C# binds without an instance.
+    /// An instance member named through a type is refused at the member seam (SPY0290); without the
+    /// filter a mixed set could still bind its instance overload here and reach Roslyn as CS0120 (#2391).
+    /// </summary>
+    private IReadOnlyList<FunctionSymbol>? OverloadSetForReceiver(MemberAccess memberAccess, TypeSymbol typeSymbol)
+    {
+        var overloads = FindMethodOverloadsInHierarchy(typeSymbol, memberAccess.Member);
+        return overloads != null && ReceiverDenotesType(memberAccess.Object)
+            ? overloads.Where(o => o.IsStatic).ToList()
+            : overloads;
     }
 
     /// <summary>
