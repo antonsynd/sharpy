@@ -90,5 +90,5 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 ## 7. Charter changelog
 - **<date>** — <created | extended> @ <sha>: <groups, rulings, closures, filings, census>.
 
-**Open items pending owner confirmation:** <none | list>. **Next:** <`/create-plan` per §1 order>.
+**Open items pending owner confirmation:** <none | list>. **Next:** <per §1 order and tier: `band` → the chore commits · `light` → `/create-plan --light <issues>` → `/verify-plan` (adequacy-only) → `/implement-plan` → `/verify-implementation` · `full` → `/create-plan <issues>` → `/verify-plan` → `/implement-plan` → `/verify-implementation`>.
 ```

@@ -53,6 +53,8 @@ The `/spy-*` and `/quick-check` skills accept inline source via the Write tool, 
 
 Plans live in `.claude/plans/` (repo-local, gitignored); per-batch plans created before 2026-08-26 remain in `~/.claude/plans/` — pass the path explicitly for those.
 
+How much of the pipeline a group runs is its **tier**, set at `/batch-issues` and printed in the charter ([verification-contract.md §12](../../docs/design/verification-contract.md)): `band` (chore) runs no plan and no verify stage; `light` runs `/create-plan --light` → `/verify-plan` (adequacy-only) → `/implement-plan` → `/verify-implementation` (Agents 2–4); `full` runs every dimension and every auditor. A skill never runs a stage its tier skips without an `override:` recorded in the plan's `## Scope`.
+
 | Skill | Arguments | Purpose |
 |-------|-----------|---------|
 | `/batch-issues` | `[--charter <path>] [--since <sha>] [--issues 123,456]` | Read every open issue with comments, batch into class-level groups, surface decisions with options and door-type; after the owner rules, write the round charter (`remediation-round-<date>-batching.md`, template in the skill), post placements/rulings, file and close what the rulings create |
