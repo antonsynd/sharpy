@@ -53,13 +53,15 @@ The `/spy-*` and `/quick-check` skills accept inline source via the Write tool, 
 
 Plans live in `.claude/plans/` (repo-local, gitignored); per-batch plans created before 2026-08-26 remain in `~/.claude/plans/` — pass the path explicitly for those.
 
+How much of the pipeline a group runs is its **tier**, set at `/batch-issues` and printed in the charter ([verification-contract.md §12](../../docs/design/verification-contract.md)): `band` (chore) runs no plan and no verify stage; `light` runs `/create-plan --light` → `/verify-plan` (adequacy-only) → `/implement-plan` → `/verify-implementation` (Agents 2–4); `full` runs every dimension and every auditor. A skill never runs a stage its tier skips without an `override:` recorded in the plan's `## Scope`.
+
 | Skill | Arguments | Purpose |
 |-------|-----------|---------|
 | `/batch-issues` | `[--charter <path>] [--since <sha>] [--issues 123,456]` | Read every open issue with comments, batch into class-level groups, surface decisions with options and door-type; after the owner rules, write the round charter (`remediation-round-<date>-batching.md`, template in the skill), post placements/rulings, file and close what the rulings create |
-| `/create-plan` | `<issue numbers or description>` | Create an implementation plan from GitHub issues or a description |
-| `/verify-plan` | `<path/to/plan.md>` | Verify a plan for accuracy and architectural soundness |
-| `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a verified plan with coordinated agents, lead-owned gates, and mutation-tested guards |
-| `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation, fix gaps/bugs/regressions, and commit fixes |
+| `/create-plan` | `<issue numbers or description> [--light \| --full]` | Create an implementation plan at the group's charter tier (contract §12): `full` = phases + tasks; `light` = one-page design-of-record, no task list |
+| `/verify-plan` | `<path/to/plan.md> [--adequacy]` | Verify a plan: nine dimensions for a `full` plan; adequacy-only (matrix arms, guard mutations, design predicates, by a fresh reader) for a `light` plan |
+| `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a stamped plan (`Adequacy-only` stamp + clean `check_plan_refs.py` on a `light` plan) with coordinated agents, lead-owned gates, and mutation-tested guards; promotes a light plan to full when an unruled door surfaces |
+| `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation with refuting auditors (Agents 2–4 on a `light` plan, completeness by the lead), fix gaps/bugs/regressions, and commit fixes |
 | `/compiler-audit` | `[focus-area]` | Run a comprehensive compiler health audit |
 
 ## Dogfooding
