@@ -848,8 +848,12 @@ internal partial class TypeChecker
                 // CALL time, inside the body, and referring to an earlier parameter is the point
                 // of the feature (`def f(x: int, y: int => x + 1)`). It resolves in the function
                 // scope, where the class body is correctly invisible.
+                //
+                // An eager default in a METHOD therefore resolves a bare class-body sibling as a C#
+                // parameter default does: a const only (P21h D8, TypeChecker.ClassScopeRule).
                 SemanticType defaultType;
                 using (_symbolTable.ResolveInDeclaringScope(enabled: !param.IsLateBound))
+                using (ScopedValue.Push(ref _initializerOwner, ParameterDefaultReader(param)))
                 {
                     using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
                         defaultType = CheckExpression(param.DefaultValue);
@@ -2468,7 +2472,11 @@ internal partial class TypeChecker
         {
             if (propDef.DefaultValue != null)
             {
+                // Checked under the CLASS scope (no initializer: scope), so the reader is the ONLY
+                // fact that classifies a bare sibling read in the default (P21h D8): a C# property
+                // initializer in every host, instance or @static by the declaration.
                 SemanticType defaultType;
+                using (ScopedValue.Push(ref _initializerOwner, PropertyDefaultReader(propDef)))
                 using (EnterStore(StorePosition.PropertyDefault, propertyType, propDef.DefaultValue))
                     defaultType = CheckExpression(propDef.DefaultValue);
 

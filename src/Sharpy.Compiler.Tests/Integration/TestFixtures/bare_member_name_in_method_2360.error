@@ -1,6 +1,5 @@
 Undefined identifier 'f'. 'f' is a class attribute of 'FieldRead' — class-body names are not visible by bare name inside methods. Use 'self.f' to access it @13:16
 Undefined identifier 'p'. 'p' is a class attribute of 'PropertyRead' — class-body names are not visible by bare name inside methods. Use 'self.p' to access it @20:16
-Undefined identifier 'e' @27:15
-Undefined identifier 'p'. 'p' is a class attribute of 'InitializerRead' — class-body names are not visible by bare name inside methods @32:14
-Undefined identifier 'p'. 'p' is a class attribute of 'DefaultRead' — class-body names are not visible by bare name inside methods @38:26
-Default value for parameter 'x' in function 'm' must be a compile-time constant expression @38:17
+Undefined identifier 'e'. 'e' is a class attribute of 'EventRead' — class-body names are not visible by bare name inside methods. Use 'self.e' to access it @27:15
+Undefined identifier 'p' in a field initializer. 'p' is an instance property of 'InitializerRead' — a field initializer runs before any instance exists, so it may read only a 'const' or '@static' member of 'InitializerRead'. Initialize 'q' in '__init__' with 'self.q = self.p' @32:14
+Undefined identifier 'p' in a parameter default. 'p' is an instance property of 'DefaultRead' — a parameter default must be a compile-time constant (a 'const' of 'DefaultRead'). Default 'x' to None and read 'self.p' in the body @38:26

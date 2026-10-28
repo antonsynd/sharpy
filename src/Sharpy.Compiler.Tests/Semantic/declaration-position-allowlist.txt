@@ -336,132 +336,28 @@ member-chain × interface × alias → event-add+event-remove  # #2075 R-JO; two
 # property, and a @static field in a parameter default (SPY0401 alone). CREATED by P21h Phase 1 Task 3;
 # drains in P21h Phase 4 (D8).
 class-body-read × class × instance-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × instance-field-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × class × instance-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × instance-field-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × instance-field-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × instance-field-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × instance-field-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × class × static-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × static-field-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × class × static-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × static-field-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × static-field-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × static-field-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × static-field-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × class × instance-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × instance-property-default × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × class × instance-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × instance-property-default × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × instance-property-default × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × instance-property-default × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × instance-property-default × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × class × static-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × static-property-default × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × class × static-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × static-property-default × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × static-property-default × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × static-property-default × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × static-property-default × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × class × const-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × const-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × class × const-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × const-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × const-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × const-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × const-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × parameter-default × instance-field  # #2384 R-JJ; SPY0401 alone; the instance sibling is due one SPY0200
-class-body-read × class × parameter-default × static-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × class × parameter-default × instance-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × class × parameter-default × event  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × class × parameter-default × static-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × class × parameter-default × instance-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × class × method-body × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × method-body × static-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × class × method-body × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × instance-field-initializer × instance-field  # #2384 R-JJ; SPY0401 alone; the instance sibling is due one SPY0200
-class-body-read × dataclass × instance-field-initializer × static-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × instance-field-initializer × instance-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × instance-field-initializer × event  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × instance-field-initializer × static-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × instance-field-initializer × instance-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
 class-body-read × dataclass × static-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × static-field-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × dataclass × static-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × static-field-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × static-field-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × static-field-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × static-field-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × dataclass × instance-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × instance-property-default × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × dataclass × instance-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × instance-property-default × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × instance-property-default × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × instance-property-default × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × instance-property-default × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × dataclass × static-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × static-property-default × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × dataclass × static-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × static-property-default × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × static-property-default × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × static-property-default × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × static-property-default × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × dataclass × const-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × const-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × dataclass × const-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × const-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × const-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × const-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × const-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × parameter-default × instance-field  # #2384 R-JJ; SPY0401 alone; the instance sibling is due one SPY0200
-class-body-read × dataclass × parameter-default × static-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × parameter-default × instance-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × parameter-default × event  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × parameter-default × static-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × parameter-default × instance-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × dataclass × method-body × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × method-body × static-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × dataclass × method-body × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × instance-field-initializer × instance-field  # #2384 R-JJ; SPY0401 alone; the instance sibling is due one SPY0200
-class-body-read × struct × instance-field-initializer × static-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × instance-field-initializer × instance-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × instance-field-initializer × event  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × instance-field-initializer × static-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × instance-field-initializer × instance-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
 class-body-read × struct × static-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × static-field-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × struct × static-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × static-field-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × static-field-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × static-field-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × static-field-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × struct × instance-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × instance-property-default × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × struct × instance-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × instance-property-default × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × instance-property-default × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × instance-property-default × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × instance-property-default × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × struct × static-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × static-property-default × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × struct × static-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × static-property-default × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × static-property-default × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × static-property-default × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × static-property-default × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
 class-body-read × struct × const-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × const-initializer × instance-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
 class-body-read × struct × const-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × const-initializer × instance-property  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × const-initializer × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × const-initializer × static-method  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × const-initializer × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × parameter-default × instance-field  # #2384 R-JJ; SPY0401 alone; the instance sibling is due one SPY0200
-class-body-read × struct × parameter-default × static-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × parameter-default × instance-property  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × parameter-default × event  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × parameter-default × static-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × parameter-default × instance-method  # #2384 R-JJ; SPY0200 + SPY0401, two codes
-class-body-read × struct × method-body × event  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × method-body × static-method  # #2384 R-JJ; SPY0200 without the position phrase or steer
-class-body-read × struct × method-body × instance-method  # #2384 R-JJ; SPY0200 without the position phrase or steer

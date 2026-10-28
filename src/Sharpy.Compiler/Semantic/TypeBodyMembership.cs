@@ -1,0 +1,165 @@
+using Sharpy.Compiler.Shared;
+
+namespace Sharpy.Compiler.Semantic;
+
+/// <summary>
+/// The kind of type-body member a bare name denotes. The wording of a refusal reads it; the
+/// store refusal reads it to keep its own set (fields and properties).
+/// </summary>
+internal enum TypeBodyMemberKind
+{
+    Field,
+    Property,
+    Event,
+    Method,
+}
+
+/// <summary>
+/// A member of a type that a bare name denotes, with the steers that actually compile for it.
+/// </summary>
+/// <param name="Name">The member's name, as written.</param>
+/// <param name="OwnerName">The type whose body declares it.</param>
+/// <param name="Kind">Field, property, event or method.</param>
+/// <param name="IsConstant">Whether it is a <c>const</c>.</param>
+/// <param name="IsStatic">Whether it is <c>@static</c> (or a const, which is also type-level).</param>
+/// <param name="ReachableThroughSelf">
+/// Whether <c>self.Name</c> compiles here: the member is an instance member of the type
+/// <c>self</c> has (its own or an inherited one) and a <c>self</c> is in scope. False in a
+/// <c>@static</c> method, in a class-field-initializer lambda, and when the member belongs to
+/// an OUTER class of a nested one — the cases where the old steer named something illegal.
+/// </param>
+/// <param name="IsInherited">
+/// Whether <see cref="OwnerName"/> is a BASE of the enclosing type rather than the enclosing
+/// type itself. Only the wording reads it: the refusal says "inherited class attribute" so the
+/// reader is not sent looking for a declaration in the body in front of them. R-AA (#1803):
+/// an inherited member and a property get the same treatment as a member the body declares.
+/// </param>
+/// <param name="CSharpName">
+/// The C# name the member is declared under — the spelling a bare read of it emits where C#
+/// resolves it by its simple name (an admitted class-body sibling read, D8). Spelled as the
+/// declarations spell it: a field through <c>NameCasing.ResolveField</c> (<c>ProcessField</c>), a
+/// property or event through <c>NameCasing.ResolveMethod</c> (the property/event emitters), a method
+/// through <c>DunderNameMapping</c> else <c>NameCasing.ResolveMethod</c> (<c>ProcessMethod</c>).
+/// </param>
+/// <param name="Symbol">The member's symbol, when it has one (a field or a method; a property and
+/// an event are standalone records).</param>
+/// <param name="Type">The member's declared type — a method's is its function type.</param>
+internal sealed record TypeBodyMember(
+    string Name,
+    string OwnerName,
+    TypeBodyMemberKind Kind,
+    bool IsConstant,
+    bool IsStatic,
+    bool ReachableThroughSelf,
+    bool IsInherited,
+    string CSharpName,
+    Symbol? Symbol,
+    SemanticType Type)
+{
+    /// <summary>
+    /// <c>Owner.Name</c>, but only for a member C# can reach through the type name. An instance
+    /// field named through its type is SPY0290 ("Cannot access instance field via type name"),
+    /// so offering it as a fix would send the reader from one refusal to another.
+    /// </summary>
+    public string? TypeNameAccess => IsConstant || IsStatic ? $"{OwnerName}.{Name}" : null;
+
+    /// <summary><c>self.Name</c>, when that compiles here.</summary>
+    public string? SelfAccess => ReachableThroughSelf ? $"self.{Name}" : null;
+}
+
+/// <summary>
+/// The ONE membership predicate for a bare type-body name (R-AA, #1803; extended by P21h D8,
+/// #2384): which member of a type a bare name denotes. The checker's store refusal, its read steer
+/// and its class-body sibling read (<c>TypeChecker.ClassScopeRule</c>) ask it, and so does
+/// <c>ConstantPositionValidator</c> when it decides that a parameter default's identifier is an
+/// instance member the checker already refused — so the two sides cannot disagree about which
+/// names are members.
+/// </summary>
+internal static class TypeBodyMembership
+{
+    /// <summary>
+    /// Describes <paramref name="name"/> as a field, property, event or method of
+    /// <paramref name="type"/> itself (not its bases), or null when that type declares no such
+    /// member.
+    /// </summary>
+    internal static TypeBodyMember? DescribeMemberOf(
+        TypeSymbol type, string name, bool reachableThroughSelf, bool isInherited)
+    {
+        foreach (var field in type.Fields)
+        {
+            if (field.Name != name)
+                continue;
+            bool typeLevel = field.IsStatic || field.IsConstant;
+            return new TypeBodyMember(
+                name, type.Name, TypeBodyMemberKind.Field, field.IsConstant, typeLevel,
+                ReachableThroughSelf: !typeLevel && reachableThroughSelf,
+                IsInherited: isInherited,
+                NameCasing.ResolveField(field.Name, field.IsNameBacktickEscaped),
+                field, field.Type);
+        }
+
+        foreach (var property in type.Properties)
+        {
+            if (property.Name != name)
+                continue;
+            return new TypeBodyMember(
+                name, type.Name, TypeBodyMemberKind.Property, IsConstant: false, property.IsStatic,
+                ReachableThroughSelf: !property.IsStatic && reachableThroughSelf,
+                IsInherited: isInherited,
+                NameCasing.ResolveMethod(property.Name, property.IsNameBacktickEscaped),
+                Symbol: null, property.Type);
+        }
+
+        foreach (var evt in type.Events)
+        {
+            if (evt.Name != name)
+                continue;
+            return new TypeBodyMember(
+                name, type.Name, TypeBodyMemberKind.Event, IsConstant: false, evt.IsStatic,
+                ReachableThroughSelf: !evt.IsStatic && reachableThroughSelf,
+                IsInherited: isInherited,
+                NameCasing.ResolveMethod(evt.Name, evt.IsNameBacktickEscaped),
+                Symbol: null, evt.Type);
+        }
+
+        foreach (var method in type.Methods)
+        {
+            if (method.Name != name)
+                continue;
+            return new TypeBodyMember(
+                name, type.Name, TypeBodyMemberKind.Method, IsConstant: false, method.IsStatic,
+                ReachableThroughSelf: !method.IsStatic && reachableThroughSelf,
+                IsInherited: isInherited,
+                DunderNameMapping.ResolveCSharpName(method.Name)
+                    ?? NameCasing.ResolveMethod(method.Name, method.IsNameBacktickEscaped),
+                method, FunctionType.FromParameters(method.Parameters, method.ReturnType));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Describes <paramref name="name"/> as a member of <paramref name="type"/> or of one of its
+    /// bases, innermost first, or null when none declares it.
+    /// </summary>
+    internal static TypeBodyMember? FindMember(TypeSymbol? type, string name, bool reachableThroughSelf)
+    {
+        for (var owner = type; owner != null; owner = owner.BaseType)
+        {
+            if (DescribeMemberOf(owner, name, reachableThroughSelf,
+                    isInherited: !ReferenceEquals(owner, type)) is { } member)
+            {
+                return member;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="name"/> denotes an INSTANCE member of <paramref name="type"/> or of
+    /// one of its bases — a member no constant position can read (C# CS0236 / CS1736).
+    /// </summary>
+    internal static bool IsInstanceMember(TypeSymbol? type, string name)
+        => FindMember(type, name, reachableThroughSelf: false) is { IsStatic: false, IsConstant: false };
+}
