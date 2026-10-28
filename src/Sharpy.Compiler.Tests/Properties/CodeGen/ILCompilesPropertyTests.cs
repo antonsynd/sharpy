@@ -6,7 +6,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators;
-using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -172,7 +171,7 @@ public class ILCompilesPropertyTests
     }
 
     /// <summary>
-    /// True when <paramref name="module"/> holds a shape the front end refuses whatever surrounds it,
+    /// True when <paramref name="node"/> holds a shape the front end refuses whatever surrounds it,
     /// so the sample can never reach <c>compilation.Emit</c>: an import or a property declaration
     /// inside a function (SPY0708, since P21e's declaration-position rule) and a bare <c>super()</c>
     /// that is not the receiver of a member access (SPY0287).
@@ -186,31 +185,17 @@ public class ILCompilesPropertyTests
     /// draw restores the yield the floor was sized for; lowering the floor would make the suite agree
     /// with whatever it produces (#1432). Filtered here, not in <c>GenModule</c>, for the reason
     /// <see cref="WithEntryPoint"/> gives: the generator's other consumers only need syntax.</para>
+    /// <para>Walked through <see cref="Node.GetChildNodes"/>, not the typed generators' <c>AstRewriter</c>:
+    /// naming that namespace puts a file in <c>PropertyOracleConformanceTests</c>' universe, and this lane
+    /// is not a typed-generator oracle. The parser's walk hides only type annotations, which hold none of
+    /// the three shapes.</para>
     /// </summary>
-    private static bool HasStructurallyRefusedShape(Sharpy.Compiler.Parser.Ast.Module module)
+    private static bool HasStructurallyRefusedShape(Node node, Node? parent = null, bool inFunction = false) => node switch
     {
-        var parents = AstRewriter.Parents(module);
-        foreach (var node in AstRewriter.Descendants(module))
-        {
-            switch (node)
-            {
-                case ImportStatement or FromImportStatement or PropertyDef when HasFunctionAncestor(node, parents):
-                case SuperExpression when !(parents.TryGetValue(node, out var parent) && parent is MemberAccess):
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool HasFunctionAncestor(Node node, Dictionary<Node, Node> parents)
-    {
-        for (var current = node; parents.TryGetValue(current, out var parent); current = parent)
-        {
-            if (parent is FunctionDef)
-                return true;
-        }
-        return false;
-    }
+        ImportStatement or FromImportStatement or PropertyDef when inFunction => true,
+        SuperExpression when parent is not MemberAccess => true,
+        _ => node.GetChildNodes().Any(child => HasStructurallyRefusedShape(child, node, inFunction || node is FunctionDef)),
+    };
 
     /// <summary>Annotates untyped parameters, recursing into class bodies for methods.</summary>
     private static Statement AnnotateParameters(Statement statement) => statement switch
