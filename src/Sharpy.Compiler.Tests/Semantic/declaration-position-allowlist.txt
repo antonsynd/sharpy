@@ -129,7 +129,8 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # CS0102 ("legal merge; ice") and the module's auto-half + getter merge is refused ("legal merge
 # refused"). The struct auto-half + SETTER merges are #2021's default + setter CS0100 and live in
 # the #2021 section above; the struct auto-half + GETTER merges are CS0100 too but not that shape, so
-# they cite #2360 (lead ruling 2026-10-25). The +SPY0701 rows are #1654's dunder check firing on a
+# they cited #2360 (lead ruling 2026-10-25) and now cite #2382, the emission class of every host's split
+# halves (P21g lead, 2026-10-27). The +SPY0701 rows are #1654's dunder check firing on a
 # non-dunder name; Phase 2 decides whether the seam drains them. CREATED by P21g Phase 1; the #2360
 # rows drain in P21g Phase 2 (TryDeclareMember, D2/D3/D4).
 # DRAINED by P21g Phase 2 Task 1 (the member seam, NameResolver.TryDeclareMember / ResolveTypeBodyMember):
@@ -140,8 +141,8 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # interface function-style get + set merges. LEFT: the interface auto-half + accessor merges (CS0525 — the
 # auto half is abstract, the accessor bodied; #2382) and the two struct auto-half + GETTER rows (CS0100 in
 # the struct auto-constructor).
-member-pair × struct × property-field → property-get  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-get → property-field  # #2360 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
+member-pair × struct × property-field → property-get  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
+member-pair × struct × property-get → property-field  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
 member-pair × interface × property-field → property-get  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
 member-pair × interface × property-field → property-set  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
 member-pair × interface × property-get → property-field  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
