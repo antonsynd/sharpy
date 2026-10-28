@@ -1,0 +1,24 @@
+# P21g (#2360): a third half re-filling a slot an earlier half already filled is ONE SPY0204 at the later
+# declaration; its auto + function-style twin (the first two halves alone) is a legal merge. The
+# PropertyValidator still reads the refused half and adds SPY0407 — a cascade pinned per P21g D10 on
+# #2075: when the cascade is fixed, its line here goes and this pin moves.
+class C:
+    property p: int = 0
+
+    property get p(self) -> int:
+        return 1
+
+    property get p(self) -> int:
+        return 2
+
+
+# The complementary pair alone runs: the auto half supplies the setter and storage.
+class Pair:
+    property q: int = 0
+
+    property get q(self) -> int:
+        return self._q + 1
+
+
+def main() -> None:
+    print("unreachable")
