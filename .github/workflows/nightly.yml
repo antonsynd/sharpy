@@ -37,8 +37,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Census is the owner-run MutationCensus report: ~87 rows x CsCheck_Time in ONE test, past the
+          # 20 min hang timeout, and it asserts only that it ran (#2392). It also needs SHARPY_CENSUS=1.
           - project: Sharpy.Compiler.Tests
-            filter: "Category=RandomProperty|Category=Property"
+            filter: "(Category=RandomProperty|Category=Property)&Category!=Census"
           # These three have a handful of CsCheck samples, not all tagged, so they run whole.
           - project: Sharpy.Core.Tests
             filter: "Category!=Benchmark"
@@ -51,7 +53,8 @@ jobs:
       # does: every sample that passes no `time:` (none in src/ do) runs for this many seconds.
       # CsCheck picks a fresh seed per run and prints the failing one.
       CsCheck_Time: ${{ inputs.seconds_per_property || '15' }}
-      # The injection lanes sample this many programs instead of 100 (PropertyIterations.cs).
+      # The injection lanes sample this many programs instead of 100 (PropertyIterations.cs). It does
+      # not switch on the mutation census; that takes SHARPY_CENSUS=1, which this job never sets.
       SHARPY_PROPERTY_ITER: '600'
       # The numeric-literal twin fails instead of skipping without a Python 3.12+ oracle.
       SHARPY_REQUIRE_PYTHON_ORACLE: '1'

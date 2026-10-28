@@ -9,13 +9,14 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
 /// <summary>
 /// The drawn-code table (#2324, P63b Phase 1 Task 4): for every (lane, base) row of
-/// <see cref="MutationLanes.Census"/>, <see cref="PropertyIterations.Override"/> well-typed samples of the
+/// <see cref="MutationLanes.Census"/>, <see cref="PropertyIterations.Injection"/> well-typed samples of the
 /// base (through <see cref="SemanticFilter.WellTypedProgram"/> with a sink), the lane's break applied,
 /// the result analysed through <see cref="PropertyAnalysis.Codes"/>, and the codes bucketed. It is a
 /// REPORT, not a guard: it decides nothing and asserts only that it ran. A lane is wired in
 /// <c>ErrorInjector.Mutations.cs</c> with the code its row draws at ≥ 99 %; two codes is a bad injection
 /// or a cascade cell; CLEAN is a by-design candidate or a missing refusal; a throw is an ICE cell. Runs
-/// only when <see cref="PropertyIterations.Variable"/> is set (skipped in the suite and the gate); set
+/// only when <see cref="PropertyIterations.CensusVariable"/> is <c>1</c> (skipped in the suite, the gate and the
+/// nightly soak, which raises <see cref="PropertyIterations.Variable"/> but must not run this, #2392); set
 /// <c>SHARPY_CENSUS_OUT</c> to a file path to keep the table (appended row by row) and <c>SHARPY_CENSUS_FILTER</c> to run a chunk.
 /// </summary>
 [Trait("Category", "Property")]
@@ -33,8 +34,9 @@ public class MutationCensus
     [SkippableFact]
     public void DrawnCodes_PerLaneAndBase()
     {
-        Skip.IfNot(PropertyIterations.Override is not null, $"set {PropertyIterations.Variable} to run the mutation census");
-        var iter = PropertyIterations.Override!.Value;
+        Skip.IfNot(PropertyIterations.CensusRequested,
+            $"set {PropertyIterations.CensusVariable}=1 (and {PropertyIterations.Variable} for the sample count) to run the mutation census");
+        var iter = PropertyIterations.Injection;
         // SHARPY_CENSUS_FILTER: '|'-separated substrings of "Lane @ Base" (a chunk of the matrix — a whole
         // 600-sample census outruns the dotnet wrapper's silence watchdog, so it runs in chunks).
         var filters = (Environment.GetEnvironmentVariable("SHARPY_CENSUS_FILTER") ?? "")
