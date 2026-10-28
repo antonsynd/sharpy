@@ -48,7 +48,7 @@ public class CsCleanPropertyTests
         // GenTyped.TypedProgram already emits well-typed programs, so the filter passes
         // nearly every sample (wrapping the raw GenSharpy.Module generator instead makes
         // the filter reject ~85% of candidates and CsCheck aborts with a Where-max-count).
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
         var sink = new RejectionSink("CsClean.SemanticClean_ImpliesZeroCsErrors");

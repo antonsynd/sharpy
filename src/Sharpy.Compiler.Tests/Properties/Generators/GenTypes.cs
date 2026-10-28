@@ -17,7 +17,7 @@ internal static class GenTypes
     };
 
     public static Gen<TypeAnnotation> SimpleType { get; } =
-        Gen.OneOfConst(SimpleTypeNames).Select(name =>
+        Gen.OneOf(SimpleTypeNames).Select(name =>
             new TypeAnnotation { Name = name });
 
     public static Gen<TypeAnnotation> Annotation(int fuel) =>
@@ -30,7 +30,7 @@ internal static class GenTypes
                 (1, DictType(fuel - 1)));
 
     private static Gen<TypeAnnotation> GenericSingleArg(int fuel) =>
-        Gen.Select(Gen.OneOfConst("list", "set"), Annotation(fuel),
+        Gen.Select(Gen.OneOf("list", "set"), Annotation(fuel),
             (name, arg) => new TypeAnnotation
             {
                 Name = name,

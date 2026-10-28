@@ -8,7 +8,7 @@ internal static class GenVariance
 
     public static Gen<string> CovariantInterfaceProgram() =>
         Gen.Select(
-            Gen.OneOfConst(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
             Gen.Int[1, 2],
             (concreteType, methodCount) =>
             {
@@ -45,7 +45,7 @@ internal static class GenVariance
 
     public static Gen<string> ContravariantInterfaceProgram() =>
         Gen.Select(
-            Gen.OneOfConst(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
             Gen.Int[1, 2],
             (concreteType, methodCount) =>
             {
@@ -101,7 +101,7 @@ internal static class GenVariance
         });
 
     public static Gen<string> CovariantInInputPositionProgram() =>
-        Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
+        Gen.OneOf(ConcreteTypes).Select(concreteType =>
         {
             var lines = new List<string>
             {
@@ -121,7 +121,7 @@ internal static class GenVariance
         });
 
     public static Gen<string> ContravariantInOutputPositionProgram() =>
-        Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
+        Gen.OneOf(ConcreteTypes).Select(concreteType =>
         {
             var lines = new List<string>
             {

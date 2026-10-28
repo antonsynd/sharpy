@@ -11,7 +11,7 @@ internal static class GenGenerics
     public static Gen<Module> GenericClassProgram(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.Int[1, 2],
-            Gen.OneOfConst(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
             (fieldCount, instantiationType) =>
             {
                 var typeParams = ImmutableArray.Create(
@@ -66,8 +66,8 @@ internal static class GenGenerics
 
     public static Gen<Module> GenericFunctionProgram(TypeEnv env, int fuel) =>
         Gen.Select(
-            Gen.OneOfConst(ConcreteTypes),
-            Gen.OneOfConst(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
             (type1, type2) =>
             {
                 var identityFn = new FunctionDef
@@ -147,8 +147,8 @@ internal static class GenGenerics
 
     public static Gen<Module> MultiTypeParamProgram(TypeEnv env, int fuel) =>
         Gen.Select(
-            Gen.OneOfConst(ConcreteTypes),
-            Gen.OneOfConst(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes),
             (typeA, typeB) =>
             {
                 var typeParams = ImmutableArray.Create(
@@ -204,7 +204,7 @@ internal static class GenGenerics
             });
 
     public static Gen<Module> GenericWithInheritanceProgram(TypeEnv env, int fuel) =>
-        Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
+        Gen.OneOf(ConcreteTypes).Select(concreteType =>
         {
             var containerTypeParams = ImmutableArray.Create(
                 new TypeParameterDef { Name = "T" });
@@ -352,7 +352,7 @@ internal static class GenGenerics
         });
 
     public static Gen<Module> WrongTypeArgCountProgram(TypeEnv env, int fuel) =>
-        Gen.OneOfConst(ConcreteTypes).Select(concreteType =>
+        Gen.OneOf(ConcreteTypes).Select(concreteType =>
         {
             var typeParams = ImmutableArray.Create(
                 new TypeParameterDef { Name = "T" });
@@ -393,8 +393,8 @@ internal static class GenGenerics
 
     public static Gen<Module> TypeMismatchOnGenericFieldProgram(TypeEnv env, int fuel) =>
         Gen.Select(
-            Gen.OneOfConst(ConcreteTypes),
-            Gen.OneOfConst(ConcreteTypes).Where(t => t != "int"),
+            Gen.OneOf(ConcreteTypes),
+            Gen.OneOf(ConcreteTypes).Where(t => t != "int"),
             (instantType, wrongType) =>
             {
                 var typeParams = ImmutableArray.Create(

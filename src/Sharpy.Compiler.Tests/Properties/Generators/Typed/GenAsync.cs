@@ -16,12 +16,12 @@ internal static class GenAsync
 
     public static Gen<Module> ModuleWithAsyncFunction(bool valid) =>
         Gen.Select(
-            Gen.OneOfConst(ReturnTypes),
+            Gen.OneOf(ReturnTypes),
             Gen.Int[0, 2],
             (retType, paramCount) => BuildAsyncModule(retType, paramCount, valid));
 
     public static Gen<Module> ModuleWithAwaitOutsideAsync() =>
-        Gen.OneOfConst(ReturnTypes).Select(retType =>
+        Gen.OneOf(ReturnTypes).Select(retType =>
         {
             var asyncFunc = BuildAsyncFunctionDef("fetch_data", retType, 0);
             var syncFunc = new FunctionDef
@@ -55,7 +55,7 @@ internal static class GenAsync
 
     public static Gen<Module> ModuleWithAsyncDeterminism() =>
         Gen.Select(
-            Gen.OneOfConst(ReturnTypes),
+            Gen.OneOf(ReturnTypes),
             Gen.Int[0, 2],
             (retType, paramCount) => BuildAsyncModule(retType, paramCount, valid: true));
 

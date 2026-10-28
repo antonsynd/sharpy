@@ -98,17 +98,17 @@ public class TypedGeneratorRosterTests
 
     /// <summary><c>TypeSoundnessPropertyTests.TypedProgram_ExecutesWithoutRuntimeTypeErrors</c>.</summary>
     private static Gen<Module> TypedStatements() =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
     /// <summary><c>TypeSoundnessPropertyTests</c>' collections fact.</summary>
     private static Gen<Module> TypedCollections() =>
-        Gen.OneOfConst("int", "str", "list[int]").SelectMany(type =>
+        Gen.OneOf("int", "str", "list[int]").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true));
 
     /// <summary><c>TypeSoundnessPropertyTests</c>' optionals fact.</summary>
     private static Gen<Module> TypedOptionals() =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
     /// <summary><c>ErrorCompletenessPropertyTests.NarrowedProgram_AnalysesClean</c> — the first caller of
@@ -116,7 +116,7 @@ public class TypedGeneratorRosterTests
     /// helper said 1, a configuration no acceptance property sampled — found by the argument-identity link,
     /// #2324).</summary>
     private static Gen<Module> TypedOptionalStatements() =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2, withStatements: true));
 
     /// <summary><c>ClassInheritancePropertyTests</c>.</summary>
@@ -370,7 +370,7 @@ public class TypedGeneratorRosterTests
             // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
             new YInjected("ErrorInjector.InjectDunderWrongReturnType", "SPY0321", CompilerDiagnosticSeverity.Error)),
         new("dunder_methods.md", "Special Methods", "__len__ / __bool__ protocol synthesis",
-            new Y("GenInterfaces.ModuleWithProtocolDunder", () => Gen.OneOfConst("__len__", "__bool__").SelectMany(GenInterfaces.ModuleWithProtocolDunder), n => DefNamed(n, "__len__", "__bool__")),
+            new Y("GenInterfaces.ModuleWithProtocolDunder", () => Gen.OneOf("__len__", "__bool__").SelectMany(GenInterfaces.ModuleWithProtocolDunder), n => DefNamed(n, "__len__", "__bool__")),
             new YInjected("ErrorInjector.InjectProtocolDunderRemoved", "SPY0320", CompilerDiagnosticSeverity.Error)),
         new("dunder_methods.md", "Special Methods", "__iter__ / __next__ iterator protocol",
             new Y("GenIterators.ModuleWithIterProtocol", () => GenIterators.ModuleWithIterProtocol(complete: true), n => DefNamed(n, "__next__")),
@@ -442,7 +442,7 @@ public class TypedGeneratorRosterTests
             new Y("GenFunctions.ModuleWithFunctions", () => Functions(), n => CallTo(n, "compute", "process", "transform")),
             new YInjected("ErrorInjector.InjectUndefinedFunctionCall", "SPY0200", CompilerDiagnosticSeverity.Error)),
         new("expressions.md", "Index Access", "list[index]",
-            new Y("GenTyped.ListSubscript", () => Gen.OneOfConst("int", "str").SelectMany(element => GenTyped.ListSubscript(TypeEnv.WithCollections, element)), n => n is IndexAccess),
+            new Y("GenTyped.ListSubscript", () => Gen.OneOf("int", "str").SelectMany(element => GenTyped.ListSubscript(TypeEnv.WithCollections, element)), n => n is IndexAccess),
             new YInjected("ErrorInjector.InjectWrongTypedIndex", "SPY0220", CompilerDiagnosticSeverity.Error)),
 
         // extended_numeric_literals.md

@@ -15,7 +15,7 @@ public class DictPropertyTests : AlgebraicTestBase
     [Fact]
     public void DictMerge_HasIdentity()
     {
-        Gen.OneOfConst("{\"a\": 1, \"b\": 2}", "{\"c\": 3}", "{}", "{\"x\": 0, \"y\": 0}").Sample(a =>
+        Gen.OneOf("{\"a\": 1, \"b\": 2}", "{\"c\": 3}", "{}", "{\"x\": 0, \"y\": 0}").Sample(a =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted(({a} | {{}}).items()))");
             var r2 = RunAndCapture($"def main():\n    print(sorted(({a}).items()))");
@@ -28,9 +28,9 @@ public class DictPropertyTests : AlgebraicTestBase
     public void DictMerge_IsAssociative()
     {
         Gen.Select(
-            Gen.OneOfConst("{\"a\": 1}", "{\"b\": 2, \"c\": 3}", "{}"),
-            Gen.OneOfConst("{\"d\": 4}", "{\"b\": 5, \"e\": 6}", "{}"),
-            Gen.OneOfConst("{\"f\": 7}", "{\"c\": 8, \"g\": 9}", "{}")
+            Gen.OneOf("{\"a\": 1}", "{\"b\": 2, \"c\": 3}", "{}"),
+            Gen.OneOf("{\"d\": 4}", "{\"b\": 5, \"e\": 6}", "{}"),
+            Gen.OneOf("{\"f\": 7}", "{\"c\": 8, \"g\": 9}", "{}")
         ).Sample((a, b, c) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted((({a} | {b}) | {c}).items()))");
@@ -44,8 +44,8 @@ public class DictPropertyTests : AlgebraicTestBase
     public void DictMerge_SizeUpperBound()
     {
         Gen.Select(
-            Gen.OneOfConst("{\"a\": 1, \"b\": 2}", "{\"c\": 3}", "{}"),
-            Gen.OneOfConst("{\"a\": 10}", "{\"d\": 4, \"e\": 5}", "{}")
+            Gen.OneOf("{\"a\": 1, \"b\": 2}", "{\"c\": 3}", "{}"),
+            Gen.OneOf("{\"a\": 10}", "{\"d\": 4, \"e\": 5}", "{}")
         ).Sample((a, b) =>
         {
             var r = RunAndCapture(
@@ -59,8 +59,8 @@ public class DictPropertyTests : AlgebraicTestBase
     public void DictMerge_LastWriteWins()
     {
         Gen.Select(
-            Gen.OneOfConst("{\"a\": 1, \"b\": 2}", "{\"a\": 100}", "{\"a\": 1, \"b\": 2, \"c\": 3}"),
-            Gen.OneOfConst("{\"a\": 99}", "{\"a\": 7, \"b\": 8}", "{\"b\": 50}")
+            Gen.OneOf("{\"a\": 1, \"b\": 2}", "{\"a\": 100}", "{\"a\": 1, \"b\": 2, \"c\": 3}"),
+            Gen.OneOf("{\"a\": 99}", "{\"a\": 7, \"b\": 8}", "{\"b\": 50}")
         ).Sample((a, b) =>
         {
             // For every key present in b, the merged value must equal b's value.

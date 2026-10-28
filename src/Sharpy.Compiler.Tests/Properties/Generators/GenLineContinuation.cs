@@ -11,27 +11,27 @@ internal static class GenLineContinuation
 
     public static Gen<(string WithContinuation, string Equivalent)> ExplicitContinuation { get; } =
         Gen.Select(
-            Gen.OneOfConst(LeftOperands),
-            Gen.OneOfConst(BinaryOps),
-            Gen.OneOfConst(RightOperands),
+            Gen.OneOf(LeftOperands),
+            Gen.OneOf(BinaryOps),
+            Gen.OneOf(RightOperands),
             (left, op, right) => (
                 WithContinuation: $"result = {left} {op}\\\n    {right}\n",
                 Equivalent: $"result = {left} {op} {right}\n"));
 
     public static Gen<(string WithContinuation, string Equivalent)> ImplicitContinuationParens { get; } =
         Gen.Select(
-            Gen.OneOfConst(LeftOperands),
-            Gen.OneOfConst(BinaryOps),
-            Gen.OneOfConst(RightOperands),
+            Gen.OneOf(LeftOperands),
+            Gen.OneOf(BinaryOps),
+            Gen.OneOf(RightOperands),
             (left, op, right) => (
                 WithContinuation: $"result = ({left} {op}\n    {right})\n",
                 Equivalent: $"result = ({left} {op} {right})\n"));
 
     public static Gen<(string WithContinuation, string Equivalent)> ImplicitContinuationBrackets { get; } =
         Gen.Select(
-            Gen.OneOfConst(LeftOperands),
-            Gen.OneOfConst(RightOperands),
-            Gen.OneOfConst(RightOperands),
+            Gen.OneOf(LeftOperands),
+            Gen.OneOf(RightOperands),
+            Gen.OneOf(RightOperands),
             (a, b, c) => (
                 WithContinuation: $"items = [{a},\n    {b},\n    {c}]\n",
                 Equivalent: $"items = [{a}, {b}, {c}]\n"));
@@ -40,8 +40,8 @@ internal static class GenLineContinuation
 
     public static Gen<(string WithContinuation, string Equivalent)> ImplicitContinuationBraces { get; } =
         Gen.Select(
-            Gen.OneOfConst(LeftOperands),
-            Gen.OneOfConst(DictValues),
+            Gen.OneOf(LeftOperands),
+            Gen.OneOf(DictValues),
             (key, val) => (
                 WithContinuation: $"d = {{\"{key}\":\n    {val}}}\n",
                 Equivalent: $"d = {{\"{key}\": {val}}}\n"));
@@ -59,15 +59,15 @@ internal static class GenLineContinuation
     };
 
     public static Gen<string> BackslashWithTrailingWhitespace { get; } =
-        Gen.OneOfConst(TrailingWhitespaceSources);
+        Gen.OneOf(TrailingWhitespaceSources);
 
     public static Gen<(string WithContinuation, string Equivalent)> MixedContinuation { get; } =
         Gen.Select(
-            Gen.OneOfConst(LeftOperands),
-            Gen.OneOfConst(BinaryOps),
-            Gen.OneOfConst(RightOperands),
-            Gen.OneOfConst(BinaryOps),
-            Gen.OneOfConst(RightOperands),
+            Gen.OneOf(LeftOperands),
+            Gen.OneOf(BinaryOps),
+            Gen.OneOf(RightOperands),
+            Gen.OneOf(BinaryOps),
+            Gen.OneOf(RightOperands),
             (a, op1, b, op2, c) => (
                 WithContinuation: $"result = ({a} {op1}\\\n    {b} {op2}\n    {c})\n",
                 Equivalent: $"result = ({a} {op1} {b} {op2} {c})\n"));

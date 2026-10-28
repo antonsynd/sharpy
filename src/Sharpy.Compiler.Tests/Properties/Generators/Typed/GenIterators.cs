@@ -10,12 +10,12 @@ internal static class GenIterators
 
     public static Gen<Module> ModuleWithGenerator(bool valid) =>
         Gen.Select(
-            Gen.OneOfConst(YieldTypes),
+            Gen.OneOf(YieldTypes),
             Gen.Int[1, 3],
             (yieldType, yieldCount) => BuildGeneratorModule(yieldType, yieldCount, valid));
 
     public static Gen<Module> ModuleWithYieldFrom() =>
-        Gen.OneOfConst(YieldTypes).Select(yieldType =>
+        Gen.OneOf(YieldTypes).Select(yieldType =>
         {
             var innerGen = BuildGeneratorFunctionDef("inner_gen", yieldType, 2);
             var outerGen = new FunctionDef
@@ -43,12 +43,12 @@ internal static class GenIterators
         });
 
     public static Gen<Module> ModuleWithIterProtocol(bool complete) =>
-        Gen.OneOfConst(YieldTypes).Select(yieldType =>
+        Gen.OneOf(YieldTypes).Select(yieldType =>
             BuildIterProtocolModule(yieldType, complete));
 
     public static Gen<Module> ModuleWithGeneratorValidator() =>
         Gen.Select(
-            Gen.OneOfConst(YieldTypes),
+            Gen.OneOf(YieldTypes),
             Gen.Int[1, 3],
             (yieldType, yieldCount) => BuildGeneratorModule(yieldType, yieldCount, valid: true));
 

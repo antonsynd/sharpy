@@ -208,7 +208,7 @@ public class ErrorCompletenessPropertyTests
     public void ConstReassignment_IsRejected()
     {
         RunInjectionTest(ErrorInjector.InjectConstReassignment,
-            "const reassignment", Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            "const reassignment", Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)));
     }
 
@@ -547,7 +547,7 @@ public class ErrorCompletenessPropertyTests
         RunProjectInjectionTest(ErrorInjector.InjectWrongTypedLibraryConstant, "wrong-typed library constant");
 
     private static Gen<Module> ProgramWithNarrowing(int fuel) =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel, withStatements: true));
 
     private static bool HasNarrowedBlock(Module module) =>
@@ -558,7 +558,7 @@ public class ErrorCompletenessPropertyTests
         });
 
     private static Gen<Module> ProgramWithOptionals() =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
     private static Gen<Module> ProgramWithConstraints() =>
@@ -636,7 +636,7 @@ public class ErrorCompletenessPropertyTests
         ErrorInjector.KnownRedCascade? cascade = null;
         int onCascadeShape = 0;
 
-        var baseGen = overrideGen ?? Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = overrideGen ?? Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
 
         var sink = new RejectionSink($"ErrorCompleteness base generator ({label})");

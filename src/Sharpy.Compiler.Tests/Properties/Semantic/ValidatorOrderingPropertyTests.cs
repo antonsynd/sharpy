@@ -66,7 +66,7 @@ public class ValidatorOrderingPropertyTests
         var sink = new RejectionSink("ValidatorOrdering.ValidationDiagnostics_AreRegistrationOrderIndependent");
         var gen = Gen.Select(
             SemanticFilter.WellTypedProgram(
-                Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                Gen.OneOf("int", "str", "bool").SelectMany(type =>
                     GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)), sink),
             Gen.Int,
             (module, shuffleSeed) => (module, shuffleSeed));

@@ -26,24 +26,24 @@ internal static class GenIdentifier
     };
 
     public static Gen<string> Name { get; } =
-        Gen.OneOfConst(SimpleNames).Where(n => !KeywordSet.Contains(n));
+        Gen.OneOf(SimpleNames).Where(n => !KeywordSet.Contains(n));
 
     public static Gen<string> FreshName { get; } =
-        Gen.Select(Gen.OneOfConst(SimpleNames), Gen.Int[0, 99],
+        Gen.Select(Gen.OneOf(SimpleNames), Gen.Int[0, 99],
             (name, suffix) => $"{name}_{suffix}");
 
     public static Gen<string> ClassName { get; } =
-        Gen.OneOfConst("Foo", "Bar", "Baz", "Animal", "Shape", "Node", "Item", "Point");
+        Gen.OneOf("Foo", "Bar", "Baz", "Animal", "Shape", "Node", "Item", "Point");
 
     public static Gen<string> FunctionName { get; } =
-        Gen.OneOfConst("compute", "process", "transform", "calculate", "get_value",
+        Gen.OneOf("compute", "process", "transform", "calculate", "get_value",
             "do_work", "make_thing", "run_task", "check_it", "apply_fn");
 
     public static Gen<string> NameFromContext(GenContext ctx) =>
         ctx.InScopeNames.IsEmpty
             ? Name
             : Gen.Frequency(
-                (3, Gen.OneOfConst(ctx.InScopeNames.ToArray())),
+                (3, Gen.OneOf(ctx.InScopeNames.ToArray())),
                 (1, Name));
 
     private static readonly string[] BacktickContents =
@@ -58,7 +58,7 @@ internal static class GenIdentifier
     };
 
     public static Gen<string> BacktickContent { get; } =
-        Gen.OneOfConst(BacktickContents);
+        Gen.OneOf(BacktickContents);
 
     public static Gen<string> BacktickIdentifier { get; } =
         BacktickContent.Select(content => $"`{content}`");
@@ -71,7 +71,7 @@ internal static class GenIdentifier
     };
 
     public static Gen<string> BacktickContentWithDot { get; } =
-        Gen.OneOfConst(BacktickWithDot);
+        Gen.OneOf(BacktickWithDot);
 
     private static readonly string[] InvalidBacktickWithNewline =
     {
@@ -79,7 +79,7 @@ internal static class GenIdentifier
     };
 
     public static Gen<string> BacktickContentWithNewline { get; } =
-        Gen.OneOfConst(InvalidBacktickWithNewline);
+        Gen.OneOf(InvalidBacktickWithNewline);
 
     // --- Name mangling generators ---
 

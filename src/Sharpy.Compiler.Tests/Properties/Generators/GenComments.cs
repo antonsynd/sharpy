@@ -90,23 +90,23 @@ internal static class GenComments
     };
 
     public static Gen<string> SourceWithLeadingComment { get; } =
-        Gen.OneOfConst(LeadingSources);
+        Gen.OneOf(LeadingSources);
 
     public static Gen<string> SourceWithTrailingComment { get; } =
-        Gen.OneOfConst(TrailingSources);
+        Gen.OneOf(TrailingSources);
 
     public static Gen<string> SourceWithMultipleComments { get; } =
-        Gen.OneOfConst(MultiCommentSources);
+        Gen.OneOf(MultiCommentSources);
 
     public static Gen<string> SourceWithNestedComments { get; } =
-        Gen.OneOfConst(NestedSources);
+        Gen.OneOf(NestedSources);
 
     public static Gen<string> SourceWithMixedComments { get; } =
-        Gen.OneOfConst(MixedSources);
+        Gen.OneOf(MixedSources);
 
     public static Gen<string> SourceWithBlankLines { get; } =
-        Gen.OneOfConst(BlankLineSources);
+        Gen.OneOf(BlankLineSources);
 
     public static Gen<string> CommentText { get; } =
-        Gen.OneOfConst(CommentTexts);
+        Gen.OneOf(CommentTexts);
 }

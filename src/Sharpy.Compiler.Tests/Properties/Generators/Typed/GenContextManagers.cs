@@ -8,7 +8,7 @@ internal static class GenContextManagers
 
     public static Gen<string> ValidContextManagerProgram() =>
         Gen.Select(
-            Gen.OneOfConst(ReturnTypes),
+            Gen.OneOf(ReturnTypes),
             Gen.Bool,
             (returnType, hasBody) =>
             {
@@ -44,7 +44,7 @@ internal static class GenContextManagers
             });
 
     public static Gen<string> ContextManagerWithAsBinding() =>
-        Gen.OneOfConst(ReturnTypes).Select(returnType =>
+        Gen.OneOf(ReturnTypes).Select(returnType =>
         {
             var lines = new List<string>
             {
@@ -72,7 +72,7 @@ internal static class GenContextManagers
         });
 
     public static Gen<string> AsyncContextManagerProgram() =>
-        Gen.OneOfConst(ReturnTypes).Select(returnType =>
+        Gen.OneOf(ReturnTypes).Select(returnType =>
         {
             var lines = new List<string>
             {

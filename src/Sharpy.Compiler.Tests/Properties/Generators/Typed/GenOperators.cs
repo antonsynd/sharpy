@@ -184,7 +184,7 @@ internal static class GenOperators
     /// different code (#2288).
     /// </summary>
     public static Gen<string> WrongArityOperatorDunderProgram() =>
-        Gen.OneOfConst(
+        Gen.OneOf(
             "    def __add__(self) -> Bad:",
             "    def __neg__(self, other: Bad) -> Bad:").Select(BadClassProgram);
 
@@ -193,7 +193,7 @@ internal static class GenOperators
     /// fact: SPY0414 (unknown dunder method).
     /// </summary>
     public static Gen<string> UnknownDunderProgram() =>
-        Gen.OneOfConst(
+        Gen.OneOf(
             "    def __xyzzy__(self) -> Bad:",
             "    def __frobnicate__(self, other: Bad) -> Bad:").Select(BadClassProgram);
 

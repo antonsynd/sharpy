@@ -92,7 +92,7 @@ internal static class GenPatterns
 
     public static Gen<RelationalPattern> RelationalPat() =>
         Gen.Select(
-            Gen.OneOfConst(RelationalOperator.GreaterThan, RelationalOperator.GreaterThanOrEqual,
+            Gen.OneOf(RelationalOperator.GreaterThan, RelationalOperator.GreaterThanOrEqual,
                 RelationalOperator.LessThan, RelationalOperator.LessThanOrEqual),
             GenLiterals.Integer.Select(x => (Expression)x),
             (op, val) => new RelationalPattern { Operator = op, Value = val });

@@ -23,7 +23,7 @@ public class MetamorphicPropertyTests : IntegrationTestBase
     public void CommentInsertion_PreservesOutput()
     {
         var transform = new CommentInsertionTransform();
-        Gen.OneOfConst(SamplePrograms).Sample(source =>
+        Gen.OneOf(SamplePrograms).Sample(source =>
         {
             var r1 = CompileAndExecuteWithGC(source);
             if (!r1.Success)
@@ -55,7 +55,7 @@ public class MetamorphicPropertyTests : IntegrationTestBase
     public void PassInsertion_PreservesOutput()
     {
         var transform = new PassInsertionTransform();
-        Gen.OneOfConst(SamplePrograms).Sample(source =>
+        Gen.OneOf(SamplePrograms).Sample(source =>
         {
             var r1 = CompileAndExecuteWithGC(source);
             if (!r1.Success)
@@ -121,7 +121,7 @@ public class MetamorphicPropertyTests : IntegrationTestBase
 
     private void RunTransformProperty(IAstTransform transform)
     {
-        Gen.OneOfConst(SamplePrograms).Sample(source =>
+        Gen.OneOf(SamplePrograms).Sample(source =>
         {
             var r1 = CompileAndExecuteWithGC(source);
             if (!r1.Success)
