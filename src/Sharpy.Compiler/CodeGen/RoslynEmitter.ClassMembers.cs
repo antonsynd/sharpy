@@ -441,9 +441,12 @@ internal partial class RoslynEmitter
     /// A type body's <see cref="PropertyDef"/>s grouped by property name, in declaration order. A
     /// property's complementary halves — a function-style getter and setter, or an auto half beside
     /// a function-style accessor (properties_function_style.md, "paired with an auto-property of the
-    /// same name") — are ONE property, merged by name resolution into one <c>PropertySymbol</c>; this
-    /// is the one grouping every host's member emitter reads, so each emits one C# property per name
-    /// (an interface body once wrote one per statement — CS0102/CS0229, #2360).
+    /// same name") — are ONE property, merged by name resolution into one <c>PropertySymbol</c>; the
+    /// class, struct, union and interface member emitters all read this grouping, so each emits one C#
+    /// property per name (an interface body once wrote one per statement — CS0102/CS0229, #2360). Two
+    /// readers still walk property statements on their own: the module body groups its properties by
+    /// name in <c>RoslynEmitter.ModuleClass.cs</c>, and a struct's synthesized constructor walks
+    /// statements (#2382).
     /// </summary>
     private static Dictionary<string, List<PropertyDef>> GroupPropertiesByName(IReadOnlyList<Statement> body)
     {

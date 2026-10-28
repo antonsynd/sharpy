@@ -433,10 +433,13 @@ internal partial class RoslynEmitter
     /// <summary>
     /// The exported member NAMES a <c>from m import *</c> bound into this file's module scope — the
     /// names semantic analysis recorded where the star binds (<see cref="SemanticInfo.GetStarImportBoundNames"/>),
-    /// and nothing else: a star-exported name a declaration of this file keeps (a def, variable, const,
-    /// class, alias or module property) was never bound to the star, so it is not qualified through the
-    /// star module (#2371). A star import with no record is an internal error — the emitter derives no
-    /// binding (Rule 2).
+    /// and nothing else: a star-exported name that a def, const, class, alias or module property of this
+    /// file declares was never bound to the star, so it is not qualified through the star module (#2371).
+    /// A module VARIABLE is the exception: the star binds the name in ProjectCompiler Phase 4 and the
+    /// checker's variable arm takes it over later, so the name IS in this list, and the
+    /// <c>locallyDefined</c> filter in <see cref="RegisterFromImportMembers"/> is what keeps the
+    /// variable's own name (#2385). A star import with no record is an internal error — the emitter
+    /// derives no binding (Rule 2).
     /// </summary>
     private IReadOnlyList<string> GetWildcardImportedMemberNames(FromImportStatement fromImport)
     {
