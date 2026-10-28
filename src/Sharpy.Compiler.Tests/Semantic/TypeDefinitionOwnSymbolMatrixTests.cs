@@ -2255,7 +2255,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
     /// <summary>Cell id → cite. A row must cite an issue (<c>#\d+</c>), name a generated cell, and appear once. The
     /// universe includes the project-route cells of <c>ImportBindingProjectRouteTests</c> (ids <c>project × …</c>), which
-    /// ratchet over this file too (P21g).</summary>
+    /// ratchet over this file too (P21g), and the class-body read cells of <c>ClassBodyReadPositionMatrixTests</c> (ids
+    /// <c>class-body-read × …</c>, P21h).</summary>
     internal static Dictionary<string, string> LoadAllowlist(out List<string> problems)
     {
         problems = new List<string>();
@@ -2265,7 +2266,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
                 .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
                 .Concat(MemberPairCells().Select(c => c.Id))
-                .Concat(global::Sharpy.Compiler.Tests.Project.ImportBindingProjectRouteTests.CellIds()),
+                .Concat(global::Sharpy.Compiler.Tests.Project.ImportBindingProjectRouteTests.CellIds())
+                .Concat(ClassBodyReadPositionMatrixTests.CellIds()),
             StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
