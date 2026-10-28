@@ -1118,12 +1118,34 @@ public abstract class IntegrationTestBase
     /// per-call component times against the sum of the per-call totals. A component whose
     /// recording is dropped leaves its time unattributed, so <see cref="Ratio"/> falls short of 1.
     /// </summary>
-    public sealed record TimingCoverage(string Arm, int Calls, double ComponentSumMs, double TotalSumMs)
+    public sealed record TimingCoverage(
+        string Arm, int Calls, double ComponentSumMs, double TotalSumMs, IReadOnlyList<double> CallRatios)
     {
+        /// <summary>Σcomponents / Σtotal over the arm's calls — the aggregate the report prints.</summary>
         public double Ratio => TotalSumMs > 0 ? ComponentSumMs / TotalSumMs : 0;
 
-        /// <summary>The report's <c>within_5pct</c> verdict.</summary>
-        public bool WithinFivePercent => Math.Abs(1 - Ratio) <= 0.05;
+        /// <summary>The median of the per-call component/total ratios.</summary>
+        public double MedianCallRatio
+        {
+            get
+            {
+                if (CallRatios.Count == 0)
+                    return 0;
+                var sorted = CallRatios.OrderBy(r => r).ToArray();
+                var mid = sorted.Length / 2;
+                return sorted.Length % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+            }
+        }
+
+        /// <summary>
+        /// The report's <c>within_5pct</c> verdict, read from <see cref="MedianCallRatio"/> rather than
+        /// the summed <see cref="Ratio"/> (#2387). A timed region that stops being recorded is
+        /// SYSTEMATIC — every call falls short (P41 P1.2's dropped process component: 0.729 / 0.936 /
+        /// 0.747) — while a runner stall between two components is ONE call: 15 ms unattributed on a
+        /// loaded 2-core CI runner cost a summed 3-call arm 6% (ratio 0.9410) against a local 0.2 ms.
+        /// The median keeps the first red and lets the second through.
+        /// </summary>
+        public bool WithinFivePercent => Math.Abs(1 - MedianCallRatio) <= 0.05;
     }
 
     /// <summary>
@@ -1236,6 +1258,9 @@ public abstract class IntegrationTestBase
 
         private static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
 
+        /// <summary>This call's time across the components it reached.</summary>
+        private double ComponentMs() => _ticks.Where(t => t >= 0).Sum(Ms);
+
         /// <summary>Per-arm coverage of <paramref name="calls"/>, ordered by arm name (ordinal).</summary>
         internal static IReadOnlyList<TimingCoverage> CoverageByArm(CallTiming[] calls)
         {
@@ -1243,10 +1268,12 @@ public abstract class IntegrationTestBase
             foreach (var arm in calls.Select(c => c._arm).Distinct().OrderBy(a => a, StringComparer.Ordinal))
             {
                 var armCalls = calls.Where(c => c._arm == arm).ToArray();
-                double componentSum = 0;
-                for (var i = 0; i < ComponentNames.Length; i++)
-                    componentSum += armCalls.Where(c => c._ticks[i] >= 0).Sum(c => Ms(c._ticks[i]));
-                coverage.Add(new TimingCoverage(arm, armCalls.Length, componentSum, armCalls.Sum(c => Ms(c._totalTicks))));
+                var componentSum = armCalls.Sum(c => c.ComponentMs());
+                var callRatios = armCalls
+                    .Select(c => c._totalTicks > 0 ? c.ComponentMs() / Ms(c._totalTicks) : 0)
+                    .ToArray();
+                coverage.Add(new TimingCoverage(
+                    arm, armCalls.Length, componentSum, armCalls.Sum(c => Ms(c._totalTicks)), callRatios));
             }
             return coverage;
         }
@@ -1276,9 +1303,9 @@ public abstract class IntegrationTestBase
                     AppendRow(sb, ci, pid, arm, "total", armCalls.Select(c => Ms(c._totalTicks)).ToArray());
 
                     sb.AppendLine(string.Format(ci,
-                        "pid={0} arm={1} coverage sum_components={2:F1} sum_total={3:F1} unattributed={4:F1} ratio={5:F4} within_5pct={6}",
+                        "pid={0} arm={1} coverage sum_components={2:F1} sum_total={3:F1} unattributed={4:F1} ratio={5:F4} median_call_ratio={6:F4} within_5pct={7}",
                         pid, arm, coverage.ComponentSumMs, coverage.TotalSumMs, coverage.TotalSumMs - coverage.ComponentSumMs,
-                        coverage.Ratio, coverage.WithinFivePercent ? "yes" : "no"));
+                        coverage.Ratio, coverage.MedianCallRatio, coverage.WithinFivePercent ? "yes" : "no"));
                 }
 
                 File.AppendAllText(ReportPath!, sb.ToString());
