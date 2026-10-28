@@ -1,1 +1,2 @@
 'size' is already declared in 'Widget' as a method (line 2); one name has one meaning in a type body @5:5
+!count 1

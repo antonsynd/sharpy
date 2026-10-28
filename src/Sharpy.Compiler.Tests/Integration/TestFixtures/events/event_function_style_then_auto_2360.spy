@@ -1,0 +1,19 @@
+# P21g (#2360): an auto event fills both accessor slots and takes no other half — function-style
+# `event add` + `event remove` followed by an auto event of the same name is a second meaning, SPY0204
+# at the auto event (SPY0908 CS1007 before). The add + remove pair alone is the legal merge.
+from system import Action
+
+class BothThenAuto:
+    _handlers: list[Action[int]] = []
+
+    event add changed(self, handler: Action[int]):
+        self._handlers.append(handler)
+
+    event remove changed(self, handler: Action[int]):
+        self._handlers.remove(handler)
+
+    event changed: Action[int]
+
+
+def main() -> None:
+    print("unreachable")

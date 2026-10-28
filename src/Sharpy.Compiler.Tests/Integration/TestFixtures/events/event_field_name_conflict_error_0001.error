@@ -1,1 +1,2 @@
 'on_change' is already declared in 'Publisher' as a field (line 5); one name has one meaning in a type body @6:5
+!count 1

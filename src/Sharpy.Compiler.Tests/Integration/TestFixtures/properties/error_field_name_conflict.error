@@ -1,1 +1,2 @@
 'name' is already declared in 'Foo' as a field (line 2); one name has one meaning in a type body @4:5
+!count 1

@@ -1,0 +1,2 @@
+'changed' is already declared in 'BothThenAuto' as an event (line 9); one name has one meaning in a type body @15:5
+!count 1
