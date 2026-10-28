@@ -57,10 +57,10 @@ public class MultiFileDeterminismTests
     public void GeneratedMultiFilePrograms_AreOrderIndependent()
     {
         Gen.Select(
-            Gen.OneOfConst("greet", "compute", "transform", "process"),
-            Gen.OneOfConst("int", "str", "bool"),
-            Gen.OneOfConst("Widget", "Item", "Entry", "Record"),
-            Gen.OneOfConst("int", "str")
+            Gen.OneOf("greet", "compute", "transform", "process"),
+            Gen.OneOf("int", "str", "bool"),
+            Gen.OneOf("Widget", "Item", "Entry", "Record"),
+            Gen.OneOf("int", "str")
         ).Sample((funcName, paramType, className, fieldType) =>
         {
             var defaultVal = paramType switch

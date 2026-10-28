@@ -59,7 +59,7 @@ public class MetamorphicCorpusInvarianceTests : IntegrationTestBase
         var attempted = new HashSet<string>(StringComparer.Ordinal);
         var executed = new List<string>();
 
-        Gen.OneOfConst(pairs.ToArray()).Sample(pair =>
+        Gen.OneOf(pairs.ToArray()).Sample(pair =>
         {
             if (executed.Count >= budget || !attempted.Add(pair.Key))
                 return;

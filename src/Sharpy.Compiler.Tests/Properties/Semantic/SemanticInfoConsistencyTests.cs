@@ -27,7 +27,7 @@ public class SemanticInfoConsistencyTests
 
         var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
@@ -68,7 +68,7 @@ public class SemanticInfoConsistencyTests
 
         var sink = new RejectionSink("SemanticInfoConsistency.AllVariableReferences_ResolveToSymbols");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
@@ -113,7 +113,7 @@ public class SemanticInfoConsistencyTests
     {
         var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithCollections");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)), sink);
         AssertAllExpressionsResolved(gen, sink, iter: 30);
     }
@@ -123,7 +123,7 @@ public class SemanticInfoConsistencyTests
     {
         var sink = new RejectionSink("SemanticInfoConsistency.AllExpressions_HaveResolvedTypes_WithOptionals");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2)), sink);
         AssertAllExpressionsResolved(gen, sink, iter: 30);
     }
@@ -153,7 +153,7 @@ public class SemanticInfoConsistencyTests
 
         var sink = new RejectionSink("SemanticInfoConsistency.ExpressionTypes_AreConsistentWithNodeKind");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2)), sink);
 
         gen.Sample(module =>

@@ -129,7 +129,7 @@ public class DiagnosticSpanPropertyTests
         var errors = new List<string>();
         int injected = 0;
 
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
 
         var sink = new RejectionSink("DiagnosticSpan.TypedPrograms_DiagnosticSpans_AreWithinSourceBounds");

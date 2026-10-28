@@ -989,9 +989,9 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
             from flagv in GenLiterals.Boolean
             from nums in intElem.Array[0, 3]
             from words in strElem.Array[0, 3]
-            from t1 in Gen.OneOfConst(types)
+            from t1 in Gen.OneOf(types)
             from e1 in GenTyped.ExpressionOfType(env, t1, 1)
-            from t2 in Gen.OneOfConst(types)
+            from t2 in Gen.OneOf(types)
             from e2 in GenTyped.ExpressionOfType(env, t2, 1)
             select BuildGeneratedMain(xv, yv, sv, flagv,
                 nums.ToImmutableArray(), words.ToImmutableArray(), e1, e2);

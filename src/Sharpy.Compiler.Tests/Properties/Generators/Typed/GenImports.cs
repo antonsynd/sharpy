@@ -9,7 +9,7 @@ internal static class GenImports
     public static Gen<(string LibSource, (string Name, string ParamType)[] Exports)> LibraryModule(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.Int[1, 3],
-            Gen.OneOfConst(SimpleTypes),
+            Gen.OneOf(SimpleTypes),
             (count, retType) =>
             {
                 var lines = new List<string>();
@@ -62,7 +62,7 @@ internal static class GenImports
             }));
 
     public static Gen<(string FileA, string FileB)> CircularImportPair(TypeEnv env, int fuel) =>
-        Gen.OneOfConst(SimpleTypes).Select(retType =>
+        Gen.OneOf(SimpleTypes).Select(retType =>
         {
             var fileA = $"from file_b import helper_b\n\ndef helper_a() -> {retType}:\n    return helper_b()\n";
             var fileB = $"from file_a import helper_a\n\ndef helper_b() -> {retType}:\n    return helper_a()\n";
@@ -71,7 +71,7 @@ internal static class GenImports
 
     public static Gen<(string Main, string Lib1, string Lib2, string ConflictingName)> NameCollisionPair(
         TypeEnv env, int fuel) =>
-        Gen.OneOfConst(SimpleTypes).Select(retType =>
+        Gen.OneOf(SimpleTypes).Select(retType =>
         {
             var conflictName = "shared_func";
             var lib1 = $"def {conflictName}() -> {retType}:\n    return {DefaultLiteral(retType)}\n";
@@ -83,7 +83,7 @@ internal static class GenImports
     public static Gen<(string Main, string Lib)> MultiFileProgram(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.Int[1, 2],
-            Gen.OneOfConst(SimpleTypes),
+            Gen.OneOf(SimpleTypes),
             (funcCount, retType) =>
             {
                 var libLines = new List<string>();
@@ -119,7 +119,7 @@ internal static class GenImports
             });
 
     public static Gen<(string Main, string Lib)> UnusedImportProgram(TypeEnv env, int fuel) =>
-        Gen.OneOfConst(SimpleTypes).Select(retType =>
+        Gen.OneOf(SimpleTypes).Select(retType =>
         {
             var lib = $"def unused_func() -> {retType}:\n    return {DefaultLiteral(retType)}\n";
             var main = "from lib import unused_func\n\ndef main():\n    print(42)\n";

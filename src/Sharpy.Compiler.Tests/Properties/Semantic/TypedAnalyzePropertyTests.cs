@@ -29,7 +29,7 @@ public class TypedAnalyzePropertyTests
         var sink = new RejectionSink("TypedAnalyze.TypedProgram_AnalyzesClean");
 
         SemanticFilter.WellTypedProgram(
-                Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 {
                     var env = new TypeEnv()
                         .WithBinding("x", "int")
@@ -46,7 +46,7 @@ public class TypedAnalyzePropertyTests
     [Fact]
     public void FilteredTypedProgram_AnalyzesClean()
     {
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = Gen.OneOf("int", "str", "bool").SelectMany(type =>
         {
             var env = new TypeEnv()
                 .WithBinding("x", "int")
@@ -101,15 +101,15 @@ public class TypedAnalyzePropertyTests
     /// result types are the ones the acceptance lanes over the same env draw.</summary>
     private static Gen<Sharpy.Compiler.Parser.Ast.Module> NeverThrowsConfig(string config) => config switch
     {
-        "bare-fuel3" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        "bare-fuel3" => Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(new TypeEnv(), type, fuel: 3)),
-        "Default" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        "Default" => Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)),
-        "WithOptionals" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        "WithOptionals" => Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2, withStatements: true)),
-        "WithCollections" => Gen.OneOfConst("int", "str", "list[int]").SelectMany(type =>
+        "WithCollections" => Gen.OneOf("int", "str", "list[int]").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true)),
-        "WithGenerics" => Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        "WithGenerics" => Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithGenerics, type, fuel: 2, withStatements: true)),
         _ => throw new ArgumentOutOfRangeException(nameof(config), config, "unknown NeverThrows config"),
     };

@@ -71,7 +71,7 @@ internal static class GenExpressions
 
     public static Gen<UnaryOp> UnaryOpExpr(GenContext ctx) =>
         Gen.Select(
-            Gen.OneOfConst(UnaryOperator.Plus, UnaryOperator.Minus, UnaryOperator.Not, UnaryOperator.BitwiseNot),
+            Gen.OneOf(UnaryOperator.Plus, UnaryOperator.Minus, UnaryOperator.Not, UnaryOperator.BitwiseNot),
             Expression(ctx),
             (op, operand) => new UnaryOp { Operator = op, Operand = operand });
 
@@ -86,7 +86,7 @@ internal static class GenExpressions
 
     public static Gen<BinaryOp> BinaryOpExpr(GenContext ctx) =>
         Gen.Select(
-            Gen.OneOfConst(SafeBinaryOps),
+            Gen.OneOf(SafeBinaryOps),
             Expression(ctx),
             Expression(ctx),
             (op, left, right) => new BinaryOp { Operator = op, Left = left, Right = right });
@@ -174,7 +174,7 @@ internal static class GenExpressions
     public static Gen<ComparisonChain> ComparisonChainExpr(GenContext ctx) =>
         Gen.Select(
             Expression(ctx).Array[2, 4],
-            Gen.OneOfConst(
+            Gen.OneOf(
                 ComparisonOperator.Equal, ComparisonOperator.NotEqual,
                 ComparisonOperator.LessThan, ComparisonOperator.LessThanOrEqual,
                 ComparisonOperator.GreaterThan, ComparisonOperator.GreaterThanOrEqual
@@ -312,14 +312,14 @@ internal static class GenExpressions
     // SourceText is exactly what the lexer recaptures ("<name>="), so they round-trip.
     private static Gen<FStringPart> FStringPartGen(GenContext ctx) =>
         Gen.Frequency(
-            (3, Gen.OneOfConst(FStringTextParts).Select(t =>
+            (3, Gen.OneOf(FStringTextParts).Select(t =>
                 new FStringPart { Text = t })),
             (3, Expression(ctx.Burn()).Select(e =>
                 new FStringPart { Expression = e })),
-            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOfConst(FStringConversionFlags),
+            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOf(FStringConversionFlags),
                 (e, conv) => new FStringPart { Expression = e, Conversion = conv })),
-            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOfConst(FStringConversionFlags),
-                Gen.OneOfConst(FStringFormatSpecs),
+            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOf(FStringConversionFlags),
+                Gen.OneOf(FStringFormatSpecs),
                 (e, conv, spec) => new FStringPart
                 {
                     Expression = e,
@@ -331,7 +331,7 @@ internal static class GenExpressions
             // A nested replacement field inside the spec (PEP 701): {e:<prefix>{w}}. The leading
             // (possibly empty) text part is mandatory because the lexer always emits it — this is the
             // canonical form the round-trip must match.
-            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOfConst(FStringNestedSpecPrefixes),
+            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOf(FStringNestedSpecPrefixes),
                 GenIdentifier.Name,
                 (e, prefix, wname) => new FStringPart
                 {
@@ -368,7 +368,7 @@ internal static class GenExpressions
                 .Select(parts => new TStringLiteral { Parts = parts }));
 
     public static Gen<BytesLiteralExpression> BytesLiteralExpr() =>
-        Gen.OneOfConst("hello", "test", "data", "bytes", "", "abc")
+        Gen.OneOf("hello", "test", "data", "bytes", "", "abc")
             .Select(v => new BytesLiteralExpression { Value = v });
 
     public static Gen<SetComprehension> SetComprehensionExpr(GenContext ctx) =>
@@ -474,7 +474,7 @@ internal static class GenExpressions
 
     public static Gen<ModifiedArgument> ModifiedArgumentExpr(GenContext ctx) =>
         Gen.Select(
-            Gen.OneOfConst(ParameterModifier.Ref, ParameterModifier.Out, ParameterModifier.In),
+            Gen.OneOf(ParameterModifier.Ref, ParameterModifier.Out, ParameterModifier.In),
             IdentifierExpr(ctx),
             (mod, id) => new ModifiedArgument
             {
@@ -541,7 +541,7 @@ internal static class GenExpressions
     // quote-containing f-string with a colliding delimiter that would not re-parse.
     public static Gen<FStringLiteral> FStringWithQuotesExpr(GenContext ctx) =>
         Gen.Select(
-            Gen.OneOfConst("\"", "\"x\"", "say \"", "[\"]"),
+            Gen.OneOf("\"", "\"x\"", "say \"", "[\"]"),
             IdentifierExpr(ctx),
             (quoted, e) => new FStringLiteral
             {
@@ -642,7 +642,7 @@ internal static class GenExpressions
 
     private static Gen<KeywordArgument> KeywordArgGen(GenContext ctx) =>
         Gen.Select(
-            Gen.OneOfConst(KeywordArgNames),
+            Gen.OneOf(KeywordArgNames),
             CallArg(ctx),
             (name, val) => new KeywordArgument { Name = name, Value = val });
 

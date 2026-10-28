@@ -27,7 +27,7 @@ internal static class GenTyped
     {
         var vars = env.VarsOfType(targetType);
         var varGen = vars.Count > 0
-            ? Gen.OneOfConst(vars.ToArray()).Select(n => (Expression)new Identifier { Name = n })
+            ? Gen.OneOf(vars.ToArray()).Select(n => (Expression)new Identifier { Name = n })
             : null;
 
         return targetType switch
@@ -93,14 +93,14 @@ internal static class GenTyped
         Gen.Select(
             ExpressionOfType(env, "int", fuel),
             ExpressionOfType(env, "int", fuel),
-            Gen.OneOfConst(BinaryOperator.Add, BinaryOperator.Subtract, BinaryOperator.Multiply),
+            Gen.OneOf(BinaryOperator.Add, BinaryOperator.Subtract, BinaryOperator.Multiply),
             (left, right, op) => (Expression)new BinaryOp { Left = left, Right = right, Operator = op });
 
     private static Gen<Expression> FloatArithmetic(TypeEnv env, int fuel) =>
         Gen.Select(
             ExpressionOfType(env, "float", fuel),
             ExpressionOfType(env, "float", fuel),
-            Gen.OneOfConst(BinaryOperator.Add, BinaryOperator.Subtract, BinaryOperator.Multiply),
+            Gen.OneOf(BinaryOperator.Add, BinaryOperator.Subtract, BinaryOperator.Multiply),
             (left, right, op) => (Expression)new BinaryOp { Left = left, Right = right, Operator = op });
 
     private static Gen<Expression> StringConcat(TypeEnv env, int fuel) =>
@@ -119,15 +119,15 @@ internal static class GenTyped
             Gen.Select(
                 ExpressionOfType(env, "bool", fuel),
                 ExpressionOfType(env, "bool", fuel),
-                Gen.OneOfConst(BinaryOperator.And, BinaryOperator.Or),
+                Gen.OneOf(BinaryOperator.And, BinaryOperator.Or),
                 (left, right, op) => (Expression)new BinaryOp { Left = left, Right = right, Operator = op }),
             ComparisonExpression(env, fuel));
 
     private static Gen<Expression> ComparisonExpression(TypeEnv env, int fuel) =>
         Gen.Select(
-            Gen.OneOfConst("int", "float").SelectMany(t => ExpressionOfType(env, t, fuel)),
-            Gen.OneOfConst("int", "float").SelectMany(t => ExpressionOfType(env, t, fuel)),
-            Gen.OneOfConst(
+            Gen.OneOf("int", "float").SelectMany(t => ExpressionOfType(env, t, fuel)),
+            Gen.OneOf("int", "float").SelectMany(t => ExpressionOfType(env, t, fuel)),
+            Gen.OneOf(
                 BinaryOperator.Equal, BinaryOperator.NotEqual,
                 BinaryOperator.LessThan, BinaryOperator.LessThanOrEqual,
                 BinaryOperator.GreaterThan, BinaryOperator.GreaterThanOrEqual),
@@ -303,7 +303,7 @@ internal static class GenTyped
             });
         }
 
-        return Gen.OneOfConst(mutableVars).SelectMany(kv =>
+        return Gen.OneOf(mutableVars).SelectMany(kv =>
             ExpressionOfType(env, kv.Value, fuel).Select(expr =>
                 (Statement)new VariableDeclaration
                 {
@@ -319,7 +319,7 @@ internal static class GenTyped
             .ToList();
         if (listVars.Count > 0)
         {
-            return Gen.OneOfConst(listVars.ToArray()).Select(n =>
+            return Gen.OneOf(listVars.ToArray()).Select(n =>
                 (Expression)new FunctionCall
                 {
                     Function = new Identifier { Name = "len" },
@@ -370,8 +370,8 @@ internal static class GenTyped
             .Select(kv => kv.Key)
             .ToArray();
         return Gen.Select(
-            Gen.OneOfConst(optionalVars),
-            Gen.OneOfConst(ComparisonOperator.Is, ComparisonOperator.IsNot),
+            Gen.OneOf(optionalVars),
+            Gen.OneOf(ComparisonOperator.Is, ComparisonOperator.IsNot),
             (name, op) => (Expression)new ComparisonChain
             {
                 Operands = ImmutableArray.Create<Expression>(
@@ -391,7 +391,7 @@ internal static class GenTyped
         if (optionalVars.Length == 0)
             return AssignmentStatement(env, fuel);
 
-        return Gen.OneOfConst(optionalVars).Select(name =>
+        return Gen.OneOf(optionalVars).Select(name =>
             (Statement)new IfStatement
             {
                 Test = new ComparisonChain
@@ -416,7 +416,7 @@ internal static class GenTyped
     }
 
     public static Gen<Expression> ListSubscript(TypeEnv env, string elementType) =>
-        Gen.OneOfConst(env.VarsOfType($"list[{elementType}]").ToArray())
+        Gen.OneOf(env.VarsOfType($"list[{elementType}]").ToArray())
             .Select(name => (Expression)new IndexAccess
             {
                 Object = new Identifier { Name = name },
@@ -426,7 +426,7 @@ internal static class GenTyped
     private static Gen<Expression> StringMethodCall(TypeEnv env, int fuel) =>
         Gen.Select(
             ExpressionOfType(env, "str", fuel),
-            Gen.OneOfConst("upper", "lower", "strip"),
+            Gen.OneOf("upper", "lower", "strip"),
             (obj, method) => (Expression)new FunctionCall
             {
                 Function = new MemberAccess { Object = obj, Member = method },

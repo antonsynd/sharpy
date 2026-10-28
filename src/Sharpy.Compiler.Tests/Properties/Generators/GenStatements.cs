@@ -114,7 +114,7 @@ internal static class GenStatements
         Gen.Select(
             GenExpressions.IdentifierExpr(ctx).Select(x => (Expression)x),
             GenExpressions.Expression(ctx),
-            Gen.OneOfConst(
+            Gen.OneOf(
                 AssignmentOperator.Assign,
                 AssignmentOperator.PlusAssign,
                 AssignmentOperator.MinusAssign,

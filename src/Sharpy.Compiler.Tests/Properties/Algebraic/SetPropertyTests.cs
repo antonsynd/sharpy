@@ -15,7 +15,7 @@ public class SetPropertyTests : AlgebraicTestBase
     [Fact]
     public void SetUnion_IsIdempotent()
     {
-        Gen.OneOfConst("{1, 2, 3}", "{10}", "{0, 0}").Sample(xs =>
+        Gen.OneOf("{1, 2, 3}", "{10}", "{0, 0}").Sample(xs =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted({xs} | {xs}))");
             var r2 = RunAndCapture($"def main():\n    print(sorted({xs}))");
@@ -28,8 +28,8 @@ public class SetPropertyTests : AlgebraicTestBase
     public void SetUnion_IsCommutative()
     {
         Gen.Select(
-            Gen.OneOfConst("{1, 2}", "{3}", "{4, 5, 6}"),
-            Gen.OneOfConst("{2, 3}", "{7}", "{1, 8}")
+            Gen.OneOf("{1, 2}", "{3}", "{4, 5, 6}"),
+            Gen.OneOf("{2, 3}", "{7}", "{1, 8}")
         ).Sample((a, b) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted({a} | {b}))");
@@ -43,9 +43,9 @@ public class SetPropertyTests : AlgebraicTestBase
     public void SetUnion_IsAssociative()
     {
         Gen.Select(
-            Gen.OneOfConst("{1}", "{2, 3}", "{4}"),
-            Gen.OneOfConst("{5}", "{6, 7}", "{2}"),
-            Gen.OneOfConst("{8}", "{1, 9}", "{3}")
+            Gen.OneOf("{1}", "{2, 3}", "{4}"),
+            Gen.OneOf("{5}", "{6, 7}", "{2}"),
+            Gen.OneOf("{8}", "{1, 9}", "{3}")
         ).Sample((a, b, c) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted(({a} | {b}) | {c}))");
@@ -60,8 +60,8 @@ public class SetPropertyTests : AlgebraicTestBase
     public void SetDifference_RemovesElements()
     {
         Gen.Select(
-            Gen.OneOfConst("{1, 2}", "{3}", "{4, 5, 6}"),
-            Gen.OneOfConst("{2, 3}", "{7}", "{1, 8}")
+            Gen.OneOf("{1, 2}", "{3}", "{4, 5, 6}"),
+            Gen.OneOf("{2, 3}", "{7}", "{1, 8}")
         ).Sample((a, b) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted({a} - {b}))");
@@ -77,8 +77,8 @@ public class SetPropertyTests : AlgebraicTestBase
     public void SetIntersection_IsCommutative()
     {
         Gen.Select(
-            Gen.OneOfConst("{1, 2}", "{3}", "{4, 5, 6}"),
-            Gen.OneOfConst("{2, 3}", "{7}", "{1, 8}")
+            Gen.OneOf("{1, 2}", "{3}", "{4, 5, 6}"),
+            Gen.OneOf("{2, 3}", "{7}", "{1, 8}")
         ).Sample((a, b) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted({a} & {b}))");
@@ -92,8 +92,8 @@ public class SetPropertyTests : AlgebraicTestBase
     public void SetSymmetricDifference_IsCommutative()
     {
         Gen.Select(
-            Gen.OneOfConst("{1, 2}", "{3}", "{4, 5, 6}"),
-            Gen.OneOfConst("{2, 3}", "{7}", "{1, 8}")
+            Gen.OneOf("{1, 2}", "{3}", "{4, 5, 6}"),
+            Gen.OneOf("{2, 3}", "{7}", "{1, 8}")
         ).Sample((a, b) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted({a} ^ {b}))");
@@ -107,9 +107,9 @@ public class SetPropertyTests : AlgebraicTestBase
     public void DeMorgans_ForSets()
     {
         Gen.Select(
-            Gen.OneOfConst("{1}", "{2, 3}", "{4}"),
-            Gen.OneOfConst("{5}", "{6, 7}", "{2}"),
-            Gen.OneOfConst("{8}", "{1, 9}", "{3}")
+            Gen.OneOf("{1}", "{2, 3}", "{4}"),
+            Gen.OneOf("{5}", "{6, 7}", "{2}"),
+            Gen.OneOf("{8}", "{1, 9}", "{3}")
         ).Sample((a, b, c) =>
         {
             var r1 = RunAndCapture($"def main():\n    print(sorted(({a} | {b}) - {c}))");

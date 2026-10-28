@@ -11,7 +11,7 @@ internal static class GenLiterals
             new IntegerLiteral { Value = v.ToString() });
 
     public static Gen<IntegerLiteral> IntegerWithSuffix { get; } =
-        Gen.Select(Gen.Long[0, 10000], Gen.OneOfConst("", "L", "u"),
+        Gen.Select(Gen.Long[0, 10000], Gen.OneOf("", "L", "u"),
             (v, s) => new IntegerLiteral
             {
                 Value = v.ToString(),
@@ -37,7 +37,7 @@ internal static class GenLiterals
             .Select(s => new StringLiteral { Value = s });
 
     public static Gen<StringLiteral> SimpleString { get; } =
-        Gen.OneOfConst("hello", "world", "test", "foo", "bar", "", "abc 123", "x")
+        Gen.OneOf("hello", "world", "test", "foo", "bar", "", "abc 123", "x")
             .Select(s => new StringLiteral { Value = s });
 
     public static Gen<BooleanLiteral> Boolean { get; } =

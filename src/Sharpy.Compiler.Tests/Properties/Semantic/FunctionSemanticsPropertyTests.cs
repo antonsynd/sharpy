@@ -63,7 +63,7 @@ public class FunctionSemanticsPropertyTests
         var sink = new RejectionSink("FunctionSemantics.FunctionCall_TypeChecksCorrectly");
 
         SemanticFilter.WellTypedProgram(
-                Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                Gen.OneOf("int", "str", "bool").SelectMany(type =>
                     GenFunctions.ModuleWithFunctions(TypeEnv.Default, type, fuel: 2)), sink)
             .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
@@ -82,7 +82,7 @@ public class FunctionSemanticsPropertyTests
         var sink = new RejectionSink("FunctionSemantics.ModuleWithEnvFunctions_AnalyzesClean");
 
         SemanticFilter.WellTypedProgram(
-                Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                Gen.OneOf("int", "str", "bool").SelectMany(type =>
                     GenFunctions.ModuleWithFunctions(TypeEnv.WithFunctions, type, fuel: 2)), sink)
             .Sample(_ => { }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
@@ -143,7 +143,7 @@ public class FunctionSemanticsPropertyTests
     public void ModuleWithFunctions_NeverThrowsInternalError()
     {
         var verdicts = ErrorInjector.JudgeSamples(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenFunctions.ModuleWithFunctions(TypeEnv.WithFunctions, type, fuel: 2)),
             source => ErrorInjector.JudgeNoInternalError(source, "function program"), iter: 50);
         _output.WriteLine($"Function programs: {verdicts.Tested - verdicts.Failures}/{verdicts.Tested} analysed without an internal error");

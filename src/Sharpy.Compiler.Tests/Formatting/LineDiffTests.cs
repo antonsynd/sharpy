@@ -222,8 +222,8 @@ public class LineDiffTests
     // (iii) + (vi) — CsCheck over random line lists
     // ================================================================
 
-    private static readonly Gen<string[]> GenLines = Gen.OneOfConst("a", "b", "c", "", "    d", "e e").Array[0, 14];
-    private static readonly Gen<string> GenBreak = Gen.OneOfConst("\n", "\r\n", "\r");
+    private static readonly Gen<string[]> GenLines = Gen.OneOf("a", "b", "c", "", "    d", "e e").Array[0, 14];
+    private static readonly Gen<string> GenBreak = Gen.OneOf("\n", "\r\n", "\r");
 
     /// <summary>(iii) + (ii): <c>Apply(a, Hunks(a, b)) == b</c>, and the reference diff applies to the same text.</summary>
     [Fact]
