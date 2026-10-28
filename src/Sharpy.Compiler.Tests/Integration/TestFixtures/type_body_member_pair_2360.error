@@ -1,0 +1,10 @@
+'size' is already declared in 'PropertyThenField' as a property (line 7); one name has one meaning in a type body @8:5
+'size' is already declared in 'FieldThenProperty' as a field (line 11); one name has one meaning in a type body @12:5
+'size' is already declared in 'PropertyThenMethod' as a property (line 15); one name has one meaning in a type body @17:9
+'changed' is already declared in 'EventThenField' as an event (line 21); one name has one meaning in a type body @22:5
+'changed' is already declared in 'MethodThenEvent' as a method (line 25); one name has one meaning in a type body @27:5
+'changed' is already declared in 'PropertyThenEvent' as a property (line 30); one name has one meaning in a type body @31:5
+'Inner' is already declared in 'NestedTypeThenMethod' as a nested class (line 34); one name has one meaning in a type body @36:9
+'Size' is already declared in 'AliasThenProperty' as a type alias (line 40); one name has one meaning in a type body @41:5
+'size' is already declared in 'FieldTwice' as a field (line 44); one name has one meaning in a type body @45:5
+!count 9

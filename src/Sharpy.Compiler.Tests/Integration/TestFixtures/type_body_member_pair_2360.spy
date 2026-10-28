@@ -1,0 +1,58 @@
+# One name, one meaning in a type body (#2360): each class below declares one name under two
+# member kinds; the later declaration is SPY0204 at its own position (a method at its name, a field at
+# its name, a property / event / nested type / alias at its keyword), whichever kind came first.
+from system import Action
+
+class PropertyThenField:
+    property size: int = 1
+    size: int = 2
+
+class FieldThenProperty:
+    size: int = 2
+    property size: int = 1
+
+class PropertyThenMethod:
+    property get size(self) -> int:
+        return 1
+    def size(self) -> int:
+        return 2
+
+class EventThenField:
+    event changed: Action[int]
+    changed: int = 0
+
+class MethodThenEvent:
+    def changed(self) -> None:
+        pass
+    event changed: Action[int]
+
+class PropertyThenEvent:
+    property changed: int = 0
+    event changed: Action[int]
+
+class NestedTypeThenMethod:
+    class Inner:
+        pass
+    def Inner(self) -> int:
+        return 1
+
+class AliasThenProperty:
+    type Size = int
+    property Size: int = 3
+
+class FieldTwice:
+    size: int = 1
+    size: int = 2
+
+# Control: a function-style getter and setter are the two halves of ONE property — legal.
+class GetSetPair:
+    _v: int = 0
+    property get v(self) -> int:
+        return self._v
+    property set v(self, value: int) -> None:
+        self._v = value
+
+def main():
+    g = GetSetPair()
+    g.v = 4
+    print(g.v)

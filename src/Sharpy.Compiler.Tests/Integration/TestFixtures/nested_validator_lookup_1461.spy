@@ -77,6 +77,12 @@ class Outer:
     class Holder:
         _secret: int = 0
 
+    # PropertyValidator — SPY0408. Its walk had to reach nested types too (it stopped at module.Body);
+    # the PropField row above now draws the member seam's SPY0204, so this row guards that walk.
+    class PropInit:
+        property init value(self, v: int) -> None:
+            pass
+
 
 def main() -> None:
     h = Outer.Holder()

@@ -4,4 +4,6 @@ Duplicate CLR-mapped signature for '__init__' in 'DupCtor' @43:9
 Struct 'Pt' constructor must initialize all fields. Missing initialization for: 'y' @59:9
 Cannot assign to @final field 'v' outside of 'Fin' constructor @69:13
 Class 'Bad' does not implement interface method 'IShape.area' @73:5
-Cannot access protected member '_secret' of 'Holder' from outside the class hierarchy @83:11
+Cannot access protected member '_secret' of 'Holder' from outside the class hierarchy @89:11
+'property init' for 'value' in 'PropInit' is only valid for auto-properties, not function-style @83:9
+!count 8
