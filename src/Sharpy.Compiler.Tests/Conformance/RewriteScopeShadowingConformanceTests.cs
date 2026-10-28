@@ -35,7 +35,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 ///     (<c>GenerateCombinedFunctionStyleProperty</c>), <c>mixedAutoCustom</c>
 ///     (<c>GenerateMixedAutoCustomProperty</c>), <c>moduleLevelFunctionStyle</c>
 ///     (<c>GenerateFunctionStyleProperty</c>), <c>interfaceDefault</c>
-///     (<c>GenerateInterfacePropertyFromDef</c>), <c>eventAddAccessor</c>
+///     (<c>GenerateInterfaceFunctionStyleAccessor</c>, the one interface accessor builder a lone
+///     half and a grouped property both read), <c>eventAddAccessor</c>
 ///     (<c>RoslynEmitter.ClassMembers.Events.cs</c>), and the two observer arms
 ///     <c>observerBeforeSet</c>/<c>observerAfterSet</c> (<c>GenerateObserverBody</c>) — the
 ///     after_set arm being the one whose target is NOT <c>value</c>. The mechanisms were
@@ -206,7 +207,7 @@ def main() -> None:
     print(read_level())
 ", 4, LeakedOutput, Array.Empty<string>()),
 
-        new("interfaceDefault", "GenerateInterfacePropertyFromDef", $@"
+        new("interfaceDefault", "GenerateInterfaceFunctionStyleAccessor", $@"
 interface IVolume:
     property set volume(self, {SharedName}: int):
 {{BODY}}

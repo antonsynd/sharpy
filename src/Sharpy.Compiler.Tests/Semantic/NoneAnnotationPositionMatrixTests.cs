@@ -142,15 +142,6 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
         }
     }
 
-    /// <summary>A pinned red cell of another class, by fingerprint; it fails when the cell turns green
-    /// (drain on fix). The construction is what <c>check_allowlist_issue_state.sh</c> reads as a cite.</summary>
-    private sealed record KnownRedInterfacePair(string Issue, string Fingerprint);
-
-    // #2067 (P30): an INTERFACE's body-less get+set pair is emitted as two C# properties — CS0102 +
-    // CS0229 behind SPY0908 — whatever the setter's annotation (the bare setter too; measured
-    // @ 67d1a8b99). Not this arm's defect; the cells stay in the matrix, pinned.
-    private static readonly KnownRedInterfacePair InterfacePairPin = new KnownRedInterfacePair("#2067", "CS0102");
-
     public static IEnumerable<object[]> SetterCells() =>
         from shape in SetterShapes
         from host in SetterHosts
@@ -166,14 +157,6 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
         var result = CompileAndExecute(source);
         var all = string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code} {d.Line}:{d.Column} {d.Message}"));
         var errors = result.RawDiagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).ToList();
-
-        if (host == "interface" && shape != "set_only" && annotation != "int_annotated")
-        {
-            result.Success.Should().BeFalse($"[{cell}] the {InterfacePairPin.Issue} pin drains — delete it: {all}");
-            errors.Should().OnlyContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, $"[{cell}] {all}");
-            errors.Should().Contain(d => d.Message.Contains(InterfacePairPin.Fingerprint), $"[{cell}] {all}");
-            return;
-        }
 
         errors.Select(d => d.Code).Should().NotContain(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, $"[{cell}] never SPY0908");
 

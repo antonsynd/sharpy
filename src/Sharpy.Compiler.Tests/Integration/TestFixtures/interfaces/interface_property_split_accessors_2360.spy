@@ -1,0 +1,51 @@
+# #2360 (P21g, D2 b): a property's complementary halves in an INTERFACE body are ONE property, as in a
+# class or struct body. The interface member emitter once wrote one C# property per accessor statement,
+# an internal error (SPY0908 CS0102 "already contains a definition for" + CS0229 ambiguity).
+
+# A function-style getter + setter, both default implementations, getter first.
+interface Gauge:
+    property get level(self) -> int:
+        return 6
+
+    property set level(self, v: int):
+        print(v * 10)
+
+
+# The same halves, setter first: the order of the halves never changes the one property.
+interface Dial:
+    property set notch(self, v: int):
+        print(v + 100)
+
+    property get notch(self) -> int:
+        return 3
+
+
+# An auto half beside a function-style getter STUB: one abstract get + set requirement.
+interface Tank:
+    property capacity: int
+    property get capacity(self) -> int: ...
+
+
+class Meter(Gauge, Dial):
+    pass
+
+
+# The implementer's getter doubles what its auto setter stored, so a read that bypassed it prints 9.
+class Barrel(Tank):
+    property capacity: int = 5
+
+    property get capacity(self) -> int:
+        return self._capacity * 2
+
+
+def main() -> None:
+    g: Gauge = Meter()
+    g.level = 7
+    print(g.level)
+    d: Dial = Meter()
+    d.notch = 4
+    print(d.notch)
+    t: Tank = Barrel()
+    print(t.capacity)
+    t.capacity = 9
+    print(t.capacity)

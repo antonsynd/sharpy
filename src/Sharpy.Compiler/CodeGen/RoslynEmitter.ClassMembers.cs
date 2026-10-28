@@ -131,8 +131,8 @@ internal partial class RoslynEmitter
         var getItemFuncs = new List<FunctionDef>();
         var setItemFuncs = new List<FunctionDef>();
 
-        // Collect all PropertyDef nodes, grouped by name for combining getter/setter
-        var propertyGroups = new Dictionary<string, List<PropertyDef>>();
+        // All PropertyDef nodes grouped by name, so a property's halves combine into one C# property
+        var propertyGroups = GroupPropertiesByName(body);
 
         // Collect all EventDef nodes, grouped by name for combining add/remove accessors
         var eventGroups = GroupEventsByName(body);
@@ -194,14 +194,10 @@ internal partial class RoslynEmitter
                     }
                     break;
 
-                case PropertyDef propDef:
-                    // Collect for grouped generation (getter+setter combine into one C# property)
-                    if (!propertyGroups.TryGetValue(propDef.Name, out var group))
-                    {
-                        group = new List<PropertyDef>();
-                        propertyGroups[propDef.Name] = group;
-                    }
-                    group.Add(propDef);
+                case PropertyDef:
+                    // Already grouped by GroupPropertiesByName; emitted below so a property's halves
+                    // (getter + setter, or an auto half + a function-style accessor) combine into one
+                    // C# property
                     break;
 
                 case EventDef:
@@ -441,6 +437,34 @@ internal partial class RoslynEmitter
         return groups.Values.ToList();
     }
 
+    /// <summary>
+    /// A type body's <see cref="PropertyDef"/>s grouped by property name, in declaration order. A
+    /// property's complementary halves — a function-style getter and setter, or an auto half beside
+    /// a function-style accessor (properties_function_style.md, "paired with an auto-property of the
+    /// same name") — are ONE property, merged by name resolution into one <c>PropertySymbol</c>; this
+    /// is the one grouping every host's member emitter reads, so each emits one C# property per name
+    /// (an interface body once wrote one per statement — CS0102/CS0229, #2360).
+    /// </summary>
+    private static Dictionary<string, List<PropertyDef>> GroupPropertiesByName(IReadOnlyList<Statement> body)
+    {
+        var propertyGroups = new Dictionary<string, List<PropertyDef>>();
+
+        foreach (var stmt in body)
+        {
+            if (stmt is not PropertyDef propDef)
+                continue;
+
+            if (!propertyGroups.TryGetValue(propDef.Name, out var propertyGroup))
+            {
+                propertyGroup = new List<PropertyDef>();
+                propertyGroups[propDef.Name] = propertyGroup;
+            }
+            propertyGroup.Add(propDef);
+        }
+
+        return propertyGroups;
+    }
+
     private static Dictionary<string, List<EventDef>> GroupEventsByName(IReadOnlyList<Statement> body)
     {
         var eventGroups = new Dictionary<string, List<EventDef>>();
@@ -464,6 +488,7 @@ internal partial class RoslynEmitter
     private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body)
     {
         var members = new List<MemberDeclarationSyntax>();
+        var propertyGroups = GroupPropertiesByName(body);
         var eventGroups = GroupEventsByName(body);
 
         foreach (var stmt in body)
@@ -476,7 +501,13 @@ internal partial class RoslynEmitter
                     break;
 
                 case PropertyDef propDef:
-                    members.Add(GenerateInterfacePropertyFromDef(propDef));
+                    // One C# property per group: a property's halves share a name, so only the first
+                    // half emits — at its declaration position — and the rest are skipped
+                    var propertyGroup = propertyGroups[propDef.Name];
+                    if (ReferenceEquals(propertyGroup[0], propDef))
+                    {
+                        members.Add(GenerateInterfaceGroupedProperty(propertyGroup));
+                    }
                     break;
 
                 case EventDef eventDef:

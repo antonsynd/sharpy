@@ -358,11 +358,10 @@ internal partial class RoslynEmitter
         // contributes its own. `property get x: T` beside a custom GETTER is get-only and used to
         // gain a silent auto-setter, writing a backing field the author never asked to expose
         // (#1307). `property init x: T` contributes an init accessor, not a set.
-        bool emitGetter = customGetter != null
-            || autoProp.Accessor is PropertyAccessor.None or PropertyAccessor.Get or PropertyAccessor.Init;
-        bool emitSetter = customSetter != null
-            || autoProp.Accessor is PropertyAccessor.None or PropertyAccessor.Set or PropertyAccessor.Init;
-        var autoSetterKind = autoProp.Accessor == PropertyAccessor.Init
+        var autoKinds = AutoHalfAccessorKinds(autoProp.Accessor);
+        bool emitGetter = customGetter != null || autoKinds.Contains(SyntaxKind.GetAccessorDeclaration);
+        bool emitSetter = customSetter != null || autoKinds.Any(IsWritingAccessor);
+        var autoSetterKind = autoKinds.Contains(SyntaxKind.InitAccessorDeclaration)
             ? SyntaxKind.InitAccessorDeclaration
             : SyntaxKind.SetAccessorDeclaration;
 
@@ -979,8 +978,111 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a C# interface property from a PropertyDef AST node.
-    /// Interface properties have abstract accessors (semicolon-only).
+    /// The accessors an AUTO property half declares, by its accessor keyword: <c>property x: T</c> is
+    /// get + set, <c>property get x: T</c> get, <c>property set x: T</c> set, <c>property init x: T</c>
+    /// get + init. The one rule the class arm's auto-beside-custom merge and both interface arms read.
+    /// </summary>
+    private static SyntaxKind[] AutoHalfAccessorKinds(PropertyAccessor accessor) => accessor switch
+    {
+        PropertyAccessor.Get => new[] { SyntaxKind.GetAccessorDeclaration },
+        PropertyAccessor.Set => new[] { SyntaxKind.SetAccessorDeclaration },
+        PropertyAccessor.Init => new[] { SyntaxKind.GetAccessorDeclaration, SyntaxKind.InitAccessorDeclaration },
+        _ => new[] { SyntaxKind.GetAccessorDeclaration, SyntaxKind.SetAccessorDeclaration },
+    };
+
+    private static bool IsWritingAccessor(SyntaxKind accessorKind)
+        => accessorKind is SyntaxKind.SetAccessorDeclaration or SyntaxKind.InitAccessorDeclaration;
+
+    /// <summary>
+    /// Generates ONE C# interface property from a property's halves — the <see cref="PropertyDef"/>s
+    /// of one name in an interface body (<see cref="GroupPropertiesByName"/>). A lone half keeps its
+    /// own shape (<see cref="GenerateInterfacePropertyFromDef"/>). Several halves combine as the class
+    /// arm combines them: each function-style accessor contributes its own accessor (abstract when its
+    /// body is a stub, a default implementation otherwise), and an auto half contributes the abstract
+    /// accessors no function-style half supplies (<c>properties_function_style.md</c>: the auto half
+    /// supplies the complementary half). The type is the group's declaring annotation — the one rule
+    /// the checker typed the property from.
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateInterfaceGroupedProperty(List<PropertyDef> propGroup)
+    {
+        if (propGroup.Count == 1)
+            return GenerateInterfacePropertyFromDef(propGroup[0]);
+
+        var first = propGroup[0];
+        var propertyName = NameCasing.ResolveMethod(first.Name, first.IsNameBacktickEscaped);
+        TypeSyntax propertyType = propGroup.DeclaredTypeAnnotation() is { } declaredAnnotation
+            ? _typeMapper.MapType(declaredAnnotation)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        var customKinds = propGroup.Where(p => p.IsFunctionStyle)
+            .Select(p => InterfaceAccessorKind(p.Accessor))
+            .ToList();
+
+        var accessors = new List<AccessorDeclarationSyntax>();
+        foreach (var prop in propGroup)
+        {
+            if (prop.IsFunctionStyle)
+            {
+                accessors.Add(GenerateInterfaceFunctionStyleAccessor(prop));
+                continue;
+            }
+
+            // A custom getter replaces the auto getter; a custom setter replaces the auto set/init
+            foreach (var kind in AutoHalfAccessorKinds(prop.Accessor))
+            {
+                bool supplied = IsWritingAccessor(kind)
+                    ? customKinds.Any(IsWritingAccessor)
+                    : customKinds.Contains(kind);
+                if (!supplied)
+                {
+                    accessors.Add(AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                }
+            }
+        }
+
+        return PropertyDeclaration(propertyType, propertyName)
+            .WithAccessorList(AccessorList(List(accessors)));
+    }
+
+    private static SyntaxKind InterfaceAccessorKind(PropertyAccessor accessor) => accessor switch
+    {
+        PropertyAccessor.Set => SyntaxKind.SetAccessorDeclaration,
+        PropertyAccessor.Init => SyntaxKind.InitAccessorDeclaration,
+        _ => SyntaxKind.GetAccessorDeclaration,
+    };
+
+    /// <summary>
+    /// A function-style interface accessor: abstract (semicolon-only) when its body is a stub, a
+    /// default implementation otherwise.
+    /// </summary>
+    private AccessorDeclarationSyntax GenerateInterfaceFunctionStyleAccessor(PropertyDef propDef)
+    {
+        var accessorKind = InterfaceAccessorKind(propDef.Accessor);
+
+        if (AstHelper.IsAbstractStubBody(propDef.Body))
+        {
+            return AccessorDeclaration(accessorKind)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+
+        // Default interface property implementation
+        ResetMethodScope();
+
+        // A setter's declared parameter maps onto C#'s implicit `value` (#1405) — this arm registered
+        // no `value` at all before #1405, the one accessor shape where neither the Sharpy name nor the
+        // C# one was ever introduced.
+        bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
+        using var valueRewrite = AccessorParamRewrite(
+            writesValue ? AccessorValueParamName(propDef.Parameters) : null, "value");
+
+        var bodyStatements = GenerateSuite(propDef.Body);
+        return AccessorDeclaration(accessorKind).WithBody(Block(bodyStatements));
+    }
+
+    /// <summary>
+    /// Generates a C# interface property from ONE PropertyDef AST node (a property with no other
+    /// half in the body). Auto-property accessors are abstract (semicolon-only); a function-style
+    /// accessor is abstract when its body is a stub, a default implementation otherwise.
     /// </summary>
     private PropertyDeclarationSyntax GenerateInterfacePropertyFromDef(PropertyDef propDef)
     {
@@ -993,87 +1095,11 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(propDef.Type)
             : FunctionStylePropertyType(propDef);
 
-        var accessors = new List<AccessorDeclarationSyntax>();
-
-        if (propDef.IsFunctionStyle)
-        {
-            // Function-style interface property: single accessor based on kind
-            bool isAbstract = AstHelper.IsAbstractStubBody(propDef.Body);
-
-            SyntaxKind accessorKind;
-            switch (propDef.Accessor)
-            {
-                case PropertyAccessor.Set:
-                    accessorKind = SyntaxKind.SetAccessorDeclaration;
-                    break;
-                case PropertyAccessor.Init:
-                    accessorKind = SyntaxKind.InitAccessorDeclaration;
-                    break;
-                default:
-                    accessorKind = SyntaxKind.GetAccessorDeclaration;
-                    break;
-            }
-
-            if (isAbstract)
-            {
-                accessors.Add(AccessorDeclaration(accessorKind)
-                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-            }
-            else
-            {
-                // Default interface property implementation
-                ResetMethodScope();
-
-                bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
-                if (writesValue)
-                {
-                    // This arm registered no `value` at all before #1405 — it is the one accessor
-                    // shape where neither the Sharpy name nor the C# one was ever introduced.
-                }
-                else
-                {
-                    foreach (var param in propDef.Parameters)
-                    {
-                        if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                            continue;
-                    }
-                }
-
-                using var valueRewrite = AccessorParamRewrite(
-                    writesValue ? AccessorValueParamName(propDef.Parameters) : null, "value");
-
-                var bodyStatements = GenerateSuite(propDef.Body);
-                accessors.Add(AccessorDeclaration(accessorKind)
-                    .WithBody(Block(bodyStatements)));
-            }
-        }
-        else
-        {
-            // Auto-property style: determine accessors from Accessor type
-            switch (propDef.Accessor)
-            {
-                case PropertyAccessor.None:
-                    accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                    accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                    break;
-                case PropertyAccessor.Get:
-                    accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                    break;
-                case PropertyAccessor.Set:
-                    accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                    break;
-                case PropertyAccessor.Init:
-                    accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                    accessors.Add(AccessorDeclaration(SyntaxKind.InitAccessorDeclaration)
-                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
-                    break;
-            }
-        }
+        var accessors = propDef.IsFunctionStyle
+            ? new List<AccessorDeclarationSyntax> { GenerateInterfaceFunctionStyleAccessor(propDef) }
+            : AutoHalfAccessorKinds(propDef.Accessor)
+                .Select(kind => AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))
+                .ToList();
 
         return PropertyDeclaration(propertyType, propertyName)
             .WithAccessorList(AccessorList(List(accessors)));
