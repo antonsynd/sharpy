@@ -292,8 +292,8 @@ spelling with a named import (`import m`, `import m as n`, `from m import x`, `f
 such an import binds a module-level name and collides like any other module binding (`SPY0204` — see
 [import_statements.md](import_statements.md#an-import-binds-a-module-level-name)), so a local
 top-level name is the module's own and is emitted unqualified. A star import never displaces a
-module-level declaration either: the declaration takes the star-imported name over and is emitted
-unqualified (a module property is the known exception, #2371).
+module-level declaration of any kind (a def, class, `type` alias, const, variable or module property)
+either: the declaration takes the star-imported name over and is emitted unqualified.
 
 `SPY0520` (a type named like its file) is retired: with types beside the members class, no module
 class exists for a type to collide with.

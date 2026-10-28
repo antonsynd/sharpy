@@ -367,7 +367,7 @@ The only declarations that share a name are the parts of one member:
 - split auto halves, such as `property get name: str` beside `@private property set name: str` (see [Mixed Access Modifiers](#mixed-access-modifiers));
 - methods with different signatures, which are overloads (see [Method Overloading](method_overloading.md)).
 
-A part declared twice, such as two getters, two setters or one auto-property written twice, is refused like any other pair.
+A part declared twice, such as two function-style getters, two function-style setters or two auto halves that declare the same accessor (one auto-property written twice), is refused like any other pair. An auto half beside a function-style accessor of the same kind is not a second part: the function-style accessor supplies that half's body (`property get celsius: float` beside a function-style getter is the get-only form above).
 
 <!-- spec-sweep: error SPY0204 -->
 ```python
