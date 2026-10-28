@@ -14,16 +14,22 @@ namespace Sharpy.Compiler.Tests.Infrastructure;
 /// whose recording is dropped (P41 P1.2 dropped the process component by hand: ratios fell to
 /// 0.729 / 0.936 / 0.747) leaves its time unattributed and turns this red.
 ///
+/// <para>The verdict reads the MEDIAN per-call ratio, not the summed one (#2387): a dropped region
+/// is short in every call, a runner stall is short in one. Summed over three calls, a single 15 ms
+/// stall between two components on a loaded 2-core CI runner failed the <c>project</c> arm at
+/// 0.9410, against 0.9986–0.9992 locally. <see cref="CallsPerArm"/> is odd and five so the median
+/// absorbs up to two stalled calls per arm.</para>
+///
 /// <para>Cost: one warm-up call per arm outside the capture (first-call JIT of the arms' own code
 /// runs partly outside every component and is not what the instrument measures), then
-/// <see cref="CallsPerArm"/> captured calls per arm — about a dozen tiny compile-and-run calls,
+/// <see cref="CallsPerArm"/> captured calls per arm — fifteen tiny compile-and-run calls,
 /// a few seconds. The unattributed remainder is microseconds of bookkeeping between components
 /// against tens of milliseconds of process time per call, so the margin to 0.95 is wide
 /// (measured over the FileBased corpus: 0.9988 single / 0.9981 project).</para>
 /// </summary>
 public class CallTimingCoverageTests : IntegrationTestBase
 {
-    private const int CallsPerArm = 3;
+    private const int CallsPerArm = 5;
 
     private const string Program = "def main() -> None:\n    print(\"timed\")\n";
 
@@ -50,14 +56,15 @@ public class CallTimingCoverageTests : IntegrationTestBase
             }
 
             foreach (var arm in coverage)
-                Output.WriteLine($"arm={arm.Arm} calls={arm.Calls} sum_components={arm.ComponentSumMs:F1} sum_total={arm.TotalSumMs:F1} ratio={arm.Ratio:F4}");
+                Output.WriteLine($"arm={arm.Arm} calls={arm.Calls} sum_components={arm.ComponentSumMs:F1} sum_total={arm.TotalSumMs:F1} ratio={arm.Ratio:F4} median_call_ratio={arm.MedianCallRatio:F4} call_ratios=[{string.Join(", ", arm.CallRatios.Select(r => r.ToString("F4")))}]");
 
             // Control: the capture saw exactly the captured calls of all three arms — an arm that
             // stopped recording would otherwise pass as "no arm out of range".
             Assert.Equal(new[] { "entry-file", "project", "single" }, coverage.Select(c => c.Arm));
             Assert.All(coverage, c => Assert.Equal(CallsPerArm, c.Calls));
             Assert.All(coverage, c => Assert.True(c.WithinFivePercent,
-                $"arm {c.Arm}: components cover {c.ComponentSumMs:F1} of {c.TotalSumMs:F1} ms (ratio {c.Ratio:F4}); " +
+                $"arm {c.Arm}: the median call's components cover {c.MedianCallRatio:F4} of its wall clock " +
+                $"(summed {c.ComponentSumMs:F1} of {c.TotalSumMs:F1} ms, ratio {c.Ratio:F4}); " +
                 "a timed region of the execute path is no longer recorded (or is recorded twice)"));
         }
         finally

@@ -4,9 +4,9 @@ description: Implement a verified plan with coordinated agents, lead-owned gates
 argument-hint: "<path/to/plan.md> [--exclude \"section1,section2\"]"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class and §11 one-group-per-plan included); every step below applies it.
+Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every step below applies it.
 
-Implement a verified plan using coordinated compiler agents. Reads the plan, decomposes it into ordered commit-sized tasks, spawns the right agents, runs the whole-solution gate from the lead, and lands incremental commits whose guards have been shown to fail when broken.
+Implement a plan — a `/verify-plan`-stamped one at `full` tier, or a light design-of-record carrying the `Adequacy-only` stamp and a clean `check_plan_refs.py` report (contract §12) — using coordinated compiler agents. On a light plan the lead writes the task decomposition itself from the plan's acceptance bullets (§Task Decomposition); the plan has no task list by design. Reads the plan, decomposes it into ordered commit-sized tasks, spawns the right agents, runs the whole-solution gate from the lead, and lands incremental commits whose guards have been shown to fail when broken.
 
 ## Argument Handling
 
@@ -27,15 +27,17 @@ Before spawning any agents, perform these checks yourself.
 
 Note its **Defect Class** and **Adversarial Review** sections (if any), its **Issues to Close** rows with their close criteria, the **blast-radius** line, the **generated artifacts touched** line, and any spec examples it promises. Record the plan's **base sha** — the commit it was verified against (the `@ <sha>` in the stamp) or the commit before its first implementation commit. Every scope check below uses `<base>..HEAD`, never the branch-vs-`mainline` range (on `dev` that spans every batch since the last release).
 
-### 2. Check the verification stamp
-- Look for `<!-- Verified by /verify-plan` at the top
+### 2. Check the tier and the verification stamp
+- Read the `## Scope` block's **Tier** line (contract §12). `tier: light` → the stamp must read `Verified by /verify-plan --adequacy (Adequacy-only …)` with result `PASS`; absent → "This light plan has no adequacy pass. Run `/verify-plan <path>` (it runs `--adequacy` for a light plan) first." `NEEDS REVISION` → stop, as for a full plan. Then run `python3 build_tools/check_plan_refs.py <plan> --issues` (outside the sandbox, `gh`) yourself and **refuse on a red report** until it is clean — the light pass corrects nothing inline, so references may have drifted since. Record the tier in the Implementation Summary header; the final `/verify-implementation` runs its light auditor set. No `Tier` line (plans created before 2026-10-28) → `full`.
+- **Promotion in flight** (§12): if an implementer hits a decision the charter and plan did not rule, or the fix moves into `Semantic/`, `Lowering/` or `CodeGen/` on a light plan — STOP that lane, write the question into the plan's `## Design Decisions` with lettered options and the door type, ask the owner, and record the answer as `tier: full (<letter>, promoted at /implement-plan: <reason>)`. Never demote.
+- For a `full` plan, look for `<!-- Verified by /verify-plan` at the top:
 - If **absent**: warn the user "This plan has not been verified. Consider running `/verify-plan` first." Ask whether to proceed or stop.
 - If **NEEDS REVISION**: stop — "This plan was flagged as needing revision. Please address the issues in the Verification Summary before implementing."
 - If **PASS** or **PASS WITH CORRECTIONS**: read the `<!-- Adequacy: CLASS | CELL | N/A -->` line:
   - `CLASS` or `N/A` → proceed
   - `CELL` and any plan input is a bug/ICE/regression issue → **refuse**: "This plan patches a cell, not its class (see the plan's Adequacy verdict). Add a Defect Class section — contract, matrix, standard cure — and re-run `/verify-plan`, or say `override` to implement it as a cell fix knowingly." Proceed only on an explicit override, and record the override in the plan file.
   - Stamp without an Adequacy line (verified before 2026-08-26) → treat as `N/A` for feature plans, and as `CELL` for bug-fix plans unless the plan already has a Defect Class section.
-- Read the `<!-- Scope:` stamp line and the plan's `## Scope` block (contract §11). `MULTI-GROUP` without `override: <owner's words>`, an output/layout-changing phase sharing a gate, or a residue group whose generator is not Phase 1 → **refuse**: "This plan bundles more than one group (or skips its generator). Split it per the charter, or say `override` to implement it knowingly." Record an override in the plan file. Plans stamped before 2026-09-27 have no Scope line: derive it from the plan's groups and apply the same rule.
+- Read the `<!-- Scope:` stamp line and the plan's `## Scope` block (contract §11). `MULTI-GROUP` without `override: <owner's words>`, an output/layout-changing phase sharing a gate, or a residue group whose generator is not Phase 1 → **refuse**: "This plan bundles more than one group (or skips its generator). Split it per the charter, or say `override` to implement it knowingly." Record an override in the plan file. Plans stamped before 2026-09-27 have no Scope line: derive it from the plan's groups and apply the same rule. A light plan's `Adequacy-only` stamp carries the same `Adequacy:` and `Scope:` lines, so this step is identical at both tiers.
 
 ### 3. Report git status
 - Run `git status --short`. If there are uncommitted changes, REPORT them to the user and ask whether to proceed — do **not** stash, restore, or clean; the tree may hold a peer's work.

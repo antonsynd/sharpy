@@ -54,7 +54,7 @@ public class ILCompilesPropertyTests
         {
             var ctx = GenContext.Default with { Fuel = fuel };
             return GenSharpy.Module(ctx);
-        }).Sample(module =>
+        }).Where(module => !HasStructurallyRefusedShape(module)).Sample(module =>
         {
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(WithEntryPoint(module));
 
@@ -169,6 +169,33 @@ public class ILCompilesPropertyTests
 
         return module with { Body = body };
     }
+
+    /// <summary>
+    /// True when <paramref name="node"/> holds a shape the front end refuses whatever surrounds it,
+    /// so the sample can never reach <c>compilation.Emit</c>: an import or a property declaration
+    /// inside a function (SPY0708, since P21e's declaration-position rule) and a bare <c>super()</c>
+    /// that is not the receiver of a member access (SPY0287).
+    ///
+    /// <para><b>The yield halved without the floor moving (#2387).</b> The floor/sample pair was sized
+    /// against 3.6 emitted per 50 (≈7.2%). Measured over 10 runs @ 21dfc83bb: 5, 10, 8, 14, 6, 11, 13,
+    /// 7, 13, 8 per 250 (mean 9.5, ≈3.8%), so P(&lt; 5) ≈ 4% per run and CI went red on unrelated
+    /// PRs. The top front-end rejections were exactly these three shapes (x46 bare <c>super()</c>, x45
+    /// function-scoped import, x20 function-scoped property): refusals that became legal-language
+    /// verdicts after the generator was written, which this consumer cannot use. Skipping them at the
+    /// draw restores the yield the floor was sized for; lowering the floor would make the suite agree
+    /// with whatever it produces (#1432). Filtered here, not in <c>GenModule</c>, for the reason
+    /// <see cref="WithEntryPoint"/> gives: the generator's other consumers only need syntax.</para>
+    /// <para>Walked through <see cref="Node.GetChildNodes"/>, not the typed generators' <c>AstRewriter</c>:
+    /// naming that namespace puts a file in <c>PropertyOracleConformanceTests</c>' universe, and this lane
+    /// is not a typed-generator oracle. The parser's walk hides only type annotations, which hold none of
+    /// the three shapes.</para>
+    /// </summary>
+    private static bool HasStructurallyRefusedShape(Node node, Node? parent = null, bool inFunction = false) => node switch
+    {
+        ImportStatement or FromImportStatement or PropertyDef when inFunction => true,
+        SuperExpression when parent is not MemberAccess => true,
+        _ => node.GetChildNodes().Any(child => HasStructurallyRefusedShape(child, node, inFunction || node is FunctionDef)),
+    };
 
     /// <summary>Annotates untyped parameters, recursing into class bodies for methods.</summary>
     private static Statement AnnotateParameters(Statement statement) => statement switch
