@@ -3,7 +3,8 @@
 # One generated cell id per line (`<kind> × <position> × <name>`,
 # `nested-def × <relation> × <signature> × <call>`, `import-binding × <spelling> × <collider> × <order>`,
 # `alias-redeclaration × <relation> × <position>`, `member-pair × <host> × <A> → <B>`,
-# `member-alone × <host> × <kind>`, or `project × <id>` for ImportBindingProjectRouteTests' cells),
+# `member-alone × <host> × <kind>`, `member-chain × <host> × <A> → <B>+<C>` / `… → <B> → <C>`,
+# or `project × <id>` for ImportBindingProjectRouteTests' cells),
 # followed by `  # #<issue>` (a row may append a short tag naming its measured shape). A cell whose
 # verdict differs from the contract (ExpectedErrors / the nested-def expected sets, the
 # rest-equals-control clause, the cascade-absence clause, the block literal, or the execution of an
@@ -16,8 +17,10 @@
 # re-declaring a name of its block or an enclosing/enclosed block is SPY0204. P21f (R-IJ, R-IK, R-II)
 # extends it to member declarations (#2362), import bindings (#2359) and alias redeclaration (#2360).
 # P21g (R-JA, R-JB, R-IZ) extends it to kind PAIRS in one body (#2360), import × import and an explicit
-# import beside a star (#2359), and star × declaration kind (#2371); its rows are the last three
-# sections of this file.
+# import beside a star (#2359), and star × declaration kind (#2371). P21h (R-JG, R-JH, R-JI, R-JO) extends
+# the member-pair matrix with the split auto halves, the event accessors, the interface's undefaulted auto
+# halves and stubs, the union case edge and the three-declaration chains (#2382, #2390, #2075); its rows
+# are the sections after the #2371 one.
 #
 # The rows are the base's red cells, CREATED by P21e Phase 1. P21e's Phases 2–4 drain the rows citing
 # the class tracker (type-definition / import positions, incl. the class-cascade and enum cells, and the
@@ -57,6 +60,11 @@ struct × type-body × Fresh  # #2021
 # NOT in P21g.
 member-pair × struct × property-field → property-set  # #2021 legal merge; struct ctor CS0100
 member-pair × struct × property-set → property-field  # #2021 legal merge; struct ctor CS0100
+# P21h Phase 1: the split auto GETTER with a default (`property get A: int = 5`) + a function-style setter is
+# the same shape — a defaulted auto half beside an explicit setter — SPY0908 CS0100 (+ CS0229) under run @
+# 9aae96977 (plan-16cca3 Defect Class: "cited to #2021 — same roster cause"; P21h D4 drains it).
+member-pair × struct × property-auto-get → property-set  # #2021 legal merge; struct ctor CS0100 + CS0229
+member-pair × struct × property-set → property-auto-get  # #2021 legal merge; struct ctor CS0100 + CS0229
 
 # #2361: the arms of one `match` are sibling blocks (owner ruling at the P21e verify round, 2026-10-23,
 # reverting the lead's one-scope ruling D5b), so a nested def per arm is a fresh binding. When the match
@@ -140,13 +148,7 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # P21g lane G (the interface member emitter reads GroupPropertiesByName, one C# property per name): the
 # interface function-style get + set merges. LEFT: the interface auto-half + accessor merges (CS0525 — the
 # auto half is abstract, the accessor bodied; #2382) and the two struct auto-half + GETTER rows (CS0100 in
-# the struct auto-constructor).
-member-pair × struct × property-field → property-get  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-get → property-field  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × interface × property-field → property-get  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
-member-pair × interface × property-field → property-set  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
-member-pair × interface × property-get → property-field  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
-member-pair × interface × property-set → property-field  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
+# the struct auto-constructor) — MOVED by P21h Phase 1 to the `# #2382 (R-JG)` section below.
 
 # #2371: a star import never displaces a declaration of the importing file, whatever its kind.
 # Measured @ 75c65ee29: beside `from math import *` a module property `pi` (field-style or a getter),
@@ -155,3 +157,130 @@ member-pair × interface × property-set → property-field  # #2382 legal merge
 # project twin printed lib's 9 cold and on the `--incremental` warm rebuild. CREATED by P21g Phase 1;
 # DRAINED in P21g Phase 4 (D5: the emitter reads the names the star BOUND, recorded in Phase 4 —
 # SemanticInfo.GetStarImportBoundNames — instead of the module's export list). Do not re-add a row here.
+
+# #2382 (R-JG): a property's split halves are ONE property in every host (D3, D4), and in an INTERFACE an
+# abstract half (an undefaulted auto half, a `...` stub) beside a function-style accessor WITH a body that
+# fills the complementary slot is refused at the later half — SPY0617 (D2; owner ruling (a) 2026-10-27,
+# widened R-JG). Two defaulted auto halves are SPY0407 at the later half (D3; owner ruling 2026-10-28 (a)).
+# Measured @ 9aae96977 (Analyze, then run): the interface abstract × bodied pairs are silent under Analyze
+# and SPY0908 CS0525 under run (C# reads `{ get; set { … } }` as a field-backed semi-auto property), except
+# a stub getter THEN a bodied setter — SPY0909 "No StatementLowering recorded" (the merged symbol is
+# abstract, so the setter body is never checked); in a class the split auto halves are SPY0908 CS0161 +
+# CS0176 (one static property with empty function-style bodies — GenerateGroupedProperty has no all-auto
+# arm), in a struct also CS0100 + CS0229 (the auto-constructor roster admits each half); the struct auto
+# half + function-style GETTER (auto-both, and the auto getter with a default) is CS0100 (+ CS0200, CS0229);
+# two defaulted auto halves are silent under Analyze and CS0161 under run. The interface third-half chains
+# (an abstract auto-both half, then a bodied half, then a duplicate) are one SPY0204 at the third instead of
+# SPY0617 at the second. CREATED by P21h Phase 1; drains in P21h Phase 2 (D2's seam arm, D3's all-auto arm
+# and SPY0407 arm, D4's roster).
+member-pair × interface × property-field → property-get  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-field → property-set  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-get → property-field  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-set → property-field  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-get → property-auto-set  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-get → property-set-stub  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-set → property-auto-get  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-set → property-get-stub  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-auto-get → property-set  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-auto-set → property-get  # #2382 R-JG refusal; ice CS0525
+member-pair × interface × property-get-stub → property-set  # #2382 R-JG refusal; ice CS0525 (SPY0909 "No StatementLowering" — the bodied setter after a stub getter is unchecked)
+member-pair × interface × property-set-stub → property-get  # #2382 R-JG refusal; ice CS0525
+member-pair × class × property-auto-get → property-auto-set  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
+member-pair × class × property-auto-set → property-auto-get  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
+member-pair × struct × property-auto-get → property-auto-set  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
+member-pair × struct × property-auto-set → property-auto-get  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
+member-pair × struct × property-field → property-get  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
+member-pair × struct × property-get → property-field  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
+member-pair × struct × property-get → property-auto-get  # #2382 legal merge (properties_function_style.md:370 — the getter supplies the auto half's body); struct ctor CS0100 + CS0200 + CS0229
+member-pair × struct × property-auto-get → property-get  # #2382 legal merge (properties_function_style.md:370 — the getter supplies the auto half's body); struct ctor CS0100 + CS0200 + CS0229
+member-pair × class × property-auto-get → property-auto-set-def  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
+member-pair × class × property-auto-set-def → property-auto-get  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
+member-pair × struct × property-auto-get → property-auto-set-def  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
+member-pair × struct × property-auto-set-def → property-auto-get  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
+member-chain × interface × property-field → property-get → property-get  # #2382 R-JG in a chain; SPY0204 at the third instead of SPY0617 at the second
+member-chain × interface × property-field → property-set → property-set  # #2382 R-JG in a chain; SPY0204 at the third instead of SPY0617 at the second
+
+# A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
+# struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under
+# run @ 9aae96977 — a write-only auto property has no C# auto shape. NOT a cell of plan-16cca3's Current
+# State (found by this generator's alone control, P21h Phase 1); cited to #2382, the split-half emission
+# class, and LEDGERED for the lead to file or rule — it does not drain in P21h unless the plan adopts it.
+member-alone × class × property-auto-set  # #2382 (ledgered, outside plan-16cca3) lone auto set half; ice CS8051
+member-alone × struct × property-auto-set  # #2382 (ledgered, outside plan-16cca3) lone auto set half; ice CS8051
+
+# #2067: an interface's function-style event with default `add`/`remove` bodies is SPY0908 CS0535 under
+# run — the emitter writes an abstract `event Action<int> A;` and drops the bodies, so `class Impl(Host):
+# pass` implements nothing (the issue's cell 2). Measured @ 9aae96977 on the matrix's interface event-add /
+# event-remove kinds (alone — an accessor's alone control is the add/remove pair — and the pair in both
+# orders). Outside P21h; drains with #2067.
+member-alone × interface × event-add  # #2067 interface event default accessors dropped; ice CS0535
+member-alone × interface × event-remove  # #2067 interface event default accessors dropped; ice CS0535
+member-pair × interface × event-add → event-remove  # #2067 interface event default accessors dropped; ice CS0535
+member-pair × interface × event-remove → event-add  # #2067 interface event default accessors dropped; ice CS0535
+
+# #2390 (R-JH, R-JI): a union case claims its name through the member seam like every member — a second case of
+# the name (adjacent, or after a method) or a case named like a type parameter is ONE SPY0204 at the later
+# case's first token; SPY0365 retires into SPY0204. Measured @ 9aae96977 under Analyze: case × case is
+# SPY0365 (the checker's seenCaseNames arm, not the resolver) at the right position; `union Host[A]: case
+# A(v: int)` is silent and SPY0908 CS0102 under run (ResolveUnionDeclaration's TryDefine on a held name is
+# silent). CREATED by P21h Phase 1; drains in P21h Phase 3 (D6).
+member-pair × union × case → case  # #2390 R-JI; SPY0365 instead of SPY0204
+member-pair × union × case → case-after-def  # #2390 R-JI; SPY0365 instead of SPY0204
+member-pair × union × type-param → case  # #2390 R-JI; silent, ice CS0102 under run
+
+# #2075 (R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the FIRST half
+# (the refused declaration GROUP draws one verdict; its later half is silent); a third half beside a merged
+# pair is one SPY0204 at the third and NO SPY0407 (the refused half is invisible to
+# ValidateMixedPropertyStyle). Measured @ 9aae96977 under Analyze: every head × split-pair chain in every
+# host is TWO SPY0204 (one per half); the auto-both + two getters / two setters chain in a class or struct
+# is SPY0204 + SPY0407 at the third. The bodied get + set + get chain is already one SPY0204 (green).
+# CREATED by P21h Phase 1; drains in P21h Phase 3 (D7).
+member-chain × class × nested-class → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × nested-class → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × nested-class → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × method → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × method → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × method → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × field → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × field → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × field → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × const → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × const → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × const → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × alias → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × alias → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × alias → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × class × property-field → property-get → property-get  # #2075 R-JO; SPY0204 + SPY0407 at the third
+member-chain × class × property-field → property-set → property-set  # #2075 R-JO; SPY0204 + SPY0407 at the third
+member-chain × struct × nested-class → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × nested-class → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × nested-class → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × method → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × method → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × method → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × field → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × field → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × field → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × const → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × const → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × const → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × alias → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × alias → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × alias → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × struct × property-field → property-get → property-get  # #2075 R-JO; SPY0204 + SPY0407 at the third
+member-chain × struct × property-field → property-set → property-set  # #2075 R-JO; SPY0204 + SPY0407 at the third
+member-chain × interface × nested-class → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × nested-class → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × nested-class → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × method → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × method → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × method → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × field → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × field → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × field → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × const → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × const → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × const → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × alias → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × alias → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
+member-chain × interface × alias → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half

@@ -627,24 +627,44 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
         // def→alias} × type-body + alias→alias × module.
         Assert.Equal(7 * 4 + 3 + 1, AliasRedeclarationCells().Count());
-        // Member pairs (P21g): 9 type-body kinds × 3 hosts, 8 module kinds.
-        Assert.Equal(9, TypeBodyMemberKinds.Length);
+        // Member pairs (P21g; P21h D9): 13 type-body kinds in a class or struct, 15 in an interface (its two stub kinds),
+        // × 3 hosts; 8 module kinds.
+        Assert.Equal(13, TypeBodyMemberKinds.Length);
+        Assert.Equal(15, KindsFor("interface").Length);
+        Assert.Equal(3, InterfaceKindOverrides.Count);
         Assert.Equal(8, ModuleMemberKinds.Length);
         Assert.Equal(3, TypeBodyHosts.Length);
-        // Per type-body host: 9 alone + 9 × 9 ordered pairs + the same-signature twin + type-param × 9; module: 8 alone
-        // + 8 × 8 + the same-signature def twin; enum: alone + member twice; union: method alone, overload,
-        // same-signature twin, case × method.
-        Assert.Equal(3 * (9 + 9 * 9 + 1 + 9) + (8 + 8 * 8 + 1) + 2 + 4, MemberPairCells().Count());
-        Assert.Equal(3 * 9 + 8 + 1 + 1, MemberPairCells().Count(c => c.Id.StartsWith("member-alone × ", StringComparison.Ordinal)));
-        Assert.Equal(3 * 9, MemberPairCells().Count(c => c.Id.Contains(" × type-param → ", StringComparison.Ordinal)));
-        // Legal (expected [], run): per type-body host 6 property merges (3 pairs × 2 orders) + the overload; module
-        // the same 7 + var × var.
-        Assert.Equal(3 * 7 + 8, MemberPairCells().Count(c => c.Id.StartsWith("member-pair × ", StringComparison.Ordinal)
+        // Per type-body host: K alone + K × K ordered pairs + the same-signature twin + type-param × K (K = 13, 13, 15);
+        // the two-defaults pair × 2 orders × {class, struct}; module: 8 alone + 8 × 8 + the same-signature def twin;
+        // enum: alone + member twice; union: method alone, overload, same-signature twin, case × method, case × case
+        // (adjacent and after a def), type-param × case; chains: 3 hosts × (5 heads × 3 split pairs + 3 third-half).
+        Assert.Equal(2 * (13 + 13 * 13 + 1 + 13) + (15 + 15 * 15 + 1 + 15) + 2 * 2 + (8 + 8 * 8 + 1) + 2 + 4 + 3
+            + 3 * (5 * 3 + 3), MemberPairCells().Count());
+        Assert.Equal(2 * 13 + 15 + 8 + 1 + 1, MemberPairCells().Count(c => c.Id.StartsWith("member-alone × ", StringComparison.Ordinal)));
+        Assert.Equal(2 * 13 + 15 + 1, MemberPairCells().Count(c => c.Id.Contains(" × type-param → ", StringComparison.Ordinal)));
+        Assert.Equal(3 * (5 * 3 + 3), MemberPairCells().Count(c => c.Id.StartsWith("member-chain × ", StringComparison.Ordinal)));
+        // Legal (expected [], run): a class or struct host 8 property merges (6 complementary, 2 same-slot auto +
+        // function-style) × 2 orders + the event add/remove pair × 2 + the overload; an interface 11 property merges
+        // (7 complementary, 4 same-slot) × 2 + the event pair × 2 + the overload; module 3 property merges × 2 + the
+        // def overload + var × var.
+        Assert.Equal(2 * (8 * 2 + 2 + 1) + (11 * 2 + 2 + 1) + (3 * 2 + 1 + 1), MemberPairCells().Count(c =>
+            c.Id.StartsWith("member-pair × ", StringComparison.Ordinal)
             && c.Host is "class" or "struct" or "interface" or "module" && c.ExpectedErrors.Count == 0));
+        // R-JG: the interface abstract × bodied refusals — 6 pairs × 2 orders, plus the 2 interface third-half chains
+        // whose second half is bodied; the two-defaults SPY0407 cells.
+        Assert.Equal(6 * 2, MemberPairCells().Count(c => c.Id.StartsWith("member-pair × interface × ", StringComparison.Ordinal)
+            && c.ExpectedErrors.Any(e => e.Code == "SPY0617")));
+        Assert.Equal(2, MemberChainCells().Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0617")));
+        Assert.Equal(4, MemberPairCells().Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0407")));
+        // The lone event accessor beside another kind carries its SPY0420 (D9 (i)): per type-body host, each of the 2
+        // accessors beside the K − 1 kinds that are not its complement, in both orders, its same-kind twin once
+        // (2K − 3 cells), + type-param × 2 accessors.
+        Assert.Equal(2 * (2 * (2 * 13 - 3) + 2) + (2 * (2 * 15 - 3) + 2),
+            MemberPairCells().Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0420")));
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 379, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 788, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1505,22 +1525,84 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     internal sealed record MemberKind(
         string Kind, string[] Lines, At Where, string[] Use, string Stdout, string[]? ImplLines = null);
 
-    /// <summary>The nine type-body member kinds (class, struct and interface hosts). Every kind's alone use prints a
-    /// value of its own (1–9), so a dropped or displaced member is a different stdout or an error, never <c>ok</c>.</summary>
+    /// <summary>The thirteen type-body member kinds (class, struct and interface hosts): P21g's nine plus the split auto
+    /// halves <c>property-auto-get</c> / <c>property-auto-set</c> and the event accessors <c>event-add</c> /
+    /// <c>event-remove</c> (P21h D9 (i)). Every kind's alone use prints a value of its own (1–9), so a dropped or
+    /// displaced member is a different stdout or an error — except <c>property-auto-set</c>, which nothing can read, so
+    /// its use writes and then prints <c>ok</c>. A lone event accessor is SPY0420, so an accessor's alone control is
+    /// the add/remove pair (<see cref="AloneMembers"/>).</summary>
     private static readonly MemberKind[] TypeBodyMemberKinds =
     {
         new("nested-class", new[] { "class A:", "    tag: int = 1" }, At.Keyword, new[] { "print(Host.A().tag)" }, "1"),
         new("method", new[] { "def A(self) -> int:", "    return 2" }, At.Name, new[] { "print(h.A())" }, "2"),
         new("field", new[] { "A: int = 3" }, At.Name, new[] { "print(h.A)" }, "3"),
         new("const", new[] { "const A: int = 4" }, At.Keyword, new[] { "print(Host.A)" }, "4"),
-        new("property-field", new[] { "property A: int = 5" }, At.Keyword, new[] { "print(h.A)" }, "5",
-            ImplLines: new[] { "property A: int = 5" }),
+        new("property-field", new[] { "property A: int = 5" }, At.Keyword, new[] { "print(h.A)" }, "5"),
         new("property-get", new[] { "property get A(self) -> int:", "    return 6" }, At.Keyword, new[] { "print(h.A)" }, "6"),
         // The setter carries no `-> None` (the spec's spelling; see the matrix's property-set kind).
         new("property-set", new[] { "property set A(self, v: int):", "    print(v)" }, At.Keyword, new[] { "h.A = 7" }, "7"),
+        new("property-auto-get", new[] { "property get A: int = 5" }, At.Keyword, new[] { "print(h.A)" }, "5"),
+        new("property-auto-set", new[] { "property set A: int" }, At.Keyword, new[] { "h.A = 7", "print(\"ok\")" }, "ok"),
         new("event-auto", new[] { "event A: Action[int]" }, At.Keyword, new[] { "h.A += show", "h.A -= show", "print(8)" }, "8",
             ImplLines: new[] { "event A: Action[int]" }),
+        new("event-add", new[] { "event add A(self, h: Action[int]):", "    pass" }, At.Keyword,
+            new[] { "h.A += show", "h.A -= show", "print(8)" }, "8"),
+        new("event-remove", new[] { "event remove A(self, h: Action[int]):", "    pass" }, At.Keyword,
+            new[] { "h.A += show", "h.A -= show", "print(8)" }, "8"),
         new("alias", new[] { "type A = str" }, At.Keyword, new[] { "x: Host.A = \"9\"", "print(x)" }, "9"),
+    };
+
+    /// <summary>The interface host's spellings (D9 (i)): its auto halves carry NO default — a defaulted interface auto
+    /// half is #2383's cell (R-JL), which no cell of this matrix may name — so each is ABSTRACT and <c>Impl</c>'s own
+    /// <c>property A: int = 5</c> implements it; the kind ids are the class host's (the id names the declaration form,
+    /// the host its spelling).</summary>
+    private static readonly Dictionary<string, MemberKind> InterfaceKindOverrides = new(StringComparer.Ordinal)
+    {
+        ["property-field"] = new("property-field", new[] { "property A: int" }, At.Keyword, new[] { "print(h.A)" }, "5",
+            ImplLines: new[] { "property A: int = 5" }),
+        ["property-auto-get"] = new("property-auto-get", new[] { "property get A: int" }, At.Keyword, new[] { "print(h.A)" }, "5",
+            ImplLines: new[] { "property A: int = 5" }),
+        ["property-auto-set"] = new("property-auto-set", new[] { "property set A: int" }, At.Keyword,
+            new[] { "h.A = 7", "print(\"ok\")" }, "ok", ImplLines: new[] { "property A: int = 5" }),
+    };
+
+    /// <summary>The two interface-only kinds: a function-style accessor STUB (<c>...</c>, abstract), implemented by
+    /// <c>Impl</c>'s auto property.</summary>
+    private static readonly MemberKind[] InterfaceOnlyMemberKinds =
+    {
+        new("property-get-stub", new[] { "property get A(self) -> int: ..." }, At.Keyword, new[] { "print(h.A)" }, "5",
+            ImplLines: new[] { "property A: int = 5" }),
+        new("property-set-stub", new[] { "property set A(self, v: int): ..." }, At.Keyword,
+            new[] { "h.A = 7", "print(\"ok\")" }, "ok", ImplLines: new[] { "property A: int = 5" }),
+    };
+
+    /// <summary>The member kinds of a type-body host: thirteen in a class or struct, fifteen in an interface (its
+    /// undefaulted auto spellings and the two stub kinds).</summary>
+    private static MemberKind[] KindsFor(string host) => host == "interface"
+        ? TypeBodyMemberKinds.Select(k => InterfaceKindOverrides.TryGetValue(k.Kind, out var o) ? o : k).Concat(InterfaceOnlyMemberKinds).ToArray()
+        : TypeBodyMemberKinds;
+
+    /// <summary>The members of a kind's alone control: the kind, and for an event accessor its complementary half (a
+    /// lone accessor is SPY0420 — P21f, measured).</summary>
+    private static string[][] AloneMembers(MemberKind kind) => kind.Kind switch
+    {
+        "event-add" => new[] { kind.Lines, TypeBodyMemberKinds.Single(k => k.Kind == "event-remove").Lines },
+        "event-remove" => new[] { kind.Lines, TypeBodyMemberKinds.Single(k => k.Kind == "event-add").Lines },
+        _ => new[] { kind.Lines },
+    };
+
+    /// <summary>The two-defaults cell's second half (D3, owner ruling 2026-10-28 (a)): an auto SETTER carrying a
+    /// default, spelled only beside <c>property-auto-get</c> (<c>= 5</c>) — never multiplied against the matrix.</summary>
+    private static readonly MemberKind AutoSetWithDefault =
+        new("property-auto-set-def", new[] { "property set A: int = 6" }, At.Keyword, new[] { "h.A = 7", "print(\"ok\")" }, "ok");
+
+    /// <summary>The function-style accessors that carry a BODY (D2's <c>Bodied</c>) and the halves an interface
+    /// leaves ABSTRACT (an undefaulted auto half, a stub).</summary>
+    private static readonly HashSet<string> BodiedHalves = new(StringComparer.Ordinal) { "property-get", "property-set" };
+
+    private static readonly HashSet<string> AbstractInterfaceHalves = new(StringComparer.Ordinal)
+    {
+        "property-field", "property-auto-get", "property-auto-set", "property-get-stub", "property-set-stub",
     };
 
     /// <summary>The eight module-level declaration kinds. A module <c>def</c>'s verdict lands at its keyword (the
@@ -1559,22 +1641,94 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// class-level split accessors"); an AUTO half + a function-style getter or setter (<c>:88</c>, "A function-style
     /// accessor may also be paired with an auto-property of the same name supplying the complementary half" — D2 (b));
     /// a method or def overload (different signatures). Each in both orders. Every other pair is refused.
+    ///
+    /// <para>Host-aware (P21h D9 (i)). In a class or struct the split auto halves merge too: <c>auto-get + auto-set</c>
+    /// (<c>properties_function_style.md:200</c>), an auto getter + a function-style setter and an auto setter + a
+    /// function-style getter; and an <c>event add</c> + <c>event remove</c> pair is one event. In an interface the
+    /// merges with an abstract half (an undefaulted auto half or a stub) beside another abstract half are implemented
+    /// by <c>Impl</c>'s own auto property, which takes the write and reads it back (<c>7</c>); the function-style pair
+    /// with bodies is two default accessors <c>Impl</c> does not override (<c>7\n6</c>); an abstract half beside a
+    /// bodied one is REFUSED (<see cref="InterfaceBodyMismatch"/>, R-JG), so it is not legal here. An auto half
+    /// beside a function-style accessor of its OWN slot is not a second part (<c>:94</c>, <c>:370</c>, and the seam's
+    /// <c>AccessorDeclarations.Admits</c>): the accessor supplies that half's body, in every host.</para>
     /// </summary>
-    private static (string[] Use, string Stdout)? LegalPair(string a, string b, string receiver)
+    private static (string[] Use, string Stdout)? LegalPair(string a, string b, string host)
     {
+        var receiver = host == "module" ? "" : "h.";
         var pair = string.Join("+", new[] { a, b }.OrderBy(k => k, StringComparer.Ordinal));
         var write = new[] { $"{receiver}A = 7", $"print({receiver}A)" };
+        var events = new[] { "h.A += show", "h.A -= show", "print(8)" };
+        var read = new[] { "print(h.A)" };
+        var writeOnly = new[] { "h.A = 7", "print(\"ok\")" };
+        if (host == "interface")
+        {
+            return pair switch
+            {
+                "property-get+property-set" => (write, "7\n6\n"),
+                "property-auto-get+property-auto-set"
+                    or "property-field+property-get-stub" or "property-field+property-set-stub"
+                    or "property-auto-get+property-set-stub" or "property-auto-set+property-get-stub"
+                    or "property-get-stub+property-set-stub" => (write, "7\n"),
+                // An auto half beside a function-style accessor of its OWN slot (:370): one accessor, which Impl's
+                // auto property implements — a get-only property reads Impl's 5, a set-only one takes the write.
+                "property-auto-get+property-get" or "property-auto-get+property-get-stub" => (read, "5\n"),
+                "property-auto-set+property-set" or "property-auto-set+property-set-stub" => (writeOnly, "ok\n"),
+                "event-add+event-remove" => (events, "8\n"),
+                "method+method" => (new[] { "print(h.A())", "print(h.A(5))" }, "2\n5\n"),
+                _ => null,
+            };
+        }
+
         return pair switch
         {
             // The setter prints the written 7; the getter returns its own 6.
             "property-get+property-set" => (write, "7\n6\n"),
             // The auto half's setter takes the write; the function-style getter's 6 is what reads.
-            "property-field+property-get" => (write, "6\n"),
+            "property-field+property-get" or "property-auto-set+property-get" => (write, "6\n"),
             // The function-style setter prints 7 and stores nothing; the auto half's getter reads its default 5.
-            "property-field+property-set" => (write, "7\n5\n"),
+            "property-field+property-set" or "property-auto-get+property-set" => (write, "7\n5\n"),
+            // One auto property: the write is what reads.
+            "property-auto-get+property-auto-set" => (write, "7\n"),
+            // An auto half beside a function-style accessor of its OWN slot is not a second part (:94, :370): the
+            // function-style accessor supplies that half's body — a get-only property reading 6, a set-only one
+            // printing the written 7.
+            "property-auto-get+property-get" => (read, "6\n"),
+            "property-auto-set+property-set" => (new[] { "h.A = 7" }, "7\n"),
+            "event-add+event-remove" when host != "module" => (events, "8\n"),
             "method+method" or "def+def" => (new[] { $"print({receiver}A())", $"print({receiver}A(5))" }, "2\n5\n"),
             _ => null,
         };
+    }
+
+    /// <summary>R-JG (D2): in an INTERFACE an abstract half (an undefaulted auto half, a stub) beside a function-style
+    /// accessor with a body that fills the complementary slot has no C# shape (CS0525, both orders — measured) and is
+    /// refused at the later half: <c>[SPY0617 @ its keyword]</c>. Twelve cells: six pairs × two orders.</summary>
+    private static bool InterfaceBodyMismatch(string a, string b, string host)
+    {
+        if (host != "interface")
+            return false;
+        var (abstractHalf, bodied) = BodiedHalves.Contains(b) ? (a, b) : (b, a);
+        if (!BodiedHalves.Contains(bodied) || !AbstractInterfaceHalves.Contains(abstractHalf))
+            return false;
+
+        // Complementary slots: an auto-both half complements either accessor; a one-slot half the other one.
+        return abstractHalf == "property-field"
+            || (bodied == "property-get" && abstractHalf is "property-auto-set" or "property-set-stub")
+            || (bodied == "property-set" && abstractHalf is "property-auto-get" or "property-get-stub");
+    }
+
+    /// <summary>The lone-accessor verdict (P21f; measured @ 9aae96977 under <c>Analyze</c>): a body whose
+    /// <c>event add</c>/<c>event remove</c> accessors of the name lack one of the two draws ONE SPY0420, at the FIRST
+    /// accessor of the name — whether the member seam admitted that accessor or refused it (the half's own verdict, not
+    /// a cascade of the collision, D9 (i)); an auto <c>event</c> is not an accessor.</summary>
+    private static IEnumerable<(string Code, int Line, int Column)> LoneEventAccessor(IReadOnlyList<MemberKind> kinds, int[] lines)
+    {
+        var accessors = Enumerable.Range(0, kinds.Count).Where(i => kinds[i].Kind is "event-add" or "event-remove").ToList();
+        if (accessors.Count == 0
+            || (accessors.Any(i => kinds[i].Kind == "event-add") && accessors.Any(i => kinds[i].Kind == "event-remove")))
+            yield break;
+        var (line, column) = MemberPosition(kinds[accessors[0]], lines[accessors[0]], 4);
+        yield return ("SPY0420", line, column);
     }
 
     /// <summary>The 0-based column offset of the name <c>A</c> in a declaration's first line.</summary>
@@ -1610,12 +1764,20 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// use — a non-const interface field is an abstract property no implementer can satisfy (findings ledger, outside
     /// this contract). A refused cell's <c>main</c> prints <c>ok</c> and uses nothing (D10: cascades are the hand
     /// fixtures').</para>
+    ///
+    /// <para><b>P21h</b> (#2382, #2390, #2075; R-JG, R-JI, R-JO; D9 (i) (iii) (iv)) adds the kinds the P21g matrix never
+    /// enumerated — the split auto halves, the event accessors and the interface's stubs (13 kinds in a class or struct,
+    /// 15 in an interface, whose auto halves carry no default) —, the host-aware legal pairs (<see cref="LegalPair"/>),
+    /// the R-JG refusal of an interface abstract half beside a bodied one (<see cref="InterfaceBodyMismatch"/>), the
+    /// two-defaults SPY0407 cell, the lone-accessor SPY0420 (<see cref="LoneEventAccessor"/>), the union's case × case
+    /// and type-param × case edge, and the three-declaration chains (<see cref="MemberChainCells"/>).</para>
     /// </summary>
     internal static IEnumerable<MemberPairCell> MemberPairCells()
     {
         // `show` is the alone event control's handler; every cell carries it so line numbers are uniform.
         var prelude = new[] { "def show(v: int) -> None:", "    print(v)", "" };
-        return TypeBodyPairCells(prelude).Concat(ModulePairCells(prelude)).Concat(EdgeMemberPairCells(prelude));
+        return TypeBodyPairCells(prelude).Concat(ModulePairCells(prelude)).Concat(EdgeMemberPairCells(prelude))
+            .Concat(MemberChainCells());
     }
 
     /// <summary>One program: the prelude, the host head, the members (indented under a head), the interface
@@ -1663,25 +1825,26 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         foreach (var host in TypeBodyHosts)
         {
             var header = new[] { $"{host} Host:" };
+            var kinds = KindsFor(host);
 
             // The alone controls: each kind compiles in the host and runs through its use.
-            foreach (var kind in TypeBodyMemberKinds)
+            foreach (var kind in kinds)
             {
                 // The interface field: no use reaches it (an abstract property no implementer satisfies — ledgered).
                 var noUse = host == "interface" && kind.Kind == "field";
                 var (construct, implementer) = Receiver(host, new[] { kind });
                 var main = noUse ? okMain : construct.Concat(kind.Use).ToArray();
-                var (source, _) = MemberProgram(prelude, header, new[] { kind.Lines }, noUse ? null : implementer, main);
+                var (source, _) = MemberProgram(prelude, header, AloneMembers(kind), noUse ? null : implementer, main);
                 yield return new MemberPairCell($"member-alone × {host} × {kind.Kind}", host, source,
                     Array.Empty<(string, int, int)>(), noUse ? "ok\n" : kind.Stdout + "\n");
             }
 
-            foreach (var a in TypeBodyMemberKinds)
+            foreach (var a in kinds)
             {
-                foreach (var b in TypeBodyMemberKinds)
+                foreach (var b in kinds)
                 {
                     var bLines = a.Kind == "method" && b.Kind == "method" ? SecondMethod(module: false, sameSignature: false) : b.Lines;
-                    var legal = LegalPair(a.Kind, b.Kind, "h.");
+                    var legal = LegalPair(a.Kind, b.Kind, host);
                     var id = $"member-pair × {host} × {a.Kind} → {b.Kind}";
                     if (legal is { } run)
                     {
@@ -1694,8 +1857,24 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     {
                         var (source, at) = MemberProgram(prelude, header, new[] { a.Lines, bLines }, null, okMain);
                         var (line, column) = MemberPosition(b, at[1], 4);
-                        yield return new MemberPairCell(id, host, source, new[] { ("SPY0204", line, column) }, null);
+                        var code = InterfaceBodyMismatch(a.Kind, b.Kind, host) ? "SPY0617" : "SPY0204";
+                        yield return new MemberPairCell(id, host, source,
+                            new[] { (code, line, column) }.Concat(LoneEventAccessor(new[] { a, b }, at)).ToArray(), null);
                     }
+                }
+            }
+
+            // Two defaulted auto halves (D3, owner ruling 2026-10-28 (a)): the seam admits the complementary slots and
+            // no C# auto property holds two initializers — [SPY0407 @ the later half's keyword], both orders.
+            if (host != "interface")
+            {
+                var autoGet = kinds.Single(k => k.Kind == "property-auto-get");
+                foreach (var (a, b) in new[] { (autoGet, AutoSetWithDefault), (AutoSetWithDefault, autoGet) })
+                {
+                    var (source, at) = MemberProgram(prelude, header, new[] { a.Lines, b.Lines }, null, okMain);
+                    var (line, column) = MemberPosition(b, at[1], 4);
+                    yield return new MemberPairCell($"member-pair × {host} × {a.Kind} → {b.Kind}", host, source,
+                        new[] { ("SPY0407", line, column) }, null);
                 }
             }
 
@@ -1709,12 +1888,74 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             }
 
             // The type parameter: declared by the head, always the earlier declaration.
-            foreach (var b in TypeBodyMemberKinds)
+            foreach (var b in kinds)
             {
                 var (source, at) = MemberProgram(prelude, new[] { $"{host} Host[A]:" }, new[] { b.Lines }, null, okMain);
                 var (line, column) = MemberPosition(b, at[0], 4);
                 yield return new MemberPairCell($"member-pair × {host} × type-param → {b.Kind}", host, source,
-                    new[] { ("SPY0204", line, column) }, null);
+                    new[] { ("SPY0204", line, column) }.Concat(LoneEventAccessor(new[] { b }, at)).ToArray(), null);
+            }
+        }
+    }
+
+    /// <summary>The split pairs a chain's second and third declarations spell (D9 (iv)).</summary>
+    private static readonly (string First, string Second)[] ChainPairs =
+    {
+        ("property-auto-get", "property-auto-set"), ("property-get", "property-set"), ("event-add", "event-remove"),
+    };
+
+    /// <summary>The kinds a chain's FIRST declaration spells (D9 (iv)).</summary>
+    private static readonly string[] ChainHeads = { "nested-class", "method", "field", "const", "alias" };
+
+    /// <summary>The third-half chains (D9 (iv)): a legal merge (or an auto-both half) followed by a half its group
+    /// already holds.</summary>
+    private static readonly string[][] ThirdHalfChains =
+    {
+        new[] { "property-field", "property-get", "property-get" },
+        new[] { "property-field", "property-set", "property-set" },
+        new[] { "property-get", "property-set", "property-get" },
+    };
+
+    /// <summary>
+    /// The three-declaration chains (P21h D9 (iv), R-JO on #2075): host {class, struct, interface} × a member A ∈
+    /// {nested-class, method, field, const, alias} followed by BOTH halves of one split pair ∈ {auto-get + auto-set,
+    /// get + set, event add + remove} — ids <c>member-chain × &lt;host&gt; × &lt;A&gt; → &lt;first&gt;+&lt;second&gt;</c>
+    /// — expected exactly ONE SPY0204 at the FIRST half (the refused declaration GROUP draws one verdict; the second
+    /// half is silent, D7); and the third-half chains (ids <c>member-chain × &lt;host&gt; × &lt;k1&gt; → &lt;k2&gt; →
+    /// &lt;k3&gt;</c>) — ONE SPY0204 at the third and NO SPY0407 (the refused half is invisible to
+    /// <c>ValidateMixedPropertyStyle</c>, D7) in a class or struct. In an interface the field-style head is abstract,
+    /// so a bodied second half is the R-JG refusal — ONE SPY0617 at the second, and the third half is silent (D2: the
+    /// refused name's later halves draw nothing); the bodied get + set + get chain is SPY0204 at the third. The sets
+    /// are exact (hard): a second SPY0204 or a SPY0407 is red.
+    /// </summary>
+    internal static IEnumerable<MemberPairCell> MemberChainCells()
+    {
+        var prelude = new[] { "def show(v: int) -> None:", "    print(v)", "" };
+        var okMain = new[] { "print(\"ok\")" };
+        foreach (var host in TypeBodyHosts)
+        {
+            var header = new[] { $"{host} Host:" };
+            var kinds = KindsFor(host).ToDictionary(k => k.Kind, StringComparer.Ordinal);
+            foreach (var head in ChainHeads)
+            {
+                foreach (var (first, second) in ChainPairs)
+                {
+                    var chain = new[] { kinds[head], kinds[first], kinds[second] };
+                    var (source, at) = MemberProgram(prelude, header, chain.Select(k => k.Lines).ToArray(), null, okMain);
+                    var (line, column) = MemberPosition(chain[1], at[1], 4);
+                    yield return new MemberPairCell($"member-chain × {host} × {head} → {first}+{second}", host, source,
+                        new[] { ("SPY0204", line, column) }, null);
+                }
+            }
+
+            foreach (var spelled in ThirdHalfChains)
+            {
+                var chain = spelled.Select(k => kinds[k]).ToArray();
+                var (source, at) = MemberProgram(prelude, header, chain.Select(k => k.Lines).ToArray(), null, okMain);
+                var refusedAt = InterfaceBodyMismatch(spelled[0], spelled[1], host) ? 1 : 2;
+                var (line, column) = MemberPosition(chain[refusedAt], at[refusedAt], 4);
+                yield return new MemberPairCell($"member-chain × {host} × {string.Join(" → ", spelled)}", host, source,
+                    new[] { (refusedAt == 1 ? "SPY0617" : "SPY0204", line, column) }, null);
             }
         }
     }
@@ -1735,7 +1976,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             {
                 var bLines = a.Kind == "def" && b.Kind == "def" ? SecondMethod(module: true, sameSignature: false) : b.Lines;
                 var id = $"member-pair × module × {a.Kind} → {b.Kind}";
-                var legal = LegalPair(a.Kind, b.Kind, "");
+                var legal = LegalPair(a.Kind, b.Kind, "module");
                 if (legal is { } run)
                 {
                     var (source, _) = MemberProgram(prelude, null, new[] { a.Lines, bLines }, null, run.Use);
@@ -1793,7 +2034,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             yield return new MemberPairCell("member-alone × union × method", "union", source, Array.Empty<(string, int, int)>(), "2\n");
         }
         {
-            var run = LegalPair("method", "method", "h.")!.Value;
+            var run = LegalPair("method", "method", "union")!.Value;
             var (source, _) = MemberProgram(prelude, unionHeader, new[] { method.Lines, SecondMethod(module: false, sameSignature: false) },
                 null, construct.Concat(run.Use).ToArray());
             yield return new MemberPairCell("member-pair × union × method → method", "union", source, Array.Empty<(string, int, int)>(), run.Stdout);
@@ -1809,6 +2050,22 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             var (source, at) = MemberProgram(prelude, new[] { "union Host:", "    case A(v: int)", "" }, new[] { method.Lines }, null, okMain);
             var (line, column) = MemberPosition(method, at[0], 4);
             yield return new MemberPairCell("member-pair × union × case → method", "union", source, new[] { ("SPY0204", line, column) }, null);
+        }
+
+        // The case edge (P21h D9 (iii), R-JI): a case claims its name through the member seam like every member — a
+        // second case of the name, adjacent or after a method, and a case named like a type parameter are [SPY0204 @
+        // the later case's first token].
+        var caseLines = new[] { "case A(v: int)" };
+        var otherMethod = new[] { "def m(self) -> int:", "    return 2" };
+        foreach (var (id, header, members, refused) in new[]
+        {
+            ("member-pair × union × case → case", new[] { "union Host:" }, new[] { caseLines, caseLines }, 1),
+            ("member-pair × union × case → case-after-def", new[] { "union Host:" }, new[] { caseLines, otherMethod, caseLines }, 2),
+            ("member-pair × union × type-param → case", new[] { "union Host[A]:" }, new[] { caseLines }, 0),
+        })
+        {
+            var (source, at) = MemberProgram(prelude, header, members, null, okMain);
+            yield return new MemberPairCell(id, "union", source, new[] { ("SPY0204", at[refused], 5) }, null);
         }
     }
 
