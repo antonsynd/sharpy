@@ -64,9 +64,9 @@ public class OverloadOrderIndependencePropertyTests
     private sealed record Scenario(Engine Engine, string[] ParamSet, string ArgLiteral);
 
     private static Gen<Scenario> GenScenario =>
-        from engine in Gen.OneOfConst(Engine.Function, Engine.Method, Engine.Operator)
-        from paramSet in Gen.OneOfConst(ParamSets)
-        from arg in Gen.OneOfConst(TypePool)
+        from engine in Gen.OneOf(Engine.Function, Engine.Method, Engine.Operator)
+        from paramSet in Gen.OneOf(ParamSets)
+        from arg in Gen.OneOf(TypePool)
         select new Scenario(engine, paramSet, arg.Literal);
 
     [Fact]

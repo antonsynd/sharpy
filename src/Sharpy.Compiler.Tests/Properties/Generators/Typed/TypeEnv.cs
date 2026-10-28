@@ -14,7 +14,7 @@ internal sealed record ClassInfo(
 internal sealed record TypeEnv
 {
     // Sorted by ordinal key, never hashed: the generators enumerate these maps (declarations,
-    // OneOfConst over variables/functions), and a hashed map's order follows .NET's per-process
+    // OneOf over variables/functions), and a hashed map's order follows .NET's per-process
     // randomized string hash — one CsCheck seed then drew different programs in different processes,
     // so a printed seed did not reproduce its sample (#2288).
     public ImmutableSortedDictionary<string, string> Bindings { get; init; } =

@@ -15,7 +15,7 @@ public class StringPropertyTests : AlgebraicTestBase
     [Fact]
     public void StringConcat_HasIdentity()
     {
-        Gen.OneOfConst("hello", "world", "test", "abc").Sample(s =>
+        Gen.OneOf("hello", "world", "test", "abc").Sample(s =>
         {
             var r1 = RunAndCapture($"def main():\n    print(\"{s}\" + \"\")");
             var r2 = RunAndCapture($"def main():\n    print(\"{s}\")");
@@ -28,8 +28,8 @@ public class StringPropertyTests : AlgebraicTestBase
     public void StringConcat_LengthIsAdditive()
     {
         Gen.Select(
-            Gen.OneOfConst("hello", "world", "x", ""),
-            Gen.OneOfConst("foo", "bar", "y", "")
+            Gen.OneOf("hello", "world", "x", ""),
+            Gen.OneOf("foo", "bar", "y", "")
         ).Sample((a, b) =>
         {
             var r = RunAndCapture(

@@ -25,7 +25,7 @@ public class CombinedFeaturePropertyTests
     {
         var sink = new RejectionSink("CombinedFeature.AsyncGenerator_CompilesClean");
 
-        var gen = Gen.OneOfConst("int", "str").Select(yieldType =>
+        var gen = Gen.OneOf("int", "str").Select(yieldType =>
         {
             Expression yieldExpr = yieldType == "int"
                 ? new IntegerLiteral { Value = "42" }
@@ -83,7 +83,7 @@ public class CombinedFeaturePropertyTests
     {
         var sink = new RejectionSink("CombinedFeature.DecoratedAsyncFunction_CompilesClean");
 
-        var gen = Gen.OneOfConst("int", "str", "bool").Select(retType =>
+        var gen = Gen.OneOf("int", "str", "bool").Select(retType =>
         {
             Expression returnExpr = retType switch
             {

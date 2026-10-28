@@ -42,7 +42,7 @@ public class BuiltinShadowingPropertyTests : IntegrationTestBase
     [Fact]
     public void UserGenericShadowingBuiltin_ExplicitCall_ResolvesToUserFunction()
     {
-        Gen.Select(Gen.OneOfConst(BuiltinNames), Gen.OneOfConst(Cases))
+        Gen.Select(Gen.OneOf(BuiltinNames), Gen.OneOf(Cases))
             .Sample((name, c) =>
             {
                 var source =

@@ -62,7 +62,7 @@ public class ImportResolutionPropertyTests
     {
         var sink = new RejectionSink("ImportResolution.ImportedClass_IsInstantiable");
 
-        SemanticFilter.CompilableProject(Gen.OneOfConst("int", "str", "bool").Select(fieldType =>
+        SemanticFilter.CompilableProject(Gen.OneOf("int", "str", "bool").Select(fieldType =>
                 {
                     var lib = $"class Widget:\n    value: {fieldType}\n\n    def __init__(self, value: {fieldType}):\n        self.value = value\n";
                     var main = $"from lib import Widget\n\ndef main():\n    w = Widget({GenImports_DefaultLiteral(fieldType)})\n    print(w.value)\n";

@@ -69,7 +69,7 @@ public class GeneratorMemberSoundnessPropertyTests
     [Fact]
     public void ListSubscript_AnalyzesClean() =>
         AssertModulesClean("GenTyped.ListSubscript",
-            Gen.OneOfConst("int", "str").SelectMany(element =>
+            Gen.OneOf("int", "str").SelectMany(element =>
                 InMain(TypeEnv.WithCollections, GenTyped.ListSubscript(TypeEnv.WithCollections, element))));
 
     /// <summary><c>GenTyped.ListOfType</c> is a list-literal fragment: printed from a <c>main</c>
@@ -78,7 +78,7 @@ public class GeneratorMemberSoundnessPropertyTests
     [Fact]
     public void ListOfType_AnalyzesClean() =>
         AssertModulesClean("GenTyped.ListOfType",
-            Gen.OneOfConst("int", "str").SelectMany(element =>
+            Gen.OneOf("int", "str").SelectMany(element =>
                 InMain(TypeEnv.WithCollections, GenTyped.ListOfType(TypeEnv.WithCollections, element, fuel: 1))),
             ListIterations);
 
@@ -88,7 +88,7 @@ public class GeneratorMemberSoundnessPropertyTests
     [Fact]
     public void TypedProgram_ListResult_AnalyzesClean() =>
         AssertModulesClean("GenTyped.TypedProgram(list result)",
-            Gen.OneOfConst("list[int]", "list[str]").SelectMany(type =>
+            Gen.OneOf("list[int]", "list[str]").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true)),
             ListIterations);
 

@@ -15,17 +15,17 @@ internal static class MutationBases
 {
     /// <summary><c>GenTyped.TypedProgram</c> with statements over the default env (the roster's <c>TypedStatements</c>).</summary>
     public static Gen<Module> TypedStatements() =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
     /// <summary><c>GenTyped.TypedProgram</c> with statements over the collections env.</summary>
     public static Gen<Module> TypedCollections() =>
-        Gen.OneOfConst("int", "str", "list[int]").SelectMany(type =>
+        Gen.OneOf("int", "str", "list[int]").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true));
 
     /// <summary><c>GenTyped.TypedProgram</c> over the Optionals env (no statements).</summary>
     public static Gen<Module> TypedOptionals() =>
-        Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
     /// <summary><c>GenFunctions.ModuleWithFunctions</c> at fuel 2 (the roster's <c>Functions</c>).</summary>
@@ -36,7 +36,7 @@ internal static class MutationBases
 
     /// <summary><c>GenTyped.ListSubscript</c> printed from a <c>main</c> declaring the collections env.</summary>
     public static Gen<Module> ListSubscripts() =>
-        Gen.OneOfConst("int", "str").SelectMany(element =>
+        Gen.OneOf("int", "str").SelectMany(element =>
             GenTyped.ListSubscript(TypeEnv.WithCollections, element).Select(expr => InMain(TypeEnv.WithCollections, expr)));
 
     public static Gen<Module> GenericFunctions() => GenGenerics.GenericFunctionProgram(TypeEnv.WithGenerics, fuel: 2);

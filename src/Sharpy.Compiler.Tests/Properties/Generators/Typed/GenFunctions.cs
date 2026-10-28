@@ -43,7 +43,7 @@ internal static class GenFunctions
         if (candidates.Count == 0)
             return GenTyped.ExpressionOfType(env, targetReturnType, fuel);
 
-        return Gen.OneOfConst(candidates.ToArray()).SelectMany(funcName =>
+        return Gen.OneOf(candidates.ToArray()).SelectMany(funcName =>
         {
             var sig = env.Functions[funcName];
             return sig.Parameters.Length == 0
@@ -210,7 +210,7 @@ internal static class GenFunctions
         var paramNames = new[] { "arg0", "arg1", "arg2" };
         var paramTypes = new[] { "int", "str", "bool" };
         var name = index < paramNames.Length ? paramNames[index] : $"arg{index}";
-        return Gen.OneOfConst(paramTypes).Select(t => (name, t));
+        return Gen.OneOf(paramTypes).Select(t => (name, t));
     }
 
     private static Expression MakeCall(string funcName, ImmutableArray<Expression> args) =>

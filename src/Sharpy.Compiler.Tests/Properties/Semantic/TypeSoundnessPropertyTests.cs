@@ -20,7 +20,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
     {
         var errors = new List<string>();
 
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
         var sink = new RejectionSink("TypeSoundness.TypedProgram_ExecutesWithoutRuntimeTypeErrors");
@@ -54,7 +54,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
     {
         var errors = new List<string>();
 
-        var baseGen = Gen.OneOfConst("int", "str", "list[int]").SelectMany(type =>
+        var baseGen = Gen.OneOf("int", "str", "list[int]").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithCollections, type, fuel: 2, withStatements: true));
 
         var sink = new RejectionSink("TypeSoundness.TypedProgram_WithCollections_ExecutesWithoutRuntimeTypeErrors");
@@ -88,7 +88,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
     {
         var errors = new List<string>();
 
-        var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var baseGen = Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.WithOptionals, type, fuel: 2));
 
         var sink = new RejectionSink("TypeSoundness.TypedProgram_WithOptionals_AnalyzesCleanly");
@@ -119,7 +119,7 @@ public class TypeSoundnessPropertyTests : IntegrationTestBase
         var errors = new List<string>();
 
         var sink = new RejectionSink("TypeSoundness.FilteredTypedProgram_ProducesExpectedTypeOutput");
-        Gen.OneOfConst("int", "str", "bool").Sample(resultType =>
+        Gen.OneOf("int", "str", "bool").Sample(resultType =>
         {
             var gen = SemanticFilter.CompilableProgram(
                 GenTyped.TypedProgram(TypeEnv.Default, resultType, fuel: 2), sink);

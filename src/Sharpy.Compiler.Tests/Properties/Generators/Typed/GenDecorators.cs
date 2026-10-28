@@ -36,7 +36,7 @@ internal static class GenDecorators
 
     public static Gen<Module> ModuleWithDecoratedFunction(bool validDecorator) =>
         validDecorator
-            ? Gen.OneOfConst(ValidMethodDecorators).Select(BuildValidDecoratedModule)
+            ? Gen.OneOf(ValidMethodDecorators).Select(BuildValidDecoratedModule)
             : Gen.Int[0, InvalidCombinations.Length - 1].Select(i =>
                 BuildInvalidDecoratedModule(InvalidCombinations[i]));
 
@@ -50,7 +50,7 @@ internal static class GenDecorators
         Gen.Int[1, 4].Select(BuildDataclassModule);
 
     public static Gen<Module> ModuleWithDecoratorDeterminism() =>
-        Gen.OneOfConst(ValidMethodDecorators).Select(BuildValidDecoratedModule);
+        Gen.OneOf(ValidMethodDecorators).Select(BuildValidDecoratedModule);
 
     private static Module BuildValidDecoratedModule(string decorator) =>
         // @final requires an @override chain; every other valid decorator sits on a

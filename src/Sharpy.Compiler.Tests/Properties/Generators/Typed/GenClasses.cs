@@ -15,7 +15,7 @@ internal static class GenClasses
         Gen.Select(
             Gen.Int[1, 2],
             Gen.Int[1, 2],
-            Gen.OneOfConst(FieldTypes),
+            Gen.OneOf(FieldTypes),
             (baseFieldCount, derivedFieldCount, methodRetType) =>
             {
                 var baseName = "BaseEntity";

@@ -24,7 +24,7 @@ public class SymbolPositionPropertyTests
     {
         var sink = new RejectionSink("SymbolPosition.SymbolPositions_AreWithinSourceBounds");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
@@ -57,7 +57,7 @@ public class SymbolPositionPropertyTests
     {
         var sink = new RejectionSink("SymbolPosition.NameDeclarationPosition_IsAtOrAfterDeclarationPosition");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
@@ -89,7 +89,7 @@ public class SymbolPositionPropertyTests
     {
         var sink = new RejectionSink("SymbolPosition.EffectiveNamePosition_FallsBackCorrectly");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>
@@ -212,7 +212,7 @@ public class SymbolPositionPropertyTests
     {
         var sink = new RejectionSink("SymbolPosition.DeclarationSpan_IsConsistentWithLineColumn");
         var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>

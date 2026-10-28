@@ -41,7 +41,7 @@ public class DeterminismPropertyTests
     [Fact]
     public void TypedCompilation_ProducesIdenticalDiagnostics()
     {
-        var gen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+        var gen = Gen.OneOf("int", "str", "bool").SelectMany(type =>
             GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
         gen.Sample(module =>
@@ -77,7 +77,7 @@ public class DeterminismPropertyTests
     {
         var sink = new RejectionSink("Determinism.TypedCompilation_ProducesIdenticalCSharp");
         var gen = SemanticFilter.CompilableProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+            Gen.OneOf("int", "str", "bool").SelectMany(type =>
                 GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2)), sink);
 
         gen.Sample(module =>

@@ -64,7 +64,7 @@ public class InterfacePropertyTests
     public void ProtocolSynthesis_AddsInterfaceForDunder()
     {
         var samples = PropertyCorpus.CompileAll(
-            Gen.OneOfConst("__len__", "__bool__")
+            Gen.OneOf("__len__", "__bool__")
                 .SelectMany(GenInterfaces.ModuleWithProtocolDunder),
             m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
