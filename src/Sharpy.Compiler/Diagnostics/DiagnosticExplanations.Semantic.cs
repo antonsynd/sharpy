@@ -1386,5 +1386,22 @@ public static partial class DiagnosticExplanations
             "conflict comes from a synthesized interface (via a dunder method), remove the " +
             "dunder method from the derived class or ensure the type arguments match.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.InterfaceAccessorsMustAgreeOnBody,
+            "Interface property mixes an abstract accessor with a bodied one",
+            "Semantic",
+            "In an interface body an auto half without a default ('property level: int', 'property get " +
+            "level: int') and a stub ('property get level(self) -> int: ...') are abstract: the implementing " +
+            "type supplies the accessor. A function-style accessor with a body is a default implementation. " +
+            "C# interface accessors are all abstract or all default implementations, so a property whose " +
+            "halves leave one accessor abstract and the other with a body has no C# shape. It is refused at " +
+            "the later half, in either order. An auto half beside a function-style accessor of the SAME " +
+            "accessor ('property get level: int' + 'property get level(self) -> int:' with a body) is one " +
+            "bodied accessor and stays legal.",
+            "interface IGauge:\n    property level: int\n    property get level(self) -> int:  # SPY0617\n        return 0",
+            "Give both halves a body, or make both abstract:\n" +
+            "  interface IGauge:\n      property get level(self) -> int:\n          return 0\n" +
+            "      property set level(self, v: int):\n          print(v)\n\n" +
+            "  interface IGauge:\n      property get level(self) -> int: ...\n" +
+            "      property set level(self, v: int): ...");
     }
 }

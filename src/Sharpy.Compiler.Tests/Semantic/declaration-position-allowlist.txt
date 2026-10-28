@@ -174,18 +174,6 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # (an abstract auto-both half, then a bodied half, then a duplicate) are one SPY0204 at the third instead of
 # SPY0617 at the second. CREATED by P21h Phase 1; drains in P21h Phase 2 (D2's seam arm, D3's all-auto arm
 # and SPY0407 arm, D4's roster).
-member-pair × interface × property-field → property-get  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-field → property-set  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-get → property-field  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-set → property-field  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-get → property-auto-set  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-get → property-set-stub  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-set → property-auto-get  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-set → property-get-stub  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-auto-get → property-set  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-auto-set → property-get  # #2382 R-JG refusal; ice CS0525
-member-pair × interface × property-get-stub → property-set  # #2382 R-JG refusal; ice CS0525 (SPY0909 "No StatementLowering" — the bodied setter after a stub getter is unchecked)
-member-pair × interface × property-set-stub → property-get  # #2382 R-JG refusal; ice CS0525
 member-pair × class × property-auto-get → property-auto-set  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
 member-pair × class × property-auto-set → property-auto-get  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
 member-pair × struct × property-auto-get → property-auto-set  # #2382 legal merge (split auto halves); ice CS0161 + CS0176 (struct + CS0100, CS0229)
@@ -198,8 +186,8 @@ member-pair × class × property-auto-get → property-auto-set-def  # #2382 two
 member-pair × class × property-auto-set-def → property-auto-get  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
 member-pair × struct × property-auto-get → property-auto-set-def  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
 member-pair × struct × property-auto-set-def → property-auto-get  # #2382 two defaulted auto halves → SPY0407 (ruling 2026-10-28 (a)); silent, ice CS0161 under run
-member-chain × interface × property-field → property-get → property-get  # #2382 R-JG in a chain; SPY0204 at the third instead of SPY0617 at the second
-member-chain × interface × property-field → property-set → property-set  # #2382 R-JG in a chain; SPY0204 at the third instead of SPY0617 at the second
+member-chain × interface × property-field → property-get → property-get  # #2382 R-JG in a chain; drains with D7 (Phase 3) — SPY0617 at the second, and again at the third (the refused half is not recorded, so the third is complementary too) instead of the third's silence
+member-chain × interface × property-field → property-set → property-set  # #2382 R-JG in a chain; drains with D7 (Phase 3) — SPY0617 at the second, and again at the third (the refused half is not recorded, so the third is complementary too) instead of the third's silence
 
 # A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
 # struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under

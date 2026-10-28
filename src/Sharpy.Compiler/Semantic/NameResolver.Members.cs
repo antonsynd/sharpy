@@ -305,7 +305,28 @@ internal partial class NameResolver
                 return;
             if (claim == MemberClaim.Declared)
                 RecordAccessorDeclarations(owningType, propDef.Name, isEvent: false, propDef.LineStart);
-            AccessorDeclarationsOf(owningType, propDef.Name)!.Add(form);
+            var accessors = AccessorDeclarationsOf(owningType, propDef.Name)!;
+            var body = AccessorDeclarations.BodyOf(propDef, owningType);
+
+            // R-JG (#2382): an interface's accessors are all abstract or all default
+            // implementations — `{ get; set { … } }` is a field-backed semi-auto property to C#
+            // (CS0525). So a complementary half that leaves one accessor abstract and the other
+            // bodied is refused at the later half, whichever order the halves come in. Like a
+            // refused claim, the half is not added.
+            if (claim == MemberClaim.Merged
+                && owningType.TypeKind == TypeKind.Interface
+                && accessors.MixesAbstractWithBodied(form, body))
+            {
+                AddError(
+                    $"'{propDef.Name}' mixes an abstract accessor with an accessor that has a body in interface "
+                    + $"'{owningType.Name}' (line {accessors.Line}): C# interface accessors are all abstract or all "
+                    + "default implementations — give both halves a body, or make both abstract ('...')",
+                    propDef.LineStart, propDef.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.InterfaceAccessorsMustAgreeOnBody, span: propDef.Span);
+                return;
+            }
+
+            accessors.Add(form, body);
         }
 
         // The record a merge REPLACES (getter + setter combined into one PropertySymbol). Not a
@@ -791,9 +812,24 @@ internal partial class NameResolver
             Line = line;
         }
 
+        /// <summary>What a property half puts in the accessor slots it fills (D2, R-JG): no body
+        /// (<see cref="Abstract"/> — an auto half without a default, a stub), a default value (an auto
+        /// half with one — never judged here: an interface's defaulted auto half is #2383's), or a
+        /// function-style body. Ordered so a slot's class is the strongest of the halves filling it — a
+        /// function-style getter beside an auto half supplies the getter's body.</summary>
+        internal enum Body
+        {
+            None = 0,
+            Abstract = 1,
+            Defaulted = 2,
+            Bodied = 3,
+        }
+
         internal bool IsEvent { get; }
         internal int Line { get; }
         private Form _filled;
+        private Body _getBody;
+        private Body _setBody;
 
         /// <summary>A property's half: the slots it fills (see the class summary) — <c>set</c> and
         /// <c>init</c> are both the write slot.</summary>
@@ -834,7 +870,43 @@ internal partial class NameResolver
             return (_filled & incoming) == 0;
         }
 
-        internal void Add(Form form) => _filled |= form;
+        /// <summary>A property half's <see cref="Body"/>: an auto half is <see cref="Body.Defaulted"/>
+        /// with a default and <see cref="Body.Abstract"/> without; a function-style half is abstract by
+        /// the one abstractness rule (a stub in an interface, <c>@abstract</c>), else
+        /// <see cref="Body.Bodied"/>.</summary>
+        internal static Body BodyOf(PropertyDef propDef, TypeSymbol owner)
+        {
+            if (!propDef.IsFunctionStyle)
+                return propDef.DefaultValue != null ? Body.Defaulted : Body.Abstract;
+            return Shared.MemberClassification.IsAbstract(propDef, owner.TypeKind, owner.IsAbstract)
+                ? Body.Abstract
+                : Body.Bodied;
+        }
+
+        /// <summary>
+        /// Whether adding <paramref name="incoming"/> (a half <see cref="Admits"/> accepted) would leave
+        /// one accessor abstract and the other bodied — R-JG's interface refusal. Read from the slots,
+        /// not the order: an auto half of both slots beside a function-style getter leaves the setter
+        /// abstract; an auto getter beside a function-style getter fills ONE slot and is a body for it
+        /// (the same-slot merge stays legal); a defaulted slot is neither side.
+        /// </summary>
+        internal bool MixesAbstractWithBodied(Form incoming, Body body)
+        {
+            var get = Max(_getBody, (incoming & (Form.AutoGet | Form.FunctionGet)) != 0 ? body : Body.None);
+            var set = Max(_setBody, (incoming & (Form.AutoSet | Form.FunctionSet)) != 0 ? body : Body.None);
+            return (get, set) is (Body.Abstract, Body.Bodied) or (Body.Bodied, Body.Abstract);
+        }
+
+        internal void Add(Form form, Body body = Body.None)
+        {
+            _filled |= form;
+            if ((form & (Form.AutoGet | Form.FunctionGet)) != 0)
+                _getBody = Max(_getBody, body);
+            if ((form & (Form.AutoSet | Form.FunctionSet)) != 0)
+                _setBody = Max(_setBody, body);
+        }
+
+        private static Body Max(Body a, Body b) => a > b ? a : b;
     }
 
     /// <summary>The merge's accessor-slot bookkeeping per type-body property or event, keyed by the owner

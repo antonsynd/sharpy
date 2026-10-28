@@ -301,6 +301,20 @@ public class CsLeakRegressionCorpusTests
             def main() -> None:
                 print("built")
             """);
+
+        // #2382 — an interface property's abstract half (an undefaulted auto half) beside a
+        // setter with a body emitted `int a { get; set { … } }`, a field-backed semi-auto
+        // property, which an interface cannot hold: CS0525 behind SPY0908. Now refused by
+        // SPY0617 before codegen.
+        yield return Case("#2382-interface-abstract-beside-bodied", """
+            interface IGauge:
+                property get level: int
+                property set level(self, v: int):
+                    print(v)
+
+            def main() -> None:
+                print("built")
+            """);
     }
 
     [Theory]

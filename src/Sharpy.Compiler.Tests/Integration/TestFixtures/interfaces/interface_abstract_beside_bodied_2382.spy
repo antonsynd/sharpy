@@ -1,0 +1,50 @@
+# #2382 (P21h, R-JG): in an INTERFACE body an abstract half — an auto half without a default, or a
+# `...` stub — beside a function-style accessor WITH a body that fills the other accessor is refused
+# at the later half (SPY0617), in either order. C# interface accessors are all abstract or all default
+# implementations; `{ get; set { … } }` was CS0525 behind SPY0908 (the stub getter THEN bodied setter
+# cell was SPY0909). The legal halves are interface_property_split_accessors_2360.
+
+# An auto half of both accessors, then a getter with a body: the setter stays abstract.
+interface AutoThenGetter:
+    property a: int
+    property get a(self) -> int:
+        return 6
+
+
+# The same pair, getter first.
+interface GetterThenAuto:
+    property get b(self) -> int:
+        return 6
+    property b: int
+
+
+# An auto getter, then a setter with a body.
+interface AutoGetThenSetter:
+    property get c: int
+    property set c(self, v: int):
+        print(v)
+
+
+# The same pair, setter first.
+interface SetterThenAutoGet:
+    property set d(self, v: int):
+        print(v)
+    property get d: int
+
+
+# A stub getter, then a setter with a body.
+interface StubGetThenSetter:
+    property get e(self) -> int: ...
+    property set e(self, v: int):
+        print(v)
+
+
+# A getter with a body, then a stub setter.
+interface GetterThenStubSet:
+    property get f(self) -> int:
+        return 6
+    property set f(self, v: int): ...
+
+
+def main() -> None:
+    print("unreachable")
