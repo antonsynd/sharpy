@@ -302,7 +302,10 @@ internal partial class NameResolver
                     && declared.Admits(form),
                 propDef.LineStart, propDef.ColumnStart, propDef.Span);
             if (claim == MemberClaim.Refused)
+            {
+                owningType.RefuseDeclaration(propDef);
                 return;
+            }
             if (claim == MemberClaim.Declared)
                 RecordAccessorDeclarations(owningType, propDef.Name, isEvent: false, propDef.LineStart);
             var accessors = AccessorDeclarationsOf(owningType, propDef.Name)!;
@@ -323,6 +326,7 @@ internal partial class NameResolver
                     + "default implementations — give both halves a body, or make both abstract ('...')",
                     propDef.LineStart, propDef.ColumnStart,
                     code: DiagnosticCodes.SemanticOverflow.InterfaceAccessorsMustAgreeOnBody, span: propDef.Span);
+                owningType.RefuseDeclaration(propDef);
                 return;
             }
 
@@ -408,7 +412,10 @@ internal partial class NameResolver
                 && declared.Admits(form),
             eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
         if (claim == MemberClaim.Refused)
+        {
+            owningType.RefuseDeclaration(eventDef);
             return;
+        }
         if (claim == MemberClaim.Declared)
             RecordAccessorDeclarations(owningType, eventDef.Name, isEvent: true, eventDef.LineStart);
         AccessorDeclarationsOf(owningType, eventDef.Name)!.Add(form);

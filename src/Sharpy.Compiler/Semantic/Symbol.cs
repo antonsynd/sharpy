@@ -508,6 +508,22 @@ public record TypeSymbol : Symbol
     // multiple __init__ methods that map to C# constructor overloads
     public SymbolMemberList<FunctionSymbol> Constructors { get; init; } = new();
 
+    /// <summary>
+    /// The property and event declarations of this type's body that the member seam REFUSED — a
+    /// second meaning of a name (SPY0204), a duplicate accessor half, an interface abstract half
+    /// beside a bodied one (SPY0617) — by reference identity (AST nodes are records). Later
+    /// consumers that group a body's declarations by name read only the admitted ones, so a refused
+    /// half draws its one refusal and no cascade (P21h D7, R-JO). Written only by the resolver.
+    /// </summary>
+    public IReadOnlySet<Statement> RefusedDeclarations => _refusedDeclarations;
+    private readonly HashSet<Statement> _refusedDeclarations = new(ReferenceEqualityComparer.Instance);
+
+    internal void RefuseDeclaration(Statement declaration)
+    {
+        ThrowIfFrozen();
+        _refusedDeclarations.Add(declaration);
+    }
+
     // Union cases (only populated for TypeKind.Union)
     public SymbolMemberList<TypeSymbol> UnionCases { get; init; } = new();
 
