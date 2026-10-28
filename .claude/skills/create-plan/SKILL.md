@@ -1,21 +1,23 @@
 ---
 name: create-plan
 description: Create an implementation plan from GitHub issues or a description
-argument-hint: "<issue numbers or description>"
+argument-hint: "<issue numbers or description> [--light | --full]"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class and §11 one-group-per-plan included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
+Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
 
-Create a detailed implementation plan with context, rationale, and tasks for an engineer to follow. Saves the plan as a markdown file in `.claude/plans/` (repo-local, gitignored).
+Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the task list, phases and commit messages below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Saves the plan as a markdown file in `.claude/plans/` (repo-local, gitignored).
 
 **Usage:**
-- `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan
-- `/create-plan fix the 5 bugs from the audit` — create a plan from a description
+- `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan at the charter's tier
+- `/create-plan 222,223 --light` / `--full` — force a tier; recorded as `override:` in `## Scope` when it differs from the charter
+- `/create-plan fix the 5 bugs from the audit` — create a plan from a description (no charter row → the tier is derived from the §12 letters and stated)
 - `/create-plan` — ask the user what to plan
 
 ## Argument Handling
 
 Parse `$ARGUMENTS`:
+- Strip a trailing `--light` or `--full` and remember it as the requested tier
 - If it looks like comma-separated numbers (e.g., `222,223,224`), treat them as GitHub issue numbers
 - If it looks like a description, use it as the planning goal
 - If empty, ask the user what they want to plan. If they want to extend or re-plan an existing plan, list the three newest across **both** plan directories and ask which one — never silently pick one:
@@ -27,6 +29,18 @@ Parse `$ARGUMENTS`:
 ## Scope check (before any research)
 
 A plan implements **one non-chore group** of the round charter and lands on **one gate** (contract §11). If the issue list spans more than one group, or bundles a group that changes printed output or emitted layout with anything else, **stop and ask** which group to plan — never bundle. Chores ride along only when they touch no seam the group touches. Record the answer in the plan's `## Scope` block; a deliberate exception is written there as `override: <owner's words>`.
+
+## Tier check (contract §12, before any research)
+
+Find the group's row in the newest charter (`ls -t .claude/plans/remediation-round-*-batching.md | head -1`, §1 table and §3 row) and read its **Tier**. Then:
+- **Charter says `band`** — stop: a chore has no plan; implement it as one commit and say so.
+- **Charter says `light`** and no `--full` was given — write the **light template** (below). The report names `/verify-plan <path>` as the next step; on a light plan it runs its `--adequacy` pass (Dimensions 4-design, 6 and 7 by a fresh reader, nothing else).
+- **Charter says `full`** — write the full template; the report names `/verify-plan` as the next step.
+- **No charter row** (description input, or an issue batched since the last call) — derive the tier yourself from the §12 letters (a–e), write the letter or "none → light" into `## Scope`, and say in the report that the tier is derived, not ruled.
+- **A flag disagrees with the charter** — obey the flag, write `override: <the user's words>` in `## Scope`, and say so in the report. Never silently promote or demote.
+- **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop, say which letter, and ask whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
+
+**Light template** = the full template with these omissions and nothing else: `## Current State` is one measured paragraph, `## Adversarial Review` keeps only the inert-fix and blast-radius lines, `## Implementation` is **replaced** by `## Acceptance` — the class-level acceptance bullets (matrix/sweep that goes green, guard mutation, allowlist drain, execution evidence) with no phases, tasks or commit messages — and `## Testing Strategy` folds into it. Everything else (`## Scope` with `tier: light`, `## Defect Class`, `## Design Decisions` with rungs, `## Issues to Close` with close criteria, `## Class trackers`) is written in full: those are the decisions an implementer must not re-derive. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting — the light `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
 
 ## Steps
 
@@ -78,6 +92,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 ## Scope
 
 - **Group:** <P<n> — name> (one non-chore group; chores riding along: <none | #… — seam-free because …>)
+- **Tier:** <light | full (<letter a–e>: <one clause>)> — <from charter §3.<k> | derived, not ruled | override: <words>> (contract §12)
 - **Alone:** <yes — changes printed output / emitted layout | no>
 - **Gates:** 1
 - **Filing:** cells outside the contract go to the findings ledger; the lead files by class (contract §10); trackers named at the end of this plan
@@ -174,5 +189,5 @@ Tell the user:
 - The plan file path
 - A brief summary of phases and task count
 - For bug/ICE inputs: the class, the matrix size, and the standing harness named (or the phase that adds one)
-- The scope line: group, alone?, gates, generator (existing / built first / not required), and the trackers named
-- Suggest running `/verify-plan <path>` before `/implement-plan <path>` — `/verify-plan` grades adequacy (class vs cell), not just accuracy
+- The scope line: group, **tier with its letter and its source (charter / derived / override)**, alone?, gates, generator (existing / built first / not required), and the trackers named
+- The next step **by tier** (contract §12): `full` → `/verify-plan <path>` (nine dimensions) before `/implement-plan <path>`; `light` → `/verify-plan <path>` (runs `--adequacy`: matrix arms, guard mutations, design predicates — by a fresh reader) before `/implement-plan <path>`, quoting the `check_plan_refs.py` result

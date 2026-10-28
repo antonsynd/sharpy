@@ -1,10 +1,15 @@
 ---
 name: verify-plan
 description: Verify a plan for accuracy, architectural soundness, and adequacy (class, not cell)
-argument-hint: "<path/to/plan.md>"
+argument-hint: "<path/to/plan.md> [--adequacy]"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding (§10–§11 included); every dimension below applies it. **Stance: refute** — for each claim, look for the input that shows it wrong; a dimension passes only after naming what was tried. A plan whose file paths are all accurate can still fail: a bug-fix plan that patches one cell of a class is **NEEDS REVISION**, however correct its references.
+Read `docs/design/verification-contract.md` before proceeding (§10–§12 included); every dimension below applies it.
+
+**Mode by tier (contract §12).** Read the plan's `## Scope` → **Tier** line first.
+- `tier: full`, or no Tier line (plans created before 2026-10-28) → the nine-dimension pass below.
+- `tier: light` → **`--adequacy` mode**, whether or not the flag was typed: run `check_plan_refs.py` (Dimension 1's mechanical half), then grade **Dimension 6** (adequacy: list the touched dispatch/route arms yourself and name every arm the matrix lacks), **Dimension 7** (falsifiability: each guard's mutation, exemption-is-subject check, positive control, inert-fix path) and the **design-decision rows of Dimension 4** (does each `## Design Decisions` predicate hold against the code it names — read the code, not the plan). Skip Dimensions 2, 3, 5, 8 and 9. Make **no inline corrections**: write findings into the Verification Summary and set the result; the author fixes the plan. The ten-round review behind §12 found that every plan-reading catch with no downstream catcher was one of these three kinds, and that the other dimensions produced only corrections the build or the generator would have hit again. The light pass is a **fresh read**: if this session wrote the plan, spawn a fresh agent for the pass and relay its summary — anchoring is the failure this stage exists to break.
+- A typed `--adequacy` on a `full` plan, or a request for the nine-dimension pass on a `light` plan, is an override: do it, and write `override: <the user's words>` into `## Scope`. **Stance: refute** — for each claim, look for the input that shows it wrong; a dimension passes only after naming what was tried. A plan whose file paths are all accurate can still fail: a bug-fix plan that patches one cell of a class is **NEEDS REVISION**, however correct its references.
 
 Reads the plan, extracts every verifiable claim, checks each against the codebase at a named sha, grades the plan's *adequacy* against the defect class it claims to fix, and edits the plan directly: corrections inline, a stamp at the top, a Verification Summary at the end.
 
@@ -157,6 +162,8 @@ After verification, edit the plan file directly.
 <!-- Adequacy: [CLASS / CELL / N/A] -->
 <!-- Scope: [ONE-GROUP / MULTI-GROUP (override) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
 ```
+
+In `--adequacy` mode the first line reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`, the result is `PASS` or `NEEDS REVISION` (there are no inline corrections to make it "WITH CORRECTIONS"), and the Verification Summary carries only the `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims` blocks. `/implement-plan` requires this stamp on a light plan.
 
 Result:
 - **PASS** — no errors; at most minor suggestions

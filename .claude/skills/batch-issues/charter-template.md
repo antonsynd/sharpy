@@ -19,19 +19,22 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 - Regen generated artifacts EARLY; the `check_*_staleness.sh` scripts are the gate.
 - New node-keyed `SemanticInfo` dictionaries join `MergeFrom`; new symbol-keyed facts freeze at `MaterializeCodeGenInfo`.
 - One non-chore group per plan, one gate; output- or layout-changing groups land alone; a residue group builds its generator FIRST (contract §11).
+- The tier is a charter fact (contract §12): band / light / full per §1; a stage the tier skips is not run, an execution auditor is never skipped, and a tier moves only upward once planning has begun.
 - File by class, label at creation: a cell outside a task's contract is a comment on its class tracker or ONE class issue with a cell table; lanes append to the findings ledger, the lead files; DEVIATION-by-default surfaces are ledger rows (contract §10, `python-fidelity-scope.md`).
 
 ---
 
 ## 1. Execution order (authoritative)
 
-| Order | Group | Lane | Alone? | Generator | Plan file | Issues |
-|---|---|---|---|---|---|---|
-| 0 | **chores** (§3.0; independent, one commit each) | mixed | — | — | — | <#…> |
-| 1 | **P<n> — <name>** | <lane> | <yes: output/layout change / no> | <harness name / required first / n-a> | — | <#… (R-xx)> |
-| … | … | … | … | … | … | … |
-| — | parked / roadmap (<P>) | — | <#…> |
-| — | release | — | <version vs tag> — `/bump-version` before any release-destined push |
+| Order | Group | Tier | Lane | Alone? | Generator | Plan file | Issues |
+|---|---|---|---|---|---|---|---|
+| 0 | **chores** (§3.0; independent, one commit each) | band | mixed | — | — | — | <#…> |
+| 1 | **P<n> — <name>** | <light / full (<letter a–e>)> | <lane> | <yes: output/layout change / no> | <harness name / required first / n-a> | — | <#… (R-xx)> |
+| … | … | … | … | … | … | … | … |
+| — | parked / roadmap (<P>) | — | — | <#…> |
+| — | release | — | — | <version vs tag> — `/bump-version` before any release-destined push |
+
+**Tier** (contract §12): `band` = no plan, one commit each, the band's gate verifies; `light` = `/create-plan --light` → `/verify-plan` (`--adequacy`: matrix arms, guard mutations, design predicates only) → `/implement-plan` → `/verify-implementation` (Agents 2, 3, 4; completeness by the lead); `full` = all four stages in full. A group is `full` only for a named letter: (a) open decision / unpromoted DEVIATION surface, (b) `Generator: REQUIRED FIRST`, (c) seam in `Semantic/`·`Lowering/`·`CodeGen/` or `alone`, (d) residue of a group that already passed a verify round, (e) owner's call. Tiers move only upward after planning.
 
 **Ordering rationale (owner-confirmed <date>):** <silent-wrong → ICE-on-common-shape → refusal parity; Core-only early; acceptance→refusal groups late>. **Hard dependencies:** <A before B because B reads A's carrier/helper>.
 
@@ -49,7 +52,7 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 - **#N** — <seam; one-line cure; direction record or mutation>.
 
 ### 3.<k> P<n> — <name>
-**Contract:** <one sentence: what is uniform across which axis>. **Matrix:** <axes × values>. **Lane / reach:** <lane · program|probe>. **Fidelity-scope row:** <COMPARED row | DEVIATION-by-default → promote-or-record decision D<n>>. **Standing harness:** <name | none; the plan adds one>. **Generator:** <existing harness the cells join | REQUIRED FIRST (residue group / ≥2 axes × ≥3 values) | not required: <the axis a generator cannot enumerate>>. **Class tracker:** #<N>.
+**Tier:** <light | full (<letter>: <one clause — the open D-number / the generator / the seam directory / the escaped predecessor / the owner's words>)>. **Contract:** <one sentence: what is uniform across which axis>. **Matrix:** <axes × values>. **Lane / reach:** <lane · program|probe>. **Fidelity-scope row:** <COMPARED row | DEVIATION-by-default → promote-or-record decision D<n>>. **Standing harness:** <name | none; the plan adds one>. **Generator:** <existing harness the cells join | REQUIRED FIRST (residue group / ≥2 axes × ≥3 values) | not required: <the axis a generator cannot enumerate>>. **Class tracker:** #<N>.
 - **#N** (<R-xx if ruled>) — <lane · reach>; <cells measured @ sha | unmeasured>; <placement note; allowlist rows that drain>. No seam hypotheses (contract §10; skill §3).
 
 ### 3.<last> Parked / roadmap (<P>) — unchanged

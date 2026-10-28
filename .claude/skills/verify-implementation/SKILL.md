@@ -4,7 +4,7 @@ description: Verify completed plan implementation with refuting auditors, a cont
 argument-hint: "<path/to/plan.md>"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class and §11 one-group-per-plan included); every audit below applies it.
+Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every audit below applies it.
 **Stance: refute, not confirm** — an auditor reports NOT REFUTED only after naming what it tried.
 
 Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here — the 2026-09-26 round grew eight fix lanes and thirty worktrees by widening, and its own fixes filed ten more issues.
@@ -40,6 +40,10 @@ Before spawning any agents, perform these checks yourself:
   - **PASS** / **PASS WITH CORRECTIONS**: proceed
   - `<!-- Adequacy: CELL -->` on a bug-fix plan: the Sibling-cell prober (Agent 4) is mandatory and must build its own matrix; say so in the report
 - Locate the `/implement-plan` evidence — `git log --oneline` for commits referencing the plan, or the plan's own implementation checklist/commit table
+
+### 1b. Read the tier (contract §12)
+
+Read the plan's `## Scope` → **Tier** line. `light` → this round spawns **Agents 2, 3 and 4** and skips Agent 1: the completeness checklist (§4 below) is still built, and the **lead checks every acceptance bullet and every "Issues to Close" criterion itself** during Final Verification — the executing ones by running them, the pinned-text ones by grep (P46's unmet "pinned text" bullet was an Agent 1 catch; the lead now owns it). Agent 3 stays whole: its code-reading (seam-or-arm, oracle drift, exemption-is-subject) produced wrong-result catches in the ten-round review behind §12, so it is not a reading stage a tier may drop. `full`, or no Tier line → all four auditors. Say the tier and the auditor set in the report header. An execution auditor is never skipped at either tier; `override: <words>` in `## Scope` is the only way to add Agent 1 to a light round.
 
 ### 2. Establish the scope: base sha → HEAD
 
@@ -426,6 +430,7 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 ## Implementation Verification Report
 
 **Plan:** [plan file path] (stamp: PASS / PASS WITH CORRECTIONS / NEEDS REVISION / none; Adequacy: CLASS / CELL / N/A)
+**Tier:** [light — Agents 2, 3, 4; completeness by the lead / full — Agents 1–4] (contract §12)
 **Branch:** [current branch]
 **Scope:** `$BASE..$FINAL` (base = parent of first implementation commit; N implementation commits, M remediation commits)
 **Verified on:** YYYY-MM-DD

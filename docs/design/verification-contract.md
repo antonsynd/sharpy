@@ -292,3 +292,68 @@ from 2026-09-03 to 09-26.
 multi-group plan without an explicit override; every round report states `filed / closed` and the
 open count per lane. Red = a second non-chore group in a plan, an output- or layout-changing phase
 sharing a gate, or a residue group without a generator task.
+
+## 12. The verification tier is a charter fact; execution evidence is never skipped, plan-reading is
+
+Every charter group carries a **tier** that names which stages it runs. The tier is assigned at
+`/batch-issues` from the criteria below, printed in the charter's §1 table and §3 row, and read by
+every downstream skill. A skill never runs a stage the tier skips and never skips one the tier runs;
+only the owner changes a tier, and only upward (band → light → full) once implementation has begun.
+
+| Tier | Plan | `/verify-plan` | `/implement-plan` | `/verify-implementation` |
+|---|---|---|---|---|
+| **band** | none (charter §3.0 row) | — | one commit per chore; the band's gate + staleness gates are the verification | — |
+| **light** | `/create-plan --light`: design-of-record only (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria); no task list | `/verify-plan --adequacy`: a fresh reader grades Dimensions 6 and 7 only (matrix vs the touched arms; each guard's mutation, exemption and positive control) and the design decisions' predicates (Dimension 4's design rows); `check_plan_refs.py` replaces Dimension 1; Dimensions 2, 3, 5, 8, 9 are skipped and nothing is corrected inline | unchanged | Agents 2, 3 (whole) and 4; the lead checks every acceptance bullet itself in place of Agent 1 |
+| **full** | `/create-plan` | all nine dimensions | unchanged | all four auditors |
+
+A group is **full** when any one holds, and the charter row names the letter:
+(a) a decision is still open at planning time, or the group's surface is DEVIATION-by-default
+without a promotion ruling — the plan is where the door gets written up for the owner;
+(b) `Generator: REQUIRED FIRST` (a ≥2-axis × ≥3-value matrix or a residue group) — the harness
+design is what `/verify-plan` Dimension 7 mutation-tests before anyone builds on it;
+(c) the cure seam is under `Semantic/`, `Lowering/` or `CodeGen/`, or the group is `alone`
+(printed-output or emitted-layout change) — the full blast radius;
+(d) the group is the residue of a group that already passed a verify round and escaped
+(P21e → P21f → P21g) — the pipeline itself failed on this class once, so the cheap tier has
+already been tried;
+(e) the owner says so.
+Everything else is **light** by default: LSP, CLI, formatter, tooling, infrastructure, Core-only
+groups whose seam the charter measured, spec and docs groups. A chore (one commit, seam-free, no
+new guard beyond its own mutation) is **band**.
+
+**Promotion in flight.** `/implement-plan` promotes a light group to full — stop, record the
+ruling in the plan, ask the owner — when the implementer hits a door the charter did not rule, or
+when the seam moves into `Semantic/`, `Lowering/` or `CodeGen/`. A light group is never demoted to
+band after a guard has been written, and nothing is ever demoted below the tier the charter names.
+
+*Why:* across every plan in `.claude/plans/` through 2026-10-28, `/verify-plan` returned PASS WITH
+CORRECTIONS on 53 of 53 first-pass stamps; it has never stopped a plan, and its one NEEDS REVISION
+(plan-4d6288) became PASS the moment the owner ruled D1 — a door, not a reading defect. Ten rounds
+(P50, P53, P46, P54, P63, P68, P21e, P63b, P21f, P21g) were then read catch by catch, each catch
+tagged by the stage that found it, the evidence that found it (reading / execution / ruling) and
+whether the landed result would have been wrong without it (five Opus ledgers, 2026-10-28,
+387 catches): 149 would have landed wrong. 120 of those 149 were caught at `/implement-plan` or
+`/verify-implementation`, 107 of the 149 by execution — a control run at the base sha, a mutation
+that stayed green, a probe against the built binary, a regenerated artifact that moved. `/verify-plan`
+made 132 corrections, of which 20 were wrong-result catches (15 by reading, 4 by probes it ran
+itself, 1 by surfacing a door that landed wrong anyway); the other 112 were stale shas, file:line
+drift, API spellings and matrix wording that the build, the generator or the census hit again
+downstream. It also introduced five errors and endorsed six plan claims that execution later refuted.
+Only four of its reading catches have no plausible downstream catcher (P53's missing `didClose`
+route, P21f's event-declaration predicate, P63b's cite regex the issue-state gate could not see,
+P54's order-dependent framework set) — and every one of the four is a Dimension 6 matrix arm, a
+Dimension 7 vacuous instrument, or a design decision's predicate. Those dimensions, read by a fresh
+context, are what the light tier keeps; the dimensions that produced only waste are what it drops.
+Reading the LANDED DIFF kept paying (21 wrong-result catches by the refuting auditors at
+implement/verify), so no reading auditor that reads code is dropped at any tier; only the
+completeness read moves to the lead.
+
+*Check:* the charter's §1 table has a `Tier` column and every §3 row a `**Tier:**` field with its
+letter; `/create-plan` refuses to write a full-template plan for a light group (and vice versa)
+without `override: <owner's words>` in `## Scope`; `/verify-plan` on a light plan runs
+`--adequacy` and stamps `Adequacy-only`, and refuses the nine-dimension pass unless overridden;
+`/implement-plan` refuses a light plan without the `Adequacy-only` stamp and a clean
+`check_plan_refs.py` report, and a full plan without a stamp; `/verify-implementation` on a light
+plan spawns Agents 2, 3 and 4 and says so in its report header. Red = a stage run against the tier
+without a recorded override, an execution auditor skipped at any tier, a tier demoted after
+planning, or a §3 row with no letter.
