@@ -1,0 +1,142 @@
+# P21h D8 (#2384, R-JJ): a bare class-body read outside a method resolves exactly the siblings C#
+# resolves in its position. Every initializer position — a plain class's field initializer, a
+# property default in any host, a @static initializer, a const initializer (static readonly) — reads
+# a const, a @static field, a @static property and a @static method; a parameter default and a
+# struct/dataclass instance field initializer (the synthesized constructor's parameter default) read
+# a const. Each line prints the four siblings' values: 1 2 4 6 — except that a @static FIELD or a
+# const initializer does not read the @static PROPERTY (refused, #2396: the emitter lays fields out
+# before properties, so that static initializer would run first and read 0); those lines print 1 2 6.
+# The refusals are pinned by bare_member_name_in_method_2360.error and ClassBodyReadPositionMatrixTests.
+
+
+class Plain:
+    const K: int = 1
+    @static
+    s: int = 2
+    @static
+    property sp: int = 4
+    @static
+    def sm() -> int:
+        return 6
+
+    f1: int = K
+    f2: int = s
+    f3: int = sp
+    f4: int = sm()
+    @static
+    g1: int = K
+    @static
+    g2: int = s
+    @static
+    g4: int = sm()
+    property p1: int = K
+    property p2: int = s
+    property p3: int = sp
+    property p4: int = sm()
+    @static
+    property q1: int = K
+    @static
+    property q2: int = s
+    @static
+    property q3: int = sp
+    @static
+    property q4: int = sm()
+    const C1: int = K
+    const C2: int = s
+    const C4: int = sm()
+
+    def m(self, x: int = K) -> int:
+        return x
+
+
+struct Pair:
+    const K: int = 1
+    @static
+    s: int = 2
+    @static
+    property sp: int = 4
+    @static
+    def sm() -> int:
+        return 6
+
+    fk: int = K
+    @static
+    g1: int = K
+    @static
+    g2: int = s
+    @static
+    g4: int = sm()
+    property p1: int = K
+    property p2: int = s
+    property p3: int = sp
+    property p4: int = sm()
+    @static
+    property q1: int = K
+    @static
+    property q2: int = s
+    @static
+    property q3: int = sp
+    @static
+    property q4: int = sm()
+    const C1: int = K
+    const C2: int = s
+    const C4: int = sm()
+
+
+@dataclass
+class Rec:
+    const K: int = 1
+    @static
+    s: int = 2
+    @static
+    property sp: int = 4
+    @static
+    def sm() -> int:
+        return 6
+
+    fk: int = K
+    @static
+    g1: int = K
+    @static
+    g2: int = s
+    @static
+    g4: int = sm()
+    property p1: int = K
+    property p2: int = s
+    property p3: int = sp
+    property p4: int = sm()
+    @static
+    property q1: int = K
+    @static
+    property q2: int = s
+    @static
+    property q3: int = sp
+    @static
+    property q4: int = sm()
+    const C1: int = K
+    const C2: int = s
+    const C4: int = sm()
+
+
+def main() -> None:
+    a = Plain()
+    print(a.f1, a.f2, a.f3, a.f4)
+    print(Plain.g1, Plain.g2, Plain.g4)
+    print(a.p1, a.p2, a.p3, a.p4)
+    print(Plain.q1, Plain.q2, Plain.q3, Plain.q4)
+    print(Plain.C1, Plain.C2, Plain.C4)
+    print(a.m())
+
+    b = Pair()
+    print(b.fk)
+    print(Pair.g1, Pair.g2, Pair.g4)
+    print(b.p1, b.p2, b.p3, b.p4)
+    print(Pair.q1, Pair.q2, Pair.q3, Pair.q4)
+    print(Pair.C1, Pair.C2, Pair.C4)
+
+    c = Rec()
+    print(c.fk)
+    print(Rec.g1, Rec.g2, Rec.g4)
+    print(c.p1, c.p2, c.p3, c.p4)
+    print(Rec.q1, Rec.q2, Rec.q3, Rec.q4)
+    print(Rec.C1, Rec.C2, Rec.C4)

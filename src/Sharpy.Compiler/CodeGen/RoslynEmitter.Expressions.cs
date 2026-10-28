@@ -313,6 +313,13 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateIdentifierExpression(Identifier name)
     {
+        // An admitted class-body sibling read outside a method (P21h D8, R-JJ): the checker recorded
+        // the member's C# name, and C# resolves it by that simple name in the initializer or default
+        // it sits in — the shape a const read already emits (`public int B = K;`). There is no local
+        // behind it to look up.
+        if (_context.SemanticInfo?.GetClassBodySiblingRead(name) is { } siblingRead)
+            return EscapedIdentifierName(siblingRead.MemberCSharpName);
+
         // In an accessor body, the accessor's named incoming value is a MAPPING onto the C# name
         // that carries it, not a declaration — an event handler parameter and a property setter's
         // value parameter both become C#'s implicit `value`, and an observer's parameter becomes

@@ -1,0 +1,18 @@
+# #2396 (P21h D8): a @static field's or a const's initializer reading a @static PROPERTY is refused
+# until the emitter lays static members out in source order — in the generated C# the fields come
+# first, so that initializer would run before the property's and read 0 (the qualified spelling
+# `Host.sp` still does, #2396). The positive control is class_body_sibling_reads_2384: a @static
+# property's default reading the same sibling runs 4 (properties keep their order).
+
+
+class Host:
+    @static
+    property sp: int = 4
+
+    @static
+    g: int = sp
+    const C: int = sp
+
+
+def main() -> None:
+    print(Host.g, Host.C)

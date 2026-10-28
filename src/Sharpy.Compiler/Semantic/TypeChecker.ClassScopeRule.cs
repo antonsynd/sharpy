@@ -355,6 +355,25 @@ internal partial class TypeChecker
         bool resolves = ClassBodyReadAdmits(reader.Position, member)
             || (reader.Position == ClassBodyReadPosition.ParameterDefault
                 && member.IsStatic && member.Kind != TypeBodyMemberKind.Event);
+        // #2396 (owner ruling (A) 2026-10-28, P21h; drains with #2396): the emitter lays a type's
+        // fields out before its properties and C# runs static initializers in the generated text's
+        // order, so a @static FIELD's or a const's initializer reading a @static PROPERTY would read
+        // the property before its default is set — 0, silently, whatever the spelling. Until the
+        // layout follows the source, that one cell is refused.
+        if (resolves && member is { Kind: TypeBodyMemberKind.Property, IsStatic: true }
+            && reader.Slot is ClassBodyReadSlot.Field or ClassBodyReadSlot.Const
+            && reader.Position is ClassBodyReadPosition.StaticInitializer or ClassBodyReadPosition.ConstInitializer)
+        {
+            AddError(DescribeStaticInitializationOrderRefusal(reader, member),
+                id.LineStart, id.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedVariable,
+                span: id.Span);
+            MarkExpressionAsErrorRecovery(id,
+                ErrorRecoveryReason.AlreadyReported(
+                    "a @static property read from a static field initializer (SPY0200, #2396)"));
+            return SemanticType.Unknown;
+        }
+
         if (!resolves)
         {
             AddError(DescribeClassBodySiblingRefusal(reader, member),
@@ -366,6 +385,11 @@ internal partial class TypeChecker
                     "a class-body sibling the read's position cannot reach (SPY0200, R-JJ)"));
             return SemanticType.Unknown;
         }
+
+        // The emitter writes the member's C# name bare — what C# resolves in this position — rather
+        // than looking up a local the read does not have (SemanticInfo.MergeFrom carries it to the
+        // project's merged info).
+        _semanticInfo.SetClassBodySiblingRead(id, new ClassBodySiblingRead(member.OwnerName, member.CSharpName));
 
         SemanticType type;
         switch (member.Symbol)
@@ -389,6 +413,19 @@ internal partial class TypeChecker
         if (type is LiteralStringType)
             _semanticInfo.SetLiteralDerived(id);
         return type;
+    }
+
+    /// <summary>
+    /// The SPY0200 text for a <c>@static</c> property read from a <c>@static</c> field's or a
+    /// <c>const</c>'s initializer, which C# admits but the generated member order runs too early (#2396).
+    /// </summary>
+    private static string DescribeStaticInitializationOrderRefusal(ClassBodyReader reader, TypeBodyMember member)
+    {
+        var phrase = reader.Position == ClassBodyReadPosition.ConstInitializer ? "a 'const' initializer" : "a '@static' initializer";
+        return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' property of "
+            + $"'{member.OwnerName}' — reading a '@static' property here is not supported yet: static initializers "
+            + "run in member-layout order (#2396), so it would read the property's default value. Read it in a "
+            + $"method, or make '{member.Name}' a '@static' field";
     }
 
     /// <summary>

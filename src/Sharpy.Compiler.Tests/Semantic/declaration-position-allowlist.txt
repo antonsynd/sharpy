@@ -322,30 +322,12 @@ member-chain × interface × alias → event-add+event-remove  # #2075 R-JO; two
 # initializer is SPY0200 without the position phrase or self steer, and the event and both methods in a
 # method body get no steer. Green at the base: every const read, every method-body read of a field or
 # property, and a @static field in a parameter default (SPY0401 alone). CREATED by P21h Phase 1 Task 3;
-# drains in P21h Phase 4 (D8).
-class-body-read × class × instance-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × instance-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × static-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × static-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × instance-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × instance-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × static-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × static-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × class × const-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × class × const-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × static-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × static-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × instance-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × instance-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × static-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × static-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × dataclass × const-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × dataclass × const-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × static-field-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × static-field-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × instance-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × instance-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × static-property-default × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × static-property-default × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
-class-body-read × struct × const-initializer × static-field  # #2384 R-JJ; SPY0909 No CodeGenInfo for local under run (the sibling binds, the emitter has no local)
-class-body-read × struct × const-initializer × static-property  # #2384 R-JJ; SPY0200 with the method-body text; C# admits the @static sibling
+# DRAINED in P21h Phase 4 (D8): 104 rows by the classifier/table/steers, 20 by the sibling-read fact the
+# emitter reads. The 6 rows left cite #2396: a @static PROPERTY read from a @static field's or a const's
+# initializer is refused (C# admits it, but the emitter lays fields before properties, so it would read 0).
+class-body-read × class × static-field-initializer × static-property  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × class × const-initializer × static-property  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × dataclass × static-field-initializer × static-property  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × dataclass × const-initializer × static-property  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × struct × static-field-initializer × static-property  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × struct × const-initializer × static-property  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0

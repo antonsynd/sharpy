@@ -1,0 +1,2 @@
+Undefined identifier 'sp' in a '@static' initializer. 'sp' is a '@static' property of 'Host' — reading a '@static' property here is not supported yet: static initializers run in member-layout order (#2396) @13:14
+Undefined identifier 'sp' in a 'const' initializer. 'sp' is a '@static' property of 'Host' — reading a '@static' property here is not supported yet: static initializers run in member-layout order (#2396) @14:20
