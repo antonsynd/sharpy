@@ -109,6 +109,16 @@ public static class StatementExtensions
             .FirstOrDefault(a => a != null);
 
     /// <summary>
+    /// The member key of a type-body property declaration: its name and the interface it implements
+    /// explicitly (null for a member of the type's own namespace). A bare <c>area</c> and an explicit
+    /// <c>IShape.area</c> are two properties, as in C# (R-JH, #2390), so every grouping of a body's
+    /// <see cref="PropertyDef"/>s into one property — the emitter's, the property validator's, the
+    /// checker's annotation family — keys on this, never on <see cref="PropertyDef.Name"/> alone.
+    /// </summary>
+    public static (string Name, string? ExplicitInterface) MemberKey(this PropertyDef prop)
+        => (prop.Name, prop.ExplicitInterface);
+
+    /// <summary>
     /// Classifies <paramref name="stmt"/> as one of the seven type-declaring statement kinds — the
     /// single authority a nesting-aware caller (name resolution, module loading, the nested-type
     /// index, CodeGenInfo, and the class/struct/interface member emitters) matches over instead of

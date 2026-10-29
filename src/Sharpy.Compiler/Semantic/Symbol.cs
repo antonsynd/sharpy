@@ -491,6 +491,24 @@ public record TypeSymbol : Symbol
     public SymbolMemberList<PropertySymbol> Properties { get; init; } = new();
     public SymbolMemberList<EventSymbol> Events { get; init; } = new();
 
+    /// <summary>
+    /// The property named <paramref name="name"/> in this type's OWN member namespace. An
+    /// explicit-interface implementation (<c>property IShape.area</c>) is not in it — C# reaches it
+    /// only through the interface — so it never answers a bare name (R-JH, #2390). A by-name property
+    /// lookup reads this or <see cref="FindProperty"/>; <c>ExplicitInterfaceKeyCensusTests</c> pins
+    /// every other spelling to zero.
+    /// </summary>
+    public PropertySymbol? FindOwnProperty(string name)
+        => Properties.FirstOrDefault(p => p.Name == name && p.ExplicitInterface == null);
+
+    /// <summary>
+    /// The property whose member key is (<paramref name="name"/>, <paramref name="explicitInterface"/>)
+    /// — the key a <c>PropertyDef</c> in hand carries (<c>PropertyDef.MemberKey()</c>): a bare
+    /// <c>area</c> and an explicit <c>IShape.area</c> are two properties (R-JH, #2390).
+    /// </summary>
+    public PropertySymbol? FindProperty(string name, string? explicitInterface)
+        => Properties.FirstOrDefault(p => p.Name == name && p.ExplicitInterface == explicitInterface);
+
     // Operator methods (dunder methods for operators)
     // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
     public SymbolOverloadTable OperatorMethods { get; init; } = new();

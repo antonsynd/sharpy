@@ -592,7 +592,7 @@ internal partial class RoslynEmitter
 
             var accessor = AccessorDeclaration(accessorKind);
 
-            var propSymbol = _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == first.Name);
+            var propSymbol = _currentTypeSymbol?.FindProperty(first.Name, first.ExplicitInterface);
             bool isAbstract = propSymbol?.IsAbstract
                 ?? prop.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
@@ -966,7 +966,7 @@ internal partial class RoslynEmitter
             }
         }
 
-        var funcStylePropSymbol = _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        var funcStylePropSymbol = _currentTypeSymbol?.FindProperty(propDef.Name, propDef.ExplicitInterface);
         bool isAbstract = funcStylePropSymbol?.IsAbstract
             ?? propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 

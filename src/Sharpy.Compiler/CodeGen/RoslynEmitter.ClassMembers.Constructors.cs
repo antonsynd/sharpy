@@ -314,7 +314,7 @@ internal partial class RoslynEmitter
     /// (Rule 2), never re-derived from the AST.
     /// </summary>
     private bool IsSynthesizedConstructorProperty(PropertyDef prop)
-        => _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == prop.Name) is { IsConstructorParameter: true };
+        => _currentTypeSymbol?.FindProperty(prop.Name, prop.ExplicitInterface) is { IsConstructorParameter: true };
 
     /// <summary>
     /// Whether the struct has an instance auto-property whose initializer is NOT a roster member
@@ -326,7 +326,7 @@ internal partial class RoslynEmitter
     private bool HasInitializerOnlyInstanceProperty(IReadOnlyList<Statement> body)
         => GroupPropertiesByName(body).Values.Select(RosterHalf).Any(p => p is { DefaultValue: not null }
             && !IsSynthesizedConstructorProperty(p)
-            && _currentTypeSymbol?.Properties.FirstOrDefault(s => s.Name == p.Name) is { IsStatic: false });
+            && _currentTypeSymbol?.FindProperty(p.Name, p.ExplicitInterface) is { IsStatic: false });
 
     /// <summary>
     /// The ONE declaration of a property name that speaks for it in the synthesized struct

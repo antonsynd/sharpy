@@ -160,12 +160,35 @@ internal static class TypeHierarchyService
     }
 
     /// <summary>
-    /// Finds a property by name in the type's hierarchy, including interfaces.
+    /// Finds a property by name in the type's hierarchy, including interfaces. Only own-namespace
+    /// properties answer (R-JH, #2390): an explicit-interface implementation (<c>property
+    /// IShape.area</c>) is not a member of the type's namespace, and the interface property it
+    /// implements is not reached through the type either — C# reaches it only through the interface
+    /// (<c>q.area</c> on such a class is CS1061), so the interface walk skips an interface member
+    /// the type's chain implements explicitly.
     /// </summary>
     internal static (PropertySymbol? property, TypeSymbol? owner) FindProperty(
         TypeSymbol type, string name, SemanticBinding? binding = null)
     {
-        return FindMember<PropertySymbol>(type, name, t => t.Properties, searchInterfaces: true, binding);
+        var explicitlyImplemented = ExplicitlyImplementedInterfaces(type, name, binding);
+        return FindMember<PropertySymbol>(
+            type, name,
+            t => explicitlyImplemented.Contains(t.Name) && t.TypeKind == TypeKind.Interface
+                ? Enumerable.Empty<PropertySymbol>()
+                : t.Properties.Where(p => p.ExplicitInterface == null),
+            searchInterfaces: true, binding);
+    }
+
+    /// <summary>The interfaces whose property <paramref name="name"/> <paramref name="type"/> or a base
+    /// class implements explicitly (<c>property IShape.area</c>), by the name the declaration spelled.</summary>
+    private static HashSet<string> ExplicitlyImplementedInterfaces(
+        TypeSymbol type, string name, SemanticBinding? binding)
+    {
+        var interfaces = new HashSet<string>(StringComparer.Ordinal);
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+        for (var current = type; current != null && visited.Add(current); current = ResolveBaseType(current, binding))
+            interfaces.UnionWith(current.Properties.Where(p => p.ExplicitInterface != null && p.Name == name).Select(p => p.ExplicitInterface!));
+        return interfaces;
     }
 
     /// <summary>

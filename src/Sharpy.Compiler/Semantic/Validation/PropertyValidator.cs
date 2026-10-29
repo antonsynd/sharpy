@@ -241,17 +241,18 @@ internal class PropertyValidator : SemanticValidatorBase
         // lookup returned null and every symbol-dependent rule below silently did nothing (#1461).
         var typeSymbol = _context.LookupDeclaredType(declaration, typeName);
 
-        // Group properties by name to detect mixed styles. Only the halves the member seam ADMITTED:
+        // Group properties by member key to detect mixed styles — a bare `area` and an explicit
+        // `IShape.area` are two properties (R-JH, #2390). Only the halves the member seam ADMITTED:
         // a refused half already drew its SPY0204/SPY0617 and is not part of the property (#2075, D7).
-        var propertyGroups = new Dictionary<string, List<PropertyDef>>();
+        var propertyGroups = new Dictionary<(string Name, string? ExplicitInterface), List<PropertyDef>>();
         foreach (var propDef in propertyDefs)
         {
             if (typeSymbol?.RefusedDeclarations.Contains(propDef) == true)
                 continue;
-            if (!propertyGroups.TryGetValue(propDef.Name, out var group))
+            if (!propertyGroups.TryGetValue(propDef.MemberKey(), out var group))
             {
                 group = new List<PropertyDef>();
-                propertyGroups[propDef.Name] = group;
+                propertyGroups[propDef.MemberKey()] = group;
             }
             group.Add(propDef);
         }
@@ -267,7 +268,7 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Check for mixed auto/function-style per property name
-        foreach (var (propName, group) in propertyGroups)
+        foreach (var ((propName, _), group) in propertyGroups)
         {
             ValidateMixedPropertyStyle(typeName, propName, group);
             ValidateBackingFieldCollision(typeName, propName, group, fieldDecls);
@@ -539,7 +540,7 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Check covariant return type: the derived property type must be assignable to the base property type
-        var derivedPropSymbol = typeSymbol.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        var derivedPropSymbol = typeSymbol.FindProperty(propDef.Name, propDef.ExplicitInterface);
         if (derivedPropSymbol != null && baseProp.Type is not UnknownType && derivedPropSymbol.Type is not UnknownType)
         {
             if (!derivedPropSymbol.Type.IsAssignableTo(baseProp.Type))

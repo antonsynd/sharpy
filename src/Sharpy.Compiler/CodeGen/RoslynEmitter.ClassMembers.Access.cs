@@ -58,7 +58,7 @@ internal partial class RoslynEmitter
         if (_currentTypeSymbol == null)
             return HostlessAccessKeyword(def.Name, def.Decorators, def.IsNameBacktickEscaped);
 
-        var symbol = _currentTypeSymbol.Properties.FirstOrDefault(p => p.Name == def.Name);
+        var symbol = _currentTypeSymbol.FindProperty(def.Name, def.ExplicitInterface);
         if (symbol == null)
             return MissingMemberAccessSymbol("property", def.Name, def.LineStart, def.ColumnStart);
 

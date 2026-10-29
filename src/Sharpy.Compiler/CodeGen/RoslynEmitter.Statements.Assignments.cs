@@ -728,7 +728,7 @@ internal partial class RoslynEmitter
         if (receiverSymbol == null)
             return false;
 
-        if (receiverSymbol.Properties.Any(p => p.Name == member.Member))
+        if (receiverSymbol.FindOwnProperty(member.Member) != null)
             return false;
 
         return receiverSymbol.Fields.Any(f => f.Name == member.Member);

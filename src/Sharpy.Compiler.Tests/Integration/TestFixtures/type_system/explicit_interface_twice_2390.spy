@@ -1,0 +1,21 @@
+# An explicit-interface property's member key is (name, interface) (R-JH, #2390): the same explicit
+# member declared twice is one key with two meanings, SPY0204 at the later declaration — an auto
+# member twice (r03) and a function-style getter twice (r06). Both were CS1007 behind SPY0908.
+interface IShape:
+    property area: int
+
+interface IRound:
+    property get radius(self) -> int: ...
+
+class Sq(IShape):
+    property IShape.area: int = 4
+    property IShape.area: int = 5
+
+class Disc(IRound):
+    property get IRound.radius(self) -> int:
+        return 1
+    property get IRound.radius(self) -> int:
+        return 2
+
+def main():
+    print("unreachable")

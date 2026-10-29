@@ -2900,8 +2900,8 @@ internal partial class TypeChecker
         var current = typeSymbol;
         while (current != null)
         {
-            if (current.Properties.Any(p =>
-                string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase)))
+            if (current.Properties.Any(p => p.ExplicitInterface == null
+                && string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase)))
             {
                 var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, memberName);
                 return method == null;

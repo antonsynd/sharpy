@@ -1318,7 +1318,7 @@ internal partial class TypeChecker
             }
             else
             {
-                var prop = typeSymbol.Properties.FirstOrDefault(p => p.Name == fieldName);
+                var prop = typeSymbol.FindOwnProperty(fieldName);
                 if (prop != null)
                 {
                     resolvedType = prop.Type;

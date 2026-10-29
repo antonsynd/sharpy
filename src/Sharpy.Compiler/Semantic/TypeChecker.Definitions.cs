@@ -2458,7 +2458,7 @@ internal partial class TypeChecker
         ResolveWriteAccessorReturnAnnotation(propDef);
 
         // The declared property type was resolved by ResolvePropertyTypes
-        var propSymbol = _currentClass.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        var propSymbol = _currentClass.FindProperty(propDef.Name, propDef.ExplicitInterface);
         var propertyType = propSymbol?.Type ?? SemanticType.Unknown;
 
         // Fallback: re-resolve from this accessor's declaring annotation if the merged symbol type
@@ -2694,7 +2694,7 @@ internal partial class TypeChecker
                 // return annotation stood in for the property's type).
                 var declaredAnnotation = body
                     .OfType<PropertyDef>()
-                    .Where(p => p.Name == propSymbol.Name)
+                    .Where(p => p.MemberKey() == (propSymbol.Name, propSymbol.ExplicitInterface))
                     .DeclaredTypeAnnotation();
 
                 if (declaredAnnotation != null)
@@ -2709,10 +2709,10 @@ internal partial class TypeChecker
         }
 
         // Synthesize backing fields for mixed auto+custom properties.
-        // Group PropertyDefs by name. If a group has both auto and function-style defs,
-        // the auto-property generates a private backing field (_name) so that custom
+        // Group PropertyDefs by member key (R-JH, #2390). If a group has both auto and function-style
+        // defs, the auto-property generates a private backing field (_name) so that custom
         // accessor bodies can reference self._name.
-        var propGroups = body.OfType<PropertyDef>().GroupBy(p => p.Name);
+        var propGroups = body.OfType<PropertyDef>().GroupBy(p => p.MemberKey());
         foreach (var group in propGroups)
         {
             var autoProp = group.FirstOrDefault(p => !p.IsFunctionStyle);

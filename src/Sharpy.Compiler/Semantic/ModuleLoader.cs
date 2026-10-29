@@ -1262,6 +1262,9 @@ internal class ModuleLoader
         ImmutableArray<Statement> body, TypeKind ownerKind, bool ownerIsAbstract)
     {
         var properties = new List<PropertySymbol>();
+        // The halves of one property merge by member key, as NameResolver.ResolvePropertyDeclaration
+        // merges them: a bare `area` and an explicit `IShape.area` are two properties (R-JH, #2390).
+        var indexByKey = new Dictionary<(string Name, string? ExplicitInterface), int>();
         foreach (var stmt in body)
         {
             if (stmt is not PropertyDef propDef)
@@ -1279,9 +1282,9 @@ internal class ModuleLoader
             bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
             bool hasInit = propDef.Accessor == PropertyAccessor.Init;
 
-            var existing = properties.FirstOrDefault(p => p.Name == propDef.Name);
-            if (existing != null)
+            if (indexByKey.TryGetValue(propDef.MemberKey(), out var existingIndex))
             {
+                var existing = properties[existingIndex];
                 var merged = existing with
                 {
                     HasGetter = existing.HasGetter || hasGetter,
@@ -1290,10 +1293,11 @@ internal class ModuleLoader
                     GetterAccess = hasGetter && !existing.HasGetter ? accessLevel : existing.GetterAccess,
                     SetterAccess = hasSetter || hasInit ? accessLevel : existing.SetterAccess,
                 };
-                properties[properties.IndexOf(existing)] = merged;
+                properties[existingIndex] = merged;
             }
             else
             {
+                indexByKey[propDef.MemberKey()] = properties.Count;
                 properties.Add(new PropertySymbol
                 {
                     Name = propDef.Name,

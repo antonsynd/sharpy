@@ -98,10 +98,9 @@ internal static class TypeBodyMembership
                 field, field.Type);
         }
 
-        foreach (var property in type.Properties)
+        // An explicit-interface property is not in the type's own namespace (R-JH, #2390).
+        if (type.FindOwnProperty(name) is { } property)
         {
-            if (property.Name != name)
-                continue;
             return new TypeBodyMember(
                 name, type.Name, TypeBodyMemberKind.Property, IsConstant: false, property.IsStatic,
                 ReachableThroughSelf: !property.IsStatic && reachableThroughSelf,

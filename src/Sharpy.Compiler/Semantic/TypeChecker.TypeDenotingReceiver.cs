@@ -200,7 +200,7 @@ internal partial class TypeChecker
         // sitting beside it is not what the reference names.
         if (EnumerateTypeAndHierarchy(typeSymbol).Any(t =>
                 t.Fields.Any(f => f.Name == member && (f.IsStatic || f.IsConstant))
-                || t.Properties.Any(p => p.Name == member && p.IsStatic)
+                || t.FindOwnProperty(member) is { IsStatic: true }
                 || t.Methods.Any(m => m.Name == member && m.IsStatic)
                 || t.NestedTypes.Any(n => n.Name == member)))
             return false;
