@@ -1,7 +1,7 @@
 # P21g (#2360): a third half re-filling a slot an earlier half already filled is ONE SPY0204 at the later
 # declaration; its auto + function-style twin (the first two halves alone) is a legal merge. The
-# PropertyValidator still reads the refused half and adds SPY0407 — a cascade pinned per P21g D10 on
-# #2075: when the cascade is fixed, its line here goes and this pin moves.
+# PropertyValidator reads only the halves the seam admitted (TypeSymbol.RefusedDeclarations, P21h D7), so
+# the refused third half draws no SPY0407 cascade (#2075).
 class C:
     property p: int = 0
 

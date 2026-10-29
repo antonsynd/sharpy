@@ -1,0 +1,13 @@
+# Two defaulted auto halves of one property are SPY0407 at the later half: no C# auto property
+# holds two initializers (#2382, owner ruling 2026-10-28 (a)).
+class Point:
+    property get x: int = 5
+    property set x: int = 6
+
+struct Cell:
+    @private
+    property set v: int = 6
+    property get v: int = 5
+
+def main():
+    pass

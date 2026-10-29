@@ -289,6 +289,13 @@ internal partial class RoslynEmitter
             yield break;
         }
 
+        // Every half is auto (`property get a: int` + `property set a: int`): one auto property
+        if (propGroup.All(p => !p.IsFunctionStyle))
+        {
+            yield return GenerateSplitAutoProperty(propGroup);
+            yield break;
+        }
+
         // Check if this is a mixed auto+custom group
         var autoProp = propGroup.FirstOrDefault(p => !p.IsFunctionStyle);
         if (autoProp != null)
@@ -309,6 +316,75 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Generates ONE C# auto property from a property's split auto halves
+    /// (<c>property get a: int</c> + <c>@private property set a: int</c>, properties_function_style.md
+    /// "With Auto-Properties"): each half contributes its own accessors
+    /// (<see cref="AutoHalfAccessorKinds"/>) at its own access, the property takes the widest, and the
+    /// one half carrying a default supplies the initializer — two defaulted halves are SPY0407
+    /// (<c>PropertyValidator.ValidateMixedPropertyStyle</c>), so there is at most one. Without this arm
+    /// the group fell to the function-style combiner: empty accessor bodies, CS0161 (#2382).
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateSplitAutoProperty(List<PropertyDef> propGroup)
+    {
+        var first = propGroup[0];
+        var propertyName = NameCasing.ResolveMethod(first.Name, first.IsNameBacktickEscaped);
+        TypeSyntax propertyType = propGroup.DeclaredTypeAnnotation() is { } declaredAnnotation
+            ? _typeMapper.MapType(declaredAnnotation)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        // The property-level access is the widest half's; static/virtual/… come from the getter half
+        // (or the first), as in the combined function-style arm.
+        var modifierSource = propGroup.FirstOrDefault(p => p.Accessor == PropertyAccessor.Get) ?? first;
+        var propertyAccess = GetWidestAccessModifier(TokenList(propGroup.Select(p => Token(MemberAccessKeyword(p)))));
+        var modifiers = GenerateMethodModifiers(propertyAccess ?? SyntaxKind.PublicKeyword, modifierSource.Decorators);
+
+        var accessors = propGroup
+            .SelectMany(half => AutoHalfAccessorKinds(half.Accessor).Select(kind => WithAccessorAccess(
+                AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                half, propertyAccess)))
+            .ToList();
+
+        var property = PropertyDeclaration(propertyType, propertyName)
+            .WithAccessorList(AccessorList(List(accessors)));
+
+        // Explicit interface properties: add specifier and omit access modifiers
+        if (first.ExplicitInterface != null)
+        {
+            var interfaceName = NameCasing.ResolveType(first.ExplicitInterface, false);
+            property = property
+                .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
+        }
+        else
+        {
+            property = property.WithModifiers(modifiers);
+        }
+
+        var propAttributes = GenerateAttributeListsFromDecorators(modifierSource.Decorators);
+        if (propAttributes.Count > 0)
+        {
+            property = property.WithAttributeLists(propAttributes);
+        }
+
+        if (propGroup.FirstOrDefault(p => p.DefaultValue != null) is { DefaultValue: { } defaultValue })
+        {
+            property = property.WithInitializer(EqualsValueClause(GenerateExpression(defaultValue)))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+
+        return property;
+    }
+
+    /// <summary>
+    /// The private field an auto half's storage lives in when its property is expanded — beside a
+    /// function-style accessor (<see cref="GenerateMixedAutoCustomProperty"/>) or with observers
+    /// (<see cref="GenerateObserverProperty"/>). The ONE spelling: a struct's synthesized constructor
+    /// writes this field for a mixed property (<c>StructConstructorRoster</c>, #2382), so it can never
+    /// name a field the property arm did not declare.
+    /// </summary>
+    private static string PropertyBackingFieldName(PropertyDef autoHalf)
+        => "_" + NameCasing.ResolveField(autoHalf.Name, autoHalf.IsNameBacktickEscaped);
+
+    /// <summary>
     /// Generates a backing field and property from mixed auto+custom PropertyDef nodes.
     /// The auto-property defines the backing field type and default value.
     /// Custom function-style PropertyDefs replace the auto-generated get/set accessors.
@@ -317,7 +393,7 @@ internal partial class RoslynEmitter
         PropertyDef autoProp, List<PropertyDef> customDefs)
     {
         var propertyName = NameCasing.ResolveMethod(autoProp.Name, autoProp.IsNameBacktickEscaped);
-        var backingFieldName = "_" + NameCasing.ResolveField(autoProp.Name, autoProp.IsNameBacktickEscaped);
+        var backingFieldName = PropertyBackingFieldName(autoProp);
 
         // Determine property type from auto-property's type annotation
         TypeSyntax propertyType;
@@ -739,7 +815,7 @@ internal partial class RoslynEmitter
     private IEnumerable<MemberDeclarationSyntax> GenerateObserverProperty(PropertyDef propDef)
     {
         var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
-        var backingFieldName = "_" + NameCasing.ResolveField(propDef.Name, propDef.IsNameBacktickEscaped);
+        var backingFieldName = PropertyBackingFieldName(propDef);
 
         TypeSyntax propertyType = propDef.Type != null
             ? _typeMapper.MapType(propDef.Type)

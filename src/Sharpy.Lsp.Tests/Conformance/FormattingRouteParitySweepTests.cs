@@ -2785,7 +2785,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(RangeBlock, Comment)] = 1,       // 4/2854 (0.14%)
             [(RangeLine, Comment)] = 12,       // 46/402 (11.44%)
             [(RangeWhole, Wide)] = 1,          // 0/3286 (0.00%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
-            [(RangeStatement, Wide)] = 5,      // 311/6837 (4.55%) @ 17aba6fb6
+            [(RangeStatement, Wide)] = 6,      // 351/6962 (5.04%) @ a3d2d2876 (P21h) — was 5 (311/6837, 4.55% @ 17aba6fb6); corpus growth only: without P21h's two property fixtures it measures green (16730/0), and P21h changed no lexer/parser/formatter/LSP code
             [(RangeBlock, Wide)] = 32,         // 4098/13188 (31.07%) @ c8d4babe1 (P21e) — was 31 (4064/13121, 30.97% @ 17aba6fb6); corpus growth only: the same compiler without P21e's 13 new fixtures measures 4070/13135 (30.99%), and P21e changed no lexer/parser/formatter/LSP code — those fixtures' blank-separated nested blocks are refused by construction on this twin
             [(RangeLine, Wide)] = 54,          // 18565/34870 (53.24%) @ 17aba6fb6 — 13197/35101 (37.60%) @ f58a75158, before R-ET kept blank lines
         };

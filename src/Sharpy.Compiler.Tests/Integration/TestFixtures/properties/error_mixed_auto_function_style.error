@@ -1,3 +1,2 @@
 'name' is already declared in 'Foo' as a property (line 2); one name has one meaning in a type body @7:5
-cannot mix auto-property and function-style definitions @7:5
-!count 2
+!count 1

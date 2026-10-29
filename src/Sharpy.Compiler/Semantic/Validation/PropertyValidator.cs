@@ -236,10 +236,18 @@ internal class PropertyValidator : SemanticValidatorBase
             }
         }
 
-        // Group properties by name to detect mixed styles
+        // Resolve the type symbol for override validation. Through NestedTypes, not by bare name:
+        // a nested class's symbol is defined inside its enclosing class's scope, so the bare
+        // lookup returned null and every symbol-dependent rule below silently did nothing (#1461).
+        var typeSymbol = _context.LookupDeclaredType(declaration, typeName);
+
+        // Group properties by name to detect mixed styles. Only the halves the member seam ADMITTED:
+        // a refused half already drew its SPY0204/SPY0617 and is not part of the property (#2075, D7).
         var propertyGroups = new Dictionary<string, List<PropertyDef>>();
         foreach (var propDef in propertyDefs)
         {
+            if (typeSymbol?.RefusedDeclarations.Contains(propDef) == true)
+                continue;
             if (!propertyGroups.TryGetValue(propDef.Name, out var group))
             {
                 group = new List<PropertyDef>();
@@ -247,11 +255,6 @@ internal class PropertyValidator : SemanticValidatorBase
             }
             group.Add(propDef);
         }
-
-        // Resolve the type symbol for override validation. Through NestedTypes, not by bare name:
-        // a nested class's symbol is defined inside its enclosing class's scope, so the bare
-        // lookup returned null and every symbol-dependent rule below silently did nothing (#1461).
-        var typeSymbol = _context.LookupDeclaredType(declaration, typeName);
 
         // Check each property definition
         foreach (var propDef in propertyDefs)
@@ -289,6 +292,19 @@ internal class PropertyValidator : SemanticValidatorBase
 
         var autoDefs = group.Where(p => !p.IsFunctionStyle).ToList();
         var functionDefs = group.Where(p => p.IsFunctionStyle).ToList();
+
+        // Split auto halves (`property get a: int = 5` + `property set a: int = 6`) are one auto
+        // property, and no C# auto property holds two initializers (#2382, owner ruling 2026-10-28 (a)).
+        var defaultedAutoDefs = autoDefs.Where(p => p.DefaultValue != null).ToList();
+        if (functionDefs.Count == 0 && defaultedAutoDefs.Count > 1)
+        {
+            AddError(_context,
+                $"Property '{propName}' in '{typeName}' has duplicate auto-property declarations: two auto halves carry a default; keep one",
+                defaultedAutoDefs[1].LineStart, defaultedAutoDefs[1].ColumnStart,
+                code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
+                span: defaultedAutoDefs[1].Span);
+            return;
+        }
 
         if (autoDefs.Count == 0 || functionDefs.Count == 0)
             return;

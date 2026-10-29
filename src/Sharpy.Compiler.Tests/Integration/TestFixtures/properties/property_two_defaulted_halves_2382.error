@@ -1,0 +1,2 @@
+Property 'x' in 'Point' has duplicate auto-property declarations: two auto halves carry a default; keep one @5:5
+Property 'v' in 'Cell' has duplicate auto-property declarations: two auto halves carry a default; keep one @10:5

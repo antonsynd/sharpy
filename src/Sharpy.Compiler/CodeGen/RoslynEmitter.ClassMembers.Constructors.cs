@@ -324,9 +324,20 @@ internal partial class RoslynEmitter
     /// always exists").
     /// </summary>
     private bool HasInitializerOnlyInstanceProperty(IReadOnlyList<Statement> body)
-        => body.OfType<PropertyDef>().Any(p => !p.IsFunctionStyle && p.DefaultValue != null
+        => GroupPropertiesByName(body).Values.Select(RosterHalf).Any(p => p is { DefaultValue: not null }
             && !IsSynthesizedConstructorProperty(p)
             && _currentTypeSymbol?.Properties.FirstOrDefault(s => s.Name == p.Name) is { IsStatic: false });
+
+    /// <summary>
+    /// The ONE declaration of a property name that speaks for it in the synthesized struct
+    /// constructor: its auto half carrying the default, else its first auto half. A function-style
+    /// half never does — it has no default, and its setter's missing <c>Type</c> was the
+    /// <c>object</c> of #2021's <c>S(object size, int size = 0)</c>; admitting every half of a merged
+    /// name declared the parameter once per half (CS0100, #2382).
+    /// </summary>
+    private static PropertyDef? RosterHalf(List<PropertyDef> propGroup)
+        => propGroup.FirstOrDefault(p => !p.IsFunctionStyle && p.DefaultValue != null)
+            ?? propGroup.FirstOrDefault(p => !p.IsFunctionStyle);
 
     /// <summary>One member of the synthesized struct constructor's roster: its source name (the
     /// parameter), annotation, default, emitted member name, and the per-instance-default fact.</summary>
@@ -339,13 +350,17 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// The ONE roster of the synthesized struct constructor, in body order: every instance field
-    /// (<see cref="IsSynthesizedConstructorField"/>) and every defaulted instance auto-property
-    /// (<see cref="IsSynthesizedConstructorProperty"/>, #1938). The gate in
-    /// <c>GenerateClassMembers</c> and both synthesized constructors read this list.
+    /// (<see cref="IsSynthesizedConstructorField"/>) and, once per property NAME
+    /// (<see cref="GroupPropertiesByName"/>), the defaulted instance auto half
+    /// (<see cref="RosterHalf"/>, <see cref="IsSynthesizedConstructorProperty"/>, #1938, #2382). The
+    /// gate in <c>GenerateClassMembers</c> and both synthesized constructors read this list.
     /// </summary>
     private List<StructConstructorMember> StructConstructorRoster(IReadOnlyList<Statement> body)
     {
         var roster = new List<StructConstructorMember>();
+        var propertyGroups = GroupPropertiesByName(body);
+        var rosterHalves = new HashSet<PropertyDef?>(
+            propertyGroups.Values.Select(RosterHalf), ReferenceEqualityComparer.Instance);
         foreach (var stmt in body)
         {
             switch (stmt)
@@ -361,15 +376,22 @@ internal partial class RoslynEmitter
                         fieldInfo?.RequiresPerInstanceDefault == true));
                     break;
 
-                case PropertyDef prop when IsSynthesizedConstructorProperty(prop):
-                    // A property default is validated as a constant parameter default
-                    // (ConstantPositionValidator.StructPropertySlot), so it never needs the
-                    // per-instance lowering.
+                case PropertyDef prop when rosterHalves.Contains(prop) && IsSynthesizedConstructorProperty(prop):
+                    // A property is a roster member only when its default is a literal, a signed
+                    // literal or None (CodeGenInfoComputer.MarkStructConstructorProperty), so it never
+                    // needs the per-instance lowering; any other default keeps its property initializer
+                    // beside the explicit parameterless constructor (#1938,
+                    // HasInitializerOnlyInstanceProperty). Beside a function-style accessor the
+                    // auto half's storage is the mixed arm's backing field, and the constructor writes
+                    // it, as that field's initializer does in a class — no accessor runs at
+                    // construction (lead ruling (a), 2026-10-28; #2382, #2021).
                     roster.Add(new StructConstructorMember(
                         prop.Name,
                         prop.Type,
                         prop.DefaultValue,
-                        NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped),
+                        propertyGroups[prop.Name].Any(p => p.IsFunctionStyle)
+                            ? PropertyBackingFieldName(prop)
+                            : NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped),
                         RequiresPerInstanceDefault: false));
                     break;
             }

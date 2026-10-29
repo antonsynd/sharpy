@@ -1,0 +1,74 @@
+# A property's split auto halves are ONE auto property with per-accessor access (#2382):
+# properties_function_style.md "With Auto-Properties", in a class and in a struct.
+class User:
+    property get name: str
+    @private
+    property set name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+struct Badge:
+    property get name: str
+    @private
+    property set name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+# The plain pair, the default on the getter half
+class Point:
+    property get x: int = 5
+    property set x: int
+
+struct Cell:
+    property set v: int
+    property get v: int = 5
+
+# A struct's synthesized constructor rosters ONE parameter per property name and writes the auto
+# half's backing field beside a function-style accessor: no accessor runs at construction
+# (#2382, #2021; lead ruling (a), 2026-10-28)
+struct Gauge:
+    property level: int = 5
+    property set level(self, v: int):
+        print(v)
+
+struct Dial:
+    property get level: int = 5
+    property get level(self) -> int:
+        return 6
+
+struct Meter:
+    property level: int = 5
+    property get level(self) -> int:
+        return self._level
+
+# A @static split pair
+class Config:
+    @static
+    property get level: int = 1
+    @static
+    property set level: int
+
+def main():
+    print(User("ann").name)
+    print(Badge("ann").name)
+    p = Point()
+    print(p.x)
+    p.x = 7
+    print(p.x)
+    c = Cell()
+    print(c.v)
+    c.v = 7
+    print(c.v)
+    c2 = Cell(v=9)
+    print(c2.v)
+    g = Gauge()
+    g.level = 7
+    print(g.level)
+    print(Dial().level)
+    print(Meter().level)
+    print(Meter(level=9).level)
+    print(Config.level)
+    Config.level = 3
+    print(Config.level)
