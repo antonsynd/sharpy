@@ -32,8 +32,10 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateDefinition, "Duplicate definition", "Semantic",
             "A name was defined more than once in the same scope. A name has one meaning per scope (function, block, class body or module). "
-            + "In a class, struct or interface body, any two members of one name are refused at the later declaration, in either order, whatever their kinds: method, field, const, property, event, nested type or type alias. "
+            + "In a class, struct, interface or union body, any two members of one name are refused at the later declaration, in either order, whatever their kinds: method, field, const, property, event, nested type, type alias or union case. "
             + "Only the parts of one member share a name: a function-style getter and setter, an auto-property beside a function-style accessor, split auto halves, and method overloads. "
+            + "An explicit interface implementation ('property IShape.area') claims no bare name: it may stand beside a member named 'area', and is refused only beside another 'IShape.area'. "
+            + "A union case claims its name like every member, so a second case of the name, or a case named like one of the union's type parameters, is refused at the case. "
             + "In a module, an import binds a module-level name and collides like every other module binding: two imports that bind different symbols under one name (two from-imports of one module included), "
             + "an import beside a class, def, type alias, const or module property of that name, and a module variable beside a def, a module property or an import are refused. "
             + "A star import never displaces a declaration of the importing module, but an explicit import of a different source that spells a star-exported name is refused at the explicit import, in either order.",
