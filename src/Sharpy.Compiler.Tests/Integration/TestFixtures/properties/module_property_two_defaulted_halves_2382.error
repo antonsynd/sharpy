@@ -1,0 +1,2 @@
+Property 'level' at module level has duplicate auto-property declarations: two auto halves carry a default; keep one @6:1
+Property 'depth' at module level has duplicate auto-property declarations: two auto halves carry a default; keep one @10:1

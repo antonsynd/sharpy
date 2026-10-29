@@ -14,7 +14,7 @@
 # #2294 synthesized type spellings (Extract method parameter inference, Extract variable annotation);
 # #2296 code actions that are not meaning-preserving (diagnostics of every other action).
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
-extract-method identity diagnostics 2913 00dc19608c14a98d 834 cf9ac3a4fda09bfc # #2294 adds SPY0202 (and 5588 other cells)
+extract-method identity diagnostics 2913 00dc19608c14a98d 835 2adeebeb66ef3746 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 553 61bf1fd15f8c0698 553 61bf1fd15f8c0698 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable identity diagnostics 338 71224acf91115f32 62 362da23e6a991098 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable identity parse 57 de496a333bd9e5f9 57 de496a333bd9e5f9 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)

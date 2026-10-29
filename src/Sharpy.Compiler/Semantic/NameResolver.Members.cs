@@ -845,9 +845,11 @@ internal partial class NameResolver
     /// <c>property get A(self)</c> a function-style getter, <c>property set A(self, v)</c> a
     /// function-style setter. The merged <see cref="PropertySymbol"/> flags cannot tell these apart
     /// (an auto property and a function-style getter both set <c>HasGetter</c>), so the forms are
-    /// recorded here.
+    /// recorded here. Internal so PropertyValidator replays the SAME admission over a module's
+    /// property halves (module level records no refused-half set — see its
+    /// <c>AdmittedModuleHalves</c>).
     /// </summary>
-    private sealed class AccessorDeclarations
+    internal sealed class AccessorDeclarations
     {
         [Flags]
         internal enum Form
