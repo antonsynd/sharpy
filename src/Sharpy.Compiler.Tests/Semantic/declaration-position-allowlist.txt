@@ -200,10 +200,10 @@ member-pair × interface × event-remove → event-add  # #2067 interface event 
 # halves (r05). CREATED by P21h Phase 1 Task 2; drains in P21h Phase 3 (D5).
 # DRAINED by P21h Phase 3 Tasks 1-2 (the member key, then the emitter's grouping key) except the four
 # property-auto-set rows below: the bare auto setter alone is #2395's CS8051, re-cited.
-explicit-member × class × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from #2390: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × class × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from #2390: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × struct × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from #2390: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × struct × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from #2390: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × class × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × class × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × struct × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × struct × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
 
 # #2075 (R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the FIRST half
 # (the refused declaration GROUP draws one verdict; its later half is silent); a third half beside a merged
