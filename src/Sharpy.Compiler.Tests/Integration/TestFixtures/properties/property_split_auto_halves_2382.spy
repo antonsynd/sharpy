@@ -28,7 +28,7 @@ struct Cell:
 # A struct's synthesized constructor rosters ONE parameter per property name and writes the auto
 # half's backing field beside a function-style accessor: no accessor runs at construction
 # (#2382, #2021; lead ruling (a), 2026-10-28)
-struct Gauge:
+struct Knob:
     property level: int = 5
     property set level(self, v: int):
         print(v)
@@ -42,6 +42,16 @@ struct Meter:
     property level: int = 5
     property get level(self) -> int:
         return self._level
+
+# An explicit constructor ARGUMENT goes through a function-style setter, so its validation runs; the
+# DEFAULT is stored to the backing field and runs no setter (owner ruling Q3 (b), 2026-10-29)
+struct Gauge:
+    property level: int = 0
+    property set level(self, v: int):
+        if v < 0:
+            raise ValueError("neg")
+        print(f"set {v}")
+        self._level = v
 
 # A @static split pair
 class Config:
@@ -63,12 +73,18 @@ def main():
     print(c.v)
     c2 = Cell(v=9)
     print(c2.v)
-    g = Gauge()
-    g.level = 7
-    print(g.level)
+    k = Knob()
+    k.level = 7
+    print(k.level)
     print(Dial().level)
     print(Meter().level)
     print(Meter(level=9).level)
+    print(Gauge().level)
+    print(Gauge(level=9).level)
+    try:
+        Gauge(level=-1)
+    except ValueError:
+        print("ValueError")
     print(Config.level)
     Config.level = 3
     print(Config.level)

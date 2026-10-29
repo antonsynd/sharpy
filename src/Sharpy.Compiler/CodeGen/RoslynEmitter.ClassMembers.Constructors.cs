@@ -340,12 +340,16 @@ internal partial class RoslynEmitter
             ?? propGroup.FirstOrDefault(p => !p.IsFunctionStyle);
 
     /// <summary>One member of the synthesized struct constructor's roster: its source name (the
-    /// parameter), annotation, default, emitted member name, and the per-instance-default fact.</summary>
+    /// parameter), annotation, default, the emitted member the DEFAULT is stored to (the parameterless
+    /// constructor), the emitted member an explicit ARGUMENT is assigned through (the parameterized
+    /// constructor), and the per-instance-default fact. The two names differ only for a property
+    /// with a function-style setter (owner ruling Q3 (b), 2026-10-29).</summary>
     private sealed record StructConstructorMember(
         string Name,
         TypeAnnotation? Type,
         Expression? Default,
         string CSharpName,
+        string ArgumentTargetName,
         bool RequiresPerInstanceDefault);
 
     /// <summary>
@@ -368,11 +372,13 @@ internal partial class RoslynEmitter
                 case VariableDeclaration fieldDecl when IsSynthesizedConstructorField(fieldDecl):
                     var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
                     var fieldInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
+                    var fieldName = fieldInfo?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
                     roster.Add(new StructConstructorMember(
                         fieldDecl.Name,
                         fieldDecl.Type,
                         fieldDecl.InitialValue,
-                        fieldInfo?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped),
+                        fieldName,
+                        fieldName,
                         fieldInfo?.RequiresPerInstanceDefault == true));
                     break;
 
@@ -382,16 +388,21 @@ internal partial class RoslynEmitter
                     // needs the per-instance lowering; any other default keeps its property initializer
                     // beside the explicit parameterless constructor (#1938,
                     // HasInitializerOnlyInstanceProperty). Beside a function-style accessor the
-                    // auto half's storage is the mixed arm's backing field, and the constructor writes
+                    // auto half's storage is the mixed arm's backing field: the DEFAULT is stored to
                     // it, as that field's initializer does in a class — no accessor runs at
-                    // construction (lead ruling (a), 2026-10-28; #2382, #2021).
+                    // construction (lead ruling (a), 2026-10-28; #2382, #2021) — while an explicit
+                    // ARGUMENT goes through a function-style setter, so its validation runs (owner
+                    // ruling Q3 (b), 2026-10-29). Without a function-style setter there is nothing to
+                    // run, and a get-only property cannot be assigned (CS0200).
+                    var group = propertyGroups[prop.MemberKey()];
+                    var propertyName = NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped);
+                    var storageName = group.Any(p => p.IsFunctionStyle) ? PropertyBackingFieldName(prop) : propertyName;
                     roster.Add(new StructConstructorMember(
                         prop.Name,
                         prop.Type,
                         prop.DefaultValue,
-                        propertyGroups[prop.MemberKey()].Any(p => p.IsFunctionStyle)
-                            ? PropertyBackingFieldName(prop)
-                            : NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped),
+                        storageName,
+                        group.Any(p => p.IsFunctionStyle && p.Accessor == PropertyAccessor.Set) ? propertyName : storageName,
                         RequiresPerInstanceDefault: false));
                     break;
             }
@@ -493,7 +504,7 @@ internal partial class RoslynEmitter
         var statements = new List<StatementSyntax>();
         foreach (var fieldDecl in orderedFields)
         {
-            var propName = fieldDecl.CSharpName;
+            var propName = fieldDecl.ArgumentTargetName;
             var paramName = fieldDecl.Name;
 
             if (fieldDecl.RequiresPerInstanceDefault)
