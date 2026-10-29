@@ -397,12 +397,16 @@ internal partial class TypeChecker
                     "a class-body sibling declared at or after the reading declaration (SPY0200, F1)"));
             return SemanticType.Unknown;
         }
-        // #2396 (owner ruling (A) 2026-10-28, P21h; drains with #2396): the emitter lays a type's
-        // fields out before its properties and C# runs static initializers in the generated text's
-        // order, so a @static FIELD's or a const's initializer reading a @static PROPERTY would read
-        // the property before its default is set — 0, silently, whatever the spelling. Until the
-        // layout follows the source, that one cell is refused.
-        if (resolves && member is { Kind: TypeBodyMemberKind.Property, IsStatic: true }
+        // #2396 (owner ruling (A) 2026-10-28 for a @static PROPERTY, owner ruling (b) 2026-10-29 for a
+        // @static METHOD call; P21h; drains with #2396): the emitter lays a type's fields out before its
+        // properties and C# runs static initializers in the generated text's order, so a @static
+        // FIELD's or a const's initializer that reads a @static property — directly, or through a
+        // @static method whose body reads one or a later static — sees storage not yet initialized:
+        // 0, silently, whatever the spelling. Until the layout follows the source, those cells are
+        // refused. An instance initializer and a parameter default keep admitting the method call:
+        // every static initializer has run before either of them.
+        if (resolves
+            && member is { Kind: TypeBodyMemberKind.Property or TypeBodyMemberKind.Method, IsStatic: true }
             && reader.Slot is ClassBodyReadSlot.Field or ClassBodyReadSlot.Const
             && reader.Position is ClassBodyReadPosition.StaticInitializer or ClassBodyReadPosition.ConstInitializer)
         {
@@ -412,7 +416,7 @@ internal partial class TypeChecker
                 span: id.Span);
             MarkExpressionAsErrorRecovery(id,
                 ErrorRecoveryReason.AlreadyReported(
-                    "a @static property read from a static field initializer (SPY0200, #2396)"));
+                    "a @static property read or @static method call from a static field initializer (SPY0200, #2396)"));
             return SemanticType.Unknown;
         }
 
@@ -576,12 +580,21 @@ internal partial class TypeChecker
     internal const string DeclaredLaterPhrase = "declared later";
 
     /// <summary>
-    /// The SPY0200 text for a <c>@static</c> property read from a <c>@static</c> field's or a
-    /// <c>const</c>'s initializer, which C# admits but the generated member order runs too early (#2396).
+    /// The SPY0200 text for a <c>@static</c> property read, or a <c>@static</c> method call, from a
+    /// <c>@static</c> field's or a <c>const</c>'s initializer, which C# admits but the generated member
+    /// order runs too early (#2396).
     /// </summary>
     private static string DescribeStaticInitializationOrderRefusal(ClassBodyReader reader, TypeBodyMember member)
     {
         var phrase = reader.Position == ClassBodyReadPosition.ConstInitializer ? "a 'const' initializer" : "a '@static' initializer";
+        if (member.Kind == TypeBodyMemberKind.Method)
+        {
+            return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' method of "
+                + $"'{member.OwnerName}' — calling a '@static' method here is not supported yet: static initializers "
+                + "run in member-layout order (#2396), so the method could read a static that is not initialized yet. "
+                + $"Call it in a method, or make '{reader.Name}' a '@static' property";
+        }
+
         return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' property of "
             + $"'{member.OwnerName}' — reading a '@static' property here is not supported yet: static initializers "
             + "run in member-layout order (#2396), so it would read the property's default value. Read it in a "

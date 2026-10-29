@@ -1,8 +1,10 @@
-# #2396 (P21h D8): a @static field's or a const's initializer reading a @static PROPERTY is refused
-# until the emitter lays static members out in source order — in the generated C# the fields come
-# first, so that initializer would run before the property's and read 0 (the qualified spelling
-# `Host.sp` still does, #2396). The positive control is class_body_sibling_reads_2384: a @static
-# property's default reading the same sibling runs 4 (properties keep their order).
+# #2396 (P21h D8): a @static field's or a const's initializer reading a @static PROPERTY, or calling a
+# @static METHOD, is refused until the emitter lays static members out in source order — in the
+# generated C# the fields come first, so that initializer could run before the storage it reaches
+# is initialized and read 0 (the qualified spellings `Host.sp` / `Calls.get()` still do, #2396). Owner
+# ruling (A) 2026-10-28 for the property, (b) 2026-10-29 for the method call. The positive control is
+# class_body_sibling_reads_2384: a @static property's default and an instance initializer reading
+# the same siblings run.
 
 
 class Host:
@@ -14,5 +16,24 @@ class Host:
     const C: int = sp
 
 
+class Calls:
+    @static
+    property sp: int = 4
+
+    @static
+    def get() -> int:
+        return Calls.sp
+
+    @static
+    def later() -> int:
+        return Calls.b
+
+    @static
+    a: int = get()
+    const K: int = later()
+    @static
+    b: int = 2
+
+
 def main() -> None:
-    print(Host.g, Host.C)
+    print(Host.g, Host.C, Calls.a, Calls.K)

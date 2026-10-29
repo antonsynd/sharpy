@@ -258,3 +258,21 @@ class-body-read × dataclass × static-field-initializer × static-property × b
 class-body-read × dataclass × const-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
 class-body-read × struct × static-field-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
 class-body-read × struct × const-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+
+# #2396 (owner ruling (b) 2026-10-29, on the P21h re-verify): a bare @static METHOD call in a @static field's or a
+# const's initializer is refused like the @static property read — the method can reach static storage the
+# member layout initializes later (p21h-verify p2/b3: get() returns C.sp; p/g4: sm() returns a later @static
+# field; both printed 0 at 735d84d98, SPY0200 at 9aae96977). The matrix's sm() returns a constant, so C# admits
+# the cell and the table says run 6; it stays refused until #2396 drains.
+class-body-read × class × static-field-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × class × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × class × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × class × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × static-field-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × static-field-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads

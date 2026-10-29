@@ -287,7 +287,7 @@ class Grid:
 
     area: int = SIZE                              # a field initializer reads a const
     @static
-    cells: int = twice(scale)                     # a @static initializer reads @static members
+    property cells: int = twice(scale)            # a @static property default reads @static members
     property border: int = SIZE + twice(scale)    # a property default reads both
 
 def main() -> None:
@@ -357,10 +357,11 @@ def main() -> None:
     print(Box.doubled)    # 4
 ```
 
-One temporary exception: a `@static` **property** is refused (SPY0200) in a `@static` field's
-initializer or a `const` initializer. Static initializers run in member-layout order, so the read
-would see the property before its own default is assigned (#2396). Read it in a method, or make it
-a `@static` field.
+One temporary exception: in a `@static` field's initializer or a `const` initializer, reading a
+`@static` **property** or calling a `@static` **method** is refused (SPY0200). Static initializers run
+in member-layout order, so the read could see static storage before it is initialized (#2396). Read
+it in a method, or make the reader a `@static` property. An instance initializer and a parameter
+default are not affected: every static initializer has run before them.
 
 Decorator arguments and type annotations are resolved in the class body as well. Names in the
 method's **body** are resolved by the rule above. Python resolves class scope in every one of these positions
