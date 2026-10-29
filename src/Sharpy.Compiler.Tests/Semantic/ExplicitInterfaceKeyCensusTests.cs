@@ -48,8 +48,6 @@ public class ExplicitInterfaceKeyCensusTests
     {
         ("lambda", "Sharpy.Compiler/Semantic/Symbol.cs:502", "TypeSymbol.FindOwnProperty — the own-namespace helper"),
         ("lambda", "Sharpy.Compiler/Semantic/Symbol.cs:510", "TypeSymbol.FindProperty — the full-key helper"),
-        ("family", "Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.cs:450", "GroupPropertiesByName — keys on MemberKey() in P21h Phase 3 Task 2"),
-        ("family", "Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.cs:452", "GroupPropertiesByName — keys on MemberKey() in P21h Phase 3 Task 2"),
         ("family", "Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs:131", "module properties: a module body has no explicit-interface member"),
     };
 

@@ -389,7 +389,7 @@ internal partial class RoslynEmitter
                         prop.Name,
                         prop.Type,
                         prop.DefaultValue,
-                        propertyGroups[prop.Name].Any(p => p.IsFunctionStyle)
+                        propertyGroups[prop.MemberKey()].Any(p => p.IsFunctionStyle)
                             ? PropertyBackingFieldName(prop)
                             : NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped),
                         RequiresPerInstanceDefault: false));
