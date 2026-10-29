@@ -317,6 +317,26 @@ internal partial class NameResolver
             RecordAccessorDeclarations(owningType, propDef.Name, propDef.ExplicitInterface, isEvent: false, propDef.LineStart);
         var accessors = AccessorDeclarationsOf(owningType, propDef.Name, propDef.ExplicitInterface)!;
         var body = AccessorDeclarations.BodyOf(propDef, owningType);
+        bool isStatic = propDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
+            || !propDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+            && propDef.IsFunctionStyle;
+
+        // The halves of one property agree on '@static' (P21h, lead decision on the verifier's cell;
+        // #2382): a merge is ONE C# property, so a half whose staticness differs from the recorded
+        // halves would silently take theirs (or fail as CS0176/CS0120) — a second meaning of the
+        // name, SPY0204 at the later half, whichever order the halves come in. The group is refused.
+        if (claim == MemberClaim.Merged
+            && owningType.FindProperty(propDef.Name, propDef.ExplicitInterface) is { } recorded
+            && recorded.IsStatic != isStatic)
+        {
+            AddError(MemberConflictMessage(propDef.Name, owningType,
+                    recorded.IsStatic ? "a '@static' property" : "a property", accessors.Line),
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition, span: propDef.Span);
+            _refusedMemberNames.Add((owningType, propDef.Name, propDef.ExplicitInterface));
+            owningType.RefuseDeclaration(propDef);
+            return;
+        }
 
         // R-JG (#2382): an interface's accessors are all abstract or all default
         // implementations — `{ get; set { … } }` is a field-backed semi-auto property to C#
@@ -345,9 +365,6 @@ internal partial class NameResolver
         // finds the object to rewrite, by the same (Name, ExplicitInterface) key.
         var existingProp = owningType.FindProperty(propDef.Name, propDef.ExplicitInterface);
 
-        bool isStatic = propDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
-            || !propDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-            && propDef.IsFunctionStyle;
         bool isVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
         bool isAbstract = Shared.MemberClassification.IsAbstract(
             propDef, owningType.TypeKind, owningType.IsAbstract);

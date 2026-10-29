@@ -635,11 +635,12 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         Assert.Equal(8, ModuleMemberKinds.Length);
         Assert.Equal(3, TypeBodyHosts.Length);
         // Per type-body host: K alone + K × K ordered pairs + the same-signature twin + type-param × K (K = 13, 13, 15);
-        // the two-defaults pair × 2 orders × {class, struct}; module: 8 alone + 8 × 8 + the same-signature def twin;
+        // the two-defaults pair × 2 orders × {class, struct}; the @static-disagreement pairs (2 setters × 2 orders) ×
+        // 3 hosts; module: 8 alone + 8 × 8 + the same-signature def twin;
         // enum: alone + member twice; union: method alone, overload, same-signature twin, case × method, case × case
         // (adjacent and after a def), type-param × case; chains: 3 hosts × (5 heads × 3 split pairs + 3 third-half);
         // explicit members: {class, struct} × (13 kinds × 2 orders + explicit twice + two interfaces + split halves).
-        Assert.Equal(2 * (13 + 13 * 13 + 1 + 13) + (15 + 15 * 15 + 1 + 15) + 2 * 2 + (8 + 8 * 8 + 1) + 2 + 4 + 3
+        Assert.Equal(2 * (13 + 13 * 13 + 1 + 13) + (15 + 15 * 15 + 1 + 15) + 2 * 2 + 3 * 2 * 2 + (8 + 8 * 8 + 1) + 2 + 4 + 3
             + 3 * (5 * 3 + 3) + 2 * (13 * 2 + 3), MemberPairCells().Count());
         Assert.Equal(2 * (13 * 2 + 3), MemberPairCells().Count(c => c.Id.StartsWith("explicit-member × ", StringComparison.Ordinal)));
         // R-JH: an explicit member claims no bare name — every explicit cell runs but the same-key twin per host.
@@ -660,6 +661,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             && c.ExpectedErrors.Any(e => e.Code == "SPY0617")));
         Assert.Equal(2, MemberChainCells().Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0617")));
         Assert.Equal(4, MemberPairCells().Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0407")));
+        // The halves of one property agree on @static: the static auto getter × {auto setter, function-style setter} ×
+        // 2 orders × {class, struct, interface}.
+        Assert.Equal(3 * 2 * 2, MemberPairCells().Count(c => c.Id.Contains("property-auto-get-static", StringComparison.Ordinal)
+            && c.ExpectedErrors.Count == 1 && c.ExpectedErrors[0].Code == "SPY0204"));
         // The lone event accessor beside another kind carries its SPY0420 (D9 (i)): per type-body host, each of the 2
         // accessors beside the K − 1 kinds that are not its complement, in both orders, its same-kind twin once
         // (2K − 3 cells), + type-param × 2 accessors.
@@ -668,7 +673,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 846, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1600,6 +1605,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     private static readonly MemberKind AutoSetWithDefault =
         new("property-auto-set-def", new[] { "property set A: int = 6" }, At.Keyword, new[] { "h.A = 7", "print(\"ok\")" }, "ok");
 
+    /// <summary>The @static-disagreement cells' static half (P21h, lead decision on the verifier's cell): a
+    /// <c>@static</c> auto getter, spelled only beside the instance setter halves — never multiplied against the
+    /// matrix. Its keyword is the line after the decorator. The interface host spells its auto halves without a
+    /// default (D9; a defaulted interface auto half is #2383's).</summary>
+    private static MemberKind StaticAutoGet(string host) =>
+        new("property-auto-get-static", new[] { "@static", host == "interface" ? "property get A: int" : "property get A: int = 5" },
+            At.Keyword, new[] { "print(Host.A)" }, "5");
+
     /// <summary>The function-style accessors that carry a BODY (D2's <c>Bodied</c>) and the halves an interface
     /// leaves ABSTRACT (an undefaulted auto half, a stub).</summary>
     private static readonly HashSet<string> BodiedHalves = new(StringComparer.Ordinal) { "property-get", "property-set" };
@@ -1879,6 +1892,24 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                     var (line, column) = MemberPosition(b, at[1], 4);
                     yield return new MemberPairCell($"member-pair × {host} × {a.Kind} → {b.Kind}", host, source,
                         new[] { ("SPY0407", line, column) }, null);
+                }
+            }
+
+            // The halves of one property agree on @static (P21h, lead decision on the verifier's cell): a static auto
+            // getter beside an instance auto or function-style setter is a second meaning of the name — [SPY0204 @ the
+            // later half's keyword], both orders (the static half's keyword is the line after its decorator), in every
+            // type-body host — the static check precedes the interface's SPY0617 arm.
+            {
+                var staticGet = StaticAutoGet(host);
+                foreach (var setter in kinds.Where(k => k.Kind is "property-auto-set" or "property-set"))
+                {
+                    foreach (var (a, b) in new[] { (staticGet, setter), (setter, staticGet) })
+                    {
+                        var (source, at) = MemberProgram(prelude, header, new[] { a.Lines, b.Lines }, null, okMain);
+                        var (line, column) = MemberPosition(b, at[1] + (ReferenceEquals(b, staticGet) ? 1 : 0), 4);
+                        yield return new MemberPairCell($"member-pair × {host} × {a.Kind} → {b.Kind}", host, source,
+                            new[] { ("SPY0204", line, column) }, null);
+                    }
                 }
             }
 
