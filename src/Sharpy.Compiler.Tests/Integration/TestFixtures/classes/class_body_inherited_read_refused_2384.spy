@@ -1,0 +1,37 @@
+# P21h verify (owner ruling R1 (b), 2026-10-29): with no outer binding of the name, an inherited const or
+# @static member read by bare name outside a method is ONE SPY0200 naming the position and steering to
+# the declaring class — never an admission, never SPY0401 beside it in a parameter default or a dataclass
+# field slot (python3 raises NameError for each). The outer-binding twin reads the outer binding
+# (class_body_inherited_read_outer_binding_2384).
+
+
+class Base:
+    @static
+    unit: int = 3
+    const K: int = 4
+
+    @static
+    property sp: int = 5
+
+    @static
+    def mk() -> int:
+        return 6
+
+
+class Child(Base):
+    a: int = unit
+    @static
+    s: int = sp
+    property p: int = mk()
+
+    def m(self, v: int = K) -> int:
+        return v
+
+
+@dataclass
+class Rec(Base):
+    r: int = unit
+
+
+def main() -> None:
+    print(Child().a, Child.s, Child().p, Child().m(), Rec().r)

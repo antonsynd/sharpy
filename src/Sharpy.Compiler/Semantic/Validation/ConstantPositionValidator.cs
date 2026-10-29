@@ -544,6 +544,14 @@ internal class ConstantPositionValidator : ValidatingAstWalker
             return bound;
         }
 
+        // The module-scope fallback is for an identifier the checker never visited. One it bound —
+        // to any symbol, or as a class-body sibling read whose member (a property) has no symbol —
+        // denotes what the checker said, never a module const of the same spelling: an own
+        // `@static S` under `const S` at module level is the member (F2), and admitting it as the
+        // module constant emitted a bare `S` that C# binds to the member (CS1736; P21h verify CLASS-A).
+        if (semanticInfo.GetIdentifierSymbol(id) != null || semanticInfo.GetClassBodySiblingRead(id) != null)
+            return null;
+
         return Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } fallback
             && fallback.IsNameBacktickEscaped == id.IsNameBacktickEscaped
                 ? fallback

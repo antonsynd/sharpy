@@ -276,3 +276,14 @@ class-body-read × struct × static-field-initializer × static-method × before
 class-body-read × struct × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
 class-body-read × struct × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
 class-body-read × struct × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+
+# #2396 (owner ruling (b) applied to the @static PROPERTY default, P21h verify C1, 2026-10-29): a @static
+# property's default is a static initializer too; it reads an earlier @static property directly (the layout keeps
+# properties in source order), but a @static method it calls can read a LATER @static property and see 0
+# (scratchpad probe s1: printed 0 at the P21h head, SPY0200 at the P21h base). Refused like the field slot.
+class-body-read × class × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × class × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × dataclass × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × dataclass × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × struct × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × struct × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader

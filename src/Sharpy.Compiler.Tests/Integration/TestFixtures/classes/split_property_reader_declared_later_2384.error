@@ -1,0 +1,2 @@
+SPY0200: Undefined identifier 'sp' in a '@static' initializer. 'sp' is declared later than 'a' in 'C' @13:27
+!count 1

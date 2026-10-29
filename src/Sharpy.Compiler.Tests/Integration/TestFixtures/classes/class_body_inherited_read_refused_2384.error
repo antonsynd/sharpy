@@ -1,0 +1,10 @@
+SPY0200: Undefined identifier 'unit' in a field initializer. 'unit' is a '@static' attribute inherited from 'Base' @22:14
+SPY0200: Undefined identifier 'sp' in a '@static' initializer. 'sp' is a '@static' property inherited from 'Base' @24:14
+SPY0200: Undefined identifier 'mk' in a property default. 'mk' is a '@static' method inherited from 'Base' @25:23
+SPY0200: Undefined identifier 'K' in a parameter default. 'K' is a 'const' inherited from 'Base' @27:26
+SPY0200: Undefined identifier 'unit' in a parameter default. 'unit' is a '@static' attribute inherited from 'Base' @33:14
+Use 'Base.mk()'
+Use 'Base.K'
+!count 5
+!SPY0401
+which 'Base.unit' is not

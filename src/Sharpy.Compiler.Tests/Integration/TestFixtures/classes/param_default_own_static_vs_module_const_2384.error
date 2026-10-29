@@ -1,0 +1,5 @@
+SPY0401: Default value for parameter 'x' in function 'g' must be a compile-time constant expression @14:17
+SPY0401: Default value for parameter 'x' in function 'h' must be a compile-time constant expression @22:17
+SPY0401: Default value for field 'f' in dataclass 'Rec' must be a compile-time constant expression @30:5
+SPY0401: Default value for field 'f' in struct 'Pair' must be a compile-time constant expression @36:5
+!count 4

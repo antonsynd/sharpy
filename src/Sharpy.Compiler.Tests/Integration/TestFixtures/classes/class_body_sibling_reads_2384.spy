@@ -6,7 +6,9 @@
 # a const. Each line prints the four siblings' values: 1 2 4 6 — except that a @static FIELD or a
 # const initializer neither reads the @static PROPERTY nor calls the @static METHOD (refused, #2396:
 # the emitter lays fields out before properties, so that static initializer could run first and read
-# 0); those lines print 1 2. The #2396 refusals are pinned by static_prop_in_static_init_2396.error.
+# 0); those lines print 1 2. A @static PROPERTY's default reads the @static property but does not call the
+# @static method either (#2396: the method could read a @static property laid out after it — P21h verify C1);
+# those lines print 1 2 4. The #2396 refusals are pinned by static_prop_in_static_init_2396.error.
 # The refusals are pinned by bare_member_name_in_method_2360.error and ClassBodyReadPositionMatrixTests.
 
 
@@ -38,8 +40,6 @@ class Plain:
     property q2: int = s
     @static
     property q3: int = sp
-    @static
-    property q4: int = sm()
     const C1: int = K
     const C2: int = s
 
@@ -72,8 +72,6 @@ struct Pair:
     property q2: int = s
     @static
     property q3: int = sp
-    @static
-    property q4: int = sm()
     const C1: int = K
     const C2: int = s
 
@@ -104,8 +102,6 @@ class Rec:
     property q2: int = s
     @static
     property q3: int = sp
-    @static
-    property q4: int = sm()
     const C1: int = K
     const C2: int = s
 
@@ -115,7 +111,7 @@ def main() -> None:
     print(a.f1, a.f2, a.f3, a.f4)
     print(Plain.g1, Plain.g2)
     print(a.p1, a.p2, a.p3, a.p4)
-    print(Plain.q1, Plain.q2, Plain.q3, Plain.q4)
+    print(Plain.q1, Plain.q2, Plain.q3)
     print(Plain.C1, Plain.C2)
     print(a.m())
 
@@ -123,12 +119,12 @@ def main() -> None:
     print(b.fk)
     print(Pair.g1, Pair.g2)
     print(b.p1, b.p2, b.p3, b.p4)
-    print(Pair.q1, Pair.q2, Pair.q3, Pair.q4)
+    print(Pair.q1, Pair.q2, Pair.q3)
     print(Pair.C1, Pair.C2)
 
     c = Rec()
     print(c.fk)
     print(Rec.g1, Rec.g2)
     print(c.p1, c.p2, c.p3, c.p4)
-    print(Rec.q1, Rec.q2, Rec.q3, Rec.q4)
+    print(Rec.q1, Rec.q2, Rec.q3)
     print(Rec.C1, Rec.C2)

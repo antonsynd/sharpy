@@ -364,18 +364,41 @@ internal partial class TypeChecker
         if (TypeBodyMembership.FindMember(_currentClass, id.Name, reachableThroughSelf: true) is not { } member)
             return null;
 
+        // An INHERITED member is never read by bare name outside a method (owner ruling R1 (b),
+        // 2026-10-29): F2's "a member outranks an outer binding" covers only the members THIS type
+        // body declares. Under an outer binding of the name the outer binding is what the read finds,
+        // as python3 and 9aae96977 read it (`unit = 9` at module level, `Base` declaring
+        // `@static unit = 3`, `class Child(Base): a: int = unit` prints 9). With no outer binding the
+        // read is ONE SPY0200 naming the position and the declaring class — never an admission, and
+        // never SPY0401 beside it (the refusal is error recovery, which ConstantPositionValidator
+        // skips). An inherited instance member keeps the kind refusal below, whose steer is 'self.'.
+        if (member.IsInherited)
+        {
+            if (bound != null)
+                return null;
+            if (member.IsStatic || member.IsConstant)
+            {
+                AddError(DescribeInheritedMemberRefusal(reader, member, id),
+                    id.LineStart, id.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedVariable,
+                    span: id.Span);
+                MarkExpressionAsErrorRecovery(id,
+                    ErrorRecoveryReason.AlreadyReported(
+                        "an inherited member read by bare name outside a method (SPY0200, owner ruling R1 (b))"));
+                return SemanticType.Unknown;
+            }
+        }
+
         // A member declared LATER than the reader does not exist yet where the reader runs, so an
         // outer binding of the name is what the read finds — Python's class-body rule, and the
         // verdict at 9aae96977 (`size = 7` at module level, then `v: int = size` above
         // `@static size: int = 2`, prints 7 on python3 and at base; lead ruling (y), 2026-10-29).
-        // A SELF read is not "later": the reader is the member being declared, which C# binds, so
-        // it stays F1's refusal below even under an outer binding (python3 reads the outer name —
-        // deviation class-body-bare-name-read).
-        if (bound != null && !IsBoundInTypeBody(id.Name, bound) && IsDeclaredLater(member, reader)
-            && !IsSelfRead(member, reader))
-        {
+        // A SELF read is "later" too: the member does not exist until its own initializer has run,
+        // so under an outer binding the read finds the outer name (`x = 5` at module level,
+        // `@static x: int = x + 1` gives 6 — python3 and 9aae96977; owner ruling (a), 2026-10-29).
+        // With no outer binding it stays F1's refusal below.
+        if (bound != null && !IsBoundInTypeBody(id.Name, bound) && IsDeclaredLater(member, reader))
             return null;
-        }
 
         bool resolves = ClassBodyReadAdmits(reader.Position, member)
             || (reader.Position == ClassBodyReadPosition.ParameterDefault
@@ -384,8 +407,8 @@ internal partial class TypeChecker
         // F1 (owner ruling 2026-10-29): an initializer or a default runs where its declaration
         // stands, so it reads only a sibling declared EARLIER in the body — C# runs static
         // initializers in textual order (a later one reads 0), and Python raises NameError. A self
-        // or forward read is one SPY0200. An instance sibling is refused by kind above whatever its
-        // order; an inherited member was initialized with its own type.
+        // or forward read is one SPY0200. An instance sibling is refused by kind below whatever its
+        // order.
         if (resolves && IsDeclaredLater(member, reader))
         {
             AddError(DescribeDeclaredLaterRefusal(reader, member),
@@ -403,12 +426,12 @@ internal partial class TypeChecker
         // FIELD's or a const's initializer that reads a @static property — directly, or through a
         // @static method whose body reads one or a later static — sees storage not yet initialized:
         // 0, silently, whatever the spelling. Until the layout follows the source, those cells are
-        // refused. An instance initializer and a parameter default keep admitting the method call:
-        // every static initializer has run before either of them.
-        if (resolves
-            && member is { Kind: TypeBodyMemberKind.Property or TypeBodyMemberKind.Method, IsStatic: true }
-            && reader.Slot is ClassBodyReadSlot.Field or ClassBodyReadSlot.Const
-            && reader.Position is ClassBodyReadPosition.StaticInitializer or ClassBodyReadPosition.ConstInitializer)
+        // refused. A @static PROPERTY's default is a static initializer too, laid out with the other
+        // properties in their source order, so it reads an earlier @static property directly — but a
+        // @static method it calls can read a LATER @static property and see 0 just the same (P21h
+        // verify C1): the method call is refused there as well. An instance initializer and a parameter default keep admitting the method
+        // call: every static initializer has run before either of them.
+        if (resolves && IsStaticInitializationOrderRead(reader, member))
         {
             AddError(DescribeStaticInitializationOrderRefusal(reader, member),
                 id.LineStart, id.ColumnStart,
@@ -490,6 +513,23 @@ internal partial class TypeChecker
         return false;
     }
 
+    /// <summary>
+    /// The #2396 cells: a <c>@static</c> property read or a <c>@static</c> method call from a
+    /// <c>@static</c> field's or a <c>const</c>'s initializer, and a <c>@static</c> method call from a
+    /// <c>@static</c> property's default — the static initializers the member layout can run before
+    /// the storage the read reaches.
+    /// </summary>
+    private static bool IsStaticInitializationOrderRead(ClassBodyReader reader, TypeBodyMember member)
+        => member.IsStatic
+            && reader.Position is ClassBodyReadPosition.StaticInitializer or ClassBodyReadPosition.ConstInitializer
+            && (reader.Slot, member.Kind) switch
+            {
+                (ClassBodyReadSlot.Field or ClassBodyReadSlot.Const,
+                    TypeBodyMemberKind.Property or TypeBodyMemberKind.Method) => true,
+                (ClassBodyReadSlot.Property, TypeBodyMemberKind.Method) => true,
+                _ => false,
+            };
+
     /// <summary>Whether <paramref name="bound"/> is a binding of the type body itself.</summary>
     private bool IsBoundInTypeBody(string name, Symbol bound)
         => _symbolTable.Resolve(name) is { DeclaringScope: { } declaringScope } resolution
@@ -513,18 +553,36 @@ internal partial class TypeChecker
             return false;
         }
 
+        // Both sides are anchored where the emitter places them: a split property is emitted as ONE
+        // C# property at its FIRST half (RoslynEmitter.ClassMembers groups the halves in first-seen
+        // order), so a default carried by a later half runs where the first half stands — the reader
+        // as much as the sibling (P21h verify C2: `@static property get a`, `@static property sp = 4`,
+        // `@static property set a = sp` reads 0 in C#).
+        var readerAnchor = readerDeclaration is PropertyDef
+            ? FirstDeclarationOf(DeclaredMemberName(readerDeclaration)) ?? readerDeclaration
+            : readerDeclaration;
+        if (FirstDeclarationOf(member.Name) is not { } memberAnchor)
+            return false;
+
+        return ReferenceEquals(memberAnchor, readerAnchor)
+            || (memberAnchor.LineStart, memberAnchor.ColumnStart).CompareTo(
+                (readerAnchor.LineStart, readerAnchor.ColumnStart)) >= 0;
+    }
+
+    /// <summary>The first unwrapped statement of the current type body that declares
+    /// <paramref name="name"/> (<see cref="DeclaredMemberName"/>), or null.</summary>
+    private Node? FirstDeclarationOf(string? name)
+    {
+        if (name == null)
+            return null;
         foreach (var statement in _currentTypeBody)
         {
             var declaration = statement.UnwrapDecorated();
-            if (DeclaredMemberName(declaration) != member.Name)
-                continue;
-
-            return ReferenceEquals(declaration, readerDeclaration)
-                || (declaration.LineStart, declaration.ColumnStart).CompareTo(
-                    (readerDeclaration.LineStart, readerDeclaration.ColumnStart)) >= 0;
+            if (DeclaredMemberName(declaration) == name)
+                return declaration;
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>Whether the reader's own declaration declares <paramref name="member"/> — a member
@@ -549,17 +607,50 @@ internal partial class TypeChecker
         _ => null,
     };
 
+    /// <summary>The position phrase a refusal names — one per position, and no other's.</summary>
+    private static string ReadPositionPhrase(ClassBodyReader reader) => reader.Position switch
+    {
+        ClassBodyReadPosition.InstanceInitializer when reader.Slot == ClassBodyReadSlot.Property => "a property default",
+        ClassBodyReadPosition.InstanceInitializer => "a field initializer",
+        ClassBodyReadPosition.StaticInitializer => "a '@static' initializer",
+        ClassBodyReadPosition.ConstInitializer => "a 'const' initializer",
+        _ => "a parameter default",
+    };
+
+    /// <summary>
+    /// The SPY0200 text for an inherited <c>const</c> or <c>@static</c> member read by bare name
+    /// outside a method with no outer binding of its name (owner ruling R1 (b), 2026-10-29): the
+    /// position, the inheritance, and the declaring class's spelling, which is what compiles.
+    /// </summary>
+    private string DescribeInheritedMemberRefusal(ClassBodyReader reader, TypeBodyMember member, Identifier id)
+    {
+        var phrase = ReadPositionPhrase(reader);
+        var noun = member.IsConstant ? "'const'" : member.Kind switch
+        {
+            TypeBodyMemberKind.Property => "'@static' property",
+            TypeBodyMemberKind.Event => "'@static' event",
+            TypeBodyMemberKind.Method => "'@static' method",
+            _ => "'@static' attribute",
+        };
+        var spelling = member.Kind == TypeBodyMemberKind.Method
+            ? $"{member.OwnerName}.{CallAsWritten(id, member.Name)}"
+            : $"{member.OwnerName}.{member.Name}";
+        var message = $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a {noun} inherited from "
+            + $"'{member.OwnerName}' — outside a method a bare name reads only a member '{_currentClass?.Name}' "
+            + "declares itself, so an inherited member is named through its class";
+
+        // In a parameter default the class-qualified spelling of a non-const member is SPY0401 in its
+        // turn, so it is named as what it is rather than offered as the fix.
+        return reader.Position == ClassBodyReadPosition.ParameterDefault && !member.IsConstant
+            ? message + $" ('{spelling}'), but a parameter default must be a compile-time constant (a 'const'), "
+                + $"which '{spelling}' is not"
+            : message + $". Use '{spelling}'";
+    }
+
     /// <summary>The SPY0200 text for a sibling read before its declaration (F1).</summary>
     private static string DescribeDeclaredLaterRefusal(ClassBodyReader reader, TypeBodyMember member)
     {
-        var phrase = reader.Position switch
-        {
-            ClassBodyReadPosition.InstanceInitializer when reader.Slot == ClassBodyReadSlot.Property => "a property default",
-            ClassBodyReadPosition.InstanceInitializer => "a field initializer",
-            ClassBodyReadPosition.StaticInitializer => "a '@static' initializer",
-            ClassBodyReadPosition.ConstInitializer => "a 'const' initializer",
-            _ => "a parameter default",
-        };
+        var phrase = ReadPositionPhrase(reader);
         var name = member.Name;
         var readerName = reader.Declaration is { } declaration && DeclaredMemberName(declaration) is { } declared
             ? declared
@@ -605,10 +696,12 @@ internal partial class TypeChecker
         var phrase = reader.Position == ClassBodyReadPosition.ConstInitializer ? "a 'const' initializer" : "a '@static' initializer";
         if (member.Kind == TypeBodyMemberKind.Method)
         {
+            // No "make the reader a @static property" steer: a @static property's default is refused
+            // the call too (P21h verify C1).
             return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' method of "
                 + $"'{member.OwnerName}' — calling a '@static' method here is not supported yet: static initializers "
                 + "run in member-layout order (#2396), so the method could read a static that is not initialized yet. "
-                + $"Call it in a method, or make '{reader.Name}' a '@static' property";
+                + "Call it in a method";
         }
 
         return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' property of "

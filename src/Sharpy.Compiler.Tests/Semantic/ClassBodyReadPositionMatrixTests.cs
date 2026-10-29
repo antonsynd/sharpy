@@ -40,8 +40,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// (<c>ParameterDefault</c>); an instance PROPERTY default is a C# property initializer in every host
 /// (<c>InstanceInitializer</c>); a <c>const</c> initializer that is not a compile-time constant emits
 /// <c>static readonly</c> (<c>ConstInitializer</c>, admitting what a static initializer admits). Outside a method
-/// body: F2 — a class member declared EARLIER (or the reader itself) outranks the module binding, so the verdict is the
-/// one without the shadow, while a non-const member declared LATER yields to it (lead rulings (y)/(b) — a const is not
+/// body: F2 — a class member declared EARLIER outranks the module binding, so the verdict is the one without the
+/// shadow, while a non-const member declared LATER, or the reader itself, yields to it (lead rulings (y)/(b), owner
+/// ruling (a) on the self read — a const is not
 /// ordered, so it outranks the module binding in any order; Python's rule for the rest: the read runs the
 /// module's value, or is SPY0401 in a <c>ParameterDefault</c>, a module binding not being a constant); F1 — a
 /// <c>@static</c> field, property or method declared later, or a <c>@static</c> reader reading itself, is exactly ONE
@@ -182,11 +183,15 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
     internal static readonly string[] Shadows = { "none", "module" };
 
     /// <summary>The reader reading itself (ORDER <c>self</c>): a sibling of the reader's own kind, named like it, typed
-    /// <c>int</c>, valued 98 at module level (<c>b</c>/<c>B</c> a variable, <c>m</c> a function).</summary>
+    /// <c>int</c>, valued 98 at module level (<c>b</c>/<c>B</c> a variable, <c>m</c> a function); a module-bound self
+    /// read prints 99 (<c>b + 1</c>).</summary>
     private static Sibling Itself(Position position) => new(
         "itself", Array.Empty<string>(), position.SelfRead, position.ReaderName, "int", null,
         TypeLevel: position.Name is "static-field-initializer" or "static-property-default" or "const-initializer",
-        position.ReaderName == "m" ? new[] { "def m() -> int:", "    return 98" } : new[] { $"{position.ReaderName}: int = 98" }, 98,
+        position.ReaderName == "m" ? new[] { "def m() -> int:", "    return 98" } : new[] { $"{position.ReaderName}: int = 98" },
+        // What the self read evaluates to when the module binding is the one it reads (owner ruling (a)): `b + 1` over
+        // the module's 98; the method readers' `m()` is the module function's 98.
+        position.ReaderName == "m" ? 98 : 99,
         IsConst: position.Name == "const-initializer");
 
     /// <summary>D8's classifier: the position alone, except the ONE host-route slot — a struct/dataclass instance
@@ -229,13 +234,14 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
     /// by CODE only (line 0 in the expected set) until its location is measured on a fixed binary.</summary>
     internal const string ConstCycleCode = "SPY0278";
 
-    /// <summary>F2 + lead rulings (y) and (b), 2026-10-29: the module binding of the read name decides the read in a
-    /// method body whatever the order (#1786 — the walk crosses the class body), and outside one when a NON-const class
-    /// member is declared LATER than the reader (Python's rule: the later class-body name is not bound yet). Otherwise —
-    /// an earlier member, the reader itself, or a <c>const</c> in any order (F1-const: a const is not ordered, so a
-    /// later const is not "later") — the class member outranks it.</summary>
+    /// <summary>F2 + lead rulings (y) and (b), 2026-10-29, and owner ruling (a) on the self read (P21h verify,
+    /// 2026-10-29): the module binding of the read name decides the read in a method body whatever the order (#1786 —
+    /// the walk crosses the class body), and outside one when a NON-const class member is declared LATER than the
+    /// reader or IS the reader (Python's rule: the class-body name is not bound until its own statement has run —
+    /// <c>x = 5</c>, <c>@static x: int = x + 1</c> gives 6). Otherwise — an earlier member, or a <c>const</c> in any
+    /// order (F1-const: a const is not ordered, so a later const is not "later") — the class member outranks it.</summary>
     internal static bool ModuleBindingWins(ReadPosition classified, string shadow, string order, Sibling sibling)
-        => shadow == "module" && (classified == ReadPosition.MethodBody || (order == "after" && !sibling.IsConst));
+        => shadow == "module" && (classified == ReadPosition.MethodBody || (order is "after" or "self" && !sibling.IsConst));
 
     /// <summary>The phrase a refused SPY0200 carries: the classified position's, split by the declaring member's form
     /// only in <c>InstanceInitializer</c> (a field initializer and a property default are different slots to a reader).</summary>
@@ -402,21 +408,26 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
         // (y)), and every method-body cell under a module shadow (8 × 2 orders + the self-read).
         Assert.Equal(7 * (5 + 2 * 4), cells.Count(c => Runs(c) && c.Position != "method-body" && c.Order == "after" && c.Shadow == "module"
             && c.Sibling != "const"));
+        // Runs the MODULE's value for the self read (owner ruling (a)): every non-const reader reading itself under a
+        // module shadow in an initializer row — class 4, struct/dataclass 3 (their instance field slot is a parameter default).
+        Assert.Equal(4 + 2 * 3, cells.Count(c => Runs(c) && c.Position != "method-body" && c.Order == "self" && c.Shadow == "module"
+            && c.ExpectedStdout == "99\n"));
         Assert.Equal(2 * 3 * 6, cells.Count(c => Runs(c) && c.Sibling == "const" && c.Order == "after" && c.ExpectedStdout == "1\n"));
         Assert.Equal(3 * (8 * 2 + 1), cells.Count(c => Runs(c) && c.Position == "method-body"));
-        Assert.Equal(2 * (5 * 4 + 1 + 2 * (4 * 4 + 2)) + 2 * 3 * 6 + 7 * (5 + 2 * 4) + 3 * (8 * 2 + 1), cells.Count(Runs));
+        Assert.Equal(2 * (5 * 4 + 1 + 2 * (4 * 4 + 2)) + 2 * 3 * 6 + 7 * (5 + 2 * 4) + (4 + 2 * 3) + 3 * (8 * 2 + 1), cells.Count(Runs));
         // SPY0401 alone: the 3 earlier non-const @static siblings per parameter-default row, both shadows; every later
-        // non-const sibling under a module shadow per parameter-default row (the module binding is not a constant).
-        Assert.Equal(2 * 3 * (1 + 2 * 2) + 7 * (1 + 2 * 2), cells.Count(c => Has(c, "SPY0401")));
+        // non-const sibling under a module shadow per parameter-default row (the module binding is not a constant), and
+        // the non-const reader reading itself under a module shadow per parameter-default row (owner ruling (a)).
+        Assert.Equal(2 * 3 * (1 + 2 * 2) + 7 * (1 + 2 * 2) + (1 + 2 * 2), cells.Count(c => Has(c, "SPY0401")));
         // Declared later (unshadowed, or the reader itself): the 3 later @static siblings in every non-method row, + the
-        // @static field and property readers reading themselves under both shadows.
-        Assert.Equal(3 * (6 * 3 + 2 * 2), cells.Count(c => c.DeclaredLater));
+        // @static field and property readers reading themselves with no shadow (under one they read it, ruling (a)).
+        Assert.Equal(3 * (6 * 3 + 2), cells.Count(c => c.DeclaredLater));
         // The const reader reading itself: the constant cycle, per host × shadow.
         Assert.Equal(2 * 3, cells.Count(c => Has(c, ConstCycleCode)));
         // SPY0200 for a member kind: per non-method row the 4 instance siblings before (both shadows) and after
-        // (unshadowed), + the instance readers reading themselves (field, property, parameter default) under both
-        // shadows; the method body without a shadow, every sibling in both orders and the self-read.
-        Assert.Equal(3 * (6 * 4 * 3 + 3 * 2 + (8 * 2 + 1)), cells.Count(c => Has(c, "SPY0200") && !c.DeclaredLater));
+        // (unshadowed), + the instance readers reading themselves (field, property, parameter default) with no shadow;
+        // the method body without a shadow, every sibling in both orders and the self-read.
+        Assert.Equal(3 * (6 * 4 * 3 + 3 + (8 * 2 + 1)), cells.Count(c => Has(c, "SPY0200") && !c.DeclaredLater));
         Assert.Equal(2 * 8, cells.Count(c => c.Classified == ReadPosition.ParameterDefault && c.Position == "instance-field-initializer"
             && c.Order == "before" && c.Shadow == "none"));
         // The phrases are pairwise non-overlapping, so "carries exactly one" is decidable.

@@ -1,0 +1,21 @@
+# P21h verify C1 (#2396, owner ruling (b) applied to the property-default slot): a @static property's
+# default is a static initializer laid out with the properties in source order, so a @static method it
+# calls can read a LATER @static property before that property is initialized — `get()` returns `C.q`,
+# which C# would read as 0. Refused like the @static field slot until static initialization follows
+# declaration order. Reading an earlier @static property directly stays admitted (`r` below).
+
+
+class C:
+    @static
+    def get() -> int:
+        return C.q
+    @static
+    property p: int = get()
+    @static
+    property q: int = 5
+    @static
+    property r: int = q
+
+
+def main() -> None:
+    print(C.p, C.r)
