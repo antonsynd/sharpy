@@ -344,13 +344,13 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTypeExpression"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:DescribeTypeExpression",
         // GetLruCacheMaxSize deleted: emitter reads FunctionSymbol.CacheMaxSize (#1716)
         ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "guarded-by:CheckStatementCoreTotalityTests",
+        // DetectConstantCycles: the type-body const graph's member-name switch and qualified-path reader
+        // (P21h, #2384) — partial by design; a kind it does not list leaves a bare name to the module lookup.
+        ["Semantic/TypeChecker.cs::TypeChecker.DetectConstantCycles"] = "documented-by-design:Semantic/TypeChecker.cs:DetectConstantCycles",
         ["Semantic/TypeChecker.Definitions.cs::TypeChecker.DetectGeneratorAttributes"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         // TypeChecker.ExtractCacheConfig: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.MarkTypeFactoryArguments"] = "refusal-net:FileBasedIntegrationTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.RecordIterableArgumentMarks"] = "refusal-net:FileBasedIntegrationTests",
-        // DetectConstantCycles: the type-body const graph's member-name switch and qualified-path reader
-        // (P21h, #2384) — partial by design; a kind it does not list leaves a bare name to the module lookup.
-        ["Semantic/TypeChecker.cs::TypeChecker.DetectConstantCycles"] = "documented-by-design:Semantic/TypeChecker.cs:DetectConstantCycles",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.TakesContextualCollectionType"] = "walker-default-contract",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.TryResolveGenericTypeSymbolFromIndexObject"] = "refusal-net:FileBasedIntegrationTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.ClrStaticCallType"] = "refusal-net:InteropConformanceTests",
