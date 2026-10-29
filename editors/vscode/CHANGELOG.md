@@ -12,7 +12,7 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 ### Fixed
 - Code actions keep the source's shape. Wrap in try/except, Extract method/variable, Inline variable, Remove unused import, Organize Imports and the if↔match conversions move whole regions: nested blocks, continuation lines, comments, blank lines and multi-line literals survive, and every action writes the document's own line break (#2232, #2296).
 - In project mode, diagnostics are published through one route on every event (open, change, close, watched-file change, project reload). Closing a file whose unsaved buffer differed from disk republishes it from disk, and a sibling file's diagnostic no longer drops the whole publication (#2242).
-- Go-to-definition and go-to-implementation resolve a module-qualified member (`lib.build`) and a name used in a generic call, a type argument or a type alias (`Box[int](5)`) (#2242).
+- Go-to-definition and go-to-implementation resolve a module-qualified member (`lib.build`) and a name used in a generic call, a type argument or a type alias, such as a call of `Box[int]` (#2242).
 - Format Document preserves blank-line placement after decorators, at body start and at the end of the file (#2239).
 
 Toolchain-side:
