@@ -319,6 +319,44 @@ def main() -> None:
     print(Grid().total)
 ```
 
+A class body runs top to bottom, so a position reads only a sibling **declared earlier** in the
+body. A sibling declared later, or the member being initialized itself, is refused (SPY0200, "declared
+later"): C# would run that initializer before the sibling's and read its default value, and Python
+raises `NameError`. A `const` sibling is the exception, since a type body resolves its constants in
+dependency order.
+
+<!-- spec-sweep: error SPY0200 -->
+```python
+class Counter:
+    @static
+    start: int = step     # SPY0200 — "'step' is declared later than 'start' in 'Counter'"
+    @static
+    step: int = 2
+
+def main() -> None:
+    print(Counter.start)
+```
+
+In these positions a member of the class outranks a module-level (or other outer) binding of the
+same name, for every member kind, as in C# and Python. A member declared later does not exist yet
+where the position runs, so the outer binding is what it reads. Inside a method body the module
+binding still wins (the rule above).
+
+<!-- spec-sweep: output -->
+```python
+size: int = 7
+
+class Box:
+    @static
+    property size: int = 2
+
+    @static
+    property doubled: int = size * 2    # the @static property, not the module variable
+
+def main() -> None:
+    print(Box.doubled)    # 4
+```
+
 One temporary exception: a `@static` **property** is refused (SPY0200) in a `@static` field's
 initializer or a `const` initializer. Static initializers run in member-layout order, so the read
 would see the property before its own default is assigned (#2396). Read it in a method, or make it

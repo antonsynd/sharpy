@@ -16,7 +16,7 @@
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
 extract-method identity diagnostics 2898 6d1d2ff4711f5bdd 836 8d39605cfecbddcd # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 553 61bf1fd15f8c0698 553 61bf1fd15f8c0698 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
-extract-variable identity diagnostics 220 88ce9452651014a6 61 e195216393c75856 # #2294 adds SPY0220 (and 257 other cells)
+extract-variable identity diagnostics 220 88ce9452651014a6 62 362da23e6a991098 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable identity parse 56 8009d0bb498adc30 56 8009d0bb498adc30 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
 implement identity diagnostics 46 3c4b326389297fda 6 958ea3e0a6810d12 # #2296 adds SPY0224,SPY0522 (and 13 other cells)
 inline-function identity diagnostics 45 08d2287b43ce13a6 14 636bc0dd9745c36b # #2296 removes an error (and 36 other cells)

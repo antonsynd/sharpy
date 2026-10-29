@@ -380,11 +380,12 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         var defaultValue = slot.DefaultValue;
         var semanticInfo = Context.SemanticInfo;
 
-        // A default that reads an INSTANCE member of the enclosing type by bare name was already
-        // refused by the checker, with the one SPY0200 whose steer names the position (P21h D8,
-        // R-JJ): C# does not resolve an instance member there at all (CS0236 / CS1736 on a name it
-        // cannot bind), so a constant-position verdict on top of it is a second report of one
-        // defect. A @static member DOES resolve and is not skipped — SPY0401 is its one verdict.
+        // A default that reads an INSTANCE member of the enclosing type by bare name, or a sibling
+        // declared later (F1), was already refused by the checker with the one SPY0200 whose steer
+        // names the position (P21h D8, R-JJ): C# does not resolve an instance member there at all
+        // (CS0236 / CS1736 on a name it cannot bind), so a constant-position verdict on top of it is
+        // a second report of one defect. An earlier @static member DOES resolve and is not
+        // skipped — SPY0401 is its one verdict.
         if (ReadsRefusedInstanceMember(defaultValue, semanticInfo))
             return;
         var kind = ConstantDefaultClassifier.Classify(
@@ -481,11 +482,13 @@ internal class ConstantPositionValidator : ValidatingAstWalker
     }
 
     /// <summary>
-    /// Whether <paramref name="expression"/> contains a bare identifier the checker left unbound
-    /// that names an instance member of the enclosing type — asked of the same membership predicate
-    /// the checker refused it by (<see cref="TypeBodyMembership"/>), so the two sides cannot disagree
-    /// about which names are members. An identifier the checker BOUND (a module variable, a
-    /// parameter, a local) is never skipped: whatever it names, the constant-position rule judges it.
+    /// Whether <paramref name="expression"/> contains a bare identifier the checker REFUSED as a
+    /// class-body sibling read — left unbound, marked error recovery, and naming a member of the
+    /// enclosing type by the same membership predicate the checker asked
+    /// (<see cref="TypeBodyMembership"/>): an instance member (C# resolves none in a constant
+    /// position), or a sibling declared later than the default's method or field (F1). An identifier
+    /// the checker BOUND (a module variable, a parameter, a local, an admitted @static sibling) is
+    /// never skipped: whatever it names, the constant-position rule judges it.
     /// </summary>
     private bool ReadsRefusedInstanceMember(Expression expression, SemanticInfo semanticInfo)
     {
@@ -497,7 +500,8 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         bool Reads(Node node)
             => (node is Identifier id
                     && semanticInfo.GetIdentifierSymbol(id) == null
-                    && TypeBodyMembership.IsInstanceMember(enclosing, id.Name))
+                    && semanticInfo.IsErrorRecoveryType(id)
+                    && TypeBodyMembership.FindMember(enclosing, id.Name, reachableThroughSelf: false) != null)
                 || node.GetChildNodes().Any(Reads);
     }
 

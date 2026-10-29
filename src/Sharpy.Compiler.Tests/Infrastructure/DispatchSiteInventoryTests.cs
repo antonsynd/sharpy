@@ -142,6 +142,10 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.Classify"] = "guarded-by:ParameterDefaultConstantMatrixTests",
         ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.RootsInIdentifier"] = "guarded-by:ParameterDefaultConstantMatrixTests",
         ["Semantic/Validation/ConstantPositionValidator.cs::ConstantPositionValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
+        // The F1 order rule's "which bare member name does this type-body statement declare": a
+        // statement kind that declares no member (a nested type, an alias, a pass) names none, so
+        // it is never a sibling's declaration (P21h, owner ruling F1 2026-10-29).
+        ["Semantic/TypeChecker.ClassScopeRule.cs::TypeChecker.DeclaredMemberName"] = "documented-by-design:Semantic/TypeChecker.ClassScopeRule.cs:DeclaredMemberName",
         // IsMutableDefault (both copies) folded onto ConstantDefaultClassifier's
         // Collection/Comprehension kinds (#1684, R-A) — the shape-switching dispatch these two rows
         // named is gone, drained here rather than left phantom.

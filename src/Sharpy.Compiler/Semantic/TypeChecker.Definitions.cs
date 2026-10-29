@@ -853,7 +853,7 @@ internal partial class TypeChecker
                 // parameter default does: a const only (P21h D8, TypeChecker.ClassScopeRule).
                 SemanticType defaultType;
                 using (_symbolTable.ResolveInDeclaringScope(enabled: !param.IsLateBound))
-                using (ScopedValue.Push(ref _initializerOwner, ParameterDefaultReader(param)))
+                using (ScopedValue.Push(ref _initializerOwner, ParameterDefaultReader(param, functionDef)))
                 {
                     using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
                         defaultType = CheckExpression(param.DefaultValue);
@@ -1285,6 +1285,8 @@ internal partial class TypeChecker
         // resolved, so a later assignment cannot repair it (#1285).
         var previousClass = _currentClass;
         _currentClass = classSymbol;
+        var previousTypeBody = _currentTypeBody;
+        _currentTypeBody = classDef.Body;
         _typeResolver.SetCurrentTypeContext(classSymbol);
 
         RecordCompletedBaseAnnotations(classSymbol);
@@ -1334,6 +1336,7 @@ internal partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
+        _currentTypeBody = previousTypeBody;
         _typeResolver.SetCurrentTypeContext(previousClass);
         // Access validation is handled by AccessValidator in the validation pipeline
 
@@ -1577,6 +1580,8 @@ internal partial class TypeChecker
         // discipline as the class path (#1285).
         var previousClass = _currentClass;
         _currentClass = structSymbol;
+        var previousTypeBody = _currentTypeBody;
+        _currentTypeBody = structDef.Body;
         _typeResolver.SetCurrentTypeContext(structSymbol);
 
         RecordCompletedBaseAnnotations(structSymbol);
@@ -1623,6 +1628,7 @@ internal partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
+        _currentTypeBody = previousTypeBody;
         _typeResolver.SetCurrentTypeContext(previousClass);
         // Access validation is handled by AccessValidator in the validation pipeline
 
@@ -1687,6 +1693,8 @@ internal partial class TypeChecker
         // resolutions are cached, so the context has to be right on this first pass.
         var previousClass = _currentClass;
         _currentClass = interfaceSymbol;
+        var previousTypeBody = _currentTypeBody;
+        _currentTypeBody = interfaceDef.Body;
         _typeResolver.SetCurrentTypeContext(interfaceSymbol);
 
         RecordCompletedBaseAnnotations(interfaceSymbol);
@@ -1842,6 +1850,7 @@ internal partial class TypeChecker
         }
 
         _currentClass = previousClass;
+        _currentTypeBody = previousTypeBody;
         _typeResolver.SetCurrentTypeContext(previousClass);
 
         _symbolTable.ExitScope();
@@ -1950,6 +1959,8 @@ internal partial class TypeChecker
             // and Self resolve to the union type (mirrors CheckClass).
             var previousClass = _currentClass;
             _currentClass = unionSymbol;
+            var previousTypeBody = _currentTypeBody;
+            _currentTypeBody = unionDef.Body;
             _typeResolver.SetCurrentTypeContext(unionSymbol);
 
             foreach (var statement in unionDef.Body)
@@ -1958,6 +1969,7 @@ internal partial class TypeChecker
             }
 
             _currentClass = previousClass;
+            _currentTypeBody = previousTypeBody;
             _typeResolver.SetCurrentTypeContext(previousClass);
         }
         finally

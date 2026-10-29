@@ -1,0 +1,25 @@
+# P21h F2 (owner ruling 2026-10-29): outside a method a class member outranks an outer binding of its
+# name — a bare CALL too. `size()` in the initializer calls the @static method declared above it, not
+# the module function of the same name (a different signature, so a call typed or emitted against the
+# module function would not compile). Inside a method body the module function still wins (#1786).
+
+
+def size(x: str) -> str:
+    return x + "!"
+
+
+class Box:
+    @static
+    def size() -> int:
+        return 2
+
+    v: int = size()
+
+    def label(self) -> str:
+        return size("box")
+
+
+def main() -> None:
+    b = Box()
+    print(b.v)
+    print(b.label())

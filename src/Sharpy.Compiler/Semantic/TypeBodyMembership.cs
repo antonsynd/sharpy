@@ -154,11 +154,4 @@ internal static class TypeBodyMembership
 
         return null;
     }
-
-    /// <summary>
-    /// Whether <paramref name="name"/> denotes an INSTANCE member of <paramref name="type"/> or of
-    /// one of its bases — a member no constant position can read (C# CS0236 / CS1736).
-    /// </summary>
-    internal static bool IsInstanceMember(TypeSymbol? type, string name)
-        => FindMember(type, name, reachableThroughSelf: false) is { IsStatic: false, IsConstant: false };
 }

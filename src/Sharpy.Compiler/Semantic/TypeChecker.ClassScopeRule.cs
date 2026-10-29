@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
@@ -197,13 +198,22 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The declaration a class-body read sits in: its classified position, its slot, and its name
-    /// (the field, property or parameter a steer assigns).
+    /// The declaration a class-body read sits in: its classified position, its slot, its name (the
+    /// field, property or parameter a steer assigns), and the type-body statement that declares it
+    /// (the field, the property half, the method whose signature holds the default) — what the order
+    /// rule compares a sibling's declaration against (F1).
     /// </summary>
-    private readonly record struct ClassBodyReader(ClassBodyReadPosition Position, ClassBodyReadSlot Slot, string Name);
+    private readonly record struct ClassBodyReader(
+        ClassBodyReadPosition Position, ClassBodyReadSlot Slot, string Name, Node? Declaration);
 
     private static readonly ClassBodyReader MethodBodyReader =
-        new(ClassBodyReadPosition.MethodBody, ClassBodyReadSlot.Body, string.Empty);
+        new(ClassBodyReadPosition.MethodBody, ClassBodyReadSlot.Body, string.Empty, Declaration: null);
+
+    /// <summary>
+    /// The body of the type the checker is checking (class, struct, interface or union), set beside
+    /// <see cref="_currentClass"/>: where the order rule finds a sibling's declaration (F1).
+    /// </summary>
+    private ImmutableArray<Statement> _currentTypeBody;
 
     /// <summary>
     /// The class-body declaration whose initializer, default or parameter default is being checked,
@@ -228,9 +238,9 @@ internal partial class TypeChecker
     private ClassBodyReader FieldInitializerReader(VariableDeclaration varDecl, TypeSymbol owner)
     {
         if (varDecl.IsConst)
-            return new(ClassBodyReadPosition.ConstInitializer, ClassBodyReadSlot.Const, varDecl.Name);
+            return new(ClassBodyReadPosition.ConstInitializer, ClassBodyReadSlot.Const, varDecl.Name, varDecl);
         if (!MemberClassification.IsInstanceField(varDecl))
-            return new(ClassBodyReadPosition.StaticInitializer, ClassBodyReadSlot.Field, varDecl.Name);
+            return new(ClassBodyReadPosition.StaticInitializer, ClassBodyReadSlot.Field, varDecl.Name, varDecl);
 
         // An explicit __init__ suppresses both syntheses; then the field keeps its own initializer.
         // NameResolver puts a declared __init__ in Methods; DataclassSynthesis adds its synthesized
@@ -238,8 +248,8 @@ internal partial class TypeChecker
         bool synthesizedConstructorOwnsDefault = (owner.TypeKind == TypeKind.Struct || owner.IsDataclass)
             && !owner.Methods.Any(m => m.Name == DunderNames.Init);
         return synthesizedConstructorOwnsDefault
-            ? new(ClassBodyReadPosition.ParameterDefault, ClassBodyReadSlot.SynthesizedConstructorField, varDecl.Name)
-            : new(ClassBodyReadPosition.InstanceInitializer, ClassBodyReadSlot.Field, varDecl.Name);
+            ? new(ClassBodyReadPosition.ParameterDefault, ClassBodyReadSlot.SynthesizedConstructorField, varDecl.Name, varDecl)
+            : new(ClassBodyReadPosition.InstanceInitializer, ClassBodyReadSlot.Field, varDecl.Name, varDecl);
     }
 
     /// <summary>The reader of a class property's default: instance or <c>@static</c> by the
@@ -248,11 +258,12 @@ internal partial class TypeChecker
         => new(propDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
                 ? ClassBodyReadPosition.StaticInitializer
                 : ClassBodyReadPosition.InstanceInitializer,
-            ClassBodyReadSlot.Property, propDef.Name);
+            ClassBodyReadSlot.Property, propDef.Name, propDef);
 
-    /// <summary>The reader of an eager parameter default.</summary>
-    private static ClassBodyReader ParameterDefaultReader(Parameter param)
-        => new(ClassBodyReadPosition.ParameterDefault, ClassBodyReadSlot.Parameter, param.Name);
+    /// <summary>The reader of an eager parameter default; its declaration is the method, whose
+    /// signature is evaluated where the method is declared.</summary>
+    private static ClassBodyReader ParameterDefaultReader(Parameter param, FunctionDef function)
+        => new(ClassBodyReadPosition.ParameterDefault, ClassBodyReadSlot.Parameter, param.Name, function);
 
     /// <summary>
     /// The ONE position classifier (D8): the innermost scope that is not a block decides. A
@@ -341,20 +352,51 @@ internal partial class TypeChecker
         if (_currentClass == null)
             return null;
 
-        if (bound != null
-            && !(_symbolTable.Resolve(id.Name) is { DeclaringScope: { } declaringScope } resolution
-                && ReferenceEquals(resolution.Bound, bound)
-                && SymbolTable.ClassifyScope(declaringScope.Name) == SymbolTable.ScopeKind.TypeBody))
-        {
+        // A name a scope INSIDE the position binds — a comprehension variable, a lambda parameter of
+        // the initializer — keeps its own meaning. Any other binding (the type body's own, a module
+        // variable, an outer type's member) loses to a member of this type of the same name: outside
+        // a method the class member outranks an outer binding of its name, for every member kind,
+        // as C# and Python both resolve it (owner ruling F2, 2026-10-29). Method bodies keep the
+        // class-scope rule (#1786): the walk there never binds the type body.
+        if (bound != null && IsBoundInsideTheReadPosition(id.Name, bound))
             return null;
-        }
 
         if (TypeBodyMembership.FindMember(_currentClass, id.Name, reachableThroughSelf: true) is not { } member)
             return null;
 
+        // A member declared LATER than the reader does not exist yet where the reader runs, so an
+        // outer binding of the name is what the read finds — Python's class-body rule, and the
+        // verdict at 9aae96977 (`size = 7` at module level, then `v: int = size` above
+        // `@static size: int = 2`, prints 7 on python3 and at base; lead ruling (y), 2026-10-29).
+        // A SELF read is not "later": the reader is the member being declared, which C# binds, so
+        // it stays F1's refusal below even under an outer binding (python3 reads the outer name —
+        // deviation class-body-bare-name-read).
+        if (bound != null && !IsBoundInTypeBody(id.Name, bound) && IsDeclaredLater(member, reader)
+            && !IsSelfRead(member, reader))
+        {
+            return null;
+        }
+
         bool resolves = ClassBodyReadAdmits(reader.Position, member)
             || (reader.Position == ClassBodyReadPosition.ParameterDefault
                 && member.IsStatic && member.Kind != TypeBodyMemberKind.Event);
+
+        // F1 (owner ruling 2026-10-29): an initializer or a default runs where its declaration
+        // stands, so it reads only a sibling declared EARLIER in the body — C# runs static
+        // initializers in textual order (a later one reads 0), and Python raises NameError. A self
+        // or forward read is one SPY0200. An instance sibling is refused by kind above whatever its
+        // order; an inherited member was initialized with its own type.
+        if (resolves && IsDeclaredLater(member, reader))
+        {
+            AddError(DescribeDeclaredLaterRefusal(reader, member),
+                id.LineStart, id.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedVariable,
+                span: id.Span);
+            MarkExpressionAsErrorRecovery(id,
+                ErrorRecoveryReason.AlreadyReported(
+                    "a class-body sibling declared at or after the reading declaration (SPY0200, F1)"));
+            return SemanticType.Unknown;
+        }
         // #2396 (owner ruling (A) 2026-10-28, P21h; drains with #2396): the emitter lays a type's
         // fields out before its properties and C# runs static initializers in the generated text's
         // order, so a @static FIELD's or a const's initializer reading a @static PROPERTY would read
@@ -396,8 +438,11 @@ internal partial class TypeChecker
         {
             case VariableSymbol field:
                 // The binding the type body made, when it made one (the symbol every other read of
-                // the field records); the type's own field symbol for a forward read.
-                var fieldSymbol = bound as VariableSymbol ?? field;
+                // the field records); the type's own field symbol for a forward read, and for a read
+                // whose name an outer binding also holds — the member outranks it (F2).
+                var fieldSymbol = bound is VariableSymbol typeBodyBinding && IsBoundInTypeBody(id.Name, bound)
+                    ? typeBodyBinding
+                    : field;
                 _semanticInfo.SetIdentifierSymbol(id, fieldSymbol);
                 type = GetVariableType(fieldSymbol);
                 break;
@@ -414,6 +459,121 @@ internal partial class TypeChecker
             _semanticInfo.SetLiteralDerived(id);
         return type;
     }
+
+    /// <summary>
+    /// Whether <paramref name="bound"/>, the binding a bare <paramref name="name"/> found, lives in
+    /// a scope between the read and the type body — a comprehension or lambda of the initializer,
+    /// or the initializer's own scope — rather than in the type body or outside it.
+    /// </summary>
+    private bool IsBoundInsideTheReadPosition(string name, Symbol bound)
+    {
+        if (_symbolTable.Resolve(name) is not { DeclaringScope: { } declaringScope } resolution
+            || !ReferenceEquals(resolution.Bound, bound))
+        {
+            // The spelling resolved to something the walk did not bind (a builtin a bare spelling
+            // falls back to): it is outside the type body.
+            return false;
+        }
+
+        for (var scope = _symbolTable.CurrentScope; scope != null; scope = scope.Parent)
+        {
+            if (SymbolTable.ClassifyScope(scope.Name) == SymbolTable.ScopeKind.TypeBody)
+                return false;
+            if (ReferenceEquals(scope, declaringScope))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether <paramref name="bound"/> is a binding of the type body itself.</summary>
+    private bool IsBoundInTypeBody(string name, Symbol bound)
+        => _symbolTable.Resolve(name) is { DeclaringScope: { } declaringScope } resolution
+            && ReferenceEquals(resolution.Bound, bound)
+            && SymbolTable.ClassifyScope(declaringScope.Name) == SymbolTable.ScopeKind.TypeBody;
+
+    /// <summary>
+    /// The order rule (F1): whether <paramref name="member"/>'s declaration in the current type body
+    /// stands at or after the declaration of the reader — the same statement for a self read. A
+    /// member the body does not declare (an inherited one, a synthesized one) is never later.
+    /// A <c>const</c> sibling is exempt: it is a compile-time value or a <c>static readonly</c> the
+    /// type body resolves in dependency order (#1795, a forward const read runs at 9aae96977).
+    /// Positions are the unwrapped declarations' starts on both sides, so a decorator never moves
+    /// one of them.
+    /// </summary>
+    private bool IsDeclaredLater(TypeBodyMember member, ClassBodyReader reader)
+    {
+        if (member.IsInherited || member.IsConstant || reader.Declaration is not { } readerDeclaration
+            || _currentTypeBody.IsDefault)
+        {
+            return false;
+        }
+
+        foreach (var statement in _currentTypeBody)
+        {
+            var declaration = statement.UnwrapDecorated();
+            if (DeclaredMemberName(declaration) != member.Name)
+                continue;
+
+            return ReferenceEquals(declaration, readerDeclaration)
+                || (declaration.LineStart, declaration.ColumnStart).CompareTo(
+                    (readerDeclaration.LineStart, readerDeclaration.ColumnStart)) >= 0;
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether the reader's own declaration declares <paramref name="member"/> — a member
+    /// read in its own initializer or default.</summary>
+    private static bool IsSelfRead(TypeBodyMember member, ClassBodyReader reader)
+        => !member.IsInherited && reader.Declaration is { } declaration
+            && DeclaredMemberName(declaration) == member.Name;
+
+    /// <summary>
+    /// The bare member name a type-body statement declares, or null. Deliberately partial: a field,
+    /// a property half that is not an explicit-interface implementation, an event and a method are
+    /// the members a bare sibling read can denote (<see cref="TypeBodyMembership"/>); every other
+    /// statement kind — a nested type, an alias, a union case, an explicit-interface property, a
+    /// `pass` — declares no such member, so it is never a sibling's declaration (F1).
+    /// </summary>
+    private static string? DeclaredMemberName(Node declaration) => declaration switch
+    {
+        VariableDeclaration v => v.Name,
+        PropertyDef { ExplicitInterface: null } p => p.Name,
+        EventDef e => e.Name,
+        FunctionDef f => f.Name,
+        _ => null,
+    };
+
+    /// <summary>The SPY0200 text for a sibling read before its declaration (F1).</summary>
+    private static string DescribeDeclaredLaterRefusal(ClassBodyReader reader, TypeBodyMember member)
+    {
+        var phrase = reader.Position switch
+        {
+            ClassBodyReadPosition.InstanceInitializer when reader.Slot == ClassBodyReadSlot.Property => "a property default",
+            ClassBodyReadPosition.InstanceInitializer => "a field initializer",
+            ClassBodyReadPosition.StaticInitializer => "a '@static' initializer",
+            ClassBodyReadPosition.ConstInitializer => "a 'const' initializer",
+            _ => "a parameter default",
+        };
+        var name = member.Name;
+        var readerName = reader.Declaration is { } declaration && DeclaredMemberName(declaration) is { } declared
+            ? declared
+            : reader.Name;
+        if (IsSelfRead(member, reader))
+        {
+            return $"Undefined identifier '{name}' in {phrase}. '{name}' reads itself: the member is {DeclaredLaterPhrase} "
+                + $"than its own initializer runs, and a class body runs top to bottom, so {phrase} reads only a "
+                + $"member declared above it. Initialize '{name}' from a member declared above it, or in a method";
+        }
+
+        return $"Undefined identifier '{name}' in {phrase}. '{name}' is {DeclaredLaterPhrase} than '{readerName}' in "
+            + $"'{member.OwnerName}', and a class body runs top to bottom, so {phrase} reads only a member declared "
+            + $"above it. Move '{name}' above '{readerName}', or read it inside a method";
+    }
+
+    /// <summary>The phrase a declared-later refusal carries (F1).</summary>
+    internal const string DeclaredLaterPhrase = "declared later";
 
     /// <summary>
     /// The SPY0200 text for a <c>@static</c> property read from a <c>@static</c> field's or a
