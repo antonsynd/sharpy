@@ -1,0 +1,10 @@
+# One refusal per refused name, at its FIRST half's keyword (the interface's at the bodied half); the later
+# halves of a refused name are silent — no second SPY0204, no SPY0407, no SPY0420.
+SPY0204: 'a' is already declared in 'FieldThenSplitAuto' as a field (line 8) @9:5
+SPY0204: 'b' is already declared in 'MethodThenAccessors' as a method (line 13) @15:5
+SPY0204: 'c' is already declared in 'ConstThenEvent' as a constant (line 21) @22:5
+SPY0204: 'd' is already declared in 'NestedThenAccessors' as a nested class (line 28) @30:5
+SPY0204: 'e' is already declared in 'AliasThenSplitAuto' as a type alias (line 36) @37:5
+SPY0617: 'f' mixes an abstract accessor with an accessor that has a body in interface 'AbstractThenBodiedTwice' (line 41) @42:5
+!SPY0407
+!count 6

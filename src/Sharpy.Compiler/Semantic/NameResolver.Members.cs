@@ -294,6 +294,14 @@ internal partial class NameResolver
         // #2390): an explicit-interface implementation (`property IShape.area`) is not a member of the
         // type's own namespace — C# reaches it only through the interface — so it claims no bare name
         // and collides only with another half of the same explicit key.
+        // One SPY0204 per colliding declaration GROUP (P21h D7, R-JO): a half of a name the seam
+        // already refused draws nothing more — it is refused with its group, silently.
+        if (_refusedMemberNames.Contains((owningType, propDef.Name, propDef.ExplicitInterface)))
+        {
+            owningType.RefuseDeclaration(propDef);
+            return;
+        }
+
         var form = AccessorDeclarations.FormOf(propDef);
         var claim = TryDeclareMember(propDef.Name, member: null, owningType,
             mergesWith: holder => holder is PropertySymbol
@@ -325,6 +333,7 @@ internal partial class NameResolver
                 + "default implementations — give both halves a body, or make both abstract ('...')",
                 propDef.LineStart, propDef.ColumnStart,
                 code: DiagnosticCodes.SemanticOverflow.InterfaceAccessorsMustAgreeOnBody, span: propDef.Span);
+            _refusedMemberNames.Add((owningType, propDef.Name, propDef.ExplicitInterface));
             owningType.RefuseDeclaration(propDef);
             return;
         }
@@ -403,6 +412,13 @@ internal partial class NameResolver
         // event twice — silently merged away before, so `event e: Action[int]` + `event e:
         // Action[str]` ran with the second type dropped — or any other holder is SPY0204 at the
         // event keyword.
+        // One SPY0204 per colliding declaration GROUP (P21h D7, R-JO), as for a property half.
+        if (_refusedMemberNames.Contains((owningType, eventDef.Name, null)))
+        {
+            owningType.RefuseDeclaration(eventDef);
+            return;
+        }
+
         var form = AccessorDeclarations.FormOf(eventDef);
         var claim = TryDeclareMember(eventDef.Name, member: null, owningType,
             mergesWith: holder => holder is EventSymbol
@@ -735,6 +751,7 @@ internal partial class NameResolver
 
         AddError(MemberConflictMessage(name, owner, holder.Kind, holder.Line), line, column,
             code: DiagnosticCodes.Semantic.DuplicateDefinition, span: span);
+        _refusedMemberNames.Add((owner, name, explicitInterface));
         return MemberClaim.Refused;
     }
 
@@ -935,6 +952,12 @@ internal partial class NameResolver
     /// is read only after it has (the slots a merged record's flags cannot tell apart, and its first
     /// line).</summary>
     private readonly Dictionary<(TypeSymbol Owner, string Name, string? ExplicitInterface), AccessorDeclarations> _accessorDeclarations = new();
+
+    /// <summary>The member keys the seam refused (P21h D7, R-JO) — by <see cref="TryDeclareMember"/>'s
+    /// SPY0204 arm or the SPY0617 arm — keyed like <see cref="_accessorDeclarations"/>. A later property
+    /// or event half of a refused key is refused with its group, silently: one SPY0204 per colliding
+    /// declaration group, not one per half.</summary>
+    private readonly HashSet<(TypeSymbol Owner, string Name, string? ExplicitInterface)> _refusedMemberNames = new();
 
     /// <summary>Accessor declarations per MODULE property symbol — the same merge rule at module level
     /// ("split accessors are merged … following the same rules as class-level split accessors").</summary>

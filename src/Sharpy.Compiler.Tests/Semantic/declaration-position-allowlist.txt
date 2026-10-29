@@ -161,9 +161,7 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # two defaulted auto halves are silent under Analyze and CS0161 under run. The interface third-half chains
 # (an abstract auto-both half, then a bodied half, then a duplicate) are one SPY0204 at the third instead of
 # SPY0617 at the second. CREATED by P21h Phase 1; drains in P21h Phase 2 (D2's seam arm, D3's all-auto arm
-# and SPY0407 arm, D4's roster).
-member-chain × interface × property-field → property-get → property-get  # #2382 R-JG in a chain; drains with D7 (Phase 3) — SPY0617 at the second, and again at the third (the refused half is not recorded, so the third is complementary too) instead of the third's silence
-member-chain × interface × property-field → property-set → property-set  # #2382 R-JG in a chain; drains with D7 (Phase 3) — SPY0617 at the second, and again at the third (the refused half is not recorded, so the third is complementary too) instead of the third's silence
+# and SPY0407 arm, D4's roster). The two interface chains drained in P21h Phase 3 Task 4 (D7).
 
 # A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
 # struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under
@@ -215,51 +213,8 @@ explicit-member × struct × property-auto-set → explicit-property  # #2395 lo
 # is SPY0204 + SPY0407 at the third. The bodied get + set + get chain is already one SPY0204 (green).
 # CREATED by P21h Phase 1; drains in P21h Phase 3 (D7). The four third-half SPY0407 rows DRAINED in P21h
 # Phase 2 (PropertyValidator reads only admitted halves, TypeSymbol.RefusedDeclarations — D7's consumer).
-member-chain × class × nested-class → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × nested-class → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × nested-class → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × method → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × method → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × method → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × field → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × field → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × field → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × const → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × const → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × const → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × alias → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × alias → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × class × alias → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × nested-class → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × nested-class → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × nested-class → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × method → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × method → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × method → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × field → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × field → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × field → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × const → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × const → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × const → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × alias → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × alias → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × struct × alias → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × nested-class → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × nested-class → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × nested-class → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × method → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × method → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × method → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × field → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × field → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × field → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × const → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × const → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × const → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × alias → property-auto-get+property-auto-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × alias → property-get+property-set  # #2075 R-JO; two SPY0204, one per half
-member-chain × interface × alias → event-add+event-remove  # #2075 R-JO; two SPY0204, one per half
+# Every remaining chain row DRAINED in P21h Phase 3 Task 4 (D7's refused-name set: a later half of a refused
+# member key is refused with its group, silently). Do not re-add a row here.
 
 # #2384 (R-JJ): a bare class-body read from a position that is not a method body resolves exactly the
 # siblings C# resolves there and refuses the rest with ONE diagnostic naming the position

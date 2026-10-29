@@ -1,0 +1,48 @@
+# #2075 (P21h D7, R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the
+# FIRST half — the name's group is refused once, and the later half of the refused name is refused with it,
+# silently (it was a second SPY0204, one per half). In an interface, the abstract half beside a bodied one is
+# ONE SPY0617, and a duplicate third half of the refused name is silent too.
+from system import Action
+
+class FieldThenSplitAuto:
+    a: int = 1
+    property get a: int
+    property set a: int
+
+class MethodThenAccessors:
+    def b(self) -> int:
+        return 1
+    property get b(self) -> int:
+        return 2
+    property set b(self, v: int):
+        print(v)
+
+class ConstThenEvent:
+    const c: int = 1
+    event add c(self, handler: Action[int]):
+        pass
+    event remove c(self, handler: Action[int]):
+        pass
+
+class NestedThenAccessors:
+    class d:
+        pass
+    property get d(self) -> int:
+        return 2
+    property set d(self, v: int):
+        print(v)
+
+class AliasThenSplitAuto:
+    type e = int
+    property get e: int
+    property set e: int
+
+interface AbstractThenBodiedTwice:
+    property f: int
+    property get f(self) -> int:
+        return 6
+    property get f(self) -> int:
+        return 7
+
+def main() -> None:
+    print("unreachable")
