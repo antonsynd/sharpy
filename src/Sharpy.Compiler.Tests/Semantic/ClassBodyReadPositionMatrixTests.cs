@@ -10,8 +10,9 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// The generator of the <b>class-body read contract</b> (P21h D8/D9 (v); #2384, ruling R-JJ): <b>a bare class-body
-/// name read from a position that is not a method body resolves exactly the siblings C# resolves in that position,
+/// The generator of the <b>class-body read contract</b> (P21h D8/D9 (v); #2384, ruling R-JJ; owner rulings F1/F2
+/// 2026-10-29): <b>a bare class-body name read from a position that is not a method body resolves exactly the
+/// siblings C# resolves in that position, declared EARLIER in the body, even past a module binding of the same name,
 /// and refuses the rest with ONE diagnostic whose steer names the position</b>. Before it, a bare sibling read from a
 /// field initializer, a property default, a <c>const</c> initializer or a parameter default had no decided verdict: a
 /// field sibling bound and crashed the emitter (SPY0909 "No CodeGenInfo for local"), a <c>@static</c> property or
@@ -21,36 +22,53 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>Matrix.</b> host {<c>class</c>, <c>@dataclass class</c>, <c>struct</c>} × read position
 /// {instance-field-initializer, static-field-initializer, instance-property-default, static-property-default,
 /// const-initializer, parameter-default, method-body} × sibling {const, static-field, instance-field,
-/// static-property, instance-property, event, static-method, instance-method}; ids
-/// <c>class-body-read × &lt;host&gt; × &lt;position&gt; × &lt;sibling&gt;</c>. Each cell declares ONE sibling and ONE
-/// reader (<c>b</c>, or <c>B</c> for the const reader) whose initializer, default or return value is the bare read,
-/// annotated with the sibling's type, and prints through the reader. The siblings carry distinct values (const 1,
-/// <c>@static</c> field 2, instance field 3, <c>@static</c> property 4, instance property 5, <c>@static</c> method 6,
-/// instance method 7), so an admitted read that resolved the wrong member prints the wrong number.</para>
+/// static-property, instance-property, event, static-method, instance-method} × order {before, after} × shadow
+/// {none, module}, plus the reader reading ITSELF (sibling <c>itself</c>, order <c>self</c>) per host × position ×
+/// shadow; ids <c>class-body-read × &lt;host&gt; × &lt;position&gt; × &lt;sibling&gt; × &lt;order&gt; ×
+/// &lt;shadow&gt;</c>. Each cell declares ONE sibling and ONE reader (<c>b</c>, <c>B</c> for the const reader, <c>m</c>
+/// for the method readers) whose initializer, default or return value is the bare read, annotated with the sibling's
+/// type, and presents the reader in <c>main</c>. ORDER puts the sibling before or after the reader; <c>self</c> reads
+/// the reader's own name (<c>@static b: int = b + 1</c>, <c>def m(self) -> int: return m()</c>). SHADOW
+/// <c>module</c> declares a module binding of the read name above the class. Every value is distinct — the members
+/// const 1, <c>@static</c> field 2, instance field 3, <c>@static</c> property 4, instance property 5, <c>@static</c>
+/// method 6, instance method 7; the module bindings 90–98 — so a read that resolved the wrong binding, or read a
+/// later member before its initializer ran (<c>0</c>), prints the wrong number.</para>
 ///
 /// <para><b>The contract in code.</b> <see cref="Classify"/> and <see cref="Admits"/> are this test's OWN literal
 /// copy of D8 — never a call into the checker. The classification is host-route-aware for ONE slot: an instance FIELD
 /// initializer in a struct or a <c>@dataclass</c> is the synthesized constructor's parameter default
 /// (<c>ParameterDefault</c>); an instance PROPERTY default is a C# property initializer in every host
 /// (<c>InstanceInitializer</c>); a <c>const</c> initializer that is not a compile-time constant emits
-/// <c>static readonly</c> (<c>ConstInitializer</c>, admitting what a static initializer admits). An admitted cell
-/// analyses clean and RUNS printing the sibling's value; a refused cell is exactly ONE error — SPY0401 for a
-/// <c>@static</c> sibling in a <c>ParameterDefault</c> (the name resolves, the constant-position rule refuses it), else
-/// SPY0200 at the read whose message carries its position's phrase (<see cref="FieldInitializerPhrase"/> …) and no
-/// other position's, plus the steer D8 names. Never two codes; an SPY09xx under <c>Analyze</c> is hard.</para>
+/// <c>static readonly</c> (<c>ConstInitializer</c>, admitting what a static initializer admits). Outside a method
+/// body: F2 — a class member declared EARLIER (or the reader itself) outranks the module binding, so the verdict is the
+/// one without the shadow, while a non-const member declared LATER yields to it (lead rulings (y)/(b) — a const is not
+/// ordered, so it outranks the module binding in any order; Python's rule for the rest: the read runs the
+/// module's value, or is SPY0401 in a <c>ParameterDefault</c>, a module binding not being a constant); F1 — a
+/// <c>@static</c> field, property or method declared later, or a <c>@static</c> reader reading itself, is exactly ONE
+/// SPY0200 at the read carrying <see cref="DeclaredLaterPhrase"/> and the position's phrase (<see cref="IsOrdered"/>:
+/// a <c>const</c> is not ordered, F1-const, and an instance member keeps its kind refusal whatever the order; the
+/// <c>const</c> reader reading itself is a constant cycle, <see cref="ConstCycleCode"/>); otherwise the table decides.
+/// In a method body ORDER changes nothing and the module binding wins (#1786, R-Y — Python's class-scope rule): with
+/// no shadow, one SPY0200 with the crossing steer; with one, the program RUNS and prints the module's value. An
+/// admitted cell analyses clean and RUNS printing the expected value; a refused cell is exactly ONE error — SPY0401
+/// for an earlier <c>@static</c> sibling in a <c>ParameterDefault</c> (the name resolves, the constant-position rule
+/// refuses it), else SPY0200 at the read whose message carries its position's phrase
+/// (<see cref="FieldInitializerPhrase"/> …) and no other position's, <see cref="DeclaredLaterPhrase"/> exactly when
+/// the order refuses, plus the steer D8 names. Never two codes; an SPY09xx under <c>Analyze</c> is hard.</para>
 ///
 /// <para><b>The table's oracle.</b> <see cref="AdmissionTable_AgreesWithCSharp"/> compiles, with Roslyn, the C# shape
 /// the emitter writes for every non-method position (<see cref="CSharpShape"/>, a literal derived from the emission
 /// route, independent of <see cref="Classify"/>) reading each sibling, and requires the table to admit exactly what
 /// C# compiles. That is what makes a flipped table row red while the matrix cells are still red at the base. The
-/// method body is outside the oracle: there C# admits every sibling and Sharpy refuses every one by design (#1786, R-Y
-/// — Python's class-scope rule); its rows are pinned by the matrix alone.</para>
+/// oracle judges the KIND table only: C# binds a class member before any outer name and has no declaration-order
+/// rule, so F1's order rule (Python's — a later class-body name is not yet bound) and the method body (#1786) are
+/// pinned by the matrix alone.</para>
 ///
 /// <para><b>Ratchet.</b> The cells ratchet over the declaration-position generator's allowlist
 /// (<c>Semantic/declaration-position-allowlist.txt</c>, <see cref="TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist"/>,
 /// whose id universe includes <see cref="CellIds"/>): a listed cell that passes is STALE, an unlisted failing cell is
-/// red. The controls (each reader with a literal and no sibling runs; each sibling alone analyses clean) and the
-/// contract self-checks are never exempted.</para>
+/// red. The controls (each reader with a literal and no sibling runs; each sibling alone and each module binding
+/// alone analyse clean) and the contract self-checks are never exempted.</para>
 /// </summary>
 public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
 {
@@ -81,6 +99,10 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
     /// <summary>A method body (#1786's text, unchanged).</summary>
     internal const string MethodBodyPhrase = "inside methods";
 
+    /// <summary>F1 (owner ruling 2026-10-29): a non-method read of a sibling declared LATER in the body, or of the
+    /// reader itself, is refused with this phrase beside the position's; never present on any other refusal.</summary>
+    internal const string DeclaredLaterPhrase = "declared later";
+
     private static readonly string[] AllPhrases =
     {
         FieldInitializerPhrase, PropertyDefaultPhrase, StaticInitializerPhrase, ConstInitializerPhrase,
@@ -101,19 +123,24 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
     internal sealed record Host(string Name, string[] Header);
 
     /// <summary>A sibling: its id, its declaration lines (body-relative), the bare read, the member name the read
-    /// denotes, the read's type, the value it prints when admitted (null for the event, never admitted), and whether
-    /// it is type-level (<c>const</c> or <c>@static</c>).</summary>
-    internal sealed record Sibling(string Name, string[] Lines, string Read, string Member, string Type, int? Value, bool TypeLevel);
+    /// denotes, the read's type, the value it prints when admitted (null for the event, never admitted), whether it is
+    /// type-level (<c>const</c> or <c>@static</c>), its module binding's lines (SHADOW <c>module</c>), the value the
+    /// module binding presents, and how <c>main</c> presents the reader (<c>{0}</c> is the reader expression: printed,
+    /// or — for the event — invoked, so a module lambda prints its argument and a null member event throws).</summary>
+    internal sealed record Sibling(
+        string Name, string[] Lines, string Read, string Member, string Type, int? Value, bool TypeLevel,
+        string[] ModuleLines, int ModuleValue, string Present = "print({0})", bool IsConst = false);
 
-    /// <summary>A read position: its id, its reader lines (body-relative; <c>§</c> marks the read, <c>T</c> the type)
-    /// and the <c>main</c> statement that prints through it.</summary>
-    internal sealed record Position(string Name, string[] Lines, string Use);
+    /// <summary>A read position: its id, its reader lines (body-relative; <c>§</c> marks the read, <c>T</c> the type),
+    /// the reader expression <c>main</c> presents, the reader's own name and its self-read (ORDER <c>self</c>).</summary>
+    internal sealed record Position(string Name, string[] Lines, string Use, string ReaderName, string SelfRead);
 
     /// <summary>One cell: its source, its classified position, the exact expected errors (code, line, column), the
-    /// phrase and steer a refused SPY0200 must carry, and the stdout of an admitted cell.</summary>
+    /// phrases and steer a refused SPY0200 must carry, and the stdout of an admitted cell.</summary>
     internal sealed record ReadCell(
-        string Id, string Host, string Position, string Sibling, string Source, ReadPosition Classified,
-        IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors, string? Phrase, string? Steer, string? ExpectedStdout);
+        string Id, string Host, string Position, string Sibling, string Order, string Shadow, string Source,
+        ReadPosition Classified, IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors, string? Phrase,
+        bool DeclaredLater, string? Steer, string? ExpectedStdout);
 
     internal static readonly Host[] Hosts =
     {
@@ -124,26 +151,43 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
 
     internal static readonly Sibling[] Siblings =
     {
-        new("const", new[] { "const K: int = 1" }, "K", "K", "int", 1, TypeLevel: true),
-        new("static-field", new[] { "@static", "s: int = 2" }, "s", "s", "int", 2, TypeLevel: true),
-        new("instance-field", new[] { "f: int = 3" }, "f", "f", "int", 3, TypeLevel: false),
-        new("static-property", new[] { "@static", "property sp: int = 4" }, "sp", "sp", "int", 4, TypeLevel: true),
-        new("instance-property", new[] { "property p: int = 5" }, "p", "p", "int", 5, TypeLevel: false),
-        new("event", new[] { "event e: Action[int]" }, "e", "e", "Action[int]", null, TypeLevel: false),
-        new("static-method", new[] { "@static", "def sm() -> int:", "    return 6" }, "sm()", "sm", "int", 6, TypeLevel: true),
-        new("instance-method", new[] { "def im(self) -> int:", "    return 7" }, "im()", "im", "int", 7, TypeLevel: false),
+        new("const", new[] { "const K: int = 1" }, "K", "K", "int", 1, TypeLevel: true, new[] { "K: int = 91" }, 91, IsConst: true),
+        new("static-field", new[] { "@static", "s: int = 2" }, "s", "s", "int", 2, TypeLevel: true, new[] { "s: int = 92" }, 92),
+        new("instance-field", new[] { "f: int = 3" }, "f", "f", "int", 3, TypeLevel: false, new[] { "f: int = 93" }, 93),
+        new("static-property", new[] { "@static", "property sp: int = 4" }, "sp", "sp", "int", 4, TypeLevel: true, new[] { "sp: int = 94" }, 94),
+        new("instance-property", new[] { "property p: int = 5" }, "p", "p", "int", 5, TypeLevel: false, new[] { "p: int = 95" }, 95),
+        new("event", new[] { "event e: Action[int]" }, "e", "e", "Action[int]", null, TypeLevel: false,
+            new[] { "e: Action[int] = lambda v: print(v)" }, 90, Present: "{0}(90)"),
+        new("static-method", new[] { "@static", "def sm() -> int:", "    return 6" }, "sm()", "sm", "int", 6, TypeLevel: true,
+            new[] { "def sm() -> int:", "    return 96" }, 96),
+        new("instance-method", new[] { "def im(self) -> int:", "    return 7" }, "im()", "im", "int", 7, TypeLevel: false,
+            new[] { "def im() -> int:", "    return 97" }, 97),
     };
 
     internal static readonly Position[] Positions =
     {
-        new("instance-field-initializer", new[] { "b: T = §" }, "print(Host().b)"),
-        new("static-field-initializer", new[] { "@static", "b: T = §" }, "print(Host.b)"),
-        new("instance-property-default", new[] { "property b: T = §" }, "print(Host().b)"),
-        new("static-property-default", new[] { "@static", "property b: T = §" }, "print(Host.b)"),
-        new("const-initializer", new[] { "const B: T = §" }, "print(Host.B)"),
-        new("parameter-default", new[] { "def m(self, x: T = §) -> T:", "    return x" }, "print(Host().m())"),
-        new("method-body", new[] { "def m(self) -> T:", "    return §" }, "print(Host().m())"),
+        new("instance-field-initializer", new[] { "b: T = §" }, "Host().b", "b", "b + 1"),
+        new("static-field-initializer", new[] { "@static", "b: T = §" }, "Host.b", "b", "b + 1"),
+        new("instance-property-default", new[] { "property b: T = §" }, "Host().b", "b", "b + 1"),
+        new("static-property-default", new[] { "@static", "property b: T = §" }, "Host.b", "b", "b + 1"),
+        new("const-initializer", new[] { "const B: T = §" }, "Host.B", "B", "B + 1"),
+        new("parameter-default", new[] { "def m(self, x: T = §) -> T:", "    return x" }, "Host().m()", "m", "m()"),
+        new("method-body", new[] { "def m(self) -> T:", "    return §" }, "Host().m()", "m", "m()"),
     };
+
+    /// <summary>ORDER: where the sibling sits relative to the reader.</summary>
+    internal static readonly string[] Orders = { "before", "after" };
+
+    /// <summary>SHADOW: no outer binding, or a module binding of the read name above the class.</summary>
+    internal static readonly string[] Shadows = { "none", "module" };
+
+    /// <summary>The reader reading itself (ORDER <c>self</c>): a sibling of the reader's own kind, named like it, typed
+    /// <c>int</c>, valued 98 at module level (<c>b</c>/<c>B</c> a variable, <c>m</c> a function).</summary>
+    private static Sibling Itself(Position position) => new(
+        "itself", Array.Empty<string>(), position.SelfRead, position.ReaderName, "int", null,
+        TypeLevel: position.Name is "static-field-initializer" or "static-property-default" or "const-initializer",
+        position.ReaderName == "m" ? new[] { "def m() -> int:", "    return 98" } : new[] { $"{position.ReaderName}: int = 98" }, 98,
+        IsConst: position.Name == "const-initializer");
 
     /// <summary>D8's classifier: the position alone, except the ONE host-route slot — a struct/dataclass instance
     /// FIELD initializer is the synthesized constructor's parameter default.</summary>
@@ -168,6 +212,31 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
         [ReadPosition.MethodBody] = new(StringComparer.Ordinal),
     };
 
+    /// <summary>F1 (with the F1-const ruling, 2026-10-29): outside a method body a <c>@static</c> field, property or
+    /// method is read only from an EARLIER declaration — one declared later, or the <c>@static</c> reader itself, is
+    /// refused. A <c>const</c> is not ordered (#1795: <c>const A: int = B; const B: int = 3</c> runs 3) and an instance
+    /// member keeps its kind refusal whatever the order. The method body has no order rule (#1786 refuses every bare
+    /// sibling read).</summary>
+    internal static bool OrderRefuses(ReadPosition classified, string order, Sibling sibling)
+        => classified != ReadPosition.MethodBody && order is "after" or "self" && IsOrdered(sibling);
+
+    /// <summary>The ordered kinds: <c>@static</c> field, property and method (a type-level member that is not a
+    /// <c>const</c>; the self-read of a <c>@static</c> field or property reader).</summary>
+    internal static bool IsOrdered(Sibling sibling) => sibling.TypeLevel && !sibling.IsConst;
+
+    /// <summary>The const reader reading itself is a constant CYCLE, refused as at module level (SPY0278 "Circular
+    /// constant reference"; lead ruling (a) 2026-10-29 — one rule for const cycles wherever they are written). Pinned
+    /// by CODE only (line 0 in the expected set) until its location is measured on a fixed binary.</summary>
+    internal const string ConstCycleCode = "SPY0278";
+
+    /// <summary>F2 + lead rulings (y) and (b), 2026-10-29: the module binding of the read name decides the read in a
+    /// method body whatever the order (#1786 — the walk crosses the class body), and outside one when a NON-const class
+    /// member is declared LATER than the reader (Python's rule: the later class-body name is not bound yet). Otherwise —
+    /// an earlier member, the reader itself, or a <c>const</c> in any order (F1-const: a const is not ordered, so a
+    /// later const is not "later") — the class member outranks it.</summary>
+    internal static bool ModuleBindingWins(ReadPosition classified, string shadow, string order, Sibling sibling)
+        => shadow == "module" && (classified == ReadPosition.MethodBody || (order == "after" && !sibling.IsConst));
+
     /// <summary>The phrase a refused SPY0200 carries: the classified position's, split by the declaring member's form
     /// only in <c>InstanceInitializer</c> (a field initializer and a property default are different slots to a reader).</summary>
     internal static string PhraseOf(ReadPosition classified, string position) => classified switch
@@ -183,7 +252,7 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
     /// (<c>'Host.s</c> for a type-level sibling, <c>'self.f</c> for an instance one — #1786; after P21h the event and
     /// the methods get theirs too); in an instance initializer or a parameter default an instance sibling's
     /// <c>self.f</c> (assign it in <c>__init__</c> / the body); a static or const initializer has no instance to steer
-    /// to.</summary>
+    /// to; an order refusal's cure is moving the declaration, so it names no steer.</summary>
     internal static string? SteerOf(ReadPosition classified, Sibling sibling) => classified switch
     {
         ReadPosition.MethodBody => sibling.TypeLevel ? $"'Host.{sibling.Member}" : $"'self.{sibling.Member}",
@@ -193,16 +262,27 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
 
     private static string Indent(string line) => line.Length == 0 ? line : "    " + line;
 
-    /// <summary>The program of one cell: the host, ONE sibling, ONE reader whose read is <paramref name="read"/> typed
-    /// <paramref name="type"/> (no sibling when <paramref name="sibling"/> is null — the reader control), and
-    /// <c>main</c>. Returns the source with the read's line and column and the reader's first line.</summary>
+    /// <summary>The program of one cell: the module binding (when <paramref name="moduleLines"/> is given), the host,
+    /// ONE sibling before or after ONE reader whose read is <paramref name="read"/> typed <paramref name="type"/> (no
+    /// sibling when <paramref name="sibling"/> is null — the reader control, and the self-read), and <c>main</c>
+    /// presenting the reader through <paramref name="present"/>. Returns the source with the read's line and column and
+    /// the reader's first line.</summary>
     internal static (string Source, int ReadLine, int ReadColumn, int ReaderLine) Program(
-        Host host, Sibling? sibling, Position position, string read, string type)
+        Host host, string[]? siblingLines, string order, Position position, string read, string type,
+        string[]? moduleLines = null, string present = "print({0})")
     {
-        var lines = new List<string>(host.Header);
-        if (sibling != null)
+        var lines = new List<string>();
+        if (moduleLines != null)
         {
-            lines.AddRange(sibling.Lines.Select(Indent));
+            lines.AddRange(moduleLines);
+            lines.Add("");
+            lines.Add("");
+        }
+
+        lines.AddRange(host.Header);
+        if (siblingLines != null && order == "before")
+        {
+            lines.AddRange(siblingLines.Select(Indent));
             lines.Add("");
         }
 
@@ -222,7 +302,13 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
             lines.Add(line);
         }
 
-        lines.AddRange(new[] { "", "", "def main() -> None:", "    " + position.Use, "" });
+        if (siblingLines != null && order == "after")
+        {
+            lines.Add("");
+            lines.AddRange(siblingLines.Select(Indent));
+        }
+
+        lines.AddRange(new[] { "", "", "def main() -> None:", "    " + string.Format(present, position.Use), "" });
         return (string.Join("\n", lines), readLine, readColumn, readerLine);
     }
 
@@ -232,35 +318,61 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
         {
             foreach (var position in Positions)
             {
-                foreach (var sibling in Siblings)
+                foreach (var shadow in Shadows)
                 {
-                    var (source, readLine, readColumn, readerLine) = Program(host, sibling, position, sibling.Read, sibling.Type);
-                    var classified = Classify(host.Name, position.Name);
-                    var id = $"class-body-read × {host.Name} × {position.Name} × {sibling.Name}";
-                    if (Admits[classified].Contains(sibling.Name))
+                    foreach (var sibling in Siblings)
                     {
-                        yield return new ReadCell(id, host.Name, position.Name, sibling.Name, source, classified,
-                            Array.Empty<(string, int, int)>(), null, null, $"{sibling.Value}\n");
+                        foreach (var order in Orders)
+                            yield return Cell(host, position, sibling, order, shadow);
                     }
-                    else if (classified == ReadPosition.ParameterDefault && sibling.TypeLevel)
-                    {
-                        // The @static sibling resolves (as C# resolves it before CS1736); the constant-position rule is
-                        // the one verdict, at the parameter's name — or, for the struct/dataclass field slot, the field's.
-                        var (line, column) = position.Name == "parameter-default"
-                            ? (readerLine, Indent(position.Lines[0]).IndexOf("x:", StringComparison.Ordinal) + 1)
-                            : (readerLine, 5);
-                        yield return new ReadCell(id, host.Name, position.Name, sibling.Name, source, classified,
-                            new[] { ("SPY0401", line, column) }, null, null, null);
-                    }
-                    else
-                    {
-                        yield return new ReadCell(id, host.Name, position.Name, sibling.Name, source, classified,
-                            new[] { ("SPY0200", readLine, readColumn) }, PhraseOf(classified, position.Name),
-                            SteerOf(classified, sibling), null);
-                    }
+
+                    yield return Cell(host, position, Itself(position), "self", shadow);
                 }
             }
         }
+    }
+
+    private static ReadCell Cell(Host host, Position position, Sibling sibling, string order, string shadow)
+    {
+        var (source, readLine, readColumn, readerLine) = Program(
+            host, order == "self" ? null : sibling.Lines, order, position, sibling.Read, sibling.Type,
+            shadow == "module" ? sibling.ModuleLines : null, sibling.Present);
+        var classified = Classify(host.Name, position.Name);
+        var id = $"class-body-read × {host.Name} × {position.Name} × {sibling.Name} × {order} × {shadow}";
+        var none = Array.Empty<(string, int, int)>();
+        var phrase = PhraseOf(classified, position.Name);
+        var refusedAtRead = new[] { ("SPY0200", readLine, readColumn) };
+
+        // The @static sibling (or a module variable or function) resolves in a ParameterDefault, as C# resolves it before
+        // CS1736; the constant-position rule is the one verdict, at the parameter's name — or, for the struct/dataclass
+        // field slot, the field's.
+        var constantSlot = new[]
+        {
+            position.Name == "parameter-default"
+                ? ("SPY0401", readerLine, Indent(position.Lines[0]).IndexOf("x:", StringComparison.Ordinal) + 1)
+                : ("SPY0401", readerLine, 5),
+        };
+
+        if (ModuleBindingWins(classified, shadow, order, sibling))
+        {
+            // A module binding is a variable or a function, never a constant: a ParameterDefault refuses it.
+            return classified == ReadPosition.ParameterDefault
+                ? new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified, constantSlot, null, false, null, null)
+                : new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified, none, null, false, null, $"{sibling.ModuleValue}\n");
+        }
+
+        if (OrderRefuses(classified, order, sibling))
+            return new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified, refusedAtRead, phrase, true, null, null);
+        if (order == "self" && sibling.IsConst)
+            return new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified,
+                new[] { (ConstCycleCode, 0, 0) }, null, false, null, null);
+        if (order != "self" && Admits[classified].Contains(sibling.Name))
+            return new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified, none, null, false, null, $"{sibling.Value}\n");
+        if (classified == ReadPosition.ParameterDefault && sibling.TypeLevel)
+            return new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified, constantSlot, null, false, null, null);
+
+        return new ReadCell(id, host.Name, position.Name, sibling.Name, order, shadow, source, classified, refusedAtRead,
+            phrase, false, SteerOf(classified, sibling), null);
     }
 
     /// <summary>Every ratcheted id of this class, as the shared allowlist spells it.</summary>
@@ -272,22 +384,49 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
         Assert.Equal(3, Hosts.Length);
         Assert.Equal(7, Positions.Length);
         Assert.Equal(8, Siblings.Length);
+        Assert.Equal(2, Orders.Length);
+        Assert.Equal(2, Shadows.Length);
         var cells = Cells().ToList();
-        Assert.Equal(3 * 7 * 8, cells.Count);
-        Assert.Equal(3 * 7 * 8, cells.Select(c => c.Id).Distinct(StringComparer.Ordinal).Count());
-        // Admitted (run): the class's five initializer rows × 4 type-level siblings + the struct's and the dataclass's
-        // four (their instance FIELD initializer is a parameter default) + one const per parameter-default row (the
-        // class's parameter default; the struct's and dataclass's parameter default and field slot).
-        Assert.Equal(5 * 4 + 1 + 2 * (4 * 4 + 2), cells.Count(c => c.ExpectedStdout != null));
-        // SPY0401 alone: 3 non-const @static siblings per parameter-default row (class 1 row, struct/dataclass 2).
-        Assert.Equal(3 * (1 + 2 * 2), cells.Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0401")));
-        // SPY0200 alone: everything else — the 8 method-body cells, 4 instance siblings per other row, per host.
-        Assert.Equal(3 * (8 + 6 * 4), cells.Count(c => c.ExpectedErrors.Any(e => e.Code == "SPY0200")));
-        Assert.Equal(2 * 8, cells.Count(c => c.Classified == ReadPosition.ParameterDefault && c.Position == "instance-field-initializer"));
+        // Per host × position × shadow: 8 siblings × {before, after} + the self-read.
+        Assert.Equal(3 * 7 * 2 * (8 * 2 + 1), cells.Count);
+        Assert.Equal(3 * 7 * 2 * (8 * 2 + 1), cells.Select(c => c.Id).Distinct(StringComparer.Ordinal).Count());
+        bool Runs(ReadCell c) => c.ExpectedStdout != null;
+        bool Has(ReadCell c, string code) => c.ExpectedErrors.Any(e => e.Code == code);
+        // Non-method positions per host: class 5 initializer rows + 1 parameter default; struct/dataclass 4 + 2 (their
+        // instance FIELD initializer is a parameter default).
+        // Runs the MEMBER's value: an earlier type-level sibling in an initializer row (4) or an earlier const in a
+        // parameter default (1), both shadows; a const declared later (F1-const, ruling (b)), both shadows, all 6 rows.
+        Assert.Equal(2 * (5 * 4 + 1 + 2 * (4 * 4 + 2)) + 2 * 3 * 6,
+            cells.Count(c => Runs(c) && c.Position != "method-body" && c.ExpectedStdout == $"{Siblings.FirstOrDefault(s => s.Name == c.Sibling)?.Value}\n"));
+        // Runs the MODULE's value: every later non-const sibling under a module shadow in an initializer row (ruling
+        // (y)), and every method-body cell under a module shadow (8 × 2 orders + the self-read).
+        Assert.Equal(7 * (5 + 2 * 4), cells.Count(c => Runs(c) && c.Position != "method-body" && c.Order == "after" && c.Shadow == "module"
+            && c.Sibling != "const"));
+        Assert.Equal(2 * 3 * 6, cells.Count(c => Runs(c) && c.Sibling == "const" && c.Order == "after" && c.ExpectedStdout == "1\n"));
+        Assert.Equal(3 * (8 * 2 + 1), cells.Count(c => Runs(c) && c.Position == "method-body"));
+        Assert.Equal(2 * (5 * 4 + 1 + 2 * (4 * 4 + 2)) + 2 * 3 * 6 + 7 * (5 + 2 * 4) + 3 * (8 * 2 + 1), cells.Count(Runs));
+        // SPY0401 alone: the 3 earlier non-const @static siblings per parameter-default row, both shadows; every later
+        // non-const sibling under a module shadow per parameter-default row (the module binding is not a constant).
+        Assert.Equal(2 * 3 * (1 + 2 * 2) + 7 * (1 + 2 * 2), cells.Count(c => Has(c, "SPY0401")));
+        // Declared later (unshadowed, or the reader itself): the 3 later @static siblings in every non-method row, + the
+        // @static field and property readers reading themselves under both shadows.
+        Assert.Equal(3 * (6 * 3 + 2 * 2), cells.Count(c => c.DeclaredLater));
+        // The const reader reading itself: the constant cycle, per host × shadow.
+        Assert.Equal(2 * 3, cells.Count(c => Has(c, ConstCycleCode)));
+        // SPY0200 for a member kind: per non-method row the 4 instance siblings before (both shadows) and after
+        // (unshadowed), + the instance readers reading themselves (field, property, parameter default) under both
+        // shadows; the method body without a shadow, every sibling in both orders and the self-read.
+        Assert.Equal(3 * (6 * 4 * 3 + 3 * 2 + (8 * 2 + 1)), cells.Count(c => Has(c, "SPY0200") && !c.DeclaredLater));
+        Assert.Equal(2 * 8, cells.Count(c => c.Classified == ReadPosition.ParameterDefault && c.Position == "instance-field-initializer"
+            && c.Order == "before" && c.Shadow == "none"));
         // The phrases are pairwise non-overlapping, so "carries exactly one" is decidable.
-        foreach (var a in AllPhrases)
-            foreach (var b in AllPhrases.Where(b => !ReferenceEquals(a, b)))
+        foreach (var a in AllPhrases.Append(DeclaredLaterPhrase))
+            foreach (var b in AllPhrases.Append(DeclaredLaterPhrase).Where(b => !ReferenceEquals(a, b)))
                 Assert.False(a.Contains(b, StringComparison.Ordinal), $"phrase '{a}' contains '{b}'");
+        // Every expected stdout is the value of ONE binding, and the members' values are disjoint from the modules'.
+        var memberValues = Siblings.Select(s => s.Value).OfType<int>().ToHashSet();
+        Assert.Empty(memberValues.Intersect(Siblings.Select(s => s.ModuleValue).Append(98)));
+        Assert.DoesNotContain(0, memberValues);
     }
 
     /// <summary>Hard self-checks on the contract in code: one verdict per cell — never two codes, never an internal
@@ -302,6 +441,7 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
             Assert.True((cell.ExpectedErrors.Count == 0) == (cell.ExpectedStdout != null), $"{cell.Id}: an admitted cell must run, a refused one must not");
             if (cell.ExpectedErrors.Any(e => e.Code == "SPY0200"))
                 Assert.NotNull(cell.Phrase);
+            Assert.True(!cell.DeclaredLater || cell.ExpectedErrors.Any(e => e.Code == "SPY0200"), $"{cell.Id}: an order refusal is a SPY0200");
         }
     }
 
@@ -313,12 +453,14 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
         var red = new List<string>();
 
         // Controls (hard, never allowlisted): every reader with a literal and no sibling analyses clean and runs; every
-        // sibling alone analyses clean. A cell's red is then the READ's, not its declarations'.
+        // sibling alone and every module binding alone analyses clean. A cell's red is then the READ's, not its
+        // declarations'.
+        var okMain = new[] { "", "", "def main() -> None:", "    print(\"ok\")", "" };
         foreach (var host in Hosts)
         {
             foreach (var position in Positions)
             {
-                var (source, _, _, _) = Program(host, null, position, "0", "int");
+                var (source, _, _, _) = Program(host, null, "before", position, "0", "int");
                 var control = api.Analyze(source, CancellationToken.None);
                 if (control.Diagnostics.Any(d => d.IsError))
                     problems.Add($"control {host.Name} × {position.Name} (reader alone) does not analyse clean: {Fingerprint(control.Diagnostics.Where(d => d.IsError))}");
@@ -330,12 +472,19 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
 
             foreach (var sibling in Siblings)
             {
-                var source = string.Join("\n", host.Header.Concat(sibling.Lines.Select(Indent))
-                    .Concat(new[] { "", "", "def main() -> None:", "    print(\"ok\")", "" }));
+                var source = string.Join("\n", host.Header.Concat(sibling.Lines.Select(Indent)).Concat(okMain));
                 var control = api.Analyze(source, CancellationToken.None);
                 if (control.Diagnostics.Any(d => d.IsError))
                     problems.Add($"control {host.Name} × {sibling.Name} (sibling alone) does not analyse clean: {Fingerprint(control.Diagnostics.Where(d => d.IsError))}");
             }
+        }
+
+        foreach (var module in Siblings.Select(s => s.ModuleLines).Concat(Positions.Select(p => Itself(p).ModuleLines)))
+        {
+            var source = string.Join("\n", module.Concat(okMain));
+            var control = api.Analyze(source, CancellationToken.None);
+            if (control.Diagnostics.Any(d => d.IsError))
+                problems.Add($"control module binding '{module[0]}' alone does not analyse clean: {Fingerprint(control.Diagnostics.Where(d => d.IsError))}");
         }
 
         var ran = 0;
@@ -351,8 +500,10 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
                 problems.Add($"{cell.Id}: an internal error under Analyze (hard, never allowlisted): "
                     + string.Join(" | ", internalUnderAnalyze.Select(d => d.Message)).ReplaceLineEndings(" "));
 
-            var expected = cell.ExpectedErrors.Select(e => $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
-            var actual = errors.Select(d => $"{d.Code ?? "-"}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            // An expectation at line 0 pins the code alone (ConstCycleCode); every other one pins code@line:col.
+            var codeOnly = cell.ExpectedErrors.Any(e => e.Line == 0);
+            var expected = cell.ExpectedErrors.Select(e => codeOnly ? e.Code : $"{e.Code}@{e.Line}:{e.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
+            var actual = errors.Select(d => codeOnly ? d.Code ?? "-" : $"{d.Code ?? "-"}@{d.Line}:{d.Column}").OrderBy(s => s, StringComparer.Ordinal).ToList();
             if (!expected.SequenceEqual(actual, StringComparer.Ordinal))
             {
                 // A refusal the analysis does not make: say what the program does under run (an ICE, or it runs).
@@ -368,7 +519,8 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
                 failures.Add($"errors are [{string.Join(" ", actual)}], expected [{string.Join(" ", expected)}]{underRun}");
             }
 
-            // The refusal's text: its position's phrase, no other position's, and the steer D8 names.
+            // The refusal's text: its position's phrase, no other position's, "declared later" exactly when the order
+            // refuses, and the steer D8 names.
             if (cell.Phrase is { } phrase && errors.FirstOrDefault(d => d.Code == "SPY0200") is { } refusal)
             {
                 if (!refusal.Message.Contains(phrase, StringComparison.Ordinal))
@@ -376,10 +528,16 @@ public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
                 var others = AllPhrases.Where(p => p != phrase && refusal.Message.Contains(p, StringComparison.Ordinal)).ToList();
                 if (others.Count > 0)
                     failures.Add($"the SPY0200 names another position ({string.Join(", ", others.Select(o => $"'{o}'"))})");
+                if (refusal.Message.Contains(DeclaredLaterPhrase, StringComparison.Ordinal) != cell.DeclaredLater)
+                    failures.Add(cell.DeclaredLater
+                        ? $"the SPY0200 does not say '{DeclaredLaterPhrase}'"
+                        : $"the SPY0200 says '{DeclaredLaterPhrase}' for an earlier declaration");
                 if (cell.Steer is { } steer && !refusal.Message.Contains(steer, StringComparison.Ordinal))
                     failures.Add($"the SPY0200 carries no steer '{steer}'");
             }
 
+            // An admitted cell must RUN and print exactly the expected binding's value — a wrong binding (the module's,
+            // or a later member read before its initializer ran, 0) is red.
             if (cell.ExpectedStdout is { } stdout && actual.Count == 0)
             {
                 ran++;
