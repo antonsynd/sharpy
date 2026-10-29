@@ -20,7 +20,7 @@ extract-variable identity diagnostics 220 88ce9452651014a6 61 e195216393c75856 #
 extract-variable identity parse 56 8009d0bb498adc30 56 8009d0bb498adc30 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
 implement identity diagnostics 46 3c4b326389297fda 6 958ea3e0a6810d12 # #2296 adds SPY0224,SPY0522 (and 13 other cells)
 inline-function identity diagnostics 45 08d2287b43ce13a6 14 636bc0dd9745c36b # #2296 removes an error (and 36 other cells)
-inline-variable identity diagnostics 135 71afc4a6fd5baf08 18 4a778ad0f1323079 # #2296 removes an error (and 118 other cells)
+inline-variable identity diagnostics 135 71afc4a6fd5baf08 19 cec26b21b9ba03b7 # #2296 removes an error (and 118 other cells)
 organize-imports identity diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore identity diagnostics 7 aef8d5f7d19d8d95 1 47ec1f14bc7f4d75 # #2296 removes an error (and 6 other cells)
 remove-annotation identity diagnostics 520 c84abab1c31c81d8 91 0589405297fbebe0 # #2296 adds SPY0227 (and 518 other cells)

@@ -295,13 +295,11 @@ class-body-read × class × static-property-default × itself × self × module 
 class-body-read × class × const-initializer × static-field × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × class × const-initializer × static-property × after × none  # #2384 R-JJ; F1: a later @static is SPY0200 without 'declared later'
 class-body-read × class × const-initializer × static-method × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
-class-body-read × class × const-initializer × itself × self × none  # #2384 R-JJ; F1/ruling (a): the const reader reads itself and runs 1 where SPY0278 is due (p3-key)
 class-body-read × class × const-initializer × static-property × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × class × const-initializer × instance-property × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × class × const-initializer × event × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × class × const-initializer × static-method × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × class × const-initializer × instance-method × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
-class-body-read × class × const-initializer × itself × self × module  # #2384 R-JJ; F1/ruling (a): the const reader reads itself and runs 1 where SPY0278 is due (p3-key)
 class-body-read × class × parameter-default × static-field × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × class × parameter-default × static-property × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × class × parameter-default × static-method × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
@@ -351,13 +349,11 @@ class-body-read × dataclass × static-property-default × itself × self × mod
 class-body-read × dataclass × const-initializer × static-field × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × dataclass × const-initializer × static-property × after × none  # #2384 R-JJ; F1: a later @static is SPY0200 without 'declared later'
 class-body-read × dataclass × const-initializer × static-method × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
-class-body-read × dataclass × const-initializer × itself × self × none  # #2384 R-JJ; F1/ruling (a): the const reader reads itself and runs 1 where SPY0278 is due (p3-key)
 class-body-read × dataclass × const-initializer × static-property × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × dataclass × const-initializer × instance-property × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × dataclass × const-initializer × event × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × dataclass × const-initializer × static-method × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × dataclass × const-initializer × instance-method × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
-class-body-read × dataclass × const-initializer × itself × self × module  # #2384 R-JJ; F1/ruling (a): the const reader reads itself and runs 1 where SPY0278 is due (p3-key)
 class-body-read × dataclass × parameter-default × static-field × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × dataclass × parameter-default × static-property × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × dataclass × parameter-default × static-method × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
@@ -407,13 +403,11 @@ class-body-read × struct × static-property-default × itself × self × module
 class-body-read × struct × const-initializer × static-field × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × struct × const-initializer × static-property × after × none  # #2384 R-JJ; F1: a later @static is SPY0200 without 'declared later'
 class-body-read × struct × const-initializer × static-method × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
-class-body-read × struct × const-initializer × itself × self × none  # #2384 R-JJ; F1/ruling (a): the const reader reads itself and runs 1 where SPY0278 is due (p3-key)
 class-body-read × struct × const-initializer × static-property × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × struct × const-initializer × instance-property × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × struct × const-initializer × event × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × struct × const-initializer × static-method × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
 class-body-read × struct × const-initializer × instance-method × before × module  # #2384 R-JJ; F2: the module binding hides an earlier member (runs 9x or SPY0401) where the member verdict is due
-class-body-read × struct × const-initializer × itself × self × module  # #2384 R-JJ; F1/ruling (a): the const reader reads itself and runs 1 where SPY0278 is due (p3-key)
 class-body-read × struct × parameter-default × static-field × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × struct × parameter-default × static-property × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due
 class-body-read × struct × parameter-default × static-method × after × none  # #2384 R-JJ; F1: a later @static sibling binds (runs, or SPY0401 in a parameter default) where one SPY0200 'declared later' is due

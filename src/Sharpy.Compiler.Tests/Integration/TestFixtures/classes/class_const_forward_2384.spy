@@ -1,0 +1,13 @@
+# Control for class_const_cycle_2384: a type-body const that reads a LATER sibling const, by bare
+# name or qualified, without a cycle, runs (#1795).
+class Host:
+    const A: int = B
+    const B: int = 3
+
+struct Cell:
+    const A: int = Cell.B + 1
+    const B: int = 4
+
+def main() -> None:
+    print(Host.A)
+    print(Cell.A)

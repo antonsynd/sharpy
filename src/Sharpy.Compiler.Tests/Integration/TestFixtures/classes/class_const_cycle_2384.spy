@@ -1,0 +1,24 @@
+# A const cycle in a type body is SPY0278 like a module-level one (P21h, lead ruling; #2384). A
+# type-body const reads a sibling const by bare name or qualified, and before its arm in the cycle
+# graph a bare cycle ran: `const B: int = B + 1` printed 1 and a two-const cycle 0 (the static
+# readonly's default). The forward reference without a cycle runs (#1795;
+# class_const_forward_2384.expected is the twin).
+class Host:
+    const B: int = B + 1
+
+class Pair:
+    const A: int = B
+    const B: int = A
+
+struct Cell:
+    const B: int = B + 1
+
+struct Mixed:
+    const A: int = Mixed.B
+    const B: int = A
+
+def main() -> None:
+    print(Host.B)
+    print(Pair.A)
+    print(Cell.B)
+    print(Mixed.A)
