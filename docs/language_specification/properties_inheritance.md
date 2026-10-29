@@ -186,6 +186,34 @@ public string Hint => _secret[0] + "***";
 string ISecret.Value => _secret;
 ```
 
+An explicit implementation claims no bare name, so the class may also declare a member of its own with the same name. The two are separate C# members: the class's own member answers through the class type, and the explicit one answers through the interface. Explicit implementations of two interfaces' same-named properties are two members as well. Declaring the same explicit implementation twice is refused (SPY0204). See [One Name, One Meaning in a Type Body](properties_function_style.md#one-name-one-meaning-in-a-type-body).
+
+<!-- spec-sweep: output -->
+```python
+interface ILabel:
+    property get text: str
+
+interface ITitle:
+    property get text: str
+
+class Badge(ILabel, ITitle):
+    property text: str = "own"                 # the class's own member
+
+    property get ILabel.text(self) -> str:     # reached through ILabel
+        return "label"
+
+    property get ITitle.text(self) -> str:     # reached through ITitle
+        return "title"
+
+def main() -> None:
+    b = Badge()
+    l: ILabel = b
+    t: ITitle = b
+    print(b.text)         # own
+    print(l.text)         # label
+    print(t.text)         # title
+```
+
 ## See Also
 
 - [Properties](properties.md) - Overview of auto-properties

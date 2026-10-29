@@ -256,10 +256,48 @@ class Derived(Base):
 An inherited `const` or `@static` field is steered to the **declaring** class's name, which is the
 spelling that compiles: `Base.K`, not `Derived.K`.
 
-### Parameter defaults still see the class body
+### Initializers and parameter defaults see the class body by position
 
-A parameter default belongs to the **signature**, which is resolved in the scope that declares the
-method — the class body — not in the method body:
+A class-body position outside a method body reads a sibling by bare name exactly when C# resolves
+that name in the position the declaration becomes:
+
+- **An initializer** reads a `const` or `@static` sibling (field, property or method) by bare name.
+  That covers a field initializer in a plain class, a `@static` field's initializer, every property
+  default (instance or `@static`, in every host), and a `const` whose initializer is not a
+  compile-time constant (it is emitted `static readonly`, so it runs as a static initializer).
+- **A parameter default** belongs to the method's **signature**, and C# requires it to be a
+  compile-time constant, so it reads a `const` only. A `@static` sibling resolves but is not
+  constant (SPY0401). An instance field's initializer in a `struct` or a `@dataclass` is the
+  synthesized constructor's parameter default, so the same rule applies to it.
+- **An instance member** (a field, property, event or method that is not `@static`) is refused
+  (SPY0200) in every one of these positions. No instance exists when they run. The diagnostic names
+  the position and says where the value can be read instead.
+
+<!-- spec-sweep: output -->
+```python
+class Grid:
+    const SIZE: int = 2
+
+    @static
+    scale: int = 2
+
+    @static
+    def twice(n: int) -> int:
+        return n * 2
+
+    area: int = SIZE                              # a field initializer reads a const
+    @static
+    cells: int = twice(scale)                     # a @static initializer reads @static members
+    property border: int = SIZE + twice(scale)    # a property default reads both
+
+def main() -> None:
+    g = Grid()
+    print(g.area)         # 2
+    print(Grid.cells)     # 4
+    print(g.border)       # 6
+```
+
+A parameter default reads a `const`:
 
 ```python
 class Grid:
@@ -269,8 +307,27 @@ class Grid:
         print(n)
 ```
 
-The same holds for decorator arguments and type annotations. Names in the method's **body** are
-resolved by the rule above.
+An instance sibling is refused in every position outside a method body:
+
+<!-- spec-sweep: error SPY0200 -->
+```python
+class Grid:
+    width: int = 3
+    total: int = width    # SPY0200 — "'width' is an instance attribute of 'Grid' — a field initializer runs before any instance exists, so it may read only a 'const' or '@static' member of 'Grid'"
+
+def main() -> None:
+    print(Grid().total)
+```
+
+One temporary exception: a `@static` **property** is refused (SPY0200) in a `@static` field's
+initializer or a `const` initializer. Static initializers run in member-layout order, so the read
+would see the property before its own default is assigned (#2396). Read it in a method, or make it
+a `@static` field.
+
+Decorator arguments and type annotations are resolved in the class body as well. Names in the
+method's **body** are resolved by the rule above. Python resolves class scope in every one of these positions
+(`class C: a = 1; b = a` binds `b` to `1`). Sharpy resolves only what C# resolves there (deviation
+`class-body-bare-name-read`).
 
 ### Pattern heads are not reads
 
