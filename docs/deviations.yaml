@@ -363,7 +363,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "A name is rebound by whichever statement runs last, in a module and in a class body alike: `import math as m` followed by `def m(): ...` leaves `m` the function; `type A = str` then `type A = int` leaves `A` the `int` alias; `import math as mm` then `import copy as mm` leaves `mm` the `copy` module; `from math import pi as a` then `from math import e as a` leaves `a` 2.718281828459045; `import copy as pi` then `from math import *` leaves `pi` 3.141592653589793; a class body's `@property def value` followed by `def value(self)` leaves `value` the method."
-    sharpy_behavior: "One name has one meaning in a body. An import binding collides like every module binding (R-II, #2359): an import whose name a class, def, `type` alias, const or module property of the same module already takes, or that another import binds to a different module or symbol, is SPY0204 at the import, whatever the source order (the module body is declared before imports bind); the refused import binds nothing. An import names the symbol it imports, so two from-imports of ONE module that bind different symbols under one name collide (`from math import pi as a` / `from math import e as a`, SPY0204 at the second). A module variable is declared after the imports bind, so against a module variable the import keeps the name and the variable is SPY0204, in either order; a module variable re-declaring a module property is SPY0204 at the variable, in either order (#2360). A star import never refuses or displaces a declaration of the importing module, whatever its kind (#2371); an explicit import of a different source that spells a star-exported name is SPY0204 at the explicit import, in either order (R-IZ), and an explicit import of the symbol the star binds is idempotent. In a class, struct or interface body a second declaration of a name under any pair of member kinds (method, field, const, property, event, nested type, `type` alias) is SPY0204 at the later declaration, in either order (R-JB, #2360); only the parts of one member share a name (function-style get + set, an auto half beside a function-style accessor, split auto halves, method overloads). A `type` alias re-declared in one scope is SPY0204 at every position (#2360). Re-importing the same thing is idempotent, and `import os` with `import os.path` share one `os` binding. .NET has no last-binding-wins rule for these names and a .NET type holds one member per name, so Sharpy refuses rather than rebinds (R-HJ, R-CY)."
+    sharpy_behavior: "One name has one meaning in a body. An import binding collides like every module binding (R-II, #2359): an import whose name a class, def, `type` alias, const or module property of the same module already takes, or that another import binds to a different module or symbol, is SPY0204 at the import, whatever the source order (the module body is declared before imports bind); the refused import binds nothing. An import names the symbol it imports, so two from-imports of ONE module that bind different symbols under one name collide (`from math import pi as a` / `from math import e as a`, SPY0204 at the second). A module variable is declared after the imports bind, so against a module variable the import keeps the name and the variable is SPY0204, in either order; a module variable re-declaring a module property is SPY0204 at the variable, in either order (#2360). A star import never refuses or displaces a declaration of the importing module, whatever its kind (#2371); an explicit import of a different source that spells a star-exported name is SPY0204 at the explicit import, in either order (R-IZ), and an explicit import of the symbol the star binds is idempotent. In a class, struct or interface body a second declaration of a name under any pair of member kinds (method, field, const, property, event, nested type, `type` alias) is SPY0204 at the later declaration, in either order (R-JB, #2360); only the parts of one member share a name (function-style get + set, an auto half beside a function-style accessor, split auto halves, method overloads). An explicit interface implementation (`property IShape.area`) claims no bare name: its member key is the name and the interface, so it stands beside a field, method, property or event named `area` as a separate C# member, and is SPY0204 only beside another `IShape.area` (R-JH, #2390). A union case claims its name in the union body like every member: a second case of the name, or a case named like one of the union's type parameters, is SPY0204 at the case (R-JI, #2390). A `type` alias re-declared in one scope is SPY0204 at every position (#2360). Re-importing the same thing is idempotent, and `import os` with `import os.path` share one `os` binding. .NET has no last-binding-wins rule for these names and a .NET type holds one member per name, so Sharpy refuses rather than rebinds (R-HJ, R-CY)."
     spec_ref: docs/language_specification/import_statements.md
     existing_diagnostic: SPY0204
     planned_diagnostic: null
@@ -378,6 +378,27 @@ deviations:
 
         def m() -> int:
             return 1
+
+  - id: class-body-bare-name-read
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "A class body is a scope that runs top to bottom, so a field initializer, a later class attribute and a method's parameter default read any earlier class attribute by bare name: `class C: a = 1; b = a` binds `C.b` to `1`, and `def m(self, x=K)` defaults `x` to the class attribute `K`."
+    sharpy_behavior: "A bare class-body read outside a method body resolves exactly what C# resolves in the position the declaration becomes (R-JJ, #2384). An initializer (a plain class's field initializer, a `@static` field's initializer, every property default, a `const` that is not a compile-time constant) reads a `const` or `@static` sibling; a parameter default (and a struct's or `@dataclass`'s instance field initializer, which is the synthesized constructor's parameter default) reads a `const` only, and a `@static` sibling there is SPY0401. An instance member is SPY0200 in every such position, with a steer naming the position (no instance exists when it runs). A `@static` property read from a `@static` field or `const` initializer is SPY0200 until static initialization follows declaration order (#2396). Inside a method body no class-body name is visible by bare name (#1786)."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        class Grid:
+            width = 3
+            total = width
+        print(Grid.total)  # 3
+      sharpy: |
+        class Grid:
+            width: int = 3
+            total: int = width   # ERROR SPY0200: 'width' is an instance attribute of 'Grid' — a field initializer runs before any instance exists, so it may read only a 'const' or '@static' member of 'Grid'
 
   - id: builtin-name-shadowing-in-value-position
     code: SPY0483
