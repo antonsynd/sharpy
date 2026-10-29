@@ -848,8 +848,12 @@ internal partial class TypeChecker
                 // CALL time, inside the body, and referring to an earlier parameter is the point
                 // of the feature (`def f(x: int, y: int => x + 1)`). It resolves in the function
                 // scope, where the class body is correctly invisible.
+                //
+                // An eager default in a METHOD therefore resolves a bare class-body sibling as a C#
+                // parameter default does: a const only (P21h D8, TypeChecker.ClassScopeRule).
                 SemanticType defaultType;
                 using (_symbolTable.ResolveInDeclaringScope(enabled: !param.IsLateBound))
+                using (ScopedValue.Push(ref _initializerOwner, ParameterDefaultReader(param, functionDef)))
                 {
                     using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
                         defaultType = CheckExpression(param.DefaultValue);
@@ -1281,6 +1285,8 @@ internal partial class TypeChecker
         // resolved, so a later assignment cannot repair it (#1285).
         var previousClass = _currentClass;
         _currentClass = classSymbol;
+        var previousTypeBody = _currentTypeBody;
+        _currentTypeBody = classDef.Body;
         _typeResolver.SetCurrentTypeContext(classSymbol);
 
         RecordCompletedBaseAnnotations(classSymbol);
@@ -1330,6 +1336,7 @@ internal partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
+        _currentTypeBody = previousTypeBody;
         _typeResolver.SetCurrentTypeContext(previousClass);
         // Access validation is handled by AccessValidator in the validation pipeline
 
@@ -1573,6 +1580,8 @@ internal partial class TypeChecker
         // discipline as the class path (#1285).
         var previousClass = _currentClass;
         _currentClass = structSymbol;
+        var previousTypeBody = _currentTypeBody;
+        _currentTypeBody = structDef.Body;
         _typeResolver.SetCurrentTypeContext(structSymbol);
 
         RecordCompletedBaseAnnotations(structSymbol);
@@ -1619,6 +1628,7 @@ internal partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
+        _currentTypeBody = previousTypeBody;
         _typeResolver.SetCurrentTypeContext(previousClass);
         // Access validation is handled by AccessValidator in the validation pipeline
 
@@ -1683,6 +1693,8 @@ internal partial class TypeChecker
         // resolutions are cached, so the context has to be right on this first pass.
         var previousClass = _currentClass;
         _currentClass = interfaceSymbol;
+        var previousTypeBody = _currentTypeBody;
+        _currentTypeBody = interfaceDef.Body;
         _typeResolver.SetCurrentTypeContext(interfaceSymbol);
 
         RecordCompletedBaseAnnotations(interfaceSymbol);
@@ -1838,6 +1850,7 @@ internal partial class TypeChecker
         }
 
         _currentClass = previousClass;
+        _currentTypeBody = previousTypeBody;
         _typeResolver.SetCurrentTypeContext(previousClass);
 
         _symbolTable.ExitScope();
@@ -1903,20 +1916,11 @@ internal partial class TypeChecker
                 _symbolTable.Define(typeParamSymbol);
             }
 
-            // Check for duplicate case names and resolve field types
-            var seenCaseNames = new HashSet<string>();
-
+            // Resolve field types. A case over a held name (an earlier case, a type parameter) was
+            // refused by the member seam (SPY0204, P21h D6) and is not a case of the union.
             for (int i = 0; i < unionDef.Cases.Length; i++)
             {
                 var caseDef = unionDef.Cases[i];
-
-                if (!seenCaseNames.Add(caseDef.Name))
-                {
-                    AddError($"Union case '{caseDef.Name}' is already defined in union '{unionDef.Name}'",
-                        caseDef.LineStart, caseDef.ColumnStart,
-                        code: DiagnosticCodes.Semantic.DuplicateUnionCase, span: caseDef.Span);
-                    continue;
-                }
 
                 // Reject case names that collide with the union type name itself,
                 // which would produce a C# nested class with the same name as its enclosing class
@@ -1928,8 +1932,9 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                // Get the corresponding case symbol
-                var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(c => c.Name == caseDef.Name);
+                // Get the case symbol declared FOR this case — never an earlier case of the name
+                var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(
+                    c => c.Name == caseDef.Name && c.DeclarationSpan == caseDef.Span);
                 if (caseSymbol == null)
                     continue;
 
@@ -1954,6 +1959,8 @@ internal partial class TypeChecker
             // and Self resolve to the union type (mirrors CheckClass).
             var previousClass = _currentClass;
             _currentClass = unionSymbol;
+            var previousTypeBody = _currentTypeBody;
+            _currentTypeBody = unionDef.Body;
             _typeResolver.SetCurrentTypeContext(unionSymbol);
 
             foreach (var statement in unionDef.Body)
@@ -1962,6 +1969,7 @@ internal partial class TypeChecker
             }
 
             _currentClass = previousClass;
+            _currentTypeBody = previousTypeBody;
             _typeResolver.SetCurrentTypeContext(previousClass);
         }
         finally
@@ -2454,7 +2462,7 @@ internal partial class TypeChecker
         ResolveWriteAccessorReturnAnnotation(propDef);
 
         // The declared property type was resolved by ResolvePropertyTypes
-        var propSymbol = _currentClass.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        var propSymbol = _currentClass.FindProperty(propDef.Name, propDef.ExplicitInterface);
         var propertyType = propSymbol?.Type ?? SemanticType.Unknown;
 
         // Fallback: re-resolve from this accessor's declaring annotation if the merged symbol type
@@ -2468,7 +2476,11 @@ internal partial class TypeChecker
         {
             if (propDef.DefaultValue != null)
             {
+                // Checked under the CLASS scope (no initializer: scope), so the reader is the ONLY
+                // fact that classifies a bare sibling read in the default (P21h D8): a C# property
+                // initializer in every host, instance or @static by the declaration.
                 SemanticType defaultType;
+                using (ScopedValue.Push(ref _initializerOwner, PropertyDefaultReader(propDef)))
                 using (EnterStore(StorePosition.PropertyDefault, propertyType, propDef.DefaultValue))
                     defaultType = CheckExpression(propDef.DefaultValue);
 
@@ -2686,7 +2698,7 @@ internal partial class TypeChecker
                 // return annotation stood in for the property's type).
                 var declaredAnnotation = body
                     .OfType<PropertyDef>()
-                    .Where(p => p.Name == propSymbol.Name)
+                    .Where(p => p.MemberKey() == (propSymbol.Name, propSymbol.ExplicitInterface))
                     .DeclaredTypeAnnotation();
 
                 if (declaredAnnotation != null)
@@ -2701,10 +2713,10 @@ internal partial class TypeChecker
         }
 
         // Synthesize backing fields for mixed auto+custom properties.
-        // Group PropertyDefs by name. If a group has both auto and function-style defs,
-        // the auto-property generates a private backing field (_name) so that custom
+        // Group PropertyDefs by member key (R-JH, #2390). If a group has both auto and function-style
+        // defs, the auto-property generates a private backing field (_name) so that custom
         // accessor bodies can reference self._name.
-        var propGroups = body.OfType<PropertyDef>().GroupBy(p => p.Name);
+        var propGroups = body.OfType<PropertyDef>().GroupBy(p => p.MemberKey());
         foreach (var group in propGroups)
         {
             var autoProp = group.FirstOrDefault(p => !p.IsFunctionStyle);

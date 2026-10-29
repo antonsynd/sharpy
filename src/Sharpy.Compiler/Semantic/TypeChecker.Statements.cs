@@ -1053,7 +1053,15 @@ internal partial class TypeChecker
             if (pushedInitializerScope)
                 _symbolTable.EnterScope($"initializer:{varDecl.Name}");
 
+            // A type-body field's or const's initializer names its declaration, so a bare sibling
+            // read inside it resolves by the C# position the initializer is emitted in (P21h D8,
+            // TypeChecker.ClassScopeRule).
+            var initializerOwner = pushedInitializerScope && _currentClass != null
+                ? FieldInitializerReader(varDecl, _currentClass)
+                : _initializerOwner;
+
             SemanticType initType;
+            using (ScopedValue.Push(ref _initializerOwner, initializerOwner))
             using (EnterStore(StorePosition.Declaration, declaredType, varDecl.InitialValue))
                 initType = CheckExpression(varDecl.InitialValue);
 

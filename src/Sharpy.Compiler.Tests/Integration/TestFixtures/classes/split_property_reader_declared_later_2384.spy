@@ -1,0 +1,16 @@
+# P21h verify C2 (F1 × split halves): a split property is emitted as ONE C# property where its FIRST half
+# stands, so a default carried by a later half runs there. The setter half's `= sp` below runs before
+# `sp` is initialized (C# would read 0): it is 'declared later' than 'a', judged from a's first half.
+
+
+class C:
+    @static
+    property get a: int
+    @static
+    property sp: int = 4
+    @static
+    property set a: int = sp
+
+
+def main() -> None:
+    print(C.a)

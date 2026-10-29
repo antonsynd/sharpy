@@ -56,17 +56,27 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
     public override void VisitClassDef(ClassDef node)
     {
+        _enclosingTypes.Push(Context.DeclaredTypes?.SymbolFor(node, node.Name, Context.SymbolTable));
         ValidateDataclassFieldDefaults(node);
         ValidateBracketAttributeArguments(node.Decorators);
         base.VisitClassDef(node);
+        _enclosingTypes.Pop();
     }
 
     public override void VisitStructDef(StructDef node)
     {
+        _enclosingTypes.Push(Context.DeclaredTypes?.SymbolFor(node, node.Name, Context.SymbolTable));
         ValidateStructFieldDefaults(node);
         ValidateBracketAttributeArguments(node.Decorators);
         base.VisitStructDef(node);
+        _enclosingTypes.Pop();
     }
+
+    /// <summary>
+    /// The class or struct whose body the walk is in, innermost on top — what a default's bare
+    /// identifier is a member of (<see cref="ReadsRefusedInstanceMember"/>).
+    /// </summary>
+    private readonly Stack<TypeSymbol?> _enclosingTypes = new();
 
     public override void VisitInterfaceDef(InterfaceDef node)
     {
@@ -369,6 +379,15 @@ internal class ConstantPositionValidator : ValidatingAstWalker
     {
         var defaultValue = slot.DefaultValue;
         var semanticInfo = Context.SemanticInfo;
+
+        // A default that reads an INSTANCE member of the enclosing type by bare name, or a sibling
+        // declared later (F1), was already refused by the checker with the one SPY0200 whose steer
+        // names the position (P21h D8, R-JJ): C# does not resolve an instance member there at all
+        // (CS0236 / CS1736 on a name it cannot bind), so a constant-position verdict on top of it is
+        // a second report of one defect. An earlier @static member DOES resolve and is not
+        // skipped — SPY0401 is its one verdict.
+        if (ReadsRefusedInstanceMember(defaultValue, semanticInfo))
+            return;
         var kind = ConstantDefaultClassifier.Classify(
             defaultValue,
             constResolver: id => IsConstReferenceAdmissible(id, semanticInfo),
@@ -463,6 +482,30 @@ internal class ConstantPositionValidator : ValidatingAstWalker
     }
 
     /// <summary>
+    /// Whether <paramref name="expression"/> contains a bare identifier the checker REFUSED as a
+    /// class-body sibling read — left unbound, marked error recovery, and naming a member of the
+    /// enclosing type by the same membership predicate the checker asked
+    /// (<see cref="TypeBodyMembership"/>): an instance member (C# resolves none in a constant
+    /// position), or a sibling declared later than the default's method or field (F1). An identifier
+    /// the checker BOUND (a module variable, a parameter, a local, an admitted @static sibling) is
+    /// never skipped: whatever it names, the constant-position rule judges it.
+    /// </summary>
+    private bool ReadsRefusedInstanceMember(Expression expression, SemanticInfo semanticInfo)
+    {
+        if (_enclosingTypes.Count == 0 || _enclosingTypes.Peek() is not { } enclosing)
+            return false;
+
+        return Reads(expression);
+
+        bool Reads(Node node)
+            => (node is Identifier id
+                    && semanticInfo.GetIdentifierSymbol(id) == null
+                    && semanticInfo.IsErrorRecoveryType(id)
+                    && TypeBodyMembership.FindMember(enclosing, id.Name, reachableThroughSelf: false) != null)
+                || node.GetChildNodes().Any(Reads);
+    }
+
+    /// <summary>
     /// The constResolver, for every constant position: an <see cref="Identifier"/> resolves iff the
     /// symbol the CHECKER bound to it is a <c>const</c> with the same backtick-escape spelling and
     /// that const's compile-time fact is true.
@@ -500,6 +543,14 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         {
             return bound;
         }
+
+        // The module-scope fallback is for an identifier the checker never visited. One it bound —
+        // to any symbol, or as a class-body sibling read whose member (a property) has no symbol —
+        // denotes what the checker said, never a module const of the same spelling: an own
+        // `@static S` under `const S` at module level is the member (F2), and admitting it as the
+        // module constant emitted a bare `S` that C# binds to the member (CS1736; P21h verify CLASS-A).
+        if (semanticInfo.GetIdentifierSymbol(id) != null || semanticInfo.GetClassBodySiblingRead(id) != null)
+            return null;
 
         return Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } fallback
             && fallback.IsNameBacktickEscaped == id.IsNameBacktickEscaped

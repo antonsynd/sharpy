@@ -139,6 +139,16 @@ internal partial class RoslynEmitter
             if (symbol != null && funcName.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
                 symbol = null;
 
+            // A bare call the checker resolved to a class-body sibling method (P21h D8; owner ruling
+            // F2): the recorded fact and the node-keyed symbol name the member, which outranks the
+            // module function or builtin a scope lookup by name would find.
+            if (_context.SemanticInfo?.GetClassBodySiblingRead(funcName) != null
+                && _context.SemanticInfo.GetIdentifierSymbol(funcName) is FunctionSymbol siblingMethod)
+            {
+                symbol = siblingMethod;
+                isBuiltinFunc = false;
+            }
+
             // `from builtins import len as blen` binds the alias's SPELLING to the registry's own
             // symbol. Every arm below is keyed by the callee's NAME — the generic-builtin list, the
             // str-len special case, the mangled Builtins.<Name> call — so become the builtin's

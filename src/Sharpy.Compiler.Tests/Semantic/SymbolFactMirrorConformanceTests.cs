@@ -521,6 +521,10 @@ def main() -> None:
             + "the #1403 cells in InheritanceResolverTests and ModuleLoaderTests",
         ["TypeSymbol.UnresolvedBaseName"] = "the INPUT to inheritance resolution, present only on "
             + "the side that has not resolved it yet — an extraction has it, the declaration does not",
+        ["TypeSymbol.RefusedDeclarations"] = "per-analysis bookkeeping of the declaring file: the "
+            + "property/event declaration nodes the member seam refused (P21h D7), read only by "
+            + "that file's validators in the same pass — an AST-node set never crosses an import "
+            + "or cache boundary, and an extraction has none by construction",
         ["TypeSymbol.UnresolvedBaseTypeArgs"] = "see TypeSymbol.UnresolvedBaseName",
         ["TypeSymbol.UnresolvedInterfaces"] = "see TypeSymbol.UnresolvedBaseName",
         ["TypeSymbol.UnresolvedSynthesizedInterfaces"] = "see TypeSymbol.UnresolvedBaseName — the "

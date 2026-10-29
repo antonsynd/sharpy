@@ -838,14 +838,25 @@ internal partial class TypeChecker
     /// of the constant's TYPE and of whether the fixed-point fold above could evaluate it: an
     /// acyclic chain the folder cannot evaluate (<c>const A: int = ident(5)</c>) runs, and a
     /// <c>float</c>/<c>str</c>/<c>bool</c> cycle is refused like an <c>int</c> one.
-    /// <para><b>Scope of the graph.</b> Module-level consts (keyed by name) AND class-level consts
-    /// (keyed <c>Class.Member</c>, reached through the qualified <c>C.A</c> spelling that is the
-    /// only way to name one in an initializer). A class-level cycle was SPY0908/CS0110 ("the
-    /// evaluation of the constant value involves a circular definition") and a module↔class cycle
-    /// SPY0908/CS0133 before they entered this graph. Two shapes are impossible rather than
+    /// <para><b>Scope of the graph.</b> Module-level consts (keyed by name) AND the consts of every
+    /// type body — class, struct, interface and union, nested ones included (keyed by the type's
+    /// dotted path, <c>Outer.Inner.Member</c>). A type-body const reaches another through the
+    /// qualified spelling (<c>Host.B</c>) or, from a sibling's initializer, by bare name (P21h D8
+    /// admits a bare <c>const</c> sibling in a const initializer): a bare name in a type-body const
+    /// names that body's member when the body declares one, else a module const. A class-level
+    /// cycle was SPY0908/CS0110 ("the evaluation of the constant value involves a circular
+    /// definition") and a module↔class cycle SPY0908/CS0133 before they entered this graph; a
+    /// bare-name cycle (<c>const B: int = B + 1</c>), and any cycle in a struct, interface, union
+    /// or nested type, ran printing the <c>static readonly</c> default before its arm here
+    /// (P21h, lead ruling on gen-reads' cell; #2384). Two shapes are impossible rather than
     /// missing: a FUNCTION-level const cannot forward-reference (SPY0200 — its scope is
     /// sequential), and a CROSS-MODULE const cycle needs each module to import the other, which
     /// SPY0302 ("Circular dependency detected") already refuses.</para>
+    /// <para><b>Deliberately partial dispatch.</b> The member-name switch lists the statement kinds
+    /// that declare a member name in a type body (any other kind — <c>pass</c>, a docstring — names
+    /// none, so a bare name falls to the module lookup), and <c>QualifiedTypePath</c> reads only an
+    /// identifier chain rooted at a module-level type, the one spelling that names a type-body
+    /// const from outside its body.</para>
     /// <para><b>No lambda boundary.</b> Unlike the walrus walk (<c>ContainsWalrusExpression</c>),
     /// this walk does not stop at a <see cref="LambdaExpression"/>: the walrus rule is about where
     /// a binding takes effect, while a const initializer's VALUE flows through an
@@ -855,7 +866,47 @@ internal partial class TypeChecker
     private void DetectConstantCycles(Module module)
     {
         var constDecls = new Dictionary<string, Parser.Ast.VariableDeclaration>();
-        foreach (var statement in module.Body)
+        // The type body a type-body const is declared in: its dotted path and the names its body
+        // declares, which a bare name in the const's initializer reads before a module const.
+        var typeBodyOf = new Dictionary<string, (string Path, HashSet<string> MemberNames)>();
+
+        void CollectTypeBodyConsts(string path, IEnumerable<Statement> body)
+        {
+            // Type-body consts have not been checked yet (the type checks run after this pass), so
+            // there is no folded value to filter on — every one enters the graph and the DFS
+            // decides. A non-cyclic member simply has no back edge.
+            var memberNames = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var member in body.Select(m => m.UnwrapDecorated()))
+            {
+                switch (member)
+                {
+                    case Parser.Ast.VariableDeclaration variable:
+                        memberNames.Add(variable.Name);
+                        if (variable.IsConst && variable.InitialValue != null)
+                        {
+                            constDecls[$"{path}.{variable.Name}"] = variable;
+                            typeBodyOf[$"{path}.{variable.Name}"] = (path, memberNames);
+                        }
+                        break;
+                    case FunctionDef function:
+                        memberNames.Add(function.Name);
+                        break;
+                    case PropertyDef property when property.ExplicitInterface == null:
+                        memberNames.Add(property.Name);
+                        break;
+                    case EventDef @event:
+                        memberNames.Add(@event.Name);
+                        break;
+                }
+                if (member.TryGetNestedDeclaration(out var nested))
+                {
+                    memberNames.Add(nested.Name);
+                    CollectTypeBodyConsts($"{path}.{nested.Name}", nested.Body);
+                }
+            }
+        }
+
+        foreach (var statement in module.Body.Select(s => s.UnwrapDecorated()))
         {
             if (statement is Parser.Ast.VariableDeclaration { IsConst: true } decl
                 && decl.InitialValue != null
@@ -863,19 +914,9 @@ internal partial class TypeChecker
             {
                 constDecls[decl.Name] = decl;
             }
-            else if (statement is Parser.Ast.ClassDef classDef)
+            else if (statement.TryGetNestedDeclaration(out var typeDeclaration))
             {
-                // Class-level consts have not been checked yet (CheckClass runs after this pass),
-                // so there is no folded value to filter on — every one enters the graph and the
-                // DFS decides. A non-cyclic member simply has no back edge.
-                foreach (var member in classDef.Body)
-                {
-                    if (member is Parser.Ast.VariableDeclaration { IsConst: true } constMember
-                        && constMember.InitialValue != null)
-                    {
-                        constDecls[$"{classDef.Name}.{constMember.Name}"] = constMember;
-                    }
-                }
+                CollectTypeBodyConsts(typeDeclaration.Name, typeDeclaration.Body);
             }
         }
 
@@ -886,21 +927,29 @@ internal partial class TypeChecker
         foreach (var (name, decl) in constDecls)
         {
             var referencedConsts = new HashSet<string>();
+            var typeBody = typeBodyOf.TryGetValue(name, out var declaringBody) ? declaringBody : default;
             AstHelper.ContainsDescendant(
                 decl.InitialValue!,
                 n =>
                 {
-                    if (n is Identifier id
-                        && _symbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } vs
+                    if (n is Identifier id && typeBody.MemberNames?.Contains(id.Name) == true)
+                    {
+                        // A bare name the declaring type body declares is that member: a sibling
+                        // const is an edge, any other member kind is not a const.
+                        if (constDecls.ContainsKey($"{typeBody.Path}.{id.Name}"))
+                            referencedConsts.Add($"{typeBody.Path}.{id.Name}");
+                    }
+                    else if (n is Identifier moduleId
+                        && _symbolTable.Lookup(moduleId.Name) is VariableSymbol { IsConstant: true } vs
                         && constDecls.ContainsKey(vs.Name))
                     {
                         referencedConsts.Add(vs.Name);
                     }
-                    else if (n is MemberAccess { Object: Identifier owner } memberAccess
-                        && _symbolTable.Lookup(owner.Name) is TypeSymbol
-                        && constDecls.ContainsKey($"{owner.Name}.{memberAccess.Member}"))
+                    else if (n is MemberAccess memberAccess
+                        && QualifiedTypePath(memberAccess.Object) is { } ownerPath
+                        && constDecls.ContainsKey($"{ownerPath}.{memberAccess.Member}"))
                     {
-                        referencedConsts.Add($"{owner.Name}.{memberAccess.Member}");
+                        referencedConsts.Add($"{ownerPath}.{memberAccess.Member}");
                     }
                     return false;
                 });
@@ -946,6 +995,15 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.CircularConstantReference,
                 span: decl.Span);
         }
+
+        // The dotted path of a qualified type reference rooted at a module-level type
+        // (`Host`, `Outer.Inner`), or null for any other expression.
+        string? QualifiedTypePath(Expression expression) => expression switch
+        {
+            Identifier root when _symbolTable.Lookup(root.Name) is TypeSymbol => root.Name,
+            MemberAccess { Object: var inner } access when QualifiedTypePath(inner) is { } prefix => $"{prefix}.{access.Member}",
+            _ => null,
+        };
     }
 
     /// <summary>

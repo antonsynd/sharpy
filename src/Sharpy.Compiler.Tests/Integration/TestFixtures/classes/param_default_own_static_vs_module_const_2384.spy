@@ -1,0 +1,40 @@
+# P21h verify CLASS-A (D8 + F2): an own @static member outranks a module `const` of the same name in a
+# parameter default and in a struct's or a @dataclass's instance field slot (the synthesized
+# constructor's parameter default), so the default reads the @static member — which is not a
+# compile-time constant: SPY0401 alone. It must never be admitted as the module constant (the emitted
+# bare `S` binds the member in C#: CS1736). Variants: @static field, @static property, each host.
+
+const S: int = 7
+
+
+class D:
+    @static
+    S: int = 2
+
+    def g(self, x: int = S) -> int:
+        return x
+
+
+class P:
+    @static
+    property S: int = 2
+
+    def h(self, x: int = S) -> int:
+        return x
+
+
+@dataclass
+class Rec:
+    @static
+    S: int = 2
+    f: int = S
+
+
+struct Pair:
+    @static
+    S: int = 2
+    f: int = S
+
+
+def main() -> None:
+    print(D().g(), P().h(), Rec().f, Pair().f)

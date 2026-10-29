@@ -246,6 +246,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, byte> _moduleAccessCrossingClassMembers =
         new(ReferenceEqualityComparer.Instance);
 
+    // P21h D8 (R-JJ, #2384): a bare class-body read the checker ADMITTED in a position that is not a
+    // method body — a field or property initializer, a const initializer, a parameter default — names
+    // a sibling member C# resolves there by its simple name. The read has no local behind it, and a
+    // property or method sibling has no VariableSymbol to carry a CodeGenInfo, so the member's C#
+    // name is recorded here and the emitter writes it bare (Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<Identifier, ClassBodySiblingRead> _classBodySiblingReads =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track expressions that denote a type rather than a value (e.g., a module-qualified
     // reference to an exported TypeSymbol). Used to accept such expressions for parameters
     // backed by CLR System.Type (e.g., assert_raises(zoneinfo.ZoneInfoNotFoundError)).
@@ -1449,6 +1457,21 @@ public class SemanticInfo : ISemanticQuery
         => _moduleAccessCrossingClassMembers.ContainsKey(node);
 
     /// <summary>
+    /// Records that <paramref name="identifier"/> is an admitted bare read of a class-body sibling
+    /// in a position that is not a method body (P21h D8, R-JJ): the emitter writes
+    /// <see cref="ClassBodySiblingRead.MemberCSharpName"/> bare, as C# resolves it there.
+    /// </summary>
+    public void SetClassBodySiblingRead(Identifier identifier, ClassBodySiblingRead read)
+        => _classBodySiblingReads[identifier] = read;
+
+    /// <summary>
+    /// The admitted class-body sibling <paramref name="identifier"/> reads, or null when it is not
+    /// one (P21h D8).
+    /// </summary>
+    public ClassBodySiblingRead? GetClassBodySiblingRead(Identifier identifier)
+        => _classBodySiblingReads.TryGetValue(identifier, out var read) ? read : null;
+
+    /// <summary>
     /// Marks an expression as a compile-time literal-derived string (PEP 675 #1731).
     /// </summary>
     public void SetLiteralDerived(Expression expr) => _literalDerivedStrings.TryAdd(expr, 0);
@@ -2233,6 +2256,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._moduleAccessCrossingClassMembers)
             _moduleAccessCrossingClassMembers.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._classBodySiblingReads)
+            _classBodySiblingReads.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._defaultInterfaceDispatches)
             _defaultInterfaceDispatches.TryAdd(kvp.Key, kvp.Value);
 
@@ -2653,6 +2679,19 @@ public enum NarrowedReadKind
 /// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
 /// </param>
 public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
+
+/// <summary>
+/// An admitted bare read of a class-body sibling from a position that is not a method body (P21h D8,
+/// R-JJ; #2384) — <c>b: int = s</c> beside <c>@static s: int = 2</c>, a property default reading a
+/// <c>@static</c> property, a <c>const</c> initializer emitted <c>static readonly</c>. Node-keyed
+/// <see cref="SemanticInfo"/> fact (Critical Rule 2 pattern (b)) decided by
+/// <c>TypeChecker.TryResolveClassBodySiblingRead</c>; the emitter writes the member's C# name bare,
+/// the shape a const read already emits (<c>public int B = K;</c>), which C# resolves in the
+/// initializer.
+/// </summary>
+/// <param name="OwnerName">The type whose body declares the member (the enclosing type or a base).</param>
+/// <param name="MemberCSharpName">The C# name the member is declared under.</param>
+public sealed record ClassBodySiblingRead(string OwnerName, string MemberCSharpName);
 
 /// <summary>
 /// The unwrap codegen applies to a protocol-route RECEIVER before the route's own lowering runs

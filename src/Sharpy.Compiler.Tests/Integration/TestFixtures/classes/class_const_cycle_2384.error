@@ -1,0 +1,7 @@
+SPY0278: Circular constant reference: 'Host.B' depends on a constant that references it back @7:5
+SPY0278: Circular constant reference: 'Pair.A' depends on a constant that references it back @10:5
+SPY0278: Circular constant reference: 'Pair.B' depends on a constant that references it back @11:5
+SPY0278: Circular constant reference: 'Cell.B' depends on a constant that references it back @14:5
+SPY0278: Circular constant reference: 'Mixed.A' depends on a constant that references it back @17:5
+SPY0278: Circular constant reference: 'Mixed.B' depends on a constant that references it back @18:5
+!count 6

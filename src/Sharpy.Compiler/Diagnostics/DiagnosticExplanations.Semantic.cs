@@ -32,8 +32,10 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateDefinition, "Duplicate definition", "Semantic",
             "A name was defined more than once in the same scope. A name has one meaning per scope (function, block, class body or module). "
-            + "In a class, struct or interface body, any two members of one name are refused at the later declaration, in either order, whatever their kinds: method, field, const, property, event, nested type or type alias. "
+            + "In a class, struct, interface or union body, any two members of one name are refused at the later declaration, in either order, whatever their kinds: method, field, const, property, event, nested type, type alias or union case. "
             + "Only the parts of one member share a name: a function-style getter and setter, an auto-property beside a function-style accessor, split auto halves, and method overloads. "
+            + "An explicit interface implementation ('property IShape.area') claims no bare name: it may stand beside a member named 'area', and is refused only beside another 'IShape.area'. "
+            + "A union case claims its name like every member, so a second case of the name, or a case named like one of the union's type parameters, is refused at the case. "
             + "In a module, an import binds a module-level name and collides like every other module binding: two imports that bind different symbols under one name (two from-imports of one module included), "
             + "an import beside a class, def, type alias, const or module property of that name, and a module variable beside a def, a module property or an import are refused. "
             + "A star import never displaces a declaration of the importing module, but an explicit import of a different source that spells a star-exported name is refused at the explicit import, in either order.",
@@ -1102,9 +1104,13 @@ public static partial class DiagnosticExplanations
             "Use only literal values, member access, or wildcard patterns alongside member access patterns:\nmatch x:\n    case 1 | Color.RED:\n        ...");
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateUnionCase, "Duplicate union case", "Semantic",
-            "A union type has two or more cases with the same name. Each union case must have a unique name.",
-            "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)",
-            "Give each union case a unique name:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
+            "RETIRED (P21h D6, #2390): folded into SPY0204 (duplicate definition). A union case claims its name in "
+            + "the union body through the member-declaration seam like every member, so a second case of one name — "
+            + "adjacent or after a method — or a case named like one of the union's type parameters is SPY0204 at the "
+            + "later case's 'case' keyword. No site emits SPY0365 any longer; this explanation is retained only for "
+            + "old build logs.",
+            "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)  # SPY0204",
+            "Give each union case a unique name, distinct from the union's type parameters:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
 
         Add(dict, DiagnosticCodes.Semantic.UnionCaseNameConflict, "Union case name conflicts with union type", "Semantic",
             "A union case has the same name as its enclosing union type. This would produce a C# nested class with the same name as its parent, which is invalid.",
@@ -1386,5 +1392,22 @@ public static partial class DiagnosticExplanations
             "conflict comes from a synthesized interface (via a dunder method), remove the " +
             "dunder method from the derived class or ensure the type arguments match.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.InterfaceAccessorsMustAgreeOnBody,
+            "Interface property mixes an abstract accessor with a bodied one",
+            "Semantic",
+            "In an interface body an auto half without a default ('property level: int', 'property get " +
+            "level: int') and a stub ('property get level(self) -> int: ...') are abstract: the implementing " +
+            "type supplies the accessor. A function-style accessor with a body is a default implementation. " +
+            "C# interface accessors are all abstract or all default implementations, so a property whose " +
+            "halves leave one accessor abstract and the other with a body has no C# shape. It is refused at " +
+            "the later half, in either order. An auto half beside a function-style accessor of the SAME " +
+            "accessor ('property get level: int' + 'property get level(self) -> int:' with a body) is one " +
+            "bodied accessor and stays legal.",
+            "interface IGauge:\n    property level: int\n    property get level(self) -> int:  # SPY0617\n        return 0",
+            "Give both halves a body, or make both abstract:\n" +
+            "  interface IGauge:\n      property get level(self) -> int:\n          return 0\n" +
+            "      property set level(self, v: int):\n          print(v)\n\n" +
+            "  interface IGauge:\n      property get level(self) -> int: ...\n" +
+            "      property set level(self, v: int): ...");
     }
 }

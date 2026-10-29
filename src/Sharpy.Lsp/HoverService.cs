@@ -252,7 +252,7 @@ public sealed class HoverService
                         };
                         if (builtinType != null)
                         {
-                            var prop = builtinType.Properties.FirstOrDefault(p => p.Name == memberAccess.Member);
+                            var prop = builtinType.FindOwnProperty(memberAccess.Member);
                             if (prop != null)
                                 return SymbolFormatter.FormatPropertyWithDocs(prop);
 

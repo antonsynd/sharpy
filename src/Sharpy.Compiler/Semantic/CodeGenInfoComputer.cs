@@ -745,9 +745,10 @@ internal class CodeGenInfoComputer
         if (!Validation.ConstantDefaultClassifier.IsAdmitted(kind, Validation.AdmissionTable.ParameterDefault))
             return;
 
-        var index = typeSymbol.Properties.FindIndex(p => p.Name == propDef.Name && !p.IsStatic);
-        if (index >= 0)
-            typeSymbol.Properties[index] = typeSymbol.Properties[index] with { IsConstructorParameter = true };
+        // An explicit-interface member is never a roster property (IsConstructorOwnedProperty refuses
+        // the def); the record this def speaks for is the own-namespace one (R-JH, #2390).
+        if (typeSymbol.FindOwnProperty(propDef.Name) is { IsStatic: false } property)
+            typeSymbol.Properties[typeSymbol.Properties.IndexOf(property)] = property with { IsConstructorParameter = true };
     }
 
     private void ProcessNestedTypeMembers(TypeSymbol enclosing, string name, IEnumerable<Statement> body)

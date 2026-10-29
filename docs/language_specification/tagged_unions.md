@@ -352,6 +352,30 @@ public abstract class Result<T, E> {
 }
 ```
 
+## One Name, One Meaning in a Union Body
+
+A case claims its name in the union body like every member of a type body (see [One Name, One Meaning in a Type Body](properties_function_style.md#one-name-one-meaning-in-a-type-body)). A second case of the same name, or a case named like one of the union's type parameters, is refused (SPY0204) at the case, and so is a method named like a case, in either order. Each case is a nested C# class of the union, and a C# type holds one member per name.
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+union Shape:
+    case Circle(radius: float)
+    case Square(side: float)
+    case Circle(diameter: float)    # ERROR SPY0204: a second case named 'Circle'
+
+def main() -> None:
+    print("unreachable")
+```
+
+<!-- spec-sweep: error SPY0204 -->
+```python
+union Box[T]:
+    case T(value: int)              # ERROR SPY0204: 'T' is the union's type parameter
+
+def main() -> None:
+    print("unreachable")
+```
+
 ## See Also
 
 - [Result Type](tagged_unions_result.md) - Detailed guide to the Result type for error handling

@@ -1,0 +1,13 @@
+# A module's split accessors merge "following the same rules as class-level split accessors"
+# (properties_function_style.md, Module-Level Properties): two defaulted auto halves are SPY0407 at
+# the later half, as in a class body (#2382, owner ruling 2026-10-28 (a)) — never one initializer
+# with the other silently dropped. In either order.
+property get level: int = 5
+property set level: int = 6
+
+@private
+property set depth: int = 6
+property get depth: int = 5
+
+def main():
+    pass

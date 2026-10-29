@@ -301,6 +301,49 @@ public class CsLeakRegressionCorpusTests
             def main() -> None:
                 print("built")
             """);
+
+        // #2382 — an interface property's abstract half (an undefaulted auto half) beside a
+        // setter with a body emitted `int a { get; set { … } }`, a field-backed semi-auto
+        // property, which an interface cannot hold: CS0525 behind SPY0908. Now refused by
+        // SPY0617 before codegen.
+        yield return Case("#2382-interface-abstract-beside-bodied", """
+            interface IGauge:
+                property get level: int
+                property set level(self, v: int):
+                    print(v)
+
+            def main() -> None:
+                print("built")
+            """);
+
+        // #2382 — a property's split auto halves (`property get` + `@private property set`, the
+        // spec's "With Auto-Properties" form) fell to the function-style combiner: one property
+        // with empty accessor bodies, CS0161 behind SPY0908. Now one auto property.
+        yield return Case("#2382-split-auto-halves", """
+            class User:
+                property get name: str
+                @private
+                property set name: str
+
+                def __init__(self, name: str):
+                    self.name = name
+
+            def main() -> None:
+                print(User("ann").name)
+            """);
+
+        // #2382 / #2021 — a struct's synthesized constructor rostered every half of a merged
+        // property name, so a defaulted auto half beside a function-style accessor declared the
+        // parameter twice: CS0100 behind SPY0908. Now one parameter per property name.
+        yield return Case("#2382-struct-roster-one-parameter-per-name", """
+            struct Host:
+                property a: int = 5
+                property get a(self) -> int:
+                    return 6
+
+            def main() -> None:
+                print(Host().a)
+            """);
     }
 
     [Theory]

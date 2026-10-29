@@ -491,6 +491,24 @@ public record TypeSymbol : Symbol
     public SymbolMemberList<PropertySymbol> Properties { get; init; } = new();
     public SymbolMemberList<EventSymbol> Events { get; init; } = new();
 
+    /// <summary>
+    /// The property named <paramref name="name"/> in this type's OWN member namespace. An
+    /// explicit-interface implementation (<c>property IShape.area</c>) is not in it — C# reaches it
+    /// only through the interface — so it never answers a bare name (R-JH, #2390). A by-name property
+    /// lookup reads this or <see cref="FindProperty"/>; <c>ExplicitInterfaceKeyCensusTests</c> pins
+    /// every other spelling to zero.
+    /// </summary>
+    public PropertySymbol? FindOwnProperty(string name)
+        => Properties.FirstOrDefault(p => p.Name == name && p.ExplicitInterface == null);
+
+    /// <summary>
+    /// The property whose member key is (<paramref name="name"/>, <paramref name="explicitInterface"/>)
+    /// — the key a <c>PropertyDef</c> in hand carries (<c>PropertyDef.MemberKey()</c>): a bare
+    /// <c>area</c> and an explicit <c>IShape.area</c> are two properties (R-JH, #2390).
+    /// </summary>
+    public PropertySymbol? FindProperty(string name, string? explicitInterface)
+        => Properties.FirstOrDefault(p => p.Name == name && p.ExplicitInterface == explicitInterface);
+
     // Operator methods (dunder methods for operators)
     // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
     public SymbolOverloadTable OperatorMethods { get; init; } = new();
@@ -507,6 +525,22 @@ public record TypeSymbol : Symbol
     // Unlike Python (which allows only one __init__ that gets replaced), Sharpy supports
     // multiple __init__ methods that map to C# constructor overloads
     public SymbolMemberList<FunctionSymbol> Constructors { get; init; } = new();
+
+    /// <summary>
+    /// The property and event declarations of this type's body that the member seam REFUSED — a
+    /// second meaning of a name (SPY0204), a duplicate accessor half, an interface abstract half
+    /// beside a bodied one (SPY0617) — by reference identity (AST nodes are records). Later
+    /// consumers that group a body's declarations by name read only the admitted ones, so a refused
+    /// half draws its one refusal and no cascade (P21h D7, R-JO). Written only by the resolver.
+    /// </summary>
+    public IReadOnlySet<Statement> RefusedDeclarations => _refusedDeclarations;
+    private readonly HashSet<Statement> _refusedDeclarations = new(ReferenceEqualityComparer.Instance);
+
+    internal void RefuseDeclaration(Statement declaration)
+    {
+        ThrowIfFrozen();
+        _refusedDeclarations.Add(declaration);
+    }
 
     // Union cases (only populated for TypeKind.Union)
     public SymbolMemberList<TypeSymbol> UnionCases { get; init; } = new();

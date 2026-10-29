@@ -542,7 +542,7 @@ public static class DiagnosticCodes
         public const string PropertyPatternUnknownField = "SPY0362"; // Active
         public const string PositionalPatternCountMismatch = "SPY0363"; // Active
         public const string UnsupportedPatternInMemberAccessOr = "SPY0364"; // Active
-        public const string DuplicateUnionCase = "SPY0365";         // Active
+        public const string DuplicateUnionCase = "SPY0365";         // Retired — folded into DuplicateDefinition (SPY0204), the member seam (P21h D6, R-JI, #2390)
         public const string UnionCaseNotFound = "SPY0366";          // Active
         public const string UnionCaseFieldMismatch = "SPY0367";     // Active
         public const string UnionCaseNameConflict = "SPY0368";      // Active
@@ -1011,6 +1011,11 @@ public static class DiagnosticCodes
         // struct, a tuple, `T?`/`T | None`, `Result`, or a generic struct's type argument — has no
         // finite layout (Roslyn's CS0523). Refused at the field that starts the cycle (#2354).
         public const string StructLayoutCycle = "SPY0616"; // Active (#2354)
+        // An interface property whose abstract half (an auto half without a default, or a `...`
+        // stub) stands beside a half with a body that fills the other accessor: C# interface
+        // accessors are all abstract or all default implementations (Roslyn's CS0525 for
+        // `{ get; set { … } }`). Refused at the later half (#2382, R-JG).
+        public const string InterfaceAccessorsMustAgreeOnBody = "SPY0617"; // Active (#2382)
     }
 
     /// <summary>

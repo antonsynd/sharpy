@@ -1,0 +1,58 @@
+# P21h verify (owner rulings R1 (b) and (a), 2026-10-29): outside a method a class member outranks an
+# outer binding of its name only when THIS type body declares it. An INHERITED member never does: a bare
+# name an outer binding also holds reads the outer binding, as python3 reads it — `a`, `b` and the
+# parameter default read the module's 9 and 7, not Base's 3 and 4, and the inherited @static mk() yields
+# to the module function (99), an inherited instance field and method to the module variables (7 7).
+# A SELF read is no member yet either: `@static x: int = x + 1` under a module `x = 5` reads the module's
+# 5 and gives 6, and the instance twin likewise. With no outer binding these reads are refused
+# (class_body_inherited_read_refused_2384.error).
+
+unit: int = 9
+const K: int = 7
+g: int = 7
+im: int = 7
+x: int = 5
+f: int = 5
+
+
+def mk() -> int:
+    return 99
+
+
+class Base:
+    @static
+    unit: int = 3
+    const K: int = 4
+    g: int = 2
+
+    @static
+    def mk() -> int:
+        return 6
+
+    def im(self) -> int:
+        return 2
+
+
+class Child(Base):
+    a: int = unit
+    b: int = K
+    c: int = mk()
+    d: int = g
+    e: int = im
+
+    def m(self, v: int = K) -> int:
+        return v
+
+
+class Own:
+    @static
+    x: int = x + 1
+    f: int = f + 1
+
+
+def main() -> None:
+    c = Child()
+    print(c.a, c.b, c.m())
+    print(c.c)
+    print(c.d, c.e)
+    print(Own.x, Own().f)

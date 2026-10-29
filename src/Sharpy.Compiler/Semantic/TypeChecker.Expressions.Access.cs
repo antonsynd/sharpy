@@ -495,7 +495,7 @@ internal partial class TypeChecker
                 var clrMemberName = memberAccess.Member;
 
                 // Check properties (is_completed, result, etc.)
-                var clrProp = udt.Symbol.Properties.FirstOrDefault(p => p.Name == clrMemberName);
+                var clrProp = udt.Symbol.FindOwnProperty(clrMemberName);
                 if (clrProp != null)
                     return clrProp.Type;
 
@@ -832,8 +832,7 @@ internal partial class TypeChecker
                 }
 
                 // Check properties (is_ok, is_err, is_some, is_none, etc.)
-                var property = builtinTypeSymbol.Properties
-                    .FirstOrDefault(p => p.Name == memberAccess.Member);
+                var property = builtinTypeSymbol.FindOwnProperty(memberAccess.Member);
                 if (property != null)
                 {
                     return builtinTypeArgs != null
@@ -1045,7 +1044,7 @@ internal partial class TypeChecker
 
         var member = memberAccess.Member;
 
-        var inheritedProperty = definition.Properties.FirstOrDefault(p => p.Name == member);
+        var inheritedProperty = definition.FindOwnProperty(member);
         if (inheritedProperty != null)
             return Substitute(inheritedProperty.Type);
 
@@ -2013,7 +2012,7 @@ internal partial class TypeChecker
         // c.keys() from the codegen side; the TypeChecker must leave that path as Unknown.
         if (!IsCurrentCallCallee(memberAccess))
         {
-            var prop = genDef.Properties.FirstOrDefault(p => p.Name == member);
+            var prop = genDef.FindOwnProperty(member);
             if (prop != null)
             {
                 var propType = Substitute(prop.Type);
@@ -2310,7 +2309,8 @@ internal partial class TypeChecker
     {
         foreach (var method in symbol.Methods)
             yield return method.Name;
-        foreach (var property in symbol.Properties)
+        // An explicit-interface property is written through its interface, never on this receiver.
+        foreach (var property in symbol.Properties.Where(p => p.ExplicitInterface == null))
             yield return property.Name;
         foreach (var field in symbol.Fields)
             yield return field.Name;
@@ -2354,7 +2354,7 @@ internal partial class TypeChecker
         // reaches them without a member of that name at all (`lst.__add__(x)` lowers to `lst + x`),
         // so a name either dictionary carries is never absent (#1344).
         if (ownerSymbol.Methods.Any(m => m.Name == memberName)
-            || ownerSymbol.Properties.Any(p => p.Name == memberName)
+            || ownerSymbol.FindOwnProperty(memberName) != null
             || ownerSymbol.Fields.Any(f => f.Name == memberName)
             || ownerSymbol.OperatorMethods.ContainsKey(memberName)
             || ownerSymbol.ProtocolMethods.ContainsKey(memberName))

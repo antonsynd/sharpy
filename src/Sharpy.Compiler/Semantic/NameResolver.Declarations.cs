@@ -501,7 +501,8 @@ internal partial class NameResolver
             IsMustUse = HasMustUse(unionDef.Decorators)
         };
 
-        // Create case type symbols as nested types
+        // Create case type symbols as nested types; each claims its name below, in the union scope
+        var caseSymbols = new List<(UnionCaseDef Def, TypeSymbol Symbol)>();
         foreach (var caseDef in unionDef.Cases)
         {
             // A case entering the type namespace may not take a reserved builtin case name
@@ -537,7 +538,7 @@ internal partial class NameResolver
             };
 
             // Fields resolved during type checking phase
-            unionSymbol.UnionCases.Add(caseSymbol);
+            caseSymbols.Add((caseDef, caseSymbol));
         }
 
         // Register union body methods as symbols on the union type. Enter a scope
@@ -561,11 +562,17 @@ internal partial class NameResolver
             _symbolTable.Define(typeParamSymbol);
         }
 
-        // A case claims its name in the union body, so a method of the case's name is a second
-        // meaning (SPY0204 at the method) rather than CS0102 behind SPY0908 (#2360). A case name
-        // already held (a type parameter, a case twice) keeps the verdict it had: the claim is silent.
-        foreach (var caseSymbol in unionSymbol.UnionCases)
-            _symbolTable.TryDefine(caseSymbol);
+        // A case claims its name in the union body through the member seam like every member
+        // (P21h D6, R-JI): a method of the case's name is a second meaning (SPY0204 at the method,
+        // #2360), and a case over a held name — a type parameter, an earlier case — is SPY0204 at the
+        // case's first token (a type parameter was CS0102 behind SPY0908, a case twice SPY0365). A
+        // refused case is not a case of the union: the first meaning stays in force.
+        foreach (var (caseDef, caseSymbol) in caseSymbols)
+        {
+            if (TryDeclareMember(caseDef.Name, caseSymbol, unionSymbol, mergesWith: null,
+                    caseDef.LineStart, caseDef.ColumnStart, caseDef.Span) == MemberClaim.Declared)
+                unionSymbol.UnionCases.Add(caseSymbol);
+        }
 
         // The union walk hands the member dispatcher its methods only: a union body spells nothing
         // else (a `type` alias there is SPY0104 "Expected Case", the parser's host rule).

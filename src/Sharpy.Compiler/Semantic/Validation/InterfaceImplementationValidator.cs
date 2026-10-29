@@ -120,6 +120,8 @@ internal class InterfaceImplementationValidator : ValidatingAstWalker
             // already refused (SPY0248, a default method needs @override).
             foreach (var interfaceProperty in iface.Properties)
             {
+                // By name, explicit members included: an explicit `property IFoo.x` implements the
+                // interface property as a bare `x` does (P21h D5, R-JH).
                 var (classProperty, _) = TypeHierarchyService.FindMember(
                     typeSymbol, interfaceProperty.Name, t => t.Properties, searchInterfaces: false, Context.SemanticBinding);
                 if (classProperty != null)

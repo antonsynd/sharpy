@@ -1656,7 +1656,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// asserts the previous literals (identity full = 484), 16695/0. P21g verify round (2026-10-28): +1 on the four comment
     /// pins only — growth, from the round's new fixture stem events/event_function_style_then_auto_2360; control
     /// @ 21da3431f with that fixture removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: every census asserts the previous
-    /// literals, 16710/0 (with it present: 16714/1, comment full = 1640). The wide
+    /// literals, 16710/0 (with it present: 16714/1, comment full = 1640). P21h D6 (2026-10-28): +1 on the four comment
+    /// pins only — corpus growth only: without unions/union_case_twice_2390 it measures 1640/1640/1636/1636; no
+    /// lexer/parser/formatter/LSP change (control @ 35783f923 + p2-seam's D6 diff in a worktree, that fixture removed:
+    /// 16788/0; with it present: 16792/1, comment full = 1641). P21h verify round (2026-10-29): +1 on the four comment
+    /// pins only — growth, from the round's new fixture stem properties/module_property_split_auto_halves_2382; control
+    /// @ 13747484f with only that fixture added (worktree): comment full/range-whole 1642, range-line/ontype 1638
+    /// (3350/1, the one red being this census at the previous literals); no lexer/parser/formatter/LSP change. The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1668,10 +1674,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1640,
-            [(Comment, RangeWhole)] = 1640,
-            [(Comment, RangeLine)] = 1636,
-            [(Comment, OnType)] = 1636,
+            [(Comment, Full)] = 1642,
+            [(Comment, RangeWhole)] = 1642,
+            [(Comment, RangeLine)] = 1638,
+            [(Comment, OnType)] = 1638,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,
@@ -2785,7 +2791,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(RangeBlock, Comment)] = 1,       // 4/2854 (0.14%)
             [(RangeLine, Comment)] = 12,       // 46/402 (11.44%)
             [(RangeWhole, Wide)] = 1,          // 0/3286 (0.00%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
-            [(RangeStatement, Wide)] = 5,      // 311/6837 (4.55%) @ 17aba6fb6
+            [(RangeStatement, Wide)] = 6,      // 351/6962 (5.04%) @ a3d2d2876 (P21h) — was 5 (311/6837, 4.55% @ 17aba6fb6); corpus growth only: without P21h's two property fixtures it measures green (16730/0), and P21h changed no lexer/parser/formatter/LSP code
             [(RangeBlock, Wide)] = 32,         // 4098/13188 (31.07%) @ c8d4babe1 (P21e) — was 31 (4064/13121, 30.97% @ 17aba6fb6); corpus growth only: the same compiler without P21e's 13 new fixtures measures 4070/13135 (30.99%), and P21e changed no lexer/parser/formatter/LSP code — those fixtures' blank-separated nested blocks are refused by construction on this twin
             [(RangeLine, Wide)] = 54,          // 18565/34870 (53.24%) @ 17aba6fb6 — 13197/35101 (37.60%) @ f58a75158, before R-ET kept blank lines
         };

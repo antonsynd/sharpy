@@ -1,0 +1,63 @@
+# An explicit-interface property claims no bare name (R-JH, #2390): its member key is (name,
+# interface), so a bare member of the same name is a second C# member beside it — reached through
+# the class — and the explicit one is reached through the interface. r01 (a bare auto property) and
+# r04 (two interfaces' explicit members) were CS1007 behind SPY0908; m1 (a bare method) was SPY0230
+# "not callable"; a bare function-style getter beside the explicit member printed 6 through the
+# interface — the bare getter's value, a silent wrong. r02 (a bare field) ran and is pinned.
+interface IShape:
+    property area: int
+
+interface IA:
+    property area: int
+
+interface IB:
+    property area: int
+
+class Auto(IShape):
+    property area: int = 3
+    property IShape.area: int = 4
+
+class Field(IShape):
+    area: int = 3
+    property IShape.area: int = 4
+
+class Method(IShape):
+    def area(self) -> int:
+        return 9
+    property IShape.area: int = 4
+
+class Two(IA, IB):
+    property IA.area: int = 1
+    property IB.area: int = 2
+
+class Getter(IShape):
+    property get area(self) -> int:
+        return 6
+    property IShape.area: int = 10
+
+def main():
+    ap: Auto = Auto()
+    s: IShape = ap
+    print(ap.area)
+    print(s.area)
+
+    field: Field = Field()
+    s = field
+    print(field.area)
+    print(s.area)
+
+    method: Method = Method()
+    s = method
+    print(method.area())
+    print(s.area)
+
+    two: Two = Two()
+    a: IA = two
+    b: IB = two
+    print(a.area)
+    print(b.area)
+
+    getter: Getter = Getter()
+    s = getter
+    print(getter.area)
+    print(s.area)

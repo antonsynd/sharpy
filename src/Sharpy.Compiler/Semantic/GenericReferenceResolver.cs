@@ -1086,7 +1086,8 @@ internal partial class TypeChecker
             names.Add(nested.Name);
         foreach (var method in qualifier.Methods)
             names.Add(method.Name);
-        foreach (var property in qualifier.Properties)
+        // An explicit-interface property is not in the qualifier's own namespace (R-JH, #2390).
+        foreach (var property in qualifier.Properties.Where(p => p.ExplicitInterface == null))
             names.Add(property.Name);
         foreach (var field in qualifier.Fields)
             names.Add(field.Name);

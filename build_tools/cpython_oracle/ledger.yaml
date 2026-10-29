@@ -101,6 +101,14 @@ deviations:
   spec_ref: docs/stdlib/collections.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: class-body-bare-name-read
+  category: scoping
+  audience: python
+  severity: error
+  code: SPY0200
+  spec_ref: docs/language_specification/variable_scoping.md
+  existing_diagnostic: SPY0200
+  planned_diagnostic: null
 - id: collection-error-message-texts
   category: stdlib
   audience: python

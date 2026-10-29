@@ -1,0 +1,5 @@
+# One SPY0204 per refused case, at its `case` keyword; nothing else (no SPY0365, no cascade).
+SPY0204: 'Circle' is already declared in 'Shape' as a union case (line 7); one name has one meaning in a type body @8:5
+SPY0204: 'A' is already declared in 'Box' as a type parameter (line 12); one name has one meaning in a type body @13:5
+!SPY0365
+!count 2

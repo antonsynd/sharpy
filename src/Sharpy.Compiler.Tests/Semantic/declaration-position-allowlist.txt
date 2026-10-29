@@ -3,7 +3,9 @@
 # One generated cell id per line (`<kind> × <position> × <name>`,
 # `nested-def × <relation> × <signature> × <call>`, `import-binding × <spelling> × <collider> × <order>`,
 # `alias-redeclaration × <relation> × <position>`, `member-pair × <host> × <A> → <B>`,
-# `member-alone × <host> × <kind>`, or `project × <id>` for ImportBindingProjectRouteTests' cells),
+# `member-alone × <host> × <kind>`, `member-chain × <host> × <A> → <B>+<C>` / `… → <B> → <C>`,
+# `explicit-member × <host> × <A> → <B>`,
+# or `project × <id>` for ImportBindingProjectRouteTests' cells),
 # followed by `  # #<issue>` (a row may append a short tag naming its measured shape). A cell whose
 # verdict differs from the contract (ExpectedErrors / the nested-def expected sets, the
 # rest-equals-control clause, the cascade-absence clause, the block literal, or the execution of an
@@ -16,8 +18,10 @@
 # re-declaring a name of its block or an enclosing/enclosed block is SPY0204. P21f (R-IJ, R-IK, R-II)
 # extends it to member declarations (#2362), import bindings (#2359) and alias redeclaration (#2360).
 # P21g (R-JA, R-JB, R-IZ) extends it to kind PAIRS in one body (#2360), import × import and an explicit
-# import beside a star (#2359), and star × declaration kind (#2371); its rows are the last three
-# sections of this file.
+# import beside a star (#2359), and star × declaration kind (#2371). P21h (R-JG, R-JH, R-JI, R-JO) extends
+# the member-pair matrix with the split auto halves, the event accessors, the interface's undefaulted auto
+# halves and stubs, the union case edge and the three-declaration chains (#2382, #2390, #2075); its rows
+# are the sections after the #2371 one.
 #
 # The rows are the base's red cells, CREATED by P21e Phase 1. P21e's Phases 2–4 drain the rows citing
 # the class tracker (type-definition / import positions, incl. the class-cascade and enum cells, and the
@@ -45,18 +49,11 @@
 alias × type-body-if × Foo  # #2148
 alias × type-body-if × Fresh  # #2148
 
-# #2021: a struct whose property has a default AND an explicit setter is SPY0908 CS0100 under run
-# (the emitter-synthesized ctor `S(object size, int size = 0)` has no semantic twin) at every
-# position. Outside P21e; drains with #2021 (cell posted on #2021, 2026-10-22).
-struct × module × Fresh  # #2021
-struct × type-body × Foo  # #2021
-struct × type-body × Fresh  # #2021
-# P21g Phase 1 (lead ruling 2026-10-25): the member-pair matrix's struct auto-half + function-style
-# SETTER merge, both orders, is legal (properties_function_style.md:88) and is this same shape — a
-# property default beside an explicit setter — SPY0908 CS0100 under run @ 75c65ee29. Drains with #2021,
-# NOT in P21g.
-member-pair × struct × property-field → property-set  # #2021 legal merge; struct ctor CS0100
-member-pair × struct × property-set → property-field  # #2021 legal merge; struct ctor CS0100
+# #2021: a struct whose property has a default AND an explicit setter was SPY0908 CS0100 under run
+# (the emitter-synthesized ctor `S(object size, int size = 0)` had no semantic twin) at every position,
+# and so was the member-pair matrix's struct auto half (default) + function-style setter, both orders.
+# DRAINED in P21h Phase 2 (D4: the struct constructor rosters one parameter per property name, and
+# beside a function-style accessor writes the auto half's backing field). Do not re-add a row here.
 
 # #2361: the arms of one `match` are sibling blocks (owner ruling at the P21e verify round, 2026-10-23,
 # reverting the lead's one-scope ruling D5b), so a nested def per arm is a fresh binding. When the match
@@ -140,13 +137,7 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # P21g lane G (the interface member emitter reads GroupPropertiesByName, one C# property per name): the
 # interface function-style get + set merges. LEFT: the interface auto-half + accessor merges (CS0525 — the
 # auto half is abstract, the accessor bodied; #2382) and the two struct auto-half + GETTER rows (CS0100 in
-# the struct auto-constructor).
-member-pair × struct × property-field → property-get  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × struct × property-get → property-field  # #2382 legal merge; struct ctor CS0100 with a default + explicit GETTER, not the default + setter shape
-member-pair × interface × property-field → property-get  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
-member-pair × interface × property-field → property-set  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
-member-pair × interface × property-get → property-field  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
-member-pair × interface × property-set → property-field  # #2382 legal merge; ice CS0525 (interface auto half + bodied accessor — owner ruled refuse 2026-10-27; drains into refusal cells)
+# the struct auto-constructor) — MOVED by P21h Phase 1 to the `# #2382 (R-JG)` section below.
 
 # #2371: a star import never displaces a declaration of the importing file, whatever its kind.
 # Measured @ 75c65ee29: beside `from math import *` a module property `pi` (field-style or a getter),
@@ -155,3 +146,144 @@ member-pair × interface × property-set → property-field  # #2382 legal merge
 # project twin printed lib's 9 cold and on the `--incremental` warm rebuild. CREATED by P21g Phase 1;
 # DRAINED in P21g Phase 4 (D5: the emitter reads the names the star BOUND, recorded in Phase 4 —
 # SemanticInfo.GetStarImportBoundNames — instead of the module's export list). Do not re-add a row here.
+
+# #2382 (R-JG): a property's split halves are ONE property in every host (D3, D4), and in an INTERFACE an
+# abstract half (an undefaulted auto half, a `...` stub) beside a function-style accessor WITH a body that
+# fills the complementary slot is refused at the later half — SPY0617 (D2; owner ruling (a) 2026-10-27,
+# widened R-JG). Two defaulted auto halves are SPY0407 at the later half (D3; owner ruling 2026-10-28 (a)).
+# Measured @ 9aae96977 (Analyze, then run): the interface abstract × bodied pairs are silent under Analyze
+# and SPY0908 CS0525 under run (C# reads `{ get; set { … } }` as a field-backed semi-auto property), except
+# a stub getter THEN a bodied setter — SPY0909 "No StatementLowering recorded" (the merged symbol is
+# abstract, so the setter body is never checked); in a class the split auto halves are SPY0908 CS0161 +
+# CS0176 (one static property with empty function-style bodies — GenerateGroupedProperty has no all-auto
+# arm), in a struct also CS0100 + CS0229 (the auto-constructor roster admits each half); the struct auto
+# half + function-style GETTER (auto-both, and the auto getter with a default) is CS0100 (+ CS0200, CS0229);
+# two defaulted auto halves are silent under Analyze and CS0161 under run. The interface third-half chains
+# (an abstract auto-both half, then a bodied half, then a duplicate) are one SPY0204 at the third instead of
+# SPY0617 at the second. CREATED by P21h Phase 1; drains in P21h Phase 2 (D2's seam arm, D3's all-auto arm
+# and SPY0407 arm, D4's roster). The two interface chains drained in P21h Phase 3 Task 4 (D7).
+
+# A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
+# struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under
+# run @ 9aae96977 — a write-only auto property has no C# auto shape. NOT a cell of plan-16cca3's Current
+# State (found by this generator's alone control, P21h Phase 1); filed as its own class tracker #2395
+# (owner decision: synthesize a backing field, or refuse) — it does not drain in P21h.
+member-alone × class × property-auto-set  # #2395 lone auto set half; ice CS8051
+member-alone × struct × property-auto-set  # #2395 lone auto set half; ice CS8051
+
+# #2067: an interface's function-style event with default `add`/`remove` bodies is SPY0908 CS0535 under
+# run — the emitter writes an abstract `event Action<int> A;` and drops the bodies, so `class Impl(Host):
+# pass` implements nothing (the issue's cell 2). Measured @ 9aae96977 on the matrix's interface event-add /
+# event-remove kinds (alone — an accessor's alone control is the add/remove pair — and the pair in both
+# orders). Outside P21h; drains with #2067.
+member-alone × interface × event-add  # #2067 interface event default accessors dropped; ice CS0535
+member-alone × interface × event-remove  # #2067 interface event default accessors dropped; ice CS0535
+member-pair × interface × event-add → event-remove  # #2067 interface event default accessors dropped; ice CS0535
+member-pair × interface × event-remove → event-add  # #2067 interface event default accessors dropped; ice CS0535
+
+# #2390 (R-JH, R-JI): a union case claims its name through the member seam like every member — a second case of
+# the name (adjacent, or after a method) or a case named like a type parameter is ONE SPY0204 at the later
+# case's first token; SPY0365 retires into SPY0204. Measured @ 9aae96977 under Analyze: case × case is
+# SPY0365 (the checker's seenCaseNames arm, not the resolver) at the right position; `union Host[A]: case
+# A(v: int)` is silent and SPY0908 CS0102 under run (ResolveUnionDeclaration's TryDefine on a held name is
+# silent). CREATED by P21h Phase 1; drains in P21h Phase 3 (D6).
+# #2390 (R-JH): an explicit interface implementation claims no bare name — the member key is (Name,
+# ExplicitInterface) — so `property IHost.A: int = 10` beside any type-body kind named `A` is [] and runs,
+# printing through both members; the explicit member twice is ONE SPY0204 at the later; explicit members
+# of two interfaces are two keys. Measured @ 9aae96977 (Analyze, then run) on ExplicitMemberCells, class and
+# struct hosts implementing `interface IHost: property A: int`: a bare method is SPY0230 "int32 is not
+# callable" (m1); a bare auto property / auto getter / auto setter is SPY0908 CS1007 (+ CS0161, CS0535,
+# CS0736 …: the emitter groups by Name, r01); a bare function-style GETTER runs and prints 6|6 instead of
+# 6|10 — SILENT WRONG, the explicit member's read is the bare getter's; the explicit member twice is silent
+# and CS1007 (r03); IHost.A + IHost2.A is CS1007 (r04). Green at the base: field (r02), const, nested class
+# (r10), alias, auto event (r07), the event accessor pair, the function-style setter, and the explicit split
+# halves (r05). CREATED by P21h Phase 1 Task 2; drains in P21h Phase 3 (D5).
+# DRAINED by P21h Phase 3 Tasks 1-2 (the member key, then the emitter's grouping key) except the four
+# property-auto-set rows below: the bare auto setter alone is #2395's CS8051, re-cited.
+explicit-member × class × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × class × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × struct × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+explicit-member × struct × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+
+# #2075 (R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the FIRST half
+# (the refused declaration GROUP draws one verdict; its later half is silent); a third half beside a merged
+# pair is one SPY0204 at the third and NO SPY0407 (the refused half is invisible to
+# ValidateMixedPropertyStyle). Measured @ 9aae96977 under Analyze: every head × split-pair chain in every
+# host is TWO SPY0204 (one per half); the auto-both + two getters / two setters chain in a class or struct
+# is SPY0204 + SPY0407 at the third. The bodied get + set + get chain is already one SPY0204 (green).
+# CREATED by P21h Phase 1; drains in P21h Phase 3 (D7). The four third-half SPY0407 rows DRAINED in P21h
+# Phase 2 (PropertyValidator reads only admitted halves, TypeSymbol.RefusedDeclarations — D7's consumer).
+# Every remaining chain row DRAINED in P21h Phase 3 Task 4 (D7's refused-name set: a later half of a refused
+# member key is refused with its group, silently). Do not re-add a row here.
+
+# #2384 (R-JJ): a bare class-body read from a position that is not a method body resolves exactly the
+# siblings C# resolves there and refuses the rest with ONE diagnostic naming the position
+# (ClassBodyReadPositionMatrixTests). Here is what Analyze and then run measured @ 9aae96977 across host
+# {class, @dataclass, struct} × 7 positions × 8 siblings (168 cells, 38 green). SPY0909 "No CodeGenInfo for
+# local" (26): a @static or instance FIELD sibling binds in a field/property initializer or a const
+# initializer and the emitter crashes. False refusal (26): a @static property or method sibling in an
+# initializer is SPY0200 with the method-body text, but C# admits it. Two codes (25): a parameter default (and
+# a struct/dataclass instance field initializer, the synthesized constructor's parameter default) reading a
+# property, event or method sibling is SPY0200 + SPY0401. SPY0401 alone for an instance field in a parameter
+# default (5), where one SPY0200 is due. Wrong text (48): an instance property, event or method in an
+# initializer is SPY0200 without the position phrase or self steer, and the event and both methods in a
+# method body get no steer. Green at the base: every const read, every method-body read of a field or
+# property, and a @static field in a parameter default (SPY0401 alone). CREATED by P21h Phase 1 Task 3;
+# DRAINED in P21h Phase 4 (D8): 104 rows by the classifier/table/steers, 20 by the sibling-read fact the
+# emitter reads. The 6 rows left cite #2396: a @static PROPERTY read from a @static field's or a const's
+# initializer is refused (C# admits it, but the emitter lays fields before properties, so it would read 0).
+class-body-read × class × static-field-initializer × static-property × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × class × const-initializer × static-property × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × dataclass × static-field-initializer × static-property × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × dataclass × const-initializer × static-property × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × struct × static-field-initializer × static-property × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × struct × const-initializer × static-property × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate) where C# admits the @static property: the emitter lays fields before properties, so the static initializer would read 0
+
+# #2384 (owner rulings F1/F2 2026-10-29; lead rulings F1-const (a), (y), (b), SPY0278 (a)): the read matrix's ORDER
+# (before / after / self) and SHADOW (none / module binding of the read name) axes. Outside a method a @static field,
+# property or method is read only from an EARLIER declaration — later, or the @static reader itself, is ONE SPY0200
+# 'declared later'; a const is not ordered; an instance member keeps its kind refusal; the const reader reading itself
+# is SPY0278. A class member outranks a module binding of its name unless it is a NON-const member declared LATER (then
+# the module binding is read: runs 9x, SPY0401 in a parameter default); in a method body the module binding wins
+# (#1786). Measured @ 6c5a34ab0 in a clean worktree (Analyze, then run): 170 red — F2: the module binding hides an
+# earlier member (before × module, 80 + the 18 self-reads under a shadow: runs 9x / 99 or SPY0401 where the member's
+# verdict is due); ruling (b): it hides a later const in the property defaults and the method parameter default (9);
+# F1: a later or self-read @static binds and runs (0/2/4/6/1) or is SPY0401 / SPY0200 without 'declared later' (54 +
+# 6 self-reads); the const self-read runs 1 (3, SPY0278 due — p3-key). The six (static-field|const)-initializer ×
+# static-property × before × module rows print 94; after the F2 fix they meet the #2396 gate (re-cite them #2396
+# then). CREATED by P21h FIX-F1F2 (gen-reads); drains with p4-reads' F1/F2 fix and p3-key's class-body const cycles.
+class-body-read × class × static-field-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × class × const-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × dataclass × static-field-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × dataclass × const-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × struct × static-field-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+class-body-read × struct × const-initializer × static-property × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate) once the member outranks the module binding (F2): the emitter lays fields before properties, so the static initializer would read 0
+
+# #2396 (owner ruling (b) 2026-10-29, on the P21h re-verify): a bare @static METHOD call in a @static field's or a
+# const's initializer is refused like the @static property read — the method can reach static storage the
+# member layout initializes later (p21h-verify p2/b3: get() returns C.sp; p/g4: sm() returns a later @static
+# field; both printed 0 at 735d84d98, SPY0200 at 9aae96977). The matrix's sm() returns a constant, so C# admits
+# the cell and the table says run 6; it stays refused until #2396 drains.
+class-body-read × class × static-field-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × class × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × class × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × class × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × static-field-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × dataclass × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × static-field-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × static-field-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × const-initializer × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+class-body-read × struct × const-initializer × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b)) where C# admits the @static method call: a static initializer may run before the storage the method reads
+
+# #2396 (owner ruling (b) applied to the @static PROPERTY default, P21h verify C1, 2026-10-29): a @static
+# property's default is a static initializer too; it reads an earlier @static property directly (the layout keeps
+# properties in source order), but a @static method it calls can read a LATER @static property and see 0
+# (scratchpad probe s1: printed 0 at the P21h head, SPY0200 at the P21h base). Refused like the field slot.
+class-body-read × class × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × class × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × dataclass × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × dataclass × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × struct × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+class-body-read × struct × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader

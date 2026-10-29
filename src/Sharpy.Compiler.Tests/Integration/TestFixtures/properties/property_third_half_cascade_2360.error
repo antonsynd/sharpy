@@ -1,2 +1,2 @@
 'p' is already declared in 'C' as a property (line 6); one name has one meaning in a type body @11:5
-Property 'p' in 'C' cannot mix auto-property and function-style definitions @11:5
+!count 1

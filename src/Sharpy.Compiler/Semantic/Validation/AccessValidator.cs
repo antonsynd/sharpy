@@ -179,7 +179,7 @@ internal class AccessValidator : ValidatingAstWalker
     /// </summary>
     private static bool IsMemberNameBacktickEscaped(string memberName, TypeSymbol owningType, Symbol? symbol)
         => symbol?.IsNameBacktickEscaped
-            ?? owningType.Properties.FirstOrDefault(p => p.Name == memberName)?.IsNameBacktickEscaped
+            ?? owningType.FindOwnProperty(memberName)?.IsNameBacktickEscaped
             ?? owningType.Events.FirstOrDefault(e => e.Name == memberName)?.IsNameBacktickEscaped
             ?? false;
 

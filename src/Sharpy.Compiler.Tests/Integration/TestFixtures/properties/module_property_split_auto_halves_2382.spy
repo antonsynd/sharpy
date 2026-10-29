@@ -1,0 +1,21 @@
+# A module's split auto halves are ONE static auto property (#2382): a read after a write through
+# the setter half sees the written value, and a single default on either half initializes it.
+property get count: int
+property set count: int
+
+property get limit: int
+property set limit: int = 6
+
+property set label: str = "start"
+property get label: str
+
+def main():
+    print(count)
+    count = 7
+    print(count)
+    print(limit)
+    limit = 9
+    print(limit)
+    print(label)
+    label = "end"
+    print(label)

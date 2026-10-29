@@ -1,0 +1,94 @@
+# A property's split auto halves are ONE auto property with per-accessor access (#2382):
+# properties_function_style.md "With Auto-Properties", in a class and in a struct.
+class User:
+    property get name: str
+    @private
+    property set name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+struct Badge:
+    property get name: str
+    @private
+    property set name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+# The plain pair, the default on the getter half
+class Point:
+    property get x: int = 5
+    property set x: int
+
+struct Cell:
+    property set v: int
+    property get v: int = 5
+
+# A struct's synthesized constructor rosters ONE parameter per property name and writes the auto
+# half's backing field beside a function-style accessor: no accessor runs at construction
+# (#2382, #2021; lead ruling (a), 2026-10-28)
+struct Knob:
+    property level: int = 5
+    property set level(self, v: int):
+        print(v)
+
+struct Dial:
+    property get level: int = 5
+    property get level(self) -> int:
+        return 6
+
+struct Meter:
+    property level: int = 5
+    property get level(self) -> int:
+        return self._level
+
+# An explicit constructor ARGUMENT goes through a function-style setter, so its validation runs; the
+# DEFAULT is stored to the backing field and runs no setter (owner ruling Q3 (b), 2026-10-29). The
+# parameterized constructor runs the setter for every value it receives, an omitted argument's default
+# included, as Python's __init__ does (owner ruling Q3 (a), 2026-10-29): Gauge(tag=4) prints "set 0".
+struct Gauge:
+    tag: int = 1
+    property level: int = 0
+    property set level(self, v: int):
+        if v < 0:
+            raise ValueError("neg")
+        print(f"set {v}")
+        self._level = v
+
+# A @static split pair
+class Config:
+    @static
+    property get level: int = 1
+    @static
+    property set level: int
+
+def main():
+    print(User("ann").name)
+    print(Badge("ann").name)
+    p = Point()
+    print(p.x)
+    p.x = 7
+    print(p.x)
+    c = Cell()
+    print(c.v)
+    c.v = 7
+    print(c.v)
+    c2 = Cell(v=9)
+    print(c2.v)
+    k = Knob()
+    k.level = 7
+    print(k.level)
+    print(Dial().level)
+    print(Meter().level)
+    print(Meter(level=9).level)
+    print(Gauge().level)
+    print(Gauge(level=9).level)
+    print(Gauge(tag=4).tag)
+    try:
+        Gauge(level=-1)
+    except ValueError:
+        print("ValueError")
+    print(Config.level)
+    Config.level = 3
+    print(Config.level)

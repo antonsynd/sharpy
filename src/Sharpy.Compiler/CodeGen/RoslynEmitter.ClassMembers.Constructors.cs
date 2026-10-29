@@ -314,7 +314,7 @@ internal partial class RoslynEmitter
     /// (Rule 2), never re-derived from the AST.
     /// </summary>
     private bool IsSynthesizedConstructorProperty(PropertyDef prop)
-        => _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == prop.Name) is { IsConstructorParameter: true };
+        => _currentTypeSymbol?.FindProperty(prop.Name, prop.ExplicitInterface) is { IsConstructorParameter: true };
 
     /// <summary>
     /// Whether the struct has an instance auto-property whose initializer is NOT a roster member
@@ -324,28 +324,48 @@ internal partial class RoslynEmitter
     /// always exists").
     /// </summary>
     private bool HasInitializerOnlyInstanceProperty(IReadOnlyList<Statement> body)
-        => body.OfType<PropertyDef>().Any(p => !p.IsFunctionStyle && p.DefaultValue != null
+        => GroupPropertiesByName(body).Values.Select(RosterHalf).Any(p => p is { DefaultValue: not null }
             && !IsSynthesizedConstructorProperty(p)
-            && _currentTypeSymbol?.Properties.FirstOrDefault(s => s.Name == p.Name) is { IsStatic: false });
+            && _currentTypeSymbol?.FindProperty(p.Name, p.ExplicitInterface) is { IsStatic: false });
+
+    /// <summary>
+    /// The ONE declaration of a property name that speaks for it in the synthesized struct
+    /// constructor: its auto half carrying the default, else its first auto half. A function-style
+    /// half never does — it has no default, and its setter's missing <c>Type</c> was the
+    /// <c>object</c> of #2021's <c>S(object size, int size = 0)</c>; admitting every half of a merged
+    /// name declared the parameter once per half (CS0100, #2382).
+    /// </summary>
+    private static PropertyDef? RosterHalf(List<PropertyDef> propGroup)
+        => propGroup.FirstOrDefault(p => !p.IsFunctionStyle && p.DefaultValue != null)
+            ?? propGroup.FirstOrDefault(p => !p.IsFunctionStyle);
 
     /// <summary>One member of the synthesized struct constructor's roster: its source name (the
-    /// parameter), annotation, default, emitted member name, and the per-instance-default fact.</summary>
+    /// parameter), annotation, default, the emitted member the DEFAULT is stored to (the parameterless
+    /// constructor), the emitted member the parameterized constructor assigns EVERY value it receives
+    /// through — an omitted argument's default included, as Python's <c>__init__</c> runs its setter
+    /// (owner ruling Q3 (a), 2026-10-29) — and the per-instance-default fact. The two names differ
+    /// only for a property with a function-style setter (owner ruling Q3 (b), 2026-10-29).</summary>
     private sealed record StructConstructorMember(
         string Name,
         TypeAnnotation? Type,
         Expression? Default,
         string CSharpName,
+        string ArgumentTargetName,
         bool RequiresPerInstanceDefault);
 
     /// <summary>
     /// The ONE roster of the synthesized struct constructor, in body order: every instance field
-    /// (<see cref="IsSynthesizedConstructorField"/>) and every defaulted instance auto-property
-    /// (<see cref="IsSynthesizedConstructorProperty"/>, #1938). The gate in
-    /// <c>GenerateClassMembers</c> and both synthesized constructors read this list.
+    /// (<see cref="IsSynthesizedConstructorField"/>) and, once per property NAME
+    /// (<see cref="GroupPropertiesByName"/>), the defaulted instance auto half
+    /// (<see cref="RosterHalf"/>, <see cref="IsSynthesizedConstructorProperty"/>, #1938, #2382). The
+    /// gate in <c>GenerateClassMembers</c> and both synthesized constructors read this list.
     /// </summary>
     private List<StructConstructorMember> StructConstructorRoster(IReadOnlyList<Statement> body)
     {
         var roster = new List<StructConstructorMember>();
+        var propertyGroups = GroupPropertiesByName(body);
+        var rosterHalves = new HashSet<PropertyDef?>(
+            propertyGroups.Values.Select(RosterHalf), ReferenceEqualityComparer.Instance);
         foreach (var stmt in body)
         {
             switch (stmt)
@@ -353,23 +373,38 @@ internal partial class RoslynEmitter
                 case VariableDeclaration fieldDecl when IsSynthesizedConstructorField(fieldDecl):
                     var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
                     var fieldInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
+                    var fieldName = fieldInfo?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
                     roster.Add(new StructConstructorMember(
                         fieldDecl.Name,
                         fieldDecl.Type,
                         fieldDecl.InitialValue,
-                        fieldInfo?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped),
+                        fieldName,
+                        fieldName,
                         fieldInfo?.RequiresPerInstanceDefault == true));
                     break;
 
-                case PropertyDef prop when IsSynthesizedConstructorProperty(prop):
-                    // A property default is validated as a constant parameter default
-                    // (ConstantPositionValidator.StructPropertySlot), so it never needs the
-                    // per-instance lowering.
+                case PropertyDef prop when rosterHalves.Contains(prop) && IsSynthesizedConstructorProperty(prop):
+                    // A property is a roster member only when its default is a literal, a signed
+                    // literal or None (CodeGenInfoComputer.MarkStructConstructorProperty), so it never
+                    // needs the per-instance lowering; any other default keeps its property initializer
+                    // beside the explicit parameterless constructor (#1938,
+                    // HasInitializerOnlyInstanceProperty). Beside a function-style accessor the
+                    // auto half's storage is the mixed arm's backing field: the DEFAULT is stored to
+                    // it, as that field's initializer does in a class — no accessor runs at
+                    // construction (lead ruling (a), 2026-10-28; #2382, #2021) — while every value the
+                    // PARAMETERIZED constructor receives, an omitted argument's default included, goes
+                    // through a function-style setter, so its validation runs (owner rulings Q3 (b) and
+                    // (a), 2026-10-29). Without a function-style setter there is nothing to run, and a
+                    // get-only property cannot be assigned (CS0200).
+                    var group = propertyGroups[prop.MemberKey()];
+                    var propertyName = NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped);
+                    var storageName = group.Any(p => p.IsFunctionStyle) ? PropertyBackingFieldName(prop) : propertyName;
                     roster.Add(new StructConstructorMember(
                         prop.Name,
                         prop.Type,
                         prop.DefaultValue,
-                        NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped),
+                        storageName,
+                        group.Any(p => p.IsFunctionStyle && p.Accessor == PropertyAccessor.Set) ? propertyName : storageName,
                         RequiresPerInstanceDefault: false));
                     break;
             }
@@ -471,7 +506,7 @@ internal partial class RoslynEmitter
         var statements = new List<StatementSyntax>();
         foreach (var fieldDecl in orderedFields)
         {
-            var propName = fieldDecl.CSharpName;
+            var propName = fieldDecl.ArgumentTargetName;
             var paramName = fieldDecl.Name;
 
             if (fieldDecl.RequiresPerInstanceDefault)

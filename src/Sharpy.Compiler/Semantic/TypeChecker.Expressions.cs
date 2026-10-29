@@ -551,6 +551,15 @@ internal partial class TypeChecker
 
         var (symbol, escapeDeclaredShadow) = LookupBySpelling(id);
 
+        // A bare name of an enclosing type's member, bound or not: one verdict per read POSITION
+        // (P21h D8, R-JJ; TypeChecker.ClassScopeRule) — in a method body the class-scope rule's
+        // crossing steer (#1786, R-Y); in an initializer, a property default, a const initializer or
+        // a parameter default exactly the siblings C# resolves there, and one SPY0200 naming the
+        // position for the rest. Before the bound path types the class body's own VariableSymbol
+        // (which has no C# local behind it — SPY0909 at emission).
+        if (!escapeDeclaredShadow && TryResolveClassBodySiblingRead(id, symbol) is { } siblingReadType)
+            return siblingReadType;
+
         if (symbol == null)
         {
             // Don't error on tagged union constructors — they're handled by CheckFunctionCall
@@ -605,19 +614,6 @@ internal partial class TypeChecker
                     + $"escaped spelling its name. Write `{id.Name}` to refer to it — a bare "
                     + $"'{id.Name}' denotes the builtin namespace the escape steps out of, and no "
                     + "builtin has that name.",
-                    id.LineStart, id.ColumnStart,
-                    code: DiagnosticCodes.Semantic.UndefinedVariable,
-                    span: id.Span);
-                return SemanticType.Unknown;
-            }
-
-            // Python class-scope rule (#1786, R-Y): the name denotes a member of an enclosing
-            // type that a bare spelling cannot reach. One description, one set of steers, shared
-            // with the store forms (TypeChecker.ClassScopeRule).
-            if (DescribeBareClassMemberRead(id.Name) is { } crossedMemberTail)
-            {
-                AddError(
-                    $"Undefined identifier '{id.Name}'" + crossedMemberTail,
                     id.LineStart, id.ColumnStart,
                     code: DiagnosticCodes.Semantic.UndefinedVariable,
                     span: id.Span);

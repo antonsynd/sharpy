@@ -290,32 +290,81 @@ internal partial class NameResolver
 
         // The member seam (P21g D2 (b), #2360): a property over a same-named PROPERTY merges when it
         // brings the complementary half (AccessorDeclarations.Admits); a duplicate half, or any other
-        // holder, is SPY0204 at the property keyword. An explicit-interface implementation
-        // (`property IShape.area`) is not a member of the type's own namespace — C# reaches it only
-        // through the interface — so it claims no name and keeps the by-name merge it had.
-        var form = AccessorDeclarations.FormOf(propDef);
-        if (propDef.ExplicitInterface == null)
+        // holder, is SPY0204 at the property keyword. The key is (Name, ExplicitInterface) (R-JH,
+        // #2390): an explicit-interface implementation (`property IShape.area`) is not a member of the
+        // type's own namespace — C# reaches it only through the interface — so it claims no bare name
+        // and collides only with another half of the same explicit key.
+        // One SPY0204 per colliding declaration GROUP (P21h D7, R-JO): a half of a name the seam
+        // already refused draws nothing more — it is refused with its group, silently.
+        if (_refusedMemberNames.Contains((owningType, propDef.Name, propDef.ExplicitInterface)))
         {
-            var claim = TryDeclareMember(propDef.Name, member: null, owningType,
-                mergesWith: holder => holder is PropertySymbol
-                    && AccessorDeclarationsOf(owningType, propDef.Name) is { IsEvent: false } declared
-                    && declared.Admits(form),
-                propDef.LineStart, propDef.ColumnStart, propDef.Span);
-            if (claim == MemberClaim.Refused)
-                return;
-            if (claim == MemberClaim.Declared)
-                RecordAccessorDeclarations(owningType, propDef.Name, isEvent: false, propDef.LineStart);
-            AccessorDeclarationsOf(owningType, propDef.Name)!.Add(form);
+            owningType.RefuseDeclaration(propDef);
+            return;
         }
 
-        // The record a merge REPLACES (getter + setter combined into one PropertySymbol). Not a
-        // verdict: whether this declaration may join it was MemberHolderOf's and Admits' above; this
-        // finds the object to rewrite (and keeps an explicit-interface half's by-name merge).
-        var existingProp = owningType.Properties.FirstOrDefault(p => p.Name == propDef.Name);
-
+        var form = AccessorDeclarations.FormOf(propDef);
+        var claim = TryDeclareMember(propDef.Name, member: null, owningType,
+            mergesWith: holder => holder is PropertySymbol
+                && AccessorDeclarationsOf(owningType, propDef.Name, propDef.ExplicitInterface) is { IsEvent: false } declared
+                && declared.Admits(form),
+            propDef.LineStart, propDef.ColumnStart, propDef.Span, propDef.ExplicitInterface);
+        if (claim == MemberClaim.Refused)
+        {
+            owningType.RefuseDeclaration(propDef);
+            return;
+        }
+        if (claim == MemberClaim.Declared)
+            RecordAccessorDeclarations(owningType, propDef.Name, propDef.ExplicitInterface, isEvent: false, propDef.LineStart);
+        var accessors = AccessorDeclarationsOf(owningType, propDef.Name, propDef.ExplicitInterface)!;
+        var body = AccessorDeclarations.BodyOf(propDef, owningType);
         bool isStatic = propDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
             || !propDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             && propDef.IsFunctionStyle;
+
+        // The halves of one property agree on '@static' (P21h, lead decision on the verifier's cell;
+        // #2382): a merge is ONE C# property, so a half whose staticness differs from the recorded
+        // halves would silently take theirs (or fail as CS0176/CS0120) — a second meaning of the
+        // name, SPY0204 at the later half, whichever order the halves come in. The group is refused.
+        if (claim == MemberClaim.Merged
+            && owningType.FindProperty(propDef.Name, propDef.ExplicitInterface) is { } recorded
+            && recorded.IsStatic != isStatic)
+        {
+            AddError(MemberConflictMessage(propDef.Name, owningType,
+                    recorded.IsStatic ? "a '@static' property" : "a property", accessors.Line),
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition, span: propDef.Span);
+            _refusedMemberNames.Add((owningType, propDef.Name, propDef.ExplicitInterface));
+            owningType.RefuseDeclaration(propDef);
+            return;
+        }
+
+        // R-JG (#2382): an interface's accessors are all abstract or all default
+        // implementations — `{ get; set { … } }` is a field-backed semi-auto property to C#
+        // (CS0525). So a complementary half that leaves one accessor abstract and the other
+        // bodied is refused at the later half, whichever order the halves come in. Like a
+        // refused claim, the half is not added.
+        if (claim == MemberClaim.Merged
+            && owningType.TypeKind == TypeKind.Interface
+            && accessors.MixesAbstractWithBodied(form, body))
+        {
+            AddError(
+                $"'{propDef.Name}' mixes an abstract accessor with an accessor that has a body in interface "
+                + $"'{owningType.Name}' (line {accessors.Line}): C# interface accessors are all abstract or all "
+                + "default implementations — give both halves a body, or make both abstract ('...')",
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.InterfaceAccessorsMustAgreeOnBody, span: propDef.Span);
+            _refusedMemberNames.Add((owningType, propDef.Name, propDef.ExplicitInterface));
+            owningType.RefuseDeclaration(propDef);
+            return;
+        }
+
+        accessors.Add(form, body);
+
+        // The record a merge REPLACES (getter + setter combined into one PropertySymbol). Not a
+        // verdict: whether this declaration may join it was MemberHolderOf's and Admits' above; this
+        // finds the object to rewrite, by the same (Name, ExplicitInterface) key.
+        var existingProp = owningType.FindProperty(propDef.Name, propDef.ExplicitInterface);
+
         bool isVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
         bool isAbstract = Shared.MemberClassification.IsAbstract(
             propDef, owningType.TypeKind, owningType.IsAbstract);
@@ -380,17 +429,27 @@ internal partial class NameResolver
         // event twice — silently merged away before, so `event e: Action[int]` + `event e:
         // Action[str]` ran with the second type dropped — or any other holder is SPY0204 at the
         // event keyword.
+        // One SPY0204 per colliding declaration GROUP (P21h D7, R-JO), as for a property half.
+        if (_refusedMemberNames.Contains((owningType, eventDef.Name, null)))
+        {
+            owningType.RefuseDeclaration(eventDef);
+            return;
+        }
+
         var form = AccessorDeclarations.FormOf(eventDef);
         var claim = TryDeclareMember(eventDef.Name, member: null, owningType,
             mergesWith: holder => holder is EventSymbol
-                && AccessorDeclarationsOf(owningType, eventDef.Name) is { IsEvent: true } declared
+                && AccessorDeclarationsOf(owningType, eventDef.Name, explicitInterface: null) is { IsEvent: true } declared
                 && declared.Admits(form),
             eventDef.LineStart, eventDef.ColumnStart, eventDef.Span);
         if (claim == MemberClaim.Refused)
+        {
+            owningType.RefuseDeclaration(eventDef);
             return;
+        }
         if (claim == MemberClaim.Declared)
-            RecordAccessorDeclarations(owningType, eventDef.Name, isEvent: true, eventDef.LineStart);
-        AccessorDeclarationsOf(owningType, eventDef.Name)!.Add(form);
+            RecordAccessorDeclarations(owningType, eventDef.Name, explicitInterface: null, isEvent: true, eventDef.LineStart);
+        AccessorDeclarationsOf(owningType, eventDef.Name, explicitInterface: null)!.Add(form);
 
         // The record a merge REPLACES (add + remove combined into one EventSymbol). Not a verdict:
         // MemberHolderOf and Admits above decided whether this declaration may join it.
@@ -677,6 +736,10 @@ internal partial class NameResolver
     /// <param name="member">The symbol entering the type scope, or null for a member that is not a
     /// <see cref="Symbol"/> (a property or event — it lives in the owner's Properties/Events —, or a
     /// nested type whose own resolver defines its symbol).</param>
+    /// <param name="explicitInterface">The interface a property implements explicitly
+    /// (<c>property IShape.area</c>), or null for a member of the type's own namespace — every other
+    /// kind. With the name it is the member key (R-JH, #2390): an explicit member collides only with
+    /// the same key.</param>
     /// <remarks>
     /// Properties and events are standalone records, not <see cref="Symbol"/>s, so they cannot enter
     /// the scope; <see cref="MemberHolderOf"/> is the ONE holder lookup and reads the scope, then the
@@ -685,11 +748,11 @@ internal partial class NameResolver
     /// </remarks>
     private MemberClaim TryDeclareMember(
         string name, Symbol? member, TypeSymbol owner, Func<object, bool>? mergesWith,
-        int line, int column, Text.TextSpan? span)
+        int line, int column, Text.TextSpan? span, string? explicitInterface = null)
     {
         // A holder with no source position is a builtin, which a declaration may shadow
         // (Scope.Define replaces it) — a type scope holds none today; the rule is Scope.Define's.
-        if (MemberHolderOf(name, owner) is not { } holder
+        if (MemberHolderOf(name, explicitInterface, owner) is not { } holder
             || holder.Holder is Symbol { DeclarationLine: null })
         {
             if (member != null)
@@ -705,6 +768,7 @@ internal partial class NameResolver
 
         AddError(MemberConflictMessage(name, owner, holder.Kind, holder.Line), line, column,
             code: DiagnosticCodes.Semantic.DuplicateDefinition, span: span);
+        _refusedMemberNames.Add((owner, name, explicitInterface));
         return MemberClaim.Refused;
     }
 
@@ -723,22 +787,33 @@ internal partial class NameResolver
     /// its <see cref="TypeSymbol.Events"/>. PropertySymbol and EventSymbol are not
     /// <see cref="Symbol"/>s (standalone records), so they never enter a scope and are read where
     /// they live (D2 correction, lead ruling (a)); no arm consults the scope or those lists for a
-    /// verdict on its own. An explicit-interface property (<c>property IShape.area</c>) is not a
-    /// member of the type's own namespace and holds no name. The accessor-slot record
+    /// verdict on its own. The key is (<paramref name="name"/>, <paramref name="explicitInterface"/>)
+    /// (R-JH, #2390): an explicit-interface property (<c>property IShape.area</c>) is not a member of
+    /// the type's own namespace, so the bare key reads the scope, the own properties
+    /// (<see cref="TypeSymbol.FindOwnProperty"/>) and the events, and an explicit key reads only the
+    /// owner's property of that key. The accessor-slot record
     /// (<see cref="AccessorDeclarations"/>) is the merge's bookkeeping, read only once a property or
     /// event holder was found here — for <see cref="AccessorDeclarations.Admits"/> and the line the
     /// refusal quotes.
     /// </summary>
-    private MemberHolder? MemberHolderOf(string name, TypeSymbol owner)
+    private MemberHolder? MemberHolderOf(string name, string? explicitInterface, TypeSymbol owner)
     {
+        if (explicitInterface != null)
+        {
+            return owner.FindProperty(name, explicitInterface) is { } explicitProperty
+                ? new MemberHolder(explicitProperty, $"the explicit implementation of '{explicitInterface}.{name}'",
+                    AccessorDeclarationsOf(owner, name, explicitInterface)?.Line)
+                : null;
+        }
+
         if (_symbolTable.Lookup(name, searchParents: false) is { } symbol)
             return new MemberHolder(symbol, MemberKindPhrase(symbol, owner), symbol.DeclarationLine);
 
-        if (owner.Properties.FirstOrDefault(p => p.Name == name && p.ExplicitInterface == null) is { } property)
-            return new MemberHolder(property, "a property", AccessorDeclarationsOf(owner, name)?.Line);
+        if (owner.FindOwnProperty(name) is { } property)
+            return new MemberHolder(property, "a property", AccessorDeclarationsOf(owner, name, explicitInterface: null)?.Line);
 
         if (owner.Events.FirstOrDefault(e => e.Name == name) is { } @event)
-            return new MemberHolder(@event, "an event", AccessorDeclarationsOf(owner, name)?.Line);
+            return new MemberHolder(@event, "an event", AccessorDeclarationsOf(owner, name, explicitInterface: null)?.Line);
 
         return null;
     }
@@ -770,9 +845,11 @@ internal partial class NameResolver
     /// <c>property get A(self)</c> a function-style getter, <c>property set A(self, v)</c> a
     /// function-style setter. The merged <see cref="PropertySymbol"/> flags cannot tell these apart
     /// (an auto property and a function-style getter both set <c>HasGetter</c>), so the forms are
-    /// recorded here.
+    /// recorded here. Internal so PropertyValidator replays the SAME admission over a module's
+    /// property halves (module level records no refused-half set — see its
+    /// <c>AdmittedModuleHalves</c>).
     /// </summary>
-    private sealed class AccessorDeclarations
+    internal sealed class AccessorDeclarations
     {
         [Flags]
         internal enum Form
@@ -791,9 +868,24 @@ internal partial class NameResolver
             Line = line;
         }
 
+        /// <summary>What a property half puts in the accessor slots it fills (D2, R-JG): no body
+        /// (<see cref="Abstract"/> — an auto half without a default, a stub), a default value (an auto
+        /// half with one — never judged here: an interface's defaulted auto half is #2383's), or a
+        /// function-style body. Ordered so a slot's class is the strongest of the halves filling it — a
+        /// function-style getter beside an auto half supplies the getter's body.</summary>
+        internal enum Body
+        {
+            None = 0,
+            Abstract = 1,
+            Defaulted = 2,
+            Bodied = 3,
+        }
+
         internal bool IsEvent { get; }
         internal int Line { get; }
         private Form _filled;
+        private Body _getBody;
+        private Body _setBody;
 
         /// <summary>A property's half: the slots it fills (see the class summary) — <c>set</c> and
         /// <c>init</c> are both the write slot.</summary>
@@ -834,23 +926,65 @@ internal partial class NameResolver
             return (_filled & incoming) == 0;
         }
 
-        internal void Add(Form form) => _filled |= form;
+        /// <summary>A property half's <see cref="Body"/>: an auto half is <see cref="Body.Defaulted"/>
+        /// with a default and <see cref="Body.Abstract"/> without; a function-style half is abstract by
+        /// the one abstractness rule (a stub in an interface, <c>@abstract</c>), else
+        /// <see cref="Body.Bodied"/>.</summary>
+        internal static Body BodyOf(PropertyDef propDef, TypeSymbol owner)
+        {
+            if (!propDef.IsFunctionStyle)
+                return propDef.DefaultValue != null ? Body.Defaulted : Body.Abstract;
+            return Shared.MemberClassification.IsAbstract(propDef, owner.TypeKind, owner.IsAbstract)
+                ? Body.Abstract
+                : Body.Bodied;
+        }
+
+        /// <summary>
+        /// Whether adding <paramref name="incoming"/> (a half <see cref="Admits"/> accepted) would leave
+        /// one accessor abstract and the other bodied — R-JG's interface refusal. Read from the slots,
+        /// not the order: an auto half of both slots beside a function-style getter leaves the setter
+        /// abstract; an auto getter beside a function-style getter fills ONE slot and is a body for it
+        /// (the same-slot merge stays legal); a defaulted slot is neither side.
+        /// </summary>
+        internal bool MixesAbstractWithBodied(Form incoming, Body body)
+        {
+            var get = Max(_getBody, (incoming & (Form.AutoGet | Form.FunctionGet)) != 0 ? body : Body.None);
+            var set = Max(_setBody, (incoming & (Form.AutoSet | Form.FunctionSet)) != 0 ? body : Body.None);
+            return (get, set) is (Body.Abstract, Body.Bodied) or (Body.Bodied, Body.Abstract);
+        }
+
+        internal void Add(Form form, Body body = Body.None)
+        {
+            _filled |= form;
+            if ((form & (Form.AutoGet | Form.FunctionGet)) != 0)
+                _getBody = Max(_getBody, body);
+            if ((form & (Form.AutoSet | Form.FunctionSet)) != 0)
+                _setBody = Max(_setBody, body);
+        }
+
+        private static Body Max(Body a, Body b) => a > b ? a : b;
     }
 
     /// <summary>The merge's accessor-slot bookkeeping per type-body property or event, keyed by the owner
-    /// symbol (reference identity — <see cref="Symbol"/> overrides record equality) and the member name.
-    /// Not a name registry: <see cref="MemberHolderOf"/> finds the holder in the owner's lists, and this
+    /// symbol (reference identity — <see cref="Symbol"/> overrides record equality) and the member key
+    /// (the name and, for an explicit-interface property, its interface — R-JH). Not a name registry: <see cref="MemberHolderOf"/> finds the holder in the owner's lists, and this
     /// is read only after it has (the slots a merged record's flags cannot tell apart, and its first
     /// line).</summary>
-    private readonly Dictionary<(TypeSymbol Owner, string Name), AccessorDeclarations> _accessorDeclarations = new();
+    private readonly Dictionary<(TypeSymbol Owner, string Name, string? ExplicitInterface), AccessorDeclarations> _accessorDeclarations = new();
+
+    /// <summary>The member keys the seam refused (P21h D7, R-JO) — by <see cref="TryDeclareMember"/>'s
+    /// SPY0204 arm or the SPY0617 arm — keyed like <see cref="_accessorDeclarations"/>. A later property
+    /// or event half of a refused key is refused with its group, silently: one SPY0204 per colliding
+    /// declaration group, not one per half.</summary>
+    private readonly HashSet<(TypeSymbol Owner, string Name, string? ExplicitInterface)> _refusedMemberNames = new();
 
     /// <summary>Accessor declarations per MODULE property symbol — the same merge rule at module level
     /// ("split accessors are merged … following the same rules as class-level split accessors").</summary>
     private readonly Dictionary<VariableSymbol, AccessorDeclarations> _modulePropertyAccessors = new();
 
-    private void RecordAccessorDeclarations(TypeSymbol owner, string name, bool isEvent, int line)
-        => _accessorDeclarations[(owner, name)] = new AccessorDeclarations(isEvent, line);
+    private void RecordAccessorDeclarations(TypeSymbol owner, string name, string? explicitInterface, bool isEvent, int line)
+        => _accessorDeclarations[(owner, name, explicitInterface)] = new AccessorDeclarations(isEvent, line);
 
-    private AccessorDeclarations? AccessorDeclarationsOf(TypeSymbol owner, string name)
-        => _accessorDeclarations.GetValueOrDefault((owner, name));
+    private AccessorDeclarations? AccessorDeclarationsOf(TypeSymbol owner, string name, string? explicitInterface)
+        => _accessorDeclarations.GetValueOrDefault((owner, name, explicitInterface));
 }

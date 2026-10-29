@@ -123,6 +123,28 @@ class Foo:
         Assert.Empty(errors);
     }
 
+    /// <summary>
+    /// Module level judges only the halves the name binder ADMITTED (P21h verify, #2382): a half
+    /// NameResolver refused already drew its SPY0204 and is not a half of the property, so the later
+    /// defaulted auto half below is ONE SPY0204 — never SPY0407 beside it on the same node. The split
+    /// pair is the positive control: both halves admitted, two defaults → SPY0407 at the later half.
+    /// </summary>
+    [Theory]
+    [InlineData("property a: int = 1\nproperty get a: int = 2\n", "SPY0204", 2)]
+    [InlineData("property a: int = 1\nproperty a: int = 2\n", "SPY0204", 2)]
+    [InlineData("property get a: int = 5\nproperty set a: int = 6\n", "SPY0407", 2)]
+    public void ModuleProperty_RefusedHalf_IsOneDiagnostic(string code, string expectedCode, int expectedLine)
+    {
+        var (module, context, resolverDiagnostics) = ParseWithResolver(code);
+
+        var validator = new PropertyValidator();
+        validator.Validate(module, context);
+
+        var all = resolverDiagnostics.GetErrors().Concat(context.Diagnostics.GetErrors())
+            .Select(e => $"{e.Code}@{e.Line}").ToList();
+        Assert.Equal(new[] { $"{expectedCode}@{expectedLine}" }, all);
+    }
+
     // ===========================
     // SPY0408: Init on function-style
     // ===========================

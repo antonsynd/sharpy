@@ -275,8 +275,8 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Generate all properties (grouped by name to combine getter/setter)
-        foreach (var (propName, propGroup) in propertyGroups)
+        // Generate all properties (grouped by member key to combine getter/setter)
+        foreach (var (_, propGroup) in propertyGroups)
         {
             members.AddRange(GenerateGroupedProperty(propGroup));
         }
@@ -438,29 +438,32 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// A type body's <see cref="PropertyDef"/>s grouped by property name, in declaration order. A
+    /// A type body's <see cref="PropertyDef"/>s grouped by member key
+    /// (<see cref="StatementExtensions.MemberKey"/>: the name and the explicitly implemented interface),
+    /// in declaration order — a bare <c>area</c> and an explicit <c>IShape.area</c> are two C# members,
+    /// and so are two interfaces' explicit members (R-JH, #2390). A
     /// property's complementary halves — a function-style getter and setter, or an auto half beside
     /// a function-style accessor (properties_function_style.md, "paired with an auto-property of the
     /// same name") — are ONE property, merged by name resolution into one <c>PropertySymbol</c>; the
     /// class, struct, union and interface member emitters all read this grouping, so each emits one C#
-    /// property per name (an interface body once wrote one per statement — CS0102/CS0229, #2360). Two
-    /// readers still walk property statements on their own: the module body groups its properties by
-    /// name in <c>RoslynEmitter.ModuleClass.cs</c>, and a struct's synthesized constructor walks
-    /// statements (#2382).
+    /// property per name (an interface body once wrote one per statement — CS0102/CS0229, #2360), and a
+    /// struct's synthesized constructor rosters one parameter per group (#2382). The module body groups
+    /// its properties by name on its own in <c>RoslynEmitter.ModuleClass.cs</c>.
     /// </summary>
-    private static Dictionary<string, List<PropertyDef>> GroupPropertiesByName(IReadOnlyList<Statement> body)
+    private static Dictionary<(string Name, string? ExplicitInterface), List<PropertyDef>> GroupPropertiesByName(
+        IReadOnlyList<Statement> body)
     {
-        var propertyGroups = new Dictionary<string, List<PropertyDef>>();
+        var propertyGroups = new Dictionary<(string Name, string? ExplicitInterface), List<PropertyDef>>();
 
         foreach (var stmt in body)
         {
             if (stmt is not PropertyDef propDef)
                 continue;
 
-            if (!propertyGroups.TryGetValue(propDef.Name, out var propertyGroup))
+            if (!propertyGroups.TryGetValue(propDef.MemberKey(), out var propertyGroup))
             {
                 propertyGroup = new List<PropertyDef>();
-                propertyGroups[propDef.Name] = propertyGroup;
+                propertyGroups[propDef.MemberKey()] = propertyGroup;
             }
             propertyGroup.Add(propDef);
         }
@@ -506,7 +509,7 @@ internal partial class RoslynEmitter
                 case PropertyDef propDef:
                     // One C# property per group: a property's halves share a name, so only the first
                     // half emits — at its declaration position — and the rest are skipped
-                    var propertyGroup = propertyGroups[propDef.Name];
+                    var propertyGroup = propertyGroups[propDef.MemberKey()];
                     if (ReferenceEquals(propertyGroup[0], propDef))
                     {
                         members.Add(GenerateInterfaceGroupedProperty(propertyGroup));

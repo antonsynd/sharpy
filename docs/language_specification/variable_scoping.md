@@ -256,10 +256,48 @@ class Derived(Base):
 An inherited `const` or `@static` field is steered to the **declaring** class's name, which is the
 spelling that compiles: `Base.K`, not `Derived.K`.
 
-### Parameter defaults still see the class body
+### Initializers and parameter defaults see the class body by position
 
-A parameter default belongs to the **signature**, which is resolved in the scope that declares the
-method — the class body — not in the method body:
+A class-body position outside a method body reads a sibling by bare name exactly when C# resolves
+that name in the position the declaration becomes:
+
+- **An initializer** reads a `const` or `@static` sibling (field, property or method) by bare name.
+  That covers a field initializer in a plain class, a `@static` field's initializer, every property
+  default (instance or `@static`, in every host), and a `const` whose initializer is not a
+  compile-time constant (it is emitted `static readonly`, so it runs as a static initializer).
+- **A parameter default** belongs to the method's **signature**, and C# requires it to be a
+  compile-time constant, so it reads a `const` only. A `@static` sibling resolves but is not
+  constant (SPY0401). An instance field's initializer in a `struct` or a `@dataclass` is the
+  synthesized constructor's parameter default, so the same rule applies to it.
+- **An instance member** (a field, property, event or method that is not `@static`) is refused
+  (SPY0200) in every one of these positions. No instance exists when they run. The diagnostic names
+  the position and says where the value can be read instead.
+
+<!-- spec-sweep: output -->
+```python
+class Grid:
+    const SIZE: int = 2
+
+    @static
+    scale: int = 2
+
+    @static
+    def twice(n: int) -> int:
+        return n * 2
+
+    area: int = SIZE                              # a field initializer reads a const
+    @static
+    property cells: int = SIZE * scale            # a @static property default reads a const and a @static field
+    property border: int = SIZE + twice(scale)    # a property default reads both, and calls a @static method
+
+def main() -> None:
+    g = Grid()
+    print(g.area)         # 2
+    print(Grid.cells)     # 4
+    print(g.border)       # 6
+```
+
+A parameter default reads a `const`:
 
 ```python
 class Grid:
@@ -269,8 +307,92 @@ class Grid:
         print(n)
 ```
 
-The same holds for decorator arguments and type annotations. Names in the method's **body** are
-resolved by the rule above.
+An instance sibling is refused in every position outside a method body:
+
+<!-- spec-sweep: error SPY0200 -->
+```python
+class Grid:
+    width: int = 3
+    total: int = width    # SPY0200 — "'width' is an instance attribute of 'Grid' — a field initializer runs before any instance exists, so it may read only a 'const' or '@static' member of 'Grid'"
+
+def main() -> None:
+    print(Grid().total)
+```
+
+A class body runs top to bottom, so a position reads only a sibling **declared earlier** in the
+body. A sibling declared later, or the member being initialized itself, is refused (SPY0200, "declared
+later"): C# would run that initializer before the sibling's and read its default value, and Python
+raises `NameError`. A `const` sibling is the exception, since a type body resolves its constants in
+dependency order. When an outer binding of the name exists, a later sibling and the member itself
+yield to it instead (below).
+
+<!-- spec-sweep: error SPY0200 -->
+```python
+class Counter:
+    @static
+    start: int = step     # SPY0200 — "'step' is declared later than 'start' in 'Counter'"
+    @static
+    step: int = 2
+
+def main() -> None:
+    print(Counter.start)
+```
+
+In these positions a member the class body declares outranks a module-level (or other outer) binding
+of the same name, for every member kind, as in C# and Python. A member declared later — or the member
+being initialized, read in its own initializer (`x: int = 5` at module level, then
+`@static x: int = x + 1` gives 6) — does not exist yet where the position runs, so the outer binding is
+what it reads. Inside a method body the module binding still wins (the rule above).
+
+An **inherited** member is never read by bare name in these positions: only a member the body in
+front of you declares is. With an outer binding of the name, the outer binding is what the position
+reads, as in Python; with none, the read is SPY0200, steered to the declaring class (`Base.unit`), the
+spelling that compiles.
+
+<!-- spec-sweep: output -->
+```python
+unit: int = 9
+
+class Base:
+    @static
+    unit: int = 3
+
+class Child(Base):
+    a: int = unit             # the module variable: 'unit' is inherited, not declared here
+    b: int = Base.unit        # the inherited member, named through its class
+
+def main() -> None:
+    c = Child()
+    print(c.a, c.b)           # 9 3
+```
+
+<!-- spec-sweep: output -->
+```python
+size: int = 7
+
+class Box:
+    @static
+    property size: int = 2
+
+    @static
+    property doubled: int = size * 2    # the @static property, not the module variable
+
+def main() -> None:
+    print(Box.doubled)    # 4
+```
+
+One temporary exception: in a `@static` field's initializer or a `const` initializer, reading a
+`@static` **property** or calling a `@static` **method** is refused (SPY0200), and so is calling a
+`@static` method from a `@static` property's default. Static initializers run in member-layout order,
+so the read could see static storage before it is initialized (#2396). Read the property in a method,
+or make the reader a `@static` property (a `@static` property's default reads an earlier `@static`
+property directly); call the method in a method. An instance initializer and a parameter default are
+not affected: every static initializer has run before them.
+
+Decorator arguments and type annotations are resolved in the class body as well. Names in the
+method's **body** are resolved by the rule above. Python resolves class scope in every one of these positions
+(`class C: a = 1; b = a` binds `b` to `1`). Sharpy resolves only what C# resolves there (deviation
+`class-body-bare-name-read`).
 
 ### Pattern heads are not reads
 

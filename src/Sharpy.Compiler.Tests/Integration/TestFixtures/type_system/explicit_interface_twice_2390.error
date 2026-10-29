@@ -1,0 +1,2 @@
+SPY0204: 'area' is already declared in 'Sq' as the explicit implementation of 'IShape.area' (line 11) @12:5
+SPY0204: 'radius' is already declared in 'Disc' as the explicit implementation of 'IRound.radius' (line 15) @17:5

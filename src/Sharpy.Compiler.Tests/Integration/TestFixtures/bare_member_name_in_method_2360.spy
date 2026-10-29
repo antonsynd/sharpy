@@ -2,8 +2,8 @@
 # type-body member — SPY0200 with the class-scope steer, never a binding (a property or event bound by
 # its bare name would type Unknown or reach the identifier checker's unrecognized-subtype arm). One
 # cell per member kind read inside a method (the walk's crossing, #1786), and the class-BODY reads of
-# a property: a field initializer and a parameter default. The event has no steer — today's text,
-# pinned, not improved. The parameter default's SPY0401 is its pinned cascade (P21g D10).
+# a property: a field initializer and a parameter default, each ONE SPY0200 naming its position (P21h
+# D8, R-JJ — no SPY0401 beside the parameter default's). The event gets the self steer like the rest.
 
 
 class FieldRead:
@@ -37,6 +37,18 @@ class DefaultRead:
 
     def m(self, x: int = p) -> int:
         return x
+
+
+def scale(x: int) -> int:
+    return x + 100
+
+
+class CallRead:
+    def scale(self, x: int) -> int:
+        return x * 2
+
+    v: int = scale(3)
+    w: int = scale(x=4)
 
 
 def main() -> None:

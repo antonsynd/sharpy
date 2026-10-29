@@ -1,0 +1,8 @@
+# One SPY0617 per interface, at the later half's `property` keyword; nothing else.
+SPY0617: 'a' mixes an abstract accessor with an accessor that has a body in interface 'AutoThenGetter' (line 9) @10:5
+SPY0617: 'b' mixes an abstract accessor with an accessor that has a body in interface 'GetterThenAuto' (line 16) @18:5
+SPY0617: 'c' mixes an abstract accessor with an accessor that has a body in interface 'AutoGetThenSetter' (line 23) @24:5
+SPY0617: 'd' mixes an abstract accessor with an accessor that has a body in interface 'SetterThenAutoGet' (line 30) @32:5
+SPY0617: 'e' mixes an abstract accessor with an accessor that has a body in interface 'StubGetThenSetter' (line 37) @38:5
+SPY0617: 'f' mixes an abstract accessor with an accessor that has a body in interface 'GetterThenStubSet' (line 44) @46:5
+!count 6

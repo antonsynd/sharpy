@@ -136,6 +136,7 @@ internal partial class TypeChecker
         // so nested calls (`outer(identity[int](5))`) recover the enclosing callee correctly.
         SemanticType calleeType;
         using (ScopedValue.Push(ref _currentCallCallee, call.Function))
+        using (ScopedValue.Push(ref _currentCall, call))
             calleeType = CheckExpression(call.Function);
 
         // The call-only alias is retired (#1248), so nothing binds ConstructorReferenceType any more
@@ -280,7 +281,7 @@ internal partial class TypeChecker
             // have to agree: when they did not, the checker validated a bare `len()` against a
             // user `` class `len` `` while codegen emitted Sharpy.Builtins.Len() — a SPY0908 ICE
             // where a declaration elsewhere in the file changed the diagnosis of an unrelated call.
-            var symbol = _symbolTable.Lookup(id.Name);
+            var symbol = CalleeSymbolOf(id);
             if (symbol != null && id.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
                 symbol = null;
 
@@ -2900,8 +2901,8 @@ internal partial class TypeChecker
         var current = typeSymbol;
         while (current != null)
         {
-            if (current.Properties.Any(p =>
-                string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase)))
+            if (current.Properties.Any(p => p.ExplicitInterface == null
+                && string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase)))
             {
                 var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, memberName);
                 return method == null;
@@ -5744,6 +5745,19 @@ internal partial class TypeChecker
     /// <param name="callee">The canonical (paren-stripped) callee — see the #1170 contract in
     /// <see cref="AstHelper.UnwrapParenthesized"/>.</param>
     /// <returns>The early-resolved function symbol and parameter offset (0 for functions, 1 for constructors skipping 'self').</returns>
+    /// <summary>
+    /// The symbol a bare callee names. A callee the identifier checker resolved to a class-body
+    /// sibling method (P21h D8; owner ruling F2, 2026-10-29: outside a method the member outranks an
+    /// outer binding of its name) names THAT method — recorded on the identifier with its sibling-read
+    /// fact — where a scope lookup by name would find the module function or builtin it shadows.
+    /// Every other callee is the scope lookup.
+    /// </summary>
+    private Symbol? CalleeSymbolOf(Identifier callee)
+        => _semanticInfo.GetClassBodySiblingRead(callee) != null
+            && _semanticInfo.GetIdentifierSymbol(callee) is FunctionSymbol siblingMethod
+                ? siblingMethod
+                : _symbolTable.Lookup(callee.Name);
+
     private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyFunctionSymbol(FunctionCall call, Expression callee)
     {
         // Method calls (obj.method(...)): resolve the method on the receiver type so lambda
@@ -5755,7 +5769,7 @@ internal partial class TypeChecker
         if (callee is not Identifier earlyId)
             return (null, 0);
 
-        var earlySymbol = _symbolTable.Lookup(earlyId.Name);
+        var earlySymbol = CalleeSymbolOf(earlyId);
         if (earlySymbol is FunctionSymbol fs && !fs.IsGeneric)
         {
             // Only use early resolution for non-generic, non-overloaded functions.

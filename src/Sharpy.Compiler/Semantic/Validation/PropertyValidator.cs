@@ -44,6 +44,8 @@ internal class PropertyValidator : SemanticValidatorBase
             ValidateTypeStatement(stmt);
         }
 
+        ValidateModuleProperties(module.Body);
+
         // Rule 9 runs over EVERY property, in whatever declares it. The rules above are container-
         // shaped — they compare a property against its type's fields and methods — but the shape of
         // an accessor's own parameter list is a property of the accessor alone, and it is wrong in
@@ -236,22 +238,26 @@ internal class PropertyValidator : SemanticValidatorBase
             }
         }
 
-        // Group properties by name to detect mixed styles
-        var propertyGroups = new Dictionary<string, List<PropertyDef>>();
-        foreach (var propDef in propertyDefs)
-        {
-            if (!propertyGroups.TryGetValue(propDef.Name, out var group))
-            {
-                group = new List<PropertyDef>();
-                propertyGroups[propDef.Name] = group;
-            }
-            group.Add(propDef);
-        }
-
         // Resolve the type symbol for override validation. Through NestedTypes, not by bare name:
         // a nested class's symbol is defined inside its enclosing class's scope, so the bare
         // lookup returned null and every symbol-dependent rule below silently did nothing (#1461).
         var typeSymbol = _context.LookupDeclaredType(declaration, typeName);
+
+        // Group properties by member key to detect mixed styles — a bare `area` and an explicit
+        // `IShape.area` are two properties (R-JH, #2390). Only the halves the member seam ADMITTED:
+        // a refused half already drew its SPY0204/SPY0617 and is not part of the property (#2075, D7).
+        var propertyGroups = new Dictionary<(string Name, string? ExplicitInterface), List<PropertyDef>>();
+        foreach (var propDef in propertyDefs)
+        {
+            if (typeSymbol?.RefusedDeclarations.Contains(propDef) == true)
+                continue;
+            if (!propertyGroups.TryGetValue(propDef.MemberKey(), out var group))
+            {
+                group = new List<PropertyDef>();
+                propertyGroups[propDef.MemberKey()] = group;
+            }
+            group.Add(propDef);
+        }
 
         // Check each property definition
         foreach (var propDef in propertyDefs)
@@ -264,7 +270,7 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Check for mixed auto/function-style per property name
-        foreach (var (propName, group) in propertyGroups)
+        foreach (var ((propName, _), group) in propertyGroups)
         {
             ValidateMixedPropertyStyle(typeName, propName, group);
             ValidateBackingFieldCollision(typeName, propName, group, fieldDecls);
@@ -285,6 +291,9 @@ internal class PropertyValidator : SemanticValidatorBase
     private void ValidateMixedPropertyStyle(string typeName, string propName, List<PropertyDef> group)
     {
         if (group.Count < 2)
+            return;
+
+        if (ReportTwoDefaultedAutoHalves($"in '{typeName}'", propName, group))
             return;
 
         var autoDefs = group.Where(p => !p.IsFunctionStyle).ToList();
@@ -334,6 +343,89 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Otherwise: auto + complementary custom accessors is allowed
+    }
+
+    /// <summary>
+    /// Rule 3's split-auto face (<see cref="ReportTwoDefaultedAutoHalves"/>) at module level. A module's
+    /// split accessors "are merged … following the same rules as class-level split accessors"
+    /// (properties_function_style.md, Module-Level Properties), and the emitter merges them with the
+    /// class-level arm (<c>GenerateModuleLevelProperty</c> → <c>GenerateGroupedProperty</c> →
+    /// <c>GenerateSplitAutoProperty</c>), so two defaulted auto halves (<c>property get a: int = 5</c> +
+    /// <c>property set a: int = 6</c>) emitted ONE initializer and silently dropped the other (P21h
+    /// verify; owner ruling 2026-10-28 (a): refused, not dropped). Only that face: Rule 3's other faces
+    /// (an auto half pair beside a function-style accessor, an accessor-less function-style half) run at
+    /// module level as they did before — ledgered, not widened in a verify round. Only the halves the
+    /// name binder admitted are judged — a refused half already drew its SPY0204.
+    /// </summary>
+    private void ValidateModuleProperties(IReadOnlyList<Statement> body)
+    {
+        var groups = new Dictionary<(string Name, string? ExplicitInterface), List<PropertyDef>>();
+        foreach (var propDef in body.OfType<PropertyDef>())
+        {
+            if (!groups.TryGetValue(propDef.MemberKey(), out var group))
+            {
+                group = new List<PropertyDef>();
+                groups[propDef.MemberKey()] = group;
+            }
+            group.Add(propDef);
+        }
+
+        foreach (var ((propName, _), halves) in groups)
+            ReportTwoDefaultedAutoHalves("at module level", propName, AdmittedModuleHalves(propName, halves));
+    }
+
+    /// <summary>
+    /// Rule 3's split-auto face: split auto halves (<c>property get a: int = 5</c> + <c>property set a:
+    /// int = 6</c>) are one auto property, and no C# auto property holds two initializers (#2382, owner
+    /// ruling 2026-10-28 (a)) — SPY0407 at the later defaulted half. Shared by a type body and module
+    /// level, which emit the group through the same arm.
+    /// </summary>
+    /// <param name="where">The host phrase after the property's name: <c>in 'C'</c> for a type body,
+    /// <c>at module level</c> for a module's properties.</param>
+    /// <returns>Whether it reported.</returns>
+    private bool ReportTwoDefaultedAutoHalves(string where, string propName, List<PropertyDef> group)
+    {
+        if (group.Any(p => p.IsFunctionStyle))
+            return false;
+
+        var defaultedAutoDefs = group.Where(p => p.DefaultValue != null).ToList();
+        if (defaultedAutoDefs.Count < 2)
+            return false;
+
+        AddError(_context,
+            $"Property '{propName}' {where} has duplicate auto-property declarations: two auto halves carry a default; keep one",
+            defaultedAutoDefs[1].LineStart, defaultedAutoDefs[1].ColumnStart,
+            code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
+            span: defaultedAutoDefs[1].Span);
+        return true;
+    }
+
+    /// <summary>
+    /// The halves of one module property name that NameResolver.ResolveModulePropertyDeclaration
+    /// admitted, replayed with its own <see cref="NameResolver.AccessorDeclarations"/> rule in source
+    /// order: the first half defined the module property symbol (else another binding owns the name and
+    /// every half was refused), and a later half merges only when <c>Admits</c> its form. A type body
+    /// records its refused halves (<see cref="TypeSymbol.RefusedDeclarations"/>); module level has no
+    /// owning type symbol to carry that set.
+    /// </summary>
+    private List<PropertyDef> AdmittedModuleHalves(string propName, List<PropertyDef> halves)
+    {
+        if (_context.SymbolTable.Lookup(propName) is not VariableSymbol { IsModuleProperty: true } symbol
+            || symbol.DeclarationSpan != halves[0].Span)
+            return new List<PropertyDef>();
+
+        var admitted = new List<PropertyDef> { halves[0] };
+        var accessors = new NameResolver.AccessorDeclarations(isEvent: false, halves[0].LineStart);
+        accessors.Add(NameResolver.AccessorDeclarations.FormOf(halves[0]));
+        foreach (var half in halves.Skip(1))
+        {
+            var form = NameResolver.AccessorDeclarations.FormOf(half);
+            if (!accessors.Admits(form))
+                continue;
+            accessors.Add(form);
+            admitted.Add(half);
+        }
+        return admitted;
     }
 
     /// <summary>
@@ -523,7 +615,7 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Check covariant return type: the derived property type must be assignable to the base property type
-        var derivedPropSymbol = typeSymbol.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        var derivedPropSymbol = typeSymbol.FindProperty(propDef.Name, propDef.ExplicitInterface);
         if (derivedPropSymbol != null && baseProp.Type is not UnknownType && derivedPropSymbol.Type is not UnknownType)
         {
             if (!derivedPropSymbol.Type.IsAssignableTo(baseProp.Type))
