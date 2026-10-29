@@ -39,5 +39,17 @@ class DefaultRead:
         return x
 
 
+def scale(x: int) -> int:
+    return x + 100
+
+
+class CallRead:
+    def scale(self, x: int) -> int:
+        return x * 2
+
+    v: int = scale(3)
+    w: int = scale(x=4)
+
+
 def main() -> None:
     print(FieldRead().m())

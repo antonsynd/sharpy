@@ -422,7 +422,7 @@ internal partial class TypeChecker
 
         if (!resolves)
         {
-            AddError(DescribeClassBodySiblingRefusal(reader, member),
+            AddError(DescribeClassBodySiblingRefusal(reader, member, id),
                 id.LineStart, id.ColumnStart,
                 code: DiagnosticCodes.Semantic.UndefinedVariable,
                 span: id.Span);
@@ -576,6 +576,22 @@ internal partial class TypeChecker
             + $"above it. Move '{name}' above '{readerName}', or read it inside a method";
     }
 
+    /// <summary>
+    /// The call a refused method read is the callee of, spelled as written (<c>scale(3)</c>,
+    /// <c>scale(x=4)</c>), so the steer moves the whole call behind <c>self.</c>; the bare
+    /// <paramref name="name"/> followed by <c>()</c> when the read is not a callee.
+    /// </summary>
+    private string CallAsWritten(Identifier id, string name)
+        => _currentCall is { } call && ReferenceEquals(UnwrapParenthesized(call.Function), id)
+            ? Pretty.Unparser.Unparse(call)
+            : $"{name}()";
+
+    /// <summary>
+    /// The call whose callee <see cref="CheckFunctionCallCore"/> is checking — paired with
+    /// <c>_currentCallCallee</c> — so a refusal of the callee can spell the call it heads.
+    /// </summary>
+    private FunctionCall? _currentCall;
+
     /// <summary>The phrase a declared-later refusal carries (F1).</summary>
     internal const string DeclaredLaterPhrase = "declared later";
 
@@ -607,7 +623,7 @@ internal partial class TypeChecker
     /// belongs instead. Each position names ONE phrase ("field initializer", "property default",
     /// "'@static' initializer", "'const' initializer", "parameter default") and no other's.
     /// </summary>
-    private string DescribeClassBodySiblingRefusal(ClassBodyReader reader, TypeBodyMember member)
+    private string DescribeClassBodySiblingRefusal(ClassBodyReader reader, TypeBodyMember member, Identifier id)
     {
         var name = member.Name;
         var owner = member.OwnerName;
@@ -622,7 +638,7 @@ internal partial class TypeChecker
         var what = $"'{name}' is {(member.IsStatic ? "a" : "an")} {level} {noun} of '{owner}'";
         var reachable = $"a 'const' or '@static' member of '{owner}'";
         var selfRead = member.IsStatic ? null
-            : member.Kind == TypeBodyMemberKind.Method ? $"self.{name}()" : $"self.{name}";
+            : member.Kind == TypeBodyMemberKind.Method ? $"self.{CallAsWritten(id, name)}" : $"self.{name}";
 
         string Steer(string clause) => selfRead == null ? string.Empty : clause;
 

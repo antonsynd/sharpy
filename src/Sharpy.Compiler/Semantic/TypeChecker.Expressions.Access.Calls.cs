@@ -136,6 +136,7 @@ internal partial class TypeChecker
         // so nested calls (`outer(identity[int](5))`) recover the enclosing callee correctly.
         SemanticType calleeType;
         using (ScopedValue.Push(ref _currentCallCallee, call.Function))
+        using (ScopedValue.Push(ref _currentCall, call))
             calleeType = CheckExpression(call.Function);
 
         // The call-only alias is retired (#1248), so nothing binds ConstructorReferenceType any more
