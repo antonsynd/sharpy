@@ -341,9 +341,10 @@ internal partial class RoslynEmitter
 
     /// <summary>One member of the synthesized struct constructor's roster: its source name (the
     /// parameter), annotation, default, the emitted member the DEFAULT is stored to (the parameterless
-    /// constructor), the emitted member an explicit ARGUMENT is assigned through (the parameterized
-    /// constructor), and the per-instance-default fact. The two names differ only for a property
-    /// with a function-style setter (owner ruling Q3 (b), 2026-10-29).</summary>
+    /// constructor), the emitted member the parameterized constructor assigns EVERY value it receives
+    /// through — an omitted argument's default included, as Python's <c>__init__</c> runs its setter
+    /// (owner ruling Q3 (a), 2026-10-29) — and the per-instance-default fact. The two names differ
+    /// only for a property with a function-style setter (owner ruling Q3 (b), 2026-10-29).</summary>
     private sealed record StructConstructorMember(
         string Name,
         TypeAnnotation? Type,
@@ -390,10 +391,11 @@ internal partial class RoslynEmitter
                     // HasInitializerOnlyInstanceProperty). Beside a function-style accessor the
                     // auto half's storage is the mixed arm's backing field: the DEFAULT is stored to
                     // it, as that field's initializer does in a class — no accessor runs at
-                    // construction (lead ruling (a), 2026-10-28; #2382, #2021) — while an explicit
-                    // ARGUMENT goes through a function-style setter, so its validation runs (owner
-                    // ruling Q3 (b), 2026-10-29). Without a function-style setter there is nothing to
-                    // run, and a get-only property cannot be assigned (CS0200).
+                    // construction (lead ruling (a), 2026-10-28; #2382, #2021) — while every value the
+                    // PARAMETERIZED constructor receives, an omitted argument's default included, goes
+                    // through a function-style setter, so its validation runs (owner rulings Q3 (b) and
+                    // (a), 2026-10-29). Without a function-style setter there is nothing to run, and a
+                    // get-only property cannot be assigned (CS0200).
                     var group = propertyGroups[prop.MemberKey()];
                     var propertyName = NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped);
                     var storageName = group.Any(p => p.IsFunctionStyle) ? PropertyBackingFieldName(prop) : propertyName;

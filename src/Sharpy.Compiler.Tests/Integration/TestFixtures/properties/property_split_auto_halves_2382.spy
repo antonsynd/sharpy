@@ -44,8 +44,11 @@ struct Meter:
         return self._level
 
 # An explicit constructor ARGUMENT goes through a function-style setter, so its validation runs; the
-# DEFAULT is stored to the backing field and runs no setter (owner ruling Q3 (b), 2026-10-29)
+# DEFAULT is stored to the backing field and runs no setter (owner ruling Q3 (b), 2026-10-29). The
+# parameterized constructor runs the setter for every value it receives, an omitted argument's default
+# included, as Python's __init__ does (owner ruling Q3 (a), 2026-10-29): Gauge(tag=4) prints "set 0".
 struct Gauge:
+    tag: int = 1
     property level: int = 0
     property set level(self, v: int):
         if v < 0:
@@ -81,6 +84,7 @@ def main():
     print(Meter(level=9).level)
     print(Gauge().level)
     print(Gauge(level=9).level)
+    print(Gauge(tag=4).tag)
     try:
         Gauge(level=-1)
     except ValueError:
