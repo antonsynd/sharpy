@@ -189,9 +189,6 @@ member-pair × interface × event-remove → event-add  # #2067 interface event 
 # SPY0365 (the checker's seenCaseNames arm, not the resolver) at the right position; `union Host[A]: case
 # A(v: int)` is silent and SPY0908 CS0102 under run (ResolveUnionDeclaration's TryDefine on a held name is
 # silent). CREATED by P21h Phase 1; drains in P21h Phase 3 (D6).
-member-pair × union × case → case  # #2390 R-JI; SPY0365 instead of SPY0204
-member-pair × union × case → case-after-def  # #2390 R-JI; SPY0365 instead of SPY0204
-member-pair × union × type-param → case  # #2390 R-JI; silent, ice CS0102 under run
 # #2390 (R-JH): an explicit interface implementation claims no bare name — the member key is (Name,
 # ExplicitInterface) — so `property IHost.A: int = 10` beside any type-body kind named `A` is [] and runs,
 # printing through both members; the explicit member twice is ONE SPY0204 at the later; explicit members

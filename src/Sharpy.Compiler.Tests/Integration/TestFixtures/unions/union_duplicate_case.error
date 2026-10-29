@@ -1,1 +1,1 @@
-already defined in union
+SPY0204: 'Circle' is already declared in 'Shape' as a union case (line 2); one name has one meaning in a type body @3:5

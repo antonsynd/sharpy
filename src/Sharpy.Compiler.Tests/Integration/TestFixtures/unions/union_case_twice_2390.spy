@@ -1,0 +1,18 @@
+# #2390 (P21h D6, R-JI): a union case claims its name through the member seam like every member. A
+# second case of one name is SPY0204 at the later case's `case` keyword (it was SPY0365, now retired),
+# and a case named like one of the union's type parameters is SPY0204 at the case (it was silent, then
+# CS0102 behind SPY0908). The refused case is not a case of the union.
+
+union Shape:
+    case Circle(radius: float)
+    case Circle(diameter: float)
+    case Square(side: float)
+
+
+union Box[A]:
+    case A(v: int)
+    case Empty
+
+
+def main() -> None:
+    print("unreachable")

@@ -162,8 +162,10 @@ RETRY_REMEDIATION: list[tuple[str, str]] = [
         "Add at least one `case` to the union definition.",
     ),
     (
-        r"SPY0365",
-        "Duplicate union case name. " "Each case in a union must have a unique name.",
+        r"SPY0204.*as a (union case|type parameter)",
+        "A union case claims its name in the union body: two cases of one name, or a case "
+        "named like a type parameter, are refused. Give each case a unique name, distinct "
+        "from the union's type parameters.",
     ),
     (
         r"SPY0322",

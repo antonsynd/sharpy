@@ -542,7 +542,7 @@ public static class DiagnosticCodes
         public const string PropertyPatternUnknownField = "SPY0362"; // Active
         public const string PositionalPatternCountMismatch = "SPY0363"; // Active
         public const string UnsupportedPatternInMemberAccessOr = "SPY0364"; // Active
-        public const string DuplicateUnionCase = "SPY0365";         // Active
+        public const string DuplicateUnionCase = "SPY0365";         // Retired — folded into DuplicateDefinition (SPY0204), the member seam (P21h D6, R-JI, #2390)
         public const string UnionCaseNotFound = "SPY0366";          // Active
         public const string UnionCaseFieldMismatch = "SPY0367";     // Active
         public const string UnionCaseNameConflict = "SPY0368";      // Active

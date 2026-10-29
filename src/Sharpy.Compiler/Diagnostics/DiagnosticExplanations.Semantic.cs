@@ -1102,9 +1102,13 @@ public static partial class DiagnosticExplanations
             "Use only literal values, member access, or wildcard patterns alongside member access patterns:\nmatch x:\n    case 1 | Color.RED:\n        ...");
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateUnionCase, "Duplicate union case", "Semantic",
-            "A union type has two or more cases with the same name. Each union case must have a unique name.",
-            "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)",
-            "Give each union case a unique name:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
+            "RETIRED (P21h D6, #2390): folded into SPY0204 (duplicate definition). A union case claims its name in "
+            + "the union body through the member-declaration seam like every member, so a second case of one name — "
+            + "adjacent or after a method — or a case named like one of the union's type parameters is SPY0204 at the "
+            + "later case's 'case' keyword. No site emits SPY0365 any longer; this explanation is retained only for "
+            + "old build logs.",
+            "union Shape:\n    case Circle(radius: float)\n    case Circle(diameter: float)  # SPY0204",
+            "Give each union case a unique name, distinct from the union's type parameters:\nunion Shape:\n    case Circle(radius: float)\n    case Square(side: float)");
 
         Add(dict, DiagnosticCodes.Semantic.UnionCaseNameConflict, "Union case name conflicts with union type", "Semantic",
             "A union case has the same name as its enclosing union type. This would produce a C# nested class with the same name as its parent, which is invalid.",

@@ -1656,7 +1656,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// asserts the previous literals (identity full = 484), 16695/0. P21g verify round (2026-10-28): +1 on the four comment
     /// pins only — growth, from the round's new fixture stem events/event_function_style_then_auto_2360; control
     /// @ 21da3431f with that fixture removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: every census asserts the previous
-    /// literals, 16710/0 (with it present: 16714/1, comment full = 1640). The wide
+    /// literals, 16710/0 (with it present: 16714/1, comment full = 1640). P21h D6 (2026-10-28): +1 on the four comment
+    /// pins only — corpus growth only: without unions/union_case_twice_2390 it measures 1640/1640/1636/1636; no
+    /// lexer/parser/formatter/LSP change (control @ 35783f923 + p2-seam's D6 diff in a worktree, that fixture removed:
+    /// 16788/0; with it present: 16792/1, comment full = 1641). The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1668,10 +1671,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1640,
-            [(Comment, RangeWhole)] = 1640,
-            [(Comment, RangeLine)] = 1636,
-            [(Comment, OnType)] = 1636,
+            [(Comment, Full)] = 1641,
+            [(Comment, RangeWhole)] = 1641,
+            [(Comment, RangeLine)] = 1637,
+            [(Comment, OnType)] = 1637,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,

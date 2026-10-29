@@ -1907,20 +1907,11 @@ internal partial class TypeChecker
                 _symbolTable.Define(typeParamSymbol);
             }
 
-            // Check for duplicate case names and resolve field types
-            var seenCaseNames = new HashSet<string>();
-
+            // Resolve field types. A case over a held name (an earlier case, a type parameter) was
+            // refused by the member seam (SPY0204, P21h D6) and is not a case of the union.
             for (int i = 0; i < unionDef.Cases.Length; i++)
             {
                 var caseDef = unionDef.Cases[i];
-
-                if (!seenCaseNames.Add(caseDef.Name))
-                {
-                    AddError($"Union case '{caseDef.Name}' is already defined in union '{unionDef.Name}'",
-                        caseDef.LineStart, caseDef.ColumnStart,
-                        code: DiagnosticCodes.Semantic.DuplicateUnionCase, span: caseDef.Span);
-                    continue;
-                }
 
                 // Reject case names that collide with the union type name itself,
                 // which would produce a C# nested class with the same name as its enclosing class
@@ -1932,8 +1923,9 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                // Get the corresponding case symbol
-                var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(c => c.Name == caseDef.Name);
+                // Get the case symbol declared FOR this case — never an earlier case of the name
+                var caseSymbol = unionSymbol.UnionCases.FirstOrDefault(
+                    c => c.Name == caseDef.Name && c.DeclarationSpan == caseDef.Span);
                 if (caseSymbol == null)
                     continue;
 

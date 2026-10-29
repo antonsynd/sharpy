@@ -198,10 +198,12 @@ public class DiagnosticExplanationsTests
     [InlineData("SPY0406")]
     [InlineData("SPY0421")]
     [InlineData("SPY0422")]
+    [InlineData("SPY0365")]
     public void MemberNameConflictCodes_AreRetiredIntoDuplicateDefinition(string code)
     {
         // SPY0405/SPY0406/SPY0421/SPY0422 retired (P21g D3, #2360): a property or event sharing its name
-        // with a field or method is the member seam's SPY0204 at the later declaration. No site emits them.
+        // with a field or method is the member seam's SPY0204 at the later declaration. SPY0365 retired
+        // (P21h D6, #2390): a union case twice is the same seam's SPY0204. No site emits them.
         var explanation = DiagnosticExplanations.Get(code);
 
         Assert.NotNull(explanation);
