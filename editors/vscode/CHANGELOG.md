@@ -7,6 +7,20 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-29
+
+### Fixed
+- Code actions keep the source's shape. Wrap in try/except, Extract method/variable, Inline variable, Remove unused import, Organize Imports and the if↔match conversions move whole regions: nested blocks, continuation lines, comments, blank lines and multi-line literals survive, and every action writes the document's own line break (#2232, #2296).
+- In project mode, diagnostics are published through one route on every event (open, change, close, watched-file change, project reload). Closing a file whose unsaved buffer differed from disk republishes it from disk, and a sibling file's diagnostic no longer drops the whole publication (#2242).
+- Go-to-definition and go-to-implementation resolve a module-qualified member (`lib.build`) and a name used in a generic call, a type argument or a type alias (`Box[int](5)`) (#2242).
+- Format Document preserves blank-line placement after decorators, at body start and at the end of the file (#2239).
+
+Toolchain-side:
+- A type body gives one name one meaning at every consumer. A property's split halves (`property get a` + `property set a`) are one C# property in every host. An interface property cannot mix an abstract accessor with a bodied one (SPY0617). Two defaulted auto halves are refused (SPY0407). An explicit interface implementation (`property IShape.area`) claims no bare name, and a union case claims its name like every member (#2382, #2390).
+- A bare class-body read outside a method resolves what C# resolves in that position. An initializer reads `const` and `@static` siblings declared earlier in the body, a parameter default reads a `const`, and every other read is refused with a message naming the position (#2384).
+- A `.spyproj` `<Reference>` honours `<HintPath>` (#2223). A type definition, import, property or event outside a declaring position is SPY0708. A `;` between statements is SPY0150, and a nested `def` that redeclares a name is SPY0204.
+- Python whitespace, `str.center` padding and integer-text parsing follow CPython (#2347, #2348, #2357).
+
 ## [0.22.1] - 2026-10-10
 
 ### Fixed
