@@ -311,7 +311,7 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Records, for every module-level member (function/variable/const) brought in by a
+    /// Records, for every module-level member (function/variable/const/property) brought in by a
     /// <c>from module import name</c> from a USER module, the global::-rooted namespace segments of
     /// the C# module class that owns it (e.g. <c>poison</c> from <c>from lib import poison</c> →
     /// <c>["Poison","Lib"]</c>). A bare reference to such a member is then emitted fully qualified
@@ -332,26 +332,10 @@ internal partial class RoslynEmitter
     private void RegisterFromImportMembers(Module module)
     {
         _importedMemberContainers.Clear();
-        _ownTopLevelMemberNames.Clear();
 
-        // Names a top-level function or variable of THIS module defines: same-module member
-        // qualification applies ONLY to these names, so a wildcard-imported member (owned by another
-        // module's class) is not mis-qualified to this module. (Which imported names are bound — and
-        // so qualified through their module below — is semantic analysis's fact: an explicit import a
-        // local declaration spells is SPY0204, and a star's recorded set is post-takeover, #2385.)
-        foreach (var stmt in module.Body)
-        {
-            switch (stmt.UnwrapDecorated())
-            {
-                case FunctionDef f:
-                    _ownTopLevelMemberNames.Add(f.Name);
-                    break;
-                case Parser.Ast.VariableDeclaration v:
-                    _ownTopLevelMemberNames.Add(v.Name);
-                    break;
-            }
-        }
-
+        // Which imported names are bound — and so qualified through their module below — is semantic
+        // analysis's fact: an explicit import a local declaration spells is SPY0204, and a star's
+        // recorded set is post-takeover (#2385).
         foreach (var stmt in module.Body)
         {
             if (stmt.UnwrapDecorated() is not FromImportStatement fromImport)
