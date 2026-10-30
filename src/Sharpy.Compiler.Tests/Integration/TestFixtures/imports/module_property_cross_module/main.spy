@@ -1,0 +1,13 @@
+# #2386: a module property is exported like every module-level declaration. Each spelling reads lib's
+# `level`: from-import, qualified, alias-qualified, and star (in viastar.spy). Before the export table
+# had the property kind these were SPY0301 / SPY0203 / SPY0203 / SPY0200.
+from lib import level
+import lib
+import lib as l
+from viastar import star_level
+
+def main() -> None:
+    print(level)
+    print(lib.level)
+    print(l.level)
+    print(star_level())

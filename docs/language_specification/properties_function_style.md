@@ -366,6 +366,7 @@ os.debug_mode = True
 - **Split accessors are merged**: a separate `property get name() ...` and `property set name(value: T):` for the same name combine into a single property, following the same rules as class-level split accessors (type must match across accessors; a get-only property is read-only).
 - Access modifiers (`@private`, `@internal`, ...) apply per accessor, as at class level.
 - **A module property is a module binding**: its name has one meaning in the module. A module variable of the same name is refused (`SPY0204`, at the variable) in either source order, as a variable beside a def is.
+- **A module property is exported** like any other module-level declaration: another module reads it as `from lib import p`, as `lib.p` (also through an alias, `import lib as l` then `l.p`), or through `from lib import *`.
 
 <!-- spec-sweep: error SPY0204 -->
 ```python

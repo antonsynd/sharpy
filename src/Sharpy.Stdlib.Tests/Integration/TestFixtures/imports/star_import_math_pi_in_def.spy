@@ -1,0 +1,8 @@
+# #2385: a star-imported stdlib variable read in a def body (was SPY0909 "No CodeGenInfo for local 'pi'").
+from math import *
+
+def read() -> float:
+    return pi
+
+def main() -> None:
+    print(read())

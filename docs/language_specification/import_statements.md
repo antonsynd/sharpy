@@ -65,6 +65,25 @@ def main() -> None:
     print(a)
 ```
 
+The symbol an import names is its declaration, whichever module spelling reaches it. A package's `__init__.spy` that imports a submodule's name re-exports that very declaration, so importing the name through the package and directly from the submodule, under one name, is not a collision: the same declaration under two module spellings is one import. Two different declarations under one name still collide: with `from utils.helpers import other as fmt` in place of the second import below, that import is refused (`SPY0204`: 'fmt' already names 'utils.fmt' (imported at line 1); import 'utils.helpers.other' under another name).
+
+<!-- spec-sweep: fragment -->
+```python
+# file: utils/helpers.spy
+def fmt() -> str:
+    return "f"
+
+# file: utils/__init__.spy
+from utils.helpers import fmt     # re-exports helpers' fmt as utils.fmt
+
+# file: main.spy
+from utils import fmt             # the declaration in utils/helpers.spy, through the package
+from utils.helpers import fmt     # the same declaration, spelled directly: one import
+
+def main() -> None:
+    print(fmt())                  # f
+```
+
 A star import (`from m import *`) never refuses a module-level declaration. A class, def, enum, `type` alias, `const` or module-level property of the importing module that spells a star-imported name takes the name over, whatever its kind and source order, and so does a module variable that re-declares a star-imported variable. The module's own declaration is the one used.
 
 <!-- spec-sweep: output "1.5" -->

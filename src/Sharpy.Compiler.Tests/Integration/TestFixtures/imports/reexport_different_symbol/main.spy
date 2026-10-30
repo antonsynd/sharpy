@@ -1,0 +1,5 @@
+from utils import fmt
+from utils.helpers import other as fmt
+
+def main() -> None:
+    print(fmt())

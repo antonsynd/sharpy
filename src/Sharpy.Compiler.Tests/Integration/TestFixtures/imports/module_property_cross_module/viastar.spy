@@ -1,0 +1,5 @@
+# The star spelling lives in its own module, so `level` here is bound by the star import alone.
+from lib import *
+
+def star_level() -> int:
+    return level
