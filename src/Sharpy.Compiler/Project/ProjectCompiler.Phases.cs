@@ -304,7 +304,7 @@ internal partial class ProjectCompiler
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
                         // A star import of a module that did not resolve bound nothing (#2371).
                         if (fromImport.ImportAll && moduleInfo == null)
-                            unit.StarImportBoundNames[fromImport] = Array.Empty<string>();
+                            unit.StarImportBoundNames[fromImport] = Array.Empty<StarBoundName>();
                         if (moduleInfo != null)
                         {
                             // Use ReExportedSymbols which have DefiningModule set for cross-module type references
@@ -330,9 +330,11 @@ internal partial class ProjectCompiler
                                 // Star-imported names that displace a builtin are RECORDED here and
                                 // reported where they are used, not here (#1324, C#'s CS0104 rule).
                                 // This is the one place a star import binds its names — so the names it
-                                // BOUND are recorded here too, for the emitter (#2371, D5 (i)): a name a
-                                // declaration of this file keeps is refused to the star and absent.
-                                var boundNames = new List<string>();
+                                // BOUND are recorded here too, each beside the symbol it bound (#2371, D5 (i);
+                                // #2385): a name a declaration of this file keeps is refused to the star and
+                                // absent, and a module variable that takes a name over later is filtered out
+                                // after type checking by identity (CodeGenInfoComputer).
+                                var boundNames = new List<StarBoundName>();
                                 unit.StarImportBoundNames[fromImport] = boundNames;
                                 foreach (var (name, symbol) in symbolsToImport)
                                 {
@@ -350,7 +352,7 @@ internal partial class ProjectCompiler
                                             warningTarget: null, isRegistryOwnBinding: false,
                                             d => Report(d, fromImport.LineStart, fromImport.ColumnStart, fromImport.Span)))
                                     {
-                                        boundNames.Add(name);
+                                        boundNames.Add(new StarBoundName(name, symbolToRegister));
                                         // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                         if (ImportResolver.OverloadsFor(moduleInfo, name) is { Count: > 1 } overloads)
                                         {

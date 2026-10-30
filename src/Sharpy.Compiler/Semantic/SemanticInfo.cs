@@ -343,8 +343,10 @@ public class SemanticInfo : ISemanticQuery
     // empty list when none bound). A declaration of the file that spells a star-exported name keeps the
     // name (the binder refuses the star there), so it is absent here and the emitter does not qualify it
     // through the star module (#2371). Recorded on the unit in Phase 4, copied into the per-file info when
-    // Phase 5 creates it, read by the emitter — Critical Rule 2 pattern (b).
-    private readonly ConcurrentDictionary<FromImportStatement, IReadOnlyList<string>> _starImportBoundNames =
+    // Phase 5 creates it, rewritten to the post-takeover set by CodeGenInfoComputer (a module variable of
+    // the file that takes a star name over is not the bound symbol, P21i D1, #2385), read by the emitter as
+    // names — Critical Rule 2 pattern (b).
+    private readonly ConcurrentDictionary<FromImportStatement, IReadOnlyList<StarBoundName>> _starImportBoundNames =
         new(ReferenceEqualityComparer.Instance);
 
     // Map patterns to their resolved union case type symbol AND the scrutinee union's substituted
@@ -1693,18 +1695,28 @@ public class SemanticInfo : ISemanticQuery
         _moduleLayouts.TryGetValue(node, out var layout) ? layout : null;
 
     /// <summary>
-    /// Records the names a <c>from m import *</c> bound in its file's module scope (#2371) — an empty
-    /// list when it bound none.
+    /// Records the names a <c>from m import *</c> bound in its file's module scope, each beside the
+    /// symbol it bound (#2371, #2385) — an empty list when it bound none.
     /// </summary>
-    public void SetStarImportBoundNames(FromImportStatement starImport, IReadOnlyList<string> boundNames) =>
+    public void SetStarImportBoundNames(FromImportStatement starImport, IReadOnlyList<StarBoundName> boundNames) =>
         _starImportBoundNames[starImport] = boundNames;
 
     /// <summary>
-    /// The names a <c>from m import *</c> bound in its file's module scope, or null when nothing was
-    /// recorded for it (#2371) — an absence the emitter treats as an internal error.
+    /// The (name, bound symbol) pairs a <c>from m import *</c> bound in its file's module scope, or null
+    /// when nothing was recorded for it (#2385).
+    /// </summary>
+    public IReadOnlyList<StarBoundName>? GetStarImportBindings(FromImportStatement starImport) =>
+        _starImportBoundNames.TryGetValue(starImport, out var bindings) ? bindings : null;
+
+    /// <summary>
+    /// The names a <c>from m import *</c> bound in its file's module scope — a projection of
+    /// <see cref="GetStarImportBindings"/> — or null when nothing was recorded for it (#2371); an
+    /// absence the emitter treats as an internal error.
     /// </summary>
     public IReadOnlyList<string>? GetStarImportBoundNames(FromImportStatement starImport) =>
-        _starImportBoundNames.TryGetValue(starImport, out var names) ? names : null;
+        _starImportBoundNames.TryGetValue(starImport, out var bindings)
+            ? bindings.Select(binding => binding.Name).ToList()
+            : null;
 
     public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
         _returnLowerings[ret] = lowering;
