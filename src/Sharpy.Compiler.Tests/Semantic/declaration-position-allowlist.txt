@@ -293,17 +293,8 @@ class-body-read × struct × static-property-default × static-method × before 
 # read anywhere is SPY0909 "No CodeGenInfo for local" (the per-name CodeGenInfo is computed for fromImport.Names, which
 # a star has none of), the stdlib os.environ star cell likewise, and the project module's property is SPY0200 (the
 # export table has no PropertyDef arm). The const/def/class/alias/taken-over/explicit/qualified cells are the controls
-# (green at the base, never listed). Phases 2–3 drain these rows.
-import-binding × from-import-star × var × module × stdlib  # #2385 star × var: ice SPY0909 'pi'
-import-binding × from-import-star × var × def × stdlib  # #2385 star × var: ice SPY0909 'pi'
-import-binding × from-import-star × var × method × stdlib  # #2385 star × var: ice SPY0909 'pi'
-import-binding × from-import-star × property × module × stdlib  # #2385 star × os.environ: ice SPY0909 'environ'
-import-binding × from-import-star × property × def × stdlib  # #2385 star × os.environ: ice SPY0909 'environ'
-import-binding × from-import-star × property × method × stdlib  # #2385 star × os.environ: ice SPY0909 'environ'
-project × star-kind × var × module  # #2385 star × var: ice SPY0909 'level'
-project × star-kind × var × def  # #2385 star × var: ice SPY0909 'level'
-project × star-kind × var × method  # #2385 star × var: ice SPY0909 'level'
-project × star-kind × var × def (incremental, cold stage)  # #2385 star × var into an empty cache: ice SPY0909 'level' — the WARM stage (consts.spy cache-served) builds and prints 9: warm ≠ cold, a cache-restored symbol carries the CodeGenInfo the cold route never computes (measured @ 04f9138b3; ledger)
+# (green at the base, never listed). Phase 2 drained the #2385 rows (CodeGen info computed for the post-takeover star
+# set); the property rows drain in Phase 3.
 project × star-kind × property × module  # #2386 the export table has no property: SPY0200 'prop'
 project × star-kind × property × def  # #2386 the export table has no property: SPY0200 'prop'
 project × star-kind × property × method  # #2386 the export table has no property: SPY0200 'prop'
@@ -314,7 +305,7 @@ project × star-kind × property × method  # #2386 the export table has no prop
 # the global:: spelling cell is red) and CS0103 behind SPY0908 inside a type (method, nested method); and the export
 # table (ModuleLoader.ExtractExportedSymbol) has no PropertyDef arm, so a module property is unreachable from another
 # module on every spelling (SPY0301 / SPY0203 / SPY0203 / SPY0200 — the #2131 cell) and through a package __init__.
-# The var × star cell is the (i) star × var cell (SPY0909, #2385). Phases 2–3 drain these rows.
+# The var × star cell was the (i) star × var cell (SPY0909, #2385), drained in Phase 2. Phase 3 drains these rows.
 module-member × property-auto × module  # #2386 emitted bare, not global::Prog.ProgModule.AutoP (runs 6)
 module-member × property-auto × function  # #2386 emitted bare, not global::Prog.ProgModule.AutoP (runs 6)
 module-member × property-auto × method  # #2386 ice SPY0908 CS0103 'AutoP'
@@ -327,7 +318,6 @@ module-member × property-split × module  # #2386 emitted bare, not global::Pro
 module-member × property-split × function  # #2386 emitted bare, not global::Prog.ProgModule.Sp (runs 8)
 module-member × property-split × method  # #2386 ice SPY0908 CS0103 'Sp'
 module-member × property-split × nested-method  # #2386 ice SPY0908 CS0103 'Sp'
-project × module-member × var × star  # #2385 star × var: ice SPY0909 'count'
 project × module-member × property-auto × from-import  # #2386 the export table has no property: SPY0301 + SPY0200 'auto_p'
 project × module-member × property-auto × qualified  # #2386 the export table has no property: SPY0203 'auto_p'
 project × module-member × property-auto × alias-qualified  # #2386 the export table has no property: SPY0203 'auto_p'
