@@ -307,3 +307,38 @@ project × star-kind × var × def (incremental, cold stage)  # #2385 star × va
 project × star-kind × property × module  # #2386 the export table has no property: SPY0200 'prop'
 project × star-kind × property × def  # #2386 the export table has no property: SPY0200 'prop'
 project × star-kind × property × method  # #2386 the export table has no property: SPY0200 'prop'
+
+# P21i (ii) — module-member kind × read site (single file) and kind × consumer (cross-module), #2386. At the base the
+# emitter qualifies a same-module member only when its name is in a two-kind hand list (FunctionDef /
+# VariableDeclaration), so a module PROPERTY is emitted bare: legal inside the module class (module body, function —
+# the global:: spelling cell is red) and CS0103 behind SPY0908 inside a type (method, nested method); and the export
+# table (ModuleLoader.ExtractExportedSymbol) has no PropertyDef arm, so a module property is unreachable from another
+# module on every spelling (SPY0301 / SPY0203 / SPY0203 / SPY0200 — the #2131 cell) and through a package __init__.
+# The var × star cell is the (i) star × var cell (SPY0909, #2385). Phases 2–3 drain these rows.
+module-member × property-auto × module  # #2386 emitted bare, not global::Prog.ProgModule.AutoP (runs 6)
+module-member × property-auto × function  # #2386 emitted bare, not global::Prog.ProgModule.AutoP (runs 6)
+module-member × property-auto × method  # #2386 ice SPY0908 CS0103 'AutoP'
+module-member × property-auto × nested-method  # #2386 ice SPY0908 CS0103 'AutoP'
+module-member × property-get × module  # #2386 emitted bare, not global::Prog.ProgModule.FgetP (runs 7)
+module-member × property-get × function  # #2386 emitted bare, not global::Prog.ProgModule.FgetP (runs 7)
+module-member × property-get × method  # #2386 ice SPY0908 CS0103 'FgetP'
+module-member × property-get × nested-method  # #2386 ice SPY0908 CS0103 'FgetP'
+module-member × property-split × module  # #2386 emitted bare, not global::Prog.ProgModule.Sp (runs 8)
+module-member × property-split × function  # #2386 emitted bare, not global::Prog.ProgModule.Sp (runs 8)
+module-member × property-split × method  # #2386 ice SPY0908 CS0103 'Sp'
+module-member × property-split × nested-method  # #2386 ice SPY0908 CS0103 'Sp'
+project × module-member × var × star  # #2385 star × var: ice SPY0909 'count'
+project × module-member × property-auto × from-import  # #2386 the export table has no property: SPY0301 + SPY0200 'auto_p'
+project × module-member × property-auto × qualified  # #2386 the export table has no property: SPY0203 'auto_p'
+project × module-member × property-auto × alias-qualified  # #2386 the export table has no property: SPY0203 'auto_p'
+project × module-member × property-auto × star  # #2386 the export table has no property: SPY0200 'auto_p'
+project × module-member × property-get × from-import  # #2386 the export table has no property: SPY0301 + SPY0200 'fget_p'
+project × module-member × property-get × qualified  # #2386 the export table has no property: SPY0203 'fget_p'
+project × module-member × property-get × alias-qualified  # #2386 the export table has no property: SPY0203 'fget_p'
+project × module-member × property-get × star  # #2386 the export table has no property: SPY0200 'fget_p'
+project × module-member × property-split × from-import  # #2386 the export table has no property: SPY0301 + SPY0200 'sp'
+project × module-member × property-split × qualified  # #2386 the export table has no property: SPY0203 'sp'
+project × module-member × property-split × alias-qualified  # #2386 the export table has no property: SPY0203 'sp'
+project × module-member × property-split × star  # #2386 the export table has no property: SPY0200 'sp'
+project × module-member × property-auto × pkg-init-reexport  # #2386 the export table has no property: SPY0301 in pkg/__init__.spy and main.spy, SPY0200 'level'
+project × module-member × property-auto × from-import (incremental)  # #2386 the export table has no property, lib.spy cache-served: SPY0301 + SPY0200 'auto_p'

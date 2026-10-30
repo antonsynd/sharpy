@@ -23,7 +23,10 @@ namespace Sharpy.Compiler.Tests.Project;
 /// not lib's <c>9</c>) and its <c>--incremental</c> twin (the warm rebuild, lib.spy served from the cache). P21i
 /// (#2385, #2386) adds the star × exported KIND × read POSITION cells from a project module (<c>consts.spy</c>: variable,
 /// const, def, class, alias, property, the taken-over variable; module body, def, method — the single-file generator's
-/// <c>StarReadPositions</c>), their explicit/qualified controls, and the warm twin of the star × var × def cell.
+/// <c>StarReadPositions</c>), their explicit/qualified controls, and the warm twin of the star × var × def cell; and the
+/// module-member KIND × CONSUMER cells (<c>lib.spy</c>: var, const, def, auto / getter / split property × from-import,
+/// qualified, alias-qualified, star — the property kind's four cells are the #2131 cell re-homed on #2386), the package
+/// <c>__init__</c> re-export of a module property, and the warm twin of the property's from-import.
 ///
 /// <para><b>Ratchet.</b> Every cell is judged into failures (exact errors and shadowing warnings in main.spy, the
 /// run's stdout); an SPY09xx is hard. The cells ratchet over the declaration-position generator's allowlist
@@ -64,6 +67,7 @@ public class ImportBindingProjectRouteTests
     internal static IEnumerable<string> CellIds()
         => Cells().Select(c => (string)c[0]!).Append(IncrementalStarPropertyId)
             .Concat(StarKindCells().Select(c => c.Id)).Concat(IncrementalStarVarDefIds)
+            .Concat(ModuleMemberCells().Select(c => c.Id)).Append(IncrementalModulePropertyId)
             .Select(id => $"project × {id}");
 
     private const string MainOk = "\ndef main() -> None:\n    print(\"ok\")\n";
@@ -306,6 +310,104 @@ public class ImportBindingProjectRouteTests
 
         Judge($"project × {IncrementalStarVarDefIds[0]}", coldFailures, allowlist, problems);
         Judge($"project × {IncrementalStarVarDefIds[1]}", warmFailures, allowlist, problems);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // P21i (ii): module-member kind × consumer, cross-module (#2386 — the #2131 cell re-homed; var × star is #2385's).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /// <summary>The project module every kind × consumer cell imports: one member of every module-level kind, each
+    /// with its own value.</summary>
+    private const string KindsLib =
+        "count: int = 5\n"
+        + "const LIMIT: int = 3\n"
+        + "def helper() -> int:\n"
+        + "    return 4\n"
+        + "property auto_p: int = 6\n"
+        + "property get fget_p() -> int:\n"
+        + "    return 7\n"
+        + "property get sp: int = 8\n"
+        + "property set sp: int\n";
+
+    /// <summary>(kind, the exported name, the read expression given the qualifier — empty for a bare read —, the emitted
+    /// member, the value).</summary>
+    private static readonly (string Kind, string Name, string Read, string Member, string Value)[] ModuleMemberKinds =
+    {
+        ("var", "count", "count", "Count", "5"),
+        ("const", "LIMIT", "LIMIT", "LIMIT", "3"),
+        ("def", "helper", "helper()", "Helper()", "4"),
+        ("property-auto", "auto_p", "auto_p", "AutoP", "6"),
+        ("property-get", "fget_p", "fget_p", "FgetP", "7"),
+        ("property-split", "sp", "sp", "Sp", "8"),
+    };
+
+    /// <summary>The four import spellings a module member is reached through: (consumer, the import line given the
+    /// name, the qualifier the read is spelled with).</summary>
+    private static readonly (string Consumer, Func<string, string> Import, string Qualifier)[] ModuleMemberConsumers =
+    {
+        ("from-import", n => $"from lib import {n}", ""),
+        ("qualified", _ => "import lib", "lib."),
+        ("alias-qualified", _ => "import lib as l", "l."),
+        ("star", _ => "from lib import *", ""),
+    };
+
+    /// <summary>The kind × consumer cells, read in <c>main</c> into an annotated local: ids
+    /// <c>module-member × &lt;kind&gt; × &lt;consumer&gt;</c>. Expected: no diagnostic, the lib's value, and the reference
+    /// emitted against the LIB's container <c>global::ImportBindingRoute.Lib.LibModule.&lt;Member&gt;</c> (not the importing
+    /// module's — a mis-qualification to the own module is what goes red). Two package cells ride along: a module
+    /// property re-exported through <c>pkg/__init__.spy</c> (<c>from pkg.sub import level</c>; main <c>from pkg import
+    /// level</c>), with the variable twin as its control — the re-export's container is <c>PkgModule</c>, the delegating
+    /// member the <c>__init__</c> emits.</summary>
+    internal static IEnumerable<RouteCell> ModuleMemberCells()
+    {
+        foreach (var kind in ModuleMemberKinds)
+        {
+            foreach (var consumer in ModuleMemberConsumers)
+            {
+                var main = $"{consumer.Import(kind.Name)}\n\ndef main() -> None:\n    x: int = {consumer.Qualifier}{kind.Read}\n    print(x)\n";
+                yield return new RouteCell($"module-member × {kind.Kind} × {consumer.Consumer}", main, new string[0],
+                    kind.Value + "\n", $"global::ImportBindingRoute.Lib.LibModule.{kind.Member}", new[] { ("lib.spy", KindsLib) });
+            }
+        }
+
+        foreach (var (kind, declaration) in new[] { ("var", "level: int = 5\n"), ("property-auto", "property level: int = 5\n") })
+        {
+            yield return new RouteCell($"module-member × {kind} × pkg-init-reexport",
+                "from pkg import level\n\ndef main() -> None:\n    x: int = level\n    print(x)\n", new string[0], "5\n",
+                "global::ImportBindingRoute.Pkg.PkgModule.Level",
+                new[] { ("pkg/__init__.spy", "from pkg.sub import level\n"), ("pkg/sub.spy", declaration) });
+        }
+    }
+
+    public static IEnumerable<object[]> ModuleMemberCellIds() => ModuleMemberCells().Select(c => new object[] { c.Id });
+
+    private static RouteCell ModuleMemberCell(string id) => ModuleMemberCells().Single(c => c.Id == id);
+
+    [Theory]
+    [MemberData(nameof(ModuleMemberCellIds))]
+    public void ModuleMember_KindByConsumer_HoldsOnTheProjectRoute(string id)
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = ModuleMemberCell(id);
+        using var helper = NewHelper("ImportBindingRoute", cell.Main, cell.Libs);
+        var failures = JudgeRun(cell, helper);
+        Judge($"project × {cell.Id}", failures, allowlist, problems);
+    }
+
+    /// <summary>The id of the <c>--incremental</c> twin of the module property's from-import cell.</summary>
+    private const string IncrementalModulePropertyId = "module-member × property-auto × from-import (incremental)";
+
+    /// <summary>The <c>--incremental</c> twin of <c>from lib import auto_p</c> (#2386; the cache round-trips
+    /// <c>IsModuleProperty</c>/<c>HasPropertyGetter</c>): the seed is the variable's from-import cell, lib.spy is
+    /// cache-served on the warm build, and the warm program must print the property's <c>6</c>.</summary>
+    [Fact]
+    public void ModuleProperty_FromImport_HoldsOnAnIncrementalRebuild()
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = ModuleMemberCell("module-member × property-auto × from-import");
+        var seed = ModuleMemberCell("module-member × var × from-import");
+        var failures = JudgeWarm(cell, seed, "ImportBindingRouteWarm", "lib.spy");
+        Judge($"project × {IncrementalModulePropertyId}", failures, allowlist, problems);
     }
 
     /// <summary>Compiles and runs <paramref name="helper"/>'s project and judges it against <paramref name="cell"/>: the
