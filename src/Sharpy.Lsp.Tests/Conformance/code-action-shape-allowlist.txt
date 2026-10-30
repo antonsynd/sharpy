@@ -14,9 +14,9 @@
 # #2294 synthesized type spellings (Extract method parameter inference, Extract variable annotation);
 # #2296 code actions that are not meaning-preserving (diagnostics of every other action).
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
-extract-method identity diagnostics 2913 00dc19608c14a98d 835 2adeebeb66ef3746 # #2294 adds SPY0202 (and 5588 other cells)
+extract-method identity diagnostics 2913 00dc19608c14a98d 836 a6be800c445f16b5 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 553 61bf1fd15f8c0698 553 61bf1fd15f8c0698 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
-extract-variable identity diagnostics 338 71224acf91115f32 62 362da23e6a991098 # #2294 adds SPY0220 (and 257 other cells)
+extract-variable identity diagnostics 338 71224acf91115f32 63 0152e075c111d27e # #2294 adds SPY0220 (and 257 other cells)
 extract-variable identity parse 57 de496a333bd9e5f9 57 de496a333bd9e5f9 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
 implement identity diagnostics 47 5f85d258900d6553 6 958ea3e0a6810d12 # #2296 adds SPY0224,SPY0522 (and 13 other cells)
 inline-function identity diagnostics 45 08d2287b43ce13a6 14 636bc0dd9745c36b # #2296 removes an error (and 36 other cells)
@@ -24,7 +24,7 @@ inline-variable identity diagnostics 138 1676ba8bb8bfa786 19 cec26b21b9ba03b7 # 
 inline-variable identity parse 1 938c261138eab501 1 938c261138eab501 # #2232 does not parse: inlining a module variable that a class-body read binds (classes/class_body_inherited_read_outer_binding_2384); FULL columns copied from regular, unmeasured @ 1b97a20ed
 organize-imports identity diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore identity diagnostics 7 aef8d5f7d19d8d95 1 47ec1f14bc7f4d75 # #2296 removes an error (and 6 other cells)
-remove-annotation identity diagnostics 529 8bf0ad3d9d522688 92 7a3dd60ccd03fee1 # #2296 adds SPY0227 (and 518 other cells)
+remove-annotation identity diagnostics 529 8bf0ad3d9d522688 93 c1896262015eb786 # #2296 adds SPY0227 (and 518 other cells)
 remove-import identity diagnostics 18 b5484e02da1684c7 4 c64f809e53e1ecee # #2296 removes an error
 rename identity diagnostics 45 6f7264f755f3f13f 5 15f4ccba7bc6d7a7 # #2296 adds SPY0200 (and 33 other cells)
 to-if identity diagnostics 4 35d1e4876190ef73 1 96a879de4c764cb2 # #2296 adds SPY0402 (and 4 other cells)
