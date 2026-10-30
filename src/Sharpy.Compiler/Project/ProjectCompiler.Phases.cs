@@ -614,14 +614,24 @@ internal partial class ProjectCompiler
     /// in Phase 4b, return type resolution in Phase 5) are visible everywhere.
     ///
     /// The symbol is the resolved source module's own binding of the name
-    /// (<see cref="ModuleScopeOf"/>); a module that is not one of this compilation's sources keeps
-    /// the re-exported copy. There is no search of every module by NAME: it bound a different
-    /// module's same-named declaration whenever the scope lookup missed (P21i L1), and with the
-    /// scope found from the resolved unit no project-module from-import reaches it (measured: the
-    /// import, re-export, package, star, incremental and FileBased suites stay green without it).
+    /// (<see cref="ModuleScopeOf"/>); when a re-exporter has not bound it yet (Phase 4 reaches the
+    /// importer first), the declaration the re-export names, found from its declaring FILE
+    /// (<see cref="OwnDeclarationOf"/>, P21i F2a); a module that is not one of this compilation's
+    /// sources keeps the re-exported copy. There is no search of every module by NAME: it bound a
+    /// different module's same-named declaration whenever the scope lookup missed (P21i L1).
     /// </summary>
-    private static Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
-        => sourceModuleScope?.Lookup(originalName, searchParent: false) ?? reExported;
+    private Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
+    {
+        if (sourceModuleScope?.Lookup(originalName, searchParent: false) is { } bound)
+            return bound;
+        // A re-exporter that renamed the declaration (`from core import helper as h`) binds a name the
+        // declaration does not carry: the import keeps its clone, chained to the declaration.
+        return OwnDeclarationOf(reExported) is { } declaration
+            ? string.Equals(declaration.Name, originalName, StringComparison.Ordinal)
+                ? declaration
+                : reExported with { OriginSymbol = declaration }
+            : reExported;
+    }
 
     /// <summary>
     /// The plain-import twin of <see cref="ResolveImportSymbol"/>: given a name that
@@ -673,7 +683,33 @@ internal partial class ProjectCompiler
 
         var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
         var own = moduleScope?.Lookup(name, searchParent: false);
-        return own != null && own.GetType() == extracted.GetType() ? own : null;
+        if (own != null && own.GetType() == extracted.GetType())
+            return own;
+
+        // A re-exporter whose own imports Phase 4 has not bound yet (it sorts after the importer)
+        // holds no binding of the name: its export is the declaration the re-export names, found in
+        // the scope of the file that declares it (P21i F2a) — never the extraction, which carries no
+        // materialized C# name.
+        return OwnDeclarationOf(extracted) is { } declaration && declaration.GetType() == extracted.GetType()
+            ? declaration
+            : null;
+    }
+
+    /// <summary>
+    /// The compilation's own declaration a symbol stands for — an import clone or a loader extraction
+    /// of it — found from its declaration root in the scope of the compilation unit that DECLARES it;
+    /// null when the root is not a declaration of this compilation's sources (a .NET or Stdlib member,
+    /// a file outside the source set, a cache-restored clone that lost its chain). The materialized
+    /// facts (CodeGenInfo, checked types) live on this object, not on an extraction (P21i F2a).
+    /// </summary>
+    private Symbol? OwnDeclarationOf(Symbol symbol)
+    {
+        var root = symbol.DeclarationRoot();
+        if (root.IsReExport || root.DeclaringFilePath is not { Length: > 0 } declaringFile
+            || _projectModel?.GetUnit(declaringFile) is not { } declaringUnit)
+            return null;
+        var own = SymbolTable.GetModuleScope(declaringUnit.ModulePath)?.Lookup(root.Name, searchParent: false);
+        return own != null && own.GetType() == root.GetType() ? own : null;
     }
 
     /// <summary>
@@ -710,10 +746,22 @@ internal partial class ProjectCompiler
         if (moduleScope == null)
             return null;
 
-        return moduleScope.LookupFunctionOverloads(name, searchParent: false)
+        var owned = moduleScope.LookupFunctionOverloads(name, searchParent: false)
             ?? (moduleScope.Lookup(name, searchParent: false) is FunctionSymbol single
                 ? new List<FunctionSymbol> { single }
                 : null);
+        if (owned != null)
+            return owned;
+
+        // The re-exporter has not bound the name yet: the overloads of the declaration it re-exports,
+        // in the scope of the file that declares it (the ResolveOwnExportedSymbol rule, P21i F2a).
+        if (!moduleInfo.ExportedSymbols.TryGetValue(name, out var extracted)
+            || OwnDeclarationOf(extracted) is not FunctionSymbol declaration
+            || declaration.DeclaringFilePath is not { } declaringFile
+            || _projectModel?.GetUnit(declaringFile) is not { } declaringUnit)
+            return null;
+        return SymbolTable.GetModuleScope(declaringUnit.ModulePath)?.LookupFunctionOverloads(declaration.Name, searchParent: false)
+            ?? new List<FunctionSymbol> { declaration };
     }
 
     /// <summary>
