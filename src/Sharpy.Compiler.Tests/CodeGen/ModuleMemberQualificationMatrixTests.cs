@@ -597,6 +597,56 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 
+    // ── One identifier authority for an imported module member (P21i D5, #2386): the reference is
+    //    spelled by the DECLARATION's materialized name for every module-level kind, as a function
+    //    already was (#2065). Discriminating cell: a SCREAMING_CASE module property, declared through
+    //    the field speller (`CapP`) while the import-side casing rule keeps the name verbatim
+    //    (`CAP_P`). The rule is only observable on an ALIAS (a clone): an unaliased import binds the
+    //    declaration's own symbol, whose CodeGenInfo in the project binding is the declaring module's.
+    //    The escaped property (`Debug`) and the unaliased twin are controls — both spellings agree on
+    //    them (the escape follows the clone's origin chain either way).
+
+    private const string DeclaredNameLib = "property CAP_P: int = 9\nproperty `Debug`: int = 2\n";
+
+    public static IEnumerable<object[]> ImportedMemberDeclaredNameCells()
+    {
+        yield return new object[]
+        {
+            "screaming_property_aliased",
+            "from lib import CAP_P as c\n\ndef main() -> None:\n    print(c)\n",
+            "global::Test.Lib.LibModule.CapP", "9\n",
+        };
+        yield return new object[]
+        {
+            "screaming_property_unaliased (control)",
+            "from lib import CAP_P\n\ndef main() -> None:\n    print(CAP_P)\n",
+            "global::Test.Lib.LibModule.CapP", "9\n",
+        };
+        yield return new object[]
+        {
+            "escaped_property_aliased (control)",
+            "from lib import `Debug` as d\n\ndef main() -> None:\n    print(d)\n",
+            "global::Test.Lib.LibModule.Debug", "2\n",
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(ImportedMemberDeclaredNameCells))]
+    public void CrossModule_ImportedMember_IsSpelledByItsDeclaration(
+        string id, string main, string expectedSpelling, string expectedStdout)
+    {
+        Output.WriteLine($"[declared name] {id} → {expectedSpelling}");
+        var run = RunProject("Test", ("lib.spy", DeclaredNameLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            $"{id}: the project must compile and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be(expectedStdout);
+        run.GeneratedCSharp.Should().Contain(expectedSpelling,
+            $"{id}: an imported module member is spelled by its declaration's materialized name, "
+            + "whatever the import spells (P21i D5)");
+    }
+
     // ── Import-form cells: every USER-module import form inlines the reference as
     //    global::<RootNs>.<Module>.<Member> (no directive), including dotted-package and aliased
     //    forms — the import kinds the class-2 deletion relocated here (plan lines 437/444).

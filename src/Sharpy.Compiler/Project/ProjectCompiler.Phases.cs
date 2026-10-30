@@ -417,6 +417,18 @@ internal partial class ProjectCompiler
                                         {
                                             symbolToRegister = aliasFunc with { OriginSymbol = importedOverloads[0] };
                                         }
+                                        // The variable twin (P21i D5, #2386): an aliased module variable,
+                                        // const or property is a clone of the loader's extraction, so its
+                                        // origin chain must end at THIS compilation's declaration — the
+                                        // object whose CodeGenInfo names the emitted member. Re-derived from
+                                        // the import spelling instead, `from lib import CAP_P as c` read
+                                        // `LibModule.CAP_P` for the declared `CapP` (CS0117 behind SPY0908).
+                                        else if (importAlias.AsName != null && registryBinding == null
+                                            && symbolToRegister is VariableSymbol { OriginSymbol: { } extractedOrigin } aliasVar
+                                            && ResolveOwnExportedSymbol(moduleInfo, lookupName, extractedOrigin) is { } ownDeclaration)
+                                        {
+                                            symbolToRegister = aliasVar with { OriginSymbol = ownDeclaration };
+                                        }
 
                                         // The registry's own binding under its own name shadows nothing (#1322).
                                         // The identity is the exported symbol, never the alias (K1, #2359).
