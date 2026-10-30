@@ -99,6 +99,8 @@ public class ManglingCollisionGridTests : IntegrationTestBase
         new("def", "def h() -> int:\n    return 7\n", "def `h`() -> int:\n    return 7\n", "h()"),
         new("modvar", "h: int = 7\n", "`h`: int = 7\n", "h"),
         new("modconst", "const h: int = 7\n", "const `h`: int = 7\n", "h"),
+        // P21i P6.5: a module property is a member of <X> like the three above.
+        new("modproperty", "property h: int = 7\n", "property `h`: int = 7\n", "h"),
     };
 
     /// <summary>
@@ -111,7 +113,55 @@ public class ManglingCollisionGridTests : IntegrationTestBase
         ("members__modvar_h__def_H", "h: int = 7\n\ndef H() -> int:\n    return 6\n"),
         ("types__class_H__enum_h", "class H:\n    v: int = 6\n\nenum h:\n    A = 1\n"),
         ("types__delegate_H__struct_h", "delegate H() -> None\n\nstruct h:\n    v: int = 6\n"),
+        // P21i P6.5: the module-level kinds the collision check missed — a property among <X>'s members, a
+        // union among the sibling types (CS0102 / CS0101 behind SPY0908 before).
+        ("members__modproperty_h__modproperty_H", "property h: int = 7\n\nproperty H: int = 6\n"),
+        ("members__modproperty_h__def_H", "property h: int = 7\n\ndef H() -> int:\n    return 6\n"),
+        ("members__modvar_h__modproperty_H", "h: int = 7\n\nproperty H: int = 6\n"),
+        ("types__union_H__class_h", "union H:\n    case A\n\nclass h:\n    v: int = 6\n"),
+        ("types__union_H__union_h", "union H:\n    case A\n\nunion h:\n    case B\n"),
     };
+
+    /// <summary>
+    /// P21i P6.5: the SCREAMING/snake spellings of the property kind against every member kind (each pair
+    /// compiles to one C# member name and is refused with SPY0522 naming both), the var + var twin that was
+    /// already refused (the control), the split halves of ONE property (one Sharpy name — no collision), and
+    /// a type alias beside a same-cased class (erased — compiles). (key, source, expected outcome, the two
+    /// spellings a refusal names.)
+    /// </summary>
+    public static IEnumerable<object[]> SpellingPairCells()
+    {
+        yield return new object[] { "property CAP_P + property cap_p", "property CAP_P: int = 7\n\nproperty cap_p: int = 6\n", "Refused", "CAP_P|cap_p" };
+        yield return new object[] { "property CAP_P + def cap_p", "property CAP_P: int = 7\n\ndef cap_p() -> int:\n    return 6\n", "Refused", "CAP_P|cap_p" };
+        yield return new object[] { "var cap_q + property CAP_Q", "cap_q: int = 1\n\nproperty CAP_Q: int = 7\n", "Refused", "cap_q|CAP_Q" };
+        yield return new object[] { "property get_x + def GetX", "property get_x: int = 1\n\ndef GetX() -> int:\n    return 2\n", "Refused", "get_x|GetX" };
+        yield return new object[] { "var cap_x + var CapX (control)", "cap_x: int = 1\n\nCapX: int = 2\n", "Refused", "cap_x|CapX" };
+        yield return new object[] { "property split halves (control)", "_v: int = 1\nproperty get sp() -> int:\n    return _v\nproperty set sp(x: int):\n    _v = x\n", "Compiles", "" };
+        yield return new object[] { "type Num + class num (control)", "type Num = int\n\nclass num:\n    v: int = 6\n", "Compiles", "" };
+    }
+
+    [Theory]
+    [MemberData(nameof(SpellingPairCells))]
+    public void SpellingPair_IsRefusedOrCompiles_NeverIces(string cellKey, string source, string expected, string names)
+    {
+        var result = CompilerApiForGrid().Compile(source, new CompilerOptions { OutputType = "library" });
+        var errors = result.Diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).ToList();
+        _output.WriteLine($"{cellKey}: expected {expected}: {Describe(errors)}");
+
+        Assert.DoesNotContain(errors, d => d.Code != null && d.Code.StartsWith("SPY09", StringComparison.Ordinal));
+        if (expected == nameof(Outcome.Refused))
+        {
+            var collision = errors.SingleOrDefault(d => d.Code == DiagnosticCodes.CodeGen.MemberNameCollision);
+            Assert.True(collision != null, $"{cellKey}: expected SPY0522, got: {Describe(errors)}");
+            foreach (var name in names.Split('|'))
+                Assert.Contains($"'{name}'", collision!.Message, StringComparison.Ordinal);
+            return;
+        }
+
+        Assert.True(errors.Count == 0, $"{cellKey}: expected a clean compile, got: {Describe(errors)}");
+        var csErrors = BindGeneratedCSharp(result);
+        Assert.True(csErrors.Count == 0, $"{cellKey}: generated C# does not bind: {string.Join(" ;; ", csErrors)}");
+    }
 
     public static IEnumerable<object[]> GridCells()
     {

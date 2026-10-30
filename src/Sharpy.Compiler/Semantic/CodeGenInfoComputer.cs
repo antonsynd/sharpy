@@ -1643,6 +1643,25 @@ internal class CodeGenInfoComputer
                         delegateDef.NameLineStart, delegateDef.NameColumnStart,
                         delegateDef.LineStart, delegateDef.ColumnStart);
                     break;
+                // The module-level kinds this switch enumerates are the kinds the module EXPORTS
+                // (ModuleLoader.ExtractExportedSymbol's arms; a `type` alias emits no C# member and is
+                // the one exclusion) — CodeGenInfoComputerTotalityTests derives them from that roster,
+                // so a kind the module exports cannot be missing here. A module property is a member of
+                // <X>, a union a namespace-sibling type; without these two arms `property CAP_P` beside
+                // `property cap_p` (or `def cap_p`, or `cap_q: int` beside `property CAP_Q`) and
+                // `union Shape` beside `class shape` reached C# as CS0102 / CS0101 behind SPY0908
+                // (P21i P6.5).
+                case PropertyDef propertyDef:
+                    symbolName = propertyDef.Name;
+                    stmtPos = DeclarationPosition.From(
+                        propertyDef.NameLineStart, propertyDef.NameColumnStart,
+                        propertyDef.LineStart, propertyDef.ColumnStart);
+                    break;
+                case UnionDef unionDef:
+                    symbolName = unionDef.Name;
+                    stmtPos = DeclarationPosition.From(
+                        unionDef.NameLineStart, unionDef.NameColumnStart, unionDef.LineStart, unionDef.ColumnStart);
+                    break;
             }
 
             if (symbolName == null)
@@ -1654,17 +1673,17 @@ internal class CodeGenInfoComputer
 
             var info = _semanticBinding.GetCodeGenInfo(symbol);
             var csharpName = info?.CSharpName;
-            if (csharpName == null && symbol is TypeSymbol { TypeKind: TypeKind.Delegate })
+            if (csharpName == null && symbol is TypeSymbol { TypeKind: TypeKind.Delegate or TypeKind.Union })
                 csharpName = NameCasing.ResolveType(symbolName, symbol.IsNameBacktickEscaped);
             if (csharpName == null)
                 continue;
 
-            var key = (stmt is not (FunctionDef or VariableDeclaration), csharpName);
+            var key = (stmt is not (FunctionDef or VariableDeclaration or PropertyDef), csharpName);
             if (seen.TryGetValue(key, out var existing))
             {
-                // Overloads of the same module-level function share an identical
-                // Python name and intentionally compile to the same C# name — this
-                // is not a collision.
+                // Overloads of the same module-level function, and the get/set halves of one
+                // module property, share an identical Python name and intentionally compile to the
+                // same C# name — this is not a collision.
                 if (symbolName == existing.originalName)
                     continue;
 
