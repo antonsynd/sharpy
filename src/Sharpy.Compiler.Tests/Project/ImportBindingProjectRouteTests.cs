@@ -586,6 +586,54 @@ public class ImportBindingProjectRouteTests
         Judge($"project × {warmId}", failures, allowlist, problems);
     }
 
+    /// <summary>The layout × spelling cells (P21i L1): <c>core.spy</c> and <c>other.spy</c> declare DIFFERENT
+    /// <c>helper</c>s (<c>int</c> 1 vs <c>str</c> "o"), and main reaches OTHER's through every spelling, read into an
+    /// annotated <c>str</c> local. The layout axis is the source directory: flat (the project directory) or
+    /// <c>src/</c> — module scopes are keyed by the project-relative module path (<c>src.other</c>), and a lookup by the
+    /// SPELLED module name bound core's <c>helper</c> in the src/ layout only (SPY0220 'int32' to 'str'). (layout,
+    /// spelling, main.)</summary>
+    public static TheoryData<string, string, string> LayoutBySpellingCells()
+    {
+        var data = new TheoryData<string, string, string>();
+        var spellings = new (string Spelling, string Import, string Read)[]
+        {
+            ("from", "from other import helper", "helper()"),
+            ("from-as", "from other import helper as h", "h()"),
+            ("qualified", "import other", "other.helper()"),
+            ("alias-qualified", "import other as o", "o.helper()"),
+            ("star", "from other import *", "helper()"),
+        };
+        foreach (var layout in new[] { "flat", "src" })
+            foreach (var (spelling, import, read) in spellings)
+                data.Add(layout, spelling, $"{import}\n\ndef main() -> None:\n    x: str = {read}\n    print(x)\n");
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(LayoutBySpellingCells))]
+    public void SameNamedDeclarationOfAnotherModule_IsNotWhatTheImportBinds(string layout, string spelling, string main)
+    {
+        using var helper = new ProjectCompilationHelper(_output)
+            .WithRootNamespace("ImportBindingLayout")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy");
+        if (layout == "flat")
+        {
+            helper.WithSourceDirectory(".");
+            helper.Options.SourceFilePattern = "**/*.spy";
+        }
+        helper.AddSourceFile("core.spy", "def helper() -> int:\n    return 1\n");
+        helper.AddSourceFile("other.spy", "def helper() -> str:\n    return \"o\"\n");
+        helper.AddSourceFile("main.spy", main, isEntryPoint: true);
+        var run = helper.CompileAndExecute();
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().Select(d => $"{d.Code} {d.Message}").ToList();
+        _output.WriteLine($"{layout} × {spelling}: success={run.Success} stdout=[{run.StandardOutput.TrimEnd()}] {string.Join(" | ", errors)}");
+
+        errors.Should().BeEmpty($"{layout} × {spelling}: the import binds OTHER's helper (str), never core's");
+        run.Success.Should().BeTrue();
+        run.StandardOutput.Should().Be("o\n");
+    }
+
     /// <summary>Compiles and runs <paramref name="helper"/>'s project and judges it against <paramref name="cell"/>: the
     /// exact errors in main.spy, the stdout, the emitted spelling (when the cell names one). An SPY09xx anywhere is a
     /// FAILURE here, not a hard problem — the project route's <c>Compile</c> runs code generation and the C# compile, so

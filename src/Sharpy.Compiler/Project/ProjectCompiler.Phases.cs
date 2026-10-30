@@ -321,7 +321,7 @@ internal partial class ProjectCompiler
                             // the same TypeSymbol, so inheritance info set in Phase 4b is visible
                             // everywhere. Function symbols use re-exported copies because the TypeChecker
                             // updates them via record `with` expressions that create new instances.
-                            var sourceModuleScope = SymbolTable.GetModuleScope(fromImport.Module);
+                            var sourceModuleScope = ModuleScopeOf(moduleInfo);
                             var sourceModule = moduleInfo.CanonicalModuleName ?? fromImport.Module;
 
                             // Add specific imported symbols (skip if already defined from project files)
@@ -589,46 +589,35 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
+    /// The module scope of the module a from-import RESOLVED to — found from its file's compilation
+    /// unit, the key every module scope is created under (<c>unit.ModulePath</c>, project-relative:
+    /// <c>src.other</c> in a src/ layout) — or null when the module is not one of this compilation's
+    /// sources (a .NET or Stdlib module, a file outside the source set). Never from the import's
+    /// SPELLING: <c>GetModuleScope("other")</c> missed every module of a src/ layout, and the name
+    /// search that followed bound the first same-named declaration of ANY module — `from other import
+    /// helper` bound core's `helper` (SPY0220 where the flat layout ran, P21i L1).
+    /// </summary>
+    private Scope? ModuleScopeOf(ModuleInfo moduleInfo)
+        => !moduleInfo.IsNetModule && !string.IsNullOrEmpty(moduleInfo.Path)
+            && _projectModel?.GetUnit(moduleInfo.Path) is { } unit
+                ? SymbolTable.GetModuleScope(unit.ModulePath)
+                : null;
+
+    /// <summary>
     /// For project-internal from-imports, prefer the Phase 3 original symbol over the
     /// re-exported copy created by ImportResolver. This ensures all modules reference the
     /// same Symbol instance, so mutations during later phases (e.g., inheritance resolution
     /// in Phase 4b, return type resolution in Phase 5) are visible everywhere.
     ///
-    /// First tries the source module scope. If not found there (e.g., transitive imports
-    /// where the source module hasn't been processed yet), searches all module scopes for
-    /// a matching Phase 3 declaration.
+    /// The symbol is the resolved source module's own binding of the name
+    /// (<see cref="ModuleScopeOf"/>); a module that is not one of this compilation's sources keeps
+    /// the re-exported copy. There is no search of every module by NAME: it bound a different
+    /// module's same-named declaration whenever the scope lookup missed (P21i L1), and with the
+    /// scope found from the resolved unit no project-module from-import reaches it (measured: the
+    /// import, re-export, package, star, incremental and FileBased suites stay green without it).
     /// </summary>
-    private Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
-    {
-        // Try direct source module scope first
-        if (sourceModuleScope != null)
-        {
-            var original = sourceModuleScope.Lookup(originalName, searchParent: false);
-            if (original != null)
-                return original;
-        }
-
-        // For transitive imports, the source module may not have been processed yet.
-        // Search all module scopes for the original Phase 3 declaration.
-        if (_projectModel != null)
-        {
-            foreach (var (_, unit) in _projectModel.Units)
-            {
-                var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
-                // Never the IMPORTING module's own scope: a same-named declaration there is what the
-                // import collides with (SPY0204, #2359), not the declaration it imports — substituting
-                // it made `const pi` + `from math import pi` bind the const to itself, silently.
-                if (moduleScope != null && !ReferenceEquals(moduleScope, SymbolTable.CurrentScope))
-                {
-                    var original = moduleScope.Lookup(originalName, searchParent: false);
-                    if (original != null && original.GetType() == reExported.GetType())
-                        return original;
-                }
-            }
-        }
-
-        return reExported;
-    }
+    private static Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
+        => sourceModuleScope?.Lookup(originalName, searchParent: false) ?? reExported;
 
     /// <summary>
     /// The plain-import twin of <see cref="ResolveImportSymbol"/>: given a name that
