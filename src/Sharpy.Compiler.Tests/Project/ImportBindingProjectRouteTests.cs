@@ -637,7 +637,12 @@ public class ImportBindingProjectRouteTests
         var cold = helper.Compile();
         cold.Diagnostics.GetErrors().Should().BeEmpty($"the seed build ({seed.Id}) compiles and populates the cache");
         helper.UpdateSourceFile("main.spy", cell.Main);
-        var failures = JudgeRun(cell, helper);
+        // A cell's spelling names the cold route's root namespace; the warm build compiles under its own.
+        var warmCell = cell with
+        {
+            Spelling = cell.Spelling?.Replace("global::ImportBindingRoute.", $"global::{rootNamespace}.", StringComparison.Ordinal),
+        };
+        var failures = JudgeRun(warmCell, helper);
         helper.AssertWarmBuildSkipped(helper.LastCompilationResult!, cacheServed);
         return failures;
     }
