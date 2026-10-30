@@ -342,3 +342,67 @@ project × module-member × property-split × alias-qualified  # #2386 the expor
 project × module-member × property-split × star  # #2386 the export table has no property: SPY0200 'sp'
 project × module-member × property-auto × pkg-init-reexport  # #2386 the export table has no property: SPY0301 in pkg/__init__.spy and main.spy, SPY0200 'level'
 project × module-member × property-auto × from-import (incremental)  # #2386 the export table has no property, lib.spy cache-served: SPY0301 + SPY0200 'auto_p'
+
+# P21i (iii) — import × import over provenance × spelling × order × route (#2389, R-JK). At the base a from-import's
+# identity is the SPELLED "{sourceModule}.{name}", so one declaration reached through two module spellings (a package
+# __init__, a plain module, a star, two stars, two hops, an aliasing re-exporter) is two identities and importing it
+# twice is SPY0204 — the verdict cells. The use cells are SPY0204 at the base too; after Phase 4 the ones whose DIRECT
+# import is SECOND run (the emitter's container map is overwritten by the later import, D7) and the ones whose
+# RE-EXPORT is second are CS0117 behind SPY0908 — #2116's (P25), as the re-exporter imported ALONE already is (R11d
+# and kin). The different-symbol control (R12b), the import-as verdicts, the direct package import and the package
+# route's import-as use are green and never listed. Phase 4 drains the #2389 rows; the #2116 rows drain with P25.
+project × import-identity × aliasing-reexporter × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1aModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × aliasing-reexporter × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:19 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × aliasing-reexporter × from × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:19
+project × import-identity × aliasing-reexporter × from × reexport-first × use (incremental)  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × aliasing-reexporter × from × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × aliasing-reexporter × from × reexport-first × verdict (incremental)  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × aliasing-reexporter × from × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × aliasing-reexporter × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:19 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × aliasing-reexporter × from-as × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:19
+project × import-identity × aliasing-reexporter × from-as × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × aliasing-reexporter × from-as × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × aliasing-reexporter × import-as × direct-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1aModule' has no 'H' (P25's; stays red after P21i)
+project × import-identity × aliasing-reexporter × import-as × reexport-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1aModule' has no 'H' (P25's; stays red after P21i)
+project × import-identity × init-reexport × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:19 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × init-reexport × from × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:19
+project × import-identity × init-reexport × from × reexport-first × use (incremental)  # #2389 use, direct SECOND: SPY0204@2:27 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × init-reexport × from × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:27 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × init-reexport × from × reexport-first × verdict (incremental)  # #2389 two spellings of one declaration refused: SPY0204@2:27
+project × import-identity × init-reexport × from × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:27
+project × import-identity × init-reexport × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:19 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × init-reexport × from-as × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:19
+project × import-identity × init-reexport × from-as × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:27 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × init-reexport × from-as × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:27
+project × import-identity × module-reexport × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × module-reexport × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:18 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × module-reexport × from × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × module-reexport × from × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × module-reexport × from × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × module-reexport × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:18 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × module-reexport × from-as × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × module-reexport × from-as × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × module-reexport × from-as × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × module-reexport × import-as × direct-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × module-reexport × import-as × reexport-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × star-of-reexporter × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib3Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × star-of-reexporter × star × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@1:18 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × star-of-reexporter × star × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@1:18
+project × import-identity × star-of-reexporter × star × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × star-of-reexporter × star × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × two-hop-reexport × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1bModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-hop-reexport × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:19 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × two-hop-reexport × from × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:19
+project × import-identity × two-hop-reexport × from × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × two-hop-reexport × from × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × two-hop-reexport × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:19 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × two-hop-reexport × from-as × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:19
+project × import-identity × two-hop-reexport × from-as × reexport-first × use  # #2389 use, direct SECOND: SPY0204@2:18 now; D7 — the later import's container wins, so it runs after Phase 4
+project × import-identity × two-hop-reexport × from-as × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:18
+project × import-identity × two-hop-reexport × import-as × direct-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1bModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-hop-reexport × import-as × reexport-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1bModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-stars × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-stars × star × direct-first × use  # #2116 use, re-export SECOND (direct-first): SPY0204@2:1 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × two-stars × star × direct-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:1
+project × import-identity × two-stars × star × reexport-first × use  # #2116 use, re-export SECOND (reexport-first): SPY0204@2:1 now; D7 — CS0117 behind SPY0908 after Phase 4 (P25's)
+project × import-identity × two-stars × star × reexport-first × verdict  # #2389 two spellings of one declaration refused: SPY0204@2:1

@@ -26,7 +26,10 @@ namespace Sharpy.Compiler.Tests.Project;
 /// <c>StarReadPositions</c>), their explicit/qualified controls, and the warm twin of the star × var × def cell; and the
 /// module-member KIND × CONSUMER cells (<c>lib.spy</c>: var, const, def, auto / getter / split property × from-import,
 /// qualified, alias-qualified, star — the property kind's four cells are the #2131 cell re-homed on #2386), the package
-/// <c>__init__</c> re-export of a module property, and the warm twin of the property's from-import.
+/// <c>__init__</c> re-export of a module property, and the warm twin of the property's from-import; and the import ×
+/// import over PROVENANCE cells (#2389, R-JK): one declaration reached through two module spellings — a package
+/// <c>__init__</c>, a plain module, a star, two stars, two hops, an aliasing re-exporter — × spelling × order, each as a
+/// verdict cell and a use cell, the different-symbol control (R12b), the single-import controls, and four warm twins.
 ///
 /// <para><b>Ratchet.</b> Every cell is judged into failures (exact errors and shadowing warnings in main.spy, the
 /// run's stdout); an SPY09xx is hard. The cells ratchet over the declaration-position generator's allowlist
@@ -68,6 +71,7 @@ public class ImportBindingProjectRouteTests
         => Cells().Select(c => (string)c[0]!).Append(IncrementalStarPropertyId)
             .Concat(StarKindCells().Select(c => c.Id)).Concat(IncrementalStarVarDefIds)
             .Concat(ModuleMemberCells().Select(c => c.Id)).Append(IncrementalModulePropertyId)
+            .Concat(ImportIdentityCells().Select(c => c.Id)).Concat(IncrementalImportIdentityIds)
             .Select(id => $"project × {id}");
 
     private const string MainOk = "\ndef main() -> None:\n    print(\"ok\")\n";
@@ -408,6 +412,178 @@ public class ImportBindingProjectRouteTests
         var seed = ModuleMemberCell("module-member × var × from-import");
         var failures = JudgeWarm(cell, seed, "ImportBindingRouteWarm", "lib.spy");
         Judge($"project × {IncrementalModulePropertyId}", failures, allowlist, problems);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // P21i (iii): import × import over provenance × spelling × order (#2389, R-JK; the use cells of a plain-module
+    // re-export are #2116's CS0117 — P25's, pinned not cured).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /// <summary>The lib set every provenance cell compiles over: <c>core.helper</c> is the declaration; <c>lib1</c> and
+    /// <c>lib2</c> re-export it by a plain from-import, <c>lib3</c> by a star, <c>lib1b</c> re-exports <c>lib1</c>'s re-export
+    /// (two hops), <c>lib1a</c> re-exports it under ANOTHER name (<c>h</c>); <c>utils/__init__.spy</c> re-exports
+    /// <c>utils.helpers.fmt</c> through the package route (no clone — the original symbol).</summary>
+    private static readonly (string Path, string Content)[] ProvenanceLibs =
+    {
+        ("core.spy", "def helper() -> int:\n    return 1\n"),
+        ("lib1.spy", "from core import helper\n"),
+        ("lib2.spy", "from core import helper\n"),
+        ("lib3.spy", "from core import *\n"),
+        ("lib1b.spy", "from lib1 import helper\n"),
+        ("lib1a.spy", "from core import helper as h\n"),
+        ("utils/__init__.spy", "from utils.helpers import fmt\n"),
+        ("utils/helpers.spy", "def fmt() -> str:\n    return \"f\"\ndef other() -> str:\n    return \"o\"\n"),
+    };
+
+    /// <summary>The file names <see cref="ProvenanceLibs"/> compiles, as the warm-build assertion names them.</summary>
+    private static readonly string[] ProvenanceLibNames = ProvenanceLibs.Select(l => Path.GetFileName(l.Path)).ToArray();
+
+    /// <summary>A provenance: the RE-EXPORT import line and the DIRECT import line, each given the spelling's bound
+    /// name (null for a spelling that binds the exporter's own name), the use expression given the bound name, and the
+    /// use's stdout. <c>Spellings</c> lists the spellings the provenance admits (a star has no <c>as</c>).</summary>
+    private sealed record Provenance(string Name, Func<string?, string> ReExport, Func<string?, string> Direct,
+        string BoundName, Func<string, string> Use, string Stdout, string[] Spellings, string[]? ImportAs = null,
+        string? ImportAsUse = null);
+
+    private static string As(string? alias) => alias == null ? "" : $" as {alias}";
+
+    /// <summary>The provenances (P21i (iii)): the five #2389 cells, the two-hop re-export, the aliasing re-exporter
+    /// (the one provenance where the declaration's name differs from the bound name), and the DIFFERENT-symbol control
+    /// (R12b: two symbols under one name still collide). <c>ImportAs</c> is the attribute spelling's module pair
+    /// (<c>import m as a</c> + <c>import n as b</c>: no module-level NAME collides — the control) and
+    /// <c>ImportAsUse</c> its read through the re-exporter.</summary>
+    private static readonly Provenance[] Provenances =
+    {
+        new("init-reexport", a => $"from utils import fmt{As(a)}", a => $"from utils.helpers import fmt{As(a)}", "fmt",
+            n => $"{n}()", "f\n", new[] { "from", "from-as" }, new[] { "import utils as a", "import utils.helpers as b" }, "a.fmt()"),
+        new("module-reexport", a => $"from lib1 import helper{As(a)}", a => $"from core import helper{As(a)}", "helper",
+            n => $"{n}()", "1\n", new[] { "from", "from-as" }, new[] { "import lib1 as a", "import core as b" }, "a.helper()"),
+        new("two-hop-reexport", a => $"from lib1b import helper{As(a)}", a => $"from core import helper{As(a)}", "helper",
+            n => $"{n}()", "1\n", new[] { "from", "from-as" }, new[] { "import lib1b as a", "import core as b" }, "a.helper()"),
+        new("aliasing-reexporter", a => $"from lib1a import h{As(a)}", a => $"from core import helper as {a ?? "h"}", "h",
+            n => $"{n}()", "1\n", new[] { "from", "from-as" }, new[] { "import lib1a as a", "import core as b" }, "a.h()"),
+        new("star-of-reexporter", _ => "from lib3 import *", _ => "from core import helper", "helper",
+            n => $"{n}()", "1\n", new[] { "star" }),
+        new("two-stars", _ => "from lib1 import *", _ => "from lib2 import *", "helper",
+            n => $"{n}()", "1\n", new[] { "star" }),
+        new("different-symbol (control)", a => $"from utils import fmt{As(a)}", a => $"from utils.helpers import other as {a ?? "fmt"}", "fmt",
+            n => $"{n}()", "o\n", new[] { "from", "from-as" }),
+    };
+
+    private const string AliasName = "k";
+
+    /// <summary>
+    /// The provenance × spelling × order cells, each as a VERDICT cell (<c>print("ok")</c>; the contract is the
+    /// diagnostic set) and a USE cell (<c>print(helper())</c> / <c>print(fmt())</c>; the contract is the value): ids
+    /// <c>import-identity × &lt;provenance&gt; × &lt;spelling&gt; × &lt;order&gt; × verdict|use</c>. Expected (R-JK, D6): one
+    /// declaration imported through two module spellings is ONE import — no diagnostic, the verdict prints <c>ok</c>, the
+    /// use prints the declaration's value; the DIFFERENT-symbol control (R12b) is SPY0204 at the SECOND import's ImportAlias
+    /// in both orders (the later binding is refused — its use cell is the verdict). The <c>import-as</c> spelling binds two
+    /// MODULE names, which never collide (verdict: a control); its use reads through the re-exporter. The single-import
+    /// controls: the direct package import (R12c, runs <c>f</c>) and each re-exporter imported ALONE (R11d and kin: the
+    /// verdict is a control, the use is #2116's CS0117 — P25's). For <c>two-stars</c> the "re-export" is <c>lib1</c>'s star
+    /// and the "direct" <c>lib2</c>'s.
+    /// </summary>
+    internal static IEnumerable<RouteCell> ImportIdentityCells()
+    {
+        RouteCell Cell(string id, string[] lines, string body, string[] errors, string? stdout)
+            => new(id, string.Join("\n", lines) + "\n\ndef main() -> None:\n    " + body + "\n", errors, stdout, null, ProvenanceLibs);
+
+        foreach (var provenance in Provenances)
+        {
+            var control = provenance.Name.Contains("control", StringComparison.Ordinal);
+            foreach (var spelling in provenance.Spellings)
+            {
+                var alias = spelling == "from-as" ? AliasName : null;
+                var bound = alias ?? provenance.BoundName;
+                var reExport = provenance.ReExport(alias);
+                var direct = provenance.Direct(alias);
+                foreach (var order in new[] { "reexport-first", "direct-first" })
+                {
+                    var lines = order == "reexport-first" ? new[] { reExport, direct } : new[] { direct, reExport };
+                    var errors = control
+                        ? new[] { $"SPY0204@2:{TypeDefinitionOwnSymbolMatrixTests.ImportAliasColumn(lines[1])}" }
+                        : new string[0];
+                    yield return Cell($"import-identity × {provenance.Name} × {spelling} × {order} × verdict", lines,
+                        "print(\"ok\")", errors, "ok\n");
+                    if (!control)
+                        yield return Cell($"import-identity × {provenance.Name} × {spelling} × {order} × use", lines,
+                            $"print({provenance.Use(bound)})", errors, provenance.Stdout);
+                }
+            }
+
+            if (provenance.ImportAs is { } modules)
+            {
+                foreach (var order in new[] { "reexport-first", "direct-first" })
+                {
+                    var lines = order == "reexport-first" ? modules : new[] { modules[1], modules[0] };
+                    yield return Cell($"import-identity × {provenance.Name} × import-as × {order} × verdict", lines,
+                        "print(\"ok\")", new string[0], "ok\n");
+                    yield return Cell($"import-identity × {provenance.Name} × import-as × {order} × use", lines,
+                        $"print({provenance.ImportAsUse})", new string[0], provenance.Stdout);
+                }
+            }
+
+            // The re-exporter imported ALONE (no second import): the verdict is a control; the use through a plain-module
+            // re-export is #2116's CS0117 (R11d), through the package route it runs (R12c).
+            if (!control)
+            {
+                var alone = new[] { provenance.ReExport(null) };
+                yield return Cell($"import-identity × {provenance.Name} × from × alone × verdict", alone, "print(\"ok\")",
+                    new string[0], "ok\n");
+                yield return Cell($"import-identity × {provenance.Name} × from × alone × use", alone,
+                    $"print({provenance.Use(provenance.BoundName)})", new string[0], provenance.Stdout);
+            }
+        }
+
+        // R12c: the direct package import alone — the control every __init__ cell is measured against.
+        yield return Cell("import-identity × direct (control) × from × alone × verdict", new[] { "from utils import fmt" },
+            "print(\"ok\")", new string[0], "ok\n");
+        yield return Cell("import-identity × direct (control) × from × alone × use", new[] { "from utils import fmt" },
+            "print(fmt())", new string[0], "f\n");
+    }
+
+    public static IEnumerable<object[]> ImportIdentityCellIds() => ImportIdentityCells().Select(c => new object[] { c.Id });
+
+    private static RouteCell ImportIdentityCell(string id) => ImportIdentityCells().Single(c => c.Id == id);
+
+    [Theory]
+    [MemberData(nameof(ImportIdentityCellIds))]
+    public void ImportIdentity_HoldsOverProvenance(string id)
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = ImportIdentityCell(id);
+        using var helper = NewHelper("ImportBindingRoute", cell.Main, cell.Libs);
+        var failures = JudgeRun(cell, helper);
+        Judge($"project × {cell.Id}", failures, allowlist, problems);
+    }
+
+    /// <summary>The warm twins of the provenance matrix (the axis the generator cannot enumerate): R12's verdict and use,
+    /// and the aliasing re-exporter's (the provenance where the declaration's name differs from the bound name — a
+    /// restored symbol's own name is what a cache-served re-exporter carries), each re-export first.</summary>
+    private static readonly string[] IncrementalImportIdentityIds =
+    {
+        "import-identity × init-reexport × from × reexport-first × verdict (incremental)",
+        "import-identity × init-reexport × from × reexport-first × use (incremental)",
+        "import-identity × aliasing-reexporter × from × reexport-first × verdict (incremental)",
+        "import-identity × aliasing-reexporter × from × reexport-first × use (incremental)",
+    };
+
+    public static IEnumerable<object[]> IncrementalImportIdentityCellIds()
+        => IncrementalImportIdentityIds.Select(id => new object[] { id });
+
+    /// <summary>The <c>--incremental</c> twin of a provenance cell: the seed is the direct package import's use (R12c, a
+    /// valid program over the same lib set), main.spy is rewritten to the cell's program, and every lib file must be
+    /// cache-served on the warm build (hard).</summary>
+    [Theory]
+    [MemberData(nameof(IncrementalImportIdentityCellIds))]
+    public void ImportIdentity_HoldsOnAnIncrementalRebuild(string warmId)
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = ImportIdentityCell(warmId.Replace(" (incremental)", "", StringComparison.Ordinal));
+        var seed = ImportIdentityCell("import-identity × direct (control) × from × alone × use");
+        var failures = JudgeWarm(cell, seed, "ImportBindingRouteWarm", ProvenanceLibNames);
+        Judge($"project × {warmId}", failures, allowlist, problems);
     }
 
     /// <summary>Compiles and runs <paramref name="helper"/>'s project and judges it against <paramref name="cell"/>: the
