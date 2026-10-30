@@ -620,12 +620,13 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
         // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders, + the star import ×
         // {class, alias, property-field, property-get, enum} × 2 orders (P21g), + `from math import e as pi` × star × 2,
-        // + the star import × 5 exported kinds × 3 read positions from a Stdlib source (P21i).
+        // + the star import × 5 exported kinds × 3 read positions from a Stdlib source (P21i), + `from builtins import
+        // print as p` × `len as p` × 2 orders (P21i D6, the spelled-identity fallback).
         Assert.Equal(10, ImportColliders.Length);
         Assert.Equal(5, StarDeclarations.Length);
         Assert.Equal(5, StarKinds.Length);
         Assert.Equal(3, StarReadPositions.Length);
-        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2 + 5 * 3, ImportBindingCells().Count());
+        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2 + 5 * 3 + 2, ImportBindingCells().Count());
         Assert.Equal(4 * 2 * 2 + 2, ImportBindingCells().Count(c => c.Collider is "same-module-other-symbol" or "star"));
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
         // def→alias} × type-body + alias→alias × module.
@@ -676,7 +677,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 138 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 140 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1357,6 +1358,17 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         foreach (var name in new[] { "len", "str" })
             yield return Make("from-builtins", name, "none", Array.Empty<string>(), new[] { $"from builtins import {name}" },
                 (_, _) => Array.Empty<(string, int, int)>());
+
+        // The import identity's spelled fallback (P21i D6): a builtins registry alias is a copy with no origin chain
+        // and no declaring file, so its identity is the spelled `builtins.<exported name>` — never the alias — and
+        // `print as p` + `len as p` are two symbols under one name: refused at the later import, in both orders.
+        foreach (var order in new[] { "print-first", "len-first" })
+        {
+            var (firstName, secondName) = order == "print-first" ? ("print", "len") : ("len", "print");
+            var secondImport = $"from builtins import {secondName} as p";
+            yield return Make("from-builtins-as", "other-builtin", order, new[] { $"from builtins import {firstName} as p" },
+                new[] { secondImport }, (_, s) => new[] { ("SPY0204", s, ImportAliasColumn(secondImport)) });
+        }
 
         // A PLAIN from-import whose exporter's name spells a builtin TYPE (the registry knows `IList`) is warned and
         // honoured, not refused: the importer did not choose the name (owner ruling at P21f Phase 4, option b — the

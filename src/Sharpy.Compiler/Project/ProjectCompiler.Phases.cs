@@ -342,11 +342,13 @@ internal partial class ProjectCompiler
                                         SymbolTable.AmbiguousGlobImports[name] = fromImport.Module;
 
                                     var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
-                                    // A from-import's identity is the symbol it names (K1, #2359): two imports
-                                    // of one module that bind different symbols under one name collide.
+                                    // A from-import's identity is the DEFINING module.symbol it names (K1, #2359;
+                                    // R-JK): a re-export resolves to its declaration, and two imports that bind
+                                    // different symbols under one name collide. The display stays as spelled.
                                     var exported = $"{sourceModule}.{name}";
+                                    var identity = ImportResolver.DefiningIdentityOf(symbolToRegister, sourceModule, name);
                                     if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, name, alias: null,
-                                            new ImportBinding(ImportBindingForm.FromImport, exported, exported,
+                                            new ImportBinding(ImportBindingForm.FromImport, identity, exported,
                                                 unit.FilePath, fromImport.LineStart, fromImport.ColumnStart,
                                                 fromImport.Span),
                                             warningTarget: null, isRegistryOwnBinding: false,
@@ -431,12 +433,14 @@ internal partial class ProjectCompiler
                                         }
 
                                         // The registry's own binding under its own name shadows nothing (#1322).
-                                        // The identity is the exported symbol, never the alias (K1, #2359).
+                                        // The identity is the exported symbol's DEFINING module.symbol, never the
+                                        // alias (K1, #2359; R-JK); the display stays as spelled.
                                         var exported = $"{sourceModule}.{lookupName}";
+                                        var identity = ImportResolver.DefiningIdentityOf(symbolToRegister, sourceModule, lookupName);
                                         var itemSite = importAlias.Span ?? fromImport.Span;
                                         if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, symbolName,
                                                 importAlias,
-                                                new ImportBinding(ImportBindingForm.FromImport, exported, exported,
+                                                new ImportBinding(ImportBindingForm.FromImport, identity, exported,
                                                     unit.FilePath, importAlias.LineStart, importAlias.ColumnStart,
                                                     itemSite),
                                                 warningTarget: $"{fromImport.Module}.{lookupName}",

@@ -586,6 +586,36 @@ public class ImportBindingProjectRouteTests
         Judge($"project × {warmId}", failures, allowlist, problems);
     }
 
+    /// <summary>The refusals that involve a RE-EXPORTING star (P21i D6): <c>lib3</c>'s star exports <c>core.helper</c>,
+    /// and <c>other.helper</c> is a different symbol — refused (R-IZ at the explicit import in both orders; star × star at
+    /// the second star). The import identity is the DEFINING module (<c>core</c>), but a diagnostic names the module the
+    /// source SPELLED: (id, main, the message's required substrings).</summary>
+    public static TheoryData<string, string, string[]> ReExportingStarRefusalCells() => new()
+    {
+        { "R-IZ × explicit-first", "from other import helper\nfrom lib3 import *",
+            new[] { "also exported by 'from lib3 import *'", "write 'lib3.helper'" } },
+        { "R-IZ × star-first", "from lib3 import *\nfrom other import helper",
+            new[] { "also exported by 'from lib3 import *'", "write 'lib3.helper'" } },
+        { "star × star", "from lib3 import *\nfrom other import *",
+            new[] { "exported by both 'from lib3 import *'", "and 'from other import *'" } },
+    };
+
+    [Theory]
+    [MemberData(nameof(ReExportingStarRefusalCells))]
+    public void ReExportingStarRefusal_NamesTheSpelledModule(string id, string main, string[] required)
+    {
+        using var helper = NewHelper("ImportBindingRoute", main + "\n\ndef main() -> None:\n    print(\"ok\")\n",
+            ProvenanceLibs.Append(("other.spy", "def helper() -> int:\n    return 2\n")).ToArray());
+        helper.CompileAndExecute();
+        var refusal = helper.LastCompilationResult!.Diagnostics.GetAll().Where(d => d.Code == "SPY0204").ToList();
+        _output.WriteLine($"{id}: {string.Join(" | ", refusal.Select(d => d.Message))}");
+
+        refusal.Should().ContainSingle($"{id}: two different symbols under one name are one refusal");
+        foreach (var part in required)
+            refusal[0].Message.Should().Contain(part, $"{id}: the refusal names the module the source spelled");
+        refusal[0].Message.Should().NotContain("core", $"{id}: never the defining module the identity compares by");
+    }
+
     /// <summary>The layout × spelling cells (P21i L1): <c>core.spy</c> and <c>other.spy</c> declare DIFFERENT
     /// <c>helper</c>s (<c>int</c> 1 vs <c>str</c> "o"), and main reaches OTHER's through every spelling, read into an
     /// annotated <c>str</c> local. The layout axis is the source directory: flat (the project directory) or
