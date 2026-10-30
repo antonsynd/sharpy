@@ -45,18 +45,17 @@ internal partial class ImportResolver
 
         _logger.LogDebug($"[ImportResolver]   Source module exports: {string.Join(", ", sourceModule.ExportedSymbols.Keys)}");
 
-        // Build re-exported symbols dictionary for code generation
-        var reExportedSymbols = new Dictionary<string, Symbol>();
-
+        // The re-exports extend the module's export table only. No re-export record is written here: this
+        // statement is the LOADER's own parse of the module, a node no reader keys on (ProjectCompiler
+        // Phase 4 and the emitter key on the compilation unit's node); the live record is
+        // ResolveFromImport's, which records a star's set even when empty (P21i D2, #2385).
         if (fromImport.ImportAll)
         {
             foreach (var (name, symbol) in sourceModule.ExportedSymbols)
             {
                 if (!name.StartsWith("_"))
                 {
-                    var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
-                    moduleInfo.ExportedSymbols.Add(name, reExportSymbol);
-                    reExportedSymbols[name] = reExportSymbol;
+                    moduleInfo.ExportedSymbols.Add(name, CreateReExportSymbol(symbol, fromImport));
                     _logger.LogDebug($"[ImportResolver]     Re-exporting (wildcard): {name}");
                 }
             }
@@ -70,9 +69,7 @@ internal partial class ImportResolver
 
                 if (sourceModule.ExportedSymbols.TryGetValue(sourceName, out var symbol))
                 {
-                    var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
-                    moduleInfo.ExportedSymbols.Add(targetName, reExportSymbol);
-                    reExportedSymbols[targetName] = reExportSymbol;
+                    moduleInfo.ExportedSymbols.Add(targetName, CreateReExportSymbol(symbol, fromImport, targetName));
 
                     if (symbol is TypeSymbol typeSymbol)
                     {
@@ -88,12 +85,6 @@ internal partial class ImportResolver
                     _logger.LogDebug($"[ImportResolver]     Symbol '{sourceName}' NOT FOUND in source module exports");
                 }
             }
-        }
-
-        if (reExportedSymbols.Count > 0)
-        {
-            _logger.LogDebug($"[ImportResolver]   Added {reExportedSymbols.Count} re-exported symbols to {Path.GetFileName(moduleInfo.Path)}");
-            _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
         }
     }
 
