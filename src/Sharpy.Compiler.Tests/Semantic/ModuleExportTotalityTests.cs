@@ -45,17 +45,15 @@ public class ModuleExportTotalityTests
     // NameResolver.ResolveDeclaration — the actual module-level declaration authority).
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ModuleLevelKinds includes two kinds ExtractExportedSymbol does not (and should not) export:
+    // ModuleLevelKinds includes kinds ExtractExportedSymbol does not (and should not) export:
     //   - ImportStatement / FromImportStatement: module-level, but statements, not declarations —
     //     ImportResolver handles them (ModuleLoader.cs's `default:` comment says so explicitly).
-    //   - PropertyDef: a module-level property (#844) IS resolved by NameResolver.ResolveDeclaration
-    //     but ExtractExportedSymbol does not export it — a pre-existing gap ModuleLoaderTotalityTests'
-    //     own Skipped set already documents, tracked separately and out of P5.1's scope.
+    // A module-level property (#844) was the third until P21i exported it (#2386): it is an export
+    // like every other module-level declaration.
     private static readonly HashSet<string> NotExportedDeclarations = new()
     {
         nameof(ImportStatement),
         nameof(FromImportStatement),
-        nameof(PropertyDef),
     };
 
     [Fact]
@@ -240,6 +238,14 @@ public class ModuleExportTotalityTests
         delegate D(x: int) -> int
 
         type Alias = int
+
+        property auto_p: int = 6
+
+        property get fget_p() -> int:
+            return 7
+
+        property get sp: int = 8
+        property set sp: int
         """;
 
     /// <summary>
@@ -265,6 +271,11 @@ public class ModuleExportTotalityTests
         { nameof(UnionDef), "b: bool = lib.U.A()", "U" },
         { nameof(DelegateDef), "d: lib.D = lambda x: x * 2\n    b: bool = d", "D" },
         { nameof(TypeAlias), "x: lib.Alias = \"s\"", "int32" },
+        // A module property (#2386): auto, function-style getter, and split get/set halves — the
+        // imported type is the declared one, never Unknown.
+        { nameof(PropertyDef), "b: bool = lib.auto_p", "int32" },
+        { nameof(PropertyDef), "b: bool = lib.fget_p", "int32" },
+        { nameof(PropertyDef), "b: bool = lib.sp", "int32" },
     };
 
     [Theory]
