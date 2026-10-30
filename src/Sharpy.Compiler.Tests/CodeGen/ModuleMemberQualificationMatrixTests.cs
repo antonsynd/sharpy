@@ -647,6 +647,69 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             + "whatever the import spells (P21i D5)");
     }
 
+    // ── The qualified spellings of an imported module member (P21i F2, #2386): `import lib` + `lib.X` and
+    //    `import lib as a` + `a.X` spell the member by its declaration's materialized name, as the from-import
+    //    spellings do (D5). A SCREAMING_CASE module property is declared through the field speller (`CapP`) while
+    //    the qualified route's casing rule kept the name verbatim (`CAP_P`): CS0117 behind SPY0908 for read, write,
+    //    augmented store and a read inside a method. The snake_case and escaped properties and the SCREAMING
+    //    module VARIABLE (declared verbatim, `CAP_V`) are the controls the two spellers agree on.
+
+    private const string QualifiedMemberLib =
+        "property CAP_P: int = 7\n"
+        + "property snake_p: int = 7\n"
+        + "property `Esc_P`: int = 7\n"
+        + "_gs: int = 7\n"
+        + "property get GS_P() -> int:\n"
+        + "    return _gs\n"
+        + "property set GS_P(v: int):\n"
+        + "    _gs = v\n"
+        + "CAP_V: int = 7\n";
+
+    public static IEnumerable<object[]> QualifiedModuleMemberCells()
+    {
+        // (member as written at the use site, emitted member, the operations the cell runs)
+        var members = new (string Use, string Emitted, string[] Ops)[]
+        {
+            ("CAP_P", "CapP", new[] { "read", "write", "augmented", "read-in-method" }),
+            ("snake_p", "SnakeP", new[] { "read", "write", "augmented", "read-in-method" }),
+            ("`Esc_P`", "Esc_P", new[] { "read", "write", "augmented", "read-in-method" }),
+            ("GS_P", "GsP", new[] { "read", "write" }),
+            ("CAP_V", "CAP_V", new[] { "read", "write" }),
+        };
+        foreach (var (use, emitted, ops) in members)
+            foreach (var (consumer, import, q) in new[] { ("qualified", "import lib", "lib."), ("alias-qualified", "import lib as a", "a.") })
+                foreach (var op in ops)
+                {
+                    var x = q + use;
+                    var (body, stdout) = op switch
+                    {
+                        "read" => ($"def main() -> None:\n    print({x})\n", "7\n"),
+                        "write" => ($"def main() -> None:\n    {x} = 9\n    print({x})\n", "9\n"),
+                        "augmented" => ($"def main() -> None:\n    {x} += 1\n    print({x})\n", "8\n"),
+                        _ => ($"class B:\n    def r(self) -> int:\n        return {x}\n\ndef main() -> None:\n    print(B().r())\n", "7\n"),
+                    };
+                    yield return new object[]
+                    {
+                        $"{use} × {consumer} × {op}", $"{import}\n\n{body}", $"global::Test.Lib.LibModule.{emitted}", stdout,
+                    };
+                }
+    }
+
+    [Theory]
+    [MemberData(nameof(QualifiedModuleMemberCells))]
+    public void CrossModule_QualifiedMember_IsSpelledByItsDeclaration(
+        string id, string main, string expectedSpelling, string expectedStdout)
+    {
+        Output.WriteLine($"[qualified member] {id} → {expectedSpelling}");
+        var run = RunProject("Test", ("lib.spy", QualifiedMemberLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            $"{id}: the project must compile and run. Errors:\n" + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be(expectedStdout);
+        run.GeneratedCSharp.Should().Contain(expectedSpelling,
+            $"{id}: a module member reached through its module is spelled by its declaration's materialized name");
+    }
+
     // ── Import-form cells: every USER-module import form inlines the reference as
     //    global::<RootNs>.<Module>.<Member> (no directive), including dotted-package and aliased
     //    forms — the import kinds the class-2 deletion relocated here (plan lines 437/444).
