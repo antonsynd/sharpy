@@ -205,7 +205,14 @@ internal partial class ImportResolver
             DeclarationColumn = fromImport.ColumnStart,
             IsReExport = true,
             OriginalModule = fromImport.Module,
-            DefiningModule = definingModule
+            DefiningModule = definingModule,
+            // The type the clone was made from, as the function and variable arms of
+            // CreateReExportSymbol record it: the import identity walks this chain to the declaring
+            // .spy file (DefiningIdentityOf), so a type imported through a re-exporter AND directly is
+            // one import whichever module Phase 4 binds first. Without it the clone was its own root
+            // and the identity fell back to the spelled `lib1.Box` — SPY0204 only when the importer
+            // sorted before the re-exporter (P21i F1, #2389).
+            OriginSymbol = originalType
         };
 
         // When the type is aliased (effectiveName != originalType.Name), store the original
@@ -256,8 +263,7 @@ internal partial class ImportResolver
     /// The spelled <c>"{sourceModule}.{exportedName}"</c> stands when the chain does not reach a
     /// Sharpy declaration: a root with no <c>.spy</c> declaring file (a .NET or Stdlib module's
     /// member, the <c>builtins</c> registry's symbol, an error-recovery placeholder) or a root that
-    /// is itself a re-export clone (a type re-export carries no origin chain; a cache-restored clone
-    /// lost it). The registry case is why the fallback is the spelled pair and not
+    /// is itself a re-export clone (a cache-restored clone lost its chain). The registry case is why the fallback is the spelled pair and not
     /// <c>sourceModule.root.Name</c>: <c>from builtins import print as p</c> binds a copy named
     /// <c>p</c> with no origin, so a root-named identity would make <c>print as p</c> and
     /// <c>len as p</c> one import.

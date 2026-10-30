@@ -616,6 +616,83 @@ public class ImportBindingProjectRouteTests
         refusal[0].Message.Should().NotContain("core", $"{id}: never the defining module the identity compares by");
     }
 
+    /// <summary>The type kinds a re-exporter forwards (P21i F1): (kind, the declaration lines, the declared name).</summary>
+    private static readonly (string Kind, string Declaration, string Name)[] ReExportedTypeKinds =
+    {
+        ("class", "class Box:\n    v: int = 8\n", "Box"),
+        ("enum", "enum Color:\n    A = 1\n    B = 2\n", "Color"),
+        ("interface", "interface Shape:\n    def area(self) -> int:\n        ...\n", "Shape"),
+        ("struct", "struct Pt:\n    x: int\n", "Pt"),
+    };
+
+    /// <summary>
+    /// The type re-export cells (P21i F1, #2389): a TYPE imported through a re-exporter AND directly is one import
+    /// whichever module Phase 4 binds first — kind {class, enum, interface, struct} × the entry file sorting BEFORE
+    /// (<c>aa.spy</c>) or AFTER (<c>zz.spy</c>) the declaring and re-exporting modules × re-exporter {a plain module
+    /// <c>lib1.spy</c>, a package <c>__init__</c>}. At ef0047891 the type clone carried no origin chain, so the
+    /// identity fell back to the spelled re-exporter whenever the entry was bound before the re-exporter: the aa cells
+    /// were SPY0204 "'Box' already names 'lib1.Box'", the zz cells ran. (kind, order, re-exporter.)
+    /// </summary>
+    public static TheoryData<string, string, string> TypeReExportOrderCells()
+    {
+        var data = new TheoryData<string, string, string>();
+        foreach (var kind in ReExportedTypeKinds)
+            foreach (var order in new[] { "entry-sorts-before", "entry-sorts-after" })
+                foreach (var reExporter in new[] { "plain-module", "package-init" })
+                    data.Add(kind.Kind, order, reExporter);
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(TypeReExportOrderCells))]
+    public void TypeImportedThroughAReExporterAndDirectly_IsOneImport_InEitherBindOrder(string kind, string order, string reExporter)
+    {
+        var type = ReExportedTypeKinds.Single(k => k.Kind == kind);
+        var entry = order == "entry-sorts-before" ? "aa.spy" : "zz.spy";
+        var (declaring, reExportLine, directLine) = reExporter == "plain-module"
+            ? ("core.spy", $"from lib1 import {type.Name}", $"from core import {type.Name}")
+            : ("pkg/core.spy", $"from pkg import {type.Name}", $"from pkg.core import {type.Name}");
+        using var helper = new ProjectCompilationHelper(_output)
+            .WithRootNamespace("TypeReExport")
+            .WithOutputType("exe")
+            .WithEntryPoint(entry);
+        helper.AddSourceFile(declaring, type.Declaration);
+        if (reExporter == "plain-module")
+            helper.AddSourceFile("lib1.spy", $"from core import {type.Name}\n");
+        else
+            helper.AddSourceFile("pkg/__init__.spy", $"from pkg.core import {type.Name}\n");
+        helper.AddSourceFile(entry, $"{reExportLine}\n{directLine}\n\ndef main() -> None:\n    print(\"ok\")\n", isEntryPoint: true);
+        var run = helper.CompileAndExecute();
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().Select(d => $"{d.Code} {d.Message}").ToList();
+        _output.WriteLine($"{kind} × {order} × {reExporter}: success={run.Success} stdout=[{run.StandardOutput.TrimEnd()}] {string.Join(" | ", errors)}");
+
+        errors.Should().BeEmpty($"{kind} × {order} × {reExporter}: one declaration imported through two module spellings is one import");
+        run.StandardOutput.Should().Be("ok\n");
+    }
+
+    /// <summary>The negative control (P21i F1): two DIFFERENT types under one alias still collide in either bind order —
+    /// the chained identity is the defining module.symbol of each, never the alias.</summary>
+    [Theory]
+    [InlineData("aa.spy")]
+    [InlineData("zz.spy")]
+    public void TwoDifferentTypesUnderOneAlias_StillCollide(string entry)
+    {
+        using var helper = new ProjectCompilationHelper(_output)
+            .WithRootNamespace("TypeReExportNegative")
+            .WithOutputType("exe")
+            .WithEntryPoint(entry);
+        helper.AddSourceFile("core.spy", "class Box:\n    v: int = 8\n\nclass Other:\n    v: int = 9\n");
+        helper.AddSourceFile("lib1.spy", "from core import Box\n");
+        helper.AddSourceFile(entry, "from lib1 import Box as B\nfrom core import Other as B\n\ndef main() -> None:\n    print(\"ok\")\n",
+            isEntryPoint: true);
+        helper.CompileAndExecute();
+        var refusals = helper.LastCompilationResult!.Diagnostics.GetErrors().Where(d => d.Code == "SPY0204").ToList();
+        _output.WriteLine($"{entry}: {string.Join(" | ", refusals.Select(d => $"{d.Line}:{d.Column} {d.Message}"))}");
+
+        refusals.Should().ContainSingle($"{entry}: Box and Other are two symbols under one name");
+        refusals[0].Line.Should().Be(2);
+    }
+
     /// <summary>The layout × spelling cells (P21i L1): <c>core.spy</c> and <c>other.spy</c> declare DIFFERENT
     /// <c>helper</c>s (<c>int</c> 1 vs <c>str</c> "o"), and main reaches OTHER's through every spelling, read into an
     /// annotated <c>str</c> local. The layout axis is the source directory: flat (the project directory) or
