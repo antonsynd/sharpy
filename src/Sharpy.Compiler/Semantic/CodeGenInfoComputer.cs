@@ -415,37 +415,74 @@ internal class CodeGenInfoComputer
         if (sourceLayout != null)
             _semanticInfo?.SetModuleLayout(fromImport, sourceLayout);
 
+        if (fromImport.ImportAll)
+        {
+            // A star import binds exactly the names ProjectCompiler Phase 4 recorded, each beside the
+            // symbol it bound (#2385). The checker may since have taken a name over — a module variable
+            // of this file declared beside the star REPLACES the scope's symbol — so a pair is kept iff
+            // the scope still binds the name to that very object. The kept names get CodeGenInfo through
+            // the explicit arm's helper (one casing and layout rule for both spellings), and the
+            // recorded set is rewritten to them, so the fact says what the scope binds after the
+            // takeover and the emitter decides nothing (P21i D1, #2385 M1). The rewrite lands in this
+            // file's own SemanticInfo — the instance ProjectCompiler merges (MergeFrom is TryAdd).
+            if (_semanticInfo?.GetStarImportBindings(fromImport) is { } bindings)
+            {
+                var kept = new List<StarBoundName>(bindings.Count);
+                foreach (var binding in bindings)
+                {
+                    if (!ReferenceEquals(_symbolTable.Lookup(binding.Name), binding.Symbol))
+                        continue;
+                    kept.Add(binding);
+                    RecordFromImportedName(binding.Name, aliasName: null, binding.Symbol, isNetModule,
+                        sourceIsNetModule, sourceLayout);
+                }
+                if (kept.Count != bindings.Count)
+                    _semanticInfo.SetStarImportBoundNames(fromImport, kept);
+            }
+            return;
+        }
+
         foreach (var imported in fromImport.Names)
         {
             var effectiveName = imported.AsName ?? imported.Name;
-            var symbol = _symbolTable.Lookup(effectiveName);
-            if (symbol != null)
-            {
-                var originalName = imported.AsName != null ? imported.Name : null;
-                var csharpName = DetermineCSharpNameForFromImport(imported.Name, symbol, isNetModule);
-                IReadOnlyList<string>? siblingSegments = symbol is TypeSymbol { ClrType: null, DeclaringType: null } importedType
-                    && !sourceIsNetModule
-                        ? (!string.IsNullOrEmpty(importedType.DefiningFilePath)
-                            ? ModuleIdentifiers.LayoutNamespaceSegments(_sourceRootPath, importedType.DefiningFilePath)
-                            : sourceLayout?.NamespaceSegments)
-                        : null;
-
-                SetCodeGenInfo(symbol, new CodeGenInfo
-                {
-                    CSharpName = csharpName,
-                    OriginalName = effectiveName,
-                    ImportKind = imported.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
-                    OriginalImportName = originalName,
-                    // A Sharpy module's exported types are its top-level types: siblings of <X> in the
-                    // namespace of the file that DECLARES them — a package __init__ re-exporting a
-                    // submodule's type does not move it (#2039).
-                    IsNamespaceSibling = siblingSegments != null,
-                    NamespaceSegments = siblingSegments,
-                    IsOpenGenericDefinition = symbol is TypeSymbol importedTypeSymbol
-                        && DenotesGenericDefinition(importedTypeSymbol),
-                });
-            }
+            if (_symbolTable.Lookup(effectiveName) is { } symbol)
+                RecordFromImportedName(imported.Name, imported.AsName, symbol, isNetModule, sourceIsNetModule,
+                    sourceLayout);
         }
+    }
+
+    /// <summary>
+    /// The CodeGenInfo of one name a from-import binds — <paramref name="name"/> as the source module
+    /// exports it, bound under <paramref name="aliasName"/> when the import spells <c>as</c> — computed
+    /// identically for an explicit from-import and for each name a star import bound (#2385): its C#
+    /// spelling, its import kind, and an imported type's namespace-sibling layout.
+    /// </summary>
+    private void RecordFromImportedName(string name, string? aliasName, Symbol symbol, bool isNetModule,
+        bool sourceIsNetModule, ModuleLayout? sourceLayout)
+    {
+        var effectiveName = aliasName ?? name;
+        var csharpName = DetermineCSharpNameForFromImport(name, symbol, isNetModule);
+        IReadOnlyList<string>? siblingSegments = symbol is TypeSymbol { ClrType: null, DeclaringType: null } importedType
+            && !sourceIsNetModule
+                ? (!string.IsNullOrEmpty(importedType.DefiningFilePath)
+                    ? ModuleIdentifiers.LayoutNamespaceSegments(_sourceRootPath, importedType.DefiningFilePath)
+                    : sourceLayout?.NamespaceSegments)
+                : null;
+
+        SetCodeGenInfo(symbol, new CodeGenInfo
+        {
+            CSharpName = csharpName,
+            OriginalName = effectiveName,
+            ImportKind = aliasName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
+            OriginalImportName = aliasName != null ? name : null,
+            // A Sharpy module's exported types are its top-level types: siblings of <X> in the
+            // namespace of the file that DECLARES them — a package __init__ re-exporting a
+            // submodule's type does not move it (#2039).
+            IsNamespaceSibling = siblingSegments != null,
+            NamespaceSegments = siblingSegments,
+            IsOpenGenericDefinition = symbol is TypeSymbol importedTypeSymbol
+                && DenotesGenericDefinition(importedTypeSymbol),
+        });
     }
 
     /// <summary>
