@@ -20,7 +20,10 @@ namespace Sharpy.Compiler.Tests.Project;
 /// K3 in both orders (an explicit import of another source under a name the star of a project module exports:
 /// SPY0204 at the EXPLICIT import's ImportAlias), the star × star control (two libs exporting <c>shared</c>: SPY0204
 /// at the second star, pinned as measured), the star × module-property cell (the local property prints <c>5</c>,
-/// not lib's <c>9</c>) and its <c>--incremental</c> twin (the warm rebuild, lib.spy served from the cache).
+/// not lib's <c>9</c>) and its <c>--incremental</c> twin (the warm rebuild, lib.spy served from the cache). P21i
+/// (#2385, #2386) adds the star × exported KIND × read POSITION cells from a project module (<c>consts.spy</c>: variable,
+/// const, def, class, alias, property, the taken-over variable; module body, def, method — the single-file generator's
+/// <c>StarReadPositions</c>), their explicit/qualified controls, and the warm twin of the star × var × def cell.
 ///
 /// <para><b>Ratchet.</b> Every cell is judged into failures (exact errors and shadowing warnings in main.spy, the
 /// run's stdout); an SPY09xx is hard. The cells ratchet over the declaration-position generator's allowlist
@@ -59,7 +62,9 @@ public class ImportBindingProjectRouteTests
 
     /// <summary>Every ratcheted id of this class, as the shared allowlist spells it.</summary>
     internal static IEnumerable<string> CellIds()
-        => Cells().Select(c => (string)c[0]!).Append(IncrementalStarPropertyId).Select(id => $"project × {id}");
+        => Cells().Select(c => (string)c[0]!).Append(IncrementalStarPropertyId)
+            .Concat(StarKindCells().Select(c => c.Id)).Concat(IncrementalStarVarDefIds)
+            .Select(id => $"project × {id}");
 
     private const string MainOk = "\ndef main() -> None:\n    print(\"ok\")\n";
 
@@ -198,6 +203,167 @@ public class ImportBindingProjectRouteTests
         Judge($"project × {IncrementalStarPropertyId}", failures, allowlist, problems);
     }
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // P21i (i): star × exported kind × read position, project source (#2385; the property kind is #2386's export cell).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /// <summary>The project module every star × kind cell imports: one member of every exported kind, each with a
+    /// value the importing file could not print any other way (the lib's <c>9</c> vs a taken-over local's <c>1</c>).</summary>
+    private const string Consts =
+        "level: int = 9\n"
+        + "const LIMIT: int = 3\n"
+        + "def helper() -> int:\n"
+        + "    return 4\n"
+        + "class Box:\n"
+        + "    v: int = 7\n"
+        + "type Num = int\n"
+        + "property prop: int = 6\n";
+
+    /// <summary>(kind, the import line, a module-level prelude — the taken-over variable's own declaration —, the read,
+    /// its annotated type, the stdout). The explicit <c>from consts import level</c> and qualified <c>consts.level</c>
+    /// spellings are the controls: they print the lib's <c>9</c> at every position at the base.</summary>
+    private static readonly (string Kind, string Import, string[] Prelude, string Read, string Type, string Stdout)[] StarKinds =
+    {
+        ("var", "from consts import *", new string[0], "level", "int", "9\n"),
+        ("const", "from consts import *", new string[0], "LIMIT", "int", "3\n"),
+        ("def", "from consts import *", new string[0], "helper()", "int", "4\n"),
+        ("class", "from consts import *", new string[0], "Box().v", "int", "7\n"),
+        ("alias", "from consts import *", new string[0], "2", "Num", "2\n"),
+        ("property", "from consts import *", new string[0], "prop", "int", "6\n"),
+        ("var-taken-over", "from consts import *", new[] { "level: int = 1" }, "level", "int", "1\n"),
+        ("var-explicit (control)", "from consts import level", new string[0], "level", "int", "9\n"),
+        ("var-qualified (control)", "import consts", new string[0], "consts.level", "int", "9\n"),
+    };
+
+    /// <summary>A cell of the project route judged against the contract of an error-free program: exact errors in
+    /// main.spy (none), the run's stdout, and — when set — an emitted reference spelling.</summary>
+    internal sealed record RouteCell(string Id, string Main, string[] Errors, string? Stdout, string? Spelling,
+        (string Path, string Content)[] Libs);
+
+    /// <summary>The star × kind × position cells (the single-file generator's <c>StarReadPositions</c>, project
+    /// source): ids <c>star-kind × &lt;kind&gt; × &lt;position&gt;</c>. Expected: no diagnostic and the lib's value — the
+    /// taken-over variable prints the local <c>1</c> at every position (M1).</summary>
+    internal static IEnumerable<RouteCell> StarKindCells()
+    {
+        foreach (var kind in StarKinds)
+        {
+            foreach (var position in TypeDefinitionOwnSymbolMatrixTests.StarReadPositions)
+            {
+                yield return new RouteCell($"star-kind × {kind.Kind} × {position.Name}",
+                    position.Program(kind.Import, kind.Prelude, kind.Read, kind.Type), new string[0], kind.Stdout,
+                    null, new[] { ("consts.spy", Consts) });
+            }
+        }
+    }
+
+    public static IEnumerable<object[]> StarKindCellIds() => StarKindCells().Select(c => new object[] { c.Id });
+
+    private static RouteCell StarKindCell(string id) => StarKindCells().Single(c => c.Id == id);
+
+    [Theory]
+    [MemberData(nameof(StarKindCellIds))]
+    public void StarImport_KindByPosition_HoldsOnTheProjectRoute(string id)
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = StarKindCell(id);
+        using var helper = NewHelper("ImportBindingRoute", cell.Main, cell.Libs);
+        var failures = JudgeRun(cell, helper);
+        Judge($"project × {cell.Id}", failures, allowlist, problems);
+    }
+
+    /// <summary>The ids of the two stages of the <c>--incremental</c> twin of the star × var × def cell: the COLD stage
+    /// (the star program built into an empty cache) and the WARM stage (rebuilt with consts.spy cache-served).</summary>
+    private static readonly string[] IncrementalStarVarDefIds =
+    {
+        "star-kind × var × def (incremental, cold stage)",
+        "star-kind × var × def (incremental, warm stage)",
+    };
+
+    /// <summary>
+    /// The <c>--incremental</c> twin of the star × var × def cell (#2385; the axis the generator cannot enumerate), judged
+    /// at BOTH stages because they DISAGREE at the base (measured @ 04f9138b3 by hand with <c>sharpyc project</c> and by
+    /// this test: cold → SPY0909 "No CodeGenInfo for local 'level'"; warm → builds and prints <c>9</c>, the read spelled
+    /// <c>global::…Consts.ConstsModule.Level</c> — the cache-restored symbol carries a CodeGenInfo the cold route never
+    /// computes for a star-bound name, so warm ≠ cold is a cell of the plan's contract (i), not a stale row). Stage 1
+    /// builds the star program into an empty cache. Stage 2 SEEDS the cache with a valid main (a failed build writes no
+    /// cache, so the seed is the explicit spelling), rewrites main.spy to the star program and rebuilds with consts.spy
+    /// served from the cache — asserted hard (the instrument). The contract for both stages is the same: no diagnostic,
+    /// the lib's <c>9</c>.
+    /// </summary>
+    [Fact]
+    public void StarImport_ModuleVariableInADef_HoldsOnAnIncrementalRebuild()
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = StarKindCell("star-kind × var × def");
+        var seed = StarKindCell("star-kind × var-explicit (control) × def");
+
+        using var coldHelper = NewHelper("ImportBindingRouteWarm", cell.Main, cell.Libs).WithIncremental();
+        var coldFailures = JudgeRun(cell, coldHelper);
+        _output.WriteLine($"{IncrementalStarVarDefIds[0]}: {(coldFailures.Count == 0 ? "green" : string.Join("; ", coldFailures))}");
+
+        var warmFailures = JudgeWarm(cell, seed, "ImportBindingRouteWarm", "consts.spy");
+        _output.WriteLine($"{IncrementalStarVarDefIds[1]}: {(warmFailures.Count == 0 ? "green" : string.Join("; ", warmFailures))}");
+
+        Judge($"project × {IncrementalStarVarDefIds[0]}", coldFailures, allowlist, problems);
+        Judge($"project × {IncrementalStarVarDefIds[1]}", warmFailures, allowlist, problems);
+    }
+
+    /// <summary>Compiles and runs <paramref name="helper"/>'s project and judges it against <paramref name="cell"/>: the
+    /// exact errors in main.spy, the stdout, the emitted spelling (when the cell names one). An SPY09xx anywhere is a
+    /// FAILURE here, not a hard problem — the project route's <c>Compile</c> runs code generation and the C# compile, so
+    /// an SPY0909/SPY0908 is the cell's measured red exactly as the single-file generator's run arm treats it, and it
+    /// ratchets.</summary>
+    private List<string> JudgeRun(RouteCell cell, ProjectCompilationHelper helper)
+    {
+        var failures = new List<string>();
+        var run = helper.CompileAndExecute();
+        var result = helper.LastCompilationResult!;
+        var all = result.Diagnostics.GetAll().ToList();
+        var everyMessage = string.Join(" | ", all.Select(d => $"{d.Code} {Path.GetFileName(d.FilePath)}:{d.Line}:{d.Column} {d.Message}"));
+        var inMain = all.Where(d => d.FilePath != null && Path.GetFileName(d.FilePath) == "main.spy").ToList();
+        var actualErrors = inMain.Where(d => d.IsError).Select(d => $"{d.Code}@{d.Line}:{d.Column}")
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
+        _output.WriteLine($"{cell.Id}: success={run.Success} stdout=[{run.StandardOutput.TrimEnd()}] [{string.Join(" ", actualErrors)}] {everyMessage}");
+
+        var internals = all.Where(d => d.Code != null && d.Code.StartsWith("SPY09", StringComparison.Ordinal)).ToList();
+        if (internals.Count > 0)
+            failures.Add($"an internal error: {string.Join(" | ", internals.Select(d => $"{d.Code} {d.Message}")).ReplaceLineEndings(" ")}");
+        var expectedErrors = cell.Errors.OrderBy(s => s, StringComparer.Ordinal).ToList();
+        if (!actualErrors.SequenceEqual(expectedErrors, StringComparer.Ordinal))
+            failures.Add($"errors in main.spy are [{string.Join(" ", actualErrors)}], expected [{string.Join(" ", expectedErrors)}] — {everyMessage}");
+        if (cell.Errors.Length == 0)
+        {
+            if (!run.Success || run.StandardOutput != cell.Stdout)
+                failures.Add($"run: success={run.Success} stdout=[{run.StandardOutput.ReplaceLineEndings("\\n")}], expected [{cell.Stdout?.ReplaceLineEndings("\\n")}] "
+                    + string.Join(" | ", run.CompilationErrors).ReplaceLineEndings(" "));
+            if (cell.Spelling != null)
+            {
+                var cs = string.Concat(result.GeneratedCSharpFiles.Values);
+                if (!cs.Contains(cell.Spelling, StringComparison.Ordinal))
+                    failures.Add($"the emitted reference is not spelled '{cell.Spelling}'");
+                if (cs.Contains("using static ", StringComparison.Ordinal))
+                    failures.Add("a `using static` directive is emitted (#1683 close criterion)");
+            }
+        }
+
+        return failures;
+    }
+
+    /// <summary>The warm-rebuild judge: a seed build of <paramref name="seed"/>'s main (a valid program over the same
+    /// lib set) populates the cache, main.spy is rewritten to <paramref name="cell"/>'s program, and the warm build is
+    /// judged by <see cref="JudgeRun"/> with the lib files asserted cache-served (hard: a silent full rebuild would make
+    /// the twin a duplicate of the cold cell).</summary>
+    private List<string> JudgeWarm(RouteCell cell, RouteCell seed, string rootNamespace, params string[] cacheServed)
+    {
+        using var helper = NewHelper(rootNamespace, seed.Main, cell.Libs).WithIncremental();
+        var cold = helper.Compile();
+        cold.Diagnostics.GetErrors().Should().BeEmpty($"the seed build ({seed.Id}) compiles and populates the cache");
+        helper.UpdateSourceFile("main.spy", cell.Main);
+        var failures = JudgeRun(cell, helper);
+        helper.AssertWarmBuildSkipped(helper.LastCompilationResult!, cacheServed);
+        return failures;
+    }
+
     private ProjectCompilationHelper NewHelper(string rootNamespace, string main)
     {
         var helper = new ProjectCompilationHelper(_output)
@@ -207,6 +373,19 @@ public class ImportBindingProjectRouteTests
         helper.AddSourceFile("lib.spy", Lib);
         if (main.Contains("libb", StringComparison.Ordinal))
             helper.AddSourceFile("libb.spy", LibB);
+        helper.AddSourceFile("main.spy", main, isEntryPoint: true);
+        return helper;
+    }
+
+    /// <summary>A helper over a per-cell lib file set (P21i): the cell names its modules.</summary>
+    private ProjectCompilationHelper NewHelper(string rootNamespace, string main, (string Path, string Content)[] libs)
+    {
+        var helper = new ProjectCompilationHelper(_output)
+            .WithRootNamespace(rootNamespace)
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy");
+        foreach (var (path, content) in libs)
+            helper.AddSourceFile(path, content);
         helper.AddSourceFile("main.spy", main, isEntryPoint: true);
         return helper;
     }

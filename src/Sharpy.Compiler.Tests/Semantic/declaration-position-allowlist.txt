@@ -287,3 +287,23 @@ class-body-read × dataclass × static-property-default × static-method × befo
 class-body-read × dataclass × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
 class-body-read × struct × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
 class-body-read × struct × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+
+# P21i (i) — star × exported kind × read position × source (#2385; the property kind's export cell is #2386's). The
+# rows are the base's red cells @ 04f9138b3, measured by the generators' first run (Phase 1): a star-imported VARIABLE
+# read anywhere is SPY0909 "No CodeGenInfo for local" (the per-name CodeGenInfo is computed for fromImport.Names, which
+# a star has none of), the stdlib os.environ star cell likewise, and the project module's property is SPY0200 (the
+# export table has no PropertyDef arm). The const/def/class/alias/taken-over/explicit/qualified cells are the controls
+# (green at the base, never listed). Phases 2–3 drain these rows.
+import-binding × from-import-star × var × module × stdlib  # #2385 star × var: ice SPY0909 'pi'
+import-binding × from-import-star × var × def × stdlib  # #2385 star × var: ice SPY0909 'pi'
+import-binding × from-import-star × var × method × stdlib  # #2385 star × var: ice SPY0909 'pi'
+import-binding × from-import-star × property × module × stdlib  # #2385 star × os.environ: ice SPY0909 'environ'
+import-binding × from-import-star × property × def × stdlib  # #2385 star × os.environ: ice SPY0909 'environ'
+import-binding × from-import-star × property × method × stdlib  # #2385 star × os.environ: ice SPY0909 'environ'
+project × star-kind × var × module  # #2385 star × var: ice SPY0909 'level'
+project × star-kind × var × def  # #2385 star × var: ice SPY0909 'level'
+project × star-kind × var × method  # #2385 star × var: ice SPY0909 'level'
+project × star-kind × var × def (incremental, cold stage)  # #2385 star × var into an empty cache: ice SPY0909 'level' — the WARM stage (consts.spy cache-served) builds and prints 9: warm ≠ cold, a cache-restored symbol carries the CodeGenInfo the cold route never computes (measured @ 04f9138b3; ledger)
+project × star-kind × property × module  # #2386 the export table has no property: SPY0200 'prop'
+project × star-kind × property × def  # #2386 the export table has no property: SPY0200 'prop'
+project × star-kind × property × method  # #2386 the export table has no property: SPY0200 'prop'
