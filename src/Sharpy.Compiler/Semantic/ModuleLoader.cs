@@ -391,6 +391,49 @@ internal class ModuleLoader
                 moduleInfo.ExportedSymbols.Add(varDecl.Name, varSymbol);
                 break;
 
+            case PropertyDef propDef:
+                // A module property is an export like every other module-level declaration (#2386, the
+                // #2131 cell): without this arm `from lib import level`, `lib.level`, `l.level` and the
+                // star spelling all missed a name the module plainly declares (SPY0301 / SPY0203 /
+                // SPY0200). The accessor flags are NameResolver's formula; a second half of a split
+                // property (`property get` + `property set`) merges into the one export, as the two
+                // halves merge onto one symbol in the declaring module. For a module of this
+                // compilation the export is re-pointed at that declaration (ResolveOwnExportedSymbol).
+                var (propHasGetter, propHasSetter) = NameResolver.ModulePropertyAccessors(propDef);
+                var propType = ConvertTypeAnnotationToSemanticType(propDef.DeclaredTypeAnnotation());
+                if (moduleInfo.ExportedSymbols.TryGetValue(propDef.Name, out var existingExport)
+                    && existingExport is VariableSymbol { IsModuleProperty: true } existingProp)
+                {
+                    existingProp.HasPropertyGetter |= propHasGetter;
+                    existingProp.HasPropertySetter |= propHasSetter;
+                    if (existingProp.Type is UnknownType)
+                        existingProp.Type = propType;
+                    break;
+                }
+
+                moduleInfo.ExportedSymbols.Add(propDef.Name, new VariableSymbol
+                {
+                    Name = propDef.Name,
+                    Kind = SymbolKind.Variable,
+                    IsNameBacktickEscaped = propDef.IsNameBacktickEscaped,
+                    Type = propType,
+                    // Module-level members are implicitly static (emitted on the static module class)
+                    IsStatic = true,
+                    IsModuleProperty = true,
+                    HasPropertyGetter = propHasGetter,
+                    HasPropertySetter = propHasSetter,
+                    HasDefaultValue = propDef.DefaultValue != null,
+                    AccessLevel = GetAccessLevel(propDef.Name, propDef.IsNameBacktickEscaped),
+                    DeclarationLine = propDef.LineStart,
+                    DeclarationColumn = propDef.ColumnStart,
+                    NameDeclarationLine = propDef.NameLineStart,
+                    NameDeclarationColumn = propDef.NameColumnStart,
+                    NameDeclarationColumnEnd = propDef.NameColumnEnd,
+                    DeclarationSpan = propDef.Span,
+                    DeclaringFilePath = CurrentModulePath
+                });
+                break;
+
             case TypeAlias typeAlias:
                 // A module-level alias is an export like any other declaration; without this arm
                 // `from lib import Handle` reported SPY0202 for a name the module plainly declares

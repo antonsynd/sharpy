@@ -545,17 +545,23 @@ internal partial class NameResolver
         _symbolTable.Define(varSymbol);
     }
 
+    /// <summary>
+    /// The accessors one module-level property declaration contributes. Mirrors class-level accessor
+    /// classification (see ResolvePropertyDeclaration): auto-properties (Accessor.None) and
+    /// <c>property get</c> declare a getter, <c>property set</c> declares a setter. An <c>init</c>
+    /// accessor records neither — it is meaningless at module level (no construction phase) and is
+    /// rejected during validation, not during name binding. The module loader's export arm calls
+    /// this formula rather than restating it, so the imported symbol and the declaration agree.
+    /// </summary>
+    internal static (bool HasGetter, bool HasSetter) ModulePropertyAccessors(PropertyDef propDef)
+        => (propDef.Accessor is PropertyAccessor.Get or PropertyAccessor.None,
+            propDef.Accessor == PropertyAccessor.Set);
+
     private void ResolveModulePropertyDeclaration(PropertyDef propDef)
     {
         _logger.LogDebug($"Resolving module-level property declaration: {propDef.Name}");
 
-        // Mirror class-level accessor classification (see ResolvePropertyDeclaration):
-        // auto-properties (Accessor.None) and `property get` declare a getter,
-        // `property set` declares a setter. An `init` accessor records neither —
-        // it is meaningless at module level (no construction phase) and is
-        // rejected during validation, not during name binding.
-        bool hasGetter = propDef.Accessor is PropertyAccessor.Get or PropertyAccessor.None;
-        bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
+        var (hasGetter, hasSetter) = ModulePropertyAccessors(propDef);
 
         var existingSymbol = _symbolTable.Lookup(propDef.Name, searchParents: false);
         if (existingSymbol != null)
