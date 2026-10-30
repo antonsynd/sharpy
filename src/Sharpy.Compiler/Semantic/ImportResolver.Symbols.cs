@@ -411,7 +411,7 @@ internal partial class ImportResolver
 
         // A star import never displaces a module-level declaration (unchanged; outside R-II's spellings).
         // Nor does a module importing its OWN declaration (the project route binds the declaration itself).
-        if (isStar || ReferenceEquals(RootOrigin(existing), RootOrigin(incoming)))
+        if (isStar || ReferenceEquals(existing.DeclarationRoot(), incoming.DeclarationRoot()))
             return null;
 
         var line = existing.EffectiveNameLine ?? existing.DeclarationLine;
@@ -451,15 +451,6 @@ internal partial class ImportResolver
         => (a.FilePath.Length > 0 && string.Equals(a.FilePath, b.FilePath, StringComparison.Ordinal))
            || (a.CanonicalModuleName != null
                && string.Equals(a.CanonicalModuleName, b.CanonicalModuleName, StringComparison.Ordinal));
-
-    /// <summary>The declaration a re-export or alias clone was made from (#1525's identity rule).</summary>
-    private static Symbol RootOrigin(Symbol symbol)
-    {
-        var current = symbol;
-        while (current.OriginSymbol is { } origin && !ReferenceEquals(origin, current))
-            current = origin;
-        return current;
-    }
 
     /// <summary>The kind a SPY0204 import collision names for the module-level declaration it met.</summary>
     private static string DeclarationKindWord(Symbol symbol) => symbol switch

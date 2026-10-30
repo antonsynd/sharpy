@@ -508,7 +508,7 @@ internal class CodeGenInfoComputer
         // alias binds a clone whose origin chain ends at the declaration. Its module was checked
         // first (dependency order), so the declaration's fact is in the import-facts binding. A .NET
         // module's member has no such record and keeps the casing rule below.
-        if ((_importFacts ?? _semanticBinding).GetCodeGenInfo(DeclarationOf(symbol)) is
+        if ((_importFacts ?? _semanticBinding).GetCodeGenInfo(symbol.DeclarationRoot()) is
             { IsModuleLevel: true, CSharpName: { } declaredName })
         {
             return declaredName;
@@ -539,16 +539,7 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>Whether the declaration an import clone was made from spelled its name escaped.</summary>
-    private static bool DeclarationEscape(Symbol symbol) => DeclarationOf(symbol).IsNameBacktickEscaped;
-
-    /// <summary>The declaration an import clone was made from: the end of its origin chain.</summary>
-    private static Symbol DeclarationOf(Symbol symbol)
-    {
-        var declaration = symbol;
-        while (declaration.OriginSymbol is { } origin && !ReferenceEquals(origin, declaration))
-            declaration = origin;
-        return declaration;
-    }
+    private static bool DeclarationEscape(Symbol symbol) => symbol.DeclarationRoot().IsNameBacktickEscaped;
 
     /// <summary>
     /// Records a type declaration's emitted C# name and source spelling on its symbol — and on its

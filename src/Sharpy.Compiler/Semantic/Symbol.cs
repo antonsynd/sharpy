@@ -109,6 +109,20 @@ public abstract record Symbol
     public Symbol? OriginSymbol { get; init; }
 
     /// <summary>
+    /// The declaration this symbol was ultimately cloned from: the end of its
+    /// <see cref="OriginSymbol"/> chain (itself when it is not a clone). The one chain walker —
+    /// shadow dispatch (#1525), the import identity (P21i D6) and the import-side C# spelling
+    /// (#2065, #2386) all read it, so they cannot disagree about which declaration a clone names.
+    /// </summary>
+    public Symbol DeclarationRoot()
+    {
+        var declaration = this;
+        while (declaration.OriginSymbol is { } origin && !ReferenceEquals(origin, declaration))
+            declaration = origin;
+        return declaration;
+    }
+
+    /// <summary>
     /// Indicates if this symbol is re-exported from another module (e.g., via "from .submodule import func")
     /// </summary>
     public bool IsReExport { get; init; }
