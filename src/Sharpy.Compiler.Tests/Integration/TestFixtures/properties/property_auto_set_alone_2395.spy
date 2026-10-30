@@ -1,0 +1,35 @@
+# A lone auto set half — the spec's write-only auto property `property set name: T`
+# (properties.md "Auto-Property Modifiers") — runs in a class and in a struct (#2395, R-JS (a)).
+# C# has no set-only auto property (CS8051), so the emitter declares a private backing field and a
+# set-only property whose set accessor writes it. The interface host's lone set half stays abstract.
+class Host:
+    property set A: int
+
+struct Cell:
+    property set A: int
+
+# Defaulted, and @static
+class Defaulted:
+    property set A: int = 6
+
+class Shared:
+    @static
+    property set A: int
+
+interface IWriter:
+    property set A: int
+
+class Writer(IWriter):
+    property A: int = 5
+
+def main():
+    h = Host()
+    h.A = 7
+    c = Cell()
+    c.A = 7
+    d = Defaulted()
+    d.A = 7
+    Shared.A = 7
+    w: IWriter = Writer()
+    w.A = 7
+    print("ok")

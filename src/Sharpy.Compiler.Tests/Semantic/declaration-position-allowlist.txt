@@ -163,14 +163,6 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # SPY0617 at the second. CREATED by P21h Phase 1; drains in P21h Phase 2 (D2's seam arm, D3's all-auto arm
 # and SPY0407 arm, D4's roster). The two interface chains drained in P21h Phase 3 Task 4 (D7).
 
-# A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
-# struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under
-# run @ 9aae96977 — a write-only auto property has no C# auto shape. NOT a cell of plan-16cca3's Current
-# State (found by this generator's alone control, P21h Phase 1); filed as its own class tracker #2395
-# (owner decision: synthesize a backing field, or refuse) — it does not drain in P21h.
-member-alone × class × property-auto-set  # #2395 lone auto set half; ice CS8051
-member-alone × struct × property-auto-set  # #2395 lone auto set half; ice CS8051
-
 # #2067: an interface's function-style event with default `add`/`remove` bodies is SPY0908 CS0535 under
 # run — the emitter writes an abstract `event Action<int> A;` and drops the bodies, so `class Impl(Host):
 # pass` implements nothing (the issue's cell 2). Measured @ 9aae96977 on the matrix's interface event-add /
@@ -198,12 +190,9 @@ member-pair × interface × event-remove → event-add  # #2067 interface event 
 # and CS1007 (r03); IHost.A + IHost2.A is CS1007 (r04). Green at the base: field (r02), const, nested class
 # (r10), alias, auto event (r07), the event accessor pair, the function-style setter, and the explicit split
 # halves (r05). CREATED by P21h Phase 1 Task 2; drains in P21h Phase 3 (D5).
-# DRAINED by P21h Phase 3 Tasks 1-2 (the member key, then the emitter's grouping key) except the four
-# property-auto-set rows below: the bare auto setter alone is #2395's CS8051, re-cited.
-explicit-member × class × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × class × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × struct × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × struct × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+# DRAINED by P21h Phase 3 Tasks 1-2 (the member key, then the emitter's grouping key); its four
+# property-auto-set rows (the bare auto setter alone, CS8051) DRAINED by P21i Phase 5 (a lone auto set half
+# emits a backing field and a set-only property).
 
 # #2075 (R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the FIRST half
 # (the refused declaration GROUP draws one verdict; its later half is silent); a third half beside a merged

@@ -285,7 +285,8 @@ internal partial class RoslynEmitter
                     yield return member;
                 yield break;
             }
-            yield return GenerateAutoProperty(prop);
+            foreach (var member in GenerateAutoProperty(prop))
+                yield return member;
             yield break;
         }
 
@@ -700,10 +701,15 @@ internal partial class RoslynEmitter
     /// Maps accessor type to C# accessor list:
     ///   None -> { get; set; }
     ///   Get  -> { get; }
-    ///   Set  -> { set; }
+    ///   Set  -> private T _Name; T Name { set => _Name = value; }
     ///   Init -> { get; init; }
+    /// C# has no set-only auto property (CS8051), so a lone auto set half — the spec's write-only
+    /// <c>property set name: T</c> — stores to a synthesized backing field its set accessor writes,
+    /// named by <see cref="PropertyBackingFieldName"/> like the mixed and observer arms' fields, and
+    /// its default initializes that field (R-JS (a), #2395). The shape is the AST's: no semantic fact
+    /// decides it.
     /// </summary>
-    private PropertyDeclarationSyntax GenerateAutoProperty(PropertyDef propDef)
+    private IEnumerable<MemberDeclarationSyntax> GenerateAutoProperty(PropertyDef propDef)
     {
         var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
 
@@ -719,6 +725,7 @@ internal partial class RoslynEmitter
 
         // Build accessor list based on accessor type
         bool isReadonly = propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Readonly);
+        var backingFieldName = propDef.Accessor == PropertyAccessor.Set ? PropertyBackingFieldName(propDef) : null;
         var accessors = new List<AccessorDeclarationSyntax>();
         switch (propDef.Accessor)
         {
@@ -740,8 +747,12 @@ internal partial class RoslynEmitter
                 break;
 
             case PropertyAccessor.Set:
-                // { set; }
+                // { set => _Name = value; }
                 accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithExpressionBody(ArrowExpressionClause(AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(backingFieldName!),
+                        IdentifierName("value"))))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
                 break;
 
@@ -780,15 +791,36 @@ internal partial class RoslynEmitter
             property = property.WithAttributeLists(autoPropAttributes);
         }
 
-        // Add initializer if default value is present
-        if (propDef.DefaultValue != null)
+        // The default initializes the property, or the lone set half's backing field
+        var defaultValue = propDef.DefaultValue != null ? GenerateExpression(propDef.DefaultValue) : null;
+
+        if (backingFieldName != null)
         {
-            var initExpr = GenerateExpression(propDef.DefaultValue);
-            property = property.WithInitializer(EqualsValueClause(initExpr))
+            // private [static] T _Name [= default];
+            var fieldVariable = VariableDeclarator(EscapedIdentifier(backingFieldName));
+            if (defaultValue != null)
+            {
+                fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(defaultValue));
+            }
+
+            var fieldModifiers = modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
+                ? TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword))
+                : TokenList(Token(SyntaxKind.PrivateKeyword));
+            yield return FieldDeclaration(
+                    VariableDeclaration(propertyType).WithVariables(SingletonSeparatedList(fieldVariable)))
+                .WithModifiers(fieldModifiers);
+            yield return property;
+            yield break;
+        }
+
+        // Add initializer if default value is present
+        if (defaultValue != null)
+        {
+            property = property.WithInitializer(EqualsValueClause(defaultValue))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
-        return property;
+        yield return property;
     }
 
     /// <summary>

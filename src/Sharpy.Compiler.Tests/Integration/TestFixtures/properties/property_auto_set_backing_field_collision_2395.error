@@ -1,0 +1,1 @@
+Property 'a' in 'Host' synthesizes the backing field '_A', which the declared field '_a' already occupies. A write-only auto-property supplies the storage — drop the field declaration and move its default onto the property ('property set a: ... = ...') @4:5

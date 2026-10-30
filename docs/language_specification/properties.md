@@ -185,7 +185,7 @@ For complete details on virtual, abstract, and override properties, covariant re
 | `property name: T = val` | get + set | `T Name { get; set; } = val` |
 | `property get name: T` | get | `T Name { get; }` |
 | `property get name: T = val` | get | `T Name { get; } = val` |
-| `property set name: T` | set | `T Name { set; }` |
+| `property set name: T` | set | `private T _Name; T Name { set => _Name = value; }` (C# has no set-only auto property) |
 | `property init name: T` | get + init | `T Name { get; init; }` |
 | `property init name: T = val` | get + init | `T Name { get; init; } = val` |
 
