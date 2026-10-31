@@ -1,0 +1,3 @@
+# #2389 control (R12b): two DIFFERENT declarations under one name still collide once identity is the
+# defining module.symbol — utils.fmt resolves to utils.helpers.fmt, which is not utils.helpers.other.
+SPY0204: 'fmt' already names 'utils.fmt' (imported at line 1); import 'utils.helpers.other' under another name @2:27

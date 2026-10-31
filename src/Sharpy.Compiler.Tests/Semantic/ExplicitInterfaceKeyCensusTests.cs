@@ -69,8 +69,8 @@ public class ExplicitInterfaceKeyCensusTests
     /// </summary>
     private static readonly (string Pattern, string Site, string Reason)[] Exemptions =
     {
-        ("lambda", "Sharpy.Compiler/Semantic/Symbol.cs:502", "TypeSymbol.FindOwnProperty — the own-namespace helper"),
-        ("lambda", "Sharpy.Compiler/Semantic/Symbol.cs:510", "TypeSymbol.FindProperty — the full-key helper"),
+        ("lambda", "Sharpy.Compiler/Semantic/Symbol.cs:516", "TypeSymbol.FindOwnProperty — the own-namespace helper"),
+        ("lambda", "Sharpy.Compiler/Semantic/Symbol.cs:524", "TypeSymbol.FindProperty — the full-key helper"),
         ("family", "Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs:131", "module properties: a module body has no explicit-interface member"),
         ("lambda", "Sharpy.Compiler/Semantic/TypeHierarchyService.cs:190", "key-aware: collects the EXPLICIT implementations of a name (ExplicitInterface != null), which FindProperty skips"),
         ("lambda", "Sharpy.Compiler/Semantic/TypeChecker.Expressions.Access.Calls.cs:2904", "key-aware (ExplicitInterface == null) and case-insensitive — a CLR member-name probe FindOwnProperty's ordinal match cannot answer"),

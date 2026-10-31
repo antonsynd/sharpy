@@ -45,18 +45,17 @@ internal partial class ImportResolver
 
         _logger.LogDebug($"[ImportResolver]   Source module exports: {string.Join(", ", sourceModule.ExportedSymbols.Keys)}");
 
-        // Build re-exported symbols dictionary for code generation
-        var reExportedSymbols = new Dictionary<string, Symbol>();
-
+        // The re-exports extend the module's export table only. No re-export record is written here: this
+        // statement is the LOADER's own parse of the module, a node no reader keys on (ProjectCompiler
+        // Phase 4 and the emitter key on the compilation unit's node); the live record is
+        // ResolveFromImport's, which records a star's set even when empty (P21i D2, #2385).
         if (fromImport.ImportAll)
         {
             foreach (var (name, symbol) in sourceModule.ExportedSymbols)
             {
                 if (!name.StartsWith("_"))
                 {
-                    var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
-                    moduleInfo.ExportedSymbols.Add(name, reExportSymbol);
-                    reExportedSymbols[name] = reExportSymbol;
+                    moduleInfo.ExportedSymbols.Add(name, CreateReExportSymbol(symbol, fromImport));
                     _logger.LogDebug($"[ImportResolver]     Re-exporting (wildcard): {name}");
                 }
             }
@@ -70,9 +69,7 @@ internal partial class ImportResolver
 
                 if (sourceModule.ExportedSymbols.TryGetValue(sourceName, out var symbol))
                 {
-                    var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
-                    moduleInfo.ExportedSymbols.Add(targetName, reExportSymbol);
-                    reExportedSymbols[targetName] = reExportSymbol;
+                    moduleInfo.ExportedSymbols.Add(targetName, CreateReExportSymbol(symbol, fromImport, targetName));
 
                     if (symbol is TypeSymbol typeSymbol)
                     {
@@ -88,12 +85,6 @@ internal partial class ImportResolver
                     _logger.LogDebug($"[ImportResolver]     Symbol '{sourceName}' NOT FOUND in source module exports");
                 }
             }
-        }
-
-        if (reExportedSymbols.Count > 0)
-        {
-            _logger.LogDebug($"[ImportResolver]   Added {reExportedSymbols.Count} re-exported symbols to {Path.GetFileName(moduleInfo.Path)}");
-            _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
         }
     }
 
@@ -214,7 +205,14 @@ internal partial class ImportResolver
             DeclarationColumn = fromImport.ColumnStart,
             IsReExport = true,
             OriginalModule = fromImport.Module,
-            DefiningModule = definingModule
+            DefiningModule = definingModule,
+            // The type the clone was made from, as the function and variable arms of
+            // CreateReExportSymbol record it: the import identity walks this chain to the declaring
+            // .spy file (DefiningIdentityOf), so a type imported through a re-exporter AND directly is
+            // one import whichever module Phase 4 binds first. Without it the clone was its own root
+            // and the identity fell back to the spelled `lib1.Box` — SPY0204 only when the importer
+            // sorted before the re-exporter (P21i F1, #2389).
+            OriginSymbol = originalType
         };
 
         // When the type is aliased (effectiveName != originalType.Name), store the original
@@ -254,6 +252,33 @@ internal partial class ImportResolver
     internal readonly record struct ImportBindingSite(int Line, int Column, Text.TextSpan? Span);
 
     /// <summary>
+    /// The identity of what a from-import binds (R-JK, P21i D6): the DEFINING <c>module.symbol</c>
+    /// of the declaration the bound symbol was cloned from, so one declaration reached through two
+    /// module spellings — a package <c>__init__</c>, a plain module, a star, two hops — is one
+    /// import, and two different symbols under one name still differ (K1). The module is the
+    /// canonical name of the file that declares the root
+    /// (<see cref="ModuleLoader.ComputeCanonicalModuleName"/>), the name is the root's own.
+    /// </summary>
+    /// <remarks>
+    /// The spelled <c>"{sourceModule}.{exportedName}"</c> stands when the chain does not reach a
+    /// Sharpy declaration: a root with no <c>.spy</c> declaring file (a .NET or Stdlib module's
+    /// member, the <c>builtins</c> registry's symbol, an error-recovery placeholder) or a root that
+    /// is itself a re-export clone (a cache-restored clone lost its chain). The registry case is why the fallback is the spelled pair and not
+    /// <c>sourceModule.root.Name</c>: <c>from builtins import print as p</c> binds a copy named
+    /// <c>p</c> with no origin, so a root-named identity would make <c>print as p</c> and
+    /// <c>len as p</c> one import.
+    /// </remarks>
+    internal string DefiningIdentityOf(Symbol bound, string sourceModule, string exportedName)
+    {
+        var root = bound.DeclarationRoot();
+        return !root.IsReExport
+            && root.DeclaringFilePath is { } declaringFile
+            && declaringFile.EndsWith(".spy", StringComparison.OrdinalIgnoreCase)
+                ? $"{_moduleLoader.ComputeCanonicalModuleName(declaringFile)}.{root.Name}"
+                : $"{sourceModule}.{exportedName}";
+    }
+
+    /// <summary>
     /// Binds the module-level name an import introduces — THE seam for every import spelling
     /// (<c>import m as N</c>, <c>import a.b</c>, <c>from m import x [as N]</c>, <c>from m import *</c>)
     /// on the one compile route (<c>ProjectCompiler</c> Phase 4 — every command compiles through it).
@@ -268,9 +293,10 @@ internal partial class ImportResolver
     /// (CS0117 / CS1537 / CS0119 behind SPY0908). The verdict on a failed bind, by what holds the
     /// name: the same declaration again → nothing; two plain imports of one root (<c>import os</c> +
     /// <c>import os.path</c>, either order) → the exports merge; the same module or the same
-    /// exported SYMBOL again → nothing (idempotent — a from-import's identity is
-    /// <c>"{module}.{exported name}"</c>, so <c>from math import *</c> + <c>from math import pi</c>
-    /// is one binding); a from-import of a different symbol, from another module OR THE SAME one
+    /// exported SYMBOL again → nothing (idempotent — a from-import's identity is the DEFINING
+    /// <c>"{module}.{symbol}"</c>, <see cref="DefiningIdentityOf"/>, so <c>from math import *</c> +
+    /// <c>from math import pi</c> is one binding, and so is one declaration imported through a
+    /// re-exporting module and directly, R-JK); a from-import of a different symbol, from another module OR THE SAME one
     /// (K1, #2359) → SPY0204 "already names 'm.x'"; another module → SPY0204 "already bound to
     /// module"; a module-level declaration → SPY0204 "already defined in this module (kind, line)".
     /// A refused import binds NOTHING, so the declaration keeps its meaning. A module VARIABLE is the
@@ -373,8 +399,9 @@ internal partial class ImportResolver
         if (existing == null)
             return null;
 
-        // Two imports: decided by what each import NAMES (#514's rule: two sources re-exporting one declaration
-        // still collide; K1: one module's two symbols collide), never by the bound symbols' identity.
+        // Two imports: decided by what each import NAMES — the defining module.symbol (R-JK: two sources
+        // re-exporting one declaration are one import; K1: one module's two symbols collide), never by the bound
+        // symbols' object identity.
         if (prior != null)
         {
             // `import os` + `import os.path` (either order): a plain import binds the ROOT segment, so two
@@ -420,7 +447,7 @@ internal partial class ImportResolver
 
         // A star import never displaces a module-level declaration (unchanged; outside R-II's spellings).
         // Nor does a module importing its OWN declaration (the project route binds the declaration itself).
-        if (isStar || ReferenceEquals(RootOrigin(existing), RootOrigin(incoming)))
+        if (isStar || ReferenceEquals(existing.DeclarationRoot(), incoming.DeclarationRoot()))
             return null;
 
         var line = existing.EffectiveNameLine ?? existing.DeclarationLine;
@@ -428,12 +455,14 @@ internal partial class ImportResolver
             + (line is { } l ? $", line {l}" : "") + "); import under another name", null);
     }
 
-    /// <summary>The module a from-import binding names <paramref name="name"/> out of — its identity is
-    /// <c>"{module}.{exported name}"</c>, and a star binds every export under its own name.</summary>
+    /// <summary>The module a from-import binding names <paramref name="name"/> out of, as the source spells
+    /// it — its <c>Display</c> is <c>"{module}.{exported name}"</c>, and a star binds every export under its own
+    /// name. Never the <c>Identity</c>: that is the DEFINING module, which for a re-exporting star is not the
+    /// module the diagnostic must name.</summary>
     private static string SourceModuleOf(ImportBinding fromImport, string name)
-        => fromImport.Identity.EndsWith("." + name, StringComparison.Ordinal)
-            ? fromImport.Identity[..^(name.Length + 1)]
-            : fromImport.Identity;
+        => fromImport.Display.EndsWith("." + name, StringComparison.Ordinal)
+            ? fromImport.Display[..^(name.Length + 1)]
+            : fromImport.Display;
 
     /// <summary>The source spelling of an explicit import binding <paramref name="name"/>, as a diagnostic quotes it.</summary>
     private static string ExplicitSpelling(ImportBinding binding, string name)
@@ -460,15 +489,6 @@ internal partial class ImportResolver
         => (a.FilePath.Length > 0 && string.Equals(a.FilePath, b.FilePath, StringComparison.Ordinal))
            || (a.CanonicalModuleName != null
                && string.Equals(a.CanonicalModuleName, b.CanonicalModuleName, StringComparison.Ordinal));
-
-    /// <summary>The declaration a re-export or alias clone was made from (#1525's identity rule).</summary>
-    private static Symbol RootOrigin(Symbol symbol)
-    {
-        var current = symbol;
-        while (current.OriginSymbol is { } origin && !ReferenceEquals(origin, current))
-            current = origin;
-        return current;
-    }
 
     /// <summary>The kind a SPY0204 import collision names for the module-level declaration it met.</summary>
     private static string DeclarationKindWord(Symbol symbol) => symbol switch

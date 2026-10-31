@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.Compiler.Tests.Semantic;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -594,6 +595,119 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         run.GeneratedCSharp.Should().Contain("global::Poison.Lib.Box.Kind.A",
             "the cross-module nested-enum MEMBER must be global::-rooted too (#1899)");
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    // ── One identifier authority for an imported module member (P21i D5, #2386): the reference is
+    //    spelled by the DECLARATION's materialized name for every module-level kind, as a function
+    //    already was (#2065). Discriminating cell: a SCREAMING_CASE module property, declared through
+    //    the field speller (`CapP`) while the import-side casing rule keeps the name verbatim
+    //    (`CAP_P`). The rule is only observable on an ALIAS (a clone): an unaliased import binds the
+    //    declaration's own symbol, whose CodeGenInfo in the project binding is the declaring module's.
+    //    The escaped property (`Debug`) and the unaliased twin are controls — both spellings agree on
+    //    them (the escape follows the clone's origin chain either way).
+
+    private const string DeclaredNameLib = "property CAP_P: int = 9\nproperty `Debug`: int = 2\n";
+
+    public static IEnumerable<object[]> ImportedMemberDeclaredNameCells()
+    {
+        yield return new object[]
+        {
+            "screaming_property_aliased",
+            "from lib import CAP_P as c\n\ndef main() -> None:\n    print(c)\n",
+            "global::Test.Lib.LibModule.CapP", "9\n",
+        };
+        yield return new object[]
+        {
+            "screaming_property_unaliased (control)",
+            "from lib import CAP_P\n\ndef main() -> None:\n    print(CAP_P)\n",
+            "global::Test.Lib.LibModule.CapP", "9\n",
+        };
+        yield return new object[]
+        {
+            "escaped_property_aliased (control)",
+            "from lib import `Debug` as d\n\ndef main() -> None:\n    print(d)\n",
+            "global::Test.Lib.LibModule.Debug", "2\n",
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(ImportedMemberDeclaredNameCells))]
+    public void CrossModule_ImportedMember_IsSpelledByItsDeclaration(
+        string id, string main, string expectedSpelling, string expectedStdout)
+    {
+        Output.WriteLine($"[declared name] {id} → {expectedSpelling}");
+        var run = RunProject("Test", ("lib.spy", DeclaredNameLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            $"{id}: the project must compile and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be(expectedStdout);
+        run.GeneratedCSharp.Should().Contain(expectedSpelling,
+            $"{id}: an imported module member is spelled by its declaration's materialized name, "
+            + "whatever the import spells (P21i D5)");
+    }
+
+    // ── The qualified spellings of an imported module member (P21i F2, #2386): `import lib` + `lib.X` and
+    //    `import lib as a` + `a.X` spell the member by its declaration's materialized name, as the from-import
+    //    spellings do (D5). A SCREAMING_CASE module property is declared through the field speller (`CapP`) while
+    //    the qualified route's casing rule kept the name verbatim (`CAP_P`): CS0117 behind SPY0908 for read, write,
+    //    augmented store and a read inside a method. The snake_case and escaped properties and the SCREAMING
+    //    module VARIABLE (declared verbatim, `CAP_V`) are the controls the two spellers agree on.
+
+    private const string QualifiedMemberLib =
+        "property CAP_P: int = 7\n"
+        + "property snake_p: int = 7\n"
+        + "property `Esc_P`: int = 7\n"
+        + "_gs: int = 7\n"
+        + "property get GS_P() -> int:\n"
+        + "    return _gs\n"
+        + "property set GS_P(v: int):\n"
+        + "    _gs = v\n"
+        + "CAP_V: int = 7\n";
+
+    public static IEnumerable<object[]> QualifiedModuleMemberCells()
+    {
+        // (member as written at the use site, emitted member, the operations the cell runs)
+        var members = new (string Use, string Emitted, string[] Ops)[]
+        {
+            ("CAP_P", "CapP", new[] { "read", "write", "augmented", "read-in-method" }),
+            ("snake_p", "SnakeP", new[] { "read", "write", "augmented", "read-in-method" }),
+            ("`Esc_P`", "Esc_P", new[] { "read", "write", "augmented", "read-in-method" }),
+            ("GS_P", "GsP", new[] { "read", "write" }),
+            ("CAP_V", "CAP_V", new[] { "read", "write" }),
+        };
+        foreach (var (use, emitted, ops) in members)
+            foreach (var (consumer, import, q) in new[] { ("qualified", "import lib", "lib."), ("alias-qualified", "import lib as a", "a.") })
+                foreach (var op in ops)
+                {
+                    var x = q + use;
+                    var (body, stdout) = op switch
+                    {
+                        "read" => ($"def main() -> None:\n    print({x})\n", "7\n"),
+                        "write" => ($"def main() -> None:\n    {x} = 9\n    print({x})\n", "9\n"),
+                        "augmented" => ($"def main() -> None:\n    {x} += 1\n    print({x})\n", "8\n"),
+                        _ => ($"class B:\n    def r(self) -> int:\n        return {x}\n\ndef main() -> None:\n    print(B().r())\n", "7\n"),
+                    };
+                    yield return new object[]
+                    {
+                        $"{use} × {consumer} × {op}", $"{import}\n\n{body}", $"global::Test.Lib.LibModule.{emitted}", stdout,
+                    };
+                }
+    }
+
+    [Theory]
+    [MemberData(nameof(QualifiedModuleMemberCells))]
+    public void CrossModule_QualifiedMember_IsSpelledByItsDeclaration(
+        string id, string main, string expectedSpelling, string expectedStdout)
+    {
+        Output.WriteLine($"[qualified member] {id} → {expectedSpelling}");
+        var run = RunProject("Test", ("lib.spy", QualifiedMemberLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            $"{id}: the project must compile and run. Errors:\n" + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be(expectedStdout);
+        run.GeneratedCSharp.Should().Contain(expectedSpelling,
+            $"{id}: a module member reached through its module is spelled by its declaration's materialized name");
     }
 
     // ── Import-form cells: every USER-module import form inlines the reference as
@@ -1290,5 +1404,101 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         refusal.Message.Should().StartWith(message);
         refusal.Message.Should().Contain("module class of the package's __init__.spy");
         Path.GetFileName(refusal.FilePath).Should().Be("__init__.spy");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // P21i (ii): module-member KIND × read SITE, single file (#2386). Ratcheted.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>The module-level member kinds (P21i, #2386): (kind, the declaration lines, the read expression, the
+    /// emitted member name, the discriminating value). The property kinds are the matrix's new axis value: an auto
+    /// property, a function-style getter and the split auto halves; var, const and def are the controls (the emitter's
+    /// two-kind hand list names var and def; the const rides the var arm).</summary>
+    private static readonly (string Kind, string[] Declaration, string Read, string Member, string Value)[] ModuleMemberKinds =
+    {
+        ("var", new[] { "count: int = 5" }, "count", "Count", "5"),
+        ("const", new[] { "const LIMIT: int = 3" }, "LIMIT", "LIMIT", "3"),
+        ("def", new[] { "def helper() -> int:", "    return 4" }, "helper()", "Helper()", "4"),
+        ("property-auto", new[] { "property auto_p: int = 6" }, "auto_p", "AutoP", "6"),
+        ("property-get", new[] { "property get fget_p() -> int:", "    return 7" }, "fget_p", "FgetP", "7"),
+        ("property-split", new[] { "property get sp: int = 8", "property set sp: int" }, "sp", "Sp", "8"),
+    };
+
+    /// <summary>The read sites (P21i): the module body (<c>x: int = read</c>, printed from <c>main</c>), a module
+    /// function, a method of a module class, and a method of a NESTED class. Every read lands in an annotated local
+    /// (<c>x: int = read</c>), so the cell is a type probe as well as a value probe. (site, the body lines given the
+    /// read.)</summary>
+    private static readonly (string Site, Func<string, string[]> Body)[] ModuleMemberReadSites =
+    {
+        ("module", read => new[] { $"x: int = {read}", "", "def main() -> None:", "    print(x)" }),
+        ("function", read => new[] { "def read() -> int:", $"    x: int = {read}", "    return x", "", "def main() -> None:", "    print(read())" }),
+        ("method", read => new[] { "class Box:", "    def read(self) -> int:", $"        x: int = {read}", "        return x", "",
+            "def main() -> None:", "    print(Box().read())" }),
+        ("nested-method", read => new[] { "class Outer:", "    class Inner:", "        def read(self) -> int:", $"            x: int = {read}",
+            "            return x", "", "def main() -> None:", "    print(Outer.Inner().read())" }),
+    };
+
+    /// <summary>A kind × site cell: id <c>module-member × &lt;kind&gt; × &lt;site&gt;</c>, the program, the emitted reference it
+    /// must carry (<c>global::Prog.ProgModule.&lt;Member&gt;</c> — the matrix's settled spelling for a module-level member in
+    /// value position) and its stdout.</summary>
+    internal sealed record ModuleMemberCell(string Kind, string Site, string Source, string Spelling, string Stdout)
+    {
+        public string Id => $"module-member × {Kind} × {Site}";
+    }
+
+    internal static IEnumerable<ModuleMemberCell> ModuleMemberCells()
+    {
+        foreach (var kind in ModuleMemberKinds)
+            foreach (var site in ModuleMemberReadSites)
+                yield return new ModuleMemberCell(kind.Kind, site.Site,
+                    string.Join("\n", kind.Declaration.Concat(site.Body(kind.Read)).Append("")),
+                    $"global::Prog.ProgModule.{kind.Member}", kind.Value + "\n");
+    }
+
+    /// <summary>Every ratcheted id of the kind × site theory, for the shared allowlist's universe
+    /// (<c>TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist</c>).</summary>
+    internal static IEnumerable<string> CellIds() => ModuleMemberCells().Select(c => c.Id);
+
+    public static IEnumerable<object[]> ModuleMemberCellIds() => ModuleMemberCells().Select(c => new object[] { c.Id });
+
+    /// <summary>
+    /// P21i (ii), #2386: every module-level member KIND {var, const, def, auto property, getter property, split
+    /// halves} read from every SITE {module body, function, method, nested class's method} runs with the member's
+    /// value AND is emitted <c>global::Prog.ProgModule.&lt;Member&gt;</c> — one spelling for every kind at every site, with
+    /// the <c>DoesNotContain("using static")</c> rider. At the base the emitter qualifies a same-module member only when
+    /// its name is in a two-kind hand list (<c>FunctionDef</c>, <c>VariableDeclaration</c>), so a property is emitted BARE:
+    /// legal inside the module class (module body, function — the spelling cell is red) and CS0103 behind SPY0908 inside
+    /// a type (method, nested method — the run is red). Ratcheted over <c>Semantic/declaration-position-allowlist.txt</c>
+    /// (ids <c>module-member × …</c>): an SPY09xx/SPY05xx under run is a failure, not a hard problem, as in the
+    /// import-binding generator's run arm.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ModuleMemberCellIds))]
+    public void ModuleMember_KindByReadSite_IsGlobalQualified(string id)
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = ModuleMemberCells().Single(c => c.Id == id);
+        var result = CompileAndExecute(cell.Source, "prog.spy");
+        var internals = result.RawDiagnostics.Where(d => (d.Code ?? "").StartsWith("SPY09", StringComparison.Ordinal)
+            || (d.Code ?? "").StartsWith("SPY05", StringComparison.Ordinal)).ToList();
+        Output.WriteLine($"{cell.Id}: success={result.Success} stdout=[{result.StandardOutput.TrimEnd()}] "
+            + string.Join(" | ", internals.Select(d => $"{d.Code} {d.Message}")).ReplaceLineEndings(" "));
+
+        var failures = new List<string>();
+        if (internals.Count > 0)
+            failures.Add($"an internal error under run: {string.Join(" ", internals.Select(d => d.Code))}");
+        if (!result.Success || result.StandardOutput != cell.Stdout)
+            failures.Add($"run: success={result.Success} stdout=[{result.StandardOutput.ReplaceLineEndings("\\n")}], expected [{cell.Stdout.ReplaceLineEndings("\\n")}] "
+                + string.Join(" | ", result.CompilationErrors).ReplaceLineEndings(" "));
+        var cs = result.GeneratedCSharp ?? "";
+        if (!cs.Contains(cell.Spelling, StringComparison.Ordinal))
+            failures.Add($"the emitted reference is not spelled '{cell.Spelling}' (a same-module member is qualified by one rule at every site)");
+        if (cs.Contains(UsingStatic, StringComparison.Ordinal))
+            failures.Add("a `using static` directive is emitted (#1683 close criterion)");
+
+        if (failures.Count > 0)
+            Output.WriteLine($"    red: {string.Join("; ", failures)}");
+        TypeDefinitionOwnSymbolMatrixTests.Ratchet(cell.Id, failures, allowlist, problems, new List<string>());
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
     }
 }

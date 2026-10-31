@@ -263,8 +263,8 @@ A submodule or subpackage spelled like the package's own members class (`pkg/pkg
 
 ## Name Qualification in Generated C#
 
-Every reference the compiler emits to a **module-level member** (a module function, variable, or
-constant — imported or defined in the same module) is fully `global::`-qualified through its
+Every reference the compiler emits to a **module-level member** (a module function, variable,
+constant or property — imported or defined in the same module) is fully `global::`-qualified through its
 module's members class, and every reference to a **type** declared by a module is `global::`-qualified
 through its module's namespace. Nothing is bound by an ambient `using static` or
 `using <alias> = ...` directive; those directives are not emitted.
@@ -287,7 +287,9 @@ name collision. For example, a project whose root namespace is `Poison` may defi
 before universal qualification, produced a `CS0118` "is a namespace but is used like a type" error).
 The same holds inside a type body: a method of `class C` that reads a module variable its own field
 shadows (python resolves the bare name to the module) is emitted `global::<Root>.Lib.LibModule.V` —
-a bare `Lib.V` there would name the namespace. A local top-level definition does not share a
+a bare `Lib.V` there would name the namespace. A module property is read the same way: a method
+that reads `property level: int = 5` of its own module is emitted
+`global::<Namespace>.<Stem>Module.Level`, as a module variable is. A local top-level definition does not share a
 spelling with a named import (`import m`, `import m as n`, `from m import x`, `from m import x as n`):
 such an import binds a module-level name and collides like any other module binding (`SPY0204` — see
 [import_statements.md](import_statements.md#an-import-binds-a-module-level-name)), so a local

@@ -2084,11 +2084,13 @@ internal partial class RoslynEmitter
                 {
                     mangledMemberName = vs.ClrFieldName ?? memberPart;
                 }
-                else if (!currentModule.IsNetModule && exportSymbol is FunctionSymbol
-                         && GetCodeGenInfo(exportSymbol)?.CSharpName is { } declaredName)
+                else if (!currentModule.IsNetModule && DeclaredModuleMemberName(exportSymbol) is { } declaredName)
                 {
-                    // A user module's function is spelled by its one materialized name, the name its
-                    // declaration reads: `util.main()` names the non-entry MainFunc (#2065).
+                    // A user module's function, variable, const or property is spelled by its one
+                    // materialized name, the name its declaration reads: `util.main()` names the
+                    // non-entry MainFunc (#2065), and `lib.CAP_P` names the property's `CapP` — the
+                    // casing rule below kept a SCREAMING_CASE name verbatim (CS0117, P21i F2) while
+                    // the from-import spellings already read the declaration (#2386, D5).
                     mangledMemberName = declaredName;
                 }
                 else if (!currentModule.IsNetModule && i == modulePartCount && exportSymbol is TypeSymbol exportedType)
@@ -2142,6 +2144,18 @@ internal partial class RoslynEmitter
 
         return currentExpr;
     }
+
+    /// <summary>
+    /// The materialized C# name of a user module's function, or of its module-level variable, const
+    /// or property — the name the declaration is emitted with — or null when the export carries none
+    /// (a type, a nested module, a member with no recorded name).
+    /// </summary>
+    private string? DeclaredModuleMemberName(Symbol? member) => member switch
+    {
+        FunctionSymbol => GetCodeGenInfo(member)?.CSharpName,
+        VariableSymbol => GetCodeGenInfo(member) is { IsModuleLevel: true, CSharpName: { } name } ? name : null,
+        _ => null,
+    };
 
     /// <summary>
     /// The namespace segments (relative to the project namespace) and members class of a user module

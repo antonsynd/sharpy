@@ -15,17 +15,21 @@ internal enum ImportBindingForm
 
 /// <summary>
 /// What an import bound under one module-level name: the spelling, the identity of what it bound
-/// (a module's canonical name or file for a module form; for a from-import the EXPORTED SYMBOL,
-/// <c>"{module}.{exported name}"</c> — never the alias, and never the module alone), the spelling a
-/// diagnostic quotes, the importing file, and the binding's site (the <c>ImportAlias</c> of an
-/// explicit spelling, the statement of a star).
+/// (a module's canonical name or file for a module form; for a from-import the DEFINING
+/// <c>module.symbol</c> of the declaration it names — <see cref="ImportResolver.DefiningIdentityOf"/>,
+/// R-JK: a re-export resolves to its declaration, so one declaration reached through two module
+/// spellings is one identity; never the alias, and never the module alone), the spelling a
+/// diagnostic quotes (<see cref="Display"/>: <c>"{module as spelled}.{exported name}"</c>), the
+/// importing file, and the binding's site (the <c>ImportAlias</c> of an explicit spelling, the
+/// statement of a star).
 /// </summary>
 /// <remarks>
 /// Recorded on the <see cref="Scope"/> by <see cref="ImportResolver.BindImportName"/> — the one seam
 /// every import spelling binds through (ProjectCompiler Phase 4) — so a later binding of the same name
 /// can tell an import from a declaration: two imports of one thing merge, anything else collides
 /// (SPY0204, R-II). Two from-imports of ONE module that bind DIFFERENT symbols collide because the
-/// identity is what each import NAMES (K1, #2359). The site lets a verdict land on the PRIOR import
+/// identity is what each import NAMES (K1, #2359); two imports of one declaration through different
+/// modules merge because the identity is where that declaration is DEFINED (R-JK, #2389). The site lets a verdict land on the PRIOR import
 /// when the ruling puts it there: an explicit import beside a star import is refused at the explicit
 /// import whichever comes first (R-IZ). The type checker reads the record too: a module variable
 /// declared after the imports re-declares an imported name, whatever symbol kind the import bound.

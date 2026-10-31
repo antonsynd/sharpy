@@ -1,0 +1,9 @@
+# #2389 (R-JK): an import's identity is the DEFINING module.symbol. utils/__init__.spy re-exports
+# utils.helpers.fmt, so the two imports below name one declaration under two module spellings: one
+# import, no SPY0204 (it was "'fmt' already names 'utils.fmt' ... import 'utils.helpers.fmt' under
+# another name"). reexport_different_symbol is the control that still collides.
+from utils import fmt
+from utils.helpers import fmt
+
+def main() -> None:
+    print(fmt())

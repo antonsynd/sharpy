@@ -1,0 +1,5 @@
+def fmt() -> str:
+    return "f"
+
+def other() -> str:
+    return "o"

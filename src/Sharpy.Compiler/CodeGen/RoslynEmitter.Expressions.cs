@@ -491,23 +491,28 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// The <c>global::</c>-rooted namespace segments of the C# module class that OWNS
-    /// <paramref name="symbol"/>, when it is a module-level member (function/variable/const) —
-    /// from-imported (recorded by <c>RegisterFromImportMembers</c>) OR same-module (owned by THIS
+    /// <paramref name="symbol"/>, when it is a module-level member (function/variable/const/property)
+    /// — from-imported (recorded by <c>RegisterFromImportMembers</c>) OR same-module (owned by THIS
     /// module's class) — or <c>null</c> when it is not a module-level member (a local, parameter,
     /// class member or type). Every module-level member reference is qualified, imported or not
     /// (#1683 ruling: universal, no collision detection). The single containment authority.
+    /// <para>Same-module is the materialized fact <c>{ IsModuleLevel: true, ImportKind: None }</c>
+    /// (CodeGenInfoComputer sets <c>IsModuleLevel</c> for every module-level kind — the one switch
+    /// where kind totality lives), never a list of declaration kinds: a two-kind name list left a
+    /// module property bare, CS0103 inside a type body (#2386). The import map is consulted FIRST
+    /// and that order is load-bearing: in a project build an unaliased from-import binds the
+    /// declaring module's own symbol, whose record in the project binding is the DECLARING module's
+    /// (<c>IsModuleLevel: true, ImportKind: None</c> — the per-file merge keeps the first record per
+    /// symbol, and the declaring module is checked first), so the fact alone would claim it for
+    /// this module.</para>
     /// </summary>
     private string[]? ModuleMemberContainerSegments(Symbol symbol)
     {
         if (_importedMemberContainers.TryGetValue(symbol, out var imported))
             return imported;
 
-        if (symbol is FunctionSymbol or VariableSymbol
-            && GetCodeGenInfo(symbol) is { IsModuleLevel: true }
-            && _ownTopLevelMemberNames.Contains(symbol.Name))
-        {
+        if (GetCodeGenInfo(symbol) is { IsModuleLevel: true, ImportKind: ImportKind.None })
             return OwnModuleContainerSegments();
-        }
 
         return null;
     }

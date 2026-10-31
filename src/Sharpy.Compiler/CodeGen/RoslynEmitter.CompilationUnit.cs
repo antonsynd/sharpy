@@ -311,7 +311,7 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Records, for every module-level member (function/variable/const) brought in by a
+    /// Records, for every module-level member (function/variable/const/property) brought in by a
     /// <c>from module import name</c> from a USER module, the global::-rooted namespace segments of
     /// the C# module class that owns it (e.g. <c>poison</c> from <c>from lib import poison</c> →
     /// <c>["Poison","Lib"]</c>). A bare reference to such a member is then emitted fully qualified
@@ -324,35 +324,17 @@ internal partial class RoslynEmitter
     /// <c>using static</c> / type-alias directives. Imported TYPES are not recorded either — they
     /// qualify through the type-naming path.</para>
     ///
-    /// <para>A <c>from m import *</c> registers exactly the names semantic analysis recorded it BOUND
-    /// (<see cref="SemanticInfo.GetStarImportBoundNames"/>, #2371) — never the module's export list — so
-    /// a declaration of this file that spells a star-exported name keeps its own name, whatever its
-    /// kind.</para>
+    /// <para>A from-import registers exactly the names semantic analysis recorded it BOUND
+    /// (<see cref="SemanticInfo.GetFromImportBoundNames"/>, #2371) — for a star never the module's export
+    /// list — so a declaration of this file that spells an imported name keeps its own name, whatever its
+    /// kind and whichever spelling imported it (#2385).</para>
     /// </summary>
     private void RegisterFromImportMembers(Module module)
     {
         _importedMemberContainers.Clear();
-        _ownTopLevelMemberNames.Clear();
 
-        // Names a top-level function or variable of THIS module defines. Two uses: (a) a local
-        // definition SHADOWS a same-named from-import (#1525) and wins the name lookup, so the
-        // import must NOT be qualified; (b) same-module member qualification applies ONLY to these
-        // names, so a wildcard-imported member (owned by another module's class) is not mis-qualified
-        // to this module.
-        foreach (var stmt in module.Body)
-        {
-            switch (stmt.UnwrapDecorated())
-            {
-                case FunctionDef f:
-                    _ownTopLevelMemberNames.Add(f.Name);
-                    break;
-                case Parser.Ast.VariableDeclaration v:
-                    _ownTopLevelMemberNames.Add(v.Name);
-                    break;
-            }
-        }
-        var locallyDefined = _ownTopLevelMemberNames;
-
+        // Which imported names are bound — and so qualified through their module below — is semantic
+        // analysis's fact: every from-import's recorded set is post-takeover (#2385).
         foreach (var stmt in module.Body)
         {
             if (stmt.UnwrapDecorated() is not FromImportStatement fromImport)
@@ -386,29 +368,21 @@ internal partial class RoslynEmitter
                 containerSegments = segs.ToArray();
             }
 
-            void Register(string effectiveName, Symbol? symbol)
+            void Register(Symbol? symbol)
             {
-                if (locallyDefined.Contains(effectiveName))
-                    return;
                 if (symbol is FunctionSymbol or VariableSymbol)
                     _importedMemberContainers[symbol] = containerSegments;
             }
 
-            if (fromImport.ImportAll)
-            {
-                // `from m import *`: the names the star BOUND (recorded by semantic analysis, #2371)
-                // are bare in this scope and lost the `using static` that resolved them — qualify each
-                // through the same map. The registered symbol is the one the scope actually binds the
-                // name to (LookupSymbol), not the re-export wrapper recorded for codegen, so the
-                // reference site's resolved symbol matches the map key.
-                foreach (var name in GetWildcardImportedMemberNames(fromImport))
-                    Register(name, _context.LookupSymbol(name));
-            }
-            else
-            {
-                foreach (var imported in fromImport.Names)
-                    Register(imported.AsName ?? imported.Name, _context.LookupSymbol(imported.AsName ?? imported.Name));
-            }
+            // The names the import BOUND (recorded by semantic analysis after the checker's takeover,
+            // #2371, #2385) are bare in this scope and lost the `using static` that resolved them —
+            // qualify each through the same map. A name a module variable of this file took over is
+            // absent from the record whichever spelling imported it, so the file's own variable is
+            // never spelled through the import's module. The registered symbol is the one the scope
+            // actually binds the name to (LookupSymbol), not the re-export wrapper recorded for
+            // codegen, so the reference site's resolved symbol matches the map key.
+            foreach (var name in GetFromImportedMemberNames(fromImport))
+                Register(_context.LookupSymbol(name));
         }
     }
 
@@ -431,23 +405,21 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The exported member NAMES a <c>from m import *</c> bound into this file's module scope — the
-    /// names semantic analysis recorded where the star binds (<see cref="SemanticInfo.GetStarImportBoundNames"/>),
+    /// The member NAMES a from-import (star or explicit) bound into this file's module scope — the names
+    /// semantic analysis recorded where the import binds (<see cref="SemanticInfo.GetFromImportBoundNames"/>),
     /// and nothing else: a star-exported name that a def, const, class, alias or module property of this
-    /// file declares was never bound to the star, so it is not qualified through the star module (#2371).
-    /// A module VARIABLE is the exception: the star binds the name in ProjectCompiler Phase 4 and the
-    /// checker's variable arm takes it over later, so the name IS in this list, and the
-    /// <c>locallyDefined</c> filter in <see cref="RegisterFromImportMembers"/> is what keeps the
-    /// variable's own name (#2385). A star import with no record is an internal error — the emitter
-    /// derives no binding (Rule 2).
+    /// file declares was never bound to the star, and a module variable of this file that takes an
+    /// imported name over is filtered out of the record after type checking (#2385), so neither is
+    /// qualified through the import's module (#2371). An import with no record is an internal error —
+    /// the emitter derives no binding (Rule 2).
     /// </summary>
-    private IReadOnlyList<string> GetWildcardImportedMemberNames(FromImportStatement fromImport)
+    private IReadOnlyList<string> GetFromImportedMemberNames(FromImportStatement fromImport)
     {
-        if (_context.SemanticInfo?.GetStarImportBoundNames(fromImport) is { } boundNames)
+        if (_context.SemanticInfo?.GetFromImportBoundNames(fromImport) is { } boundNames)
             return boundNames;
 
         throw new Sharpy.Compiler.Diagnostics.InternalCompilerErrorException("RoslynEmitter",
-            $"star-binding fact missing (#2371, Rule 2): no bound names recorded on 'from {fromImport.Module} import *' "
+            $"import-binding fact missing (#2371, Rule 2): no bound names recorded on 'from {fromImport.Module} import' "
             + $"(semanticInfo={(_context.SemanticInfo == null ? "null" : "set")}, file='{_context.SourceFilePath}')",
             fromImport);
     }

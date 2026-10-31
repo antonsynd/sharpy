@@ -113,13 +113,13 @@ public class CompilationUnit
     internal IReadOnlySet<string>? CachedReferencedClrTypeNames { get; set; }
 
     /// <summary>
-    /// The names each <c>from m import *</c> of this file actually bound in its module scope, keyed by
-    /// the star statement (reference identity) — written by ProjectCompiler Phase 4 where the star binds
-    /// (<c>ImportResolver.BindImportName</c> returned true), before the per-file
+    /// The names each from-import of this file (star or explicit) bound in its module scope, each beside
+    /// the symbol the scope bound it to (<see cref="FromImportBoundName"/>, #2385), keyed by the import
+    /// statement (reference identity) — written by ProjectCompiler Phase 4 where the import binds, before the per-file
     /// <see cref="FileSemanticInfo"/> exists, and copied into it when Phase 5 creates it so the fact flows
     /// through <see cref="SemanticInfo.MergeFrom"/> to code generation (#2371, P21g D5 option (i)).
     /// </summary>
-    internal Dictionary<FromImportStatement, IReadOnlyList<string>> StarImportBoundNames { get; } =
+    internal Dictionary<FromImportStatement, IReadOnlyList<FromImportBoundName>> FromImportBoundNames { get; } =
         new(ReferenceEqualityComparer.Instance);
 
     /// <summary>

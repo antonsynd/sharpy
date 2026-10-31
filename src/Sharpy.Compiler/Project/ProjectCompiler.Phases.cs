@@ -302,9 +302,9 @@ internal partial class ProjectCompiler
                     {
                         var moduleInfo = ImportResolver.ResolveFromImport(fromImport,
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
-                        // A star import of a module that did not resolve bound nothing (#2371).
-                        if (fromImport.ImportAll && moduleInfo == null)
-                            unit.StarImportBoundNames[fromImport] = Array.Empty<string>();
+                        // A from-import of a module that did not resolve bound nothing (#2371).
+                        if (moduleInfo == null)
+                            unit.FromImportBoundNames[fromImport] = Array.Empty<FromImportBoundName>();
                         if (moduleInfo != null)
                         {
                             // Use ReExportedSymbols which have DefiningModule set for cross-module type references
@@ -321,7 +321,7 @@ internal partial class ProjectCompiler
                             // the same TypeSymbol, so inheritance info set in Phase 4b is visible
                             // everywhere. Function symbols use re-exported copies because the TypeChecker
                             // updates them via record `with` expressions that create new instances.
-                            var sourceModuleScope = SymbolTable.GetModuleScope(fromImport.Module);
+                            var sourceModuleScope = ModuleScopeOf(moduleInfo);
                             var sourceModule = moduleInfo.CanonicalModuleName ?? fromImport.Module;
 
                             // Add specific imported symbols (skip if already defined from project files)
@@ -330,27 +330,31 @@ internal partial class ProjectCompiler
                                 // Star-imported names that displace a builtin are RECORDED here and
                                 // reported where they are used, not here (#1324, C#'s CS0104 rule).
                                 // This is the one place a star import binds its names — so the names it
-                                // BOUND are recorded here too, for the emitter (#2371, D5 (i)): a name a
-                                // declaration of this file keeps is refused to the star and absent.
-                                var boundNames = new List<string>();
-                                unit.StarImportBoundNames[fromImport] = boundNames;
+                                // BOUND are recorded here too, each beside the symbol it bound (#2371, D5 (i);
+                                // #2385): a name a declaration of this file keeps is refused to the star and
+                                // absent, and a module variable that takes a name over later is filtered out
+                                // after type checking by identity (CodeGenInfoComputer).
+                                var boundNames = new List<FromImportBoundName>();
+                                unit.FromImportBoundNames[fromImport] = boundNames;
                                 foreach (var (name, symbol) in symbolsToImport)
                                 {
                                     if (BuiltinNameShadowing.ShadowsBuiltin(SymbolTable.BuiltinRegistry, name))
                                         SymbolTable.AmbiguousGlobImports[name] = fromImport.Module;
 
                                     var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
-                                    // A from-import's identity is the symbol it names (K1, #2359): two imports
-                                    // of one module that bind different symbols under one name collide.
+                                    // A from-import's identity is the DEFINING module.symbol it names (K1, #2359;
+                                    // R-JK): a re-export resolves to its declaration, and two imports that bind
+                                    // different symbols under one name collide. The display stays as spelled.
                                     var exported = $"{sourceModule}.{name}";
+                                    var identity = ImportResolver.DefiningIdentityOf(symbolToRegister, sourceModule, name);
                                     if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, name, alias: null,
-                                            new ImportBinding(ImportBindingForm.FromImport, exported, exported,
+                                            new ImportBinding(ImportBindingForm.FromImport, identity, exported,
                                                 unit.FilePath, fromImport.LineStart, fromImport.ColumnStart,
                                                 fromImport.Span),
                                             warningTarget: null, isRegistryOwnBinding: false,
                                             d => Report(d, fromImport.LineStart, fromImport.ColumnStart, fromImport.Span)))
                                     {
-                                        boundNames.Add(name);
+                                        boundNames.Add(new FromImportBoundName(name, symbolToRegister));
                                         // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                         if (ImportResolver.OverloadsFor(moduleInfo, name) is { Count: > 1 } overloads)
                                         {
@@ -362,6 +366,14 @@ internal partial class ProjectCompiler
                             }
                             else
                             {
+                                // The names an explicit import bound, each beside the symbol the scope binds it
+                                // to once the import is processed — its own, or, when it merged into an earlier
+                                // binding of the same declaration (a star of the same module), that binding's.
+                                // Recorded like a star's so the post-takeover filter reads one fact for both
+                                // spellings: a module variable of this file that takes the name over drops it
+                                // from this record too (CodeGenInfoComputer, P21i D1, #2385).
+                                var boundNames = new List<FromImportBoundName>();
+                                unit.FromImportBoundNames[fromImport] = boundNames;
                                 foreach (var importAlias in fromImport.Names)
                                 {
                                     var lookupName = importAlias.Name;
@@ -415,14 +427,28 @@ internal partial class ProjectCompiler
                                         {
                                             symbolToRegister = aliasFunc with { OriginSymbol = importedOverloads[0] };
                                         }
+                                        // The variable twin (P21i D5, #2386): an aliased module variable,
+                                        // const or property is a clone of the loader's extraction, so its
+                                        // origin chain must end at THIS compilation's declaration — the
+                                        // object whose CodeGenInfo names the emitted member. Re-derived from
+                                        // the import spelling instead, `from lib import CAP_P as c` read
+                                        // `LibModule.CAP_P` for the declared `CapP` (CS0117 behind SPY0908).
+                                        else if (importAlias.AsName != null && registryBinding == null
+                                            && symbolToRegister is VariableSymbol { OriginSymbol: { } extractedOrigin } aliasVar
+                                            && ResolveOwnExportedSymbol(moduleInfo, lookupName, extractedOrigin) is { } ownDeclaration)
+                                        {
+                                            symbolToRegister = aliasVar with { OriginSymbol = ownDeclaration };
+                                        }
 
                                         // The registry's own binding under its own name shadows nothing (#1322).
-                                        // The identity is the exported symbol, never the alias (K1, #2359).
+                                        // The identity is the exported symbol's DEFINING module.symbol, never the
+                                        // alias (K1, #2359; R-JK); the display stays as spelled.
                                         var exported = $"{sourceModule}.{lookupName}";
+                                        var identity = ImportResolver.DefiningIdentityOf(symbolToRegister, sourceModule, lookupName);
                                         var itemSite = importAlias.Span ?? fromImport.Span;
                                         if (ImportResolver.BindImportName(SymbolTable, symbolToRegister, symbolName,
                                                 importAlias,
-                                                new ImportBinding(ImportBindingForm.FromImport, exported, exported,
+                                                new ImportBinding(ImportBindingForm.FromImport, identity, exported,
                                                     unit.FilePath, importAlias.LineStart, importAlias.ColumnStart,
                                                     itemSite),
                                                 warningTarget: $"{fromImport.Module}.{lookupName}",
@@ -436,6 +462,10 @@ internal partial class ProjectCompiler
                                                 SymbolTable.DefineFunctionOverloads(symbolName, importedOverloads);
                                             }
                                         }
+                                        // Bound or merged: the scope's symbol is what the name means here. A refused
+                                        // binding drew SPY0204, so no code is generated from what is recorded for it.
+                                        if (SymbolTable.CurrentScope.Lookup(symbolName, searchParent: false) is { } boundSymbol)
+                                            boundNames.Add(new FromImportBoundName(symbolName, boundSymbol));
                                     }
                                 }
                             }
@@ -575,46 +605,38 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
+    /// The module scope of the module a from-import RESOLVED to — found from its file's compilation
+    /// unit, the key every module scope is created under (<c>unit.ModulePath</c>, project-relative:
+    /// <c>src.other</c> in a src/ layout) — or null when the module is not one of this compilation's
+    /// sources (a .NET or Stdlib module, a file outside the source set). Never from the import's
+    /// SPELLING: <c>GetModuleScope("other")</c> missed every module of a src/ layout, and the name
+    /// search that followed bound the first same-named declaration of ANY module — `from other import
+    /// helper` bound core's `helper` (SPY0220 where the flat layout ran, P21i L1).
+    /// </summary>
+    private Scope? ModuleScopeOf(ModuleInfo moduleInfo)
+        => !moduleInfo.IsNetModule && !string.IsNullOrEmpty(moduleInfo.Path)
+            && _projectModel?.GetUnit(moduleInfo.Path) is { } unit
+                ? SymbolTable.GetModuleScope(unit.ModulePath)
+                : null;
+
+    /// <summary>
     /// For project-internal from-imports, prefer the Phase 3 original symbol over the
     /// re-exported copy created by ImportResolver. This ensures all modules reference the
     /// same Symbol instance, so mutations during later phases (e.g., inheritance resolution
     /// in Phase 4b, return type resolution in Phase 5) are visible everywhere.
     ///
-    /// First tries the source module scope. If not found there (e.g., transitive imports
-    /// where the source module hasn't been processed yet), searches all module scopes for
-    /// a matching Phase 3 declaration.
+    /// The symbol is the resolved source module's own binding of the name
+    /// (<see cref="ModuleScopeOf"/>); a module that is not one of this compilation's sources keeps
+    /// the re-exported copy. There is no search of every module by NAME: it bound a different
+    /// module's same-named declaration whenever the scope lookup missed (P21i L1). A cold build's
+    /// project-module from-import always finds its scope; a WARM build's does not reach a name the
+    /// served re-exporter only imported (its restored scope holds no import bindings), and there the
+    /// search bound whichever module's same-named declaration it met first — restoring the search alone
+    /// turns the aliasing-re-exporter warm twins red (verify-implementation mutation, 2026-10-30), so
+    /// the re-exported copy, not a name search, is the answer when the source scope has no binding.
     /// </summary>
-    private Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
-    {
-        // Try direct source module scope first
-        if (sourceModuleScope != null)
-        {
-            var original = sourceModuleScope.Lookup(originalName, searchParent: false);
-            if (original != null)
-                return original;
-        }
-
-        // For transitive imports, the source module may not have been processed yet.
-        // Search all module scopes for the original Phase 3 declaration.
-        if (_projectModel != null)
-        {
-            foreach (var (_, unit) in _projectModel.Units)
-            {
-                var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
-                // Never the IMPORTING module's own scope: a same-named declaration there is what the
-                // import collides with (SPY0204, #2359), not the declaration it imports — substituting
-                // it made `const pi` + `from math import pi` bind the const to itself, silently.
-                if (moduleScope != null && !ReferenceEquals(moduleScope, SymbolTable.CurrentScope))
-                {
-                    var original = moduleScope.Lookup(originalName, searchParent: false);
-                    if (original != null && original.GetType() == reExported.GetType())
-                        return original;
-                }
-            }
-        }
-
-        return reExported;
-    }
+    private static Symbol ResolveImportSymbol(Symbol reExported, string originalName, Scope? sourceModuleScope)
+        => sourceModuleScope?.Lookup(originalName, searchParent: false) ?? reExported;
 
     /// <summary>
     /// The plain-import twin of <see cref="ResolveImportSymbol"/>: given a name that
@@ -885,8 +907,8 @@ internal partial class ProjectCompiler
                 unit.FileSemanticInfo = localSemanticInfo;
                 // The names each star import bound, recorded on the unit in Phase 4 (before this
                 // per-file info existed) — copied in so MergeFrom carries them to code generation (#2371).
-                foreach (var (starImport, boundNames) in unit.StarImportBoundNames)
-                    localSemanticInfo.SetStarImportBoundNames(starImport, boundNames);
+                foreach (var (starImport, boundNames) in unit.FromImportBoundNames)
+                    localSemanticInfo.SetFromImportBoundNames(starImport, boundNames);
 
                 // Create per-file SemanticBinding for isolation
                 // Inheritance data is already materialized onto Symbol properties (Phase 4b),

@@ -434,17 +434,18 @@ internal class PropertyValidator : SemanticValidatorBase
     /// <c>celsius</c> auto getter and hits CS0102/CS0229 on the duplicate <c>_Celsius</c> (#1307) —
     /// the storage is what the form supplies, so declaring it again is the error.
     ///
-    /// <para>TWO forms synthesize that field, and this check used to know about one. Both spell it
+    /// <para>THREE forms synthesize that field, and this check used to know about one. All spell it
     /// <c>"_" + NameCasing.ResolveField(def.Name, def.IsNameBacktickEscaped)</c>: the mixed
-    /// auto/function-style form (<c>GenerateMixedAutoCustomProperty</c>) and the OBSERVER form
-    /// (<c>GenerateObserverProperty</c>, #416). An observer property is a pure auto-property — no
+    /// auto/function-style form (<c>GenerateMixedAutoCustomProperty</c>), the OBSERVER form
+    /// (<c>GenerateObserverProperty</c>, #416) and the lone auto SET half (<c>GenerateAutoProperty</c>:
+    /// C# has no set-only auto property, so its storage is a named field, #2395). An observer property is a pure auto-property — no
     /// function-style def in its group — so the old guard returned before looking at the field list
     /// while the emitter went on writing the field, and the collision came back as CS0102 behind
     /// SPY0908 where its mixed-form twin drew this clean SPY0407 (#1456).</para>
     ///
     /// <para>The predicate is therefore "does this group synthesize a named backing field", asked of
-    /// the emitter's two forms, rather than the shape of one of them. A pure auto-property with no
-    /// observers still gets C#'s compiler-generated field and is still not this rule's business.</para>
+    /// the emitter's three forms, rather than the shape of one of them. Any other pure auto-property
+    /// still gets C#'s compiler-generated field and is still not this rule's business.</para>
     ///
     /// <para>Mutation-tested: reverting the guard to <c>!group.Any(p => p.IsFunctionStyle)</c> turns
     /// <c>experimental/property_observers_backing_field_collision_1456</c> red.</para>
@@ -458,7 +459,10 @@ internal class PropertyValidator : SemanticValidatorBase
 
         var isMixedForm = group.Any(p => p.IsFunctionStyle);
         var isObserverForm = group.Any(p => !p.IsFunctionStyle && p.Observers.Length > 0);
-        if (!isMixedForm && !isObserverForm)
+        // An abstract lone set half declares no storage (`abstract T Name { set; }`), so no field to collide with.
+        var isLoneAutoSetter = group.Count == 1 && autoDef.Accessor == PropertyAccessor.Set
+            && !autoDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
+        if (!isMixedForm && !isObserverForm && !isLoneAutoSetter)
             return;
 
         var backingField = "_" + NameCasing.ResolveField(autoDef.Name, autoDef.IsNameBacktickEscaped);
@@ -468,17 +472,21 @@ internal class PropertyValidator : SemanticValidatorBase
             return;
 
         // The mixed form is named by what it mixes; the observer form is named by its observers.
-        // Both supply the storage, so the remedy is the same sentence.
+        // All three supply the storage, so the remedy is the same sentence — except that a
+        // write-only property has no accessor body to go on writing the field.
         var supplier = isMixedForm
             ? "The mixed auto/function-style form supplies the storage"
-            : "An observed property supplies the storage";
+            : isObserverForm
+                ? "An observed property supplies the storage"
+                : "A write-only auto-property supplies the storage";
+        var remedy = isMixedForm || isObserverForm
+            ? $"('property {propName}: ... = ...'); the accessors go on writing 'self.{collision.Name}'"
+            : $"('property set {propName}: ... = ...')";
 
         AddError(_context,
             $"Property '{propName}' in '{typeName}' synthesizes the backing field '{backingField}', "
             + $"which the declared field '{collision.Name}' already occupies. {supplier} — drop the "
-            + "field declaration and move its default onto the property "
-            + $"('property {propName}: ... = ...'); the accessors go on writing "
-            + $"'self.{collision.Name}'",
+            + $"field declaration and move its default onto the property {remedy}",
             collision.LineStart, collision.ColumnStart,
             code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
             span: collision.Span);

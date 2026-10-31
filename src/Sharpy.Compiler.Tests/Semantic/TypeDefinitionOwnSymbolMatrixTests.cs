@@ -619,10 +619,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // Import binding: 4 spellings × (fresh + repeated import + 10 colliders × 2 orders), + 2 `as` spellings ×
         // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
         // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders, + the star import ×
-        // {class, alias, property-field, property-get, enum} × 2 orders (P21g), + `from math import e as pi` × star × 2.
+        // {class, alias, property-field, property-get, enum} × 2 orders (P21g), + `from math import e as pi` × star × 2,
+        // + the star import × 7 exported kinds × 3 read positions from a Stdlib source (P21i), + `from builtins import
+        // print as p` × `len as p` × 2 orders (P21i D6, the spelled-identity fallback).
         Assert.Equal(10, ImportColliders.Length);
         Assert.Equal(5, StarDeclarations.Length);
-        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2, ImportBindingCells().Count());
+        Assert.Equal(7, StarKinds.Length);
+        Assert.Equal(3, StarReadPositions.Length);
+        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2 + 7 * 3 + 2, ImportBindingCells().Count());
         Assert.Equal(4 * 2 * 2 + 2, ImportBindingCells().Count(c => c.Collider is "same-module-other-symbol" or "star"));
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
         // def→alias} × type-body + alias→alias × module.
@@ -673,7 +677,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 123 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 146 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1072,9 +1076,14 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     internal sealed record ImportBindingCell(
         string Spelling, string Collider, string Order, string Source,
         IReadOnlyList<(string Code, int Line, int Column)> ExpectedErrors,
-        IReadOnlyList<(string Code, int Line, int Column)> ExpectedWarnings, string? ExpectedStdout)
+        IReadOnlyList<(string Code, int Line, int Column)> ExpectedWarnings, string? ExpectedStdout,
+        string? Position = null, string? ModuleSource = null)
     {
-        public string Id => $"import-binding × {Spelling} × {Collider} × {Order}";
+        /// <summary>The star × kind cells (P21i) carry a read POSITION and the exporting module's SOURCE after the kind:
+        /// <c>import-binding × from-import-star × &lt;kind&gt; × &lt;position&gt; × &lt;source&gt;</c>.</summary>
+        public string Id => Position == null
+            ? $"import-binding × {Spelling} × {Collider} × {Order}"
+            : $"import-binding × {Spelling} × {Collider} × {Position} × {ModuleSource}";
     }
 
     /// <summary>The four import spellings: (id, the import line for a bound name, the name a plain spelling binds, the
@@ -1118,6 +1127,47 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         ("enum", new[] { "enum pi:", "    A = 1" }, "print(pi.A)", "pi.A\n"),
     };
 
+    /// <summary>The star × exported-kind × read-position cells' Stdlib source (P21i, #2385): (kind, the star line, a
+    /// module-level prelude — the taken-over variable's own declaration —, the read expression, its type, python3's
+    /// stdout). The kinds a Stdlib module exports: <c>math.pi</c> (variable), <c>math.sqrt</c> (def), <c>os.environ</c>
+    /// (a function-style property, a static field to the CLR extraction — its oracle is the explicit
+    /// <c>from os import environ</c> spelling, which prints <c>True</c> for the same probe at the base), <c>struct.Struct</c>
+    /// (an exported class that constructs; <c>struct.Struct("i").size</c> is <c>4</c> in python3) and <c>pi</c> taken
+    /// over by the file's own <c>pi: float = 1.5</c> (M1). The project source's twin is
+    /// <c>ImportBindingProjectRouteTests.StarKindCells</c>.</summary>
+    private static readonly (string Kind, string Star, string[] Prelude, string Read, string Type, string Stdout)[] StarKinds =
+    {
+        ("var", "from math import *", Array.Empty<string>(), "pi", "float", "3.141592653589793\n"),
+        ("def", "from math import *", Array.Empty<string>(), "sqrt(4.0)", "float", "2.0\n"),
+        ("property", "from os import *", Array.Empty<string>(), "len(environ) > 0", "bool", "True\n"),
+        ("class", "from struct import *", Array.Empty<string>(), "Struct(\"i\").size", "int", "4\n"),
+        ("var-taken-over", "from math import *", new[] { "pi: float = 1.5" }, "pi", "float", "1.5\n"),
+        // The explicit import of a star-bound name MERGES into the star's binding (one identity), so a module variable
+        // that takes the name over takes it from both statements: the file's own 1.5 at every position, never the
+        // import's module (python3 1.5; 3.141592653589793 when the explicit arm registered the file's own variable
+        // under math's container — verify-implementation R1, worked at 808d82955). The control beside it: the same two
+        // imports with no takeover print math's value.
+        ("var-taken-over-beside-explicit", "from math import *\nfrom math import pi", new[] { "pi: float = 1.5" }, "pi",
+            "float", "1.5\n"),
+        ("var-explicit-beside-star (control)", "from math import *\nfrom math import pi", Array.Empty<string>(), "pi",
+            "float", "3.141592653589793\n"),
+    };
+
+    /// <summary>The three read positions of a star-bound name (P21i): the module body (<c>x: T = name</c>, printed from
+    /// <c>main</c>), a def body (<c>main</c> itself) and a method body (<c>class R: def read(self)</c>, printed through
+    /// <c>R().read()</c>). Every read lands in an ANNOTATED destination (<c>x: T = read</c>), so the cell is a type probe
+    /// as well as a value probe. (position, the program given the star line, the prelude lines, the read and its type.)</summary>
+    internal static readonly (string Name, Func<string, string[], string, string, string> Program)[] StarReadPositions =
+    {
+        ("module", (star, prelude, read, type) => string.Join("\n", new[] { star }.Concat(prelude)
+            .Concat(new[] { $"x: {type} = {read}", "", "def main() -> None:", "    print(x)", "" }))),
+        ("def", (star, prelude, read, type) => string.Join("\n", new[] { star }.Concat(prelude)
+            .Concat(new[] { "", "def main() -> None:", $"    x: {type} = {read}", "    print(x)", "" }))),
+        ("method", (star, prelude, read, type) => string.Join("\n", new[] { star }.Concat(prelude)
+            .Concat(new[] { "class R:", $"    def read(self) -> {type}:", $"        x: {type} = {read}", "        return x", "",
+                "def main() -> None:", "    print(R().read())", "" }))),
+    };
+
     /// <summary>
     /// Import spelling {<c>import math as N</c>, <c>import math</c> (N = <c>math</c>), <c>from math import pi as N</c>,
     /// <c>from math import pi</c> (N = <c>pi</c>)} × collider {fresh, <c>class N</c>, <c>def N</c>, <c>type N = int</c>,
@@ -1132,7 +1182,10 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// <c>same-module-other-symbol</c> collider (<c>from math import e as N</c>: K1) and the <c>star</c> collider (the
     /// spelling's <c>StarLine</c> beside <c>from math import *</c>: an <c>as</c> spelling binds <c>pi</c> to
     /// <c>copy</c>, a plain spelling keeps its line — <c>import math</c> (u10) and the idempotent
-    /// <c>from math import pi</c> (r23)). Every program's <c>main</c> prints <c>ok</c> (nothing else uses the binding,
+    /// <c>from math import pi</c> (r23)). P21i (#2385) adds the star × KIND × read-POSITION cells from a Stdlib source
+    /// (<see cref="StarKinds"/> × <see cref="StarReadPositions"/>: variable, def, property, class and the taken-over
+    /// variable, read from the module body, a def and a method — no collider, python3's value; the project source's
+    /// twin is <c>ImportBindingProjectRouteTests</c>). Every program's <c>main</c> prints <c>ok</c> (nothing else uses the binding,
     /// D8), except the <c>print</c> cells (whose <c>main</c> is <c>pass</c>: the rebinding is honoured), the dotted root
     /// (which prints <c>len(os.path.join("a", "b"))</c>), the idempotent star cell (<c>print(pi)</c>) and the star ×
     /// declaration cells (the local's value).
@@ -1285,6 +1338,20 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
             }
         }
 
+        // P21i (#2385): a star-bound name of every exported kind, read at every position, from a Stdlib source — no
+        // diagnostic, and python3's value (the taken-over variable prints the file's own 1.5 at every position: M1). The
+        // star arm above reads only in `main` beside a collider; these cells are the kind × position axis.
+        foreach (var kind in StarKinds)
+        {
+            foreach (var position in StarReadPositions)
+            {
+                yield return new ImportBindingCell("from-import-star", kind.Kind, "none",
+                    position.Program(kind.Star, kind.Prelude, kind.Read, kind.Type),
+                    Array.Empty<(string, int, int)>(), Array.Empty<(string, int, int)>(), kind.Stdout,
+                    Position: position.Name, ModuleSource: "stdlib");
+            }
+        }
+
         // r25: the same module's OTHER symbol under a star-exported name is an explicit import of another source (K1's
         // identity under R-IZ) — refused at the explicit import in both orders.
         const string otherSymbol = "from math import e as pi";
@@ -1300,6 +1367,17 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         foreach (var name in new[] { "len", "str" })
             yield return Make("from-builtins", name, "none", Array.Empty<string>(), new[] { $"from builtins import {name}" },
                 (_, _) => Array.Empty<(string, int, int)>());
+
+        // The import identity's spelled fallback (P21i D6): a builtins registry alias is a copy with no origin chain
+        // and no declaring file, so its identity is the spelled `builtins.<exported name>` — never the alias — and
+        // `print as p` + `len as p` are two symbols under one name: refused at the later import, in both orders.
+        foreach (var order in new[] { "print-first", "len-first" })
+        {
+            var (firstName, secondName) = order == "print-first" ? ("print", "len") : ("len", "print");
+            var secondImport = $"from builtins import {secondName} as p";
+            yield return Make("from-builtins-as", "other-builtin", order, new[] { $"from builtins import {firstName} as p" },
+                new[] { secondImport }, (_, s) => new[] { ("SPY0204", s, ImportAliasColumn(secondImport)) });
+        }
 
         // A PLAIN from-import whose exporter's name spells a builtin TYPE (the registry knows `IList`) is warned and
         // honoured, not refused: the importer did not choose the name (owner ruling at P21f Phase 4, option b — the
@@ -2286,8 +2364,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 
     /// <summary>Cell id → cite. A row must cite an issue (<c>#\d+</c>), name a generated cell, and appear once. The
     /// universe includes the project-route cells of <c>ImportBindingProjectRouteTests</c> (ids <c>project × …</c>), which
-    /// ratchet over this file too (P21g), and the class-body read cells of <c>ClassBodyReadPositionMatrixTests</c> (ids
-    /// <c>class-body-read × …</c>, P21h).</summary>
+    /// ratchet over this file too (P21g), the class-body read cells of <c>ClassBodyReadPositionMatrixTests</c> (ids
+    /// <c>class-body-read × …</c>, P21h), and the module-member kind × read-site cells of
+    /// <c>ModuleMemberQualificationMatrixTests</c> (ids <c>module-member × …</c>, P21i).</summary>
     internal static Dictionary<string, string> LoadAllowlist(out List<string> problems)
     {
         problems = new List<string>();
@@ -2298,7 +2377,8 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
                 .Concat(MemberPairCells().Select(c => c.Id))
                 .Concat(global::Sharpy.Compiler.Tests.Project.ImportBindingProjectRouteTests.CellIds())
-                .Concat(ClassBodyReadPositionMatrixTests.CellIds()),
+                .Concat(ClassBodyReadPositionMatrixTests.CellIds())
+                .Concat(global::Sharpy.Compiler.Tests.CodeGen.ModuleMemberQualificationMatrixTests.CellIds()),
             StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))

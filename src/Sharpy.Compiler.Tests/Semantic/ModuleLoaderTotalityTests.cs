@@ -52,6 +52,7 @@ public class ModuleLoaderTotalityTests
         nameof(DelegateDef),
         nameof(VariableDeclaration),
         nameof(TypeAlias),
+        nameof(PropertyDef),
     };
 
     private static readonly HashSet<string> ExtractExportedSymbol_Skipped = new()
@@ -72,7 +73,6 @@ public class ModuleLoaderTotalityTests
         nameof(TryStatement),
         nameof(WithStatement),
         nameof(DeferStatement),
-        nameof(PropertyDef),
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
@@ -209,11 +209,14 @@ public class ModuleLoaderTotalityTests
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
 
+        // The stub switch is types-only by design (a circular import exports types); a module
+        // property is a value export like a function or variable (#2386).
         var expectedFullOnly = new HashSet<string>
         {
             nameof(FunctionDef),
             nameof(VariableDeclaration),
             nameof(TypeAlias),
+            nameof(PropertyDef),
         };
 
         _output.WriteLine($"Full-only exports (not in stub): {string.Join(", ", fullOnly)}");

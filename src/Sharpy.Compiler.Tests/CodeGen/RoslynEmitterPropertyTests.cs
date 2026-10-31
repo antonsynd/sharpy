@@ -1,3 +1,6 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Xunit;
 using Xunit.Abstractions;
 using Sharpy.Compiler.Tests.Integration;
@@ -172,4 +175,109 @@ def main():
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
         Assert.Equal("Logged: 42\ndone\n", result.StandardOutput);
     }
+
+    /// <summary>
+    /// A lone auto set half (<c>property set level: int</c>, properties.md's write-only auto
+    /// property) has no C# auto shape — CS8051 — so it emits a private backing field named by the
+    /// mixed and observer arms' authority and a set-only property whose set accessor writes it
+    /// (#2395, R-JS (a)). Asserted on the emitted syntax nodes: nothing reads a write-only property,
+    /// so the shape is the discriminating observation.
+    /// </summary>
+    [Theory]
+    [InlineData("class")]
+    [InlineData("struct")]
+    public void Property_LoneAutoSetHalf_EmitsBackingFieldAndSetOnlyProperty(string host)
+    {
+        var type = EmittedType($"{host} Host:\n    property set level: int\n", "Host");
+
+        var field = Assert.Single(type.Members.OfType<FieldDeclarationSyntax>());
+        Assert.Equal(new[] { SyntaxKind.PrivateKeyword }, field.Modifiers.Select(m => m.Kind()));
+        var fieldName = Assert.Single(field.Declaration.Variables).Identifier.Text;
+        Assert.Equal("_Level", fieldName);
+        Assert.Null(field.Declaration.Variables[0].Initializer);
+
+        var property = Assert.Single(type.Members.OfType<PropertyDeclarationSyntax>());
+        Assert.Equal("Level", property.Identifier.Text);
+        Assert.Null(property.Initializer);
+        var setter = Assert.Single(property.AccessorList!.Accessors);
+        Assert.Equal(SyntaxKind.SetAccessorDeclaration, setter.Kind());
+        var assignment = Assert.IsType<AssignmentExpressionSyntax>(setter.ExpressionBody?.Expression);
+        Assert.Equal(SyntaxKind.SimpleAssignmentExpression, assignment.Kind());
+        Assert.Equal(fieldName, Assert.IsType<IdentifierNameSyntax>(assignment.Left).Identifier.Text);
+        Assert.Equal("value", Assert.IsType<IdentifierNameSyntax>(assignment.Right).Identifier.Text);
+    }
+
+    /// <summary>The lone set half's default initializes its backing field, and a @static half's field is
+    /// static (#2395).</summary>
+    [Fact]
+    public void Property_LoneAutoSetHalf_DefaultAndStaticGoOnTheField()
+    {
+        var type = EmittedType(
+            "class Host:\n    property set level: int = 6\n    @static\n    property set shared: int\n", "Host");
+
+        var fields = type.Members.OfType<FieldDeclarationSyntax>()
+            .ToDictionary(f => f.Declaration.Variables.Single().Identifier.Text);
+        Assert.Equal(new[] { "_Level", "_Shared" }, fields.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Equal("6", fields["_Level"].Declaration.Variables[0].Initializer?.Value.ToString());
+        Assert.DoesNotContain(fields["_Level"].Modifiers, m => m.IsKind(SyntaxKind.StaticKeyword));
+        Assert.Contains(fields["_Shared"].Modifiers, m => m.IsKind(SyntaxKind.StaticKeyword));
+        Assert.All(type.Members.OfType<PropertyDeclarationSyntax>(), p => Assert.Null(p.Initializer));
+    }
+
+    /// <summary>Positive control for the #2395 shape test: the split auto pair
+    /// (<c>property get</c> + <c>property set</c>) is still ONE auto property <c>{ get; set; }</c> with no
+    /// synthesized field.</summary>
+    [Fact]
+    public void Property_SplitAutoPair_StaysOneAutoProperty()
+    {
+        var type = EmittedType("class Host:\n    property get level: int\n    property set level: int\n", "Host");
+
+        Assert.Empty(type.Members.OfType<FieldDeclarationSyntax>());
+        var property = Assert.Single(type.Members.OfType<PropertyDeclarationSyntax>());
+        Assert.Equal(
+            new[] { SyntaxKind.GetAccessorDeclaration, SyntaxKind.SetAccessorDeclaration },
+            property.AccessorList!.Accessors.Select(a => a.Kind()));
+        Assert.All(property.AccessorList.Accessors, a =>
+        {
+            Assert.Null(a.Body);
+            Assert.Null(a.ExpressionBody);
+        });
+    }
+
+    /// <summary>Interface control for #2395: an interface's lone set half stays the abstract
+    /// <c>{ set; }</c>, legal C#, with no field.</summary>
+    [Fact]
+    public void Property_InterfaceLoneAutoSetHalf_StaysAbstract()
+    {
+        var type = EmittedType("interface IHost:\n    property set level: int\n", "IHost");
+
+        Assert.Empty(type.Members.OfType<FieldDeclarationSyntax>());
+        var property = Assert.Single(type.Members.OfType<PropertyDeclarationSyntax>());
+        var setter = Assert.Single(property.AccessorList!.Accessors);
+        Assert.Equal(SyntaxKind.SetAccessorDeclaration, setter.Kind());
+        Assert.Null(setter.Body);
+        Assert.Null(setter.ExpressionBody);
+    }
+
+    /// <summary>Abstract-class control for #2395: an @abstract lone set half is the abstract
+    /// <c>abstract T Level { set; }</c> — legal C#, no field, no accessor body (an abstract accessor
+    /// with a body is CS0500; verify-implementation of P21i, worked at 808d82955).</summary>
+    [Fact]
+    public void Property_AbstractLoneAutoSetHalf_StaysAbstract()
+    {
+        var type = EmittedType("@abstract\nclass Host:\n    @abstract\n    property set level: int\n", "Host");
+
+        Assert.Empty(type.Members.OfType<FieldDeclarationSyntax>());
+        var property = Assert.Single(type.Members.OfType<PropertyDeclarationSyntax>());
+        Assert.Contains(property.Modifiers, m => m.IsKind(SyntaxKind.AbstractKeyword));
+        var setter = Assert.Single(property.AccessorList!.Accessors);
+        Assert.Equal(SyntaxKind.SetAccessorDeclaration, setter.Kind());
+        Assert.Null(setter.Body);
+        Assert.Null(setter.ExpressionBody);
+    }
+
+    private static TypeDeclarationSyntax EmittedType(string source, string typeName)
+        => EmitterTestPipeline.EmitCompilationUnit(source, requireNoErrors: true)
+            .DescendantNodes().OfType<TypeDeclarationSyntax>()
+            .Single(t => t.Identifier.Text == typeName);
 }

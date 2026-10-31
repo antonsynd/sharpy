@@ -1,0 +1,9 @@
+# #2385: a star-imported project variable read in a def body is qualified through its module (it was
+# SPY0909 "No CodeGenInfo for local 'level'": the star import recorded no CodeGenInfo for a variable).
+from consts import *
+
+def read() -> int:
+    return level
+
+def main() -> None:
+    print(read())

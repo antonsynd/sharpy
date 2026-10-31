@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Cross-language benchmark harness for Sharpy vs C# vs Python.
+"""Cross-language benchmark harness for Sharpy vs C# vs Python vs Boo.
 
 Measures compilation time and execution time separately for each language:
 - Sharpy: compile .spy → .dll (via pre-built CLI), then run the .dll
 - C#: compile .cs → .dll (dotnet build), then run the .dll
 - Python: compile .py → .pyc (py_compile), then run the .pyc
+- Boo: compile .boo → .exe (via booc built from a pinned upstream commit), then run the .exe
 
 A warmup pass runs each benchmark once (discarded) to prime JIT, caches, and
 OS filesystem buffers before the timed runs.
@@ -13,7 +14,7 @@ Usage:
     python3 run_benchmarks.py [benchmark_name...]
     python3 run_benchmarks.py --json
     python3 run_benchmarks.py --languages C# --json
-    python3 run_benchmarks.py --languages Python,Sharpy --merge csharp-results.json --json
+    python3 run_benchmarks.py --languages Python,Sharpy,Boo --merge csharp-results.json --json
 """
 
 import argparse
@@ -38,6 +39,22 @@ TIMED_RUNS = 10
 WARM_COMPILE_RUNS = 10
 # Number of warm compiles through a persistent 'sharpyc server' to median over (D2, #1049).
 SERVER_WARM_COMPILE_RUNS = 10
+
+# Boo (https://github.com/boo-lang/boo) has no .NET 10 release yet, so the harness
+# builds booc from a pinned upstream commit into a per-user cache. Set BOOC_DLL to
+# point at an existing booc.dll instead.
+BOO_REPO = "https://github.com/boo-lang/boo.git"
+BOO_COMMIT = "9ef1f8c35223f18681331af9ce31a2400bf212a4"
+BOO_CACHE_DIR = (
+    Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    / "sharpy-bench" / f"boo-{BOO_COMMIT[:12]}"
+)
+# What booc writes is an assembly, not a program: running it takes a runtimeconfig
+# naming the runtime, and Boo.Lang.dll beside it.
+BOO_RUNTIMECONFIG = (
+    '{"runtimeOptions":{"tfm":"net10.0",'
+    '"framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}'
+)
 
 
 @dataclass
@@ -170,7 +187,7 @@ def read_features(bench_dir: Path) -> list[str]:
 
 
 def read_languages(bench_dir: Path) -> set[str] | None:
-    """Languages a benchmark opts into (``bench.languages``); None = all three.
+    """Languages a benchmark opts into (``bench.languages``); None = all languages.
 
     Lets a benchmark hold a language out of the harness — e.g. the numpy variant
     excludes Sharpy until #1084 (compiled numpy programs can't load MathNet at
@@ -178,6 +195,21 @@ def read_languages(bench_dir: Path) -> set[str] | None:
     """
     langs = _read_sidecar_lines(bench_dir / "bench.languages")
     return {l for l in langs if l in ALL_LANGUAGES} if langs else None
+
+
+def bench_languages(bench_dir: Path, requested: set[str]) -> set[str]:
+    """The requested languages this benchmark actually runs.
+
+    Intersects the request with the ``bench.languages`` sidecar (if any), and drops
+    Boo when the benchmark has no ``bench.boo``.
+    """
+    langs = set(requested)
+    supported = read_languages(bench_dir)
+    if supported is not None:
+        langs &= supported
+    if not (bench_dir / "bench.boo").exists():
+        langs.discard("Boo")
+    return langs
 
 
 def time_command(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> tuple[float, bool, str, str]:
@@ -220,6 +252,51 @@ def prebuild_sharpy_cli(verbose: bool = False) -> Path:
     dll = CLI_PROJECT / "bin" / "Release" / "net10.0" / "sharpyc.dll"
     if not dll.exists():
         raise RuntimeError(f"CLI dll not found at {dll}")
+    if verbose:
+        print("done")
+    return dll
+
+
+def prebuild_boo_compiler(verbose: bool = False) -> Path:
+    """Return the path to a Release booc.dll, building it from BOO_COMMIT if needed.
+
+    ``BOOC_DLL`` overrides the build. Otherwise the pinned commit is fetched into
+    BOO_CACHE_DIR and ``src/booc`` is built once; later runs reuse the cached build.
+    """
+    override = os.environ.get("BOOC_DLL")
+    if override:
+        dll = Path(override)
+        if not dll.exists():
+            raise RuntimeError(f"BOOC_DLL points at a missing file: {dll}")
+        return dll
+
+    src = BOO_CACHE_DIR / "src"
+    dll = src / "src" / "booc" / "bin" / "Release" / "net10.0" / "booc.dll"
+    if dll.exists():
+        return dll
+
+    if verbose:
+        print(f"  Building booc from boo-lang/boo@{BOO_COMMIT[:12]}...", end=" ", flush=True)
+    if not (src / "src" / "booc" / "booc.csproj").exists():
+        # A fetch interrupted on an earlier run leaves a partial checkout; start over.
+        shutil.rmtree(src, ignore_errors=True)
+        src.mkdir(parents=True)
+        for cmd in (
+            ["git", "init", "-q"],
+            ["git", "fetch", "-q", "--depth", "1", BOO_REPO, BOO_COMMIT],
+            ["git", "checkout", "-q", "FETCH_HEAD"],
+        ):
+            result = subprocess.run(cmd, cwd=src, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"Failed to fetch Boo ({' '.join(cmd)}):\n{result.stderr[:500]}")
+    result = subprocess.run(
+        ["dotnet", "build", str(src / "src" / "booc" / "booc.csproj"), "-c", "Release", "--nologo", "-v", "q"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to build booc:\n{result.stderr[:500] or result.stdout[-500:]}")
+    if not dll.exists():
+        raise RuntimeError(f"booc dll not found at {dll}")
     if verbose:
         print("done")
     return dll
@@ -497,6 +574,36 @@ def measure_server_compile(
         shutil.rmtree(out_dir, ignore_errors=True)
 
 
+# --- Boo ---
+
+def compile_boo(booc_dll: Path, bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
+    """Compile .boo to an .exe assembly via booc. Returns (time, success, error, output_exe).
+
+    ``-debug-`` matches the Release builds of the other .NET languages (a debug build
+    marks the assembly so the JIT skips optimizations). Boo's default checked
+    arithmetic is left on: it is the language's default semantics.
+    """
+    output_exe = tmp_dir / "bench.exe"
+    cmd = [
+        "dotnet", str(booc_dll), "-nologo", "-debug-", f"-o:{output_exe}",
+        str(bench_dir / "bench.boo"),
+    ]
+    start = time.perf_counter()
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    elapsed = time.perf_counter() - start
+    if result.returncode != 0 or not output_exe.exists():
+        return elapsed, False, result.stdout[:500] or result.stderr[:500], output_exe
+    (tmp_dir / "bench.runtimeconfig.json").write_text(BOO_RUNTIMECONFIG)
+    shutil.copy2(booc_dll.parent / "Boo.Lang.dll", tmp_dir / "Boo.Lang.dll")
+    return elapsed, True, "", output_exe
+
+
+def execute_boo(output_exe: Path) -> tuple[float, bool, str]:
+    """Execute the compiled Boo assembly."""
+    elapsed, success, err, _ = time_command(["dotnet", str(output_exe)])
+    return elapsed, success, err
+
+
 # --- C# ---
 
 def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
@@ -568,20 +675,18 @@ def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
 
 # --- Main ---
 
-ALL_LANGUAGES = {"Python", "Sharpy", "C#"}
+LANGUAGE_ORDER = ["Python", "Sharpy", "C#", "Boo"]
+ALL_LANGUAGES = set(LANGUAGE_ORDER)
 
 
 def run_benchmark(
     bench_dir: Path, cli_dll: Path | None, languages: set[str] | None = None,
-    measure_server: bool = True,
+    measure_server: bool = True, booc_dll: Path | None = None,
 ) -> dict[str, BenchResult]:
     """Run selected languages for one benchmark. Returns dict keyed by language."""
-    langs = languages or ALL_LANGUAGES
     # A benchmark may opt out of a language via bench.languages (e.g. numpy holds
     # Sharpy out pending #1084); intersect the request with what it supports.
-    supported = read_languages(bench_dir)
-    if supported is not None:
-        langs = langs & supported
+    langs = bench_languages(bench_dir, languages or ALL_LANGUAGES)
     features = read_features(bench_dir)
     results = {}
 
@@ -682,6 +787,45 @@ def run_benchmark(
                     execute_stats=exec_stats,
                 )
 
+    if "Boo" in langs:
+        assert booc_dll is not None, "booc_dll required when running Boo benchmarks"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            compile_times = []
+            compile_ok = True
+            compile_err = ""
+            output_exe = tmp_path / "bench.exe"
+            for _ in range(TIMED_RUNS):
+                ct, ok, err, output_exe = compile_boo(booc_dll, bench_dir, tmp_path)
+                compile_times.append(ct)
+                if not ok:
+                    compile_ok = False
+                    compile_err = err
+                    break
+            comp_stats = compute_stats(compile_times) if compile_ok and len(compile_times) >= 3 else None
+            compile_t = comp_stats.median if comp_stats else compile_times[0]
+
+            if not compile_ok:
+                results["Boo"] = BenchResult(bench_dir.name, "Boo", compile_t, 0, compile_t, False, compile_err)
+            else:
+                exec_times = []
+                exec_ok = True
+                exec_err = ""
+                for _ in range(TIMED_RUNS):
+                    et, ok, err = execute_boo(output_exe)
+                    exec_times.append(et)
+                    if not ok:
+                        exec_ok = False
+                        exec_err = err
+                        break
+                exec_stats = compute_stats(exec_times) if exec_ok and len(exec_times) >= 3 else None
+                exec_t = exec_stats.median if exec_stats else exec_times[0]
+                results["Boo"] = BenchResult(
+                    bench_dir.name, "Boo", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
+                    execute_stats=exec_stats,
+                    compile_stats=comp_stats,
+                )
+
     return results
 
 
@@ -701,28 +845,32 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
     print()
     print("=== Execution Time (runtime only, excludes compilation) ===")
     print()
-    print(f"{'Benchmark':<22} {'Python':<12} {'Sharpy':<12} {'C#':<12} {'Spy/Py':<8} {'Spy/C#':<8}")
-    print("-" * 74)
+    print(f"{'Benchmark':<22} {'Python':<12} {'Sharpy':<12} {'C#':<12} {'Boo':<12} {'Spy/Py':<8} {'Spy/C#':<8} {'Spy/Boo':<8}")
+    print("-" * 96)
 
     for name in sorted(all_results):
         langs = all_results[name]
         py = langs.get("Python")
         spy = langs.get("Sharpy")
         cs = langs.get("C#")
+        boo = langs.get("Boo")
 
         # Absent (held out via bench.languages) prints "—"; present-but-failed prints "FAIL".
         py_str = "—" if py is None else (format_time(py.execute_seconds) if py.success else "FAIL")
         spy_str = "—" if spy is None else (format_time(spy.execute_seconds) if spy.success else "FAIL")
         cs_str = "—" if cs is None else (format_time(cs.execute_seconds) if cs.success else "FAIL")
+        boo_str = "—" if boo is None else (format_time(boo.execute_seconds) if boo.success else "FAIL")
 
         py_t = py.execute_seconds if py and py.success else 0
         spy_t = spy.execute_seconds if spy and spy.success else 0
         cs_t = cs.execute_seconds if cs and cs.success else 0
+        boo_t = boo.execute_seconds if boo and boo.success else 0
 
         ratio_py = f"{spy_t / py_t:.2f}x" if py_t > 0 and spy_t > 0 else "—"
         ratio_cs = f"{spy_t / cs_t:.2f}x" if cs_t > 0 and spy_t > 0 else "—"
+        ratio_boo = f"{spy_t / boo_t:.2f}x" if boo_t > 0 and spy_t > 0 else "—"
 
-        print(f"{name:<22} {py_str:<12} {spy_str:<12} {cs_str:<12} {ratio_py:<8} {ratio_cs:<8}")
+        print(f"{name:<22} {py_str:<12} {spy_str:<12} {cs_str:<12} {boo_str:<12} {ratio_py:<8} {ratio_cs:<8} {ratio_boo:<8}")
 
     # Compilation time table. "Sharpy" is a cold single-file compile (unchanged, for
     # history comparability); "Warm" is a warm --incremental project compile; "Server"
@@ -730,26 +878,28 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
     print()
     print("=== Compilation Time ===")
     print()
-    print(f"{'Benchmark':<22} {'Python':<10} {'Sharpy':<10} {'Warm':<10} {'Server':<10} {'C#':<10} {'Spy/C#':<8}")
-    print("-" * 82)
+    print(f"{'Benchmark':<22} {'Python':<10} {'Sharpy':<10} {'Warm':<10} {'Server':<10} {'C#':<10} {'Boo':<10} {'Spy/C#':<8}")
+    print("-" * 93)
 
     for name in sorted(all_results):
         langs = all_results[name]
         py = langs.get("Python")
         spy = langs.get("Sharpy")
         cs = langs.get("C#")
+        boo = langs.get("Boo")
 
         py_str = format_time(py.compile_seconds) if py else "—"
         spy_str = format_time(spy.compile_seconds) if spy else "—"
         warm_str = format_time(spy.warm_compile_seconds) if spy and spy.warm_compile_seconds else "—"
         server_str = format_time(spy.server_warm_compile_seconds) if spy and spy.server_warm_compile_seconds else "—"
         cs_str = format_time(cs.compile_seconds) if cs else "—"
+        boo_str = format_time(boo.compile_seconds) if boo else "—"
 
         spy_t = spy.compile_seconds if spy else 0
         cs_t = cs.compile_seconds if cs else 0
         ratio_cs = f"{spy_t / cs_t:.2f}x" if cs_t > 0 and spy_t > 0 else "—"
 
-        print(f"{name:<22} {py_str:<10} {spy_str:<10} {warm_str:<10} {server_str:<10} {cs_str:<10} {ratio_cs:<8}")
+        print(f"{name:<22} {py_str:<10} {spy_str:<10} {warm_str:<10} {server_str:<10} {cs_str:<10} {boo_str:<10} {ratio_cs:<8}")
 
     # Distributional stats table
     has_stats = any(
@@ -764,7 +914,7 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
         print("-" * 104)
 
         for name in sorted(all_results):
-            for lang in ["Python", "Sharpy", "C#"]:
+            for lang in LANGUAGE_ORDER:
                 r = all_results[name].get(lang)
                 if not r or not r.execute_stats:
                     continue
@@ -780,6 +930,7 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
     print()
     print("Spy/Py < 1.0 = Sharpy faster than Python")
     print("Spy/C# ~ 1.0 = Sharpy matches raw C# (minimal overhead)")
+    print("Spy/Boo < 1.0 = Sharpy faster than Boo (the other Python-flavoured .NET language)")
     print("Sharpy = cold single-file compile; Warm = warm --incremental project compile")
     print("Server = end-to-end warm compile through a persistent 'sharpyc server' (D2, #1049)")
     print()
@@ -862,7 +1013,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     parser.add_argument(
         "--languages", type=str, default=None,
-        help="Comma-separated languages to run (e.g., 'C#' or 'Python,Sharpy')",
+        help="Comma-separated languages to run (e.g., 'C#' or 'Python,Sharpy,Boo')",
     )
     parser.add_argument(
         "--merge", type=str, default=None, metavar="FILE",
@@ -910,12 +1061,24 @@ def main():
     if "Sharpy" in active_langs:
         cli_dll = prebuild_sharpy_cli(verbose)
 
+    booc_dll: Path | None = None
+    if "Boo" in active_langs:
+        try:
+            booc_dll = prebuild_boo_compiler(verbose)
+        except RuntimeError as e:
+            # Boo needs a network fetch on first use; when it was only implied by the
+            # all-languages default, run the rest rather than failing the whole suite.
+            if languages is not None:
+                raise
+            print(f"Warning: skipping Boo: {e}", file=sys.stderr)
+            active_langs = active_langs - {"Boo"}
+            languages = active_langs
+
     # Warmup pass
     if verbose:
         print("  Warmup pass...", end=" ", flush=True)
     for bench_dir in bench_dirs:
-        supported = read_languages(bench_dir)
-        bench_langs = active_langs & supported if supported is not None else active_langs
+        bench_langs = bench_languages(bench_dir, active_langs)
         features = read_features(bench_dir)
         if "Python" in bench_langs:
             subprocess.run([sys.executable, str(bench_dir / "bench.py")],
@@ -931,6 +1094,11 @@ def main():
                 tmp_path = Path(tmp)
                 compile_csharp(bench_dir, tmp_path)
                 execute_csharp(tmp_path)
+        if "Boo" in bench_langs and booc_dll is not None:
+            with tempfile.TemporaryDirectory() as tmp:
+                _, ok, _, output_exe = compile_boo(booc_dll, bench_dir, Path(tmp))
+                if ok:
+                    execute_boo(output_exe)
     if verbose:
         print("done")
         print()
@@ -942,12 +1110,13 @@ def main():
             print(f"  {bench_dir.name}...", end=" ", flush=True)
 
         results = run_benchmark(
-            bench_dir, cli_dll, languages, measure_server=not args.no_server_compile)
+            bench_dir, cli_dll, languages, measure_server=not args.no_server_compile,
+            booc_dll=booc_dll)
         all_results[bench_dir.name] = results
 
         if verbose:
             statuses = []
-            for lang in ["Python", "Sharpy", "C#"]:
+            for lang in LANGUAGE_ORDER:
                 if lang not in active_langs:
                     continue
                 r = results.get(lang)

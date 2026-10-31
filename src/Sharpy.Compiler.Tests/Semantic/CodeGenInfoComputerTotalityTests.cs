@@ -315,16 +315,29 @@ public class CodeGenInfoComputerTotalityTests
 
     // --- DetectModuleLevelCollisions (two switches) ---
 
-    private static readonly HashSet<string> DetectModuleLevelCollisions_Handled = new()
+    private const string ModuleLoaderFile = "src/Sharpy.Compiler/Semantic/ModuleLoader.cs";
+
+    /// <summary>
+    /// The exported kinds that emit no C# member of their own and so cannot collide: a module-level
+    /// <c>type</c> alias is erased to its target (`type Num = int` beside `class num` runs).
+    /// </summary>
+    private static readonly HashSet<string> ExportedKindsWithNoCSharpMember = new() { nameof(TypeAlias) };
+
+    /// <summary>
+    /// The module-level kinds the collision check must enumerate: every kind the module EXPORTS
+    /// (<c>ModuleLoader.ExtractExportedSymbol</c>'s arms, read from the source) but the erased ones — one
+    /// source, not a fourth hand list (P21i P6.5: the hand list missed the property and union kinds, and
+    /// `property CAP_P` + `property cap_p` reached C# as CS0102 behind SPY0908).
+    /// </summary>
+    private static HashSet<string> DetectModuleLevelCollisions_Handled
     {
-        nameof(FunctionDef),
-        nameof(VariableDeclaration),
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
-        nameof(EnumDef),
-        nameof(DelegateDef),
-    };
+        get
+        {
+            var kinds = new HashSet<string>(SwitchArmScan.CaseTypeNames(ModuleLoaderFile, "ExtractExportedSymbol"));
+            kinds.ExceptWith(ExportedKindsWithNoCSharpMember);
+            return kinds;
+        }
+    }
 
     private static readonly HashSet<string> DetectModuleLevelCollisions_Skipped = new()
     {
@@ -345,13 +358,20 @@ public class CodeGenInfoComputerTotalityTests
         nameof(WithStatement),
         nameof(DeferStatement),
         nameof(TypeAlias),
-        nameof(PropertyDef),
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
-        nameof(UnionDef),
         nameof(EventDef),
     };
+
+    [Fact]
+    public void DetectModuleLevelCollisions_NoMemberExclusion_IsAnExportedKind()
+    {
+        // The exclusion names a kind the module really exports — it cannot go stale silently.
+        var exported = SwitchArmScan.CaseTypeNames(ModuleLoaderFile, "ExtractExportedSymbol");
+        Assert.True(ExportedKindsWithNoCSharpMember.IsSubsetOf(exported),
+            $"Not an ExtractExportedSymbol arm: {string.Join(", ", ExportedKindsWithNoCSharpMember.Except(exported))}");
+    }
 
     [Fact]
     public void DetectModuleLevelCollisions_AllStatementSubtypes_AreClassified()

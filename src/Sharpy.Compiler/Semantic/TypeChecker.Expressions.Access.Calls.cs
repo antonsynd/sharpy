@@ -2824,7 +2824,7 @@ internal partial class TypeChecker
         // itself silently when the extraction left the path null).
         var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
         if (funcSymbol != null
-            && !overloads.Any(o => ReferenceEquals(RootOrigin(o), RootOrigin(funcSymbol))))
+            && !overloads.Any(o => ReferenceEquals(o.DeclarationRoot(), funcSymbol.DeclarationRoot())))
         {
             return null;
         }
@@ -2912,18 +2912,6 @@ internal partial class TypeChecker
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Follows the <see cref="Symbol.OriginSymbol"/> chain to the declaration a clone was
-    /// ultimately made from. Identity of two symbols' roots IS the shadow decision (#1525):
-    /// clones of the same declaration are the same function, whatever their spelling.
-    /// </summary>
-    private static FunctionSymbol RootOrigin(FunctionSymbol s)
-    {
-        while (s.OriginSymbol is FunctionSymbol origin)
-            s = origin;
-        return s;
     }
 
     /// <summary>

@@ -163,14 +163,6 @@ property-observer × module × str  # #2369 (its SPY0483 is green since P21f Pha
 # SPY0617 at the second. CREATED by P21h Phase 1; drains in P21h Phase 2 (D2's seam arm, D3's all-auto arm
 # and SPY0407 arm, D4's roster). The two interface chains drained in P21h Phase 3 Task 4 (D7).
 
-# A lone auto SET half (`property set A: int`, the matrix's property-auto-set kind alone in a class or a
-# struct, its use a write) is SPY0908 CS8051 "Auto-implemented properties must have get accessors" under
-# run @ 9aae96977 — a write-only auto property has no C# auto shape. NOT a cell of plan-16cca3's Current
-# State (found by this generator's alone control, P21h Phase 1); filed as its own class tracker #2395
-# (owner decision: synthesize a backing field, or refuse) — it does not drain in P21h.
-member-alone × class × property-auto-set  # #2395 lone auto set half; ice CS8051
-member-alone × struct × property-auto-set  # #2395 lone auto set half; ice CS8051
-
 # #2067: an interface's function-style event with default `add`/`remove` bodies is SPY0908 CS0535 under
 # run — the emitter writes an abstract `event Action<int> A;` and drops the bodies, so `class Impl(Host):
 # pass` implements nothing (the issue's cell 2). Measured @ 9aae96977 on the matrix's interface event-add /
@@ -198,12 +190,9 @@ member-pair × interface × event-remove → event-add  # #2067 interface event 
 # and CS1007 (r03); IHost.A + IHost2.A is CS1007 (r04). Green at the base: field (r02), const, nested class
 # (r10), alias, auto event (r07), the event accessor pair, the function-style setter, and the explicit split
 # halves (r05). CREATED by P21h Phase 1 Task 2; drains in P21h Phase 3 (D5).
-# DRAINED by P21h Phase 3 Tasks 1-2 (the member key, then the emitter's grouping key) except the four
-# property-auto-set rows below: the bare auto setter alone is #2395's CS8051, re-cited.
-explicit-member × class × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × class × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × struct × explicit-property → property-auto-set  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
-explicit-member × struct × property-auto-set → explicit-property  # #2395 lone auto set half; ice CS8051 (re-cited from the explicit-interface tracker: after R-JH the explicit member is its own C# member and the bare auto setter stands alone)
+# DRAINED by P21h Phase 3 Tasks 1-2 (the member key, then the emitter's grouping key); its four
+# property-auto-set rows (the bare auto setter alone, CS8051) DRAINED by P21i Phase 5 (a lone auto set half
+# emits a backing field and a set-only property).
 
 # #2075 (R-JO): a member followed by BOTH halves of one property or event is ONE SPY0204, at the FIRST half
 # (the refused declaration GROUP draws one verdict; its later half is silent); a third half beside a merged
@@ -287,3 +276,51 @@ class-body-read × dataclass × static-property-default × static-method × befo
 class-body-read × dataclass × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
 class-body-read × struct × static-property-default × static-method × before × none  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
 class-body-read × struct × static-property-default × static-method × before × module  # #2396 R-JJ; SPY0200 (the #2396 gate, owner ruling (b), property-default slot) where C# admits the @static method call: the method may read a @static property laid out after the reader
+
+# P21i (i) — star × exported kind × read position × source (#2385; the property kind's export cell is #2386's). The
+# rows are the base's red cells @ 04f9138b3, measured by the generators' first run (Phase 1): a star-imported VARIABLE
+# read anywhere is SPY0909 "No CodeGenInfo for local" (the per-name CodeGenInfo is computed for fromImport.Names, which
+# a star has none of), the stdlib os.environ star cell likewise, and the project module's property is SPY0200 (the
+# export table has no PropertyDef arm). The const/def/class/alias/taken-over/explicit/qualified cells are the controls
+# (green at the base, never listed). Phase 2 drained the #2385 rows (CodeGen info computed for the post-takeover star
+# set); Phase 3 drained the property rows (the export table's PropertyDef arm, #2386).
+
+# P21i (ii) — module-member kind × read site (single file) and kind × consumer (cross-module), #2386. At the base the
+# emitter qualifies a same-module member only when its name is in a two-kind hand list (FunctionDef /
+# VariableDeclaration), so a module PROPERTY is emitted bare: legal inside the module class (module body, function —
+# the global:: spelling cell is red) and CS0103 behind SPY0908 inside a type (method, nested method); and the export
+# table (ModuleLoader.ExtractExportedSymbol) has no PropertyDef arm, so a module property is unreachable from another
+# module on every spelling (SPY0301 / SPY0203 / SPY0203 / SPY0200 — the #2131 cell) and through a package __init__.
+# The var × star cell was the (i) star × var cell (SPY0909, #2385), drained in Phase 2. Phase 3 drained these rows
+# (the PropertyDef export arm; same-module qualification by the materialized IsModuleLevel fact).
+
+# P21i (iii) — import × import over provenance × spelling × order × route (#2389, R-JK). At the base a from-import's
+# identity is the SPELLED "{sourceModule}.{name}", so one declaration reached through two module spellings (a package
+# __init__, a plain module, a star, two stars, two hops, an aliasing re-exporter) is two identities and importing it
+# twice is SPY0204 — the verdict cells. The use cells are SPY0204 at the base too; after Phase 4 the ones whose DIRECT
+# import is SECOND run (the emitter's container map is overwritten by the later import, D7) and the ones whose
+# RE-EXPORT is second are CS0117 behind SPY0908 — #2116's (P25), as the re-exporter imported ALONE already is (R11d
+# and kin). The different-symbol control (R12b), the import-as verdicts, the direct package import and the package
+# route's import-as use are green and never listed. Phase 4 drained the #2389 rows (D6: the identity is the defining
+# module.symbol) and the three #2116 use rows that run after it (init-reexport × {from, from-as} × direct-first — the
+# package __init__ emits a delegating member, so both orders print f; star-of-reexporter × star × direct-first — the
+# second star binds nothing the explicit import bound). The remaining #2116 rows drain with P25.
+project × import-identity × aliasing-reexporter × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1aModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × aliasing-reexporter × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × aliasing-reexporter × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × aliasing-reexporter × import-as × direct-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1aModule' has no 'H' (P25's; stays red after P21i)
+project × import-identity × aliasing-reexporter × import-as × reexport-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1aModule' has no 'H' (P25's; stays red after P21i)
+project × import-identity × module-reexport × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × module-reexport × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × module-reexport × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × module-reexport × import-as × direct-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × module-reexport × import-as × reexport-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × star-of-reexporter × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib3Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-hop-reexport × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1bModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-hop-reexport × from × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × two-hop-reexport × from-as × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × two-hop-reexport × import-as × direct-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1bModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-hop-reexport × import-as × reexport-first × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1bModule' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-stars × from × alone × use  # #2116 re-export use: ice SPY0908 CS0117 'Lib1Module' has no 'Helper' (P25's; stays red after P21i)
+project × import-identity × two-stars × star × direct-first × use  # #2116 use, re-export SECOND (direct-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)
+project × import-identity × two-stars × star × reexport-first × use  # #2116 use, re-export SECOND (reexport-first): ice SPY0908 CS0117, the later import's container wins (D7, measured @ 5480e4bf2; P25's)

@@ -220,3 +220,73 @@ def test_merge_results_round_trips_cold_warm(tmp_path):
     r = merged["fib"]["Sharpy"]
     assert r.cold_compile_seconds == 0.8
     assert r.warm_compile_seconds == 0.3
+
+
+def test_read_languages_accepts_boo(tmp_path):
+    (tmp_path / "bench.languages").write_text("Python\nBoo\n")
+    assert run_benchmarks.read_languages(tmp_path) == {"Python", "Boo"}
+
+
+def test_bench_languages_drops_boo_without_bench_boo(tmp_path):
+    # A benchmark with no bench.boo simply doesn't run Boo.
+    assert run_benchmarks.bench_languages(tmp_path, {"Python", "Boo"}) == {"Python"}
+    (tmp_path / "bench.boo").write_text("print 1\n")
+    assert run_benchmarks.bench_languages(tmp_path, {"Python", "Boo"}) == {"Python", "Boo"}
+
+
+def test_bench_languages_honours_sidecar(tmp_path):
+    (tmp_path / "bench.boo").write_text("print 1\n")
+    (tmp_path / "bench.languages").write_text("Python\nC#\n")
+    assert run_benchmarks.bench_languages(tmp_path, run_benchmarks.ALL_LANGUAGES) == {"Python", "C#"}
+
+
+def test_compile_boo_stages_runtimeconfig_and_boo_lang(monkeypatch, tmp_path):
+    # booc writes a bare assembly; the harness must make it runnable under `dotnet`.
+    booc_dir = tmp_path / "booc"
+    booc_dir.mkdir()
+    (booc_dir / "Boo.Lang.dll").write_bytes(b"lib")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    captured = {}
+
+    class _Result:
+        returncode = 0
+        stderr = ""
+        stdout = ""
+
+    def fake_run(cmd, *_args, **_kwargs):
+        captured["cmd"] = cmd
+        (out_dir / "bench.exe").write_bytes(b"exe")
+        return _Result()
+
+    monkeypatch.setattr(run_benchmarks.subprocess, "run", fake_run)
+    _, ok, err, exe = run_benchmarks.compile_boo(booc_dir / "booc.dll", tmp_path, out_dir)
+
+    assert ok, err
+    assert exe == out_dir / "bench.exe"
+    assert "-debug-" in captured["cmd"]
+    config = json.loads((out_dir / "bench.runtimeconfig.json").read_text())
+    assert config["runtimeOptions"]["framework"]["name"] == "Microsoft.NETCore.App"
+    assert (out_dir / "Boo.Lang.dll").read_bytes() == b"lib"
+
+
+def test_compile_boo_reports_failure_from_stdout(monkeypatch, tmp_path):
+    # booc prints diagnostics to stdout and exits nonzero without writing the exe.
+    class _Result:
+        returncode = 127
+        stderr = ""
+        stdout = "bench.boo(2,17): BCE0022: Cannot convert 'string' to 'long'."
+
+    monkeypatch.setattr(run_benchmarks.subprocess, "run", lambda *_a, **_k: _Result())
+    _, ok, err, _ = run_benchmarks.compile_boo(tmp_path / "booc.dll", tmp_path, tmp_path)
+    assert not ok
+    assert "BCE0022" in err
+
+
+def test_merge_results_round_trips_boo(tmp_path):
+    boo = run_benchmarks.BenchResult("fib", "Boo", 0.4, 0.05, 0.45, True, "")
+    merge_file = tmp_path / "partial.json"
+    merge_file.write_text(json.dumps(run_benchmarks.results_to_json({"fib": {"Boo": boo}})))
+
+    merged = run_benchmarks.merge_results({}, merge_file)
+    assert merged["fib"]["Boo"].execute_seconds == 0.05

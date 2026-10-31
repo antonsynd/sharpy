@@ -187,11 +187,6 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.ClassMembers.Constructors.cs::RoslynEmitter.StructConstructorRoster"] = "refusal-net:StructHostMemberMatrixTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
-        // Partial classifier over top-level statement kinds collecting locally-defined function and
-        // variable names, so a same-named from-import that a local definition shadows is not
-        // qualified (#1683, #1525); non-matching statements contribute no name. Covered by the
-        // FileBasedIntegrationTests multi-file/import fixtures.
-        ["CodeGen/RoslynEmitter.CompilationUnit.cs::RoslynEmitter.RegisterFromImportMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",

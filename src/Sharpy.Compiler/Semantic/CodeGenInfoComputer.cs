@@ -415,37 +415,77 @@ internal class CodeGenInfoComputer
         if (sourceLayout != null)
             _semanticInfo?.SetModuleLayout(fromImport, sourceLayout);
 
+        // A from-import binds exactly the names ProjectCompiler Phase 4 recorded, each beside the symbol the
+        // scope bound it to (#2385) — a star's and an explicit import's alike. The checker may since have
+        // taken a name over — a module variable of this file declared beside the import REPLACES the
+        // scope's symbol — so a pair is kept iff the scope still binds the name to that very object. The
+        // kept names get CodeGenInfo through one helper (one casing and layout rule for both spellings), and
+        // the recorded set is rewritten to them, so the fact says what the scope binds after the takeover
+        // and the emitter decides nothing (P21i D1, #2385 M1). An explicit import that merged into a star of
+        // the same declaration recorded the star's symbol, so a takeover drops it from both records: the
+        // file's own variable is never spelled through the import's module. The rewrite lands in this
+        // file's own SemanticInfo — the instance ProjectCompiler merges (MergeFrom is TryAdd).
+        if (_semanticInfo?.GetFromImportBindings(fromImport) is not { } bindings)
+            return;
+
+        var kept = new List<FromImportBoundName>(bindings.Count);
+        foreach (var binding in bindings)
+        {
+            if (ReferenceEquals(_symbolTable.Lookup(binding.Name), binding.Symbol))
+                kept.Add(binding);
+        }
+        if (kept.Count != bindings.Count)
+            _semanticInfo.SetFromImportBoundNames(fromImport, kept);
+
+        if (fromImport.ImportAll)
+        {
+            foreach (var binding in kept)
+                RecordFromImportedName(binding.Name, aliasName: null, binding.Symbol, isNetModule,
+                    sourceIsNetModule, sourceLayout);
+            return;
+        }
+
         foreach (var imported in fromImport.Names)
         {
             var effectiveName = imported.AsName ?? imported.Name;
-            var symbol = _symbolTable.Lookup(effectiveName);
-            if (symbol != null)
-            {
-                var originalName = imported.AsName != null ? imported.Name : null;
-                var csharpName = DetermineCSharpNameForFromImport(imported.Name, symbol, isNetModule);
-                IReadOnlyList<string>? siblingSegments = symbol is TypeSymbol { ClrType: null, DeclaringType: null } importedType
-                    && !sourceIsNetModule
-                        ? (!string.IsNullOrEmpty(importedType.DefiningFilePath)
-                            ? ModuleIdentifiers.LayoutNamespaceSegments(_sourceRootPath, importedType.DefiningFilePath)
-                            : sourceLayout?.NamespaceSegments)
-                        : null;
-
-                SetCodeGenInfo(symbol, new CodeGenInfo
-                {
-                    CSharpName = csharpName,
-                    OriginalName = effectiveName,
-                    ImportKind = imported.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
-                    OriginalImportName = originalName,
-                    // A Sharpy module's exported types are its top-level types: siblings of <X> in the
-                    // namespace of the file that DECLARES them — a package __init__ re-exporting a
-                    // submodule's type does not move it (#2039).
-                    IsNamespaceSibling = siblingSegments != null,
-                    NamespaceSegments = siblingSegments,
-                    IsOpenGenericDefinition = symbol is TypeSymbol importedTypeSymbol
-                        && DenotesGenericDefinition(importedTypeSymbol),
-                });
-            }
+            if (kept.Find(binding => binding.Name == effectiveName) is { } binding)
+                RecordFromImportedName(imported.Name, imported.AsName, binding.Symbol, isNetModule,
+                    sourceIsNetModule, sourceLayout);
         }
+    }
+
+    /// <summary>
+    /// The CodeGenInfo of one name a from-import binds — <paramref name="name"/> as the source module
+    /// exports it, bound under <paramref name="aliasName"/> when the import spells <c>as</c> — computed
+    /// identically for an explicit from-import and for each name a star import bound (#2385): its C#
+    /// spelling, its import kind, and an imported type's namespace-sibling layout.
+    /// </summary>
+    private void RecordFromImportedName(string name, string? aliasName, Symbol symbol, bool isNetModule,
+        bool sourceIsNetModule, ModuleLayout? sourceLayout)
+    {
+        var effectiveName = aliasName ?? name;
+        var csharpName = DetermineCSharpNameForFromImport(name, symbol, isNetModule);
+        IReadOnlyList<string>? siblingSegments = symbol is TypeSymbol { ClrType: null, DeclaringType: null } importedType
+            && !sourceIsNetModule
+                ? (!string.IsNullOrEmpty(importedType.DefiningFilePath)
+                    ? ModuleIdentifiers.LayoutNamespaceSegments(_sourceRootPath, importedType.DefiningFilePath)
+                    : sourceLayout?.NamespaceSegments)
+                : null;
+
+        SetCodeGenInfo(symbol, new CodeGenInfo
+        {
+            CSharpName = csharpName,
+            OriginalName = effectiveName,
+            ImportKind = aliasName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
+            OriginalImportName = aliasName != null ? name : null,
+            // A Sharpy module's exported types are its top-level types: siblings of <X> in the
+            // namespace of the file that DECLARES them — a package __init__ re-exporting a
+            // submodule's type does not move it (#2039).
+            IsNamespaceSibling = siblingSegments != null,
+            NamespaceSegments = siblingSegments,
+            IsOpenGenericDefinition = symbol is TypeSymbol importedTypeSymbol
+                && DenotesGenericDefinition(importedTypeSymbol),
+        });
     }
 
     /// <summary>
@@ -460,15 +500,18 @@ internal class CodeGenInfoComputer
 
     private string DetermineCSharpNameForFromImport(string name, Symbol symbol, bool isNetModule)
     {
-        // A from-imported Sharpy function is spelled by its DECLARATION's materialized name — one
-        // identifier authority (#2065). Re-deriving it from the imported spelling missed the
+        // A from-imported member of a Sharpy module — function, variable, const or property — is
+        // spelled by its DECLARATION's materialized name: one identifier authority for every
+        // module-level kind (#2065, #2386). Re-deriving it from the imported spelling missed the
         // declaration-side renames: a non-entry module's `main` is `MainFunc`, so the aliased
-        // `from util import main as um; um()` referenced `UtilModule.Main` (CS0117 behind SPY0908)
-        // while the unaliased import, which binds the declaration's own symbol, read `MainFunc`. The
-        // alias binds a clone whose origin chain ends at the declaration; its module was checked
-        // first (dependency order), so the declaration's fact is in the import-facts binding.
-        if (symbol is FunctionSymbol function
-            && (_importFacts ?? _semanticBinding).GetCodeGenInfo(DeclarationOf(function)) is
+        // `from util import main as um; um()` referenced `UtilModule.Main` (CS0117 behind SPY0908);
+        // and a property is declared through the field speller while the casing rule below keeps a
+        // SCREAMING_CASE name verbatim, so `from lib import CAP_P as c` referenced `LibModule.CAP_P`
+        // for the declared `CapP`. The unaliased import binds the declaration's own symbol; the
+        // alias binds a clone whose origin chain ends at the declaration. Its module was checked
+        // first (dependency order), so the declaration's fact is in the import-facts binding. A .NET
+        // module's member has no such record and keeps the casing rule below.
+        if ((_importFacts ?? _semanticBinding).GetCodeGenInfo(symbol.DeclarationRoot()) is
             { IsModuleLevel: true, CSharpName: { } declaredName })
         {
             return declaredName;
@@ -499,22 +542,7 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>Whether the declaration an import clone was made from spelled its name escaped.</summary>
-    private static bool DeclarationEscape(Symbol symbol)
-    {
-        var declaration = symbol;
-        while (declaration.OriginSymbol is { } origin && !ReferenceEquals(origin, declaration))
-            declaration = origin;
-        return declaration.IsNameBacktickEscaped;
-    }
-
-    /// <summary>The declaration an import clone was made from: the end of its origin chain.</summary>
-    private static FunctionSymbol DeclarationOf(FunctionSymbol function)
-    {
-        var declaration = function;
-        while (declaration.OriginSymbol is FunctionSymbol origin && !ReferenceEquals(origin, declaration))
-            declaration = origin;
-        return declaration;
-    }
+    private static bool DeclarationEscape(Symbol symbol) => symbol.DeclarationRoot().IsNameBacktickEscaped;
 
     /// <summary>
     /// Records a type declaration's emitted C# name and source spelling on its symbol — and on its
@@ -1560,9 +1588,10 @@ internal class CodeGenInfoComputer
             DetectNamespaceShadowingAnImportedClrType(module, layout);
         }
 
-        // (is a type, CSharpName) → (originalName, where it was first declared): members of <X> and
-        // namespace-sibling types are two scopes.
-        var seen = new Dictionary<(bool IsType, string CSharpName), (string originalName, DeclarationPosition? position)>();
+        // (is a type, CSharpName, arity) → (originalName, where it was first declared): members of <X> and
+        // namespace-sibling types are two scopes, and a type is named by its spelling AND its generic arity —
+        // C# declares `Box` beside `Box<T>` (a member has arity 0).
+        var seen = new Dictionary<(bool IsType, string CSharpName, int Arity), (string originalName, DeclarationPosition? position)>();
 
         foreach (var stmt in module.Body)
         {
@@ -1608,6 +1637,25 @@ internal class CodeGenInfoComputer
                         delegateDef.NameLineStart, delegateDef.NameColumnStart,
                         delegateDef.LineStart, delegateDef.ColumnStart);
                     break;
+                // The module-level kinds this switch enumerates are the kinds the module EXPORTS
+                // (ModuleLoader.ExtractExportedSymbol's arms; a `type` alias emits no C# member and is
+                // the one exclusion) — CodeGenInfoComputerTotalityTests derives them from that roster,
+                // so a kind the module exports cannot be missing here. A module property is a member of
+                // <X>, a union a namespace-sibling type; without these two arms `property CAP_P` beside
+                // `property cap_p` (or `def cap_p`, or `cap_q: int` beside `property CAP_Q`) and
+                // `union Shape` beside `class shape` reached C# as CS0102 / CS0101 behind SPY0908
+                // (P21i P6.5).
+                case PropertyDef propertyDef:
+                    symbolName = propertyDef.Name;
+                    stmtPos = DeclarationPosition.From(
+                        propertyDef.NameLineStart, propertyDef.NameColumnStart,
+                        propertyDef.LineStart, propertyDef.ColumnStart);
+                    break;
+                case UnionDef unionDef:
+                    symbolName = unionDef.Name;
+                    stmtPos = DeclarationPosition.From(
+                        unionDef.NameLineStart, unionDef.NameColumnStart, unionDef.LineStart, unionDef.ColumnStart);
+                    break;
             }
 
             if (symbolName == null)
@@ -1619,17 +1667,18 @@ internal class CodeGenInfoComputer
 
             var info = _semanticBinding.GetCodeGenInfo(symbol);
             var csharpName = info?.CSharpName;
-            if (csharpName == null && symbol is TypeSymbol { TypeKind: TypeKind.Delegate })
+            if (csharpName == null && symbol is TypeSymbol { TypeKind: TypeKind.Delegate or TypeKind.Union })
                 csharpName = NameCasing.ResolveType(symbolName, symbol.IsNameBacktickEscaped);
             if (csharpName == null)
                 continue;
 
-            var key = (stmt is not (FunctionDef or VariableDeclaration), csharpName);
+            var isType = stmt is not (FunctionDef or VariableDeclaration or PropertyDef);
+            var key = (isType, csharpName, isType && symbol is TypeSymbol typeSymbol ? typeSymbol.TypeParameters.Count : 0);
             if (seen.TryGetValue(key, out var existing))
             {
-                // Overloads of the same module-level function share an identical
-                // Python name and intentionally compile to the same C# name — this
-                // is not a collision.
+                // Overloads of the same module-level function, and the get/set halves of one
+                // module property, share an identical Python name and intentionally compile to the
+                // same C# name — this is not a collision.
                 if (symbolName == existing.originalName)
                     continue;
 

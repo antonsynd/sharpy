@@ -1,0 +1,10 @@
+# A lone auto set half stores to a synthesized backing field (#2395), so a declared field of that
+# name is SPY0407 — as for the mixed and observed forms (#1307, #1456) — not CS0102 behind SPY0908.
+class Host:
+    _a: int = 1
+    property set a: int
+
+def main():
+    h = Host()
+    h.a = 7
+    print("ok")

@@ -427,20 +427,17 @@ internal partial class RoslynEmitter : ICodeEmitter
     // consumer reads one fact instead of re-deriving it (#1802).
     private ModuleShape? _moduleShape;
 
-    // For every module-level member (function/variable/const) brought in by a `from module import
-    // name`, the global::-rooted namespace segments of the C# module class that owns it — e.g.
+    // For every module-level member (function/variable/const/property) brought in by a `from module
+    // import name`, the global::-rooted namespace segments of the C# module class that owns it — e.g.
     // `poison` from `from lib import poison` maps to ["Poison", "Lib"]. Populated once by
     // RegisterFromImportMembers before emission, so a bare reference to an imported member is emitted
     // fully qualified (global::Poison.Lib.Poison) instead of leaning on a `using static` directive
     // that collides with a same-named namespace (#1683). Reference-keyed on the imported Symbol.
+    // Consulted BEFORE the same-module fact (ModuleMemberContainerSegments): an unaliased import of a
+    // project module's member reads the DECLARING module's CodeGenInfo (IsModuleLevel, no ImportKind),
+    // so this map is what keeps it from being qualified to this module.
     private readonly Dictionary<Symbol, string[]> _importedMemberContainers =
         new(ReferenceEqualityComparer.Instance);
-
-    // The Sharpy names of the top-level functions/variables/consts THIS module declares. A
-    // module-level member reference is qualified through this module's own class only when its name
-    // is one of these — so a wildcard-imported member (IsModuleLevel true, but owned by ANOTHER
-    // module's class) is NOT mis-qualified to this module. Populated by RegisterFromImportMembers.
-    private readonly HashSet<string> _ownTopLevelMemberNames = new(System.StringComparer.Ordinal);
 
     // Module-level variable names (original Sharpy names) referenced by
     // @test.parametrize(VARIABLE) decorators. Populated by a pre-scan in
