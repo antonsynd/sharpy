@@ -11,7 +11,7 @@ Full history (17 weekly data points): [`history.json`](https://github.com/antons
 
 ## Performance Trend
 
-![Spy/Py and Spy/C# ratio over time](https://raw.githubusercontent.com/antonsynd/sharpy/dev/benchmarks/cross-language/results/trend.svg)
+![Spy/Py, Spy/C# and Spy/Boo ratios over time](https://raw.githubusercontent.com/antonsynd/sharpy/dev/benchmarks/cross-language/results/trend.svg)
 
 ## Methodology
 
