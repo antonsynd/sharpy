@@ -26,14 +26,6 @@ namespace AccessorParamSetterOnly
     public class Box
     {
         protected int _Value = 0;
-        public int GetValue()
-#line 11 "accessor_param_setter_only.spy"
-        {
-#line (12, 9) - (12, 28) 12 "accessor_param_setter_only.spy"
-            return this._Value;
-#line hidden
-        }
-
         public int Doubled
         {
             set
@@ -42,6 +34,14 @@ namespace AccessorParamSetterOnly
                 this._Value = value * 2;
 #line hidden
             }
+        }
+
+        public int GetValue()
+#line 11 "accessor_param_setter_only.spy"
+        {
+#line (12, 9) - (12, 28) 12 "accessor_param_setter_only.spy"
+            return this._Value;
+#line hidden
         }
     }
 }

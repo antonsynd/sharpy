@@ -132,6 +132,9 @@ namespace Sharpy.HashlibModule
     [global::Sharpy.SharpyModuleType("hashlib", "HashObject")]
     public class HashObject
     {
+        public string Name { get; }
+        public int DigestSize { get; }
+
         protected Sharpy.List<byte> _Data;
         protected global::System.Func<global::System.Security.Cryptography.HashAlgorithm> _Factory;
         protected Sharpy.List<byte> _ComputeHash()
@@ -203,9 +206,6 @@ namespace Sharpy.HashlibModule
 
             return newObj;
         }
-
-        public string Name { get; }
-        public int DigestSize { get; }
 
         /// <summary>
         /// Create a new hash object for the specified algorithm.

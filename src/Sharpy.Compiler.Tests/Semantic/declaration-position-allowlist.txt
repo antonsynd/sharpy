@@ -335,36 +335,23 @@ project × import-identity × two-stars × star × reexport-first × use  # #211
 # ordered storage, and the bare forward non-literal const, runs (0, or the value by layout accident: 2, 6, 7) where
 # SPY0618 is due. The three const × itself × alias rows are #2412 (the const-cycle check does not see an alias
 # receiver). CREATED by P75 Phase 0; the 96 forward/self rows DRAINED in Phase 1
-# (StaticInitializerOrderValidator, SPY0618); the earlier rows drain in Phase 2.
+# (StaticInitializerOrderValidator, SPY0618); the 14 earlier rows the layout read as 0 DRAINED in Phase 2
+# (source-order emission); the 15 bare earlier rows drain with the temporary arm.
 static-init-order × class × static-field × static-property × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × class × static-field × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × class × static-field × static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × class × static-field × static-property × alias × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
 static-init-order × class × const × static-property × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × class × const × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × class × const × static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × class × const × static-property × alias × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
 static-init-order × class × const × itself × alias × self  # #2412; the const cycle through an alias is not SPY0278 (runs 0)
 static-init-order × class × static-property-default × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × dataclass × static-field × static-property × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × dataclass × static-field × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × dataclass × static-field × static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × dataclass × static-field × static-property × alias × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
 static-init-order × dataclass × const × static-property × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × dataclass × const × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × dataclass × const × static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × dataclass × const × static-property × alias × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
 static-init-order × dataclass × const × itself × alias × self  # #2412; the const cycle through an alias is not SPY0278 (runs 0)
 static-init-order × dataclass × static-property-default × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × struct × static-field × static-property × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × struct × static-field × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × struct × static-field × static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × struct × static-field × static-property × alias × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
 static-init-order × struct × const × static-property × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
 static-init-order × struct × const × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × struct × const × static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × struct × const × static-property × alias × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
 static-init-order × struct × const × itself × alias × self  # #2412; the const cycle through an alias is not SPY0278 (runs 0)
 static-init-order × struct × static-property-default × static-method × bare × earlier  # #2396 R-JT; the temporary SPY0200 arm (C# admits it once the layout follows the source)
-static-init-order × generic-class × static-field × static-property × constructed × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
-static-init-order × class × static-field × split-static-property × qualified × earlier  # #2396 R-JT; runs 0: the emitter lays fields before properties (drains with the source-order layout)
