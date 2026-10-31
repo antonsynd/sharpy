@@ -138,6 +138,15 @@ public class ManglingCollisionGridTests : IntegrationTestBase
         yield return new object[] { "var cap_x + var CapX (control)", "cap_x: int = 1\n\nCapX: int = 2\n", "Refused", "cap_x|CapX" };
         yield return new object[] { "property split halves (control)", "_v: int = 1\nproperty get sp() -> int:\n    return _v\nproperty set sp(x: int):\n    _v = x\n", "Compiles", "" };
         yield return new object[] { "type Num + class num (control)", "type Num = int\n\nclass num:\n    v: int = 6\n", "Compiles", "" };
+        // Generic arity (verify-implementation of P21i): a type is named by its spelling AND its arity — C# declares
+        // `Box` beside `Box<T>` — so a generic union or class beside a same-spelled type of ANOTHER arity compiles (the
+        // union pairs ran at 808d82955 and were SPY0522 at 481cae5ea, when the union arm joined an arity-blind key;
+        // the class pair was SPY0522 at both), and the same arity is still one C# type name (the controls).
+        yield return new object[] { "union Box[T] + class box (arity)", "union Box[T]:\n    case Full(v: T)\n    case Empty\n\nclass box:\n    v: int = 6\n", "Compiles", "" };
+        yield return new object[] { "union Opt[T] + union opt (arity)", "union Opt[T]:\n    case Has(v: T)\n    case Nope\n\nunion opt:\n    case A\n    case B\n", "Compiles", "" };
+        yield return new object[] { "class Box[T] + class box (arity)", "class Box[T]:\n    v: int = 1\n\nclass box:\n    v: int = 6\n", "Compiles", "" };
+        yield return new object[] { "union Box[T] + class box[U] (same arity, control)", "union Box[T]:\n    case Full(v: T)\n    case Empty\n\nclass box[U]:\n    v: int = 6\n", "Refused", "box|Box" };
+        yield return new object[] { "class Box[T] + class box[U] (same arity, control)", "class Box[T]:\n    v: int = 1\n\nclass box[U]:\n    v: int = 6\n", "Refused", "box|Box" };
     }
 
     [Theory]

@@ -1588,9 +1588,10 @@ internal class CodeGenInfoComputer
             DetectNamespaceShadowingAnImportedClrType(module, layout);
         }
 
-        // (is a type, CSharpName) → (originalName, where it was first declared): members of <X> and
-        // namespace-sibling types are two scopes.
-        var seen = new Dictionary<(bool IsType, string CSharpName), (string originalName, DeclarationPosition? position)>();
+        // (is a type, CSharpName, arity) → (originalName, where it was first declared): members of <X> and
+        // namespace-sibling types are two scopes, and a type is named by its spelling AND its generic arity —
+        // C# declares `Box` beside `Box<T>` (a member has arity 0).
+        var seen = new Dictionary<(bool IsType, string CSharpName, int Arity), (string originalName, DeclarationPosition? position)>();
 
         foreach (var stmt in module.Body)
         {
@@ -1671,7 +1672,8 @@ internal class CodeGenInfoComputer
             if (csharpName == null)
                 continue;
 
-            var key = (stmt is not (FunctionDef or VariableDeclaration or PropertyDef), csharpName);
+            var isType = stmt is not (FunctionDef or VariableDeclaration or PropertyDef);
+            var key = (isType, csharpName, isType && symbol is TypeSymbol typeSymbol ? typeSymbol.TypeParameters.Count : 0);
             if (seen.TryGetValue(key, out var existing))
             {
                 // Overloads of the same module-level function, and the get/set halves of one
