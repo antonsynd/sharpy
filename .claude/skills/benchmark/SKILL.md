@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Run benchmarks for the Sharpy compiler. Two modes:
 
-## Cross-Language Comparison (Sharpy vs C# vs Python)
+## Cross-Language Comparison (Sharpy vs C# vs Python vs Boo)
 
 Runs equivalent programs in all three languages and produces a comparison table.
 
@@ -84,7 +84,7 @@ precisely, not statistically), so when a change's mechanism predicts an allocati
 
 ## Notes
 
-- Cross-language benchmarks require: Python 3.9+, .NET 10 SDK
+- Cross-language benchmarks require: Python 3.9+, .NET 10 SDK (and GitHub access on first Boo use — see the cross-language README)
 - Compiler benchmarks must use Release mode (Debug is meaningless)
 - Benchmark corpus: `src/Sharpy.Compiler.Benchmarks/Corpus/`
 - Cross-language programs: `benchmarks/cross-language/*/`
