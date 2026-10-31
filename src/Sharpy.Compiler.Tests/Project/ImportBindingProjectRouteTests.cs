@@ -72,6 +72,7 @@ public class ImportBindingProjectRouteTests
             .Concat(StarKindCells().Select(c => c.Id)).Concat(IncrementalStarVarDefIds)
             .Concat(ModuleMemberCells().Select(c => c.Id)).Append(IncrementalModulePropertyId)
             .Concat(ImportIdentityCells().Select(c => c.Id)).Concat(IncrementalImportIdentityIds)
+            .Concat(TakeoverProvenanceCells().Select(c => c.Id))
             .Select(id => $"project × {id}");
 
     private const string MainOk = "\ndef main() -> None:\n    print(\"ok\")\n";
@@ -239,6 +240,13 @@ public class ImportBindingProjectRouteTests
         ("alias", "from consts import *", new string[0], "2", "Num", "2\n"),
         ("property", "from consts import *", new string[0], "prop", "int", "6\n"),
         ("var-taken-over", "from consts import *", new[] { "level: int = 1" }, "level", "int", "1\n"),
+        // The explicit import of a star-bound name merges into the star's binding, so the takeover takes it from both
+        // statements: the local 1, never consts' 9 (verify-implementation R1: 9 when the explicit arm registered the
+        // file's own variable under consts' container; 1 at 808d82955 and in python3). Its control: no takeover → 9.
+        ("var-taken-over-beside-explicit", "from consts import *\nfrom consts import level", new[] { "level: int = 1" },
+            "level", "int", "1\n"),
+        ("var-explicit-beside-star (control)", "from consts import *\nfrom consts import level", new string[0], "level",
+            "int", "9\n"),
         ("var-explicit (control)", "from consts import level", new string[0], "level", "int", "9\n"),
         ("var-qualified (control)", "import consts", new string[0], "consts.level", "int", "9\n"),
     };
@@ -553,6 +561,55 @@ public class ImportBindingProjectRouteTests
     {
         var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
         var cell = ImportIdentityCell(id);
+        using var helper = NewHelper("ImportBindingRoute", cell.Main, cell.Libs);
+        var failures = JudgeRun(cell, helper);
+        Judge($"project × {cell.Id}", failures, allowlist, problems);
+    }
+
+    /// <summary>The lib set of the takeover × provenance cells: <c>core.level</c> is the declaration (9); <c>lib1</c>
+    /// re-exports it by a plain from-import, <c>lib3</c> by a star, <c>utils/__init__.spy</c> through the package route.</summary>
+    private static readonly (string Path, string Content)[] TakeoverProvenanceLibs =
+    {
+        ("core.spy", "level: int = 9\n"),
+        ("lib1.spy", "from core import level\n"),
+        ("lib3.spy", "from core import *\n"),
+        ("utils/__init__.spy", "from utils.helpers import level\n"),
+        ("utils/helpers.spy", "level: int = 9\n"),
+    };
+
+    /// <summary>
+    /// A module variable of the importing file that takes over a name a star bound AND an explicit import of the SAME
+    /// declaration named (the explicit import merges into the star's binding — one identity, R-JK) × provenance
+    /// {same module, star of a re-exporter + direct, package star + submodule, star + plain re-exporter, two stars}:
+    /// ids <c>import-takeover × &lt;provenance&gt;</c>. Expected: no diagnostic and the file's OWN <c>2</c> (python3 2) —
+    /// the takeover drops the name from every from-import's recorded binding, so it is never spelled through an
+    /// import's module. Measured by verify-implementation (R1): @ 808d82955 same-module printed 2 and the others were
+    /// SPY0204 (identity was the spelled module); @ 481cae5ea the explicit arm registered the file's own variable under
+    /// the import's container — 9, 9, 9 and CS0117 'Lib1Module'; two stars printed 2 throughout (no explicit import).
+    /// </summary>
+    internal static IEnumerable<RouteCell> TakeoverProvenanceCells()
+    {
+        RouteCell Cell(string provenance, string first, string second)
+            => new($"import-takeover × {provenance}",
+                $"{first}\n{second}\nlevel: int = 2\n\ndef main() -> None:\n    print(level)\n",
+                new string[0], "2\n", null, TakeoverProvenanceLibs);
+
+        yield return Cell("same-module", "from core import *", "from core import level");
+        yield return Cell("star-of-reexporter + direct", "from lib3 import *", "from core import level");
+        yield return Cell("package-star + submodule", "from utils import *", "from utils.helpers import level");
+        yield return Cell("star + plain-reexporter", "from core import *", "from lib1 import level");
+        yield return Cell("two-stars (control)", "from lib3 import *", "from core import *");
+    }
+
+    public static IEnumerable<object[]> TakeoverProvenanceCellIds()
+        => TakeoverProvenanceCells().Select(c => new object[] { c.Id });
+
+    [Theory]
+    [MemberData(nameof(TakeoverProvenanceCellIds))]
+    public void ImportTakeover_KeepsTheFilesOwnVariable_OverProvenance(string id)
+    {
+        var allowlist = TypeDefinitionOwnSymbolMatrixTests.LoadAllowlist(out var problems);
+        var cell = TakeoverProvenanceCells().Single(c => c.Id == id);
         using var helper = NewHelper("ImportBindingRoute", cell.Main, cell.Libs);
         var failures = JudgeRun(cell, helper);
         Judge($"project × {cell.Id}", failures, allowlist, problems);

@@ -415,39 +415,42 @@ internal class CodeGenInfoComputer
         if (sourceLayout != null)
             _semanticInfo?.SetModuleLayout(fromImport, sourceLayout);
 
+        // A from-import binds exactly the names ProjectCompiler Phase 4 recorded, each beside the symbol the
+        // scope bound it to (#2385) — a star's and an explicit import's alike. The checker may since have
+        // taken a name over — a module variable of this file declared beside the import REPLACES the
+        // scope's symbol — so a pair is kept iff the scope still binds the name to that very object. The
+        // kept names get CodeGenInfo through one helper (one casing and layout rule for both spellings), and
+        // the recorded set is rewritten to them, so the fact says what the scope binds after the takeover
+        // and the emitter decides nothing (P21i D1, #2385 M1). An explicit import that merged into a star of
+        // the same declaration recorded the star's symbol, so a takeover drops it from both records: the
+        // file's own variable is never spelled through the import's module. The rewrite lands in this
+        // file's own SemanticInfo — the instance ProjectCompiler merges (MergeFrom is TryAdd).
+        if (_semanticInfo?.GetFromImportBindings(fromImport) is not { } bindings)
+            return;
+
+        var kept = new List<FromImportBoundName>(bindings.Count);
+        foreach (var binding in bindings)
+        {
+            if (ReferenceEquals(_symbolTable.Lookup(binding.Name), binding.Symbol))
+                kept.Add(binding);
+        }
+        if (kept.Count != bindings.Count)
+            _semanticInfo.SetFromImportBoundNames(fromImport, kept);
+
         if (fromImport.ImportAll)
         {
-            // A star import binds exactly the names ProjectCompiler Phase 4 recorded, each beside the
-            // symbol it bound (#2385). The checker may since have taken a name over — a module variable
-            // of this file declared beside the star REPLACES the scope's symbol — so a pair is kept iff
-            // the scope still binds the name to that very object. The kept names get CodeGenInfo through
-            // the explicit arm's helper (one casing and layout rule for both spellings), and the
-            // recorded set is rewritten to them, so the fact says what the scope binds after the
-            // takeover and the emitter decides nothing (P21i D1, #2385 M1). The rewrite lands in this
-            // file's own SemanticInfo — the instance ProjectCompiler merges (MergeFrom is TryAdd).
-            if (_semanticInfo?.GetStarImportBindings(fromImport) is { } bindings)
-            {
-                var kept = new List<StarBoundName>(bindings.Count);
-                foreach (var binding in bindings)
-                {
-                    if (!ReferenceEquals(_symbolTable.Lookup(binding.Name), binding.Symbol))
-                        continue;
-                    kept.Add(binding);
-                    RecordFromImportedName(binding.Name, aliasName: null, binding.Symbol, isNetModule,
-                        sourceIsNetModule, sourceLayout);
-                }
-                if (kept.Count != bindings.Count)
-                    _semanticInfo.SetStarImportBoundNames(fromImport, kept);
-            }
+            foreach (var binding in kept)
+                RecordFromImportedName(binding.Name, aliasName: null, binding.Symbol, isNetModule,
+                    sourceIsNetModule, sourceLayout);
             return;
         }
 
         foreach (var imported in fromImport.Names)
         {
             var effectiveName = imported.AsName ?? imported.Name;
-            if (_symbolTable.Lookup(effectiveName) is { } symbol)
-                RecordFromImportedName(imported.Name, imported.AsName, symbol, isNetModule, sourceIsNetModule,
-                    sourceLayout);
+            if (kept.Find(binding => binding.Name == effectiveName) is { } binding)
+                RecordFromImportedName(imported.Name, imported.AsName, binding.Symbol, isNetModule,
+                    sourceIsNetModule, sourceLayout);
         }
     }
 

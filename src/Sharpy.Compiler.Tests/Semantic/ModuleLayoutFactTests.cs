@@ -43,6 +43,16 @@ public class ModuleLayoutFactTests
 
         arrange?.Invoke(module, symbolTable, binding);
 
+        // ProjectCompiler Phase 4 records the names each from-import BOUND beside the bound symbol; this
+        // harness binds by hand in `arrange`, so it records the same fact from what the table now holds.
+        foreach (var fromImport in module.Body.OfType<FromImportStatement>().Where(f => !f.ImportAll))
+        {
+            semanticInfo.SetFromImportBoundNames(fromImport, fromImport.Names
+                .Select(n => n.AsName ?? n.Name)
+                .Select(name => symbolTable.Lookup(name) is { } bound ? new FromImportBoundName(name, bound) : null)
+                .OfType<FromImportBoundName>().ToList());
+        }
+
         var diagnostics = new DiagnosticBag();
         new CodeGenInfoComputer(symbolTable, binding, diagnostics, semanticInfo)
             .ComputeForModule(module, filePath, isEntryPoint: false, sourceRootPath: sourceRoot);

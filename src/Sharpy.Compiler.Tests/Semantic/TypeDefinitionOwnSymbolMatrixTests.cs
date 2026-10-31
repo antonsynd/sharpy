@@ -620,13 +620,13 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         // ({str, print, `str`} + `def print` × 2 orders + print twice), + 2 builtins-module names, + the plain builtin
         // type name, + the dotted root × 2 orders, + the star import × {var, const, def} × 2 orders, + the star import ×
         // {class, alias, property-field, property-get, enum} × 2 orders (P21g), + `from math import e as pi` × star × 2,
-        // + the star import × 5 exported kinds × 3 read positions from a Stdlib source (P21i), + `from builtins import
+        // + the star import × 7 exported kinds × 3 read positions from a Stdlib source (P21i), + `from builtins import
         // print as p` × `len as p` × 2 orders (P21i D6, the spelled-identity fallback).
         Assert.Equal(10, ImportColliders.Length);
         Assert.Equal(5, StarDeclarations.Length);
-        Assert.Equal(5, StarKinds.Length);
+        Assert.Equal(7, StarKinds.Length);
         Assert.Equal(3, StarReadPositions.Length);
-        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2 + 5 * 3 + 2, ImportBindingCells().Count());
+        Assert.Equal(4 * (2 + 10 * 2) + 2 * (3 + 2 + 1) + 2 + 1 + 2 + 3 * 2 + 5 * 2 + 2 + 7 * 3 + 2, ImportBindingCells().Count());
         Assert.Equal(4 * 2 * 2 + 2, ImportBindingCells().Count(c => c.Collider is "same-module-other-symbol" or "star"));
         // Alias redeclaration: 7 relations × {def-body, if-in-def, method-body, module-try} + {alias→alias, alias→def,
         // def→alias} × type-body + alias→alias × module.
@@ -677,7 +677,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         var ids = Cells().Select(c => c.Id).Concat(NestedDefCells().Select(c => c.Id))
             .Concat(ImportBindingCells().Select(c => c.Id)).Concat(AliasRedeclarationCells().Select(c => c.Id))
             .Concat(MemberPairCells().Select(c => c.Id)).ToList();
-        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 140 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(18 * 13 * 3 + 26 + 29 + 48 + 146 + 32 + 858, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
@@ -1142,6 +1142,15 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
         ("property", "from os import *", Array.Empty<string>(), "len(environ) > 0", "bool", "True\n"),
         ("class", "from struct import *", Array.Empty<string>(), "Struct(\"i\").size", "int", "4\n"),
         ("var-taken-over", "from math import *", new[] { "pi: float = 1.5" }, "pi", "float", "1.5\n"),
+        // The explicit import of a star-bound name MERGES into the star's binding (one identity), so a module variable
+        // that takes the name over takes it from both statements: the file's own 1.5 at every position, never the
+        // import's module (python3 1.5; 3.141592653589793 when the explicit arm registered the file's own variable
+        // under math's container — verify-implementation R1, worked at 808d82955). The control beside it: the same two
+        // imports with no takeover print math's value.
+        ("var-taken-over-beside-explicit", "from math import *\nfrom math import pi", new[] { "pi: float = 1.5" }, "pi",
+            "float", "1.5\n"),
+        ("var-explicit-beside-star (control)", "from math import *\nfrom math import pi", Array.Empty<string>(), "pi",
+            "float", "3.141592653589793\n"),
     };
 
     /// <summary>The three read positions of a star-bound name (P21i): the module body (<c>x: T = name</c>, printed from
