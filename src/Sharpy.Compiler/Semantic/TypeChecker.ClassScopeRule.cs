@@ -559,7 +559,7 @@ internal partial class TypeChecker
         // as much as the sibling (P21h verify C2: `@static property get a`, `@static property sp = 4`,
         // `@static property set a = sp` reads 0 in C#).
         var readerAnchor = readerDeclaration is PropertyDef
-            ? FirstDeclarationOf(DeclaredMemberName(readerDeclaration)) ?? readerDeclaration
+            ? FirstDeclarationOf(TypeBodyMembership.DeclaredMemberName(readerDeclaration)) ?? readerDeclaration
             : readerDeclaration;
         if (FirstDeclarationOf(member.Name) is not { } memberAnchor)
             return false;
@@ -569,43 +569,16 @@ internal partial class TypeChecker
                 (readerAnchor.LineStart, readerAnchor.ColumnStart)) >= 0;
     }
 
-    /// <summary>The first unwrapped statement of the current type body that declares
-    /// <paramref name="name"/> (<see cref="DeclaredMemberName"/>), or null.</summary>
+    /// <summary>The first declaration of <paramref name="name"/> in the current type body — the
+    /// shared anchor rule (<see cref="TypeBodyMembership.FirstDeclarationOf"/>).</summary>
     private Node? FirstDeclarationOf(string? name)
-    {
-        if (name == null)
-            return null;
-        foreach (var statement in _currentTypeBody)
-        {
-            var declaration = statement.UnwrapDecorated();
-            if (DeclaredMemberName(declaration) == name)
-                return declaration;
-        }
-
-        return null;
-    }
+        => TypeBodyMembership.FirstDeclarationOf(_currentTypeBody, name);
 
     /// <summary>Whether the reader's own declaration declares <paramref name="member"/> — a member
     /// read in its own initializer or default.</summary>
     private static bool IsSelfRead(TypeBodyMember member, ClassBodyReader reader)
         => !member.IsInherited && reader.Declaration is { } declaration
-            && DeclaredMemberName(declaration) == member.Name;
-
-    /// <summary>
-    /// The bare member name a type-body statement declares, or null. Deliberately partial: a field,
-    /// a property half that is not an explicit-interface implementation, an event and a method are
-    /// the members a bare sibling read can denote (<see cref="TypeBodyMembership"/>); every other
-    /// statement kind — a nested type, an alias, a union case, an explicit-interface property, a
-    /// `pass` — declares no such member, so it is never a sibling's declaration (F1).
-    /// </summary>
-    private static string? DeclaredMemberName(Node declaration) => declaration switch
-    {
-        VariableDeclaration v => v.Name,
-        PropertyDef { ExplicitInterface: null } p => p.Name,
-        EventDef e => e.Name,
-        FunctionDef f => f.Name,
-        _ => null,
-    };
+            && TypeBodyMembership.DeclaredMemberName(declaration) == member.Name;
 
     /// <summary>The position phrase a refusal names — one per position, and no other's.</summary>
     private static string ReadPositionPhrase(ClassBodyReader reader) => reader.Position switch
@@ -652,7 +625,7 @@ internal partial class TypeChecker
     {
         var phrase = ReadPositionPhrase(reader);
         var name = member.Name;
-        var readerName = reader.Declaration is { } declaration && DeclaredMemberName(declaration) is { } declared
+        var readerName = reader.Declaration is { } declaration && TypeBodyMembership.DeclaredMemberName(declaration) is { } declared
             ? declared
             : reader.Name;
         if (IsSelfRead(member, reader))
