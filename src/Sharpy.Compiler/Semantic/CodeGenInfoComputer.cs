@@ -528,24 +528,14 @@ internal class CodeGenInfoComputer
             return NameCasing.ResolveMethod(name, escaped);
         }
 
-        // The name cased is the DECLARATION's when the chain reaches a Sharpy declaration with no
-        // materialized record (a module variable the checker declares later, so the import binds the
-        // loader's extraction): a re-exporter's alias (`from pc.core import CAP_V as cv` in a package
-        // __init__, then `from pc import cv`) names the declared `CAP_V`, not `cv` (P21i F2a).
-        var root = symbol.DeclarationRoot();
-        var spelled = !root.IsReExport && root.DeclaringFilePath is { } declaringFile
-            && declaringFile.EndsWith(".spy", StringComparison.OrdinalIgnoreCase)
-                ? root.Name
-                : name;
-
         // Use the same logic as RoslynEmitter for from-imports:
         // - ALL_CAPS names (constants) use ToConstantCase (preserves SCREAMING_SNAKE_CASE)
         // - Other names become PascalCase
-        if (NameFormDetector.IsConstantCaseName(spelled))
+        if (NameFormDetector.IsConstantCaseName(name))
         {
-            return NameCasing.ResolveConstant(spelled, escaped);
+            return NameCasing.ResolveConstant(name, escaped);
         }
-        return NameCasing.ResolveMethod(spelled, escaped);
+        return NameCasing.ResolveMethod(name, escaped);
     }
 
     /// <summary>Whether the declaration an import clone was made from spelled its name escaped.</summary>

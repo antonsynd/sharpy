@@ -607,36 +607,17 @@ internal partial class RoslynEmitter
         sourceSegments.AddRange(FromImportMembersClassPath(fromImport));
         var sourceClass = MakeGlobalQualifiedName(sourceSegments.ToArray());
 
-        // A forwarder is a consumer of the names it forwards (P21i F2a): its own name is the one this
-        // module's binding of the name materialized — what `pkg.x` and `from pkg import x` spell — and its
-        // target is the DECLARATION's materialized name; both re-derived from the spelling broke a
-        // SCREAMING_CASE property (`CoreModule.CAP_P` for `CapP`), a renamed def (`Main` for the non-entry
-        // `MainFunc`, #2065) and every aliased re-export (the target spelled from the alias). One
-        // declaration re-exported under two names forwards once.
-        var emitted = new HashSet<(string Name, string Target)>();
         foreach (var (localName, symbol) in reExportedSymbols)
         {
-            var bound = _context.LookupSymbol(localName) ?? symbol;
-            var declaration = bound.DeclarationRoot();
             switch (symbol)
             {
                 case FunctionSymbol funcSymbol:
-                    {
-                        var name = DeclaredModuleMemberName(bound) ?? NameMangler.Transform(localName, NameContext.Method);
-                        var target = DeclaredModuleMemberName(declaration) ?? NameMangler.Transform(declaration.Name, NameContext.Method);
-                        if (emitted.Add((name, target)))
-                            yield return GenerateReExportMethod(name, target, funcSymbol, sourceClass);
-                        break;
-                    }
+                    yield return GenerateReExportMethod(localName, funcSymbol, sourceClass);
+                    break;
 
                 case VariableSymbol varSymbol:
-                    {
-                        var name = DeclaredModuleMemberName(bound) ?? ReExportedFieldName(localName);
-                        var target = DeclaredModuleMemberName(declaration) ?? ReExportedFieldName(declaration.Name);
-                        if (emitted.Add((name, target)))
-                            yield return GenerateReExportProperty(name, target, varSymbol, sourceClass);
-                        break;
-                    }
+                    yield return GenerateReExportProperty(localName, varSymbol, sourceClass);
+                    break;
 
                 case TypeSymbol:
                     // Type re-exports cannot be delegated (no wrapper possible).
@@ -650,8 +631,10 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generate a delegating method for a re-exported function.
     /// </summary>
-    private MemberDeclarationSyntax GenerateReExportMethod(string methodName, string sourceMethodName, FunctionSymbol funcSymbol, NameSyntax sourceClass)
+    private MemberDeclarationSyntax GenerateReExportMethod(string localName, FunctionSymbol funcSymbol, NameSyntax sourceClass)
     {
+        var methodName = NameMangler.Transform(localName, NameContext.Method);
+        var sourceMethodName = NameMangler.Transform(funcSymbol.Name, NameContext.Method);
 
         // Generate parameter list
         var parameters = funcSymbol.Parameters
@@ -698,18 +681,19 @@ internal partial class RoslynEmitter
             .WithBody(Block(body));
     }
 
-    /// <summary>The spelling-derived C# name of a re-exported variable or constant with no materialized
-    /// name (a member of a module outside this compilation): ALL_CAPS names keep their case.</summary>
-    private static string ReExportedFieldName(string name)
-        => NameFormDetector.IsConstantCaseName(name)
-            ? NameMangler.ToConstantCase(name)
-            : NameCasing.ResolveField(name, false);
-
     /// <summary>
-    /// Generate a delegating property for a re-exported variable/constant/property.
+    /// Generate a delegating property for a re-exported variable/constant.
     /// </summary>
-    private MemberDeclarationSyntax GenerateReExportProperty(string propertyName, string sourcePropertyName, VariableSymbol varSymbol, NameSyntax sourceClass)
+    private MemberDeclarationSyntax GenerateReExportProperty(string localName, VariableSymbol varSymbol, NameSyntax sourceClass)
     {
+        // For constants/variables with ALL_CAPS names, preserve the case
+        var propertyName = NameFormDetector.IsConstantCaseName(localName)
+            ? NameMangler.ToConstantCase(localName)
+            : NameCasing.ResolveField(localName, false);
+
+        var sourcePropertyName = NameFormDetector.IsConstantCaseName(varSymbol.Name)
+            ? NameMangler.ToConstantCase(varSymbol.Name)
+            : NameCasing.ResolveField(varSymbol.Name, false);
 
         // Map the type
         var propertyType = _typeMapper.MapSemanticType(GetVariableType(varSymbol));

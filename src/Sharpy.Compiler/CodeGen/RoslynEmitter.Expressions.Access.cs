@@ -2098,18 +2098,13 @@ internal partial class RoslynEmitter
                     // A user module's type is spelled as its declaration is.
                     mangledMemberName = NameCasing.ResolveType(exportedType.Name, exportedType.IsNameBacktickEscaped);
                 }
+                else if (NameFormDetector.IsConstantCaseName(memberPart))
+                {
+                    mangledMemberName = NameMangler.ToConstantCase(memberPart);
+                }
                 else
                 {
-                    // No materialized name: cased from the name the EXPORT was declared with (its
-                    // declaration root), so a package __init__ that re-exports under an alias
-                    // (`CAP_V as cv`) is reached as the declared `CAP_V` through `pc.cv` (P21i F2a).
-                    // A .NET member, or an unresolved one, keeps the spelling.
-                    var spelledMember = !currentModule.IsNetModule && exportSymbol != null
-                        ? exportSymbol.DeclarationRoot().Name
-                        : memberPart;
-                    mangledMemberName = NameFormDetector.IsConstantCaseName(spelledMember)
-                        ? NameMangler.ToConstantCase(spelledMember)
-                        : NameCasing.ResolveMethod(spelledMember, isBacktickEscaped: false, GetClrMethodName(exportSymbol));
+                    mangledMemberName = NameCasing.ResolveMethod(memberPart, isBacktickEscaped: false, GetClrMethodName(exportSymbol));
                 }
 
                 // A user module's function/variable/constant lives in its members class; a type
@@ -2151,15 +2146,14 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The materialized C# name of a user module's function, variable, const or property binding —
-    /// the name its declaration is emitted with, which an import clone of it records too (D5) — or
-    /// null when the symbol carries none (a type, a nested module, a member with no recorded name).
-    /// Every consumer of a module member's C# spelling reads it: the qualified route
-    /// (<c>lib.x</c>), the package <c>__init__</c> forwarder's name and its target (P21i F2, F2a).
+    /// The materialized C# name of a user module's function, or of its module-level variable, const
+    /// or property — the name the declaration is emitted with — or null when the export carries none
+    /// (a type, a nested module, a member with no recorded name).
     /// </summary>
     private string? DeclaredModuleMemberName(Symbol? member) => member switch
     {
-        FunctionSymbol or VariableSymbol => GetCodeGenInfo(member!)?.CSharpName,
+        FunctionSymbol => GetCodeGenInfo(member)?.CSharpName,
+        VariableSymbol => GetCodeGenInfo(member) is { IsModuleLevel: true, CSharpName: { } name } ? name : null,
         _ => null,
     };
 
