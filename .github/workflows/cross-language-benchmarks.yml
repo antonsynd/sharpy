@@ -1,7 +1,8 @@
-# Weekly cross-language benchmark: Sharpy vs C# vs Python
+# Weekly cross-language benchmark: Sharpy vs C# vs Python vs Boo
 # Two-job design: C# benchmarks run in a clean environment (no Sharpy in NuGet
-# cache), then Python/Sharpy benchmarks run after building the Sharpy CLI.
-# Results are merged into a single report.
+# cache), then Python/Sharpy/Boo benchmarks run after building the Sharpy CLI
+# (the harness builds booc from a pinned boo-lang/boo commit). Results are
+# merged into a single report.
 
 name: Cross-Language Benchmarks
 
@@ -45,7 +46,7 @@ jobs:
         path: csharp-results.json
         retention-days: 1
 
-  # Job 2: Build Sharpy CLI, run Python + Sharpy benchmarks, merge all results.
+  # Job 2: Build Sharpy CLI, run Python + Sharpy + Boo benchmarks, merge all results.
   benchmark:
     needs: benchmark-csharp
     runs-on: ubuntu-latest
@@ -76,9 +77,9 @@ jobs:
     - name: Build Sharpy CLI (Release)
       run: dotnet build src/Sharpy.Cli -c Release --nologo -v q
 
-    - name: Run Python + Sharpy benchmarks and merge
+    - name: Run Python + Sharpy + Boo benchmarks and merge
       run: |
-        python3 benchmarks/cross-language/run_benchmarks.py --languages Python,Sharpy --merge csharp-results.json --json > benchmarks/cross-language/results/latest.json
+        python3 benchmarks/cross-language/run_benchmarks.py --languages Python,Sharpy,Boo --merge csharp-results.json --json > benchmarks/cross-language/results/latest.json
 
     - name: Generate markdown report
       run: |
@@ -119,8 +120,8 @@ jobs:
             "",
             "## Execution Time (runtime only)",
             "",
-            "| Benchmark | Python | Sharpy | C# | Spy/Py | Spy/C# |",
-            "|-----------|--------|--------|-----|--------|--------|",
+            "| Benchmark | Python | Sharpy | C# | Boo | Spy/Py | Spy/C# | Spy/Boo |",
+            "|-----------|--------|--------|-----|-----|--------|--------|---------|",
         ]
 
         for name in sorted(benchmarks):
@@ -128,16 +129,20 @@ jobs:
             py = langs.get("Python", {})
             spy = langs.get("Sharpy", {})
             cs = langs.get("C#", {})
+            boo = langs.get("Boo", {})
 
             py_t = py.get("execute_seconds", 0) if py.get("success") else 0
             spy_t = spy.get("execute_seconds", 0) if spy.get("success") else 0
             cs_t = cs.get("execute_seconds", 0) if cs.get("success") else 0
+            boo_t = boo.get("execute_seconds", 0) if boo.get("success") else 0
 
             py_s = fmt(py_t) if py.get("success") else "FAIL"
             spy_s = fmt(spy_t) if spy.get("success") else "FAIL"
             cs_s = fmt(cs_t) if cs.get("success") else "FAIL"
+            # Boo has no program for some benchmarks (e.g. the numpy variant): "—", not FAIL.
+            boo_s = "—" if not boo else (fmt(boo_t) if boo.get("success") else "FAIL")
 
-            lines.append(f"| {name} | {py_s} | {spy_s} | {cs_s} | {ratio(spy_t, py_t)} | {ratio(spy_t, cs_t)} |")
+            lines.append(f"| {name} | {py_s} | {spy_s} | {cs_s} | {boo_s} | {ratio(spy_t, py_t)} | {ratio(spy_t, cs_t)} | {ratio(spy_t, boo_t)} |")
 
         # Compilation time table. "Sharpy (cold)" is a cold single-file compile;
         # "Sharpy (warm)" is a warm --incremental one-file .spyproj compile (cache
@@ -147,8 +152,8 @@ jobs:
             "",
             "## Compilation Time",
             "",
-            "| Benchmark | Python (.pyc) | Sharpy (cold) | Sharpy (warm) | Sharpy (server) | C# (dotnet build) | Spy/C# |",
-            "|-----------|---------------|---------------|---------------|-----------------|-------------------|--------|",
+            "| Benchmark | Python (.pyc) | Sharpy (cold) | Sharpy (warm) | Sharpy (server) | C# (dotnet build) | Boo (booc) | Spy/C# |",
+            "|-----------|---------------|---------------|---------------|-----------------|-------------------|------------|--------|",
         ]
 
         for name in sorted(benchmarks):
@@ -156,16 +161,18 @@ jobs:
             py = langs.get("Python", {})
             spy = langs.get("Sharpy", {})
             cs = langs.get("C#", {})
+            boo = langs.get("Boo", {})
 
             py_t = py.get("compile_seconds", 0)
             spy_t = spy.get("compile_seconds", 0)
             warm_t = spy.get("warm_compile_seconds", 0)
             server_t = spy.get("server_warm_compile_seconds", 0)
             cs_t = cs.get("compile_seconds", 0)
+            boo_t = boo.get("compile_seconds", 0)
 
             warm_s = fmt(warm_t) if warm_t else "—"
             server_s = fmt(server_t) if server_t else "—"
-            lines.append(f"| {name} | {fmt(py_t)} | {fmt(spy_t)} | {warm_s} | {server_s} | {fmt(cs_t)} | {ratio(spy_t, cs_t)} |")
+            lines.append(f"| {name} | {fmt(py_t)} | {fmt(spy_t)} | {warm_s} | {server_s} | {fmt(cs_t)} | {fmt(boo_t)} | {ratio(spy_t, cs_t)} |")
 
         # Sharpy per-phase compile breakdown (from --metrics-format json).
         PHASE_ORDER = [
@@ -205,7 +212,7 @@ jobs:
                 "|-----------|------|------|--------|-------|-----|-----|-----|-----|---|",
             ]
             for name in sorted(benchmarks):
-                for lang_key in ["Python", "Sharpy", "C#"]:
+                for lang_key in ["Python", "Sharpy", "C#", "Boo"]:
                     r = benchmarks[name].get(lang_key, {})
                     stats = r.get("execute_stats")
                     if not stats or not r.get("success"):
@@ -223,7 +230,10 @@ jobs:
             "![Spy/Py and Spy/C# ratio over time](trend.svg)",
             "",
             "> **Spy/Py < 1.0** = Sharpy execution faster than Python. "
-            "**Spy/C# ≈ 1.0** = minimal overhead vs hand-written C#.",
+            "**Spy/C# ≈ 1.0** = minimal overhead vs hand-written C#. "
+            "**Spy/Boo < 1.0** = Sharpy faster than [Boo](https://github.com/boo-lang/boo), "
+            "the other Python-flavoured statically typed .NET language (built from a pinned "
+            "commit; `-debug-`, default checked arithmetic).",
             "",
             "> **Sharpy (cold)** = single-file compile with no cache; "
             "**Sharpy (warm)** = `--incremental` one-file `.spyproj` compile with the "
