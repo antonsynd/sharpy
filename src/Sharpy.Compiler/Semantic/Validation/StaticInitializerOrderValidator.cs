@@ -52,6 +52,14 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
         base.VisitStructDef(node);
     }
 
+    // An interface body declares consts (static readonly when not compile-time) and is emitted in
+    // source order too (GenerateInterfaceMembers).
+    public override void VisitInterfaceDef(InterfaceDef node)
+    {
+        ValidateTypeBody(node, node.Name, node.Body);
+        base.VisitInterfaceDef(node);
+    }
+
     /// <summary>A static initializer of the type being validated: its declaration's anchor and display name.</summary>
     private readonly record struct StaticReader(Node Anchor, string Name, string Phrase);
 
