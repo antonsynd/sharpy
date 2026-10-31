@@ -1,0 +1,9 @@
+class Host:
+    @static
+    a: int = Host.b
+    @static
+    b: int = 2
+
+
+def main() -> None:
+    print(Host.a)

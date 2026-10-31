@@ -1409,5 +1409,26 @@ public static partial class DiagnosticExplanations
             "      property set level(self, v: int):\n          print(v)\n\n" +
             "  interface IGauge:\n      property get level(self) -> int: ...\n" +
             "      property set level(self, v: int): ...");
+
+        Add(dict, DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead,
+            "Static initializer reads a static sibling declared later",
+            "Semantic",
+            "A type's static initializers — a '@static' field's initializer, a '@static' property's default, " +
+            "and a 'const' whose initializer is not a compile-time constant (it is stored like a '@static' " +
+            "field) — run once, top to bottom, in the order the type body declares them. A static initializer " +
+            "that reads a '@static' field, a '@static' property or such a 'const' declared LATER in the same " +
+            "type, or reads itself, would see that member's default value (0, None, ...), because its " +
+            "initializer has not run yet; one that calls a '@static' method declared later could read statics " +
+            "that are not initialized yet. The read is refused in every spelling — bare ('b'), through the " +
+            "type name ('Host.b'), through an alias of the type. A compile-time 'const' ('const B: int = 3') " +
+            "is a constant, not storage, and can be read from anywhere. A bare forward read of a '@static' " +
+            "member is SPY0200 (the class body's own order rule); this code covers the spellings that rule " +
+            "does not see. A read of an EARLIER member is always allowed, and so is a call of an earlier " +
+            "'@static' method — but that method's body runs at the call and reads only the statics " +
+            "initialized so far.",
+            "class Host:\n    @static\n    a: int = Host.b  # SPY0618: 'b' is declared later than 'a'\n" +
+            "    @static\n    b: int = 2",
+            "Move the member above its reader, read it in a method, or make a 'const' a compile-time constant:\n" +
+            "  class Host:\n      @static\n      b: int = 2\n      @static\n      a: int = Host.b  # 2");
     }
 }
