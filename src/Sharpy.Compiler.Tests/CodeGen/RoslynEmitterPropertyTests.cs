@@ -259,6 +259,23 @@ def main():
         Assert.Null(setter.ExpressionBody);
     }
 
+    /// <summary>Abstract-class control for #2395: an @abstract lone set half is the abstract
+    /// <c>abstract T Level { set; }</c> — legal C#, no field, no accessor body (an abstract accessor
+    /// with a body is CS0500; verify-implementation of P21i, worked at 808d82955).</summary>
+    [Fact]
+    public void Property_AbstractLoneAutoSetHalf_StaysAbstract()
+    {
+        var type = EmittedType("@abstract\nclass Host:\n    @abstract\n    property set level: int\n", "Host");
+
+        Assert.Empty(type.Members.OfType<FieldDeclarationSyntax>());
+        var property = Assert.Single(type.Members.OfType<PropertyDeclarationSyntax>());
+        Assert.Contains(property.Modifiers, m => m.IsKind(SyntaxKind.AbstractKeyword));
+        var setter = Assert.Single(property.AccessorList!.Accessors);
+        Assert.Equal(SyntaxKind.SetAccessorDeclaration, setter.Kind());
+        Assert.Null(setter.Body);
+        Assert.Null(setter.ExpressionBody);
+    }
+
     private static TypeDeclarationSyntax EmittedType(string source, string typeName)
         => EmitterTestPipeline.EmitCompilationUnit(source, requireNoErrors: true)
             .DescendantNodes().OfType<TypeDeclarationSyntax>()

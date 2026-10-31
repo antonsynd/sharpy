@@ -459,7 +459,9 @@ internal class PropertyValidator : SemanticValidatorBase
 
         var isMixedForm = group.Any(p => p.IsFunctionStyle);
         var isObserverForm = group.Any(p => !p.IsFunctionStyle && p.Observers.Length > 0);
-        var isLoneAutoSetter = group.Count == 1 && autoDef.Accessor == PropertyAccessor.Set;
+        // An abstract lone set half declares no storage (`abstract T Name { set; }`), so no field to collide with.
+        var isLoneAutoSetter = group.Count == 1 && autoDef.Accessor == PropertyAccessor.Set
+            && !autoDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
         if (!isMixedForm && !isObserverForm && !isLoneAutoSetter)
             return;
 

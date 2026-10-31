@@ -1,0 +1,27 @@
+# An ABSTRACT lone auto set half declares no storage: `abstract int A { set; }` (legal C#), so it
+# synthesizes no backing field (none to collide with the declared `_a`) and an abstract accessor
+# has no body. Overridden by a function-style setter and by an auto set half (which does store).
+# Verify-implementation of P21i (#2395): 481cae5ea refused this with SPY0407 (the field check
+# treated the abstract half as storage) and, without `_a`, emitted a set body on the abstract
+# accessor (CS0500 behind SPY0908); the auto override was CS8051 at 808d82955.
+@abstract
+class Base:
+    _a: int = 1
+    @abstract
+    property set a: int
+
+class Printer(Base):
+    @override
+    property set a(self, v: int):
+        print(v)
+
+class Store(Base):
+    @override
+    property set a: int
+
+def main():
+    p: Base = Printer()
+    p.a = 4
+    s: Base = Store()
+    s.a = 5
+    print("ok")

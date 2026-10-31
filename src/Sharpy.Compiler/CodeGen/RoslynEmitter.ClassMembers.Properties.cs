@@ -701,7 +701,7 @@ internal partial class RoslynEmitter
     /// Maps accessor type to C# accessor list:
     ///   None -> { get; set; }
     ///   Get  -> { get; }
-    ///   Set  -> private T _Name; T Name { set => _Name = value; }
+    ///   Set  -> private T _Name; T Name { set => _Name = value; }  (abstract: abstract T Name { set; })
     ///   Init -> { get; init; }
     /// C# has no set-only auto property (CS8051), so a lone auto set half — the spec's write-only
     /// <c>property set name: T</c> — stores to a synthesized backing field its set accessor writes,
@@ -723,9 +723,16 @@ internal partial class RoslynEmitter
             propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
-        // Build accessor list based on accessor type
+        // Apply modifiers from decorators
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(propDef), propDef.Decorators);
+
+        // Build accessor list based on accessor type. An abstract lone set half declares no storage —
+        // `abstract T Name { set; }` is legal C#, and an abstract accessor has no body to write a field.
         bool isReadonly = propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Readonly);
-        var backingFieldName = propDef.Accessor == PropertyAccessor.Set ? PropertyBackingFieldName(propDef) : null;
+        var backingFieldName = propDef.Accessor == PropertyAccessor.Set
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))
+                ? PropertyBackingFieldName(propDef)
+                : null;
         var accessors = new List<AccessorDeclarationSyntax>();
         switch (propDef.Accessor)
         {
@@ -747,13 +754,16 @@ internal partial class RoslynEmitter
                 break;
 
             case PropertyAccessor.Set:
-                // { set => _Name = value; }
-                accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                    .WithExpressionBody(ArrowExpressionClause(AssignmentExpression(
+                // { set => _Name = value; } — or, abstract, { set; }
+                var setAccessor = AccessorDeclaration(SyntaxKind.SetAccessorDeclaration);
+                if (backingFieldName != null)
+                {
+                    setAccessor = setAccessor.WithExpressionBody(ArrowExpressionClause(AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
-                        IdentifierName(backingFieldName!),
-                        IdentifierName("value"))))
-                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                        IdentifierName(backingFieldName),
+                        IdentifierName("value"))));
+                }
+                accessors.Add(setAccessor.WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
                 break;
 
             case PropertyAccessor.Init:
@@ -764,9 +774,6 @@ internal partial class RoslynEmitter
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
                 break;
         }
-
-        // Apply modifiers from decorators
-        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(propDef), propDef.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
             .WithAccessorList(AccessorList(List(accessors)));
