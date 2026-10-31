@@ -35,6 +35,36 @@ public class ModuleLoaderTests : IDisposable
     }
 
     /// <summary>
+    /// The split halves of one module property (<c>property get sp: int</c> + <c>property set sp: int</c>) are ONE
+    /// export carrying both accessors, as the two halves are one symbol in the declaring module (P21i D4). The project
+    /// route re-points an in-source export at that declaration, so no compiled program reads the extraction's flags —
+    /// the verify-implementation class-cure mutation (drop the merge's <c>|=</c>) stayed green on every behavioural
+    /// cell — and this fact on the extraction itself is the guard. The lone halves are the positive control: one
+    /// accessor each, so the merged export's two flags come from the merge, not a default.
+    /// </summary>
+    [Fact]
+    public void LoadModule_SplitModulePropertyHalves_AreOneExportWithBothAccessors()
+    {
+        var path = CreateModule("lib.spy",
+            "property get sp: int = 8\nproperty set sp: int\nproperty get ro: int = 1\nproperty set wo: int\n");
+        _loader.CurrentModulePath = path;
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        Assert.NotNull(moduleInfo);
+        var split = Assert.IsType<VariableSymbol>(moduleInfo!.ExportedSymbols["sp"]);
+        Assert.True(split.IsModuleProperty);
+        Assert.True(split.HasPropertyGetter, "the get half's accessor survives the merge");
+        Assert.True(split.HasPropertySetter, "the set half merges its accessor into the one export");
+        var readOnly = Assert.IsType<VariableSymbol>(moduleInfo.ExportedSymbols["ro"]);
+        Assert.True(readOnly.HasPropertyGetter);
+        Assert.False(readOnly.HasPropertySetter);
+        var writeOnly = Assert.IsType<VariableSymbol>(moduleInfo.ExportedSymbols["wo"]);
+        Assert.False(writeOnly.HasPropertyGetter);
+        Assert.True(writeOnly.HasPropertySetter);
+    }
+
+    /// <summary>
     /// A type alias nested in a class of an extracted module carries the module's FILE as its
     /// declaring path, like the top-level alias beside it. plan-6ce1a5 (#2242) gave aliases a declaring
     /// path; the nested-alias extractor passed <c>definingModulePath</c> — the canonical module NAME its

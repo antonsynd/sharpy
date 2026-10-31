@@ -382,6 +382,22 @@ public class ImportBindingProjectRouteTests
             }
         }
 
+        // A `_private` module property is importable exactly as its `_private` variable twin is (the plan's Testing
+        // Strategy pin; measured by verify-implementation @ 481cae5ea): the explicit and qualified spellings reach it,
+        // and a star excludes it (SPY0200, python3's NameError) — the export arm adds no access rule of its own.
+        foreach (var (kind, name, value) in new[] { ("var-private", "_v", "5"), ("property-private", "_p", "6") })
+        {
+            const string privateLib = "_v: int = 5\nproperty _p: int = 6\n";
+            foreach (var consumer in ModuleMemberConsumers)
+            {
+                var main = $"{consumer.Import(name)}\n\ndef main() -> None:\n    x: int = {consumer.Qualifier}{name}\n    print(x)\n";
+                var excluded = consumer.Consumer == "star";
+                yield return new RouteCell($"module-member × {kind} × {consumer.Consumer}", main,
+                    excluded ? new[] { $"SPY0200@4:{"    x: int = ".Length + consumer.Qualifier.Length + 1}" } : new string[0],
+                    excluded ? null : value + "\n", null, new[] { ("lib.spy", privateLib) });
+            }
+        }
+
         foreach (var (kind, declaration) in new[] { ("var", "level: int = 5\n"), ("property-auto", "property level: int = 5\n") })
         {
             yield return new RouteCell($"module-member × {kind} × pkg-init-reexport",
