@@ -273,7 +273,7 @@ internal class PropertyValidator : SemanticValidatorBase
         foreach (var ((propName, _), group) in propertyGroups)
         {
             ValidateMixedPropertyStyle(typeName, propName, group);
-            ValidateBackingFieldCollision(typeName, propName, group, fieldDecls);
+            ValidateBackingFieldCollision($"in '{typeName}'", "self.", propName, group, fieldDecls);
         }
 
         // Check that init properties without defaults are assigned in constructors
@@ -356,9 +356,15 @@ internal class PropertyValidator : SemanticValidatorBase
     /// (an auto half pair beside a function-style accessor, an accessor-less function-style half) run at
     /// module level as they did before — ledgered, not widened in a verify round. Only the halves the
     /// name binder admitted are judged — a refused half already drew its SPY0204.
+    ///
+    /// <para>Rule 3b runs here too (#2409, R-KB): a module's property group is emitted onto the module
+    /// class by the same arms, so a form that synthesizes <c>_Name</c> collides with a module variable
+    /// <c>_name</c> exactly as it does with a field — CS0102 behind SPY0908 while the class and struct
+    /// hosts drew SPY0407.</para>
     /// </summary>
     private void ValidateModuleProperties(IReadOnlyList<Statement> body)
     {
+        var moduleVariables = body.OfType<VariableDeclaration>().ToList();
         var groups = new Dictionary<(string Name, string? ExplicitInterface), List<PropertyDef>>();
         foreach (var propDef in body.OfType<PropertyDef>())
         {
@@ -371,7 +377,11 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         foreach (var ((propName, _), halves) in groups)
-            ReportTwoDefaultedAutoHalves("at module level", propName, AdmittedModuleHalves(propName, halves));
+        {
+            var admitted = AdmittedModuleHalves(propName, halves);
+            ReportTwoDefaultedAutoHalves("at module level", propName, admitted);
+            ValidateBackingFieldCollision("at module level", "", propName, admitted, moduleVariables);
+        }
     }
 
     /// <summary>
@@ -449,8 +459,13 @@ internal class PropertyValidator : SemanticValidatorBase
     ///
     /// <para>Mutation-tested: reverting the guard to <c>!group.Any(p => p.IsFunctionStyle)</c> turns
     /// <c>experimental/property_observers_backing_field_collision_1456</c> red.</para>
+    ///
+    /// <para>Every host that emits these forms runs it: a type body against its fields, and module
+    /// level against its module variables (#2409) — the module class holds both.</para>
     /// </summary>
-    private void ValidateBackingFieldCollision(string typeName, string propName,
+    /// <param name="where">The host phrase after the property's name: <c>in 'C'</c> or <c>at module level</c>.</param>
+    /// <param name="receiver">How an accessor body spells the field: <c>self.</c> in a type, nothing at module level.</param>
+    private void ValidateBackingFieldCollision(string where, string receiver, string propName,
         List<PropertyDef> group, List<VariableDeclaration> fieldDecls)
     {
         var autoDef = group.FirstOrDefault(p => !p.IsFunctionStyle);
@@ -480,11 +495,11 @@ internal class PropertyValidator : SemanticValidatorBase
                 ? "An observed property supplies the storage"
                 : "A write-only auto-property supplies the storage";
         var remedy = isMixedForm || isObserverForm
-            ? $"('property {propName}: ... = ...'); the accessors go on writing 'self.{collision.Name}'"
+            ? $"('property {propName}: ... = ...'); the accessors go on writing '{receiver}{collision.Name}'"
             : $"('property set {propName}: ... = ...')";
 
         AddError(_context,
-            $"Property '{propName}' in '{typeName}' synthesizes the backing field '{backingField}', "
+            $"Property '{propName}' {where} synthesizes the backing field '{backingField}', "
             + $"which the declared field '{collision.Name}' already occupies. {supplier} — drop the "
             + $"field declaration and move its default onto the property {remedy}",
             collision.LineStart, collision.ColumnStart,

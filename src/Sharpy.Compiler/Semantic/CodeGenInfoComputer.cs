@@ -1093,6 +1093,11 @@ internal class CodeGenInfoComputer
     /// <para>The same Sharpy name may be yielded more than once — method overloads, a split
     /// <c>property get</c>/<c>property set</c> pair, an <c>event add</c>/<c>event remove</c> pair —
     /// because those intentionally compile to one C# member. Callers dedupe on the original name.</para>
+    ///
+    /// <para>An explicit interface implementation (<c>property IShape.area</c>) is NOT yielded: C#
+    /// keeps it out of the type's member declaration space (no CS0102 against a sibling <c>Area</c>, no
+    /// CS0542 inside a type named <c>Area</c>), so it claims no bare name here either — R-JH's rule at
+    /// the emitted-name projection, which P21h's key census covers only for lookups (#2399, R-JX).</para>
     /// </summary>
     private IEnumerable<(string OriginalName, string CSharpName)> EnumerateMemberNames(
         TypeSymbol typeSymbol, IEnumerable<Statement> body)
@@ -1108,7 +1113,7 @@ internal class CodeGenInfoComputer
         {
             switch (stmt.UnwrapDecorated())
             {
-                case PropertyDef propDef:
+                case PropertyDef { ExplicitInterface: null } propDef:
                     yield return (propDef.Name,
                         NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped));
                     break;
@@ -1857,7 +1862,8 @@ internal class CodeGenInfoComputer
                     return DeclarationPosition.From(v.NameLineStart, v.NameColumnStart, v.LineStart, v.ColumnStart);
                 case FunctionDef f when f.Name == memberName:
                     return DeclarationPosition.From(f.NameLineStart, f.NameColumnStart, f.LineStart, f.ColumnStart);
-                case PropertyDef p when p.Name == memberName:
+                // An explicit implementation of the same name is not the member (#2399).
+                case PropertyDef p when p.Name == memberName && p.ExplicitInterface == null:
                     return DeclarationPosition.From(p.NameLineStart, p.NameColumnStart, p.LineStart, p.ColumnStart);
                 case EventDef e when e.Name == memberName:
                     return DeclarationPosition.From(e.NameLineStart, e.NameColumnStart, e.LineStart, e.ColumnStart);

@@ -367,6 +367,19 @@ os.debug_mode = True
 - Access modifiers (`@private`, `@internal`, ...) apply per accessor, as at class level.
 - **A module property is a module binding**: its name has one meaning in the module. A module variable of the same name is refused (`SPY0204`, at the variable) in either source order, as a variable beside a def is.
 - **A module property is exported** like any other module-level declaration: another module reads it as `from lib import p`, as `lib.p` (also through an alias, `import lib as l` then `l.p`), or through `from lib import *`.
+- **A synthesized backing field claims its name at module level too**: a form that generates a named field — an auto half beside a function-style accessor, an observed property, a lone `property set name: T` — refuses a module variable whose name mangles to that field (`SPY0407`, at the variable), as a class field is refused. Drop the variable and move its default onto the property.
+
+<!-- spec-sweep: error SPY0407 -->
+```python
+_timeout: float = 10.0    # ERROR SPY0407: property 'timeout' synthesizes the backing field '_Timeout'
+property timeout: float = 30.0
+
+property get timeout() -> float:
+    return 30.0
+
+def main() -> None:
+    print(timeout)
+```
 
 <!-- spec-sweep: error SPY0204 -->
 ```python
