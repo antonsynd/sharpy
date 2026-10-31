@@ -420,28 +420,6 @@ internal partial class TypeChecker
                     "a class-body sibling declared at or after the reading declaration (SPY0200, F1)"));
             return SemanticType.Unknown;
         }
-        // #2396 (owner ruling (A) 2026-10-28 for a @static PROPERTY, owner ruling (b) 2026-10-29 for a
-        // @static METHOD call; P21h; drains with #2396): the emitter lays a type's fields out before its
-        // properties and C# runs static initializers in the generated text's order, so a @static
-        // FIELD's or a const's initializer that reads a @static property — directly, or through a
-        // @static method whose body reads one or a later static — sees storage not yet initialized:
-        // 0, silently, whatever the spelling. Until the layout follows the source, those cells are
-        // refused. A @static PROPERTY's default is a static initializer too, laid out with the other
-        // properties in their source order, so it reads an earlier @static property directly — but a
-        // @static method it calls can read a LATER @static property and see 0 just the same (P21h
-        // verify C1): the method call is refused there as well. An instance initializer and a parameter default keep admitting the method
-        // call: every static initializer has run before either of them.
-        if (resolves && IsStaticInitializationOrderRead(reader, member))
-        {
-            AddError(DescribeStaticInitializationOrderRefusal(reader, member),
-                id.LineStart, id.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedVariable,
-                span: id.Span);
-            MarkExpressionAsErrorRecovery(id,
-                ErrorRecoveryReason.AlreadyReported(
-                    "a @static property read or @static method call from a static field initializer (SPY0200, #2396)"));
-            return SemanticType.Unknown;
-        }
 
         if (!resolves)
         {
@@ -513,23 +491,6 @@ internal partial class TypeChecker
         return false;
     }
 
-    /// <summary>
-    /// The #2396 cells: a <c>@static</c> property read or a <c>@static</c> method call from a
-    /// <c>@static</c> field's or a <c>const</c>'s initializer, and a <c>@static</c> method call from a
-    /// <c>@static</c> property's default — the static initializers the member layout can run before
-    /// the storage the read reaches.
-    /// </summary>
-    private static bool IsStaticInitializationOrderRead(ClassBodyReader reader, TypeBodyMember member)
-        => member.IsStatic
-            && reader.Position is ClassBodyReadPosition.StaticInitializer or ClassBodyReadPosition.ConstInitializer
-            && (reader.Slot, member.Kind) switch
-            {
-                (ClassBodyReadSlot.Field or ClassBodyReadSlot.Const,
-                    TypeBodyMemberKind.Property or TypeBodyMemberKind.Method) => true,
-                (ClassBodyReadSlot.Property, TypeBodyMemberKind.Method) => true,
-                _ => false,
-            };
-
     /// <summary>Whether <paramref name="bound"/> is a binding of the type body itself.</summary>
     private bool IsBoundInTypeBody(string name, Symbol bound)
         => _symbolTable.Resolve(name) is { DeclaringScope: { } declaringScope } resolution
@@ -540,8 +501,10 @@ internal partial class TypeChecker
     /// The order rule (F1): whether <paramref name="member"/>'s declaration in the current type body
     /// stands at or after the declaration of the reader — the same statement for a self read. A
     /// member the body does not declare (an inherited one, a synthesized one) is never later.
-    /// A <c>const</c> sibling is exempt: it is a compile-time value or a <c>static readonly</c> the
-    /// type body resolves in dependency order (#1795, a forward const read runs at 9aae96977).
+    /// A <c>const</c> sibling is exempt here: a compile-time const is order-free (#1795), and the
+    /// compile-time fact is recorded after this walk (<c>ConstEligibility.AnalyzeModule</c>), so a
+    /// forward read of a const that is NOT one (<c>static readonly</c> storage, ordered like a
+    /// <c>@static</c> field) is refused by <c>StaticInitializerOrderValidator</c> (SPY0618, P75).
     /// Positions are the unwrapped declarations' starts on both sides, so a decorator never moves
     /// one of them.
     /// </summary>
@@ -658,30 +621,6 @@ internal partial class TypeChecker
 
     /// <summary>The phrase a declared-later refusal carries (F1).</summary>
     internal const string DeclaredLaterPhrase = "declared later";
-
-    /// <summary>
-    /// The SPY0200 text for a <c>@static</c> property read, or a <c>@static</c> method call, from a
-    /// <c>@static</c> field's or a <c>const</c>'s initializer, which C# admits but the generated member
-    /// order runs too early (#2396).
-    /// </summary>
-    private static string DescribeStaticInitializationOrderRefusal(ClassBodyReader reader, TypeBodyMember member)
-    {
-        var phrase = reader.Position == ClassBodyReadPosition.ConstInitializer ? "a 'const' initializer" : "a '@static' initializer";
-        if (member.Kind == TypeBodyMemberKind.Method)
-        {
-            // No "make the reader a @static property" steer: a @static property's default is refused
-            // the call too (P21h verify C1).
-            return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' method of "
-                + $"'{member.OwnerName}' — calling a '@static' method here is not supported yet: static initializers "
-                + "run in member-layout order (#2396), so the method could read a static that is not initialized yet. "
-                + "Call it in a method";
-        }
-
-        return $"Undefined identifier '{member.Name}' in {phrase}. '{member.Name}' is a '@static' property of "
-            + $"'{member.OwnerName}' — reading a '@static' property here is not supported yet: static initializers "
-            + "run in member-layout order (#2396), so it would read the property's default value. Read it in a "
-            + $"method, or make '{member.Name}' a '@static' field";
-    }
 
     /// <summary>
     /// The SPY0200 text for a sibling the read's position refuses: the position's phrase, what the

@@ -3,12 +3,11 @@
 # property default in any host, a @static initializer, a const initializer (static readonly) — reads
 # a const, a @static field, a @static property and a @static method; a parameter default and a
 # struct/dataclass instance field initializer (the synthesized constructor's parameter default) read
-# a const. Each line prints the four siblings' values: 1 2 4 6 — except that a @static FIELD or a
-# const initializer neither reads the @static PROPERTY nor calls the @static METHOD (refused, #2396:
-# the emitter lays fields out before properties, so that static initializer could run first and read
-# 0); those lines print 1 2. A @static PROPERTY's default reads the @static property but does not call the
-# @static method either (#2396: the method could read a @static property laid out after it — P21h verify C1);
-# those lines print 1 2 4. The #2396 refusals are pinned by static_prop_in_static_init_2396.error.
+# a const. Each line prints the four siblings' values: 1 2 4 6 — except that the @static FIELD and
+# const initializer lines read only the const and the @static field (1 2), and the @static PROPERTY
+# default lines do not call the method (1 2 4): written while #2396 refused those reads. Since P75
+# (source-order emission, R-JT) they run; static_prop_in_static_init_2396 and
+# StaticInitializerOrderMatrixTests pin them.
 # The refusals are pinned by bare_member_name_in_method_2360.error and ClassBodyReadPositionMatrixTests.
 
 

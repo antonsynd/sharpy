@@ -1,9 +1,9 @@
-# P21h verify C1 (#2396, owner ruling (b) applied to the property-default slot): a @static property's
-# default is a static initializer laid out with the properties in source order, so a @static method it
-# calls can read a LATER @static property before that property is initialized — `get()` returns `C.q`,
-# which C# would read as 0. Refused like the @static field slot until static initialization follows
-# declaration order. Reading an earlier @static property directly stays admitted (`r` below).
-
+# P21h verify C1 (#2396): a @static property's default is a static initializer. P21h refused the
+# @static method call below until static initialization followed declaration order; P75 (R-JT) emits
+# the members in source order, so the call of an EARLIER @static method is admitted, as C# admits it.
+# The method's body runs at the call and reads the statics initialized so far: `get()` returns `C.q`,
+# declared LATER, so `p` is 0 (C#'s rule, c8 — the spec names it). Reading an earlier @static
+# property directly reads its value (`r` is 5).
 
 class C:
     @static

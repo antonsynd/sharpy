@@ -1,3 +1,0 @@
-SPY0200: Undefined identifier 'get' in a '@static' initializer. 'get' is a '@static' method of 'C' — calling a '@static' method here is not supported yet: static initializers run in member-layout order (#2396) @13:23
-!make 'p' a '@static' property
-!count 1
