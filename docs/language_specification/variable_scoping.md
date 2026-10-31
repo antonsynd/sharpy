@@ -322,9 +322,11 @@ def main() -> None:
 A class body runs top to bottom, so a position reads only a sibling **declared earlier** in the
 body. A sibling declared later, or the member being initialized itself, is refused (SPY0200, "declared
 later"): C# would run that initializer before the sibling's and read its default value, and Python
-raises `NameError`. A `const` sibling is the exception, since a type body resolves its constants in
-dependency order. When an outer binding of the name exists, a later sibling and the member itself
-yield to it instead (below).
+raises `NameError`. A compile-time-constant `const` sibling (`const SIZE: int = 8`) is the exception,
+since a type body resolves its constants in dependency order; a `const` whose initializer is not a
+compile-time constant (`const K: int = seven()`) is `static readonly` storage and is ordered like a
+`@static` field (a forward read of it is SPY0618, below). When an outer binding of the name exists, a
+later sibling and the member itself yield to it instead (below).
 
 <!-- spec-sweep: error SPY0200 -->
 ```python
@@ -381,13 +383,59 @@ def main() -> None:
     print(Box.doubled)    # 4
 ```
 
-One temporary exception: in a `@static` field's initializer or a `const` initializer, reading a
-`@static` **property** or calling a `@static` **method** is refused (SPY0200), and so is calling a
-`@static` method from a `@static` property's default. Static initializers run in member-layout order,
-so the read could see static storage before it is initialized (#2396). Read the property in a method,
-or make the reader a `@static` property (a `@static` property's default reads an earlier `@static`
-property directly); call the method in a method. An instance initializer and a parameter default are
-not affected: every static initializer has run before them.
+**Static initializers run in source order.** A `@static` field's initializer, a `@static` property's
+default and a `const` whose initializer is not a compile-time constant are the type's static
+initializers. They run once, top to bottom, in the order the body declares them — C#'s rule for the
+generated class, and Python's for a class body. Such an initializer reads an earlier static sibling and
+sees its value, by bare name or through the type (`Host.sp`, or an alias of `Host`):
+
+<!-- spec-sweep: output -->
+```python
+class Host:
+    @static
+    property sp: int = 4
+    @static
+    g: int = Host.sp
+
+def main() -> None:
+    print(Host.g)    # 4
+```
+
+A static sibling declared later — a `@static` field, a `@static` property, a non-compile-time `const`
+— or the member itself is refused through the type name exactly as by bare name (SPY0618, "declared
+later"), and so is calling a `@static` method declared later. A compile-time `const` is order-free in
+every spelling.
+
+<!-- spec-sweep: error SPY0618 -->
+```python
+class Host:
+    @static
+    a: int = Host.b     # SPY0618 — "'Host.b' is read in a '@static' initializer before it is initialized: 'b' is declared later than 'a' in 'Host'"
+    @static
+    b: int = 2
+
+def main() -> None:
+    print(Host.a)
+```
+
+Calling an EARLIER `@static` method is allowed, but the method's body runs at the call: it reads the
+statics initialized so far, and a static declared below the reader still holds its default value
+(C#'s rule).
+
+<!-- spec-sweep: output -->
+```python
+class Host:
+    @static
+    def read() -> int:
+        return Host.sp
+    @static
+    a: int = Host.read()    # 'read' runs before 'sp' is initialized
+    @static
+    property sp: int = 4
+
+def main() -> None:
+    print(Host.a)    # 0
+```
 
 Decorator arguments and type annotations are resolved in the class body as well. Names in the
 method's **body** are resolved by the rule above. Python resolves class scope in every one of these positions
