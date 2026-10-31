@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate an SVG performance chart from benchmark history.json.
 
-Produces a two-panel SVG: Spy/Py ratios (top) and Spy/C# ratios (bottom).
+Produces one SVG panel per entry in PANELS: Spy/Py, Spy/C# and Spy/Boo ratios.
 No external dependencies — pure stdlib SVG generation.
 
 Usage:
@@ -16,6 +16,13 @@ from pathlib import Path
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#469990"]
+
+# (denominator language, title, subtitle); each panel plots Sharpy / denominator.
+PANELS = [
+    ("Python", "Sharpy / Python Execution Time Ratio", "Below 1.0 = Sharpy faster than CPython"),
+    ("C#", "Sharpy / C# Execution Time Ratio", "Near 1.0 = minimal overhead vs hand-written C#"),
+    ("Boo", "Sharpy / Boo Execution Time Ratio", "Below 1.0 = Sharpy faster than Boo"),
+]
 
 
 def load_history(months: int) -> list[dict]:
@@ -71,6 +78,7 @@ def _render_panel(
     margin_left: float,
     margin_right: float,
     chart_height: float,
+    colors: dict[str, str],
 ) -> tuple[list[str], float]:
     """Render one chart panel. Returns (svg_lines, total_panel_height)."""
     margin_top = 45
@@ -123,8 +131,8 @@ def _render_panel(
 
     # Data lines
     bench_names = sorted(ratios.keys())
-    for bi, name in enumerate(bench_names):
-        color = COLORS[bi % len(COLORS)]
+    for name in bench_names:
+        color = colors[name]
         vals = ratios[name]
         points = [(x_pos(i), y_pos(v)) for i, v in enumerate(vals) if v is not None]
         if len(points) >= 2:
@@ -139,9 +147,9 @@ def _render_panel(
 
 def generate_svg(
     dates: list[str],
-    spy_py_ratios: dict[str, list[float | None]],
-    spy_cs_ratios: dict[str, list[float | None]],
+    panels: list[tuple[str, str, dict[str, list[float | None]]]],
 ) -> str:
+    """Render the stacked panels, each (title, subtitle, ratios), over one date axis."""
     if not dates:
         return '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="100"><text x="20" y="50">No data</text></svg>'
 
@@ -152,45 +160,39 @@ def generate_svg(
     panel_gap = 20
     legend_height = 25
 
-    # Collect all benchmark names for the shared legend
-    all_names = sorted(set(list(spy_py_ratios.keys()) + list(spy_cs_ratios.keys())))
+    # Collect all benchmark names for the shared legend. Colors are keyed by name so a
+    # benchmark keeps its color in a panel that lacks some other benchmark (Boo has no
+    # numpy variant).
+    all_names = sorted({name for _, _, ratios in panels for name in ratios})
+    colors = {name: COLORS[bi % len(COLORS)] for bi, name in enumerate(all_names)}
     legend_rows = (len(all_names) + 3) // 4
 
-    # Render both panels
-    panel1_lines, panel1_h = _render_panel(
-        dates, spy_py_ratios,
-        "Sharpy / Python Execution Time Ratio",
-        "Below 1.0 = Sharpy faster than CPython",
-        "parity",
-        y_offset=0,
-        width=width, margin_left=margin_left, margin_right=margin_right,
-        chart_height=chart_height,
-    )
+    panel_lines: list[str] = []
+    y_offset = 0.0
+    for title, subtitle, ratios in panels:
+        lines, panel_h = _render_panel(
+            dates, ratios, title, subtitle, "parity",
+            y_offset=y_offset,
+            width=width, margin_left=margin_left, margin_right=margin_right,
+            chart_height=chart_height, colors=colors,
+        )
+        panel_lines.extend(lines)
+        y_offset += panel_h + panel_gap
+    panels_h = y_offset - panel_gap
 
-    panel2_lines, panel2_h = _render_panel(
-        dates, spy_cs_ratios,
-        "Sharpy / C# Execution Time Ratio",
-        "Near 1.0 = minimal overhead vs hand-written C#",
-        "parity",
-        y_offset=panel1_h + panel_gap,
-        width=width, margin_left=margin_left, margin_right=margin_right,
-        chart_height=chart_height,
-    )
-
-    total_height = panel1_h + panel_gap + panel2_h + legend_rows * legend_height + 10
+    total_height = panels_h + legend_rows * legend_height + 10
     plot_w = width - margin_left - margin_right
 
     svg_lines: list[str] = []
     svg_lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {total_height:.0f}" width="{width}" height="{total_height:.0f}" font-family="system-ui, -apple-system, sans-serif">')
     svg_lines.append(f'<rect width="{width}" height="{total_height:.0f}" fill="white"/>')
-    svg_lines.extend(panel1_lines)
-    svg_lines.extend(panel2_lines)
+    svg_lines.extend(panel_lines)
 
     # Shared legend
-    legend_y = panel1_h + panel_gap + panel2_h + 5
+    legend_y = panels_h + 5
     items_per_row = 4
     for bi, name in enumerate(all_names):
-        color = COLORS[bi % len(COLORS)]
+        color = colors[name]
         row = bi // items_per_row
         col = bi % items_per_row
         lx = margin_left + col * (plot_w / items_per_row)
@@ -214,16 +216,18 @@ def main():
         print("No history data in the requested range.", file=sys.stderr)
         sys.exit(1)
 
-    dates_py, spy_py_ratios = compute_ratios(history, "Sharpy", "Python")
-    dates_cs, spy_cs_ratios = compute_ratios(history, "Sharpy", "C#")
-
-    # Both use the same date axis
-    dates = dates_py or dates_cs
-    svg = generate_svg(dates, spy_py_ratios, spy_cs_ratios)
+    # Every panel shares the history's date axis; dates before a language joined the
+    # suite (Boo, 2026-10-31) simply have no point in that panel.
+    dates = [h["date"] for h in history]
+    panels = []
+    for denominator, title, subtitle in PANELS:
+        _, ratios = compute_ratios(history, "Sharpy", denominator)
+        panels.append((title, subtitle, ratios))
+    svg = generate_svg(dates, panels)
 
     output = Path(args.output) if args.output else RESULTS_DIR / "trend.svg"
     output.write_text(svg)
-    print(f"Chart written to {output} ({len(dates)} data points, {len(spy_py_ratios)} benchmarks)")
+    print(f"Chart written to {output} ({len(dates)} data points, {len(panels)} panels)")
 
 
 if __name__ == "__main__":
