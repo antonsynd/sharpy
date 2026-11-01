@@ -41,6 +41,7 @@ namespace EventInterface0001
     [global::Sharpy.SharpyModuleType("__main__", "Publisher")]
     public class Publisher : global::EventInterface0001.INotifiable
     {
+        public event global::EventInterface0001.SimpleHandler? OnNotify;
         public void Notify()
 #line 10 "event_interface_0001.spy"
         {
@@ -48,8 +49,6 @@ namespace EventInterface0001
             this.OnNotify?.Invoke();
 #line hidden
         }
-
-        public event global::EventInterface0001.SimpleHandler? OnNotify;
     }
 }
 #line default

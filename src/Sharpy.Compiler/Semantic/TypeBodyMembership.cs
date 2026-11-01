@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
@@ -77,6 +78,44 @@ internal sealed record TypeBodyMember(
 /// </summary>
 internal static class TypeBodyMembership
 {
+    /// <summary>
+    /// The bare member name a type-body statement declares, or null. Deliberately partial: a field,
+    /// a property half that is not an explicit-interface implementation, an event and a method are
+    /// the members a bare sibling read can denote; every other statement kind — a nested type, an
+    /// alias, a union case, an explicit-interface property, a `pass` — declares no such member, so it
+    /// is never a sibling's declaration (P21h F1).
+    /// </summary>
+    internal static string? DeclaredMemberName(Node declaration) => declaration switch
+    {
+        VariableDeclaration v => v.Name,
+        PropertyDef { ExplicitInterface: null } p => p.Name,
+        EventDef e => e.Name,
+        FunctionDef f => f.Name,
+        _ => null,
+    };
+
+    /// <summary>
+    /// The ONE anchor rule for a type-body member's position (P21h F1, P75): the first unwrapped
+    /// statement of <paramref name="body"/> that declares <paramref name="name"/>
+    /// (<see cref="DeclaredMemberName"/>), or null. A split property is emitted as ONE C# property
+    /// at its FIRST half, so a default carried by a later half runs where the first half stands — the
+    /// checker's order rule (<c>TypeChecker.IsDeclaredLater</c>) and
+    /// <c>StaticInitializerOrderValidator</c> both anchor a member here (P21h verify C2).
+    /// </summary>
+    internal static Node? FirstDeclarationOf(IEnumerable<Statement> body, string? name)
+    {
+        if (name == null)
+            return null;
+        foreach (var statement in body)
+        {
+            var declaration = statement.UnwrapDecorated();
+            if (DeclaredMemberName(declaration) == name)
+                return declaration;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Describes <paramref name="name"/> as a field, property, event or method of
     /// <paramref name="type"/> itself (not its bases), or null when that type declares no such

@@ -41,6 +41,7 @@ namespace EventAutoBasic0001
     [global::Sharpy.SharpyModuleType("__main__", "Publisher")]
     public class Publisher
     {
+        public event global::EventAutoBasic0001.MsgHandler? OnMsg;
         public void Notify(string msg)
 #line 7 "event_auto_basic_0001.spy"
         {
@@ -48,8 +49,6 @@ namespace EventAutoBasic0001
             this.OnMsg?.Invoke(msg);
 #line hidden
         }
-
-        public event global::EventAutoBasic0001.MsgHandler? OnMsg;
     }
 }
 #line default

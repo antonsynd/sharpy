@@ -2365,8 +2365,9 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
     /// <summary>Cell id → cite. A row must cite an issue (<c>#\d+</c>), name a generated cell, and appear once. The
     /// universe includes the project-route cells of <c>ImportBindingProjectRouteTests</c> (ids <c>project × …</c>), which
     /// ratchet over this file too (P21g), the class-body read cells of <c>ClassBodyReadPositionMatrixTests</c> (ids
-    /// <c>class-body-read × …</c>, P21h), and the module-member kind × read-site cells of
-    /// <c>ModuleMemberQualificationMatrixTests</c> (ids <c>module-member × …</c>, P21i).</summary>
+    /// <c>class-body-read × …</c>, P21h), the module-member kind × read-site cells of
+    /// <c>ModuleMemberQualificationMatrixTests</c> (ids <c>module-member × …</c>, P21i), and the static-initializer
+    /// order cells of <c>StaticInitializerOrderMatrixTests</c> (ids <c>static-init-order × …</c>, P75).</summary>
     internal static Dictionary<string, string> LoadAllowlist(out List<string> problems)
     {
         problems = new List<string>();
@@ -2378,6 +2379,7 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
                 .Concat(MemberPairCells().Select(c => c.Id))
                 .Concat(global::Sharpy.Compiler.Tests.Project.ImportBindingProjectRouteTests.CellIds())
                 .Concat(ClassBodyReadPositionMatrixTests.CellIds())
+                .Concat(StaticInitializerOrderMatrixTests.CellIds())
                 .Concat(global::Sharpy.Compiler.Tests.CodeGen.ModuleMemberQualificationMatrixTests.CellIds()),
             StringComparer.Ordinal);
         var entries = new Dictionary<string, string>(StringComparer.Ordinal);

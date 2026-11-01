@@ -22,10 +22,12 @@ internal partial class RoslynEmitter
     {
         var members = new List<MemberDeclarationSyntax>();
 
-        // First pass: generate fields and build mappings for use in constructor
+        // First pass: generate each field's member and build the mappings the constructors read. The
+        // member is ADDED where its declaration stands, in the one source-order pass below (P75, #2396):
+        // C# runs static initializers in the generated text's order, so the text keeps the source's.
         var fieldMapping = new Dictionary<string, string>();
         var fieldTypeMapping = new Dictionary<string, TypeAnnotation>();
-        var fieldMembers = new List<MemberDeclarationSyntax>();
+        var fieldMembers = new Dictionary<VariableDeclaration, MemberDeclarationSyntax>(ReferenceEqualityComparer.Instance);
 
         // A NESTED type's symbol is defined by NameResolver inside the enclosing class's scope, so the
         // global lookup below cannot see it and `_currentTypeSymbol` was null for every nested type
@@ -78,13 +80,13 @@ internal partial class RoslynEmitter
             {
                 var propDecl = GenerateDataclassProperty(
                     varDecl, fieldName, isFrozen, constructorOwnsDefault);
-                fieldMembers.Add(propDecl);
+                fieldMembers[varDecl] = propDecl;
             }
             else
             {
                 // Regular field
                 var fieldDecl = GenerateField(varDecl, codeGenInfo?.CSharpName, constructorOwnsDefault);
-                fieldMembers.Add(fieldDecl);
+                fieldMembers[varDecl] = fieldDecl;
                 // Extract the field name from the generated declaration
                 var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
                 fieldName = variable.Identifier.Text;
@@ -120,10 +122,10 @@ internal partial class RoslynEmitter
             fieldMapping[eventDef.Name] = eventName;
         }
 
-        // Add field members first
-        members.AddRange(fieldMembers);
-
-        // Second pass: generate methods, constructors, and operator overloads
+        // Second pass — the one emission pass, in SOURCE order: each field, property group, event group,
+        // method and nested type is emitted where its declaration stands (a property's or event's halves
+        // at the FIRST half, the module class's rule), so a static initializer reads exactly the statics
+        // declared above it (#2396, R-JT). Constructors, indexers and the synthesized members follow.
         // Collect all __init__ methods for constructor generation (supports overloading)
         var initMethods = new List<FunctionDef>();
 
@@ -194,19 +196,25 @@ internal partial class RoslynEmitter
                     }
                     break;
 
-                case PropertyDef:
-                    // Already grouped by GroupPropertiesByName; emitted below so a property's halves
-                    // (getter + setter, or an auto half + a function-style accessor) combine into one
-                    // C# property
+                case PropertyDef propDef:
+                    // A property's halves (getter + setter, or an auto half + a function-style accessor)
+                    // combine into ONE C# property, emitted at the first half — the anchor the checker's
+                    // order rule and StaticInitializerOrderValidator read (TypeBodyMembership).
+                    var propGroup = propertyGroups[propDef.MemberKey()];
+                    if (ReferenceEquals(propGroup[0], propDef))
+                        members.AddRange(GenerateGroupedProperty(propGroup));
                     break;
 
-                case EventDef:
-                    // Already grouped by GroupEventsByName; emitted below so an add+remove
-                    // pair combines into one C# event
+                case EventDef eventDef:
+                    // An add + remove pair combines into one C# event, emitted at the first half.
+                    var eventGroup = eventGroups[eventDef.Name];
+                    if (ReferenceEquals(eventGroup[0], eventDef))
+                        members.Add(GenerateGroupedEvent(eventGroup));
                     break;
 
-                case VariableDeclaration _:
-                    // Already processed in first pass
+                case VariableDeclaration varDecl:
+                    // Generated in the first pass (the constructors read its mappings), placed here.
+                    members.Add(fieldMembers[varDecl]);
                     break;
 
                 case PassStatement:
@@ -273,18 +281,6 @@ internal partial class RoslynEmitter
                         stmt.ColumnStart);
                     break;
             }
-        }
-
-        // Generate all properties (grouped by member key to combine getter/setter)
-        foreach (var (_, propGroup) in propertyGroups)
-        {
-            members.AddRange(GenerateGroupedProperty(propGroup));
-        }
-
-        // Generate all events (grouped by name to combine add/remove accessors)
-        foreach (var (eventName, eventGroup) in eventGroups)
-        {
-            members.Add(GenerateGroupedEvent(eventGroup));
         }
 
         // Generate indexer(s) from __getitem__/__setitem__ — one C# indexer per key signature.

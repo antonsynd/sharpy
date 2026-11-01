@@ -1,0 +1,16 @@
+# A type's static initializers run in SOURCE order (#2396, R-JT): the @static property declared
+# between the two fields is emitted between them, so the field and the const below it read 4 (they
+# read 0 when properties were laid out after every field).
+class Host:
+    @static
+    a: int = 1
+    @static
+    property sp: int = 4
+    @static
+    g: int = Host.sp
+    const C: int = Host.sp
+
+
+def main() -> None:
+    print(Host.g)
+    print(Host.C)

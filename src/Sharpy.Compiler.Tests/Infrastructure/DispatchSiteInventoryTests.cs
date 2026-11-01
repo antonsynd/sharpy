@@ -145,7 +145,13 @@ public class DispatchSiteInventoryTests
         // The F1 order rule's "which bare member name does this type-body statement declare": a
         // statement kind that declares no member (a nested type, an alias, a pass) names none, so
         // it is never a sibling's declaration (P21h, owner ruling F1 2026-10-29).
-        ["Semantic/TypeChecker.ClassScopeRule.cs::TypeChecker.DeclaredMemberName"] = "documented-by-design:Semantic/TypeChecker.ClassScopeRule.cs:DeclaredMemberName",
+        // (Moved into TypeBodyMembership by P75 — one anchor rule for F1 and StaticInitializerOrderValidator.)
+        ["Semantic/TypeBodyMembership.cs::TypeBodyMembership.DeclaredMemberName"] = "documented-by-design:Semantic/TypeBodyMembership.cs:DeclaredMemberName",
+        // The static-initializer order validator (P75, #2396): which statements declare a static initializer,
+        // which nodes of one it reads, and which sibling kinds are ordered storage — each deliberately partial.
+        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.ValidateTypeBody"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:ValidateTypeBody",
+        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.Walk"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:Walk",
+        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.OrderedKind"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:OrderedKind",
         // IsMutableDefault (both copies) folded onto ConstantDefaultClassifier's
         // Collection/Comprehension kinds (#1684, R-A) — the shape-switching dispatch these two rows
         // named is gone, drained here rather than left phantom.

@@ -160,6 +160,14 @@ namespace Sharpy.CsvModule
     {
         protected Sharpy.List<string> _Lines;
         protected int _LineNum;
+        public int LineNum
+        {
+            get
+            {
+                return this._LineNum;
+            }
+        }
+
         public System.Collections.Generic.IEnumerator<Sharpy.List<string>> GetEnumerator()
         {
             foreach (var __loopVar_2 in this._Lines)
@@ -171,14 +179,6 @@ namespace Sharpy.CsvModule
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-        public int LineNum
-        {
-            get
-            {
-                return this._LineNum;
-            }
-        }
-
         public CsvReader(Sharpy.List<string> lines)
         {
             if (lines is null)
@@ -261,6 +261,14 @@ namespace Sharpy.CsvModule
     {
         protected Sharpy.List<string> _Lines;
         protected Sharpy.List<string>? _Fieldnames;
+        public Sharpy.List<string>? Fieldnames
+        {
+            get
+            {
+                return this._Fieldnames;
+            }
+        }
+
         public System.Collections.Generic.IEnumerator<Sharpy.Dict<string, string>> GetEnumerator()
         {
             bool isFirstRow = this._Fieldnames is null;
@@ -302,14 +310,6 @@ namespace Sharpy.CsvModule
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-        public Sharpy.List<string>? Fieldnames
-        {
-            get
-            {
-                return this._Fieldnames;
-            }
-        }
-
         public CsvDictReader(Sharpy.List<string> lines, Sharpy.List<string>? fieldnames = null)
         {
             if (lines is null)
@@ -330,6 +330,14 @@ namespace Sharpy.CsvModule
     {
         protected global::System.IO.TextWriter _Output;
         protected Sharpy.List<string> _Fieldnames;
+        public Sharpy.List<string> Fieldnames
+        {
+            get
+            {
+                return this._Fieldnames;
+            }
+        }
+
         /// <summary>
         /// Write the field names as a header row.
         /// </summary>
@@ -399,14 +407,6 @@ namespace Sharpy.CsvModule
             {
                 var row = __loopVar_8;
                 this.Writerow(row);
-            }
-        }
-
-        public Sharpy.List<string> Fieldnames
-        {
-            get
-            {
-                return this._Fieldnames;
             }
         }
 

@@ -1016,6 +1016,11 @@ public static class DiagnosticCodes
         // accessors are all abstract or all default implementations (Roslyn's CS0525 for
         // `{ get; set { … } }`). Refused at the later half (#2382, R-JG).
         public const string InterfaceAccessorsMustAgreeOnBody = "SPY0617"; // Active (#2382)
+        // A static initializer (a `@static` field's, a non-compile-time `const`'s, a `@static`
+        // property's default) reads a static sibling of the same type declared at or after it, in
+        // any spelling: C# runs static initializers in the emitted text's order, which is the source
+        // order, so the read would see the sibling's default value (#2396, R-JT).
+        public const string StaticInitializerForwardRead = "SPY0618"; // Active (#2396)
     }
 
     /// <summary>

@@ -1,0 +1,1 @@
+'Host.b' is read in a '@static' initializer before it is initialized: 'b' is declared later than 'a' in 'Host', and static initializers run top to bottom, so the read would see its default value. Move 'b' above 'a', or read it in a method @3:14

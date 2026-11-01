@@ -502,6 +502,67 @@ namespace Sharpy.ReModule
         private int _Flags;
         private Sharpy.Dict<string, int> _Groupindex;
         private bool _GroupindexCached;
+        public string PatternStr
+        {
+            get
+            {
+                _ = "The original pattern string.";
+                return this._PatternStr;
+            }
+        }
+
+        public int Flags
+        {
+            get
+            {
+                _ = "The flags used to compile this pattern.";
+                return this._Flags;
+            }
+        }
+
+        public int Groups
+        {
+            get
+            {
+                _ = "The number of capturing groups in the pattern.";
+                return global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) - 1;
+            }
+        }
+
+        public Sharpy.Dict<string, int> Groupindex
+        {
+            get
+            {
+                _ = "A dictionary mapping named group names to group numbers.";
+                if (global::Sharpy.Builtins.Len(this._Groupindex) > 0 || this._GroupindexCached)
+                {
+                    return this._Groupindex;
+                }
+
+                var names = this._Regex.GetGroupNames();
+                foreach (var __loopVar_0 in names)
+                {
+                    var name = __loopVar_0;
+                    if (!global::Sharpy.StringExtensions.Isdigit(name))
+                    {
+                        this._Groupindex[name] = this._Regex.GroupNumberFromName(name);
+                    }
+                }
+
+                this._GroupindexCached = true;
+                return this._Groupindex;
+            }
+        }
+
+        public global::System.Text.RegularExpressions.Regex Regex
+        {
+            get
+            {
+                _ = "The internal .NET Regex object.";
+                return this._Regex;
+            }
+        }
+
         /// <summary>
         /// Scan through string looking for the first match.
         /// </summary>
@@ -576,9 +637,9 @@ namespace Sharpy.ReModule
             {
             };
             bool hasGroups = global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) > 1;
-            foreach (var __loopVar_0 in matches)
+            foreach (var __loopVar_1 in matches)
             {
-                var mRaw = __loopVar_0;
+                var mRaw = __loopVar_1;
                 global::System.Text.RegularExpressions.Match m = (global::System.Text.RegularExpressions.Match)mRaw;
                 if (m.Index < pos)
                 {
@@ -630,9 +691,9 @@ namespace Sharpy.ReModule
                 actualEndpos = endpos.Value;
             }
 
-            foreach (var __loopVar_1 in matches)
+            foreach (var __loopVar_2 in matches)
             {
-                var mRaw = __loopVar_1;
+                var mRaw = __loopVar_2;
                 global::System.Text.RegularExpressions.Match m = (global::System.Text.RegularExpressions.Match)mRaw;
                 if (m.Index < pos)
                 {
@@ -746,17 +807,17 @@ namespace Sharpy.ReModule
             };
             if (maxsplit == 0)
             {
-                foreach (var __loopVar_2 in this._Regex.Split(s))
+                foreach (var __loopVar_3 in this._Regex.Split(s))
                 {
-                    var part = __loopVar_2;
+                    var part = __loopVar_3;
                     result.Append(part);
                 }
             }
             else
             {
-                foreach (var __loopVar_3 in this._Regex.Split(s, maxsplit + 1))
+                foreach (var __loopVar_4 in this._Regex.Split(s, maxsplit + 1))
                 {
-                    var part_1 = __loopVar_3;
+                    var part_1 = __loopVar_4;
                     result.Append(part_1);
                 }
             }
@@ -770,67 +831,6 @@ namespace Sharpy.ReModule
         public override string ToString()
         {
             return "re.compile('" + this._PatternStr + "')";
-        }
-
-        public string PatternStr
-        {
-            get
-            {
-                _ = "The original pattern string.";
-                return this._PatternStr;
-            }
-        }
-
-        public int Flags
-        {
-            get
-            {
-                _ = "The flags used to compile this pattern.";
-                return this._Flags;
-            }
-        }
-
-        public int Groups
-        {
-            get
-            {
-                _ = "The number of capturing groups in the pattern.";
-                return global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) - 1;
-            }
-        }
-
-        public Sharpy.Dict<string, int> Groupindex
-        {
-            get
-            {
-                _ = "A dictionary mapping named group names to group numbers.";
-                if (global::Sharpy.Builtins.Len(this._Groupindex) > 0 || this._GroupindexCached)
-                {
-                    return this._Groupindex;
-                }
-
-                var names = this._Regex.GetGroupNames();
-                foreach (var __loopVar_4 in names)
-                {
-                    var name = __loopVar_4;
-                    if (!global::Sharpy.StringExtensions.Isdigit(name))
-                    {
-                        this._Groupindex[name] = this._Regex.GroupNumberFromName(name);
-                    }
-                }
-
-                this._GroupindexCached = true;
-                return this._Groupindex;
-            }
-        }
-
-        public global::System.Text.RegularExpressions.Regex Regex
-        {
-            get
-            {
-                _ = "The internal .NET Regex object.";
-                return this._Regex;
-            }
         }
 
         /// <summary>
@@ -868,6 +868,98 @@ namespace Sharpy.ReModule
         private int _Pos;
         private int _Endpos;
         private global::Sharpy.ReModule.Pattern? _Re;
+        public string String
+        {
+            get
+            {
+                _ = "The input string.";
+                return this._String;
+            }
+        }
+
+        public string Pattern
+        {
+            get
+            {
+                _ = "The pattern string.";
+                return this._PatternStr;
+            }
+        }
+
+        public int Pos
+        {
+            get
+            {
+                _ = "The start position of the search.";
+                return this._Pos;
+            }
+        }
+
+        public int Endpos
+        {
+            get
+            {
+                _ = "The end position of the search.";
+                return this._Endpos;
+            }
+        }
+
+        public global::Sharpy.ReModule.Pattern? Re
+        {
+            get
+            {
+                _ = "The compiled pattern object that produced this match.";
+                return this._Re;
+            }
+        }
+
+        public int? Lastindex
+        {
+            get
+            {
+                _ = "The integer index of the last matched capturing group.";
+                int i = this._Match.Groups.Count - 1;
+                while (i >= 1)
+                {
+                    if (this._Match.Groups[i].Success)
+                    {
+                        return i;
+                    }
+
+                    i = i - 1;
+                }
+
+                return null;
+            }
+        }
+
+        public string? Lastgroup
+        {
+            get
+            {
+                _ = "The name of the last matched capturing group, or None if unnamed.";
+                int? idx = this.Lastindex;
+                if (idx is null)
+                {
+                    return null;
+                }
+
+                if (this._Re is null)
+                {
+                    return null;
+                }
+
+                int grpIdx = idx.Value;
+                string name = this._Re!.Regex.GroupNameFromNumber(grpIdx);
+                if (name == global::Sharpy.Builtins.Str(grpIdx))
+                {
+                    return null;
+                }
+
+                return name;
+            }
+        }
+
         /// <summary>
         /// Return the string matched by group number.
         /// </summary>
@@ -996,98 +1088,6 @@ namespace Sharpy.ReModule
         public override string ToString()
         {
             return "<re.Match object; span=(" + global::Sharpy.Builtins.Str(this._Match.Index) + ", " + global::Sharpy.Builtins.Str(this._Match.Index + this._Match.Length) + "), match='" + this._Match.Value + "'>";
-        }
-
-        public string String
-        {
-            get
-            {
-                _ = "The input string.";
-                return this._String;
-            }
-        }
-
-        public string Pattern
-        {
-            get
-            {
-                _ = "The pattern string.";
-                return this._PatternStr;
-            }
-        }
-
-        public int Pos
-        {
-            get
-            {
-                _ = "The start position of the search.";
-                return this._Pos;
-            }
-        }
-
-        public int Endpos
-        {
-            get
-            {
-                _ = "The end position of the search.";
-                return this._Endpos;
-            }
-        }
-
-        public global::Sharpy.ReModule.Pattern? Re
-        {
-            get
-            {
-                _ = "The compiled pattern object that produced this match.";
-                return this._Re;
-            }
-        }
-
-        public int? Lastindex
-        {
-            get
-            {
-                _ = "The integer index of the last matched capturing group.";
-                int i = this._Match.Groups.Count - 1;
-                while (i >= 1)
-                {
-                    if (this._Match.Groups[i].Success)
-                    {
-                        return i;
-                    }
-
-                    i = i - 1;
-                }
-
-                return null;
-            }
-        }
-
-        public string? Lastgroup
-        {
-            get
-            {
-                _ = "The name of the last matched capturing group, or None if unnamed.";
-                int? idx = this.Lastindex;
-                if (idx is null)
-                {
-                    return null;
-                }
-
-                if (this._Re is null)
-                {
-                    return null;
-                }
-
-                int grpIdx = idx.Value;
-                string name = this._Re!.Regex.GroupNameFromNumber(grpIdx);
-                if (name == global::Sharpy.Builtins.Str(grpIdx))
-                {
-                    return null;
-                }
-
-                return name;
-            }
         }
 
         /// <summary>

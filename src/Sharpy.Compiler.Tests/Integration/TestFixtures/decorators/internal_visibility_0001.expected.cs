@@ -35,14 +35,6 @@ namespace InternalVisibility0001
 #line hidden
         }
 
-        public string PublicMethod()
-#line 18 "internal_visibility_0001.spy"
-        {
-#line (19, 9) - (19, 34) 12 "internal_visibility_0001.spy"
-            return this.GetSecret();
-#line hidden
-        }
-
         internal string Label
         {
             get
@@ -51,6 +43,14 @@ namespace InternalVisibility0001
                 return this._Name;
 #line hidden
             }
+        }
+
+        public string PublicMethod()
+#line 18 "internal_visibility_0001.spy"
+        {
+#line (19, 9) - (19, 34) 12 "internal_visibility_0001.spy"
+            return this.GetSecret();
+#line hidden
         }
 
         public Service()

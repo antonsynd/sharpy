@@ -338,6 +338,33 @@ namespace Sharpy.SocketModule
     {
         private global::System.Net.Sockets.Socket _Socket;
         private double? _Timeout;
+        public int Family
+        {
+            get
+            {
+                _ = "The address family of the socket.";
+                return (int)this._Socket.AddressFamily;
+            }
+        }
+
+        public int type
+        {
+            get
+            {
+                _ = "The socket type.";
+                return (int)this._Socket.SocketType;
+            }
+        }
+
+        public int Proto
+        {
+            get
+            {
+                _ = "The protocol type.";
+                return (int)this._Socket.ProtocolType;
+            }
+        }
+
         /// <summary>
         /// Connect to a remote (host, port) address.
         /// </summary>
@@ -820,33 +847,6 @@ namespace Sharpy.SocketModule
             int typ = this.type;
             int pr = this.Proto;
             return FormattableString.Invariant($"<socket fd={(global::Sharpy.Builtins.Str(fd))}, family={(global::Sharpy.Builtins.Str(fam))}, type={(global::Sharpy.Builtins.Str(typ))}, proto={(global::Sharpy.Builtins.Str(pr))}>");
-        }
-
-        public int Family
-        {
-            get
-            {
-                _ = "The address family of the socket.";
-                return (int)this._Socket.AddressFamily;
-            }
-        }
-
-        public int type
-        {
-            get
-            {
-                _ = "The socket type.";
-                return (int)this._Socket.SocketType;
-            }
-        }
-
-        public int Proto
-        {
-            get
-            {
-                _ = "The protocol type.";
-                return (int)this._Socket.ProtocolType;
-            }
         }
 
         /// <summary>
