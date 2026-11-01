@@ -30,7 +30,9 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// property emitted at its FIRST half, so both the reader and the sibling anchor there (P21h verify C2).</para>
 ///
 /// <para>A lambda inside an initializer is not walked: its body runs when it is called, not where the initializer
-/// stands (#2398 owns that rule). An instance member read through the type name is the checker's SPY0290.</para>
+/// stands (#2398 owns that rule). A generator expression that IS the initializer's value is walked only through its
+/// first iterable — the rest runs when the stored iterator is consumed (<see cref="WalkInitializer"/>). An instance
+/// member read through the type name is the checker's SPY0290.</para>
 /// </summary>
 internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
 {
@@ -80,7 +82,7 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
                 // declaration): its reads are not re-reported as order reads.
                 case VariableDeclaration { InitialValue: { } initializer } field
                     when IsStaticInitializer(field, owner) && !(field.IsConst && IsOnConstantCycle(field)):
-                    Walk(initializer, new StaticReader(field, field.Name,
+                    WalkInitializer(initializer, new StaticReader(field, field.Name,
                         field.IsConst ? "a 'const' initializer" : "a '@static' initializer"), owner, typeName, body);
                     break;
 
@@ -88,7 +90,7 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
                     var anchor = property.ExplicitInterface == null
                         ? TypeBodyMembership.FirstDeclarationOf(body, property.Name) ?? property
                         : property;
-                    Walk(defaultValue, new StaticReader(anchor, property.Name, "a '@static' initializer"), owner, typeName, body);
+                    WalkInitializer(defaultValue, new StaticReader(anchor, property.Name, "a '@static' initializer"), owner, typeName, body);
                     break;
             }
         }
@@ -106,6 +108,28 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
 
     private static bool HasStatic(ImmutableArray<Decorator> decorators)
         => decorators.Any(d => d.Name == DecoratorNames.Static);
+
+    /// <summary>An initializer whose whole value is a generator expression STORES a deferred iterator: its element,
+    /// its conditions and every iterable after the first run when the iterator is consumed, not where the initializer
+    /// stands — like an earlier method's body, which may read a later static (C#'s rule, admitted in both spellings) —
+    /// so only the first iterable, which Python and the lowered LINQ chain evaluate eagerly, is walked. A generator
+    /// CONSUMED inside the initializer (<c>sum(x + Host.s for x in xs)</c>) runs there and is walked whole: whether a
+    /// nested generator is consumed is not decidable here, so only the stored root is exempt (P75 verify, owner ruling
+    /// 2026-11-01).</summary>
+    private void WalkInitializer(Expression initializer, StaticReader reader, TypeSymbol owner, string typeName,
+        ImmutableArray<Statement> body)
+    {
+        var root = initializer;
+        while (root is Parenthesized parenthesized)
+            root = parenthesized.Expression;
+        if (root is GeneratorExpression { Clauses: [ForClause first, ..] })
+        {
+            Walk(first.Iterator, reader, owner, typeName, body);
+            return;
+        }
+
+        Walk(initializer, reader, owner, typeName, body);
+    }
 
     /// <summary>The initializer's reads, outside any lambda — deliberately partial: a lambda's body runs when it is
     /// called, not where the initializer stands (#2398), and every node kind but a type-qualified member access and an

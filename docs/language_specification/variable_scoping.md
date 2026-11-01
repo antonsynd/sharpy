@@ -438,6 +438,24 @@ def main() -> None:
     print(Host.a)    # 0
 ```
 
+A generator expression that is the whole initializer is stored, not run: its element, conditions and
+every iterable after the first run when the iterator is consumed, so they may read a later static, like
+an earlier method's body. Its first iterable is evaluated where the initializer stands, and a generator
+consumed inside the initializer (`sum(x + Host.b for x in xs)`) runs there, so a later static read in
+either is SPY0618.
+
+<!-- spec-sweep: output -->
+```python
+class Host:
+    @static
+    g: Iterator[int] = (x + Host.b for x in [1, 2])    # stored; runs when consumed
+    @static
+    b: int = 2
+
+def main() -> None:
+    print(list(Host.g))    # [3, 4]
+```
+
 Decorator arguments and type annotations are resolved in the class body as well. Names in the
 method's **body** are resolved by the rule above. Python resolves class scope in every one of these positions
 (`class C: a = 1; b = a` binds `b` to `1`). Sharpy resolves only what C# resolves there (deviation

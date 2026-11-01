@@ -23,13 +23,16 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// order {earlier, forward}, plus the reader reading ITSELF (read <c>itself</c>, order <c>self</c>) per host × reader ×
 /// spelling — a self cell has no sibling, so it is not multiplied by the read axis; ids <c>static-init-order ×
 /// &lt;host&gt; × &lt;reader&gt; × &lt;read&gt; × &lt;spelling&gt; × &lt;order&gt;</c>. Beside the generated grid,
-/// twelve cells change one axis each: a later non-literal const SHADOWED by a module binding (pinned at SPY0618,
+/// seventeen cells change one axis each: a later non-literal const SHADOWED by a module binding (pinned at SPY0618,
 /// decision #2415), the NESTED receiver (<c>Outer.Inner.s</c>, earlier and forward), a later
 /// method read as a method GROUP (admitted: nothing runs), the INTERFACE host (a non-literal const read through its name, earlier and
 /// forward), the GENERIC host (<c>class Host[T]</c> read through the constructed reference
 /// <c>Host[int].x</c>, earlier and forward, a <c>@static</c> property and a <c>@static</c> field), and the two SPLIT
 /// property anchors (a split reader whose default sits on its later half, a split sibling whose default does) — a
-/// split property is ONE C# property emitted at its FIRST half, so both are anchored there. Every value is distinct
+/// split property is ONE C# property emitted at its FIRST half, so both are anchored there — and the read's
+/// EXECUTION CONTEXT inside a GENERATOR EXPRESSION (a stored generator's element, condition and inner iterable run
+/// when it is consumed, admitted; its first iterable and a generator consumed in the initializer run there,
+/// SPY0618). Every value is distinct
 /// — <c>@static</c> property 4, <c>@static</c> field 2, non-literal const 7 (<c>seven()</c>), literal const 1,
 /// <c>@static</c> method 6 — and an uninitialized read is <c>0</c>, so a wrong order, a wrong binding or an un-run
 /// initializer each print a different number.</para>
@@ -303,6 +306,29 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
                 source, new[] { (ForwardReadCode, line, column) }, StaticInitializerPhrase, null);
         }
 
+        // GENERATOR EXPRESSION (P75 verify, owner ruling 2026-11-01): a generator that IS the initializer's value is
+        // stored as a deferred iterator — its element, condition and inner iterables run when it is consumed (in main,
+        // after every static initializer), so a forward read there sees the value (python3 `[3, 4]`; at 6d1c9021f it ran
+        // `[3, 4]`). Its FIRST iterable is evaluated where the initializer stands, and a generator CONSUMED inside the
+        // initializer (`sum(...)`) runs there — both read the default (0), so both are SPY0618 at the read.
+        var later = new[] { "@static", "s: int = 2" };
+        foreach (var (shape, template, stored, stdout) in new[]
+        {
+            ("stored-generator-element", "g: Iterator[int] = (x + § for x in [1, 2])", true, "[3, 4]\n"),
+            ("stored-generator-condition", "g: Iterator[int] = (x for x in [1, 2, 3] if x < §)", true, "[1]\n"),
+            ("stored-generator-inner-iterable", "g: Iterator[int] = (x + y for x in [1] for y in [§])", true, "[3]\n"),
+            ("stored-generator-first-iterable", "g: Iterator[int] = (x for x in [§])", false, null),
+            ("consumed-generator-element", "g: int = sum(x + § for x in [1, 2])", false, null),
+        })
+        {
+            var (source, line, column) = Program(new[] { "class Host:" }, null, new[] { "@static", template }, "Host.s",
+                later, alias: false, stored ? "list(Host.g)" : "Host.g");
+            var id = Id("class", shape, "static-field", "qualified", "forward");
+            yield return stored
+                ? new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, stdout)
+                : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, StaticInitializerPhrase, null);
+        }
+
         // SPLIT SIBLING: `@static property get sp`, then the reader, then `@static property set sp: int = 4` — the
         // sibling is emitted at its FIRST half, above the reader, so the read is earlier and sees 4.
         {
@@ -325,14 +351,14 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         Assert.Equal(3, Spellings.Length);
         Assert.Equal(2, Orders.Length);
         var cells = Cells().ToList();
-        // Per host × reader × spelling: 5 reads × {earlier, forward} + the self read; + 12 axis-change cells.
-        Assert.Equal(3 * 3 * 3 * (5 * 2 + 1) + 12, cells.Count);
+        // Per host × reader × spelling: 5 reads × {earlier, forward} + the self read; + 17 axis-change cells.
+        Assert.Equal(3 * 3 * 3 * (5 * 2 + 1) + 17, cells.Count);
         Assert.Equal(cells.Count, cells.Select(c => c.Id).Distinct(StringComparer.Ordinal).Count());
         bool Has(OrderCell c, string code) => c.ExpectedErrors.Any(e => e.Code == code);
         // Runs: every earlier read (3 × 3 × 3 spellings × 5 reads), every forward literal const (27), the two
-        // generic earlier cells, the interface earlier cell, the nested earlier cell, the method group and the split
-        // sibling.
-        Assert.Equal(3 * 3 * 3 * 5 + 27 + 2 + 1 + 1 + 1 + 1, cells.Count(c => c.ExpectedStdout != null));
+        // generic earlier cells, the interface earlier cell, the nested earlier cell, the method group, the split
+        // sibling and the three stored-generator deferred reads.
+        Assert.Equal(3 * 3 * 3 * 5 + 27 + 2 + 1 + 1 + 1 + 1 + 3, cells.Count(c => c.ExpectedStdout != null));
         Assert.Equal(27, cells.Count(c => c.Id.Contains("× literal-const ×", StringComparison.Ordinal)
             && c.Id.EndsWith("× forward", StringComparison.Ordinal) && c.ExpectedStdout == "1\n"));
         // F1 (unchanged): the bare forward @static field, property and method per host × reader (27), and the bare self
@@ -340,9 +366,9 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         Assert.Equal(27 + 6, cells.Count(c => Has(c, "SPY0200")));
         // SPY0618: the bare forward non-literal const per host × reader (9); every qualified and alias forward read of
         // the 4 ordered siblings (3 × 3 × 2 × 4 = 72); the qualified and alias self read of the two non-const readers
-        // per host (12); the two generic forward cells, the interface, nested and shadowed forward cells and the split
-        // reader.
-        Assert.Equal(9 + 72 + 12 + 2 + 1 + 1 + 1 + 1, cells.Count(c => Has(c, ForwardReadCode)));
+        // per host (12); the two generic forward cells, the interface, nested and shadowed forward cells, the split
+        // reader, and the stored generator's first iterable and the consumed generator.
+        Assert.Equal(9 + 72 + 12 + 2 + 1 + 1 + 1 + 1 + 2, cells.Count(c => Has(c, ForwardReadCode)));
         // The const reader reading itself, per host × spelling.
         Assert.Equal(9, cells.Count(c => Has(c, ConstCycleCode)));
         foreach (var cell in cells)
