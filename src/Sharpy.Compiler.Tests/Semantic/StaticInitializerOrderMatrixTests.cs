@@ -23,7 +23,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// order {earlier, forward}, plus the reader reading ITSELF (read <c>itself</c>, order <c>self</c>) per host × reader ×
 /// spelling — a self cell has no sibling, so it is not multiplied by the read axis; ids <c>static-init-order ×
 /// &lt;host&gt; × &lt;reader&gt; × &lt;read&gt; × &lt;spelling&gt; × &lt;order&gt;</c>. Beside the generated grid,
-/// eight cells change one axis each: the INTERFACE host (a non-literal const read through its name, earlier and
+/// twelve cells change one axis each: a later non-literal const SHADOWED by a module binding (pinned at SPY0618,
+/// decision #2415), the NESTED receiver (<c>Outer.Inner.s</c>, earlier and forward), a later
+/// method read as a method GROUP (admitted: nothing runs), the INTERFACE host (a non-literal const read through its name, earlier and
 /// forward), the GENERIC host (<c>class Host[T]</c> read through the constructed reference
 /// <c>Host[int].x</c>, earlier and forward, a <c>@static</c> property and a <c>@static</c> field), and the two SPLIT
 /// property anchors (a split reader whose default sits on its later half, a split sibling whose default does) — a
@@ -254,6 +256,44 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
                 : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, constReader.Phrase, null);
         }
 
+        // NESTED receiver (P75 verify F1): inside `class Outer:` / `class Inner:`, the reader names its own type through
+        // the declaring type's chain, `Outer.Inner.s` — a qualifier the member-typing arms leave untyped (#1941). At
+        // 332117e2d the forward read ran `0` (nobody refused it); spelled `Inner.s` it was SPY0618.
+        var field = Reads.Single(r => r.Name == "static-field");
+        foreach (var order in Orders)
+        {
+            string[] Nest(string[] lines) => lines.Select(l => "    " + l).ToArray();
+            var (source, line, column) = Program(new[] { "class Outer:", "    class Inner:" },
+                order == "earlier" ? Nest(field.Lines) : null, Nest(staticField.Lines), "Outer.Inner.s",
+                order == "forward" ? Nest(field.Lines) : null, alias: false, "Outer.Inner.b");
+            var id = Id("nested-class", staticField.Name, field.Name, "nested-qualified", order);
+            yield return order == "earlier"
+                ? new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, "2\n")
+                : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, staticField.Phrase, null);
+        }
+
+        // METHOD GROUP (P75 verify F3): a later @static method read as a VALUE (`g: () -> int = Host.sm`) creates a
+        // delegate and runs nothing, so C# reads no static there — admitted; the call arm refuses only a call.
+        {
+            var method = Reads.Single(r => r.Name == "static-method");
+            var (source, _, _) = Program(new[] { "class Host:" }, null, new[] { "@static", "g: () -> int = §" }, "Host.sm",
+                method.Lines, alias: false, "Host.g()");
+            yield return new OrderCell(Id("class", "static-field", "static-method-group", "qualified", "forward"),
+                source, Array.Empty<(string, int, int)>(), null, "6\n");
+        }
+
+        // SHADOWED later non-literal const (P75 verify F2; decision #2415): a module binding `K` above the class, and
+        // `@static b: int = K + 0` above `const K: int = seven()`. A later @static FIELD yields to the module binding
+        // (P21h F2 — python3 prints 9); the const is pinned at the implemented verdict, SPY0618 at the read, until #2415
+        // rules (option (a), two-way).
+        {
+            var (source, line, column) = Program(new[] { "class Host:" }, null, new[] { "@static", "b: int = § + 0" }, "K",
+                new[] { "const K: int = seven()" }, alias: false, "Host.b");
+            source = "K: int = 9\n\n\n" + source;
+            yield return new OrderCell(Id("class", "static-field", "shadowed-nonliteral-const", "bare", "forward"),
+                source, new[] { (ForwardReadCode, line + 3, column) }, StaticInitializerPhrase, null);
+        }
+
         // SPLIT READER: `@static property get b`, then the sibling, then `@static property set b: int = Host.sp` — the
         // reader is emitted at its FIRST half, above the sibling, so the read is forward (P21h verify C2): SPY0618.
         {
@@ -285,13 +325,14 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         Assert.Equal(3, Spellings.Length);
         Assert.Equal(2, Orders.Length);
         var cells = Cells().ToList();
-        // Per host × reader × spelling: 5 reads × {earlier, forward} + the self read; + 8 axis-change cells.
-        Assert.Equal(3 * 3 * 3 * (5 * 2 + 1) + 8, cells.Count);
+        // Per host × reader × spelling: 5 reads × {earlier, forward} + the self read; + 12 axis-change cells.
+        Assert.Equal(3 * 3 * 3 * (5 * 2 + 1) + 12, cells.Count);
         Assert.Equal(cells.Count, cells.Select(c => c.Id).Distinct(StringComparer.Ordinal).Count());
         bool Has(OrderCell c, string code) => c.ExpectedErrors.Any(e => e.Code == code);
         // Runs: every earlier read (3 × 3 × 3 spellings × 5 reads), every forward literal const (27), the two
-        // generic earlier cells, the interface earlier cell and the split sibling.
-        Assert.Equal(3 * 3 * 3 * 5 + 27 + 2 + 1 + 1, cells.Count(c => c.ExpectedStdout != null));
+        // generic earlier cells, the interface earlier cell, the nested earlier cell, the method group and the split
+        // sibling.
+        Assert.Equal(3 * 3 * 3 * 5 + 27 + 2 + 1 + 1 + 1 + 1, cells.Count(c => c.ExpectedStdout != null));
         Assert.Equal(27, cells.Count(c => c.Id.Contains("× literal-const ×", StringComparison.Ordinal)
             && c.Id.EndsWith("× forward", StringComparison.Ordinal) && c.ExpectedStdout == "1\n"));
         // F1 (unchanged): the bare forward @static field, property and method per host × reader (27), and the bare self
@@ -299,8 +340,9 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         Assert.Equal(27 + 6, cells.Count(c => Has(c, "SPY0200")));
         // SPY0618: the bare forward non-literal const per host × reader (9); every qualified and alias forward read of
         // the 4 ordered siblings (3 × 3 × 2 × 4 = 72); the qualified and alias self read of the two non-const readers
-        // per host (12); the two generic forward cells, the interface forward cell and the split reader.
-        Assert.Equal(9 + 72 + 12 + 2 + 1 + 1, cells.Count(c => Has(c, ForwardReadCode)));
+        // per host (12); the two generic forward cells, the interface, nested and shadowed forward cells and the split
+        // reader.
+        Assert.Equal(9 + 72 + 12 + 2 + 1 + 1 + 1 + 1, cells.Count(c => Has(c, ForwardReadCode)));
         // The const reader reading itself, per host × spelling.
         Assert.Equal(9, cells.Count(c => Has(c, ConstCycleCode)));
         foreach (var cell in cells)

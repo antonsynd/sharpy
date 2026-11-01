@@ -1853,6 +1853,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0401"),
         new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0468"),
         new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0606"),
+        new KnownRedSpecCode("#2324", "variable_scoping.md", "SPY0618"),
         new KnownRedSpecCode("#2287", "walrus_operator.md", "SPY0600"),
         new KnownRedSpecCode("#2287", "walrus_operator.md", "SPY0704"),
     };

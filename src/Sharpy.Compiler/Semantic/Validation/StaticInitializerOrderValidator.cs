@@ -63,6 +63,10 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
     /// <summary>A static initializer of the type being validated: its declaration's anchor and display name.</summary>
     private readonly record struct StaticReader(Node Anchor, string Name, string Phrase);
 
+    /// <summary>Walks every static initializer of one type body. Deliberately partial: only a field (a <c>@static</c>
+    /// one, or a non-compile-time <c>const</c>) and a <c>@static</c> property with a default declare a static
+    /// initializer; every other statement kind (a method, an event, a nested type — visited on its own — a
+    /// <c>pass</c>) declares none (the static-initializer order contract, #2396).</summary>
     private void ValidateTypeBody(Statement definition, string typeName, ImmutableArray<Statement> body)
     {
         if (Context.DeclaredTypes?.SymbolFor(definition, typeName, Context.SymbolTable) is not { } owner)
@@ -103,50 +107,70 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
     private static bool HasStatic(ImmutableArray<Decorator> decorators)
         => decorators.Any(d => d.Name == DecoratorNames.Static);
 
-    /// <summary>The initializer's reads, outside any lambda.</summary>
-    private void Walk(Node node, StaticReader reader, TypeSymbol owner, string typeName, ImmutableArray<Statement> body)
+    /// <summary>The initializer's reads, outside any lambda — deliberately partial: a lambda's body runs when it is
+    /// called, not where the initializer stands (#2398), and every node kind but a type-qualified member access and an
+    /// admitted bare sibling read is only descended into. <paramref name="isCallee"/> is whether
+    /// <paramref name="node"/> is the function a call invokes: a later <c>@static</c> method is refused only when it is
+    /// called — a method group read as a value creates a delegate and runs nothing.</summary>
+    private void Walk(Node node, StaticReader reader, TypeSymbol owner, string typeName, ImmutableArray<Statement> body,
+        bool isCallee = false)
     {
         switch (node)
         {
             case LambdaExpression:
                 return;
             case MemberAccess access when !access.IsNullConditional && DenotesType(access.Object, owner):
-                Check(access, access.Member, reader, owner, typeName, body);
+                Check(access, access.Member, reader, owner, typeName, body, isCallee);
                 break;
             case Identifier id when Context.SemanticInfo.GetClassBodySiblingRead(id) != null:
-                Check(id, id.Name, reader, owner, typeName, body);
+                Check(id, id.Name, reader, owner, typeName, body, isCallee);
                 break;
         }
 
+        var function = (node as FunctionCall)?.Function;
         foreach (var child in node.GetChildNodes())
-            Walk(child, reader, owner, typeName, body);
+            Walk(child, reader, owner, typeName, body, isCallee: ReferenceEquals(child, function));
     }
 
     /// <summary>Whether <paramref name="receiver"/> denotes <paramref name="owner"/> — by the symbol the checker bound
     /// or the type it recorded, never by how the receiver is spelled.</summary>
     private bool DenotesType(Expression receiver, TypeSymbol owner)
+        => ReferenceEquals(DenotedType(receiver), owner);
+
+    /// <summary>The type a receiver denotes: a type name the checker bound; a receiver it marked a type reference
+    /// whose recorded type names one (an alias, a module-qualified name, a constructed generic); or a NESTED type
+    /// reached through its declaring type (<c>Outer.Inner</c>) — a chain the member-typing arms leave untyped when it
+    /// is itself a qualifier (#1941), answered structurally as the checker's <c>DenotedTypeSymbolOf</c> answers it.
+    /// Null for a value receiver.</summary>
+    private TypeSymbol? DenotedType(Expression receiver)
     {
         var info = Context.SemanticInfo;
         if (receiver is Identifier id && info.GetIdentifierSymbol(id) is TypeSymbol bound)
-            return ReferenceEquals(bound, owner);
-        if (!info.IsTypeReference(receiver))
-            return false;
-        var denoted = info.GetExpressionType(receiver) switch
+            return bound;
+        if (info.IsTypeReference(receiver)
+            && info.GetExpressionType(receiver) switch
+            {
+                UserDefinedType { Symbol: { } symbol } => symbol,
+                GenericType { GenericDefinition: { } definition } => definition,
+                _ => null,
+            } is { } denoted)
         {
-            UserDefinedType { Symbol: { } symbol } => symbol,
-            GenericType { GenericDefinition: { } definition } => definition,
-            _ => null,
-        };
-        return ReferenceEquals(denoted, owner);
+            return denoted;
+        }
+
+        return receiver is MemberAccess { IsNullConditional: false } nested && DenotedType(nested.Object) is { } outer
+            ? outer.NestedTypes.FirstOrDefault(n => n.Name == nested.Member)
+            : null;
     }
 
     /// <summary>Refuses the read of <paramref name="member"/> at <paramref name="read"/> when the member's declaration
     /// in this body is ordered storage standing at or after the reader's.</summary>
     private void Check(Expression read, string member, StaticReader reader, TypeSymbol owner, string typeName,
-        ImmutableArray<Statement> body)
+        ImmutableArray<Statement> body, bool isCallee)
     {
         if (TypeBodyMembership.FirstDeclarationOf(body, member) is not { } declaration
-            || OrderedKind(declaration, owner) is not { } kind)
+            || OrderedKind(declaration, owner) is not { } kind
+            || (kind == OrderedMember.Method && !isCallee))
         {
             return;
         }
@@ -177,7 +201,8 @@ internal sealed class StaticInitializerOrderValidator : ValidatingAstWalker
     }
 
     /// <summary>The kind of a type-body declaration whose storage a static initializer reads in order, or null — an
-    /// instance member, a compile-time const, an event, anything else.</summary>
+    /// instance member, a compile-time const, an event, anything else. Deliberately partial (the order contract,
+    /// R-JT): only ordered static storage and the <c>@static</c> method a call runs are ordered.</summary>
     private OrderedMember? OrderedKind(Node declaration, TypeSymbol owner) => declaration switch
     {
         VariableDeclaration { IsConst: true } constant =>

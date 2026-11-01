@@ -326,7 +326,8 @@ raises `NameError`. A compile-time-constant `const` sibling (`const SIZE: int = 
 since a type body resolves its constants in dependency order; a `const` whose initializer is not a
 compile-time constant (`const K: int = seven()`) is `static readonly` storage and is ordered like a
 `@static` field (a forward read of it is SPY0618, below). When an outer binding of the name exists, a
-later sibling and the member itself yield to it instead (below).
+later sibling and the member itself yield to it instead (below) — except such a `const`, whose forward
+read stays SPY0618 under an outer binding too (an open decision, #2415).
 
 <!-- spec-sweep: error SPY0200 -->
 ```python

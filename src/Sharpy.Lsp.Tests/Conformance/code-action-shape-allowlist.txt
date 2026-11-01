@@ -17,7 +17,7 @@
 extract-method identity diagnostics 2913 00dc19608c14a98d 836 a6be800c445f16b5 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 553 61bf1fd15f8c0698 553 61bf1fd15f8c0698 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
 extract-variable identity diagnostics 338 71224acf91115f32 63 0152e075c111d27e # #2294 adds SPY0220 (and 257 other cells)
-extract-variable identity parse 57 de496a333bd9e5f9 57 de496a333bd9e5f9 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
+extract-variable identity parse 57 de496a333bd9e5f9 57 77923c03437cb8e0 # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
 implement identity diagnostics 47 5f85d258900d6553 6 958ea3e0a6810d12 # #2296 adds SPY0224,SPY0522 (and 13 other cells)
 inline-function identity diagnostics 45 08d2287b43ce13a6 14 636bc0dd9745c36b # #2296 removes an error (and 36 other cells)
 inline-variable identity diagnostics 138 1676ba8bb8bfa786 19 cec26b21b9ba03b7 # #2296 removes an error (and 118 other cells)
@@ -34,7 +34,7 @@ extract-method crlf parse 553 61bf1fd15f8c0698 73 42a0e756d438371c # #2294 does 
 extract-variable crlf diagnostics 338 71224acf91115f32 11 7031b5fd2cf489e9 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable crlf parse 57 de496a333bd9e5f9 5 fb240c4c4a9247fd # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
 implement crlf diagnostics 47 5f85d258900d6553 0 - # #2296 adds SPY0224,SPY0522 (and 13 other cells)
-inline-function crlf diagnostics 45 08d2287b43ce13a6 1 0dca4479e9842c20 # #2296 removes an error (and 36 other cells)
+inline-function crlf diagnostics 45 08d2287b43ce13a6 2 4dd00dc446653929 # #2296 removes an error (and 36 other cells)
 inline-variable crlf diagnostics 138 1676ba8bb8bfa786 14 a68f1660603c7c0b # #2296 removes an error (and 118 other cells)
 organize-imports crlf diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore crlf diagnostics 7 aef8d5f7d19d8d95 0 - # #2296 removes an error (and 6 other cells)
