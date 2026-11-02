@@ -1,6 +1,31 @@
 # Variable Scoping Rules
 
+## Governing Principle
+
+> **A name means the same thing everywhere in its scope. Declaration order never changes *what* a
+> name means; it only affects *when* the value is computed, and Sharpy guarantees the value is
+> computed before it is read, or refuses the program. Sharpy never shows you a default value, and
+> never gives a Python-valid program a different meaning; where it cannot match Python, it refuses.**
+
+Adopted 2026-11-01. The rationale, the measured comparison with Python, C#, Rust and Swift, and the
+.NET emission are in [docs/design/name-resolution.md](../design/name-resolution.md). The rules:
+
+| Rule | Statement | Status |
+|---|---|---|
+| **N1** | Module-level and class-level names are visible throughout their scope, above and below the declaration; the innermost scope wins. Class-body names are not visible by bare name inside methods (Python). | **Pending #2423.** Today a module variable is visible only below its declaration (SPY0200 above it). |
+| **N2** | If top-to-bottom reading (Python) and scope (N1) would give a name different meanings — a class-body initializer reading a member at or before its declaration while an outer binding of the name exists — the program is refused. | **Pending #2423.** Today a later member yields to the outer binding, and a later literal `const` outranks it. |
+| **N3** | Every module-level and class-level value is initialized before its first read, by any spelling or path; module initializers run top to bottom before `main`; a cycle is a compile-time or run-time error, never a default value. | **Pending #2422.** Today forward reads are refused (SPY0200, SPY0618) or, through a later computed `const` or module property, read `0`; module initializers run after `main` starts. |
+| **N4** | A `const` follows N1–N3 like every other binding. | **Pending #2423.** Today a literal `const` is order-free and a computed one is ordered. |
+| **N5** | A local is visible from its declaration to the end of its block. `for`, `except`, `with` and comprehension targets are fresh bindings, fresh per iteration; reusing a name that is read after the construct is refused. A local `def` is ordered. | Block scoping is implemented. **The refusal is pending #2425.** |
+| **N6** | Writing a binding outside the current function takes `global x` (module) or `nonlocal x` (enclosing function). A bare store that would cross a function boundary is refused. | **Pending #2424.** Today `global`/`nonlocal` are refused (SPY0134) and a bare store writes through. |
+| **N7** | Bare, qualified, aliased, lambda, generator or call: the same read gets the same answer and the same diagnostic. | Follows from N3 (#2422). |
+
+Sections below describe **today's** behavior; each marks where a pending rule will change it.
+
 ## No `global` or `nonlocal` Keywords
+
+> **Pending #2424 (N6):** `global` and `nonlocal` are reinstated with Python's meaning, and a bare
+> store across a function boundary becomes a refusal. This section describes today's behavior.
 
 Sharpy does not support Python's `global` or `nonlocal` keywords. This aligns with C# scoping semantics:
 
@@ -88,6 +113,10 @@ print(x)                # Prints "outer", 'x' was shadowed only
                         # in the for-loop, and not modified.
 ```
 
+> **Pending #2425 (N5):** because `x` is read after the loop, and Python would print `4` there, this
+> program becomes a compile-time error with the steer "rename the loop variable". Without the later
+> read it stays legal.
+
 ### Write-Through Assignment
 
 Assignment to a name that already exists in an enclosing scope writes through to it — no `nonlocal` keyword needed:
@@ -105,6 +134,11 @@ for i in range(5):
     print(i)
 print(i)                # ERROR: 'i' is block-scoped
 ```
+
+Within one function this stays the rule. Across a function boundary it is pending change:
+
+> **Pending #2424 (N6):** the nested-function write-through below becomes a refusal; write
+> `nonlocal n` in `double_it` to write the outer `n` (Python's rule). Reads are unaffected.
 
 This applies to nested functions too (C# closure semantics — captured by reference):
 
@@ -403,9 +437,13 @@ def main() -> None:
 ```
 
 A static sibling declared later — a `@static` field, a `@static` property, a non-compile-time `const`
-— or the member itself is refused through the type name exactly as by bare name (SPY0618, "declared
-later"), and so is calling a `@static` method declared later. A compile-time `const` is order-free in
-every spelling.
+— or the member itself is refused through the type name (SPY0618, "declared later"), and so is
+calling a `@static` method declared later. The bare spelling of the same read is refused too, but
+under a different code (SPY0200, "declared later"). A compile-time `const` is order-free in every
+spelling.
+
+> **Pending #2422 / #2423 (N3, N7):** a forward static read runs in every spelling — the target is
+> initialized first — and a cycle is an error. The two codes for one read go away.
 
 <!-- spec-sweep: error SPY0618 -->
 ```python
@@ -480,7 +518,9 @@ class C:
 **Nested types and module names** remain visible inside methods — the rule applies only to variable
 and constant bindings in a class or struct body, not to type declarations or to names from the
 enclosing module or global scope. When a module-level variable and a class attribute share a name,
-a bare use inside a method binds the **module** variable, exactly as Python does.
+a bare use inside a method binds the **module** variable, exactly as Python does. Today a module
+variable is visible only if it is declared above the method's class (SPY0200 otherwise; python3
+reads it). **Pending #2423 (N1):** module variables are visible throughout the module.
 
 ## Assignment Statement
 
