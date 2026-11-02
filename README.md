@@ -64,6 +64,7 @@ dotnet run --project src/Sharpy.Cli -- run hello.spy
 - [VS Code Extension](editors/vscode/) — syntax highlighting, LSP integration
 - [Editor Integration](docs/tooling/editor-integration.md) — Neovim, Emacs, Sublime Text, Helix, Zed
 - [Contributing](CONTRIBUTING.md)
+- [Governance](GOVERNANCE.md) — benevolent-dictator model, no fixed roadmap
 
 ## Community
 

@@ -1,5 +1,13 @@
 # Contributing to Sharpy
 
+## How Contributions Work
+
+Sharpy is run as a benevolent dictatorship (see [GOVERNANCE.md](GOVERNANCE.md)): the maintainer alone decides the direction of the language and its ecosystem. There is no defined roadmap beyond a complete, stable syntax and semantics and (mostly) bug-free compilation and runtime behavior.
+
+- **Bug fixes are welcome.** Compiler, runtime, stdlib, tooling, docs, and test fixes don't need prior approval. For anything non-trivial, opening an issue first saves effort.
+- **Direction is not up for a vote.** New syntax, new semantics, new stdlib surface, and new tooling scope are the maintainer's call. You may propose them in an issue, but a PR that changes the language's direction may be declined however well made, so please discuss before investing time.
+- **Forking is fine.** If you want a different direction, you're free to fork under the [Apache-2.0 or MIT](#license) license.
+
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
