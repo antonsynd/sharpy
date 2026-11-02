@@ -200,8 +200,10 @@ def handler_reads_try_body() -> None:
 ## Module-Level vs Function-Level Variables
 
 A function-level variable is declared with `let` (or, in Stage 1, a keywordless declaration) and
-lives until the end of its block. A module-level `let` is refused (SPY0340, "module-scope bindings
-are `const`: use 'const NAME[: T] = ...'"); module-scope values are `const`, and in Stage 1 an
-annotated module declaration (`counter: int = 0`) is still accepted. See
+lives until the end of its block. A module-level `let` is refused today (SPY0340, "module-scope
+bindings are `const`: use 'const NAME[: T] = ...'"); module-scope values are `const` or annotated
+variables (`counter: int = 0`). **Pending #1974 (B9, amended 2026-10-13):** module scope allows
+`let`, `var` and `const`, and the refusal goes away. A function writes a module variable only under
+`global` (pending #2424, [Variable Scoping](variable_scoping.md#governing-principle)). See
 [Program Entry Point](program_entry_point.md) for details on module-level declarations vs executable
 statements inside `main()`.

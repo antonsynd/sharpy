@@ -2,8 +2,11 @@
 
 How Sharpy treats a user declaration or import that reuses the name of a builtin.
 
-Sharpy inherits Python's syntax but resolves names under **Axiom 1 (.NET first)**, so where Python
-and C# disagree, C# decides. That single rule explains every case below.
+Sharpy resolves names under one principle ([Variable Scoping](variable_scoping.md#governing-principle),
+[design](../design/name-resolution.md)): a name means the same thing everywhere in its scope, and
+where Sharpy cannot give a Python-valid program Python's meaning, it refuses or warns rather than
+silently diverging. Every case below is an instance: a shadowed builtin either stays reachable
+by a qualified path, or the shadowing is refused or warned.
 
 ## The governing question: is there a way back?
 

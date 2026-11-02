@@ -148,7 +148,9 @@ At module level (outside any function or class), variable declarations have addi
 ### `let` Is a Local Declaration
 
 `let` declares a local binding, so it is refused at module level (SPY0340, with the steer "module-scope
-bindings are `const`: use 'const NAME[: T] = ...'"). Module-scope bindings are `const`:
+bindings are `const`: use 'const NAME[: T] = ...'"). Today module-scope bindings are `const` or annotated
+variables. **Pending #1974 (B9, amended 2026-10-13):** module scope allows `let` (immutable), `var`
+(mutable) and `const`, and this refusal and its steer go away.
 
 <!-- spec-sweep: fragment -->
 ```python
@@ -162,8 +164,10 @@ body grammar's parser error.
 
 ### Type Annotation Required
 
-In Stage 1, annotated module-level variables are still accepted; Stage 2 (#1974) makes module scope
-`const`-only. Module-level variables MUST have explicit type annotations:
+Annotated module-level variables are accepted. (An earlier plan to make module scope `const`-only was
+superseded by #1974's B9 amendment: module `var` is kept.) Writing one from a function will take
+`global` (pending #2424; see [Variable Scoping](variable_scoping.md#governing-principle)).
+Module-level variables MUST have explicit type annotations:
 
 ```python
 # ✅ Valid module-level declarations

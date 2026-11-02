@@ -46,7 +46,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "`global` and `nonlocal` declarations rebind names in outer scopes."
-    sharpy_behavior: "`global` and `nonlocal` are rejected. C# scoping rules apply; use mutable containers or return values."
+    sharpy_behavior: "`global` and `nonlocal` are rejected (SPY0134). A bare store to a module variable or an enclosing function's local from inside a function writes through to it, where Python creates a new local: `x: int = 1` at module level, `def f() -> None: x = 2`, then `f(); print(x)` prints `2` (python3 `1`). PENDING REVERSAL (owner ruling 2026-11-01, docs/design/name-resolution.md N6, #2424): `global`/`nonlocal` are reinstated with Python's meaning, and a bare store across a function boundary is refused; this row is deleted when that lands."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0134
     planned_diagnostic: null
@@ -226,6 +226,52 @@ deviations:
             pass
         print(i)  # ERROR SPY0200: 'i' is block-scoped to the for loop
 
+  - id: loop-variable-fresh-per-iteration
+    code: null
+    category: scoping
+    audience: python
+    severity: none
+    python_behavior: "A for-loop variable is one binding for the whole loop, so every closure created in the loop sees its last value."
+    sharpy_behavior: "A for-loop (and comprehension) variable is a fresh binding per iteration, as in C# `foreach`, Rust and Swift, so a closure captures that iteration's value. Designed deviation (docs/design/name-resolution.md N5)."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        fs = []
+        for i in range(3):
+            fs.append(lambda: i)
+        print([f() for f in fs])  # [2, 2, 2]
+      sharpy: |
+        def main() -> None:
+            fs: list[() -> int] = []
+            for i in range(3):
+                fs.append(lambda: i)
+            print([f() for f in fs])  # [0, 1, 2]
+
+  - id: construct-target-reuses-outer-name
+    code: null
+    category: scoping
+    audience: python
+    severity: none
+    python_behavior: "A for-loop, `except ... as` or `with ... as` target that reuses an existing name rebinds it, so a read after the construct sees the target's last value."
+    sharpy_behavior: "The target is a fresh block-scoped binding, so the outer name is unchanged after the construct and a later read silently sees the outer value. PENDING (owner ruling 2026-11-01, docs/design/name-resolution.md N5/S2, #2425): refused when the outer name is read after the construct, with the steer to rename the target; without a later read it stays legal. This row is deleted when that lands."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        x = 100
+        for x in range(3):
+            pass
+        print(x)  # 2
+      sharpy: |
+        def main() -> None:
+            x: int = 100
+            for x in range(3):
+                pass
+            print(x)  # 100
+
   - id: block-scoping-while
     code: SPY0200
     category: scoping
@@ -385,7 +431,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "A class body is a scope that runs top to bottom, so a field initializer, a later class attribute and a method's parameter default read any earlier class attribute by bare name: `class C: a = 1; b = a` binds `C.b` to `1`, and `def m(self, x=K)` defaults `x` to the class attribute `K`."
-    sharpy_behavior: "A bare class-body read outside a method body resolves exactly what C# resolves in the position the declaration becomes (R-JJ, #2384). An initializer (a plain class's field initializer, a `@static` field's initializer, every property default, a `const` that is not a compile-time constant) reads a `const` or `@static` sibling; a parameter default (and a struct's or `@dataclass`'s instance field initializer, which is the synthesized constructor's parameter default) reads a `const` only, and a `@static` sibling there is SPY0401. An instance member is SPY0200 in every such position, with a steer naming the position (no instance exists when it runs). A `@static` property read, or a bare `@static` method call, from a `@static` field or `const` initializer, and a bare `@static` method call from a `@static` property default, is SPY0200 until static initialization follows declaration order (#2396). A class body runs top to bottom, so these positions read only a `@static` field, property or method declared EARLIER; a later one is SPY0200 'declared later' (a `const` sibling is unordered: a type body resolves its constants in dependency order). Outside a method a member the class body declares outranks a module-level or outer binding of its name, for every member kind; a member declared LATER than the reader, or the reader itself (`b = 98` at module level; `class C: @static b: int = b + 1` gives `99`), yields to that outer binding, as in Python (`size = 7` at module level, then `v: int = size` above `@static size: int = 2`, reads `7`). An INHERITED member is never read by bare name outside a method: under an outer binding of its name the outer binding is read, as in Python; with none it is SPY0200 steering to the declaring class (`Base.unit`), where python3 raises NameError. A later `const` is the exception to that yielding (constants are unordered): with `const K: int = 7` at module level and a class whose method declares `def m(self, x: int = K)` ABOVE `const K: int = 2`, Sharpy's default is the class's `2` while python3 binds the module's `7` (the class `K` does not exist yet when the `def` runs). Inside a method body no class-body name is visible by bare name (#1786)."
+    sharpy_behavior: "A bare class-body read outside a method body resolves exactly what C# resolves in the position the declaration becomes (R-JJ, #2384). An initializer (a plain class's field initializer, a `@static` field's initializer, every property default, a `const` that is not a compile-time constant) reads a `const` or `@static` sibling (a `@static` field, property or method — the last three since #2396 landed static initialization in declaration order); a parameter default (and a struct's or `@dataclass`'s instance field initializer, which is the synthesized constructor's parameter default) reads a `const` only, and a `@static` sibling there is SPY0401. An instance member is SPY0200 in every such position, with a steer naming the position (no instance exists when it runs). A class body runs top to bottom, so these positions read only a `@static` field, property or method declared EARLIER; a later one is SPY0200 'declared later' by bare name and SPY0618 through the type name (`H.b`), and so is a later `const` that is not a compile-time constant. A compile-time `const` sibling is unordered: a type body resolves its constants in dependency order. Outside a method a member the class body declares outranks a module-level or outer binding of its name, for every member kind; a member declared LATER than the reader, or the reader itself (`b = 98` at module level; `class C: @static b: int = b + 1` gives `99`), yields to that outer binding, as in Python (`size = 7` at module level, then `v: int = size` above `@static size: int = 2`, reads `7`). An INHERITED member is never read by bare name outside a method: under an outer binding of its name the outer binding is read, as in Python; with none it is SPY0200 steering to the declaring class (`Base.unit`), where python3 raises NameError. A later `const` is the exception to that yielding (constants are unordered): with `const K: int = 7` at module level and a class whose method declares `def m(self, x: int = K)` ABOVE `const K: int = 2`, Sharpy's default is the class's `2` while python3 binds the module's `7` (the class `K` does not exist yet when the `def` runs). Inside a method body no class-body name is visible by bare name (#1786). PENDING (owner ruling 2026-11-01, docs/design/name-resolution.md N1-N4/N7, #2422 #2423): a forward static read runs in every spelling (the target is initialized first; a cycle is an error); a read at or before a member's declaration under an outer binding of its name is refused as ambiguous instead of yielding or outranking; constants follow the same rules; the methods rule is unchanged."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
