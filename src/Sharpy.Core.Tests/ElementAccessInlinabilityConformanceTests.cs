@@ -19,12 +19,15 @@ namespace Sharpy.Core.Tests;
 /// <item>(b) no <c>newobj</c> of an <see cref="Exception"/>-derived type, no <c>ldstr</c>, no call into
 /// <see cref="DefaultInterpolatedStringHandler"/> / <c>String.Concat</c> / <c>String.Format</c>
 /// (the cold-path construction that defeats the inline budget);</item>
-/// <item>(c) every <c>call</c>/<c>callvirt</c> target is in the literal BCL <see cref="BclAllowSet"/>, or a
-/// Sharpy.Core method that is itself conformant (recursive, cycle-safe), or a Core method carrying
-/// <see cref="MethodImplOptions.NoInlining"/> (the throw helpers);</item>
+/// <item>(c) every <c>call</c>/<c>callvirt</c> target — and (c'') every <c>newobj</c> target that is not an
+/// Exception constructor — is in the literal BCL <see cref="BclAllowSet"/>, or a Sharpy.Core method that is
+/// itself conformant (recursive, cycle-safe), or (c') a <see cref="MethodImplOptions.NoInlining"/> throw
+/// helper named in <see cref="HelperLiteral"/> and declared on <c>Sharpy.Index</c>; any other NoInlining
+/// callee is an out-of-line call on the path and is reported (#2404 refutation N1);</item>
 /// <item>(d) the IL body is at most 100 B against a Release Core (the JIT's
 /// <c>DEFAULT_MAX_INLINE_SIZE</c>) and at most 128 B against a Debug Core, chosen at run time from the
-/// Core assembly's <see cref="DebuggableAttribute"/>.</item>
+/// Core assembly's <see cref="DebuggableAttribute"/>;</item>
+/// <item>(e) the method itself does not carry <see cref="MethodImplOptions.NoInlining"/> (refutation N2).</item>
 /// </list>
 /// The rule is the IL shape alone: <c>AggressiveInlining</c> earns nothing here, because the attribute
 /// raises the JIT's willingness without removing the out-of-line construction this class is about.
@@ -186,6 +189,8 @@ public class ElementAccessInlinabilityConformanceTests
         "System.Array::Empty<T>()",
         "System.Math::Min(System.Int32, System.Int32)",
         "System.Math::Max(System.Int32, System.Int32)",
+        // Row 6: Slice.Normalize returns (int, int) — newobj ValueTuple`2 (a struct ctor, no allocation); rule (c'').
+        "System.ValueTuple`2::.ctor(T1, T2)",
     };
 
     // ------------------------------------------------------------------------------------------------
@@ -197,7 +202,7 @@ public class ElementAccessInlinabilityConformanceTests
     {
         var violations = new System.Collections.Generic.List<string>();
         int ceiling = CeilingFor(CoreAssembly, out bool jitOptimizerDisabled);
-        var scanner = new ShapeScanner(CoreAssembly, ceiling);
+        var scanner = new ShapeScanner(new[] { CoreAssembly }, ceiling);
 
         _output.WriteLine($"Sharpy.Core IsJITOptimizerDisabled={jitOptimizerDisabled} -> clause (d) ceiling {ceiling} B");
 
@@ -348,10 +353,13 @@ public class ElementAccessInlinabilityConformanceTests
     public void ShapePredicate_ReportsEachBadControlByItsOwnClause_AndPassesTheGoodOne()
     {
         int ceiling = CeilingFor(CoreAssembly, out _);
-        var scanner = new ShapeScanner(CoreAssembly, ceiling);
+        // The test assembly counts as Core here, so ForeignHelperShapeControl's callee exercises rule (c'), not the BCL arm.
+        var scanner = new ShapeScanner(new[] { CoreAssembly, typeof(ElementAccessInlinabilityConformanceTests).Assembly }, ceiling);
         var problems = new System.Collections.Generic.List<string>();
 
-        void Expect(string name, params char[] expected)
+        void Expect(string name, params char[] expected) => ExpectMentioning(name, null, expected);
+
+        void ExpectMentioning(string name, string? mustMention, params char[] expected)
         {
             var method = typeof(ElementAccessInlinabilityConformanceTests).GetMethod(name, AllDeclared)!;
             var findings = scanner.Clauses(method);
@@ -369,6 +377,12 @@ public class ElementAccessInlinabilityConformanceTests
                 problems.Add($"{name}: expected clauses [{string.Join(",", want)}], reported [{string.Join(",", clauses)}]: " +
                     string.Join("; ", findings.Select(f => $"({f.Clause}) {f.Detail}")));
             }
+
+            if (mustMention is not null && !findings.Any(f => f.Detail.Contains(mustMention, StringComparison.Ordinal)))
+            {
+                problems.Add($"{name}: no finding mentions \"{mustMention}\" (the rule this control exists for did not fire): " +
+                    string.Join("; ", findings.Select(f => $"({f.Clause}) {f.Detail}")));
+            }
         }
 
         Expect(nameof(BadShapeControl), 'b', 'c');
@@ -376,6 +390,9 @@ public class ElementAccessInlinabilityConformanceTests
         Expect(nameof(EhShapeControl), 'a');
         Expect(nameof(CallShapeControl), 'c');
         Expect(nameof(GoodShapeControl));
+        Expect(nameof(NoInliningShapeControl), 'e');
+        ExpectMentioning(nameof(ForeignHelperShapeControl), "(c')", 'c');
+        ExpectMentioning(nameof(CtorShapeControl), "constructs via System.Text.StringBuilder::.ctor(System.Int32)", 'c');
 
         Assert.True(problems.Count == 0, "The shape predicate mis-reports its controls:\n  " + string.Join("\n  ", problems));
     }
@@ -501,6 +518,32 @@ public class ElementAccessInlinabilityConformanceTests
         return (uint)i < (uint)d.Length ? d[i] : d[global::Sharpy.Index.WrapOrThrow(i, d.Length)];
     }
 
+    /// <summary>The good shape, but the accessor itself is NoInlining: reported by (e) alone.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static int NoInliningShapeControl(int i)
+    {
+        var d = ControlData;
+        return (uint)i < (uint)d.Length ? d[i] : d[global::Sharpy.Index.WrapOrThrow(i, d.Length)];
+    }
+
+    /// <summary>The good shape, slow path through a NoInlining helper that is NOT a named Sharpy.Index helper: (c) by rule (c').</summary>
+    public static int ForeignHelperShapeControl(int i)
+    {
+        var d = ControlData;
+        return (uint)i < (uint)d.Length ? d[i] : d[ForeignNoInliningHelper(i, d.Length)];
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int ForeignNoInliningHelper(int i, int n) => i + n;
+
+    /// <summary>The good shape plus a non-Exception newobj outside the allow-set: (c) by rule (c'').</summary>
+    public static int CtorShapeControl(int i)
+    {
+        _ = new System.Text.StringBuilder(16);
+        var d = ControlData;
+        return (uint)i < (uint)d.Length ? d[i] : d[global::Sharpy.Index.WrapOrThrow(i, d.Length)];
+    }
+
     /// <summary>The D2 shape, slow path through the [NoInlining] <c>Index.WrapOrThrow</c>: reported by no clause.</summary>
     public static int GoodShapeControl(int i)
     {
@@ -600,19 +643,21 @@ public class ElementAccessInlinabilityConformanceTests
     }
 
     // ------------------------------------------------------------------------------------------------
-    // The shape predicate (clauses (a)–(d)).
+    // The shape predicate (clauses (a)–(e)).
     // ------------------------------------------------------------------------------------------------
 
     private readonly record struct Finding(char Clause, string Detail);
 
     private sealed class ShapeScanner
     {
-        private readonly Assembly _core;
+        private readonly Assembly[] _core;
         private readonly int _ceiling;
         private readonly HashSet<string> _allowSet = BclAllowSet.ToHashSet(StringComparer.Ordinal);
         private readonly Dictionary<MethodBase, bool?> _calleeConformance = new();
 
-        public ShapeScanner(Assembly core, int ceiling)
+        /// <param name="core">The assemblies whose methods count as Core callees (the controls Fact adds the test assembly).</param>
+        /// <param name="ceiling">Clause (d)'s IL-size ceiling.</param>
+        public ShapeScanner(Assembly[] core, int ceiling)
         {
             _core = core;
             _ceiling = ceiling;
@@ -624,6 +669,13 @@ public class ElementAccessInlinabilityConformanceTests
         {
             var findings = new System.Collections.Generic.List<Finding>();
             var errors = new System.Collections.Generic.List<string>();
+
+            // (e) the method itself must be inlinable: NoInlining on a roster accessor re-creates the out-of-line call.
+            if (HasNoInlining(method))
+            {
+                findings.Add(new Finding('e', "carries MethodImplAttributes.NoInlining — the JIT will never inline it"));
+            }
+
             var decoded = TryDecode(method, errors);
             if (decoded is null)
             {
@@ -664,7 +716,8 @@ public class ElementAccessInlinabilityConformanceTests
                     continue;
                 }
 
-                if (!isCall && ins.OpCode != OpCodes.Newobj)
+                bool isNewobj = ins.OpCode == OpCodes.Newobj;
+                if (!isCall && !isNewobj)
                 {
                     continue;
                 }
@@ -688,12 +741,15 @@ public class ElementAccessInlinabilityConformanceTests
                     findings.Add(new Finding('b', $"{ins.OpCode.Name} {Key(Definition(target))} at IL_{ins.Offset:X4} (string construction)"));
                 }
 
-                if (!isCall)
+                // (c'') a newobj target goes through (c) like a call; an Exception constructor is already (b) above.
+                if (ins.OpCode == OpCodes.Newobj && declaring is not null && typeof(Exception).IsAssignableFrom(declaring))
                 {
                     continue;
                 }
 
-                // (c) every call target: BCL allow-set, conformant Core callee, or [NoInlining] Core method.
+                // (c) every call/newobj target: BCL allow-set, a conformant Core callee, or (c') a [NoInlining]
+                // throw helper named in the helper literal and declared on Sharpy.Index — no other NoInlining callee.
+                string verb = isCall ? "calls" : "constructs via";
                 var definition = Definition(target);
                 string key = Key(definition);
                 if (_allowSet.Contains(key))
@@ -702,10 +758,17 @@ public class ElementAccessInlinabilityConformanceTests
                     continue;
                 }
 
-                if (definition.DeclaringType?.Assembly == _core)
+                if (definition.DeclaringType is { } owner && Array.IndexOf(_core, owner.Assembly) >= 0)
                 {
                     if (HasNoInlining(definition))
                     {
+                        if (IsIndexHelper(definition))
+                        {
+                            continue;
+                        }
+
+                        findings.Add(new Finding('c', $"{verb} {key} at IL_{ins.Offset:X4} — a [NoInlining] Core callee that is " +
+                            "not a Sharpy.Index throw helper named in the helper literal (c'): an out-of-line call on the path"));
                         continue;
                     }
 
@@ -715,12 +778,12 @@ public class ElementAccessInlinabilityConformanceTests
                         continue;
                     }
 
-                    findings.Add(new Finding('c', $"calls {key} at IL_{ins.Offset:X4} — a Core callee that is neither " +
-                        $"[NoInlining] nor conformant ({calleeClauses})"));
+                    findings.Add(new Finding('c', $"{verb} {key} at IL_{ins.Offset:X4} — a Core callee that is neither " +
+                        $"a named Sharpy.Index helper nor conformant ({calleeClauses})"));
                     continue;
                 }
 
-                findings.Add(new Finding('c', $"calls {key} at IL_{ins.Offset:X4} — not in the BCL allow-set"));
+                findings.Add(new Finding('c', $"{verb} {key} at IL_{ins.Offset:X4} — not in the BCL allow-set"));
             }
 
             // (d) the inline-candidate size ceiling.
@@ -937,6 +1000,10 @@ public class ElementAccessInlinabilityConformanceTests
 
         return type.FullName ?? type.Name;
     }
+
+    /// <summary>(c'): the only NoInlining callees (c) admits — a helper-literal name declared on Sharpy.Index.</summary>
+    private static bool IsIndexHelper(MethodBase method) =>
+        method.DeclaringType == typeof(global::Sharpy.Index) && Array.IndexOf(HelperLiteral, method.Name) >= 0;
 
     private static bool HasNoInlining(MethodBase method) =>
         (method.MethodImplementationFlags & MethodImplAttributes.NoInlining) != 0;
