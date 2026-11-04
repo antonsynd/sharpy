@@ -27,14 +27,20 @@ namespace Sharpy.Core.Tests;
 /// <item>(d) the IL body is at most 100 B against a Release Core (the JIT's
 /// <c>DEFAULT_MAX_INLINE_SIZE</c>) and at most 128 B against a Debug Core, chosen at run time from the
 /// Core assembly's <see cref="DebuggableAttribute"/>;</item>
-/// <item>(e) the method itself does not carry <see cref="MethodImplOptions.NoInlining"/> (refutation N2).</item>
+/// <item>(e) the method itself does not carry <see cref="MethodImplOptions.NoInlining"/> (refutation N2);</item>
+/// <item>(f) the [NoInlining] calls sit OFF the fast path: some entry→<c>ret</c> path executes no [NoInlining]
+/// Core call, and every exception-returning Sharpy.Index helper is called only as <c>throw Helper(...)</c>
+/// (the next instruction is <c>throw</c>). (c') says WHICH helpers may be called; (f) says WHERE
+/// (#2404 verify X1: a discarded <c>OutOfRange</c> call on the get fast path; X2: <c>Normalize</c>
+/// forwarding every index to <c>WrapOrThrow</c> — both green under (a)–(e)).</item>
 /// </list>
 /// The rule is the IL shape alone: <c>AggressiveInlining</c> earns nothing here, because the attribute
 /// raises the JIT's willingness without removing the out-of-line construction this class is about.
 /// <para>
 /// The <see cref="Roster"/> is closed and literal and is totality-anchored three ways — every Core
-/// method that (i) references a <c>Sharpy.Index</c> member, (ii) is a public key indexer (<c>get_Item</c>
-/// with one parameter, <c>set_Item</c> with two) on an exported Core type, or (iii) holds
+/// method that (i) references a <c>Sharpy.Index</c> member, (ii) is a public key indexer (an accessor of a
+/// property with one index parameter, whatever its <c>IndexerName</c>, or a <c>get_Item</c> with one
+/// parameter / <c>set_Item</c> with two) on an exported Core type, or (iii) holds
 /// <c>newobj IndexError::.ctor</c> must be a roster row, a literal <see cref="NotApplicable"/> row, or
 /// (for (iii) only) a <see cref="HelperLiteral"/> throw helper on <c>Sharpy.Index</c>. There is no
 /// allowlist: a new <c>Normalize</c> caller, a new public indexer or a new <c>IndexError</c> site is red
@@ -57,7 +63,11 @@ public class ElementAccessInlinabilityConformanceTests
     // The literals.
     // ------------------------------------------------------------------------------------------------
 
-    /// <summary>The roster (plan P76, Defect Class rows 1–15): (row, method key).</summary>
+    /// <summary>
+    /// The roster (plan P76, Defect Class rows 1–15, plus row 16 placed by the verify round): (row, method key).
+    /// Row 16 was an N/A row ("C# list-pattern surface, no Python route") until #2404 verify X9 showed
+    /// <c>match xs: case [a, *_, b]</c> emits <c>case [var a, .., var b]</c>, which reads <c>b</c> through it.
+    /// </summary>
     private static readonly (string Row, string Key)[] Roster =
     {
         ("1", "Sharpy.List`1::get_Item(System.Int32)"),
@@ -78,6 +88,7 @@ public class ElementAccessInlinabilityConformanceTests
         ("13", "Sharpy.Dict`2::set_Item(K, V)"),
         ("14", "Sharpy.Bytes::get_Item(System.Int32)"),
         ("15", "Sharpy.FrozenDict`2::get_Item(TKey)"),
+        ("16", "Sharpy.List`1::get_Item(System.Index)"),
     };
 
     /// <summary>A literal N/A row of the Defect Class table: its reason and the Core members it covers.</summary>
@@ -120,12 +131,13 @@ public class ElementAccessInlinabilityConformanceTests
                 "Sharpy.StringExtensions::ResolveFieldValue(System.String, System.Object[], System.Boolean, " +
                 "Sharpy.Dict`2[System.String, System.Object], System.Int32&, System.Boolean&, System.Boolean&)",
             }),
-        new("C# list-pattern indexers",
-            "List<T>.this[System.Index] / this[System.Range] are the C# list-pattern surface: GetOffset + " +
-            "the BCL indexer (ArgumentOutOfRangeException, never IndexError); no Python route",
+        new("list-pattern slice capture",
+            "List<T>.this[System.Range] is the *rest capture of a list pattern (case [a, *rest] emits " +
+            "..var rest): slice access, not element access — it builds a new list through GetSlice. " +
+            "this[System.Index] is NOT here: list patterns read their from-end elements through it, so it " +
+            "is roster row 16 (#2404 verify X9)",
             new[]
             {
-                "Sharpy.List`1::get_Item(System.Index)",
                 "Sharpy.List`1::get_Item(System.Range)",
             }),
         new("slice accessors",
@@ -186,6 +198,8 @@ public class ElementAccessInlinabilityConformanceTests
         "System.Collections.Immutable.ImmutableDictionary`2::TryGetValue(TKey, TValue&)",
         "System.Index::get_IsFromEnd()",
         "System.Index::get_Value()",
+        // Row 16: List<T>.this[System.Index] => _list[index.GetOffset(_list.Count)].
+        "System.Index::GetOffset(System.Int32)",
         "System.Array::Empty<T>()",
         "System.Math::Min(System.Int32, System.Int32)",
         "System.Math::Max(System.Int32, System.Int32)",
@@ -393,6 +407,8 @@ public class ElementAccessInlinabilityConformanceTests
         Expect(nameof(NoInliningShapeControl), 'e');
         ExpectMentioning(nameof(ForeignHelperShapeControl), "(c')", 'c');
         ExpectMentioning(nameof(CtorShapeControl), "constructs via System.Text.StringBuilder::.ctor(System.Int32)", 'c');
+        ExpectMentioning(nameof(UnconditionalHelperShapeControl), "no helper-free path", 'f');
+        ExpectMentioning(nameof(DiscardedHelperShapeControl), "does not throw its result", 'f');
 
         Assert.True(problems.Count == 0, "The shape predicate mis-reports its controls:\n  " + string.Join("\n  ", problems));
     }
@@ -412,6 +428,11 @@ public class ElementAccessInlinabilityConformanceTests
         Assert.Equal(new[] { "get_Item" }, partII);
         Assert.Empty(skippedAbstract);
         Assert.Equal(new[] { "PlantedIndexErrorSite" }, partIII);
+
+        // (ii) is keyed on the index parameters, not the accessor name: an [IndexerName] indexer is still found (#2404 verify X6).
+        var renamed = AnchorPublicKeyIndexers(new[] { typeof(PlantedRenamedHolder) }, out var renamedAbstract).Select(m => m.Name).ToArray();
+        Assert.Equal(new[] { "get_At" }, renamed);
+        Assert.Empty(renamedAbstract);
 
         // The planted (i)/(iii) members are private: the member flags must include NonPublic.
         Assert.False(typeof(PlantedHolder).GetMethod("PlantedIndexReferrer", AllDeclared)!.IsPublic);
@@ -544,6 +565,28 @@ public class ElementAccessInlinabilityConformanceTests
         return (uint)i < (uint)d.Length ? d[i] : d[global::Sharpy.Index.WrapOrThrow(i, d.Length)];
     }
 
+    /// <summary>The slow-path helper called on every path (#2404 verify X2's shape): reported by (f) alone.</summary>
+    public static int UnconditionalHelperShapeControl(int i)
+    {
+        var d = ControlData;
+        return d[global::Sharpy.Index.WrapOrThrow(i, d.Length)];
+    }
+
+    /// <summary>
+    /// The good shape plus an exception-returning helper whose result is discarded (#2404 verify X1's shape),
+    /// behind a branch so a helper-free path still exists: reported by (f) alone, by its throw rule.
+    /// </summary>
+    public static int DiscardedHelperShapeControl(int i)
+    {
+        var d = ControlData;
+        if (i == 1)
+        {
+            _ = global::Sharpy.Index.OutOfRange(i);
+        }
+
+        return (uint)i < (uint)d.Length ? d[i] : d[global::Sharpy.Index.WrapOrThrow(i, d.Length)];
+    }
+
     /// <summary>The D2 shape, slow path through the [NoInlining] <c>Index.WrapOrThrow</c>: reported by no clause.</summary>
     public static int GoodShapeControl(int i)
     {
@@ -563,6 +606,13 @@ public class ElementAccessInlinabilityConformanceTests
         private static int PlantedIndexReferrer(int i, int n) => global::Sharpy.Index.Normalize(i, n);
 
         private static IndexError PlantedIndexErrorSite() => new IndexError("planted");
+    }
+
+    /// <summary>Anchor part (ii)'s second positive control: a public indexer renamed by <c>[IndexerName]</c> (accessor <c>get_At</c>).</summary>
+    public sealed class PlantedRenamedHolder
+    {
+        [IndexerName("At")]
+        public int this[int i] => i;
     }
 
     // ------------------------------------------------------------------------------------------------
@@ -598,17 +648,26 @@ public class ElementAccessInlinabilityConformanceTests
     }
 
     /// <summary>
-    /// Anchor part (ii): public, non-abstract <c>get_Item</c> with one parameter or <c>set_Item</c> with two.
+    /// Anchor part (ii): public, non-abstract accessors of a one-index-parameter property (any IndexerName),
+    /// plus any <c>get_Item</c> with one parameter or <c>set_Item</c> with two.
     /// Visibility is the MEMBER's; the abstract members skipped are returned for the literal check.
     /// </summary>
     private static System.Collections.Generic.List<MethodBase> AnchorPublicKeyIndexers(IEnumerable<Type> universe, out System.Collections.Generic.List<MethodBase> skippedAbstract)
     {
         var hits = new System.Collections.Generic.List<MethodBase>();
         skippedAbstract = new System.Collections.Generic.List<MethodBase>();
-        foreach (var method in universe.SelectMany(t => t.GetMethods(AllDeclared)))
+        var types = universe.ToArray();
+        // Keyed on the index parameters, not the name: [IndexerName("At")] renames the accessors to get_At/set_At.
+        var oneKeyAccessors = new HashSet<MethodInfo>(types
+            .SelectMany(t => t.GetProperties(AllDeclared))
+            .Where(p => p.GetIndexParameters().Length == 1)
+            .SelectMany(p => new[] { p.GetMethod, p.SetMethod })
+            .OfType<MethodInfo>());
+        foreach (var method in types.SelectMany(t => t.GetMethods(AllDeclared)))
         {
             int arity = method.GetParameters().Length;
-            bool keyIndexer = (method.Name == "get_Item" && arity == 1) || (method.Name == "set_Item" && arity == 2);
+            bool keyIndexer = oneKeyAccessors.Contains(method) ||
+                (method.Name == "get_Item" && arity == 1) || (method.Name == "set_Item" && arity == 2);
             if (!keyIndexer || !method.IsPublic)
             {
                 continue;
@@ -700,8 +759,11 @@ public class ElementAccessInlinabilityConformanceTests
                 findings.Add(new Finding('a', $"EH clause {clause.Flags} (try IL_{clause.TryOffset:X4}, handler IL_{clause.HandlerOffset:X4})"));
             }
 
-            foreach (var ins in instructions)
+            var helperCallOffsets = new HashSet<int>();
+            for (int k = 0; k < instructions.Count; k++)
             {
+                var ins = instructions[k];
+
                 // (b) cold-path construction inline.
                 if (ins.OpCode == OpCodes.Ldstr)
                 {
@@ -762,8 +824,18 @@ public class ElementAccessInlinabilityConformanceTests
                 {
                     if (HasNoInlining(definition))
                     {
+                        helperCallOffsets.Add(ins.Offset);
                         if (IsIndexHelper(definition))
                         {
+                            // (f) an exception-returning helper is only ever `throw Helper(...)`.
+                            if (definition is MethodInfo helper && typeof(Exception).IsAssignableFrom(helper.ReturnType) &&
+                                (k + 1 >= instructions.Count || instructions[k + 1].OpCode != OpCodes.Throw))
+                            {
+                                string next = k + 1 < instructions.Count ? instructions[k + 1].OpCode.Name : "the end of the body";
+                                findings.Add(new Finding('f', $"{verb} {key} at IL_{ins.Offset:X4} but does not throw its result " +
+                                    $"(next: {next}) — an exception-returning helper is called only as `throw Helper(...)`"));
+                            }
+
                             continue;
                         }
 
@@ -784,6 +856,13 @@ public class ElementAccessInlinabilityConformanceTests
                 }
 
                 findings.Add(new Finding('c', $"{verb} {key} at IL_{ins.Offset:X4} — not in the BCL allow-set"));
+            }
+
+            // (f) the fast path: some entry→ret path executes no [NoInlining] Core call.
+            if (helperCallOffsets.Count > 0 && !HasHelperFreePathToRet(instructions, helperCallOffsets))
+            {
+                findings.Add(new Finding('f', "has no helper-free path from entry to ret — every execution makes an " +
+                    "out-of-line [NoInlining] call, so the accessor cannot have an inlined fast path"));
             }
 
             // (d) the inline-candidate size ceiling.
@@ -810,11 +889,73 @@ public class ElementAccessInlinabilityConformanceTests
         }
     }
 
+    /// <summary>
+    /// (f): whether some path from IL_0000 reaches <c>ret</c> without executing an instruction at one of
+    /// <paramref name="blocked"/>. Follows fall-through and branch targets (<c>leave</c> as a jump); <c>throw</c>,
+    /// <c>rethrow</c>, <c>endfinally</c>/<c>endfilter</c> and <c>jmp</c> end a path without reaching <c>ret</c>.
+    /// </summary>
+    private static bool HasHelperFreePathToRet(System.Collections.Generic.List<Instruction> instructions, HashSet<int> blocked)
+    {
+        var indexOf = new Dictionary<int, int>();
+        for (int k = 0; k < instructions.Count; k++)
+        {
+            indexOf[instructions[k].Offset] = k;
+        }
+
+        var seen = new bool[instructions.Count];
+        var work = new Stack<int>();
+        work.Push(0);
+        while (work.Count > 0)
+        {
+            int k = work.Pop();
+            if (k < 0 || k >= instructions.Count || seen[k])
+            {
+                continue;
+            }
+
+            seen[k] = true;
+            var ins = instructions[k];
+            if (blocked.Contains(ins.Offset))
+            {
+                continue;
+            }
+
+            if (ins.OpCode == OpCodes.Ret)
+            {
+                return true;
+            }
+
+            var flow = ins.OpCode.FlowControl;
+            if (flow is FlowControl.Throw or FlowControl.Return || ins.OpCode == OpCodes.Jmp)
+            {
+                continue;
+            }
+
+            foreach (int target in ins.Targets)
+            {
+                if (!indexOf.TryGetValue(target, out int t))
+                {
+                    throw new InvalidDataException($"branch at IL_{ins.Offset:X4} targets IL_{target:X4}, not an instruction start");
+                }
+
+                work.Push(t);
+            }
+
+            if (flow != FlowControl.Branch)
+            {
+                work.Push(k + 1);
+            }
+        }
+
+        return false;
+    }
+
     // ------------------------------------------------------------------------------------------------
     // The IL reader — an opcode table built from System.Reflection.Emit.OpCodes.
     // ------------------------------------------------------------------------------------------------
 
-    private readonly record struct Instruction(int Offset, OpCode OpCode, int Token);
+    /// <summary>One decoded instruction; <paramref name="Targets"/> holds its absolute branch targets (empty if none).</summary>
+    private readonly record struct Instruction(int Offset, OpCode OpCode, int Token, int[] Targets);
 
     private static readonly OpCode?[] OneByteOpCodes = new OpCode?[0x100];
     private static readonly OpCode?[] TwoByteOpCodes = new OpCode?[0x100];
@@ -868,11 +1009,20 @@ public class ElementAccessInlinabilityConformanceTests
             }
 
             int token = 0;
+            int[] branchTargets = Array.Empty<int>();
             switch (op.Value.OperandType)
             {
                 case OperandType.InlineNone:
                     break;
                 case OperandType.ShortInlineBrTarget:
+                    if (pos >= il.Length)
+                    {
+                        throw new InvalidDataException($"truncated branch operand at IL_{start:X4}");
+                    }
+
+                    branchTargets = new[] { pos + 1 + (sbyte)il[pos] };
+                    pos += 1;
+                    break;
                 case OperandType.ShortInlineI:
                 case OperandType.ShortInlineVar:
                     pos += 1;
@@ -881,6 +1031,9 @@ public class ElementAccessInlinabilityConformanceTests
                     pos += 2;
                     break;
                 case OperandType.InlineBrTarget:
+                    branchTargets = new[] { pos + 4 + ReadInt32(il, pos, start) };
+                    pos += 4;
+                    break;
                 case OperandType.InlineI:
                 case OperandType.ShortInlineR:
                     pos += 4;
@@ -899,8 +1052,15 @@ public class ElementAccessInlinabilityConformanceTests
                     pos += 4;
                     break;
                 case OperandType.InlineSwitch:
-                    int targets = BinaryPrimitives.ReadInt32LittleEndian(il.AsSpan(pos, 4));
-                    pos += 4 + (4 * targets);
+                    int targets = ReadInt32(il, pos, start);
+                    int afterSwitch = pos + 4 + (4 * targets);
+                    branchTargets = new int[targets];
+                    for (int t = 0; t < targets; t++)
+                    {
+                        branchTargets[t] = afterSwitch + ReadInt32(il, pos + 4 + (4 * t), start);
+                    }
+
+                    pos = afterSwitch;
                     break;
                 default:
                     throw new InvalidDataException($"unsupported operand type {op.Value.OperandType} at IL_{start:X4}");
@@ -911,11 +1071,16 @@ public class ElementAccessInlinabilityConformanceTests
                 throw new InvalidDataException($"operand of {op.Value.Name} at IL_{start:X4} runs past the body");
             }
 
-            instructions.Add(new Instruction(start, op.Value, token));
+            instructions.Add(new Instruction(start, op.Value, token, branchTargets));
         }
 
         return instructions;
     }
+
+    private static int ReadInt32(byte[] il, int pos, int start) =>
+        pos >= 0 && pos + 4 <= il.Length
+            ? BinaryPrimitives.ReadInt32LittleEndian(il.AsSpan(pos, 4))
+            : throw new InvalidDataException($"truncated operand at IL_{start:X4}");
 
     /// <summary>Decodes a method body; null for a method without IL. A decode failure is recorded, never skipped silently.</summary>
     private static (MethodBody Body, byte[] Il, System.Collections.Generic.List<Instruction> Instructions)? TryDecode(MethodBase method, System.Collections.Generic.List<string> errors)
