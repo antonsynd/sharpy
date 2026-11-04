@@ -165,7 +165,7 @@ namespace Sharpy
                 {
                     if (_hasNullKey)
                         return _nullValue;
-                    throw new KeyError(key);
+                    throw Sharpy.Index.KeyNotFound(key);
                 }
 
                 if (_dict.TryGetValue(key, out V? value))
@@ -173,7 +173,7 @@ namespace Sharpy
                     return value;
                 }
 
-                throw new KeyError(key);
+                throw Sharpy.Index.KeyNotFound(key);
             }
             set
             {

@@ -47,13 +47,11 @@ namespace Sharpy
         {
             get
             {
-                index = Sharpy.Index.Normalize(index, _list.Count, false, false);
-                return _list[index];
+                return _list[Sharpy.Index.Normalize(index, _list.Count)];
             }
             set
             {
-                index = Sharpy.Index.Normalize(index, _list.Count, false, false);
-                _list[index] = value;
+                _list[Sharpy.Index.Normalize(index, _list.Count)] = value;
             }
         }
 
@@ -69,7 +67,7 @@ namespace Sharpy
         {
             if ((uint)index >= (uint)_list.Count)
             {
-                throw new IndexError($"list index {index} out of range");
+                throw Sharpy.Index.OutOfRange(index);
             }
 
             return _list[index];
@@ -255,7 +253,7 @@ namespace Sharpy
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public void DeleteAt(int index)
         {
-            _list.RemoveAt(Sharpy.Index.Normalize(index, _list.Count, false, false));
+            _list.RemoveAt(Sharpy.Index.Normalize(index, _list.Count));
         }
 
         /// <summary>

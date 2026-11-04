@@ -11,17 +11,20 @@ namespace Sharpy
         /// </summary>
         public static T GetItem<T>(T[] array, int index)
         {
-            if (index < 0)
+            int n = array.Length;
+
+            if ((uint)index < (uint)n)
             {
-                index = array.Length + index;
+                return array[index];
             }
 
-            if (index < 0 || index >= array.Length)
+            // Slow path: a negative index in [-n, 0) counts from the end.
+            if (index < 0 && index >= -n)
             {
-                throw new IndexError($"array index out of range");
+                return array[index + n];
             }
 
-            return array[index];
+            throw Sharpy.Index.ArrayOutOfRange();
         }
 
         /// <summary>
@@ -29,17 +32,22 @@ namespace Sharpy
         /// </summary>
         public static void SetItem<T>(T[] array, int index, T value)
         {
-            if (index < 0)
+            int n = array.Length;
+
+            if ((uint)index < (uint)n)
             {
-                index = array.Length + index;
+                array[index] = value;
+                return;
             }
 
-            if (index < 0 || index >= array.Length)
+            // Slow path: a negative index in [-n, 0) counts from the end.
+            if (index < 0 && index >= -n)
             {
-                throw new IndexError($"array index out of range");
+                array[index + n] = value;
+                return;
             }
 
-            array[index] = value;
+            throw Sharpy.Index.ArrayOutOfRange();
         }
     }
 }

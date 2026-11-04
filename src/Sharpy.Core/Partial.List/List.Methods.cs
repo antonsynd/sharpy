@@ -88,7 +88,7 @@ namespace Sharpy
         /// </example>
         public void Insert(int i, T x)
         {
-            _list.Insert(Sharpy.Index.Normalize(i, _list.Count, false, true), x);
+            _list.Insert(Sharpy.Index.Clamp(i, _list.Count), x);
         }
 
         /// <summary>
@@ -109,22 +109,23 @@ namespace Sharpy
         /// </example>
         public T Pop(int i = -1)
         {
-            if (_list.Count == 0)
+            int n = _list.Count;
+
+            if (n == 0)
             {
-                throw new IndexError("pop from empty list");
+                throw Sharpy.Index.PopFromEmpty();
             }
 
-            try
+            // The message names the caller's index, not the normalised one ("pop index -7 out of range").
+            int j = i < 0 ? i + n : i;
+
+            if ((uint)j >= (uint)n)
             {
-                i = Sharpy.Index.Normalize(i, _list.Count, false, false);
-            }
-            catch (IndexError)
-            {
-                throw new IndexError($"pop index {i} out of range");
+                throw Sharpy.Index.PopOutOfRange(i);
             }
 
-            var item = _list[i];
-            _list.RemoveAt(i);
+            var item = _list[j];
+            _list.RemoveAt(j);
 
             return item;
         }
@@ -211,8 +212,8 @@ namespace Sharpy
             // start and end are interpreted as in slice notation: they clamp to
             // [0, Count] and negative values count from the end. The default end
             // (int.MaxValue) clamps to Count so the last element is searched.
-            start = Sharpy.Index.Normalize(start, _list.Count, true, false);
-            var stop = Sharpy.Index.Normalize(end, _list.Count, true, false);
+            start = Sharpy.Index.Clamp(start, _list.Count);
+            var stop = Sharpy.Index.Clamp(end, _list.Count);
             var count = stop - start;
 
             if (count > 0)
@@ -225,7 +226,7 @@ namespace Sharpy
                 }
             }
 
-            throw new ValueError($"{x} is not in list");
+            throw Sharpy.Index.NotInList(x);
         }
 
         /// <summary>

@@ -63,12 +63,20 @@ namespace Sharpy
         /// <exception cref="IndexError">Thrown if the index is out of range.</exception>
         public static string GetItem(string s, int index)
         {
-            int actual = index < 0 ? s.Length + index : index;
-            if (actual < 0 || actual >= s.Length)
+            int n = s.Length;
+
+            if ((uint)index < (uint)n)
             {
-                throw new IndexError("string index out of range");
+                return s[index].ToString();
             }
-            return s[actual].ToString();
+
+            // Slow path: a negative index in [-n, 0) counts from the end.
+            if (index < 0 && index >= -n)
+            {
+                return s[index + n].ToString();
+            }
+
+            throw Sharpy.Index.StringOutOfRange();
         }
 
         /// <summary>
