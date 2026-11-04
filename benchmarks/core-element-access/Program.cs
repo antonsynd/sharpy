@@ -59,7 +59,8 @@ internal static class Program
     // ---- A: Sharpy.List<T> indexer (rows 1/2) ----
     private static Func<long> MakeIndexer()
     {
-        var a = SharpyMatrix(); var b = SharpyMatrix();
+        var a = SharpyMatrix();
+        var b = SharpyMatrix();
         return () => MatMulIndexer(a, b);
     }
 
@@ -77,7 +78,8 @@ internal static class Program
     // ---- B: GetItemUnchecked reads (row 3), indexer write (the range-loop route) ----
     private static Func<long> MakeUnchecked()
     {
-        var a = SharpyMatrix(); var b = SharpyMatrix();
+        var a = SharpyMatrix();
+        var b = SharpyMatrix();
         return () => MatMulUnchecked(a, b);
     }
 
@@ -96,7 +98,8 @@ internal static class Program
     // ---- C: BCL List<T> (the floor R-KA's 1.3x trigger is measured against) ----
     private static Func<long> MakeBcl()
     {
-        var a = BclMatrix(); var b = BclMatrix();
+        var a = BclMatrix();
+        var b = BclMatrix();
         return () => MatMulBcl(a, b);
     }
 
@@ -115,7 +118,8 @@ internal static class Program
     // ---- D: int[][] through ArrayHelpers (row 11, the array[T] route) ----
     private static Func<long> MakeArrayHelpers()
     {
-        var a = ArrayMatrix(); var b = ArrayMatrix();
+        var a = ArrayMatrix();
+        var b = ArrayMatrix();
         return () => MatMulArrayHelpers(a, b);
     }
 
@@ -136,7 +140,8 @@ internal static class Program
     // ---- E: raw int[][] (the lower bound) ----
     private static Func<long> MakeRaw()
     {
-        var a = ArrayMatrix(); var b = ArrayMatrix();
+        var a = ArrayMatrix();
+        var b = ArrayMatrix();
         return () => MatMulRaw(a, b);
     }
 
