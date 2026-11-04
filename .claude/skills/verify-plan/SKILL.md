@@ -218,3 +218,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 For each error, edit the plan text directly. Mark corrections `[CORRECTED: reason]`; mark drafted sections `[ADDED: adequacy]`; mark added steps `[ADDED: missing step]` so the author can review every change.
 
 Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), and the warnings the author must act on before `/implement-plan`.
+
+### 4. After NEEDS REVISION — how the revision begins
+
+There is no revision skill; the revision is plan-author work and runs as `/create-plan` with no argument (it lists the three newest plans and asks which to re-plan), on the same model that writes plans, in a **fresh context** — the next `/verify-plan` must be a fresh read, so the verifier that stamped NEEDS REVISION does not also revise unless the user says so explicitly (then the user runs the re-verify from a new session). When summarizing a NEEDS REVISION result, end with that one-line routing so the user does not have to ask. The revising session: (1) deletes the stale stamp and `## Verification Summary` (the next pass writes fresh ones; a left-over stamp is read by `/implement-plan` as the current verdict), (2) keeps a one-line `## Revision log` entry naming the pass's sha and the decisions it changed, (3) re-runs `python3 build_tools/check_plan_refs.py <plan>` before handing back. `/implement-plan` stays refused until a new stamp reads PASS.
