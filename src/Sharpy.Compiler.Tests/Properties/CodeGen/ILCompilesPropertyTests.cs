@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Tests.Properties.Generators;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -48,6 +49,7 @@ public class ILCompilesPropertyTests
         var references = IntegrationTestBase.GetSharedReferences();
         int total = 0;
         int emitted = 0;
+        int knownRed = 0;
         var rejections = new ConcurrentBag<string>();
 
         Gen.Int[1, 3].SelectMany(fuel =>
@@ -87,8 +89,18 @@ public class ILCompilesPropertyTests
                 .Where(d => d.Severity == DiagnosticSeverity.Error)
                 .ToList();
 
+            var pinned = HasNoneLiteralReceiver(module);
+
             if (errors.Count > 0)
             {
+                // The one known-red shape (R-KK): tolerated only when every Roslyn error is the pin's
+                // measured code, so a second defect in the same draw still fails the run.
+                if (pinned && errors.All(d => d.Id == NoneLiteralReceiver.RoslynCode))
+                {
+                    Interlocked.Increment(ref knownRed);
+                    return;
+                }
+
                 var detail = string.Join("\n  ", errors.Take(5).Select(d => d.ToString()));
                 throw new Xunit.Sdk.XunitException(
                     "Generated C# failed to emit to IL (#1035):\n" +
@@ -97,11 +109,21 @@ public class ILCompilesPropertyTests
                     $"=== CS diagnostics ===\n  {detail}");
             }
 
+            if (pinned)
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"The {NoneLiteralReceiver.Issue} pin is stale: a draw with a {NoneLiteralReceiver.Shape} "
+                    + "compiled to valid IL. Delete NoneLiteralReceiver and its facts (drain on fix).\n"
+                    + $"=== Sharpy source ===\n{source}");
+            }
+
             Interlocked.Increment(ref emitted);
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(WithEntryPoint(m)), iter: SampleCount);
 
         _output.WriteLine($"IL emission: {emitted}/{total} emitted to valid IL "
             + $"({rejections.Count} rejected by the front end)");
+        _output.WriteLine($"  {knownRed} skipped ({NoneLiteralReceiver.Issue}: {NoneLiteralReceiver.Shape} "
+            + $"-> {NoneLiteralReceiver.RoslynCode})");
         foreach (var reason in rejections.GroupBy(r => r).OrderByDescending(g => g.Count()).Take(5))
             _output.WriteLine($"  rejected x{reason.Count()}: {reason.Key}");
 
@@ -109,9 +131,89 @@ public class ILCompilesPropertyTests
         // "every sample emitted clean IL" are the same green. It is deliberately far below the
         // measured rate rather than next to it — this is a random generator, and a floor that
         // tracks the observed value converts a real signal into a flake.
-        total.Should().BeGreaterThanOrEqualTo(MinimumEmittedSamples,
+        // Counted on `emitted`, not `total`: a known-red draw reaches compilation.Emit but witnesses
+        // nothing, so it must not hold the floor up. On a run with no pinned draw the two are equal.
+        emitted.Should().BeGreaterThanOrEqualTo(MinimumEmittedSamples,
             "a sample that never reaches compilation.Emit cannot witness the property this test "
             + "asserts; #1432 was exactly this suite passing on 0 emitted programs");
+    }
+
+    /// <summary>
+    /// The one known-red draw shape this lane tolerates (R-KK, #2365, a band chore on P76's gate): a
+    /// member access whose receiver is the <c>None</c> literal (<c>raise None.m</c>, <c>x = None.qux</c>,
+    /// <c>return None.res</c>). The front end accepts it and the emitter writes <c>null.M</c>, which Roslyn
+    /// refuses with CS0023 — the <c>None</c>-literal row of #2365's receiver-kind axis, cured by P17's
+    /// not-found arm (a semantic-time SPY0203). Nightly seeds <c>5F-Ai3FcPnEx</c>, <c>8sLgyTw-IOM3</c> and
+    /// <c>c4U0RdI-d-Uw</c> drew it.
+    ///
+    /// <para>Keyed on the SHAPE (R-JE's precedent, 8d6883cd2), never on the code alone: a pinned draw is
+    /// skipped only when every Roslyn error is CS0023, and reported "n skipped (#2365)". It drains loudly
+    /// two ways: a pinned draw that compiles to valid IL fails the sampled test, and
+    /// <see cref="NoneLiteralReceiver_IsStillKnownRed"/> fails once the front end refuses the shape.</para>
+    /// </summary>
+    private static readonly KnownRedDrawShape NoneLiteralReceiver =
+        new KnownRedDrawShape("#2365", "None-literal member-access receiver", "CS0023");
+
+    private sealed record KnownRedDrawShape(string Issue, string Shape, string RoslynCode);
+
+    /// <summary>True when any member access in <paramref name="node"/> has the <c>None</c> literal
+    /// (through parentheses) as its receiver.</summary>
+    private static bool HasNoneLiteralReceiver(Node node) =>
+        (node is MemberAccess access && AstHelper.UnwrapParenthesized(access.Object) is NoneLiteral)
+        || node.GetChildNodes().Any(HasNoneLiteralReceiver);
+
+    /// <summary>
+    /// The pin's drain signal, deterministic: the reproducer cells of #2365's <c>None</c>-literal row (the
+    /// first is nightly #7's shrunk seed <c>c4U0RdI-d-Uw</c>) still pass the front end and still fail Roslyn
+    /// with CS0023 only. When P17 lands, the front end refuses them (SPY0203) and this goes red: delete
+    /// <see cref="NoneLiteralReceiver"/>, this fact and the skip.
+    /// </summary>
+    [Theory]
+    [InlineData("def run_task(x: int, qux: int) -> int:\n    raise None.m\n\ndef main():\n    pass\n")]
+    [InlineData("def main():\n    x = None.qux\n")]
+    [InlineData("def main():\n    print(None.qux)\n")]
+    [InlineData("def f() -> int:\n    return None.res\n\ndef main():\n    pass\n")]
+    public void NoneLiteralReceiver_IsStillKnownRed(string source)
+    {
+        var module = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll()).ParseModule();
+        HasNoneLiteralReceiver(module).Should().BeTrue("the reproducer must carry the pinned shape");
+
+        var result = new Sharpy.Compiler.Compiler().Compile(source, "il_test.spy");
+        result.Success.Should().BeTrue(
+            $"{NoneLiteralReceiver.Issue}'s None-literal row has changed at the front end; if it now refuses "
+            + "the shape (SPY0203, P17), the pin has drained — delete NoneLiteralReceiver, this fact and the skip. "
+            + "First error: " + result.Diagnostics.GetErrors().FirstOrDefault()?.ToString());
+
+        var compilation = CSharpCompilation.Create(
+            "ILCompilesPin",
+            new[] { CSharpSyntaxTree.ParseText(result.GeneratedCSharpCode) },
+            IntegrationTestBase.GetSharedReferences(),
+            new CSharpCompilationOptions(OutputKind.ConsoleApplication));
+        using var ms = new MemoryStream();
+        var codes = compilation.Emit(ms).Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.Id)
+            .Distinct()
+            .ToList();
+        codes.Should().Equal(new[] { NoneLiteralReceiver.RoslynCode },
+            "the pin tolerates exactly the measured Roslyn code; any other outcome means the row moved");
+    }
+
+    /// <summary>
+    /// Positive and negative controls for the pin's shape predicate: it reports the <c>None</c> literal as
+    /// a receiver (bare or parenthesized) and nothing else — a member access on a name, on a call taking
+    /// <c>None</c>, or a bare <c>None</c> is a second shape the skip must never cover.
+    /// </summary>
+    [Theory]
+    [InlineData("x = None.qux\n", true)]
+    [InlineData("x = (None).qux\n", true)]
+    [InlineData("x = y.qux\n", false)]
+    [InlineData("x = f(None).qux\n", false)]
+    [InlineData("x = None\n", false)]
+    public void NoneLiteralReceiver_ShapePredicate_CoversOnlyThatShape(string source, bool expected)
+    {
+        var module = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll()).ParseModule();
+        HasNoneLiteralReceiver(module).Should().Be(expected);
     }
 
     /// <summary>

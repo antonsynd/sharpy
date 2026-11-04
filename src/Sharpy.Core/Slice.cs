@@ -67,7 +67,7 @@ namespace Sharpy
 
         internal static (int, int) Normalize(int start, int end, int max)
         {
-            return (Index.Normalize(start, max, true, false), Index.Normalize(end, max, true, false));
+            return (Index.Clamp(start, max), Index.Clamp(end, max));
         }
 
         /// <summary>

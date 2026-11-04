@@ -89,22 +89,21 @@ namespace Sharpy
         {
             get
             {
-                if (_data.Length == 0)
+                byte[] data = _data;
+                int n = data.Length;
+
+                if ((uint)index < (uint)n)
                 {
-                    throw new IndexError("index out of range");
+                    return data[index];
                 }
 
-                if (index < 0)
+                // Slow path: a negative index in [-n, 0) counts from the end (empty bytes never matches).
+                if (index < 0 && index >= -n)
                 {
-                    index = _data.Length + index;
+                    return data[index + n];
                 }
 
-                if (index < 0 || index >= _data.Length)
-                {
-                    throw new IndexError("index out of range");
-                }
-
-                return _data[index];
+                throw Sharpy.Index.BytesOutOfRange();
             }
         }
 

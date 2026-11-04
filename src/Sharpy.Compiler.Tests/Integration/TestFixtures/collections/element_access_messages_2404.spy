@@ -1,0 +1,284 @@
+# P76 behavioural pin: every roster accessor x direction {in range, negative in range,
+# negative out of range, positive out of range} x route. Functions + main as the entry point
+# requires; the `array[int]`/`frozendict` forms keep it out of the DifferentialExecutionTests
+# python3 pool (shared-subset AST filter), so the DEVIATION message texts never reach python3.
+
+
+
+def cell_00() -> None:
+    # rows 1-2: list get / set via the indexer
+    xs: list[int] = [1, 2, 3]
+    print(xs[0], xs[2], xs[-1], xs[-3])
+    try:
+        print(xs[3])
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        print(xs[-4])
+    except IndexError as e:
+        print("IndexError", e)
+    xs[-1] = 9
+    xs[0] = 7
+    print(xs)
+    try:
+        xs[3] = 0
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        xs[-4] = 0
+    except IndexError as e:
+        print("IndexError", e)
+
+def cell_01() -> None:
+    # row 3: the range-loop route (GetItemUnchecked)
+    xs: list[int] = [7, 2, 9]
+    total: int = 0
+    for i in range(len(xs)):
+        total += xs[i]
+    print(total)
+    try:
+        for i in range(4):
+            print(xs[i])
+    except IndexError as e:
+        print("IndexError", e)
+
+def cell_02() -> None:
+    # row 7: pop
+    ys: list[int] = [1, 2, 3]
+    print(ys.pop(), ys.pop(0), ys.pop(-1), ys)
+    try:
+        ys.pop()
+    except IndexError as e:
+        print("IndexError", e)
+    zs: list[int] = [1, 2, 3]
+    try:
+        zs.pop(7)
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        zs.pop(-7)
+    except IndexError as e:
+        print("IndexError", e)
+    print(zs.pop(-3), zs)
+
+def cell_03() -> None:
+    # row 8: insert clamps
+    ws: list[int] = [1, 2, 3]
+    ws.insert(0, 0)
+    ws.insert(100, 4)
+    ws.insert(-100, -1)
+    ws.insert(-1, 33)
+    print(ws)
+
+# row 9: DeleteAt has no Sharpy route (`del` is SPY0144); pinned by Core.Tests ListTests.DelItem.cs
+
+def cell_05() -> None:
+    # row 10: index with clamped start/end and the ValueError
+    us: list[int] = [1, 2, 3, 2]
+    print(us.index(2), us.index(2, 2), us.index(2, -1), us.index(1, -10, 100), us.index(3, 2, 3))
+    try:
+        us.index(9)
+    except ValueError as e:
+        print("ValueError", e)
+    try:
+        us.index(1, 1)
+    except ValueError as e:
+        print("ValueError", e)
+    try:
+        us.index(2, 0, 1)
+    except ValueError as e:
+        print("ValueError", e)
+
+def cell_06() -> None:
+    # row 11: array get / set
+    arr: array[int] = array[int](3)
+    arr[0] = 5
+    arr[-1] = 8
+    arr[1] = arr[0] + arr[-1]
+    print(arr[0], arr[1], arr[2], arr[-3])
+    try:
+        print(arr[3])
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        print(arr[-4])
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        arr[3] = 1
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        arr[-4] = 1
+    except IndexError as e:
+        print("IndexError", e)
+
+def cell_07() -> None:
+    # row 12: str
+    s: str = "abc"
+    print(s[0], s[2], s[-1], s[-3])
+    try:
+        print(s[3])
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        print(s[-4])
+    except IndexError as e:
+        print("IndexError", e)
+
+def cell_08() -> None:
+    # row 13: dict get / set, missing key, None key
+    d: dict[str, int] = {"a": 1}
+    d["b"] = 2
+    print(d["a"], d["b"])
+    try:
+        print(d["zz"])
+    except KeyError as e:
+        print("KeyError", e)
+    dn: dict[str | None, int] = {}
+    try:
+        print(dn[None])
+    except KeyError as e:
+        print("KeyError", e)
+    dn[None] = 5
+    dn["k"] = 6
+    print(dn[None], dn["k"], len(dn))
+
+def cell_09() -> None:
+    # row 14: bytes
+    b: bytes = bytes([10, 20, 30])
+    print(b[0], b[2], b[-1], b[-3])
+    try:
+        print(b[3])
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        print(b[-4])
+    except IndexError as e:
+        print("IndexError", e)
+    empty: list[int] = []
+    e0: bytes = bytes(empty)
+    try:
+        print(e0[0])
+    except IndexError as e:
+        print("IndexError", e)
+
+def cell_10() -> None:
+    # row 15: frozendict
+    fd: frozendict[str, int] = frozendict({"x": 1, "y": 2})
+    print(fd["x"], fd["y"])
+    try:
+        print(fd["zz"])
+    except KeyError as e:
+        print("KeyError", e)
+    # the None-key branch (FrozenDict.cs:157-161): present and absent
+    src: dict[str | None, int] = {}
+    src["x"] = 2
+    src[None] = 1
+    fdn: frozendict[str | None, int] = frozendict(src)
+    print(fdn[None], fdn["x"])
+    src2: dict[str | None, int] = {}
+    src2["x"] = 2
+    fdm: frozendict[str | None, int] = frozendict(src2)
+    try:
+        print(fdm[None])
+    except KeyError as e:
+        print("KeyError", e)
+
+def cell_11() -> None:
+    # element assignment during iteration is admitted (python3 agrees)
+    qs: list[int] = [1, 2, 3]
+    for q in qs:
+        if q == 1:
+            qs[0] = 9
+    print(qs)
+
+def cell_slice() -> None:
+    # row 6: Slice.Normalize via the slice get route (list, array, str); clamping, negatives, step.
+    # bytes slices dispatch to Bytes.Slice (not row 6) and are pinned here only as a neighbour.
+    ys: list[int] = [1, 2, 3, 4]
+    print(ys[1:3], ys[-2:], ys[::2], ys[-9:9], ys[3:1], ys[2:-1])
+    # slice assignment is refused (SPY0225): SetSlice/DeleteSlice have no Sharpy route
+    t: str = "hello"
+    print(t[1:3], t[-2:], t[::2], t[-9:9])
+    bb: bytes = bytes([1, 2, 3, 4])
+    print(bb[1:3], bb[-2:], bb[-9:9])
+    ar: array[int] = array[int](4)
+    ar[0] = 1
+    ar[1] = 2
+    ar[2] = 3
+    ar[3] = 4
+    print(ar[1:3], ar[-2:], ar[::2], ar[-9:9], ar[3:1], ar[2:-1])
+
+
+def cell_compound() -> None:
+    # compound element assignment: read + write through rows 1/2, 11 and 13 (RoslynEmitter.Statements.Assignments.cs:279-309)
+    xs: list[int] = [1, 2, 3]
+    xs[0] += 10
+    xs[-1] += 20
+    print(xs)
+    try:
+        xs[3] += 1
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        xs[-4] += 1
+    except IndexError as e:
+        print("IndexError", e)
+    arr: array[int] = array[int](3)
+    arr[0] += 5
+    arr[-1] += 7
+    print(arr[0], arr[1], arr[2])
+    try:
+        arr[3] += 1
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        arr[-4] += 1
+    except IndexError as e:
+        print("IndexError", e)
+    d: dict[str, int] = {"a": 1}
+    d["a"] += 5
+    print(d["a"])
+    try:
+        d["zz"] += 1
+    except KeyError as e:
+        print("KeyError", e)
+
+def get_at(xs: list[int], i: int) -> int:
+    # a parameter index is never provably non-negative, so this is the row-1 indexer route
+    return xs[i]
+
+
+def cell_plain_read() -> None:
+    # row 1 plain read (literal non-negative indices lower to GetItemUnchecked, row 3)
+    xs: list[int] = [1, 2, 3]
+    print(get_at(xs, 0), get_at(xs, 2), get_at(xs, -1), get_at(xs, -3))
+    try:
+        print(get_at(xs, 3))
+    except IndexError as e:
+        print("IndexError", e)
+    try:
+        print(get_at(xs, -4))
+    except IndexError as e:
+        print("IndexError", e)
+    # negative-step slices read every element through the row-1 indexer (Slice.cs:124,130)
+    zs: list[int] = [1, 2, 3, 4]
+    print(zs[::-1], zs[3:0:-2], zs[-1:-3:-1])
+
+
+def main() -> None:
+    cell_plain_read()
+    cell_slice()
+    cell_compound()
+    cell_00()
+    cell_01()
+    cell_02()
+    cell_03()
+    cell_05()
+    cell_06()
+    cell_07()
+    cell_08()
+    cell_09()
+    cell_10()
+    cell_11()

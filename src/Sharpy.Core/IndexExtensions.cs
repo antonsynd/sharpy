@@ -6,12 +6,8 @@ namespace Sharpy
         /// <summary>Convert a System.Index to a normalized int, handling from-end indices.</summary>
         public static int ToNormalizedInt32(this System.Index index, int max, bool forSlice, bool forInsertion)
         {
-            if (index.IsFromEnd)
-            {
-                return Index.Normalize(-index.Value, max, forSlice, forInsertion);
-            }
-
-            return Index.Normalize(index.Value, max, forSlice, forInsertion);
+            int i = index.IsFromEnd ? -index.Value : index.Value;
+            return forSlice || forInsertion ? Index.Clamp(i, max) : Index.Normalize(i, max);
         }
     }
 }

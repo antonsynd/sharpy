@@ -1662,7 +1662,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// 16788/0; with it present: 16792/1, comment full = 1641). P21h verify round (2026-10-29): +1 on the four comment
     /// pins only — growth, from the round's new fixture stem properties/module_property_split_auto_halves_2382; control
     /// @ 13747484f with only that fixture added (worktree): comment full/range-whole 1642, range-line/ontype 1638
-    /// (3350/1, the one red being this census at the previous literals); no lexer/parser/formatter/LSP change. The wide
+    /// (3350/1, the one red being this census at the previous literals); no lexer/parser/formatter/LSP change. P76
+    /// (plan-460cbf, 2026-11-04): +1 on the four comment pins only — growth, from the new fixture stem
+    /// collections/element_access_messages_2404; control @ 6f47aea81 with that fixture removed (worktree),
+    /// SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the comment census asserts the previous literals, 3363/0; no
+    /// lexer/parser/formatter/LSP change (P76 is Core-only). The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1674,10 +1678,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1642,
-            [(Comment, RangeWhole)] = 1642,
-            [(Comment, RangeLine)] = 1638,
-            [(Comment, OnType)] = 1638,
+            [(Comment, Full)] = 1643,
+            [(Comment, RangeWhole)] = 1643,
+            [(Comment, RangeLine)] = 1639,
+            [(Comment, OnType)] = 1639,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,
