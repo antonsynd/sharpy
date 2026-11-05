@@ -10,7 +10,7 @@
 #                      ├─ lsp (matrix 1..N)  LSP tests, sharded by namespace and sweep twin
 #                      ├─ compiler (1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace
 #                      ├─ sweep (matrix 2)   one job per long GapDiscovery sweep
-#                      ├─ sweeps-quick       the four short GapDiscovery sweeps, one step each
+#                      ├─ sweeps-quick       the five short GapDiscovery sweeps, one step each
 #                      ├─ stdlib-spy-gates   .spy native compile + generated-C# staleness gates
 #                      └─ shard-partition    proves each suite's shards partition its main filter
 #
@@ -69,7 +69,7 @@ env:
   # repetition) and its controls, which must keep running in the shards — a bare
   # `FullyQualifiedName!~InProcessIsolation` would leave them selected by no step
   # (CiFilterCoverageConformanceTests).
-  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
+  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&FullyQualifiedName!~NameResolutionDifferential&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
   # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
   # PARTITION INVARIANT: shards 1–6 are positive namespace buckets (shard 5 excludes shard 4's
   # sub-bucket by negation); shard 7 is "everything else" — the negation of every other bucket
@@ -414,7 +414,7 @@ jobs:
         if-no-files-found: warn
 
   sweep:
-    # The two long GapDiscovery sweeps (~5 min each), one job apiece; the four short ones share
+    # The two long GapDiscovery sweeps (~5 min each), one job apiece; the five others share
     # `sweeps-quick`. Every sweep is excluded from the Compiler shards by name (COMPILER_MAIN_FILTER).
     name: Sweep (${{ matrix.name }})
     needs: build
@@ -477,10 +477,11 @@ jobs:
         if-no-files-found: warn
 
   sweeps-quick:
-    # The four GapDiscovery sweeps that take 50-90 s each on CI (run 38983789798), one step each in
-    # one job: as four jobs they cost four runner slots for ~4 min of tests. Each still writes its
+    # Four GapDiscovery sweeps that take 50-90 s each on CI (run 38983789798) and the
+    # name-resolution differential (P77a; its full pool is bounded at 13 min on a dev machine, and
+    # its CI wall is recorded on the first push), one step each in one job. Each still writes its
     # own sweep-<name>.trx, and each reports even if an earlier one failed.
-    name: Sweeps (interop, differential-execution, format-spec, formatter-emit)
+    name: Sweeps (interop, differential-execution, format-spec, formatter-emit, name-resolution)
     needs: build
     runs-on: ubuntu-latest
 
@@ -552,6 +553,17 @@ jobs:
       # once.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential" --logger "trx;LogFileName=sweep-format-spec-differential.trx" --results-directory TestResults
+    - name: Sweep name-resolution-differential
+      # Name-resolution differential sweep (#2421, P77a). Generated programs over rosters of the
+      # compiler's own enumerations: for every program python3 runs, Sharpy `run` prints the same
+      # output or refuses at compile time, and never surfaces SPY0908/SPY0909. Emits
+      # .claude/tmp/name-resolution-differential-report.json and ratchets the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/name-resolution-differential-allowlist.txt). The
+      # full pool always runs here: a strided ratchet is a partial guarantee. Excluded from the
+      # Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly once. Skips without a
+      # suitable python3, like the sweeps above.
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults
     - name: Sweep formatter-emit-invariance
       # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
       # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
