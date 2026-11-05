@@ -24,6 +24,11 @@ postprocessors = [
     # Subjects name generics (Dict<K,V>, G<int>) outside code spans; GitHub
     # would strip them as HTML tags.
     { pattern = '<', replace = "&lt;" },
+    # Subjects name decorators (@abstract, @static) outside code spans; GitHub
+    # reads a bare @word as a user mention, notifies that account and lists it
+    # as a release contributor. Wrap them in a code span. Skips @word already
+    # preceded by a backtick, word char, '/' or '@' (emails, URLs, existing spans).
+    { pattern = '(^|[^\w`/@])@([A-Za-z_][\w-]*)', replace = "${1}`@${2}`" },
     # Link issue references: (#1234, #1235) → linked
     { pattern = '([\s(,])#(\d+)', replace = "${1}[#${2}](https://github.com/antonsynd/sharpy/issues/${2})" },
 ]
