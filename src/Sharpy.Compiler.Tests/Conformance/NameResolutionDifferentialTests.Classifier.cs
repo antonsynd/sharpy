@@ -22,6 +22,35 @@ public partial class NameResolutionDifferentialTests
         AllCodes: codes,
         CsCode: null);
 
+    private sealed class RecordingOutput : Xunit.Abstractions.ITestOutputHelper
+    {
+        public List<string> Lines { get; } = new();
+
+        public void WriteLine(string message) => Lines.Add(message);
+
+        public void WriteLine(string format, params object[] args) => Lines.Add(string.Format(format, args));
+    }
+
+    /// <summary>A whole-solution gate read Test Run Failed with 0 failed tests @ b3bac05af: the sweep's buffered
+    /// compile output exhausted the testhost's heap when vstest serialized it. <c>RunSharpy</c> buffers nothing. The
+    /// same compile through the base class does, which shows the recorder sees a write and the mute was lifted.</summary>
+    [Fact]
+    public void RunSharpy_BuffersNothingInTheTestResult()
+    {
+        const string Program = "def main() -> None:\n    print(1)\n";
+        var recorded = new RecordingOutput();
+        var harness = new NameResolutionDifferentialTests(recorded);
+
+        var run = harness.RunSharpy(Program);
+
+        Assert.Equal("1", Normalize(run.Stdout));
+        Assert.Empty(recorded.Lines);
+
+        harness.CompileAndExecute(Program, "name_resolution.spy");
+
+        Assert.Contains(recorded.Lines, line => line.Contains("Generated C#", StringComparison.Ordinal));
+    }
+
     /// <summary>M9: a program that throws at run time is a child process's non-zero exit with no diagnostic, read
     /// positively from <c>ExitCode</c>. It is a third outcome, never "refused" and never "ran".</summary>
     [Fact]

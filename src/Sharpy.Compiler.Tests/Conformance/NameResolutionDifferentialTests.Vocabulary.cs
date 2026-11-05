@@ -218,5 +218,32 @@ internal enum ExcludedAxis
 [Trait("Category", "GapDiscovery")]
 public partial class NameResolutionDifferentialTests : IntegrationTestBase
 {
-    public NameResolutionDifferentialTests(ITestOutputHelper output) : base(output) { }
+    private readonly CompilePathOutput _compilePathOutput;
+
+    public NameResolutionDifferentialTests(ITestOutputHelper output) : this(new CompilePathOutput(output)) { }
+
+    private NameResolutionDifferentialTests(CompilePathOutput output) : base(output) => _compilePathOutput = output;
+
+    /// <summary>
+    /// The output the base class writes through. <see cref="IntegrationTestBase"/> records each compile's generated
+    /// C# in the test's output, xUnit keeps that in memory until the test ends, and vstest then serializes it as one
+    /// string. Over a sweep's thousands of compiles that string exhausted the testhost's heap, so the compile path
+    /// is muted and only what a fact prints itself gets through.
+    /// </summary>
+    private sealed class CompilePathOutput(ITestOutputHelper inner) : ITestOutputHelper
+    {
+        public bool Muted { get; set; }
+
+        public void WriteLine(string message)
+        {
+            if (!Muted)
+                inner.WriteLine(message);
+        }
+
+        public void WriteLine(string format, params object[] args)
+        {
+            if (!Muted)
+                inner.WriteLine(format, args);
+        }
+    }
 }
