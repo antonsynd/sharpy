@@ -114,9 +114,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     [SkippableFact]
     public void FormatSpec_DifferentialSweep_MatchesCPython()
     {
-        PythonInterpreter.RequireOrSkip(minMinor: 12);
-        var oracle = PyOracle.TryLocate()
-            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_exec/run_programs.py was not found.");
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
 
         var sw = Stopwatch.StartNew();
         var cells = GenerateCells(TargetCells);
@@ -152,11 +150,11 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         // --- Python arm: one batch process, main() appended so CPython drives Sharpy's auto-entry.
         //     Both columns run under python too (they are the same program to CPython), so each
         //     column is compared with its own oracle run. ---
-        var requests = new List<(int Id, string Source)>(cells.Count * Columns.Length);
+        var requests = new List<PyRequest>(cells.Count * Columns.Length);
         for (int i = 0; i < cells.Count; i++)
         {
             for (int c = 0; c < Columns.Length; c++)
-                requests.Add((i * Columns.Length + c, ProgramFor(cells[i], Columns[c], forPython: true) + "\nmain()\n"));
+                requests.Add(new PyRequest(i * Columns.Length + c, ProgramFor(cells[i], Columns[c], forPython: true) + "\nmain()\n"));
         }
         var pythonById = oracle.RunBatch(requests);
 
@@ -262,16 +260,14 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     [SkippableFact]
     public void FormatSpec_GrammarTotalityStratum_MatchesCPython()
     {
-        PythonInterpreter.RequireOrSkip(minMinor: 12);
-        var oracle = PyOracle.TryLocate()
-            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_exec/run_programs.py was not found.");
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
 
         var cells = GrammarTotalityStratum().ToList();
         // Anchor to literals: 22 spec cells x 4 routes + 17 field cells, each in two columns.
         Assert.Equal(22 * 4 + 17, cells.Count);
         Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct(StringComparer.Ordinal).Count());
 
-        var requests = new List<(int Id, string Source)>();
+        var requests = new List<PyRequest>();
         var sharpy = new Dictionary<int, ArmOutcome>();
         for (int i = 0; i < cells.Count; i++)
         {
@@ -285,7 +281,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                     .Select(d => d.Message)
                     .ToList();
                 sharpy[id] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
-                requests.Add((id, pythonSource + "\nmain()\n"));
+                requests.Add(new PyRequest(id, pythonSource + "\nmain()\n"));
             }
         }
         var pythonById = oracle.RunBatch(requests);
@@ -785,174 +781,6 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     }
 
     private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut, IReadOnlyList<string> StaticRefusals);
-
-    private sealed record PyResult(bool Ok, string Stdout, string Stderr, bool TimedOut, bool SyntaxError);
-
-    // ------------------------------------------------------------------------------------------- //
-    // python3 bridge (a focused replica of DifferentialExecutionTests.PythonExecOracle)
-    // ------------------------------------------------------------------------------------------- //
-
-    private sealed class PyOracle
-    {
-        private readonly string _pythonExe;
-        private readonly string _scriptPath;
-
-        private PyOracle(string pythonExe, string scriptPath)
-        {
-            _pythonExe = pythonExe;
-            _scriptPath = scriptPath;
-        }
-
-        public static PyOracle? TryLocate()
-        {
-            string? script = FindScript();
-            if (script is null)
-                return null;
-            foreach (var candidate in new[] { "python3", "python" })
-            {
-                if (HasSupportedVersion(candidate))
-                    return new PyOracle(candidate, script);
-            }
-            return null;
-        }
-
-        private static string? FindScript()
-        {
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            while (dir is not null)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "sharpy.sln")))
-                {
-                    var candidate = Path.Combine(dir.FullName, "build_tools", "differential_exec", "run_programs.py");
-                    return File.Exists(candidate) ? candidate : null;
-                }
-                dir = dir.Parent;
-            }
-            return null;
-        }
-
-        private static bool HasSupportedVersion(string exe)
-        {
-            try
-            {
-                using var proc = Process.Start(new ProcessStartInfo
-                {
-                    FileName = exe,
-                    Arguments = "--version",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                });
-                if (proc is null)
-                    return false;
-                string outText = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
-                if (!proc.WaitForExit(10_000))
-                {
-                    try
-                    { proc.Kill(entireProcessTree: true); }
-                    catch { }
-                    return false;
-                }
-                var match = Regex.Match(outText, @"Python (\d+)\.(\d+)");
-                if (!match.Success)
-                    return false;
-                int major = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                int minor = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
-                return major > 3 || (major == 3 && minor >= 12);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public IReadOnlyDictionary<int, PyResult> RunBatch(IReadOnlyList<(int Id, string Source)> requests)
-        {
-            string batchPath = Path.Combine(Path.GetTempPath(), $"sharpy-fmtspec-{Guid.NewGuid():N}.jsonl");
-            try
-            {
-                using (var writer = new StreamWriter(batchPath, append: false, new UTF8Encoding(false)))
-                {
-                    foreach (var r in requests)
-                        writer.WriteLine(JsonSerializer.Serialize(new { id = r.Id, source = r.Source }));
-                }
-                return ParseVerdicts(RunRunner(batchPath));
-            }
-            finally
-            {
-                try
-                { File.Delete(batchPath); }
-                catch { }
-            }
-        }
-
-        private string RunRunner(string batchPath)
-        {
-            using var proc = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = _pythonExe,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                },
-            };
-            proc.StartInfo.ArgumentList.Add(_scriptPath);
-            proc.StartInfo.ArgumentList.Add("--batch");
-            proc.StartInfo.ArgumentList.Add(batchPath);
-
-            var stdout = new StringBuilder();
-            var stderr = new StringBuilder();
-            proc.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
-            proc.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
-
-            proc.Start();
-            proc.BeginOutputReadLine();
-            proc.BeginErrorReadLine();
-
-            if (!proc.WaitForExit(300_000))
-            {
-                try
-                { proc.Kill(entireProcessTree: true); }
-                catch { }
-                throw new InvalidOperationException("run_programs.py timed out.");
-            }
-            proc.WaitForExit();
-
-            if (proc.ExitCode != 0)
-                throw new InvalidOperationException($"run_programs.py exited {proc.ExitCode}: {stderr}");
-
-            return stdout.ToString();
-        }
-
-        private static IReadOnlyDictionary<int, PyResult> ParseVerdicts(string stdout)
-        {
-            var result = new Dictionary<int, PyResult>();
-            foreach (var line in stdout.Split('\n'))
-            {
-                var trimmed = line.Trim();
-                if (trimmed.Length == 0)
-                    continue;
-                using var doc = JsonDocument.Parse(trimmed);
-                var root = doc.RootElement;
-                int id = root.GetProperty("id").GetInt32();
-                result[id] = new PyResult(
-                    Ok: root.GetProperty("ok").GetBoolean(),
-                    Stdout: root.TryGetProperty("stdout", out var so) ? so.GetString() ?? "" : "",
-                    Stderr: root.TryGetProperty("stderr", out var se) ? se.GetString() ?? "" : "",
-                    TimedOut: root.TryGetProperty("timed_out", out var to) && to.GetBoolean(),
-                    SyntaxError: root.TryGetProperty("syntax_error", out var sy) && sy.GetBoolean());
-            }
-            return result;
-        }
-    }
-
-    // ------------------------------------------------------------------------------------------- //
-    // Allowlist (key ratchet, mirroring the interop/differential allowlists)
-    // ------------------------------------------------------------------------------------------- //
 
     private sealed class Allowlist
     {

@@ -171,7 +171,7 @@ public class ScopeKindRosterTests
     /// Builds a concrete scope name from a family. Prefixed families (<c>class:</c>) are pushed with
     /// an interpolated suffix at runtime, so the specimen appends one.
     /// </summary>
-    private static string SpecimenFor(string family)
+    internal static string SpecimenFor(string family)
         => family.EndsWith(':') ? family + "X" : family;
 
     private static IEnumerable<string> AllFamilies()
@@ -184,7 +184,7 @@ public class ScopeKindRosterTests
     /// string literal is its own family (<c>"if-then"</c>), and an interpolated string contributes
     /// the literal prefix before its first hole (<c>$"class:{name}"</c> → <c>class:</c>).
     /// </summary>
-    private static List<(string Family, string Site)> ScopeNameFamilies()
+    internal static List<(string Family, string Site)> ScopeNameFamilies()
     {
         var found = new List<(string, string)>();
 
