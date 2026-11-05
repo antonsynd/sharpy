@@ -1,0 +1,7 @@
+# D12 | module var shadowed by function parameter of same name, store to it
+x: int = 1
+def f(x: int) -> None:
+    x = 5
+def main() -> None:
+    f(2)
+    print(x)

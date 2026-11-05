@@ -1,0 +1,8 @@
+# C47 | inherited @static read bare in initializer, no outer
+class Base:
+    @static
+    unit: int = 3
+class Child(Base):
+    a: int = unit
+def main() -> None:
+    print(Child().a)

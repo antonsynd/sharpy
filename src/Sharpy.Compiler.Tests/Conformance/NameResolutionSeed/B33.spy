@@ -1,0 +1,8 @@
+# B33 | sibling blocks reuse a name with different types
+def main() -> None:
+    if True:
+        x = 1
+        print(x)
+    else:
+        x = "s"
+        print(x)

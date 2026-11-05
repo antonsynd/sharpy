@@ -1,0 +1,6 @@
+# D13 | for-loop target same name as module var, inside function
+x: int = 100
+def main() -> None:
+    for x in range(3):
+        pass
+    print(x)

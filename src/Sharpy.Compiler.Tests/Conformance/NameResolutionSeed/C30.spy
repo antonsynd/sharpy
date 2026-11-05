@@ -1,0 +1,8 @@
+# C30 | parameter default reads LATER literal const, module const binding
+const K: int = 7
+class H:
+    def m(self, x: int = K) -> int:
+        return x
+    const K: int = 2
+def main() -> None:
+    print(H().m())

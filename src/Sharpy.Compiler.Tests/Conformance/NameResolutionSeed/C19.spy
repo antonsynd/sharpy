@@ -1,0 +1,6 @@
+# C19 | instance field init reads EARLIER instance field
+class H:
+    w: int = 3
+    v: int = w + 1
+def main() -> None:
+    print(H().v)

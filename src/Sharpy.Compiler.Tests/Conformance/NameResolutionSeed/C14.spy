@@ -1,0 +1,9 @@
+# C14 | @static init calls EARLIER @static method (bare)
+class H:
+    @static
+    def f() -> int:
+        return 3
+    @static
+    a: int = f()
+def main() -> None:
+    print(H.a)

@@ -1,0 +1,7 @@
+# B34 | module var write from nested def inside function
+x: int = 1
+def main() -> None:
+    def g() -> None:
+        x = 9
+    g()
+    print(x)

@@ -1,0 +1,9 @@
+# C46 | inherited @static read bare in initializer, module binding (spec 9 3)
+unit: int = 9
+class Base:
+    @static
+    unit: int = 3
+class Child(Base):
+    a: int = unit
+def main() -> None:
+    print(Child().a)

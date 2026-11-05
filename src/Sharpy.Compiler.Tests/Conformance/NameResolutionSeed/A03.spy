@@ -1,0 +1,4 @@
+# A03 | module var init reads ITSELF
+a: int = a + 1
+def main() -> None:
+    print(a)

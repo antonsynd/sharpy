@@ -1,0 +1,5 @@
+# D10 | lambda default... module var read inside lambda body at module var init
+k: int = 3
+g: () -> int = lambda: k * 2
+def main() -> None:
+    print(g())

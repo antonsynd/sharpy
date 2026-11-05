@@ -1,0 +1,9 @@
+# C39 | lambda in method reads class @static bare
+class H:
+    @static
+    s: int = 4
+    def m(self) -> int:
+        f = lambda: s
+        return f()
+def main() -> None:
+    print(H().m())

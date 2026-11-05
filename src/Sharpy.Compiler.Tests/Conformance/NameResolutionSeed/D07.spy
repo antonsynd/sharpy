@@ -1,0 +1,8 @@
+# D07 | nested def plain store to enclosing PARAMETER
+def outer(n: int) -> None:
+    def g() -> None:
+        n = 9
+    g()
+    print(n)
+def main() -> None:
+    outer(1)

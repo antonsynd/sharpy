@@ -1,0 +1,6 @@
+# D08 | callable local shadows module function (#2150)
+def f(a: int, b: int) -> int:
+    return a + b
+def main() -> None:
+    let f = lambda a, b: a * b
+    print(f(3, 4))

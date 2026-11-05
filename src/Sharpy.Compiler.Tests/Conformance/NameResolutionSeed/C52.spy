@@ -1,0 +1,8 @@
+# C52 | @static property default reads LATER @static property (qualified)
+class H:
+    @static
+    property q: int = H.p * 2
+    @static
+    property p: int = 4
+def main() -> None:
+    print(H.q)

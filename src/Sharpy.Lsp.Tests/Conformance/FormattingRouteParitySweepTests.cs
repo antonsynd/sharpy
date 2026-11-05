@@ -1666,7 +1666,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// (plan-460cbf, 2026-11-04): +1 on the four comment pins only — growth, from the new fixture stem
     /// collections/element_access_messages_2404; control @ 6f47aea81 with that fixture removed (worktree),
     /// SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the comment census asserts the previous literals, 3363/0; no
-    /// lexer/parser/formatter/LSP change (P76 is Core-only). The wide
+    /// lexer/parser/formatter/LSP change (P76 is Core-only). P77a verify round (2026-11-05): +1 on the four comment pins
+    /// only — growth, from the new fixture stem interop/system_index_get_offset_2429; control: the gate 83482/0/9 @
+    /// 5f8a4c4e2 held the previous literals with that fixture absent; no lexer/parser/formatter/LSP change. The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1678,10 +1680,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1643,
-            [(Comment, RangeWhole)] = 1643,
-            [(Comment, RangeLine)] = 1639,
-            [(Comment, OnType)] = 1639,
+            [(Comment, Full)] = 1644,
+            [(Comment, RangeWhole)] = 1644,
+            [(Comment, RangeLine)] = 1640,
+            [(Comment, OnType)] = 1640,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,

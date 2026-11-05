@@ -1,0 +1,8 @@
+# C29 | parameter default reads EARLIER @static
+class H:
+    @static
+    s: int = 8
+    def m(self, n: int = s) -> int:
+        return n
+def main() -> None:
+    print(H().m())

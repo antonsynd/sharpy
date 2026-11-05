@@ -1,0 +1,9 @@
+# B29 | nested def in inner block redefines outer nested def
+def main() -> None:
+    def g() -> int:
+        return 1
+    if True:
+        def g() -> int:
+            return 2
+        print(g())
+    print(g())

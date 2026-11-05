@@ -1,0 +1,9 @@
+# E08 | @static method store to module var
+total: int = 0
+class C:
+    @static
+    def add(k: int) -> None:
+        total = total + k
+def main() -> None:
+    C.add(3)
+    print(total)

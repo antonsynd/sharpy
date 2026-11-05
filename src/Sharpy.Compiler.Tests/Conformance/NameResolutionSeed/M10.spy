@@ -1,0 +1,6 @@
+# M10 | class instance field initializer reads LATER module var
+class C:
+    v: int = m
+m: int = 5
+def main() -> None:
+    print(C().v)

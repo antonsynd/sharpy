@@ -1,0 +1,7 @@
+# A09 | module var init reads LATER class's @static
+x: int = C.s
+class C:
+    @static
+    s: int = 4
+def main() -> None:
+    print(x)

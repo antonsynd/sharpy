@@ -1,0 +1,7 @@
+# C31 | parameter default reads LATER literal const, no outer
+class H:
+    def m(self, x: int = K) -> int:
+        return x
+    const K: int = 2
+def main() -> None:
+    print(H().m())

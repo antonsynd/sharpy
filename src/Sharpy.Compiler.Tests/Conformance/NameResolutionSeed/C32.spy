@@ -1,0 +1,8 @@
+# C32 | method body reads class @static bare
+class H:
+    @static
+    s: int = 4
+    def m(self) -> int:
+        return s
+def main() -> None:
+    print(H().m())

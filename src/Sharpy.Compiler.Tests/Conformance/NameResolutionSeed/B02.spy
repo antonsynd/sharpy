@@ -1,0 +1,7 @@
+# B02 | function plain store to module var, then read via other fn
+x: int = 1
+def f() -> None:
+    x = 5
+def main() -> None:
+    f()
+    print(x)

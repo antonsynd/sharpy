@@ -149,6 +149,14 @@ public abstract class IntegrationTestBase
         public bool TimedOut { get; init; }
 
         /// <summary>
+        /// The emitted program's exit code, or null when no child process ran to completion (a
+        /// compile-time refusal, a generated-C# failure, a timeout). A verdict that needs "the
+        /// program threw at run time" reads this positively rather than matching the message in
+        /// <see cref="CompilationErrors"/> (P77a D2).
+        /// </summary>
+        public int? ExitCode { get; init; }
+
+        /// <summary>
         /// Raw CompilerDiagnostic objects from Sharpy compilation phases.
         /// Used for verifying diagnostic locations (line/column/span) in error tests.
         /// May be empty for errors originating from the C# compilation or execution phases.
@@ -983,6 +991,7 @@ public abstract class IntegrationTestBase
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
                     GeneratedCSharp = generatedCSharp,
+                    ExitCode = process.ExitCode,
                     CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
                 };
             }
@@ -990,6 +999,7 @@ public abstract class IntegrationTestBase
             return new ExecutionResult
             {
                 Success = true,
+                ExitCode = process.ExitCode,
                 StandardOutput = stdout.ToString(),
                 StandardError = stderr.ToString(),
                 GeneratedCSharp = generatedCSharp,

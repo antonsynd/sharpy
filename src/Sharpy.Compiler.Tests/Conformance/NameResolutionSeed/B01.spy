@@ -1,0 +1,4 @@
+# B01 | function reads module var declared AFTER the function
+def main() -> None:
+    print(x)
+x: int = 3

@@ -1,0 +1,7 @@
+# B31 | while-body store creates new name then read after
+def main() -> None:
+    i = 0
+    while i < 2:
+        last = i
+        i += 1
+    print(last)

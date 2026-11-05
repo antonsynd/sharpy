@@ -1,0 +1,9 @@
+# C12 | non-literal const reads LATER @static
+def one() -> int:
+    return 1
+class H:
+    const K: int = s + one()
+    @static
+    s: int = 2
+def main() -> None:
+    print(H.K)

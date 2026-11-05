@@ -1,0 +1,6 @@
+# A04 | module var init calls LATER module function
+x: int = f()
+def f() -> int:
+    return 5
+def main() -> None:
+    print(x)

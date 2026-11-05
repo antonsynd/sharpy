@@ -1,0 +1,6 @@
+# B09 | nested def reads enclosing local declared AFTER the def
+def main() -> None:
+    def g() -> int:
+        return n
+    n: int = 3
+    print(g())

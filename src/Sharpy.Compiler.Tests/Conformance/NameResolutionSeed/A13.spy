@@ -1,0 +1,4 @@
+# A13 | module-level let
+let x = 1
+def main() -> None:
+    print(x)

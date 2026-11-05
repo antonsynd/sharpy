@@ -1,0 +1,11 @@
+# D05 | earlier @static method outranks module function of the same name
+def f() -> int:
+    return 1
+class H:
+    @static
+    def f() -> int:
+        return 2
+    @static
+    a: int = f()
+def main() -> None:
+    print(H.a)

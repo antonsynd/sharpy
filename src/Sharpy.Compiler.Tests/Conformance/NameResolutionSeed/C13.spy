@@ -1,0 +1,6 @@
+# C13 | literal const reads LATER literal const (control #1795)
+class H:
+    const A: int = B + 1
+    const B: int = 2
+def main() -> None:
+    print(H.A)

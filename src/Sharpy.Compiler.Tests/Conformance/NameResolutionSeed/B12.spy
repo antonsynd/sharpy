@@ -1,0 +1,6 @@
+# B12 | lambdas appended in for loop capture loop var
+def main() -> None:
+    fs: list[() -> int] = []
+    for i in range(3):
+        fs.append(lambda: i)
+    print([f() for f in fs])

@@ -1,0 +1,8 @@
+# C43 | lambda in @static initializer reads earlier @static
+class H:
+    @static
+    s: int = 2
+    @static
+    f: () -> int = lambda: s
+def main() -> None:
+    print(H.f())

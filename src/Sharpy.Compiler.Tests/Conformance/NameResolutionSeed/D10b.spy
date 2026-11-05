@@ -1,0 +1,4 @@
+# D10b | variant of D10: function-typed module var, lambda reads nothing, no other module var
+g: () -> int = lambda: 6
+def main() -> None:
+    print(g())

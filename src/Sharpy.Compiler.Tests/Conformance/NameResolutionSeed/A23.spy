@@ -1,0 +1,5 @@
+# A23 | module var init reads LATER module property
+x: int = p + 1
+property p: int = 4
+def main() -> None:
+    print(x)

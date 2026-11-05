@@ -1,0 +1,7 @@
+# B03 | function augmented store to module var
+x: int = 1
+def f() -> None:
+    x += 1
+def main() -> None:
+    f()
+    print(x)

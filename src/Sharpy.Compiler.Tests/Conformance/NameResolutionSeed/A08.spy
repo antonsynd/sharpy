@@ -1,0 +1,5 @@
+# A08 | module var init reads LATER literal const
+x: int = K + 1
+const K: int = 3
+def main() -> None:
+    print(x)

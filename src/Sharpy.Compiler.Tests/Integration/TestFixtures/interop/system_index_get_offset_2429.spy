@@ -1,0 +1,13 @@
+# R-KM (#2429): Sharpy's own from-end conversions were deleted, so System.Index's own GetOffset is the route.
+# It honours from-end as C# does: ^0 over 4 elements is the END (4), never the start.
+from system import Range, Index
+
+def main() -> None:
+    one_from_end: Index = Index(1, True)
+    print(one_from_end.get_offset(4))
+
+    zero_from_end: Index = Index(0, True)
+    print(zero_from_end.get_offset(4))
+
+    r: Range = Range(Index(0, False), Index(2, True))
+    print(r.start.get_offset(4), r.end.get_offset(4))

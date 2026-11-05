@@ -1,0 +1,7 @@
+# M05 | function reads LATER module class / function (control)
+def main() -> None:
+    print(f(), C().v)
+def f() -> int:
+    return 1
+class C:
+    v: int = 2

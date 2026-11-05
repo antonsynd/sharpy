@@ -1,0 +1,7 @@
+# A07 | module literal const reads LATER non-literal const
+def seven() -> int:
+    return 7
+const B: int = A + 1
+const A: int = seven()
+def main() -> None:
+    print(B, A)

@@ -1,0 +1,166 @@
+A01	2
+A02	EXC NameError: name 'a' is not defined
+A03	EXC NameError: name 'a' is not defined
+A04	EXC NameError: name 'f' is not defined
+A05	EXC NameError: name 'y' is not defined
+A06	EXC NameError: name 'A' is not defined
+A07	EXC NameError: name 'A' is not defined
+A08	EXC NameError: name 'K' is not defined
+A09	EXC NameError: name 'C' is not defined
+A10	EXC NameError: name 'C' is not defined
+A11	init a / init b / main / 2
+A12	2
+A13	1
+A14	<function f at 0x1049562a0>
+A15	EXC NameError: name 'C' is not defined
+A16	EXC NameError: name 'K' is not defined
+A17	EXC NameError: name 'f' is not defined
+A18	99
+A19	5
+A20	2
+A21	EXC NameError: name 'f' is not defined
+A22	EXC NameError: name 'v' is not defined
+A23	EXC NameError: name 'p' is not defined
+B01	3
+B02	1
+B03	EXC UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+B04	EXC UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+B05	5 / 1
+B06	5 / 1
+B07	5 / 1
+B08	EXC UnboundLocalError: cannot access local variable 'n' where it is not associated with a value
+B09	3
+B10	11
+B11	[2, 2, 2]
+B12	[2, 2, 2]
+B13	5
+B14	2
+B15	[0, 1, 2] 10
+B16	2
+B17	1
+B18	5
+B19	2 / 2
+B20	EXC UnboundLocalError: cannot access local variable 'g' where it is not associated with a value
+B21	EXC UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+B22	EXC UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+B23	EXC UnboundLocalError: cannot access local variable 'e' where it is not associated with a value
+B24	3
+B25	5
+B26	EXC TypeError: 'int' object is not callable
+B27	2 / 1
+B28	<function helper.<locals>.f at 0x101344f40>
+B29	2 / 2
+B30	7
+B31	1
+B32	4
+B33	1
+B34	1
+B35	[1, 2]
+C01	3
+C02	EXC NameError: name 'b' is not defined
+C03	EXC NameError: name 'H' is not defined
+C04	EXC NameError: name 'a' is not defined
+C05	6
+C06	8
+C07	3
+C08	10 7
+C09	10
+C10	EXC NameError: name 'K' is not defined
+C11	EXC NameError: name 'K' is not defined
+C12	EXC NameError: name 's' is not defined
+C13	EXC NameError: name 'B' is not defined
+C14	3
+C15	EXC NameError: name 'f' is not defined
+C16	EXC NameError: name 'H' is not defined
+C17	8
+C18	5
+C19	4
+C20	EXC NameError: name 's' is not defined
+C21	EXC NameError: name 'H' is not defined
+C22	10
+C23	10
+C24	4
+C25	4
+C26	4
+C27	4
+C28	8
+C29	8
+C30	7
+C31	EXC NameError: name 'K' is not defined
+C32	EXC NameError: name 's' is not defined. Did you mean: 'self.s'?
+C33	EXC NameError: name 'K' is not defined. Did you mean: 'self.K'?
+C34	99
+C35	5
+C36	1
+C36b	EXC UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+C36c	1
+C36d	99 1
+C37	EXC NameError: name 'v' is not defined. Did you mean: 'self.v'?
+C38	EXC NameError: name 's' is not defined
+C39	EXC NameError: name 's' is not defined
+C40	EXC NameError: name 's' is not defined. Did you mean: 'self.s'?
+C41	[2, 4]
+C42	EXC NameError: name 'k' is not defined
+C43	EXC NameError: name 's' is not defined
+C44	2
+C45	EXC NameError: name 's' is not defined
+C46	9
+C47	EXC NameError: name 'unit' is not defined
+C48	EXC NameError: name 'K' is not defined
+C49	EXC NameError: name 'H' is not defined
+C50	3
+C51	EXC TypeError: H.f() missing 1 required positional argument: 'self'
+C52	EXC NameError: name 'H' is not defined
+C53	EXC NameError: name 'p' is not defined
+C54	4
+D01	EXC NameError: name 'C' is not defined
+D02	EXC NameError: name 'f' is not defined
+D03	8
+D04	1
+D05	2
+D06	99 0
+D07	1
+D08	12
+D08b	12
+D09	5
+D10	6
+D10b	6
+D10c	6
+D10d	6
+D11	EXC NameError: name 's' is not defined
+D12	1
+D13	2
+D14	5 / 1
+D15	10 / 10
+D16	7
+D17	4
+D18	4
+D19	4
+D20	EXC NameError: name 'H' is not defined
+D21	7
+D22	EXC NameError: name 'ys' is not defined
+E01	EXC NameError: name 'K' is not defined
+E02	EXC NameError: name 'v' is not defined
+E03	EXC NameError: name 'A' is not defined
+E04	5
+E05	EXC NameError: name 'C' is not defined
+E06	6
+E07	EXC UnboundLocalError: cannot access local variable 'total' where it is not associated with a value
+E08	EXC UnboundLocalError: cannot access local variable 'total' where it is not associated with a value
+E09	1
+E10	1
+M01	3
+M02	7
+M03	3
+M04	3
+M05	1 2
+M06	4
+M07	5
+M08	9 / 3
+M09	EXC NameError: name 'm' is not defined
+M10	EXC NameError: name 'm' is not defined
+M11	EXC NameError: name 'f' is not defined
+M12	EXC NameError: name 'K' is not defined
+M13	11
+M14	3
+M15	3

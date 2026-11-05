@@ -1,0 +1,11 @@
+# C36d | variant of C36: method body stores to a name the class also declares (v) and to a second module var (x)
+x: int = 1
+v: int = 99
+class H:
+    v: int = 1
+    def m(self) -> None:
+        v = 5
+        x = 6
+def main() -> None:
+    H().m()
+    print(v, x)

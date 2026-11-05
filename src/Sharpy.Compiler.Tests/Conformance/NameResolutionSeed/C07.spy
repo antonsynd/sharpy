@@ -1,0 +1,9 @@
+# C07 | @static init reads EARLIER @static, module binding of the name (member outranks)
+s: int = 7
+class H:
+    @static
+    s: int = 2
+    @static
+    a: int = s + 1
+def main() -> None:
+    print(H.a)

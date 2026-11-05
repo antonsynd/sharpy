@@ -1,0 +1,4 @@
+# A16 | module literal const self-cycle
+const K: int = K + 1
+def main() -> None:
+    print(K)

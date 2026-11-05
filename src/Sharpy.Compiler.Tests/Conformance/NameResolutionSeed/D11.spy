@@ -1,0 +1,9 @@
+# D11 | @static method body reads class @static bare
+class H:
+    @static
+    s: int = 4
+    @static
+    def m() -> int:
+        return s
+def main() -> None:
+    print(H.m())

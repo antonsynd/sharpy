@@ -1,0 +1,8 @@
+# M08 | function stores to LATER module var (declare-if-new vs write-through)
+def f() -> None:
+    x = 9
+    print(x)
+x: int = 3
+def main() -> None:
+    f()
+    print(x)

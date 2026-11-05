@@ -1,0 +1,4 @@
+# M06 | function reads LATER module property
+def main() -> None:
+    print(p)
+property p: int = 4

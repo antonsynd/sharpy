@@ -1,0 +1,8 @@
+# B05 | function stores to module const
+const K: int = 1
+def f() -> None:
+    K = 5
+    print(K)
+def main() -> None:
+    f()
+    print(K)

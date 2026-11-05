@@ -1,0 +1,8 @@
+# B07 | function annotated decl shadows module var (Stage 1)
+x: int = 1
+def f() -> None:
+    x: int = 5
+    print(x)
+def main() -> None:
+    f()
+    print(x)

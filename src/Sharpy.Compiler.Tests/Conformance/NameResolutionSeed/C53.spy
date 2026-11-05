@@ -1,0 +1,7 @@
+# C53 | instance property default reads LATER @static bare
+class H:
+    property q: int = p * 2
+    @static
+    p: int = 4
+def main() -> None:
+    print(H().q)

@@ -1,0 +1,7 @@
+# C36c | variant of C36: method body READ of module var (no store)
+x: int = 1
+class H:
+    def r(self) -> int:
+        return x
+def main() -> None:
+    print(H().r())

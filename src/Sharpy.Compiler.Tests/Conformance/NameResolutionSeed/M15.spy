@@ -1,0 +1,6 @@
+# M15 | earlier function calls LATER function that reads EARLIER var
+x: int = 3
+def main() -> None:
+    print(g())
+def g() -> int:
+    return x

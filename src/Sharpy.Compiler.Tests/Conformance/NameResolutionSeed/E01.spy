@@ -1,0 +1,7 @@
+# E01 | module var init reads LATER module non-literal const
+def seven() -> int:
+    return 7
+x: int = K + 1
+const K: int = seven()
+def main() -> None:
+    print(x, K)

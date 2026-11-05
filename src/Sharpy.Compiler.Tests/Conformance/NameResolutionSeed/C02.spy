@@ -1,0 +1,8 @@
+# C02 | @static init reads LATER @static (bare, no outer)
+class H:
+    @static
+    a: int = b + 1
+    @static
+    b: int = 2
+def main() -> None:
+    print(H.a)

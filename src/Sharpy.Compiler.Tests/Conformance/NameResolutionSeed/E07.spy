@@ -1,0 +1,9 @@
+# E07 | method plain store to module var (#2151)
+total: int = 0
+class C:
+    def add(self, k: int) -> None:
+        total = total + k
+def main() -> None:
+    c = C()
+    c.add(3)
+    print(total)

@@ -1,0 +1,5 @@
+# A12 | module var redeclared (annotated twice)
+A: int = 1
+A: int = 2
+def main() -> None:
+    print(A)

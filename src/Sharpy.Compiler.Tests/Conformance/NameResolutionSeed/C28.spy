@@ -1,0 +1,7 @@
+# C28 | parameter default reads EARLIER const
+class H:
+    const K: int = 8
+    def m(self, n: int = K) -> int:
+        return n
+def main() -> None:
+    print(H().m())

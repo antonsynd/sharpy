@@ -1,0 +1,10 @@
+# C36b | variant of C36: method body augmented store to module var (x += 1), read back through a second method
+x: int = 1
+class H:
+    def m(self) -> None:
+        x += 1
+    def r(self) -> int:
+        return x
+def main() -> None:
+    H().m()
+    print(x, H().r())

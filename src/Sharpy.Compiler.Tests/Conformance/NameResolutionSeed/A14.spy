@@ -1,0 +1,6 @@
+# A14 | module var + module function same name
+f: int = 1
+def f() -> int:
+    return 2
+def main() -> None:
+    print(f)

@@ -1,0 +1,9 @@
+# A11 | module init side-effect order vs main (lazy static init?)
+def f(tag: str) -> int:
+    print("init " + tag)
+    return 1
+a: int = f("a")
+b: int = f("b")
+def main() -> None:
+    print("main")
+    print(a + b)

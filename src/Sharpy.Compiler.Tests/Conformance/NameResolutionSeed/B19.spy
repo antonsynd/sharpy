@@ -1,0 +1,6 @@
+# B19 | walrus over existing local
+def main() -> None:
+    x = 1
+    if (x := 2) > 0:
+        print(x)
+    print(x)

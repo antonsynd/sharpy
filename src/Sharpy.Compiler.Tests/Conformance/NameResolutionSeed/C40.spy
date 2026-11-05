@@ -1,0 +1,8 @@
+# C40 | comprehension in method reads class @static bare
+class H:
+    @static
+    s: int = 4
+    def m(self) -> list[int]:
+        return [x + s for x in [1, 2]]
+def main() -> None:
+    print(H().m())

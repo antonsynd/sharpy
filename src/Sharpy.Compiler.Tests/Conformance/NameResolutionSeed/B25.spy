@@ -1,0 +1,4 @@
+# B25 | local `len = 5` then builtin call
+def main() -> None:
+    len = 5
+    print(len)

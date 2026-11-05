@@ -1,0 +1,7 @@
+# B28 | parameter + nested def of same name (#1974 cell a)
+def helper(f: int) -> None:
+    def f() -> int:
+        return 1
+    print(f)
+def main() -> None:
+    helper(5)

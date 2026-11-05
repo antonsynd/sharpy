@@ -56,6 +56,7 @@
   <!-- Copy test fixture files to output directory -->
   <ItemGroup>
     <None Include="Integration\TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TestFixtures" />
+    <None Include="Conformance\NameResolutionSeed\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Conformance\NameResolutionSeed" />
   </ItemGroup>
 
 </Project>

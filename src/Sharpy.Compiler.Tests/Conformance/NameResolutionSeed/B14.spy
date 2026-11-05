@@ -1,0 +1,6 @@
+# B14 | parameter shadowed by let x = x + 1
+def f(x: int) -> None:
+    let x = x + 1
+    print(x)
+def main() -> None:
+    f(1)

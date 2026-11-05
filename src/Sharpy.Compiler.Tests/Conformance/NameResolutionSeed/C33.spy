@@ -1,0 +1,7 @@
+# C33 | method body reads class const bare
+class H:
+    const K: int = 4
+    def m(self) -> int:
+        return K
+def main() -> None:
+    print(H().m())

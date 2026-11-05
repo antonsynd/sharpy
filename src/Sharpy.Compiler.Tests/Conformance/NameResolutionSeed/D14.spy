@@ -1,0 +1,9 @@
+# D14 | walrus targeting module var name inside function
+x: int = 1
+def main() -> None:
+    if (x := 5) > 0:
+        pass
+    print(x)
+    print(rd())
+def rd() -> int:
+    return x

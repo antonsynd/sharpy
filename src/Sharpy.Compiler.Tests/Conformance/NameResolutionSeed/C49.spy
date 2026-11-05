@@ -1,0 +1,11 @@
+# C49 | @static method body reads LATER @static via class name (allowed; default value?)
+class H:
+    @static
+    def read() -> int:
+        return H.sp
+    @static
+    a: int = H.read()
+    @static
+    property sp: int = 4
+def main() -> None:
+    print(H.a)

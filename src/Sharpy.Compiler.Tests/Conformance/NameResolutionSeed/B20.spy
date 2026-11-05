@@ -1,0 +1,5 @@
+# B20 | local function called before its def
+def main() -> None:
+    print(g())
+    def g() -> int:
+        return 1

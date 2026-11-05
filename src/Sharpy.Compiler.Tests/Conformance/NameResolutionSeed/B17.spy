@@ -1,0 +1,5 @@
+# B17 | block-local read after block
+def main() -> None:
+    if True:
+        y = 1
+    print(y)

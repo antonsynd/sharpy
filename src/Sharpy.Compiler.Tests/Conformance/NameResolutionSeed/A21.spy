@@ -1,0 +1,6 @@
+# A21 | module var init reads a LATER module function as a value (no call)
+g: () -> int = f
+def f() -> int:
+    return 5
+def main() -> None:
+    print(g())

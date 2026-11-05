@@ -1,0 +1,4 @@
+# M14 | function reads module var: earlier (control)
+x: int = 3
+def main() -> None:
+    print(x)

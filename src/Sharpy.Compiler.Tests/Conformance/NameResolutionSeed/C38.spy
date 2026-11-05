@@ -1,0 +1,10 @@
+# C38 | nested def in method reads class @static bare
+class H:
+    @static
+    s: int = 4
+    def m(self) -> int:
+        def g() -> int:
+            return s
+        return g()
+def main() -> None:
+    print(H().m())

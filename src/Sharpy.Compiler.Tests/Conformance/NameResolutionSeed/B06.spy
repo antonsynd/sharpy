@@ -1,0 +1,8 @@
+# B06 | function `let` shadows module var
+x: int = 1
+def f() -> None:
+    let x = 5
+    print(x)
+def main() -> None:
+    f()
+    print(x)

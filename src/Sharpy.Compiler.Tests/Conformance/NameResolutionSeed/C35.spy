@@ -1,0 +1,8 @@
+# C35 | method body bare store to class attr
+class H:
+    count: int = 0
+    def m(self) -> None:
+        count = 5
+        print(count)
+def main() -> None:
+    H().m()

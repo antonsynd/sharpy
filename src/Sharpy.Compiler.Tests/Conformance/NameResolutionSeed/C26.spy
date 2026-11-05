@@ -1,0 +1,7 @@
+# C26 | struct field init reads EARLIER @static
+struct P:
+    @static
+    s: int = 4
+    v: int = s
+def main() -> None:
+    print(P().v)

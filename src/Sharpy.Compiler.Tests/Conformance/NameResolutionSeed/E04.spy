@@ -1,0 +1,5 @@
+# E04 | module var init reads EARLIER module property
+property p: int = 4
+x: int = p + 1
+def main() -> None:
+    print(x)

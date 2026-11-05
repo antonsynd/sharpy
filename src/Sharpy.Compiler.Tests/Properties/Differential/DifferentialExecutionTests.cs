@@ -148,9 +148,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
     [SkippableFact]
     public void DifferentialExecution_SharedSubset_MatchesCPython()
     {
-        PythonInterpreter.RequireOrSkip(minMinor: 12);
-        var oracle = PythonExecOracle.TryLocate()
-            ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_exec/run_programs.py was not found.");
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
 
         var sw = Stopwatch.StartNew();
         int limit = ReadIntEnv("DIFF_EXEC_LIMIT", FullPool);
@@ -178,7 +176,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
         // --- Python arm: one batch process. Append main() so CPython invokes Sharpy's auto-entry. ---
         var requests = new List<PyRequest>(programs.Count);
         for (int i = 0; i < programs.Count; i++)
-            requests.Add(new PyRequest(i, programs[i].Key, programs[i].Source + "\nmain()\n"));
+            requests.Add(new PyRequest(i, programs[i].Source + "\nmain()\n"));
         var pythonById = oracle.RunBatch(requests);
 
         // --- Compare + classify. ---
@@ -2048,10 +2046,6 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
     private sealed record Corpus(List<Program> Programs, FixturePool FixturePool);
 
     private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut);
-
-    private sealed record PyRequest(int Id, string Key, string Source);
-
-    private sealed record PyResult(bool Ok, string Stdout, string Stderr, bool TimedOut, bool SyntaxError);
 
     private sealed record Classification(Verdict Verdict, string Detail, string SkipClass = "");
 

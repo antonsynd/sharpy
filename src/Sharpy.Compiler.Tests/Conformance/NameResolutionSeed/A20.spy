@@ -1,0 +1,8 @@
+# A20 | global keyword
+x: int = 1
+def f() -> None:
+    global x
+    x = 2
+def main() -> None:
+    f()
+    print(x)

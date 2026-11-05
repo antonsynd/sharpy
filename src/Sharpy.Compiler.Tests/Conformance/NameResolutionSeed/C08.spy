@@ -1,0 +1,12 @@
+# C08 | @static init reads LATER non-literal const, module binding (#2415)
+def seven() -> int:
+    return 7
+def nine() -> int:
+    return 9
+K: int = nine()
+class H:
+    @static
+    a: int = K + 1
+    const K: int = seven()
+def main() -> None:
+    print(H.a, H.K)

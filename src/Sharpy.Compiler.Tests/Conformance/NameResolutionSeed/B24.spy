@@ -1,0 +1,6 @@
+# B24 | local assigned name of a module function
+def f() -> int:
+    return 1
+def main() -> None:
+    f = 3
+    print(f)

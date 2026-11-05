@@ -1,0 +1,5 @@
+# B35 | comprehension iterable reads outer, element reads outer of same name as target
+def main() -> None:
+    x = [1, 2]
+    ys = [x for x in x]
+    print(ys)

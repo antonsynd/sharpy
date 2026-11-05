@@ -1,0 +1,6 @@
+# C27 | struct field init reads EARLIER const
+struct P:
+    const S: int = 4
+    v: int = S
+def main() -> None:
+    print(P().v)

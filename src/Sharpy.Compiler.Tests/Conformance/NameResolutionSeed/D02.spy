@@ -1,0 +1,7 @@
+# D02 | module var init calls fn declared after a LATER var it reads
+x: int = f()
+y: int = 7
+def f() -> int:
+    return y
+def main() -> None:
+    print(x, y)

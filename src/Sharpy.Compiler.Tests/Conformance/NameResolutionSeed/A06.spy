@@ -1,0 +1,5 @@
+# A06 | module literal const reads LATER literal const
+const B: int = A + 1
+const A: int = 1
+def main() -> None:
+    print(B)

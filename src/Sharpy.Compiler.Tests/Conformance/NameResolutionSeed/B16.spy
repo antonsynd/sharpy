@@ -1,0 +1,6 @@
+# B16 | for target shadows outer local (spec example)
+def main() -> None:
+    x = "outer"
+    for x in range(3):
+        pass
+    print(x)

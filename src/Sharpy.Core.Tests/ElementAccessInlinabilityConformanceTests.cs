@@ -75,7 +75,6 @@ public class ElementAccessInlinabilityConformanceTests
         ("3", "Sharpy.List`1::GetItemUnchecked(System.Int32)"),
         ("4", "Sharpy.Index::Normalize(System.Int32, System.Int32)"),
         ("4", "Sharpy.Index::Clamp(System.Int32, System.Int32)"),
-        ("5", "Sharpy.IndexExtensions::ToNormalizedInt32(System.Index, System.Int32, System.Boolean, System.Boolean)"),
         ("6", "Sharpy.Slice::Normalize(System.Int32, System.Int32, System.Int32)"),
         ("7", "Sharpy.List`1::Pop(System.Int32)"),
         ("8", "Sharpy.List`1::Insert(System.Int32, T)"),
@@ -196,8 +195,6 @@ public class ElementAccessInlinabilityConformanceTests
         "System.Collections.Generic.Dictionary`2::set_Item(TKey, TValue)",
         "System.Collections.Generic.Dictionary`2::get_Count()",
         "System.Collections.Immutable.ImmutableDictionary`2::TryGetValue(TKey, TValue&)",
-        "System.Index::get_IsFromEnd()",
-        "System.Index::get_Value()",
         // Row 16: List<T>.this[System.Index] => _list[index.GetOffset(_list.Count)].
         "System.Index::GetOffset(System.Int32)",
         "System.Array::Empty<T>()",
