@@ -313,9 +313,13 @@ public partial class NameResolutionDifferentialTests
                 foreach (var u in bareOuters)
                     yield return ClassCell(t, position, Nesting.Direct, Order.Self, Spelling.Bare, u, ReadName.Plain);
                 yield return ClassCell(t, position, Nesting.Direct, Order.Self, Spelling.Qualified, BindingKind.None, ReadName.Plain);
+                yield return ClassCell(t, position, Nesting.Direct, Order.Self, Spelling.Alias, BindingKind.None, ReadName.Plain);
                 if (t is not (BindingKind.ClassLiteralConst or BindingKind.InstanceField or BindingKind.InstanceProperty))
+                {
                     foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
                         yield return ClassCell(t, position, Nesting.Direct, Order.Cycle, Spelling.Bare, u, ReadName.Plain);
+                    yield return ClassCell(t, position, Nesting.Direct, Order.Cycle, Spelling.Alias, BindingKind.None, ReadName.Plain);
+                }
             }
 
             // Innermost: a parameter, an enclosing local or an inner variable of the name.

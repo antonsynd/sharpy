@@ -349,6 +349,8 @@ public partial class NameResolutionDifferentialTests
             case VerdictClass.RuntimeThrow:
                 return "#2422";
             case VerdictClass.SilentWrong:
+                if (cell.Rule == "N3-cycle" && cell.Id.Contains("/Alias/", StringComparison.Ordinal))
+                    return "#2412";
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
                 if (cell.Family == Family.Store)
@@ -509,6 +511,9 @@ public partial class NameResolutionDifferentialTests
             Assert.Fail($"{failures.Count} failures. {report}\n{string.Join("\n", failures)}");
     }
 
+    /// <summary>A seed cell's python column is its verdict from the seed table (the renderer facts' control), not a batch run.</summary>
+    private static string PythonText(CellResult r) => r.Cell.SeedPythonVerdict ?? r.Python.ToString();
+
     private static string Describe(CellResult r)
         => r.Kind == SharpyKind.Ran
             ? $"Ran '{Normalize(r.Run.Stdout)}'"
@@ -573,7 +578,7 @@ public partial class NameResolutionDifferentialTests
                 id = r.Cell.Id,
                 shape = r.Cell.Shape,
                 sharpy = Describe(r),
-                python = r.Python.ToString(),
+                python = PythonText(r),
             }).ToList(),
             secondsPerCell = results.Count == 0 ? 0 : wall.TotalSeconds / results.Count,
             wallSeconds = wall.TotalSeconds,
@@ -595,8 +600,8 @@ public partial class NameResolutionDifferentialTests
                     tag = r.Cell.Tag.ToString(),
                     rule = r.Cell.Rule,
                     model = r.Cell.Model,
-                    predicted = r.Cell.Python.ToString(),
-                    python = r.Python.ToString(),
+                    predicted = r.Cell.SeedPythonVerdict ?? r.Cell.Python.ToString(),
+                    python = PythonText(r),
                     control = r.Control,
                     sharpy = Describe(r),
                     cs = r.Run.CsCode,
