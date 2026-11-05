@@ -25,6 +25,7 @@ Parse `$ARGUMENTS`:
   ls -t .claude/plans/*.md 2>/dev/null | head -3      # current location (round plans and plans created since 2026-08-26)
   ls -t ~/.claude/plans/*.md 2>/dev/null | head -3    # per-batch plans created before 2026-08-26
   ```
+- Before revising the plan the user picked, read its stamp (contract §12 Convergence). **`CONVERGED`** → do not revise: say the next step is `/implement-plan <path>` (the `### Deferred findings` rows are its first task) and stop. **`NEEDS REVISION`** → revise only what the Verification Summary names, and write the `## Revision log` line as `@ <sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): …` so the next verifier can apply the Convergence rule (the stamp is deleted; the log line is the only carrier of the dimension). A finding that asks for a roster is answered by naming the compiler enumeration, the map and its totality assertion with its mutation — never by copying a census count into the plan: the count is the test's literal constant (as `ScopeKindRosterTests` keeps its own) and goes stale at the next commit.
 
 ## Scope check (before any research)
 

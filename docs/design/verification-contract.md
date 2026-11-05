@@ -326,6 +326,35 @@ ruling in the plan, ask the owner — when the implementer hits a door the chart
 when the seam moves into `Semantic/`, `Lowering/` or `CodeGen/`. A light group is never demoted to
 band after a guard has been written, and nothing is ever demoted below the tier the charter names.
 
+**Convergence.** `/verify-plan` and the revision it routes to form a loop with no reading-based
+fixed point: a roster can always be re-counted against a larger enumeration and a matrix re-worded.
+The loop ends on a decision, not on a count. A pass that would stamp NEEDS REVISION on a plan whose
+previous pass already stamped NEEDS REVISION on the SAME dimension (the revision log carries
+`(NEEDS REVISION, Dimension N)`, since the stamp itself is deleted at revision), and whose every
+finding is **deferrable** — it changes no `## Design Decisions` predicate, no acceptance mutation,
+no tier, scope or owner ruling, AND it names its catcher: the code change (a map or exclusion entry
+of a reflection-sourced roster, an assertion's source expression, a test's census constant, a
+spelling, a file:line) and the assertion, mutation, build or generator run that proves it — stamps
+**CONVERGED** instead and lists those findings under `### Deferred findings`. A value missing from
+a HAND-listed axis is not deferrable: it has no catcher, and the finding is "close the axis against
+enumeration Y", which is a decision. `/implement-plan` reads CONVERGED as PASS, makes the deferred
+findings its first task, resolved in code where the proof named on each row checks them, and still
+asks the owner once when the `Adequacy:` line reads CELL on a bug-fix plan — the class-not-cell
+door stays with the owner (CLAUDE.md rule 11). The plan's design sections are not revised after a
+CONVERGED stamp; the implementation checklist and override records are not design sections. A
+roster whose source is a compiler enumeration read by reflection (`Enum.GetValues`, a subclass or
+property scan, a call-site census) is graded by the existence of its totality assertion and that
+assertion's mutation, never by re-counting the source; a count the plan carries is a measurement
+the test re-takes. A first NEEDS REVISION always earns a revision.
+
+*Why (convergence):* plan-ed89b6 (P77a) took ten `--adequacy` passes on 2026-11-04: passes 2–8
+each found one more value of one hand-listed axis, pass 8 asked for the rosters, and passes 9–10
+found census counts off by one to three after the ninth revision had turned every axis into a
+reflection census of the compiler. The plan grew from 165 KB to 196 KB. Pass 8's roster demand was
+a decision and earned its revision; passes 9–10 changed no verdict rule, no mutation and no ruling
+— every finding was a map, source-expression or count edit that the plan's own roster tests prove
+at their first run.
+
 *Why:* across every plan in `.claude/plans/` through 2026-10-28, `/verify-plan` returned PASS WITH
 CORRECTIONS on 53 of 53 first-pass stamps; it has never stopped a plan, and its one NEEDS REVISION
 (plan-4d6288) became PASS the moment the owner ruled D1 — a door, not a reading defect. Ten rounds
@@ -356,4 +385,6 @@ without `override: <owner's words>` in `## Scope`; `/verify-plan` on a light pla
 `check_plan_refs.py` report, and a full plan without a stamp; `/verify-implementation` on a light
 plan spawns Agents 2, 3 and 4 and says so in its report header. Red = a stage run against the tier
 without a recorded override, an execution auditor skipped at any tier, a tier demoted after
-planning, or a §3 row with no letter.
+planning, a §3 row with no letter, a NEEDS REVISION stamped where the Convergence rule applies (a
+second consecutive pass on one dimension whose findings are all deferrable), a CONVERGED stamp with
+a deferred row that names no proof, or a design section revised after a CONVERGED stamp.
