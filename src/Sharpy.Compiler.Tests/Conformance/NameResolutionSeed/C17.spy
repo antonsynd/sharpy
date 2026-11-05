@@ -1,0 +1,8 @@
+# C17 | @static property default reads EARLIER @static property
+class H:
+    @static
+    property p: int = 4
+    @static
+    property q: int = p * 2
+def main() -> None:
+    print(H.q)

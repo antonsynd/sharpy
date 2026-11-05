@@ -1,0 +1,8 @@
+# D06 | method: `let` shadows class attr name
+class H:
+    count: int = 0
+    def m(self) -> None:
+        let count = 99
+        print(count, self.count)
+def main() -> None:
+    H().m()

@@ -1,0 +1,6 @@
+# A10 | module var init constructs LATER class (instance field)
+x: int = C().v
+class C:
+    v: int = 4
+def main() -> None:
+    print(x)

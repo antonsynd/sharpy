@@ -1,0 +1,5 @@
+# E06 | function-typed module var whose lambda reads a module var, called bare
+k: int = 3
+g: () -> int = lambda: k * 2
+def main() -> None:
+    print(g())

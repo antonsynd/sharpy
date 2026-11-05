@@ -1,0 +1,7 @@
+# M13 | method reads module var that is declared after class but before main
+class C:
+    def m(self) -> int:
+        return total
+total: int = 11
+def main() -> None:
+    print(C().m())

@@ -1,0 +1,4 @@
+# A19 | module var named like builtin (`max`) read in a function
+max: int = 5
+def main() -> None:
+    print(max)

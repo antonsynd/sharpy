@@ -1,0 +1,4 @@
+# B32 | walrus in comprehension, read after
+def main() -> None:
+    ys = [y for x in [1, 2] if (y := x * 2) > 0]
+    print(y)

@@ -1,0 +1,5 @@
+# E02 | module property default reads LATER module var
+property p: int = v + 1
+v: int = 4
+def main() -> None:
+    print(p)

@@ -1,0 +1,6 @@
+# D19 | plain class instance field default reads module var
+k: int = 4
+class D:
+    v: int = k
+def main() -> None:
+    print(D().v)

@@ -1,0 +1,7 @@
+# C20 | instance field init reads LATER @static, bare
+class H:
+    v: int = s + 1
+    @static
+    s: int = 4
+def main() -> None:
+    print(H().v)

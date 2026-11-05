@@ -1,0 +1,9 @@
+# C06 | @static init reads LATER @static, module binding of the name
+s: int = 7
+class H:
+    @static
+    a: int = s + 1
+    @static
+    s: int = 2
+def main() -> None:
+    print(H.a)

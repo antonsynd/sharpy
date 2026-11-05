@@ -1,0 +1,6 @@
+# B13 | parameter reassigned in body
+def f(x: int) -> None:
+    x = 5
+    print(x)
+def main() -> None:
+    f(1)

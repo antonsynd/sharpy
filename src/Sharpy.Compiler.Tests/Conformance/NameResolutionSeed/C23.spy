@@ -1,0 +1,6 @@
+# C23 | instance field init reads ITSELF with module binding
+v: int = 9
+class H:
+    v: int = v + 1
+def main() -> None:
+    print(H().v)

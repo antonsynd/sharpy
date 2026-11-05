@@ -1,0 +1,9 @@
+# M04 | function reads LATER module var, qualified through module name? (store via later fn)
+def main() -> None:
+    set_x()
+    print(get_x())
+def set_x() -> None:
+    x = 9
+def get_x() -> int:
+    return x
+x: int = 3

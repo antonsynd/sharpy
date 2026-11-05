@@ -1,0 +1,6 @@
+# B18 | store in if to outer local
+def main() -> None:
+    x = 0
+    if True:
+        x = 5
+    print(x)

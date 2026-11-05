@@ -1,0 +1,6 @@
+# D09 | parameter default reads module VAR (not const)
+v: int = 5
+def f(x: int = v) -> int:
+    return x
+def main() -> None:
+    print(f())

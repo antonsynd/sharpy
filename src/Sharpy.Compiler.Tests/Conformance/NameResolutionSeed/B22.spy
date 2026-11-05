@@ -1,0 +1,6 @@
+# B22 | read module name, then annotated decl same name later
+x: int = 1
+def main() -> None:
+    print(x)
+    x: int = 2
+    print(x)

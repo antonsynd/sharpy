@@ -1,0 +1,9 @@
+# C16 | @static init calls LATER @static method (qualified)
+class H:
+    @static
+    a: int = H.f()
+    @static
+    def f() -> int:
+        return 3
+def main() -> None:
+    print(H.a)

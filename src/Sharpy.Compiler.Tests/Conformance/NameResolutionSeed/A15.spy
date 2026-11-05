@@ -1,0 +1,8 @@
+# A15 | module var init reads LATER class's @static that reads LATER module var (cross-type cycle)
+x: int = C.a
+class C:
+    @static
+    a: int = y + 1
+y: int = 5
+def main() -> None:
+    print(x, C.a, y)

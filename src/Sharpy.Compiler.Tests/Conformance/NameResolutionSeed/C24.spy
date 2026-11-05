@@ -1,0 +1,8 @@
+# C24 | @dataclass field init reads EARLIER @static
+@dataclass
+class D:
+    @static
+    s: int = 4
+    v: int = s
+def main() -> None:
+    print(D().v)

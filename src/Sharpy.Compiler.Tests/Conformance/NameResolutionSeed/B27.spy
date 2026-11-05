@@ -1,0 +1,8 @@
+# B27 | nested def `let` shadows enclosing local
+def main() -> None:
+    let x = 1
+    def g() -> None:
+        let x = 2
+        print(x)
+    g()
+    print(x)

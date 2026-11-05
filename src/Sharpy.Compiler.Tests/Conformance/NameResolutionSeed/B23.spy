@@ -1,0 +1,8 @@
+# B23 | except-as reuses outer local name
+def main() -> None:
+    e = 1
+    try:
+        raise ValueError("v")
+    except ValueError as e:
+        pass
+    print(e)

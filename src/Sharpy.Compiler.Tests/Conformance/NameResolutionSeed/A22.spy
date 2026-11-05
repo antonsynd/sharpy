@@ -1,0 +1,7 @@
+# A22 | module non-literal const reads LATER module var
+def one() -> int:
+    return 1
+const K: int = v + one()
+v: int = 10
+def main() -> None:
+    print(K)

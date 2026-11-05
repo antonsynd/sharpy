@@ -1,0 +1,5 @@
+# D22 | module var init with a generator over a LATER module var
+xs: list[int] = [i for i in ys]
+ys: list[int] = [1, 2]
+def main() -> None:
+    print(xs)

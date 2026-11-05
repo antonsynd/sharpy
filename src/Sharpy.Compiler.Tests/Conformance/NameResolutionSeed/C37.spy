@@ -1,0 +1,8 @@
+# C37 | method body reads inherited field bare
+class B:
+    v: int = 5
+class D(B):
+    def m(self) -> int:
+        return v
+def main() -> None:
+    print(D().m())

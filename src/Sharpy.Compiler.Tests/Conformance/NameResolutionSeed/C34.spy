@@ -1,0 +1,8 @@
+# C34 | method body reads name held by module var AND class attr
+v: int = 99
+class H:
+    v: int = 1
+    def m(self) -> int:
+        return v
+def main() -> None:
+    print(H().m())

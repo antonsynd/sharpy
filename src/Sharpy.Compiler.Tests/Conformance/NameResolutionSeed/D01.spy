@@ -1,0 +1,10 @@
+# D01 | earlier module var init -> earlier class static -> fn reading LATER-initialized module var (cross-type)
+x: int = C.a
+y: int = 5
+def g() -> int:
+    return y
+class C:
+    @static
+    a: int = g()
+def main() -> None:
+    print(x, C.a, y)

@@ -1,0 +1,7 @@
+# M09 | class @static initializer reads LATER module var
+class C:
+    @static
+    a: int = m + 1
+m: int = 5
+def main() -> None:
+    print(C.a)

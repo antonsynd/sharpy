@@ -1,0 +1,8 @@
+# C41 | comprehension in @static initializer: iterable reads class @static
+class H:
+    @static
+    xs: list[int] = [1, 2]
+    @static
+    ys: list[int] = [x * 2 for x in xs]
+def main() -> None:
+    print(H.ys)

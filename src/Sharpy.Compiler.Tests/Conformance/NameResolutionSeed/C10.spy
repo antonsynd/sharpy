@@ -1,0 +1,7 @@
+# C10 | @static init reads LATER literal const, no outer
+class H:
+    @static
+    a: int = K + 1
+    const K: int = 2
+def main() -> None:
+    print(H.a)

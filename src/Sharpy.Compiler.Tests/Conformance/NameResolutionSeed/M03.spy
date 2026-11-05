@@ -1,0 +1,7 @@
+# M03 | method body reads LATER module var
+class C:
+    def m(self) -> int:
+        return x
+x: int = 3
+def main() -> None:
+    print(C().m())

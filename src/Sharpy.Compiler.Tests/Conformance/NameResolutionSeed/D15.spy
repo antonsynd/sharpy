@@ -1,0 +1,7 @@
+# D15 | `let` in if-block shadows, bare store after block writes outer
+def main() -> None:
+    let x = 5
+    if x > 0:
+        let x = 10
+        print(x)
+    print(x)

@@ -1,0 +1,8 @@
+# C36 | method body bare store to module var (class has no such attr)
+x: int = 1
+class H:
+    def m(self) -> None:
+        x = 5
+def main() -> None:
+    H().m()
+    print(x)

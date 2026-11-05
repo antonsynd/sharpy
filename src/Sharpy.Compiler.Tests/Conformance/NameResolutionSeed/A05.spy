@@ -1,0 +1,7 @@
+# A05 | earlier var init calls EARLIER fn that reads LATER module var
+def f() -> int:
+    return y
+x: int = f()
+y: int = 7
+def main() -> None:
+    print(x, y)

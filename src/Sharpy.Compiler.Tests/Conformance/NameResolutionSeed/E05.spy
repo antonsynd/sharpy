@@ -1,0 +1,8 @@
+# E05 | module var init reads LATER class's @static whose init reads EARLIER module var
+y: int = 5
+x: int = C.a
+class C:
+    @static
+    a: int = y + 1
+def main() -> None:
+    print(x)

@@ -1,0 +1,6 @@
+# B21 | read module name, then `let` same name later in function
+x: int = 1
+def main() -> None:
+    print(x)
+    let x = 2
+    print(x)

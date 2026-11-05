@@ -1,0 +1,9 @@
+# D03 | later @static property yields to module binding
+s: int = 7
+class H:
+    @static
+    a: int = s + 1
+    @static
+    property s: int = 2
+def main() -> None:
+    print(H.a)

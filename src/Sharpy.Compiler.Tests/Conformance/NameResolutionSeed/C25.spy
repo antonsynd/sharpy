@@ -1,0 +1,7 @@
+# C25 | @dataclass field init reads EARLIER const
+@dataclass
+class D:
+    const S: int = 4
+    v: int = S
+def main() -> None:
+    print(D().v)

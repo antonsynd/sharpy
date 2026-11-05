@@ -1,0 +1,7 @@
+# A18 | module def `len` (later) shadows builtin; earlier fn calls len
+def g() -> int:
+    return len([1, 2, 3])
+def len(xs: list[int]) -> int:
+    return 99
+def main() -> None:
+    print(g())

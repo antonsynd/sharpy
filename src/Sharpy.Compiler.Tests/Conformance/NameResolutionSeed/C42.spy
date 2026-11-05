@@ -1,0 +1,8 @@
+# C42 | comprehension in @static initializer: element reads class @static
+class H:
+    @static
+    k: int = 10
+    @static
+    ys: list[int] = [x + k for x in [1, 2]]
+def main() -> None:
+    print(H.ys)

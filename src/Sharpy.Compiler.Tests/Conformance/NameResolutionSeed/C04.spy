@@ -1,0 +1,6 @@
+# C04 | @static init reads ITSELF, no outer
+class H:
+    @static
+    a: int = a + 1
+def main() -> None:
+    print(H.a)

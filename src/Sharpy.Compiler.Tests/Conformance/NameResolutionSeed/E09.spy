@@ -1,0 +1,6 @@
+# E09 | lambda in function stores? walrus to enclosing local inside lambda
+def main() -> None:
+    n = 1
+    f = lambda: (n := 5)
+    f()
+    print(n)

@@ -1,0 +1,7 @@
+# C18 | instance field init (plain class) reads EARLIER @static
+class H:
+    @static
+    s: int = 4
+    v: int = s + 1
+def main() -> None:
+    print(H().v)

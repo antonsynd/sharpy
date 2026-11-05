@@ -1,0 +1,6 @@
+# B10 | lambda captures local, local reassigned before call
+def main() -> None:
+    count: int = 0
+    adder = lambda: count + 1
+    count = 10
+    print(adder())

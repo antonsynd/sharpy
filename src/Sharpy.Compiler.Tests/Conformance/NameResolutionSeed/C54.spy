@@ -1,0 +1,8 @@
+# C54 | module-shadowed: @static init reads EARLIER @static bare where module var has same name, inside @dataclass param-default host
+s: int = 9
+@dataclass
+class D:
+    const s: int = 4
+    v: int = s
+def main() -> None:
+    print(D().v)

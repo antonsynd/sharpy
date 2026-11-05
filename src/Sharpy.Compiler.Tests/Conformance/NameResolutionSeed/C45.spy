@@ -1,0 +1,8 @@
+# C45 | nested class initializer reads enclosing @static (#2398)
+class Outer:
+    @static
+    s: int = 2
+    class Inner:
+        v: int = s
+def main() -> None:
+    print(Outer.Inner().v)

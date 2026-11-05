@@ -1,0 +1,11 @@
+# D04 | later @static method yields to module function of the same name
+def f() -> int:
+    return 1
+class H:
+    @static
+    a: int = f()
+    @static
+    def f() -> int:
+        return 2
+def main() -> None:
+    print(H.a)

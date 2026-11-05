@@ -1,0 +1,4 @@
+# B26 | let shadows builtin then calls it
+def main() -> None:
+    let len = 5
+    print(len([1, 2]))

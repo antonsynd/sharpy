@@ -1,0 +1,6 @@
+# M12 | parameter default reads LATER module literal const
+def f(x: int = K) -> int:
+    return x
+const K: int = 3
+def main() -> None:
+    print(f())

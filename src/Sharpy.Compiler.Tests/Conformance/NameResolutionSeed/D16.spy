@@ -1,0 +1,9 @@
+# D16 | class body: instance field named like module function, method calls bare name
+def size() -> int:
+    return 7
+class H:
+    size: int = 1
+    def m(self) -> int:
+        return size()
+def main() -> None:
+    print(H().m())

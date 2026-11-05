@@ -1,0 +1,6 @@
+# M07 | lambda at function level reads LATER module var
+def get() -> () -> int:
+    return lambda: x
+x: int = 5
+def main() -> None:
+    print(get()())

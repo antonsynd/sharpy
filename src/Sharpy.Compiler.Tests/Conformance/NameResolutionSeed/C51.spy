@@ -1,0 +1,7 @@
+# C51 | instance method called bare in instance field init
+class H:
+    def f(self) -> int:
+        return 1
+    v: int = f()
+def main() -> None:
+    print(H().v)

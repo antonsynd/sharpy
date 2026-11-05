@@ -1,0 +1,5 @@
+# C48 | class literal const self-cycle
+class H:
+    const K: int = K + 1
+def main() -> None:
+    print(H.K)

@@ -1,0 +1,7 @@
+# E10 | annotated local in nested def over enclosing local (Stage 1 shadow)
+def main() -> None:
+    n: int = 1
+    def g() -> None:
+        n: int = 9
+    g()
+    print(n)

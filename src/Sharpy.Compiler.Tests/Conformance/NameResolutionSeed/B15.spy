@@ -1,0 +1,5 @@
+# B15 | comprehension var shadows outer local
+def main() -> None:
+    x = 10
+    ys = [x for x in range(3)]
+    print(ys, x)

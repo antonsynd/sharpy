@@ -1,0 +1,6 @@
+# M02 | function reads LATER module non-literal const
+def seven() -> int:
+    return 7
+def main() -> None:
+    print(K)
+const K: int = seven()

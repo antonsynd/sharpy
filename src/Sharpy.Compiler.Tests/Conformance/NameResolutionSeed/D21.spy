@@ -1,0 +1,9 @@
+# D21 | nested class init reads enclosing @static, module binding of the name
+s: int = 7
+class Outer:
+    @static
+    s: int = 2
+    class Inner:
+        v: int = s
+def main() -> None:
+    print(Outer.Inner().v)

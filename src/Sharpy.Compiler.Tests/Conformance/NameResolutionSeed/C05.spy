@@ -1,0 +1,7 @@
+# C05 | @static init reads ITSELF, module binding of the name
+a: int = 5
+class H:
+    @static
+    a: int = a + 1
+def main() -> None:
+    print(H.a)

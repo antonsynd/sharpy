@@ -1,0 +1,6 @@
+# B30 | lambda reads module var, module var changed later
+x: int = 1
+def main() -> None:
+    f = lambda: x
+    x = 7
+    print(f())

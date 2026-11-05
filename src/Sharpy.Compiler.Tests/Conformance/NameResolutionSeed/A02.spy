@@ -1,0 +1,5 @@
+# A02 | module var init reads LATER module var (bare forward)
+b: int = a + 1
+a: int = 1
+def main() -> None:
+    print(b)
