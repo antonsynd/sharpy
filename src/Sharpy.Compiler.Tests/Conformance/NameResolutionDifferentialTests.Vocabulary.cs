@@ -137,7 +137,7 @@ internal enum PatternClass
 }
 
 /// <summary>
-/// The reasons a roster source value maps to no generated cell: D3's excluded axes (i)–(xv) plus the reasons the
+/// The reasons a roster source value maps to no generated cell: D3's excluded axes (i)–(xvi) plus the reasons the
 /// roster itself names. The report lists the axes as <c>excludedAxes</c>, so the coverage statement is honest.
 /// </summary>
 internal enum ExcludedAxis

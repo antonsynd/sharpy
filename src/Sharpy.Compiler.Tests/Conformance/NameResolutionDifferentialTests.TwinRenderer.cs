@@ -834,9 +834,6 @@ public partial class NameResolutionDifferentialTests
         public const int SpyCount = 166;
         public const int HandTwinCount = 32;
 
-        /// <summary>A verdict that cannot reproduce from its twin, with the reason. Empty: every seed reproduces.</summary>
-        public static readonly IReadOnlyDictionary<string, string> VerdictExemptions = new Dictionary<string, string>();
-
         private static readonly Regex Address = new("0x[0-9a-f]+", RegexOptions.CultureInvariant);
 
         public static string Folder => Path.Combine(AppContext.BaseDirectory, "Conformance", "NameResolutionSeed");
@@ -905,6 +902,27 @@ public partial class NameResolutionDifferentialTests
 
     private static readonly IReadOnlyDictionary<string, TwinRow> TwinRows = new Dictionary<string, TwinRow>
     {
+        ["elif"] = new(
+            """
+            def main() -> None:
+                if False:
+                    print(1)
+                elif True:
+                    print(2)
+                else:
+                    print(3)
+            """,
+            """
+            def main():
+                if False:
+                    print(1)
+                elif True:
+                    print(2)
+                else:
+                    print(3)
+            main()
+            """,
+            "2\n"),
         ["enum"] = new(
             """
             enum E:
@@ -1426,22 +1444,17 @@ public partial class NameResolutionDifferentialTests
 
         Assert.Equal(ids.Count, results.Count);
         var moved = new List<string>();
-        var staleExemptions = new List<string>();
         for (var i = 0; i < ids.Count; i++)
         {
             var id = ids[i];
             var actual = TwinSeed.MaskAddresses(TwinSeed.Verdict(results[i]));
             var expected = TwinSeed.MaskAddresses(recorded[id]);
-            var exempt = TwinSeed.VerdictExemptions.ContainsKey(id);
-            if (actual != expected && !exempt)
+            if (actual != expected)
                 moved.Add($"{id}: recorded `{expected}`, twin `{actual}`");
-            if (actual == expected && exempt)
-                staleExemptions.Add(id);
         }
 
         Assert.True(moved.Count == 0,
             $"{moved.Count} of {ids.Count} seed python verdicts moved (a seeding error, never allowlistable):\n{string.Join("\n", moved)}");
-        Assert.True(staleExemptions.Count == 0, $"stale verdict exemptions: {string.Join(", ", staleExemptions)}");
     }
 
     [Theory]

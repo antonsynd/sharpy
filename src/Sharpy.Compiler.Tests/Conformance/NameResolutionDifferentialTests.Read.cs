@@ -36,12 +36,6 @@ public partial class NameResolutionDifferentialTests
         ["outer ModuleInterface"] = "no expression read; shares the F2 arm with ModuleClass",
     };
 
-    private static readonly ReadName[] ClassBuiltinNames =
-    {
-        new("abs", "-3", "x: int", 3),
-        new("len", "\"ab\"", "s: str", 2),
-    };
-
     private static bool IsModuleLevel(BindingKind k) => k is >= BindingKind.ModuleVar and <= BindingKind.ModuleTypeAlias;
     private static bool IsInstance(BindingKind k) => InstanceTargets.Contains(k);
     private static bool IsLocalOuter(BindingKind k) => k is BindingKind.EnclosingLocal or BindingKind.Parameter or BindingKind.Inner;
@@ -342,7 +336,7 @@ public partial class NameResolutionDifferentialTests
                 ReadPosition.StaticPropertyDefault, ReadPosition.InstancePropertyDefault, ReadPosition.ParameterDefault,
                 ReadPosition.MethodBody,
             };
-            foreach (var n in ClassBuiltinNames)
+            foreach (var n in Builtins.Select(b => new ReadName(b.Name, b.Args, b.Params, b.Result)))
             {
                 foreach (var p in builtinPositions)
                     foreach (var o in earlierLater)
@@ -1024,39 +1018,59 @@ public partial class NameResolutionDifferentialTests
     private static IEnumerable<NameCell> TypePositionCells()
     {
         const string Later = "class Later:\n    v: int = 3\n    def m(self) -> int:\n        return 6\n";
-        var cells = new (string Label, string Reader, string[] Main, string Model, bool Load)[]
+        const string LaterError = "class Later(Exception):\n    v: int = 3\n";
+
+        // Twin: the reader in the python twin's spelling, where python has no spelling of the construct at all.
+        var cells = new (string Label, TypePosition At, ReadPosition? Position, string Target, string Reader, string[] Main, string Model, bool Load, string? Twin)[]
         {
-            ("variable-annotation", "x0: Later = Later()\n", new[] { "print(x0.v)" }, "3", true),
-            ("class-field-annotation", "class H:\n    item: Later = Later()\n", new[] { "print(H().item.v)" }, "3", true),
-            ("return-annotation", "def r() -> Later:\n    return Later()\n", new[] { "print(r().v)" }, "3", false),
-            ("parameter-annotation", "def r(o: Later) -> int:\n    return o.v\n", new[] { "print(r(Later()))" }, "3", false),
-            ("local-annotation", "def r() -> int:\n    o: Later = Later()\n    return o.v\n", new[] { "print(r())" }, "3", false),
-            ("lambda-return", "def r() -> int:\n    f: () -> Later = lambda: Later()\n    return f().v\n", new[] { "print(r())" }, "3", false),
-            ("isinstance", "def r(o: object) -> bool:\n    return isinstance(o, Later)\n", new[] { "print(r(Later()))" }, "True", false),
-            ("generic-argument", "def r() -> int:\n    xs: list[Later] = [Later()]\n    return xs[0].v\n", new[] { "print(r())" }, "3", false),
-            ("method-reference", "def r() -> int:\n    f: () -> int = Later().m\n    return f()\n", new[] { "print(r())" }, "6", false),
-            ("f-string", "def r() -> str:\n    return f\"v={Later().v}\"\n", new[] { "print(r())" }, "v=3", false),
-            ("safe-cast", "def r(o: object) -> bool:\n    return (o as? Later) is not None\n", new[] { "print(r(Later()))" }, "True", false),
-            ("checked-cast", "def r(o: object) -> int:\n    return (o as! Later).v\n", new[] { "print(r(Later()))" }, "3", false),
+            ("variable-annotation", TypePosition.VariableAnnotation, null, Later, "x0: Later = Later()\n", new[] { "print(x0.v)" }, "3", true, null),
+            ("class-field-annotation", TypePosition.VariableAnnotation, null, Later, "class H:\n    item: Later = Later()\n", new[] { "print(H().item.v)" }, "3", true, null),
+            ("return-annotation", TypePosition.ReturnAnnotation, null, Later, "def r() -> Later:\n    return Later()\n", new[] { "print(r().v)" }, "3", false, null),
+            ("parameter-annotation", TypePosition.ParameterAnnotation, null, Later, "def r(o: Later) -> int:\n    return o.v\n", new[] { "print(r(Later()))" }, "3", false, null),
+            ("local-annotation", TypePosition.VariableAnnotation, null, Later, "def r() -> int:\n    o: Later = Later()\n    return o.v\n", new[] { "print(r())" }, "3", false, null),
+            ("lambda-return", TypePosition.CallableReturn, null, Later, "def r() -> int:\n    f: () -> Later = lambda: Later()\n    return f().v\n", new[] { "print(r())" }, "3", false, null),
+            ("arrow-lambda-return", TypePosition.LambdaReturn, null, Later, "def r() -> int:\n    f: () -> Later = () -> Later: Later()\n    return f().v\n", new[] { "print(r())" }, "3", false,
+                "def r() -> int:\n    f: () -> Later = lambda: Later()\n    return f().v\n"),
+            ("callable-parameter", TypePosition.CallableParameter, null, Later, "def r() -> int:\n    f: (Later) -> int = lambda o: o.v\n    return f(Later())\n", new[] { "print(r())" }, "3", false, null),
+            ("isinstance", TypePosition.IsInstance, null, Later, "def r(o: object) -> bool:\n    return isinstance(o, Later)\n", new[] { "print(r(Later()))" }, "True", false, null),
+            ("generic-argument", TypePosition.GenericArgument, null, Later, "def r() -> int:\n    xs: list[Later] = [Later()]\n    return xs[0].v\n", new[] { "print(r())" }, "3", false, null),
+            ("method-reference", TypePosition.VariableAnnotation, null, Later, "def r() -> int:\n    f: () -> int = Later().m\n    return f()\n", new[] { "print(r())" }, "6", false, null),
+            ("f-string", TypePosition.VariableAnnotation, null, Later, "def r() -> str:\n    return f\"v={Later().v}\"\n", new[] { "print(r())" }, "v=3", false, null),
+            ("safe-cast", TypePosition.Coercion, null, Later, "def r(o: object) -> bool:\n    return (o as? Later) is not None\n", new[] { "print(r(Later()))" }, "True", false, null),
+            ("checked-cast", TypePosition.Coercion, null, Later, "def r(o: object) -> int:\n    return (o as! Later).v\n", new[] { "print(r(Later()))" }, "3", false, null),
+            ("property-annotation", TypePosition.PropertyAnnotation, null, Later, "class H:\n    property p: Later = Later()\n", new[] { "print(H().p.v)" }, "3", true, null),
+            ("accessor-return", TypePosition.AccessorReturn, null, Later, "class H:\n    property get p(self) -> Later:\n        return Later()\n", new[] { "print(H().p.v)" }, "3", false, null),
+            ("union-case-field", TypePosition.UnionCaseField, null, Later, "union U:\n    case V(f: Later)\n", new[] { "match U.V(Later()):", "    case V(f):", "        print(f.v)" }, "3", false, null),
+            ("alias-target", TypePosition.AliasTarget, ReadPosition.TypeAliasTarget, Later, "type A = Later\n", new[] { "a: A = Later()", "print(a.v)" }, "3", true, null),
+            ("base-list", TypePosition.BaseList, ReadPosition.BaseList, Later, "class C(Later):\n    pass\n", new[] { "print(C().v)" }, "3", true, null),
+            ("out-inline-type", TypePosition.OutInlineType, null, Later, "def mk(o: out Later) -> None:\n    o = Later()\ndef r() -> int:\n    mk(out let o: Later)\n    return o.v\n", new[] { "print(r())" }, "3", false,
+                "def mk() -> Later:\n    return Later()\ndef r() -> int:\n    o: Later = mk()\n    return o.v\n"),
+            ("result-error", TypePosition.ResultError, null, LaterError, "def r() -> int !Later:\n    return Ok(Later().v)\n", new[] { "print(r().unwrap())" }, "3", false,
+                "def r() -> int:\n    return Later().v\n"),
         };
-        foreach (var (label, reader, main, model, load) in cells)
+        foreach (var (label, at, position, target, reader, main, model, load, twin) in cells)
             foreach (var o in new[] { Order.Earlier, Order.Later })
             {
+                // A python twin of `T !E` has no result wrapper to unwrap, so its main reads the value.
+                var twinMain = at == TypePosition.ResultError ? new[] { "print(r())" } : main;
                 yield return new NameCell
                 {
                     Id = CellId("read", "type-position", label, o),
                     Family = Family.Read,
-                    Source = (o == Order.Earlier ? Later + reader : reader + Later) + MainBlock(main),
+                    Source = (o == Order.Earlier ? target + reader : reader + target) + MainBlock(main),
+                    TwinSource = twin == null ? null : (o == Order.Earlier ? target + twin : twin + target) + MainBlock(twinMain),
                     Tag = SharpyTag.MustRun,
                     Model = model,
                     Python = load && o == Order.Later ? PyOutcome.Name("Later") : PyOutcome.Ran(model),
                     Rule = "N1",
                     Target = BindingKind.ModuleClass,
                     Outer = BindingKind.None,
+                    Position = position,
+                    TypeAt = at,
                 };
             }
 
-        const string LaterError = "class Later(Exception):\n    pass\n";
+        const string Raising = "class Later(Exception):\n    pass\n";
         foreach (var o in new[] { Order.Earlier, Order.Later })
         {
             const string Reader = "def r() -> str:\n    try:\n        raise Later()\n    except Later as e:\n        return \"caught\"\n";
@@ -1064,13 +1078,31 @@ public partial class NameResolutionDifferentialTests
             {
                 Id = CellId("read", "type-position", "except-clause", o),
                 Family = Family.Read,
-                Source = (o == Order.Earlier ? LaterError + Reader : Reader + LaterError) + MainBlock("print(r())"),
+                Source = (o == Order.Earlier ? Raising + Reader : Reader + Raising) + MainBlock("print(r())"),
                 Tag = SharpyTag.MustRun,
                 Model = "caught",
                 Python = PyOutcome.Ran("caught"),
                 Rule = "N1",
                 Target = BindingKind.ModuleClass,
                 Outer = BindingKind.None,
+                TypeAt = TypePosition.ExceptClause,
+            };
+
+            // `try[E]` has no python spelling, so the twin states what the expression's Err arm does.
+            const string TryReader = "def boom() -> int:\n    raise Later()\ndef r() -> str:\n    x = try[Later] boom()\n    match x:\n        case Ok(v):\n            return str(v)\n        case Err(e):\n            return \"caught\"\n";
+            yield return new NameCell
+            {
+                Id = CellId("read", "type-position", "try-exception-type", o),
+                Family = Family.Read,
+                Source = (o == Order.Earlier ? Raising + TryReader : TryReader + Raising) + MainBlock("print(r())"),
+                TwinSource = "def r() -> str:\n    return \"caught\"\n" + MainBlock("print(r())"),
+                Tag = SharpyTag.MustRun,
+                Model = "caught",
+                Python = PyOutcome.Ran("caught"),
+                Rule = "N1",
+                Target = BindingKind.ModuleClass,
+                Outer = BindingKind.None,
+                TypeAt = TypePosition.TryExceptionType,
             };
         }
     }

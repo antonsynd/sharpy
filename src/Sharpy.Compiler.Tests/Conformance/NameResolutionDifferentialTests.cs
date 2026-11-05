@@ -103,8 +103,11 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
-    /// <summary>Set by SEED cells: the hand twin's text, when the cell has one. Null means "render the source".</summary>
-    public string? HandTwin { get; init; }
+    /// <summary>Set by the type-position cells: which value of roster 6 this cell feeds (D3.c).</summary>
+    public TypePosition? TypeAt { get; init; }
+
+    /// <summary>Set by SEED cells: the error codes the refusal may carry, from the seed table (a seed's rule names none).</summary>
+    public IReadOnlySet<string>? SeedRefusalCodes { get; init; }
 
     /// <summary>The Sharpy source the twin renders from when python has no spelling of the construct (a module accessor).</summary>
     public string? TwinSource { get; init; }
@@ -259,12 +262,13 @@ public partial class NameResolutionDifferentialTests
     /// <summary>The python control (D2): a python outcome the cell did not predict is a generator bug, never allowlistable.</summary>
     private static string? PythonControlFailure(NameCell cell, PyOutcome observed)
     {
-        if (cell.SeedPythonVerdict != null)
-            return null; // the seed's own control runs in TwinRenderer_SeedPythonVerdicts_Reproduce
-        if (cell.Tag == SharpyTag.Unruled)
-            return observed.Kind is PyKind.SyntaxError or PyKind.TimedOut ? $"unruled twin: {observed}" : null;
+        // A seed's prediction is its recorded verdict, and TwinRenderer_SeedPythonVerdicts_Reproduce holds the twin to that record.
         if (observed != cell.Python)
             return $"predicted {cell.Python}, python {observed}";
+
+        // D2: a must-run program either runs in python or fails only on declaration order. A tag cannot call anything else must-run.
+        if (cell.Tag == SharpyTag.MustRun && observed.Kind is not (PyKind.Ran or PyKind.NameError))
+            return $"tagged must-run and python raises {observed}";
 
         // Acceptance 3: where python runs a must-run program, python and the model agree. Only a named deviation may differ.
         if (cell.Tag is SharpyTag.MustRun or SharpyTag.MayRefuse && observed.Kind == PyKind.Ran
@@ -288,9 +292,52 @@ public partial class NameResolutionDifferentialTests
         [("SPY0606", "SPY0200")] = 4,
     };
 
+    /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
+    /// program refused for an unrelated reason would otherwise read Match and hide the cell. Today N2, N3 and N6 are refused
+    /// by the neighbouring checks named here, because the rule's own diagnostic lands with #2423, #2422 and #2424.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> AdmittedRefusals = new Dictionary<string, string[]>(StringComparer.Ordinal)
+    {
+        // SPY0618 is P75's forward refusal, which the principle retires: 1 comprehension cell reaches it before the name check.
+        ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
+        // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
+        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
+        // SPY0340 is the module `let` declaration refused beside the cycle.
+        ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
+        ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
+        // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
+        ["N6"] = new[] { "SPY0200", "SPY0222" },
+        ["R-KG"] = new[] { "SPY0200" },
+        ["R1(b)"] = new[] { "SPY0200" },
+        ["S3"] = new[] { "SPY0200", "SPY0230" },
+        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
+        ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
+        ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
+        ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
+        ["kind:enum-member-constant"] = new[] { "SPY0200" },
+        ["kind:instance-at-initializer"] = new[] { "SPY0200", "SPY0230", "SPY0401" },
+    };
+
+    /// <summary>Is every error code of this refusal one its rule admits? A rule with no entry admits nothing.</summary>
+    internal static string? RefusalReasonFailure(NameCell cell, SharpyRun run)
+    {
+        var admitted = cell.SeedRefusalCodes
+            ?? (AdmittedRefusals.TryGetValue(cell.Rule, out var codes) ? codes.ToHashSet(StringComparer.Ordinal) : null);
+        if (admitted == null)
+            return $"RefusalReason: {cell.Id}: rule {cell.Rule} has no admitted codes";
+        var foreign = run.ErrorCodes.Where(c => !IgnoredCodes.Contains(c) && !admitted.Contains(c)).Distinct().ToList();
+        return foreign.Count == 0 ? null : $"RefusalReason: {cell.Id}: rule {cell.Rule} does not admit {string.Join(",", foreign)}";
+    }
+
     private static IEnumerable<string> RefusalCodeFailures(IReadOnlyList<CellResult> results, bool partial)
     {
         var seen = new Dictionary<(string Rule, string Seen), int>();
+        foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused && r.Cell.Tag is SharpyTag.MustRefuse or SharpyTag.MustRefuseOrThrow or SharpyTag.MayRefuse))
+        {
+            if (RefusalReasonFailure(r.Cell, r.Run) is string reason)
+                yield return reason;
+        }
         foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused))
         {
             var named = RuleNamesCode.Match(r.Cell.Rule);
@@ -375,18 +422,24 @@ public partial class NameResolutionDifferentialTests
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
-                    _ => cell.Family switch
-                    {
-                        Family.TypeMember => "#2249",
-                        Family.Store => cell.Rule.StartsWith("N6", StringComparison.Ordinal) && !cell.Id.Contains("Builtin", StringComparison.Ordinal) ? "#2424" : "#2423",
-                        _ => "#2423",
-                    },
+                    // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
+                    "CS1955" or "CS8917" or "CS1729" or "CS0029" => "#2423",
+                    // A position that needs a constant was handed something else and nothing refused it.
+                    "CS0133" or "CS1736" => "#2432",
+                    "CS0149" or "CS0266" or "CS1061" when cell.Target == BindingKind.NestedType => "#2397",
+                    "CS0149" or "CS0266" when cell.Target == BindingKind.StaticProperty => "#2417",
+                    // A later binding reaches the emitter untyped; N1's order-free resolution types it.
+                    "CS0149" or "CS0266" or "CS1503" => "#2423",
+                    // No default arm: an ICE nobody has triaged is red until a route names the check that cures it.
+                    _ => $"UNROUTED({run.CsCode})",
                 };
             case VerdictClass.FalseRefusal:
                 if (cell.Family == Family.TypeMember)
-                    return "#2249";
+                    return IsAliasConstructorCell(cell) ? "#1925" : "#2249";
                 if (cell.Family == Family.Store)
-                    return cell.Form == StoreForm.Walrus && !run.AllCodes.Contains("SPY0134") ? "#2423" : "#2424";
+                    return run.AllCodes.Contains("SPY0134") ? "#2424"
+                        : run.AllCodes.Contains("SPY0600") ? "#2423"
+                        : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
                 return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
                     ? "#2422"
                     : "#2423";
@@ -451,6 +504,7 @@ public partial class NameResolutionDifferentialTests
         foreach (var dup in pool.GroupBy(c => c.Id, StringComparer.Ordinal).Where(g => g.Count() > 1).Take(20))
             failures.Add($"duplicate cell id {dup.Key}");
         failures.AddRange(ClosedSetFailures(pool));
+        failures.AddRange(CensusFailures(pool));
         failures.AddRange(RosterFedFailures(pool));
         if (pool.Count > CellBudget)
             failures.Add($"the pool is {pool.Count} cells and the budget is {CellBudget}: prune in D3.e's order");
@@ -470,7 +524,7 @@ public partial class NameResolutionDifferentialTests
                 continue; // the seed's python verdicts are TwinRenderer_SeedPythonVerdicts_Reproduce's control
             try
             {
-                requests.Add(new PyRequest(i, cells[i].HandTwin ?? TwinRenderer.Render(cells[i].TwinSource ?? cells[i].Source)));
+                requests.Add(new PyRequest(i, TwinRenderer.Render(cells[i].TwinSource ?? cells[i].Source)));
             }
             catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
             {
@@ -617,9 +671,7 @@ public partial class NameResolutionDifferentialTests
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
             g => g.Key.ToString(),
             g => g.GroupBy(r => r.Class).OrderBy(c => c.Key).ToDictionary(c => c.Key.ToString(), c => c.Count()));
-        // The seed's python verdicts are a separate fact's control, and an unruled cell's prediction is not held to account.
-        var underControl = results.Where(r => r.Cell.Family != Family.Seed && r.Cell.Tag != SharpyTag.Unruled).ToList();
-        int pythonAgreed = underControl.Count(r => r.Control == null);
+        int pythonAgreed = results.Count(r => r.Control == null);
         var report = new
         {
             commit = CurrentCommit(),
@@ -632,10 +684,7 @@ public partial class NameResolutionDifferentialTests
             perFamilyTargetOuter = results.GroupBy(r => $"{r.Cell.Family}/{r.Cell.Target}/{r.Cell.Outer}")
                 .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
             pythonControlAgreed = pythonAgreed,
-            pythonControlCells = underControl.Count,
-            pythonControlSeedSeparate = results.Count(r => r.Cell.Family == Family.Seed),
-            pythonControlUnruledExempt = results.Count(r => r.Cell.Family != Family.Seed && r.Cell.Tag == SharpyTag.Unruled),
-            unruledPredictionDiffers = results.Count(r => r.Cell.Family != Family.Seed && r.Cell.Tag == SharpyTag.Unruled && r.Python != r.Cell.Python),
+            pythonControlCells = results.Count,
             generatorBugs = results.Count(r => r.Class == VerdictClass.GeneratorBug),
             harness = results.Count(r => r.Class == VerdictClass.Harness),
             allowlistSize = rows.Count,
@@ -683,7 +732,7 @@ public partial class NameResolutionDifferentialTests
         }
 
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
-        return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{underControl.Count}, "
+        return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
             + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, "
             + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
     }

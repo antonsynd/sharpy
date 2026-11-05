@@ -96,6 +96,18 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(SharpyKind.Harness, ClassifySharpy(Literal() with { Success = false, ExitCode = null }));
     }
 
+    /// <summary>The classifier's order: an internal failure beats everything else that came back with it, and a summary code
+    /// beside a clean run changes nothing. No generated cell reaches these today, so each is a literal.</summary>
+    [Fact]
+    public void Classifier_InternalFailures_WinOverWhateverElseCameBack()
+    {
+        Assert.Equal(SharpyKind.Ice, ClassifySharpy(Literal() with { ThrewInHarness = true }));
+        Assert.Equal(SharpyKind.Ice, ClassifySharpy(Literal("SPY0902", "SPY0908")));
+        Assert.Equal(SharpyKind.Harness, ClassifySharpy(Literal("SPY0200", "SPY0902")));
+        var ranWithASummaryCode = Literal() with { ErrorCodes = new[] { "SPY0900" }, AllCodes = new[] { "SPY0900" } };
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(ranWithASummaryCode));
+    }
+
     /// <summary>The python parse is prefix-anchored on the LAST stderr line: python 3.12 appends a suggestion to it.</summary>
     [Theory]
     [InlineData("NameError: name 'f' is not defined. Did you mean: 'self.f'?", PyKind.NameError, "f")]
@@ -176,12 +188,155 @@ public partial class NameResolutionDifferentialTests
     [Theory]
     [InlineData("SPY0134", "#2424")]
     [InlineData("SPY0600", "#2423")]
-    internal void Cite_AWalrusRefusal_RoutesByItsCode(string code, string expected)
+    [InlineData("SPY0999", "UNROUTED(SPY0999)")]
+    internal void Cite_AStoreRefusal_RoutesByItsCode(string code, string expected)
     {
         var cell = CellTagged(SharpyTag.MustRun, "1") with { Family = Family.Store, Form = StoreForm.Walrus };
 
         Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.FalseRefusal, Literal(code)), StringComparison.Ordinal);
     }
+
+    /// <summary>An ICE routes by its C# code. There is no default arm: a code nobody has triaged is red until a route names its cure.</summary>
+    [Theory]
+    [InlineData("CS1955", BindingKind.ModuleVar, "#2423")]
+    [InlineData("CS8917", BindingKind.ModuleVar, "#2423")]
+    [InlineData("CS1729", BindingKind.ModuleClass, "#2423")]
+    [InlineData("CS0029", BindingKind.LocalVar, "#2423")]
+    [InlineData("CS0133", BindingKind.ModuleVar, "#2432")]
+    [InlineData("CS1736", BindingKind.StaticProperty, "#2432")]
+    [InlineData("CS0149", BindingKind.StaticProperty, "#2417")]
+    [InlineData("CS0266", BindingKind.StaticProperty, "#2417")]
+    [InlineData("CS0149", BindingKind.ModuleClass, "#2423")]
+    [InlineData("CS0266", BindingKind.ModuleClass, "#2423")]
+    [InlineData("CS1503", BindingKind.ModuleClass, "#2423")]
+    [InlineData("CS1061", BindingKind.NestedType, "#2397")]
+    [InlineData("CS0149", BindingKind.NestedType, "#2397")]
+    [InlineData("CS0266", BindingKind.NestedType, "#2397")]
+    [InlineData("CS9999", BindingKind.ModuleVar, "UNROUTED(CS9999)")]
+    [InlineData("CS1061", BindingKind.ModuleVar, "UNROUTED(CS1061)")]
+    internal void Cite_AnIce_RoutesByItsCode(string cs, BindingKind target, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target };
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
+    }
+
+    /// <summary>A union case reached through an alias refuses at both orders: the alias is the cause, not the order (#1925, not #2249).</summary>
+    [Theory]
+    [InlineData("typemember/union/constructor/alias/match/before", "#1925")]
+    [InlineData("typemember/union/constructor/bare/match/after", "#2249")]
+    internal void Cite_ATypeMemberRefusal_RoutesBySpelling(string id, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "1") with { Id = id, Family = Family.TypeMember };
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.FalseRefusal, Literal("SPY0203")), StringComparison.Ordinal);
+    }
+
+    /// <summary>The refusal has to be the rule's own. A foreign code is the program refused for an unrelated reason, which would
+    /// otherwise read Match and hide the cell.</summary>
+    [Theory]
+    [InlineData("N1-methods", "SPY0200", true)]
+    [InlineData("N1-methods", "SPY0202", false)]
+    [InlineData("N6", "SPY0222", true)]
+    [InlineData("N6", "SPY0200,SPY0202", false)]
+    [InlineData("kind:SPY0290", "SPY0290,SPY0401", true)]
+    [InlineData("no-such-rule", "SPY0200", false)]
+    internal void RefusalReason_ReadsEveryErrorCode(string rule, string codes, bool admitted)
+    {
+        var cell = CellTagged(SharpyTag.MustRefuse, null) with { Rule = rule };
+
+        Assert.Equal(admitted, RefusalReasonFailure(cell, Literal(codes.Split(','))) == null);
+    }
+
+    [Fact]
+    public void RefusalReason_ASeedReadsItsOwnCodes_AndTheSummaryCodeIsIgnored()
+    {
+        var cell = CellTagged(SharpyTag.MustRefuse, null) with { Rule = "seed", SeedRefusalCodes = new HashSet<string> { "SPY0204" } };
+
+        Assert.Null(RefusalReasonFailure(cell, Literal("SPY0204", "SPY0905")));
+        Assert.NotNull(RefusalReasonFailure(cell, Literal("SPY0200")));
+    }
+
+    /// <summary>A seed's verdict in the table's normal form, as the outcome the python control compares.</summary>
+    [Theory]
+    [InlineData("10 / 10", PyKind.Ran, "10\n10")]
+    [InlineData("2", PyKind.Ran, "2")]
+    [InlineData("EXC NameError: name 'a' is not defined", PyKind.NameError, "a")]
+    [InlineData("EXC UnboundLocalError: cannot access local variable 'q' where it is not associated with a value", PyKind.UnboundLocalError, "q")]
+    [InlineData("EXC TypeError: 'int' object is not callable", PyKind.OtherError, "TypeError")]
+    public void Seed_AVerdict_ParsesToAPythonOutcome(string verdict, PyKind kind, string value)
+        => Assert.Equal(new PyOutcome(kind, value), ParseSeedVerdict(verdict));
+
+    /// <summary>D2: a must-run program runs in python or fails only on declaration order. The positive control is the order-only NameError.</summary>
+    [Fact]
+    public void PythonControl_AMustRunThatPythonRefuses_IsAGeneratorBug()
+    {
+        var unbound = CellTagged(SharpyTag.MustRun, "5") with { Python = PyOutcome.Unbound("x") };
+        Assert.Contains("must-run", PythonControlFailure(unbound, PyOutcome.Unbound("x")));
+
+        var typeError = CellTagged(SharpyTag.MustRun, "5") with { Python = PyOutcome.Other("TypeError") };
+        Assert.Contains("must-run", PythonControlFailure(typeError, PyOutcome.Other("TypeError")));
+
+        var orderOnly = CellTagged(SharpyTag.MustRun, "5") with { Python = PyOutcome.Name("x") };
+        Assert.Null(PythonControlFailure(orderOnly, PyOutcome.Name("x")));
+    }
+
+    /// <summary>A seed cell answers to python like a generated one, and to its deviation list. The table it reads is hand-kept, so
+    /// a seed tagged must-run over python's different output would otherwise read Match.</summary>
+    [Fact]
+    public void PythonControl_ASeedCell_AnswersToItsVerdict()
+    {
+        var seed = CellTagged(SharpyTag.MustRun, "5") with { Id = "seed/B02", Family = Family.Seed, Python = ParseSeedVerdict("1"), SeedPythonVerdict = "1" };
+
+        Assert.Contains("no deviation", PythonControlFailure(seed, seed.Python));
+        Assert.Null(PythonControlFailure(seed with { Model = "1" }, seed.Python));
+
+        var raised = seed with { Python = ParseSeedVerdict("EXC TypeError: x"), SeedPythonVerdict = "EXC TypeError: x" };
+        Assert.Contains("must-run", PythonControlFailure(raised, raised.Python));
+    }
+
+    /// <summary>A may-refuse model answers to python like a must-run's. An unruled cell's prediction answers too: nothing about a
+    /// question being open excuses predicting python wrongly, and a SyntaxError on its twin is a generator bug like any other.</summary>
+    [Fact]
+    public void PythonControl_MayRefuseAndUnruledCells_AnswerToTheirPrediction()
+    {
+        var mayRefuse = CellTagged(SharpyTag.MayRefuse, "12") with { Python = PyOutcome.Ran("7") };
+        Assert.Contains("no deviation", PythonControlFailure(mayRefuse, PyOutcome.Ran("7")));
+
+        var unruled = CellTagged(SharpyTag.Unruled, null) with { Python = PyOutcome.Ran("15") };
+        Assert.Null(PythonControlFailure(unruled, PyOutcome.Ran("15")));
+        Assert.Contains("predicted", PythonControlFailure(unruled, PyOutcome.Ran("999")));
+        Assert.Contains("predicted", PythonControlFailure(unruled, new PyOutcome(PyKind.SyntaxError, "x")));
+    }
+
+    /// <summary>D2's deviation row: naming a ledger row is not enough, the cell has to be on that row's axes.</summary>
+    [Theory]
+    [InlineData("block-scoping-for-loop-variable", Family.Local, LocalTarget.For, BindingKind.None, "local/For/after-block/outer=None/FunctionBody", true)]
+    [InlineData("block-scoping-for-loop-variable", Family.Local, LocalTarget.For, BindingKind.ModuleVar, "local/For/after-block/outer=ModuleVar/FunctionBody", false)]
+    [InlineData("block-scoping-with", Family.Local, LocalTarget.For, BindingKind.None, "local/For/after-block/outer=None/FunctionBody", false)]
+    [InlineData("loop-variable-fresh-per-iteration", Family.Store, LocalTarget.For, BindingKind.None, "store/Assign/outer=None/FunctionBody", false)]
+    [InlineData("no-such-row", Family.Local, LocalTarget.For, BindingKind.None, "local/For/after-block/outer=None/FunctionBody", false)]
+    internal void Deviation_ARowOffItsAxes_IsRed(string row, Family family, LocalTarget construct, BindingKind outer, string id, bool holds)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "1") with { Id = id, Family = family, Construct = construct, Outer = outer, Deviation = row };
+
+        Assert.Equal(holds, DeviationAxesHold(cell));
+    }
+
+    [Fact]
+    public void Deviation_ASeedOffItsList_IsRed()
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "1") with { Id = "seed/B02", Family = Family.Seed, Deviation = "block-scoping-if" };
+
+        Assert.False(DeviationAxesHold(cell));
+        Assert.True(DeviationAxesHold(cell with { Id = "seed/D15" }));
+    }
+
+    /// <summary>The generator's output is pinned, compiler-independent: a dropped axis or a retagged arm moves a count here even when
+    /// no allowlist row notices. A drain plan never touches this table, because a verdict moving changes no tag.</summary>
+    [Fact]
+    public void Census_TheGeneratedPool_IsPinned()
+        => Assert.Empty(CensusFailures(GeneratedCells()));
 
     /// <summary>A deviation names a ledger row, and the row exists (Acceptance 3). The named cells are the positive control.</summary>
     [Fact]
@@ -218,6 +373,10 @@ public partial class NameResolutionDifferentialTests
     [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
     [InlineData("store-non-writable:ModuleDef:Assign", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/no-decl")]
     [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
+    [InlineData("lambda-self", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/self/outer=None/FunctionBody")]
+    [InlineData("match-capture:none", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/For/after-block/outer=None/FunctionBody")]
+    [InlineData("rowless-let:if-then", Family.Local, BindingKind.LocalLet, BindingKind.None, "local/LocalLet/let-in/if-then/outer=None/FunctionBody")]
+    [InlineData("s2-builtin", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/For/after-block/outer=ModuleVar/FunctionBody")]
     internal void ClosedSet_AListedShapeOnTheWrongAxes_IsRed(string shape, Family family, BindingKind target, BindingKind outer, string id)
     {
         var cell = CellTagged(SharpyTag.Unruled, null) with { Id = id, Family = family, Target = target, Outer = outer, Shape = shape };

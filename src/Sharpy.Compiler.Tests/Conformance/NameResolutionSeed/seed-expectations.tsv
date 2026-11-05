@@ -1,167 +1,167 @@
-# P77a D7: the Sharpy tag of each seed cell. id<TAB>tag<TAB>model (| = newline)<TAB>the issue a red row cites
-A01	MustRun	2	
-A02	MustRun	2	#2422
-A03	MustRefuseOrThrow		#2422
-A04	MustRun	5	
-A05	MustRun	7 7	#2422
-A06	MustRun	2	
-A07	MustRun	8 7	#2422
-A08	MustRun	4	
-A09	MustRun	4	
-A10	MustRun	4	
-A11	MustRun	init a|init b|main|2	#2422
-A12	Unruled		#2427
-A13	MayRefuse	1	
-A14	MustRefuse		
-A15	MustRun	6 6 5	#2422
-A16	MustRefuseOrThrow		
-A17	MustRun	6	
-A18	MustRun	99	
-A19	MustRun	5	
-A20	MustRun	2	#2424
-A21	MustRun	5	
-A22	MustRun	11	#2422
-A23	MustRun	5	#2422
-B01	MustRun	3	#2423
-B02	MustRefuse		#2424
-B03	MustRefuse		#2424
-B04	MustRefuse		#2424
-B05	MustRefuse		
-B06	MustRun	5|1	
-B07	MustRun	5|1	
-B08	MustRefuse		#2424
-B09	Unruled		#2427
-B10	MustRun	11	
-B11	MustRun	[0, 1, 2]	#2425
-B12	MustRun	[0, 1, 2]	#2425
-B13	MustRun	5	
-B14	MustRun	2	
-B15	MustRun	[0, 1, 2] 10	
-B16	MustRefuse		#2425
-B17	MustRefuse		
-B18	MustRun	5	
-B19	MustRun	2|2	
-B20	MustRefuse		
-B21	Unruled		#2427
-B22	Unruled		#2427
-B23	MustRefuse		#2425
-B24	Unruled		#2427
-B25	MustRun	5	
-B26	MustRefuse		
-B27	MustRun	2|1	
-B28	Unruled		#2427
-B29	MustRefuse		
-B30	MustRun	7	
-B31	MustRefuse		
-B32	MustRefuse		
-B33	MustRun	1	
-B34	MustRefuse		#2424
-B35	MustRun	[1, 2]	
-C01	MustRun	3	
-C02	MustRun	3	#2423
-C03	MustRun	3	#2423
-C04	MustRefuseOrThrow		#2422
-C05	MustRefuse		#2423
-C06	MustRefuse		#2423
-C07	MustRun	3	
-C08	MustRefuse		#2423
-C09	MustRefuse		#2423
-C10	MustRun	3	
-C11	MustRun	8	#2423
-C12	MustRun	3	#2423
-C13	MustRun	3	
-C14	MustRun	3	
-C15	MustRun	3	#2423
-C16	MustRun	3	#2423
-C17	MustRun	8	
-C18	MustRun	5	
-C19	MustRefuse		
-C20	MustRun	5	#2423
-C21	MustRun	5	#2423
-C22	MustRefuse		#2423
-C23	MustRefuse		#2423
-C24	MustRefuse		
-C25	MustRun	4	
-C26	MustRefuse		
-C27	MustRun	4	
-C28	MustRun	8	
-C29	MustRefuse		
-C30	MustRefuse		#2423
-C31	MustRun	2	
-C32	MustRefuse		
-C33	MustRefuse		
-C34	MustRun	99	
-C35	MustRun	5	#2424
-C36	MustRefuse		#2151
-C36b	MustRefuse		#2151
-C36c	MustRun	1	#2423
-C36d	MustRefuse		#2151
-C37	MustRefuse		
-C38	MustRefuse		
-C39	MustRefuse		
-C40	MustRefuse		
-C41	MustRun	[2, 4]	
-C42	MustRefuse		#2423
-C43	MustRefuse		
-C44	MustRun	2	
-C45	MustRefuse		#2398
-C46	MustRun	9	
-C47	MustRefuse		
-C48	MustRefuseOrThrow		
-C49	MustRun	4	#2422
-C50	MustRefuse		
-C51	MustRefuse		
-C52	MustRun	8	#2423
-C53	MustRun	8	#2423
-C54	MustRun	4	
-D01	MustRun	5 5 5	#2422
-D02	MustRun	7 7	#2422
-D03	MustRefuse		#2423
-D04	MustRefuse		#2423
-D05	MustRun	2	
-D06	MustRun	99 0	
-D07	MustRefuse		#2424
-D08	MustRefuse		
-D08b	MustRun	12	#2423
-D09	MustRefuse		
-D10	MustRun	6	#2420
-D10b	MustRun	6	#2420
-D10c	MustRun	6	#2420
-D10d	MustRun	6	#2420
-D11	MustRefuse		
-D12	MustRun	1	
-D13	MustRefuse		#2425
-D14	MustRefuse		#2424
-D15	MustRun	10|5	
-D16	MustRun	7	
-D17	MustRun	4	
-D18	MustRefuse		
-D19	MustRun	4	
-D20	MustRun	3	#2423
-D21	MustRun	7	#2398
-D22	MustRun	[1, 2]	#2422
-E01	MustRun	8 7	#2422
-E02	MustRun	5	#2422
-E03	MustRun	8 7	#2422
-E04	MustRun	5	
-E05	MustRun	6	
-E06	MustRun	6	#2420
-E07	MustRefuse		#2151
-E08	MustRefuse		#2151
-E09	MustRefuse		#2424
-E10	MustRun	1	
-M01	MustRun	3	
-M02	MustRun	7	
-M03	MustRun	3	#2423
-M04	MustRefuse		#2424
-M05	MustRun	1 2	
-M06	MustRun	4	
-M07	MustRun	5	#2423
-M08	MustRefuse		#2424
-M09	MustRun	6	#2423
-M10	MustRun	5	#2423
-M11	MustRun	5	
-M12	MustRun	3	
-M13	MustRun	11	#2423
-M14	MustRun	3	
-M15	MustRun	3	
+# P77a D7: the Sharpy tag of each seed cell. id<TAB>tag<TAB>model (| = newline)<TAB>the issue a red row cites<TAB>the error codes a refusal may carry
+A01	MustRun	2		
+A02	MustRun	2	#2422	
+A03	MustRefuseOrThrow		#2422	SPY0200
+A04	MustRun	5		
+A05	MustRun	7 7	#2422	
+A06	MustRun	2		
+A07	MustRun	8 7	#2422	
+A08	MustRun	4		
+A09	MustRun	4		
+A10	MustRun	4		
+A11	MustRun	init a|init b|main|2	#2422	
+A12	Unruled		#2427	
+A13	MayRefuse	1		SPY0340
+A14	MustRefuse			SPY0204
+A15	MustRun	6 6 5	#2422	
+A16	MustRefuseOrThrow			SPY0278
+A17	MustRun	6		
+A18	MustRun	99		
+A19	MustRun	5		
+A20	MustRun	2	#2424	
+A21	MustRun	5		
+A22	MustRun	11	#2422	
+A23	MustRun	5	#2422	
+B01	MustRun	3	#2423	
+B02	MustRefuse		#2424	
+B03	MustRefuse		#2424	
+B04	MustRefuse		#2424	
+B05	MustRefuse			SPY0225
+B06	MustRun	5|1		
+B07	MustRun	5|1		
+B08	MustRefuse		#2424	
+B09	Unruled		#2427	
+B10	MustRun	11		
+B11	MustRun	[0, 1, 2]	#2425	
+B12	MustRun	[0, 1, 2]	#2425	
+B13	MustRun	5		
+B14	MustRun	2		
+B15	MustRun	[0, 1, 2] 10		
+B16	MustRefuse		#2425	
+B17	MustRefuse			SPY0200
+B18	MustRun	5		
+B19	MustRun	2|2		
+B20	MustRefuse			SPY0200
+B21	Unruled		#2427	
+B22	Unruled		#2427	
+B23	MustRefuse		#2425	
+B24	Unruled		#2427	
+B25	MustRun	5		
+B26	MustRefuse			SPY0230
+B27	MustRun	2|1		
+B28	Unruled		#2427	
+B29	MustRefuse			SPY0204
+B30	MustRun	7		
+B31	MustRefuse			SPY0200
+B32	MustRefuse			SPY0200,SPY0600
+B33	MustRun	1		
+B34	MustRefuse		#2424	
+B35	MustRun	[1, 2]		
+C01	MustRun	3		
+C02	MustRun	3	#2423	
+C03	MustRun	3	#2423	
+C04	MustRefuseOrThrow		#2422	SPY0200
+C05	MustRefuse		#2423	
+C06	MustRefuse		#2423	
+C07	MustRun	3		
+C08	MustRefuse		#2423	SPY0618
+C09	MustRefuse		#2423	
+C10	MustRun	3		
+C11	MustRun	8	#2423	
+C12	MustRun	3	#2423	
+C13	MustRun	3		
+C14	MustRun	3		
+C15	MustRun	3	#2423	
+C16	MustRun	3	#2423	
+C17	MustRun	8		
+C18	MustRun	5		
+C19	MustRefuse			SPY0200
+C20	MustRun	5	#2423	
+C21	MustRun	5	#2423	
+C22	MustRefuse		#2423	
+C23	MustRefuse		#2423	
+C24	MustRefuse			SPY0401
+C25	MustRun	4		
+C26	MustRefuse			SPY0401
+C27	MustRun	4		
+C28	MustRun	8		
+C29	MustRefuse			SPY0401
+C30	MustRefuse		#2423	
+C31	MustRun	2		
+C32	MustRefuse			SPY0200
+C33	MustRefuse			SPY0200
+C34	MustRun	99		
+C35	MustRefuse		#2424	SPY0200,SPY0606
+C36	MustRefuse		#2151	
+C36b	MustRefuse		#2151	
+C36c	MustRun	1	#2423	
+C36d	MustRefuse		#2151	
+C37	MustRefuse			SPY0200
+C38	MustRefuse			SPY0200
+C39	MustRefuse			SPY0200
+C40	MustRefuse			SPY0200
+C41	MustRun	[2, 4]		
+C42	MustRefuse		#2423	
+C43	MustRefuse			SPY0200
+C44	MustRun	2		
+C45	MustRefuse		#2398	
+C46	MustRun	9		
+C47	MustRefuse			SPY0200
+C48	MustRefuseOrThrow			SPY0278
+C49	MustRun	4	#2422	
+C50	MustRefuse			SPY0442
+C51	MustRefuse			SPY0200
+C52	MustRun	8	#2423	
+C53	MustRun	8	#2423	
+C54	MustRun	4		
+D01	MustRun	5 5 5	#2422	
+D02	MustRun	7 7	#2422	
+D03	MustRefuse		#2423	
+D04	MustRefuse		#2423	
+D05	MustRun	2		
+D06	MustRun	99 0		
+D07	MustRefuse		#2424	
+D08	MustRefuse			SPY0343
+D08b	MustRun	12	#2423	
+D09	MustRefuse			SPY0401
+D10	MustRun	6	#2420	
+D10b	MustRun	6	#2420	
+D10c	MustRun	6	#2420	
+D10d	MustRun	6	#2420	
+D11	MustRefuse			SPY0200
+D12	MustRun	1		
+D13	MustRefuse		#2425	
+D14	MustRefuse		#2424	
+D15	MustRun	10|5		
+D16	MustRun	7		
+D17	MustRun	4		
+D18	MustRefuse			SPY0401
+D19	MustRun	4		
+D20	MustRun	3	#2423	
+D21	MustRun	7	#2398	
+D22	MustRun	[1, 2]	#2422	
+E01	MustRun	8 7	#2422	
+E02	MustRun	5	#2422	
+E03	MustRun	8 7	#2422	
+E04	MustRun	5		
+E05	MustRun	6		
+E06	MustRun	6	#2420	
+E07	MustRefuse		#2151	
+E08	MustRefuse		#2151	
+E09	MustRefuse		#2424	
+E10	MustRun	1		
+M01	MustRun	3		
+M02	MustRun	7		
+M03	MustRun	3	#2423	
+M04	MustRefuse		#2424	SPY0200
+M05	MustRun	1 2		
+M06	MustRun	4		
+M07	MustRun	5	#2423	
+M08	MustRefuse		#2424	
+M09	MustRun	6	#2423	
+M10	MustRun	5	#2423	
+M11	MustRun	5		
+M12	MustRun	3		
+M13	MustRun	11	#2423	
+M14	MustRun	3		
+M15	MustRun	3		

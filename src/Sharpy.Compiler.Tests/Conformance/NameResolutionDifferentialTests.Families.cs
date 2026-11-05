@@ -1,4 +1,5 @@
 using Sharpy.TestInfrastructure.Oracles;
+using Sharpy.Compiler.Tests.Properties.Differential;
 
 namespace Sharpy.Compiler.Tests.Conformance;
 
@@ -180,7 +181,13 @@ public partial class NameResolutionDifferentialTests
             if (IsConstKind(outer))
                 return Refuse(through, "kind:SPY0225");
             if (IsNonWritableByMeaning(outer))
-                return new Expected(SharpyTag.Unruled, null, through, "unruled:N6-non-writable");
+            {
+                // `x += 1` on a def or type raises. `x = 15` runs, and the later read then spells the type's own read on an int.
+                var overwritten = s == StoreSpelling.Augmented || laterRead
+                    ? PyOutcome.Other(s != StoreSpelling.Augmented && outer == BindingKind.ModuleEnum ? "AttributeError" : "TypeError")
+                    : through;
+                return new Expected(SharpyTag.Unruled, null, overwritten, "unruled:N6-non-writable");
+            }
             return new Expected(SharpyTag.MustRun, through.Value, through, "N6");
         }
 
@@ -196,8 +203,10 @@ public partial class NameResolutionDifferentialTests
 
         if (IsTypeLevelMember(outer))
         {
-            // The class scope does not enclose a method body (R-Y): the store is a local in both languages.
-            return s == StoreSpelling.Augmented
+            // variable_scoping.md, "Every store form is refused": a bare store to a class member is SPY0606 in every form, though
+            // python makes it a local. Only a method's name is still a local here: the spec's sentence reads as covering it and the
+            // compiler lets it through, and that question is posted on #2427.
+            return s == StoreSpelling.Augmented || !(outer is BindingKind.StaticMethod or BindingKind.InstanceMethod)
                 ? Refuse(pyNoDecl, "SPY0606")
                 : new Expected(SharpyTag.MustRun, local.Value, local, "R-Y");
         }
@@ -464,7 +473,7 @@ public partial class NameResolutionDifferentialTests
 
     private static IEnumerable<NameCell> BuiltinStoreCells()
     {
-        foreach (var (name, args, _, result) in Builtins.Where(b => b.Name is "abs" or "len"))
+        foreach (var (name, args, _, result) in Builtins)
         {
             NameCell Cell(string label, IReadOnlyList<string> lines, string[] main, Expected e, StoreForm form) => new()
             {
@@ -779,7 +788,7 @@ public partial class NameResolutionDifferentialTests
         }
 
         // The Builtin outer: a local spelled like the builtin (the name is the axis, so the read carries its arguments).
-        foreach (var (name, args, pars, result) in Builtins.Where(b => b.Name is "abs" or "len"))
+        foreach (var (name, args, pars, result) in Builtins)
         {
             var n = new ReadName(name, args, pars, result);
             foreach (var k in LocalKinds)
@@ -934,7 +943,7 @@ public partial class NameResolutionDifferentialTests
             }
 
         // S2 × Builtin: is a builtin a visible binding the target reuses? Only the comprehension is agreed.
-        foreach (var (name, args, pars, result) in Builtins.Where(b => b.Name is "abs" or "len"))
+        foreach (var (name, args, pars, result) in Builtins)
         {
             var n = new ReadName(name, args, pars, result);
             foreach (var t in new[] { LocalTarget.For, LocalTarget.WithAs, LocalTarget.ExceptAs, LocalTarget.MatchCapture, LocalTarget.AsPatternCapture, LocalTarget.Comprehension })
@@ -944,7 +953,8 @@ public partial class NameResolutionDifferentialTests
                     var stmts = construct.Append($"print({name}({args}))").ToList();
                     var e = t == LocalTarget.Comprehension
                         ? Run(result, "N1")
-                        : new Expected(SharpyTag.Unruled, null, PyOutcome.Other("TypeError"), "unruled:S2-builtin");
+                        // `except … as abs` deletes the name, so python's later call is unbound; the other targets call an int.
+                        : new Expected(SharpyTag.Unruled, null, t == LocalTarget.ExceptAs ? PyOutcome.Unbound(name) : PyOutcome.Other("TypeError"), "unruled:S2-builtin");
                     var shape = t == LocalTarget.Comprehension ? null : t is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture ? "match-capture:builtin" : "s2-builtin";
                     yield return LocalProgram(CellId("local", t, "after-block", "outer=Builtin", body, name), BindingKind.LocalVar, BindingKind.Builtin, body, stmts, e, shape, n, t);
                 }
@@ -1003,11 +1013,23 @@ public partial class NameResolutionDifferentialTests
     // SEED (D7)
     // ------------------------------------------------------------------------------------------- //
 
-    private static string SeedDirectory() => Path.Combine(AppContext.BaseDirectory, "Conformance", "NameResolutionSeed");
+    /// <summary>A seed's recorded verdict as a python outcome: the runner's normal form, `/` for a newline and `EXC` for a raise.</summary>
+    internal static PyOutcome ParseSeedVerdict(string verdict)
+        => verdict.StartsWith("EXC ", StringComparison.Ordinal)
+            ? ClassifyPython(new PyResult(false, "", verdict[4..], false, false))
+            : PyOutcome.Ran(verdict.Replace(" / ", "\n", StringComparison.Ordinal));
+
+    /// <summary>The seed cells whose model differs from python by design, each on a ledger row. D2's closed set, seed side.</summary>
+    private static readonly IReadOnlyDictionary<string, string> SeedDeviations = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["B11"] = "loop-variable-fresh-per-iteration",
+        ["B12"] = "loop-variable-fresh-per-iteration",
+        ["D15"] = "block-scoping-if",
+    };
 
     private static IEnumerable<NameCell> SeedCells()
     {
-        var dir = SeedDirectory();
+        var dir = TwinSeed.Folder;
         var verdicts = File.ReadAllLines(Path.Combine(dir, "seed-python-verdicts.tsv"))
             .Where(l => l.Length > 0 && l[0] != '#')
             .Select(l => l.Split('\t'))
@@ -1021,19 +1043,19 @@ public partial class NameResolutionDifferentialTests
             var id = parts[0];
             var tag = Enum.Parse<SharpyTag>(parts[1]);
             var source = File.ReadAllText(Path.Combine(dir, id + ".spy"));
-            var twin = Path.Combine(dir, id + ".py");
             yield return new NameCell
             {
                 Id = CellId("seed", id),
                 Family = Family.Seed,
                 Source = source,
-                HandTwin = File.Exists(twin) ? File.ReadAllText(twin) : null,
                 Tag = tag,
                 Model = parts[2].Length == 0 ? null : parts[2].Replace('|', '\n'),
-                Python = PyOutcome.Ran(""),
+                Python = ParseSeedVerdict(verdicts[id]),
                 Rule = "seed",
+                Deviation = SeedDeviations.GetValueOrDefault(id),
                 SeedPythonVerdict = verdicts[id],
                 SeedCite = parts.Length > 3 && parts[3].Length > 0 ? parts[3] : "#2423",
+                SeedRefusalCodes = (parts.Length > 4 ? parts[4] : "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal),
                 Shape = tag == SharpyTag.Unruled ? $"seed:{id}" : null,
                 Target = BindingKind.None,
                 Outer = BindingKind.None,
@@ -1145,8 +1167,39 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
+    /// <summary>D2's deviation row, as a closed set of axes per ledger id: a row existing in the ledger is not enough, because any
+    /// must-run cell could otherwise cite one and turn a wrong model into Match with python agreeing.</summary>
+    internal static bool DeviationAxesHold(NameCell c)
+    {
+        if (c.Family == Family.Seed)
+            return SeedDeviations.GetValueOrDefault(c.Id["seed/".Length..]) == c.Deviation;
+        var afterBlock = c.Family == Family.Local && c.Outer == BindingKind.None && c.Id.Contains("/after-block/", StringComparison.Ordinal);
+        var letInItsBlock = c.Family == Family.Local && c.Target == BindingKind.LocalLet
+            && BlockShapes.Any(b => b.Row == c.Deviation && c.Id.Contains($"/let-in/{b.Family}/", StringComparison.Ordinal));
+        switch (c.Deviation)
+        {
+            case "loop-variable-fresh-per-iteration":
+                return c.Family == Family.Local && c.Id.StartsWith("local/closure-in-", StringComparison.Ordinal);
+            case "block-scoping-for-loop-variable":
+                return afterBlock && c.Construct == LocalTarget.For;
+            case "block-scoping-with":
+                return (afterBlock && c.Construct == LocalTarget.WithAs) || letInItsBlock;
+            case "walrus-in-comprehension-scope":
+                return c.Family == Family.Store && c.Form == StoreForm.Walrus && c.Position == ReadPosition.ComprehensionElement;
+            default:
+                return letInItsBlock;
+        }
+    }
+
     private static IEnumerable<string> ClosedSetFailures(IReadOnlyList<NameCell> pool)
     {
+        foreach (var c in pool.Where(c => c.Deviation != null && !DeviationAxesHold(c)).Take(20))
+            yield return $"DeviationAxes: {c.Id} cites {c.Deviation} and its axes are not that row's";
+
+        // N3's cycles are the one question where a throw also keeps the promise. Any other rule under this tag would read a throw as agreement.
+        foreach (var c in pool.Where(c => c.Tag == SharpyTag.MustRefuseOrThrow && c.Rule is not ("N3-cycle" or "seed")).Take(20))
+            yield return $"MustRefuseOrThrow: {c.Id} under rule {c.Rule}, and only an N3 cycle may refuse or throw";
+
         foreach (var c in pool.Where(c => c.Tag == SharpyTag.MayRefuse && !IsMayRefuseShape(c)).Take(20))
             yield return $"MayRefuseShapes: {c.Id} is tagged may-refuse, and only READ × module let may be";
         var mayRefuseCount = pool.Count(c => c.Tag == SharpyTag.MayRefuse && !IsMayRefuseShape(c));
@@ -1207,8 +1260,32 @@ public partial class NameResolutionDifferentialTests
     private static IEnumerable<string> RosterFedFailures(IReadOnlyList<NameCell> pool)
     {
         var positions = pool.Where(c => c.Position != null).Select(c => c.Position!.Value).ToHashSet();
-        foreach (var p in Enum.GetValues<ReadPosition>().Where(p => !positions.Contains(p) && p is not (ReadPosition.TypeAliasTarget or ReadPosition.BaseList)))
+        foreach (var p in Enum.GetValues<ReadPosition>().Where(p => !positions.Contains(p)))
             yield return $"ReadPosition {p} has no generated cell";
+
+        // Roster 6. The pattern's own type is roster 7's: TYPEMEMBER's pattern cells are its feed, read just below.
+        var typePositions = pool.Where(c => c.TypeAt != null).Select(c => c.TypeAt!.Value).ToHashSet();
+        foreach (var p in Enum.GetValues<TypePosition>().Where(p => !typePositions.Contains(p) && p != TypePosition.PatternType))
+            yield return $"TypePosition {p} has no generated cell";
+
+        // Roster 8: a Block family that hosts a `let` has its shape, with a cell on it.
+        foreach (var (family, entry) in NameResolutionRosters.BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)))
+            if (!pool.Any(c => c.Family == Family.Local && c.Id.Contains($"/let-in/{family}/", StringComparison.Ordinal))
+                && entry.Excluded == null)
+                yield return $"BlockFamily {family} hosts a let and has no LOCAL cell";
+
+        // READ's outer: every module-level kind is generated or pruned with its reason, and a pruned entry names something real.
+        foreach (var k in NameResolutionRosters.ModuleLevelKinds.Where(k => !ModuleOuters.Contains(k) && !PrunedReadAxes.ContainsKey($"outer {k}")))
+            yield return $"ModuleLevelKinds {k} is neither a generated READ outer nor pruned";
+        foreach (var key in PrunedReadAxes.Keys)
+        {
+            var parts = key.Split(' ');
+            var real = parts[0] == "outer"
+                ? Enum.TryParse<BindingKind>(parts[1], out var k) && NameResolutionRosters.ModuleLevelKinds.Contains(k) && !ModuleOuters.Contains(k)
+                : key.StartsWith("Builtin name ", StringComparison.Ordinal) && Builtins.All(b => b.Name != parts[2]);
+            if (!real)
+                yield return $"PrunedReadAxes '{key}' names nothing the generator left out";
+        }
 
         var forms = pool.Where(c => c.Form != null).Select(c => c.Form!.Value).ToHashSet();
         foreach (var f in Enum.GetValues<StoreForm>().Where(f => !forms.Contains(f)))
