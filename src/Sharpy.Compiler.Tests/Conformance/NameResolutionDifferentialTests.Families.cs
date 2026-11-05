@@ -335,8 +335,8 @@ public partial class NameResolutionDifferentialTests
         var crossing = new[] { StoreSpelling.Assign, StoreSpelling.Augmented, StoreSpelling.Walrus };
         var fresh = new[] { StoreSpelling.OutLet, StoreSpelling.Let, StoreSpelling.Annotated };
         var all = crossing.Concat(fresh).ToArray();
-        // The outer axis is the roster's, filtered by what each arm below spells. ModuleLet stands with the `let` store's own
-        // module binding; the roster's EnclosingLocal, Builtin and None arms are generated below.
+        // The outer axis is the roster's, filtered by what each arm below spells. The roster's EnclosingLocal, Builtin and None
+        // arms are generated below.
         var moduleOuters = NameResolutionRosters.StoreOuter
             .Where(e => e.Value.Generated && !e.Value.ClassEnclosedBodiesOnly && IsModuleLevel(e.Key))
             .Select(e => e.Key)
@@ -837,10 +837,10 @@ public partial class NameResolutionDifferentialTests
         foreach (var body in LocalBodies)
         {
             yield return LocalProgram(CellId("local", "closure-in-loop", body), BindingKind.LocalVar, BindingKind.None, body,
-                new[] { "fs: list[() -> int] = []", "for i in range(3):", "    fs.append(lambda: i)", "print([f() for f in fs])" },
+                new[] { "fs: list[() -> int] = []", "for i in range(3):", "    fs.append(lambda: i)", "print([g0() for g0 in fs])" },
                 new Expected(SharpyTag.MustRun, "[0, 1, 2]", PyOutcome.Ran("[2, 2, 2]"), "N5", "loop-variable-fresh-per-iteration"), null, plain);
             yield return LocalProgram(CellId("local", "closure-in-comprehension", body), BindingKind.LocalVar, BindingKind.None, body,
-                new[] { "fs: list[() -> int] = [lambda: i for i in range(3)]", "print([f() for f in fs])" },
+                new[] { "fs: list[() -> int] = [lambda: i for i in range(3)]", "print([g0() for g0 in fs])" },
                 new Expected(SharpyTag.MustRun, "[0, 1, 2]", PyOutcome.Ran("[2, 2, 2]"), "N5", "loop-variable-fresh-per-iteration"), null, plain);
         }
     }
@@ -1049,24 +1049,101 @@ public partial class NameResolutionDifferentialTests
     private static bool IsMayRefuseShape(NameCell c)
         => (c.Family == Family.Read && c.Target == BindingKind.ModuleLet) || c.Id == "seed/A13";
 
-    /// <summary>D2's enumerated <c>unruled</c> shapes, one entry per question the principle has not answered.</summary>
-    internal static readonly IReadOnlySet<string> UnruledShapes = new HashSet<string>(new[]
+    /// <summary>D2's enumerated <c>unruled</c> shapes with their measured cell counts, one entry per question the principle has
+    /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
+    internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        "L28",
-        "match-capture:none", "match-capture:visible", "match-capture:builtin",
-        "before-binding:module", "before-binding:enclosing", "before-binding:builtin",
-        "rowless-let:for-body", "rowless-let:for-else", "rowless-let:while-else", "rowless-let:match-case",
-        "s2-builtin",
-        "lambda-self",
-        "store-non-writable:ModuleDef:Assign", "store-non-writable:ModuleDef:Augmented", "store-non-writable:ModuleDef:Walrus", "store-non-writable:ModuleDef:global",
-        "store-non-writable:ModuleClass:Assign", "store-non-writable:ModuleClass:Augmented", "store-non-writable:ModuleClass:Walrus", "store-non-writable:ModuleClass:global",
-        "store-non-writable:ModuleStruct:Assign", "store-non-writable:ModuleStruct:Augmented", "store-non-writable:ModuleStruct:Walrus", "store-non-writable:ModuleStruct:global",
-        "store-non-writable:ModuleEnum:Assign", "store-non-writable:ModuleEnum:Augmented", "store-non-writable:ModuleEnum:Walrus", "store-non-writable:ModuleEnum:global",
-        "store-non-writable:ModuleUnion:Assign", "store-non-writable:ModuleUnion:Augmented", "store-non-writable:ModuleUnion:Walrus", "store-non-writable:ModuleUnion:global",
-        "store-non-writable:ModuleInterface:Assign", "store-non-writable:ModuleInterface:Augmented", "store-non-writable:ModuleInterface:Walrus", "store-non-writable:ModuleInterface:global",
-        "store-non-writable:ModuleTypeAlias:Assign", "store-non-writable:ModuleTypeAlias:Augmented", "store-non-writable:ModuleTypeAlias:Walrus", "store-non-writable:ModuleTypeAlias:global",
-        "seed:A12", "seed:B09", "seed:B21", "seed:B22", "seed:B24", "seed:B28",
-    }, StringComparer.Ordinal);
+        ["L28"] = 6,
+        ["match-capture:none"] = 6,
+        ["match-capture:visible"] = 46,
+        ["match-capture:builtin"] = 8,
+        ["before-binding:module"] = 60,
+        ["before-binding:enclosing"] = 12,
+        ["before-binding:builtin"] = 24,
+        ["rowless-let:for-body"] = 4,
+        ["rowless-let:for-else"] = 4,
+        ["rowless-let:while-else"] = 4,
+        ["rowless-let:match-case"] = 4,
+        ["s2-builtin"] = 12,
+        ["lambda-self"] = 3,
+        ["store-non-writable:ModuleDef:Assign"] = 2,
+        ["store-non-writable:ModuleDef:Augmented"] = 2,
+        ["store-non-writable:ModuleDef:Walrus"] = 2,
+        ["store-non-writable:ModuleDef:global"] = 3,
+        ["store-non-writable:ModuleClass:Assign"] = 2,
+        ["store-non-writable:ModuleClass:Augmented"] = 2,
+        ["store-non-writable:ModuleClass:Walrus"] = 2,
+        ["store-non-writable:ModuleClass:global"] = 3,
+        ["store-non-writable:ModuleStruct:Assign"] = 2,
+        ["store-non-writable:ModuleStruct:Augmented"] = 2,
+        ["store-non-writable:ModuleStruct:Walrus"] = 2,
+        ["store-non-writable:ModuleStruct:global"] = 3,
+        ["store-non-writable:ModuleEnum:Assign"] = 2,
+        ["store-non-writable:ModuleEnum:Augmented"] = 2,
+        ["store-non-writable:ModuleEnum:Walrus"] = 2,
+        ["store-non-writable:ModuleEnum:global"] = 3,
+        ["store-non-writable:ModuleUnion:Assign"] = 2,
+        ["store-non-writable:ModuleUnion:Augmented"] = 2,
+        ["store-non-writable:ModuleUnion:Walrus"] = 2,
+        ["store-non-writable:ModuleUnion:global"] = 3,
+        ["store-non-writable:ModuleInterface:Assign"] = 2,
+        ["store-non-writable:ModuleInterface:Augmented"] = 2,
+        ["store-non-writable:ModuleInterface:Walrus"] = 2,
+        ["store-non-writable:ModuleInterface:global"] = 3,
+        ["store-non-writable:ModuleTypeAlias:Assign"] = 2,
+        ["store-non-writable:ModuleTypeAlias:Augmented"] = 2,
+        ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
+        ["store-non-writable:ModuleTypeAlias:global"] = 3,
+        ["seed:A12"] = 1,
+        ["seed:B09"] = 1,
+        ["seed:B21"] = 1,
+        ["seed:B22"] = 1,
+        ["seed:B24"] = 1,
+        ["seed:B28"] = 1,
+    };
+
+    /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
+    /// spell any listed name, so each entry reads the properties that define its question.</summary>
+    internal static bool UnruledAxesHold(NameCell c)
+    {
+        var shape = c.Shape ?? "";
+        var parts = shape.Split(':');
+        var capture = c.Construct is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture;
+        switch (parts[0])
+        {
+            case "L28":
+                return c.Family == Family.Local && c.Target == BindingKind.EnclosingLocal && c.Outer is BindingKind.None or BindingKind.ModuleVar;
+            case "lambda-self":
+                return c.Family == Family.Local && c.Target == BindingKind.LambdaTypedLocal && c.Outer == BindingKind.None
+                    && c.Id.Contains("/self/", StringComparison.Ordinal);
+            case "match-capture":
+                return c.Family == Family.Local && capture && parts[1] == (c.Outer switch
+                {
+                    BindingKind.None => "none",
+                    BindingKind.Builtin => "builtin",
+                    _ => "visible",
+                });
+            case "before-binding":
+                return c.Family == Family.Local && c.Construct == null && !IsCallableKind(c.Target)
+                    && c.Id.Contains("/above/", StringComparison.Ordinal) && ClassOf(c.Outer) == parts[1];
+            case "rowless-let":
+                return c.Family == Family.Local && c.Target == BindingKind.LocalLet
+                    && c.Id.Contains($"/let-in/{parts[1]}/", StringComparison.Ordinal)
+                    && BlockShapes.Any(b => b.Family == parts[1] && b.Row == null);
+            case "s2-builtin":
+                return c.Family == Family.Local && c.Outer == BindingKind.Builtin
+                    && c.Construct is LocalTarget.For or LocalTarget.WithAs or LocalTarget.ExceptAs;
+            case "store-non-writable":
+                return c.Family == Family.Store && IsNonWritableByMeaning(c.Outer) && c.Outer.ToString() == parts[1]
+                    && (parts[2] == "global"
+                        ? c.Id.Contains("/global/", StringComparison.Ordinal)
+                        : c.Id.StartsWith($"store/{parts[2]}/", StringComparison.Ordinal) && c.Id.Contains("/no-decl/", StringComparison.Ordinal));
+            case "seed":
+                return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
+            default:
+                return false;
+        }
+    }
 
     private static IEnumerable<string> ClosedSetFailures(IReadOnlyList<NameCell> pool)
     {
@@ -1079,14 +1156,19 @@ public partial class NameResolutionDifferentialTests
             yield return "MayRefuseShapes: the entry has no generated cell";
 
         var unruled = pool.Where(c => c.Tag == SharpyTag.Unruled).ToList();
-        var unlisted = unruled.Where(c => c.Shape == null || !UnruledShapes.Contains(c.Shape)).ToList();
+        var unlisted = unruled.Where(c => c.Shape == null || !UnruledShapeCounts.ContainsKey(c.Shape)).ToList();
         foreach (var c in unlisted.Take(20))
             yield return $"UnruledShapes: {c.Id} is tagged unruled with shape '{c.Shape}', which is no listed shape";
         if (unlisted.Count > 20)
             yield return $"UnruledShapes: … {unlisted.Count} cells in total";
-        var fed = unruled.Select(c => c.Shape).ToHashSet(StringComparer.Ordinal);
-        foreach (var entry in UnruledShapes.Where(e => !fed.Contains(e)))
-            yield return $"UnruledShapes: '{entry}' has no generated cell";
+        var misplaced = unruled.Except(unlisted).Where(c => !UnruledAxesHold(c)).ToList();
+        foreach (var c in misplaced.Take(20))
+            yield return $"UnruledShapes: {c.Id} is labelled '{c.Shape}' and its axes are not that question's";
+        if (misplaced.Count > 20)
+            yield return $"UnruledShapes: … {misplaced.Count} misplaced cells in total";
+        var counts = unruled.Where(c => c.Shape != null).GroupBy(c => c.Shape!, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        foreach (var (shape, pinned) in UnruledShapeCounts.Where(e => counts.GetValueOrDefault(e.Key) != e.Value))
+            yield return $"UnruledShapes: '{shape}' is pinned at {pinned} cells and generates {counts.GetValueOrDefault(shape)}";
     }
 
     /// <summary>The report's coverage statement: cells per roster value on each axis.</summary>

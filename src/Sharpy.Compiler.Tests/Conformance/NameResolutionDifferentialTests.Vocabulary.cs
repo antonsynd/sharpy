@@ -187,6 +187,10 @@ internal enum ExcludedAxis
     /// <summary>(xv) ref / in parameter modifiers: #2154 / #2156's class.</summary>
     RefInParameterModifiers,
 
+    /// <summary>(xvi) value types beyond int and str: a read before its value is ready has two observable shapes, a default that
+    /// prints (int) and a null that throws (str), and every other type repeats one of them.</summary>
+    ValueTypesBeyondIntAndStr,
+
     /// <summary>A flag or enum value that cannot change a binding's kind or a scope family; the entry states why.</summary>
     NotAKind,
 

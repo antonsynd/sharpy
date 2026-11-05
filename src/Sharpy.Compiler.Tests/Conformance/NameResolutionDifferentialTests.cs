@@ -123,6 +123,9 @@ public partial class NameResolutionDifferentialTests
     private const string AllowlistFileName = "name-resolution-differential-allowlist.txt";
     private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
+    /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
+    private const int CellBudget = 6500;
+
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
     private const string CacheEnv = "NAME_RES_DIFF_SHARPY_CACHE";
@@ -223,7 +226,8 @@ public partial class NameResolutionDifferentialTests
         switch (cell.Tag)
         {
             case SharpyTag.Unruled:
-                return VerdictClass.Unruled;
+                // The question is what the program should mean, and no answer to it is an uncaught CLR exception.
+                return kind == SharpyKind.RuntimeThrow ? VerdictClass.RuntimeThrow : VerdictClass.Unruled;
             case SharpyTag.MustRun:
                 return kind switch
                 {
@@ -259,9 +263,48 @@ public partial class NameResolutionDifferentialTests
             return null; // the seed's own control runs in TwinRenderer_SeedPythonVerdicts_Reproduce
         if (cell.Tag == SharpyTag.Unruled)
             return observed.Kind is PyKind.SyntaxError or PyKind.TimedOut ? $"unruled twin: {observed}" : null;
-        if (observed == cell.Python)
-            return null;
-        return $"predicted {cell.Python}, python {observed}";
+        if (observed != cell.Python)
+            return $"predicted {cell.Python}, python {observed}";
+
+        // Acceptance 3: where python runs a must-run program, python and the model agree. Only a named deviation may differ.
+        if (cell.Tag is SharpyTag.MustRun or SharpyTag.MayRefuse && observed.Kind == PyKind.Ran
+            && observed.Value != cell.Model && cell.Deviation == null)
+            return $"model '{cell.Model}' differs from python's '{observed.Value}' and the cell names no deviation";
+        return null;
+    }
+
+    /// <summary>A rule that names a code. A must-refuse cell refused under another code is the right direction for the wrong
+    /// reason, so it is read here: a code drifting (SPY0290 to SPY0200) stays visible, which the verdict class cannot show.</summary>
+    private static readonly Regex RuleNamesCode = new(@"^(?:kind:)?(SPY\d{4})$", RegexOptions.CultureInvariant);
+
+    /// <summary>The refusals that fire before the rule's own code today, with their counts. Anything else is red.</summary>
+    private static readonly IReadOnlyDictionary<(string Rule, string Seen), int> EarlierRefusals = new Dictionary<(string, string), int>
+    {
+        // `global x` over a const: SPY0134 refuses the declaration until #2424 reinstates it, then SPY0225 is reached.
+        [("kind:SPY0225", "SPY0134")] = 6,
+        // A later member in a constant-only initializer: the name is not visible yet, so SPY0401 is not reached.
+        [("SPY0401", "SPY0200")] = 9,
+        // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
+        [("SPY0606", "SPY0200")] = 4,
+    };
+
+    private static IEnumerable<string> RefusalCodeFailures(IReadOnlyList<CellResult> results, bool partial)
+    {
+        var seen = new Dictionary<(string Rule, string Seen), int>();
+        foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused))
+        {
+            var named = RuleNamesCode.Match(r.Cell.Rule);
+            if (!named.Success || r.Run.ErrorCodes.Contains(named.Groups[1].Value))
+                continue;
+            var first = r.Run.ErrorCodes.First(c => !IgnoredCodes.Contains(c));
+            if (!EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
+                yield return $"RefusalCode: {r.Cell.Id} names {r.Cell.Rule} and was refused with {first}";
+            seen[(r.Cell.Rule, first)] = seen.GetValueOrDefault((r.Cell.Rule, first)) + 1;
+        }
+        if (partial)
+            yield break;
+        foreach (var (key, count) in EarlierRefusals.Where(e => seen.GetValueOrDefault(e.Key) != e.Value))
+            yield return $"RefusalCode: {key.Rule} refused with {key.Seen} is pinned at {count} cells and measured {seen.GetValueOrDefault(key)}";
     }
 
     /// <summary>A row of the allowlist: the class it pins, the issue that drains it and its lane.</summary>
@@ -328,7 +371,8 @@ public partial class NameResolutionDifferentialTests
                 return run.CsCode switch
                 {
                     "CS0176" => "#2147",
-                    "CS0103" when cell.Id.Contains("alias", StringComparison.Ordinal) && cell.Family == Family.TypeMember => "#1925",
+                    // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
+                    "CS0103" when IsAliasConstructorCell(cell) => "#1925",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     _ => cell.Family switch
@@ -342,7 +386,7 @@ public partial class NameResolutionDifferentialTests
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
                 if (cell.Family == Family.Store)
-                    return cell.Form == StoreForm.Walrus ? "#2423" : "#2424";
+                    return cell.Form == StoreForm.Walrus && !run.AllCodes.Contains("SPY0134") ? "#2423" : "#2424";
                 return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
                     ? "#2422"
                     : "#2423";
@@ -357,11 +401,16 @@ public partial class NameResolutionDifferentialTests
                     return "#2424";
                 if (cell.Family == Family.Local)
                     return cell.Rule.StartsWith("S2", StringComparison.Ordinal) ? "#2425" : "#2423";
-                return cell.Tag == SharpyTag.MustRefuse ? "#2423" : "#2422";
+                // Only a read with no other binding can print a storage default; values-ready cannot change which binding is read.
+                return cell.Tag == SharpyTag.MustRefuse || cell.Outer != BindingKind.None ? "#2423" : "#2422";
             default:
                 throw new InvalidOperationException($"{verdict} is not a red class");
         }
     }
+
+    private static bool IsAliasConstructorCell(NameCell cell)
+        => cell.Target == BindingKind.ModuleTypeAlias || cell.Outer == BindingKind.ModuleTypeAlias
+            || (cell.Family == Family.TypeMember && cell.Id.Contains("/alias/", StringComparison.Ordinal));
 
     private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
     {
@@ -394,6 +443,8 @@ public partial class NameResolutionDifferentialTests
             failures.Add($"duplicate cell id {dup.Key}");
         failures.AddRange(ClosedSetFailures(pool));
         failures.AddRange(RosterFedFailures(pool));
+        if (pool.Count > CellBudget)
+            failures.Add($"the pool is {pool.Count} cells and the budget is {CellBudget}: prune in D3.e's order");
 
         int limit = int.TryParse(Environment.GetEnvironmentVariable(StrideEnv), out var parsed) ? parsed : 0;
         bool partial = limit > 0 && limit < pool.Count;
@@ -482,7 +533,12 @@ public partial class NameResolutionDifferentialTests
                 moved.Add($"{r.Cell.Id}: listed as {row.Class}, now {r.Class} — update or delete the row");
             else if (!isRed && row != null && r.Class is not (VerdictClass.GeneratorBug or VerdictClass.Harness))
                 stale.Add($"{r.Cell.Id}: listed as {row.Class}, now {r.Class} — STALE: delete the row");
+
+            // D4: a row cites the issue whose fix turns it green, and that route is the code's. A hand-edited cite cannot hide here.
+            if (isRed && row != null && row.Class == r.Class && row.Cite != ProposedCite(r.Cell, r.Class, r.Run))
+                failures.Add($"{r.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r.Cell, r.Class, r.Run)}'");
         }
+        failures.AddRange(RefusalCodeFailures(results, partial));
 
         wall.Stop();
         var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, wall.Elapsed);
@@ -552,9 +608,12 @@ public partial class NameResolutionDifferentialTests
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
             g => g.Key.ToString(),
             g => g.GroupBy(r => r.Class).OrderBy(c => c.Key).ToDictionary(c => c.Key.ToString(), c => c.Count()));
-        int pythonAgreed = results.Count(r => r.Control == null);
+        // The seed's python verdicts are a separate fact's control, and an unruled cell's prediction is not held to account.
+        var underControl = results.Where(r => r.Cell.Family != Family.Seed && r.Cell.Tag != SharpyTag.Unruled).ToList();
+        int pythonAgreed = underControl.Count(r => r.Control == null);
         var report = new
         {
+            commit = CurrentCommit(),
             pool = pool.Count,
             run = results.Count,
             coveragePercent = pool.Count == 0 ? 0 : 100.0 * results.Count / pool.Count,
@@ -564,6 +623,10 @@ public partial class NameResolutionDifferentialTests
             perFamilyTargetOuter = results.GroupBy(r => $"{r.Cell.Family}/{r.Cell.Target}/{r.Cell.Outer}")
                 .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
             pythonControlAgreed = pythonAgreed,
+            pythonControlCells = underControl.Count,
+            pythonControlSeedSeparate = results.Count(r => r.Cell.Family == Family.Seed),
+            pythonControlUnruledExempt = results.Count(r => r.Cell.Family != Family.Seed && r.Cell.Tag == SharpyTag.Unruled),
+            unruledPredictionDiffers = results.Count(r => r.Cell.Family != Family.Seed && r.Cell.Tag == SharpyTag.Unruled && r.Python != r.Cell.Python),
             generatorBugs = results.Count(r => r.Class == VerdictClass.GeneratorBug),
             harness = results.Count(r => r.Class == VerdictClass.Harness),
             allowlistSize = rows.Count,
@@ -611,7 +674,7 @@ public partial class NameResolutionDifferentialTests
         }
 
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
-        return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}, "
+        return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{underControl.Count}, "
             + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, "
             + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
     }
@@ -623,6 +686,27 @@ public partial class NameResolutionDifferentialTests
             .OrderBy(r => r.Cell.Id, StringComparer.Ordinal)
             .Select(r => $"{r.Cell.Id} {r.Class} # {ProposedCite(r.Cell, r.Class, r.Run)}");
         File.WriteAllLines(Path.Combine(ReportDirectory(), "name-resolution-differential-proposed-allowlist.txt"), lines);
+    }
+
+    /// <summary>The report's sha, so its counts read `@ sha`. A tree with no git says so; the sweep's verdict does not depend on it.</summary>
+    private static string CurrentCommit()
+    {
+        try
+        {
+            using var git = Process.Start(new ProcessStartInfo("git", "rev-parse --short HEAD")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = ReportDirectory(),
+            })!;
+            var sha = git.StandardOutput.ReadToEnd().Trim();
+            git.WaitForExit();
+            return git.ExitCode == 0 ? sha : "unknown";
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return "unknown";
+        }
     }
 
     private static string ReportDirectory()

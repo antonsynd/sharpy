@@ -51,6 +51,7 @@ public partial class NameResolutionDifferentialTests
         var cells = new List<NameCell>();
         cells.AddRange(ReadClassCells());
         cells.AddRange(ReadModuleCells());
+        cells.AddRange(StrValueCells());
         cells.AddRange(ReadBuiltinModuleCells());
         cells.AddRange(ReadDeclaringCells());
         cells.AddRange(GenericReceiverCells());
@@ -127,8 +128,8 @@ public partial class NameResolutionDifferentialTests
 
     private static bool IsCallableKind(BindingKind kind) => FormOf(kind) == Form.Call;
 
-    /// <summary>The builtins of the <c>Builtin</c> outer value: three functions with different CLR overload sets and
-    /// one builtin TYPE name whose variable spelling SPY0212 does not refuse (D3.a).</summary>
+    /// <summary>The builtins of the <c>Builtin</c> outer value: two functions with different CLR overload sets. D3.e step 1
+    /// pruned <c>max</c> and the type name <c>int</c> to the budget; see <see cref="PrunedReadAxes"/>.</summary>
     private static readonly (string Name, string Args, string Params, int Result)[] Builtins =
     {
         ("abs", "-3", "x: int", 3),

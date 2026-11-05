@@ -568,6 +568,63 @@ public partial class NameResolutionDifferentialTests
             yield return cell;
     }
 
+    /// <summary>The value-type axis's second value, on the kinds whose int read at load prints a storage default. In <c>str</c> that
+    /// default is a null the read dereferences, the one shape where a read before its value is ready throws at run time
+    /// (D2's <c>RuntimeThrow</c>): the feeder of that class, which the int cells cannot reach.</summary>
+    private static IEnumerable<NameCell> StrValueCells()
+    {
+        NameCell Cell(BindingKind t, ReadPosition p, string shape, Expected e, IEnumerable<string> lines, string print) => new()
+        {
+            Id = CellId("read", "str", t, p, shape),
+            Family = Family.Read,
+            Source = WithHelpers(Join(lines) + MainBlock(print)),
+            Tag = e.Tag,
+            Model = e.Model,
+            Python = e.Python,
+            Rule = e.Rule,
+            Target = t,
+            Outer = BindingKind.None,
+            Position = p,
+        };
+
+        Expected Reads(string pythonName, string rule) => new(SharpyTag.MustRun, "2", PyOutcome.Name(pythonName), rule);
+
+        var classKinds = new (BindingKind Kind, string[] Decl)[]
+        {
+            (BindingKind.StaticField, new[] { "    @static", "    x: str = \"ab\"" }),
+            (BindingKind.StaticProperty, new[] { "    @static", "    property x: str = \"ab\"" }),
+            (BindingKind.ClassComputedConst, new[] { "    const x: str = \"ab\".upper()" }),
+        };
+        foreach (var (kind, decl) in classKinds)
+        {
+            yield return Cell(kind, ReadPosition.StaticInitializer, "function", Reads("H", "N7"),
+                new[] { "def get() -> int:", "    return len(H.x)", "class H:", "    @static", "    r: int = get()" }.Concat(decl), "print(H.r)");
+            yield return Cell(kind, ReadPosition.StaticInitializer, "lambda", Reads("H", "N7"),
+                new[] { "class H:", "    @static", "    r: int = (lambda: len(H.x))()" }.Concat(decl), "print(H.r)");
+            yield return Cell(kind, ReadPosition.StaticInitializer, "deferred", Reads("H", "N7"),
+                new[] { "def get() -> str:", "    return H.x", "class H:", "    @static", "    r: str = get()" }.Concat(decl), "print(len(H.r))");
+        }
+
+        var moduleKinds = new (BindingKind Kind, string Decl)[]
+        {
+            (BindingKind.ModuleComputedConst, "const x: str = \"ab\".upper()"),
+            (BindingKind.ModuleProperty, "property x: str = \"ab\""),
+        };
+        foreach (var (kind, decl) in moduleKinds)
+        {
+            yield return Cell(kind, ReadPosition.ModuleInitializer, "direct", Reads("x", "N3"), new[] { "r: int = len(x)", decl }, "print(r)");
+            yield return Cell(kind, ReadPosition.ModuleInitializer, "function", Reads("x", "N3"),
+                new[] { "def get() -> int:", "    return len(x)", "r: int = get()", decl }, "print(r)");
+            yield return Cell(kind, ReadPosition.ModuleInitializer, "lambda", Reads("x", "N3"), new[] { "r: int = (lambda: len(x))()", decl }, "print(r)");
+            yield return Cell(kind, ReadPosition.ModuleInitializer, "deferred", Reads("x", "N3"),
+                new[] { "def get() -> str:", "    return x", "r: str = get()", decl }, "print(len(r))");
+        }
+
+        // A cycle has no value to wait for, so its throw is agreement: MustRefuseOrThrow × RuntimeThrow's feeder.
+        yield return Cell(BindingKind.StaticField, ReadPosition.StaticInitializer, "self", Cycle(PyOutcome.Name("H"), "N3-cycle"),
+            new[] { "class H:", "    @static", "    r: str = (lambda: H.r.upper())()" }, "print(H.r)");
+    }
+
     /// <summary>The two module kinds with no expression read: a union through its case constructor and a match, an
     /// interface through a parameter typed with it. Body positions only (D3.b).</summary>
     private static IEnumerable<NameCell> UnionAndInterfaceReadCells()

@@ -849,7 +849,7 @@ internal static class NameResolutionRosters
     /// replacing the plan's <c>ClassMember</c>, which is no <see cref="BindingKind"/>.</summary>
     internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> StoreOuter = Roster.Map(
         (BindingKind.ModuleVar, AxisMembership.Everywhere),
-        (BindingKind.ModuleLet, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Pruned("refused at its own declaration (SPY0340), so the program never reaches the store: as READ's outer ModuleLet")),
         (BindingKind.ModuleLiteralConst, AxisMembership.Everywhere),
         (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
         (BindingKind.ModuleProperty, AxisMembership.Everywhere),
@@ -1539,11 +1539,17 @@ public partial class NameResolutionDifferentialTests
     public void BinderSiteRoster_StoreOuter_IsTotalOverBindingKind()
     {
         var problems = OuterAxisProblems("StoreOuter", NameResolutionRosters.StoreOuter).ToList();
-        foreach (var kind in NameResolutionRosters.ModuleLevelKinds.Append(BindingKind.EnclosingLocal).Append(BindingKind.Builtin).Append(BindingKind.None))
+        foreach (var kind in NameResolutionRosters.ModuleLevelKinds.Where(k => k != BindingKind.ModuleLet).Append(BindingKind.EnclosingLocal).Append(BindingKind.Builtin).Append(BindingKind.None))
         {
             if (NameResolutionRosters.StoreOuter.TryGetValue(kind, out var member) && !(member.Generated && !member.ClassEnclosedBodiesOnly))
                 problems.Add($"StoreOuter: {kind} is an outer at every body (finding 1)");
         }
+
+        // ModuleLet is out because its declaration is refused: this reads that reason, so the exclusion cannot outlive it.
+        if (NameResolutionRosters.StoreOuter[BindingKind.ModuleLet].Generated)
+            problems.Add("StoreOuter: ModuleLet is generated, and a store under it is never reached");
+        if (!RunSharpy("let x = 5\ndef main() -> None:\n    print(x)\n").AllCodes.Contains("SPY0340"))
+            problems.Add("StoreOuter: ModuleLet's exclusion says SPY0340 refuses the declaration, and it no longer does: generate it");
 
         foreach (var kind in new[]
         {

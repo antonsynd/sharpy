@@ -767,7 +767,8 @@ jobs:
         def shards(prefix):
             return sorted(int(k[len(prefix):]) for k in os.environ if k.startswith(prefix))
         sweeps = ["interop-conformance", "metamorphic-corpus", "differential-execution",
-                  "format-spec-differential", "formatter-emit-invariance", "in-process-isolation"]
+                  "format-spec-differential", "formatter-emit-invariance", "in-process-isolation",
+                  "name-resolution-differential"]
         expected = (["cli", "core", "stdlib", "windows"] + [f"lsp-shard-{n}" for n in shards("LSP_SHARD_")]
                     + [f"compiler-shard-{n}" for n in shards("COMPILER_SHARD_")] + [f"sweep-{s}" for s in sweeps])
         if os.environ.get("CODE") == "false":
