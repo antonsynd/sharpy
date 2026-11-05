@@ -59,12 +59,6 @@ namespace Sharpy
             return (length + step - 1) / step;
         }
 
-        /// <summary>Create a Slice from a System.Range.</summary>
-        public static Slice FromRange(System.Range range)
-        {
-            return new Slice(range.Start.Value, range.End.Value);
-        }
-
         internal static (int, int) Normalize(int start, int end, int max)
         {
             return (Index.Clamp(start, max), Index.Clamp(end, max));
