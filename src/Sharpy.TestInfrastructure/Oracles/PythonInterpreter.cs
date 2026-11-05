@@ -7,9 +7,8 @@ namespace Sharpy.TestInfrastructure.Oracles;
 
 /// <summary>
 /// The python3 interpreter a differential twin uses as its oracle (#2300, P68). One locator so
-/// a new twin does not add another private copy (<c>CPythonDifferentialParseTests.PythonOracle</c>,
-/// <c>FormatSpecDifferentialTests.PyOracle</c> and <c>DifferentialExecutionTests</c> each carry
-/// one today; retrofitting them is a chore note on #2300, not this helper's seam).
+/// a new twin does not add another private copy (<c>CPythonDifferentialParseTests.PythonOracle</c>
+/// still carries one; retrofitting it is a chore note on #2300, not this helper's seam).
 /// </summary>
 /// <remarks>
 /// <para>Absence is a SKIP on a developer machine (xunit's <c>skipped</c> count, through

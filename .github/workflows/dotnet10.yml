@@ -492,7 +492,7 @@ jobs:
       with:
         dotnet-version: 10.0.x
     - name: Setup Python
-      # Required by both CPython oracles here: the differential-execution sweep
+      # Required by the CPython oracles here: the differential-execution sweep
       # (DifferentialExecutionTests, #1156) compares compiled-program stdout against `python3`
       # running the same source, and the format-spec differential sweep compares against
       # batched `python3`. Pinned to 3.12 so behavior is stable. Both soft-skip if no suitable
@@ -560,8 +560,11 @@ jobs:
       # .claude/tmp/name-resolution-differential-report.json and ratchets the reviewed allowlist
       # (src/Sharpy.Compiler.Tests/Conformance/name-resolution-differential-allowlist.txt). The
       # full pool always runs here: a strided ratchet is a partial guarantee. Excluded from the
-      # Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly once. Skips without a
-      # suitable python3, like the sweeps above.
+      # Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly once. Unlike the sweeps
+      # above it FAILS without a suitable python3: a skipped sweep guards nothing, and the job's
+      # roster facts would still pass and keep ci-summary's zero-test check green.
+      env:
+        SHARPY_REQUIRE_PYTHON_ORACLE: "1"
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults
     - name: Sweep formatter-emit-invariance
