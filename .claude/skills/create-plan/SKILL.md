@@ -103,7 +103,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - **Violated contract:** <one sentence — what is supposed to be uniform across which axis>
 - **Meta-class:** <from the standard-cure table, verification-contract.md §1> → **standard cure:** <seam / sweep / harness>
 - **Known member cells:** #NNN … (the issues)
-- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report>
+- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. When the plan IS the generator, this is NOT a cell list: name each axis as the image of a compiler enumeration (an enum, a switch's arms, a roster test's census) under an explicit map, the totality assertion that keeps the map closed (and its mutation), the excluded axes with reasons, and the verdict as a RULE keyed on axis-value classes; hand-measured cells go in one "measured at base" table as the red floor, never as matrix rows — a cell a later reader finds by hand means a roster is open, and the revision closes the roster, never adds the cell>
 - **Lane / reach:** <lane · program|probe>; **fidelity-scope row:** <COMPARED row | promoted by R-xx>
 - **Standing harness that should have caught it:** <name> — or "none; Phase N adds one"
 - **Generator:** <existing differential/generative harness the cells join | REQUIRED FIRST — the matrix has ≥2 axes × ≥3 values or the group is a residue (P11b, P14c): Phase 1 builds the generator and its allowlist ratchet and the fix drains it | not required: <the axis a generator cannot enumerate>>
@@ -175,7 +175,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
 - A plan with a second non-chore group, or an output/layout-changing phase sharing a gate, is not a plan (contract §11) — split it
-- A residue group or a ≥2-axis × ≥3-value matrix without a generator-first phase is not a plan (contract §11) — hand matrices found the next axis six rounds running
+- A residue group or a ≥2-axis × ≥3-value matrix without a generator-first phase is not a plan (contract §11) — hand matrices found the next axis six rounds running; and a generator plan whose axes are hand LISTS rather than rosters closed against a compiler enumeration is a hand matrix wearing a generator (eight adequacy passes on plan-ed89b6 each found one more value of one listed axis)
 - The plan names the class trackers it posts cells to and never instructs an implementer to `gh issue create` (contract §10)
 - A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
