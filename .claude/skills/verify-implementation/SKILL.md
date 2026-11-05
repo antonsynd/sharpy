@@ -38,6 +38,7 @@ Before spawning any agents, perform these checks yourself:
   - **Absent**: warn the user, proceed
   - **NEEDS REVISION**: warn the user, proceed, note it in the final report
   - **PASS** / **PASS WITH CORRECTIONS**: proceed
+  - **CONVERGED** (contract §12 Convergence): proceed; every `### Deferred findings` row of the plan's Verification Summary is a completeness deliverable (below) — resolved when a commit body names it and the assertion, source expression or census constant it named is in the diff; an unresolved row is a finding of this round
   - `<!-- Adequacy: CELL -->` on a bug-fix plan: the Sibling-cell prober (Agent 4) is mandatory and must build its own matrix; say so in the report
 - Locate the `/implement-plan` evidence — `git log --oneline` for commits referencing the plan, or the plan's own implementation checklist/commit table
 
@@ -67,6 +68,7 @@ Extract from the plan — **acceptance bullets and "Issues to Close" first**, pr
 - Every **file path**, **step/task**, **test** (unit, fixture, harness), **diagnostic code**, **AST node / type / validator / emitter method**, **Sharpy.Core** member
 - Every **docs/spec deliverable** (spec section, `DiagnosticExplanations` entry, design doc) — same weight as code
 - The **Defect Class** section (violated contract, matrix, standing harness, owner rulings) and the **Adversarial Review** section (blast radius, generated artifacts) if present. If the plan has neither and it fixes a bug, note `no matrix in plan` — Agent 4 builds one.
+- On a **CONVERGED** stamp, every row of the Verification Summary's `### Deferred findings` — each is a deliverable with the same weight as an acceptance bullet: the code change it names (map or exclusion entry, assertion source expression, census constant) and the assertion or mutation that proves it. At light tier the lead checks them; at full tier Agent 1 does.
 
 Build a **completeness checklist** — every deliverable, each with the evidence that would prove it (what runs, what it must print).
 
@@ -429,7 +431,7 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 ```markdown
 ## Implementation Verification Report
 
-**Plan:** [plan file path] (stamp: PASS / PASS WITH CORRECTIONS / NEEDS REVISION / none; Adequacy: CLASS / CELL / N/A)
+**Plan:** [plan file path] (stamp: PASS / PASS WITH CORRECTIONS / NEEDS REVISION / CONVERGED / none; Adequacy: CLASS / CELL / N/A)
 **Tier:** [light — Agents 2, 3, 4; completeness by the lead / full — Agents 1–4] (contract §12)
 **Branch:** [current branch]
 **Scope:** `$BASE..$FINAL` (base = parent of first implementation commit; N implementation commits, M remediation commits)
