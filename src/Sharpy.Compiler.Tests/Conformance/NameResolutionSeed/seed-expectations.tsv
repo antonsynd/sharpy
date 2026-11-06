@@ -57,6 +57,8 @@ B32	MustRefuse			SPY0200,SPY0600
 B33	MustRun	1		
 B34	MustRefuse		#2424	
 B35	MustRun	[1, 2]		
+B36	Unruled		#1974	
+B37	Unruled		#1974	
 C01	MustRun	3		
 C02	MustRun	3	#2423	
 C03	MustRun	3	#2423	

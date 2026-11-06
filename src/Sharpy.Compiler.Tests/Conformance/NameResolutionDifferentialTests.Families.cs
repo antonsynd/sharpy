@@ -419,6 +419,32 @@ public partial class NameResolutionDifferentialTests
             yield return cell;
     }
 
+    /// <summary>Axis 12's one open door: `global y` with no module binding. Python creates the binding; N6 leaves the question to
+    /// #2424's plan, default no. Today SPY0134 refuses every `global` until that plan reinstates it.</summary>
+    private static IEnumerable<NameCell> GlobalCreatesBindingCells()
+    {
+        foreach (var s in new[] { StoreSpelling.Assign, StoreSpelling.Augmented })
+            foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
+            {
+                var (host, call) = Host(body, new[] { "global y", StoreText(s, "y"), "print(y)" });
+                var main = new List<string>(call) { "print(y)" };
+                yield return new NameCell
+                {
+                    Id = CellId("store", "declaration", "global-creates-binding", s, body),
+                    Family = Family.Store,
+                    Source = Join(host) + MainBlock(main.ToArray()),
+                    Tag = SharpyTag.Unruled,
+                    Python = s == StoreSpelling.Assign ? PyOutcome.Ran(JoinOut(15, 15)) : PyOutcome.Name("y"),
+                    Rule = "unruled:global-creates-binding",
+                    Target = BindingKind.None,
+                    Outer = BindingKind.None,
+                    Position = body,
+                    Form = FormEnum(s),
+                    Shape = "global-creates-binding",
+                };
+            }
+    }
+
     private static NameCell LambdaWalrusCell(BindingKind outer)
     {
         var enclosing = outer == BindingKind.EnclosingLocal;
@@ -1156,6 +1182,14 @@ public partial class NameResolutionDifferentialTests
         ["D15"] = "block-scoping-if",
     };
 
+    /// <summary>The seeds that stay unruled, each on its question: a same-block re-declaration an earlier closure sees (R-LF, #1974's
+    /// B-rules decide between SPY0204 and a store the closure must see, never today's 13).</summary>
+    private static readonly IReadOnlyDictionary<string, string> SeedUnruledShapes = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["B36"] = "same-block-redeclaration-after-closure",
+        ["B37"] = "same-block-redeclaration-after-closure",
+    };
+
     private static IEnumerable<NameCell> SeedCells()
     {
         var dir = TwinSeed.Folder;
@@ -1185,7 +1219,7 @@ public partial class NameResolutionDifferentialTests
                 SeedPythonVerdict = verdicts[id],
                 SeedCite = parts.Length > 3 && parts[3].Length > 0 ? parts[3] : "#2423",
                 SeedRefusalCodes = (parts.Length > 4 ? parts[4] : "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal),
-                Shape = tag == SharpyTag.Unruled ? $"seed:{id}" : null,
+                Shape = tag == SharpyTag.Unruled ? SeedUnruledShapes.GetValueOrDefault(id) : null,
                 Target = BindingKind.None,
                 Outer = BindingKind.None,
             };
@@ -1204,6 +1238,8 @@ public partial class NameResolutionDifferentialTests
     /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
     internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
+        ["global-creates-binding"] = 4,
+        ["same-block-redeclaration-after-closure"] = 2,
     };
 
     /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
@@ -1211,11 +1247,15 @@ public partial class NameResolutionDifferentialTests
     internal static bool UnruledAxesHold(NameCell c)
     {
         var shape = c.Shape ?? "";
-        var parts = shape.Split(':');
-        switch (parts[0])
+        switch (shape)
         {
-            case "seed":
-                return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
+            case "global-creates-binding":
+                return c.Family == Family.Store && c.Outer == BindingKind.None
+                    && c.Form is StoreForm.Assign or StoreForm.Augmented
+                    && c.Id.StartsWith("store/declaration/global-creates-binding/", StringComparison.Ordinal);
+            case "same-block-redeclaration-after-closure":
+                return c.Family == Family.Seed && c.Id.StartsWith("seed/", StringComparison.Ordinal)
+                    && SeedUnruledShapes.GetValueOrDefault(c.Id["seed/".Length..]) == shape;
             default:
                 return false;
         }

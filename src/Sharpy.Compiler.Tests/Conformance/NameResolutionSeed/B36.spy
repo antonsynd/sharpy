@@ -1,0 +1,6 @@
+# B36 | same-block closure, then `let` re-declaration (R-LF)
+def main() -> None:
+    x: int = 13
+    g: () -> int = lambda: x
+    let x = 2
+    print(g())

@@ -57,6 +57,7 @@ public partial class NameResolutionDifferentialTests
         cells.AddRange(GenericReceiverCells());
         cells.AddRange(TypePositionCells());
         cells.AddRange(StoreCells());
+        cells.AddRange(GlobalCreatesBindingCells());
         cells.AddRange(TypeMemberCells());
         cells.AddRange(LocalCells());
         cells.AddRange(ImportedOuterCells());

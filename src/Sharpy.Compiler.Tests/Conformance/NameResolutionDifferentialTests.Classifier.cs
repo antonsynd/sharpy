@@ -477,12 +477,29 @@ public partial class NameResolutionDifferentialTests
 
     /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red.</summary>
     [Theory]
-    [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
+    [InlineData("global-creates-binding", Family.Local, BindingKind.None, BindingKind.None, "store/declaration/global-creates-binding/Assign/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/declaration/global-creates-binding/Assign/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Store, BindingKind.None, BindingKind.None, "store/Assign/outer=None/FunctionBody/no-decl")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Read, BindingKind.None, BindingKind.None, "seed/B36")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Seed, BindingKind.None, BindingKind.None, "seed/B35")]
+    [InlineData("seed:A12", Family.Seed, BindingKind.None, BindingKind.None, "seed/A12")]
     internal void ClosedSet_AListedShapeOnTheWrongAxes_IsRed(string shape, Family family, BindingKind target, BindingKind outer, string id)
     {
         var cell = CellTagged(SharpyTag.Unruled, null) with { Id = id, Family = family, Target = target, Outer = outer, Shape = shape };
 
         Assert.False(UnruledAxesHold(cell));
+    }
+
+    /// <summary>The closed set's own positive control: the theory above only reads false, so this reads the real cells true, and pins
+    /// the set to the two questions D6 leaves open.</summary>
+    [Fact]
+    public void ClosedSet_TheTwoOpenQuestions_AreTheOnlyUnruledCells()
+    {
+        var unruled = GeneratedCells().Where(c => c.Tag == SharpyTag.Unruled).ToList();
+
+        Assert.Equal(new[] { "global-creates-binding", "same-block-redeclaration-after-closure" }, UnruledShapeCounts.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Equal(new[] { "global-creates-binding", "same-block-redeclaration-after-closure" }, unruled.Select(c => c.Shape!).Distinct().OrderBy(k => k, StringComparer.Ordinal));
+        Assert.All(unruled, c => Assert.True(UnruledAxesHold(c), $"{c.Id} is labelled '{c.Shape}' and its axes are not that question's"));
     }
 
     private static NameCell CellTagged(SharpyTag tag, string? model) => new()
