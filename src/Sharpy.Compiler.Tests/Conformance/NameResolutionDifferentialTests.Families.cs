@@ -1352,6 +1352,8 @@ public partial class NameResolutionDifferentialTests
             orderObservation = NameResolutionRosters.OrderObservationKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             readTimingBackEdgeLoops = NameResolutionRosters.ReadTimingLoops,
             letInProduct = NameResolutionRosters.LetInProduct.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            loopBodyEnclosures = NameResolutionRosters.LoopBodyEnclosures.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            loopBodyBinders = NameResolutionRosters.LoopBodyBinders.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
         },
         axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
