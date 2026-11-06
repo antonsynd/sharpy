@@ -1671,6 +1671,7 @@ seed/A02 FalseRefusal # #2422 false-refusal
 seed/A05 FalseRefusal # #2422 false-refusal
 seed/A07 SilentWrong # #2422 silent-wrong
 seed/A11 SilentWrong # #2422 silent-wrong
+seed/A12 SilentWrong # #1974 missing-refusal
 seed/A15 FalseRefusal # #2422 false-refusal
 seed/A20 FalseRefusal # #2424 false-refusal
 seed/A22 FalseRefusal # #2422 false-refusal
@@ -1682,6 +1683,7 @@ seed/B04 SilentWrong # #2424 missing-refusal
 seed/B08 SilentWrong # #2424 missing-refusal
 seed/B16 SilentWrong # #2425 missing-refusal
 seed/B23 SilentWrong # #2425 missing-refusal
+seed/B28 SilentWrong # #1974 missing-refusal
 seed/B34 SilentWrong # #2424 missing-refusal
 seed/C02 FalseRefusal # #2423 false-refusal
 seed/C03 FalseRefusal # #2423 false-refusal
