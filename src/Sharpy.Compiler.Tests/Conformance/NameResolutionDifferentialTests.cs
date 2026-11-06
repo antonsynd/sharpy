@@ -103,6 +103,9 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
+    /// <summary>P77b axis 1: the comprehension kind, clause and slot the cell's name sits in.</summary>
+    public ComprehensionSite? Comprehension { get; init; }
+
     /// <summary>Set by the type-position cells: which value of roster 6 this cell feeds (D3.c).</summary>
     public TypePosition? TypeAt { get; init; }
 

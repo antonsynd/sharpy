@@ -573,6 +573,9 @@ internal static class TwinRenderer
             SetComprehension comp => $"{{{Expr(comp.Element)} {Clauses(comp.Clauses)}}}",
             DictComprehension comp => $"{{{Expr(comp.Key)}: {Expr(comp.Value)} {Clauses(comp.Clauses)}}}",
             GeneratorExpression comp => $"({Expr(comp.Element)} {Clauses(comp.Clauses)})",
+            // Python 3.13 has no dict-spread comprehension; PEP 798 (3.15) defines `{**S for … }` as the nested loop below, which
+            // keeps every slot in the comprehension's scope (P77b axis 1's Spread slot). The two names are the renderer's own.
+            DictSpreadComprehension comp => $"{{k9: v9 {Clauses(comp.Clauses)} for k9, v9 in ({Expr(comp.Spread)}).items()}}",
             Identifier identifier => identifier.Name,
             MemberAccess { IsNullConditional: false } member => $"{Expr(member.Object)}.{member.Member}",
             IndexAccess index => $"{Expr(index.Object)}[{Expr(index.Index)}]",
@@ -1323,6 +1326,19 @@ public partial class NameResolutionDifferentialTests
             main()
             """,
             "3\n1\n2\n4\n1\n[2]\n"),
+        ["dict-spread-comprehension"] = new(
+            """
+            def main() -> None:
+                d: dict[int, int] = {**{v: v * 2} for v in [1, 2] if v > 0}
+                print(d)
+            """,
+            """
+            def main():
+                d = {k9: v9 for v in [1, 2] if v > 0 for k9, v9 in ({v: v * 2}).items()}
+                print(d)
+            main()
+            """,
+            "{1: 2, 2: 4}\n"),
         ["expressions"] = new(
             """
             def main() -> None:

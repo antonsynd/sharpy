@@ -60,6 +60,43 @@ internal enum BlockConstruct
     MatchCase,
 }
 
+/// <summary>A comprehension family of roster 8 (P77b axis 1): the image of the five comprehension <c>BlockFamilies</c> names
+/// and of the AST's comprehension nodes, both through <see cref="NameResolutionRosters.ComprehensionKinds"/>.</summary>
+internal enum ComprehensionKind
+{
+    List,
+    Set,
+    Dict,
+    DictSpread,
+    Generator,
+}
+
+/// <summary>The clause a name sits in (P77b axis 1): the image of the <c>ComprehensionClause</c> subclasses, a <c>for</c> clause
+/// standing as the first one (whose iterable python evaluates in the enclosing scope) and as a second one (evaluated in the
+/// comprehension's own scope).</summary>
+internal enum ComprehensionClauseShape
+{
+    FirstFor,
+    SecondFor,
+    If,
+}
+
+/// <summary>A slot a name sits in (P77b axis 1, deferred finding 1): the image of the Expression-typed properties of the
+/// comprehension nodes and their clauses, through <see cref="NameResolutionRosters.ComprehensionSlots"/>.</summary>
+internal enum ComprehensionSlot
+{
+    Element,
+    Key,
+    Value,
+    Spread,
+    Iterable,
+    Condition,
+    Target,
+}
+
+/// <summary>Where a comprehension cell sits (P77b axis 1): its kind, the clause and the slot of the name.</summary>
+internal readonly record struct ComprehensionSite(ComprehensionKind Kind, ComprehensionClauseShape Clause, ComprehensionSlot Slot);
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -784,6 +821,100 @@ internal static class NameResolutionRosters
         ("dict-spread-comprehension", ComprehensionTarget()),
         ("generator-expression", ComprehensionTarget()),
         ("defer", Roster.Out<ConstructCell>(ExcludedAxis.GatedConstruct, "behind the defer feature; the harness deploys no flags")));
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 1: comprehension kind × clause × slot
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>A comprehension AST node's roster-8 family and its kind.</summary>
+    internal sealed record ComprehensionKindRow(string Family, ComprehensionKind Kind);
+
+    /// <summary>The comprehension kinds (P77b axis 1): every <c>Expression</c> subclass named <c>*Comprehension</c> or
+    /// <c>GeneratorExpression</c>, mapped to its <see cref="BlockFamilies"/> name and kind. The fact asserts it total over both
+    /// sources, both directions, so neither the AST nor <c>ClassifyScope</c> can gain a comprehension the axis does not see.</summary>
+    internal static readonly IReadOnlyDictionary<string, ComprehensionKindRow> ComprehensionKinds = Roster.Map(
+        (nameof(ListComprehension), new ComprehensionKindRow("list-comprehension", ComprehensionKind.List)),
+        (nameof(SetComprehension), new ComprehensionKindRow("set-comprehension", ComprehensionKind.Set)),
+        (nameof(DictComprehension), new ComprehensionKindRow("dict-comprehension", ComprehensionKind.Dict)),
+        (nameof(DictSpreadComprehension), new ComprehensionKindRow("dict-spread-comprehension", ComprehensionKind.DictSpread)),
+        (nameof(GeneratorExpression), new ComprehensionKindRow("generator-expression", ComprehensionKind.Generator)));
+
+    /// <summary>The clauses (P77b axis 1): every <c>ComprehensionClause</c> subclass, and every <c>bool</c> property of one keyed
+    /// <c>Subclass.Property</c> (the <see cref="VariableFlags"/> shape: a flag is a row or an <c>Out</c>).</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<ComprehensionClauseShape>> ComprehensionClauses = Roster.Map(
+        (nameof(ForClause), Roster.To(ComprehensionClauseShape.FirstFor, ComprehensionClauseShape.SecondFor)),
+        (nameof(IfClause), Roster.To(ComprehensionClauseShape.If)),
+        ($"{nameof(ForClause)}.{nameof(ForClause.IsAsync)}", Roster.Out<ComprehensionClauseShape>(ExcludedAxis.AsyncBodies,
+            "an `async for` clause (Parser.Statements.cs sets it) needs an await chain in the twin, which is no name axis (xiii)")));
+
+    /// <summary>The slots (P77b deferred finding 1): every Expression-typed property of the five comprehension nodes and of the
+    /// clauses, keyed <c>Type.Property</c>. <c>ForClause.Target</c> is the LOCAL-target row: the name it binds is read after
+    /// the comprehension; every other slot holds a read.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<ComprehensionSlot>> ComprehensionSlots = Roster.Map(
+        ($"{nameof(ListComprehension)}.{nameof(ListComprehension.Element)}", Roster.To(ComprehensionSlot.Element)),
+        ($"{nameof(SetComprehension)}.{nameof(SetComprehension.Element)}", Roster.To(ComprehensionSlot.Element)),
+        ($"{nameof(DictComprehension)}.{nameof(DictComprehension.Key)}", Roster.To(ComprehensionSlot.Key)),
+        ($"{nameof(DictComprehension)}.{nameof(DictComprehension.Value)}", Roster.To(ComprehensionSlot.Value)),
+        ($"{nameof(DictSpreadComprehension)}.{nameof(DictSpreadComprehension.Spread)}", Roster.To(ComprehensionSlot.Spread)),
+        ($"{nameof(GeneratorExpression)}.{nameof(GeneratorExpression.Element)}", Roster.To(ComprehensionSlot.Element)),
+        ($"{nameof(ForClause)}.{nameof(ForClause.Target)}", Roster.To(ComprehensionSlot.Target)),
+        ($"{nameof(ForClause)}.{nameof(ForClause.Iterator)}", Roster.To(ComprehensionSlot.Iterable)),
+        ($"{nameof(IfClause)}.{nameof(IfClause.Condition)}", Roster.To(ComprehensionSlot.Condition)));
+
+    /// <summary>The hosts a comprehension READ cell sits at (P77b axis 1): a function body, where every slot reads at the call,
+    /// and a <c>@static</c> initializer, where it reads at load.</summary>
+    internal static readonly ImmutableArray<ReadPosition> ComprehensionHosts =
+        ImmutableArray.Create(ReadPosition.FunctionBody, ReadPosition.StaticInitializer);
+
+    private const string WalrusIterableSyntaxError =
+        "python refuses it at compile time (3.13.18: SyntaxError 'assignment expression cannot be used in a comprehension iterable expression', the first for's and a later one's alike): no twin runs (deferred finding 2)";
+
+    /// <summary>The walrus STORE's slot axis (P77b axis 1, deferred finding 2): a slot that holds an expression the walrus can
+    /// sit in is generated, the rest out with the reason.</summary>
+    internal static readonly IReadOnlyDictionary<ComprehensionSlot, AxisMembership> ComprehensionWalrusSlots = Roster.Map(
+        (ComprehensionSlot.Element, AxisMembership.Everywhere),
+        (ComprehensionSlot.Key, AxisMembership.Everywhere),
+        (ComprehensionSlot.Value, AxisMembership.Everywhere),
+        (ComprehensionSlot.Condition, AxisMembership.Everywhere),
+        (ComprehensionSlot.Spread, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "python 3.13 has no dict-spread comprehension: the twin is PEP 798's expansion, where the spread is a nested for's iterable and python refuses a walrus there (SyntaxError)")),
+        (ComprehensionSlot.Iterable, AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableSyntaxError)),
+        (ComprehensionSlot.Target, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "the target is the clause's binder: the parser takes a name there, never an assignment expression")));
+
+    /// <summary>The walrus STORE's host axis (P77b axis 1, deferred finding 2): total over <see cref="ComprehensionHosts"/>.</summary>
+    internal static readonly IReadOnlyDictionary<ReadPosition, AxisMembership> ComprehensionWalrusHosts = Roster.Map(
+        (ReadPosition.FunctionBody, AxisMembership.Everywhere),
+        (ReadPosition.StaticInitializer, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "python refuses it at compile time (3.13.18: SyntaxError 'assignment expression within a comprehension cannot be used in a class body'): no twin runs (deferred finding 2)")));
+
+    /// <summary>The slots of a kind's own node, from <see cref="ComprehensionSlots"/>: the element side of the comprehension.</summary>
+    internal static IEnumerable<ComprehensionSlot> KindSlots(ComprehensionKind kind)
+    {
+        // A kind with no row has no slots: RosterFedFailures names it, rather than a static initializer throwing.
+        var node = ComprehensionKinds.FirstOrDefault(e => e.Value.Kind == kind).Key;
+        if (node == null)
+            return Enumerable.Empty<ComprehensionSlot>();
+        return ComprehensionSlots.Where(e => e.Key.StartsWith(node + ".", StringComparison.Ordinal)).SelectMany(e => e.Value.Image);
+    }
+
+    /// <summary>The slots of a clause shape, from <see cref="ComprehensionClauses"/> and <see cref="ComprehensionSlots"/>.</summary>
+    internal static IEnumerable<ComprehensionSlot> ClauseSlots(ComprehensionClauseShape shape)
+    {
+        var clause = ComprehensionClauses.FirstOrDefault(e => !e.Key.Contains('.') && e.Value.Image.Contains(shape)).Key;
+        if (clause == null)
+            return Enumerable.Empty<ComprehensionSlot>();
+        return ComprehensionSlots.Where(e => e.Key.StartsWith(clause + ".", StringComparison.Ordinal)).SelectMany(e => e.Value.Image);
+    }
+
+    /// <summary>Every (kind, clause, slot) the axis owes a cell: a kind's own slots ride its first <c>for</c>; a clause's slots
+    /// ride every kind.</summary>
+    internal static IEnumerable<ComprehensionSite> ComprehensionSites() =>
+        from kind in Enum.GetValues<ComprehensionKind>()
+        from site in KindSlots(kind).Select(s => new ComprehensionSite(kind, ComprehensionClauseShape.FirstFor, s))
+            .Concat(ComprehensionClauses.Where(e => !e.Key.Contains('.')).SelectMany(e => e.Value.Image)
+                .SelectMany(shape => ClauseSlots(shape).Select(s => new ComprehensionSite(kind, shape, s))))
+        select site;
 
     // ---------------------------------------------------------------------------------------------------------
     // Findings 1–4: the STORE / LOCAL axes, each total over its source
@@ -2299,5 +2430,94 @@ public partial class NameResolutionDifferentialTests
         var problems = BodyAxisProblems("LocalBodies", NameResolutionRosters.LocalBodies.Keys).ToList();
         problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.LocalBodies));
         AssertNoProblems(problems, "LOCAL's body axis is roster 4's image, each position excluded by name if it cannot host the target (finding 2)");
+    }
+
+    // =========================================================================================================
+    // P77b axis 1: comprehension kind × clause × slot
+    // =========================================================================================================
+
+    private static IEnumerable<Type> ConcreteSubclassTypes(Type root)
+        => root.Assembly.GetTypes().Where(t => root.IsAssignableFrom(t) && !t.IsAbstract && t != root);
+
+    /// <summary>The kinds are the AST's comprehension nodes AND roster 8's comprehension families, both directions each, and
+    /// every <see cref="ComprehensionKind"/> is the image of exactly one row.</summary>
+    [Fact]
+    public void ComprehensionKindsRoster_IsTotalOverTheAstNodesAndTheBlockFamilies()
+    {
+        var nodes = ConcreteSubclasses(typeof(Expression))
+            .Where(n => n.EndsWith("Comprehension", StringComparison.Ordinal) || n == nameof(GeneratorExpression));
+        var problems = Roster.TotalityProblems("ComprehensionKinds over the Expression subclasses", nodes, NameResolutionRosters.ComprehensionKinds.Keys).ToList();
+        var families = NameResolutionRosters.BlockFamilies
+            .Where(e => e.Value.Image.Any(c => c.Target == LocalTarget.Comprehension)).Select(e => e.Key);
+        problems.AddRange(Roster.TotalityProblems("ComprehensionKinds over the comprehension BlockFamilies", families,
+            NameResolutionRosters.ComprehensionKinds.Values.Select(r => r.Family)));
+        problems.AddRange(Roster.TotalityProblems("ComprehensionKind", Enum.GetValues<ComprehensionKind>(),
+            NameResolutionRosters.ComprehensionKinds.Values.Select(r => r.Kind)));
+        problems.AddRange(NameResolutionRosters.ComprehensionKinds.Values.GroupBy(r => r.Kind).Where(g => g.Count() > 1)
+            .Select(g => $"ComprehensionKind.{g.Key} is the image of {g.Count()} nodes"));
+
+        AssertNoProblems(problems, "axis 1's kinds are the comprehension nodes of the AST and the comprehension families of ClassifyScope");
+    }
+
+    /// <summary>The clauses are the <c>ComprehensionClause</c> subclasses and every <c>bool</c> property of one (a flag is a row
+    /// or an <c>Out</c>), both directions; every clause shape is the image of a subclass row.</summary>
+    [Fact]
+    public void ComprehensionClausesRoster_IsTotalOverTheSubclassesAndTheirFlags()
+    {
+        var subclasses = ConcreteSubclassTypes(typeof(ComprehensionClause)).ToList();
+        var universe = subclasses.Select(t => t.Name)
+            .Concat(subclasses.SelectMany(t => BoolProperties(t, BindingFlags.Public | BindingFlags.Instance).Select(p => $"{t.Name}.{p}")))
+            .ToList();
+        var problems = Roster.TotalityProblems("ComprehensionClauses (a subclass or a clause flag with no entry)", universe,
+            NameResolutionRosters.ComprehensionClauses.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionClauses));
+        problems.AddRange(Roster.TotalityProblems("ComprehensionClauseShape", Enum.GetValues<ComprehensionClauseShape>(),
+            NameResolutionRosters.ComprehensionClauses.Where(e => !e.Key.Contains('.')).SelectMany(e => e.Value.Image)));
+        problems.AddRange(NameResolutionRosters.ComprehensionClauses.Where(e => e.Key.Contains('.') && e.Value.Excluded == null)
+            .Select(e => $"ComprehensionClauses: the flag {e.Key} is generated, and a flag row is an Out or the image of no clause shape"));
+
+        AssertNoProblems(problems, "axis 1's clauses are the ComprehensionClause subclasses, each of their bool flags mapped or out with its reason");
+    }
+
+    /// <summary>P77b deferred finding 1: the slots are every Expression-typed property of the five comprehension nodes and of the
+    /// clauses, by reflection, both directions; every <see cref="ComprehensionSlot"/> is an image.</summary>
+    [Fact]
+    public void ComprehensionSlotsRoster_IsTotalOverTheExpressionTypedProperties()
+    {
+        var types = ConcreteSubclassTypes(typeof(Expression)).Where(t => NameResolutionRosters.ComprehensionKinds.ContainsKey(t.Name))
+            .Concat(ConcreteSubclassTypes(typeof(ComprehensionClause)))
+            .ToList();
+        var universe = types.SelectMany(t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => typeof(Expression).IsAssignableFrom(p.PropertyType))
+            .Select(p => $"{t.Name}.{p.Name}")).ToList();
+        var problems = Roster.TotalityProblems("ComprehensionSlots (a property with no entry)", universe, NameResolutionRosters.ComprehensionSlots.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionSlots));
+        problems.AddRange(Roster.TotalityProblems("ComprehensionSlot", Enum.GetValues<ComprehensionSlot>(), Roster.ImageOf(NameResolutionRosters.ComprehensionSlots)));
+
+        AssertNoProblems(problems, "axis 1's slots are the Expression-typed properties of the comprehension nodes and clauses");
+    }
+
+    /// <summary>P77b deferred finding 2: the walrus STORE's slot axis is total over <see cref="ComprehensionSlot"/> and its host
+    /// axis over <see cref="NameResolutionRosters.ComprehensionHosts"/>, each value generated or out with its reason.</summary>
+    [Fact]
+    public void ComprehensionWalrusRoster_IsTotalOverTheSlotsAndTheHosts()
+    {
+        var problems = Roster.TotalityProblems("ComprehensionWalrusSlots", Enum.GetValues<ComprehensionSlot>(), NameResolutionRosters.ComprehensionWalrusSlots.Keys).ToList();
+        problems.AddRange(Roster.TotalityProblems("ComprehensionWalrusHosts", NameResolutionRosters.ComprehensionHosts, NameResolutionRosters.ComprehensionWalrusHosts.Keys));
+        problems.AddRange(MembershipShapeProblems("ComprehensionWalrusSlots", NameResolutionRosters.ComprehensionWalrusSlots));
+        problems.AddRange(MembershipShapeProblems("ComprehensionWalrusHosts", NameResolutionRosters.ComprehensionWalrusHosts));
+
+        AssertNoProblems(problems, "a walrus in a comprehension is generated at every slot and host python admits, the others out with the reason");
+    }
+
+    private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull
+    {
+        foreach (var (key, member) in map)
+        {
+            if (member.Generated == (member.Excluded != null))
+                yield return $"{axis}: {key} is generated AND excluded, or neither";
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                yield return $"{axis}: {key} is excluded with no reason";
+        }
     }
 }
