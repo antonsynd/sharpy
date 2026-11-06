@@ -73,13 +73,13 @@ _NONE_DEFAULTS = {"None", "None()"}
 
 @dataclass(frozen=True)
 class SpyParam:
-    module: str        # CPython module name, e.g. "socket"
-    spy_file: str      # spy filename, e.g. "socket_module.spy"
-    line: int          # 1-based line of the `def`
-    cls: str | None    # enclosing spy class name, or None for a module function
-    func: str          # function / method name
-    param: str         # parameter name
-    default: str       # default text as written ("None" / "None()")
+    module: str  # CPython module name, e.g. "socket"
+    spy_file: str  # spy filename, e.g. "socket_module.spy"
+    line: int  # 1-based line of the `def`
+    cls: str | None  # enclosing spy class name, or None for a module function
+    func: str  # function / method name
+    param: str  # parameter name
+    default: str  # default text as written ("None" / "None()")
 
     @property
     def callable_name(self) -> str:
@@ -93,8 +93,8 @@ class SpyParam:
 @dataclass(frozen=True)
 class Verdict:
     cell: SpyParam
-    status: str        # "pass" | "finding" | "skip"
-    cpython: str       # CPython default repr, or the reason it could not be compared
+    status: str  # "pass" | "finding" | "skip"
+    cpython: str  # CPython default repr, or the reason it could not be compared
 
 
 # --------------------------------------------------------------------------- spy parsing
@@ -132,7 +132,7 @@ def mask_source(text: str) -> str:
                 i += 1
             continue
         if c in "\"'":
-            quote = text[i:i + 3] if text[i:i + 3] in ('"""', "'''") else c
+            quote = text[i : i + 3] if text[i : i + 3] in ('"""', "'''") else c
             out.append(quote)
             i += len(quote)
             while i < n:
@@ -195,10 +195,13 @@ def _default_of(param: str) -> tuple[str, str | None]:
             depth += 1
         elif ch in ")]}":
             depth -= 1
-        elif (ch == "=" and depth == 0
-              and (j == 0 or param[j - 1] not in "<>!=:")
-              and (j + 1 >= len(param) or param[j + 1] != "=")):
-            head, default = param[:j], param[j + 1:].strip()
+        elif (
+            ch == "="
+            and depth == 0
+            and (j == 0 or param[j - 1] not in "<>!=:")
+            and (j + 1 >= len(param) or param[j + 1] != "=")
+        ):
+            head, default = param[:j], param[j + 1 :].strip()
             break
     else:
         head, default = param, None
@@ -235,16 +238,22 @@ def parse_spy(text: str) -> list[tuple[int, str | None, str, str, str | None]]:
         if not dm:
             continue
         pos = offsets[idx] + dm.end()
-        if masked[pos] == "[":                       # generic parameter list
+        if masked[pos] == "[":  # generic parameter list
             pos = _balanced_end(masked, pos)
             while masked[pos] in " \t":
                 pos += 1
         if masked[pos] != "(":
-            raise ValueError(f"line {idx + 1}: cannot find the parameter list of `{dm.group(2)}`")
+            raise ValueError(
+                f"line {idx + 1}: cannot find the parameter list of `{dm.group(2)}`"
+            )
         end = _balanced_end(masked, pos)
-        skip_until = masked.count("\n", 0, end)      # header continuation lines
-        cls = class_stack[-1][1] if class_stack and class_stack[-1][0] < len(dm.group(1)) else None
-        for p in split_top_level(masked[pos + 1:end - 1]):
+        skip_until = masked.count("\n", 0, end)  # header continuation lines
+        cls = (
+            class_stack[-1][1]
+            if class_stack and class_stack[-1][0] < len(dm.group(1))
+            else None
+        )
+        for p in split_top_level(masked[pos + 1 : end - 1]):
             name, default = _default_of(p)
             if name in ("", "/", "self", "cls"):
                 continue
@@ -254,12 +263,12 @@ def parse_spy(text: str) -> list[tuple[int, str | None, str, str, str | None]]:
 
 def collect_none_defaults(spy_dir: Path = SPY_DIR, modules=None) -> list[SpyParam]:
     cells: dict[str, SpyParam] = {}
-    for stem, python_name in (modules if modules is not None else read_modules()):
+    for stem, python_name in modules if modules is not None else read_modules():
         path = spy_dir / f"{stem}.spy"
         for line, cls, func, param, default in parse_spy(path.read_text()):
             if default in _NONE_DEFAULTS:
                 cell = SpyParam(python_name, path.name, line, cls, func, param, default)
-                cells.setdefault(cell.key, cell)     # overloads share a key
+                cells.setdefault(cell.key, cell)  # overloads share a key
     return sorted(cells.values(), key=lambda c: c.key)
 
 
@@ -269,7 +278,7 @@ def collect_none_defaults(spy_dir: Path = SPY_DIR, modules=None) -> list[SpyPara
 def _describe_default(value) -> str:
     if value is inspect.Parameter.empty:
         return "<required>"
-    if type(value) is object:                        # the classic `_SENTINEL = object()`
+    if type(value) is object:  # the classic `_SENTINEL = object()`
         return "<sentinel object()>"
     return repr(value)
 
@@ -328,24 +337,31 @@ def load_allowlist(path: Path = ALLOWLIST) -> dict[str, str]:
     return rows
 
 
-def violations(verdicts: list[Verdict], allowlist: dict[str, str],
-               skips: dict[str, str]) -> list[str]:
+def violations(
+    verdicts: list[Verdict], allowlist: dict[str, str], skips: dict[str, str]
+) -> list[str]:
     errors = []
     by_key = {v.cell.key: v for v in verdicts}
     for v in verdicts:
         k = v.cell.key
         if v.status == "finding" and k not in allowlist:
-            errors.append(f"NEW FINDING {k}: CPython default {v.cpython}, spy `= {v.cell.default}` "
-                          f"({v.cell.spy_file}:{v.cell.line}) -- cure with an overload without "
-                          f"the parameter (R-EV), or allowlist it citing an issue")
+            errors.append(
+                f"NEW FINDING {k}: CPython default {v.cpython}, spy `= {v.cell.default}` "
+                f"({v.cell.spy_file}:{v.cell.line}) -- cure with an overload without "
+                f"the parameter (R-EV), or allowlist it citing an issue"
+            )
         if v.status == "skip" and k not in skips:
-            errors.append(f"UNCLASSIFIED {k}: {v.cpython} ({v.cell.spy_file}:{v.cell.line}) -- "
-                          f"add a reasoned SKIPS entry or fix the CLASS_MAP")
+            errors.append(
+                f"UNCLASSIFIED {k}: {v.cpython} ({v.cell.spy_file}:{v.cell.line}) -- "
+                f"add a reasoned SKIPS entry or fix the CLASS_MAP"
+            )
     for k, comment in allowlist.items():
         if not re.search(r"#\d+", comment):
             errors.append(f"UNCITED allowlist row {k}: every row must cite an issue")
         if k not in by_key or by_key[k].status != "finding":
-            errors.append(f"STALE allowlist row {k}: no longer a finding -- delete it (drain on fix)")
+            errors.append(
+                f"STALE allowlist row {k}: no longer a finding -- delete it (drain on fix)"
+            )
     for k in skips:
         if k not in by_key or by_key[k].status != "skip":
             errors.append(f"STALE skip {k}: no longer a skip-status cell -- delete it")
@@ -355,14 +371,20 @@ def violations(verdicts: list[Verdict], allowlist: dict[str, str],
 def render(verdicts: list[Verdict]) -> str:
     rows = [("module", "callable", "param", "CPython default", "verdict")]
     for v in verdicts:
-        rows.append((v.cell.module, v.cell.callable_name, v.cell.param, v.cpython, v.status))
+        rows.append(
+            (v.cell.module, v.cell.callable_name, v.cell.param, v.cpython, v.status)
+        )
     widths = [max(len(r[i]) for r in rows) for i in range(5)]
-    return "\n".join(" | ".join(c.ljust(w) for c, w in zip(r, widths)).rstrip() for r in rows)
+    return "\n".join(
+        " | ".join(c.ljust(w) for c, w in zip(r, widths)).rstrip() for r in rows
+    )
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--check", action="store_true", help="exit 1 on any ratchet violation")
+    ap.add_argument(
+        "--check", action="store_true", help="exit 1 on any ratchet violation"
+    )
     args = ap.parse_args(argv)
     verdicts = audit(collect_none_defaults())
     print(render(verdicts))

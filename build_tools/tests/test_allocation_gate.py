@@ -34,18 +34,21 @@ def _write_bdn_report(results_dir: Path, allocations: dict[str, int]) -> None:
             for name, allocated in allocations.items()
         ]
     }
-    (results / "Sharpy.Compiler.Benchmarks.CompilerBenchmarks-report-full.json").write_text(
-        json.dumps(document), encoding="utf-8"
-    )
+    (
+        results / "Sharpy.Compiler.Benchmarks.CompilerBenchmarks-report-full.json"
+    ).write_text(json.dumps(document), encoding="utf-8")
 
 
-def _write_baseline(path: Path, allocations: dict[str, int], threshold: float = DEFAULT_THRESHOLD) -> None:
+def _write_baseline(
+    path: Path, allocations: dict[str, int], threshold: float = DEFAULT_THRESHOLD
+) -> None:
     path.write_text(
         json.dumps(
             {
                 "threshold": threshold,
                 "benchmarks": {
-                    name: {"allocated_bytes": value} for name, value in allocations.items()
+                    name: {"allocated_bytes": value}
+                    for name, value in allocations.items()
                 },
             }
         ),
@@ -119,7 +122,9 @@ class TestDescribeCoverage:
 
 class TestBaselineRoundTrip:
     def test_build_and_load(self, tmp_path):
-        doc = build_baseline_document({"A.b.C": 1234}, DEFAULT_THRESHOLD, {"A.b.C": "hello"})
+        doc = build_baseline_document(
+            {"A.b.C": 1234}, DEFAULT_THRESHOLD, {"A.b.C": "hello"}
+        )
         assert doc["threshold"] == DEFAULT_THRESHOLD
         assert doc["benchmarks"]["A.b.C"]["allocated_bytes"] == 1234
         assert doc["benchmarks"]["A.b.C"]["description"] == "hello"
@@ -135,7 +140,9 @@ class TestMainCommand:
         _write_baseline(baseline, {"A.b.C": 1000})
         _write_bdn_report(tmp_path, {"A.b.C": 1050})  # +5%
 
-        exit_code = main(["check", "--baseline", str(baseline), "--results", str(tmp_path)])
+        exit_code = main(
+            ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
         assert exit_code == 0
         assert "within" in capsys.readouterr().out
 
@@ -145,7 +152,9 @@ class TestMainCommand:
         _write_baseline(baseline, {"A.b.C": 1000})
         _write_bdn_report(tmp_path, {"A.b.C": 1500})  # +50%
 
-        exit_code = main(["check", "--baseline", str(baseline), "--results", str(tmp_path)])
+        exit_code = main(
+            ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
         assert exit_code == 1
         out = capsys.readouterr().out
         assert "ALLOCATION REGRESSION" in out
@@ -156,7 +165,9 @@ class TestMainCommand:
         _write_baseline(baseline, {"A.b.C": 1000})
         _write_bdn_report(tmp_path, {"A.b.C": 1000, "A.b.NEW": 999999})
 
-        exit_code = main(["check", "--baseline", str(baseline), "--results", str(tmp_path)])
+        exit_code = main(
+            ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
         assert exit_code == 0
         assert "new benchmark" in capsys.readouterr().out
 
@@ -164,6 +175,8 @@ class TestMainCommand:
         baseline = tmp_path / "baseline.json"
         _write_bdn_report(tmp_path, {"A.b.C": 4242})
 
-        exit_code = main(["update", "--baseline", str(baseline), "--results", str(tmp_path)])
+        exit_code = main(
+            ["update", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
         assert exit_code == 0
         assert load_baseline(str(baseline)) == {"A.b.C": 4242}

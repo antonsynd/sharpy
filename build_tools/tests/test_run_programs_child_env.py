@@ -44,10 +44,14 @@ def test_env_does_not_inherit_the_parents_pythonpath():
 
 def test_declared_third_party_modules_resolve_to_real_directories():
     for path in _third_party_paths():
-        assert os.path.isdir(path), f"{path} is on the child's PYTHONPATH but is not a directory"
+        assert os.path.isdir(
+            path
+        ), f"{path} is on the child's PYTHONPATH but is not a directory"
 
 
-@pytest.mark.skipif("yaml" not in ORACLE_THIRD_PARTY, reason="yaml is not a declared oracle module")
+@pytest.mark.skipif(
+    "yaml" not in ORACLE_THIRD_PARTY, reason="yaml is not a declared oracle module"
+)
 def test_a_child_can_import_the_declared_module():
     # The property the whole change exists for, asserted end to end through an actual child
     # rather than by inspecting the env dict: under -S this failed with ModuleNotFoundError.
@@ -70,4 +74,6 @@ def test_an_undeclared_module_stays_unimportable_in_the_child():
     result = run_one("import pytest; print('reachable')")
 
     assert not result["ok"]
-    assert "ModuleNotFoundError" in result["stderr"] or "ImportError" in result["stderr"]
+    assert (
+        "ModuleNotFoundError" in result["stderr"] or "ImportError" in result["stderr"]
+    )

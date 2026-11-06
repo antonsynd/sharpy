@@ -129,12 +129,17 @@ class TestSharpyFieldName:
 
     def test_recorded_name_wins(self):
         assert sharpy_field_name("I", ['[SharpyFieldName("i")]']) == "i"
-        assert sharpy_field_name("Row", ['[SharpyFieldNameAttribute("row_factory")]']) == "row_factory"
+        assert (
+            sharpy_field_name("Row", ['[SharpyFieldNameAttribute("row_factory")]'])
+            == "row_factory"
+        )
 
     def test_other_attributes_do_not_rename(self):
         assert sharpy_field_name("PIPE", ["[Obsolete]"]) == "PIPE"
 
-    def test_discovery_applies_the_field_rule_and_the_type_collision(self, tmp_path: Path):
+    def test_discovery_applies_the_field_rule_and_the_type_collision(
+        self, tmp_path: Path
+    ):
         """A module const, a static property and a field named like a module type, through discovery."""
         sub = tmp_path / "Demo"
         sub.mkdir()
@@ -223,7 +228,9 @@ class TestMapType:
         assert map_type(cs) == sharpy
 
     def test_nullable_function_type_is_grouped(self):
-        assert map_type("Func<object, object?>?") == "((object) -> object | None) | None"
+        assert (
+            map_type("Func<object, object?>?") == "((object) -> object | None) | None"
+        )
         assert map_type("Action<int>?") == "((int) -> None) | None"
         assert map_type("Func<int, string?>") == "(int) -> str | None"
         # A parenthesized non-function (a value tuple) is not re-grouped.
@@ -320,7 +327,10 @@ class TestMapType:
         assert map_type("global::System.Func<T, bool>") == "(T) -> bool"
 
     def test_system_ienumerable_generic(self):
-        assert map_type("System.Collections.Generic.IEnumerable<int>") == "IEnumerable[int]"
+        assert (
+            map_type("System.Collections.Generic.IEnumerable<int>")
+            == "IEnumerable[int]"
+        )
 
     def test_system_value_tuple_generic(self):
         assert map_type("System.ValueTuple<str, str>") == "tuple[str, str]"
@@ -344,7 +354,10 @@ class TestMapType:
         assert map_type("SCG.Dictionary<string, int>") == "Dictionary[str, int]"
 
     def test_scg_dictionary_nested(self):
-        assert map_type("SCG.Dictionary<string, SCG.List<int>>") == "Dictionary[str, list[int]]"
+        assert (
+            map_type("SCG.Dictionary<string, SCG.List<int>>")
+            == "Dictionary[str, list[int]]"
+        )
 
     def test_scg_ienumerable(self):
         assert map_type("SCG.IEnumerable<IPv4Address>") == "IEnumerable[IPv4Address]"
@@ -353,7 +366,10 @@ class TestMapType:
         assert map_type("System.Collections.Generic.List<object>") == "list[object]"
 
     def test_system_collections_generic_dictionary(self):
-        assert map_type("System.Collections.Generic.Dictionary<string, string>") == "Dictionary[str, str]"
+        assert (
+            map_type("System.Collections.Generic.Dictionary<string, string>")
+            == "Dictionary[str, str]"
+        )
 
     def test_unknown_alias_passthrough(self):
         assert map_type("UnknownAlias.Something<int>") == "UnknownAlias.Something[int]"
@@ -361,12 +377,17 @@ class TestMapType:
     # #1911: a module-defined type reads as its Sharpy name — bare on its own page,
     # module-qualified elsewhere — never the leaked C# `Sharpy.<M>Module.<T>`.
     def test_module_type_on_own_page_is_bare(self):
-        assert map_type("Sharpy.OsModule.StatResult", current_module="os") == "StatResult"
+        assert (
+            map_type("Sharpy.OsModule.StatResult", current_module="os") == "StatResult"
+        )
 
     def test_module_type_on_other_page_is_qualified(self):
         # Cross-module positive control: no such reference exists in the docs today, so this cell
         # is the one that proves the else-branch fires (os.StatResult on the csv page).
-        assert map_type("Sharpy.OsModule.StatResult", current_module="csv") == "os.StatResult"
+        assert (
+            map_type("Sharpy.OsModule.StatResult", current_module="csv")
+            == "os.StatResult"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +538,10 @@ class TestParseParams:
     def test_receiver_outside_an_extension_parse_is_an_ordinary_parameter(self):
         # `this` is a C# modifier, never part of the rendered type (#2055).
         params = _parse_params("this NdArray<double> a, int axis")
-        assert [(p.name, p.type) for p in params] == [("a", "NdArray[float]"), ("axis", "int")]
+        assert [(p.name, p.type) for p in params] == [
+            ("a", "NdArray[float]"),
+            ("axis", "int"),
+        ]
 
     def test_params_keyword(self):
         params = _parse_params("params int[] values")
@@ -557,14 +581,18 @@ class TestParseParams:
         assert params[0].default == "0"
 
     def test_parameter_attribute_is_not_part_of_the_type(self):
-        params = _parse_params('object? value, [FormatSpec("value")] string formatSpec = ""')
+        params = _parse_params(
+            'object? value, [FormatSpec("value")] string formatSpec = ""'
+        )
         assert [(p.name, p.type, p.default) for p in params] == [
             ("value", "object | None", None),
             ("format_spec", "str", '""'),
         ]
 
     def test_attribute_on_extension_this_is_still_skipped(self):
-        params = _parse_params("[FormatTemplate] this string s, params object[] args", is_extension=True)
+        params = _parse_params(
+            "[FormatTemplate] this string s, params object[] args", is_extension=True
+        )
         assert [p.name for p in params] == ["args"]
 
     def test_attribute_argument_with_equals_and_comma_is_stripped(self):
@@ -630,7 +658,9 @@ class TestParseCsFile:
         f = tmp_path / "Itertools.cs"
         f.write_text(cs)
         members = parse_cs_file(f)
-        assert len(members) == 1, "global::-qualified return type must not drop the method"
+        assert (
+            len(members) == 1
+        ), "global::-qualified return type must not drop the method"
         assert members[0].name == "count"
         assert members[0].return_type == "Iterator[int]"
 
@@ -1136,7 +1166,8 @@ class TestDiscoverModulesTypeAnnotations:
 
     def test_emitted_global_qualified_spelling_is_a_type(self, tmp_path: Path):
         """A generated spy module's sibling types carry the compiler's `global::Sharpy.`-qualified
-        stamp (#2039): each is a type section, its members are not the module's functions."""
+        stamp (#2039): each is a type section, its members are not the module's functions.
+        """
         body = textwrap.dedent(
             """\
             namespace Sharpy.SocketModule
@@ -1159,7 +1190,12 @@ class TestDiscoverModulesTypeAnnotations:
             """
         )
         self._write_module(
-            tmp_path, "Socket", "socket", "SocketModule.cs", body, module_class="SocketModuleModule"
+            tmp_path,
+            "Socket",
+            "socket",
+            "SocketModule.cs",
+            body,
+            module_class="SocketModuleModule",
         )
         modules = discover_modules(tmp_path)
         assert len(modules) == 1
@@ -1417,7 +1453,8 @@ class TestFindNonpublicClassRanges:
     def test_private_readonly_struct_is_nonpublic(self):
         """`private readonly struct` must be flagged — the `readonly` modifier is not one of
         sealed/abstract/static/partial, and missing it leaked the json/yaml IDocumentNode view
-        adapters' members (is_mapping, get_child, ...) into docs/stdlib as phantom module API."""
+        adapters' members (is_mapping, get_child, ...) into docs/stdlib as phantom module API.
+        """
         src = textwrap.dedent(
             """\
             public class Foo
@@ -1607,7 +1644,10 @@ class TestHandAuthoredModules:
             m.name
             for root in ("Sharpy.Core", "Sharpy.Stdlib")
             for m in discover_modules(_REPO_ROOT / "src" / root)
-        } | {t.name for t in generator.discover_core_types(_REPO_ROOT / "src" / "Sharpy.Core")}
+        } | {
+            t.name
+            for t in generator.discover_core_types(_REPO_ROOT / "src" / "Sharpy.Core")
+        }
         # Positive control: the three modules that used to be hand-authored are discovered.
         assert {"numpy", "requests", "sqlite3"} <= discovered
         assert discovered & set(HAND_AUTHORED_MODULES) == set()
@@ -1915,14 +1955,19 @@ class TestXmlEntitiesAndKeywordScoping:
 
     def test_entities_are_unescaped_after_tags_are_stripped(self):
         # Order matters: unescaping first would turn `&lt;c&gt;` into a tag for the stripper to eat.
-        assert _strip_xml_tags("A <c>List&lt;char&gt;</c> of things") == "A `List<char>` of things"
+        assert (
+            _strip_xml_tags("A <c>List&lt;char&gt;</c> of things")
+            == "A `List<char>` of things"
+        )
 
     def test_ampersand_entity_is_unescaped(self):
         assert _strip_xml_tags("this &amp; that") == "this & that"
 
     def test_nested_generics_survive(self):
-        assert _strip_xml_tags(
-            "<c>Dict&lt;str, List&lt;int&gt;&gt;</c>") == "`Dict<str, List<int>>`"
+        assert (
+            _strip_xml_tags("<c>Dict&lt;str, List&lt;int&gt;&gt;</c>")
+            == "`Dict<str, List<int>>`"
+        )
 
     def test_camel_case_param_keeps_its_description(self, tmp_path):
         """A documented parameter whose C# name is more than one word (#1421).
@@ -1952,7 +1997,9 @@ class TestXmlEntitiesAndKeywordScoping:
         members = parse_cs_file(f)
         params = {p.name: p.description for p in members[0].params}
 
-        assert params["allow_nan"] == "When true, Infinity and NaN are emitted as tokens."
+        assert (
+            params["allow_nan"] == "When true, Infinity and NaN are emitted as tokens."
+        )
         # The single-word control: it never broke, and must not start.
         assert params["obj"] == "The object to serialize."
 
@@ -2039,18 +2086,26 @@ class TestVariadicAndKeywordReferenceRendering:
         assert map_type("IEnumerable<T>[]") == "array[IEnumerable[T]]"
 
     def test_langword_reference_survives_tag_stripping(self):
-        assert _strip_xml_tags('counting <see langword="true"/> as 1') == "counting `true` as 1"
+        assert (
+            _strip_xml_tags('counting <see langword="true"/> as 1')
+            == "counting `true` as 1"
+        )
 
     def test_langword_reference_is_pythonified_in_prose(self):
         # The rendered page runs prose through _fixup_prose, which is what turns the C# keyword
         # into the Sharpy spelling. Asserted through both stages because either alone would leave
         # a C# keyword in the docs.
-        assert _fixup_prose(
-            _strip_xml_tags('counting <see langword="true"/> as 1')) == "counting `True` as 1"
+        assert (
+            _fixup_prose(_strip_xml_tags('counting <see langword="true"/> as 1'))
+            == "counting `True` as 1"
+        )
 
     def test_cref_reference_still_renders(self):
         # Positive control: the new langword rule sits beside the cref rule and must not shadow it.
-        assert _strip_xml_tags('see <see cref="Foo.Bar"/> for more') == "see `Foo.Bar` for more"
+        assert (
+            _strip_xml_tags('see <see cref="Foo.Bar"/> for more')
+            == "see `Foo.Bar` for more"
+        )
 
     def test_variadic_star_moves_to_the_parameter_name(self, tmp_path):
         """`*others: IEnumerable[T]`, never `others: *IEnumerable[T]`.
@@ -2154,7 +2209,12 @@ class TestDeclaringTypeAttribution:
 
     def _module(self, tmp_path: Path) -> DocModule:
         TestDiscoverModulesTypeAnnotations._write_module(
-            None, tmp_path, "Collections", "collections", "Collections.cs", self._MULTI,
+            None,
+            tmp_path,
+            "Collections",
+            "collections",
+            "Collections.cs",
+            self._MULTI,
             module_class="Collections",
         )
         modules = discover_modules(tmp_path)
@@ -2196,10 +2256,18 @@ class TestDeclaringTypeAttribution:
         module = self._module(tmp_path)
         assert [t.name for t in module.types] == ["Deque", "Counter", "DefaultDict"]
         assert self._type(module, "Deque").summary == "A double-ended queue."
-        assert self._type(module, "Counter").summary == "A dict subclass for counting hashable objects."
-        assert self._type(module, "DefaultDict").summary == "A dict that calls a factory for missing keys."
+        assert (
+            self._type(module, "Counter").summary
+            == "A dict subclass for counting hashable objects."
+        )
+        assert (
+            self._type(module, "DefaultDict").summary
+            == "A dict that calls a factory for missing keys."
+        )
 
-    def test_trailing_module_class_partial_is_module_level_not_folded(self, tmp_path: Path):
+    def test_trailing_module_class_partial_is_module_level_not_folded(
+        self, tmp_path: Path
+    ):
         module = self._module(tmp_path)
         default_dict = self._type(module, "DefaultDict")
         assert [m.name for m in default_dict.members] == ["default_factory"]
@@ -2225,10 +2293,15 @@ class TestDeclaringTypeAttribution:
 
         page = render_module_page(self._module(tmp_path))
         section = page.split("## Counter", 1)[1].split("## DefaultDict", 1)[0]
-        assert "### `__str__() -> str`\n\n`repr()` uses the same method. Python's repr.\n" in section
+        assert (
+            "### `__str__() -> str`\n\n`repr()` uses the same method. Python's repr.\n"
+            in section
+        )
         assert "!!! note\n    Most-common order." in section
 
-    def test_iformattable_tostring_renders_as_format_not_a_second_str(self, tmp_path: Path):
+    def test_iformattable_tostring_renders_as_format_not_a_second_str(
+        self, tmp_path: Path
+    ):
         """`ToString(format, provider)` is IFormattable's method — the CLR spelling of `__format__`
         (dunder_methods.md) — so it is its own `__format__` row, not a second `__str__` carrying the
         repr note. The arity-0 `ToString` in the same class is the positive control."""
@@ -2252,20 +2325,27 @@ class TestDeclaringTypeAttribution:
             }
             """
         )
-        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Cmath", "cmath", "Complex.cs", body)
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Cmath", "cmath", "Complex.cs", body
+        )
         modules = discover_modules(tmp_path)
         complex_type = self._type(modules[0], "Complex")
         sigs = self._sigs(complex_type)
         assert "__str__() -> str" in sigs
         assert "__format__(format_spec: str) -> str" in sigs
-        assert [m.name for m in complex_type.members if m.kind == "method"].count("__str__") == 1
+        assert [m.name for m in complex_type.members if m.kind == "method"].count(
+            "__str__"
+        ) == 1
         fmt = next(m for m in complex_type.members if m.name == "__format__")
         assert "repr()" not in fmt.summary
         assert fmt.params[0].description == "The format spec."
 
     def test_class_remarks_render_as_a_note_under_the_heading(self, tmp_path: Path):
         module = self._module(tmp_path)
-        assert self._type(module, "Counter").remarks == "Iterates over the KEYS in first-seen order."
+        assert (
+            self._type(module, "Counter").remarks
+            == "Iterates over the KEYS in first-seen order."
+        )
         page = render_module_page(module)
         assert (
             "## Counter\n\nA dict subclass for counting hashable objects.\n\n"
@@ -2297,16 +2377,26 @@ class TestDeclaringTypeAttribution:
             }
             """
         )
-        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Mod", "mod", "Outer.cs", body)
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Mod", "mod", "Outer.cs", body
+        )
         outer = discover_modules(tmp_path)[0].types[0]
         assert [m.name for m in outer.members] == ["before", "after"]
 
     def test_named_tuple_elements_render_their_types_only(self):
         assert map_type("(int day, int weekday)") == "tuple[int, int]"
-        assert map_type("List<(int a, int b, int size)>") == "list[tuple[int, int, int]]"
-        assert map_type("(string? stdout, string? stderr)") == "tuple[str | None, str | None]"
+        assert (
+            map_type("List<(int a, int b, int size)>") == "list[tuple[int, int, int]]"
+        )
+        assert (
+            map_type("(string? stdout, string? stderr)")
+            == "tuple[str | None, str | None]"
+        )
         # `Bytes` is the builtin `bytes` (#2066).
-        assert map_type("(Bytes data, (string host, int port) addr)") == "tuple[bytes, tuple[str, int]]"
+        assert (
+            map_type("(Bytes data, (string host, int port) addr)")
+            == "tuple[bytes, tuple[str, int]]"
+        )
         assert map_type("(T, int)") == "tuple[T, int]"
 
     # --- ownership: a member renders where the COMPILER binds it (#2272) -------------------------
@@ -2355,15 +2445,24 @@ class TestDeclaringTypeAttribution:
 
     def _email(self, tmp_path: Path, body: str) -> DocModule:
         TestDiscoverModulesTypeAnnotations._write_module(
-            None, tmp_path, "Email", "email", "EmailMessage.cs", body, module_class="EmailModule"
+            None,
+            tmp_path,
+            "Email",
+            "email",
+            "EmailMessage.cs",
+            body,
+            module_class="EmailModule",
         )
         (module,) = discover_modules(tmp_path)
         return module
 
-    def test_unexported_type_is_documented_only_when_a_member_returns_it(self, tmp_path: Path):
+    def test_unexported_type_is_documented_only_when_a_member_returns_it(
+        self, tmp_path: Path
+    ):
         """An un-annotated public class is not importable (SPY0301) but a member on a value of it
         binds: it renders as a section — instance members only, its ToString as `__str__` — when a
-        documented member returns it, and not at all otherwise. Never at module level."""
+        documented member returns it, and not at all otherwise. Never at module level.
+        """
         module = self._email(tmp_path, self._EMAIL)
         assert [m.name for m in module.members] == ["attach"]
         assert [t.name for t in module.types] == ["EmailMessage", "Attachment"]
@@ -2390,7 +2489,8 @@ class TestDeclaringTypeAttribution:
 
     def test_submodule_class_renders_as_its_own_section(self, tmp_path: Path):
         """A `[SharpyModule("<module>.<sub>")]` class in the module's directory is the submodule:
-        `import numpy.fft` then `numpy.fft.fft(...)` binds, `numpy.fft(...)` does not."""
+        `import numpy.fft` then `numpy.fft.fft(...)` binds, `numpy.fft(...)` does not.
+        """
         body = textwrap.dedent(
             """\
             namespace Sharpy
@@ -2413,16 +2513,27 @@ class TestDeclaringTypeAttribution:
             """
         )
         TestDiscoverModulesTypeAnnotations._write_module(
-            None, tmp_path, "Probe", "probe", "Probe.cs", body, module_class="ProbeModule"
+            None,
+            tmp_path,
+            "Probe",
+            "probe",
+            "Probe.cs",
+            body,
+            module_class="ProbeModule",
         )
         (module,) = discover_modules(tmp_path)
         assert [m.name for m in module.members] == ["top"]
         (sub,) = module.submodules
         assert (sub.name, sub.summary, [m.name for m in sub.members]) == (
-            "probe.fft", "The fft submodule.", ["fft"]
+            "probe.fft",
+            "The fft submodule.",
+            ["fft"],
         )
         page = render_module_page(module)
-        assert "## probe.fft\n\nThe fft submodule.\n\n```python\nimport probe.fft\n```\n" in page
+        assert (
+            "## probe.fft\n\nThe fft submodule.\n\n```python\nimport probe.fft\n```\n"
+            in page
+        )
         assert "### `probe.fft.fft(n: int) -> int`" in page
         assert "### `probe.fft(" not in page
         assert "### `probe.top() -> int`" in page
@@ -2440,13 +2551,17 @@ class TestDeclaringTypeAttribution:
             }
             """
         )
-        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Probe", "probe", "Helpers.cs", body)
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Probe", "probe", "Helpers.cs", body
+        )
         with pytest.raises(ValueError, match=r"static class Helpers.*#2272"):
             discover_modules(tmp_path)
 
     def test_a_submodule_of_another_module_is_refused(self, tmp_path: Path):
         body = '[SharpyModule("other.fft")]\npublic static class OtherFft\n{\n    public static int F() => 0;\n}\n'
-        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Probe", "probe", "Other.cs", body)
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Probe", "probe", "Other.cs", body
+        )
         with pytest.raises(ValueError, match=r"not a submodule of 'probe'"):
             discover_modules(tmp_path)
 
@@ -2497,9 +2612,7 @@ _SIGNATURE_HEADING = "### `"
 # own spelling of int32 and the generator keeps it (see `_SHARPY_TYPE_NAMES` in the generator).
 _INT_WIDTH_ALIAS = r"(?:sbyte|byte|short|ushort|uint|ulong|long)"
 # Every C# keyword type — what a `<see cref>` parameter list is spelled in.
-_CS_TYPE_KEYWORD = (
-    r"(?:bool|byte|sbyte|short|ushort|int|uint|long|ulong|float|double|decimal|char|string|object)"
-)
+_CS_TYPE_KEYWORD = r"(?:bool|byte|sbyte|short|ushort|int|uint|long|ulong|float|double|decimal|char|string|object)"
 
 # Two scopes, one per axis family:
 #   TYPE rows read the signature surfaces — every `### \`...\`` heading, plus the type of each
@@ -2523,7 +2636,9 @@ _CSHARP_SPELLINGS = {
     "builtin-clr-name": re.compile(r"\b(?:Sharpy\.)?(?:Bytes|Slice)\b"),
     # An integer width in a TYPE position (after `:`, `->`, `[`, `(`, `|`, `*` or `,`; never a
     # parameter name, which a `:` follows) spelled as its C# keyword alias.
-    "int-width-alias": re.compile(r"(?:[:\[(|*,]\s*|-> )" + _INT_WIDTH_ALIAS + r"\b(?!:)"),
+    "int-width-alias": re.compile(
+        r"(?:[:\[(|*,]\s*|-> )" + _INT_WIDTH_ALIAS + r"\b(?!:)"
+    ),
     # #2055 — the spellings frozen into the formerly hand-authored pages (numpy, requests,
     # sqlite3): an extension method's `this` receiver, C# angle-bracket generics, the C# nullable
     # suffix `T?`, a `null` default, a `System.` namespace, and a delegate type by its CLR name.
@@ -2694,7 +2809,9 @@ def _render_synthetic(tmp_path: Path) -> str:
         encoding="utf-8",
     )
     out = tmp_path / "docs"
-    generate(source_dir=src, output_dir=out, force=True, verbose=False, update_nav=False)
+    generate(
+        source_dir=src, output_dir=out, force=True, verbose=False, update_nav=False
+    )
     return (out / "probe.md").read_text(encoding="utf-8")
 
 
@@ -2714,22 +2831,35 @@ class TestCSharpSpellingScan:
         assert not any(p.stem in HAND_AUTHORED_MODULES for p in pages)
         # The three formerly hand-authored pages are generator-owned, so this scan covers them.
         assert {"numpy", "requests", "sqlite3"} <= {p.stem for p in pages}
-        hits = [h for p in pages for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))]
+        hits = [
+            h
+            for p in pages
+            for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))
+        ]
         assert hits == []
 
     def test_committed_stdlib_pages_have_no_csharp_spellings(self, tmp_path: Path):
         # The COMMITTED pages: every generator-owned page plus every hand-authored one, so a page
         # the generator never writes is still scanned (#2055).
-        names = {p.stem for p in _render_real_stdlib(tmp_path / "stdlib")} | set(HAND_AUTHORED_MODULES)
+        names = {p.stem for p in _render_real_stdlib(tmp_path / "stdlib")} | set(
+            HAND_AUTHORED_MODULES
+        )
         pages = [_STDLIB_DOCS / f"{n}.md" for n in sorted(names)]
         assert len(pages) > 50 and all(p.exists() for p in pages)
-        hits = [h for p in pages for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))]
+        hits = [
+            h
+            for p in pages
+            for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))
+        ]
         assert hits == []
 
     def test_synthetic_csharp_spellings_render_as_sharpy(self, tmp_path: Path):
         page = _render_synthetic(tmp_path)
         assert "### `probe.lookup(key: str, default: V = None) -> V`" in page
-        assert "### `probe.parse(s: str, base: int = 10, tag: str | None = None) -> int`" in page
+        assert (
+            "### `probe.parse(s: str, base: int = 10, tag: str | None = None) -> int`"
+            in page
+        )
         assert "### `probe.name(s: str = None) -> str`" in page
         assert (
             "### `probe.encode(data: bytes, width: int16, count: uint64, "
@@ -2751,7 +2881,9 @@ class TestCSharpSpellingScan:
         monkeypatch.setattr(generator, "_sharpy_param_name", generator.pascal_to_snake)
         monkeypatch.setattr(generator, "_sharpy_default", lambda raw: raw)
         monkeypatch.setattr(generator, "_SHARPY_TYPE_NAMES", {})
-        monkeypatch.setattr(generator, "_group_nullable_callable", lambda mapped: mapped)
+        monkeypatch.setattr(
+            generator, "_group_nullable_callable", lambda mapped: mapped
+        )
         monkeypatch.setattr(generator, "_render_cref", lambda cref: cref)
         monkeypatch.setattr(generator, "_extension_class_ranges", lambda lines: [])
         monkeypatch.setattr(generator, "_drop_receiver_modifier", lambda part: part)
@@ -2760,7 +2892,10 @@ class TestCSharpSpellingScan:
         monkeypatch.setattr(
             generator,
             "_partition_by_owner",
-            lambda subdir, mod_name, module_class, members, types: (generator._module_level(members), []),
+            lambda subdir, mod_name, module_class, members, types: (
+                generator._module_level(members),
+                [],
+            ),
         )
         hits = _csharp_spelling_hits("probe.md", _render_synthetic(tmp_path))
         assert _hit_labels(hits) == set(_CSHARP_SPELLINGS) - _FROZEN_PAGE_ROWS, hits
@@ -2778,13 +2913,19 @@ class TestCSharpSpellingScan:
             ]
         )
         labels = _hit_labels(_csharp_spelling_hits("frozen.md", frozen))
-        assert _FROZEN_PAGE_ROWS | {"null-default", "this-receiver", "angle-generic"} <= labels
+        assert (
+            _FROZEN_PAGE_ROWS | {"null-default", "this-receiver", "angle-generic"}
+            <= labels
+        )
 
     def test_every_row_flags_its_fabricated_leak(self):
         # Row totality is anchored to the fabricated table, not derived from `_CSHARP_SPELLINGS`.
         assert set(_FABRICATED_LEAKS) == set(_CSHARP_SPELLINGS)
         for label, line in _FABRICATED_LEAKS.items():
-            assert label in _hit_labels(_csharp_spelling_hits("fabricated.md", line)), (label, line)
+            assert label in _hit_labels(_csharp_spelling_hits("fabricated.md", line)), (
+                label,
+                line,
+            )
 
     @pytest.mark.parametrize("line,label", sorted(_FABRICATED_SURFACE_LEAKS.items()))
     def test_bullet_and_table_surfaces_are_scanned(self, line: str, label: str):
@@ -2818,7 +2959,9 @@ class TestCSharpSpellingScan:
                 m.group(1)
                 for root in ("Sharpy.Core", "Sharpy.Stdlib")
                 for f in (_REPO_ROOT / "src" / root).rglob("*.cs")
-                for m in re.finditer(r'<see\s+cref="([^"]+)"', f.read_text(encoding="utf-8"))
+                for m in re.finditer(
+                    r'<see\s+cref="([^"]+)"', f.read_text(encoding="utf-8")
+                )
             }
         )
         assert len(crefs) > 100, "the cref corpus is unexpectedly small"
@@ -2909,7 +3052,9 @@ _ROSTER_ALLOWLIST: dict[str, str] = {
 def _spec_primitive_roster() -> set[str]:
     """primitive_types.md: the "Sharpy Type" column of the primitive table, plus `int`/`float`."""
     text = (_SPEC_DIR / "primitive_types.md").read_text(encoding="utf-8")
-    primary_table = text.split("| Sharpy Type | .NET Type | Size |", 1)[1].split("\n\n", 1)[0]
+    primary_table = text.split("| Sharpy Type | .NET Type | Size |", 1)[1].split(
+        "\n\n", 1
+    )[0]
     primary = set(re.findall(r"^\| `(\w+)` \|", primary_table, re.MULTILINE))
     alias_table = text.split("| Sharpy Alias | Sharpy Type |", 1)[1].split("\n\n", 1)[0]
     aliases = dict(re.findall(r"^\| `(\w+)` \| `(\w+)` \|", alias_table, re.MULTILINE))
@@ -2924,7 +3069,8 @@ def _registered_builtin_types() -> dict[str, str]:
     registry = _REGISTRY_CS.read_text(encoding="utf-8")
     registered = {}
     for m in re.finditer(
-        r'\bRegister\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,\s*typeof\(([^()]*)\)', registry
+        r'\bRegister\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,\s*typeof\(([^()]*)\)',
+        registry,
     ):
         sharpy = m.group(1) or consts[m.group(2)]
         clr = re.sub(r"<[^<>]*>$", "", m.group(3)).replace("::", ".").rsplit(".", 1)[-1]
@@ -2934,20 +3080,26 @@ def _registered_builtin_types() -> dict[str, str]:
 
 def _registered_generic_builtins() -> set[str]:
     """The `Register(..., isGeneric: true, ...)` names: written without type arguments, such a
-    name does not denote the non-generic CLR type the C# meant (`System.Collections.IEnumerable`)."""
+    name does not denote the non-generic CLR type the C# meant (`System.Collections.IEnumerable`).
+    """
     names = (_COMPILER_SRC / "Shared" / "BuiltinNames.cs").read_text(encoding="utf-8")
     consts = dict(re.findall(r'public const string (\w+) = "([^"]+)";', names))
     registry = _REGISTRY_CS.read_text(encoding="utf-8")
     return {
         m.group(1) or consts[m.group(2)]
         for m in re.finditer(
-            r'\bRegister\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,[^;]*isGeneric:\s*true', registry
+            r'\bRegister\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,[^;]*isGeneric:\s*true',
+            registry,
         )
     }
 
 
 def _clr_fallback_namespaces() -> list[str]:
-    body = _REGISTRY_CS.read_text(encoding="utf-8").split("ClrFallbackNamespaces =", 1)[1].split("};", 1)[0]
+    body = (
+        _REGISTRY_CS.read_text(encoding="utf-8")
+        .split("ClrFallbackNamespaces =", 1)[1]
+        .split("};", 1)[0]
+    )
     namespaces = re.findall(r'"([\w.]+)"', body)
     if "ClrTypeBridge.SpecialCases.SharpyNamespace" in body:
         namespaces.append("Sharpy")
@@ -2961,7 +3113,9 @@ def _sharpy_namespace_bare_types() -> set[tuple[str, int]]:
     another name (`Sharpy.Bytes` is `bytes`). The compiler resolves these bare: `Sharpy` is the last
     `ClrFallbackNamespaces` entry, probed as `Name`arity` after the System namespaces — so the arity
     is part of the identity (`Sharpy.IList` is not `IList[str]`, which is SCG's)."""
-    renamed = {clr for sharpy, clr in _registered_builtin_types().items() if sharpy != clr}
+    renamed = {
+        clr for sharpy, clr in _registered_builtin_types().items() if sharpy != clr
+    }
     declared: set[tuple[str, int]] = set()
     annotated: set[str] = set()
     for root in (_CORE_SRC, _STDLIB_SRC):
@@ -2976,11 +3130,16 @@ def _sharpy_namespace_bare_types() -> set[tuple[str, int]]:
             for name, start, end in ranges:
                 if any(ps < start and end <= pe for _, ps, pe in ranges):
                     continue
-                attrs = " ".join(generator._collect_attribute_lines(lines, start)) + lines[start]
+                attrs = (
+                    " ".join(generator._collect_attribute_lines(lines, start))
+                    + lines[start]
+                )
                 if "SharpyModuleType" in attrs:
                     annotated.add(name)
                 elif name not in renamed:
-                    declared.add((name, len(generator._class_type_params(lines[start]))))
+                    declared.add(
+                        (name, len(generator._class_type_params(lines[start])))
+                    )
     return {(name, arity) for name, arity in declared if name not in annotated}
 
 
@@ -2992,7 +3151,9 @@ def _spec_array_type() -> set[str]:
 
 def _builtin_type_roster() -> set[str]:
     """Names valid at ANY arity: the spec primitives, the spec's array type, the registered builtins."""
-    return _spec_primitive_roster() | _spec_array_type() | set(_registered_builtin_types())
+    return (
+        _spec_primitive_roster() | _spec_array_type() | set(_registered_builtin_types())
+    )
 
 
 def _type_tokens(text: str) -> list[tuple[str, int]]:
@@ -3042,7 +3203,8 @@ def _split_top_level(text: str, sep: str = ",") -> list[str]:
 
 def _signature_type_positions(signature: str) -> list[tuple[str, str]]:
     """``(kind, type)`` for each parameter type (``"param"``) and the return type (``"return"``) of a
-    rendered signature `name(p: T = d, *q: U) -> R`. A default is a value, not a type: dropped."""
+    rendered signature `name(p: T = d, *q: U) -> R`. A default is a value, not a type: dropped.
+    """
     open_paren = signature.index("(")
     depth = 0
     for close_paren in range(open_paren, len(signature)):
@@ -3070,12 +3232,18 @@ def _discover_pages() -> list[DocModule]:
 def _rendered_type_positions(pages: list[DocModule]):
     """Yield ``(page, where, kind, type, type_params_in_scope)`` for every rendered type position."""
     for page in pages:
-        owners = [(page.members, page.type_params, "")] + [
-            (t.members, t.type_params, f"{t.name}.") for t in page.types
-        ] + [(sub.members, [], f"{sub.name}.") for sub in page.submodules]
+        owners = (
+            [(page.members, page.type_params, "")]
+            + [(t.members, t.type_params, f"{t.name}.") for t in page.types]
+            + [(sub.members, [], f"{sub.name}.") for sub in page.submodules]
+        )
         for members, owner_params, owner in owners:
             for m in members:
-                scope = set(owner_params) | set(m.type_params) | set(m.declaring_type_params)
+                scope = (
+                    set(owner_params)
+                    | set(m.type_params)
+                    | set(m.declaring_type_params)
+                )
                 where = f"{page.name}.md {owner}{m.signature or m.name}"
                 if m.kind == "method":
                     for kind, ptype in _signature_type_positions(m.signature):
@@ -3084,12 +3252,16 @@ def _rendered_type_positions(pages: list[DocModule]):
                     yield page.name, where, "return", m.return_type, scope
 
 
-def _roster_violations(pages: list[DocModule], allowlist: "dict[str, str] | None" = None) -> list[str]:
+def _roster_violations(
+    pages: list[DocModule], allowlist: "dict[str, str] | None" = None
+) -> list[str]:
     roster = _builtin_type_roster() | set(_CLR_BARE_TYPES)
     generic_builtins = _registered_generic_builtins()
     sharpy_namespace = _sharpy_namespace_bare_types()
     modifiers = _spec_parameter_modifiers()
-    documented = {p.name: {t.name for t in p.types} for p in pages if p.kind == "module"}
+    documented = {
+        p.name: {t.name for t in p.types} for p in pages if p.kind == "module"
+    }
     allowlist = _ROSTER_ALLOWLIST if allowlist is None else allowlist
     hits = []
     for page, where, kind, ptype, scope in _rendered_type_positions(pages):
@@ -3118,15 +3290,30 @@ def stdlib_pages() -> list[DocModule]:
     return _discover_pages()
 
 
-def _probe_pages(signature: str, type_params: "list[str] | None" = None) -> list[DocModule]:
+def _probe_pages(
+    signature: str, type_params: "list[str] | None" = None
+) -> list[DocModule]:
     probe = DocModule(
         name="probe",
         kind="module",
         members=[
-            DocMember(kind="method", name="f", cs_name="F", signature=signature, type_params=type_params or [])
+            DocMember(
+                kind="method",
+                name="f",
+                cs_name="F",
+                signature=signature,
+                type_params=type_params or [],
+            )
         ],
     )
-    return [probe, DocModule(name="os", kind="module", types=[DocType(name="StatResult", cs_name="StatResult")])]
+    return [
+        probe,
+        DocModule(
+            name="os",
+            kind="module",
+            types=[DocType(name="StatResult", cs_name="StatResult")],
+        ),
+    ]
 
 
 class TestRenderedTypeRoster:
@@ -3136,19 +3323,60 @@ class TestRenderedTypeRoster:
         # The derived roster must contain these literal anchors: a parse that silently matched
         # nothing would leave an empty roster and a vacuous check (or, inverted, an everything-roster).
         roster = _builtin_type_roster()
-        assert {"int", "float", "int64", "uint16", "float32", "str", "bool", "char", "decimal"} <= roster
-        assert {"list", "dict", "set", "tuple", "bytes", "slice", "complex", "Optional", "Result"} <= roster
+        assert {
+            "int",
+            "float",
+            "int64",
+            "uint16",
+            "float32",
+            "str",
+            "bool",
+            "char",
+            "decimal",
+        } <= roster
+        assert {
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "bytes",
+            "slice",
+            "complex",
+            "Optional",
+            "Result",
+        } <= roster
         assert {"IEnumerable", "IEnumerator", "Iterator", "object", "None"} <= roster
         assert _spec_array_type() == {"array"}
         # Sharpy namespace, resolved bare, at the declared arity; a module type is not bare.
         sharpy_namespace = _sharpy_namespace_bare_types()
-        assert {("ISized", 0), ("IReverseEnumerable", 1), ("TextFile", 0), ("IList", 0)} <= sharpy_namespace
-        assert not {n for n, _ in sharpy_namespace} & {"NdArray", "Date", "Sqlite3Cursor"}
+        assert {
+            ("ISized", 0),
+            ("IReverseEnumerable", 1),
+            ("TextFile", 0),
+            ("IList", 0),
+        } <= sharpy_namespace
+        assert not {n for n, _ in sharpy_namespace} & {
+            "NdArray",
+            "Date",
+            "Sqlite3Cursor",
+        }
         roster |= {n for n, _ in sharpy_namespace}
         # A builtin's CLR name is not a Sharpy spelling when the registry renames it.
         assert not {"List", "Dict", "Bytes", "Slice", "Complex", "FrozenSet"} & roster
         # Neither are the C# keyword aliases, nor names no Sharpy surface declares.
-        assert not {"long", "double", "byte", "ushort", "ulong", "sbyte", "short", "Iterable"} & roster
+        assert (
+            not {
+                "long",
+                "double",
+                "byte",
+                "ushort",
+                "ulong",
+                "sbyte",
+                "short",
+                "Iterable",
+            }
+            & roster
+        )
         assert _spec_parameter_modifiers() == {"ref", "out", "in"}
         fallback = _clr_fallback_namespaces()
         assert "Sharpy" in fallback and "System.IO" in fallback
@@ -3156,27 +3384,47 @@ class TestRenderedTypeRoster:
             assert namespace in fallback, (name, namespace)
         # A bare CLR row must not collide with a Sharpy name, or the bare spelling would denote the other type.
         assert not set(_CLR_BARE_TYPES) & roster
-        assert {"list", "dict", "IEnumerable", "Optional"} <= _registered_generic_builtins()
+        assert {
+            "list",
+            "dict",
+            "IEnumerable",
+            "Optional",
+        } <= _registered_generic_builtins()
         assert not {"str", "bytes", "object"} & _registered_generic_builtins()
 
     def test_spec_primitives_are_the_compilers_primary_names(self):
         # The roster's primitive half comes from the spec table; it must be the compiler's own
         # primary names (PrimitiveCatalog `Register`, not `RegisterAlias`), or the two disagree.
-        catalog = (_COMPILER_SRC / "Semantic" / "Registry" / "PrimitiveCatalog.cs").read_text(encoding="utf-8")
-        primary = set(re.findall(r'\bRegister\(byName, byClr, new PrimitiveInfo\("(\w+)"', catalog))
-        assert primary - {"None", "void"} == _spec_primitive_roster() - _PYTHON_PRIMITIVE_SPELLINGS
+        catalog = (
+            _COMPILER_SRC / "Semantic" / "Registry" / "PrimitiveCatalog.cs"
+        ).read_text(encoding="utf-8")
+        primary = set(
+            re.findall(
+                r'\bRegister\(byName, byClr, new PrimitiveInfo\("(\w+)"', catalog
+            )
+        )
+        assert (
+            primary - {"None", "void"}
+            == _spec_primitive_roster() - _PYTHON_PRIMITIVE_SPELLINGS
+        )
         # `array` is not a PrimitiveCatalog name: the bridge spells every CLR array `array[T]`.
-        bridge = (_COMPILER_SRC / "Discovery" / "ClrTypeBridge.cs").read_text(encoding="utf-8")
-        assert "var arrayName = BuiltinNames.Array;" in bridge
-        assert 'public const string Array = "array";' in (_COMPILER_SRC / "Shared" / "BuiltinNames.cs").read_text(
+        bridge = (_COMPILER_SRC / "Discovery" / "ClrTypeBridge.cs").read_text(
             encoding="utf-8"
         )
+        assert "var arrayName = BuiltinNames.Array;" in bridge
+        assert 'public const string Array = "array";' in (
+            _COMPILER_SRC / "Shared" / "BuiltinNames.cs"
+        ).read_text(encoding="utf-8")
 
     def test_csharp_keyword_types_map_to_a_roster_name_of_the_same_clr_type(self):
         # Every C# keyword type renders as a roster name OF THE SAME CLR TYPE (#2163): C# `float` is
         # System.Single, so it must be `float32` — Sharpy's `float` is float64, a different type.
-        catalog = (_COMPILER_SRC / "Semantic" / "Registry" / "PrimitiveCatalog.cs").read_text(encoding="utf-8")
-        entries = re.findall(r'new PrimitiveInfo\("(\w+)", "(\w+)", typeof\((\w+)\)', catalog)
+        catalog = (
+            _COMPILER_SRC / "Semantic" / "Registry" / "PrimitiveCatalog.cs"
+        ).read_text(encoding="utf-8")
+        entries = re.findall(
+            r'new PrimitiveInfo\("(\w+)", "(\w+)", typeof\((\w+)\)', catalog
+        )
         names_by_clr: dict[str, set[str]] = {}
         for sharpy, _, clr in entries:
             names_by_clr.setdefault(clr, set()).add(sharpy)
@@ -3199,19 +3447,35 @@ class TestRenderedTypeRoster:
     def test_walk_covers_every_rendered_signature(self, stdlib_pages, tmp_path: Path):
         # The roster reads the model; this anchors the model to the pages: each page's rendered
         # signature headings are exactly the walked methods' signatures.
-        rendered = {p.stem: p.read_text(encoding="utf-8") for p in _render_real_stdlib(tmp_path / "stdlib")}
+        rendered = {
+            p.stem: p.read_text(encoding="utf-8")
+            for p in _render_real_stdlib(tmp_path / "stdlib")
+        }
         assert {p.name for p in stdlib_pages} == set(rendered) - {"index"}
         for page in stdlib_pages:
             prefix = f"{page.name}." if page.kind == "module" else ""
-            walked = [f"### `{prefix}{m.signature}`" for m in page.members if m.kind == "method"]
-            walked += [f"### `{m.signature}`" for t in page.types for m in t.members if m.kind == "method"]
+            walked = [
+                f"### `{prefix}{m.signature}`"
+                for m in page.members
+                if m.kind == "method"
+            ]
+            walked += [
+                f"### `{m.signature}`"
+                for t in page.types
+                for m in t.members
+                if m.kind == "method"
+            ]
             walked += [
                 f"### `{sub.name}.{m.signature}`"
                 for sub in page.submodules
                 for m in sub.members
                 if m.kind == "method"
             ]
-            headings = [line for line in rendered[page.name].splitlines() if line.startswith("### `")]
+            headings = [
+                line
+                for line in rendered[page.name].splitlines()
+                if line.startswith("### `")
+            ]
             assert sorted(headings) == sorted(walked), page.name
 
     def test_every_rendered_type_token_is_on_the_roster(self, stdlib_pages):
@@ -3222,7 +3486,11 @@ class TestRenderedTypeRoster:
         # Drain on fix: an allowlisted token the pages no longer carry must be deleted.
         assert all(re.fullmatch(r"#\d+", issue) for issue in _ROSTER_ALLOWLIST.values())
         unflagged = _roster_violations(stdlib_pages, allowlist={})
-        stale = {t for t in _ROSTER_ALLOWLIST if not any(f": `{t}` in" in h for h in unflagged)}
+        stale = {
+            t
+            for t in _ROSTER_ALLOWLIST
+            if not any(f": `{t}` in" in h for h in unflagged)
+        }
         assert stale == set()
 
     @pytest.mark.parametrize(
@@ -3230,8 +3498,14 @@ class TestRenderedTypeRoster:
         [
             ("u_int16(m: decimal) -> UInt16", "UInt16"),
             ("i_add(left: ref long, right: int64)", "long"),
-            ("bool(tuple: Runtime.CompilerServices.ITuple) -> bool", "Runtime.CompilerServices.ITuple"),
-            ("from_socket_exception(ex: Net.Sockets.SocketException) -> bool", "Net.Sockets.SocketException"),
+            (
+                "bool(tuple: Runtime.CompilerServices.ITuple) -> bool",
+                "Runtime.CompilerServices.ITuple",
+            ),
+            (
+                "from_socket_exception(ex: Net.Sockets.SocketException) -> bool",
+                "Net.Sockets.SocketException",
+            ),
             ("encode(encoding: str) -> list[byte]", "byte"),
             ("reshape(shape: tuple[int, int]) -> NdArray[float]", "NdArray"),
             ("total(a: T) -> T", "T"),
@@ -3264,7 +3538,10 @@ class TestRenderedTypeRoster:
     def test_sharpy_spellings_are_on_the_roster(self, signature: str):
         # Negative controls: each token is a builtin, a CLR bare/import-path type, a documented type
         # of another page (`os.StatResult`) or a type parameter in scope.
-        assert _roster_violations(_probe_pages(signature, ["T", "V", "R"]), allowlist={}) == []
+        assert (
+            _roster_violations(_probe_pages(signature, ["T", "V", "R"]), allowlist={})
+            == []
+        )
 
 
 class TestRenderedNameProseAndLayout:
@@ -3290,7 +3567,9 @@ class TestRenderedNameProseAndLayout:
         assert {"uint8", "uint16", "uint32", "uint64", "int8", "int16"} <= names
         assert self._builtin_name_leaks(builtins) == []
 
-    def test_builtin_name_leak_is_flagged_when_the_alias_is_disabled(self, monkeypatch: pytest.MonkeyPatch):
+    def test_builtin_name_leak_is_flagged_when_the_alias_is_disabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setattr(generator, "_builtin_function_name", lambda snake: snake)
         leaks = self._builtin_name_leaks(generator.discover_builtins(_CORE_SRC))
         assert {"u_int8", "u_int16", "u_int32", "u_int64"} <= set(leaks)
@@ -3298,7 +3577,9 @@ class TestRenderedNameProseAndLayout:
     # --- PROSE: a `<see cref>` renders as the Sharpy name of what it references ---------------------
 
     @staticmethod
-    def _rendered_crefs(monkeypatch: pytest.MonkeyPatch, out_dir: Path) -> list[tuple[str, str]]:
+    def _rendered_crefs(
+        monkeypatch: pytest.MonkeyPatch, out_dir: Path
+    ) -> list[tuple[str, str]]:
         seen: list[tuple[str, str]] = []
         real = generator._render_cref
 
@@ -3316,9 +3597,19 @@ class TestRenderedNameProseAndLayout:
         # A member reference must be the member's Sharpy name, and a type reference must not be a
         # CLR class name the docs spell differently (a module type's documented name, a registry
         # rename). A `System.` path names the .NET API itself and is exempt (#2066).
-        renamed = {cls for cls, entries in generator._MODULE_TYPES.items() if all(d != cls for _, d in entries)}
-        renamed |= {clr for sharpy, clr in _registered_builtin_types().items() if sharpy != clr}
-        documented = {display for entries in generator._MODULE_TYPES.values() for _, display in entries}
+        renamed = {
+            cls
+            for cls, entries in generator._MODULE_TYPES.items()
+            if all(d != cls for _, d in entries)
+        }
+        renamed |= {
+            clr for sharpy, clr in _registered_builtin_types().items() if sharpy != clr
+        }
+        documented = {
+            display
+            for entries in generator._MODULE_TYPES.values()
+            for _, display in entries
+        }
         leaks = []
         for cref, rendered in crefs:
             if rendered.startswith("System."):
@@ -3341,11 +3632,18 @@ class TestRenderedNameProseAndLayout:
         assert len(crefs) > 100
         # Anchors from the issue's cells: a member is its Sharpy name, a module type its documented one.
         assert rendered["Ndim"] == "ndim" and rendered["Items"] == "items"
-        assert rendered["Sqlite3Cursor"] == "Cursor" and rendered["NdArray{T}"] == "ndarray[T]"
+        assert (
+            rendered["Sqlite3Cursor"] == "Cursor"
+            and rendered["NdArray{T}"] == "ndarray[T]"
+        )
         assert self._cref_leaks(crefs) == []
 
-    def test_cref_leak_is_flagged_when_the_rendering_is_disabled(self, monkeypatch, tmp_path: Path):
-        crefs = [(c, c) for c, _ in self._rendered_crefs(monkeypatch, tmp_path / "stdlib")]
+    def test_cref_leak_is_flagged_when_the_rendering_is_disabled(
+        self, monkeypatch, tmp_path: Path
+    ):
+        crefs = [
+            (c, c) for c, _ in self._rendered_crefs(monkeypatch, tmp_path / "stdlib")
+        ]
         leaks = "\n".join(self._cref_leaks(crefs))
         for segment in ("Ndim", "Items", "Sqlite3Cursor", "NdArray"):
             assert f"(`{segment}`)" in leaks, segment
@@ -3375,13 +3673,25 @@ class TestRenderedNameProseAndLayout:
         texts = {p.name: p.read_text(encoding="utf-8") for p in pages}
         # The union-typed cells the issue named are present (escaped), so the check is not vacuous.
         assert any("| `response` | `Response \\| None` |" in t for t in texts.values())
-        assert [row for name, t in texts.items() for row in self._misaligned_rows(name, t)] == []
+        assert [
+            row for name, t in texts.items() for row in self._misaligned_rows(name, t)
+        ] == []
 
-    def test_unescaped_union_type_cell_is_flagged(self, monkeypatch: pytest.MonkeyPatch):
+    def test_unescaped_union_type_cell_is_flagged(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         page = DocModule(
             name="probe",
             kind="module",
-            members=[DocMember(kind="property", name="response", cs_name="Response", signature="", return_type="Response | None")],
+            members=[
+                DocMember(
+                    kind="property",
+                    name="response",
+                    cs_name="Response",
+                    signature="",
+                    return_type="Response | None",
+                )
+            ],
         )
         assert self._misaligned_rows("probe.md", render_module_page(page)) == []
         monkeypatch.setattr(generator, "_type_cell", lambda t: t)
@@ -3402,11 +3712,15 @@ class TestRenderedNameProseAndLayout:
             for sub in page.submodules:
                 for m in sub.members:
                     if m.declaring_type != sub.module_class:
-                        bad.append(f"{sub.name}.{m.name} (declared by {m.declaring_type})")
+                        bad.append(
+                            f"{sub.name}.{m.name} (declared by {m.declaring_type})"
+                        )
             for t in page.types:
                 for m in t.members:
                     if m.declaring_type != t.cs_name and not m.declaring_static:
-                        bad.append(f"{page.name} {t.name}.{m.name} (declared by {m.declaring_type})")
+                        bad.append(
+                            f"{page.name} {t.name}.{m.name} (declared by {m.declaring_type})"
+                        )
         return bad
 
     def test_every_member_renders_under_its_declaring_type(self, stdlib_pages):
@@ -3437,7 +3751,10 @@ class TestRenderedNameProseAndLayout:
         )
         page = discover_modules(tmp_path)[0]
         assert [m.name for m in page.members] == ["make"]
-        assert [m.signature for m in page.types[0].members] == ["size() -> int", "reshape(n: int) -> gadget[T]"]
+        assert [m.signature for m in page.types[0].members] == [
+            "size() -> int",
+            "reshape(n: int) -> gadget[T]",
+        ]
         assert self._misattributed([page]) == []
         # Positive control: the same member, rendered at module level, is flagged.
         page.members.append(page.types[0].members.pop())
@@ -3456,94 +3773,293 @@ class TestRenderedNameProseAndLayout:
 # comment cites, and checks that citation is still in the cited file.
 _MAPPING_IDENTITY = [
     # (C# spelling, rendered Sharpy, cited file, text that must be in it)
-    ("IEnumerable<int>", "IEnumerable[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "Register(BuiltinNames.IEnumerable, typeof(IEnumerable<>)"),
-    ("System.Collections.Generic.IEnumerable<int>", "IEnumerable[int]",
-     "docs/language_specification/collection_types.md", "`IEnumerable[T]` for a read-only"),
-    ("IEnumerator<int>", "IEnumerator[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "Register(BuiltinNames.IEnumerator, typeof(IEnumerator<>)"),
-    ("Iterator<int>", "Iterator[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "Register(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>)"),
-    ("IComparer<int>", "IComparer[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     '"System.Collections.Generic",'),
-    ("int[]", "array[int]", "docs/language_specification/primitive_types.md", "| `array[T]` | `T[]` |"),
-    ("string[][]", "array[array[str]]", "docs/language_specification/type_annotation_shorthand.md",
-     "| `T[]` | array |"),
-    ("params int[]", "*int", "docs/language_specification/function_variadic_arguments.md",
-     "mapping to C#'s `params T[]`"),
-    ("System.Collections.IList", "system.collections.IList",
-     "docs/language_specification/dotnet_interop.md", "import system.collections.generic as scg"),
-    ("System.Collections.ICollection", "system.collections.ICollection",
-     "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs", '"System.Collections.Generic",'),
-    ("System.Collections.IEnumerable", "system.collections.IEnumerable",
-     "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs", '"System.Collections.Generic",'),
-    ("System.Collections.IEnumerable?", "system.collections.IEnumerable | None",
-     "docs/language_specification/nullable_types.md", "T?"),
+    (
+        "IEnumerable<int>",
+        "IEnumerable[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        "Register(BuiltinNames.IEnumerable, typeof(IEnumerable<>)",
+    ),
+    (
+        "System.Collections.Generic.IEnumerable<int>",
+        "IEnumerable[int]",
+        "docs/language_specification/collection_types.md",
+        "`IEnumerable[T]` for a read-only",
+    ),
+    (
+        "IEnumerator<int>",
+        "IEnumerator[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        "Register(BuiltinNames.IEnumerator, typeof(IEnumerator<>)",
+    ),
+    (
+        "Iterator<int>",
+        "Iterator[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        "Register(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>)",
+    ),
+    (
+        "IComparer<int>",
+        "IComparer[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        '"System.Collections.Generic",',
+    ),
+    (
+        "int[]",
+        "array[int]",
+        "docs/language_specification/primitive_types.md",
+        "| `array[T]` | `T[]` |",
+    ),
+    (
+        "string[][]",
+        "array[array[str]]",
+        "docs/language_specification/type_annotation_shorthand.md",
+        "| `T[]` | array |",
+    ),
+    (
+        "params int[]",
+        "*int",
+        "docs/language_specification/function_variadic_arguments.md",
+        "mapping to C#'s `params T[]`",
+    ),
+    (
+        "System.Collections.IList",
+        "system.collections.IList",
+        "docs/language_specification/dotnet_interop.md",
+        "import system.collections.generic as scg",
+    ),
+    (
+        "System.Collections.ICollection",
+        "system.collections.ICollection",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        '"System.Collections.Generic",',
+    ),
+    (
+        "System.Collections.IEnumerable",
+        "system.collections.IEnumerable",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        '"System.Collections.Generic",',
+    ),
+    (
+        "System.Collections.IEnumerable?",
+        "system.collections.IEnumerable | None",
+        "docs/language_specification/nullable_types.md",
+        "T?",
+    ),
     ("int?", "int | None", "docs/language_specification/nullable_types.md", "T?"),
-    ("List<int>", "list[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("list", typeof(SharpyRT::Sharpy.List<>)'),
-    ("Dict<string, int>", "dict[str, int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("dict", typeof(SharpyRT::Sharpy.Dict<,>)'),
-    ("Set<int>", "set[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("set", typeof(SharpyRT::Sharpy.Set<>)'),
-    ("Bytes", "bytes", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("bytes", typeof(SharpyRT::Sharpy.Bytes)'),
-    ("Complex", "complex", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "Register(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex)"),
-    ("Slice", "slice", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("slice", typeof(SharpyRT::Sharpy.Slice)'),
-    ("Optional<int>", "Optional[int]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("Optional", typeof(SharpyRT::Sharpy.Optional<>)'),
-    ("Result<int, string>", "Result[int, str]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("Result", typeof(SharpyRT::Sharpy.Result<,>)'),
-    ("ValueTuple<int, string>", "tuple[int, str]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "Register(BuiltinNames.Tuple, typeof(System.ValueTuple)"),
-    ("(int, string)", "tuple[int, str]", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     "Register(BuiltinNames.Tuple, typeof(System.ValueTuple)"),
-    ("void", "None", "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
-     'Register("None", typeof(void)'),
-    ("System.Runtime.CompilerServices.ITuple", "system.runtime.compiler_services.ITuple",
-     "src/Sharpy.Compiler/Semantic/Registry/ModuleRegistry.cs", '"system.text.regular_expressions"'),
-    ("System.Net.Sockets.SocketException", "SocketException",
-     "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs", '"System.Net.Sockets",'),
-    ("ref float", "ref float32", "docs/language_specification/parameter_modifiers.md", "| `ref T` |"),
+    (
+        "List<int>",
+        "list[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("list", typeof(SharpyRT::Sharpy.List<>)',
+    ),
+    (
+        "Dict<string, int>",
+        "dict[str, int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("dict", typeof(SharpyRT::Sharpy.Dict<,>)',
+    ),
+    (
+        "Set<int>",
+        "set[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("set", typeof(SharpyRT::Sharpy.Set<>)',
+    ),
+    (
+        "Bytes",
+        "bytes",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("bytes", typeof(SharpyRT::Sharpy.Bytes)',
+    ),
+    (
+        "Complex",
+        "complex",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        "Register(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex)",
+    ),
+    (
+        "Slice",
+        "slice",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("slice", typeof(SharpyRT::Sharpy.Slice)',
+    ),
+    (
+        "Optional<int>",
+        "Optional[int]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("Optional", typeof(SharpyRT::Sharpy.Optional<>)',
+    ),
+    (
+        "Result<int, string>",
+        "Result[int, str]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("Result", typeof(SharpyRT::Sharpy.Result<,>)',
+    ),
+    (
+        "ValueTuple<int, string>",
+        "tuple[int, str]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        "Register(BuiltinNames.Tuple, typeof(System.ValueTuple)",
+    ),
+    (
+        "(int, string)",
+        "tuple[int, str]",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        "Register(BuiltinNames.Tuple, typeof(System.ValueTuple)",
+    ),
+    (
+        "void",
+        "None",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        'Register("None", typeof(void)',
+    ),
+    (
+        "System.Runtime.CompilerServices.ITuple",
+        "system.runtime.compiler_services.ITuple",
+        "src/Sharpy.Compiler/Semantic/Registry/ModuleRegistry.cs",
+        '"system.text.regular_expressions"',
+    ),
+    (
+        "System.Net.Sockets.SocketException",
+        "SocketException",
+        "src/Sharpy.Compiler/Semantic/Registry/BuiltinRegistry.cs",
+        '"System.Net.Sockets",',
+    ),
+    (
+        "ref float",
+        "ref float32",
+        "docs/language_specification/parameter_modifiers.md",
+        "| `ref T` |",
+    ),
     # The C# keyword types (primitive_types.md's primary names; `int`/`float` its Python aliases).
-    ("float", "float32", "docs/language_specification/primitive_types.md", "| `float32` | `System.Single` |"),
-    ("double", "float", "docs/language_specification/primitive_types.md", "| `float` | `float64` |"),
-    ("int", "int", "docs/language_specification/primitive_types.md", "| `int` | `int32` |"),
-    ("long", "int64", "docs/language_specification/primitive_types.md", "| `int64` | `System.Int64` |"),
-    ("short", "int16", "docs/language_specification/primitive_types.md", "| `int16` | `System.Int16` |"),
-    ("sbyte", "int8", "docs/language_specification/primitive_types.md", "| `int8` | `System.SByte` |"),
-    ("byte", "uint8", "docs/language_specification/primitive_types.md", "| `uint8` | `System.Byte` |"),
-    ("ushort", "uint16", "docs/language_specification/primitive_types.md", "| `uint16` | `System.UInt16` |"),
-    ("uint", "uint32", "docs/language_specification/primitive_types.md", "| `uint32` | `System.UInt32` |"),
-    ("ulong", "uint64", "docs/language_specification/primitive_types.md", "| `uint64` | `System.UInt64` |"),
-    ("string", "str", "docs/language_specification/primitive_types.md", "| `str` | `System.String` |"),
-    ("char", "char", "docs/language_specification/primitive_types.md", "| `char` | `System.Char` |"),
-    ("decimal", "decimal", "docs/language_specification/primitive_types.md", "| `decimal` | `System.Decimal` |"),
-    ("bool", "bool", "docs/language_specification/primitive_types.md", "| `bool` | `System.Boolean` |"),
-    ("object", "object", "docs/language_specification/primitive_types.md", "| `object` | `System.Object` |"),
+    (
+        "float",
+        "float32",
+        "docs/language_specification/primitive_types.md",
+        "| `float32` | `System.Single` |",
+    ),
+    (
+        "double",
+        "float",
+        "docs/language_specification/primitive_types.md",
+        "| `float` | `float64` |",
+    ),
+    (
+        "int",
+        "int",
+        "docs/language_specification/primitive_types.md",
+        "| `int` | `int32` |",
+    ),
+    (
+        "long",
+        "int64",
+        "docs/language_specification/primitive_types.md",
+        "| `int64` | `System.Int64` |",
+    ),
+    (
+        "short",
+        "int16",
+        "docs/language_specification/primitive_types.md",
+        "| `int16` | `System.Int16` |",
+    ),
+    (
+        "sbyte",
+        "int8",
+        "docs/language_specification/primitive_types.md",
+        "| `int8` | `System.SByte` |",
+    ),
+    (
+        "byte",
+        "uint8",
+        "docs/language_specification/primitive_types.md",
+        "| `uint8` | `System.Byte` |",
+    ),
+    (
+        "ushort",
+        "uint16",
+        "docs/language_specification/primitive_types.md",
+        "| `uint16` | `System.UInt16` |",
+    ),
+    (
+        "uint",
+        "uint32",
+        "docs/language_specification/primitive_types.md",
+        "| `uint32` | `System.UInt32` |",
+    ),
+    (
+        "ulong",
+        "uint64",
+        "docs/language_specification/primitive_types.md",
+        "| `uint64` | `System.UInt64` |",
+    ),
+    (
+        "string",
+        "str",
+        "docs/language_specification/primitive_types.md",
+        "| `str` | `System.String` |",
+    ),
+    (
+        "char",
+        "char",
+        "docs/language_specification/primitive_types.md",
+        "| `char` | `System.Char` |",
+    ),
+    (
+        "decimal",
+        "decimal",
+        "docs/language_specification/primitive_types.md",
+        "| `decimal` | `System.Decimal` |",
+    ),
+    (
+        "bool",
+        "bool",
+        "docs/language_specification/primitive_types.md",
+        "| `bool` | `System.Boolean` |",
+    ),
+    (
+        "object",
+        "object",
+        "docs/language_specification/primitive_types.md",
+        "| `object` | `System.Object` |",
+    ),
 ]
 
 
 class TestMappingIdentity:
-    @pytest.mark.parametrize("cs,sharpy,cited,citation", _MAPPING_IDENTITY, ids=[row[0] for row in _MAPPING_IDENTITY])
-    def test_csharp_spelling_renders_as_the_same_type(self, cs: str, sharpy: str, cited: str, citation: str):
-        assert citation in (_REPO_ROOT / cited).read_text(encoding="utf-8"), (cited, citation)
+    @pytest.mark.parametrize(
+        "cs,sharpy,cited,citation",
+        _MAPPING_IDENTITY,
+        ids=[row[0] for row in _MAPPING_IDENTITY],
+    )
+    def test_csharp_spelling_renders_as_the_same_type(
+        self, cs: str, sharpy: str, cited: str, citation: str
+    ):
+        assert citation in (_REPO_ROOT / cited).read_text(encoding="utf-8"), (
+            cited,
+            citation,
+        )
         assert map_type(cs) == sharpy
 
     def test_every_generic_and_keyword_mapping_is_pinned(self):
         # Totality over the generator's own tables: every key of `_GENERIC_TYPE_MAP`,
         # `_SHARPY_TYPE_NAMES` and `_TYPE_MAP` is the outer name of some pinned row, or renders as
         # a row's rendering, so a new mapping cannot land without its identity row.
-        pinned_cs = {re.sub(r"<.*$", "", cs).replace("System.", "", 1) for cs, *_ in _MAPPING_IDENTITY}
+        pinned_cs = {
+            re.sub(r"<.*$", "", cs).replace("System.", "", 1)
+            for cs, *_ in _MAPPING_IDENTITY
+        }
         pinned_out = {sharpy for _, sharpy, *_ in _MAPPING_IDENTITY}
-        tables = (generator._GENERIC_TYPE_MAP, generator._SHARPY_TYPE_NAMES, generator._TYPE_MAP)
+        tables = (
+            generator._GENERIC_TYPE_MAP,
+            generator._SHARPY_TYPE_NAMES,
+            generator._TYPE_MAP,
+        )
         unpinned = [
             key
             for table in tables
             for key, value in table.items()
-            if key not in pinned_cs and value not in pinned_out and not any(o.startswith(value + "[") for o in pinned_out)
+            if key not in pinned_cs
+            and value not in pinned_out
+            and not any(o.startswith(value + "[") for o in pinned_out)
         ]
         assert unpinned == []
 
@@ -3554,14 +4070,20 @@ class TestMappingIdentity:
 
 
 def _orphan_pages(docs_dir: Path, generated: set[str]) -> list[str]:
-    owned = generated | {f"{name}.md" for name in HAND_AUTHORED_MODULES} | set(generator.PROSE_PAGES)
+    owned = (
+        generated
+        | {f"{name}.md" for name in HAND_AUTHORED_MODULES}
+        | set(generator.PROSE_PAGES)
+    )
     return sorted(p.name for p in docs_dir.glob("*.md") if p.name not in owned)
 
 
 class TestPageOwnership:
     def test_every_stdlib_page_has_an_owner(self, tmp_path: Path):
         generated = {p.name for p in _render_real_stdlib(tmp_path / "stdlib")}
-        assert "str.md" in generated  # generated from Core's StringExtensions*.cs since #2163
+        assert (
+            "str.md" in generated
+        )  # generated from Core's StringExtensions*.cs since #2163
         assert _orphan_pages(_STDLIB_DOCS, generated) == []
         # Every named prose page exists: a stale name would let a deleted page's slot be reused.
         assert all((_STDLIB_DOCS / name).exists() for name in generator.PROSE_PAGES)

@@ -215,8 +215,10 @@ def _is_heterogeneous(node: ast.AST) -> bool:
 # Huge-int detection
 # --------------------------------------------------------------------------- #
 def _const_int(node: ast.AST) -> Optional[int]:
-    if isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(
-        node.value, bool
+    if (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, int)
+        and not isinstance(node.value, bool)
     ):
         return node.value
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
@@ -308,8 +310,10 @@ def _detect_dynamic_test_generation(tree: ast.Module) -> list[str]:
     class Visitor(ast.NodeVisitor):
         def visit_Call(self, node: ast.Call) -> None:
             func = node.func
-            name = func.id if isinstance(func, ast.Name) else (
-                func.attr if isinstance(func, ast.Attribute) else None
+            name = (
+                func.id
+                if isinstance(func, ast.Name)
+                else (func.attr if isinstance(func, ast.Attribute) else None)
             )
             if name == "setattr" and len(node.args) >= 2:
                 if _mentions_test_name(node.args[1]):
@@ -406,7 +410,11 @@ class _MethodVisitor(ast.NodeVisitor):
             if fname in DYNAMIC_BUILTINS:
                 self._add(
                     Reason(
-                        code="exec-eval" if fname in {"exec", "eval", "compile"} else "dynamic-namespace",
+                        code=(
+                            "exec-eval"
+                            if fname in {"exec", "eval", "compile"}
+                            else "dynamic-namespace"
+                        ),
                         category=Category.DYNAMIC,
                         detail=f"calls {fname}()",
                         line=node.lineno,
@@ -595,7 +603,9 @@ def _loop_body_asserts(node: ast.For) -> bool:
     return False
 
 
-def _method_decorator_reasons(method: ast.FunctionDef, support_names: set[str]) -> list[Reason]:
+def _method_decorator_reasons(
+    method: ast.FunctionDef, support_names: set[str]
+) -> list[Reason]:
     reasons: list[Reason] = []
     for dec in method.decorator_list:
         # bare name or attribute
@@ -606,8 +616,10 @@ def _method_decorator_reasons(method: ast.FunctionDef, support_names: set[str]) 
             name = dec.attr
         elif isinstance(dec, ast.Call):
             f = dec.func
-            name = f.id if isinstance(f, ast.Name) else (
-                f.attr if isinstance(f, ast.Attribute) else None
+            name = (
+                f.id
+                if isinstance(f, ast.Name)
+                else (f.attr if isinstance(f, ast.Attribute) else None)
             )
         if name is None:
             continue
@@ -660,7 +672,11 @@ def _iter_test_methods(
 def _collect_support_names(tree: ast.Module) -> set[str]:
     names: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module and "test.support" in node.module:
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and "test.support" in node.module
+        ):
             for alias in node.names:
                 names.add(alias.asname or alias.name)
     return names
