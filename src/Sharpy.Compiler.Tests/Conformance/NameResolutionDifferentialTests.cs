@@ -324,8 +324,7 @@ public partial class NameResolutionDifferentialTests
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
         // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
-        // SPY0220 is the same for the ImportedName outer (P77b axis 9): `digits = 15` is typed against the str import.
-        ["N6"] = new[] { "SPY0200", "SPY0220", "SPY0222", "SPY0336", "SPY0342" },
+        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },

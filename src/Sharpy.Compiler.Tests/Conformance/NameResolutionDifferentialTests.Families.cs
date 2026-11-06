@@ -432,16 +432,24 @@ public partial class NameResolutionDifferentialTests
     }
 
     /// <summary>STORE × the ImportedName outer (P77b axis 9, D2.9): a bare store in a function or a method over the module's
-    /// imported name. Python makes it a function local; N6 refuses a bare store over a module binding (p22).</summary>
+    /// imported name. Python makes it a function local; N6 refuses a bare store over a module binding (p22). The stored value
+    /// is a str, type-compatible with the str import (D3.a's non-coincidence rule; lead ruling on p22): an int store is
+    /// refused by a TYPE error (SPY0220 / SPY0222) before the name verdict, which masks the cell.</summary>
     private static IEnumerable<NameCell> ImportedStoreCells()
     {
         var n = Imported;
         foreach (var s in new[] { StoreSpelling.Assign, StoreSpelling.Augmented, StoreSpelling.Walrus })
             foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
             {
-                var (host, call) = Host(body, new[] { StoreText(s, n.Name), $"print({n.Name})" });
+                var text = s switch
+                {
+                    StoreSpelling.Assign => $"{n.Name} = \"abc\"",
+                    StoreSpelling.Augmented => $"{n.Name} += \"x\"",
+                    _ => $"({n.Name} := \"abc\")",
+                };
+                var (host, call) = Host(body, new[] { text, $"print({n.Name})" });
                 var main = call.Append($"print({ReadText(Form.Value, "", n)})").ToArray();
-                var python = s == StoreSpelling.Augmented ? PyOutcome.Unbound(n.Name) : PyOutcome.Ran(JoinOut(15, n.BuiltinResult!.Value));
+                var python = s == StoreSpelling.Augmented ? PyOutcome.Unbound(n.Name) : PyOutcome.Ran(JoinOut("abc", n.BuiltinResult!.Value));
                 var e = Refuse(python, "N6");
                 yield return new NameCell
                 {
