@@ -106,8 +106,13 @@ class Rig:
         env.update(overrides)
         return env
 
-    def popen(self, argv: list[str], env: Optional[dict[str, str]] = None,
-              new_group: bool = True, **kwargs) -> subprocess.Popen:
+    def popen(
+        self,
+        argv: list[str],
+        env: Optional[dict[str, str]] = None,
+        new_group: bool = True,
+        **kwargs,
+    ) -> subprocess.Popen:
         """
         Start *argv* as the leader of a NEW process group and record it for teardown.
 
@@ -124,15 +129,25 @@ class Rig:
         stopped watchdog would be hung up and killed, and the probe would pass against the bug.
         The runner's group is never orphaned. Such a probe must kill its own pids in ``finally``.
         """
-        proc = subprocess.Popen(argv, env=env if env is not None else self.env(),
-                                cwd=str(self.root), start_new_session=new_group, **kwargs)
+        proc = subprocess.Popen(
+            argv,
+            env=env if env is not None else self.env(),
+            cwd=str(self.root),
+            start_new_session=new_group,
+            **kwargs,
+        )
         if new_group:
             self.groups.append(proc.pid)
         return proc
 
     def run(self, *args: str, timeout: float = 120, **env_overrides: str):
-        proc = self.popen([str(WRAPPER), *args], env=self.env(**env_overrides),
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        proc = self.popen(
+            [str(WRAPPER), *args],
+            env=self.env(**env_overrides),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         try:
             out, err = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -142,8 +157,13 @@ class Rig:
         return subprocess.CompletedProcess(proc.args, proc.returncode, out, err)
 
     def spawn(self, *args: str, **env_overrides: str) -> subprocess.Popen:
-        return self.popen([str(WRAPPER), *args], env=self.env(**env_overrides),
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return self.popen(
+            [str(WRAPPER), *args],
+            env=self.env(**env_overrides),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
 
     # -- lock introspection -----------------------------------------------------------
 
@@ -204,7 +224,9 @@ def _kill_tree(pid: int) -> None:
         pass
 
 
-def wait_for(predicate: Callable[[], bool], timeout: float = 30, what: str = "condition") -> None:
+def wait_for(
+    predicate: Callable[[], bool], timeout: float = 30, what: str = "condition"
+) -> None:
     """
     Poll until *predicate*, or **fail** the test.
 
@@ -273,14 +295,16 @@ class TestMutualExclusion:
         events = rig.root / "events.txt"
         rig.fake_dotnet(
             f'start=$(python3 -c "import time;print(repr(time.time()))")\n'
-            f'sleep 0.5\n'
+            f"sleep 0.5\n"
             f'stop=$(python3 -c "import time;print(repr(time.time()))")\n'
             f'echo "RAN $start $stop" >> "{events}"\n'
             f'echo "Total: 1"\n'
         )
 
-        procs = [rig.spawn("test", f"--peer{i}", DOTNET_SERIALIZED_TIMEOUT="120")
-                 for i in range(8)]
+        procs = [
+            rig.spawn("test", f"--peer{i}", DOTNET_SERIALIZED_TIMEOUT="120")
+            for i in range(8)
+        ]
         for proc in procs:
             proc.communicate(timeout=180)
 
@@ -293,9 +317,11 @@ class TestMutualExclusion:
         assert len(intervals) == 8, f"expected 8 runs, saw {len(intervals)}"
 
         intervals.sort()
-        overlaps = [(intervals[i], intervals[i + 1])
-                    for i in range(len(intervals) - 1)
-                    if intervals[i + 1][0] < intervals[i][1]]
+        overlaps = [
+            (intervals[i], intervals[i + 1])
+            for i in range(len(intervals) - 1)
+            if intervals[i + 1][0] < intervals[i][1]
+        ]
         assert not overlaps, f"concurrent dotnet runs admitted: {overlaps}"
 
     def test_a_pidless_lock_dir_is_reclaimed_only_after_the_re_check(self, rig: Rig):
@@ -312,7 +338,9 @@ class TestMutualExclusion:
         assert "Total: 1" in result.stdout
         assert "stale dotnet lock" in result.stderr
 
-    def test_a_pidless_dir_that_gains_a_live_pid_within_the_beat_is_not_stolen(self, rig: Rig):
+    def test_a_pidless_dir_that_gains_a_live_pid_within_the_beat_is_not_stolen(
+        self, rig: Rig
+    ):
         """
         The positive control for the probe above, and the half that actually pins the herd fix
         (58c82ffa5's companion): the window is microseconds wide, so a directory that acquires a
@@ -337,7 +365,9 @@ class TestMutualExclusion:
 
         _, stderr = proc.communicate(timeout=60)
 
-        assert proc.returncode == 124, f"lock was stolen from a live peer (exit {proc.returncode})"
+        assert (
+            proc.returncode == 124
+        ), f"lock was stolen from a live peer (exit {proc.returncode})"
         assert "Timed out waiting for dotnet lock" in stderr
 
 
@@ -370,7 +400,9 @@ class TestOrphanedChild:
         )
 
         holder = rig.spawn("test", "--hang", DOTNET_SERIALIZED_TIMEOUT="120")
-        wait_for(started.exists, what="the fake dotnet to reach its hang (exec has happened)")
+        wait_for(
+            started.exists, what="the fake dotnet to reach its hang (exec has happened)"
+        )
         orphan = rig.child_pid()
         assert orphan is not None and _alive(orphan)
 
@@ -383,7 +415,8 @@ class TestOrphanedChild:
         queued = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="4")
         assert queued.returncode == 124, (
             f"lock stolen from an orphaned child (exit {queued.returncode}); "
-            f"stdout={queued.stdout!r}")
+            f"stdout={queued.stdout!r}"
+        )
 
         # Once the orphan really is gone the lock is reclaimable — the fix must not wedge
         # the fleet permanently, which would be the opposite failure.
@@ -524,19 +557,23 @@ class TestRecordChild:
         started = rig.root / "bench_started"
         bench = rig.root / "fake_bench_ab.sh"
         bench.write_text(
-            f'#!/bin/sh\n'
+            f"#!/bin/sh\n"
             f'"{WRAPPER}" --acquire-lock $$ || exit 1\n'
-            f'sleep 300 &\n'
-            f'CHILD=$!\n'
+            f"sleep 300 &\n"
+            f"CHILD=$!\n"
             f'"{WRAPPER}" --record-child $$ $CHILD || exit 1\n'
             f': > "{started}"\n'
-            f'wait $CHILD\n', encoding="utf-8")
+            f"wait $CHILD\n",
+            encoding="utf-8",
+        )
         bench.chmod(0o755)
         rig.fake_dotnet('echo "Total: 1"')
 
         holder = rig.popen([str(bench)])
         try:
-            wait_for(started.exists, what="the fake bench_ab to record its benchmark child")
+            wait_for(
+                started.exists, what="the fake bench_ab to record its benchmark child"
+            )
             benchmark_pid = rig.child_pid()
             assert benchmark_pid is not None and _alive(benchmark_pid)
             assert rig.lock_pid() == holder.pid
@@ -548,7 +585,8 @@ class TestRecordChild:
             queued = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="4")
             assert queued.returncode == 124, (
                 f"a peer was admitted beside an orphaned benchmark (exit {queued.returncode}); "
-                f"this is the #1508 steal")
+                f"this is the #1508 steal"
+            )
         finally:
             pid = rig.child_pid()
             if pid is not None and _alive(pid):
@@ -578,7 +616,9 @@ class TestZeroResultsGuard:
         assert result.returncode == 0
         assert "Total: 12" in result.stdout
 
-    def test_list_tests_is_exempt_because_no_results_is_its_correct_output(self, rig: Rig):
+    def test_list_tests_is_exempt_because_no_results_is_its_correct_output(
+        self, rig: Rig
+    ):
         rig.fake_dotnet('echo "SomeNamespace.SomeTest"')
 
         result = rig.run("test", "--list-tests")
@@ -605,7 +645,9 @@ class TestLogging:
         assert log is not None
         text = log.read_text(encoding="utf-8")
         assert "Total: 1" in text
-        assert "to stderr" in text, "stderr is merged into the log (2>&1) so failures are in it"
+        assert (
+            "to stderr" in text
+        ), "stderr is merged into the log (2>&1) so failures are in it"
 
     def test_the_deque_rotates_over_three_slots(self, rig: Rig):
         rig.fake_dotnet('echo "Total: 1"')
@@ -614,7 +656,10 @@ class TestLogging:
 
         slots = sorted(p.name for p in rig.logs.glob("dotnet-serialized-[0-9].log"))
         assert slots == [
-            "dotnet-serialized-0.log", "dotnet-serialized-1.log", "dotnet-serialized-2.log"]
+            "dotnet-serialized-0.log",
+            "dotnet-serialized-1.log",
+            "dotnet-serialized-2.log",
+        ]
 
 
 class TestStallWatchdog:
@@ -650,10 +695,13 @@ class TestStallWatchdog:
         assert "watchdog" in result.stderr.lower()
         assert "must not be treated as a pass" in result.stderr
         log = rig.latest_log()
-        assert log is not None and "watchdog" in log.read_text(encoding="utf-8").lower(), (
-            "the kill must be in the LOG too — the log is what an agent reads afterwards")
+        assert (
+            log is not None and "watchdog" in log.read_text(encoding="utf-8").lower()
+        ), "the kill must be in the LOG too — the log is what an agent reads afterwards"
 
-    def test_a_child_that_swallows_sigterm_and_exits_0_still_reports_failure(self, rig: Rig):
+    def test_a_child_that_swallows_sigterm_and_exits_0_still_reports_failure(
+        self, rig: Rig
+    ):
         """
         Cell (b) — the incident replay, and the reason a naive watchdog is WORSE than the wedge.
 
@@ -669,16 +717,17 @@ class TestStallWatchdog:
         rig.fake_dotnet(
             'trap "exit 0" TERM\n'
             'echo "Total: 1"\n'
-            'sleep 120 &\n'
-            'wait $!\n'
-            'exit 0\n'  # reports success however it was interrupted — that is the mask
+            "sleep 120 &\n"
+            "wait $!\n"
+            "exit 0\n"  # reports success however it was interrupted — that is the mask
         )
 
         result = rig.run("test", timeout=45, **self.WATCHDOG_KNOBS)
 
         assert result.returncode == 4, (
             f"a killed run reported success (exit {result.returncode}) — this is #1481's "
-            f"SIGTERM mask; stderr={result.stderr!r}")
+            f"SIGTERM mask; stderr={result.stderr!r}"
+        )
 
     def test_the_forced_exit_beats_the_zero_results_guard(self, rig: Rig):
         """
@@ -686,11 +735,13 @@ class TestStallWatchdog:
         zero-results guard would label it exit 3 — "zero tests ran" — which misattributes a kill
         to a build problem and sends the reader hunting the wrong cause. 4 must win.
         """
-        rig.fake_dotnet('sleep 120\n')
+        rig.fake_dotnet("sleep 120\n")
 
         result = rig.run("test", timeout=45, **self.WATCHDOG_KNOBS)
 
-        assert result.returncode == 4, f"got {result.returncode} (3 = zero-results guard won)"
+        assert (
+            result.returncode == 4
+        ), f"got {result.returncode} (3 = zero-results guard won)"
 
     def test_an_honest_slow_run_is_never_killed(self, rig: Rig):
         """
@@ -699,16 +750,22 @@ class TestStallWatchdog:
         fleet-wide outage, not a fix.
         """
         rig.fake_dotnet(
-            'i=0\n'
+            "i=0\n"
             'while [ $i -lt 8 ]; do echo "progress $i"; sleep 1; i=$((i + 1)); done\n'
             'echo "Total: 1"\n'
         )
 
-        result = rig.run("test", timeout=45, DOTNET_SERIALIZED_STALL_SECONDS="4",
-                         DOTNET_SERIALIZED_WATCHDOG_POLL="1",
-                         DOTNET_SERIALIZED_WATCHDOG_GRACE="1")
+        result = rig.run(
+            "test",
+            timeout=45,
+            DOTNET_SERIALIZED_STALL_SECONDS="4",
+            DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+            DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
+        )
 
-        assert result.returncode == 0, f"an honest run was killed: stderr={result.stderr!r}"
+        assert (
+            result.returncode == 0
+        ), f"an honest run was killed: stderr={result.stderr!r}"
         assert "progress 7" in result.stdout
 
     def test_a_fast_run_is_not_delayed_by_the_monitor(self, rig: Rig):
@@ -716,8 +773,12 @@ class TestStallWatchdog:
         rig.fake_dotnet('echo "Total: 1"')
 
         started = time.time()
-        result = rig.run("test", timeout=45, DOTNET_SERIALIZED_STALL_SECONDS="600",
-                         DOTNET_SERIALIZED_WATCHDOG_POLL="20")
+        result = rig.run(
+            "test",
+            timeout=45,
+            DOTNET_SERIALIZED_STALL_SECONDS="600",
+            DOTNET_SERIALIZED_WATCHDOG_POLL="20",
+        )
         elapsed = time.time() - started
 
         assert result.returncode == 0
@@ -733,7 +794,9 @@ class TestStallWatchdog:
 
         assert rig.run("test", timeout=45, **self.WATCHDOG_KNOBS).returncode == 4
 
-        assert not rig.lock_dir.exists(), "a watchdog kill must not leak the lock it was fixing"
+        assert (
+            not rig.lock_dir.exists()
+        ), "a watchdog kill must not leak the lock it was fixing"
 
     def test_the_stall_default_carries_its_measurement(self):
         """
@@ -748,7 +811,8 @@ class TestStallWatchdog:
         assert "576" in source and "measured" in source
         assert "stat -f %m" in source and "stat -c %Y" in source, (
             "the watchdog's mtime read must keep the two-spelling stat fallback; a single "
-            "spelling prints nothing on the other platform, which reads as 'no progress'")
+            "spelling prints nothing on the other platform, which reads as 'no progress'"
+        )
 
 
 def _wrapper_subshells(parent: int) -> list[int]:
@@ -761,8 +825,12 @@ def _wrapper_subshells(parent: int) -> list[int]:
     element shows as the fake ``dotnet`` stub and the second as ``tee``. Equality, not a
     ``dotnet-serialized`` substring: tee's argv is ``tee .../dotnet-serialized-0.log``.
     """
-    out = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,command="],
-                         capture_output=True, text=True, check=True).stdout
+    out = subprocess.run(
+        ["ps", "-A", "-o", "pid=,ppid=,command="],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
     rows = [line.split(None, 2) for line in out.splitlines()]
     rows = [r for r in rows if len(r) == 3]
     own = [r[2] for r in rows if r[0] == str(parent)]
@@ -810,30 +878,43 @@ class TestWatchdogScope:
 
         holder = rig.popen(
             [str(WRAPPER), "test"],
-            env=rig.env(DOTNET_SERIALIZED_STALL_SECONDS="2", DOTNET_SERIALIZED_WATCHDOG_POLL="1",
-                        DOTNET_SERIALIZED_WATCHDOG_GRACE="1"),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            env=rig.env(
+                DOTNET_SERIALIZED_STALL_SECONDS="2",
+                DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+                DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
+            ),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         watchdog: Optional[int] = None
         child: Optional[int] = None
         try:
             wait_for(started.exists, what="the fake dotnet to start")
             child = rig.child_pid()
             assert child is not None and _alive(child)
-            wait_for(lambda: len(_wrapper_subshells(holder.pid)) == 1,
-                     what="exactly one watchdog subshell under the holder")
+            wait_for(
+                lambda: len(_wrapper_subshells(holder.pid)) == 1,
+                what="exactly one watchdog subshell under the holder",
+            )
             watchdog = _wrapper_subshells(holder.pid)[0]
             # Positive control: the thing whose absence is asserted below exists right now.
             assert _alive(watchdog)
 
             holder.kill()
             holder.wait(timeout=30)
-            assert _alive(child), "the fake dotnet should have been orphaned, not reaped"
+            assert _alive(
+                child
+            ), "the fake dotnet should have been orphaned, not reaped"
 
-            wait_for(lambda: not _alive(watchdog), timeout=10,
-                     what="the orphaned watchdog to exit with its wrapper (#2076)")
+            wait_for(
+                lambda: not _alive(watchdog),
+                timeout=10,
+                what="the orphaned watchdog to exit with its wrapper (#2076)",
+            )
             assert _alive(child), (
                 "the watchdog must simply exit — the orphaned child still holds the lock by "
-                "design (#1508), and is not the dead wrapper's watchdog's to kill")
+                "design (#1508), and is not the dead wrapper's watchdog's to kill"
+            )
         finally:
             for pid in (watchdog, child):
                 if pid is not None and _alive(pid):
@@ -853,9 +934,12 @@ class TestWatchdogScope:
         # exec: the recorded child IS the sleep, so no grandchild outlives it holding tee's pipe.
         rig.fake_dotnet(f': > "{started}"\necho "Total: 1"\nexec sleep 120\n')
 
-        holder = rig.spawn("test", DOTNET_SERIALIZED_STALL_SECONDS="4",
-                           DOTNET_SERIALIZED_WATCHDOG_POLL="1",
-                           DOTNET_SERIALIZED_WATCHDOG_GRACE="1")
+        holder = rig.spawn(
+            "test",
+            DOTNET_SERIALIZED_STALL_SECONDS="4",
+            DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+            DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
+        )
         decoy = rig.popen(["sleep", "120"])
         child: Optional[int] = None
         try:
@@ -869,10 +953,13 @@ class TestWatchdogScope:
 
             _, err = holder.communicate(timeout=30)
 
-            assert holder.returncode == 4, (
-                f"the stalled run was not killed (exit {holder.returncode}); stderr={err!r}")
+            assert (
+                holder.returncode == 4
+            ), f"the stalled run was not killed (exit {holder.returncode}); stderr={err!r}"
             assert f"killed PID {child} " in err, f"the wrong pid was reported: {err!r}"
-            assert decoy.poll() is None, "the watchdog signalled a pid it was not started for"
+            assert (
+                decoy.poll() is None
+            ), "the watchdog signalled a pid it was not started for"
         finally:
             if holder.poll() is None:
                 holder.kill()
@@ -902,14 +989,20 @@ class TestWatchdogScope:
             f'  *" --second "*) : > "{b_started}"; i=0\n'
             '    while [ $i -lt 8 ]; do echo "progress $i"; sleep 1; i=$((i + 1)); done\n'
             '    echo "Total: 1" ;;\n'
-            'esac\n')
+            "esac\n"
+        )
 
         first = rig.popen(
             [str(WRAPPER), "test", "--first"],
-            env=rig.env(DOTNET_SERIALIZED_STALL_SECONDS="2", DOTNET_SERIALIZED_WATCHDOG_POLL="1",
-                        DOTNET_SERIALIZED_WATCHDOG_GRACE="1"),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            new_group=False)  # SIGSTOP below: see Rig.popen; the finally kills every pid
+            env=rig.env(
+                DOTNET_SERIALIZED_STALL_SECONDS="2",
+                DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+                DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
+            ),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            new_group=False,
+        )  # SIGSTOP below: see Rig.popen; the finally kills every pid
         watchdog: Optional[int] = None
         first_child: Optional[int] = None
         second: Optional[subprocess.Popen] = None
@@ -917,8 +1010,10 @@ class TestWatchdogScope:
             wait_for(a_started.exists, what="the first fake dotnet to start")
             first_child = rig.child_pid()
             assert first_child is not None and _alive(first_child)
-            wait_for(lambda: len(_wrapper_subshells(first.pid)) == 1,
-                     what="exactly one watchdog subshell under the first holder")
+            wait_for(
+                lambda: len(_wrapper_subshells(first.pid)) == 1,
+                what="exactly one watchdog subshell under the first holder",
+            )
             watchdog = _wrapper_subshells(first.pid)[0]
             os.kill(watchdog, signal.SIGSTOP)
 
@@ -928,25 +1023,35 @@ class TestWatchdogScope:
             wait_for(lambda: not _alive(first_child), what="the first child to die")
             first_child_died = time.time()
 
-            second = rig.spawn("test", "--second", DOTNET_SERIALIZED_STALL_SECONDS="600",
-                               DOTNET_SERIALIZED_WATCHDOG_POLL="1")
+            second = rig.spawn(
+                "test",
+                "--second",
+                DOTNET_SERIALIZED_STALL_SECONDS="600",
+                DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+            )
             wait_for(b_started.exists, what="the second holder's fake dotnet to start")
             second_child = rig.child_pid()
             assert second_child is not None and _alive(second_child)
             # Past the orphan's 2 s threshold on its own (dead) run's log, so a pre-#2076
             # orphan would fire on its very next poll.
             time.sleep(max(0.0, first_child_died + 3.0 - time.time()))
-            assert _alive(watchdog), "positive control: the orphan must still exist to be thawed"
+            assert _alive(
+                watchdog
+            ), "positive control: the orphan must still exist to be thawed"
             os.kill(watchdog, signal.SIGCONT)
 
             out, err = second.communicate(timeout=60)
 
             assert second.returncode == 0, (
                 f"the second holder's run was signalled (exit {second.returncode}) — the #2076 "
-                f"orphan killed a healthy run; stderr={err!r}")
+                f"orphan killed a healthy run; stderr={err!r}"
+            )
             assert "progress 7" in out and "watchdog" not in err.lower()
-            wait_for(lambda: not _alive(watchdog), timeout=10,
-                     what="the orphaned watchdog to exit")
+            wait_for(
+                lambda: not _alive(watchdog),
+                timeout=10,
+                what="the orphaned watchdog to exit",
+            )
         finally:
             if watchdog is not None and _alive(watchdog):
                 os.kill(watchdog, signal.SIGCONT)
@@ -979,7 +1084,8 @@ def test_the_portable_stat_fallback_resolves_on_this_platform(tmp_path: Path):
 
     assert result.stdout.strip().isdigit(), (
         f"the wrapper's stat fallback did not produce an mtime on this platform: "
-        f"command={command!r} {result!r}")
+        f"command={command!r} {result!r}"
+    )
 
 
 class TestHolderIdentity:
@@ -1005,7 +1111,7 @@ class TestHolderIdentity:
         started_sentinel = rig.root / "child_started"
         rig.fake_dotnet(
             f': > "{started_sentinel}"\n'
-            f'i=0\n'
+            f"i=0\n"
             f'while [ $i -lt 25 ]; do echo "line $i"; sleep 0.2; i=$((i + 1)); done\n'
             f'echo "Total: 1"\n'
         )
@@ -1025,18 +1131,23 @@ class TestHolderIdentity:
             assert log_file.exists(), "log file not published"
 
             cwd_val = cwd_file.read_text(encoding="utf-8").strip()
-            assert cwd_val == str(rig.root.resolve()), (
-                f"cwd mismatch: got {cwd_val!r}, expected {str(rig.root.resolve())!r}")
+            assert cwd_val == str(
+                rig.root.resolve()
+            ), f"cwd mismatch: got {cwd_val!r}, expected {str(rig.root.resolve())!r}"
 
             started_val = int(started_file.read_text(encoding="utf-8").strip())
             now = int(time.time())
-            assert abs(now - started_val) <= 5, (
-                f"started timestamp {started_val} is not within 5s of now ({now})")
+            assert (
+                abs(now - started_val) <= 5
+            ), f"started timestamp {started_val} is not within 5s of now ({now})"
 
             log_val = log_file.read_text(encoding="utf-8").strip()
-            assert log_val.endswith(".log"), f"log pointer doesn't end with .log: {log_val!r}"
-            assert os.path.isabs(log_val) or log_val.startswith(str(rig.logs)), (
-                f"log pointer doesn't look like a slot path: {log_val!r}")
+            assert log_val.endswith(
+                ".log"
+            ), f"log pointer doesn't end with .log: {log_val!r}"
+            assert os.path.isabs(log_val) or log_val.startswith(
+                str(rig.logs)
+            ), f"log pointer doesn't look like a slot path: {log_val!r}"
         finally:
             holder.terminate()
             holder.wait(timeout=30)
@@ -1046,7 +1157,7 @@ class TestHolderIdentity:
         started_sentinel = rig.root / "child_started"
         rig.fake_dotnet(
             f': > "{started_sentinel}"\n'
-            f'i=0\n'
+            f"i=0\n"
             f'while [ $i -lt 100 ]; do echo "line $i"; sleep 0.2; i=$((i + 1)); done\n'
             f'echo "Total: 1"\n'
         )
@@ -1063,10 +1174,12 @@ class TestHolderIdentity:
             )
 
             assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
-            assert "LIVE" in result.stdout, (
-                f"expected LIVE in output, got: {result.stdout!r}")
-            assert "grew by" in result.stdout, (
-                f"expected 'grew by' in output, got: {result.stdout!r}")
+            assert (
+                "LIVE" in result.stdout
+            ), f"expected LIVE in output, got: {result.stdout!r}"
+            assert (
+                "grew by" in result.stdout
+            ), f"expected 'grew by' in output, got: {result.stdout!r}"
         finally:
             holder.terminate()
             holder.wait(timeout=30)
@@ -1075,9 +1188,7 @@ class TestHolderIdentity:
         """A holder producing no output is reported NO GROWTH."""
         started_sentinel = rig.root / "child_started"
         rig.fake_dotnet(
-            f'echo "Total: 1"\n'
-            f': > "{started_sentinel}"\n'
-            f'sleep 30\n'
+            f'echo "Total: 1"\n' f': > "{started_sentinel}"\n' f"sleep 30\n"
         )
 
         holder = rig.spawn("test", DOTNET_SERIALIZED_STALL_SECONDS="600")
@@ -1092,8 +1203,9 @@ class TestHolderIdentity:
             )
 
             assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
-            assert "NO GROWTH" in result.stdout, (
-                f"expected NO GROWTH in output, got: {result.stdout!r}")
+            assert (
+                "NO GROWTH" in result.stdout
+            ), f"expected NO GROWTH in output, got: {result.stdout!r}"
         finally:
             holder.terminate()
             holder.wait(timeout=30)
@@ -1107,8 +1219,9 @@ class TestHolderIdentity:
             result = rig.run("--holder-status")
 
             assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
-            assert "no log published (lock-only holder)" in result.stdout, (
-                f"expected 'no log published' message, got: {result.stdout!r}")
+            assert (
+                "no log published (lock-only holder)" in result.stdout
+            ), f"expected 'no log published' message, got: {result.stdout!r}"
         finally:
             rig.run("--release-lock", str(os.getpid()))
 
@@ -1119,5 +1232,6 @@ class TestHolderIdentity:
         result = rig.run("test")
 
         assert result.returncode == 0, f"run failed: {result.stderr}"
-        assert not rig.lock_dir.exists(), (
-            "lock dir should be gone after release (cleanup rm -rf's it)")
+        assert (
+            not rig.lock_dir.exists()
+        ), "lock dir should be gone after release (cleanup rm -rf's it)"

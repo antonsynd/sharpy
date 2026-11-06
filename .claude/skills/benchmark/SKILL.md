@@ -30,13 +30,13 @@ Available: `fibonacci`, `sorting`, `string_ops`, `list_comprehensions`, `matrix_
 Measures how fast the compiler itself runs (lex/parse/emit).
 
 ```bash
-# Run full suite
-dotnet run --project src/Sharpy.Compiler.Benchmarks -c Release -- \
+# Run full suite (raw `dotnet run` is hook-blocked — it builds; the wrapper is a drop-in)
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Compiler.Benchmarks -c Release -- \
   --filter "*CompilerBenchmarks*" --exporters json markdown \
   --artifacts .claude/tmp/benchmark-results
 
 # Specific benchmark
-dotnet run --project src/Sharpy.Compiler.Benchmarks -c Release -- \
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Compiler.Benchmarks -c Release -- \
   --filter "*Fibonacci*" --exporters markdown \
   --artifacts .claude/tmp/benchmark-results
 ```

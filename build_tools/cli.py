@@ -830,9 +830,7 @@ def stdlib_gen(
             force=force,
             verbose=verbose,
             stdlib_dir=resolved_stdlib,
-            mkdocs_path=mkdocs_path.resolve()
-            if (mkdocs_path and not no_nav)
-            else None,
+            mkdocs_path=mkdocs_path.resolve() if (mkdocs_path and not no_nav) else None,
             update_nav=not no_nav,
         )
         if not verbose:
@@ -917,6 +915,7 @@ def status():
 
 
 from build_tools.clean_fixture_bins import clean_fixture_bins
+
 cli.add_command(clean_fixture_bins)
 
 

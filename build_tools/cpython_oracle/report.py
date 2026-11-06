@@ -24,7 +24,9 @@ def render_markdown(report: ModuleReport) -> str:
     lines.append(f"- CPython source: {report.source_path or '(inline)'}")
     lines.append(f"- CPython version pin: {report.cpython_version}")
     lines.append(f"- Test methods: {total}")
-    lines.append(f"- Portable: {counts[Category.PORTABLE]} ({report.portable_pct():.1f}%)")
+    lines.append(
+        f"- Portable: {counts[Category.PORTABLE]} ({report.portable_pct():.1f}%)"
+    )
     lines.append("")
     lines.append("## Category counts")
     lines.append("")

@@ -196,13 +196,17 @@ class Verdict:
         """
         if not self.samples:
             return ""
-        parts = " ".join(f"{name.replace('@position', '@')}:{count}"
-                         for name, count in sorted(self.samples.items()))
+        parts = " ".join(
+            f"{name.replace('@position', '@')}:{count}"
+            for name, count in sorted(self.samples.items())
+        )
         return f" [samples {parts}]"
 
     def describe(self, arm_a: str, arm_b: str) -> str:
         if not self.measured or self.pooled_delta_percent is None:
-            return f"  {self.benchmark}: UNMEASURED — {self.reason}{self.sample_summary()}"
+            return (
+                f"  {self.benchmark}: UNMEASURED — {self.reason}{self.sample_summary()}"
+            )
         assert self.delta_first_percent is not None
         assert self.delta_second_percent is not None
         direction = "slower" if self.pooled_delta_percent > 0 else "faster"
@@ -258,14 +262,20 @@ def warmup_split_lines(
     """
     early, late = split_discarded(measurements, discard_rounds)
     if not early:
-        return [f"Warm-up split: no rounds discarded (--discard-rounds {discard_rounds})."]
+        return [
+            f"Warm-up split: no rounds discarded (--discard-rounds {discard_rounds})."
+        ]
 
     early_by_benchmark: dict[str, list[float]] = {}
     late_by_benchmark: dict[str, list[float]] = {}
     for measurement in early:
-        early_by_benchmark.setdefault(measurement.benchmark, []).append(measurement.mean_ns)
+        early_by_benchmark.setdefault(measurement.benchmark, []).append(
+            measurement.mean_ns
+        )
     for measurement in late:
-        late_by_benchmark.setdefault(measurement.benchmark, []).append(measurement.mean_ns)
+        late_by_benchmark.setdefault(measurement.benchmark, []).append(
+            measurement.mean_ns
+        )
 
     lines = [
         f"Warm-up split: {discard_rounds} discarded round(s) vs the pooled tail "
@@ -286,7 +296,9 @@ def warmup_split_lines(
     return lines
 
 
-def pool_by_position(measurements: Iterable[Measurement]) -> dict[tuple[str, str, int], float]:
+def pool_by_position(
+    measurements: Iterable[Measurement],
+) -> dict[tuple[str, str, int], float]:
     """Median of each (benchmark, arm, position) cell. Median, not mean: a single
     scheduling hiccup in one round should not move the cell."""
     buckets: dict[tuple[str, str, int], list[float]] = {}
@@ -339,12 +351,18 @@ def evaluate(
             if value is None
         ]
         if missing:
-            verdicts.append(Verdict(
-                benchmark, None, None, None, False,
-                "not measured in every (arm, position) cell — interleaving incomplete: "
-                + ", ".join(missing),
-                samples,
-            ))
+            verdicts.append(
+                Verdict(
+                    benchmark,
+                    None,
+                    None,
+                    None,
+                    False,
+                    "not measured in every (arm, position) cell — interleaving incomplete: "
+                    + ", ".join(missing),
+                    samples,
+                )
+            )
             continue
 
         # Present in every cell is not the same as comparable. An interrupted round (#1420) or
@@ -354,13 +372,21 @@ def evaluate(
         # for the same reason a dropped round's samples never reach the pool: half a round is
         # not a comparison, and a median over unequal cells hides that it ever happened.
         if len(set(samples.values())) != 1:
-            counted = " ".join(f"{name}:{count}" for name, count in sorted(samples.items()))
-            verdicts.append(Verdict(
-                benchmark, None, None, None, False,
-                "unbalanced (arm, position) cells — an interrupted or odd-count round left "
-                f"{counted}; refusing to pool",
-                samples,
-            ))
+            counted = " ".join(
+                f"{name}:{count}" for name, count in sorted(samples.items())
+            )
+            verdicts.append(
+                Verdict(
+                    benchmark,
+                    None,
+                    None,
+                    None,
+                    False,
+                    "unbalanced (arm, position) cells — an interrupted or odd-count round left "
+                    f"{counted}; refusing to pool",
+                    samples,
+                )
+            )
             continue
 
         a_first, a_second = cells[(arm_a, 0)], cells[(arm_a, 1)]
@@ -384,30 +410,48 @@ def evaluate(
         pooled_delta = _geometric_percent(b_second / a_first, b_first / a_second)
 
         if (delta_first > 0) != (delta_second > 0):
-            verdicts.append(Verdict(
-                benchmark, delta_first, delta_second, pooled_delta, False,
-                f"position-dominated: {delta_first:+.1f}% when {arm_b} ran second, "
-                f"{delta_second:+.1f}% when {arm_b} ran first. The two orderings disagree on "
-                "the SIGN, so there is no delta to report",
-                samples,
-            ))
+            verdicts.append(
+                Verdict(
+                    benchmark,
+                    delta_first,
+                    delta_second,
+                    pooled_delta,
+                    False,
+                    f"position-dominated: {delta_first:+.1f}% when {arm_b} ran second, "
+                    f"{delta_second:+.1f}% when {arm_b} ran first. The two orderings disagree on "
+                    "the SIGN, so there is no delta to report",
+                    samples,
+                )
+            )
             continue
 
         if abs(pooled_delta) < threshold_percent:
-            verdicts.append(Verdict(
-                benchmark, delta_first, delta_second, pooled_delta, False,
-                f"below the {threshold_percent:.0f}% floor "
-                f"(pooled {pooled_delta:+.1f}%) — inside the range the position artifact "
-                "alone can produce",
-                samples,
-            ))
+            verdicts.append(
+                Verdict(
+                    benchmark,
+                    delta_first,
+                    delta_second,
+                    pooled_delta,
+                    False,
+                    f"below the {threshold_percent:.0f}% floor "
+                    f"(pooled {pooled_delta:+.1f}%) — inside the range the position artifact "
+                    "alone can produce",
+                    samples,
+                )
+            )
             continue
 
-        verdicts.append(Verdict(
-            benchmark, delta_first, delta_second, pooled_delta, True,
-            "both positions agree in sign and the pooled delta clears the floor",
-            samples,
-        ))
+        verdicts.append(
+            Verdict(
+                benchmark,
+                delta_first,
+                delta_second,
+                pooled_delta,
+                True,
+                "both positions agree in sign and the pooled delta clears the floor",
+                samples,
+            )
+        )
 
     return verdicts
 
@@ -477,9 +521,12 @@ def acquire_round_lock(repo_root: str) -> bool:
         raise RuntimeError(
             "the dotnet lock path is not writable from this shell — it is sandboxed. Re-run "
             "with the sandbox disabled. Do NOT fall back to unserialised dotnet: concurrent "
-            "runs cost 5-10 GB each and OOM the machine.")
+            "runs cost 5-10 GB each and OOM the machine."
+        )
     if result.returncode != 0:
-        raise RuntimeError(f"could not acquire the dotnet lock (exit {result.returncode})")
+        raise RuntimeError(
+            f"could not acquire the dotnet lock (exit {result.returncode})"
+        )
     return True
 
 
@@ -507,7 +554,9 @@ def lock_generation(repo_root: str) -> Optional[int]:
     wrapper = _wrapper_path(repo_root)
     if wrapper is None:
         return None
-    result = subprocess.run([wrapper, "--lock-generation"], capture_output=True, text=True)
+    result = subprocess.run(
+        [wrapper, "--lock-generation"], capture_output=True, text=True
+    )
     try:
         return int(result.stdout.strip())
     except (ValueError, AttributeError):
@@ -518,18 +567,24 @@ def _record_child(repo_root: str, child_pid: int) -> None:
     """Point the held lock at *child_pid* via the wrapper's ``--record-child`` verb (#1508)."""
     wrapper = _wrapper_path(repo_root)
     if wrapper is None:
-        raise RuntimeError("no dotnet-serialized wrapper to record the benchmark child with")
+        raise RuntimeError(
+            "no dotnet-serialized wrapper to record the benchmark child with"
+        )
     result = subprocess.run(
         [wrapper, "--record-child", str(os.getpid()), str(child_pid)],
-        capture_output=True, text=True)
+        capture_output=True,
+        text=True,
+    )
     if result.returncode != 0:
         raise RuntimeError(
             f"could not record the benchmark child {child_pid} in the dotnet lock "
-            f"(exit {result.returncode}): {result.stderr.strip()}")
+            f"(exit {result.returncode}): {result.stderr.strip()}"
+        )
 
 
-def _run(command: list[str], cwd: Optional[str] = None,
-         record_child_in: Optional[str] = None) -> None:
+def _run(
+    command: list[str], cwd: Optional[str] = None, record_child_in: Optional[str] = None
+) -> None:
     """
     Run *command*, raising on a nonzero exit.
 
@@ -588,15 +643,26 @@ def prepare_worktree(repo_root: str, ref: str, destination: str) -> str:
     # Both failing spellings restore "successfully" first, so the symptom lands on the build.
     worktree = os.path.realpath(destination)
     project = os.path.join("src", "Sharpy.Compiler.Benchmarks")
-    _run(_dotnet_command(repo_root, [
-        "restore", os.path.join(project, "Sharpy.Compiler.Benchmarks.csproj")]), cwd=worktree)
-    _run(_dotnet_command(repo_root, [
-        "build", "-c", "Release", "--no-restore", project]), cwd=worktree)
+    _run(
+        _dotnet_command(
+            repo_root,
+            ["restore", os.path.join(project, "Sharpy.Compiler.Benchmarks.csproj")],
+        ),
+        cwd=worktree,
+    )
+    _run(
+        _dotnet_command(repo_root, ["build", "-c", "Release", "--no-restore", project]),
+        cwd=worktree,
+    )
     return worktree
 
 
 def run_arm(
-    repo_root: str, worktree: str, artifacts: str, bdn_filter: str, job: Optional[str] = None,
+    repo_root: str,
+    worktree: str,
+    artifacts: str,
+    bdn_filter: str,
+    job: Optional[str] = None,
     lock_held: bool = False,
 ) -> dict[str, float]:
     """
@@ -608,9 +674,19 @@ def run_arm(
     SIGKILLed bench_ab cannot leave an orphaned benchmark behind a stale-reading lock (#1508).
     """
     args = [
-        "run", "--project", os.path.join("src", "Sharpy.Compiler.Benchmarks"),
-        "-c", "Release", "--no-build", "--",
-        "--filter", bdn_filter, "--exporters", "json", "--artifacts", artifacts,
+        "run",
+        "--project",
+        os.path.join("src", "Sharpy.Compiler.Benchmarks"),
+        "-c",
+        "Release",
+        "--no-build",
+        "--",
+        "--filter",
+        bdn_filter,
+        "--exporters",
+        "json",
+        "--artifacts",
+        artifacts,
     ]
     # Same relative-path-from-inside-the-worktree rule as prepare_worktree.
     command = ["dotnet"] + args if lock_held else _dotnet_command(repo_root, args)
@@ -664,14 +740,26 @@ def orchestrate(
         try:
             generation_before = lock_generation(repo_root)
             for position, ref in enumerate(order):
-                artifacts = os.path.join(workdir, f"artifacts_r{round_index}_p{position}")
-                print(f"[bench_ab] round {round_index + 1}/{total_rounds} ({disposition}), "
-                      f"position {position + 1}: {ref}", flush=True)
-                arm_means = run_arm(repo_root, worktrees[ref], artifacts, bdn_filter, job,
-                                    lock_held=lock_held)
+                artifacts = os.path.join(
+                    workdir, f"artifacts_r{round_index}_p{position}"
+                )
+                print(
+                    f"[bench_ab] round {round_index + 1}/{total_rounds} ({disposition}), "
+                    f"position {position + 1}: {ref}",
+                    flush=True,
+                )
+                arm_means = run_arm(
+                    repo_root,
+                    worktrees[ref],
+                    artifacts,
+                    bdn_filter,
+                    job,
+                    lock_held=lock_held,
+                )
                 for benchmark, mean_ns in arm_means.items():
                     round_measurements.append(
-                        Measurement(ref, position, benchmark, mean_ns, round_index))
+                        Measurement(ref, position, benchmark, mean_ns, round_index)
+                    )
             generation_after = lock_generation(repo_root)
         finally:
             if lock_held:
@@ -682,9 +770,12 @@ def orchestrate(
             # either side of another dotnet run. Dropping the round is the same "this round is
             # not comparable" mechanism the discard window uses, which is why they share one
             # pooling path rather than two.
-            print(f"[bench_ab] round {round_index + 1} DROPPED: the lock changed hands between "
-                  f"its arms (generation {generation_before} -> {generation_after}), so the two "
-                  "arms were measured in different machine states", flush=True)
+            print(
+                f"[bench_ab] round {round_index + 1} DROPPED: the lock changed hands between "
+                f"its arms (generation {generation_before} -> {generation_after}), so the two "
+                "arms were measured in different machine states",
+                flush=True,
+            )
             continue
 
         measurements.extend(round_measurements)
@@ -696,7 +787,9 @@ def cleanup_worktrees(repo_root: str, workdir: str) -> None:
     for name in ("arm_a", "arm_b"):
         path = os.path.join(workdir, name)
         if os.path.isdir(path):
-            subprocess.run(["git", "worktree", "remove", "--force", path], cwd=repo_root)
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", path], cwd=repo_root
+            )
     shutil.rmtree(workdir, ignore_errors=True)
 
 
@@ -725,22 +818,27 @@ def report(
         "",
     ]
     if dropped_rounds:
-        lines.insert(2, f"{dropped_rounds} round(s) DROPPED as interrupted — the lock changed "
-                        "hands between their arms, so those arms were measured either side of "
-                        "another dotnet run (#1420).")
+        lines.insert(
+            2,
+            f"{dropped_rounds} round(s) DROPPED as interrupted — the lock changed "
+            "hands between their arms, so those arms were measured either side of "
+            "another dotnet run (#1420).",
+        )
     lines.extend(v.describe(arm_a, arm_b) for v in verdicts)
     if split_lines:
         lines.append("")
         lines.extend(split_lines)
-    lines.extend([
-        "",
-        "A delta is reported only when both positions agree in sign AND the pooled "
-        f"magnitude clears {SIGNIFICANCE_THRESHOLD_PERCENT:.0f}%. Run position alone moves "
-        "wall clock 7-10% on this corpus (#1318), so anything smaller is unmeasured, not zero.",
-        "The floor has NOT been re-derived since the discard window landed (#1418): settled "
-        "rounds agree far more tightly, but lowering it needs an A/A run on a quiet machine. "
-        "Deferred — see benchmarks/BASELINE.md.",
-    ])
+    lines.extend(
+        [
+            "",
+            "A delta is reported only when both positions agree in sign AND the pooled "
+            f"magnitude clears {SIGNIFICANCE_THRESHOLD_PERCENT:.0f}%. Run position alone moves "
+            "wall clock 7-10% on this corpus (#1318), so anything smaller is unmeasured, not zero.",
+            "The floor has NOT been re-derived since the discard window landed (#1418): settled "
+            "rounds agree far more tightly, but lowering it needs an A/A run on a quiet machine. "
+            "Deferred — see benchmarks/BASELINE.md.",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -751,35 +849,58 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     parser.add_argument("ref_a", help="baseline git ref (A)")
     parser.add_argument("ref_b", help="candidate git ref (B)")
-    parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS,
-                        help=f"A/B round pairs to POOL (default {DEFAULT_ROUNDS}); must be EVEN, "
-                             "because an odd count leaves the (arm, position) cells unbalanced "
-                             "and unbalanced cells are refused rather than pooled")
-    parser.add_argument("--discard-rounds", type=int, default=DEFAULT_DISCARD_ROUNDS,
-                        help=f"opening rounds run but not pooled (default "
-                             f"{DEFAULT_DISCARD_ROUNDS}); the machine needs ~8 invocations to "
-                             "settle (#1418). 0 pools everything and prints the split anyway")
-    parser.add_argument("--filter", dest="bdn_filter", default=DEFAULT_FILTER,
-                        help=f"BenchmarkDotNet --filter (default {DEFAULT_FILTER!r})")
-    parser.add_argument("--job", default=None,
-                        help="BenchmarkDotNet --job (e.g. short, medium); omit for the default. "
-                             "A shorter job buys more rounds, which is what cancels position.")
-    parser.add_argument("--keep-worktrees", action="store_true",
-                        help="leave the prepared worktrees in place for inspection")
+    parser.add_argument(
+        "--rounds",
+        type=int,
+        default=DEFAULT_ROUNDS,
+        help=f"A/B round pairs to POOL (default {DEFAULT_ROUNDS}); must be EVEN, "
+        "because an odd count leaves the (arm, position) cells unbalanced "
+        "and unbalanced cells are refused rather than pooled",
+    )
+    parser.add_argument(
+        "--discard-rounds",
+        type=int,
+        default=DEFAULT_DISCARD_ROUNDS,
+        help=f"opening rounds run but not pooled (default "
+        f"{DEFAULT_DISCARD_ROUNDS}); the machine needs ~8 invocations to "
+        "settle (#1418). 0 pools everything and prints the split anyway",
+    )
+    parser.add_argument(
+        "--filter",
+        dest="bdn_filter",
+        default=DEFAULT_FILTER,
+        help=f"BenchmarkDotNet --filter (default {DEFAULT_FILTER!r})",
+    )
+    parser.add_argument(
+        "--job",
+        default=None,
+        help="BenchmarkDotNet --job (e.g. short, medium); omit for the default. "
+        "A shorter job buys more rounds, which is what cancels position.",
+    )
+    parser.add_argument(
+        "--keep-worktrees",
+        action="store_true",
+        help="leave the prepared worktrees in place for inspection",
+    )
     args = parser.parse_args(argv)
 
     if args.rounds < 2:
-        print("--rounds must be at least 2: one round measures each arm in exactly one "
-              "position, which is the sequential comparison this tool replaces.",
-              file=sys.stderr)
+        print(
+            "--rounds must be at least 2: one round measures each arm in exactly one "
+            "position, which is the sequential comparison this tool replaces.",
+            file=sys.stderr,
+        )
         return 2
     if args.rounds % 2 == 1:
         # Was a note; now an error. With unbalanced cells refused (#1509) an odd count does not
         # merely weaken the comparison, it guarantees every benchmark is refused — so the note
         # was an invitation to spend multi-minute rounds reaching a foregone "unmeasured".
-        print(f"--rounds must be EVEN: {args.rounds} leaves every (arm, position) cell pair "
-              "unbalanced by one, and unbalanced cells are refused rather than pooled, so this "
-              f"run would measure nothing. Use {args.rounds + 1}.", file=sys.stderr)
+        print(
+            f"--rounds must be EVEN: {args.rounds} leaves every (arm, position) cell pair "
+            "unbalanced by one, and unbalanced cells are refused rather than pooled, so this "
+            f"run would measure nothing. Use {args.rounds + 1}.",
+            file=sys.stderr,
+        )
         return 2
     if args.discard_rounds < 0:
         print("--discard-rounds cannot be negative.", file=sys.stderr)
@@ -787,13 +908,23 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     repo_root = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=True).stdout.strip()
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
 
     workdir = tempfile.mkdtemp(prefix="sharpy_bench_ab_")
     try:
         measurements = orchestrate(
-            repo_root, args.ref_a, args.ref_b, args.rounds, args.bdn_filter, workdir, args.job,
-            discard_rounds=args.discard_rounds)
+            repo_root,
+            args.ref_a,
+            args.ref_b,
+            args.rounds,
+            args.bdn_filter,
+            workdir,
+            args.job,
+            discard_rounds=args.discard_rounds,
+        )
         # Pool the settled tail only; the discarded rounds still reach the reader, as the
         # early/late split, because "this run had not settled" is a conclusion no pooled
         # number can express (#1418).
@@ -801,13 +932,22 @@ def main(argv: Optional[list[str]] = None) -> int:
         # A round dropped as interrupted never reaches `measurements`, so the gap in the
         # retained round indices is what counts them — reported rather than silently shrinking
         # the sample.
-        expected_rounds = set(range(args.discard_rounds, args.discard_rounds + args.rounds))
+        expected_rounds = set(
+            range(args.discard_rounds, args.discard_rounds + args.rounds)
+        )
         dropped = len(expected_rounds - {m.round_index for m in pooled})
         verdicts = evaluate(pooled, args.ref_a, args.ref_b)
-        print(report(verdicts, args.ref_a, args.ref_b, args.rounds,
-                     discard_rounds=args.discard_rounds,
-                     split_lines=warmup_split_lines(measurements, args.discard_rounds),
-                     dropped_rounds=dropped))
+        print(
+            report(
+                verdicts,
+                args.ref_a,
+                args.ref_b,
+                args.rounds,
+                discard_rounds=args.discard_rounds,
+                split_lines=warmup_split_lines(measurements, args.discard_rounds),
+                dropped_rounds=dropped,
+            )
+        )
     finally:
         if not args.keep_worktrees:
             cleanup_worktrees(repo_root, workdir)

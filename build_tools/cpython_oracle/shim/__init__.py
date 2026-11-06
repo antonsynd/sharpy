@@ -64,7 +64,9 @@ class _TestDecorator:
 
         return deco
 
-    def skip_if(self, condition: Any, reason: str = "") -> Callable[[Callable], Callable]:
+    def skip_if(
+        self, condition: Any, reason: str = ""
+    ) -> Callable[[Callable], Callable]:
         def deco(func: Callable[[], Any]) -> Callable[[], Any]:
             setattr(func, TEST_MARKER, True)
             if condition:
@@ -73,7 +75,9 @@ class _TestDecorator:
 
         return deco
 
-    def parametrize(self, _argnames: Any, argvalues: Any) -> Callable[[Callable], Callable]:
+    def parametrize(
+        self, _argnames: Any, argvalues: Any
+    ) -> Callable[[Callable], Callable]:
         """Run the body once per row, spreading each row as positional args."""
 
         def deco(func: Callable[..., Any]) -> Callable[[], Any]:
@@ -117,7 +121,13 @@ class _Approx:
 
     __slots__ = ("expected", "places", "abs", "rel")
 
-    def __init__(self, expected: float, places: int = 7, abs: float = 0.0, rel: float | None = None):
+    def __init__(
+        self,
+        expected: float,
+        places: int = 7,
+        abs: float = 0.0,
+        rel: float | None = None,
+    ):
         self.expected = expected
         self.places = places
         self.abs = abs
@@ -156,7 +166,9 @@ class _Approx:
 builtins_abs = abs
 
 
-def approx(expected: float, places: int = 7, abs: float = 0.0, rel: float | None = None) -> _Approx:
+def approx(
+    expected: float, places: int = 7, abs: float = 0.0, rel: float | None = None
+) -> _Approx:
     """Mirror of ``Sharpy.Unittest.Approx`` for use under CPython."""
     return _Approx(expected, places=places, abs=abs, rel=rel)
 
@@ -202,7 +214,9 @@ def apply_module_adapters() -> None:
             setattr(mod, func_attr, _wrap_kwargs(target, kwarg_map))
 
 
-def _wrap_kwargs(target: Callable[..., Any], kwarg_map: Dict[str, str]) -> Callable[..., Any]:
+def _wrap_kwargs(
+    target: Callable[..., Any], kwarg_map: Dict[str, str]
+) -> Callable[..., Any]:
     @functools.wraps(target)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         renamed = {kwarg_map.get(k, k): v for k, v in kwargs.items()}

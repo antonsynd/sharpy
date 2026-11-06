@@ -6,70 +6,27 @@ namespace Sharpy
     public sealed partial class Dict<K, V>
     {
         /// <summary>
-        /// Allocation-free struct enumerator over the keys. Splices the null-key
-        /// slot at its ordinal position within the dictionary's key sequence.
+        /// Allocation-free struct enumerator over the keys, in insertion order.
         /// </summary>
         public struct KeyEnumerator : IEnumerator<K>
         {
-            private Dictionary<K, V>.KeyCollection.Enumerator _inner;
-            private readonly bool _hasNull;
-            private readonly int _nullOrdinal;
-            private int _index;
-            private bool _yieldedNull;
-            private K _current;
+            private EntryCursor _cursor;
 
             internal KeyEnumerator(Dict<K, V> dict)
             {
-                _inner = dict._dict.Keys.GetEnumerator();
-                _hasNull = dict._hasNullKey;
-                _nullOrdinal = dict._nullOrdinal;
-                _index = -1;
-                _yieldedNull = false;
-                _current = default!;
+                _cursor = dict.CreateCursor();
             }
 
-            public K Current => _current;
+            public K Current => _cursor.Key;
 
-            object IEnumerator.Current => _current!;
+            object IEnumerator.Current => _cursor.Key!;
 
-            public bool MoveNext()
-            {
-                _index++;
+            public bool MoveNext() => _cursor.MoveNext();
 
-                if (_hasNull && !_yieldedNull && _index == _nullOrdinal)
-                {
-                    _current = default!;
-                    _yieldedNull = true;
-                    return true;
-                }
-
-                if (_inner.MoveNext())
-                {
-                    _current = _inner.Current;
-                    return true;
-                }
-
-                if (_hasNull && !_yieldedNull)
-                {
-                    _current = default!;
-                    _yieldedNull = true;
-                    return true;
-                }
-
-                return false;
-            }
-
-            public void Reset()
-            {
-                ((IEnumerator)_inner).Reset();
-                _index = -1;
-                _yieldedNull = false;
-                _current = default!;
-            }
+            public void Reset() => _cursor.Reset();
 
             public void Dispose()
             {
-                _inner.Dispose();
             }
         }
 
@@ -101,7 +58,7 @@ namespace Sharpy
         /// <summary>
         /// Gets the number of key/value pairs in the dictionary.
         /// </summary>
-        public int Count => _dict.Count + (_hasNullKey ? 1 : 0);
+        public int Count => _count;
 
         /// <summary>
         /// Gets a collection containing the keys in the dictionary.
@@ -125,67 +82,34 @@ namespace Sharpy
 
         private IEnumerable<K> EnumerateKeys()
         {
-            int dictIndex = 0;
-            foreach (var key in _dict.Keys)
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
             {
-                if (_hasNullKey && dictIndex == _nullOrdinal)
-                {
-                    yield return default!;
-                }
-
-                yield return key;
-                dictIndex++;
-            }
-
-            if (_hasNullKey && _nullOrdinal >= _dict.Count)
-            {
-                yield return default!;
+                yield return cursor.Key;
             }
         }
 
-        private IEnumerable<V> EnumerateValues()
-        {
-            int dictIndex = 0;
-            foreach (var kvp in _dict)
-            {
-                if (_hasNullKey && dictIndex == _nullOrdinal)
-                {
-                    yield return _nullValue;
-                }
-
-                yield return kvp.Value;
-                dictIndex++;
-            }
-
-            if (_hasNullKey && _nullOrdinal >= _dict.Count)
-            {
-                yield return _nullValue;
-            }
-        }
+        private IEnumerable<V> EnumerateValues() => EnumerateValuesInOrder();
 
         /// <summary>
         /// Determines whether the dictionary contains the specified key.
         /// </summary>
-        public bool ContainsKey(K key) => IsNullKey(key) ? _hasNullKey : _dict.ContainsKey(key);
+        public bool ContainsKey(K key) => FindSlot(key) >= 0;
 
         /// <summary>
         /// Gets the value associated with the specified key.
         /// </summary>
         public bool TryGetValue(K key, out V value)
         {
-            if (IsNullKey(key))
+            int slot = FindSlot(key);
+            if (slot >= 0)
             {
-                if (_hasNullKey)
-                {
-                    value = _nullValue;
-                    return true;
-                }
-
-                value = default!;
-                return false;
+                value = _entries[slot].Value;
+                return true;
             }
 
-            return _dict.TryGetValue(key, out value!);
+            value = default!;
+            return false;
         }
 
         /// <summary>
@@ -202,24 +126,14 @@ namespace Sharpy
         /// <exception cref="System.ArgumentException">An element with the same key already exists.</exception>
         void System.Collections.Generic.IDictionary<K, V>.Add(K key, V value)
         {
-            if (IsNullKey(key))
+            if (FindSlot(key) >= 0)
             {
-                if (_hasNullKey)
-                {
-                    throw new System.ArgumentException("An element with the key 'None' already exists.");
-                }
-
-                _nullOrdinal = _dict.Count;
-                _nullValue = value;
-                _hasNullKey = true;
-                return;
+                throw new System.ArgumentException(IsNullKey(key)
+                    ? "An element with the key 'None' already exists."
+                    : $"An element with the key '{key}' already exists.");
             }
 
-            if (_dict.ContainsKey(key))
-            {
-                throw new System.ArgumentException($"An element with the key '{key}' already exists.");
-            }
-            _dict.Add(key, value);
+            InsertNew(key, value);
         }
 
         /// <summary>
@@ -228,16 +142,14 @@ namespace Sharpy
         /// <returns>true if the element was removed; false if key was not found.</returns>
         bool System.Collections.Generic.IDictionary<K, V>.Remove(K key)
         {
-            if (IsNullKey(key))
+            int slot = FindSlot(key);
+            if (slot < 0)
             {
-                if (!_hasNullKey)
-                    return false;
-                _hasNullKey = false;
-                _nullValue = default!;
-                return true;
+                return false;
             }
 
-            return _dict.Remove(key);
+            RemoveSlot(slot);
+            return true;
         }
 
         #endregion
@@ -257,23 +169,42 @@ namespace Sharpy
         /// </summary>
         bool System.Collections.Generic.ICollection<KeyValuePair<K, V>>.Contains(KeyValuePair<K, V> item)
         {
-            if (IsNullKey(item.Key))
-            {
-                return _hasNullKey && Operator.Eq(_nullValue, item.Value);
-            }
-
-            return ((System.Collections.Generic.ICollection<KeyValuePair<K, V>>)_dict).Contains(item);
+            int slot = FindSlot(item.Key);
+            return slot >= 0 && PairValueEquals(slot, item.Value);
         }
+
+        /// <summary>
+        /// The pair routes' value comparison. A pair under the None key compares through
+        /// <c>Operator.Eq</c>; any other through the default comparer, as <c>Dictionary</c>'s
+        /// <c>ICollection</c> did.
+        /// </summary>
+        private bool PairValueEquals(int slot, V value) => slot == _nullSlot
+            ? Operator.Eq(_entries[slot].Value, value)
+            : EqualityComparer<V>.Default.Equals(_entries[slot].Value, value);
 
         /// <summary>
         /// Copies the elements of the dictionary to an array.
         /// </summary>
         void System.Collections.Generic.ICollection<KeyValuePair<K, V>>.CopyTo(KeyValuePair<K, V>[] array, int arrayIndex)
         {
-            ((System.Collections.Generic.ICollection<KeyValuePair<K, V>>)_dict).CopyTo(array, arrayIndex);
-            if (_hasNullKey)
+            if (array is null)
             {
-                array[arrayIndex + _dict.Count] = new KeyValuePair<K, V>(default!, _nullValue);
+                throw new System.ArgumentNullException(nameof(array));
+            }
+
+            if (arrayIndex < 0 || arrayIndex > array.Length)
+            {
+                throw new System.ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (array.Length - arrayIndex < _count)
+            {
+                throw new System.ArgumentException("Destination array is not long enough to copy all the items in the collection.");
+            }
+
+            foreach (var pair in EnumeratePairs())
+            {
+                array[arrayIndex++] = pair;
             }
         }
 
@@ -282,19 +213,14 @@ namespace Sharpy
         /// </summary>
         bool System.Collections.Generic.ICollection<KeyValuePair<K, V>>.Remove(KeyValuePair<K, V> item)
         {
-            if (IsNullKey(item.Key))
+            int slot = FindSlot(item.Key);
+            if (slot < 0 || !PairValueEquals(slot, item.Value))
             {
-                if (_hasNullKey && Operator.Eq(_nullValue, item.Value))
-                {
-                    _hasNullKey = false;
-                    _nullValue = default!;
-                    return true;
-                }
-
                 return false;
             }
 
-            return ((System.Collections.Generic.ICollection<KeyValuePair<K, V>>)_dict).Remove(item);
+            RemoveSlot(slot);
+            return true;
         }
 
         /// <summary>
@@ -307,21 +233,10 @@ namespace Sharpy
 
         private IEnumerable<KeyValuePair<K, V>> EnumeratePairs()
         {
-            int dictIndex = 0;
-            foreach (var kvp in _dict)
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
             {
-                if (_hasNullKey && dictIndex == _nullOrdinal)
-                {
-                    yield return new KeyValuePair<K, V>(default!, _nullValue);
-                }
-
-                yield return kvp;
-                dictIndex++;
-            }
-
-            if (_hasNullKey && _nullOrdinal >= _dict.Count)
-            {
-                yield return new KeyValuePair<K, V>(default!, _nullValue);
+                yield return new KeyValuePair<K, V>(cursor.Key, cursor.Value);
             }
         }
 
@@ -346,84 +261,172 @@ namespace Sharpy
         {
             get
             {
-                if (key is null)
-                {
-                    if (_hasNullKey)
-                        return _nullValue;
-                    return null;
-                }
-
-                return ((IDictionary)_dict)[key];
+                int slot = FindSlotOfObject(key);
+                return slot >= 0 ? _entries[slot].Value : null;
             }
             set
             {
                 if (key is null)
                 {
-                    if (!_hasNullKey)
-                        _nullOrdinal = _dict.Count;
-                    _nullValue = (V)value!;
-                    _hasNullKey = true;
+                    StoreNull(ValueFromObject(value));
                     return;
                 }
 
-                ((IDictionary)_dict)[key] = value;
+                this[KeyFromObject(key)] = ValueFromObject(value);
             }
+        }
+
+        private static K KeyFromObject(object key)
+        {
+            if (key is K typedKey)
+            {
+                return typedKey;
+            }
+
+            throw new System.ArgumentException($"The value \"{key}\" is not of type \"{PyFormat.PyTypeName(typeof(K))}\" and cannot be used in this generic collection.", nameof(key));
+        }
+
+        private static V ValueFromObject(object? value)
+        {
+            if (value is V typedValue)
+            {
+                return typedValue;
+            }
+
+            if (value is null)
+            {
+                if (default(V) is null)
+                {
+                    return default!;
+                }
+
+                throw new System.ArgumentNullException(nameof(value));
+            }
+
+            throw new System.ArgumentException($"The value \"{value}\" is not of type \"{PyFormat.PyTypeName(typeof(V))}\" and cannot be used in this generic collection.", nameof(value));
         }
 
         /// <summary>Adds an element with the provided key and value (non-generic).</summary>
         void IDictionary.Add(object key, object? value)
         {
+            if (FindSlotOfObject(key) >= 0)
+            {
+                throw new System.ArgumentException($"An element with the key '{key ?? "None"}' already exists.");
+            }
+
             if (key is null)
             {
-                if (_hasNullKey)
-                {
-                    throw new System.ArgumentException("An element with the key 'None' already exists.");
-                }
-
-                _nullOrdinal = _dict.Count;
-                _nullValue = (V)value!;
-                _hasNullKey = true;
+                StoreNull(ValueFromObject(value));
                 return;
             }
 
-            ((IDictionary)_dict).Add(key, value);
+            InsertNew(KeyFromObject(key), ValueFromObject(value));
         }
 
         /// <summary>Determines whether the dictionary contains an element with the specified key (non-generic).</summary>
-        bool IDictionary.Contains(object key)
-        {
-            if (key is null)
-                return _hasNullKey;
-            return ((IDictionary)_dict).Contains(key);
-        }
+        bool IDictionary.Contains(object key) => FindSlotOfObject(key) >= 0;
 
         /// <summary>Returns an enumerator that iterates through the dictionary (non-generic).</summary>
-        IDictionaryEnumerator IDictionary.GetEnumerator() => ((IDictionary)_dict).GetEnumerator();
+        IDictionaryEnumerator IDictionary.GetEnumerator() => new EntryDictionaryEnumerator(this);
 
         /// <summary>Removes the element with the specified key (non-generic).</summary>
         void IDictionary.Remove(object key)
         {
-            if (key is null)
+            int slot = FindSlotOfObject(key);
+            if (slot >= 0)
             {
-                _hasNullKey = false;
-                _nullValue = default!;
-                return;
+                RemoveSlot(slot);
             }
-
-            ((IDictionary)_dict).Remove(key);
         }
 
         /// <summary>Removes all elements from the dictionary.</summary>
         void IDictionary.Clear() => Clear();
 
         /// <summary>Copies the elements of the dictionary to an array.</summary>
-        void ICollection.CopyTo(System.Array array, int index) => ((ICollection)_dict).CopyTo(array, index);
+        void ICollection.CopyTo(System.Array array, int index)
+        {
+            if (array is null)
+            {
+                throw new System.ArgumentNullException(nameof(array));
+            }
+
+            if (array.Rank != 1 || array.GetLowerBound(0) != 0)
+            {
+                throw new System.ArgumentException("Only single dimensional, zero-based arrays are supported.", nameof(array));
+            }
+
+            if (index < 0 || index > array.Length)
+            {
+                throw new System.ArgumentOutOfRangeException(nameof(index));
+            }
+
+            if (array.Length - index < _count)
+            {
+                throw new System.ArgumentException("Destination array is not long enough to copy all the items in the collection.");
+            }
+
+            switch (array)
+            {
+                case KeyValuePair<K, V>[] pairs:
+                    foreach (var pair in EnumeratePairs())
+                    {
+                        pairs[index++] = pair;
+                    }
+
+                    break;
+                case DictionaryEntry[] entries:
+                    foreach (var pair in EnumeratePairs())
+                    {
+                        entries[index++] = new DictionaryEntry(pair.Key!, pair.Value);
+                    }
+
+                    break;
+                case object[] objects:
+                    try
+                    {
+                        foreach (var pair in EnumeratePairs())
+                        {
+                            objects[index++] = pair;
+                        }
+                    }
+                    catch (System.ArrayTypeMismatchException)
+                    {
+                        throw new System.ArgumentException("Target array type is not compatible with the type of items in the collection.", nameof(array));
+                    }
+
+                    break;
+                default:
+                    throw new System.ArgumentException("Target array type is not compatible with the type of items in the collection.", nameof(array));
+            }
+        }
+
+        private sealed class EntryDictionaryEnumerator : IDictionaryEnumerator
+        {
+            private EntryCursor _cursor;
+
+            public EntryDictionaryEnumerator(Dict<K, V> dict)
+            {
+                _cursor = dict.CreateCursor();
+            }
+
+            public object Key => _cursor.Key!;
+
+            public object? Value => _cursor.Value;
+
+            public DictionaryEntry Entry => new DictionaryEntry(_cursor.Key!, _cursor.Value);
+
+            public object Current => Entry;
+
+            public bool MoveNext() => _cursor.MoveNext();
+
+            public void Reset() => _cursor.Reset();
+        }
 
         /// <summary>Gets a value indicating whether access to the dictionary is synchronized. Always false.</summary>
         bool ICollection.IsSynchronized => false;
 
         /// <summary>Gets an object that can be used to synchronize access to the dictionary.</summary>
-        object ICollection.SyncRoot => ((ICollection)_dict).SyncRoot;
+        object ICollection.SyncRoot => ((ICollection)_index).SyncRoot;
 
         /// <summary>Gets the number of key/value pairs in the dictionary.</summary>
         int ICollection.Count => Count;

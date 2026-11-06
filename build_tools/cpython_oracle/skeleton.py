@@ -38,7 +38,9 @@ def _snake(name: str) -> str:
 
 def render_skeleton(report: ModuleReport) -> str:
     lines: list[str] = []
-    lines.append(_PSF_HEADER.format(version=report.cpython_version, module=report.module))
+    lines.append(
+        _PSF_HEADER.format(version=report.cpython_version, module=report.module)
+    )
     lines.append("")
     portable = [m for m in report.methods if m.category is Category.PORTABLE]
     seen: set[str] = set()

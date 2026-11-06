@@ -421,7 +421,15 @@ internal static class ClrTypeHelper
         // when it came from an expression — so CLR operator resolution accepted `x | y` and refused
         // `d.keys() | e.keys()` (#1496). Both channels answer the same question, so both are read
         // here, at the single funnel every CLR operator/member resolution already goes through.
-        var openDef = generic.GenericDefinition?.ClrType ?? ResolveOriginDefinition(visibility, generic);
+        //
+        // A type carrying NEITHER channel is the third state, not "no identity": the native form of a
+        // collection (an unannotated binding, TypeChecker.NativeCollectionForm) or one the checker
+        // built by name (a `*rest` list). `list[T]` IS Sharpy.List<T> by the language spec, so it has
+        // the same operators as its annotated spelling. Treating it as unresolved refused
+        // `c = d.copy(); c | w` while `d.copy() | w` and `c: dict[str, int] = d.copy()` compiled (#2449).
+        var openDef = generic.GenericDefinition?.ClrType
+            ?? ResolveOriginDefinition(visibility, generic)
+            ?? ResolveNativeCollectionDefinition(visibility, generic);
         if (openDef == null || !openDef.IsGenericTypeDefinition)
             return openDef;
 
@@ -465,6 +473,26 @@ internal static class ClrTypeHelper
         return resolved.GetGenericArguments().Length == generic.TypeArguments.Count
             ? resolved
             : null;
+    }
+
+    /// <summary>
+    /// The Sharpy wrapper a provenance-free collection type denotes (#2449), or null when the type
+    /// records a provenance of its own or does not spell a Sharpy collection. A recorded channel always
+    /// wins: a definition or an origin says what the value is, and only their absence means "native".
+    /// </summary>
+    private static Type? ResolveNativeCollectionDefinition(AssemblyVisibility visibility, GenericType generic)
+    {
+        if (generic.GenericDefinition != null
+            || generic.ClrOriginTypeName != null
+            || ClrTypeBridge.SpecialCases.SharpyCollectionFullName(generic.Name) is not { } wrapperName)
+        {
+            return null;
+        }
+
+        return visibility.ResolveType(wrapperName) is { IsGenericTypeDefinition: true } wrapper
+            && wrapper.GetGenericArguments().Length == generic.TypeArguments.Count
+                ? wrapper
+                : null;
     }
 
     /// <summary>

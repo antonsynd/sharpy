@@ -1668,7 +1668,16 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the comment census asserts the previous literals, 3363/0; no
     /// lexer/parser/formatter/LSP change (P76 is Core-only). P77a verify round (2026-11-05): +1 on the four comment pins
     /// only — growth, from the new fixture stem interop/system_index_get_offset_2429; control: the gate 83482/0/9 @
-    /// 5f8a4c4e2 held the previous literals with that fixture absent; no lexer/parser/formatter/LSP change. The wide
+    /// 5f8a4c4e2 held the previous literals with that fixture absent; no lexer/parser/formatter/LSP change. #2440
+    /// (2026-11-06): +1 on the four comment pins only — growth, from the new fixture stem
+    /// collections/dict_remove_then_insert_order_2440; control @ ee9a007a1 (worktree),
+    /// SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: with only that fixture added 16854/1, this census alone at the previous
+    /// literals; without it 16850/0; no lexer/parser/formatter/LSP change (#2440 is Core-only). #2449 (2026-11-06):
+    /// +2 on the four comment pins only — growth, +1 from each new fixture stem
+    /// collection_unannotated_binding_operators_2449 and collection_unannotated_binding_unmaterialized_refused_2449;
+    /// measured from the FMTROUTE-S7-PARITY lines of CI's lsp-shard-1 results (run 42286213411 @ 7f17f38b8 merged with
+    /// mainline), which sum to 1647/1647/1643/1643; control: mainline 8ea4cc162 green at the previous literals with those
+    /// stems absent; no lexer/parser/formatter/LSP change. The wide
     /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
@@ -1680,10 +1689,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1644,
-            [(Comment, RangeWhole)] = 1644,
-            [(Comment, RangeLine)] = 1640,
-            [(Comment, OnType)] = 1640,
+            [(Comment, Full)] = 1647,
+            [(Comment, RangeWhole)] = 1647,
+            [(Comment, RangeLine)] = 1643,
+            [(Comment, OnType)] = 1643,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,

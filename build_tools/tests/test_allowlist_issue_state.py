@@ -1,4 +1,5 @@
 """Tests for build_tools/allowlist_issue_state.py — the allowlist issue-state gate."""
+
 from __future__ import annotations
 
 import os
@@ -21,8 +22,10 @@ def _write(path, content: str) -> str:
 
 def _stub_states(mapping: dict[int, str]):
     """Return a patched query_states that uses the given mapping."""
+
     def fake_query(numbers):
         return {n: mapping.get(n, "OPEN") for n in numbers}
+
     return fake_query
 
 
@@ -114,7 +117,9 @@ def test_multi_row_block_all_flag_when_cite_closes(tmp_path):
 
 def test_multi_row_deviations_block_all_exempt(tmp_path):
     # A deviations.yaml header exempts every row beneath it, not just the first.
-    content = "# deviations.yaml: some-id. Permanent.\nfixture::a\nfixture::b\nfixture::c\n"
+    content = (
+        "# deviations.yaml: some-id. Permanent.\nfixture::a\nfixture::b\nfixture::c\n"
+    )
     path = _write(tmp_path / "test-allowlist.txt", content)
     rows = mod.scan([path])
     assert [r.exempt for r in rows] == [True, True, True]
@@ -129,7 +134,7 @@ def test_blank_line_ends_the_block(tmp_path):
     by_line = {r.line: r.cites for r in rows}
     assert by_line[2] == [1111]
     assert by_line[3] == [1111]
-    assert by_line[5] == []      # orphan after blank line: uncited
+    assert by_line[5] == []  # orphan after blank line: uncited
     assert by_line[7] == [2222]  # new block: its own cite, not 1111
 
 
@@ -137,10 +142,10 @@ def test_blank_line_ends_the_block(tmp_path):
 
 
 def test_cs_skip_citing_closed_issue(tmp_path):
-    cs = '''
+    cs = """
     [Theory(Skip = "Known defect #1234")]
     public void SomeTest() { }
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 1
@@ -154,10 +159,10 @@ def test_cs_skip_citing_closed_issue(tmp_path):
 
 
 def test_cs_skip_citing_open_issue(tmp_path):
-    cs = '''
+    cs = """
     [Fact(Skip = "Waiting on #5678")]
     public void SomeTest() { }
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 1
@@ -171,10 +176,10 @@ def test_cs_skip_citing_open_issue(tmp_path):
 
 
 def test_cs_skip_without_issue_cite(tmp_path):
-    cs = '''
+    cs = """
     [Fact(Skip = "F51 — comprehension contextual typing, lead's Wave B")]
     public void SomeTest() { }
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 1
@@ -188,10 +193,10 @@ def test_cs_skip_without_issue_cite(tmp_path):
 
 
 def test_cs_skip_with_no_issue_exemption(tmp_path):
-    cs = '''
+    cs = """
     [Fact(Skip = "no-issue: known limitation of the heap")]
     public void SomeTest() { }
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 0  # exempt skips produce no row
@@ -201,10 +206,10 @@ def test_cs_skip_with_no_issue_exemption(tmp_path):
 
 
 def test_cs_comment_roster_citing_closed_issue(tmp_path):
-    cs = '''
+    cs = """
     // BUG(#1234): the emitter drops the second element — enable when it closes.
     public void SomeTest() { }
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 1
@@ -218,10 +223,10 @@ def test_cs_comment_roster_citing_closed_issue(tmp_path):
 
 
 def test_cs_comment_roster_citing_open_issue(tmp_path):
-    cs = '''
+    cs = """
     // TODO(#5678): pending the parser change.
     public void SomeTest() { }
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 1
@@ -235,10 +240,10 @@ def test_cs_comment_roster_citing_open_issue(tmp_path):
 
 
 def test_knownred_cell_construction_citing_closed_issue(tmp_path):
-    cs = '''
+    cs = """
     private static readonly KnownRedStoreCell Row =
         new KnownRedStoreCell("#1234", "SPY0908", "the store mis-lowers");
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert len(rows) == 1
@@ -254,9 +259,9 @@ def test_knownred_cell_construction_citing_closed_issue(tmp_path):
 def test_knownred_drained_count_comment_is_not_a_row(tmp_path):
     # A drained-count annotation cites the issue that CLOSED the row, not a live suppression, so it
     # must NOT be scanned — otherwise draining a row would immediately re-flag its own close note.
-    cs = '''
+    cs = """
     private const int MistypedStoreKnownRedCount = 0; // #1234: DRAINED (Phase 2)
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     rows = mod.scan([path])
     assert rows == []
@@ -268,7 +273,9 @@ def test_knownred_drained_count_comment_is_not_a_row(tmp_path):
 def test_txt_row_without_cite_is_offence(tmp_path):
     # DD14: an uncited .txt allowlist row is an offence (not silently skipped), so the widened glob
     # is non-vacuous. Positive control: the same fixture with the row cited is green.
-    path = _write(tmp_path / "spec_blocks_allowlist.txt", "some.md::abc123  # SPY0200 first\n")
+    path = _write(
+        tmp_path / "spec_blocks_allowlist.txt", "some.md::abc123  # SPY0200 first\n"
+    )
     rows = mod.scan([path])
     assert len(rows) == 1
     assert rows[0].cites == []
@@ -282,7 +289,10 @@ def test_txt_row_without_cite_is_offence(tmp_path):
 
 def test_txt_row_with_cite_is_green(tmp_path):
     # The same row, now citing an OPEN issue, passes — the offence discriminates on the cite.
-    path = _write(tmp_path / "spec_blocks_allowlist.txt", "some.md::abc123  # SPY0200 first #4242\n")
+    path = _write(
+        tmp_path / "spec_blocks_allowlist.txt",
+        "some.md::abc123  # SPY0200 first #4242\n",
+    )
     rows = mod.scan([path])
     assert rows[0].cites == [4242]
 
@@ -297,8 +307,10 @@ def test_gh_unavailable_exits_2(tmp_path):
     path = _write(tmp_path / "test-allowlist.txt", "fixture::z # #7777\n")
 
     def failing_query(numbers):
-        print("cannot verify issue state — gh not available or not authenticated",
-              file=sys.stderr)
+        print(
+            "cannot verify issue state — gh not available or not authenticated",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     with patch.object(mod, "query_states", failing_query):
@@ -313,14 +325,19 @@ def test_gh_unavailable_exits_2(tmp_path):
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_default_paths_cover_every_tracked_allowlist_from_any_cwd(tmp_path, monkeypatch):
+def test_default_paths_cover_every_tracked_allowlist_from_any_cwd(
+    tmp_path, monkeypatch
+):
     """The default set is every tracked `*allowlist*.txt`, whatever the cwd — not a directory roster.
 
     Literal anchors: the two allowlists outside the old `src/**/Conformance` + `build_tools` roster.
     """
     tracked = subprocess.run(
         ["git", "ls-files", "--", "*allowlist*.txt"],
-        cwd=_REPO, capture_output=True, text=True, check=True,
+        cwd=_REPO,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.split()
     assert len(tracked) >= 14
     for anchor in (
@@ -353,10 +370,10 @@ def test_default_paths_git_unavailable_exits_2(tmp_path, monkeypatch, capsys):
 @pytest.mark.parametrize("state", ["PULL_REQUEST", "MERGED", "UNKNOWN"])
 def test_knownred_cell_citing_a_non_open_issue_is_offence(tmp_path, state):
     """Only an OPEN issue is a live cite: a pull request (merged or open) or an unknown state is red (#2288 P63 R2)."""
-    cs = '''
+    cs = """
     private static readonly KnownRedRefusal Pin =
         new KnownRedRefusal("#1", "a pull request, not an issue");
-    '''
+    """
     path = _write(tmp_path / "SomeTests.cs", cs)
     assert mod.scan([path])[0].cites == [1]
 
@@ -370,12 +387,20 @@ def test_knownred_cell_citing_a_non_open_issue_is_offence(tmp_path, state):
 @pytest.mark.parametrize("state", ["OPEN", "MERGED", "CLOSED"])
 def test_query_states_maps_a_pull_request_url_to_pull_request(state):
     """`gh issue view` answers for a pull request too; query_states must name it PULL_REQUEST, so an
-    OPEN pull request cited as a tracker is red, not read as an open issue (#2288 verify)."""
+    OPEN pull request cited as a tracker is red, not read as an open issue (#2288 verify).
+    """
+
     def fake_run(args, **kwargs):
         if args[:2] == ["gh", "--version"]:
-            return subprocess.CompletedProcess(args, 0, stdout="gh version 2\n", stderr="")
+            return subprocess.CompletedProcess(
+                args, 0, stdout="gh version 2\n", stderr=""
+            )
         return subprocess.CompletedProcess(
-            args, 0, stdout=f"{state} https://github.com/antonsynd/sharpy/pull/1\n", stderr="")
+            args,
+            0,
+            stdout=f"{state} https://github.com/antonsynd/sharpy/pull/1\n",
+            stderr="",
+        )
 
     with patch.object(mod.subprocess, "run", fake_run):
         assert mod.query_states([1]) == {1: "PULL_REQUEST"}
@@ -383,11 +408,18 @@ def test_query_states_maps_a_pull_request_url_to_pull_request(state):
 
 def test_query_states_keeps_an_issue_urls_state():
     """The positive control: an issue url keeps its own state."""
+
     def fake_run(args, **kwargs):
         if args[:2] == ["gh", "--version"]:
-            return subprocess.CompletedProcess(args, 0, stdout="gh version 2\n", stderr="")
+            return subprocess.CompletedProcess(
+                args, 0, stdout="gh version 2\n", stderr=""
+            )
         return subprocess.CompletedProcess(
-            args, 0, stdout="OPEN https://github.com/antonsynd/sharpy/issues/2287\n", stderr="")
+            args,
+            0,
+            stdout="OPEN https://github.com/antonsynd/sharpy/issues/2287\n",
+            stderr="",
+        )
 
     with patch.object(mod.subprocess, "run", fake_run):
         assert mod.query_states([2287]) == {2287: "OPEN"}

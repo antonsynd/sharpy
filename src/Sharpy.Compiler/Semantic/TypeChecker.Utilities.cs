@@ -1628,16 +1628,25 @@ internal partial class TypeChecker
     /// type's only identity — <c>GenericDefinition</c> never survives the symbol cache — and dropping
     /// it here turned <c>s = make(); s.no_such_member()</c> permissive (CS1061 behind SPY0908) while
     /// <c>make().no_such_member()</c> on the same build refused SPY0203 (#1568).</para>
+    ///
+    /// <para>Nor does a value the binding will NOT materialize have a native form: a provenance-free
+    /// <c>list[T]</c> resolves to <c>Sharpy.List&lt;T&gt;</c> (#2449), which an
+    /// <c>IEnumerable&lt;KeyValuePair&lt;K, V&gt;&gt;</c> left as it is (see
+    /// <see cref="IsUnmaterializedClrSequence"/>) is not. It keeps its origin, so it answers exactly as
+    /// the inline spelling does and <c>pairs * 2</c> stays SPY0222 rather than reaching Roslyn.</para>
     /// </summary>
     private static SemanticType NativeCollectionForm(SemanticType type)
-        => type is GenericType { ClrOriginTypeName: not null } mapped && IsSharpyCollectionName(mapped.Name)
+    {
+        if (type is not GenericType { ClrOriginTypeName: { } origin } mapped
+            || Discovery.ClrTypeBridge.SpecialCases.SharpyCollectionFullName(mapped.Name) is not { } wrapper)
+        {
+            return type;
+        }
+
+        return origin == wrapper || IsUnmaterializedClrSequence(mapped)
             ? mapped with { ClrOriginTypeName = null }
             : type;
-
-    /// <summary>The generic names the bridge collapses CLR collections onto (see <c>ClrTypeBridge.MapGenericType</c>).</summary>
-    private static bool IsSharpyCollectionName(string name)
-        => name is BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
-            or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict;
+    }
 
     /// <summary>
     /// The element of a bridge-mapped CLR sequence INTERFACE — a generic the bridge kept as ITSELF

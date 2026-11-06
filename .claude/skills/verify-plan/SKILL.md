@@ -19,10 +19,11 @@ In the nine-dimension pass this skill reads the plan, extracts every verifiable 
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-If `$ARGUMENTS` is empty, plans are split across two directories — `.claude/plans/` (repo-local, gitignored; the default since 2026-08-26) and `~/.claude/plans/` (older per-batch plans). Never pick one silently: list the three newest across both and ask which to verify.
+If `$ARGUMENTS` is empty, the input is a draft in `.claude/plans/` (repo-local, gitignored — a plan is verified before it is committed). Never pick one silently: list the three newest and ask which to verify.
 ```bash
-ls -t .claude/plans/*.md ~/.claude/plans/*.md 2>/dev/null | head -3
+ls -t .claude/plans/*.md 2>/dev/null | head -3
 ```
+A path under `docs/process/plans/` is a re-verification of an already-committed plan: stamp that file in place and commit the re-stamp (Output §4).
 
 Read the plan file completely before proceeding. Record `git rev-parse --short HEAD` — every check below is made against that sha, and the stamp names it (line numbers drift; a sha does not).
 
@@ -188,7 +189,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Result:** [PASS / PASS WITH CORRECTIONS / NEEDS REVISION / CONVERGED]
 **Adequacy:** [CLASS / CELL / N/A]
 **Verified on:** YYYY-MM-DD @ <sha>
-**Plan file:** [path]
+**Plan file:** [`docs/process/plans/<plan-id>.md` on PASS / PASS WITH CORRECTIONS / CONVERGED (committed in §4); the draft path on NEEDS REVISION]
 
 ### Corrections Made
 - (each inline correction with before/after)
@@ -226,10 +227,24 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 
 For each error, edit the plan text directly. Mark corrections `[CORRECTED: reason]`; mark drafted sections `[ADDED: adequacy]`; mark added steps `[ADDED: missing step]` so the author can review every change.
 
-Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), and the warnings the author must act on before `/implement-plan`.
+Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the plan (§4) or why none was made.
 
-### 4. After NEEDS REVISION — how the revision begins
+### 4. Commit the passing plan
+
+A plan the implementation will follow is committed development history (`docs/process/README.md`); the draft in `.claude/plans/` is not. When the result is **PASS**, **PASS WITH CORRECTIONS** (after every inline correction from §3 is in the file) or **CONVERGED**, copy the stamped file to `docs/process/plans/` and commit it:
+
+```bash
+mkdir -p docs/process/plans
+cp .claude/plans/<plan-id>.md docs/process/plans/<plan-id>.md   # <plan-id> = the draft's stem, e.g. plan-a1b2c3
+git add docs/process/plans/<plan-id>.md                            # explicit pathspec, never -A or .
+git diff --cached --stat                                           # exactly this one file
+git commit -m "process(plan): <plan-id> — <plan title> verified <result> @ <sha>"
+```
+
+The committed copy carries the stamp and the Verification Summary, and the summary's `**Plan file:**` line names the committed path. Commit only this plan — never the charter, another draft or any other file — with the trailer the harness provides. The routing line to the user names the committed path: `/implement-plan docs/process/plans/<plan-id>.md`. On **NEEDS REVISION** nothing is committed: the draft stays in `.claude/plans/` and the revision happens there (§5). A re-verification of a plan already under `docs/process/plans/` stamps that file in place and commits the re-stamp the same way.
+
+### 5. After NEEDS REVISION — how the revision begins
 
 There is no revision skill; the revision is plan-author work and runs as `/create-plan` with no argument (it lists the three newest plans and asks which to re-plan), on the same model that writes plans, in a **fresh context** — the next `/verify-plan` must be a fresh read, so the verifier that stamped NEEDS REVISION does not also revise unless the user says so explicitly (then the user runs the re-verify from a new session). When summarizing a NEEDS REVISION result, end with that one-line routing so the user does not have to ask. The revising session: (1) deletes the stale stamp and `## Verification Summary` (the next pass writes fresh ones; a left-over stamp is read by `/implement-plan` as the current verdict), (2) keeps a one-line `## Revision log` entry naming the pass's sha, its result and dimension as `(NEEDS REVISION, Dimension N)` — the next verifier reads the dimension from this line to apply the Convergence rule, since the stamp is gone — and the decisions it changed, (3) re-runs `python3 build_tools/check_plan_refs.py <plan>` before handing back. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED.
 
-When the result is **CONVERGED** there is no revision: the routing line reads `/implement-plan <path>` — the `### Deferred findings` rows are its first task, resolved in code, and a revising session started anyway must not edit the plan's design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) beyond one `## Revision log` line (contract §12 Convergence: a design section revised after a CONVERGED stamp is a red; the Implementation Checklist and override records `/implement-plan` writes are not design sections).
+When the result is **CONVERGED** there is no revision: the routing line reads `/implement-plan docs/process/plans/<plan-id>.md` (committed in §4) — the `### Deferred findings` rows are its first task, resolved in code, and a revising session started anyway must not edit the plan's design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) beyond one `## Revision log` line (contract §12 Convergence: a design section revised after a CONVERGED stamp is a red; the Implementation Checklist and override records `/implement-plan` writes are not design sections).

@@ -24,7 +24,7 @@ Compile and execute Sharpy source. Accepts either a file path or inline source c
    - **Inline source**: Anything else. Use the **Write tool** to write the source to `$TMPDIR/sharpy-run-temp.spy`. Do NOT use bash echo/heredoc — always use the Write tool to avoid shell escaping issues with `#`, backticks, and other special characters.
 3. Run `mkdir -p .claude/tmp` to ensure log directory exists.
 4. Clear the old log with `rm -f .claude/tmp/last-spy-run.log`.
-5. Run: `dotnet run --project src/Sharpy.Cli -- run "<source_file>" > .claude/tmp/last-spy-run.log 2>&1` (with `dangerouslyDisableSandbox: true`).
+5. Run: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run "<source_file>" > .claude/tmp/last-spy-run.log 2>&1` (with `dangerouslyDisableSandbox: true`; raw `dotnet run` is hook-blocked because it builds Sharpy.Cli). When the lock is held by a long test run and the binary is current, probe lock-free instead: `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run "<source_file>"`.
 6. Check exit code:
    - Exit 0: Print "=== RUN OUTPUT ===" then show contents of `.claude/tmp/last-spy-run.log`
    - Exit non-zero: Print "=== RUN FAILED (last 80 lines) ===" then show `tail -80 .claude/tmp/last-spy-run.log`, then "Full log: .claude/tmp/last-spy-run.log"

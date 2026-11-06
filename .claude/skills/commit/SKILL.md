@@ -60,4 +60,4 @@ Run `git status` after the commit to confirm success. Report the commit hash.
 - **Never** amend a previous commit unless the user explicitly asks
 - If a pre-commit hook fails, fix the issue and create a **new** commit (do not use `--amend`)
 - If there are no changes to commit, say so and stop
-- Formatting is handled automatically by the PostToolUse Claude hook on every Edit/Write; no need to run `/format` manually
+- The PostToolUse hook `.claude/hooks/format-on-save.sh` whitespace-formats each edited `.cs` against its own project (best-effort: `--no-restore`, capped at 8 s, skipped when `dotnet` is busy or absent), plus `build_tools/*.py` and `editors/vscode/*.ts`. It is not a gate — before pushing `.cs` changes, `/push` runs `dotnet format whitespace sharpy.sln --verify-no-changes` solution-wide (the CI step); run `/format` if it reports files

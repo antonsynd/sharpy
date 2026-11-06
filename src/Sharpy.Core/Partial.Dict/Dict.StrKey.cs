@@ -23,10 +23,16 @@ namespace Sharpy
         // Null key is skipped: kwargs cannot carry a null key.
         private IEnumerable<KeyValuePair<string, object?>> EnumerateStringKeyEntries()
         {
-            foreach (var kvp in _dict)
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
             {
-                var key = (string)(object)kvp.Key!;
-                yield return new KeyValuePair<string, object?>(key, kvp.Value);
+                if (cursor.Slot == _nullSlot)
+                {
+                    continue;
+                }
+
+                var key = (string)(object)cursor.Key!;
+                yield return new KeyValuePair<string, object?>(key, cursor.Value);
             }
         }
     }

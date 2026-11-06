@@ -31,7 +31,7 @@ Query the hover tooltip that VS Code would show at a specific position in a Shar
 3. Parse the position: if the position argument contains `:`, split on `:` to get line and col. Otherwise, use the two separate arguments.
 4. Run `mkdir -p .claude/tmp` to ensure log directory exists.
 5. Clear the old log with `rm -f .claude/tmp/last-lsp-hover.log`.
-6. Run: `dotnet run --project src/Sharpy.Cli -- emit hover "<source_file>" --line <line> --col <col> > .claude/tmp/last-lsp-hover.log 2>&1` (with `dangerouslyDisableSandbox: true`).
+6. Run: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit hover "<source_file>" --line <line> --col <col> > .claude/tmp/last-lsp-hover.log 2>&1` (with `dangerouslyDisableSandbox: true`; raw `dotnet run` is hook-blocked because it builds Sharpy.Cli — `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc emit hover ...` is the lock-free alternative when the binary is current).
 7. Check exit code:
    - Exit 0: Show the full contents of `.claude/tmp/last-lsp-hover.log`
    - Exit non-zero: Print "=== HOVER FAILED ===" then show `.claude/tmp/last-lsp-hover.log`, then "Full log: .claude/tmp/last-lsp-hover.log"

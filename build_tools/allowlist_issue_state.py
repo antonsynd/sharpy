@@ -19,9 +19,7 @@ import sys
 from dataclasses import dataclass, field
 
 ISSUE_RE = re.compile(r"#(\d+)")
-SKIP_RE = re.compile(
-    r'\[\s*(?:Fact|Theory)\s*\(\s*(?:[^)]*,\s*)?Skip\s*=\s*"([^"]*)"'
-)
+SKIP_RE = re.compile(r'\[\s*(?:Fact|Theory)\s*\(\s*(?:[^)]*,\s*)?Skip\s*=\s*"([^"]*)"')
 # #1939: comment rosters in test sources cite issues too — a BUG/TODO/FIXME comment and a KnownRed
 # CELL CONSTRUCTION. Both are cited rows: a CLOSED cite is a stale roster entry, exactly like a Skip.
 # The KnownRed regex matches a `new …KnownRed…Cell("#N", …)` construction, NOT a drained-count comment
@@ -82,16 +80,24 @@ def scan_allowlist(path: str) -> list[Row]:
             continue
 
         cites = _extract_issues(stripped)
-        exempt = (DEVIATIONS_YAML in stripped or DRAIN_EXEMPT in stripped
-                  or paragraph_has_deviations)
+        exempt = (
+            DEVIATIONS_YAML in stripped
+            or DRAIN_EXEMPT in stripped
+            or paragraph_has_deviations
+        )
 
         if not cites:
             cites = list(paragraph_cites)
 
-        rows.append(Row(
-            file=path, line=i, text=stripped,
-            cites=cites, exempt=exempt,
-        ))
+        rows.append(
+            Row(
+                file=path,
+                line=i,
+                text=stripped,
+                cites=cites,
+                exempt=exempt,
+            )
+        )
 
         # A comment header describes the whole block of keys beneath it (see the file
         # headers: one deviations.yaml/issue comment governs the run of `fixture::…`
@@ -110,20 +116,30 @@ def scan_cs_file(path: str) -> list[Row]:
 
     for m in SKIP_RE.finditer(content):
         skip_text = m.group(1)
-        offset = content[:m.start()].count("\n") + 1
+        offset = content[: m.start()].count("\n") + 1
         cites = _extract_issues(skip_text)
         exempt = NO_ISSUE_EXEMPT in skip_text
 
         if cites:
-            rows.append(Row(
-                file=path, line=offset, text=skip_text,
-                cites=cites, exempt=False,
-            ))
+            rows.append(
+                Row(
+                    file=path,
+                    line=offset,
+                    text=skip_text,
+                    cites=cites,
+                    exempt=False,
+                )
+            )
         elif not exempt:
-            rows.append(Row(
-                file=path, line=offset, text=skip_text,
-                cites=[], exempt=False,
-            ))
+            rows.append(
+                Row(
+                    file=path,
+                    line=offset,
+                    text=skip_text,
+                    cites=[],
+                    exempt=False,
+                )
+            )
 
     return rows
 
@@ -138,10 +154,15 @@ def scan_cs_comments(path: str) -> list[Row]:
     for i, raw in enumerate(lines, 1):
         for regex in (COMMENT_ROSTER_RE, KNOWNRED_CELL_RE):
             for m in regex.finditer(raw):
-                rows.append(Row(
-                    file=path, line=i, text=raw.strip(),
-                    cites=[int(m.group(1))], exempt=False,
-                ))
+                rows.append(
+                    Row(
+                        file=path,
+                        line=i,
+                        text=raw.strip(),
+                        cites=[int(m.group(1))],
+                        exempt=False,
+                    )
+                )
     return rows
 
 
@@ -160,19 +181,35 @@ def query_states(numbers: list[int]) -> dict[int, str]:
     try:
         subprocess.run(
             ["gh", "--version"],
-            capture_output=True, check=True, cwd=REPO_ROOT,
+            capture_output=True,
+            check=True,
+            cwd=REPO_ROOT,
         )
     except (FileNotFoundError, subprocess.CalledProcessError):
-        print("cannot verify issue state — gh not available or not authenticated",
-              file=sys.stderr)
+        print(
+            "cannot verify issue state — gh not available or not authenticated",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     states: dict[int, str] = {}
     for num in sorted(set(numbers)):
         try:
             result = subprocess.run(
-                ["gh", "issue", "view", str(num), "--json", "state,url", "-q", '.state + " " + .url'],
-                capture_output=True, text=True, check=True, cwd=REPO_ROOT,
+                [
+                    "gh",
+                    "issue",
+                    "view",
+                    str(num),
+                    "--json",
+                    "state,url",
+                    "-q",
+                    '.state + " " + .url',
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=REPO_ROOT,
             )
             state, _, url = result.stdout.strip().partition(" ")
             # `gh issue view` also answers for a pull request (state MERGED/OPEN/CLOSED, a /pull/ url).
@@ -180,8 +217,7 @@ def query_states(numbers: list[int]) -> dict[int, str]:
             # `KnownRedRefusal("#1", ...)` naming merged PR #1 passed this gate).
             states[num] = "PULL_REQUEST" if "/pull/" in url else state
         except subprocess.CalledProcessError:
-            print(f"cannot verify issue state for #{num} — gh failed",
-                  file=sys.stderr)
+            print(f"cannot verify issue state for #{num} — gh failed", file=sys.stderr)
             sys.exit(2)
     return states
 
@@ -196,13 +232,18 @@ def _tracked_allowlists(repo: str) -> list[str]:
     try:
         result = subprocess.run(
             ["git", "-C", repo, "ls-files", "-z", "--", "*allowlist*.txt"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
     except FileNotFoundError:
         print("cannot derive the allowlist set — git not available", file=sys.stderr)
         sys.exit(2)
     except subprocess.CalledProcessError:
-        print(f"cannot derive the allowlist set — {repo} is not a git checkout", file=sys.stderr)
+        print(
+            f"cannot derive the allowlist set — {repo} is not a git checkout",
+            file=sys.stderr,
+        )
         sys.exit(2)
     return [os.path.join(repo, p) for p in result.stdout.split("\0") if p]
 
@@ -218,7 +259,8 @@ def _default_paths(repo: str | None = None) -> list[str]:
         recursive=True,
     )
     cs_paths = [
-        p for p in cs_globs
+        p
+        for p in cs_globs
         if "/bin/" not in p
         and "/obj/" not in p
         and not p.endswith(".expected.cs")
@@ -234,7 +276,9 @@ def main() -> None:
         description="Check allowlist rows and C# Skips cite only OPEN issues",
     )
     parser.add_argument(
-        "--paths", nargs="+", default=None,
+        "--paths",
+        nargs="+",
+        default=None,
         help="Files to scan (default: every tracked *allowlist*.txt + src/*.Tests/**/*.cs)",
     )
     args = parser.parse_args()
@@ -275,14 +319,12 @@ def main() -> None:
             # Only an OPEN issue is a live cite: CLOSED is a stale row, and a pull request (or any state
             # gh reports for something that is not an open issue) never was a tracker.
             if state != "OPEN":
-                offences.append(
-                    f"{row.file}:{row.line}  {row.text}  → #{num} {state}"
-                )
+                offences.append(f"{row.file}:{row.line}  {row.text}  → #{num} {state}")
 
     for row in uncited_rows:
         kind = "Skip" if row.file.endswith(".cs") else "allowlist row"
         offences.append(
-            f"{row.file}:{row.line}  {kind} without issue cite: \"{row.text}\"  "
+            f'{row.file}:{row.line}  {kind} without issue cite: "{row.text}"  '
             f"→ missing #NNNN"
         )
 

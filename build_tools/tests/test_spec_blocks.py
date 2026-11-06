@@ -48,19 +48,41 @@ def _stub_compiler_success(sharpyc, source):
 
 def _stub_compiler_fail(code="SPY0200"):
     def _compile(sharpyc, source):
-        diags = [{"severity": "error", "code": code, "line": 1, "column": 1, "message": "err"}]
-        return CompileResult(success=False, first_error_code=code, stdout=json.dumps(diags))
+        diags = [
+            {
+                "severity": "error",
+                "code": code,
+                "line": 1,
+                "column": 1,
+                "message": "err",
+            }
+        ]
+        return CompileResult(
+            success=False, first_error_code=code, stdout=json.dumps(diags)
+        )
+
     return _compile
 
 
 def _stub_compiler_spy0340_only(sharpyc, source):
     if "def main() -> None:" in source:
         return CompileResult(success=True)
-    diags = [{"severity": "error", "code": "SPY0340", "line": 1, "column": 1, "message": "top-level"}]
-    return CompileResult(success=False, first_error_code="SPY0340", stdout=json.dumps(diags))
+    diags = [
+        {
+            "severity": "error",
+            "code": "SPY0340",
+            "line": 1,
+            "column": 1,
+            "message": "top-level",
+        }
+    ]
+    return CompileResult(
+        success=False, first_error_code="SPY0340", stdout=json.dumps(diags)
+    )
 
 
 # ---------- Extraction ----------
+
 
 def test_extraction_python_fence(tmp_path):
     md = tmp_path / "test.md"
@@ -89,7 +111,9 @@ def test_extraction_fragment_marker(tmp_path):
 
 def test_extraction_error_marker(tmp_path):
     md = tmp_path / "test.md"
-    md.write_text("some text\n<!-- spec-sweep: error SPY0200 -->\n```python\nx = bad\n```\n")
+    md.write_text(
+        "some text\n<!-- spec-sweep: error SPY0200 -->\n```python\nx = bad\n```\n"
+    )
     blocks = extract_blocks(str(tmp_path))
     assert len(blocks) == 1
     assert blocks[0].marker == "error"
@@ -97,6 +121,7 @@ def test_extraction_error_marker(tmp_path):
 
 
 # ---------- Prelude (#1939) ----------
+
 
 def test_prelude_applies_to_later_unmarked_block(tmp_path):
     md = tmp_path / "test.md"
@@ -133,7 +158,9 @@ def test_prelude_prepended_at_compile(tmp_path):
         return CompileResult(success="class Widget" in source)
 
     dependent = Block(
-        relpath="a.md", line=1, text="w: Widget = Widget()",
+        relpath="a.md",
+        line=1,
+        text="w: Widget = Widget()",
         key=block_key("a.md", "w: Widget = Widget()"),
         prelude="class Widget:\n    pass",
     )
@@ -143,8 +170,11 @@ def test_prelude_prepended_at_compile(tmp_path):
 
     # Drop the prepend (mutation control): the same block now fails.
     dependent_no_prelude = Block(
-        relpath="a.md", line=1, text="w: Widget = Widget()",
-        key=block_key("a.md", "w: Widget = Widget()"), prelude=None,
+        relpath="a.md",
+        line=1,
+        text="w: Widget = Widget()",
+        key=block_key("a.md", "w: Widget = Widget()"),
+        prelude=None,
     )
     with patch("spec_blocks.compile_one", stub):
         br2 = _compile_block(("sharpyc", dependent_no_prelude))
@@ -155,8 +185,11 @@ def test_prelude_block_itself_must_compile(tmp_path):
     # A prelude with a deliberate error is a normal unmarked block: it fails standalone and, unlisted,
     # reddens the sweep — a prelude cannot hide an error in the code it declares.
     prelude_block = Block(
-        relpath="a.md", line=1, text="class Widget:\n    bad syntax",
-        key=block_key("a.md", "class Widget:\n    bad syntax"), prelude=None,
+        relpath="a.md",
+        line=1,
+        text="class Widget:\n    bad syntax",
+        key=block_key("a.md", "class Widget:\n    bad syntax"),
+        prelude=None,
     )
     with patch("spec_blocks.compile_one", _stub_compiler_fail("SPY0200")):
         results, reds = run_sweep("sharpyc", [prelude_block], {}, 1)
@@ -165,6 +198,7 @@ def test_prelude_block_itself_must_compile(tmp_path):
 
 
 # ---------- Block classification ----------
+
 
 def test_block_compiles_as_is():
     block = _make_block("a.md", "x: int = 1")
@@ -194,7 +228,11 @@ def test_block_error_marker_correct():
     assert br.classification == "failing"
     # run_sweep promotes to error_asserted
     allowlist = {}
-    results, reds = run_sweep.__wrapped__(block, allowlist) if hasattr(run_sweep, '__wrapped__') else (None, None)
+    results, reds = (
+        run_sweep.__wrapped__(block, allowlist)
+        if hasattr(run_sweep, "__wrapped__")
+        else (None, None)
+    )
 
 
 def test_block_error_marker_but_compiles():
@@ -267,6 +305,7 @@ def test_pool_includes_spy_fences(tmp_path):
 
 # ---------- Allowlist I/O ----------
 
+
 def test_allowlist_roundtrip(tmp_path):
     path = str(tmp_path / "allowlist.txt")
     entries = {"a.md::abc1234567": "SPY0200 first", "b.md::def9876543": "SPY0300 first"}
@@ -276,6 +315,7 @@ def test_allowlist_roundtrip(tmp_path):
 
 
 # ---------- Wrap rule ----------
+
 
 def test_wrap_in_main():
     source = "x: int = 1\nprint(x)"
@@ -287,6 +327,7 @@ def test_wrap_in_main():
 
 # ---------- Output marker (#2286) ----------
 
+
 def _one_block(tmp_path, markdown):
     (tmp_path / "out.md").write_text(markdown)
     blocks = extract_blocks(str(tmp_path))
@@ -295,42 +336,73 @@ def _one_block(tmp_path, markdown):
 
 
 def test_output_inline_form(tmp_path):
-    b = _one_block(tmp_path, '<!-- spec-sweep: output "3\\n4" -->\n```python\nprint(3)\nprint(4)\n```\n')
-    assert (b.marker, b.output_form, b.expected_output, b.output_error) == ("output", "inline", "3\n4", None)
+    b = _one_block(
+        tmp_path,
+        '<!-- spec-sweep: output "3\\n4" -->\n```python\nprint(3)\nprint(4)\n```\n',
+    )
+    assert (b.marker, b.output_form, b.expected_output, b.output_error) == (
+        "output",
+        "inline",
+        "3\n4",
+        None,
+    )
 
 
 def test_output_fenced_form_skips_blank_lines(tmp_path):
-    b = _one_block(tmp_path, "<!-- spec-sweep: output -->\n```python\nprint(1)\n```\n\n```output\n1\n```\n")
+    b = _one_block(
+        tmp_path,
+        "<!-- spec-sweep: output -->\n```python\nprint(1)\n```\n\n```output\n1\n```\n",
+    )
     assert (b.output_form, b.expected_output) == ("fenced", "1")
-    b2 = _one_block(tmp_path, "<!-- spec-sweep: output -->\n```python\nprint(1)\n```\n```text\n1\n```\n")
+    b2 = _one_block(
+        tmp_path,
+        "<!-- spec-sweep: output -->\n```python\nprint(1)\n```\n```text\n1\n```\n",
+    )
     assert (b2.output_form, b2.expected_output) == ("fenced", "1")
 
 
 def test_output_comment_form(tmp_path):
-    b = _one_block(tmp_path, "<!-- spec-sweep: output -->\n```python\nx: int = 2\nprint(x + 1)  # 3\nprint('#')  # #\n```\n")
-    assert (b.output_form, b.expected_output, b.output_error) == ("comment", "3\n#", None)
+    b = _one_block(
+        tmp_path,
+        "<!-- spec-sweep: output -->\n```python\nx: int = 2\nprint(x + 1)  # 3\nprint('#')  # #\n```\n",
+    )
+    assert (b.output_form, b.expected_output, b.output_error) == (
+        "comment",
+        "3\n#",
+        None,
+    )
 
 
 def test_output_comment_form_needs_every_print_commented(tmp_path):
-    b = _one_block(tmp_path, "<!-- spec-sweep: output -->\n```python\nprint(1)  # 1\nprint(2)\n```\n")
+    b = _one_block(
+        tmp_path,
+        "<!-- spec-sweep: output -->\n```python\nprint(1)  # 1\nprint(2)\n```\n",
+    )
     assert b.expected_output is None
     assert "line 2 prints without" in b.output_error
 
 
 def test_output_marker_with_nothing_to_assert(tmp_path):
-    b = _one_block(tmp_path, "<!-- spec-sweep: output -->\n```python\nx: int = 1\n```\n")
+    b = _one_block(
+        tmp_path, "<!-- spec-sweep: output -->\n```python\nx: int = 1\n```\n"
+    )
     assert "no `print(...)  # value` line" in b.output_error
 
 
 def test_output_inline_and_fence_together_is_ambiguous(tmp_path):
-    b = _one_block(tmp_path, '<!-- spec-sweep: output "1" -->\n```python\nprint(1)\n```\n```output\n1\n```\n')
+    b = _one_block(
+        tmp_path,
+        '<!-- spec-sweep: output "1" -->\n```python\nprint(1)\n```\n```output\n1\n```\n',
+    )
     assert "both an inline string and" in b.output_error
 
 
 def test_output_bare_following_fence_is_not_the_fenced_form(tmp_path):
     # Only ```output / ```text is an expected-output block; a bare fence is prose, so this block falls
     # back to the comment form and states nothing.
-    b = _one_block(tmp_path, "<!-- spec-sweep: output -->\n```python\nprint(1)\n```\n```\n1\n```\n")
+    b = _one_block(
+        tmp_path, "<!-- spec-sweep: output -->\n```python\nprint(1)\n```\n```\n1\n```\n"
+    )
     assert b.output_form == "comment" and b.output_error is not None
 
 
@@ -350,20 +422,31 @@ def test_normalize_output_rule():
 
 
 def _output_block(expected, form="inline", error=None, text='print("x")'):
-    return Block(relpath="o.md", line=3, text=text, key=block_key("o.md", text),
-                 marker="output", expected_output=expected, output_form=form, output_error=error)
+    return Block(
+        relpath="o.md",
+        line=3,
+        text=text,
+        key=block_key("o.md", text),
+        marker="output",
+        expected_output=expected,
+        output_form=form,
+        output_error=error,
+    )
 
 
 def _stub_run(output, ran=True, exit_code=0):
     def _run(sharpyc, source):
         _stub_run.sources.append(source)
         return RunResult(ran=ran, output=output, exit_code=exit_code)
+
     _stub_run.sources = []
     return _run
 
 
 def _sweep_output(block, run_stub, compile_stub=_stub_compiler_success, allowlist=None):
-    with patch("spec_blocks.compile_one", compile_stub), patch("spec_blocks.run_one", run_stub):
+    with patch("spec_blocks.compile_one", compile_stub), patch(
+        "spec_blocks.run_one", run_stub
+    ):
         return run_sweep("sharpyc", [block], allowlist or {}, 1)
 
 
@@ -376,14 +459,20 @@ def test_output_mismatch_is_red_with_a_diff():
     # The mutation the issue names: one expected value changed -> red.
     results, reds = _sweep_output(_output_block("4"), _stub_run("3\n"))
     assert results[0].classification == "output_mismatch" and results[0].red
-    assert any("output mismatch (inline form)" in r and "-4" in r and "+3" in r for r in reds)
+    assert any(
+        "output mismatch (inline form)" in r and "-4" in r and "+3" in r for r in reds
+    )
 
 
 def test_output_block_that_does_not_compile_is_red_not_allowlistable():
     block = _output_block("x")
-    results, reds = _sweep_output(block, _stub_run("x"), compile_stub=_stub_compiler_fail("SPY0200"))
+    results, reds = _sweep_output(
+        block, _stub_run("x"), compile_stub=_stub_compiler_fail("SPY0200")
+    )
     assert any("does not compile (first error: SPY0200)" in r for r in reds)
-    results, reds = _sweep_output(block, _stub_run("x"), allowlist={block.key: "SPY0200 first"})
+    results, reds = _sweep_output(
+        block, _stub_run("x"), allowlist={block.key: "SPY0200 first"}
+    )
     assert any("output-marked block is in the allowlist" in r for r in reds)
 
 
@@ -396,7 +485,9 @@ def test_output_block_that_exits_nonzero_or_never_runs_is_red():
 
 def test_malformed_output_marker_is_red_and_never_runs():
     run = _stub_run("x")
-    _, reds = _sweep_output(_output_block(None, form="comment", error="output marker but nothing"), run)
+    _, reds = _sweep_output(
+        _output_block(None, form="comment", error="output marker but nothing"), run
+    )
     assert any("output marker but nothing" in r for r in reds)
     assert _stub_run.sources == []
 
@@ -432,10 +523,16 @@ def test_seed_output_lists_unmarked_blocks_by_form(tmp_path):
         "<!-- spec-sweep: output -->\n```python\nprint(9)  # 9\n```\n"
     )
     forms = [(line, form) for _, line, form, _ in seed_output_candidates(str(tmp_path))]
-    assert forms == [(1, "comment"), (5, "comment-partial"), (10, "fence-follows"), (20, "prose")]
+    assert forms == [
+        (1, "comment"),
+        (5, "comment-partial"),
+        (10, "fence-follows"),
+        (20, "prose"),
+    ]
 
 
 # ---------- Real compiler smoke test ----------
+
 
 @pytest.mark.skipif(
     not os.environ.get("SHARPYC") and not os.path.exists("src/Sharpy.Cli"),

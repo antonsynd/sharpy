@@ -13,9 +13,10 @@ Verify that a plan has been fully and correctly implemented. Reads the plan, der
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-If `$ARGUMENTS` is empty, plans are split across two directories (repo-local `.claude/plans/`, gitignored, is the default; per-batch plans created before 2026-08-26 live in `~/.claude/plans/`). List the three newest across both and **ask** which one — never pick silently:
+The plan is the committed copy at `docs/process/plans/<plan-id>.md` (written by `/verify-plan`, updated by `/implement-plan`; policy: `docs/process/README.md`); the gitignored draft in `.claude/plans/` is read only when no committed copy exists, and the close step (§Cleanup and Report) then creates one. If `$ARGUMENTS` is empty, list the three newest in each and **ask** which one — never pick silently:
 ```bash
-ls -t .claude/plans/*.md ~/.claude/plans/*.md 2>/dev/null | head -3
+ls -t docs/process/plans/*.md 2>/dev/null | head -3    # committed, verified plans — read these first
+ls -t .claude/plans/*.md 2>/dev/null | head -3         # drafts (gitignored) — only when the plan has no committed copy
 ```
 
 Read the plan file completely before proceeding.
@@ -57,7 +58,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 
 - `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed. If it fails, **stop and report** (the implementation is broken; nothing downstream can be measured).
 - `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` — run in the **background** and continue with the read-only steps; record `passed/failed/skipped @ HEAD (measured)` when it returns. This is the commit gate (contract §6); a filtered run is never a substitute.
-- `dotnet format whitespace --verify-no-changes` — record whether formatting is clean.
+- `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — record whether formatting is clean (raw `dotnet format` is hook-blocked).
 - If the working tree is dirty with a peer's work, do the build and gate in a `git worktree add ../sharpy.worktrees/wt-head HEAD` instead of the shared tree.
 
 ### 4. Identify the plan's deliverables
@@ -372,7 +373,7 @@ Address every item:
 | Non-discriminating fixture | Change the example so its output differs with the bug present |
 | Missing tests | Write them — with the mutation step |
 | TODO without issue | `gh issue create`, then update the comment |
-| Formatting | `dotnet format whitespace` |
+| Formatting | `.claude/scripts/dotnet-serialized format whitespace sharpy.sln` |
 | Dead code / debug leftovers | Remove |
 
 ### Remediation Rules
@@ -415,7 +416,7 @@ After all fixes are committed (`FINAL=<sha>`):
 2. Regeneration is clean: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger produce no diff at `$FINAL` (the `/push` staleness gates)
 3. `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` — whole solution, `@ $FINAL (measured)`; no red that was green at `$BASE`; pass count ≥ the `$HEAD` baseline minus any tests deliberately removed (say which)
 4. The blast-radius sweeps Agent 2 ran (`FrontEndParityTests`, `InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution` as the plan names them) — re-run those the fixes reach
-5. `dotnet format whitespace --verify-no-changes` — clean
+5. `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — clean
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome
 8. `git diff --stat $BASE..$FINAL` — matches the declared scope; no unclaimed working-tree delta (`git status`)
@@ -426,7 +427,8 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
-3. Present the verification report:
+3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (after the Verification Summary; verbatim, every count `@ sha`), then commit that one file by explicit pathspec — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit: the close is the plan's final state of record (`docs/process/README.md`). If the plan was read from `.claude/plans/` (no committed copy), `cp` it to `docs/process/plans/<plan-id>.md` first and commit it in the same commit. Never commit another plan or the charter alongside.
+4. Present the verification report:
 
 ```markdown
 ## Implementation Verification Report
