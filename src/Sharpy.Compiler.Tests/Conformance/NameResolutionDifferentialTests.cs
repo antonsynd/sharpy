@@ -306,6 +306,11 @@ public partial class NameResolutionDifferentialTests
         // R-KP's restored builtins: the read of an overloaded function or a type constructor as a value, ahead of N6.
         [("N6", "SPY0336")] = 1,
         [("N6", "SPY0342")] = 1,
+        // R-KY's neighbouring refusals until #2424 lands the rule's own.
+        [("N6-type-kind", "SPY0134")] = 21,
+        [("N6-type-kind", "SPY0222")] = 2,
+        [("N6-type-kind", "SPY0342")] = 6,
+        [("N6-type-kind", "SPY0346")] = 6,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -331,6 +336,9 @@ public partial class NameResolutionDifferentialTests
         ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
         // R-LE: a lambda-typed local reading itself stays refused, as C# refuses `Func<int> f = () => f();`.
         ["N5-self"] = new[] { "SPY0200" },
+        // R-KY: `global` over a def or type is SPY0134 until #2424 reinstates the declaration. A bare `+=` reads the def or type as a
+        // value first: SPY0222, SPY0342 or SPY0346. Each is the right direction under a neighbouring check.
+        ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
