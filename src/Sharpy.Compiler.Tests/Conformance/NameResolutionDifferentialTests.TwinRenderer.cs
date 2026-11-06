@@ -36,6 +36,11 @@ internal static class TwinRenderer
     /// <summary>M6: every annotation stripped; false passes each through verbatim from the source.</summary>
     private static readonly bool RowStripAnnotations = true;
 
+    /// <summary>P77b D2.12: an annotated declaration of a name its own function declares <c>global</c> / <c>nonlocal</c> keeps
+    /// its annotation (<c>x: int = 3</c>), so the twin is python's own refusal ("annotated name 'x' can't be global") and not
+    /// the stripped <c>x = 3</c>, which python runs. Every other annotation is still stripped (M6). False drops the row.</summary>
+    private static readonly bool RowKeepScopeDeclaredAnnotation = true;
+
     /// <summary>The placeholder call carrying a <c>global</c>/<c>nonlocal</c> line through the parser.</summary>
     private const string ScopeStatementMarker = "__twin_scope_statement__";
 
@@ -81,6 +86,9 @@ internal static class TwinRenderer
     {
         private readonly string _source;
         private readonly StringBuilder _body = new();
+
+        /// <summary>The names each enclosing function body declares <c>global</c> / <c>nonlocal</c>, innermost on top.</summary>
+        private readonly Stack<HashSet<string>> _scopeDeclared = new();
         private bool _usesDataclass;
         private bool _usesEnum;
         private bool _usesLruCache;
@@ -231,6 +239,9 @@ internal static class TwinRenderer
             string annotation;
             if (body == BodyKind.Dataclass && !isStatic && !declaration.IsConst && !IsUnhashableDefault(declaration))
                 annotation = ": " + DataclassFieldType(declaration.Type);
+            else if (RowKeepScopeDeclaredAnnotation && body == BodyKind.Function && declaration.Type != null && declaration.InitialValue != null
+                && _scopeDeclared.Count > 0 && _scopeDeclared.Peek().Contains(declaration.Name))
+                annotation = ": " + Slice(declaration.Type);
             else if (!RowStripAnnotations && declaration.Type != null)
                 annotation = ": " + Slice(declaration.Type);
             else if (declaration.InitialValue == null)
@@ -371,7 +382,7 @@ internal static class TwinRenderer
             Line(indent, $"{keyword} {function.Name}{TypeParameters(function.TypeParameters)}({string.Join(", ", parameters)}){returnAnnotation}:");
             WriteDocString(function.DocString, indent + 1);
             if (outParameters.Count == 0)
-                WriteBlock(function.Body, indent + 1, BodyKind.Function);
+                WriteFunctionBody(function.Body, indent + 1);
             else
                 WriteOutBody(function, outParameters, indent + 1);
         }
@@ -525,8 +536,33 @@ internal static class TwinRenderer
             });
             var returnAnnotation = !RowStripAnnotations && property.ReturnType != null ? " -> " + Slice(property.ReturnType) : "";
             Line(indent, $"def {property.Name}({string.Join(", ", property.Parameters.Select(ParameterText))}){returnAnnotation}:");
-            WriteBlock(property.Body, indent + 1, BodyKind.Function);
+            WriteFunctionBody(property.Body, indent + 1);
         }
+
+        /// <summary>A function or accessor body, with the names its own <c>global</c> / <c>nonlocal</c> lines declare in scope for
+        /// <see cref="RowKeepScopeDeclaredAnnotation"/> (python's declarations are per function, so a nested body pushes its own).</summary>
+        private void WriteFunctionBody(ImmutableArray<Statement> statements, int indent)
+        {
+            _scopeDeclared.Push(ScopeDeclaredNames(statements));
+            try
+            {
+                WriteBlock(statements, indent, BodyKind.Function);
+            }
+            finally
+            {
+                _scopeDeclared.Pop();
+            }
+        }
+
+        private static HashSet<string> ScopeDeclaredNames(ImmutableArray<Statement> statements) =>
+            statements.OfType<ExpressionStatement>()
+                .Select(s => s.Expression)
+                .OfType<FunctionCall>()
+                .Where(c => c.Function is Identifier { Name: ScopeStatementMarker })
+                .Select(c => ((StringLiteral)c.Arguments[0]).Value)
+                .SelectMany(text => text.Split(' ', 2)[1].Split(','))
+                .Select(n => n.Trim())
+                .ToHashSet(StringComparer.Ordinal);
 
         private void WriteTypeAlias(TypeAlias alias, int indent)
         {
@@ -573,6 +609,9 @@ internal static class TwinRenderer
             SetComprehension comp => $"{{{Expr(comp.Element)} {Clauses(comp.Clauses)}}}",
             DictComprehension comp => $"{{{Expr(comp.Key)}: {Expr(comp.Value)} {Clauses(comp.Clauses)}}}",
             GeneratorExpression comp => $"({Expr(comp.Element)} {Clauses(comp.Clauses)})",
+            // Python 3.13 has no dict-spread comprehension; PEP 798 (3.15) defines `{**S for … }` as the nested loop below, which
+            // keeps every slot in the comprehension's scope (P77b axis 1's Spread slot). The two names are the renderer's own.
+            DictSpreadComprehension comp => $"{{k9: v9 {Clauses(comp.Clauses)} for k9, v9 in ({Expr(comp.Spread)}).items()}}",
             Identifier identifier => identifier.Name,
             MemberAccess { IsNullConditional: false } member => $"{Expr(member.Object)}.{member.Member}",
             IndexAccess index => $"{Expr(index.Object)}[{Expr(index.Index)}]",
@@ -831,7 +870,7 @@ public partial class NameResolutionDifferentialTests
     /// <summary>The seed folder's files, and the normaliser that makes a batch verdict comparable with the inventory's.</summary>
     private static class TwinSeed
     {
-        public const int SpyCount = 166;
+        public const int SpyCount = 168;
         public const int HandTwinCount = 32;
 
         private static readonly Regex Address = new("0x[0-9a-f]+", RegexOptions.CultureInvariant);
@@ -1323,6 +1362,19 @@ public partial class NameResolutionDifferentialTests
             main()
             """,
             "3\n1\n2\n4\n1\n[2]\n"),
+        ["dict-spread-comprehension"] = new(
+            """
+            def main() -> None:
+                d: dict[int, int] = {**{v: v * 2} for v in [1, 2] if v > 0}
+                print(d)
+            """,
+            """
+            def main():
+                d = {k9: v9 for v in [1, 2] if v > 0 for k9, v9 in ({v: v * 2}).items()}
+                print(d)
+            main()
+            """,
+            "{1: 2, 2: 4}\n"),
         ["expressions"] = new(
             """
             def main() -> None:
@@ -1484,6 +1536,27 @@ public partial class NameResolutionDifferentialTests
         }
 
         Assert.True(wrong.Count == 0, $"{wrong.Count} of {names.Count} rows:\n{string.Join("\n", wrong)}");
+    }
+
+    /// <summary>P77b D2.12's row: an annotated declaration of a name the SAME function declares <c>global</c> / <c>nonlocal</c>
+    /// keeps its annotation, so python refuses it as it refuses the source. The controls in the same program: an annotation on an
+    /// undeclared name, the same name in a function that declares nothing, and the <c>let</c> spelling are all stripped as M6
+    /// strips every other annotation.</summary>
+    [Fact]
+    public void TwinRenderer_AnnotatedDeclarationOfAScopeDeclaredName_KeepsItsAnnotation()
+    {
+        const string Spy = "x: int = 5\n"
+            + "def f() -> None:\n    global x\n    x: int = 3\n    y: int = 4\n"
+            + "def g() -> None:\n    x: int = 6\n"
+            + "def k() -> None:\n    global x\n    let x = 7\n"
+            + "def m() -> None:\n    n: int = 1\n    def h() -> None:\n        nonlocal n\n        n: int = 2\n";
+        const string Python = "x = 5\n"
+            + "def f():\n    global x\n    x: int = 3\n    y = 4\n"
+            + "def g():\n    x = 6\n"
+            + "def k():\n    global x\n    x = 7\n"
+            + "def m():\n    n = 1\n    def h():\n        nonlocal n\n        n: int = 2\n";
+
+        Assert.Equal(Python, TwinRenderer.Render(Spy));
     }
 
     /// <summary>The "no silent drop" rule: each shape is a node the table has no row for, so a default arm that dropped it is red here.</summary>

@@ -1,0 +1,6 @@
+# B36 | closure taken before a same-block `let` re-declaration (R-LF, #1974)
+def main() -> None:
+    x: int = 13
+    g: () -> int = lambda: x
+    let x = 2
+    print(g())

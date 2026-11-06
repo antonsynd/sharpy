@@ -28,7 +28,31 @@ namespace Sharpy.TestInfrastructure.Integration;
 /// </summary>
 public abstract class IntegrationTestBase
 {
+    /// <summary>
+    /// The test's output, bounded per test at <see cref="BoundedTestOutput.MaxCharsPerTest"/> characters (#2438): a
+    /// write past the ceiling is dropped and fails the test. What a fact prints itself goes here and is never muted.
+    /// </summary>
     protected readonly ITestOutputHelper Output;
+
+    private readonly BoundedTestOutput _boundedOutput;
+
+    /// <summary>
+    /// The compile path's output: each compile's generated C# and compiler log, written through the same ceiling as
+    /// <see cref="Output"/> and dropped while <see cref="MuteCompilePath"/> is set.
+    /// </summary>
+    private ITestOutputHelper CompilePathOutput => _boundedOutput.CompilePath;
+
+    /// <summary>
+    /// Drops the generated C# and compiler log every compile writes to the test's output. xUnit keeps that output in
+    /// memory until the test ends and vstest then serializes it as one string; over a sweep's thousands of compiles it
+    /// exhausted the testhost's heap (#2438). A sweep class sets this in its constructor; what a fact prints through
+    /// <see cref="Output"/> still gets through.
+    /// </summary>
+    protected bool MuteCompilePath
+    {
+        get => _boundedOutput.MuteCompilePath;
+        set => _boundedOutput.MuteCompilePath = value;
+    }
 
     private static readonly Lazy<string> SharedTestCacheDir = new(() =>
     {
@@ -128,7 +152,8 @@ public abstract class IntegrationTestBase
 
     protected IntegrationTestBase(ITestOutputHelper output)
     {
-        Output = output;
+        _boundedOutput = new BoundedTestOutput(output);
+        Output = _boundedOutput;
     }
 
     protected virtual IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
@@ -203,7 +228,10 @@ public abstract class IntegrationTestBase
         var timing = CallTiming.Begin("single");
         try
         {
-            return CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs, features ?? FeatureFlags.None, timing);
+            var result = CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs, features ?? FeatureFlags.None, timing);
+            // Outside the core's catch: a ceiling crossed by this compile's output fails the test (#2438).
+            _boundedOutput.ThrowIfCeilingExceeded();
+            return result;
         }
         finally
         {
@@ -224,7 +252,7 @@ public abstract class IntegrationTestBase
             // a synthetic project-of-one-file through ProjectCompiler — the exact path that
             // `sharpyc run/build <file>` uses. The harness no longer hand-wires the phases,
             // hardcodes IsEntryPoint, or threads no FeatureFlags.
-            var logger = new OutputTestLogger(Output);
+            var logger = new OutputTestLogger(CompilePathOutput);
 
             // Preserve the fixture's file name (inside a unique temp dir) so single-file
             // module naming and any #line directives match a real single-file compile of
@@ -309,9 +337,9 @@ public abstract class IntegrationTestBase
 
             var generatedCSharp = compileResult.GeneratedCSharp;
 
-            Output.WriteLine("=== Generated C# ===");
-            Output.WriteLine(generatedCSharp ?? "(no C# generated)");
-            Output.WriteLine("====================");
+            CompilePathOutput.WriteLine("=== Generated C# ===");
+            CompilePathOutput.WriteLine(generatedCSharp ?? "(no C# generated)");
+            CompilePathOutput.WriteLine("====================");
 
             if (!compileResult.Success || generatedCSharp == null)
             {
@@ -438,7 +466,10 @@ public abstract class IntegrationTestBase
         var timing = CallTiming.Begin("project");
         try
         {
-            return CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs, features ?? FeatureFlags.None, timing);
+            var result = CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs, features ?? FeatureFlags.None, timing);
+            // Outside the core's catch: a ceiling crossed by this compile's output fails the test (#2438).
+            _boundedOutput.ThrowIfCeilingExceeded();
+            return result;
         }
         finally
         {
@@ -451,7 +482,7 @@ public abstract class IntegrationTestBase
         try
         {
             var pipelineStart = CallTiming.Start(timing);
-            var logger = new OutputTestLogger(Output);
+            var logger = new OutputTestLogger(CompilePathOutput);
 
             // Discover all .spy files in the directory (including subdirectories for packages).
             // Directory.GetFiles order is filesystem-dependent; sort ordinally so the test
@@ -469,11 +500,11 @@ public abstract class IntegrationTestBase
                 };
             }
 
-            Output.WriteLine($"Found {sourceFiles.Count} source files:");
+            CompilePathOutput.WriteLine($"Found {sourceFiles.Count} source files:");
             foreach (var file in sourceFiles)
             {
                 var relativePath = Path.GetRelativePath(projectDir, file);
-                Output.WriteLine($"  - {relativePath}");
+                CompilePathOutput.WriteLine($"  - {relativePath}");
             }
 
             // Create a project config for the test
@@ -527,14 +558,14 @@ public abstract class IntegrationTestBase
             }
 
             // Log generated C#
-            Output.WriteLine("=== Generated C# ===");
+            CompilePathOutput.WriteLine("=== Generated C# ===");
             foreach (var (fileName, code) in result.GeneratedCSharpFiles)
             {
-                Output.WriteLine($"// {fileName}");
-                Output.WriteLine(code);
-                Output.WriteLine("---");
+                CompilePathOutput.WriteLine($"// {fileName}");
+                CompilePathOutput.WriteLine(code);
+                CompilePathOutput.WriteLine("---");
             }
-            Output.WriteLine("====================");
+            CompilePathOutput.WriteLine("====================");
 
             return EmitAndRunProjectAssembly(
                 timing,
@@ -581,7 +612,10 @@ public abstract class IntegrationTestBase
         var timing = CallTiming.Begin("entry-file");
         try
         {
-            return CompileAndExecuteEntryFileCore(entryFilePath, executionTimeoutMs, features ?? FeatureFlags.None, timing);
+            var result = CompileAndExecuteEntryFileCore(entryFilePath, executionTimeoutMs, features ?? FeatureFlags.None, timing);
+            // Outside the core's catch: a ceiling crossed by this compile's output fails the test (#2438).
+            _boundedOutput.ThrowIfCeilingExceeded();
+            return result;
         }
         finally
         {
@@ -595,7 +629,7 @@ public abstract class IntegrationTestBase
         try
         {
             var pipelineStart = CallTiming.Start(timing);
-            var logger = new OutputTestLogger(Output);
+            var logger = new OutputTestLogger(CompilePathOutput);
 
             var defaultReferences = new List<string> { SharpyCoreReference.Location };
             defaultReferences.AddRange(GetAdditionalReferenceAssemblyPaths());
@@ -633,9 +667,9 @@ public abstract class IntegrationTestBase
 
             var generatedReport = FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles);
 
-            Output.WriteLine("=== Generated C# ===");
-            Output.WriteLine(generatedReport);
-            Output.WriteLine("====================");
+            CompilePathOutput.WriteLine("=== Generated C# ===");
+            CompilePathOutput.WriteLine(generatedReport);
+            CompilePathOutput.WriteLine("====================");
 
             if (!result.Success || result.GeneratedCSharpFiles.Count == 0)
             {

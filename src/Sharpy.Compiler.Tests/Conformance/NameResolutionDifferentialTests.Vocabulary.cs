@@ -50,8 +50,10 @@ internal enum BindingKind
     LocalDef,
     LambdaTypedLocal,
 
-    // a binding of the global scope (SymbolTable.PopulateBuiltins), and no binding at all
+    // the named outers: a binding of the global scope (SymbolTable.PopulateBuiltins) and a name a single-file
+    // `from <stdlib module> import <name>` binds (ImportResolver.BindImportName, P77b D2.9); and no binding at all
     Builtin,
+    ImportedName,
     None,
 }
 
@@ -142,7 +144,9 @@ internal enum PatternClass
 /// </summary>
 internal enum ExcludedAxis
 {
-    /// <summary>(i) module-qualified spelling, reads from another module, a later project file: needs a project route.</summary>
+    /// <summary>(i) the module-qualified spelling (<c>string.digits</c>), reads from another user module, a later project file:
+    /// needs a project route. The single-file <c>from &lt;stdlib module&gt; import &lt;name&gt;</c> is NOT out: it is
+    /// <see cref="BindingKind.ImportedName"/> (P77b axis 9).</summary>
     ProjectRoute,
 
     /// <summary>(ii) hosts interface/union/enum/generic: P78's and P75's hand matrices.</summary>
@@ -218,32 +222,9 @@ internal enum ExcludedAxis
 [Trait("Category", "GapDiscovery")]
 public partial class NameResolutionDifferentialTests : IntegrationTestBase
 {
-    private readonly CompilePathOutput _compilePathOutput;
-
-    public NameResolutionDifferentialTests(ITestOutputHelper output) : this(new CompilePathOutput(output)) { }
-
-    private NameResolutionDifferentialTests(CompilePathOutput output) : base(output) => _compilePathOutput = output;
-
-    /// <summary>
-    /// The output the base class writes through. <see cref="IntegrationTestBase"/> records each compile's generated
-    /// C# in the test's output, xUnit keeps that in memory until the test ends, and vstest then serializes it as one
-    /// string. Over a sweep's thousands of compiles that string exhausted the testhost's heap, so the compile path
-    /// is muted and only what a fact prints itself gets through.
-    /// </summary>
-    private sealed class CompilePathOutput(ITestOutputHelper inner) : ITestOutputHelper
-    {
-        public bool Muted { get; set; }
-
-        public void WriteLine(string message)
-        {
-            if (!Muted)
-                inner.WriteLine(message);
-        }
-
-        public void WriteLine(string format, params object[] args)
-        {
-            if (!Muted)
-                inner.WriteLine(format, args);
-        }
-    }
+    /// <summary>The compile path is muted per <c>RunSharpy</c> call rather than in the constructor: a fact that
+    /// compiles through the base class directly still records its generated C#, which is how
+    /// <c>RunSharpy_BuffersNothingInTheTestResult</c> shows the mute was lifted. The mute and the per-test output
+    /// ceiling are <see cref="IntegrationTestBase"/>'s (#2438).</summary>
+    public NameResolutionDifferentialTests(ITestOutputHelper output) : base(output) { }
 }

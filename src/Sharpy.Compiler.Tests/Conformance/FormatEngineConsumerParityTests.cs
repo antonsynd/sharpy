@@ -29,7 +29,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </summary>
 public class FormatEngineConsumerParityTests : IntegrationTestBase
 {
-    public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) { }
+    public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output)
+    {
+        // Every compile's generated C# would land in this test's result: muted (#2438, the per-test output ceiling;
+        // this matrix measured just over 1,000,000 chars on the first gate run after the ceiling landed).
+        MuteCompilePath = true;
+    }
 
     /// <summary>One value, one spec — rendered four ways, expected to agree with python3.</summary>
     private sealed record Cell(string Label, string Decl, string Value, string Spec, string Expected);

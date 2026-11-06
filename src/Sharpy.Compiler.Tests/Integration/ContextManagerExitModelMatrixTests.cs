@@ -47,7 +47,12 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// </summary>
 public class ContextManagerExitModelMatrixTests : IntegrationTestBase
 {
-    public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output) { }
+    public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output)
+    {
+        // Every compile's generated C# would land in this test's result: muted (#2438, the per-test output ceiling;
+        // this matrix measured just over 1,000,000 chars on the first gate run after the ceiling landed).
+        MuteCompilePath = true;
+    }
 
     // ── Axes ──
 

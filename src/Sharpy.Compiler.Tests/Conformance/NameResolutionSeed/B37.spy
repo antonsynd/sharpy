@@ -1,0 +1,6 @@
+# B37 | closure taken before a same-block annotated re-declaration (R-LF, #1974)
+def main() -> None:
+    x: int = 13
+    g: () -> int = lambda: x
+    x: int = 2
+    print(g())

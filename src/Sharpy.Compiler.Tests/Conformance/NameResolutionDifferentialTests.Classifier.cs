@@ -64,6 +64,22 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(VerdictClass.RuntimeThrow, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.RuntimeThrow, run.Stdout));
     }
 
+    /// <summary>P77b D2.9's order of work: the harness compiles a Stdlib import IN PROCESS before any axis-9 cell exists.
+    /// <c>string</c> is a Sharpy.Stdlib module and <c>CompileAndExecute</c> references Sharpy.Core alone unless the override
+    /// adds the monolith, so the imported outer is runnable only on a cell that asks (<c>needsStdlib</c>). The second compile
+    /// is the positive control of "every other cell keeps the Core-only reference": the same source unflagged is SPY0300.</summary>
+    [Fact]
+    public void ImportedOuter_CompilesInProcess()
+    {
+        const string Program = "from string import digits\ndef main() -> None:\n    print(len(digits))\n";
+
+        var run = RunSharpy(Program, needsStdlib: true);
+
+        Assert.True(ClassifySharpy(run) == SharpyKind.Ran && Normalize(run.Stdout) == "10",
+            $"expected Ran '10', got {ClassifySharpy(run)} '{Normalize(run.Stdout)}' [{string.Join(",", run.AllCodes)}]");
+        Assert.Contains("SPY0300", RunSharpy(Program).ErrorCodes);
+    }
+
     /// <summary>The positive control of "never SPY0908": a C#-compile failure reaches the classifier through the mapped
     /// diagnostics as Ice, and the same program is never read as a refusal.</summary>
     [Fact]
@@ -83,6 +99,52 @@ public partial class NameResolutionDifferentialTests
 
         Assert.Equal(SharpyKind.TimedOut, ClassifySharpy(run));
         Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.TimedOut, ""));
+    }
+
+    /// <summary>D4.3: a run that times out once and finishes at twice the timeout is judged on the second run (Ran); a run that
+    /// times out twice stays a timeout, which is Harness (the positive control: the retry hides no real hang).</summary>
+    [Fact]
+    public void Classifier_ATimeoutIsRetriedOnceAtTwiceTheTimeout()
+    {
+        var timeouts = new List<int>();
+        var timedOut = Literal() with { Success = false, ExitCode = null, TimedOut = true };
+        SharpyRun OnceSlow(string _, int timeout)
+        {
+            timeouts.Add(timeout);
+            return timeouts.Count == 1 ? timedOut : Literal();
+        }
+
+        var run = RunWithRetry(OnceSlow, "src", 100, out var retried);
+
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(run));
+        Assert.True(retried);
+        Assert.Equal(new[] { 100, 200 }, timeouts);
+
+        timeouts.Clear();
+        SharpyRun AlwaysSlow(string _, int timeout)
+        {
+            timeouts.Add(timeout);
+            return timedOut;
+        }
+
+        var hung = RunWithRetry(AlwaysSlow, "src", 100, out var retriedHung);
+
+        Assert.True(retriedHung);
+        Assert.Equal(new[] { 100, 200 }, timeouts);
+        Assert.Equal(SharpyKind.TimedOut, ClassifySharpy(hung));
+        Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, ""), ClassifySharpy(hung), hung.Stdout));
+
+        timeouts.Clear();
+        SharpyRun Fast(string _, int timeout)
+        {
+            timeouts.Add(timeout);
+            return Literal();
+        }
+
+        RunWithRetry(Fast, "src", 100, out var retriedFast);
+
+        Assert.False(retriedFast);
+        Assert.Equal(new[] { 100 }, timeouts);
     }
 
     [Fact]
@@ -117,9 +179,16 @@ public partial class NameResolutionDifferentialTests
     [InlineData("UnboundLocalError: cannot access local variable 'q' where it is not associated with a value", PyKind.UnboundLocalError, "q")]
     [InlineData("TypeError: 'int' object is not callable", PyKind.OtherError, "TypeError")]
     [InlineData("ValueError: x", PyKind.OtherError, "ValueError")]
-    public void Classifier_PythonLastLine_ParsesKindAndName(string lastLine, PyKind kind, string value)
+    // P77b D2.12: the SyntaxError lines axis 12 predicts, measured on python 3.13.18 (-I, the runner's `-B -S -c`). A predicted
+    // SyntaxError is agreement only if the runner's flag and this last line both reach the outcome.
+    [InlineData("SyntaxError: name 'x' is used prior to global declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to global declaration", true)]
+    [InlineData("SyntaxError: name 'x' is used prior to nonlocal declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to nonlocal declaration", true)]
+    [InlineData("SyntaxError: no binding for nonlocal 'x' found", PyKind.SyntaxError, "SyntaxError: no binding for nonlocal 'x' found", true)]
+    [InlineData("SyntaxError: annotated name 'x' can't be global", PyKind.SyntaxError, "SyntaxError: annotated name 'x' can't be global", true)]
+    [InlineData("SyntaxError: annotated name 'x' can't be nonlocal", PyKind.SyntaxError, "SyntaxError: annotated name 'x' can't be nonlocal", true)]
+    public void Classifier_PythonLastLine_ParsesKindAndName(string lastLine, PyKind kind, string value, bool syntaxError = false)
     {
-        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, false));
+        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, syntaxError));
 
         Assert.Equal(new PyOutcome(kind, value), observed);
     }
@@ -214,11 +283,55 @@ public partial class NameResolutionDifferentialTests
     [InlineData("CS0266", BindingKind.NestedType, "#2397")]
     [InlineData("CS9999", BindingKind.ModuleVar, "UNROUTED(CS9999)")]
     [InlineData("CS1061", BindingKind.ModuleVar, "UNROUTED(CS1061)")]
+    [InlineData("CS1501", BindingKind.ModuleVar, "#2423")]
     internal void Cite_AnIce_RoutesByItsCode(string cs, BindingKind target, string expected)
     {
         var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target };
 
         Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
+    }
+
+    /// <summary>P77b D1's restored ModuleEnum outer: CS1061 routes to #2423 only under that outer. The same code under no
+    /// outer stays untriaged (the NestedType row above and this one's second arm are its controls).</summary>
+    [Theory]
+    [InlineData(BindingKind.StaticMethod, BindingKind.ModuleEnum, "#2423")]
+    [InlineData(BindingKind.StaticMethod, BindingKind.None, "UNROUTED(CS1061)")]
+    internal void Cite_AMemberReadUnderTheEnumOuter_RoutesToN1(BindingKind target, BindingKind outer, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target, Outer = outer };
+        var cs = "CS1061";
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
+    }
+
+    /// <summary>P77b axis 10: CS1955 routes to #2397 on a sibling nested-type read only. The same code on a nested type read in its
+    /// own class body keeps the N1 route (#2423), which is the control that the key is the relation and not the target.</summary>
+    [Theory]
+    [InlineData(DeclaringRelation.Sibling, "#2397")]
+    [InlineData(DeclaringRelation.Self, "#2423")]
+    internal void Cite_ASiblingNestedTypeIce_RoutesByTheRelation(DeclaringRelation relation, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRefuse, null) with { Target = BindingKind.NestedType, Relation = relation };
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = "CS1955" }), StringComparison.Ordinal);
+    }
+
+    /// <summary>P77b axis 11's routes, each keyed on the new axis property, each with its control on the same code: an alias-spelled
+    /// type position's CS0103 and refusal go to #1925, a bare result return's CS0029 to #2249; the bare spelling and the Ok form
+    /// keep the N1 route.</summary>
+    [Theory]
+    [InlineData(VerdictClass.Ice, "CS0103", Spelling.Alias, null, "#1925")]
+    [InlineData(VerdictClass.Ice, "CS0103", Spelling.Bare, null, "UNROUTED(CS0103)")]
+    [InlineData(VerdictClass.FalseRefusal, null, Spelling.Alias, null, "#1925")]
+    [InlineData(VerdictClass.FalseRefusal, null, Spelling.Bare, null, "#2423")]
+    [InlineData(VerdictClass.Ice, "CS0029", Spelling.Bare, ResultValueForm.Bare, "#2249")]
+    [InlineData(VerdictClass.Ice, "CS0029", Spelling.Bare, ResultValueForm.Ok, "#2423")]
+    internal void Cite_ATypePositionAxis11Red_RoutesByItsAxis(VerdictClass verdict, string? cs, Spelling spelling, ResultValueForm? form, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "3") with { Id = "read/type-position/unit/Earlier", TypeSpelling = spelling, ResultForm = form, TypeAt = TypePosition.BaseList };
+        var run = verdict == VerdictClass.Ice ? Literal("SPY0908") with { CsCode = cs } : Literal("SPY0202");
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, verdict, run), StringComparison.Ordinal);
     }
 
     /// <summary>A union case reached through an alias refuses at both orders: the alias is the cause, not the order (#1925, not #2249).</summary>
@@ -336,7 +449,42 @@ public partial class NameResolutionDifferentialTests
     /// no allowlist row notices. A drain plan never touches this table, because a verdict moving changes no tag.</summary>
     [Fact]
     public void Census_TheGeneratedPool_IsPinned()
-        => Assert.Empty(CensusFailures(GeneratedCells()));
+    {
+        var failures = CensusFailures(GeneratedCells()).ToList();
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>The sweep's roster-fed check without python or a Sharpy run: every roster value the generator owes a cell has
+    /// one, and no cell leaves its axis. It reads the rosters, never the census, so it stands when the census is off.</summary>
+    [Fact]
+    public void RosterFed_TheGeneratedPool_FeedsEveryRoster()
+        => Assert.Empty(RosterFedFailures(GeneratedCells()));
+
+    /// <summary>P77b D3.2: every later model is what its earlier twin prints. The pair and judged counts are measured literals
+    /// (the positive control: an id set with no order token pairs nothing and is red on the floor).</summary>
+    [Fact]
+    public void ModelPairing_EveryLaterModel_IsWhatTheEarlierTwinPrints()
+    {
+        var failures = ModelPairingFailures(GeneratedCells(), out var pairs, out var judged).ToList();
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        Assert.Equal(PinnedModelPairs, pairs);
+        Assert.Equal(PinnedJudgedModelPairs, judged);
+        Assert.True(judged >= ModelPairFloor, $"{judged} judged pairs, below the floor {ModelPairFloor}");
+    }
+
+    /// <summary>P77b D3.4: every rule the pool cites is a predicate on the cell's axes, total both ways, and every rule a refusing
+    /// cell cites has its admitted codes. The rule counts are measured literals (the positive control: a pool citing fewer rules,
+    /// or a predicate no cell carries, is red).</summary>
+    [Fact]
+    public void RuleAxes_EveryRuleCite_IsAnAxisPredicate()
+    {
+        var failures = RuleAxesFailures(GeneratedCells(), out var rules, out var refusingRules).ToList();
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        Assert.Equal(PinnedRuleCount, rules);
+        Assert.Equal(PinnedRefusingRuleCount, refusingRules);
+    }
 
     /// <summary>A deviation names a ledger row, and the row exists (Acceptance 3). The named cells are the positive control.</summary>
     [Fact]
@@ -367,21 +515,41 @@ public partial class NameResolutionDifferentialTests
         Assert.Null(PythonControlFailure(cell with { Model = "7" }, PyOutcome.Ran("7")));
     }
 
-    /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red.</summary>
+    /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red. The
+    /// shapes P77b D6 retired (every R-KX…R-LJ arm) hold nowhere.</summary>
     [Theory]
-    [InlineData("L28", Family.Read, BindingKind.StaticField, BindingKind.None, "read/StaticField/MethodBody/Later/Bare/outer=None")]
-    [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
-    [InlineData("store-non-writable:ModuleDef:Assign", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/no-decl")]
-    [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
-    [InlineData("lambda-self", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/self/outer=None/FunctionBody")]
-    [InlineData("match-capture:none", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/For/after-block/outer=None/FunctionBody")]
-    [InlineData("rowless-let:if-then", Family.Local, BindingKind.LocalLet, BindingKind.None, "local/LocalLet/let-in/if-then/outer=None/FunctionBody")]
-    [InlineData("s2-builtin", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/For/after-block/outer=ModuleVar/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/global")]
+    [InlineData("global-creates-binding", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/lambda/outer=None/FunctionBody")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Seed, BindingKind.None, BindingKind.None, "seed/A12")]
+    [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/LocalVar/above/outer=ModuleVar/FunctionBody")]
+    [InlineData("seed:A12", Family.Seed, BindingKind.None, BindingKind.None, "seed/A12")]
     internal void ClosedSet_AListedShapeOnTheWrongAxes_IsRed(string shape, Family family, BindingKind target, BindingKind outer, string id)
     {
         var cell = CellTagged(SharpyTag.Unruled, null) with { Id = id, Family = family, Target = target, Outer = outer, Shape = shape };
 
         Assert.False(UnruledAxesHold(cell));
+    }
+
+    /// <summary>P77b D6 R-LF: a seed has no axes but its source, so the same-block shape reads it. B36 / B37 hold (the positive
+    /// control); the re-declaration moved into a nested block (block scoping, not the same-block question), B21's read-then-declare
+    /// and a non-seed cell do not.</summary>
+    [Fact]
+    public void ClosedSet_SameBlockRedeclarationAfterClosure_ReadsTheSource()
+    {
+        var holds = CellTagged(SharpyTag.Unruled, null) with
+        {
+            Id = "seed/B36",
+            Family = Family.Seed,
+            Shape = "same-block-redeclaration-after-closure",
+            Source = TwinSeed.Spy("B36"),
+        };
+
+        Assert.True(UnruledAxesHold(holds));
+        Assert.True(UnruledAxesHold(holds with { Source = TwinSeed.Spy("B37") }));
+        Assert.False(UnruledAxesHold(holds with { Source = holds.Source.Replace("    let x = 2", "    if True:\n        let x = 2", StringComparison.Ordinal) }));
+        Assert.False(UnruledAxesHold(holds with { Source = TwinSeed.Spy("B21") }));
+        Assert.False(UnruledAxesHold(holds with { Family = Family.Local }));
     }
 
     private static NameCell CellTagged(SharpyTag tag, string? model) => new()

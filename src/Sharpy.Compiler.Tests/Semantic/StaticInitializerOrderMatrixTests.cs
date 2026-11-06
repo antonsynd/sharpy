@@ -60,6 +60,9 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
 {
     public StaticInitializerOrderMatrixTests(ITestOutputHelper output) : base(output)
     {
+        // Every compile's generated C# would land in this test's result: muted (#2438, the per-test output ceiling;
+        // this matrix measured just over 1,000,000 chars on the first gate run after the ceiling landed).
+        MuteCompilePath = true;
     }
 
     /// <summary>The SPY0618 code (<c>DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead</c>), spelled as a

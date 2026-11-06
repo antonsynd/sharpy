@@ -10,7 +10,7 @@ A08	MustRun	4
 A09	MustRun	4		
 A10	MustRun	4		
 A11	MustRun	init a|init b|main|2	#2422	
-A12	Unruled		#2427	
+A12	MustRefuse		#1974	SPY0204
 A13	MayRefuse	1		SPY0340
 A14	MustRefuse			SPY0204
 A15	MustRun	6 6 5	#2422	
@@ -30,7 +30,7 @@ B05	MustRefuse			SPY0225
 B06	MustRun	5|1		
 B07	MustRun	5|1		
 B08	MustRefuse		#2424	
-B09	Unruled		#2427	
+B09	MustRefuse		#2425	SPY0200
 B10	MustRun	11		
 B11	MustRun	[0, 1, 2]	#2425	
 B12	MustRun	[0, 1, 2]	#2425	
@@ -42,14 +42,14 @@ B17	MustRefuse			SPY0200
 B18	MustRun	5		
 B19	MustRun	2|2		
 B20	MustRefuse			SPY0200
-B21	Unruled		#2427	
-B22	Unruled		#2427	
+B21	MustRefuse		#2425	
+B22	MustRefuse		#2425	
 B23	MustRefuse		#2425	
-B24	Unruled		#2427	
+B24	MustRefuse		#2424	
 B25	MustRun	5		
 B26	MustRefuse			SPY0230
 B27	MustRun	2|1		
-B28	Unruled		#2427	
+B28	MustRefuse		#1974	SPY0204
 B29	MustRefuse			SPY0204
 B30	MustRun	7		
 B31	MustRefuse			SPY0200
@@ -57,6 +57,8 @@ B32	MustRefuse			SPY0200,SPY0600
 B33	MustRun	1		
 B34	MustRefuse		#2424	
 B35	MustRun	[1, 2]		
+B36	Unruled		#1974	
+B37	Unruled		#1974	
 C01	MustRun	3		
 C02	MustRun	3	#2423	
 C03	MustRun	3	#2423	
