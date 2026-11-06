@@ -901,8 +901,8 @@ public partial class NameResolutionDifferentialTests
                             break;
                         case LocalTarget.MatchCapture:
                         case LocalTarget.AsPatternCapture:
-                            e = new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(last!), "unruled:N5-match-capture");
-                            shape = $"match-capture:{(u == BindingKind.None ? "none" : "visible")}";
+                            // R-KZ: a capture is fresh per arm. No outer is the name check after the arm, a visible outer is S2's refusal.
+                            e = Refuse(PyOutcome.Ran(last!), u == BindingKind.None ? "N5" : "S2");
                             break;
                         default:
                             var python = t == LocalTarget.ExceptAs ? PyOutcome.Unbound("x") : PyOutcome.Ran(last!);
@@ -1218,8 +1218,6 @@ public partial class NameResolutionDifferentialTests
     /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
     internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        ["match-capture:none"] = 6,
-        ["match-capture:visible"] = 46,
         ["match-capture:builtin"] = 16,
         ["rowless-let:for-body"] = 4,
         ["rowless-let:for-else"] = 4,
