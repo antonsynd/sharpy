@@ -83,6 +83,15 @@ internal enum ComprehensionNesting
     StaticInitializer,
 }
 
+/// <summary>Axis 1's clause shapes, the image of <see cref="NameResolutionRosters.ComprehensionClauses"/>: one <c>for</c>, a second
+/// <c>for</c>, an <c>if</c>. A name in a second <c>for</c>'s iterable sits in the comprehension's own scope, where the first's does not.</summary>
+internal enum ComprehensionClauseShape
+{
+    OneFor,
+    SecondFor,
+    IfClause,
+}
+
 /// <summary>How a read reaches an N3 cycle (P77b axis 2, deferred row 3). Named closed: N3's cycle is either the initializer's
 /// own read or a read through a call, and a call is one hop however deep.</summary>
 internal enum CycleThrough
@@ -997,6 +1006,22 @@ internal static class NameResolutionRosters
             "bound by the signature, never by a statement of the body, so no read above its binding exists")),
         (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind,
             "a lambda parameter or comprehension variable, bound inside its own expression: LocalTarget.Comprehension is its axis")));
+
+    /// <summary>P77b axis 1's kinds: a comprehension family of <see cref="BlockFamilies"/> and the AST node it scopes, total over both.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<Type>> ComprehensionKinds = Roster.Map(
+        ("list-comprehension", Roster.To(typeof(ListComprehension))),
+        ("set-comprehension", Roster.To(typeof(SetComprehension))),
+        ("dict-comprehension", Roster.To(typeof(DictComprehension))),
+        ("dict-spread-comprehension", Roster.To(typeof(DictSpreadComprehension))),
+        ("generator-expression", Roster.To(typeof(GeneratorExpression))));
+
+    /// <summary>P77b axis 1's clauses: every <see cref="ComprehensionClause"/> subclass and every <c>bool</c> it declares is a row or out
+    /// with its reason, by reflection (the <see cref="VariableFlags"/> shape).</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<ComprehensionClauseShape>> ComprehensionClauses = Roster.Map(
+        ("ForClause", Roster.To(ComprehensionClauseShape.OneFor, ComprehensionClauseShape.SecondFor)),
+        ("IfClause", Roster.To(ComprehensionClauseShape.IfClause)),
+        ("ForClause.IsAsync", Roster.Out<ComprehensionClauseShape>(ExcludedAxis.AsyncBodies,
+            "`async for` needs the twin's await chain, which is not a name axis (xiii)")));
 
     /// <summary>P77b axis 1's slots (deferred row 1): every Expression-typed property of a comprehension or clause node, read by
     /// reflection against this map, so a slot the AST gains is red until it has a row. <c>Spread</c> is a READ slot like the
@@ -2277,6 +2302,40 @@ public partial class NameResolutionDifferentialTests
         problems.AddRange(Enum.GetValues<ComprehensionSlot>().Where(s => !image.Contains(s)).Select(s => $"ComprehensionSlot.{s} is the image of no property"));
 
         AssertNoProblems(problems, "a slot a name can sit in is an Expression-typed property of the node, never a list in prose");
+    }
+
+    [Fact]
+    public void ComprehensionKindsRoster_IsTotalOverTheBlockFamiliesAndTheNodes()
+    {
+        var families = NameResolutionRosters.BlockFamilies
+            .Where(e => e.Value.Image.Any(c => c.Target == LocalTarget.Comprehension))
+            .Select(e => e.Key);
+        var problems = Roster.TotalityProblems("ComprehensionKinds (a comprehension family)", families, NameResolutionRosters.ComprehensionKinds.Keys).ToList();
+
+        var nodes = ConcreteSubclasses(typeof(Expression))
+            .Where(n => n.EndsWith("Comprehension", StringComparison.Ordinal) || n == nameof(GeneratorExpression));
+        problems.AddRange(Roster.TotalityProblems("ComprehensionKinds (an Expression subclass)", nodes,
+            Roster.ImageOf(NameResolutionRosters.ComprehensionKinds).Select(t => t.Name)));
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionKinds));
+
+        AssertNoProblems(problems, "axis 1's kind is every comprehension family and every comprehension node, both directions");
+        NameResolutionRosters.ComprehensionKinds.Should().HaveCount(5, "a measured literal, so the two reflections cannot both read nothing");
+    }
+
+    [Fact]
+    public void ComprehensionClausesRoster_IsTotalOverTheSubclassesAndTheirFlags()
+    {
+        var clauses = typeof(Expression).Assembly.GetTypes()
+            .Where(t => typeof(ComprehensionClause).IsAssignableFrom(t) && !t.IsAbstract)
+            .ToList();
+        var universe = clauses.Select(t => t.Name)
+            .Concat(clauses.SelectMany(t => BoolProperties(t, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Select(b => $"{t.Name}.{b}")));
+        var problems = Roster.TotalityProblems("ComprehensionClauses (a clause subclass or a clause flag)", universe, NameResolutionRosters.ComprehensionClauses.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionClauses));
+
+        AssertNoProblems(problems, "a clause or a clause flag is a row, or out with its reason");
+        NameResolutionRosters.ComprehensionClauses.Keys.Should().BeEquivalentTo(new[] { "ForClause", "IfClause", "ForClause.IsAsync" }, "measured literals");
+        Roster.ImageOf(NameResolutionRosters.ComprehensionClauses).Should().BeEquivalentTo(Enum.GetValues<ComprehensionClauseShape>());
     }
 
     [Fact]
