@@ -10,7 +10,7 @@ A08	MustRun	4
 A09	MustRun	4		
 A10	MustRun	4		
 A11	MustRun	init a|init b|main|2	#2422	
-A12	Unruled		#2427	
+A12	MustRefuse		#1974	SPY0204
 A13	MayRefuse	1		SPY0340
 A14	MustRefuse			SPY0204
 A15	MustRun	6 6 5	#2422	
@@ -49,7 +49,7 @@ B24	Unruled		#2427
 B25	MustRun	5		
 B26	MustRefuse			SPY0230
 B27	MustRun	2|1		
-B28	Unruled		#2427	
+B28	MustRefuse		#1974	SPY0204
 B29	MustRefuse			SPY0204
 B30	MustRun	7		
 B31	MustRefuse			SPY0200

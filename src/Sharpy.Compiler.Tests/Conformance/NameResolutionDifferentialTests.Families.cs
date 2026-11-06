@@ -1258,11 +1258,9 @@ public partial class NameResolutionDifferentialTests
         ["store-non-writable:ModuleTypeAlias:Augmented"] = 2,
         ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
         ["store-non-writable:ModuleTypeAlias:global"] = 3,
-        ["seed:A12"] = 1,
         ["seed:B21"] = 1,
         ["seed:B22"] = 1,
         ["seed:B24"] = 1,
-        ["seed:B28"] = 1,
     };
 
     /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
