@@ -945,7 +945,8 @@ public partial class NameResolutionDifferentialTests
                 }
             }
 
-        // S2 × Builtin: is a builtin a visible binding the target reuses? Only the comprehension is agreed.
+        // S2 × Builtin (R-LA): a builtin is a visible binding the target reuses, so the later call is refused. The comprehension
+        // target's scope ends at its own bracket, so it reads the builtin.
         foreach (var (name, args, pars, result) in Builtins)
         {
             var n = new ReadName(name, args, pars, result);
@@ -957,9 +958,8 @@ public partial class NameResolutionDifferentialTests
                     var e = t == LocalTarget.Comprehension
                         ? Run(result, "N1")
                         // `except … as abs` deletes the name, so python's later call is unbound; the other targets call an int.
-                        : new Expected(SharpyTag.Unruled, null, t == LocalTarget.ExceptAs ? PyOutcome.Unbound(name) : PyOutcome.Other("TypeError"), "unruled:S2-builtin");
-                    var shape = t == LocalTarget.Comprehension ? null : t is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture ? "match-capture:builtin" : "s2-builtin";
-                    yield return LocalProgram(CellId("local", t, "after-block", "outer=Builtin", body, name), BindingKind.LocalVar, BindingKind.Builtin, body, stmts, e, shape, n, t);
+                        : Refuse(t == LocalTarget.ExceptAs ? PyOutcome.Unbound(name) : PyOutcome.Other("TypeError"), "S2");
+                    yield return LocalProgram(CellId("local", t, "after-block", "outer=Builtin", body, name), BindingKind.LocalVar, BindingKind.Builtin, body, stmts, e, null, n, t);
                 }
         }
     }
@@ -1218,12 +1218,10 @@ public partial class NameResolutionDifferentialTests
     /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
     internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        ["match-capture:builtin"] = 16,
         ["rowless-let:for-body"] = 4,
         ["rowless-let:for-else"] = 4,
         ["rowless-let:while-else"] = 4,
         ["rowless-let:match-case"] = 4,
-        ["s2-builtin"] = 24,
     };
 
     /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
@@ -1232,23 +1230,12 @@ public partial class NameResolutionDifferentialTests
     {
         var shape = c.Shape ?? "";
         var parts = shape.Split(':');
-        var capture = c.Construct is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture;
         switch (parts[0])
         {
-            case "match-capture":
-                return c.Family == Family.Local && capture && parts[1] == (c.Outer switch
-                {
-                    BindingKind.None => "none",
-                    BindingKind.Builtin => "builtin",
-                    _ => "visible",
-                });
             case "rowless-let":
                 return c.Family == Family.Local && c.Target == BindingKind.LocalLet
                     && c.Id.Contains($"/let-in/{parts[1]}/", StringComparison.Ordinal)
                     && BlockShapes.Any(b => b.Family == parts[1] && b.Row == null);
-            case "s2-builtin":
-                return c.Family == Family.Local && c.Outer == BindingKind.Builtin
-                    && c.Construct is LocalTarget.For or LocalTarget.WithAs or LocalTarget.ExceptAs;
             case "seed":
                 return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
             default:
