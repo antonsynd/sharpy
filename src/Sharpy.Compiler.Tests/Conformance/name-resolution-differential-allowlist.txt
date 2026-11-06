@@ -1802,6 +1802,11 @@ read/str/StaticField/StaticInitializer/lambda RuntimeThrow # #2422 runtime-throw
 read/str/StaticProperty/StaticInitializer/deferred RuntimeThrow # #2422 runtime-throw
 read/str/StaticProperty/StaticInitializer/function RuntimeThrow # #2422 runtime-throw
 read/str/StaticProperty/StaticInitializer/lambda RuntimeThrow # #2422 runtime-throw
+read/type-position/base-list/Earlier/Alias FalseRefusal # #1925 false-refusal
+read/type-position/base-list/Later/Alias FalseRefusal # #1925 false-refusal
+read/type-position/isinstance/Earlier/Alias Ice # #1925 ice
+read/type-position/isinstance/Later/Alias Ice # #1925 ice
+read/type-position/result-error/Later/value=Bare Ice # #2249 ice
 seed/A02 FalseRefusal # #2422 false-refusal
 seed/A05 FalseRefusal # #2422 false-refusal
 seed/A07 SilentWrong # #2422 silent-wrong

@@ -1107,6 +1107,37 @@ public partial class NameResolutionDifferentialTests
     // Type positions (roster 6): a later class named in every annotation position
     // ------------------------------------------------------------------------------------------- //
 
+    /// <summary>P77b axis 11: each type-position reader with its TYPE positions spelled through <c>type A = Later</c> and every
+    /// value use (<c>Later()</c>) left alone, so the cell is the alias at the type position and never the alias constructor
+    /// (#1925's own class). <see cref="AliasReader.LoadName"/> is the first unbound name python evaluates at load in the later
+    /// order: the constructor's <c>Later</c>, or <c>A</c> where the alias itself is evaluated (a base list, an alias target).
+    /// The method-reference and f-string readers spell <c>Later</c> only as a constructor and have no row; their
+    /// TypePosition rides the other VariableAnnotation readers.</summary>
+    private sealed record AliasReader(string Reader, string LoadName, string[]? Main = null);
+
+    private static readonly IReadOnlyDictionary<string, AliasReader> TypePositionAliasReaders = new Dictionary<string, AliasReader>(StringComparer.Ordinal)
+    {
+        ["variable-annotation"] = new("x0: A = Later()\n", "Later"),
+        ["class-field-annotation"] = new("class H:\n    item: A = Later()\n", "Later"),
+        ["return-annotation"] = new("def r() -> A:\n    return Later()\n", "Later"),
+        ["parameter-annotation"] = new("def r(o: A) -> int:\n    return o.v\n", "Later"),
+        ["local-annotation"] = new("def r() -> int:\n    o: A = Later()\n    return o.v\n", "Later"),
+        ["lambda-return"] = new("def r() -> int:\n    f: () -> A = lambda: Later()\n    return f().v\n", "Later"),
+        ["arrow-lambda-return"] = new("def r() -> int:\n    f: () -> Later = () -> A: Later()\n    return f().v\n", "Later"),
+        ["callable-parameter"] = new("def r() -> int:\n    f: (A) -> int = lambda o: o.v\n    return f(Later())\n", "Later"),
+        ["isinstance"] = new("def r(o: object) -> bool:\n    return isinstance(o, A)\n", "Later"),
+        ["generic-argument"] = new("def r() -> int:\n    xs: list[A] = [Later()]\n    return xs[0].v\n", "Later"),
+        ["safe-cast"] = new("def r(o: object) -> bool:\n    return (o as? A) is not None\n", "Later"),
+        ["checked-cast"] = new("def r(o: object) -> int:\n    return (o as! A).v\n", "Later"),
+        ["property-annotation"] = new("class H:\n    property p: A = Later()\n", "Later"),
+        ["accessor-return"] = new("class H:\n    property get p(self) -> A:\n        return Later()\n", "Later"),
+        ["union-case-field"] = new("union U:\n    case V(f: A)\n", "Later"),
+        ["alias-target"] = new("type B = A\n", "A", new[] { "a: B = Later()", "print(a.v)" }),
+        ["base-list"] = new("class C(A):\n    pass\n", "A"),
+        ["out-inline-type"] = new("def mk(o: out Later) -> None:\n    o = Later()\ndef r() -> int:\n    mk(out let o: A)\n    return o.v\n", "Later"),
+        ["result-error"] = new("def r() -> int !A:\n    return Ok(Later().v)\n", "Later"),
+    };
+
     private static IEnumerable<NameCell> TypePositionCells()
     {
         const string Later = "class Later:\n    v: int = 3\n    def m(self) -> int:\n        return 6\n";
@@ -1159,6 +1190,69 @@ public partial class NameResolutionDifferentialTests
                     Outer = BindingKind.None,
                     Position = position,
                     TypeAt = at,
+                    TypeSpelling = Spelling.Bare,
+                    ResultForm = at == TypePosition.ResultError ? ResultValueForm.Ok : null,
+                };
+
+                // P77b axis 11: the same reader spelling its type positions through `type A = Later`, declared beside its target
+                // (the twin renders `A = Later`), on every TypePosition the roster generates. A label with no type position
+                // occurrence of its own (its `Later` is a constructor call, the alias constructor class) has no alias row.
+                if (!(TypePositionAliasReaders.TryGetValue(label, out var alias)
+                    && NameResolutionRosters.TypePositionSpellings.TryGetValue(at, out var spelled) && spelled.Generated))
+                    continue;
+                var aliasTarget = target + "type A = Later\n";
+                var aliasMain = alias.Main ?? main;
+                yield return new NameCell
+                {
+                    Id = CellId("read", "type-position", label, o, Spelling.Alias),
+                    Family = Family.Read,
+                    Source = (o == Order.Earlier ? aliasTarget + alias.Reader : alias.Reader + aliasTarget) + MainBlock(aliasMain),
+                    TwinSource = twin == null ? null : (o == Order.Earlier ? aliasTarget + twin : twin + aliasTarget) + MainBlock(twinMain),
+                    Tag = SharpyTag.MustRun,
+                    Model = model,
+                    Python = load && o == Order.Later ? PyOutcome.Name(alias.LoadName) : PyOutcome.Ran(model),
+                    Rule = "N7",
+                    Target = BindingKind.ModuleClass,
+                    Outer = BindingKind.None,
+                    Position = position,
+                    TypeAt = at,
+                    TypeSpelling = Spelling.Alias,
+                    ResultForm = at == TypePosition.ResultError ? ResultValueForm.Ok : null,
+                };
+            }
+
+        // P77b axis 11: the result value form, `T !E` × {bare `v`, `Err(E())`} × order (`Ok(v)` is the row above). The spec
+        // returns `Ok(...)` in every example and wraps nothing implicitly, so a bare `return v` is refused by kind (fidelity row
+        // 2); `Err(Later())` names the later class as a value and runs (N1). Python has no result wrapper: the twin of the bare
+        // return is the Ok row's, and the twin of the Err return hands the error value back to main.
+        foreach (var o in new[] { Order.Earlier, Order.Later })
+            foreach (var form in NameResolutionRosters.ResultValueForms.Keys.Where(f => f != ResultValueForm.Ok).OrderBy(f => f))
+            {
+                var (reader, main, twin, twinMain) = form switch
+                {
+                    ResultValueForm.Bare => ("def r() -> int !Later:\n    return Later().v\n", new[] { "print(r().unwrap())" },
+                        "def r() -> int:\n    return Later().v\n", new[] { "print(r())" }),
+                    ResultValueForm.Err => ("def r() -> int !Later:\n    return Err(Later())\n",
+                        new[] { "match r():", "    case Ok(v):", "        print(v)", "    case Err(e):", "        print(e.v)" },
+                        "def r() -> Later:\n    return Later()\n", new[] { "print(r().v)" }),
+                    _ => throw new ArgumentOutOfRangeException(nameof(form), form, "the Ok form is the row above"),
+                };
+                var expected = form == ResultValueForm.Bare ? Refuse(PyOutcome.Ran(3), "kind:result-wrap") : Run(3, "N1");
+                yield return new NameCell
+                {
+                    Id = CellId("read", "type-position", "result-error", o, $"value={form}"),
+                    Family = Family.Read,
+                    Source = (o == Order.Earlier ? LaterError + reader : reader + LaterError) + MainBlock(main),
+                    TwinSource = (o == Order.Earlier ? LaterError + twin : twin + LaterError) + MainBlock(twinMain),
+                    Tag = expected.Tag,
+                    Model = expected.Model,
+                    Python = expected.Python,
+                    Rule = expected.Rule,
+                    Target = BindingKind.ModuleClass,
+                    Outer = BindingKind.None,
+                    TypeAt = TypePosition.ResultError,
+                    TypeSpelling = Spelling.Bare,
+                    ResultForm = form,
                 };
             }
 
@@ -1178,7 +1272,27 @@ public partial class NameResolutionDifferentialTests
                 Target = BindingKind.ModuleClass,
                 Outer = BindingKind.None,
                 TypeAt = TypePosition.ExceptClause,
+                TypeSpelling = Spelling.Bare,
             };
+            if (NameResolutionRosters.TypePositionSpellings.TryGetValue(TypePosition.ExceptClause, out var exceptSpelled) && exceptSpelled.Generated)
+            {
+                const string AliasExceptReader = "def r() -> str:\n    try:\n        raise Later()\n    except A as e:\n        return \"caught\"\n";
+                const string AliasRaising = Raising + "type A = Later\n";
+                yield return new NameCell
+                {
+                    Id = CellId("read", "type-position", "except-clause", o, Spelling.Alias),
+                    Family = Family.Read,
+                    Source = (o == Order.Earlier ? AliasRaising + AliasExceptReader : AliasExceptReader + AliasRaising) + MainBlock("print(r())"),
+                    Tag = SharpyTag.MustRun,
+                    Model = "caught",
+                    Python = PyOutcome.Ran("caught"),
+                    Rule = "N7",
+                    Target = BindingKind.ModuleClass,
+                    Outer = BindingKind.None,
+                    TypeAt = TypePosition.ExceptClause,
+                    TypeSpelling = Spelling.Alias,
+                };
+            }
 
             // `try[E]` has no python spelling, so the twin states what the expression's Err arm does.
             const string TryReader = "def boom() -> int:\n    raise Later()\ndef r() -> str:\n    x = try[Later] boom()\n    match x:\n        case Ok(v):\n            return str(v)\n        case Err(e):\n            return \"caught\"\n";
@@ -1195,7 +1309,28 @@ public partial class NameResolutionDifferentialTests
                 Target = BindingKind.ModuleClass,
                 Outer = BindingKind.None,
                 TypeAt = TypePosition.TryExceptionType,
+                TypeSpelling = Spelling.Bare,
             };
+            if (NameResolutionRosters.TypePositionSpellings.TryGetValue(TypePosition.TryExceptionType, out var trySpelled) && trySpelled.Generated)
+            {
+                const string AliasTryReader = "def boom() -> int:\n    raise Later()\ndef r() -> str:\n    x = try[A] boom()\n    match x:\n        case Ok(v):\n            return str(v)\n        case Err(e):\n            return \"caught\"\n";
+                const string AliasRaising = Raising + "type A = Later\n";
+                yield return new NameCell
+                {
+                    Id = CellId("read", "type-position", "try-exception-type", o, Spelling.Alias),
+                    Family = Family.Read,
+                    Source = (o == Order.Earlier ? AliasRaising + AliasTryReader : AliasTryReader + AliasRaising) + MainBlock("print(r())"),
+                    TwinSource = "def r() -> str:\n    return \"caught\"\n" + MainBlock("print(r())"),
+                    Tag = SharpyTag.MustRun,
+                    Model = "caught",
+                    Python = PyOutcome.Ran("caught"),
+                    Rule = "N7",
+                    Target = BindingKind.ModuleClass,
+                    Outer = BindingKind.None,
+                    TypeAt = TypePosition.TryExceptionType,
+                    TypeSpelling = Spelling.Alias,
+                };
+            }
         }
     }
 }

@@ -131,6 +131,12 @@ internal sealed record NameCell
     /// <summary>Set by the type-position cells: which value of roster 6 this cell feeds (D3.c).</summary>
     public TypePosition? TypeAt { get; init; }
 
+    /// <summary>P77b axis 11: how a type-position cell spells the type (Bare: <c>Later</c>; Alias: <c>type A = Later</c>).</summary>
+    public NameResolutionDifferentialTests.Spelling? TypeSpelling { get; init; }
+
+    /// <summary>P77b axis 11: the value a <c>T !E</c> function returns (null: not a result-error cell).</summary>
+    public ResultValueForm? ResultForm { get; init; }
+
     /// <summary>Set by SEED cells: the error codes the refusal may carry, from the seed table (a seed's rule names none).</summary>
     public IReadOnlySet<string>? SeedRefusalCodes { get; init; }
 
@@ -372,6 +378,8 @@ public partial class NameResolutionDifferentialTests
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
         ["kind:enum-member-constant"] = new[] { "SPY0200" },
         ["kind:instance-at-initializer"] = new[] { "SPY0200", "SPY0230", "SPY0401" },
+        // P77b axis 11: SPY0260 refuses the bare `return v` from `T !E` (the spec requires Ok): the refusal IS the verdict.
+        ["kind:result-wrap"] = new[] { "SPY0260" },
     };
 
     /// <summary>Is every error code of this refusal one its rule admits? A rule with no entry admits nothing.</summary>
@@ -497,9 +505,15 @@ public partial class NameResolutionDifferentialTests
                     "CS1955" when cell.Relation == DeclaringRelation.Sibling => "#2397",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
+                    // P77b axis 11 (lead ruling 2026-11-06): a type position spelled through `type A = Later` that the emitter
+                    // writes as a value (`isinstance(o, A)`) is #1925's alias-position class.
+                    "CS0103" when cell.TypeSpelling == Spelling.Alias => "#1925",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
+                    // P77b axis 11 (p16, lead ruling 2026-11-06): a bare `return v` from `T !E` with `E` declared later reaches
+                    // Roslyn unwrapped; the earlier order is refused SPY0260 (#2249: the result wrap, the later-declared type).
+                    "CS0029" when cell.ResultForm == ResultValueForm.Bare => "#2249",
                     "CS1955" or "CS8917" or "CS1729" or "CS0029" => "#2423",
                     // A position that needs a constant was handed something else and nothing refused it.
                     "CS0133" or "CS1736" => "#2432",
@@ -527,6 +541,10 @@ public partial class NameResolutionDifferentialTests
                     return run.AllCodes.Contains("SPY0134") ? "#2424"
                         : run.AllCodes.Contains("SPY0600") ? "#2423"
                         : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
+                // P77b axis 11 (p17, lead ruling 2026-11-06): a type position spelled through an alias and refused (`class C(A)`)
+                // is #1925's alias-position class.
+                if (cell.TypeSpelling == Spelling.Alias)
+                    return "#1925";
                 return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
                     ? "#2422"
                     : "#2423";

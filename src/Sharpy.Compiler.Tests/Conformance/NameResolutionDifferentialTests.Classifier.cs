@@ -309,6 +309,24 @@ public partial class NameResolutionDifferentialTests
         Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = "CS1955" }), StringComparison.Ordinal);
     }
 
+    /// <summary>P77b axis 11's routes, each keyed on the new axis property, each with its control on the same code: an alias-spelled
+    /// type position's CS0103 and refusal go to #1925, a bare result return's CS0029 to #2249; the bare spelling and the Ok form
+    /// keep the N1 route.</summary>
+    [Theory]
+    [InlineData(VerdictClass.Ice, "CS0103", Spelling.Alias, null, "#1925")]
+    [InlineData(VerdictClass.Ice, "CS0103", Spelling.Bare, null, "UNROUTED(CS0103)")]
+    [InlineData(VerdictClass.FalseRefusal, null, Spelling.Alias, null, "#1925")]
+    [InlineData(VerdictClass.FalseRefusal, null, Spelling.Bare, null, "#2423")]
+    [InlineData(VerdictClass.Ice, "CS0029", Spelling.Bare, ResultValueForm.Bare, "#2249")]
+    [InlineData(VerdictClass.Ice, "CS0029", Spelling.Bare, ResultValueForm.Ok, "#2423")]
+    internal void Cite_ATypePositionAxis11Red_RoutesByItsAxis(VerdictClass verdict, string? cs, Spelling spelling, ResultValueForm? form, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "3") with { Id = "read/type-position/unit/Earlier", TypeSpelling = spelling, ResultForm = form, TypeAt = TypePosition.BaseList };
+        var run = verdict == VerdictClass.Ice ? Literal("SPY0908") with { CsCode = cs } : Literal("SPY0202");
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, verdict, run), StringComparison.Ordinal);
+    }
+
     /// <summary>A union case reached through an alias refuses at both orders: the alias is the cause, not the order (#1925, not #2249).</summary>
     [Theory]
     [InlineData("typemember/union/constructor/alias/match/before", "#1925")]

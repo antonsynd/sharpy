@@ -132,6 +132,16 @@ internal enum DeclaringRelation
     Sibling,
 }
 
+/// <summary>The value a <c>T !E</c> function returns (P77b axis 11): a closed LITERAL set named closed from
+/// <c>tagged_unions_result.md</c> — every example returns <c>Ok(...)</c> or <c>Err(...)</c>, and nothing wraps a bare value
+/// implicitly.</summary>
+internal enum ResultValueForm
+{
+    Ok,
+    Bare,
+    Err,
+}
+
 /// <summary>What a program observes (P77b axis 3): a closed LITERAL set named closed — an observation has no compiler
 /// enumeration. Every cell observes a value; an order cell also observes when its initializers run.</summary>
 internal enum Observation
@@ -1305,6 +1315,51 @@ internal static class NameResolutionRosters
     /// initializer — the body that reads at call time and the initializer that reads while the container's body runs.</summary>
     internal static readonly ImmutableArray<ReadPosition> SiblingPositions =
         ImmutableArray.Create(ReadPosition.NestedClassMethodBody, ReadPosition.StaticInitializer);
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 11: the type-position spelling and the result value form
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The alias spelling of roster 6 (P77b axis 11): every <see cref="TypePosition"/> is read through
+    /// <c>type A = Later</c> as well as bare, except the pattern's own type, which is roster 7's (TYPEMEMBER's pattern cells feed
+    /// it, as the bare spelling's fed check already says).</summary>
+    internal static readonly IReadOnlyDictionary<TypePosition, AxisMembership> TypePositionSpellings = Roster.Map(
+        (TypePosition.VariableAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ReturnAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ParameterAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ExceptClause, AxisMembership.Everywhere),
+        (TypePosition.AliasTarget, AxisMembership.Everywhere),
+        (TypePosition.PropertyAnnotation, AxisMembership.Everywhere),
+        (TypePosition.AccessorReturn, AxisMembership.Everywhere),
+        (TypePosition.UnionCaseField, AxisMembership.Everywhere),
+        (TypePosition.LambdaReturn, AxisMembership.Everywhere),
+        (TypePosition.CallableReturn, AxisMembership.Everywhere),
+        (TypePosition.CallableParameter, AxisMembership.Everywhere),
+        (TypePosition.OutInlineType, AxisMembership.Everywhere),
+        (TypePosition.Coercion, AxisMembership.Everywhere),
+        (TypePosition.IsInstance, AxisMembership.Everywhere),
+        (TypePosition.TryExceptionType, AxisMembership.Everywhere),
+        (TypePosition.ResultError, AxisMembership.Everywhere),
+        (TypePosition.GenericArgument, AxisMembership.Everywhere),
+        (TypePosition.BaseList, AxisMembership.Everywhere),
+        (TypePosition.PatternType, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "roster 7's: a pattern's type is TYPEMEMBER's pattern sub-axis, which reads it bare and through the alias")));
+
+    /// <summary>The type-position reader LABELS with no alias spelling (P77b axis 11), each with its reason. The alias map above is
+    /// keyed on <see cref="TypePosition"/>; the fed check also reads every bare reader label, so a label is an alias cell or an
+    /// entry here, never a silent omission.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> TypePositionAliasExcludedLabels = Roster.Map(
+        ("method-reference", TypePositionAliasConstructorOnly),
+        ("f-string", TypePositionAliasConstructorOnly));
+
+    internal const string TypePositionAliasConstructorOnly =
+        "spells `Later` only as a constructor — the alias-constructor class, #1925's existing route; its TypePosition rides the other VariableAnnotation readers";
+
+    /// <summary>The result value forms (P77b axis 11), each with the arm that generates it.</summary>
+    internal static readonly IReadOnlyDictionary<ResultValueForm, string> ResultValueForms = Roster.Map(
+        (ResultValueForm.Ok, "TypePositionCells' result-error row: `return Ok(Later().v)` (MustRun N1)"),
+        (ResultValueForm.Bare, "a bare `return Later().v` from `int !Later`: refused by kind, kind:result-wrap (the spec requires Ok)"),
+        (ResultValueForm.Err, "`return Err(Later())` from `int !Later`: the later class as the error value (MustRun N1)"));
 
     internal const string LoopBodyLoopFamilyReason =
         "the loop axis itself (BackEdgeLoopFamilies): the binder directly in the loop body is the `direct` enclosure";
@@ -3259,6 +3314,22 @@ public partial class NameResolutionDifferentialTests
             .Select(p => $"SiblingPositions: {p} is not a nested type's body or initializer"));
 
         AssertNoProblems(problems, "axis 10's relations are named closed, each with the arm that generates it");
+    }
+
+    // =========================================================================================================
+    // P77b axis 11: the type-position spelling and the result value form
+    // =========================================================================================================
+
+    /// <summary>The alias spelling is a map total over <see cref="TypePosition"/>, both directions, each value generated or out with
+    /// its reason; the result value forms are total over <see cref="ResultValueForm"/>.</summary>
+    [Fact]
+    public void TypePositionSpellingsRoster_IsTotalOverTypePositionAndResultForms()
+    {
+        var problems = Roster.TotalityProblems("TypePositionSpellings", Enum.GetValues<TypePosition>(), NameResolutionRosters.TypePositionSpellings.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("TypePositionSpellings", NameResolutionRosters.TypePositionSpellings));
+        problems.AddRange(Roster.TotalityProblems("ResultValueForms", Enum.GetValues<ResultValueForm>(), NameResolutionRosters.ResultValueForms.Keys));
+
+        AssertNoProblems(problems, "axis 11 spells every type position through an alias, each other naming why, and returns every result value form");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

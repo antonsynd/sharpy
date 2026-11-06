@@ -1431,9 +1431,14 @@ public partial class NameResolutionDifferentialTests
             assignmentTargetShapes = NameResolutionRosters.AssignmentTargetShapes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             attributeStoreMembers = NameResolutionRosters.AttributeStoreMembers.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             attributeStoreForms = NameResolutionRosters.AttributeStoreForms.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            typePositionSpellings = NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            typePositionAliasLabels = NameResolutionRosters.TypePositionAliasExcludedLabels,
         },
         letIn = results.Where(r => r.Cell.Id.StartsWith("local/let-in/", StringComparison.Ordinal))
             .GroupBy(r => $"{r.Cell.Target}/outer={r.Cell.Outer}").OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
+        typePositionSpellings = results.Where(r => r.Cell.TypeSpelling != null).GroupBy(r => $"{r.Cell.TypeSpelling}/{r.Cell.TypeAt}")
+            .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
+        resultValueForms = results.Where(r => r.Cell.ResultForm != null).GroupBy(r => r.Cell.ResultForm!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         declaringRelations = results.Where(r => r.Cell.Relation != null).GroupBy(r => r.Cell.Relation!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         readTimings = results.Where(r => r.Cell.Timing != null).GroupBy(r => r.Cell.Timing!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         observations = results.GroupBy(r => r.Cell.Observed.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
@@ -1637,6 +1642,8 @@ public partial class NameResolutionDifferentialTests
         foreach (var failure in AttributeStoreFed(pool))
             yield return failure;
         foreach (var failure in DeclaringRelationFed(pool))
+            yield return failure;
+        foreach (var failure in TypePositionSpellingsFed(pool))
             yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.
