@@ -1,0 +1,11 @@
+# #2449's twin. A CLR sequence the binding does NOT materialize stays what it is: an
+# IEnumerable<KeyValuePair<K, V>> has no `*`, so the refusal must stand rather than reach Roslyn. The
+# inline spelling refuses the same way; `list(pairs)` is the conversion that makes it a list.
+from system.collections.generic import Dictionary
+
+
+def main():
+    d: Dictionary[str, int] = Dictionary[str, int]()
+    d["a"] = 1
+    pairs = d.where(lambda kv: True)
+    print(pairs * 2)
