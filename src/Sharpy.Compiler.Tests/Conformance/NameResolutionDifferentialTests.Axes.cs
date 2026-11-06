@@ -271,4 +271,79 @@ public partial class NameResolutionDifferentialTests
     }
 
     private static IEnumerable<NameCell> CycleAxisCells() => NameResolutionRosters.CycleRouteCells().Select(CycleCell);
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 3: observation {value, order}
+    // ------------------------------------------------------------------------------------------- //
+
+    private static readonly string[] OrderHelper = { "def f(tag: str) -> int:", "    print(\"init \" + tag)", "    return 1" };
+
+    /// <summary>The order observation (seed A11's shape, probe p14): the kind's initializer and a sibling's call a printing helper,
+    /// <c>main</c> prints first. A module or <c>@static</c> kind's sibling is a module variable and python's order is load order,
+    /// top to bottom, before <c>main</c> (N3 bullet 2); an instance kind's sibling is an instance field and the order is
+    /// construction order, after <c>main</c>'s first line. Earlier / later is the kind's declaration above / below its sibling.</summary>
+    private static NameCell OrderCell(BindingKind kind, Order order)
+    {
+        var a = new ReadName("a", "", "", null);
+        var b = new ReadName("b", "", "", null);
+        const string initA = "f(\"a\")";
+        const string initB = "f(\"b\")";
+        var earlier = order == Order.Earlier;
+        var firstTwo = earlier ? new[] { "init a", "init b" } : new[] { "init b", "init a" };
+        var lines = new List<string>(OrderHelper);
+        string model;
+        string rule;
+        string? twin = null;
+        string[] main;
+        if (NameResolutionRosters.InstanceKinds.Contains(kind))
+        {
+            var own = MemberDecl(kind, a, initA);
+            var sibling = MemberDecl(BindingKind.InstanceField, b, initB);
+            lines.Add("class H:");
+            lines.AddRange(Indent(earlier ? own.Concat(sibling) : sibling.Concat(own)));
+            main = new[] { "print(\"main\")", "h0: H = H()", "print(h0.a + h0.b)" };
+            model = JoinOut("main", firstTwo[0], firstTwo[1], 2);
+            rule = "construction-order";
+
+            // Python has no instance-field initializer: the renderer's class attribute runs once at class creation, so the twin is
+            // the same initializers in `__init__`, python's spelling of a per-construction initializer, in declaration order.
+            var assigns = (earlier ? new[] { "a", "b" } : new[] { "b", "a" }).Select(n => $"        self.{n} = f(\"{n}\")");
+            twin = Join(OrderHelper.Concat(new[] { "class H:", "    a: int = 0", "    b: int = 0", "    def __init__(self) -> None:" }).Concat(assigns))
+                + MainBlock(main);
+        }
+        else
+        {
+            var own = NameResolutionRosters.ModuleLevelKinds.Contains(kind)
+                ? ModuleDecl(kind, a, initA)
+                : new[] { "class H:" }.Concat(Indent(MemberDecl(kind, a, initA))).ToList();
+            var sibling = ModuleDecl(BindingKind.ModuleVar, b, initB);
+            lines.AddRange(earlier ? own.Concat(sibling) : sibling.Concat(own));
+            var access = NameResolutionRosters.ModuleLevelKinds.Contains(kind) ? "a" : "H.a";
+            main = new[] { "print(\"main\")", $"print({access} + b)" };
+            model = JoinOut(firstTwo[0], firstTwo[1], "main", 2);
+            rule = "N3-order";
+        }
+
+        return new NameCell
+        {
+            Id = CellId("read", "order", kind, order),
+            Family = Family.Read,
+            Source = Join(lines) + MainBlock(main),
+            TwinSource = twin,
+            Tag = SharpyTag.MustRun,
+            Model = model,
+            Python = PyOutcome.Ran(model),
+            Rule = rule,
+            Target = kind,
+            Outer = BindingKind.None,
+            Position = InitializerPositionOf(kind),
+            Observed = Observation.Order,
+        };
+    }
+
+    /// <summary>Axis 3's cells: every kind <see cref="NameResolutionRosters.OrderObservationKinds"/> generates × {earlier, later}.</summary>
+    private static IEnumerable<NameCell> OrderAxisCells() =>
+        from e in NameResolutionRosters.OrderObservationKinds.Where(e => e.Value.Generated).OrderBy(e => e.Key)
+        from o in new[] { Order.Earlier, Order.Later }
+        select OrderCell(e.Key, o);
 }

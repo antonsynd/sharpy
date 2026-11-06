@@ -97,6 +97,14 @@ internal enum ComprehensionSlot
 /// <summary>Where a comprehension cell sits (P77b axis 1): its kind, the clause and the slot of the name.</summary>
 internal readonly record struct ComprehensionSite(ComprehensionKind Kind, ComprehensionClauseShape Clause, ComprehensionSlot Slot);
 
+/// <summary>What a program observes (P77b axis 3): a closed LITERAL set named closed — an observation has no compiler
+/// enumeration. Every cell observes a value; an order cell also observes when its initializers run.</summary>
+internal enum Observation
+{
+    Value,
+    Order,
+}
+
 /// <summary>The endpoint pair of an N3 cycle (P77b axis 2): which level each of the two initializers is at, the first declared
 /// first. The type level is a <c>@static</c> member; the ordered pair is the route python's load order reads.</summary>
 internal enum CyclePair
@@ -1018,6 +1026,53 @@ internal static class NameResolutionRosters
         from through in pair.Value.Image
         from kinds in CyclePairKinds(pair.Key)
         select new CycleRoute(pair.Key, spelling.Key, through, kinds.First, kinds.Second);
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 3: observation {value, order}
+    // ---------------------------------------------------------------------------------------------------------
+
+    private const string NoInitializerToObserve = "no initializer to observe: the declaration runs no expression the helper could sit in";
+
+    private const string LocalOrderIsTheBody = "a local's initializer runs where its statement sits, in the body's own order: no load or construction order to observe";
+
+    /// <summary>The order observation's kinds (P77b axis 3): total over <see cref="BindingKind"/>. A kind whose declaration has an
+    /// initializer that runs at load (module, <c>@static</c>) or at construction (instance) and can call a helper is generated;
+    /// every other kind is out with the reason.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> OrderObservationKinds = Roster.Map(
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration")),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal initializer calls no helper")),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleClass, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleStruct, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleEnum, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.StaticMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ClassLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal initializer calls no helper")),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.InstanceField, AxisMembership.Everywhere),
+        (BindingKind.InstanceProperty, AxisMembership.Everywhere),
+        (BindingKind.InstanceMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.EnclosingLocal, AxisMembership.Out(ExcludedAxis.NotAKind, LocalOrderIsTheBody)),
+        (BindingKind.Parameter, AxisMembership.Out(ExcludedAxis.NotAKind, "bound by the call's argument, not an initializer of the program's own")),
+        (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind, "bound by its expression's iteration or call, not an initializer")),
+        (BindingKind.LocalVar, AxisMembership.Out(ExcludedAxis.NotAKind, LocalOrderIsTheBody)),
+        (BindingKind.LocalLet, AxisMembership.Out(ExcludedAxis.NotAKind, LocalOrderIsTheBody)),
+        (BindingKind.LocalLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal initializer calls no helper")),
+        (BindingKind.LocalComputedConst, AxisMembership.Out(ExcludedAxis.NotAKind, LocalOrderIsTheBody)),
+        (BindingKind.LocalDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.LambdaTypedLocal, AxisMembership.Out(ExcludedAxis.NotAKind, LocalOrderIsTheBody)),
+        (BindingKind.Builtin, AxisMembership.Out(ExcludedAxis.NotAKind, "bound outside the program: no initializer in it")),
+        (BindingKind.ImportedName, AxisMembership.Out(ExcludedAxis.NotAKind, "bound by the imported module: no initializer in this program")),
+        (BindingKind.None, AxisMembership.Out(ExcludedAxis.NotAKind, "no binding")));
 
     /// <summary>The slots of a kind's own node, from <see cref="ComprehensionSlots"/>: the element side of the comprehension.</summary>
     internal static IEnumerable<ComprehensionSlot> KindSlots(ComprehensionKind kind)
@@ -2680,6 +2735,25 @@ public partial class NameResolutionDifferentialTests
             NameResolutionRosters.CycleRoutes.Values.SelectMany(p => p.Values).SelectMany(e => e.Image)));
 
         AssertNoProblems(problems, "every (spelling, endpoint pair) of an N3 cycle is generated over the through axis or out with its reason");
+    }
+
+    // =========================================================================================================
+    // P77b axis 3: observation {value, order}
+    // =========================================================================================================
+
+    /// <summary>The order observation's kinds are a map total over <see cref="BindingKind"/>, both directions, each kind generated
+    /// or out with its reason; a generated kind is a module, type-level or instance kind (the ones with a load or construction
+    /// order).</summary>
+    [Fact]
+    public void OrderObservationKindsRoster_IsTotalOverBindingKind()
+    {
+        var problems = Roster.TotalityProblems("OrderObservationKinds", Enum.GetValues<BindingKind>(), NameResolutionRosters.OrderObservationKinds.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("OrderObservationKinds", NameResolutionRosters.OrderObservationKinds));
+        var ordered = NameResolutionRosters.ModuleLevelKinds.Concat(NameResolutionRosters.TypeLevelKinds).Concat(NameResolutionRosters.InstanceKinds).ToHashSet();
+        problems.AddRange(NameResolutionRosters.OrderObservationKinds.Where(e => e.Value.Generated && !ordered.Contains(e.Key))
+            .Select(e => $"OrderObservationKinds: {e.Key} is generated and has no load or construction order"));
+
+        AssertNoProblems(problems, "the order observation rides every kind whose initializer runs at load or construction, each other kind naming why");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

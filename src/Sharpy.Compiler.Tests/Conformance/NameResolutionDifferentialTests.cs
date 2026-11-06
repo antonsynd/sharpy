@@ -103,6 +103,9 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
+    /// <summary>P77b axis 3: what the cell observes. Every cell observes a value; an order cell also observes initializer order.</summary>
+    public Observation Observed { get; init; } = Observation.Value;
+
     /// <summary>P77b axis 2: the N3 cycle's endpoint pair, route and endpoint kinds.</summary>
     public CycleRoute? Cycle { get; init; }
 
