@@ -142,6 +142,31 @@ internal enum ResultValueForm
     Err,
 }
 
+/// <summary>A <c>global</c> / <c>nonlocal</c> declaration shape (P77b axis 12): N6's own bullet list
+/// (<c>docs/design/name-resolution.md</c>, N6 bullets 3–4), closed by the rule — a declaration over a <c>let</c> or a
+/// <c>const</c>, a declaration with no binding to name (python creates one for <c>global</c>, refuses it for <c>nonlocal</c>),
+/// a read above the declaration, and a same-scope declaration after it (R-KX), in the <c>let</c> and annotated spellings.</summary>
+internal enum DeclarationShape
+{
+    OverLet,
+    OverConst,
+    GlobalNoBinding,
+    NonlocalNoBinding,
+    ReadBeforeDeclaration,
+    LetAfterDeclaration,
+    AnnotatedAfterDeclaration,
+}
+
+/// <summary>The declaration keyword of an axis-12 cell: the module scope's or the enclosing function's.</summary>
+internal enum DeclarationKeyword
+{
+    Global,
+    Nonlocal,
+}
+
+/// <summary>An axis-12 cell's declaration: its shape and keyword.</summary>
+internal readonly record struct DeclarationSite(DeclarationShape Shape, DeclarationKeyword Keyword);
+
 /// <summary>What a program observes (P77b axis 3): a closed LITERAL set named closed — an observation has no compiler
 /// enumeration. Every cell observes a value; an order cell also observes when its initializers run.</summary>
 internal enum Observation
@@ -1360,6 +1385,45 @@ internal static class NameResolutionRosters
         (ResultValueForm.Ok, "TypePositionCells' result-error row: `return Ok(Later().v)` (MustRun N1)"),
         (ResultValueForm.Bare, "a bare `return Later().v` from `int !Later`: refused by kind, kind:result-wrap (the spec requires Ok)"),
         (ResultValueForm.Err, "`return Err(Later())` from `int !Later`: the later class as the error value (MustRun N1)"));
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 12: `global` / `nonlocal` bullets 3–4
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The declaration shapes × keyword (P77b axis 12): total over the product, each pair generated or out with its
+    /// reason. A no-binding shape belongs to its own keyword, and <c>global</c> over a module <c>let</c> never reaches the
+    /// declaration.</summary>
+    internal static readonly IReadOnlyDictionary<DeclarationSite, AxisMembership> DeclarationShapes = Roster.Map(
+        (new DeclarationSite(DeclarationShape.OverLet, DeclarationKeyword.Global), AxisMembership.Out(ExcludedAxis.RefusedByKind,
+            "a module `let` is SPY0340 at its own declaration, before the `global` is reached (StoreOuter's ModuleLet)")),
+        (new DeclarationSite(DeclarationShape.OverLet, DeclarationKeyword.Nonlocal), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.OverConst, DeclarationKeyword.Global), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.OverConst, DeclarationKeyword.Nonlocal), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.GlobalNoBinding, DeclarationKeyword.Global), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.GlobalNoBinding, DeclarationKeyword.Nonlocal), AxisMembership.Out(ExcludedAxis.NotAKind,
+            "the shape is `global`'s: a `nonlocal` with no binding is NonlocalNoBinding")),
+        (new DeclarationSite(DeclarationShape.NonlocalNoBinding, DeclarationKeyword.Global), AxisMembership.Out(ExcludedAxis.NotAKind,
+            "the shape is `nonlocal`'s: a `global` with no binding is GlobalNoBinding")),
+        (new DeclarationSite(DeclarationShape.NonlocalNoBinding, DeclarationKeyword.Nonlocal), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.ReadBeforeDeclaration, DeclarationKeyword.Global), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.ReadBeforeDeclaration, DeclarationKeyword.Nonlocal), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.LetAfterDeclaration, DeclarationKeyword.Global), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.LetAfterDeclaration, DeclarationKeyword.Nonlocal), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.AnnotatedAfterDeclaration, DeclarationKeyword.Global), AxisMembership.Everywhere),
+        (new DeclarationSite(DeclarationShape.AnnotatedAfterDeclaration, DeclarationKeyword.Nonlocal), AxisMembership.Everywhere));
+
+    /// <summary>The bodies axis 12's declarations sit in (lead ruling 2026-11-06, option B): the plan's {function, method} and the
+    /// three positions it names, <c>__init__</c>, a setter and a nested def. The <c>nonlocal</c> cells' outer binding is the
+    /// body's own local; the declaration sits in a def nested in it.</summary>
+    internal static readonly ImmutableArray<ReadPosition> DeclarationBodies = ImmutableArray.Create(
+        ReadPosition.FunctionBody, ReadPosition.MethodBody, ReadPosition.InitBody, ReadPosition.AccessorSetBody, ReadPosition.NestedDefInFunction);
+
+    /// <summary>The store a declaration shape is followed by: <c>=</c> and <c>+=</c>, except the two same-scope declaration
+    /// shapes, whose spelling (<c>let x = 3</c> / <c>x: int = 3</c>) is the store itself.</summary>
+    internal static ImmutableArray<StoreForm> DeclarationForms(DeclarationShape shape) =>
+        shape is DeclarationShape.LetAfterDeclaration or DeclarationShape.AnnotatedAfterDeclaration
+            ? ImmutableArray.Create(StoreForm.LetOrVar)
+            : ImmutableArray.Create(StoreForm.Assign, StoreForm.Augmented);
 
     internal const string LoopBodyLoopFamilyReason =
         "the loop axis itself (BackEdgeLoopFamilies): the binder directly in the loop body is the `direct` enclosure";
@@ -3330,6 +3394,30 @@ public partial class NameResolutionDifferentialTests
         problems.AddRange(Roster.TotalityProblems("ResultValueForms", Enum.GetValues<ResultValueForm>(), NameResolutionRosters.ResultValueForms.Keys));
 
         AssertNoProblems(problems, "axis 11 spells every type position through an alias, each other naming why, and returns every result value form");
+    }
+
+    // =========================================================================================================
+    // P77b axis 12: `global` / `nonlocal` bullets 3–4
+    // =========================================================================================================
+
+    /// <summary>The declaration shapes are total over <see cref="DeclarationShape"/> × <see cref="DeclarationKeyword"/> (both
+    /// directions), each pair generated or out with its reason, every shape generated under at least one keyword, and every
+    /// declaration body a STORE body that hosts the forms the shapes take.</summary>
+    [Fact]
+    public void DeclarationShapesRoster_IsTotalOverShapesByKeywords()
+    {
+        var product = Enum.GetValues<DeclarationShape>().SelectMany(s => Enum.GetValues<DeclarationKeyword>().Select(k => new DeclarationSite(s, k)));
+        var problems = Roster.TotalityProblems("DeclarationShapes", product, NameResolutionRosters.DeclarationShapes.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("DeclarationShapes", NameResolutionRosters.DeclarationShapes));
+        problems.AddRange(Enum.GetValues<DeclarationShape>()
+            .Where(s => !NameResolutionRosters.DeclarationShapes.Any(e => e.Key.Shape == s && e.Value.Generated))
+            .Select(s => $"DeclarationShapes: {s} is generated under no keyword"));
+        foreach (var body in NameResolutionRosters.DeclarationBodies)
+            foreach (var f in Enum.GetValues<DeclarationShape>().SelectMany(s => NameResolutionRosters.DeclarationForms(s)).Distinct()
+                .Where(f => !(NameResolutionRosters.StoreBodies.TryGetValue(body, out var e) && e.Image.Contains(f))))
+                problems.Add($"DeclarationBodies: {body} does not host {f} in StoreBodies");
+
+        AssertNoProblems(problems, "axis 12 declares every N6 shape under each keyword it admits, each other pair naming why");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

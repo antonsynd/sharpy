@@ -1281,6 +1281,7 @@ public partial class NameResolutionDifferentialTests
         ["store-non-writable:ModuleTypeAlias:Augmented"] = 2,
         ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
         ["store-non-writable:ModuleTypeAlias:global"] = 3,
+        ["global-creates-binding"] = 10,
         ["seed:A12"] = 1,
         ["seed:B09"] = 1,
         ["seed:B21"] = 1,
@@ -1326,6 +1327,10 @@ public partial class NameResolutionDifferentialTests
                     && (parts[2] == "global"
                         ? c.Id.Contains("/global/", StringComparison.Ordinal)
                         : c.Id.StartsWith($"store/{parts[2]}/", StringComparison.Ordinal) && c.Id.Contains("/no-decl/", StringComparison.Ordinal));
+            case "global-creates-binding":
+                // P77b axis 12: whether `global x` may create the module binding is #2424's question (N6: the default is no).
+                return c.Family == Family.Store && c.Outer == BindingKind.None
+                    && c.Declaration == new DeclarationSite(DeclarationShape.GlobalNoBinding, DeclarationKeyword.Global);
             case "seed":
                 return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
             default:
@@ -1433,12 +1438,15 @@ public partial class NameResolutionDifferentialTests
             attributeStoreForms = NameResolutionRosters.AttributeStoreForms.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             typePositionSpellings = NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             typePositionAliasLabels = NameResolutionRosters.TypePositionAliasExcludedLabels,
+            declarationShapes = NameResolutionRosters.DeclarationShapes.Where(e => !e.Value.Generated).ToDictionary(e => $"{e.Key.Shape}/{e.Key.Keyword}", e => e.Value.Reason),
         },
         letIn = results.Where(r => r.Cell.Id.StartsWith("local/let-in/", StringComparison.Ordinal))
             .GroupBy(r => $"{r.Cell.Target}/outer={r.Cell.Outer}").OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         typePositionSpellings = results.Where(r => r.Cell.TypeSpelling != null).GroupBy(r => $"{r.Cell.TypeSpelling}/{r.Cell.TypeAt}")
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         resultValueForms = results.Where(r => r.Cell.ResultForm != null).GroupBy(r => r.Cell.ResultForm!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
+        declarations = results.Where(r => r.Cell.Declaration != null).GroupBy(r => $"{r.Cell.Declaration!.Value.Shape}/{r.Cell.Declaration!.Value.Keyword}")
+            .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         declaringRelations = results.Where(r => r.Cell.Relation != null).GroupBy(r => r.Cell.Relation!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         readTimings = results.Where(r => r.Cell.Timing != null).GroupBy(r => r.Cell.Timing!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         observations = results.GroupBy(r => r.Cell.Observed.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
@@ -1644,6 +1652,8 @@ public partial class NameResolutionDifferentialTests
         foreach (var failure in DeclaringRelationFed(pool))
             yield return failure;
         foreach (var failure in TypePositionSpellingsFed(pool))
+            yield return failure;
+        foreach (var failure in DeclarationShapesFed(pool))
             yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.

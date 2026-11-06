@@ -890,4 +890,136 @@ public partial class NameResolutionDifferentialTests
         foreach (var f in Enum.GetValues<ResultValueForm>().Where(f => !typed.Any(c => c.TypeAt == TypePosition.ResultError && c.ResultForm == f)))
             yield return $"ResultValueForm {f} has no result-error cell";
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 12: `global` / `nonlocal` bullets 3–4 (D2.12: predicted SyntaxError)
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>Python's own refusal of a declaration shape, predicted (D2.12): the exact last line on python 3.13.18. A twin
+    /// that is a SyntaxError and is not predicted here stays a GeneratorBug.</summary>
+    private static PyOutcome? DeclarationSyntaxError(DeclarationShape shape, string keyword) => shape switch
+    {
+        DeclarationShape.ReadBeforeDeclaration => new PyOutcome(PyKind.SyntaxError, $"SyntaxError: name 'x' is used prior to {keyword} declaration"),
+        DeclarationShape.AnnotatedAfterDeclaration => new PyOutcome(PyKind.SyntaxError, $"SyntaxError: annotated name 'x' can't be {keyword}"),
+        DeclarationShape.NonlocalNoBinding => new PyOutcome(PyKind.SyntaxError, "SyntaxError: no binding for nonlocal 'x' found"),
+        _ => null,
+    };
+
+    /// <summary>A <c>global x</c> / <c>nonlocal x</c> declaration of N6's bullets 3–4 (P77b axis 12) followed by its store and a
+    /// read in the declaring function, and a read of the declared binding after the call. A <c>global</c> names the module's
+    /// <c>x</c> (a <c>const</c>, a variable, or none); a <c>nonlocal</c> names the body's own <c>x</c> (a <c>let</c>, a
+    /// <c>const</c>, a variable, or none) from a def nested in it. Every shape is N6's refusal (<c>N6-declaration</c>), except a
+    /// <c>global</c> with no binding, which python creates: #2424's open question (<c>global-creates-binding</c>).</summary>
+    private static NameCell DeclarationCell(DeclarationSite site, StoreForm form, ReadPosition body)
+    {
+        var global = site.Keyword == DeclarationKeyword.Global;
+        var keyword = global ? "global" : "nonlocal";
+        var store = form switch
+        {
+            StoreForm.Assign => "x = 15",
+            StoreForm.Augmented => "x += 1",
+            StoreForm.LetOrVar => site.Shape == DeclarationShape.LetAfterDeclaration ? "let x = 3" : "x: int = 3",
+            _ => throw new ArgumentOutOfRangeException(nameof(form), form, "not an axis-12 form"),
+        };
+        var declaring = new List<string>();
+        if (site.Shape == DeclarationShape.ReadBeforeDeclaration)
+            declaring.Add("print(x)");
+        declaring.AddRange(new[] { $"{keyword} x", store, "print(x)" });
+
+        var lines = new List<string>();
+        var stmts = new List<string>();
+        BindingKind outer;
+        int outerValue;
+        if (global)
+        {
+            outer = site.Shape switch
+            {
+                DeclarationShape.OverConst => BindingKind.ModuleLiteralConst,
+                DeclarationShape.GlobalNoBinding => BindingKind.None,
+                _ => BindingKind.ModuleVar,
+            };
+            outerValue = outer == BindingKind.None ? 0 : ValueOf(outer);
+            if (outer != BindingKind.None)
+                lines.AddRange(ModuleDecl(outer, ReadName.Plain));
+            stmts.AddRange(declaring);
+        }
+        else
+        {
+            var outerDecl = site.Shape switch
+            {
+                DeclarationShape.OverLet => "let x = 13",
+                DeclarationShape.OverConst => "const x: int = 13",
+                DeclarationShape.NonlocalNoBinding => null,
+                _ => "x: int = 13",
+            };
+            outer = outerDecl == null ? BindingKind.None : BindingKind.EnclosingLocal;
+            outerValue = 13;
+            if (outerDecl != null)
+                stmts.Add(outerDecl);
+            stmts.Add("def h1() -> None:");
+            stmts.AddRange(Indent(declaring));
+            stmts.Add("h1()");
+            if (outerDecl != null)
+                stmts.Add("print(x)");
+        }
+        var (host, call) = Host(body, stmts);
+        lines.AddRange(host);
+        var main = new List<string>(call);
+        if (global)
+            main.Add("print(x)");
+
+        object written = form switch
+        {
+            StoreForm.Assign => 15,
+            StoreForm.Augmented => outerValue + 1,
+            _ => 3,
+        };
+        var python = DeclarationSyntaxError(site.Shape, keyword)
+            ?? (site.Shape == DeclarationShape.GlobalNoBinding && form == StoreForm.Augmented
+                ? PyOutcome.Name("x")
+                : PyOutcome.Ran(JoinOut(written, written)));
+        var unruled = site.Shape == DeclarationShape.GlobalNoBinding;
+        return new NameCell
+        {
+            Id = CellId("store", "declaration", site.Shape, site.Keyword, form, body),
+            Family = Family.Store,
+            Source = Join(lines) + MainBlock(main.ToArray()),
+            Tag = unruled ? SharpyTag.Unruled : SharpyTag.MustRefuse,
+            Python = python,
+            Rule = unruled ? "unruled:global-creates-binding" : "N6-declaration",
+            Shape = unruled ? "global-creates-binding" : null,
+            Target = outer,
+            Outer = outer,
+            Position = body,
+            Form = form,
+            Declaration = site,
+        };
+    }
+
+    /// <summary>Axis 12's cells: every generated (shape, keyword) × its forms × every declaration body.</summary>
+    private static IEnumerable<NameCell> DeclarationAxisCells() =>
+        from e in NameResolutionRosters.DeclarationShapes.Where(e => e.Value.Generated).OrderBy(e => e.Key.Shape).ThenBy(e => e.Key.Keyword)
+        from f in NameResolutionRosters.DeclarationForms(e.Key.Shape)
+        from body in NameResolutionRosters.DeclarationBodies
+        select DeclarationCell(e.Key, f, body);
+
+    /// <summary>Axis 12's fed check: every declaration shape has a cell, every generated (shape, keyword) × form × body has its
+    /// cell, no cell sits on a pair the roster leaves out, and only the no-binding <c>global</c> is unruled.</summary>
+    private static IEnumerable<string> DeclarationShapesFed(IReadOnlyList<NameCell> pool)
+    {
+        var cells = pool.Where(c => c.Declaration != null).ToList();
+        foreach (var s in Enum.GetValues<DeclarationShape>().Where(s => !cells.Any(c => c.Declaration!.Value.Shape == s)))
+            yield return $"DeclarationShape {s} has no generated cell";
+        foreach (var (site, _) in NameResolutionRosters.DeclarationShapes.Where(e => e.Value.Generated))
+            foreach (var f in NameResolutionRosters.DeclarationForms(site.Shape))
+                foreach (var body in NameResolutionRosters.DeclarationBodies.Where(b => !cells.Any(c => c.Declaration == site && c.Form == f && c.Position == b)))
+                    yield return $"DeclarationShapes {site.Shape} × {site.Keyword} × {f} × {body} has no STORE cell";
+        foreach (var c in cells)
+        {
+            if (!(NameResolutionRosters.DeclarationShapes.TryGetValue(c.Declaration!.Value, out var m) && m.Generated))
+                yield return $"{c.Id}: a declaration cell on {c.Declaration}, which DeclarationShapes does not generate";
+            if ((c.Tag == SharpyTag.Unruled) != (c.Declaration!.Value.Shape == DeclarationShape.GlobalNoBinding))
+                yield return $"{c.Id}: tag {c.Tag}, and only the no-binding global is unruled (global-creates-binding)";
+        }
+    }
 }

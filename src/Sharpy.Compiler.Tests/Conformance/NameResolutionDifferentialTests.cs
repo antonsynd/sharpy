@@ -116,6 +116,9 @@ internal sealed record NameCell
     /// with no declaring type, or one the relation axis does not tag).</summary>
     public DeclaringRelation? Relation { get; init; }
 
+    /// <summary>P77b axis 12: the <c>global</c> / <c>nonlocal</c> declaration shape and keyword of a STORE cell.</summary>
+    public DeclarationSite? Declaration { get; init; }
+
     /// <summary>P77b axis 4: when a LOCAL read happens relative to its binding (null: a family with no LOCAL read timing).</summary>
     public ReadTiming? Timing { get; init; }
 
@@ -336,6 +339,9 @@ public partial class NameResolutionDifferentialTests
         // P77b R-LJ: a module binding spelled like an imported name is SPY0204 at its own declaration, before N2's module
         // refusal of the read above it is reached (p23): refused by direction, pinned until N2's own diagnostic lands (#2423).
         [("N2-module", "SPY0204")] = 3,
+        // P77b axis 12: the parser refuses every `global` / `nonlocal` line (SPY0134) until #2424 implements N6, so each N6
+        // declaration shape is refused by direction before its own refusal is reached.
+        [("N6-declaration", "SPY0134")] = 80,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -364,6 +370,8 @@ public partial class NameResolutionDifferentialTests
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
         // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
+        // P77b axis 12: SPY0134 is the parser's refusal of the declaration line itself, pinned in EarlierRefusals until #2424.
+        ["N6-declaration"] = new[] { "SPY0134" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },

@@ -61,6 +61,7 @@ public partial class NameResolutionDifferentialTests
             [(Family.Seed, SharpyTag.Unruled, "seed")] = 6,
             [(Family.Store, SharpyTag.MustRefuse, "N5")] = 31,
             [(Family.Store, SharpyTag.MustRefuse, "N6")] = 93,
+            [(Family.Store, SharpyTag.MustRefuse, "N6-declaration")] = 80,
             [(Family.Store, SharpyTag.MustRefuse, "R-KU")] = 9,
             [(Family.Store, SharpyTag.MustRefuse, "SPY0606")] = 40,
             [(Family.Store, SharpyTag.MustRefuse, "kind:SPY0225")] = 28,
@@ -73,6 +74,7 @@ public partial class NameResolutionDifferentialTests
             [(Family.Store, SharpyTag.MustRun, "N7")] = 18,
             [(Family.Store, SharpyTag.MustRun, "R-BM")] = 64,
             [(Family.Store, SharpyTag.MustRun, "R-Y")] = 8,
+            [(Family.Store, SharpyTag.Unruled, "unruled:global-creates-binding")] = 10,
             [(Family.Store, SharpyTag.Unruled, "unruled:N6-non-writable")] = 63,
             [(Family.TypeMember, SharpyTag.MustRun, "P52")] = 440,
         };

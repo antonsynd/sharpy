@@ -179,9 +179,16 @@ public partial class NameResolutionDifferentialTests
     [InlineData("UnboundLocalError: cannot access local variable 'q' where it is not associated with a value", PyKind.UnboundLocalError, "q")]
     [InlineData("TypeError: 'int' object is not callable", PyKind.OtherError, "TypeError")]
     [InlineData("ValueError: x", PyKind.OtherError, "ValueError")]
-    public void Classifier_PythonLastLine_ParsesKindAndName(string lastLine, PyKind kind, string value)
+    // P77b D2.12: the SyntaxError lines axis 12 predicts, measured on python 3.13.18 (-I, the runner's `-B -S -c`). A predicted
+    // SyntaxError is agreement only if the runner's flag and this last line both reach the outcome.
+    [InlineData("SyntaxError: name 'x' is used prior to global declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to global declaration", true)]
+    [InlineData("SyntaxError: name 'x' is used prior to nonlocal declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to nonlocal declaration", true)]
+    [InlineData("SyntaxError: no binding for nonlocal 'x' found", PyKind.SyntaxError, "SyntaxError: no binding for nonlocal 'x' found", true)]
+    [InlineData("SyntaxError: annotated name 'x' can't be global", PyKind.SyntaxError, "SyntaxError: annotated name 'x' can't be global", true)]
+    [InlineData("SyntaxError: annotated name 'x' can't be nonlocal", PyKind.SyntaxError, "SyntaxError: annotated name 'x' can't be nonlocal", true)]
+    public void Classifier_PythonLastLine_ParsesKindAndName(string lastLine, PyKind kind, string value, bool syntaxError = false)
     {
-        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, false));
+        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, syntaxError));
 
         Assert.Equal(new PyOutcome(kind, value), observed);
     }
