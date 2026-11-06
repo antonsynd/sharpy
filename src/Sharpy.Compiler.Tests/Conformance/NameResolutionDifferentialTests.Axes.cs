@@ -18,6 +18,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(LoopBodyFedFailures(axisCells));
         failures.AddRange(DeclaringRelationFedFailures(pool, axisCells));
         failures.AddRange(TypePositionSpellingFedFailures(axisCells));
+        failures.AddRange(DeclarationShapeFedFailures(pool));
         return failures;
     }
 
@@ -941,5 +942,106 @@ public partial class NameResolutionDifferentialTests
             foreach (var order in new[] { Order.Earlier, Order.Later })
                 if (!axisCells.Contains(ResultValueFormKey(form, order)))
                     yield return $"ResultValueForm {form} × {order} has no cell";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 12: N6's declaration shapes
+    // ------------------------------------------------------------------------------------------- //
+
+    private static readonly StoreSpelling[] DeclarationForms = { StoreSpelling.Assign, StoreSpelling.Augmented };
+
+    private static readonly ReadPosition[] DeclarationBodies = { ReadPosition.FunctionBody, ReadPosition.MethodBody };
+
+    private static PyOutcome PythonRefuses(string line) => new(PyKind.SyntaxError, "SyntaxError: " + line);
+
+    private static IEnumerable<NameCell> DeclarationShapeCells()
+    {
+        foreach (var s in DeclarationForms)
+        {
+            foreach (var body in DeclarationBodies)
+            {
+                yield return GlobalOverCell(DeclarationShapes.GlobalOverLet, BindingKind.ModuleLet, s, body);
+                yield return GlobalOverCell(DeclarationShapes.GlobalOverConst, BindingKind.ModuleLiteralConst, s, body);
+                yield return NonlocalOverCell(DeclarationShapes.NonlocalOverLet, "let x = 13", BindingKind.LocalLet, s, body);
+                yield return NonlocalOverCell(DeclarationShapes.NonlocalOverConst, "const x: int = 13", BindingKind.LocalLiteralConst, s, body);
+
+                var noBinding = s == StoreSpelling.Assign ? "q = 15" : "q += 1";
+                yield return DeclarationCell(DeclarationShapes.NonlocalNoBinding, s, body, BindingKind.None, BindingKind.None, Array.Empty<string>(),
+                    new[] { "def g() -> None:", "    nonlocal q", "    " + noBinding, "g()" }, Array.Empty<string>(),
+                    Refuse(PythonRefuses("no binding for nonlocal 'q' found"), "N6-declaration"));
+                yield return DeclarationCell(DeclarationShapes.ReadBeforeGlobal, s, body, BindingKind.ModuleVar, BindingKind.ModuleVar, new[] { "x: int = 5" },
+                    new[] { "print(x)", "global x", StoreText(s, "x") }, Array.Empty<string>(),
+                    Refuse(PythonRefuses("name 'x' is used prior to global declaration"), "N6-declaration"));
+                yield return DeclarationCell(DeclarationShapes.ReadBeforeNonlocal, s, body, BindingKind.EnclosingLocal, BindingKind.EnclosingLocal, Array.Empty<string>(),
+                    new[] { "x: int = 13", "def g() -> None:", "    print(x)", "    nonlocal x", "    " + StoreText(s, "x"), "g()" }, Array.Empty<string>(),
+                    Refuse(PythonRefuses("name 'x' is used prior to nonlocal declaration"), "N6-declaration"));
+            }
+
+            // N6: `global x` over a writable module binding is the legal spelling from every function body, whatever the body. READ's table keys this on the store arm.
+            foreach (var (shape, body) in new[]
+            {
+                (DeclarationShapes.GlobalFromInit, ReadPosition.InitBody),
+                (DeclarationShapes.GlobalFromAccessorSet, ReadPosition.AccessorSetBody),
+                (DeclarationShapes.GlobalFromNestedDef, ReadPosition.NestedDefInFunction),
+            })
+                yield return ModuleStoreCell(s, BindingKind.ModuleVar, body, true, true, Order.Earlier, false) with { Declaration = shape };
+        }
+
+        // R-KX: after `global x` the name is the module binding throughout the function, so no later declaration of it in the scope may follow.
+        foreach (var body in DeclarationBodies)
+        {
+            yield return DeclarationCell(DeclarationShapes.LetAfterGlobal, StoreSpelling.Let, body, BindingKind.ModuleVar, BindingKind.ModuleVar, new[] { "x: int = 5" },
+                new[] { "global x", "let x = 3", "print(x)" }, Array.Empty<string>(), Refuse(PyOutcome.Ran(3), "N6-declaration"));
+            var annotated = DeclarationCell(DeclarationShapes.AnnotatedAfterGlobal, StoreSpelling.Annotated, body, BindingKind.ModuleVar, BindingKind.ModuleVar, new[] { "x: int = 5" },
+                new[] { "global x", "x: int = 3", "print(x)" }, Array.Empty<string>(), Refuse(PythonRefuses("annotated name 'x' can't be global"), "N6-declaration"));
+            // The renderer strips the annotation that makes this python's refusal, so the twin puts it back.
+            yield return annotated with { RawPythonTwin = TwinRenderer.Render(annotated.Source).Replace("x = 3", "x: int = 3", StringComparison.Ordinal) };
+        }
+    }
+
+    /// <summary>A store under a declaration, the read after it in main when the name is the module's. <c>Target</c> names the binding it refuses to write, <c>Outer</c> stays on STORE's roster.</summary>
+    private static NameCell DeclarationCell(DeclarationShapes shape, StoreSpelling s, ReadPosition body, BindingKind target, BindingKind outer, IReadOnlyList<string> module, IReadOnlyList<string> stmts, IReadOnlyList<string> later, Expected e)
+    {
+        var (host, call) = Host(body, stmts);
+        return new NameCell
+        {
+            Id = CellId("store", "declaration", shape, s, body),
+            Family = Family.Store,
+            Source = Join(module.Concat(host)) + MainBlock(call.Concat(later).ToArray()),
+            Tag = e.Tag,
+            Model = e.Model,
+            Python = e.Python,
+            Rule = e.Rule,
+            Target = target,
+            Outer = outer,
+            Position = body,
+            Form = FormEnum(s),
+            Declaration = shape,
+        };
+    }
+
+    private static NameCell GlobalOverCell(DeclarationShapes shape, BindingKind binding, StoreSpelling s, ReadPosition body)
+    {
+        var value = ValueOf(binding);
+        object written = s == StoreSpelling.Augmented ? value + 1 : 15;
+        // The binding is off STORE's outer axis (a module `let` is refused at its own declaration), so the cell's outer is None and its target names it.
+        return DeclarationCell(shape, s, body, binding, BindingKind.None, ModuleDecl(binding, ReadName.Plain),
+            new[] { "global x", StoreText(s, "x"), "print(x)" }, new[] { "print(x)" },
+            Refuse(PyOutcome.Ran(JoinOut(written, written)), "N6-declaration"));
+    }
+
+    private static NameCell NonlocalOverCell(DeclarationShapes shape, string decl, BindingKind binding, StoreSpelling s, ReadPosition body)
+    {
+        object written = s == StoreSpelling.Augmented ? 14 : 15;
+        return DeclarationCell(shape, s, body, binding, BindingKind.EnclosingLocal, Array.Empty<string>(),
+            new[] { decl, "def g() -> None:", "    nonlocal x", "    " + StoreText(s, "x"), "g()", "print(x)" }, Array.Empty<string>(),
+            Refuse(PyOutcome.Ran(written), "N6-declaration"));
+    }
+
+    private static IEnumerable<string> DeclarationShapeFedFailures(IReadOnlyList<NameCell> pool)
+    {
+        var shapes = pool.Where(c => c.Declaration != null).Select(c => c.Declaration!.Value).ToHashSet();
+        foreach (var shape in Enum.GetValues<DeclarationShapes>().Where(v => !shapes.Contains(v)))
+            yield return $"DeclarationShapes {shape} has no generated cell";
     }
 }

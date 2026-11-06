@@ -125,6 +125,13 @@ internal sealed record NameCell
     /// <summary>Set by READ cells that name a declaring class: how that class relates to the reader's (axis 10).</summary>
     public DeclaringRelation? Relation { get; init; }
 
+    /// <summary>Set by the declaration cells: which of N6's shapes this cell spells (axis 12).</summary>
+    public DeclarationShapes? Declaration { get; init; }
+
+    /// <summary>The python text itself, for the one program whose meaning the renderer's annotation row would change: <c>global x</c> then
+    /// <c>x: int = 3</c> is python's SyntaxError and <c>x = 3</c> is not (D2.12).</summary>
+    public string? RawPythonTwin { get; init; }
+
     /// <summary>P77b's generated axes: <c>axis: value × value</c>, the key <see cref="NameResolutionDifferentialTests"/>' fed check
     /// computes from the axis's roster, so a roster value the generator owes a cell cannot go missing without a red.</summary>
     public string? AxisCell { get; init; }
@@ -318,6 +325,8 @@ public partial class NameResolutionDifferentialTests
         [("N6", "SPY0342")] = 1,
         // A bare value in a `T !E` body above an earlier E: the return's type mismatch, the right direction until the kind's own refusal (#2249).
         [("kind:result-wrap", "SPY0260")] = 1,
+        // N6's declaration shapes: `global` / `nonlocal` is refused whatever it names, until #2424 reinstates them and reaches the rule's own refusal.
+        [("N6-declaration", "SPY0134")] = 32,
         // R-KY's neighbouring refusals until #2424 lands the rule's own.
         [("N6-type-kind", "SPY0134")] = 21,
         [("N6-type-kind", "SPY0222")] = 2,
@@ -350,6 +359,8 @@ public partial class NameResolutionDifferentialTests
         ["N5-self"] = new[] { "SPY0200" },
         // R-KY: `global` over a def or type is SPY0134 until #2424 reinstates the declaration. A bare `+=` reads the def or type as a
         // value first: SPY0222, SPY0342 or SPY0346. Each is the right direction under a neighbouring check.
+        // N6's bullets: the declaration itself is SPY0134 until #2424 reinstates it.
+        ["N6-declaration"] = new[] { "SPY0134" },
         ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
@@ -622,7 +633,7 @@ public partial class NameResolutionDifferentialTests
                 continue; // the seed's python verdicts are TwinRenderer_SeedPythonVerdicts_Reproduce's control
             try
             {
-                requests.Add(new PyRequest(i, TwinRenderer.Render(cells[i].TwinSource ?? cells[i].Source)));
+                requests.Add(new PyRequest(i, cells[i].RawPythonTwin ?? TwinRenderer.Render(cells[i].TwinSource ?? cells[i].Source)));
             }
             catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
             {

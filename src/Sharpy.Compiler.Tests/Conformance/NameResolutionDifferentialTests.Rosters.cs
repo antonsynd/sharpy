@@ -151,6 +151,25 @@ internal enum ResultValueForm
     Err,
 }
 
+/// <summary>N6's declaration shapes (P77b axis 12). Named closed by N6's own bullets (<c>name-resolution.md</c>): a declaration over a binding it cannot write, with
+/// nothing to name, after a use, before a same-scope declaration (R-KX), and from each body a function can be.</summary>
+internal enum DeclarationShapes
+{
+    GlobalOverLet,
+    GlobalOverConst,
+    NonlocalOverLet,
+    NonlocalOverConst,
+    GlobalCreatesBinding,
+    NonlocalNoBinding,
+    ReadBeforeGlobal,
+    ReadBeforeNonlocal,
+    LetAfterGlobal,
+    AnnotatedAfterGlobal,
+    GlobalFromInit,
+    GlobalFromAccessorSet,
+    GlobalFromNestedDef,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -2704,6 +2723,15 @@ public partial class NameResolutionDifferentialTests
         NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).Select(e => e.Key).Should().Equal(TypePosition.PatternType);
         NameResolutionRosters.TypePositionSpellings.Should().HaveCount(19);
         Enum.GetNames<ResultValueForm>().Should().Equal("Ok", "BareValue", "Err");
+    }
+
+    [Fact]
+    public void DeclarationShapesRoster_IsTheNamedClosedSet()
+    {
+        // A literal, not the enum again: N6's bullets, and a shape the literal does not name is a decision.
+        Enum.GetNames<DeclarationShapes>().Should().Equal(
+            "GlobalOverLet", "GlobalOverConst", "NonlocalOverLet", "NonlocalOverConst", "GlobalCreatesBinding", "NonlocalNoBinding",
+            "ReadBeforeGlobal", "ReadBeforeNonlocal", "LetAfterGlobal", "AnnotatedAfterGlobal", "GlobalFromInit", "GlobalFromAccessorSet", "GlobalFromNestedDef");
     }
 
     [Fact]
