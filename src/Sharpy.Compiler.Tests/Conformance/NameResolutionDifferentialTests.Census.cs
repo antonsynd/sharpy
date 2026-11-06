@@ -47,12 +47,12 @@ public partial class NameResolutionDifferentialTests
             [(Family.Read, SharpyTag.MustRun, "N7")] = 799,
             [(Family.Read, SharpyTag.MustRun, "R-Y")] = 410,
             [(Family.Seed, SharpyTag.MayRefuse, "seed")] = 1,
-            [(Family.Seed, SharpyTag.MustRefuse, "seed")] = 61,
+            [(Family.Seed, SharpyTag.MustRefuse, "seed")] = 62,
             [(Family.Seed, SharpyTag.MustRefuseOrThrow, "seed")] = 4,
             [(Family.Seed, SharpyTag.MustRun, "seed")] = 99,
-            [(Family.Seed, SharpyTag.Unruled, "seed")] = 1,
             [(Family.Store, SharpyTag.MustRefuse, "N5")] = 21,
             [(Family.Store, SharpyTag.MustRefuse, "N6")] = 93,
+            [(Family.Store, SharpyTag.MustRefuse, "N6-type-kind")] = 63,
             [(Family.Store, SharpyTag.MustRefuse, "SPY0606")] = 40,
             [(Family.Store, SharpyTag.MustRefuse, "kind:SPY0225")] = 18,
             [(Family.Store, SharpyTag.MustRun, "#1974")] = 132,
@@ -61,7 +61,6 @@ public partial class NameResolutionDifferentialTests
             [(Family.Store, SharpyTag.MustRun, "N6-same-function")] = 12,
             [(Family.Store, SharpyTag.MustRun, "R-BM")] = 66,
             [(Family.Store, SharpyTag.MustRun, "R-Y")] = 8,
-            [(Family.Store, SharpyTag.Unruled, "unruled:N6-non-writable")] = 63,
             [(Family.TypeMember, SharpyTag.MustRun, "P52")] = 410,
         };
 

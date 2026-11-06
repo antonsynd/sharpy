@@ -186,7 +186,7 @@ public partial class NameResolutionDifferentialTests
                 var overwritten = s == StoreSpelling.Augmented || laterRead
                     ? PyOutcome.Other(s != StoreSpelling.Augmented && outer == BindingKind.ModuleEnum ? "AttributeError" : "TypeError")
                     : through;
-                return new Expected(SharpyTag.Unruled, null, overwritten, "unruled:N6-non-writable");
+                return Refuse(overwritten, "N6-type-kind");
             }
             return new Expected(SharpyTag.MustRun, through.Value, through, "N6");
         }
@@ -213,7 +213,7 @@ public partial class NameResolutionDifferentialTests
         if (IsConstKind(outer))
             return Refuse(pyNoDecl, "kind:SPY0225");
         if (IsNonWritableByMeaning(outer))
-            return new Expected(SharpyTag.Unruled, null, pyNoDecl, "unruled:N6-non-writable");
+            return Refuse(pyNoDecl, "N6-type-kind");
         return Refuse(pyNoDecl, "N6");
     }
 
@@ -265,7 +265,6 @@ public partial class NameResolutionDifferentialTests
             Outer = outer,
             Position = body,
             Form = FormEnum(s),
-            Shape = expected.Tag == SharpyTag.Unruled ? $"store-non-writable:{outer}:{(declared ? "global" : s.ToString())}" : null,
         };
     }
 
@@ -1227,35 +1226,6 @@ public partial class NameResolutionDifferentialTests
         ["rowless-let:while-else"] = 4,
         ["rowless-let:match-case"] = 4,
         ["s2-builtin"] = 24,
-        ["store-non-writable:ModuleDef:Assign"] = 2,
-        ["store-non-writable:ModuleDef:Augmented"] = 2,
-        ["store-non-writable:ModuleDef:Walrus"] = 2,
-        ["store-non-writable:ModuleDef:global"] = 3,
-        ["store-non-writable:ModuleClass:Assign"] = 2,
-        ["store-non-writable:ModuleClass:Augmented"] = 2,
-        ["store-non-writable:ModuleClass:Walrus"] = 2,
-        ["store-non-writable:ModuleClass:global"] = 3,
-        ["store-non-writable:ModuleStruct:Assign"] = 2,
-        ["store-non-writable:ModuleStruct:Augmented"] = 2,
-        ["store-non-writable:ModuleStruct:Walrus"] = 2,
-        ["store-non-writable:ModuleStruct:global"] = 3,
-        ["store-non-writable:ModuleEnum:Assign"] = 2,
-        ["store-non-writable:ModuleEnum:Augmented"] = 2,
-        ["store-non-writable:ModuleEnum:Walrus"] = 2,
-        ["store-non-writable:ModuleEnum:global"] = 3,
-        ["store-non-writable:ModuleUnion:Assign"] = 2,
-        ["store-non-writable:ModuleUnion:Augmented"] = 2,
-        ["store-non-writable:ModuleUnion:Walrus"] = 2,
-        ["store-non-writable:ModuleUnion:global"] = 3,
-        ["store-non-writable:ModuleInterface:Assign"] = 2,
-        ["store-non-writable:ModuleInterface:Augmented"] = 2,
-        ["store-non-writable:ModuleInterface:Walrus"] = 2,
-        ["store-non-writable:ModuleInterface:global"] = 3,
-        ["store-non-writable:ModuleTypeAlias:Assign"] = 2,
-        ["store-non-writable:ModuleTypeAlias:Augmented"] = 2,
-        ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
-        ["store-non-writable:ModuleTypeAlias:global"] = 3,
-        ["seed:B24"] = 1,
     };
 
     /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
@@ -1281,11 +1251,6 @@ public partial class NameResolutionDifferentialTests
             case "s2-builtin":
                 return c.Family == Family.Local && c.Outer == BindingKind.Builtin
                     && c.Construct is LocalTarget.For or LocalTarget.WithAs or LocalTarget.ExceptAs;
-            case "store-non-writable":
-                return c.Family == Family.Store && IsNonWritableByMeaning(c.Outer) && c.Outer.ToString() == parts[1]
-                    && (parts[2] == "global"
-                        ? c.Id.Contains("/global/", StringComparison.Ordinal)
-                        : c.Id.StartsWith($"store/{parts[2]}/", StringComparison.Ordinal) && c.Id.Contains("/no-decl/", StringComparison.Ordinal));
             case "seed":
                 return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
             default:
