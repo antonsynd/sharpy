@@ -1428,6 +1428,9 @@ public partial class NameResolutionDifferentialTests
             loopBodyClosureBinders = NameResolutionRosters.LoopBodyClosureBinders.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             loopBodyEnclosures = NameResolutionRosters.LoopBodyEnclosures.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             hostKinds = NameResolutionRosters.HostKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            assignmentTargetShapes = NameResolutionRosters.AssignmentTargetShapes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            attributeStoreMembers = NameResolutionRosters.AttributeStoreMembers.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            attributeStoreForms = NameResolutionRosters.AttributeStoreForms.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
         },
         letIn = results.Where(r => r.Cell.Id.StartsWith("local/let-in/", StringComparison.Ordinal))
             .GroupBy(r => $"{r.Cell.Target}/outer={r.Cell.Outer}").OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
@@ -1629,6 +1632,8 @@ public partial class NameResolutionDifferentialTests
         foreach (var failure in LoopBodyClosureProduct(pool))
             yield return failure;
         foreach (var failure in HostProduct(pool))
+            yield return failure;
+        foreach (var failure in AttributeStoreFed(pool))
             yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.

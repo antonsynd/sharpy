@@ -97,6 +97,18 @@ internal enum ComprehensionSlot
 /// <summary>Where a comprehension cell sits (P77b axis 1): its kind, the clause and the slot of the name.</summary>
 internal readonly record struct ComprehensionSite(ComprehensionKind Kind, ComprehensionClauseShape Clause, ComprehensionSlot Slot);
 
+/// <summary>The receiver of an attribute STORE (P77b axis 8): N7's spelling list restricted to stores {<c>self.</c>, <c>H.</c>,
+/// alias <c>A.</c>} and #2435's {derived <c>D.</c>, instance local <c>h0.</c>} — a closed LITERAL set named closed: a
+/// <c>MemberAccess</c> receiver has no compiler enumeration.</summary>
+internal enum AttributeReceiver
+{
+    SelfDot,
+    Type,
+    Alias,
+    Derived,
+    InstanceLocal,
+}
+
 /// <summary>When a LOCAL read happens relative to the binding it reads (P77b axis 4): a closed LITERAL set named closed —
 /// control-flow timing has no compiler enumeration. The two same-block values are LocalCells' below / above arms.</summary>
 internal enum ReadTiming
@@ -1191,6 +1203,52 @@ internal static class NameResolutionRosters
     /// <summary>The body positions whose statement axis 7 also reads through a stored lambda (#2434's <c>st2_init_lambda</c> /
     /// <c>st2_accessor_get_lambda</c>).</summary>
     internal static readonly ImmutableArray<ReadPosition> StructLambdaNestings = ImmutableArray.Create(ReadPosition.InitBody, ReadPosition.AccessorGetBody);
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 8: the attribute STORE target (R-KU, R-LH)
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The method whose <c>case</c> arms are the compiler's one authority for an assignment target (P77b axis 8):
+    /// <c>IsValidAssignmentTarget</c> is defined as its null, and <c>CheckAssignment</c> routes every store through it.</summary>
+    internal const string AssignmentTargetAuthority = "FirstInvalidAssignmentTarget";
+
+    /// <summary>The assignment target shapes (P77b axis 8): one row per <c>case</c> arm of
+    /// <see cref="AssignmentTargetAuthority"/>'s switch, read by a Roslyn scan; the <c>default:</c> arm is SPY0225 for every
+    /// other shape, so the scanned arms are the universe.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> AssignmentTargetShapes = Roster.Map(
+        ("Identifier", AxisMembership.Everywhere),
+        ("MemberAccess", AxisMembership.Everywhere),
+        ("IndexAccess", AxisMembership.Out(ExcludedAxis.NotAKind, "the receiver is a read and the element is a value, no name is stored")),
+        ("TupleLiteral", AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple store (iii): #2154 / #2156 / P21d")),
+        ("StarExpression", AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a starred store (iii): #2154 / #2156 / P21d")));
+
+    /// <summary>The members an attribute store writes (P77b axis 8): roster 1's type-level and instance kinds.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> AttributeStoreMembers = Roster.Map(
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.StaticMethod, AxisMembership.Everywhere),
+        (BindingKind.ClassLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "a nested type is a type: `H.I = ...` stores no value of the member's own type, so no store is type-compatible with it")),
+        (BindingKind.InstanceField, AxisMembership.Everywhere),
+        (BindingKind.InstanceProperty, AxisMembership.Everywhere),
+        (BindingKind.InstanceMethod, AxisMembership.Everywhere),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "the constructor has no member name a store spells (it is `__init__`, called through the type), so no attribute store writes it")));
+
+    /// <summary>The store forms an attribute target takes (P77b axis 8). The name-binding forms are refused by the parser on
+    /// a member access (probes @ bc7d3ab: walrus SPY0143, <c>let</c> SPY0107, <c>out let</c> SPY0104; python's walrus is
+    /// "cannot use assignment expressions with attribute").</summary>
+    internal static readonly IReadOnlyDictionary<StoreForm, AxisMembership> AttributeStoreForms = Roster.Map(
+        (StoreForm.Assign, AxisMembership.Everywhere),
+        (StoreForm.Augmented, AxisMembership.Everywhere),
+        (StoreForm.Walrus, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member (SPY0143)")),
+        (StoreForm.OutLet, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member (SPY0104)")),
+        (StoreForm.LetOrVar, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member (SPY0107)")));
+
+    /// <summary>The members axis 8 crosses with both forms and the four bodies (the plan's 16 + 8 product).</summary>
+    internal static readonly ImmutableArray<BindingKind> AttributeStoreFormMembers = ImmutableArray.Create(BindingKind.InstanceField, BindingKind.StaticField);
 
     /// <summary>The struct-host targets whose <c>self.</c> read lowers through <c>this</c> (P77b axis 7): the instance members. A
     /// <c>@static</c> member read through <c>self.</c> is the type's member (<c>H.x</c>), so a closure over it captures no
@@ -3032,6 +3090,122 @@ public partial class NameResolutionDifferentialTests
             problems.Add("StructSelfCaptureClosures: a def inside a def is not seen as a local function");
 
         AssertNoProblems(problems, "R-KT refuses exactly what C# refuses: a struct self captured by a lambda or a local function");
+    }
+
+    // =========================================================================================================
+    // P77b axis 8: the attribute STORE target
+    // =========================================================================================================
+
+    private static string LastTypeSegment(TypeSyntax type) => type.ToString().Split('.').Last().Trim();
+
+    /// <summary>The <c>case</c> arms of <paramref name="method"/>'s switch, by bound type name, and whether it has a
+    /// <c>default:</c> arm: a <c>case T:</c> constant label and a <c>case T x:</c> / <c>case T { }</c> pattern label alike.</summary>
+    internal static (IReadOnlyList<string> Arms, bool HasDefault) ScanSwitchArms(string source, string method)
+    {
+        var root = ParseCSharp(source, "scan.cs").GetCompilationUnitRoot();
+        var declaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().Single(m => m.Identifier.ValueText == method);
+        var arms = new List<string>();
+        bool hasDefault = false;
+        foreach (var label in declaration.DescendantNodes().OfType<SwitchStatementSyntax>().Single().Sections.SelectMany(s => s.Labels))
+        {
+            switch (label)
+            {
+                case DefaultSwitchLabelSyntax:
+                    hasDefault = true;
+                    break;
+                case CaseSwitchLabelSyntax { Value: TypeSyntax type }:
+                    arms.Add(LastTypeSegment(type));
+                    break;
+                case CasePatternSwitchLabelSyntax { Pattern: DeclarationPatternSyntax d }:
+                    arms.Add(LastTypeSegment(d.Type));
+                    break;
+                case CasePatternSwitchLabelSyntax { Pattern: TypePatternSyntax t }:
+                    arms.Add(LastTypeSegment(t.Type));
+                    break;
+                case CasePatternSwitchLabelSyntax { Pattern: RecursivePatternSyntax { Type: TypeSyntax r } }:
+                    arms.Add(LastTypeSegment(r));
+                    break;
+                default:
+                    arms.Add($"<unread label: {label}>");
+                    break;
+            }
+        }
+        return (arms, hasDefault);
+    }
+
+    /// <summary>The types the <c>assignment.Target is T</c> sites of <paramref name="source"/> test.</summary>
+    internal static IReadOnlyList<string> ScanTargetIsTypes(string source)
+    {
+        var root = ParseCSharp(source, "scan.cs").GetCompilationUnitRoot();
+        var types = new List<string>();
+        foreach (var e in root.DescendantNodes().OfType<IsPatternExpressionSyntax>())
+        {
+            if (e.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Target", Expression: IdentifierNameSyntax { Identifier.ValueText: "assignment" } })
+                continue;
+            var pattern = e.Pattern is UnaryPatternSyntax u ? u.Pattern : e.Pattern;
+            types.Add(pattern switch
+            {
+                DeclarationPatternSyntax d => LastTypeSegment(d.Type),
+                TypePatternSyntax t => LastTypeSegment(t.Type),
+                RecursivePatternSyntax { Type: TypeSyntax r } => LastTypeSegment(r),
+                ConstantPatternSyntax { Expression: IdentifierNameSyntax n } => n.Identifier.ValueText,
+                _ => $"<unread pattern: {pattern}>",
+            });
+        }
+        return types;
+    }
+
+    private static string TypeCheckerSource(string file) => File.ReadAllText(Path.Combine(CompilerSourceDir(), "Semantic", file));
+
+    /// <summary>The assignment target shapes are the scan of <see cref="NameResolutionRosters.AssignmentTargetAuthority"/>'s
+    /// <c>case</c> arms, both directions, with a <c>default:</c> arm (it makes every other shape SPY0225, so the scan IS the
+    /// universe). Positive controls: a synthetic copy of the switch with an extra <c>case Foo:</c> arm is seen as one more arm,
+    /// and the <c>assignment.Target is T</c> list of <c>TypeChecker.Statements.cs</c> is a strict subset of the scan.</summary>
+    [Fact]
+    public void AssignmentTargetShapesRoster_IsTheScanOfFirstInvalidAssignmentTarget()
+    {
+        var utilities = TypeCheckerSource("TypeChecker.Utilities.cs");
+        var (arms, hasDefault) = ScanSwitchArms(utilities, NameResolutionRosters.AssignmentTargetAuthority);
+        var problems = new List<string>();
+        if (!hasDefault)
+            problems.Add($"{NameResolutionRosters.AssignmentTargetAuthority} has no default: arm, so its case arms are not the universe");
+        problems.AddRange(arms.GroupBy(a => a).Where(g => g.Count() > 1).Select(g => $"AssignmentTargetShapes: arm {g.Key} scanned twice"));
+        problems.AddRange(Roster.TotalityProblems("AssignmentTargetShapes", arms, NameResolutionRosters.AssignmentTargetShapes.Keys));
+        problems.AddRange(MembershipShapeProblems("AssignmentTargetShapes", NameResolutionRosters.AssignmentTargetShapes));
+
+        // The scan sees an arm it is shown: the same file with a sixth arm added.
+        var synthetic = utilities.Replace("            case Identifier:\n            case MemberAccess:", "            case Foo:\n            case Identifier:\n            case MemberAccess:", StringComparison.Ordinal);
+        if (synthetic == utilities)
+            problems.Add("the synthetic control could not place its extra arm: the switch's first arms moved");
+        var (syntheticArms, _) = ScanSwitchArms(synthetic, NameResolutionRosters.AssignmentTargetAuthority);
+        if (syntheticArms.Count != arms.Count + 1 || !syntheticArms.Contains("Foo"))
+            problems.Add($"the scan does not see a synthetic extra arm: {string.Join(", ", syntheticArms)}");
+
+        // The partial list beside it: every `assignment.Target is T` site tests a scanned arm, and they do not name them all.
+        var targetIs = ScanTargetIsTypes(TypeCheckerSource("TypeChecker.Statements.cs")).ToHashSet(StringComparer.Ordinal);
+        if (targetIs.Count == 0)
+            problems.Add("no assignment.Target is T site was scanned");
+        problems.AddRange(targetIs.Where(t => !arms.Contains(t)).Select(t => $"assignment.Target is {t} names no scanned arm"));
+        if (targetIs.SetEquals(arms))
+            problems.Add("the assignment.Target is T list names every arm: it is no longer the strict subset the scan is checked against");
+
+        AssertNoProblems(problems, "axis 8's target shapes are the compiler's one assignment-target authority, scanned");
+    }
+
+    /// <summary>Axis 8's member and form rosters: the members are total over roster 1's type-level and instance kinds, the forms
+    /// over <see cref="StoreForm"/>, each generated or out with its reason.</summary>
+    [Fact]
+    public void AttributeStoreRosters_AreTotalOverMembersAndForms()
+    {
+        var problems = Roster.TotalityProblems("AttributeStoreMembers",
+            NameResolutionRosters.TypeLevelKinds.Concat(NameResolutionRosters.InstanceKinds), NameResolutionRosters.AttributeStoreMembers.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("AttributeStoreMembers", NameResolutionRosters.AttributeStoreMembers));
+        problems.AddRange(Roster.TotalityProblems("AttributeStoreForms", Enum.GetValues<StoreForm>(), NameResolutionRosters.AttributeStoreForms.Keys));
+        problems.AddRange(MembershipShapeProblems("AttributeStoreForms", NameResolutionRosters.AttributeStoreForms));
+        problems.AddRange(NameResolutionRosters.AttributeStoreFormMembers.Where(k => !NameResolutionRosters.AttributeStoreMembers[k].Generated)
+            .Select(k => $"AttributeStoreFormMembers: {k} is not a generated member"));
+
+        AssertNoProblems(problems, "axis 8 stores every member kind in every form a member access admits, each other naming why");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

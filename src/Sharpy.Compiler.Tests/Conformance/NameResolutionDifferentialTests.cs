@@ -103,6 +103,11 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
+    /// <summary>P77b axis 8: the assignment target shape of an attribute STORE (a <c>FirstInvalidAssignmentTarget</c> arm name;
+    /// null: the bare <c>Identifier</c> forms of the STORE family) and its receiver.</summary>
+    public string? TargetShape { get; init; }
+    public AttributeReceiver? Receiver { get; init; }
+
     /// <summary>P77b axis 7: the READ class cell's host type kind when it is not the position's own (null: the position's host,
     /// <c>HostHeader</c>'s class / <c>@dataclass</c> / struct initializer host).</summary>
     public Sharpy.Compiler.Semantic.TypeKind? Host { get; init; }
@@ -146,9 +151,11 @@ public partial class NameResolutionDifferentialTests
     private const string AllowlistFileName = "name-resolution-differential-allowlist.txt";
     private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
-    /// <summary>D3's budget: the pool's size, with the 13-minute dev wall as its other half. P77b D1 (R-KP): 8,500 holds the
-    /// restored READ outers and builtins and the twelve axes; the wall, not this count, is the binding limit.</summary>
-    private const int CellBudget = 8500;
+    /// <summary>D3's budget: the pool's size, with the 13-minute dev wall as its other half. P77b D1 (R-KP): 8,500 held the
+    /// restored READ outers and builtins; the lead's budget ruling 2026-11-06 (plan checklist) generates the twelve axes whole and
+    /// rounds the measured pool up to the next 500 (8,516 at axis 8 → 9,000), the dev wall staying ≤ 13 min; the wall, not this
+    /// count, is the binding limit.</summary>
+    private const int CellBudget = 9000;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
@@ -313,6 +320,9 @@ public partial class NameResolutionDifferentialTests
         [("SPY0401", "SPY0203")] = 12,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
+        // P77b axis 8 (R-LH): an instance method stored through a type (`H.x = lambda: 9`, `A.`, `D.`) is refused as an
+        // instance member read through a type before the method store's own refusal is reached: refused by direction.
+        [("kind:SPY0606", "SPY0290")] = 3,
         // P77b R-LJ: a module binding spelled like an imported name is SPY0204 at its own declaration, before N2's module
         // refusal of the read above it is reached (p23): refused by direction, pinned until N2's own diagnostic lands (#2423).
         [("N2-module", "SPY0204")] = 3,
@@ -351,6 +361,8 @@ public partial class NameResolutionDifferentialTests
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
         // P77b axis 5: a block's `def` over a `def` of the same function in an enclosing block (function_definition.md).
         ["kind:SPY0204"] = new[] { "SPY0204" },
+        // P77b axis 8 (R-LH): SPY0290 is the instance method stored through a type, pinned in EarlierRefusals.
+        ["kind:SPY0606"] = new[] { "SPY0290", "SPY0606" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
@@ -459,6 +471,11 @@ public partial class NameResolutionDifferentialTests
         switch (verdict)
         {
             case VerdictClass.Ice:
+                // P77b axis 8 (lead ruling 2026-11-06): a member store the checker lets through to Roslyn (CS0131 on a const,
+                // CS0176 on a `@static` member through `self.`) is #2435's class — keyed on the attribute-store cell, never on
+                // the CS code, so #2147's CS0176 READ receivers keep their route.
+                if (cell.TargetShape == "MemberAccess")
+                    return "#2435";
                 if (run.AllCodes.Contains("SPY0909"))
                     return "#2398";
                 return run.CsCode switch
@@ -512,6 +529,14 @@ public partial class NameResolutionDifferentialTests
                     return "#2412";
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
+                // P77b axis 8 (lead ruling 2026-11-06): a member store that runs where it must be refused (R-KU's `@static`
+                // member through `self.` / `D.` / `h0.`, R-LH's method) is #2435's: "a store that cannot run is refused".
+                // P77b axis 8 (lead ruling 2026-11-06): an augmented `self.x op= v` at the top of `__init__` is emitted as
+                // `this.X = v` — a lowering defect, not a store to refuse.
+                if (cell.TargetShape == "MemberAccess" && cell.Rule == "N7" && cell.Position == ReadPosition.InitBody && cell.Form == StoreForm.Augmented)
+                    return "#2439";
+                if (cell.TargetShape == "MemberAccess" && cell.Rule is "R-KU" or "kind:SPY0606")
+                    return "#2435";
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)

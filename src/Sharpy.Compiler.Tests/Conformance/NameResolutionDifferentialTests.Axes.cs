@@ -639,4 +639,154 @@ public partial class NameResolutionDifferentialTests
                 yield return $"{c.Id}: rule {c.Rule}, and R-KT is exactly struct × self. × an instance member × the C# closure positions";
         }
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 8: the attribute STORE target (R-KU, R-LH)
+    // ------------------------------------------------------------------------------------------- //
+
+    private static string ReceiverText(AttributeReceiver r) => r switch
+    {
+        AttributeReceiver.SelfDot => "self.",
+        AttributeReceiver.Type => "H.",
+        AttributeReceiver.Alias => "A.",
+        AttributeReceiver.Derived => "D.",
+        AttributeReceiver.InstanceLocal => "h0.",
+        _ => throw new ArgumentOutOfRangeException(nameof(r)),
+    };
+
+    /// <summary>Axis 8's product: receiver × member × <c>=</c> at the method body; form × {method, init} body × {instance,
+    /// <c>@static</c>} field × {<c>self.</c>, <c>H.</c>}; form × {static method, function} body × the same fields × <c>H.</c> —
+    /// the union, so a coordinate two parts share is one cell. <c>self.</c> exists only at a self-bearing body (the rest is
+    /// python's NameError on <c>self</c>, a type-system agreement and no name verdict), and the instance local only at a body
+    /// that can construct its own class without recursing (not <c>__init__</c>).</summary>
+    private static IEnumerable<(AttributeReceiver Receiver, BindingKind Member, StoreForm Form, ReadPosition Body)> AttributeStoreProduct()
+    {
+        var members = NameResolutionRosters.AttributeStoreMembers.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(k => k).ToList();
+        var forms = NameResolutionRosters.AttributeStoreForms.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(f => f).ToList();
+        var product = new List<(AttributeReceiver, BindingKind, StoreForm, ReadPosition)>();
+        foreach (var r in Enum.GetValues<AttributeReceiver>())
+            foreach (var m in members)
+                product.Add((r, m, StoreForm.Assign, ReadPosition.MethodBody));
+        foreach (var f in forms)
+            foreach (var body in new[] { ReadPosition.MethodBody, ReadPosition.InitBody })
+                foreach (var m in NameResolutionRosters.AttributeStoreFormMembers)
+                    foreach (var r in new[] { AttributeReceiver.SelfDot, AttributeReceiver.Type })
+                        product.Add((r, m, f, body));
+        foreach (var f in forms)
+            foreach (var body in new[] { ReadPosition.StaticMethodBody, ReadPosition.FunctionBody })
+                foreach (var m in NameResolutionRosters.AttributeStoreFormMembers)
+                    product.Add((AttributeReceiver.Type, m, f, body));
+        return product.Distinct().Where(e => e.Item1 != AttributeReceiver.SelfDot || IsSelfBearing(e.Item4));
+    }
+
+    /// <summary>An attribute STORE (P77b axis 8): <c>&lt;receiver&gt;x = v</c> (or <c>+=</c>) in the body, then a read that
+    /// tells which binding the store wrote: a type-level member through <c>H.x</c> (python's store through an instance or a
+    /// derived class makes a new attribute there and leaves <c>H.x</c> alone, p03), an instance member through the receiver, a
+    /// method through a call on the receiver. The stored value has the member's type (a method takes <c>lambda: 9</c>), so the
+    /// only refusal is the store's own. Verdict by (receiver class, member kind): an instance member through <c>self.</c> /
+    /// <c>h0.</c> and a <c>@static</c> member through <c>H.</c> / <c>A.</c> run (N7); a <c>@static</c> member through
+    /// <c>self.</c> / <c>D.</c> / <c>h0.</c> is R-KU's refusal (#2435); a const is SPY0225's, a method SPY0606's (R-LH), an
+    /// instance member through a type SPY0290's, by kind.</summary>
+    private static NameCell AttributeStoreCell(AttributeReceiver r, BindingKind m, StoreForm f, ReadPosition body)
+    {
+        var recv = ReceiverText(r);
+        var callable = IsCallableKind(m);
+        var stmts = new List<string>();
+        if (r == AttributeReceiver.InstanceLocal)
+            stmts.Add("h0: H = H()");
+        stmts.Add($"{recv}x {(f == StoreForm.Augmented ? "+=" : "=")} {(callable ? "lambda: 9" : "9")}");
+        var instanceRead = r is AttributeReceiver.SelfDot or AttributeReceiver.InstanceLocal;
+        // An instance member stored through a type is read back through this instance where the body has one (constructing
+        // H inside its own __init__ would recurse), else through a new instance.
+        var instanceBack = instanceRead ? $"{recv}x" : IsSelfBearing(body) ? "self.x" : "H().x";
+        stmts.Add("print(" + (callable ? $"{recv}x()" : IsInstance(m) ? instanceBack : "H.x") + ")");
+
+        var members = MemberDecl(m, ReadName.Plain);
+        var (host, call) = Host(body, stmts, members);
+        var lines = new List<string>();
+        if (body is ReadPosition.FunctionBody)
+        {
+            lines.Add("class H:");
+            lines.AddRange(Indent(members));
+        }
+        lines.AddRange(host);
+        if (r == AttributeReceiver.Derived)
+            lines.AddRange(new[] { "class D(H):", "    pass" });
+        if (r == AttributeReceiver.Alias)
+            lines.Add("type A = H");
+
+        int original = ValueOf(m);
+        int stored = f == StoreForm.Augmented ? original + 9 : 9;
+        var throughType = r is AttributeReceiver.Type or AttributeReceiver.Alias;
+        Expected e;
+        if (callable)
+            e = Refuse(PyOutcome.Ran(9), "kind:SPY0606");
+        else if (m is BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst)
+            e = Refuse(PyOutcome.Ran(throughType ? stored : original), "kind:SPY0225");
+        else if (IsInstance(m))
+            e = instanceRead ? Run(stored, "N7") : Refuse(PyOutcome.Ran(throughType ? stored : original), "kind:SPY0290");
+        else
+            e = throughType ? Run(stored, "N7") : Refuse(PyOutcome.Ran(original), "R-KU");
+
+        return new NameCell
+        {
+            Id = CellId("store", "attribute", r, m, f, body),
+            Family = Family.Store,
+            Source = WithHelpers(Join(lines) + MainBlock(call.ToArray())),
+            Tag = e.Tag,
+            Model = e.Model,
+            Python = e.Python,
+            Rule = e.Rule,
+            Target = m,
+            Outer = BindingKind.None,
+            Position = body,
+            Form = f,
+            TargetShape = "MemberAccess",
+            Receiver = r,
+        };
+    }
+
+    /// <summary>Axis 8's cells: the MemberAccess arm of <see cref="NameResolutionRosters.AssignmentTargetShapes"/>.</summary>
+    private static IEnumerable<NameCell> AttributeStoreAxisCells() =>
+        NameResolutionRosters.AssignmentTargetShapes.TryGetValue("MemberAccess", out var m) && m.Generated
+            ? AttributeStoreProduct().Select(e => AttributeStoreCell(e.Receiver, e.Member, e.Form, e.Body))
+            : Enumerable.Empty<NameCell>();
+
+    /// <summary>Axis 8's fed check: every generated target shape has a STORE cell (Identifier: the bare forms; MemberAccess: the
+    /// attribute cells), every receiver, generated member and generated form has an attribute cell, the R-KU rule is exactly
+    /// the <c>@static</c> value members through a non-type receiver, and no attribute cell sits off the rosters.</summary>
+    private static IEnumerable<string> AttributeStoreFed(IReadOnlyList<NameCell> pool)
+    {
+        var store = pool.Where(c => c.Family == Family.Store).ToList();
+        var attribute = store.Where(c => c.TargetShape == "MemberAccess").ToList();
+        foreach (var (shape, m) in NameResolutionRosters.AssignmentTargetShapes.Where(e => e.Value.Generated))
+        {
+            var has = shape == "Identifier" ? store.Any(c => c.TargetShape == null && c.Form is StoreForm.Assign or StoreForm.Augmented) : store.Any(c => c.TargetShape == shape);
+            if (!has)
+                yield return $"AssignmentTargetShapes {shape} is generated by the roster and has no STORE cell";
+        }
+        foreach (var c in store.Where(c => c.TargetShape != null && !(NameResolutionRosters.AssignmentTargetShapes.TryGetValue(c.TargetShape, out var m) && m.Generated)))
+            yield return $"{c.Id}: a STORE cell on target shape {c.TargetShape}, which AssignmentTargetShapes does not generate";
+        if (!(NameResolutionRosters.AssignmentTargetShapes.TryGetValue("MemberAccess", out var ma) && ma.Generated))
+            yield break;
+        foreach (var r in Enum.GetValues<AttributeReceiver>().Where(r => !attribute.Any(c => c.Receiver == r)))
+            yield return $"AttributeReceiver {r} has no attribute STORE cell";
+        foreach (var (k, _) in NameResolutionRosters.AttributeStoreMembers.Where(e => e.Value.Generated && !attribute.Any(c => c.Target == e.Key)))
+            yield return $"AttributeStoreMembers {k} is generated by the roster and has no attribute STORE cell";
+        foreach (var (f, _) in NameResolutionRosters.AttributeStoreForms.Where(e => e.Value.Generated && !attribute.Any(c => c.Form == e.Key)))
+            yield return $"AttributeStoreForms {f} is generated by the roster and has no attribute STORE cell";
+        foreach (var c in attribute)
+        {
+            if (!(NameResolutionRosters.AttributeStoreMembers.TryGetValue(c.Target, out var m) && m.Generated))
+                yield return $"{c.Id}: an attribute store on {c.Target}, which AttributeStoreMembers does not generate";
+            if (!(c.Form is StoreForm f && NameResolutionRosters.AttributeStoreForms.TryGetValue(f, out var fm) && fm.Generated))
+                yield return $"{c.Id}: an attribute store in form {c.Form}, which AttributeStoreForms does not generate";
+            if (c.Receiver == AttributeReceiver.SelfDot && c.Position is ReadPosition p && !IsSelfBearing(p))
+                yield return $"{c.Id}: self. at {p}, where no self is in scope";
+            var rku = c.Target is BindingKind.StaticField or BindingKind.StaticProperty
+                && c.Receiver is AttributeReceiver.SelfDot or AttributeReceiver.Derived or AttributeReceiver.InstanceLocal;
+            if ((c.Rule == "R-KU") != rku)
+                yield return $"{c.Id}: rule {c.Rule}, and R-KU is exactly a @static value member stored through self. / D. / h0.";
+        }
+    }
 }
