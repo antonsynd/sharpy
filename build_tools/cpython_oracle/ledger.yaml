@@ -13,6 +13,14 @@ schema_version: 1
 generated_by: python -m build_tools.cpython_oracle ledger
 cpython_version: '3.12'
 deviations:
+- id: block-scoping-for
+  category: scoping
+  audience: python
+  severity: error
+  code: SPY0200
+  spec_ref: docs/language_specification/variable_scoping.md
+  existing_diagnostic: SPY0200
+  planned_diagnostic: null
 - id: block-scoping-for-loop-variable
   category: scoping
   audience: python
@@ -22,6 +30,14 @@ deviations:
   existing_diagnostic: SPY0200
   planned_diagnostic: null
 - id: block-scoping-if
+  category: scoping
+  audience: python
+  severity: error
+  code: SPY0200
+  spec_ref: docs/language_specification/variable_scoping.md
+  existing_diagnostic: SPY0200
+  planned_diagnostic: null
+- id: block-scoping-match
   category: scoping
   audience: python
   severity: error
