@@ -467,7 +467,8 @@ public partial class NameResolutionDifferentialTests
 
     private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
     {
-        _compilePathOutput.Muted = true;
+        bool wasMuted = MuteCompilePath;
+        MuteCompilePath = true;
         ExecutionResult r;
         try
         {
@@ -475,7 +476,7 @@ public partial class NameResolutionDifferentialTests
         }
         finally
         {
-            _compilePathOutput.Muted = false;
+            MuteCompilePath = wasMuted;
         }
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();

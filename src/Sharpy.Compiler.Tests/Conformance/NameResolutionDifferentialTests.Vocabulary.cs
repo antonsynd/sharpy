@@ -218,32 +218,9 @@ internal enum ExcludedAxis
 [Trait("Category", "GapDiscovery")]
 public partial class NameResolutionDifferentialTests : IntegrationTestBase
 {
-    private readonly CompilePathOutput _compilePathOutput;
-
-    public NameResolutionDifferentialTests(ITestOutputHelper output) : this(new CompilePathOutput(output)) { }
-
-    private NameResolutionDifferentialTests(CompilePathOutput output) : base(output) => _compilePathOutput = output;
-
-    /// <summary>
-    /// The output the base class writes through. <see cref="IntegrationTestBase"/> records each compile's generated
-    /// C# in the test's output, xUnit keeps that in memory until the test ends, and vstest then serializes it as one
-    /// string. Over a sweep's thousands of compiles that string exhausted the testhost's heap, so the compile path
-    /// is muted and only what a fact prints itself gets through.
-    /// </summary>
-    private sealed class CompilePathOutput(ITestOutputHelper inner) : ITestOutputHelper
-    {
-        public bool Muted { get; set; }
-
-        public void WriteLine(string message)
-        {
-            if (!Muted)
-                inner.WriteLine(message);
-        }
-
-        public void WriteLine(string format, params object[] args)
-        {
-            if (!Muted)
-                inner.WriteLine(format, args);
-        }
-    }
+    /// <summary>The compile path is muted per <c>RunSharpy</c> call rather than in the constructor: a fact that
+    /// compiles through the base class directly still records its generated C#, which is how
+    /// <c>RunSharpy_BuffersNothingInTheTestResult</c> shows the mute was lifted. The mute and the per-test output
+    /// ceiling are <see cref="IntegrationTestBase"/>'s (#2438).</summary>
+    public NameResolutionDifferentialTests(ITestOutputHelper output) : base(output) { }
 }
