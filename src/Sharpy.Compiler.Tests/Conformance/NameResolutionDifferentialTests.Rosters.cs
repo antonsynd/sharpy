@@ -2946,6 +2946,13 @@ public partial class NameResolutionDifferentialTests
         NameResolutionRosters.AttributeStoreMembers.Count(e => e.Value.Generated).Should().Be(8);
         NameResolutionRosters.AttributeStoreForms.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { StoreForm.Assign, StoreForm.Augmented });
         Enum.GetNames<AttributeReceiver>().Should().Equal("SelfDot", "TypeName", "Alias", "DerivedType", "InstanceLocal");
+        // A receiver re-pruned by an `Out` entry is still total, so totality cannot see it, and the census and the allowlist can be re-pinned with it.
+        NameResolutionRosters.AttributeStoreBodies.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            "SelfDot × MethodBody", "SelfDot × InitBody",
+            "TypeName × MethodBody", "TypeName × InitBody", "TypeName × StaticMethodBody", "TypeName × FunctionBody",
+            "Alias × MethodBody", "DerivedType × MethodBody", "InstanceLocal × MethodBody",
+        });
     }
 
     [Fact]
