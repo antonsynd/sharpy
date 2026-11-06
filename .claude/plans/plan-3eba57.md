@@ -175,8 +175,8 @@ Class-level bullets; each names its mutation / positive control and the evidence
 Base sha: 2279c0d (plan carried; tree == ee9a007a1). Tier: light (converged, CELL override).
 
 - [ ] W1a #2438 chore (D8) + D3.5 FormatSpec null-skip — test-expert "chore" — blocked by none
-- [ ] W1b CI gaps D4.1 + D4.2 (yml job env, comments, two guards) — test-expert "ci" — blocked by none
-- [ ] W1c docs D7 (deviations.yaml rows executed, N2 sentence ×2) — test-expert "docs" — blocked by none
+- [~] W1b CI gaps D4.1 (d3a60c1) + D4.2 (yml job env, comments, two guards) — test-expert "ci" — blocked by none
+- [x] W1c docs D7 (74a0bf2, b72c5fc) (deviations.yaml rows executed, N2 sentence ×2) — test-expert "docs" — blocked by none
 - [ ] H1 D1 budget/restore (ReadOuter, Builtins max/int) + deferred 5 (LocalKinds map) + D4.3 retry + D5 TypeMemberShapes + re-ratchet — test-expert — blocked by W1a
 - [ ] H2 axis 9 ImportedName (ImportedOuter_CompilesInProcess FIRST) + deferred 6, 7 + D3.1 round trip — test-expert — blocked by H1
 - [ ] H3 axes 1–4 + deferred 1, 2, 3 — test-expert — blocked by H2
