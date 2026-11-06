@@ -819,7 +819,7 @@ public partial class NameResolutionDifferentialTests
                 new[] { "def x(k: int) -> int:", "    return 0 if k == 0 else x(k - 1) + 1", "print(x(3))" }, Run(3, "N5"), null, plain);
             yield return LocalProgram(CellId("local", BindingKind.LambdaTypedLocal, "self", body), BindingKind.LambdaTypedLocal, BindingKind.None, body,
                 new[] { "x: (int) -> int = lambda k: x(k - 1) + 1 if k > 0 else 0", "print(x(3))" },
-                new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(3), "unruled:N5-self"), "lambda-self", plain);
+                Refuse(PyOutcome.Ran(3), "N5-self"), null, plain);
         }
 
         // L28: a nested def reading an enclosing local declared below the def but bound before the call.
@@ -1231,7 +1231,6 @@ public partial class NameResolutionDifferentialTests
         ["rowless-let:while-else"] = 4,
         ["rowless-let:match-case"] = 4,
         ["s2-builtin"] = 24,
-        ["lambda-self"] = 3,
         ["store-non-writable:ModuleDef:Assign"] = 2,
         ["store-non-writable:ModuleDef:Augmented"] = 2,
         ["store-non-writable:ModuleDef:Walrus"] = 2,
@@ -1279,9 +1278,6 @@ public partial class NameResolutionDifferentialTests
         {
             case "L28":
                 return c.Family == Family.Local && c.Target == BindingKind.EnclosingLocal && c.Outer is BindingKind.None or BindingKind.ModuleVar;
-            case "lambda-self":
-                return c.Family == Family.Local && c.Target == BindingKind.LambdaTypedLocal && c.Outer == BindingKind.None
-                    && c.Id.Contains("/self/", StringComparison.Ordinal);
             case "match-capture":
                 return c.Family == Family.Local && capture && parts[1] == (c.Outer switch
                 {

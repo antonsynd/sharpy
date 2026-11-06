@@ -481,7 +481,6 @@ public partial class NameResolutionDifferentialTests
     [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
     [InlineData("store-non-writable:ModuleDef:Assign", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/no-decl")]
     [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
-    [InlineData("lambda-self", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/self/outer=None/FunctionBody")]
     [InlineData("match-capture:none", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/For/after-block/outer=None/FunctionBody")]
     [InlineData("rowless-let:if-then", Family.Local, BindingKind.LocalLet, BindingKind.None, "local/LocalLet/let-in/if-then/outer=None/FunctionBody")]
     [InlineData("s2-builtin", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/For/after-block/outer=ModuleVar/FunctionBody")]
