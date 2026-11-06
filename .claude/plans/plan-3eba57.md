@@ -168,6 +168,24 @@ Class-level bullets; each names its mutation / positive control and the evidence
 
 - @ ee9a007a1 — revised after the 1st pass (NEEDS REVISION, Dimension 6; 4-design): axis 7's R-KT arm is keyed on the C# closure positions {`Lambda*`, `NestedDefInMethod`, the `Nesting.Lambda` variants at `InitBody` / `AccessorGetBody`} and the comprehension / generator positions take the class host's arm (they run @ ee9a007a1); axis 8's rule gains the self-bearing axis (`self.` at `StaticMethodBody` / `FunctionBody` is `Out(NotAKind)`) and its source is `FirstInvalidAssignmentTarget`'s five `case` arms, not the thirteen `assignment.Target is` sites; axis 1 excludes `ForClause.IsAsync` and its clause totality reads the subclasses' `bool` properties; D2.9 names the compile path — the Stdlib monolith referenced per import cell in the `DifferentialExecutionTests` shape, `ImportedOuter_CompilesInProcess` first, `copy.deepcopy` rejected as `object`-typed (probes `p77b-rev1/q1–q8`). Warnings folded: D4.1's mutation count is 2 (namespace shards); D4.2's scan takes `PythonOracleSkipCensusTests.Scan`'s shape with the three sweep classes pinned; D3.4's `N2-module` mutation records add-then-delete; D8 mutes all five results above the ceiling. The twelve-axis mutation list of Acceptance 1 is unchanged and gains the `IsAsync`, `GeneratorBody` and `IndexAccess` mutations.
 
+- @ ee9a007a1 (2026-11-06, /implement-plan) — owner override recorded: CONVERGED with `Adequacy: CELL`; the owner answered "override (Recommended)" to "implement as-is (deferred rows first), or send it back for revision?" — the seven `### Deferred findings` rows are resolved in code, each commit body naming its row. R-KP reading confirmed by the owner: "8,500 is right (Recommended)" (~7,400 described the restore; `CellBudget = 8500`).
+
+## Implementation Checklist
+
+Base sha: 2279c0d (plan carried; tree == ee9a007a1). Tier: light (converged, CELL override).
+
+- [ ] W1a #2438 chore (D8) + D3.5 FormatSpec null-skip — test-expert "chore" — blocked by none
+- [ ] W1b CI gaps D4.1 + D4.2 (yml job env, comments, two guards) — test-expert "ci" — blocked by none
+- [ ] W1c docs D7 (deviations.yaml rows executed, N2 sentence ×2) — test-expert "docs" — blocked by none
+- [ ] H1 D1 budget/restore (ReadOuter, Builtins max/int) + deferred 5 (LocalKinds map) + D4.3 retry + D5 TypeMemberShapes + re-ratchet — test-expert — blocked by W1a
+- [ ] H2 axis 9 ImportedName (ImportedOuter_CompilesInProcess FIRST) + deferred 6, 7 + D3.1 round trip — test-expert — blocked by H1
+- [ ] H3 axes 1–4 + deferred 1, 2, 3 — test-expert — blocked by H2
+- [ ] H4 axes 5–8 + deferred 4 — test-expert — blocked by H3
+- [ ] H5 axes 10–12 + D2.12 predicted SyntaxError — test-expert — blocked by H4
+- [ ] H6 D6 ruling arms + D3.2 / D3.3 / D3.4 — test-expert — blocked by H5, W1c
+- [ ] Lead: gap-discovery-contracts.md:52 rewrite (D7) — lead — blocked by H6
+- [ ] Final verification (gate + verification-expert) and dotnet format whitespace — lead — blocked by all
+
 ## Verification Summary
 
 **Result:** CONVERGED (contract §12: the 1st pass stamped NEEDS REVISION on Dimension 6 / 4-design; every finding of this pass is deferrable — no verdict rule, acceptance mutation, tier, scope or ruling changes, and each row names its catcher)
