@@ -204,11 +204,8 @@ public partial class NameResolutionDifferentialTests
         if (IsTypeLevelMember(outer))
         {
             // variable_scoping.md, "Every store form is refused": a bare store to a class member is SPY0606 in every form, though
-            // python makes it a local. Only a method's name is still a local here: the spec's sentence reads as covering it and the
-            // compiler lets it through, and that question is posted on #2427.
-            return s == StoreSpelling.Augmented || !(outer is BindingKind.StaticMethod or BindingKind.InstanceMethod)
-                ? Refuse(pyNoDecl, "SPY0606")
-                : new Expected(SharpyTag.MustRun, local.Value, local, "R-Y");
+            // python makes it a local. R-LH: a method's name is a class member like any other.
+            return Refuse(pyNoDecl, "SPY0606");
         }
         if (IsConstKind(outer))
             return Refuse(pyNoDecl, "kind:SPY0225");

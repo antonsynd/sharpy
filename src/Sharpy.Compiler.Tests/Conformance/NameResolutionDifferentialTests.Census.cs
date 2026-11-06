@@ -50,14 +50,13 @@ public partial class NameResolutionDifferentialTests
             [(Family.Store, SharpyTag.MustRefuse, "N5")] = 21,
             [(Family.Store, SharpyTag.MustRefuse, "N6")] = 93,
             [(Family.Store, SharpyTag.MustRefuse, "N6-type-kind")] = 63,
-            [(Family.Store, SharpyTag.MustRefuse, "SPY0606")] = 40,
+            [(Family.Store, SharpyTag.MustRefuse, "SPY0606")] = 48,
             [(Family.Store, SharpyTag.MustRefuse, "kind:SPY0225")] = 18,
             [(Family.Store, SharpyTag.MustRun, "#1974")] = 132,
             [(Family.Store, SharpyTag.MustRun, "N5")] = 28,
             [(Family.Store, SharpyTag.MustRun, "N6")] = 33,
             [(Family.Store, SharpyTag.MustRun, "N6-same-function")] = 12,
             [(Family.Store, SharpyTag.MustRun, "R-BM")] = 66,
-            [(Family.Store, SharpyTag.MustRun, "R-Y")] = 8,
             [(Family.TypeMember, SharpyTag.MustRun, "P52")] = 410,
         };
 
