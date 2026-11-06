@@ -122,6 +122,16 @@ internal enum ReadTimings
     FailedGuard,
 }
 
+/// <summary>The outer classes of P77b axis 5's let-in product: the image of <see cref="NameResolutionRosters.StoreTargetScopes"/> (Module, FunctionLike
+/// as the enclosing function, Block as the same function) and no outer.</summary>
+internal enum LetInOuter
+{
+    None,
+    Module,
+    Enclosing,
+    SameFunction,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -1205,6 +1215,21 @@ internal static class NameResolutionRosters
 
     /// <summary>The captures axis 4's failed guard binds: the two pattern targets of <see cref="LocalTarget"/>.</summary>
     internal static readonly ImmutableArray<LocalTarget> ReadTimingCaptures = ImmutableArray.Create(LocalTarget.MatchCapture, LocalTarget.AsPatternCapture);
+
+    internal static string LetInKey(string family, LetInOuter outer) => $"{family} × {outer}";
+
+    private const string OneFamilyStandsForTheWalk = "one block family stands for the walk: StoreNestingReason";
+
+    /// <summary>P77b axis 5: every family that hosts a <c>let</c> × every outer class. No outer and the module are generated at each family; the
+    /// two outers a nested scope shadows run at <see cref="StoreNestingFamily"/>, since every Block family is walked alike.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> LetInProduct = Roster.Map(
+        BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null))
+            .SelectMany(e => Enum.GetValues<LetInOuter>().Select(o => (
+                LetInKey(e.Key, o),
+                o is LetInOuter.None or LetInOuter.Module || e.Key == StoreNestingFamily
+                    ? AxisMembership.Everywhere
+                    : AxisMembership.Out(ExcludedAxis.PrunedRepresentative, OneFamilyStandsForTheWalk))))
+            .ToArray());
 
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
@@ -2575,6 +2600,23 @@ public partial class NameResolutionDifferentialTests
         NameResolutionRosters.BlockFamilies.Keys.Should().Contain(NameResolutionRosters.ReadTimingLoops, "the back edge crosses roster 8's loop families");
         NameResolutionRosters.Patterns.Keys.Should().Contain("GuardPattern", "the failed guard is roster 7's");
         NameResolutionRosters.ReadTimingCaptures.Should().BeSubsetOf(Enum.GetValues<LocalTarget>());
+    }
+
+    [Fact]
+    public void LetInProductRoster_IsTotalOverTheLetFamiliesAndTheOuters()
+    {
+        var families = NameResolutionRosters.BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)).Select(e => e.Key).ToList();
+        var product = families.SelectMany(f => Enum.GetValues<LetInOuter>().Select(o => NameResolutionRosters.LetInKey(f, o)));
+        AssertNoProblems(
+            Roster.TotalityProblems("LetInProduct", product, NameResolutionRosters.LetInProduct.Keys),
+            "every family hosting a let × every outer class is a cell or names why it is pruned");
+
+        // Literals, not the roster again: thirteen families × four outers, of which the module and no-outer columns and one family's other two generate.
+        families.Should().HaveCount(13);
+        Enum.GetNames<LetInOuter>().Should().Equal("None", "Module", "Enclosing", "SameFunction");
+        NameResolutionRosters.LetInProduct.Should().HaveCount(52);
+        NameResolutionRosters.LetInProduct.Count(e => e.Value.Generated).Should().Be(28);
+        BlockShapes.Select(b => b.Family).Should().BeEquivalentTo(families, "a family's row is what its cells cite");
     }
 
     [Fact]

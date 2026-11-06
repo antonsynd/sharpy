@@ -498,6 +498,9 @@ public partial class NameResolutionDifferentialTests
                     return run.AllCodes.Contains("SPY0134") ? "#2424"
                         : run.AllCodes.Contains("SPY0600") ? "#2423"
                         : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
+                // A nested-scope `def` over a same-function `def` of the name is SPY0204: #1974's question, whose B-rules admit nested shadowing.
+                if (cell.Rule == "#1974")
+                    return "#1974";
                 return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
                     ? "#2422"
                     : "#2423";
