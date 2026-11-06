@@ -42,8 +42,8 @@ B17	MustRefuse			SPY0200
 B18	MustRun	5		
 B19	MustRun	2|2		
 B20	MustRefuse			SPY0200
-B21	Unruled		#2427	
-B22	Unruled		#2427	
+B21	MustRefuse		#2425	
+B22	MustRefuse		#2425	
 B23	MustRefuse		#2425	
 B24	Unruled		#2427	
 B25	MustRun	5		
