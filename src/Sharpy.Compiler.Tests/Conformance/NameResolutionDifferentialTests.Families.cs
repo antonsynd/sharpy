@@ -742,6 +742,15 @@ public partial class NameResolutionDifferentialTests
         };
     }
 
+    /// <summary>The rule a read above a local's own binding answers to. S3 is a def's alone (R-LI); under a visible outer, or for a
+    /// lambda-typed local at any outer, the read is "declared later in this scope" (R-KX); with no outer it is N5's name check.</summary>
+    private static string AboveBindingRule(BindingKind binder, BindingKind outer)
+    {
+        if (binder == BindingKind.LocalDef)
+            return "S3";
+        return ClassOf(outer) == "none" && binder != BindingKind.LambdaTypedLocal ? "N5" : "N5-declared-later";
+    }
+
     private static string ClassOf(BindingKind outer) => outer switch
     {
         BindingKind.None or BindingKind.StaticMethod or BindingKind.StaticField => "none",
@@ -774,11 +783,7 @@ public partial class NameResolutionDifferentialTests
                     var above = new List<string> { $"print({ReadText(aboveForm, "", plain)})" };
                     above.AddRange(LocalDecl(k, plain));
                     above.Add($"print({own})");
-                    var python = PyOutcome.Unbound("x");
-                    if (ClassOf(u) == "none" || IsCallableKind(k))
-                        yield return LocalProgram(Id("above"), k, u, body, above, Refuse(python, IsCallableKind(k) ? "S3" : "N5"), null, plain);
-                    else
-                        yield return LocalProgram(Id("above"), k, u, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), $"before-binding:{ClassOf(u)}", plain);
+                    yield return LocalProgram(Id("above"), k, u, body, above, Refuse(PyOutcome.Unbound("x"), AboveBindingRule(k, u)), null, plain);
 
                     // Read from a nested def and a lambda called after the binding, the binding above the def.
                     var nested = LocalDecl(k, plain);
@@ -804,11 +809,7 @@ public partial class NameResolutionDifferentialTests
                     var above = new List<string> { $"print({builtinCall})" };
                     above.AddRange(LocalDecl(k, n));
                     above.Add($"print({own})");
-                    var python = PyOutcome.Unbound(name);
-                    if (IsCallableKind(k))
-                        yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(python, "S3"), null, n);
-                    else
-                        yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), "before-binding:builtin", n);
+                    yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(PyOutcome.Unbound(name), AboveBindingRule(k, BindingKind.Builtin)), null, n);
                 }
         }
 
@@ -1147,9 +1148,8 @@ public partial class NameResolutionDifferentialTests
                 var above = new List<string> { $"print({ImportedReadText})" };
                 above.AddRange(LocalDecl(k, Imported));
                 above.Add($"print({own})");
-                var python = PyOutcome.Unbound(Imported.Name);
                 yield return WithImport(LocalProgram(Id("above"), k, BindingKind.ImportedName, body, above,
-                    Refuse(python, k == BindingKind.LocalDef ? "S3" : "N5-declared-later"), null, Imported));
+                    Refuse(PyOutcome.Unbound(Imported.Name), AboveBindingRule(k, BindingKind.ImportedName)), null, Imported));
             }
     }
 
@@ -1222,9 +1222,6 @@ public partial class NameResolutionDifferentialTests
         ["match-capture:none"] = 6,
         ["match-capture:visible"] = 46,
         ["match-capture:builtin"] = 16,
-        ["before-binding:module"] = 60,
-        ["before-binding:enclosing"] = 12,
-        ["before-binding:builtin"] = 48,
         ["rowless-let:for-body"] = 4,
         ["rowless-let:for-else"] = 4,
         ["rowless-let:while-else"] = 4,
@@ -1258,8 +1255,6 @@ public partial class NameResolutionDifferentialTests
         ["store-non-writable:ModuleTypeAlias:Augmented"] = 2,
         ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
         ["store-non-writable:ModuleTypeAlias:global"] = 3,
-        ["seed:B21"] = 1,
-        ["seed:B22"] = 1,
         ["seed:B24"] = 1,
     };
 
@@ -1279,9 +1274,6 @@ public partial class NameResolutionDifferentialTests
                     BindingKind.Builtin => "builtin",
                     _ => "visible",
                 });
-            case "before-binding":
-                return c.Family == Family.Local && c.Construct == null && !IsCallableKind(c.Target)
-                    && c.Id.Contains("/above/", StringComparison.Ordinal) && ClassOf(c.Outer) == parts[1];
             case "rowless-let":
                 return c.Family == Family.Local && c.Target == BindingKind.LocalLet
                     && c.Id.Contains($"/let-in/{parts[1]}/", StringComparison.Ordinal)
