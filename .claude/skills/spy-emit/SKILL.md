@@ -30,7 +30,7 @@ Emit compiler output from Sharpy source. Supports all emit modes and both file p
    - **Inline source**: Anything else. Use the **Write tool** to write the source to `$TMPDIR/sharpy-emit-temp.spy`. Do NOT use bash echo/heredoc — always use the Write tool to avoid shell escaping issues with `#`, backticks, and other special characters.
 4. Run `mkdir -p .claude/tmp` to ensure log directory exists.
 5. Clear the old log with `rm -f .claude/tmp/last-spy-emit.log`.
-6. Run: `dotnet run --project src/Sharpy.Cli -- emit <mode> "<source_file>" > .claude/tmp/last-spy-emit.log 2>&1` (with `dangerouslyDisableSandbox: true`).
+6. Run: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit <mode> "<source_file>" > .claude/tmp/last-spy-emit.log 2>&1` (with `dangerouslyDisableSandbox: true`; raw `dotnet run` is hook-blocked because it builds Sharpy.Cli). When the lock is held and the binary is current, probe lock-free: `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc emit <mode> "<source_file>"`.
 7. Check exit code:
    - Exit 0: Print "=== <MODE> OUTPUT (last 100 lines) ===" then show `tail -100 .claude/tmp/last-spy-emit.log`, then "Full output: .claude/tmp/last-spy-emit.log"
    - Exit non-zero: Print "=== EMIT FAILED (last 80 lines) ===" then show `tail -80 .claude/tmp/last-spy-emit.log`, then "Full log: .claude/tmp/last-spy-emit.log"

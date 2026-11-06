@@ -25,4 +25,4 @@ ls -d src/Sharpy.Compiler.Tests/Integration/TestFixtures/*/  | xargs -I{} basena
 1. Pick the appropriate category (or create a new one if none fits)
 2. Write the `.spy` file testing one feature, kept minimal
 3. Write the `.expected` or `.error` file
-4. Run: `dotnet test --filter "DisplayName~test_name"` to verify
+4. Run: `.claude/scripts/dotnet-serialized test src/Sharpy.Compiler.Tests --filter "DisplayName~test_name"` to verify (raw `dotnet test` is hook-blocked)

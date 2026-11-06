@@ -73,7 +73,9 @@ def run_file(path: Path) -> FileOutcome:
         source = path.read_text(encoding="utf-8")
         code = compile(source, str(path), "exec")
         exec(code, namespace)  # noqa: S102 - executing trusted ported test files
-    except Exception:  # noqa: BLE001 - report any load-time failure, don't abort the run
+    except (
+        Exception
+    ):  # noqa: BLE001 - report any load-time failure, don't abort the run
         result.load_error = traceback.format_exc()
         return result
 
@@ -181,7 +183,9 @@ def _print_ledger_report(
     if enforcement.satisfied:
         print(f"  {len(enforcement.satisfied)} documented divergence(s) confirmed:")
         for module, test in enforcement.satisfied:
-            print(f"        expected-fail-cpython {module}::{test} (failed as documented)")
+            print(
+                f"        expected-fail-cpython {module}::{test} (failed as documented)"
+            )
     if enforcement.unexplained_failures:
         print(f"  {len(enforcement.unexplained_failures)} UNEXPLAINED divergence(s):")
         for module, test in enforcement.unexplained_failures:

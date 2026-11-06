@@ -205,13 +205,13 @@ def _is_syntax_error(stderr: str) -> bool:
     subset filter does not reject at the node level.
     """
     return (
-        "SyntaxError" in stderr
-        or "IndentationError" in stderr
-        or "TabError" in stderr
+        "SyntaxError" in stderr or "IndentationError" in stderr or "TabError" in stderr
     )
 
 
-def run_batch(lines: Iterable[str], timeout: float = DEFAULT_TIMEOUT_SECONDS) -> List[str]:
+def run_batch(
+    lines: Iterable[str], timeout: float = DEFAULT_TIMEOUT_SECONDS
+) -> List[str]:
     """Map a JSONL request stream to a JSONL verdict stream (both keyed by ``id``)."""
     out: List[str] = []
     for line in lines:

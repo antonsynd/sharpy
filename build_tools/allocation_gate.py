@@ -123,7 +123,10 @@ def load_baseline(baseline_path: str) -> dict[str, int]:
     """Load the checked-in baseline; return benchmark full name -> allocated bytes."""
     with open(baseline_path, encoding="utf-8") as handle:
         data = json.load(handle)
-    return {name: int(entry["allocated_bytes"]) for name, entry in data["benchmarks"].items()}
+    return {
+        name: int(entry["allocated_bytes"])
+        for name, entry in data["benchmarks"].items()
+    }
 
 
 def find_regressions(
@@ -148,7 +151,9 @@ def find_regressions(
     return regressions
 
 
-def describe_coverage(baseline: dict[str, int], current: dict[str, int]) -> tuple[list[str], list[str]]:
+def describe_coverage(
+    baseline: dict[str, int], current: dict[str, int]
+) -> tuple[list[str], list[str]]:
     """Return (missing_from_current, new_in_current) benchmark names, sorted."""
     missing = sorted(name for name in baseline if name not in current)
     new = sorted(name for name in current if name not in baseline)
@@ -204,27 +209,37 @@ def _cmd_check(args: argparse.Namespace) -> int:
     missing, new = describe_coverage(baseline, current)
 
     for name in new:
-        print(f"note: new benchmark not in baseline (not gated): {name} "
-              f"= {current[name]:,} B — run `update` to add it")
+        print(
+            f"note: new benchmark not in baseline (not gated): {name} "
+            f"= {current[name]:,} B — run `update` to add it"
+        )
     for name in missing:
         print(f"warning: baseline benchmark absent from this run: {name}")
 
     if regressions:
         print()
-        print(f"ALLOCATION REGRESSION: {len(regressions)} benchmark(s) exceeded "
-              f"the {threshold:.0%} threshold:")
+        print(
+            f"ALLOCATION REGRESSION: {len(regressions)} benchmark(s) exceeded "
+            f"the {threshold:.0%} threshold:"
+        )
         for reg in sorted(regressions, key=lambda r: r.ratio, reverse=True):
             print(f"  {reg.name}")
-            print(f"    baseline={reg.baseline_bytes:,} B  current={reg.current_bytes:,} B  "
-                  f"(+{reg.delta_bytes:,} B, +{reg.ratio:.1%})")
+            print(
+                f"    baseline={reg.baseline_bytes:,} B  current={reg.current_bytes:,} B  "
+                f"(+{reg.delta_bytes:,} B, +{reg.ratio:.1%})"
+            )
         print()
         print("If this increase is intentional, refresh the baseline deliberately:")
-        print("  python -m build_tools.allocation_gate update "
-              f"--baseline {args.baseline} --results {args.results}")
+        print(
+            "  python -m build_tools.allocation_gate update "
+            f"--baseline {args.baseline} --results {args.results}"
+        )
         return 1
 
     checked = sum(1 for name in baseline if name in current)
-    print(f"OK: {checked} benchmark(s) within the {threshold:.0%} allocation threshold.")
+    print(
+        f"OK: {checked} benchmark(s) within the {threshold:.0%} allocation threshold."
+    )
     return 0
 
 
@@ -246,13 +261,21 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    for name, help_text in (("check", "fail if any benchmark regressed"),
-                            ("update", "refresh the baseline from a fresh export")):
+    for name, help_text in (
+        ("check", "fail if any benchmark regressed"),
+        ("update", "refresh the baseline from a fresh export"),
+    ):
         p = sub.add_parser(name, help=help_text)
-        p.add_argument("--baseline", required=True, help="path to allocation-baseline.json")
+        p.add_argument(
+            "--baseline", required=True, help="path to allocation-baseline.json"
+        )
         p.add_argument("--results", required=True, help="BenchmarkDotNet artifacts dir")
-        p.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD,
-                       help=f"regression threshold as a fraction (default {DEFAULT_THRESHOLD})")
+        p.add_argument(
+            "--threshold",
+            type=float,
+            default=DEFAULT_THRESHOLD,
+            help=f"regression threshold as a fraction (default {DEFAULT_THRESHOLD})",
+        )
 
     args = parser.parse_args(argv)
     if args.command == "check":

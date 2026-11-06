@@ -40,14 +40,20 @@ def measurements(**cells: float) -> list[Measurement]:
     out = []
     for key, mean in cells.items():
         arm, position = key.rsplit("_", 1)
-        out.append(Measurement(arm=arm, position=int(position), benchmark="Bench", mean_ns=mean))
+        out.append(
+            Measurement(
+                arm=arm, position=int(position), benchmark="Bench", mean_ns=mean
+            )
+        )
     return out
 
 
 class TestSignGate:
     def test_identical_arms_on_a_quiet_machine_report_nothing(self):
         """The null control. An instrument that cannot say 'nothing' cannot say 'something'."""
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=100.0, b_1=100.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=100.0, b_1=100.0), "a", "b"
+        )
 
         assert len(verdicts) == 1
         assert not verdicts[0].measured
@@ -61,7 +67,9 @@ class TestSignGate:
         confident 8% delta; the sign gate must refuse it, and geometric pooling must put
         the magnitude at exactly zero rather than the +0.35% arithmetic averaging leaves.
         """
-        verdicts = evaluate(measurements(a_0=100.0, a_1=92.0, b_0=100.0, b_1=92.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=92.0, b_0=100.0, b_1=92.0), "a", "b"
+        )
 
         assert not verdicts[0].measured
         assert "position-dominated" in verdicts[0].reason
@@ -72,7 +80,9 @@ class TestSignGate:
         B looks faster in one ordering and slower in the other — the signature of an
         artifact, not a code effect. The tool must name it rather than average it away.
         """
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=70.0, b_1=140.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=70.0, b_1=140.0), "a", "b"
+        )
 
         assert not verdicts[0].measured
         assert "position-dominated" in verdicts[0].reason
@@ -80,14 +90,18 @@ class TestSignGate:
 
     def test_real_slowdown_survives_both_positions(self):
         """B is 50% slower whichever way round it runs, so the delta is real."""
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
 
         assert verdicts[0].measured
         assert verdicts[0].pooled_delta_percent == pytest.approx(50.0)
         assert "slower" in verdicts[0].describe("a", "b")
 
     def test_real_speedup_survives_both_positions(self):
-        verdicts = evaluate(measurements(a_0=200.0, a_1=200.0, b_0=100.0, b_1=100.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=200.0, a_1=200.0, b_0=100.0, b_1=100.0), "a", "b"
+        )
 
         assert verdicts[0].measured
         assert verdicts[0].pooled_delta_percent == pytest.approx(-50.0)
@@ -98,7 +112,9 @@ class TestSignGate:
         A consistent 5% is inside the range the position artifact alone produces, so it
         is unmeasured rather than a small confirmed win.
         """
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=105.0, b_1=105.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=105.0, b_1=105.0), "a", "b"
+        )
 
         assert not verdicts[0].measured
         assert "floor" in verdicts[0].reason
@@ -116,21 +132,25 @@ class TestSignGate:
 class TestPooling:
     def test_cells_pool_by_median(self):
         """Median, so one outlier round cannot move a cell."""
-        pooled = pool_by_position([
-            Measurement("a", 0, "Bench", 100.0),
-            Measurement("a", 0, "Bench", 101.0),
-            Measurement("a", 0, "Bench", 900.0),
-        ])
+        pooled = pool_by_position(
+            [
+                Measurement("a", 0, "Bench", 100.0),
+                Measurement("a", 0, "Bench", 101.0),
+                Measurement("a", 0, "Bench", 900.0),
+            ]
+        )
 
         assert pooled[("Bench", "a", 0)] == 101.0
 
     def test_arms_and_positions_do_not_share_a_bucket(self):
-        pooled = pool_by_position([
-            Measurement("a", 0, "Bench", 10.0),
-            Measurement("a", 1, "Bench", 20.0),
-            Measurement("b", 0, "Bench", 30.0),
-            Measurement("b", 1, "Bench", 40.0),
-        ])
+        pooled = pool_by_position(
+            [
+                Measurement("a", 0, "Bench", 10.0),
+                Measurement("a", 1, "Bench", 20.0),
+                Measurement("b", 0, "Bench", 30.0),
+                Measurement("b", 1, "Bench", 40.0),
+            ]
+        )
 
         assert pooled == {
             ("Bench", "a", 0): 10.0,
@@ -145,16 +165,23 @@ class TestParsing:
         results = tmp_path / "results"
         results.mkdir()
         (results / "x-report-full.json").write_text(
-            json.dumps({"Benchmarks": benchmarks}), encoding="utf-8")
+            json.dumps({"Benchmarks": benchmarks}), encoding="utf-8"
+        )
         return str(tmp_path)
 
     def test_reads_means_by_full_name(self, tmp_path):
-        directory = self._write_report(tmp_path, [
-            {"FullName": "Ns.Class.Fib", "Statistics": {"Mean": 1234.5}},
-            {"FullName": "Ns.Class.Classes", "Statistics": {"Mean": 99.0}},
-        ])
+        directory = self._write_report(
+            tmp_path,
+            [
+                {"FullName": "Ns.Class.Fib", "Statistics": {"Mean": 1234.5}},
+                {"FullName": "Ns.Class.Classes", "Statistics": {"Mean": 99.0}},
+            ],
+        )
 
-        assert parse_bdn_means(directory) == {"Ns.Class.Fib": 1234.5, "Ns.Class.Classes": 99.0}
+        assert parse_bdn_means(directory) == {
+            "Ns.Class.Fib": 1234.5,
+            "Ns.Class.Classes": 99.0,
+        }
 
     def test_missing_report_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
@@ -171,8 +198,9 @@ class TestParsing:
             parse_bdn_means(directory)
 
 
-def one_round(round_index: int, first_arm: str, first_ns: float,
-              second_arm: str, second_ns: float) -> list[Measurement]:
+def one_round(
+    round_index: int, first_arm: str, first_ns: float, second_arm: str, second_ns: float
+) -> list[Measurement]:
     """One round: *first_arm* ran in position 0, *second_arm* in position 1."""
     return [
         Measurement(first_arm, 0, "Bench", first_ns, round_index),
@@ -285,7 +313,8 @@ class TestSampleBalance:
     def test_unbalanced_cells_are_refused_with_their_counts(self):
         one_short = measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0)
         one_short.append(
-            Measurement(arm="a", position=0, benchmark="Bench", mean_ns=100.0))
+            Measurement(arm="a", position=0, benchmark="Bench", mean_ns=100.0)
+        )
 
         verdicts = evaluate(one_short, "a", "b")
 
@@ -296,8 +325,9 @@ class TestSampleBalance:
 
     def test_balanced_cells_are_unaffected(self):
         """The refusal must cost nothing when the interleave completed."""
-        balanced = (measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0)
-                    + measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0))
+        balanced = measurements(
+            a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0
+        ) + measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0)
 
         verdicts = evaluate(balanced, "a", "b")
 
@@ -318,10 +348,12 @@ class TestSampleBalance:
         Mutation-tested: deleting the balance arm from ``evaluate`` makes this cell RED — the
         comparison is pooled and returns a measured verdict. Reverted.
         """
-        rounds = (one_round(0, "a", 100.0, "b", 150.0)
-                  + one_round(1, "b", 150.0, "a", 100.0)
-                  + one_round(2, "a", 100.0, "b", 150.0)
-                  + one_round(3, "b", 150.0, "a", 100.0))
+        rounds = (
+            one_round(0, "a", 100.0, "b", 150.0)
+            + one_round(1, "b", 150.0, "a", 100.0)
+            + one_round(2, "a", 100.0, "b", 150.0)
+            + one_round(3, "b", 150.0, "a", 100.0)
+        )
         survived = [m for m in rounds if m.round_index != 2]
         # Present in all four cells, but 1 vs 2 — not a missing-cell case.
         assert len({(m.arm, m.position) for m in survived}) == 4
@@ -332,7 +364,9 @@ class TestSampleBalance:
         assert "unbalanced" in verdicts[0].reason
 
     def test_counts_are_printed_on_a_measured_verdict(self):
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
 
         line = verdicts[0].describe("a", "b")
 
@@ -344,7 +378,9 @@ class TestSampleBalance:
         Visibility AND refusal, not either/or: a reader must be able to see the evidence base
         behind every line, including the ones that refused.
         """
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=100.0, b_1=100.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=100.0, b_1=100.0), "a", "b"
+        )
 
         line = verdicts[0].describe("a", "b")
 
@@ -363,7 +399,11 @@ class TestSampleBalance:
 
         assert "interleaving incomplete" in verdicts[0].reason
         assert verdicts[0].samples == {
-            "a@position1": 1, "a@position2": 0, "b@position1": 0, "b@position2": 1}
+            "a@position1": 1,
+            "a@position2": 0,
+            "b@position1": 0,
+            "b@position2": 1,
+        }
         assert "samples a@1:1 a@2:0 b@1:0 b@2:1" in line
 
 
@@ -386,8 +426,10 @@ class TestRoundsArgument:
         monkeypatch.setattr(bench_ab, "orchestrate", lambda *a, **k: [])
         monkeypatch.setattr(bench_ab, "cleanup_worktrees", lambda *a, **k: None)
         monkeypatch.setattr(
-            bench_ab.subprocess, "run",
-            lambda *a, **k: type("R", (), {"stdout": "/repo", "returncode": 0})())
+            bench_ab.subprocess,
+            "run",
+            lambda *a, **k: type("R", (), {"stdout": "/repo", "returncode": 0})(),
+        )
 
         assert bench_ab.main(["a", "b", "--rounds", "4"]) == 0
 
@@ -415,14 +457,18 @@ class TestBenchmarkChildRecording:
         # Records whether the child was still ALIVE when the verb ran — which is what proves
         # the call happens before wait() rather than after it.
         wrapper.write_text(
-            '#!/bin/sh\n'
+            "#!/bin/sh\n"
             'if kill -0 "$3" 2>/dev/null; then state=LIVE; else state=DEAD; fi\n'
             f'echo "$1 $2 $3 $state" >> "{log}"\n'
-            'exit 0\n', encoding="utf-8")
+            "exit 0\n",
+            encoding="utf-8",
+        )
         wrapper.chmod(0o755)
         return str(tmp_path)
 
-    def test_the_child_is_pinned_into_the_lock_while_it_is_still_running(self, tmp_path):
+    def test_the_child_is_pinned_into_the_lock_while_it_is_still_running(
+        self, tmp_path
+    ):
         """
         The ordering is the whole point: recording after ``wait()`` would pin a dead pid, and
         ``is_lock_stale`` consults the child FIRST, so a dead pointer reads as stale — the very
@@ -437,9 +483,13 @@ class TestBenchmarkChildRecording:
         assert verb == "--record-child"
         assert int(holder) == os.getpid()
         assert int(child) > 0
-        assert state == "LIVE", "recorded after the child exited — the pointer would read stale"
+        assert (
+            state == "LIVE"
+        ), "recorded after the child exited — the pointer would read stale"
 
-    def test_the_unheld_path_records_nothing_because_the_wrapper_does_it(self, tmp_path):
+    def test_the_unheld_path_records_nothing_because_the_wrapper_does_it(
+        self, tmp_path
+    ):
         """
         With no lock held, dotnet goes through the wrapper, whose own
         ``bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"'`` line (dotnet-serialized, just
@@ -462,7 +512,9 @@ class TestBenchmarkChildRecording:
             seen[len(seen)] = record_child_in
 
         monkeypatch.setattr(bench_ab, "_run", fake_run)
-        monkeypatch.setattr(bench_ab, "parse_bdn_means", lambda _artifacts: {"Bench": 1.0})
+        monkeypatch.setattr(
+            bench_ab, "parse_bdn_means", lambda _artifacts: {"Bench": 1.0}
+        )
 
         run_arm("/repo", "/wt", "/artifacts", "*Bench*", lock_held=True)
         run_arm("/repo", "/wt", "/artifacts", "*Bench*", lock_held=False)
@@ -471,7 +523,8 @@ class TestBenchmarkChildRecording:
         assert seen[1] is None
 
     def test_a_child_that_cannot_be_pinned_is_killed_rather_than_left_unprotected(
-            self, tmp_path):
+        self, tmp_path
+    ):
         """
         A refused ``--record-child`` means the benchmark is running OUTSIDE the lock's
         protection. Proceeding would spend minutes in exactly the unprotected state #1508
@@ -487,7 +540,8 @@ class TestBenchmarkChildRecording:
             _run(["/bin/sh", "-c", "sleep 30"], record_child_in=str(tmp_path))
 
     def test_a_child_that_died_before_it_could_be_pinned_reports_its_own_failure(
-            self, tmp_path):
+        self, tmp_path
+    ):
         """
         A dotnet that fails instantly cannot be pinned, and "could not record a dead pid" would
         bury the actual cause. The command's own exit code is the honest error.
@@ -496,7 +550,7 @@ class TestBenchmarkChildRecording:
         scripts.mkdir(parents=True)
         wrapper = scripts / "dotnet-serialized"
         # Sleep so the child is reliably gone by the time the verb is evaluated, then refuse.
-        wrapper.write_text('#!/bin/sh\nsleep 0.5\nexit 2\n', encoding="utf-8")
+        wrapper.write_text("#!/bin/sh\nsleep 0.5\nexit 2\n", encoding="utf-8")
         wrapper.chmod(0o755)
 
         with pytest.raises(RuntimeError, match=r"command failed \(7\)"):
@@ -505,19 +559,25 @@ class TestBenchmarkChildRecording:
 
 class TestReport:
     def test_dropped_rounds_are_reported_not_silently_absent(self):
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
         text = report(verdicts, "a", "b", rounds=4, discard_rounds=4, dropped_rounds=2)
 
         assert "2 round(s) DROPPED as interrupted" in text
 
     def test_no_drop_line_when_nothing_was_dropped(self):
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
         text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
 
         assert "DROPPED" not in text
 
     def test_states_the_artifact_and_the_counts(self):
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
         text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
 
         assert "1 of 1 benchmark(s) produced a measurable delta" in text
@@ -529,9 +589,17 @@ class TestReport:
         assert "(8 discarded as unsettled)" in text
 
     def test_report_carries_the_split_lines(self):
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
-        text = report(verdicts, "a", "b", rounds=4, discard_rounds=4,
-                      split_lines=["Warm-up split: MARKER"])
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
+        text = report(
+            verdicts,
+            "a",
+            "b",
+            rounds=4,
+            discard_rounds=4,
+            split_lines=["Warm-up split: MARKER"],
+        )
 
         assert "Warm-up split: MARKER" in text
 
@@ -541,7 +609,9 @@ class TestReport:
         Stating that in the output is what stops the next reader from assuming the number
         was re-validated against the settled rounds.
         """
-        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        verdicts = evaluate(
+            measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b"
+        )
         text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
 
         assert "has NOT been re-derived" in text

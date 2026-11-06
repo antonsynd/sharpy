@@ -272,7 +272,9 @@ def _entry_from_mapping(
     deviation = mapping.get("deviation")
     if deviation is not None:
         if not isinstance(deviation, str):
-            raise LedgerError(f"{source_ref}: entry {test!r} 'deviation' must be a string")
+            raise LedgerError(
+                f"{source_ref}: entry {test!r} 'deviation' must be a string"
+            )
         if deviation not in known_deviations:
             raise LedgerError(
                 f"{source_ref}: entry {test!r} cites unknown deviation "
@@ -281,7 +283,9 @@ def _entry_from_mapping(
 
     bug = mapping.get("bug")
     if bug is not None and not isinstance(bug, int):
-        raise LedgerError(f"{source_ref}: entry {test!r} 'bug' must be an integer issue number")
+        raise LedgerError(
+            f"{source_ref}: entry {test!r} 'bug' must be an integer issue number"
+        )
 
     if deviation is None and bug is None:
         raise LedgerError(
@@ -416,9 +420,7 @@ def render_ledger(data: Dict[str, object]) -> str:
     return buffer.getvalue()
 
 
-def write_ledger(
-    data: Dict[str, object], path: Path = DEFAULT_LEDGER_PATH
-) -> None:
+def write_ledger(data: Dict[str, object], path: Path = DEFAULT_LEDGER_PATH) -> None:
     path.write_text(render_ledger(data), encoding="utf-8")
 
 
@@ -434,7 +436,9 @@ def load_ledger(path: Path = DEFAULT_LEDGER_PATH) -> Dict[str, object]:
 # --------------------------------------------------------------------------- #
 # Enforcement (consumed by dual_run --ledger)
 # --------------------------------------------------------------------------- #
-def expected_cpython_failures(ledger: Dict[str, object]) -> Dict[Tuple[str, str], Dict[str, object]]:
+def expected_cpython_failures(
+    ledger: Dict[str, object]
+) -> Dict[Tuple[str, str], Dict[str, object]]:
     """Map (module, test) → entry for every ``expected-fail-cpython`` entry: the
     tests dual-run should observe *failing* under CPython."""
     result: Dict[Tuple[str, str], Dict[str, object]] = {}

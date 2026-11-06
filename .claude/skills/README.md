@@ -4,7 +4,7 @@ All skills are invoked with `/{skill-name}`; sources live in `.claude/skills/<na
 
 ## dotnet execution and logs
 
-Every skill that runs `dotnet` goes through `.claude/scripts/dotnet-serialized` (exclusive lock — concurrent test runs OOM the machine; a PreToolUse hook blocks unwrapped `dotnet` build/test/run; the wrapper needs `dangerouslyDisableSandbox: true`). The wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation) with `.claude/tmp/dotnet-serialized-latest.log` symlinked to the newest run. Read those logs instead of re-running a suite (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901); note `-latest.log` can rotate to a peer's run.
+Every skill that runs `dotnet` goes through `.claude/scripts/dotnet-serialized` (exclusive lock — concurrent test runs OOM the machine; the PreToolUse hook `.claude/hooks/enforce-dotnet-serialized.sh` blocks unwrapped `dotnet build|test|run|format|pack|publish|msbuild|clean|stryker` — not `dotnet watch`, `--version` or `tool`; the wrapper needs `dangerouslyDisableSandbox: true`). Lock-free probing uses the built apphost `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc` instead of `dotnet run`. The hooks are falsified by `bash .claude/hooks/test-hooks.sh` (synthetic stdin JSON per hook) — run it after touching any hook. The wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation) with `.claude/tmp/dotnet-serialized-latest.log` symlinked to the newest run. Read those logs instead of re-running a suite (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901); note `-latest.log` can rotate to a peer's run.
 
 ## Build & Test
 
@@ -12,7 +12,7 @@ Every skill that runs `dotnet` goes through `.claude/scripts/dotnet-serialized` 
 |-------|-----------|---------|
 | `/build` | — | Build the Sharpy solution with smart output truncation |
 | `/run-tests` | `[filter]` | Run Sharpy tests — summary on success, last 80 lines on failure, full log saved |
-| `/format` | — | Format code whitespace per project conventions (also auto-formatted on save by Claude hook) |
+| `/format` | — | Format C# whitespace solution-wide (the save hook formats each edited `.cs` against its own project, best-effort; `/push` gates the whole solution) |
 | `/regenerate-snapshots` | — | Regenerate C# snapshot tests and spy stdlib after intentional codegen changes |
 | `/gap-analysis` | — | Run all gap discovery tests and present a unified summary |
 | `/property-stress` | `[rounds=10] [filter]` | Stress-test property tests across many rounds with fresh random seeds |

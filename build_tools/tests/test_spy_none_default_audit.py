@@ -4,6 +4,7 @@ The repo test (`test_spy_none_defaults_match_cpython`) is the standing ratchet; 
 instrument so the ratchet cannot pass vacuously (a parser that finds nothing, a classifier that
 calls everything `pass`).
 """
+
 from __future__ import annotations
 
 import sys
@@ -51,6 +52,7 @@ def test_universe_positive_controls():
 
 def test_every_mapped_module_imports_in_cpython():
     import importlib
+
     modules = read_modules()
     assert len(modules) >= 18
     for stem, python_name in modules:
@@ -64,6 +66,7 @@ def test_every_mapped_module_imports_in_cpython():
 def test_classify_sentinel_default_is_a_finding():
     def f(address, timeout=_SENTINEL):
         pass
+
     v = classify(_cell(param="timeout"), f)
     assert v.status == "finding"
     assert v.cpython == "<sentinel object()>"
@@ -72,12 +75,14 @@ def test_classify_sentinel_default_is_a_finding():
 def test_classify_value_default_is_a_finding():
     def f(s, endpos=sys.maxsize):
         pass
+
     assert classify(_cell(param="endpos"), f).status == "finding"
 
 
 def test_classify_required_param_is_a_finding():
     def f(x):
         pass
+
     v = classify(_cell(param="x"), f)
     assert (v.status, v.cpython) == ("finding", "<required>")
 
@@ -85,12 +90,14 @@ def test_classify_required_param_is_a_finding():
 def test_classify_none_default_passes():
     def f(x=None):
         pass
+
     assert classify(_cell(param="x"), f).status == "pass"
 
 
 def test_classify_absent_param_and_uninspectable_are_skips():
     def f(y=None):
         pass
+
     assert classify(_cell(param="x"), f).status == "skip"
     assert classify(_cell(param="x"), 42).status == "skip"
 
@@ -98,9 +105,18 @@ def test_classify_absent_param_and_uninspectable_are_skips():
 def test_resolve_maps_spy_class_names_and_constructors():
     import csv
     import re
-    assert audit_mod.resolve(_cell("csv", "CsvDictReader", "__init__", "fieldnames")) is csv.DictReader
-    assert audit_mod.resolve(_cell("re", "Pattern", "search", "endpos")) is re.Pattern.search
-    assert isinstance(audit_mod.resolve(_cell("csv", None, "dict_reader", "fieldnames")), str)
+
+    assert (
+        audit_mod.resolve(_cell("csv", "CsvDictReader", "__init__", "fieldnames"))
+        is csv.DictReader
+    )
+    assert (
+        audit_mod.resolve(_cell("re", "Pattern", "search", "endpos"))
+        is re.Pattern.search
+    )
+    assert isinstance(
+        audit_mod.resolve(_cell("csv", None, "dict_reader", "fieldnames")), str
+    )
 
 
 # ── ratchet logic ─────────────────────────────────────────────────────────────
@@ -131,14 +147,17 @@ def test_uncited_allowlist_row_fails():
 def test_unclassified_skip_fails_and_stale_skip_fails():
     assert any("UNCLASSIFIED" in e for e in violations([_v("skip")], {}, {}))
     assert violations([_v("skip")], {}, {"m::f::p": "reason"}) == []
-    assert any("STALE skip" in e for e in violations([_v("pass")], {}, {"m::f::p": "reason"}))
+    assert any(
+        "STALE skip" in e for e in violations([_v("pass")], {}, {"m::f::p": "reason"})
+    )
 
 
 # ── spy parser ────────────────────────────────────────────────────────────────
 
 
 def test_parse_multiline_generic_and_class_methods():
-    src = textwrap.dedent('''\
+    src = textwrap.dedent(
+        '''\
         """Module docstring with def fake(x = None): inside."""
 
         def top[T: IComparable[T]](a: list[T],
@@ -161,7 +180,8 @@ def test_parse_multiline_generic_and_class_methods():
 
         def after(z: float | None = None) -> None:
             pass
-        ''')
+        '''
+    )
     got = [(cls, f, p, d) for _, cls, f, p, d in parse_spy(src)]
     assert got == [
         (None, "top", "a", None),
@@ -176,7 +196,9 @@ def test_parse_multiline_generic_and_class_methods():
 
 
 def test_collect_dedupes_overloads(tmp_path):
-    (tmp_path / "x_module.spy").write_text(textwrap.dedent('''\
+    (tmp_path / "x_module.spy").write_text(
+        textwrap.dedent(
+            """\
         def f(a: int, t: float | None = None) -> int:
             return a
 
@@ -185,6 +207,8 @@ def test_collect_dedupes_overloads(tmp_path):
 
         def g(a: int) -> int:
             return a
-        '''))
+        """
+        )
+    )
     cells = collect_none_defaults(tmp_path, modules=[("x_module", "x")])
     assert [c.key for c in cells] == ["x::f::t"]

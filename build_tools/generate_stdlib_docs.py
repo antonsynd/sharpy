@@ -110,7 +110,9 @@ def pascal_to_snake(name: str) -> str:
     return result.lower()
 
 
-_SHARPY_FIELD_NAME_RE = re.compile(r'\bSharpyFieldName(?:Attribute)?\(\s*"([^"]+)"\s*\)')
+_SHARPY_FIELD_NAME_RE = re.compile(
+    r'\bSharpyFieldName(?:Attribute)?\(\s*"([^"]+)"\s*\)'
+)
 
 
 def sharpy_field_name(cs_name: str, attr_lines: Optional[list] = None) -> str:
@@ -132,7 +134,9 @@ def sharpy_field_name(cs_name: str, attr_lines: Optional[list] = None) -> str:
     is_constant_case = any(c.isupper() for c in cs_name) and all(
         c.isupper() or c.isdigit() or c == "_" for c in cs_name
     )
-    return cs_name if is_constant_case and len(cs_name) > 1 else pascal_to_snake(cs_name)
+    return (
+        cs_name if is_constant_case and len(cs_name) > 1 else pascal_to_snake(cs_name)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +305,7 @@ def _sharpy_default(cs_default: str) -> str:
         cs_default = cs_default[:-1].rstrip()
     return _LITERAL_DEFAULTS.get(cs_default, cs_default)
 
+
 # Known C# namespace aliases used in stdlib source files
 _CS_NAMESPACE_ALIASES: dict[str, str] = {
     "SCG": "System.Collections.Generic",
@@ -331,7 +336,9 @@ _MODULE_TYPE_ANNOTATION_RE = re.compile(
     r'\[(?:global::Sharpy\.)?SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?'
     r'(?:\s*,\s*\w+\s*=\s*"[^"]*")*\)\]'
 )
-_ANNOTATED_CLASS_RE = re.compile(r"public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*class\s+(\w+)")
+_ANNOTATED_CLASS_RE = re.compile(
+    r"public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*class\s+(\w+)"
+)
 _TYPE_DECL_NAME_RE = re.compile(
     r"^\s*(?:\[.*\]\s*)?(?:(?:public|internal|private|protected|static|sealed|abstract|partial|"
     r"readonly|ref|unsafe|new|file)\s+)*(?:class|struct|interface|enum|record(?:\s+(?:class|struct))?)\s+(\w+)",
@@ -385,7 +392,9 @@ def index_sources(*roots: "Path | None") -> None:
                         _DECLARED_MEMBERS.add(match.group(1))
 
 
-def _module_type_spelling(class_name: str, current_module: "str | None") -> "str | None":
+def _module_type_spelling(
+    class_name: str, current_module: "str | None"
+) -> "str | None":
     """The documented spelling of a `[SharpyModuleType]` class, or None when *class_name* is not one
     (or names classes in several modules, none of them this page's)."""
     entries = _MODULE_TYPES.get(class_name)
@@ -405,14 +414,20 @@ def _clr_type_spelling(full_name: str) -> str:
     namespace, _, name = full_name.rpartition(".")
     if namespace in _CLR_FALLBACK_NAMESPACES and name not in _DECLARED_TYPES:
         return name
-    return ".".join(pascal_to_snake(segment) for segment in namespace.split(".")) + "." + name
+    return (
+        ".".join(pascal_to_snake(segment) for segment in namespace.split("."))
+        + "."
+        + name
+    )
 
 
 # A C# file's `using X = Y;` aliases, set by parse_cs_file while it parses that file (#2163): a
 # signature written `NdArray<BclComplex>` names `System.Numerics.Complex`, and `StatResult` under
 # `using StatResult = Sharpy.OsModule.StatResult;` names os's type.
 _USING_ALIASES: dict[str, str] = {}
-_USING_ALIAS_RE = re.compile(r"^\s*using\s+(\w+)\s*=\s*([\w.:]+(?:<[^;]*>)?)\s*;", re.MULTILINE)
+_USING_ALIAS_RE = re.compile(
+    r"^\s*using\s+(\w+)\s*=\s*([\w.:]+(?:<[^;]*>)?)\s*;", re.MULTILINE
+)
 
 
 # The module whose page is currently being parsed, set by discover_modules so map_type can render a
@@ -449,25 +464,27 @@ def _normalize_cs_type(cs_type: str) -> str:
     cs_type = cs_type.strip()
     # Strip global:: prefix
     if cs_type.startswith("global::"):
-        cs_type = cs_type[len("global::"):]
+        cs_type = cs_type[len("global::") :]
     # Expand known namespace aliases (e.g., SCG.List -> System.Collections.Generic.List)
     for alias, expansion in _CS_NAMESPACE_ALIASES.items():
         prefix = alias + "."
         if cs_type.startswith(prefix):
-            cs_type = expansion + "." + cs_type[len(prefix):]
+            cs_type = expansion + "." + cs_type[len(prefix) :]
             break
     # Strip common namespace prefixes (but keep the mapped form if it's in _TYPE_MAP)
     for prefix in _CS_NAMESPACE_PREFIXES:
         if cs_type.startswith(prefix):
-            return cs_type[len(prefix):]
+            return cs_type[len(prefix) :]
     # Any other `System.` type: bare when the compiler resolves it bare, else its import path.
     qualified = re.match(r"^(System\.[\w.]+)(.*)$", cs_type, re.DOTALL)
     if qualified:
         return _clr_type_spelling(qualified.group(1)) + qualified.group(2)
     # A Sharpy runtime type spelled `Sharpy.<T>` (a `Sharpy.<M>Module.<T>` module type is
     # `_qualify_module_type`'s).
-    if re.match(r"^Sharpy\.\w+(?:<.*)?$", cs_type, re.DOTALL) and not re.match(r"^Sharpy\.\w+Module\b", cs_type):
-        return cs_type[len("Sharpy."):]
+    if re.match(r"^Sharpy\.\w+(?:<.*)?$", cs_type, re.DOTALL) and not re.match(
+        r"^Sharpy\.\w+Module\b", cs_type
+    ):
+        return cs_type[len("Sharpy.") :]
     return cs_type
 
 
@@ -492,11 +509,11 @@ def _fixup_prose(text: str) -> str:
     """
     if not text:
         return text
-    text = re.sub(r'\btrue\b', 'True', text)
-    text = re.sub(r'\bfalse\b', 'False', text)
-    text = re.sub(r'\bnull\b', 'None', text)
+    text = re.sub(r"\btrue\b", "True", text)
+    text = re.sub(r"\bfalse\b", "False", text)
+    text = re.sub(r"\bnull\b", "None", text)
     # Strip global:: prefixes that may appear in prose
-    text = text.replace('global::', '')
+    text = text.replace("global::", "")
     return text
 
 
@@ -552,7 +569,8 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
         inner = cs_type[1:-1]
         parts = _split_generic_args(inner)
         mapped = ", ".join(
-            map_type(_TUPLE_ELEMENT_NAME_RE.sub(r"\1", p.strip()), current_module) for p in parts
+            map_type(_TUPLE_ELEMENT_NAME_RE.sub(r"\1", p.strip()), current_module)
+            for p in parts
         )
         return f"tuple[{mapped}]"
 
@@ -581,7 +599,9 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
         # Split on top-level commas (respect nested generics and tuples)
         inners = _split_generic_args(inner_raw)
         mapped_inners = ", ".join(map_type(i, current_module) for i in inners)
-        mapped_outer = _GENERIC_TYPE_MAP.get(outer) or _named_type(outer, current_module)
+        mapped_outer = _GENERIC_TYPE_MAP.get(outer) or _named_type(
+            outer, current_module
+        )
         return f"{mapped_outer}[{mapped_inners}]"
 
     # Action (no generics) -> () -> None
@@ -682,7 +702,9 @@ def _split_type_params(raw: "str | None") -> list[str]:
     return [p.split()[-1] for p in raw.split(",") if p.strip()]
 
 
-_CLASS_TYPE_PARAMS_RE = re.compile(r"\b(?:class|struct|interface|record)\s+\w+\s*<([^>]+)>")
+_CLASS_TYPE_PARAMS_RE = re.compile(
+    r"\b(?:class|struct|interface|record)\s+\w+\s*<([^>]+)>"
+)
 
 
 def _class_type_params(decl_line: str) -> list[str]:
@@ -754,7 +776,9 @@ def _strip_xml_tags(text: str) -> str:
         return ""
     # Replace common XML doc tags
     text = re.sub(
-        r"<see\s+cref=\"([^\"]+)\"\s*/>", lambda m: f"`{_render_cref(m.group(1))}`", text
+        r"<see\s+cref=\"([^\"]+)\"\s*/>",
+        lambda m: f"`{_render_cref(m.group(1))}`",
+        text,
     )
     # <see langword="true"/> — a C# KEYWORD reference, which the catch-all below eats whole. That is
     # how builtins.md came to read "Sums a sequence of booleans, counting  as 1." with the subject of
@@ -771,11 +795,11 @@ def _strip_xml_tags(text: str) -> str:
     text = text.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
     text = text.strip()
     # Strip global:: and common System. namespace prefixes from prose
-    text = text.replace('global::', '')
-    text = re.sub(r'\bSystem\.Text\.RegularExpressions\.', '', text)
-    text = re.sub(r'\bSystem\.Collections\.Generic\.', '', text)
-    text = re.sub(r'\bSystem\.Collections\.', '', text)
-    text = re.sub(r'\bSystem\.IO\.', '', text)
+    text = text.replace("global::", "")
+    text = re.sub(r"\bSystem\.Text\.RegularExpressions\.", "", text)
+    text = re.sub(r"\bSystem\.Collections\.Generic\.", "", text)
+    text = re.sub(r"\bSystem\.Collections\.", "", text)
+    text = re.sub(r"\bSystem\.IO\.", "", text)
     return text
 
 
@@ -1010,7 +1034,12 @@ def _collect_attribute_lines(lines: list[str], decl_index: int) -> list[str]:
         if stripped.startswith("["):
             attrs.insert(0, stripped)
             i -= 1
-        elif stripped.startswith("///") or stripped.startswith("//") or stripped.startswith("#") or stripped == "":
+        elif (
+            stripped.startswith("///")
+            or stripped.startswith("//")
+            or stripped.startswith("#")
+            or stripped == ""
+        ):
             i -= 1
         else:
             break
@@ -1052,7 +1081,7 @@ def _collect_doc_lines(lines: list[str], decl_index: int) -> list[str]:
 def _drop_receiver_modifier(part: str) -> str:
     """An extension method rendered as a plain function keeps its receiver as an ordinary
     parameter: `this` is a C# modifier, not part of the type (#2055)."""
-    return part[len("this"):].lstrip() if _EXTENSION_THIS_RE.match(part) else part
+    return part[len("this") :].lstrip() if _EXTENSION_THIS_RE.match(part) else part
 
 
 def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
@@ -1083,7 +1112,7 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         # user can write.
         is_variadic = part.startswith("params ")
         if is_variadic:
-            part = part[len("params "):]
+            part = part[len("params ") :]
 
         # Handle default values
         default = None
@@ -1101,7 +1130,7 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
                 # A `params T[]` formal takes zero or more T, so the element type is what the
                 # signature names; the star goes on the NAME when the signature is rendered.
                 if mapped.startswith("array[") and mapped.endswith("]"):
-                    mapped = mapped[len("array["):-1]
+                    mapped = mapped[len("array[") : -1]
                 mapped = "*" + mapped
             params.append(
                 DocParam(
@@ -1175,7 +1204,7 @@ def _with_accessor_block(joined: str, lines: list[str], end_i: int) -> str:
     """
     if any(token in joined for token in ("=>", "{", ";", "(")):
         return joined
-    following = [line.strip() for line in lines[end_i + 1:end_i + 3]]
+    following = [line.strip() for line in lines[end_i + 1 : end_i + 3]]
     if not following or not following[0].startswith("{"):
         return joined
     block = following[0]
@@ -1192,9 +1221,7 @@ def _with_accessor_block(joined: str, lines: list[str], end_i: int) -> str:
 # A type may contain a tuple — `List<(T, int)>`, `(K, V)`, one nesting level deep — as a
 # parenthesised group NOT directly after an identifier (`Name(` is a parameter list, never a type).
 # Without it every tuple-returning member (`Counter.most_common`, every `items()`) was dropped (#1980).
-_TYPE_RE = (
-    r"(?:[\w<>\[\],\s\?\.:]|(?<!\w)\((?:[^()]|\([^()]*\))*\))+?"
-)
+_TYPE_RE = r"(?:[\w<>\[\],\s\?\.:]|(?<!\w)\((?:[^()]|\([^()]*\))*\))+?"
 
 # Matched against the declaration HEAD (`_declaration_head`: cut at the first top-level `=>`/`{`),
 # so the parameter list is the last parenthesised group, optionally followed by generic constraints.
@@ -1254,7 +1281,11 @@ def _find_nonpublic_class_ranges(lines: list[str]) -> list[tuple[int, int]]:
 
     for idx, line in enumerate(lines):
         stripped = line.strip()
-        if not in_non_public and not in_block_comment and _NON_PUBLIC_CLASS_RE.match(stripped):
+        if (
+            not in_non_public
+            and not in_block_comment
+            and _NON_PUBLIC_CLASS_RE.match(stripped)
+        ):
             in_non_public = True
             non_public_start = idx
             brace_depth = 0
@@ -1262,7 +1293,9 @@ def _find_nonpublic_class_ranges(lines: list[str]) -> list[tuple[int, int]]:
 
         if in_non_public:
             # Scan the raw line char-by-char with a state machine
-            line_open, line_close, in_block_comment = _count_code_braces(line, in_block_comment)
+            line_open, line_close, in_block_comment = _count_code_braces(
+                line, in_block_comment
+            )
             brace_depth += line_open - line_close
             if line_open > 0:
                 seen_open_brace = True
@@ -1337,10 +1370,22 @@ def _extension_class_ranges(lines: list[str]) -> list[tuple[str, int, int]]:
     for name, start, end in _find_public_class_ranges(lines):
         if not re.search(r"\bstatic\s+(?:partial\s+)?class\b", lines[start]):
             continue
-        body = [line for line in lines[start + 1 : end + 1] if line.strip().startswith("public ")]
-        receivers = {m.group(1).rsplit(".", 1)[-1] for line in body for m in _EXTENSION_RECEIVER_RE.finditer(line)}
+        body = [
+            line
+            for line in lines[start + 1 : end + 1]
+            if line.strip().startswith("public ")
+        ]
+        receivers = {
+            m.group(1).rsplit(".", 1)[-1]
+            for line in body
+            for m in _EXTENSION_RECEIVER_RE.finditer(line)
+        }
         methods = [line for line in body if "(" in line]
-        if len(receivers) == 1 and methods and all(_EXTENSION_RECEIVER_RE.search(m) for m in methods):
+        if (
+            len(receivers) == 1
+            and methods
+            and all(_EXTENSION_RECEIVER_RE.search(m) for m in methods)
+        ):
             found.append((receivers.pop(), start, end))
     return found
 
@@ -1405,7 +1450,11 @@ def _count_code_braces(line: str, in_block_comment: bool) -> tuple[int, int, boo
                 string_state = None
                 # Re-dispatch this character as if in code
                 if c == '"':
-                    string_state = {"verbatim": False, "interpolated": False, "hole_depth": 0}
+                    string_state = {
+                        "verbatim": False,
+                        "interpolated": False,
+                        "hole_depth": 0,
+                    }
                     i += 1
                     # restore outer state by stacking via saved → but we only need
                     # to remember to return to `saved` when this inner string ends.
@@ -1553,7 +1602,9 @@ def parse_cs_file(
     saved_aliases = _USING_ALIASES
     _USING_ALIASES = dict(_USING_ALIAS_RE.findall(text))
     try:
-        return _parse_cs_text(text, is_extension, is_builtins, line_range, exclude_ranges)
+        return _parse_cs_text(
+            text, is_extension, is_builtins, line_range, exclude_ranges
+        )
     finally:
         _USING_ALIASES = saved_aliases
 
@@ -1572,7 +1623,9 @@ def _parse_cs_text(
     _public_ranges = _find_public_class_ranges(lines)
 
     def _declaring_type(line: int) -> str:
-        enclosing = [(start, name) for name, start, end in _public_ranges if start <= line <= end]
+        enclosing = [
+            (start, name) for name, start, end in _public_ranges if start <= line <= end
+        ]
         return max(enclosing)[1] if enclosing else ""
 
     def _declaring_static(line: int) -> bool:
@@ -1614,7 +1667,9 @@ def _parse_cs_text(
             ctype, cname, cval = const_match.groups()
             doc_lines = _collect_doc_lines(lines, i)
             attr_lines = _collect_attribute_lines(lines, i)
-            if not _is_skippable(cname, doc_lines) and not _is_hidden_from_surface(attr_lines):
+            if not _is_skippable(cname, doc_lines) and not _is_hidden_from_surface(
+                attr_lines
+            ):
                 doc = _parse_xml_doc(doc_lines)
                 members.append(
                     DocMember(
@@ -1660,7 +1715,9 @@ def _parse_cs_text(
                 continue
 
             doc_lines = _collect_doc_lines(lines, i)
-            if _is_skippable(mname, doc_lines) or _is_hidden_from_surface(_collect_attribute_lines(lines, i)):
+            if _is_skippable(mname, doc_lines) or _is_hidden_from_surface(
+                _collect_attribute_lines(lines, i)
+            ):
                 i = end_i + 1
                 continue
 
@@ -1688,7 +1745,13 @@ def _parse_cs_text(
             is_format_overload = mname == "ToString" and len(params) == 2
             if is_format_overload:
                 sharpy_name = "__format__"
-                params = [DocParam(name="format_spec", type="str", description=params[0].description)]
+                params = [
+                    DocParam(
+                        name="format_spec",
+                        type="str",
+                        description=params[0].description,
+                    )
+                ]
 
             # Build signature
             param_strs = []
@@ -1742,12 +1805,16 @@ def _parse_cs_text(
         # parentheses are not one)
         decl_part = joined.split("=>")[0].split("{")[0]
         if not _PARAM_LIST_RE.search(decl_part):
-            prop_match = _PROPERTY_PATTERN.match(_with_accessor_block(joined, lines, end_i))
+            prop_match = _PROPERTY_PATTERN.match(
+                _with_accessor_block(joined, lines, end_i)
+            )
             if prop_match:
                 modifiers, ptype, pname = prop_match.groups()
                 doc_lines = _collect_doc_lines(lines, i)
                 attr_lines = _collect_attribute_lines(lines, i)
-                if not _is_skippable(pname, doc_lines) and not _is_hidden_from_surface(attr_lines):
+                if not _is_skippable(pname, doc_lines) and not _is_hidden_from_surface(
+                    attr_lines
+                ):
                     doc = _parse_xml_doc(doc_lines)
                     members.append(
                         DocMember(
@@ -1955,8 +2022,14 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             # `NdArray.cs`). Any other public type is placed by `_partition_by_owner` (#2272).
             public_ranges = _find_public_class_ranges(file_lines)
             for name, start, end in public_ranges:
-                top_level = not any(ps < start and end <= pe for _, ps, pe in public_ranges)
-                if top_level and name in module_type_classes and (start, end) not in owned:
+                top_level = not any(
+                    ps < start and end <= pe for _, ps, pe in public_ranges
+                )
+                if (
+                    top_level
+                    and name in module_type_classes
+                    and (start, end) not in owned
+                ):
                     pending_types.append((cs_file, name, start, end))
                     owned.append((start, end))
             all_members.extend(parse_cs_file(cs_file, exclude_ranges=owned))
@@ -1980,7 +2053,11 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
         # section (#2163), as its annotated file's members do.
         for cs_file, name, start, end in pending_types:
             file_lines = cs_file.read_text(encoding="utf-8").split("\n")
-            nested = [(s, e) for _, s, e in _find_public_class_ranges(file_lines) if start < s and e <= end]
+            nested = [
+                (s, e)
+                for _, s, e in _find_public_class_ranges(file_lines)
+                if start < s and e <= end
+            ]
             types_by_class[name].members.extend(
                 parse_cs_file(cs_file, line_range=(start, end), exclude_ranges=nested)
             )
@@ -2013,7 +2090,9 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
     return modules
 
 
-_SUBMODULE_ANNOTATION_RE = re.compile(r'\[(?:global::Sharpy\.)?SharpyModule\("([^"]+\.[^"]+)"\)\]')
+_SUBMODULE_ANNOTATION_RE = re.compile(
+    r'\[(?:global::Sharpy\.)?SharpyModule\("([^"]+\.[^"]+)"\)\]'
+)
 _CLASS_NAME_RE = re.compile(r"\b(?:class|struct|record)\s+(\w+)")
 
 
@@ -2099,7 +2178,9 @@ def _partition_by_owner(
     # A value type is reachable when a documented member RETURNS it, to a fixpoint: a reachable
     # type's own members may return another. A parameter type hands the reader no value.
     module_level = _module_level(module_level)
-    documented: list[tuple[str, DocMember]] = [(f"{mod_name}.", m) for m in module_level]
+    documented: list[tuple[str, DocMember]] = [
+        (f"{mod_name}.", m) for m in module_level
+    ]
     documented += [(f"{sub.name}.", m) for sub in submodules for m in sub.members]
     documented += [(f"{t.name}.", m) for t in types for m in t.members]
     pending = dict(by_value_type)
@@ -2172,15 +2253,22 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
             file_lines = cs_file.read_text(encoding="utf-8").split("\n")
             ranges = _find_public_class_ranges(file_lines)
             nested = [
-                (s, e) for _, s, e in ranges
+                (s, e)
+                for _, s, e in ranges
                 if any(ps < s and e <= pe for _, ps, pe in ranges)
             ]
             if not page_type_params:
                 page_type_params = next(
-                    (_class_type_params(file_lines[s]) for _, s, e in ranges if (s, e) not in nested),
+                    (
+                        _class_type_params(file_lines[s])
+                        for _, s, e in ranges
+                        if (s, e) not in nested
+                    ),
                     [],
                 )
-            members = parse_cs_file(cs_file, is_extension=is_extension, exclude_ranges=nested)
+            members = parse_cs_file(
+                cs_file, is_extension=is_extension, exclude_ranges=nested
+            )
             all_members.extend(members)
 
         types.append(
@@ -2420,7 +2508,9 @@ def render_module_page(module: DocModule) -> str:
         lines.append(f"## {doc_type.name}")
         lines.append("")
         if doc_type.returned_by:
-            lines.append(f"{NOT_IMPORTABLE_NOTE} A value of it is returned by `{doc_type.returned_by}`.")
+            lines.append(
+                f"{NOT_IMPORTABLE_NOTE} A value of it is returned by `{doc_type.returned_by}`."
+            )
             lines.append("")
         if doc_type.summary:
             lines.append(_fixup_prose(doc_type.summary))
@@ -2600,12 +2690,9 @@ def build_nav_blocks(
     Returns a mapping of parent label -> list of child lines (with the 6-space
     indentation used under ``- Modules:`` / ``- Core Types:``).
     """
-    core_block = [
-        f"      - {ct.name}: stdlib/{ct.name}.md" for ct in core_types
-    ]
+    core_block = [f"      - {ct.name}: stdlib/{ct.name}.md" for ct in core_types]
     module_block = [
-        f"      - {name}: stdlib/{name}.md"
-        for name in _all_module_nav_names(modules)
+        f"      - {name}: stdlib/{name}.md" for name in _all_module_nav_names(modules)
     ]
     return {
         "- Core Types:": core_block,
@@ -2830,9 +2917,7 @@ def check_docs(
         for name in HAND_AUTHORED_MODULES:
             page = output_dir / f"{name}.md"
             if not page.exists():
-                messages.append(
-                    f"missing hand-authored page: docs/stdlib/{name}.md"
-                )
+                messages.append(f"missing hand-authored page: docs/stdlib/{name}.md")
 
         # Compare mkdocs nav.
         if mkdocs_path is not None and mkdocs_path.exists():

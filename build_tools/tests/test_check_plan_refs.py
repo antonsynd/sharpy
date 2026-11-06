@@ -1,4 +1,5 @@
 """check_plan_refs: paths and file:line are errors, symbols and codes are warnings."""
+
 from pathlib import Path
 
 from build_tools import check_plan_refs as cpr
@@ -6,12 +7,16 @@ from build_tools import check_plan_refs as cpr
 
 def _repo(tmp_path: Path) -> Path:
     (tmp_path / "src/A").mkdir(parents=True)
-    (tmp_path / "src/A/Foo.cs").write_text("\n".join(f"// line {i}  class FooBar {{}}" for i in range(1, 11)) + "\n")
+    (tmp_path / "src/A/Foo.cs").write_text(
+        "\n".join(f"// line {i}  class FooBar {{}}" for i in range(1, 11)) + "\n"
+    )
     (tmp_path / "src/Sharpy.Cli/Commands").mkdir(parents=True)
     (tmp_path / "src/Sharpy.Cli/Commands/RunCommand.cs").write_text("a\nb\nc\n")
     (tmp_path / "src/A/TypeChecker.Expressions.Access.Calls.cs").write_text("x\n" * 40)
     (tmp_path / "src/Sharpy.Compiler/Diagnostics").mkdir(parents=True)
-    (tmp_path / "src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs").write_text('public const string X = "SPY0001";\n')
+    (tmp_path / "src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs").write_text(
+        'public const string X = "SPY0001";\n'
+    )
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs/x.md").write_text("# x\n")
     return tmp_path
@@ -34,9 +39,15 @@ def test_classification(tmp_path):
     assert r["paths"]["ok"] == ["docs/x.md", "src/A/Foo.cs"]
     assert r["paths"]["missing"] == ["src/missing.cs"]
     assert r["paths"]["unresolved"] == [".claude/plans/plan-abc123.md", "src/main.spy"]
-    assert "Access.Calls.cs:30" in r["filelines"]["ok"]          # bare character-suffix shorthand
-    assert "Cli/Commands/RunCommand.cs:2" in r["filelines"]["ok"]  # directory shorthand without src/Sharpy.
-    assert any(s.startswith("Cli/Commands/RunCommand.cs:9") for s in r["filelines"]["past_eof"])
+    assert (
+        "Access.Calls.cs:30" in r["filelines"]["ok"]
+    )  # bare character-suffix shorthand
+    assert (
+        "Cli/Commands/RunCommand.cs:2" in r["filelines"]["ok"]
+    )  # directory shorthand without src/Sharpy.
+    assert any(
+        s.startswith("Cli/Commands/RunCommand.cs:9") for s in r["filelines"]["past_eof"]
+    )
     assert "Foo.cs:5" in r["filelines"]["ok"]
     assert any(s.startswith("Foo.cs:50") for s in r["filelines"]["past_eof"])
     assert r["codes"]["ok"] == ["SPY0001"] and r["codes"]["unknown"] == ["SPY9999"]

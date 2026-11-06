@@ -149,7 +149,7 @@ Failure rate: (Y+Z)/N %
 
 Unique failures:
   1. TestClass.TestMethod
-     Seed: "xxxxx" (reproduce: CsCheck_Seed=xxxxx dotnet test --filter "DisplayName~TestMethod")
+     Seed: "xxxxx" (reproduce: CsCheck_Seed=xxxxx .claude/scripts/dotnet-serialized test --filter "DisplayName~TestMethod")
      Error: <first line of error message>
      Rounds: 3, 7, 12
 
@@ -160,7 +160,7 @@ Host crashes:
      Sequence: .claude/tmp/property-stress/round-N-blame/Sequence_*.xml
 
 To reproduce any assertion failure:
-  CsCheck_Seed=<seed> dotnet test --filter "DisplayName~<test>" --no-build
+  CsCheck_Seed=<seed> .claude/scripts/dotnet-serialized test --filter "DisplayName~<test>" --no-build
 
 Full logs: .claude/tmp/property-stress/
 ```
@@ -187,4 +187,4 @@ When a round **crashes the host**, do not let it vanish. Open (or update) an iss
 - the dump path (`round-N-blame/*.dmp` / `*.crashdump`),
 - the round log tail showing the abort.
 
-When a round **fails an assertion**, report the failing test plus the `Set seed:` value CsCheck printed (that seed reproduces the shrunk case directly via `CsCheck_Seed=<seed> dotnet test --filter "DisplayName~<test>" --no-build`).
+When a round **fails an assertion**, report the failing test plus the `Set seed:` value CsCheck printed (that seed reproduces the shrunk case directly via `CsCheck_Seed=<seed> .claude/scripts/dotnet-serialized test --filter "DisplayName~<test>" --no-build`).

@@ -145,7 +145,7 @@ WORKFLOW:
    commit body: "mutation: broken → red (N failed), restored → green". If it stays green when
    broken, do NOT ship it as a guard — report it as a finding to the lead. An absence assertion
    needs a positive control on the same input.
-7. Run `dotnet format whitespace`
+7. Run `.claude/scripts/dotnet-serialized format whitespace sharpy.sln` (raw `dotnet format` is hook-blocked; the save hook is per-file and best-effort, so a file a peer created can still be unformatted)
 8. Stage ONLY the specific files you changed by explicit pathspec; check `git diff --cached --stat`
 9. Commit with a descriptive message referencing the plan section; use the commit trailer(s) the
    harness provides for this session
@@ -183,7 +183,7 @@ After all implementation tasks are complete, the lead runs the gate and spawns `
 4. **Staleness gates**: run `/push`'s generated-artifact gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) — a diff here is a finding, not noise
 5. **Spec examples**: execute every example the plan promised in `docs/language_specification/` or `DiagnosticExplanations` (`/spy-run`); outputs must discriminate
 6. **Allowlists**: every entry the plan's fixes drain is gone; no entry was added without an issue reference
-7. `dotnet format whitespace` — no changes needed
+7. `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — clean
 8. `git diff --stat` and `git status --short` re-check after the last agent wave — every delta is claimed by a commit or an agent report
 
 ## Cleanup and Report

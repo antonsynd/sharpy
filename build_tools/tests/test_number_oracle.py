@@ -103,4 +103,6 @@ def test_main_reads_a_batch_file(tmp_path, capsys):
     batch.write_text(json.dumps({"id": 1, "source": "0x_FF"}) + "\n", encoding="utf-8")
     assert number_oracle.main(["number_oracle.py", "--batch", str(batch)]) == 0
     out = capsys.readouterr().out.strip().splitlines()
-    assert [json.loads(line) for line in out] == [{"id": 1, "ok": True, "kind": "int", "value": "255"}]
+    assert [json.loads(line) for line in out] == [
+        {"id": 1, "ok": True, "kind": "int", "value": "255"}
+    ]

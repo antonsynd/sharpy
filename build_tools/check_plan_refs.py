@@ -34,13 +34,21 @@ from collections import defaultdict
 from pathlib import Path
 
 PATH_EXTS = r"(?:cs|md|py|sh|spy|txt|json|ya?ml|props|csproj|sln|expected|error|warning|features)"
-PATH_RE = re.compile(r"(?<![\w/.\-])((?:src|docs|build_tools|benchmarks|\.claude|\.github)/[\w\-./]*\w\." + PATH_EXTS + r")\b")
-FILELINE_RE = re.compile(r"(?<![\w/])((?:[\w\-]+/)*[\w\-]+(?:\.[\w\-]+)*\.(?:cs|py|spy|md|sh|ya?ml)):(\d+)(?:[–\-](\d+))?")
+PATH_RE = re.compile(
+    r"(?<![\w/.\-])((?:src|docs|build_tools|benchmarks|\.claude|\.github)/[\w\-./]*\w\."
+    + PATH_EXTS
+    + r")\b"
+)
+FILELINE_RE = re.compile(
+    r"(?<![\w/])((?:[\w\-]+/)*[\w\-]+(?:\.[\w\-]+)*\.(?:cs|py|spy|md|sh|ya?ml)):(\d+)(?:[–\-](\d+))?"
+)
 SPY_RE = re.compile(r"\bSPY\d{4}\b")
 ISSUE_RE = re.compile(r"(?<![\w&/])#(\d{3,5})\b")
 BACKTICK_RE = re.compile(r"`([^`\n]{2,120})`")
 IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-SYMBOL_RE = re.compile(r"^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+$")  # ≥2 humps: TypeChecker, MergeFrom
+SYMBOL_RE = re.compile(
+    r"^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+$"
+)  # ≥2 humps: TypeChecker, MergeFrom
 FENCE_RE = re.compile(r"```.*?```", re.S)
 SKIP_DIRS = {".git", "bin", "obj", "node_modules", "__pycache__", ".claude"}
 
@@ -48,7 +56,12 @@ SKIP_DIRS = {".git", "bin", "obj", "node_modules", "__pycache__", ".claude"}
 def list_files(repo: Path) -> list[str]:
     """Tracked files via git; falls back to a walk when the root is not a git checkout."""
     try:
-        out = subprocess.run(["git", "-C", str(repo), "ls-files"], capture_output=True, text=True, check=True).stdout
+        out = subprocess.run(
+            ["git", "-C", str(repo), "ls-files"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
         files = [l for l in out.splitlines() if l]
         if files:
             return files
@@ -88,18 +101,22 @@ def check(plan_text: str, repo: Path, *, with_issues: bool = False) -> dict:
     files = list_files(repo)
     fileset = set(files)
     prose = FENCE_RE.sub("", plan_text)
-    result: dict = {"paths": {"ok": [], "missing": [], "unresolved": []},
-                    "filelines": {"ok": [], "past_eof": [], "missing": [], "ambiguous": []},
-                    "codes": {"ok": [], "unknown": []},
-                    "symbols": {"ok": [], "unknown": []},
-                    "issues": {}}
+    result: dict = {
+        "paths": {"ok": [], "missing": [], "unresolved": []},
+        "filelines": {"ok": [], "past_eof": [], "missing": [], "ambiguous": []},
+        "codes": {"ok": [], "unknown": []},
+        "symbols": {"ok": [], "unknown": []},
+        "issues": {},
+    }
 
     # paths (whole text — commands in code blocks name real files too)
     for ref in sorted(set(PATH_RE.findall(plan_text))):
         if (repo / ref).exists():
             result["paths"]["ok"].append(ref)
         elif ref.endswith(".spy") or ref.startswith(".claude/plans/"):
-            result["paths"]["unresolved"].append(ref)  # fixture-relative or gitignored; the verifier decides
+            result["paths"]["unresolved"].append(
+                ref
+            )  # fixture-relative or gitignored; the verifier decides
         else:
             result["paths"]["missing"].append(ref)
 
@@ -114,7 +131,9 @@ def check(plan_text: str, repo: Path, *, with_issues: bool = False) -> dict:
             # the plans' partial-class shorthand: `Access.Calls.cs` for `…/TypeChecker.Expressions.Access.Calls.cs`,
             # `Cli/Commands/RunCommand.cs` for `src/Sharpy.Cli/Commands/RunCommand.cs`
             shorthand = [f for f in files if f.endswith(key) and f not in exact]
-            by_suffix_cache[key] = exact + shorthand  # both: `Format.cs` names Partial.Builtins/Format.cs AND StringExtensions.Format.cs
+            by_suffix_cache[key] = (
+                exact + shorthand
+            )  # both: `Format.cs` names Partial.Builtins/Format.cs AND StringExtensions.Format.cs
         cands = by_suffix_cache[key]
         label = f"{token}:{line_s}" + (f"-{line_end_s}" if line_end_s else "")
         if not cands:
@@ -122,11 +141,15 @@ def check(plan_text: str, repo: Path, *, with_issues: bool = False) -> dict:
             continue
         counts = {c: line_count(repo / c) for c in cands if (repo / c).is_file()}
         if len(cands) > 1:
-            result["filelines"]["ambiguous"].append(f"{label} → {len(cands)} candidates")
+            result["filelines"]["ambiguous"].append(
+                f"{label} → {len(cands)} candidates"
+            )
         if any(n >= want for n in counts.values()):
             result["filelines"]["ok"].append(label)
         else:
-            result["filelines"]["past_eof"].append(f"{label} (file has {max(counts.values(), default=0)} lines)")
+            result["filelines"]["past_eof"].append(
+                f"{label} (file has {max(counts.values(), default=0)} lines)"
+            )
 
     # SPY codes
     codes = known_codes(repo)
@@ -140,20 +163,44 @@ def check(plan_text: str, repo: Path, *, with_issues: bool = False) -> dict:
         for part in re.split(r"[.<>\[\](),:; ]+", tick):
             if part and SYMBOL_RE.match(part) and part not in seen:
                 seen.add(part)
-                (result["symbols"]["ok"] if part in idents else result["symbols"]["unknown"]).append(part)
-    result["symbols"]["ok"].sort(); result["symbols"]["unknown"].sort()
+                (
+                    result["symbols"]["ok"]
+                    if part in idents
+                    else result["symbols"]["unknown"]
+                ).append(part)
+    result["symbols"]["ok"].sort()
+    result["symbols"]["unknown"].sort()
 
     # issues
     numbers = sorted({int(n) for n in ISSUE_RE.findall(plan_text)})
     if with_issues:
         for n in numbers:
             try:
-                out = subprocess.run(["gh", "issue", "view", str(n), "--json", "state,title,stateReason"],
-                                     capture_output=True, text=True, check=True).stdout
+                out = subprocess.run(
+                    [
+                        "gh",
+                        "issue",
+                        "view",
+                        str(n),
+                        "--json",
+                        "state,title,stateReason",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout
                 d = json.loads(out)
-                result["issues"][str(n)] = {"state": d.get("state"), "reason": d.get("stateReason"), "title": d.get("title")}
+                result["issues"][str(n)] = {
+                    "state": d.get("state"),
+                    "reason": d.get("stateReason"),
+                    "title": d.get("title"),
+                }
             except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as e:
-                result["issues"][str(n)] = {"state": "ERROR", "reason": str(e)[:80], "title": ""}
+                result["issues"][str(n)] = {
+                    "state": "ERROR",
+                    "reason": str(e)[:80],
+                    "title": "",
+                }
     else:
         result["issues"] = {str(n): {"state": "unchecked"} for n in numbers}
     return result
@@ -161,30 +208,55 @@ def check(plan_text: str, repo: Path, *, with_issues: bool = False) -> dict:
 
 def render(r: dict, *, strict: bool) -> tuple[str, int]:
     lines = []
+
     def sec(title, ok, bad, bad_label):
         lines.append(f"{title}: {len(ok)} ok, {len(bad)} {bad_label}")
         for b in bad:
             lines.append(f"  - {b}")
+
     sec("paths", r["paths"]["ok"], r["paths"]["missing"], "MISSING")
     for u in r["paths"]["unresolved"]:
-        lines.append(f"  - unresolved (fixture-relative .spy or gitignored plan path): {u}")
+        lines.append(
+            f"  - unresolved (fixture-relative .spy or gitignored plan path): {u}"
+        )
     fl = r["filelines"]
-    lines.append(f"file:line: {len(fl['ok'])} ok, {len(fl['past_eof'])} PAST-EOF, {len(fl['missing'])} MISSING, {len(fl['ambiguous'])} ambiguous")
-    for b in fl["past_eof"]: lines.append(f"  - past eof: {b}")
-    for b in fl["missing"]: lines.append(f"  - missing: {b}")
-    for b in fl["ambiguous"]: lines.append(f"  - ambiguous: {b}")
-    sec("SPY codes", r["codes"]["ok"], r["codes"]["unknown"], "not in DiagnosticCodes.cs (new code proposed?)")
-    sec("symbols (prose, PascalCase)", r["symbols"]["ok"], r["symbols"]["unknown"], "not found in src/**/*.cs (new symbol proposed?)")
+    lines.append(
+        f"file:line: {len(fl['ok'])} ok, {len(fl['past_eof'])} PAST-EOF, {len(fl['missing'])} MISSING, {len(fl['ambiguous'])} ambiguous"
+    )
+    for b in fl["past_eof"]:
+        lines.append(f"  - past eof: {b}")
+    for b in fl["missing"]:
+        lines.append(f"  - missing: {b}")
+    for b in fl["ambiguous"]:
+        lines.append(f"  - ambiguous: {b}")
+    sec(
+        "SPY codes",
+        r["codes"]["ok"],
+        r["codes"]["unknown"],
+        "not in DiagnosticCodes.cs (new code proposed?)",
+    )
+    sec(
+        "symbols (prose, PascalCase)",
+        r["symbols"]["ok"],
+        r["symbols"]["unknown"],
+        "not found in src/**/*.cs (new symbol proposed?)",
+    )
     closed = {n: v for n, v in r["issues"].items() if v.get("state") == "CLOSED"}
     errs = {n: v for n, v in r["issues"].items() if v.get("state") == "ERROR"}
     unchecked = sum(1 for v in r["issues"].values() if v.get("state") == "unchecked")
-    lines.append(f"issues: {len(r['issues'])} referenced; {len(closed)} CLOSED; {len(errs)} lookup errors; {unchecked} unchecked (use --issues)")
-    for n, v in closed.items(): lines.append(f"  - #{n} CLOSED ({v.get('reason')}): {v.get('title')}")
-    for n, v in errs.items(): lines.append(f"  - #{n} ERROR: {v.get('reason')}")
+    lines.append(
+        f"issues: {len(r['issues'])} referenced; {len(closed)} CLOSED; {len(errs)} lookup errors; {unchecked} unchecked (use --issues)"
+    )
+    for n, v in closed.items():
+        lines.append(f"  - #{n} CLOSED ({v.get('reason')}): {v.get('title')}")
+    for n, v in errs.items():
+        lines.append(f"  - #{n} ERROR: {v.get('reason')}")
     hard = bool(r["paths"]["missing"] or fl["past_eof"] or fl["missing"])
     soft = bool(r["codes"]["unknown"] or r["symbols"]["unknown"])
     code = 1 if hard or (strict and soft) else 0
-    lines.append("RESULT: " + ("FAIL" if code else "OK") + (" (strict)" if strict else ""))
+    lines.append(
+        "RESULT: " + ("FAIL" if code else "OK") + (" (strict)" if strict else "")
+    )
     return "\n".join(lines), code
 
 
@@ -192,8 +264,12 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("plan", type=Path)
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
-    ap.add_argument("--issues", action="store_true", help="look up every #NNNN with gh (network)")
-    ap.add_argument("--strict", action="store_true", help="unknown symbols/codes also fail")
+    ap.add_argument(
+        "--issues", action="store_true", help="look up every #NNNN with gh (network)"
+    )
+    ap.add_argument(
+        "--strict", action="store_true", help="unknown symbols/codes also fail"
+    )
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     r = check(a.plan.read_text(), a.repo.resolve(), with_issues=a.issues)

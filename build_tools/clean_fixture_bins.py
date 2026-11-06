@@ -43,7 +43,9 @@ def find_stray_spy_files(bin_dirs: list[Path]) -> list[Path]:
 
 
 @click.command("clean-fixture-bins")
-@click.option("--clean", is_flag=True, help="Remove found items (default: dry-run census)")
+@click.option(
+    "--clean", is_flag=True, help="Remove found items (default: dry-run census)"
+)
 def clean_fixture_bins(clean: bool) -> None:
     """Census and cleanup of crash bundles and stray .spy under fixture bin/."""
     src_root = Path(__file__).resolve().parent.parent / "src"
@@ -76,6 +78,8 @@ def clean_fixture_bins(clean: bool) -> None:
         for s in stray:
             s.unlink()
             removed_spy += 1
-        click.echo(f"\nRemoved {removed_bundles} crash bundles, {removed_spy} stray .spy files")
+        click.echo(
+            f"\nRemoved {removed_bundles} crash bundles, {removed_spy} stray .spy files"
+        )
     elif bundles or stray:
         click.echo("\nDry run — pass --clean to remove")

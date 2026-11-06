@@ -160,10 +160,43 @@ class Tok:
     value: Optional[str] = None  # decoded content of a non-interpolated string
 
 
-_TWO_CHAR = {"=>", "==", "!=", "<=", ">=", "&&", "||", "??", "::", "++", "--", "+=", "-=", "*=",
-             "/=", "%=", "&=", "|=", "^=", "?.", "->"}
-_SIMPLE_ESCAPES = {"\\": "\\", '"': '"', "'": "'", "0": "\0", "a": "\a", "b": "\b", "f": "\f",
-                   "n": "\n", "r": "\r", "t": "\t", "v": "\v", "e": "\x1b"}
+_TWO_CHAR = {
+    "=>",
+    "==",
+    "!=",
+    "<=",
+    ">=",
+    "&&",
+    "||",
+    "??",
+    "::",
+    "++",
+    "--",
+    "+=",
+    "-=",
+    "*=",
+    "/=",
+    "%=",
+    "&=",
+    "|=",
+    "^=",
+    "?.",
+    "->",
+}
+_SIMPLE_ESCAPES = {
+    "\\": "\\",
+    '"': '"',
+    "'": "'",
+    "0": "\0",
+    "a": "\a",
+    "b": "\b",
+    "f": "\f",
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "v": "\v",
+    "e": "\x1b",
+}
 
 
 class _Scanner:
@@ -189,7 +222,7 @@ class _Scanner:
                 close = src.find("*/", pos + 2)
                 pos = n if close < 0 else close + 2
                 continue
-            m = re.match(r"[$@]*\"", src[pos:pos + 8]) if c in "$@\"" else None
+            m = re.match(r"[$@]*\"", src[pos : pos + 8]) if c in '$@"' else None
             if m:
                 pos = self._string(pos, m.group()[:-1])
                 continue
@@ -201,7 +234,15 @@ class _Scanner:
                 self.toks.append(Tok("num", m2.group(), pos, m2.end()))
                 pos = m2.end()
                 continue
-            if c.isalpha() or c == "_" or (c == "@" and pos + 1 < n and (src[pos + 1].isalpha() or src[pos + 1] == "_")):
+            if (
+                c.isalpha()
+                or c == "_"
+                or (
+                    c == "@"
+                    and pos + 1 < n
+                    and (src[pos + 1].isalpha() or src[pos + 1] == "_")
+                )
+            ):
                 m2 = re.compile(r"@?[A-Za-z_][A-Za-z0-9_]*").match(src, pos)
                 self.toks.append(Tok("id", m2.group().lstrip("@"), pos, m2.end()))
                 pos = m2.end()
@@ -213,9 +254,14 @@ class _Scanner:
                     if depth == 0 and c == "}":
                         return pos
                     depth -= 1
-                elif depth == 0 and c == ":" and not src.startswith("::", pos) and not src.startswith("::", pos - 1):
+                elif (
+                    depth == 0
+                    and c == ":"
+                    and not src.startswith("::", pos)
+                    and not src.startswith("::", pos - 1)
+                ):
                     return pos
-            two = src[pos:pos + 2]
+            two = src[pos : pos + 2]
             if two in _TWO_CHAR:
                 self.toks.append(Tok("punct", two, pos, pos + 2))
                 pos += 2
@@ -230,7 +276,7 @@ class _Scanner:
         src, i = self.src, pos + 1
         while i < len(src) and src[i] != "'":
             i += 2 if src[i] == "\\" else 1
-        self.toks.append(Tok("char", src[pos:i + 1], pos, i + 1))
+        self.toks.append(Tok("char", src[pos : i + 1], pos, i + 1))
         return i + 1
 
     def _string(self, pos: int, prefix: str) -> int:
@@ -242,7 +288,9 @@ class _Scanner:
         while q + quotes < n and src[q + quotes] == '"':
             quotes += 1
         holes_start = len(self.toks)
-        if quotes >= 3:  # raw string literal: closes at the same run of quotes; holes use `dollars` braces
+        if (
+            quotes >= 3
+        ):  # raw string literal: closes at the same run of quotes; holes use `dollars` braces
             i = q + quotes
             closer = '"' * quotes
             while i < n and not src.startswith(closer, i):
@@ -282,10 +330,14 @@ class _Scanner:
                 i += 2
                 continue
             if ch == "\n" and not verbatim:
-                raise TriageError(f"newline inside a regular string literal at offset {pos}")
+                raise TriageError(
+                    f"newline inside a regular string literal at offset {pos}"
+                )
             content.append(ch)
             i += 1
-        self._emit_string(pos, i, bool(dollars), None if dollars else "".join(content), holes_start)
+        self._emit_string(
+            pos, i, bool(dollars), None if dollars else "".join(content), holes_start
+        )
         return i
 
     def _hole(self, pos: int, braces: int) -> int:
@@ -298,9 +350,13 @@ class _Scanner:
             stop = close
         return stop + braces
 
-    def _emit_string(self, start: int, end: int, interpolated: bool, value: Optional[str], at: int) -> None:
+    def _emit_string(
+        self, start: int, end: int, interpolated: bool, value: Optional[str], at: int
+    ) -> None:
         # The string precedes its hole tokens so the list stays in source order.
-        self.toks.insert(at, Tok("str", self.src[start:end], start, end, interpolated, value))
+        self.toks.insert(
+            at, Tok("str", self.src[start:end], start, end, interpolated, value)
+        )
 
 
 def tokenize(src: str) -> list[Tok]:
@@ -312,16 +368,88 @@ def tokenize(src: str) -> list[Tok]:
 # --------------------------------------------------------------------------- #
 # structure: invocations and members
 # --------------------------------------------------------------------------- #
-_NOT_CALLEES = frozenset({
-    "if", "while", "for", "foreach", "switch", "catch", "using", "lock", "typeof", "nameof", "sizeof",
-    "default", "checked", "unchecked", "fixed", "when", "return", "throw", "new", "is", "as", "in",
-    "await", "else", "case", "out", "ref", "var", "stackalloc", "not", "and", "or",
-})
-_MODIFIERS = frozenset({"public", "private", "protected", "internal", "static", "readonly", "const", "volatile",
-                        "override", "virtual", "abstract", "sealed", "async", "extern", "unsafe", "new",
-                        "partial", "required", "ref", "file"})
-_EXPR_PREFIX_KEYWORDS = frozenset({"return", "throw", "new", "await", "in", "is", "as", "case", "when",
-                                   "yield", "else", "out", "ref", "typeof", "nameof", "not", "and", "or"})
+_NOT_CALLEES = frozenset(
+    {
+        "if",
+        "while",
+        "for",
+        "foreach",
+        "switch",
+        "catch",
+        "using",
+        "lock",
+        "typeof",
+        "nameof",
+        "sizeof",
+        "default",
+        "checked",
+        "unchecked",
+        "fixed",
+        "when",
+        "return",
+        "throw",
+        "new",
+        "is",
+        "as",
+        "in",
+        "await",
+        "else",
+        "case",
+        "out",
+        "ref",
+        "var",
+        "stackalloc",
+        "not",
+        "and",
+        "or",
+    }
+)
+_MODIFIERS = frozenset(
+    {
+        "public",
+        "private",
+        "protected",
+        "internal",
+        "static",
+        "readonly",
+        "const",
+        "volatile",
+        "override",
+        "virtual",
+        "abstract",
+        "sealed",
+        "async",
+        "extern",
+        "unsafe",
+        "new",
+        "partial",
+        "required",
+        "ref",
+        "file",
+    }
+)
+_EXPR_PREFIX_KEYWORDS = frozenset(
+    {
+        "return",
+        "throw",
+        "new",
+        "await",
+        "in",
+        "is",
+        "as",
+        "case",
+        "when",
+        "yield",
+        "else",
+        "out",
+        "ref",
+        "typeof",
+        "nameof",
+        "not",
+        "and",
+        "or",
+    }
+)
 _TYPE_KEYWORDS = frozenset({"class", "struct", "interface", "record", "namespace"})
 
 
@@ -369,7 +497,9 @@ def _match_brackets(toks: list[Tok]) -> dict[int, int]:
                 raise TriageError(f"unbalanced '{t.text}' at offset {t.start}")
             pairs[stack.pop()] = i
     if stack:
-        raise TriageError(f"unclosed '{toks[stack[-1]].text}' at offset {toks[stack[-1]].start}")
+        raise TriageError(
+            f"unclosed '{toks[stack[-1]].text}' at offset {toks[stack[-1]].start}"
+        )
     return pairs
 
 
@@ -384,7 +514,16 @@ def _skip_generic_back(toks: list[Tok], i: int) -> int:
             depth -= 1
             if depth == 0:
                 return j
-        elif t.kind == "punct" and t.text in (";", "{", "}", "(", ")", "=>", "&&", "||"):
+        elif t.kind == "punct" and t.text in (
+            ";",
+            "{",
+            "}",
+            "(",
+            ")",
+            "=>",
+            "&&",
+            "||",
+        ):
             return i
     return i
 
@@ -410,19 +549,32 @@ def _invocations(toks: list[Tok], pairs: dict[int, int]) -> list[Invocation]:
         after = toks[close + 1] if close + 1 < len(toks) else None
         typeish_prev = prev is not None and (
             (prev.kind == "id" and prev.text not in _EXPR_PREFIX_KEYWORDS)
-            or (prev.kind == "punct" and prev.text in ("?", "]", ">")))
+            or (prev.kind == "punct" and prev.text in ("?", "]", ">"))
+        )
         bodyish_after = after is not None and (
             (after.kind == "punct" and after.text in ("{", "=>", ";"))
             or (after.kind == "id" and after.text == "where")
-            or (after.kind == "punct" and after.text == ":" and close + 2 < len(toks)
-                and toks[close + 2].text in ("base", "this")))
+            or (
+                after.kind == "punct"
+                and after.text == ":"
+                and close + 2 < len(toks)
+                and toks[close + 2].text in ("base", "this")
+            )
+        )
         if typeish_prev and bodyish_after:
             continue
         out.append(Invocation(name_tok.text, i, close, t.end, toks[close].start))
     return out
 
 
-def _members(toks: list[Tok], pairs: dict[int, int], lo: int, hi: int, prefix: str, out: list[Member]) -> None:
+def _members(
+    toks: list[Tok],
+    pairs: dict[int, int],
+    lo: int,
+    hi: int,
+    prefix: str,
+    out: list[Member],
+) -> None:
     """Members of the container whose body tokens are ``toks[lo:hi]`` (exclusive of its braces)."""
     i = lo
     while i < hi:
@@ -456,14 +608,24 @@ def _members(toks: list[Tok], pairs: dict[int, int], lo: int, hi: int, prefix: s
                     k = j - 1
                     if toks[k].kind == "punct" and toks[k].text == ">":
                         k = _skip_generic_back(toks, k) - 1
-                    if k >= start_idx and toks[k].kind == "id" and toks[k].text not in _MODIFIERS:
+                    if (
+                        k >= start_idx
+                        and toks[k].kind == "id"
+                        and toks[k].text not in _MODIFIERS
+                    ):
                         name = toks[k].text
                     j = pairs[j] + 1
                     continue
                 if u.text in ("=", "=>"):
                     name = name or (header_ids[-1].text if header_ids else "?")
-                    while j < hi and not (toks[j].kind == "punct" and toks[j].text == ";"):
-                        j = pairs[j] + 1 if toks[j].kind == "punct" and toks[j].text in "([{" else j + 1
+                    while j < hi and not (
+                        toks[j].kind == "punct" and toks[j].text == ";"
+                    ):
+                        j = (
+                            pairs[j] + 1
+                            if toks[j].kind == "punct" and toks[j].text in "([{"
+                            else j + 1
+                        )
                     end_idx = j
                     break
                 if u.text == ";":
@@ -476,9 +638,15 @@ def _members(toks: list[Tok], pairs: dict[int, int], lo: int, hi: int, prefix: s
                         names = [h.text for h in header_ids]
                         kw = next(k for k, h in enumerate(names) if h in _TYPE_KEYWORDS)
                         cname = names[kw + 1] if kw + 1 < len(names) else "?"
-                        if names[kw] == "record" and cname in ("struct", "class") and kw + 2 < len(names):
+                        if (
+                            names[kw] == "record"
+                            and cname in ("struct", "class")
+                            and kw + 2 < len(names)
+                        ):
                             cname = names[kw + 2]
-                        inner_prefix = prefix if names[kw] == "namespace" else f"{prefix}{cname}."
+                        inner_prefix = (
+                            prefix if names[kw] == "namespace" else f"{prefix}{cname}."
+                        )
                         _members(toks, pairs, j + 1, close, inner_prefix, out)
                         end_idx = None
                         i = close + 1
@@ -486,13 +654,27 @@ def _members(toks: list[Tok], pairs: dict[int, int], lo: int, hi: int, prefix: s
                     name = name or (header_ids[-1].text if header_ids else "?")
                     if kind == "enum":
                         names = [h.text for h in header_ids]
-                        name = names[names.index("enum") + 1] if "enum" in names[:-1] else name
+                        name = (
+                            names[names.index("enum") + 1]
+                            if "enum" in names[:-1]
+                            else name
+                        )
                     end_idx = close
                     # property with an initializer: `{ get; set; } = value;`
-                    if close + 1 < hi and toks[close + 1].kind == "punct" and toks[close + 1].text == "=":
+                    if (
+                        close + 1 < hi
+                        and toks[close + 1].kind == "punct"
+                        and toks[close + 1].text == "="
+                    ):
                         k = close + 1
-                        while k < hi and not (toks[k].kind == "punct" and toks[k].text == ";"):
-                            k = pairs[k] + 1 if toks[k].kind == "punct" and toks[k].text in "([{" else k + 1
+                        while k < hi and not (
+                            toks[k].kind == "punct" and toks[k].text == ";"
+                        ):
+                            k = (
+                                pairs[k] + 1
+                                if toks[k].kind == "punct" and toks[k].text in "([{"
+                                else k + 1
+                            )
                         end_idx = k
                     break
                 if u.text in "([" and u.text in "([{":
@@ -507,7 +689,14 @@ def _members(toks: list[Tok], pairs: dict[int, int], lo: int, hi: int, prefix: s
         if kind == "container" and end_idx is not None and name is None:
             name = "?"
         end_idx = min(end_idx, len(toks) - 1)
-        out.append(Member(name or "?", f"{prefix}{name or '?'}", toks[start_idx].start, toks[end_idx].end))
+        out.append(
+            Member(
+                name or "?",
+                f"{prefix}{name or '?'}",
+                toks[start_idx].start,
+                toks[end_idx].end,
+            )
+        )
         i = end_idx + 1
 
 
@@ -526,13 +715,17 @@ def analyze(src: str) -> SourceModel:
 def offset_of(model: SourceModel, line: int, column: int, what: str) -> int:
     """1-based (line, UTF-16 column) -> string offset."""
     if line < 1 or line > len(model.line_starts):
-        raise TriageError(f"{what}: line {line} is outside the source ({len(model.line_starts)} lines)")
+        raise TriageError(
+            f"{what}: line {line} is outside the source ({len(model.line_starts)} lines)"
+        )
     i = model.line_starts[line - 1]
     units = 0
     src = model.src
     while units < column - 1:
         if i >= len(src):
-            raise TriageError(f"{what}: column {column} runs past the end of the source")
+            raise TriageError(
+                f"{what}: column {column} runs past the end of the source"
+            )
         units += 2 if ord(src[i]) > 0xFFFF else 1
         i += 1
     return i
@@ -546,7 +739,7 @@ def _args(model: SourceModel, inv: Invocation) -> list[list[Tok]]:
     toks = model.toks
     args: list[list[Tok]] = [[]]
     depth = 0
-    for t in toks[inv.open_idx + 1:inv.close_idx]:
+    for t in toks[inv.open_idx + 1 : inv.close_idx]:
         if t.kind == "punct" and t.text in "([{":
             depth += 1
         elif t.kind == "punct" and t.text in ")]}":
@@ -561,7 +754,8 @@ def _args(model: SourceModel, inv: Invocation) -> list[list[Tok]]:
 def _operator_value(model: SourceModel, inv: Invocation, start: int, end: int) -> bool:
     """``operator Value``: the mutant IS the ``value`` argument (index 1) of the call, that argument is a
     single non-interpolated string literal spelling an operator or delimiter (non-empty, punctuation
-    only), and the token type (index 0) is a ``TokenType`` member outside the f-string family."""
+    only), and the token type (index 0) is a ``TokenType`` member outside the f-string family.
+    """
     args = _args(model, inv)
     if len(args) < 2 or len(args[1]) != 1:
         return False
@@ -595,7 +789,7 @@ def _top_level_alternatives(pattern: str) -> list[str]:
     while i < len(pattern):
         ch = pattern[i]
         if ch == "\\" and i + 1 < len(pattern):
-            cur.append(pattern[i:i + 2])
+            cur.append(pattern[i : i + 2])
             i += 2
             continue
         if ch in "([":
@@ -628,10 +822,14 @@ def load_ignore(data: dict, universe: set[str]) -> list[IgnoreEntry]:
             if not isinstance(e.get(key), str) or not e[key].strip():
                 raise TriageError(f"{where}: '{key}' must be a non-empty string")
         if e["mutator"] not in KNOWN_MUTATORS:
-            raise TriageError(f"{where}: mutator '{e['mutator']}' is not a Stryker identifier {sorted(KNOWN_MUTATORS)}")
+            raise TriageError(
+                f"{where}: mutator '{e['mutator']}' is not a Stryker identifier {sorted(KNOWN_MUTATORS)}"
+            )
         field_of = e.get("fieldOf")
         if field_of is not None and field_of not in FIELD_PREDICATES:
-            raise TriageError(f"{where}: fieldOf '{field_of}' is not one of {sorted(FIELD_PREDICATES)}")
+            raise TriageError(
+                f"{where}: fieldOf '{field_of}' is not one of {sorted(FIELD_PREDICATES)}"
+            )
         try:
             regex = re.compile(e["within"])
         except re.error as ex:
@@ -641,7 +839,8 @@ def load_ignore(data: dict, universe: set[str]) -> list[IgnoreEntry]:
             if not any(alt_re.fullmatch(name) for name in universe):
                 raise TriageError(
                     f"{where}: within alternative '{alt}' names no method invoked in any source "
-                    f"({len(universe)} callee names scanned) — the entry would match nothing")
+                    f"({len(universe)} callee names scanned) — the entry would match nothing"
+                )
         out.append(IgnoreEntry(e["mutator"], e["within"], e["reason"], field_of, regex))
     return out
 
@@ -649,7 +848,15 @@ def load_ignore(data: dict, universe: set[str]) -> list[IgnoreEntry]:
 # --------------------------------------------------------------------------- #
 # classes
 # --------------------------------------------------------------------------- #
-_C1 = frozenset({"ReadNumber", "ReadHexNumber", "ReadBinaryNumber", "ReadOctalNumber", "ReadPrefixedIntegerSuffix"})
+_C1 = frozenset(
+    {
+        "ReadNumber",
+        "ReadHexNumber",
+        "ReadBinaryNumber",
+        "ReadOctalNumber",
+        "ReadPrefixedIntegerSuffix",
+    }
+)
 _C3 = frozenset({"NextToken", "ConsumeLineBreak", "IsPreCloseNewline"})
 _C7 = frozenset({"Keywords", "_keywordNames"})
 CLASS_NAMES = ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "unclassified")
@@ -693,10 +900,17 @@ def _display_names(paths: list[str]) -> dict[str, str]:
     return {p: os.path.relpath(p, base) if base else p for p in paths}
 
 
-def triage(report: dict, ignore: dict, universe_dirs: Optional[list[str]] = None, with_classes: bool = False) -> dict:
+def triage(
+    report: dict,
+    ignore: dict,
+    universe_dirs: Optional[list[str]] = None,
+    with_classes: bool = False,
+) -> dict:
     files = report.get("files") if isinstance(report, dict) else None
     if not isinstance(files, dict) or not files:
-        raise TriageError("report: no 'files' object (is this a mutation-testing-elements report?)")
+        raise TriageError(
+            "report: no 'files' object (is this a mutation-testing-elements report?)"
+        )
 
     models: dict[str, SourceModel] = {}
     for path, entry in files.items():
@@ -705,7 +919,9 @@ def triage(report: dict, ignore: dict, universe_dirs: Optional[list[str]] = None
             try:
                 src = Path(path).read_text(encoding="utf-8-sig")
             except OSError as ex:
-                raise TriageError(f"report: '{path}' has no source and cannot be read: {ex}") from ex
+                raise TriageError(
+                    f"report: '{path}' has no source and cannot be read: {ex}"
+                ) from ex
         try:
             models[path] = analyze(src)
         except TriageError as ex:
@@ -738,26 +954,41 @@ def triage(report: dict, ignore: dict, universe_dirs: Optional[list[str]] = None
             raw[status] += 1
             try:
                 loc = mut["location"]
-                start = offset_of(model, int(loc["start"]["line"]), int(loc["start"]["column"]), what)
-                end = offset_of(model, int(loc["end"]["line"]), int(loc["end"]["column"]), what)
+                start = offset_of(
+                    model, int(loc["start"]["line"]), int(loc["start"]["column"]), what
+                )
+                end = offset_of(
+                    model, int(loc["end"]["line"]), int(loc["end"]["column"]), what
+                )
             except (KeyError, TypeError, ValueError) as ex:
                 raise TriageError(f"{what}: malformed location: {ex}") from ex
             mut_id = mutator_id(str(mut.get("mutatorName", "")))
             enclosing = sorted(
-                (inv for inv in model.invocations if inv.args_start <= start and end <= inv.args_end),
-                key=lambda inv: inv.args_end - inv.args_start)
-            member_hits = sorted((mb for mb in model.members if mb.start <= start and end <= mb.end),
-                                 key=lambda mb: mb.end - mb.start)
+                (
+                    inv
+                    for inv in model.invocations
+                    if inv.args_start <= start and end <= inv.args_end
+                ),
+                key=lambda inv: inv.args_end - inv.args_start,
+            )
+            member_hits = sorted(
+                (mb for mb in model.members if mb.start <= start and end <= mb.end),
+                key=lambda mb: mb.end - mb.start,
+            )
             member = member_hits[0].name if member_hits else "-"
             bucket_status = status
             if status in SCORED:
                 for n, ig in enumerate(entries):
                     if ig.mutator != mut_id:
                         continue
-                    hit = next((inv for inv in enclosing if ig.regex.fullmatch(inv.name)), None)
+                    hit = next(
+                        (inv for inv in enclosing if ig.regex.fullmatch(inv.name)), None
+                    )
                     if hit is None:
                         continue
-                    if ig.field_of and not FIELD_PREDICATES[ig.field_of](model, hit, start, end):
+                    if ig.field_of and not FIELD_PREDICATES[ig.field_of](
+                        model, hit, start, end
+                    ):
                         continue
                     bucket_status = "ignoredByList"
                     listed[status] += 1
@@ -766,14 +997,35 @@ def triage(report: dict, ignore: dict, universe_dirs: Optional[list[str]] = None
             invocation = enclosing[0].name if enclosing else "-"
             key = f"{fname}|{mut_id}|{invocation}|{bucket_status}"
             buckets[key] = buckets.get(key, 0) + 1
-            row = {"id": mid, "file": fname, "line": loc["start"]["line"], "column": loc["start"]["column"],
-                   "mutator": mut_id, "member": member, "invocation": invocation, "status": bucket_status}
+            row = {
+                "id": mid,
+                "file": fname,
+                "line": loc["start"]["line"],
+                "column": loc["start"]["column"],
+                "mutator": mut_id,
+                "member": member,
+                "invocation": invocation,
+                "status": bucket_status,
+            }
             if bucket_status in UNDETECTED:
                 cls = classify(Path(fname).name, member, mut_id, model.src[start:end])
                 classes[cls] += 1
                 row["class"] = cls
                 if with_classes:
-                    class_mutants[cls].append({k: row[k] for k in ("id", "file", "line", "column", "mutator", "member", "status")})
+                    class_mutants[cls].append(
+                        {
+                            k: row[k]
+                            for k in (
+                                "id",
+                                "file",
+                                "line",
+                                "column",
+                                "mutator",
+                                "member",
+                                "status",
+                            )
+                        }
+                    )
             mutants_out.append(row)
 
     total = sum(raw.values())
@@ -792,8 +1044,10 @@ def triage(report: dict, ignore: dict, universe_dirs: Optional[list[str]] = None
         "ignoredByStryker": raw["ignoredByStryker"],
         "ignoredByList": sum(listed.values()),
         "afterList": after,
-        "listedByEntry": [{"within": e.within, "fieldOf": e.field_of, "matched": by_entry[n]}
-                          for n, e in enumerate(entries)],
+        "listedByEntry": [
+            {"within": e.within, "fieldOf": e.field_of, "matched": by_entry[n]}
+            for n, e in enumerate(entries)
+        ],
         "buckets": dict(sorted(buckets.items())),
         "classes": classes,
         "mutants": mutants_out,
@@ -806,10 +1060,22 @@ def triage(report: dict, ignore: dict, universe_dirs: Optional[list[str]] = None
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--report", required=True, help="Stryker mutation-report.json")
-    ap.add_argument("--ignore", required=True, help="ignore list (e.g. build_tools/stryker/lexer-ignore.json)")
-    ap.add_argument("--classes", action="store_true", help="also list the undetected mutants of each class")
-    ap.add_argument("--universe", action="append", default=[],
-                    help="extra directory whose *.cs files count as sources for the within-name check")
+    ap.add_argument(
+        "--ignore",
+        required=True,
+        help="ignore list (e.g. build_tools/stryker/lexer-ignore.json)",
+    )
+    ap.add_argument(
+        "--classes",
+        action="store_true",
+        help="also list the undetected mutants of each class",
+    )
+    ap.add_argument(
+        "--universe",
+        action="append",
+        default=[],
+        help="extra directory whose *.cs files count as sources for the within-name check",
+    )
     args = ap.parse_args(argv)
     try:
         report = json.loads(Path(args.report).read_text(encoding="utf-8-sig"))

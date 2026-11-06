@@ -21,7 +21,9 @@ def _by_name(report, name):
     for m in report.methods:
         if m.method == name or m.qualified_name == name:
             return m
-    raise AssertionError(f"method {name!r} not found in {[m.qualified_name for m in report.methods]}")
+    raise AssertionError(
+        f"method {name!r} not found in {[m.qualified_name for m in report.methods]}"
+    )
 
 
 # --------------------------------------------------------------------------- #
