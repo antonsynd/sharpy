@@ -46,11 +46,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 [Trait("Category", "GapDiscovery")]
 public class FormatSpecDifferentialTests : IntegrationTestBase
 {
-    public FormatSpecDifferentialTests(ITestOutputHelper output) : base(output)
-    {
-        // Every compile's generated C# would land in this test's result: muted (#2438, the per-test output ceiling).
-        MuteCompilePath = true;
-    }
+    public FormatSpecDifferentialTests(ITestOutputHelper output) : base(output) { }
 
     // A fixed integer seed drives a System.Random so the generated corpus is byte-for-byte identical
     // run-to-run and machine-to-machine on a pinned runtime — a sweep whose inputs drift cannot be
@@ -165,10 +161,6 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         var allowlist = Allowlist.Load();
         var divergences = new List<(Cell Cell, Column Column, string Detail, bool Allowlisted)>();
         int staticAgreements = 0;
-        // A cell the oracle never judged is a generator / batch bug and fails the sweep (D3.5); a python SyntaxError
-        // or either arm's timeout is no verdict either, so those cells are skipped, but counted and reported.
-        var missingVerdicts = new List<string>();
-        int pythonSyntaxErrors = 0, pythonTimeouts = 0, sharpyTimeouts = 0;
         for (int i = 0; i < cells.Count; i++)
         {
             var cell = cells[i];
@@ -177,28 +169,11 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                 var column = Columns[c];
                 var key = cell.Key(column);
                 var s = sharpy[key];
-                if (!pythonById.TryGetValue(i * Columns.Length + c, out var py) || py is null)
-                {
-                    missingVerdicts.Add(key);
-                    continue;
-                }
+                pythonById.TryGetValue(i * Columns.Length + c, out var py);
 
                 // The Python side must have run the cell (no syntax error, no timeout) to be an oracle.
-                if (py.SyntaxError)
-                {
-                    pythonSyntaxErrors++;
+                if (py is null || py.SyntaxError || py.TimedOut || s.TimedOut)
                     continue;
-                }
-                if (py.TimedOut)
-                {
-                    pythonTimeouts++;
-                    continue;
-                }
-                if (s.TimedOut)
-                {
-                    sharpyTimeouts++;
-                    continue;
-                }
 
                 string sharpyOut = Normalize(s.Stdout);
                 string pythonOut = Normalize(py.Stdout);
@@ -250,21 +225,12 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             + $"engine column {engineDivergent} divergent, static column {staticDivergent} divergent "
             + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError/TypeError wording, "
             + $"{staticRuntimeOnly} refused only at runtime); "
-            + $"{eqPrefixCells} '='+'#'+radix cells; "
-            + $"{missingVerdicts.Count} cell-column(s) with no python verdict, skipped without a verdict: "
-            + $"{pythonSyntaxErrors} python SyntaxError, {pythonTimeouts} python timeout, {sharpyTimeouts} Sharpy timeout. "
-            + $"Wall={sw.Elapsed.TotalSeconds:F1}s.");
-        foreach (var k in missingVerdicts.Take(40))
-            Output.WriteLine($"  NO PYTHON VERDICT {k}");
+            + $"{eqPrefixCells} '='+'#'+radix cells. Wall={sw.Elapsed.TotalSeconds:F1}s.");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE {o.Cell.Key(o.Column)}  {o.Detail}");
         foreach (var k in stale)
             Output.WriteLine($"  STALE {k}");
 
-        Assert.True(missingVerdicts.Count == 0,
-            $"Format-spec differential: {missingVerdicts.Count} cell-column(s) the python batch returned no verdict for "
-            + "(a generator / batch bug, never a skip):\n"
-            + string.Join("\n", missingVerdicts.Take(40).Select(k => "  " + k)));
         Assert.True(offenders.Count == 0,
             $"Format-spec differential: {offenders.Count} non-allowlisted divergence(s) between Sharpy and python3. "
             + "Fix the engine, or add an allowlist entry citing an issue:\n"

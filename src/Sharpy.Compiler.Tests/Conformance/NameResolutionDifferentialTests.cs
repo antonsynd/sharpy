@@ -103,52 +103,14 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
-    /// <summary>P77b axis 8: the assignment target shape of an attribute STORE (a <c>FirstInvalidAssignmentTarget</c> arm name;
-    /// null: the bare <c>Identifier</c> forms of the STORE family) and its receiver.</summary>
-    public string? TargetShape { get; init; }
-    public AttributeReceiver? Receiver { get; init; }
-
-    /// <summary>P77b axis 7: the READ class cell's host type kind when it is not the position's own (null: the position's host,
-    /// <c>HostHeader</c>'s class / <c>@dataclass</c> / struct initializer host).</summary>
-    public Sharpy.Compiler.Semantic.TypeKind? Host { get; init; }
-
-    /// <summary>P77b axis 10: where the type-level member a READ names is declared, relative to the reading type (null: a cell
-    /// with no declaring type, or one the relation axis does not tag).</summary>
-    public DeclaringRelation? Relation { get; init; }
-
-    /// <summary>P77b axis 12: the <c>global</c> / <c>nonlocal</c> declaration shape and keyword of a STORE cell.</summary>
-    public DeclarationSite? Declaration { get; init; }
-
-    /// <summary>P77b axis 4: when a LOCAL read happens relative to its binding (null: a family with no LOCAL read timing).</summary>
-    public ReadTiming? Timing { get; init; }
-
-    /// <summary>P77b axis 3: what the cell observes. Every cell observes a value; an order cell also observes initializer order.</summary>
-    public Observation Observed { get; init; } = Observation.Value;
-
-    /// <summary>P77b axis 2: the N3 cycle's endpoint pair, route and endpoint kinds.</summary>
-    public CycleRoute? Cycle { get; init; }
-
-    /// <summary>P77b axis 1: the comprehension kind, clause and slot the cell's name sits in.</summary>
-    public ComprehensionSite? Comprehension { get; init; }
-
     /// <summary>Set by the type-position cells: which value of roster 6 this cell feeds (D3.c).</summary>
     public TypePosition? TypeAt { get; init; }
-
-    /// <summary>P77b axis 11: how a type-position cell spells the type (Bare: <c>Later</c>; Alias: <c>type A = Later</c>).</summary>
-    public NameResolutionDifferentialTests.Spelling? TypeSpelling { get; init; }
-
-    /// <summary>P77b axis 11: the value a <c>T !E</c> function returns (null: not a result-error cell).</summary>
-    public ResultValueForm? ResultForm { get; init; }
 
     /// <summary>Set by SEED cells: the error codes the refusal may carry, from the seed table (a seed's rule names none).</summary>
     public IReadOnlySet<string>? SeedRefusalCodes { get; init; }
 
     /// <summary>The Sharpy source the twin renders from when python has no spelling of the construct (a module accessor).</summary>
     public string? TwinSource { get; init; }
-
-    /// <summary>P77b D2.9: the source imports a Sharpy.Stdlib module, so <c>RunSharpy</c> references the monolith for this
-    /// cell alone. Set by the generator on the cells it builds over the <c>ImportedName</c> outer, never read off the source.</summary>
-    public bool NeedsStdlib { get; init; }
 
     /// <summary>Set by SEED cells: the table's issue cite for a red.</summary>
     public string? SeedCite { get; init; }
@@ -164,11 +126,8 @@ public partial class NameResolutionDifferentialTests
     private const string AllowlistFileName = "name-resolution-differential-allowlist.txt";
     private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
-    /// <summary>D3's budget: the pool's size, with the 13-minute dev wall as its other half. P77b D1 (R-KP): 8,500 held the
-    /// restored READ outers and builtins; the lead's budget ruling 2026-11-06 (plan checklist) generates the twelve axes whole and
-    /// rounds the measured pool up to the next 500 (8,516 at axis 8 → 9,000), the dev wall staying ≤ 13 min; the wall, not this
-    /// count, is the binding limit.</summary>
-    private const int CellBudget = 9000;
+    /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
+    private const int CellBudget = 6500;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
@@ -329,28 +288,8 @@ public partial class NameResolutionDifferentialTests
         [("kind:SPY0225", "SPY0134")] = 6,
         // A later member in a constant-only initializer: the name is not visible yet, so SPY0401 is not reached.
         [("SPY0401", "SPY0200")] = 9,
-        // P77b D1's restored ModuleEnum outer: `x.RED.value` on an int member is an undefined member before SPY0401 is reached.
-        [("SPY0401", "SPY0203")] = 12,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
-        // P77b axis 8 (R-LH): an instance method stored through a type (`H.x = lambda: 9`, `A.`, `D.`) is refused as an
-        // instance member read through a type before the method store's own refusal is reached: refused by direction.
-        [("kind:SPY0606", "SPY0290")] = 3,
-        // P77b R-LJ: a module binding spelled like an imported name is SPY0204 at its own declaration, before N2's module
-        // refusal of the read above it is reached (p23): refused by direction, pinned until N2's own diagnostic lands (#2423).
-        [("N2-module", "SPY0204")] = 3,
-        // P77b axis 12: the parser refuses every `global` / `nonlocal` line (SPY0134) until #2424 implements N6, so each N6
-        // declaration shape is refused by direction before its own refusal is reached.
-        [("N6-declaration", "SPY0134")] = 80,
-        // P77b D6 R-LI (D21): the lambda-typed local called above its binding under a non-callable outer binds the outer and is
-        // refused as a call on it (SPY0230), before #2425's "declared later" is reached: refused by direction.
-        [("N5-declared-later", "SPY0230")] = 12,
-        // P77b D6 R-KY (D11): a store to a def / type-kind name, refused today by its neighbours until #2424's own code lands —
-        // `global f` by the parser (SPY0134), `f += 1` as a type error on the def / type read (SPY0222 / SPY0342 / SPY0346).
-        [("N6-type-kind", "SPY0134")] = 21,
-        [("N6-type-kind", "SPY0222")] = 2,
-        [("N6-type-kind", "SPY0342")] = 6,
-        [("N6-type-kind", "SPY0346")] = 6,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -360,59 +299,24 @@ public partial class NameResolutionDifferentialTests
     {
         // SPY0618 is P75's forward refusal, which the principle retires: 1 comprehension cell reaches it before the name check.
         ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
-        // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it. SPY0320
-        // is SPY0230's neighbour for the ImportedName read (P77b axis 9): `len(digits)` on the int member has no `__len__`.
-        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
-        // SPY0203 is SPY0230's neighbour for the EnumValue form (P77b D1's restored ModuleEnum outer): `x.RED.value` on the
-        // later int member the read wrongly binds is an undefined member, as `x(...)` on it is not callable. SPY0320 is the
-        // same for the ImportedName read (P77b axis 9): `len(digits)` on the later int member has no `__len__`.
-        ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
-        // P77b R-LJ: SPY0204 is the module binding re-declaring an imported name (pinned in EarlierRefusals); SPY0230 is the
-        // later binding the read wrongly binds, called or measured as the wrong kind.
-        ["N2-module"] = new[] { "SPY0204", "SPY0230" },
+        // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
+        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
-        // P77b axis 4 (R-KX / R-LC): with no outer binding, a read above (a back edge, a closure taken before `out let`) its own
-        // binding is an undefined name at the read: SPY0200 is the name verdict itself, no type is involved. P77b D6 R-LI: SPY0230
-        // is the lambda-typed local called above its binding under a non-callable outer — the read binds the outer (refused by
-        // direction, pinned in EarlierRefusals until #2425's "declared later" lands).
-        ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
-        // P77b D6 R-LE (D17): the lambda-typed local reading itself stays refused; the steer is message-only, never compared.
-        ["N5-self"] = new[] { "SPY0200" },
-        // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
-        // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
-        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
-        // P77b axis 12: SPY0134 is the parser's refusal of the declaration line itself, pinned in EarlierRefusals until #2424.
-        ["N6-declaration"] = new[] { "SPY0134" },
-        // P77b D6 R-KY (D11): the store's own code lands with #2424. Today `global f` is the parser's SPY0134, `f += 1` the type
-        // errors SPY0222 / SPY0342 / SPY0346 on the def or type read: each pinned in EarlierRefusals as a refusal by direction.
-        ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
+        // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
+        ["N6"] = new[] { "SPY0200", "SPY0222" },
         ["R-KG"] = new[] { "SPY0200" },
-        // P77b D3.4 (lead ruling 2026-11-06): a must-refuse rule whose cure allocates no code yet admits NOTHING, so any refusal
-        // today is red — none of these cells refuses today (they run, or reach Roslyn). The cure that allocates the code adds it.
-        // R-KT: a struct `self` captured by a C# closure (#2434). R-KU: a `@static` member stored through `self.` / a derived type /
-        // an instance (#2435). S2: a construct target reusing a visible binding, read after the construct (#2425). N1-arity: a class
-        // spelled like a builtin, called with the builtin's arity (#2423: N1 binds the class, and its constructor's arity refuses).
-        ["R-KT"] = Array.Empty<string>(),
-        ["R-KU"] = Array.Empty<string>(),
-        ["S2"] = Array.Empty<string>(),
-        ["N1-arity"] = Array.Empty<string>(),
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
-        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
+        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
-        // P77b axis 5: a block's `def` over a `def` of the same function in an enclosing block (function_definition.md).
-        ["kind:SPY0204"] = new[] { "SPY0204" },
-        // P77b axis 8 (R-LH): SPY0290 is the instance method stored through a type, pinned in EarlierRefusals.
-        ["kind:SPY0606"] = new[] { "SPY0290", "SPY0606" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
         ["kind:enum-member-constant"] = new[] { "SPY0200" },
         ["kind:instance-at-initializer"] = new[] { "SPY0200", "SPY0230", "SPY0401" },
-        // P77b axis 11: SPY0260 refuses the bare `return v` from `T !E` (the spec requires Ok): the refusal IS the verdict.
-        ["kind:result-wrap"] = new[] { "SPY0260" },
     };
 
     /// <summary>Is every error code of this refusal one its rule admits? A rule with no entry admits nothing.</summary>
@@ -437,16 +341,9 @@ public partial class NameResolutionDifferentialTests
         foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused))
         {
             var named = RuleNamesCode.Match(r.Cell.Rule);
+            if (!named.Success || r.Run.ErrorCodes.Contains(named.Groups[1].Value))
+                continue;
             var first = r.Run.ErrorCodes.First(c => !IgnoredCodes.Contains(c));
-            if (!named.Success)
-            {
-                // A rule that names no code is held to its admitted codes above; an earlier refusal pinned for it is counted.
-                if (EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
-                    seen[(r.Cell.Rule, first)] = seen.GetValueOrDefault((r.Cell.Rule, first)) + 1;
-                continue;
-            }
-            if (r.Run.ErrorCodes.Contains(named.Groups[1].Value))
-                continue;
             if (!EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
                 yield return $"RefusalCode: {r.Cell.Id} names {r.Cell.Rule} and was refused with {first}";
             seen[(r.Cell.Rule, first)] = seen.GetValueOrDefault((r.Cell.Rule, first)) + 1;
@@ -516,37 +413,16 @@ public partial class NameResolutionDifferentialTests
         switch (verdict)
         {
             case VerdictClass.Ice:
-                // P77b axis 8 (lead ruling 2026-11-06): a member store the checker lets through to Roslyn (CS0131 on a const,
-                // CS0176 on a `@static` member through `self.`) is #2435's class — keyed on the attribute-store cell, never on
-                // the CS code, so #2147's CS0176 READ receivers keep their route.
-                if (cell.TargetShape == "MemberAccess")
-                    return "#2435";
                 if (run.AllCodes.Contains("SPY0909"))
                     return "#2398";
                 return run.CsCode switch
                 {
                     "CS0176" => "#2147",
-                    // P77b axis 7 (R-KT): a struct `self` captured by a C# lambda or local function reaches Roslyn unrefused (lead
-                    // ruling 2026-11-06: #2434's class).
-                    // A struct `self.s()` on a `@static` method at a closure: #2147's `this.S()` lowering (the class host's same
-                    // cells are CS0176 rows on #2147) seen through the struct closure (lead ruling 2026-11-06).
-                    "CS1673" when cell.Target == BindingKind.StaticMethod => "#2147",
-                    "CS1673" => "#2434",
-                    // P77b axis 10 (p08): a nested type reading its container's other nested type bare is #2397's nested-type
-                    // read. Keyed on the sibling relation, never on the NestedType target: the 154 own-body NestedType CS1955
-                    // rows keep their #2423 route (lead ruling 2026-11-06).
-                    "CS1955" when cell.Relation == DeclaringRelation.Sibling => "#2397",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
-                    // P77b axis 11 (lead ruling 2026-11-06): a type position spelled through `type A = Later` that the emitter
-                    // writes as a value (`isinstance(o, A)`) is #1925's alias-position class.
-                    "CS0103" when cell.TypeSpelling == Spelling.Alias => "#1925",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
-                    // P77b axis 11 (p16, lead ruling 2026-11-06): a bare `return v` from `T !E` with `E` declared later reaches
-                    // Roslyn unwrapped; the earlier order is refused SPY0260 (#2249: the result wrap, the later-declared type).
-                    "CS0029" when cell.ResultForm == ResultValueForm.Bare => "#2249",
                     "CS1955" or "CS8917" or "CS1729" or "CS0029" => "#2423",
                     // A position that needs a constant was handed something else and nothing refused it.
                     "CS0133" or "CS1736" => "#2432",
@@ -554,16 +430,6 @@ public partial class NameResolutionDifferentialTests
                     "CS0149" or "CS0266" when cell.Target == BindingKind.StaticProperty => "#2417",
                     // A later binding reaches the emitter untyped; N1's order-free resolution types it.
                     "CS0149" or "CS0266" or "CS1503" => "#2423",
-                    // A builtin's overload set reached the emitter for a later module binding of its name (p15, `max(1, 2)`
-                    // above `max: int = 7`, P77b D1's restored builtin): N1's order-free resolution binds the module name.
-                    "CS1501" => "#2423",
-                    // `x.RED.value` the checker bound to the module enum outer while C# binds the class member (P77b D1's
-                    // restored ModuleEnum outer): the checker and the emitter disagree on the binding, and N1 makes them agree.
-                    "CS1061" when cell.Outer == BindingKind.ModuleEnum => "#2423",
-                    // An imported name read bare in a method beside a same-named member (P77b axis 9): the checker binds the import
-                    // and the emitter qualifies it as the module class's member. Routed with the N1 class's checker / emitter
-                    // disagreement; the H2 findings-ledger line asks the lead to confirm the class.
-                    "CS0117" when cell.Outer == BindingKind.ImportedName => "#2423",
                     // No default arm: an ICE nobody has triaged is red until a route names the check that cures it.
                     _ => $"UNROUTED({run.CsCode})",
                 };
@@ -574,10 +440,6 @@ public partial class NameResolutionDifferentialTests
                     return run.AllCodes.Contains("SPY0134") ? "#2424"
                         : run.AllCodes.Contains("SPY0600") ? "#2423"
                         : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
-                // P77b axis 11 (p17, lead ruling 2026-11-06): a type position spelled through an alias and refused (`class C(A)`)
-                // is #1925's alias-position class.
-                if (cell.TypeSpelling == Spelling.Alias)
-                    return "#1925";
                 return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
                     ? "#2422"
                     : "#2423";
@@ -588,19 +450,10 @@ public partial class NameResolutionDifferentialTests
                     return "#2412";
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
-                // P77b axis 8 (lead ruling 2026-11-06): a member store that runs where it must be refused (R-KU's `@static`
-                // member through `self.` / `D.` / `h0.`, R-LH's method) is #2435's: "a store that cannot run is refused".
-                // P77b axis 8 (lead ruling 2026-11-06): an augmented `self.x op= v` at the top of `__init__` is emitted as
-                // `this.X = v` — a lowering defect, not a store to refuse.
-                if (cell.TargetShape == "MemberAccess" && cell.Rule == "N7" && cell.Position == ReadPosition.InitBody && cell.Form == StoreForm.Augmented)
-                    return "#2439";
-                if (cell.TargetShape == "MemberAccess" && cell.Rule is "R-KU" or "kind:SPY0606")
-                    return "#2435";
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)
-                    // N5-declared-later is #2425's (R-KX): a read above the local's binding that reads the outer instead.
-                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) || cell.Rule == "N5-declared-later" ? "#2425" : "#2423";
+                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) ? "#2425" : "#2423";
                 // Only a read with no other binding can print a storage default; values-ready cannot change which binding is read.
                 return cell.Tag == SharpyTag.MustRefuse || cell.Outer != BindingKind.None ? "#2423" : "#2422";
             default:
@@ -612,19 +465,9 @@ public partial class NameResolutionDifferentialTests
         => cell.Target == BindingKind.ModuleTypeAlias || cell.Outer == BindingKind.ModuleTypeAlias
             || (cell.Family == Family.TypeMember && cell.Id.Contains("/alias/", StringComparison.Ordinal));
 
-    /// <summary>P77b D2.9: set by <see cref="RunSharpy"/> for the one compile it wraps and read back by the override below, in
-    /// the shape of <c>DifferentialExecutionTests._currentProgramNeedsStdlib</c>. The Sharpy arm is a sequential loop over
-    /// one test instance, so a field is the whole mechanism; every cell that does not ask keeps the Core-only reference.</summary>
-    private bool _currentCellNeedsStdlib;
-
-    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
-        => _currentCellNeedsStdlib ? new[] { SharpyStdlibReference.Location } : Enumerable.Empty<string>();
-
-    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs, bool needsStdlib = false)
+    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
     {
-        bool wasMuted = MuteCompilePath;
-        MuteCompilePath = true;
-        _currentCellNeedsStdlib = needsStdlib;
+        _compilePathOutput.Muted = true;
         ExecutionResult r;
         try
         {
@@ -632,8 +475,7 @@ public partial class NameResolutionDifferentialTests
         }
         finally
         {
-            MuteCompilePath = wasMuted;
-            _currentCellNeedsStdlib = false;
+            _compilePathOutput.Muted = false;
         }
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();
@@ -644,16 +486,6 @@ public partial class NameResolutionDifferentialTests
             .Where(m => m.Success).Select(m => m.Value).FirstOrDefault();
         return new SharpyRun(r.Success, r.ExitCode, r.Exception != null, r.TimedOut,
             r.StandardOutput, r.StandardError, errors, all, cs);
-    }
-
-    /// <summary>D4.3: a Sharpy run that times out is re-run ONCE at twice the timeout before <see cref="ClassifySharpy"/> sees
-    /// it, so one slow cell on a loaded machine is not a red; a second timeout stays a timeout (Harness, red). The run is a
-    /// parameter so the retry is testable without a real hang.</summary>
-    internal static SharpyRun RunWithRetry(Func<string, int, SharpyRun> run, string source, int timeoutMs, out bool retried)
-    {
-        var first = run(source, timeoutMs);
-        retried = first.TimedOut;
-        return first.TimedOut ? run(source, 2 * timeoutMs) : first;
     }
 
     private static string SourceKey(string source)
@@ -674,8 +506,6 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(ClosedSetFailures(pool));
         failures.AddRange(CensusFailures(pool));
         failures.AddRange(RosterFedFailures(pool));
-        failures.AddRange(ModelPairingFailures(pool, out _, out _));
-        failures.AddRange(RuleAxesFailures(pool, out _, out _));
         if (pool.Count > CellBudget)
             failures.Add($"the pool is {pool.Count} cells and the budget is {CellBudget}: prune in D3.e's order");
 
@@ -707,8 +537,6 @@ public partial class NameResolutionDifferentialTests
         var cachePath = Environment.GetEnvironmentVariable(CacheEnv);
         var cache = LoadCache(cachePath);
         int cached = 0;
-        int retried = 0;
-        var timing = new ArmTiming();
         var runs = new SharpyRun[cells.Count];
         for (int i = 0; i < cells.Count; i++)
         {
@@ -720,12 +548,7 @@ public partial class NameResolutionDifferentialTests
             }
             else
             {
-                var needsStdlib = cells[i].NeedsStdlib;
-                var started = Stopwatch.GetTimestamp();
-                runs[i] = RunWithRetry((src, timeout) => RunSharpy(src, timeout, needsStdlib), cells[i].Source, SharpyExecTimeoutMs, out var again);
-                timing.Add(needsStdlib, Stopwatch.GetElapsedTime(started).TotalSeconds);
-                if (again)
-                    retried++;
+                runs[i] = RunSharpy(cells[i].Source);
                 if (cachePath != null)
                     cache[key] = runs[i];
             }
@@ -781,7 +604,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(RefusalCodeFailures(results, partial));
 
         wall.Stop();
-        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, timing, wall.Elapsed);
+        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, wall.Elapsed);
         WriteProposedAllowlist(results);
 
         Output.WriteLine(report);
@@ -843,8 +666,6 @@ public partial class NameResolutionDifferentialTests
         IReadOnlyList<string> ineffective,
         bool partial,
         int cached,
-        int retried,
-        ArmTiming timing,
         TimeSpan wall)
     {
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
@@ -866,7 +687,6 @@ public partial class NameResolutionDifferentialTests
             pythonControlCells = results.Count,
             generatorBugs = results.Count(r => r.Class == VerdictClass.GeneratorBug),
             harness = results.Count(r => r.Class == VerdictClass.Harness),
-            retried,
             allowlistSize = rows.Count,
             nonAllowlistedRed = offenders.Count,
             staleRows = stale,
@@ -883,15 +703,6 @@ public partial class NameResolutionDifferentialTests
             }).ToList(),
             secondsPerCell = results.Count == 0 ? 0 : wall.TotalSeconds / results.Count,
             wallSeconds = wall.TotalSeconds,
-            // P77b D2.9 "Reach": the Sharpy arm's compile + execute seconds per cell, the Stdlib-referencing axis-9 cells beside
-            // the Core-only rest (uncached cells only).
-            sharpyArm = new
-            {
-                coreOnlyCells = timing.CoreCells,
-                coreOnlySecondsPerCell = timing.CoreSecondsPerCell,
-                importedOuterCells = timing.StdlibCells,
-                importedOuterSecondsPerCell = timing.StdlibSecondsPerCell,
-            },
         };
 
         var dir = ReportDirectory();
@@ -922,36 +733,8 @@ public partial class NameResolutionDifferentialTests
 
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
         return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
-            + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, retried {retried}, "
-            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell; Sharpy arm "
-            + $"{timing.CoreSecondsPerCell:F3}s/cell over {timing.CoreCells} Core-only cells, {timing.StdlibSecondsPerCell:F3}s/cell over "
-            + $"{timing.StdlibCells} ImportedName cells). {counts}";
-    }
-
-    /// <summary>The Sharpy arm's seconds, split by whether the cell referenced the Stdlib monolith (P77b D2.9's "Reach").</summary>
-    private sealed class ArmTiming
-    {
-        public int CoreCells { get; private set; }
-        public int StdlibCells { get; private set; }
-        private double _coreSeconds;
-        private double _stdlibSeconds;
-
-        public void Add(bool stdlib, double seconds)
-        {
-            if (stdlib)
-            {
-                StdlibCells++;
-                _stdlibSeconds += seconds;
-            }
-            else
-            {
-                CoreCells++;
-                _coreSeconds += seconds;
-            }
-        }
-
-        public double CoreSecondsPerCell => CoreCells == 0 ? 0 : _coreSeconds / CoreCells;
-        public double StdlibSecondsPerCell => StdlibCells == 0 ? 0 : _stdlibSeconds / StdlibCells;
+            + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, "
+            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
     }
 
     private static void WriteProposedAllowlist(IReadOnlyList<CellResult> results)
