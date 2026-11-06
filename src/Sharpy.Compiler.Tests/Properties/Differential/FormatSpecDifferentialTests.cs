@@ -46,7 +46,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 [Trait("Category", "GapDiscovery")]
 public class FormatSpecDifferentialTests : IntegrationTestBase
 {
-    public FormatSpecDifferentialTests(ITestOutputHelper output) : base(output) { }
+    public FormatSpecDifferentialTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     // A fixed integer seed drives a System.Random so the generated corpus is byte-for-byte identical
     // run-to-run and machine-to-machine on a pinned runtime — a sweep whose inputs drift cannot be

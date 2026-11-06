@@ -467,16 +467,7 @@ public partial class NameResolutionDifferentialTests
 
     private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
     {
-        _compilePathOutput.Muted = true;
-        ExecutionResult r;
-        try
-        {
-            r = CompileAndExecute(source, "name_resolution.spy", executionTimeoutMs: executionTimeoutMs);
-        }
-        finally
-        {
-            _compilePathOutput.Muted = false;
-        }
+        var r = CompileAndExecute(source, "name_resolution.spy", executionTimeoutMs: executionTimeoutMs);
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();
         var errors = diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
