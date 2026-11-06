@@ -1147,6 +1147,48 @@ internal static class NameResolutionRosters
         (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.TypeOtherType), AxisMembership.Everywhere),
         (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.SelfThroughDef), AxisMembership.Everywhere));
 
+    private const string NoInitializerToObserve = "no initializer to observe: a callable or a type runs nothing at its declaration";
+
+    private const string NoLoadOrder = "a local runs where its block does, which is LOCAL's read timing, never a load order";
+
+    /// <summary>P77b axis 3's ORDER observation (the VALUE observation is every other cell): total over <see cref="BindingKind"/>. A kind with an
+    /// initializer that can call a helper prints from it; `init` before `main` is N3 bullet 2.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> OrderObservationKinds = Roster.Map(
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.InstanceField, AxisMembership.Everywhere),
+        (BindingKind.InstanceProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration")),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal calls no helper, so it has no order to observe")),
+        (BindingKind.ClassLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal calls no helper, so it has no order to observe")),
+        (BindingKind.ModuleDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleClass, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleStruct, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleEnum, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.StaticMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.InstanceMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.EnclosingLocal, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.Parameter, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalVar, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalLet, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalComputedConst, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LambdaTypedLocal, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.Builtin, AxisMembership.Out(ExcludedAxis.NotAKind, "the runtime's, with no initializer of the program's")),
+        (BindingKind.ImportedName, AxisMembership.Out(ExcludedAxis.NotAKind, "its module runs it, and N3 orders that before this module's: a project route's question (i)")),
+        (BindingKind.None, AxisMembership.Out(ExcludedAxis.NotAKind, "no binding")));
+
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
     /// value @ 82acda375 (<c>const y: int = i</c> included). A `\n` starts the statement's next line.</summary>
@@ -2483,6 +2525,28 @@ public partial class NameResolutionDifferentialTests
             "SelfDot × ModuleType", "SelfDot × TypeModule", "SelfDot × TypeOtherType", "SelfDot × SelfThroughDef",
         });
         Enum.GetNames<Spelling>().Should().Equal("Bare", "Qualified", "Alias", "Call", "SelfDot");
+    }
+
+    [Fact]
+    public void OrderObservationKindsRoster_IsTotalOverBindingKind()
+    {
+        var problems = Roster.TotalityProblems("OrderObservationKinds", Enum.GetValues<BindingKind>(), NameResolutionRosters.OrderObservationKinds.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.OrderObservationKinds)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"OrderObservationKinds: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"OrderObservationKinds: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "every binding kind is an order cell or names why its initializer has no order to observe");
+
+        // A literal, not the enum again: the kinds D2's table names, and that the two observations are a closed pair.
+        NameResolutionRosters.OrderObservationKinds.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleComputedConst, BindingKind.StaticField,
+            BindingKind.StaticProperty, BindingKind.ClassComputedConst, BindingKind.InstanceField, BindingKind.InstanceProperty,
+        });
     }
 
     [Fact]
