@@ -132,6 +132,17 @@ internal enum LetInOuter
     SameFunction,
 }
 
+/// <summary>The class declaring a name a READ reaches, against the class reading it (P77b axis 10). Named closed: <c>TypeSymbol.ContainingType</c>
+/// relations have no compiler enumeration.</summary>
+internal enum DeclaringRelation
+{
+    Self,
+    Base,
+    Other,
+    Enclosing,
+    Sibling,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -2638,6 +2649,13 @@ public partial class NameResolutionDifferentialTests
 
         // A literal, not the roster again: R-LG names exactly these.
         NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { "direct", "with", "except" });
+    }
+
+    [Fact]
+    public void DeclaringRelationRoster_IsTheNamedClosedSet()
+    {
+        // A literal, not the enum again: a relation the literal does not name is a decision, not a value.
+        Enum.GetNames<DeclaringRelation>().Should().Equal("Self", "Base", "Other", "Enclosing", "Sibling");
     }
 
     [Fact]

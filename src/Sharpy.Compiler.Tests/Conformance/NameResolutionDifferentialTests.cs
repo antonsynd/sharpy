@@ -122,6 +122,9 @@ internal sealed record NameCell
     /// <summary>Set by LOCAL cells: when the read happens against the binding (axis 4).</summary>
     public ReadTimings? Timing { get; init; }
 
+    /// <summary>Set by READ cells that name a declaring class: how that class relates to the reader's (axis 10).</summary>
+    public DeclaringRelation? Relation { get; init; }
+
     /// <summary>P77b's generated axes: <c>axis: value × value</c>, the key <see cref="NameResolutionDifferentialTests"/>' fed check
     /// computes from the axis's roster, so a roster value the generator owes a cell cannot go missing without a red.</summary>
     public string? AxisCell { get; init; }
@@ -475,6 +478,8 @@ public partial class NameResolutionDifferentialTests
                     "CS0103" when cell.Family == Family.Store && cell.Outer == BindingKind.ImportedName => "#2424",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
+                    // A nested type's bare constructor read as a member invocation: #2397's cell, whichever nested type the reader sits in.
+                    "CS1955" when cell.Target == BindingKind.NestedType => "#2397",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
                     "CS1955" or "CS8917" or "CS1729" or "CS0029" or "CS1501" => "#2423",
                     // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
