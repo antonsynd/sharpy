@@ -265,7 +265,7 @@ internal class IncrementalCompilationCache
             lines.Add("module-path=" + PathNormalizer.Normalize(full));
             if (!Directory.Exists(full))
                 continue;
-            foreach (var assembly in Directory.EnumerateFiles(full, "*.dll").OrderBy(f => f, StringComparer.Ordinal))
+            foreach (var assembly in SourceGlob.EnumerateArtifacts(full, "*.dll").OrderBy(f => f, StringComparer.Ordinal))
                 lines.Add("module-path-assembly=" + FileIdentity(assembly));
         }
 
