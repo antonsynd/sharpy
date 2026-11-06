@@ -294,6 +294,12 @@ public partial class NameResolutionDifferentialTests
         [("SPY0401", "SPY0200")] = 9,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
+        // R-LJ: a module declaration re-declaring an imported name is refused as a collision before N2's own refusal exists.
+        [("N2-module", "SPY0204")] = 4,
+        // D2.9: the imported outer's read is `len(digits)`, and over an int-valued member of the name that is the protocol refusal.
+        [("N1-type-error", "SPY0320")] = 21,
+        [("N2", "SPY0320")] = 7,
+        [("N2-module", "SPY0320")] = 2,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -304,17 +310,24 @@ public partial class NameResolutionDifferentialTests
         // SPY0618 is P75's forward refusal, which the principle retires: 1 comprehension cell reaches it before the name check.
         ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
         // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
-        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
-        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
+        // SPY0320 is `len(7)` over the imported outer's same-named member (D2.9).
+        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
+        // SPY0320: a later literal const outranks the import today, so its read is `len(7)`.
+        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
+        // R-LJ: SPY0204 is a same-named module declaration refused over the import until #2423 lands the rule's own refusal.
+        // SPY0320 sits beside it when the later declaration is a literal const or a def: the read is then `len` of that.
+        ["N2-module"] = new[] { "SPY0204", "SPY0230", "SPY0320" },
+        // R-KX: a local read above its own binding, with no outer the read could mean, is the name check today.
+        ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         ["N6"] = new[] { "SPY0200", "SPY0222" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
-        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
@@ -345,7 +358,15 @@ public partial class NameResolutionDifferentialTests
         foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused))
         {
             var named = RuleNamesCode.Match(r.Cell.Rule);
-            if (!named.Success || r.Run.ErrorCodes.Contains(named.Groups[1].Value))
+            if (!named.Success)
+            {
+                // A rule that names no code still pins the neighbouring refusals it stands on, or one could spread under its name.
+                foreach (var code in r.Run.ErrorCodes.Distinct().Where(c => EarlierRefusals.ContainsKey((r.Cell.Rule, c))))
+                    seen[(r.Cell.Rule, code)] = seen.GetValueOrDefault((r.Cell.Rule, code)) + 1;
+                continue;
+            }
+
+            if (r.Run.ErrorCodes.Contains(named.Groups[1].Value))
                 continue;
             var first = r.Run.ErrorCodes.First(c => !IgnoredCodes.Contains(c));
             if (!EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
@@ -424,10 +445,15 @@ public partial class NameResolutionDifferentialTests
                     "CS0176" => "#2147",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
+                    // A store over an import names the imported value unqualified. There is no write-through to qualify, and N6's refusal is the cure.
+                    "CS0103" when cell.Family == Family.Store && cell.Outer == BindingKind.ImportedName => "#2424",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
                     "CS1955" or "CS8917" or "CS1729" or "CS0029" => "#2423",
+                    // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
+                    // qualifies it through the program's own module.
+                    "CS0117" when cell.Outer == BindingKind.ImportedName => "#2423",
                     // A position that needs a constant was handed something else and nothing refused it.
                     "CS0133" or "CS1736" => "#2432",
                     "CS0149" or "CS0266" or "CS1061" when cell.Target == BindingKind.NestedType => "#2397",
@@ -457,7 +483,7 @@ public partial class NameResolutionDifferentialTests
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)
-                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) ? "#2425" : "#2423";
+                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) || cell.Rule == "N5-declared-later" ? "#2425" : "#2423";
                 // Only a read with no other binding can print a storage default; values-ready cannot change which binding is read.
                 return cell.Tag == SharpyTag.MustRefuse || cell.Outer != BindingKind.None ? "#2423" : "#2422";
             default:
@@ -557,6 +583,7 @@ public partial class NameResolutionDifferentialTests
         var cache = LoadCache(cachePath);
         int cached = 0;
         int retried = 0;
+        var importedWall = new Stopwatch();
         var runs = new SharpyRun[cells.Count];
         for (int i = 0; i < cells.Count; i++)
         {
@@ -568,7 +595,10 @@ public partial class NameResolutionDifferentialTests
             }
             else
             {
+                if (cells[i].NeedsStdlib)
+                    importedWall.Start();
                 runs[i] = RunSharpyRetryingATimeout(cells[i].Source, SharpyExecTimeoutMs, cells[i].NeedsStdlib, out var timedOutOnce);
+                importedWall.Stop();
                 if (timedOutOnce)
                     retried++;
                 if (cachePath != null)
@@ -626,7 +656,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(RefusalCodeFailures(results, partial));
 
         wall.Stop();
-        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, wall.Elapsed);
+        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, wall.Elapsed, importedWall.Elapsed);
         WriteProposedAllowlist(results);
 
         Output.WriteLine(report);
@@ -689,8 +719,11 @@ public partial class NameResolutionDifferentialTests
         bool partial,
         int cached,
         int retried,
-        TimeSpan wall)
+        TimeSpan wall,
+        TimeSpan importedWall)
     {
+        int importedCells = results.Count(r => r.Cell.NeedsStdlib);
+        double importedSecondsPerCell = importedCells == 0 ? 0 : importedWall.TotalSeconds / importedCells;
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
             g => g.Key.ToString(),
             g => g.GroupBy(r => r.Class).OrderBy(c => c.Key).ToDictionary(c => c.Key.ToString(), c => c.Count()));
@@ -726,6 +759,8 @@ public partial class NameResolutionDifferentialTests
                 python = PythonText(r),
             }).ToList(),
             secondsPerCell = results.Count == 0 ? 0 : wall.TotalSeconds / results.Count,
+            importedOuterCells = importedCells,
+            importedOuterSecondsPerCell = importedSecondsPerCell,
             wallSeconds = wall.TotalSeconds,
         };
 
@@ -758,7 +793,8 @@ public partial class NameResolutionDifferentialTests
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
         return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
             + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, retried {retried}, "
-            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
+            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell; "
+            + $"imported outer {importedCells} cells at {importedSecondsPerCell:F3}s/cell). {counts}";
     }
 
     private static void WriteProposedAllowlist(IReadOnlyList<CellResult> results)

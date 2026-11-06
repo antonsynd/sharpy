@@ -258,7 +258,7 @@ internal static class NameResolutionRosters
     /// initializer expression binds; <c>Transparent</c> holds only type parameters.
     /// </summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<BindingKind>> ScopeSplit = Roster.Map(
-        (ScopeKind.Module, Roster.To(ModuleLevelKinds.Add(BindingKind.Builtin).ToArray())),
+        (ScopeKind.Module, Roster.To(ModuleLevelKinds.Add(BindingKind.Builtin).Add(BindingKind.ImportedName).ToArray())),
         (ScopeKind.TypeBody, Roster.To(TypeLevelKinds.AddRange(InstanceKinds).ToArray())),
         (ScopeKind.FunctionLike, Roster.To(PositionLocalKinds.ToArray())),
         (ScopeKind.Block, Roster.To(
@@ -414,6 +414,8 @@ internal static class NameResolutionRosters
 
     internal const string CheckModifiedArgumentSite = "TypeChecker.Expressions.cs:CheckModifiedArgument(newSymbol)";
 
+    internal const string ImportBinderSite = "ImportResolver.Symbols.cs:BindImportName(symbol)";
+
     private const string TypeParameter = "a type parameter is never a value binding (x)";
 
     private const string ProjectRouteBinder = "an import or a project phase binds this: a single-file generator cannot enumerate it (i)";
@@ -462,6 +464,10 @@ internal static class NameResolutionRosters
         ("SymbolTable.cs:PopulateBuiltins(name, typeSymbol)", BinderImage.Declaring(BindingKind.Builtin)),
         ("SymbolTable.cs:PopulateBuiltins(funcSymbol)", BinderImage.Declaring(BindingKind.Builtin)),
 
+        // The one import binder (D2.9): its single-file spelling is a named outer beside Builtin. The module-qualified and
+        // other-user-module spellings of the same site stay ExcludedAxis.ProjectRoute (i).
+        (ImportBinderSite, BinderImage.Declaring(BindingKind.ImportedName)),
+
         // Excluded: the census's own subject
         ("SymbolTable.cs:Define(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.Define wrapper over Scope.Define: every other row is its caller")),
         ("SymbolTable.cs:TryDefine(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.TryDefine wrapper over Scope.Define: every other row is its caller")),
@@ -495,7 +501,6 @@ internal static class NameResolutionRosters
         ("TypeChecker.Statements.Patterns.cs:BindRefusedCapture(recovery)", BinderImage.Out(ExcludedAxis.NotAKind, "error recovery: IsErrorRecovery models no program binding")),
         ("TypeChecker.Statements.Patterns.cs:CheckTupleUnpackingElements(newSymbol)", BinderImage.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple store (iii)")),
         ("TypeChecker.Statements.Unpacking.cs:DefineUnpackingSymbol(symbol)", BinderImage.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple / star store (iii)")),
-        ("ImportResolver.Symbols.cs:BindImportName(symbol)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("InheritanceResolver.cs:ResolveTransitiveBaseTypes(found)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("InheritanceResolver.cs:ResolveTransitiveBaseTypes(found)#2", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("TypeChecker.Expressions.cs:TryResolveInlineClrNamespace(moduleSymbol)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
@@ -870,6 +875,7 @@ internal static class NameResolutionRosters
         (BindingKind.InstanceMethod, AxisMembership.ClassEnclosed),
         (BindingKind.EnclosingLocal, AxisMembership.Everywhere),
         (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
         (BindingKind.None, AxisMembership.Everywhere),
         (BindingKind.NestedType, AxisMembership.Pruned("a type's bare name binds through the walk (Scope.ResolveName binds types); non-writable by meaning, ModuleClass keeps that arm")),
         (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)),
@@ -899,6 +905,7 @@ internal static class NameResolutionRosters
         (BindingKind.ModuleLiteralConst, AxisMembership.Everywhere),
         (BindingKind.EnclosingLocal, AxisMembership.Everywhere),
         (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
         (BindingKind.StaticField, AxisMembership.ClassEnclosed),
         (BindingKind.StaticMethod, AxisMembership.ClassEnclosed),
         (BindingKind.ModuleLet, AxisMembership.Pruned(AsModuleVar)),
@@ -1305,7 +1312,7 @@ public partial class NameResolutionDifferentialTests
     public void BindingKindRoster_EveryKind_IsTheImageOfASource()
     {
         // Not the scope split, the kind groups or the binder census: those restate the kinds, so they could
-        // not catch an orphan. Builtin's source is the binder census and has its own fact below.
+        // not catch an orphan. Builtin's and ImportedName's source is the binder census, each with its own fact below.
         var image = Roster.ImageOf(NameResolutionRosters.SymbolKinds)
             .Concat(Roster.ImageOf(NameResolutionRosters.TypeKinds))
             .Concat(Roster.ImageOf(NameResolutionRosters.MemberKinds))
@@ -1317,7 +1324,7 @@ public partial class NameResolutionDifferentialTests
 
         var problems = Enum.GetValues<BindingKind>()
             .Except(NameResolutionRosters.NonSymbolKinds)
-            .Where(k => k != BindingKind.Builtin && !image.Contains(k))
+            .Where(k => k != BindingKind.Builtin && k != BindingKind.ImportedName && !image.Contains(k))
             .Select(k => $"BindingKind.{k} is the image of no source value (an orphan the compiler cannot bind)")
             .ToList();
         problems.AddRange(NameResolutionRosters.NonSymbolKinds
@@ -1335,6 +1342,7 @@ public partial class NameResolutionDifferentialTests
             .Concat(NameResolutionRosters.InstanceKinds)
             .Concat(NameResolutionRosters.PositionLocalKinds)
             .Append(BindingKind.Builtin)
+            .Append(BindingKind.ImportedName)
             .Append(BindingKind.None)
             .ToList();
 
@@ -1362,6 +1370,23 @@ public partial class NameResolutionDifferentialTests
 
         AssertNoProblems(problems, "a builtin IS a symbol, and the global scope's binder sites are its source (tenth pass finding 6)");
         NameResolutionRosters.NonSymbolKinds.Should().Equal(new[] { BindingKind.None }, "None is the one kind with no symbol");
+    }
+
+    /// <summary>D2.9, deferred row 6: <c>EveryKind_IsTheImageOfASource</c> excludes the binder census, so this is the kind's catcher.
+    /// The site is read from the scan as well as the map: a renamed binder cannot leave the row naming nothing.</summary>
+    [Fact]
+    public void BindingKindRoster_ImportedName_IsTheImportBinderSite()
+    {
+        CompilerBinders.Value.Sites.Select(s => s.Key).Should().Contain(NameResolutionRosters.ImportBinderSite,
+            "ImportResolver.BindImportName is the one binder a from-import reaches");
+
+        var declaring = NameResolutionRosters.BinderSites
+            .Where(row => row.Value.Declares.Contains(BindingKind.ImportedName))
+            .Select(row => row.Key)
+            .ToList();
+
+        declaring.Should().Equal(new[] { NameResolutionRosters.ImportBinderSite },
+            "the import binder declares ImportedName, and no other binder site does");
     }
 
     [Fact]

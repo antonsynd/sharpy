@@ -42,6 +42,9 @@ public partial class NameResolutionDifferentialTests
 
     private static Form FormFor(BindingKind target, BindingKind outer, Spelling spelling)
     {
+        // The imported outer is a str value read through len (D2.9), whatever the same-named member is: its one read text.
+        if (outer == BindingKind.ImportedName)
+            return Form.Value;
         if (spelling != Spelling.Bare || outer == BindingKind.None || IsLocalOuter(outer))
             return IsLocalOuter(outer) && spelling == Spelling.Bare ? Form.Value : FormOf(target);
         return (Form)Math.Max((int)FormOf(target), (int)FormOf(outer));
@@ -64,7 +67,10 @@ public partial class NameResolutionDifferentialTests
         bool atLoad = IsInitializer(p) && nesting != Nesting.Lambda;
         int member = BindingValue(t, n);
 
-        PyOutcome MemberPy() => t == BindingKind.InstanceMethod ? PyOutcome.Other("TypeError") : EvalPython(t, form, member);
+        bool imported = outer == BindingKind.ImportedName;
+
+        // `len(digits)` over the same-named member: `len(7)`, or `len` of a function. Both are python's TypeError.
+        PyOutcome MemberPy() => t == BindingKind.InstanceMethod || imported ? PyOutcome.Other("TypeError") : EvalPython(t, form, member);
 
         if (s != Spelling.Bare)
         {
@@ -92,7 +98,7 @@ public partial class NameResolutionDifferentialTests
         {
             if (outer == BindingKind.None)
                 return PyOutcome.Name(n.Name);
-            if (outer == BindingKind.Builtin)
+            if (outer is BindingKind.Builtin or BindingKind.ImportedName)
                 return PyOutcome.Ran(n.BuiltinResult!.Value);
             return EvalPython(outer, form, ValueOf(outer));
         }
@@ -105,7 +111,7 @@ public partial class NameResolutionDifferentialTests
             if (outer == BindingKind.None)
                 return Refuse(PyOutcome.Name(n.Name), "N1-methods");
             var py = OuterPy();
-            if (outer == BindingKind.Builtin)
+            if (outer is BindingKind.Builtin or BindingKind.ImportedName)
                 return Run(n.BuiltinResult!.Value, "R-Y");
             return py.Kind == PyKind.Ran
                 ? Run(ValueOf(outer), "R-Y")
@@ -131,7 +137,7 @@ public partial class NameResolutionDifferentialTests
 
         if (order != Order.Earlier)
             return Refuse(visible, "N2");
-        return FormOf(t) == form ? Run(member, "N1") : Refuse(visible, "N1-type-error");
+        return !imported && FormOf(t) == form ? Run(member, "N1") : Refuse(visible, "N1-type-error");
     }
 
     private static NameCell ClassCell(
@@ -147,7 +153,7 @@ public partial class NameResolutionDifferentialTests
             _ => "",
         };
         // A method read needs its arguments, a nested type its constructor; the read text is the one form.
-        var e = s == Spelling.Call ? "get()" : ReadText(form, prefix, call);
+        var e = s == Spelling.Call ? "get()" : outer == BindingKind.ImportedName ? ImportedReadText : ReadText(form, prefix, call);
         var helper = s == Spelling.Call
             ? new List<string> { "def get() -> int:", $"    return {ReadText(form, "H.", call)}" }
             : new List<string>();
@@ -176,7 +182,7 @@ public partial class NameResolutionDifferentialTests
         }
 
         var lines = new List<string>();
-        if (outer != BindingKind.None && outer != BindingKind.Builtin && !IsLocalOuter(outer))
+        if (outer is not (BindingKind.None or BindingKind.Builtin or BindingKind.ImportedName) && !IsLocalOuter(outer))
             lines.AddRange(ModuleDecl(outer, n));
         lines.AddRange(helper);
         lines.Add(HostHeader(p));
