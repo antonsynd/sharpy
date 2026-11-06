@@ -143,6 +143,14 @@ internal enum DeclaringRelation
     Sibling,
 }
 
+/// <summary>How a <c>T !E</c> body returns (P77b axis 11). Named closed from <c>tagged_unions_result.md</c>: every example returns <c>Ok(...)</c> or <c>Err(...)</c>, and no implicit wrap exists.</summary>
+internal enum ResultValueForm
+{
+    Ok,
+    BareValue,
+    Err,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -1241,6 +1249,28 @@ internal static class NameResolutionRosters
                     ? AxisMembership.Everywhere
                     : AxisMembership.Out(ExcludedAxis.PrunedRepresentative, OneFamilyStandsForTheWalk))))
             .ToArray());
+
+    /// <summary>P77b axis 11: an alias spelled at every type position, or out with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<TypePosition, AxisMembership> TypePositionSpellings = Roster.Map(
+        (TypePosition.VariableAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ReturnAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ParameterAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ExceptClause, AxisMembership.Everywhere),
+        (TypePosition.AliasTarget, AxisMembership.Everywhere),
+        (TypePosition.PropertyAnnotation, AxisMembership.Everywhere),
+        (TypePosition.AccessorReturn, AxisMembership.Everywhere),
+        (TypePosition.UnionCaseField, AxisMembership.Everywhere),
+        (TypePosition.LambdaReturn, AxisMembership.Everywhere),
+        (TypePosition.CallableReturn, AxisMembership.Everywhere),
+        (TypePosition.CallableParameter, AxisMembership.Everywhere),
+        (TypePosition.OutInlineType, AxisMembership.Everywhere),
+        (TypePosition.Coercion, AxisMembership.Everywhere),
+        (TypePosition.IsInstance, AxisMembership.Everywhere),
+        (TypePosition.TryExceptionType, AxisMembership.Everywhere),
+        (TypePosition.ResultError, AxisMembership.Everywhere),
+        (TypePosition.GenericArgument, AxisMembership.Everywhere),
+        (TypePosition.BaseList, AxisMembership.Everywhere),
+        (TypePosition.PatternType, AxisMembership.Out(ExcludedAxis.NotAKind, "a pattern's type is roster 7's, read by TYPEMEMBER's pattern cells")));
 
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
@@ -2656,6 +2686,24 @@ public partial class NameResolutionDifferentialTests
     {
         // A literal, not the enum again: a relation the literal does not name is a decision, not a value.
         Enum.GetNames<DeclaringRelation>().Should().Equal("Self", "Base", "Other", "Enclosing", "Sibling");
+    }
+
+    [Fact]
+    public void TypePositionSpellingsRoster_IsTotalOverTypePosition()
+    {
+        var problems = Roster.TotalityProblems("TypePositionSpellings", Enum.GetValues<TypePosition>(), NameResolutionRosters.TypePositionSpellings.Keys).ToList();
+        foreach (var (position, member) in NameResolutionRosters.TypePositionSpellings)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"TypePositionSpellings: {position} is generated AND excluded, or neither");
+        }
+
+        AssertNoProblems(problems, "an alias reaches every type position, or the position names why not");
+
+        // Literals, not the enum again: what is left out, the count the census of type annotations stands on, and the closed result forms.
+        NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).Select(e => e.Key).Should().Equal(TypePosition.PatternType);
+        NameResolutionRosters.TypePositionSpellings.Should().HaveCount(19);
+        Enum.GetNames<ResultValueForm>().Should().Equal("Ok", "BareValue", "Err");
     }
 
     [Fact]

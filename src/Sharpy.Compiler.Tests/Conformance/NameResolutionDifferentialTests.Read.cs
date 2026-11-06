@@ -1072,6 +1072,7 @@ public partial class NameResolutionDifferentialTests
                     Outer = BindingKind.None,
                     Position = position,
                     TypeAt = at,
+                    AxisCell = at == TypePosition.ResultError ? ResultValueFormKey(ResultValueForm.Ok, o) : null,
                 };
             }
 
