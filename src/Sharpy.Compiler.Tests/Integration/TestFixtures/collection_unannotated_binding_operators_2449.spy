@@ -1,0 +1,66 @@
+# #2449: binding a value to a name does not change what it supports. An unannotated binding of a CLR
+# call's collection used to lose its CLR identity, so CLR-discovered operators refused it (SPY0222)
+# while the inline and annotated spellings of the same value compiled.
+
+
+def main():
+    d: dict[str, int] = {"a": 1}
+    w: dict[str, int] = {"b": 2}
+
+    # The original report: a self-reassignment from the variable's own copy.
+    d = d.copy()
+    print(d | w)
+    print(w | d)
+
+    # Self-reassignment is not the trigger. A fresh binding, both operands bound, an alias of a
+    # binding, a conditional over two calls, and a reassignment all reach the same type.
+    c = d.copy()
+    e = w.copy()
+    print(c | e)
+    alias = c
+    print(alias | w)
+    chosen = d.copy() if len(d) > 0 else w.copy()
+    print(chosen | w)
+    let shadow = d.copy()
+    print(shadow | w)
+
+    # The refused type was never dict-specific: sets and frozensets.
+    s: set[int] = {1, 2}
+    t: set[int] = {2, 3}
+    sc = s.copy()
+    print(sorted(sc | t))
+    print(sorted(sc & t))
+    print(sorted(sc - t))
+    print(sorted(sc ^ t))
+    print(sc < t, sc == t)
+    fs = frozenset({1, 2}).copy()
+    print(sorted(fs | frozenset({3})))
+
+    # Lists: `*` is the one list operator the builtin table does not answer, on either operand side.
+    xs: list[int] = [1, 2]
+    lc = xs.copy()
+    print(lc * 2)
+    print(2 * lc)
+    print((lc * 2) * 2)
+    print(lc + xs)
+
+    # Producers other than copy(): a builtin function and a str method.
+    ordered = sorted([2, 1])
+    print(ordered * 2)
+    words = "a b".split()
+    print(words * 2)
+    for bound in [words]:
+        print(bound * 2)
+
+    # The rest of a sequence pattern is a list the checker builds with no provenance at all.
+    match xs:
+        case [first, *rest]:
+            print(first)
+            print(rest * 2)
+        case _:
+            print("no match")
+
+    # The result of the operator is itself an ordinary binding.
+    merged = c | e
+    print(merged | w)
+    print(len(merged), "a" in merged, merged["b"])

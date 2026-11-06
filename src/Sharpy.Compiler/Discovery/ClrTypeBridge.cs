@@ -69,6 +69,20 @@ internal class ClrTypeBridge
         internal const string KeyValuePairFullName = "System.Collections.Generic.KeyValuePair`2";
 
         /// <summary>
+        /// The open wrapper a Sharpy collection name denotes (<c>list</c> → <c>Sharpy.List`1</c>), or
+        /// null for any other name. These are the names the bridge collapses CLR collections onto.
+        /// </summary>
+        internal static string? SharpyCollectionFullName(string name) => name switch
+        {
+            BuiltinNames.List => SharpyListFullName,
+            BuiltinNames.Dict => SharpyDictFullName,
+            BuiltinNames.Set => SharpySetFullName,
+            BuiltinNames.FrozenSet => SharpyFrozenSetFullName,
+            BuiltinNames.FrozenDict => SharpyFrozenDictFullName,
+            _ => null,
+        };
+
+        /// <summary>
         /// The reserved runtime namespace for Sharpy.Core / stdlib CLR types. Types in this
         /// namespace (or a sub-namespace of it) are Sharpy runtime types, not user code.
         /// </summary>

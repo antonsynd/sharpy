@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
@@ -30,6 +31,13 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>ClrOriginTypeName</c>, and <c>TryConstructClosedGeneric</c> read only the first. #1497 was the
 /// same shape in protocol recognition. Both were found by hand, one spelling at a time. This sweep
 /// writes both spellings of every reachable type, on purpose.</para>
+///
+/// <para><b>The third spelling: an unannotated binding (#2449).</b> <c>v = s1.copy()</c> names the
+/// same value without naming its type, and it is a different producer again: the binding drops the
+/// origin channel, leaving neither. The sweep only compared the other two, so <c>c = d.copy(); c | w</c>
+/// was refused for as long as the bridge has collapsed these types, with both operands reading
+/// <c>dict[str, int32]</c>. Binding a value to a name does not change what it supports, so every cell
+/// now measures all three.</para>
 ///
 /// <para><b>Why the type list is derived, never written down.</b> A hand-listed matrix covers the
 /// types someone thought of on the day, which is how this class stayed open: the dict views were
@@ -84,6 +92,8 @@ public class AnnotationExpressionPathAgreementTests
         ("dict", "dict[str, int]", "{\"a\": 1, \"b\": 2}"),
         ("list", "list[int]", "[1, 2, 3]"),
         ("set", "set[int]", "{1, 2, 3}"),
+        ("frozenset", "frozenset[int]", "frozenset({1, 2, 3})"),
+        ("frozendict", "frozendict[str, int]", "frozendict[str, int]({\"a\": 1, \"b\": 2})"),
     };
 
     /// <summary>
@@ -96,6 +106,27 @@ public class AnnotationExpressionPathAgreementTests
         "dict.keys()",
         "dict.values()",
         "dict.items()",
+        // The Sharpy-wrapper returns the bound spelling used to lose (#2449).
+        "dict.copy()",
+        "list.copy()",
+        "set.copy()",
+        "frozenset.copy()",
+        "frozendict.copy()",
+    };
+
+    /// <summary>
+    /// The producers whose inline spelling is not compared, as a closed set so the exemption cannot
+    /// grow unreviewed. Each returns a CLR sequence the bridge collapsed onto a Sharpy name
+    /// (<c>frozendict.keys()</c> is <c>IEnumerable&lt;K&gt;</c>, spelled <c>list[str]</c>). Inline, that
+    /// value is not yet the collection its name says: it becomes one where a slot materializes it
+    /// (#1251), and an operand position is deliberately not a slot. So <c>fd.keys() * 2</c> has no
+    /// operator to bind while <c>v = fd.keys(); v * 2</c> has. The annotated and bound spellings are
+    /// both slots and are still compared with each other.
+    /// </summary>
+    private static readonly string[] MaterializedAtBinding =
+    {
+        "frozendict.keys()",
+        "frozendict.values()",
     };
 
     /// <summary>
@@ -110,6 +141,11 @@ public class AnnotationExpressionPathAgreementTests
         ("op::^", (a, b) => $"{a} ^ {b}"),
         ("op::+", (a, b) => $"{a} + {b}"),
         ("op::*", (a, b) => $"{a} * {b}"),
+        // Repetition is a list's only `*`, and its operand is not the cell's own type (#2449).
+        ("op::*int", (a, _) => $"{a} * 2"),
+        ("op::int*", (a, _) => $"2 * {a}"),
+        ("op::<", (a, b) => $"{a} < {b}"),
+        ("op::==", (a, b) => $"{a} == {b}"),
     };
 
     [Fact]
@@ -128,23 +164,30 @@ public class AnnotationExpressionPathAgreementTests
                 required, string.Join(", ", producers.Select(p => p.Key)));
         }
 
+        producers.Where(p => p.MaterializedAtBinding).Select(p => p.Key).Should().BeEquivalentTo(
+            MaterializedAtBinding,
+            "a producer exempt from the inline comparison must be reviewed: either it is a CLR "
+            + "sequence a binding materializes, or the exemption is hiding a real divergence");
+
         var results = new List<CellResult>();
         foreach (var producer in producers)
         {
             foreach (var (opName, probe) in Operations)
             {
                 var key = $"{producer.Key}::{opName}";
-                var annotation = Measure(producer, probe, viaAnnotation: true);
-                var expression = Measure(producer, probe, viaAnnotation: false);
-                results.Add(Compare(key, producer, annotation, expression));
+                results.Add(Compare(key, producer,
+                    Measure(producer, probe, Spelling.Annotation),
+                    Measure(producer, probe, Spelling.Expression),
+                    Measure(producer, probe, Spelling.Bound)));
             }
 
             // Iteration is asked as a statement rather than an expression, so it gets its own cell
             // shape rather than being bent into the bool-probe form.
             var iterKey = $"{producer.Key}::iterate";
             results.Add(Compare(iterKey, producer,
-                MeasureIteration(producer, viaAnnotation: true),
-                MeasureIteration(producer, viaAnnotation: false)));
+                MeasureIteration(producer, Spelling.Annotation),
+                MeasureIteration(producer, Spelling.Expression),
+                MeasureIteration(producer, Spelling.Bound)));
         }
 
         stopwatch.Stop();
@@ -165,8 +208,8 @@ public class AnnotationExpressionPathAgreementTests
             {
                 "Producers are DERIVED by reflecting over BuiltinRegistry: every zero-argument method "
                 + "whose return type is a registry-known generic. Never hand-listed.",
-                "Each cell compiles the same operation twice: once on a value bound through a type "
-                + "annotation, once on the producing expression inline.",
+                "Each cell compiles the same operation three times: on a value bound through a type "
+                + "annotation, on the producing expression inline, and on an unannotated binding (#2449).",
                 "The probe assigns the operation to a bool, so the diagnostic reports the verdict AND "
                 + "the result type in one comparable string.",
                 "Single-file Analyze only — no emission, no execution.",
@@ -217,7 +260,7 @@ public class AnnotationExpressionPathAgreementTests
     /// about a type the compiler itself says they share.
     /// </summary>
     private sealed record Producer(string Key, string SeedAnnotation, string SeedLiteral,
-        string Call, string Annotation);
+        string Call, string Annotation, bool MaterializedAtBinding);
 
     /// <summary>
     /// Every (seed, zero-argument method) pair whose return type is a registry-known generic type.
@@ -256,7 +299,8 @@ public class AnnotationExpressionPathAgreementTests
                     SeedAnnotation: seedAnnotation,
                     SeedLiteral: seedLiteral,
                     Call: $"{method.Name}()",
-                    Annotation: annotation));
+                    Annotation: annotation,
+                    MaterializedAtBinding: IsCollapsedClrSequence(returned)));
             }
         }
 
@@ -266,6 +310,15 @@ public class AnnotationExpressionPathAgreementTests
             .OrderBy(p => p.Key, StringComparer.Ordinal)
             .ToList();
     }
+
+    /// <summary>
+    /// Whether the registry's return type records a CLR origin other than the wrapper its Sharpy name
+    /// denotes. See <see cref="MaterializedAtBinding"/>.
+    /// </summary>
+    private static bool IsCollapsedClrSequence(GenericType returned)
+        => returned.ClrOriginTypeName is { } origin
+           && ClrTypeBridge.SpecialCases.SharpyCollectionFullName(returned.Name) is { } wrapper
+           && origin != wrapper;
 
     /// <summary>
     /// The Sharpy annotation spelling of a registry return type, with the owning type's parameters
@@ -339,24 +392,47 @@ public class AnnotationExpressionPathAgreementTests
 
     private sealed record Measurement(string Path, string Verdict, string Program);
 
+    /// <summary>The ways a cell's value reaches its operation.</summary>
+    private enum Spelling
+    {
+        /// <summary><c>v: dict[str, int] = s1.copy()</c></summary>
+        Annotation,
+
+        /// <summary><c>s1.copy()</c> used inline</summary>
+        Expression,
+
+        /// <summary><c>v = s1.copy()</c></summary>
+        Bound,
+    }
+
     /// <summary>
-    /// The bool-probe program. <c>viaAnnotation</c> selects which producer spelling is measured:
-    /// the value bound through its declared type, or the call used inline. Everything else about the
-    /// two programs is character-identical, so any difference in the verdict is the paths diverging.
+    /// The declaration binding <paramref name="name"/> to the producer's value, or null for the inline
+    /// spelling, which declares nothing.
+    /// </summary>
+    private static string? Binding(Producer producer, Spelling spelling, string name, string seed)
+        => spelling switch
+        {
+            Spelling.Annotation => $"    {name}: {producer.Annotation} = {seed}.{producer.Call}\n",
+            Spelling.Bound => $"    {name} = {seed}.{producer.Call}\n",
+            _ => null,
+        };
+
+    /// <summary>
+    /// The bool-probe program. <paramref name="spelling"/> selects how the value reaches the operation;
+    /// everything else about the programs is character-identical, so any difference in the verdict is
+    /// the paths diverging.
     /// </summary>
     private Measurement Measure(
-        Producer producer, Func<string, string, string> probe, bool viaAnnotation)
+        Producer producer, Func<string, string, string> probe, Spelling spelling)
     {
         var setup =
             $"    s1: {producer.SeedAnnotation} = {producer.SeedLiteral}\n"
             + $"    s2: {producer.SeedAnnotation} = {producer.SeedLiteral}\n";
 
         string left, right;
-        if (viaAnnotation)
+        if (Binding(producer, spelling, "v", "s1") is { } firstBinding)
         {
-            setup +=
-                $"    v: {producer.Annotation} = s1.{producer.Call}\n"
-                + $"    v2: {producer.Annotation} = s2.{producer.Call}\n";
+            setup += firstBinding + Binding(producer, spelling, "v2", "s2");
             (left, right) = ("v", "v2");
         }
         else
@@ -370,17 +446,17 @@ public class AnnotationExpressionPathAgreementTests
         var program = "def main() -> None:\n" + setup
             + $"    probe: bool = {probe(left, right)}\n";
 
-        return new Measurement(viaAnnotation ? "annotation" : "expression", Analyze(program), program);
+        return new Measurement(spelling.ToString(), Analyze(program), program);
     }
 
     /// <summary>Iteration asked as a statement — <c>for _ in value:</c> — rather than as an expression.</summary>
-    private Measurement MeasureIteration(Producer producer, bool viaAnnotation)
+    private Measurement MeasureIteration(Producer producer, Spelling spelling)
     {
         var setup = $"    s1: {producer.SeedAnnotation} = {producer.SeedLiteral}\n";
         string value;
-        if (viaAnnotation)
+        if (Binding(producer, spelling, "v", "s1") is { } binding)
         {
-            setup += $"    v: {producer.Annotation} = s1.{producer.Call}\n";
+            setup += binding;
             value = "v";
         }
         else
@@ -390,12 +466,12 @@ public class AnnotationExpressionPathAgreementTests
 
         var program = "def main() -> None:\n" + setup
             + $"    for item in {value}:\n        print(item)\n";
-        return new Measurement(viaAnnotation ? "annotation" : "expression", Analyze(program), program);
+        return new Measurement(spelling.ToString(), Analyze(program), program);
     }
 
     /// <summary>
     /// The cell's answer: the error diagnostics, code and message, normalized so that the only text
-    /// that survives is what the compiler concluded. The annotation path names its binding
+    /// that survives is what the compiler concluded. The binding paths name their binding
     /// (<c>v</c>/<c>v2</c>) where the expression path names a call, so those spellings are erased —
     /// otherwise every cell would "diverge" on the difference the sweep deliberately introduced.
     /// </summary>
@@ -417,19 +493,24 @@ public class AnnotationExpressionPathAgreementTests
     private static string Normalize(string message) => QuotedSpelling.Replace(message, "'<value>'");
 
     private static CellResult Compare(
-        string key, Producer producer, Measurement annotation, Measurement expression)
+        string key, Producer producer, Measurement annotation, Measurement expression, Measurement bound)
     {
         var divergences = new List<string>();
-        if (annotation.Verdict != expression.Verdict)
+        if (!producer.MaterializedAtBinding && annotation.Verdict != expression.Verdict)
         {
             divergences.Add(
                 $"verdict — annotation: {annotation.Verdict}   expression: {expression.Verdict}");
         }
-        return new CellResult(key, producer, annotation, expression, divergences);
+        if (annotation.Verdict != bound.Verdict)
+        {
+            divergences.Add(
+                $"verdict — annotation: {annotation.Verdict}   bound: {bound.Verdict}");
+        }
+        return new CellResult(key, producer, annotation, expression, bound, divergences);
     }
 
     private sealed record CellResult(
-        string Key, Producer Producer, Measurement Annotation, Measurement Expression,
+        string Key, Producer Producer, Measurement Annotation, Measurement Expression, Measurement Bound,
         IReadOnlyList<string> Divergences)
     {
         public string Describe()
@@ -443,11 +524,12 @@ public class AnnotationExpressionPathAgreementTests
             divergences = Divergences,
             annotation = new { verdict = Annotation.Verdict },
             expression = new { verdict = Expression.Verdict },
+            bound = new { verdict = Bound.Verdict },
             // Programs for divergent cells only, so the report reproduces a failure without
             // re-deriving it from the producer table.
             programs = Divergences.Count == 0
                 ? null
-                : new { annotation = Annotation.Program, expression = Expression.Program },
+                : new { annotation = Annotation.Program, expression = Expression.Program, bound = Bound.Program },
         };
     }
 
