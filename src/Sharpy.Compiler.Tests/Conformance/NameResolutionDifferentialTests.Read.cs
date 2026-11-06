@@ -184,6 +184,7 @@ public partial class NameResolutionDifferentialTests
         return new NameCell
         {
             Id = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsBuiltin ? n.Name : null),
+            Relation = DeclaringRelation.Self,
             Family = Family.Read,
             Source = source,
             Tag = expected.Tag,
@@ -877,6 +878,7 @@ public partial class NameResolutionDifferentialTests
                     yield return new NameCell
                     {
                         Id = CellId("read", t, p, "base", Spelling.Bare, $"outer={u}"),
+                        Relation = DeclaringRelation.Base,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)),
                         Tag = expected.Tag,
@@ -906,6 +908,7 @@ public partial class NameResolutionDifferentialTests
                     yield return new NameCell
                     {
                         Id = CellId("read", t, p, "base", label),
+                        Relation = DeclaringRelation.Base,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)),
                         Tag = expected.Tag,
@@ -933,6 +936,7 @@ public partial class NameResolutionDifferentialTests
                     yield return new NameCell
                     {
                         Id = CellId("read", t, p, "other", o, "B.x"),
+                        Relation = DeclaringRelation.Other,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)),
                         Tag = SharpyTag.MustRun,
@@ -975,6 +979,7 @@ public partial class NameResolutionDifferentialTests
                     yield return new NameCell
                     {
                         Id = CellId("read", t, label, "enclosing", Spelling.Bare, $"outer={u}"),
+                        Relation = DeclaringRelation.Enclosing,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainBlock($"print({access})")),
                         Tag = expected.Tag,
@@ -995,6 +1000,7 @@ public partial class NameResolutionDifferentialTests
                     yield return new NameCell
                     {
                         Id = CellId("read", t, label, "enclosing", Spelling.Qualified),
+                        Relation = DeclaringRelation.Enclosing,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainBlock($"print({access})")),
                         Tag = SharpyTag.MustRun,

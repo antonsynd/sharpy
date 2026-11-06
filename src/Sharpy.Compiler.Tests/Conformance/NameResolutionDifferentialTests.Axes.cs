@@ -16,6 +16,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(ReadTimingFedFailures(pool, axisCells));
         failures.AddRange(LetInFedFailures(axisCells));
         failures.AddRange(LoopBodyFedFailures(axisCells));
+        failures.AddRange(DeclaringRelationFedFailures(pool, axisCells));
         return failures;
     }
 
@@ -755,5 +756,67 @@ public partial class NameResolutionDifferentialTests
                         foreach (var read in LoopBodyReads)
                             if (!axisCells.Contains(LoopBodyKey(binder, spelling, loop, enclosure, read.Label)))
                                 yield return $"LoopBodyBinders {binder} spelling {spelling} × {loop} × {enclosure} × {read.Label} has no cell";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 10: a sibling nested type
+    // ------------------------------------------------------------------------------------------- //
+
+    private static readonly Spelling[] SiblingSpellings = { Spelling.Bare, Spelling.Qualified };
+
+    private static readonly ReadPosition[] SiblingPositions = { ReadPosition.NestedClassMethodBody, ReadPosition.StaticInitializer };
+
+    private static string SiblingKey(Spelling spelling, ReadPosition position, Order order) => $"sibling: {spelling} × {position} × {order}";
+
+    private static IEnumerable<NameCell> SiblingNestedTypeCells()
+    {
+        foreach (var spelling in SiblingSpellings)
+            foreach (var position in SiblingPositions)
+                foreach (var order in new[] { Order.Earlier, Order.Later })
+                    yield return SiblingNestedTypeCell(spelling, position, order);
+    }
+
+    /// <summary>A nested type reading its container's other nested type. A class-body name is not bare inside a nested body (N1's methods rule, python's NameError);
+    /// the qualified read is N7's, and at a nested initializer python stops on the container that is still being defined.</summary>
+    private static NameCell SiblingNestedTypeCell(Spelling spelling, ReadPosition position, Order order)
+    {
+        const int Value = 20;
+        var read = spelling == Spelling.Bare ? "I().v" : "O.I().v";
+        var sibling = new[] { "    class I:", $"        v: int = {Value}" };
+        var method = position == ReadPosition.NestedClassMethodBody;
+        var reader = method
+            ? new[] { "    class J:", "        def r(self) -> int:", $"            return {read}" }
+            : new[] { "    class J:", "        @static", $"        r: int = {read}" };
+        var body = order == Order.Earlier ? sibling.Concat(reader) : reader.Concat(sibling);
+        var expected = spelling == Spelling.Bare
+            ? Refuse(PyOutcome.Name("I"), "N1-methods")
+            : Run(method ? PyOutcome.Ran(Value) : PyOutcome.Name("O"), Value, "N7");
+        return new NameCell
+        {
+            Id = CellId("read", "sibling", spelling, position, order),
+            Family = Family.Read,
+            Source = Join(new[] { "class O:" }.Concat(body)) + MainBlock(method ? "print(O.J().r())" : "print(O.J.r)"),
+            Tag = expected.Tag,
+            Model = expected.Model,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = BindingKind.NestedType,
+            Outer = BindingKind.None,
+            Position = position,
+            Relation = DeclaringRelation.Sibling,
+            AxisCell = SiblingKey(spelling, position, order),
+        };
+    }
+
+    private static IEnumerable<string> DeclaringRelationFedFailures(IReadOnlyList<NameCell> pool, IReadOnlySet<string> axisCells)
+    {
+        var relations = pool.Where(c => c.Relation != null).Select(c => c.Relation!.Value).ToHashSet();
+        foreach (var relation in Enum.GetValues<DeclaringRelation>().Where(r => !relations.Contains(r)))
+            yield return $"DeclaringRelation {relation} has no generated cell";
+        foreach (var spelling in SiblingSpellings)
+            foreach (var position in SiblingPositions)
+                foreach (var order in new[] { Order.Earlier, Order.Later })
+                    if (!axisCells.Contains(SiblingKey(spelling, position, order)))
+                        yield return $"DeclaringRelation Sibling × {spelling} × {position} × {order} has no cell";
     }
 }
