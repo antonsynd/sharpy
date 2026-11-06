@@ -14,27 +14,13 @@ public partial class NameResolutionDifferentialTests
         BindingKind.InstanceField, BindingKind.InstanceProperty, BindingKind.InstanceMethod,
     };
 
-    /// <summary>The module-level values of READ's outer axis, after D3.e's pruning order took the pool from 7364 to the
-    /// 6,500 budget. Each value left out is in <see cref="PrunedReadAxes"/>, with its reason.</summary>
-    private static readonly BindingKind[] ModuleOuters =
-    {
-        BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleDef, BindingKind.ModuleClass,
-    };
-
-    /// <summary>D3.e's pruning of READ, in the plan's order. The report states these beside <c>excludedAxes</c>.</summary>
-    internal static readonly IReadOnlyDictionary<string, string> PrunedReadAxes = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["Builtin name max"] = "D3.e step 1: abs and len stay",
-        ["Builtin name int"] = "D3.e step 1: abs and len stay",
-        ["outer ModuleLiteralConst"] = "D3.e step 3, N4: a module const reads as ModuleVar",
-        ["outer ModuleComputedConst"] = "D3.e step 3, N4: a module const reads as ModuleVar",
-        ["outer ModuleStruct"] = "D3.e step 4: shares the F2 arm with ModuleClass, the one type kind that stays",
-        ["outer ModuleEnum"] = "D3.e step 4: shares the F2 arm with ModuleClass, the one type kind that stays",
-        ["outer ModuleTypeAlias"] = "D3.e step 4: shares the F2 arm with ModuleClass, the one type kind that stays",
-        ["outer ModuleLet"] = "refused at every position (SPY0340)",
-        ["outer ModuleUnion"] = "no expression read; shares the F2 arm with ModuleClass",
-        ["outer ModuleInterface"] = "no expression read; shares the F2 arm with ModuleClass",
-    };
+    /// <summary>The module-level values of READ's outer axis: the roster's generated values, each one left out named there. The
+    /// Builtin and ImportedName outers carry their own name, so each has its own arm.</summary>
+    private static readonly BindingKind[] ReadModuleOuters = NameResolutionRosters.ReadOuter
+        .Where(e => e.Value.Generated && NameResolutionRosters.ModuleLevelKinds.Contains(e.Key))
+        .Select(e => e.Key)
+        .OrderBy(k => k)
+        .ToArray();
 
     private static bool IsModuleLevel(BindingKind k) => k is >= BindingKind.ModuleVar and <= BindingKind.ModuleTypeAlias;
     private static bool IsInstance(BindingKind k) => InstanceTargets.Contains(k);
@@ -70,7 +56,10 @@ public partial class NameResolutionDifferentialTests
         bool imported = outer == BindingKind.ImportedName;
 
         // `len(digits)` over the same-named member: `len(7)`, or `len` of a function. Both are python's TypeError.
-        PyOutcome MemberPy() => t == BindingKind.InstanceMethod || imported ? PyOutcome.Other("TypeError") : EvalPython(t, form, member);
+        // A method's name in a class body is a plain function: calling it lacks self (TypeError), and `.RED` on it is an AttributeError.
+        PyOutcome MemberPy() => imported || (t == BindingKind.InstanceMethod && form != Form.EnumValue)
+            ? PyOutcome.Other("TypeError")
+            : t == BindingKind.InstanceMethod ? PyOutcome.Other("AttributeError") : EvalPython(t, form, member);
 
         if (s != Spelling.Bare)
         {
@@ -248,7 +237,7 @@ public partial class NameResolutionDifferentialTests
     {
         var targets = TypeLevelTargets.Concat(InstanceTargets).ToArray();
         var earlierLater = new[] { Order.Earlier, Order.Later };
-        var bareOuters = new[] { BindingKind.None }.Concat(ModuleOuters).ToArray();
+        var bareOuters = new[] { BindingKind.None }.Concat(ReadModuleOuters).ToArray();
 
         foreach (var t in targets)
         {
@@ -778,6 +767,8 @@ public partial class NameResolutionDifferentialTests
         };
     }
 
+    private static readonly string[] BuiltinTypeNames = { "int" };
+
     private static NameCell BuiltinClassCell(ReadName n, Order order, bool arityMatches)
     {
         var cls = new List<string> { $"class {n.Name}:", "    n0: int = 9" };
@@ -785,9 +776,11 @@ public partial class NameResolutionDifferentialTests
             cls.AddRange(new[] { $"    def __init__(self, {n.Params}) -> None:", "        pass" });
         var reader = new[] { "def r() -> int:", $"    return {n.Name}({n.CallArgs}).n0" };
         var lines = order == Order.Earlier ? cls.Concat(reader) : reader.Concat(cls);
-        var expected = arityMatches
-            ? Run(9, "N1")
-            : Refuse(PyOutcome.Other("TypeError"), "N1-arity");
+        var python = arityMatches ? PyOutcome.Ran(9) : PyOutcome.Other("TypeError");
+        // name_shadowing.md section 2: a type declaration may not take a builtin type's bare name, so this is SPY0212 at either arity.
+        var expected = BuiltinTypeNames.Contains(n.Name)
+            ? Refuse(python, "kind:SPY0212")
+            : arityMatches ? Run(9, "N1") : Refuse(python, "N1-arity");
         return new NameCell
         {
             Id = CellId("read", BindingKind.ModuleClass, ReadPosition.FunctionBody, order, arityMatches ? "arity-match" : "arity-mismatch", "outer=Builtin", n.Name),

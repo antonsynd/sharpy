@@ -131,7 +131,7 @@ public partial class NameResolutionDifferentialTests
     private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
     /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
-    private const int CellBudget = 6500;
+    private const int CellBudget = 8500;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
@@ -300,6 +300,12 @@ public partial class NameResolutionDifferentialTests
         [("N1-type-error", "SPY0320")] = 21,
         [("N2", "SPY0320")] = 7,
         [("N2-module", "SPY0320")] = 2,
+        // The restored enum outer's read is `.RED`, and on a later const or an earlier int member that is the no-such-member refusal.
+        [("N2", "SPY0203")] = 19,
+        [("SPY0401", "SPY0203")] = 12,
+        // R-KP's restored builtins: the read of an overloaded function or a type constructor as a value, ahead of N6.
+        [("N6", "SPY0336")] = 1,
+        [("N6", "SPY0342")] = 1,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -313,7 +319,8 @@ public partial class NameResolutionDifferentialTests
         // SPY0320 is `len(7)` over the imported outer's same-named member (D2.9).
         ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         // SPY0320: a later literal const outranks the import today, so its read is `len(7)`.
-        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
+        // SPY0203: over a later const, the enum outer's read is `.RED` on an int.
+        ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
@@ -323,12 +330,14 @@ public partial class NameResolutionDifferentialTests
         // R-KX: a local read above its own binding, with no outer the read could mean, is the name check today.
         ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
-        ["N6"] = new[] { "SPY0200", "SPY0222" },
+        // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
+        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
+        ["kind:SPY0212"] = new[] { "SPY0212" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
@@ -450,13 +459,15 @@ public partial class NameResolutionDifferentialTests
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
-                    "CS1955" or "CS8917" or "CS1729" or "CS0029" => "#2423",
+                    "CS1955" or "CS8917" or "CS1729" or "CS0029" or "CS1501" => "#2423",
                     // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
                     // qualifies it through the program's own module.
                     "CS0117" when cell.Outer == BindingKind.ImportedName => "#2423",
                     // A position that needs a constant was handed something else and nothing refused it.
                     "CS0133" or "CS1736" => "#2432",
                     "CS0149" or "CS0266" or "CS1061" when cell.Target == BindingKind.NestedType => "#2397",
+                    // `.RED` on a method's own name: the member is what the name means here, and nothing refused the read of it.
+                    "CS1061" when cell.Target == BindingKind.StaticMethod => "#2423",
                     "CS0149" or "CS0266" when cell.Target == BindingKind.StaticProperty => "#2417",
                     // A later binding reaches the emitter untyped; N1's order-free resolution types it.
                     "CS0149" or "CS0266" or "CS1503" => "#2423",
