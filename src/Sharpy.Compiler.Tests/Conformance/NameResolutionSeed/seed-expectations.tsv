@@ -30,7 +30,7 @@ B05	MustRefuse			SPY0225
 B06	MustRun	5|1		
 B07	MustRun	5|1		
 B08	MustRefuse		#2424	
-B09	Unruled		#2427	
+B09	MustRefuse		#2425	SPY0200
 B10	MustRun	11		
 B11	MustRun	[0, 1, 2]	#2425	
 B12	MustRun	[0, 1, 2]	#2425	

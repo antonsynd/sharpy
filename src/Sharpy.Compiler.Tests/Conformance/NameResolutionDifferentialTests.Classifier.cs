@@ -477,7 +477,6 @@ public partial class NameResolutionDifferentialTests
 
     /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red.</summary>
     [Theory]
-    [InlineData("L28", Family.Read, BindingKind.StaticField, BindingKind.None, "read/StaticField/MethodBody/Later/Bare/outer=None")]
     [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
     [InlineData("store-non-writable:ModuleDef:Assign", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/no-decl")]
     [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
