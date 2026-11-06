@@ -14,28 +14,6 @@ public partial class NameResolutionDifferentialTests
         BindingKind.InstanceField, BindingKind.InstanceProperty, BindingKind.InstanceMethod,
     };
 
-    /// <summary>The module-level values of READ's outer axis, after D3.e's pruning order took the pool from 7364 to the
-    /// 6,500 budget. Each value left out is in <see cref="PrunedReadAxes"/>, with its reason.</summary>
-    private static readonly BindingKind[] ModuleOuters =
-    {
-        BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleDef, BindingKind.ModuleClass,
-    };
-
-    /// <summary>D3.e's pruning of READ, in the plan's order. The report states these beside <c>excludedAxes</c>.</summary>
-    internal static readonly IReadOnlyDictionary<string, string> PrunedReadAxes = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["Builtin name max"] = "D3.e step 1: abs and len stay",
-        ["Builtin name int"] = "D3.e step 1: abs and len stay",
-        ["outer ModuleLiteralConst"] = "D3.e step 3, N4: a module const reads as ModuleVar",
-        ["outer ModuleComputedConst"] = "D3.e step 3, N4: a module const reads as ModuleVar",
-        ["outer ModuleStruct"] = "D3.e step 4: shares the F2 arm with ModuleClass, the one type kind that stays",
-        ["outer ModuleEnum"] = "D3.e step 4: shares the F2 arm with ModuleClass, the one type kind that stays",
-        ["outer ModuleTypeAlias"] = "D3.e step 4: shares the F2 arm with ModuleClass, the one type kind that stays",
-        ["outer ModuleLet"] = "refused at every position (SPY0340)",
-        ["outer ModuleUnion"] = "no expression read; shares the F2 arm with ModuleClass",
-        ["outer ModuleInterface"] = "no expression read; shares the F2 arm with ModuleClass",
-    };
-
     private static bool IsModuleLevel(BindingKind k) => k is >= BindingKind.ModuleVar and <= BindingKind.ModuleTypeAlias;
     private static bool IsInstance(BindingKind k) => InstanceTargets.Contains(k);
     private static bool IsLocalOuter(BindingKind k) => k is BindingKind.EnclosingLocal or BindingKind.Parameter or BindingKind.Inner;
@@ -64,7 +42,11 @@ public partial class NameResolutionDifferentialTests
         bool atLoad = IsInitializer(p) && nesting != Nesting.Lambda;
         int member = BindingValue(t, n);
 
-        PyOutcome MemberPy() => t == BindingKind.InstanceMethod ? PyOutcome.Other("TypeError") : EvalPython(t, form, member);
+        // An instance method read in its class body is the plain function: calling it (the Call and Ctor forms) is python's
+        // TypeError for the missing self; an attribute read on it (the EnumValue form) is AttributeError, as for any callable.
+        PyOutcome MemberPy() => t == BindingKind.InstanceMethod && form is Form.Call or Form.Ctor
+            ? PyOutcome.Other("TypeError")
+            : EvalPython(t, form, member);
 
         if (s != Spelling.Bare)
         {
@@ -242,7 +224,11 @@ public partial class NameResolutionDifferentialTests
     {
         var targets = TypeLevelTargets.Concat(InstanceTargets).ToArray();
         var earlierLater = new[] { Order.Earlier, Order.Later };
-        var bareOuters = new[] { BindingKind.None }.Concat(ModuleOuters).ToArray();
+        // READ's bare outer axis is the roster's generated values (P77b D1); the Builtin outer's name is the axis, so it has
+        // its own arm below.
+        var bareOuters = NameResolutionRosters.ReadOuterUniverse
+            .Where(k => k != BindingKind.Builtin && NameResolutionRosters.ReadOuter.TryGetValue(k, out var m) && m.Generated)
+            .ToArray();
 
         foreach (var t in targets)
         {
@@ -712,7 +698,11 @@ public partial class NameResolutionDifferentialTests
                 };
             }
 
-            // A module class spelled like the builtin: the constructor call × arity.
+            // A module class spelled like the builtin: the constructor call × arity. A type declaration spelling a builtin
+            // TYPE name is refused by kind at its own declaration (SPY0212, deviation builtin-type-name-shadowing-refused),
+            // so the arm is out for those names, as READ's ModuleLet outer is; the fact reads that reason from the compiler.
+            if (BuiltinTypeNames.Contains(n.Name))
+                continue;
             foreach (var o in new[] { Order.Earlier, Order.Later })
                 foreach (var arityMatches in new[] { false, true })
                     yield return BuiltinClassCell(n, o, arityMatches);
@@ -771,6 +761,14 @@ public partial class NameResolutionDifferentialTests
             Position = p,
         };
     }
+
+    /// <summary>The <see cref="Builtins"/> names that are builtin TYPE names: a class spelled like one is SPY0212 at its own
+    /// declaration (deviation <c>builtin-type-name-shadowing-refused</c>), so <see cref="BuiltinClassCell"/>'s arm is out for
+    /// it. <c>BuiltinClassArm_IsOutExactlyForTheBuiltinTypeNames</c> holds this set to the compiler, both directions.</summary>
+    internal static readonly IReadOnlySet<string> BuiltinTypeNames = new HashSet<string>(StringComparer.Ordinal) { "int" };
+
+    internal const string BuiltinTypeNameClassReason =
+        "a class spelling a builtin type name is refused by kind at its declaration (SPY0212, builtin-type-name-shadowing-refused)";
 
     private static NameCell BuiltinClassCell(ReadName n, Order order, bool arityMatches)
     {

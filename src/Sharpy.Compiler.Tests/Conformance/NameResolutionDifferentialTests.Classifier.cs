@@ -214,9 +214,23 @@ public partial class NameResolutionDifferentialTests
     [InlineData("CS0266", BindingKind.NestedType, "#2397")]
     [InlineData("CS9999", BindingKind.ModuleVar, "UNROUTED(CS9999)")]
     [InlineData("CS1061", BindingKind.ModuleVar, "UNROUTED(CS1061)")]
+    [InlineData("CS1501", BindingKind.ModuleVar, "#2423")]
     internal void Cite_AnIce_RoutesByItsCode(string cs, BindingKind target, string expected)
     {
         var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target };
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
+    }
+
+    /// <summary>P77b D1's restored ModuleEnum outer: CS1061 routes to #2423 only under that outer. The same code under no
+    /// outer stays untriaged (the NestedType row above and this one's second arm are its controls).</summary>
+    [Theory]
+    [InlineData(BindingKind.StaticMethod, BindingKind.ModuleEnum, "#2423")]
+    [InlineData(BindingKind.StaticMethod, BindingKind.None, "UNROUTED(CS1061)")]
+    internal void Cite_AMemberReadUnderTheEnumOuter_RoutesToN1(BindingKind target, BindingKind outer, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target, Outer = outer };
+        var cs = "CS1061";
 
         Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
     }

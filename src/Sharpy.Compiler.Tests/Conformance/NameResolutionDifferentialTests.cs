@@ -126,8 +126,9 @@ public partial class NameResolutionDifferentialTests
     private const string AllowlistFileName = "name-resolution-differential-allowlist.txt";
     private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
-    /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
-    private const int CellBudget = 6500;
+    /// <summary>D3's budget: the pool's size, with the 13-minute dev wall as its other half. P77b D1 (R-KP): 8,500 holds the
+    /// restored READ outers and builtins and the twelve axes; the wall, not this count, is the binding limit.</summary>
+    private const int CellBudget = 8500;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
@@ -288,6 +289,8 @@ public partial class NameResolutionDifferentialTests
         [("kind:SPY0225", "SPY0134")] = 6,
         // A later member in a constant-only initializer: the name is not visible yet, so SPY0401 is not reached.
         [("SPY0401", "SPY0200")] = 9,
+        // P77b D1's restored ModuleEnum outer: `x.RED.value` on an int member is an undefined member before SPY0401 is reached.
+        [("SPY0401", "SPY0203")] = 12,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
     };
@@ -301,12 +304,15 @@ public partial class NameResolutionDifferentialTests
         ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
         // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
         ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
-        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
+        // SPY0203 is SPY0230's neighbour for the EnumValue form (P77b D1's restored ModuleEnum outer): `x.RED.value` on the
+        // later int member the read wrongly binds is an undefined member, as `x(...)` on it is not callable.
+        ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
-        // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
-        ["N6"] = new[] { "SPY0200", "SPY0222" },
+        // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
+        // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
+        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
@@ -430,6 +436,12 @@ public partial class NameResolutionDifferentialTests
                     "CS0149" or "CS0266" when cell.Target == BindingKind.StaticProperty => "#2417",
                     // A later binding reaches the emitter untyped; N1's order-free resolution types it.
                     "CS0149" or "CS0266" or "CS1503" => "#2423",
+                    // A builtin's overload set reached the emitter for a later module binding of its name (p15, `max(1, 2)`
+                    // above `max: int = 7`, P77b D1's restored builtin): N1's order-free resolution binds the module name.
+                    "CS1501" => "#2423",
+                    // `x.RED.value` the checker bound to the module enum outer while C# binds the class member (P77b D1's
+                    // restored ModuleEnum outer): the checker and the emitter disagree on the binding, and N1 makes them agree.
+                    "CS1061" when cell.Outer == BindingKind.ModuleEnum => "#2423",
                     // No default arm: an ICE nobody has triaged is red until a route names the check that cures it.
                     _ => $"UNROUTED({run.CsCode})",
                 };
