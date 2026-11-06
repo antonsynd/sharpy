@@ -2146,12 +2146,6 @@ read/struct/InstanceMethod/LambdaImmediate/Earlier/SelfDot Ice # #2434 ice
 read/struct/InstanceMethod/LambdaPassed/Earlier/SelfDot Ice # #2434 ice
 read/struct/InstanceMethod/LambdaStored/Earlier/SelfDot Ice # #2434 ice
 read/struct/InstanceMethod/NestedDefInMethod/Earlier/SelfDot Ice # #2434 ice
-read/struct/StaticField/AccessorGetBody/Lambda/Earlier/SelfDot SilentWrong # #2434 missing-refusal
-read/struct/StaticField/InitBody/Lambda/Earlier/SelfDot SilentWrong # #2434 missing-refusal
-read/struct/StaticField/LambdaImmediate/Earlier/SelfDot SilentWrong # #2434 missing-refusal
-read/struct/StaticField/LambdaPassed/Earlier/SelfDot SilentWrong # #2434 missing-refusal
-read/struct/StaticField/LambdaStored/Earlier/SelfDot SilentWrong # #2434 missing-refusal
-read/struct/StaticField/NestedDefInMethod/Earlier/SelfDot SilentWrong # #2434 missing-refusal
 read/struct/StaticMethod/AccessorGetBody/Earlier/SelfDot Ice # #2147 ice
 read/struct/StaticMethod/AccessorGetBody/Lambda/Earlier/SelfDot Ice # #2434 ice
 read/struct/StaticMethod/AccessorSetBody/Earlier/SelfDot Ice # #2147 ice

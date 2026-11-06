@@ -1088,13 +1088,16 @@ public partial class NameResolutionDifferentialTests
             yield return StructHostCell(target, body, nesting, order, spelling);
     }
 
-    /// <summary>The class host's arm at every position, where the struct runs what the class runs, except <c>self</c> reaching a C# closure: a captured struct would copy its value, so
-    /// R-KT refuses as C# does, and the comprehension and generator positions that run are the arm's positive control.</summary>
+    /// <summary>The class host's arm at every position, where the struct runs what the class runs, except <c>self</c> capturing a struct in a C# closure: a captured struct would copy its
+    /// value, so R-KT refuses as C# does. The comprehension and generator positions that run, and the static field C# does not capture, are the arm's positive controls.</summary>
     private static NameCell StructHostCell(BindingKind target, ReadPosition body, Nesting nesting, Order order, Spelling spelling)
     {
         var cell = ClassCell(target, body, nesting, order, spelling, BindingKind.None, ReadName.Plain, "struct H:");
         var closure = nesting == Nesting.Lambda || NameResolutionRosters.StructClosureBodies.Contains(body);
-        var refused = spelling == Spelling.SelfDot && closure;
+
+        // R-KT refuses what C# refuses (CS1673), never wider. `self.x` on a @static field lowers to `H.x`, nothing captures `this`, and it prints python's
+        // value (measured 2 / 2), so it keeps the class arm: this target is the arm's "never wider" control. `self.x()` on a @static def is CS1673, and is refused.
+        var refused = spelling == Spelling.SelfDot && closure && target != BindingKind.StaticField;
         return cell with
         {
             Id = CellId("read", "struct", target, body, nesting == Nesting.Direct ? null : nesting, order, spelling),
@@ -1190,6 +1193,7 @@ public partial class NameResolutionDifferentialTests
         else if (isConst)
             expected = Refuse(python, "kind:SPY0225");
         else if (instance)
+            // variable_scoping.md: "An instance field reached through the type name is a different error (SPY0290)". The rule names its code, so RefusalCodeFailures pins it.
             expected = throughType ? Refuse(python, "kind:SPY0290") : Run(python, written, "N7");
         else
             expected = receiver is AttributeReceiver.TypeName or AttributeReceiver.Alias ? Run(python, written, "N7") : Refuse(python, "R-KU");
