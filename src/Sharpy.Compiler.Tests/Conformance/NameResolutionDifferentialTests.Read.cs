@@ -1,3 +1,5 @@
+using TypeKind = Sharpy.Compiler.Semantic.TypeKind;
+
 namespace Sharpy.Compiler.Tests.Conformance;
 
 /// <summary>The READ family (N1 / N2 / N3 / N4 / N7): D3.d's rule, keyed on kind classes and never on a cell.</summary>
@@ -121,7 +123,7 @@ public partial class NameResolutionDifferentialTests
     }
 
     private static NameCell ClassCell(
-        BindingKind t, ReadPosition p, Nesting nesting, Order order, Spelling s, BindingKind outer, ReadName n)
+        BindingKind t, ReadPosition p, Nesting nesting, Order order, Spelling s, BindingKind outer, ReadName n, TypeKind? host = null)
     {
         // The ImportedName read is the one Value read through `len`, whatever the target's own form (D2.9).
         var form = outer == BindingKind.ImportedName ? Form.Value : FormFor(t, outer, s);
@@ -166,7 +168,13 @@ public partial class NameResolutionDifferentialTests
         if (outer is not (BindingKind.None or BindingKind.Builtin or BindingKind.ImportedName) && !IsLocalOuter(outer))
             lines.AddRange(ModuleDecl(outer, n));
         lines.AddRange(helper);
-        lines.Add(HostHeader(p));
+        // P77b axis 7: a host other than the position's own is the host axis (HostKinds); every body position reads alike in it.
+        lines.Add(host switch
+        {
+            null => HostHeader(p),
+            TypeKind.Struct => "struct H:",
+            _ => throw new ArgumentOutOfRangeException(nameof(host), host, "HostKinds generates no such host"),
+        });
         lines.AddRange(Indent(members));
         if (s == Spelling.Alias)
             lines.Add("type A = H");
@@ -175,7 +183,7 @@ public partial class NameResolutionDifferentialTests
         var expected = ExpectClass(t, p, nesting, order, s, outer, n, form);
         return new NameCell
         {
-            Id = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsNamedOuter ? n.Name : null),
+            Id = CellId("read", host == null ? null : $"host={host}", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsNamedOuter ? n.Name : null),
             Family = Family.Read,
             Source = source,
             Tag = expected.Tag,
@@ -186,6 +194,7 @@ public partial class NameResolutionDifferentialTests
             Outer = outer,
             Position = p,
             NeedsStdlib = n.IsImported,
+            Host = host,
         };
     }
 

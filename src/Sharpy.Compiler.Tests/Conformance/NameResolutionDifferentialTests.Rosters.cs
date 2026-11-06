@@ -1169,6 +1169,49 @@ internal static class NameResolutionRosters
 
     internal const string LoopBodyEnclosureReason = "same walk; R-LG names with/except";
 
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 7: the host (R-KT)
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The READ family's host axis (P77b axis 7): the image of <see cref="TypeKind"/>. The class host (with its
+    /// <c>@dataclass</c> spelling at the dataclass initializer positions) is every class cell's; the struct host rides every
+    /// <c>ClassBodies</c> position; the other kinds are out with their reasons.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, AxisMembership> HostKinds = Roster.Map(
+        (TypeKind.Class, AxisMembership.Everywhere),
+        (TypeKind.Struct, AxisMembership.Everywhere),
+        (TypeKind.Interface, AxisMembership.Out(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's interface host matrix")),
+        (TypeKind.Enum, AxisMembership.Out(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's enum host matrix")),
+        (TypeKind.Union, AxisMembership.Out(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's union host matrix")),
+        (TypeKind.Delegate, AxisMembership.Out(ExcludedAxis.TypeParametersAndDelegates, "no Sharpy declaration hosts a body")));
+
+    /// <summary>The targets the struct host reads (P77b axis 7): the instance and <c>@static</c> field and method.</summary>
+    internal static readonly ImmutableArray<BindingKind> StructHostTargets = ImmutableArray.Create(
+        BindingKind.InstanceField, BindingKind.StaticField, BindingKind.InstanceMethod, BindingKind.StaticMethod);
+
+    /// <summary>The body positions whose statement axis 7 also reads through a stored lambda (#2434's <c>st2_init_lambda</c> /
+    /// <c>st2_accessor_get_lambda</c>).</summary>
+    internal static readonly ImmutableArray<ReadPosition> StructLambdaNestings = ImmutableArray.Create(ReadPosition.InitBody, ReadPosition.AccessorGetBody);
+
+    /// <summary>The struct-host targets whose <c>self.</c> read lowers through <c>this</c> (P77b axis 7): the instance members. A
+    /// <c>@static</c> member read through <c>self.</c> is the type's member (<c>H.x</c>), so a closure over it captures no
+    /// <c>this</c>, C# refuses nothing (measured: <c>self.x</c> on a <c>@static</c> field in a struct lambda prints 2), and R-KT
+    /// would be wider than CS1673: it takes the class arm.</summary>
+    internal static readonly ImmutableArray<BindingKind> StructSelfCaptureTargets =
+        StructHostTargets.Where(k => InstanceKinds.Contains(k)).ToImmutableArray();
+
+    /// <summary>R-KT's closure set (P77b axis 7, #2434): the struct positions where <c>self.</c> is captured by a C# closure, a
+    /// lambda or a local function, which C# refuses (CS1673). The comprehension and generator positions are lowered without a
+    /// <c>this</c> capture and run: they take the class arm. Asserted equal to what <c>PlaceInClass</c> renders through a
+    /// lambda or a nested <c>def</c>.</summary>
+    internal static readonly ImmutableHashSet<(ReadPosition Position, NameResolutionDifferentialTests.Nesting Nesting)> StructSelfCaptureClosures =
+        ImmutableHashSet.Create(
+            (ReadPosition.LambdaStored, NameResolutionDifferentialTests.Nesting.Direct),
+            (ReadPosition.LambdaImmediate, NameResolutionDifferentialTests.Nesting.Direct),
+            (ReadPosition.LambdaPassed, NameResolutionDifferentialTests.Nesting.Direct),
+            (ReadPosition.NestedDefInMethod, NameResolutionDifferentialTests.Nesting.Direct),
+            (ReadPosition.InitBody, NameResolutionDifferentialTests.Nesting.Lambda),
+            (ReadPosition.AccessorGetBody, NameResolutionDifferentialTests.Nesting.Lambda));
+
     internal const string LoopBodyLoopFamilyReason =
         "the loop axis itself (BackEdgeLoopFamilies): the binder directly in the loop body is the `direct` enclosure";
 
@@ -2928,6 +2971,67 @@ public partial class NameResolutionDifferentialTests
             problems.Add($"LoopBodyEnclosures: the loop family {family} is generated as an enclosure of its own loop body");
 
         AssertNoProblems(problems, "axis 6 closes over every LocalKinds binder in every R-LG body, each other binder or family naming why");
+    }
+
+    // =========================================================================================================
+    // P77b axis 7: the host
+    // =========================================================================================================
+
+    /// <summary>The host axis is total over <see cref="TypeKind"/>, both directions, each kind generated or out with its reason,
+    /// and the class and struct hosts are generated.</summary>
+    [Fact]
+    public void HostKindsRoster_IsTotalOverTypeKind()
+    {
+        var problems = Roster.TotalityProblems("HostKinds", Enum.GetValues<TypeKind>(), NameResolutionRosters.HostKinds.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("HostKinds", NameResolutionRosters.HostKinds));
+        foreach (var k in new[] { TypeKind.Class, TypeKind.Struct }.Where(k => !(NameResolutionRosters.HostKinds.TryGetValue(k, out var m) && m.Generated)))
+            problems.Add($"HostKinds: the {k} host is not generated");
+
+        AssertNoProblems(problems, "every type kind hosts the READ family's body positions or names why not");
+    }
+
+    /// <summary>The struct host's positions: every <c>ClassBodies</c> position read directly, and the lambda nestings.</summary>
+    private static IEnumerable<(ReadPosition Position, Nesting Nesting)> StructHostPositions() =>
+        ClassBodies.Select(p => (p, Nesting.Direct)).Concat(NameResolutionRosters.StructLambdaNestings.Select(p => (p, Nesting.Lambda)));
+
+    /// <summary>Does a body render through a C# closure: a <c>lambda</c>, or a <c>def</c> inside a function body (a C# local
+    /// function)? A nested CLASS's method is a method of its own, and a generator or a comprehension is neither.</summary>
+    internal static bool RendersThroughCSharpClosure(IEnumerable<string> members)
+    {
+        var functions = new Stack<int>();
+        foreach (var line in members)
+        {
+            var text = line.TrimStart();
+            var indent = line.Length - text.Length;
+            while (functions.Count > 0 && indent <= functions.Peek())
+                functions.Pop();
+            if (text.Contains("lambda", StringComparison.Ordinal))
+                return true;
+            if (text.StartsWith("def ", StringComparison.Ordinal) && functions.Count > 0)
+                return true;
+            if (text.StartsWith("def ", StringComparison.Ordinal) || text.StartsWith("property ", StringComparison.Ordinal))
+                functions.Push(indent);
+            else if (text.StartsWith("class ", StringComparison.Ordinal))
+                functions.Clear();
+        }
+        return false;
+    }
+
+    /// <summary>R-KT's closure set is exactly the struct positions <c>PlaceInClass</c> renders <c>self.x</c> through a C# lambda
+    /// or local function (both directions), and the comprehension and generator positions are not in it (the positive control:
+    /// they take the class arm).</summary>
+    [Fact]
+    public void StructSelfCaptureClosures_AreThePositionsRenderedThroughACSharpClosure()
+    {
+        var rendered = StructHostPositions().Where(e => RendersThroughCSharpClosure(PlaceInClass(e.Position, e.Nesting, "self.x").Members)).ToList();
+        var problems = Roster.TotalityProblems("StructSelfCaptureClosures", rendered, NameResolutionRosters.StructSelfCaptureClosures).ToList();
+        foreach (var p in new[] { ReadPosition.GeneratorBody, ReadPosition.ComprehensionElement, ReadPosition.ComprehensionIterable, ReadPosition.MethodBody, ReadPosition.NestedClassMethodBody })
+            if (RendersThroughCSharpClosure(PlaceInClass(p, Nesting.Direct, "self.x").Members))
+                problems.Add($"StructSelfCaptureClosures: {p} renders through a closure, and it takes the class arm");
+        if (!RendersThroughCSharpClosure(new[] { "def r(self) -> int:", "    def g() -> int:", "        return self.x", "    return g()" }))
+            problems.Add("StructSelfCaptureClosures: a def inside a def is not seen as a local function");
+
+        AssertNoProblems(problems, "R-KT refuses exactly what C# refuses: a struct self captured by a lambda or a local function");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

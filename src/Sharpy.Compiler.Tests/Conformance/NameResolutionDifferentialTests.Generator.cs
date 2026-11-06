@@ -62,6 +62,7 @@ public partial class NameResolutionDifferentialTests
         cells.AddRange(ComprehensionAxisCells());
         cells.AddRange(CycleAxisCells());
         cells.AddRange(OrderAxisCells());
+        cells.AddRange(StructHostAxisCells());
         cells.AddRange(SeedCells());
         return cells.Select(WithModuleAccessorTwin).ToList();
     });
@@ -384,6 +385,11 @@ public partial class NameResolutionDifferentialTests
                 return new(new[] { "def r(self) -> int:", $"    return {e}" }, "H().r()");
             case ReadPosition.StaticMethodBody:
                 return new(new[] { "@static", "def r() -> int:", $"    return {e}" }, "H.r()");
+            // P77b axis 7 (#2434's st2_init_lambda / st2_accessor_get_lambda): the body statement reads through a stored lambda.
+            case ReadPosition.InitBody when nesting == Nesting.Lambda:
+                return new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    f: () -> int = lambda: {e}", "    self.r = f()" }, "H().r");
+            case ReadPosition.AccessorGetBody when nesting == Nesting.Lambda:
+                return new(new[] { "property get r(self) -> int:", $"    f: () -> int = lambda: {e}", "    return f()" }, "H().r");
             case ReadPosition.InitBody:
                 return new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    self.r = {e}" }, "H().r");
             case ReadPosition.AccessorGetBody:

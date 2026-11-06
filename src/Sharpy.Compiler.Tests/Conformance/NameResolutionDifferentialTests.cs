@@ -103,6 +103,10 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
+    /// <summary>P77b axis 7: the READ class cell's host type kind when it is not the position's own (null: the position's host,
+    /// <c>HostHeader</c>'s class / <c>@dataclass</c> / struct initializer host).</summary>
+    public Sharpy.Compiler.Semantic.TypeKind? Host { get; init; }
+
     /// <summary>P77b axis 4: when a LOCAL read happens relative to its binding (null: a family with no LOCAL read timing).</summary>
     public ReadTiming? Timing { get; init; }
 
@@ -460,6 +464,12 @@ public partial class NameResolutionDifferentialTests
                 return run.CsCode switch
                 {
                     "CS0176" => "#2147",
+                    // P77b axis 7 (R-KT): a struct `self` captured by a C# lambda or local function reaches Roslyn unrefused (lead
+                    // ruling 2026-11-06: #2434's class).
+                    // A struct `self.s()` on a `@static` method at a closure: #2147's `this.S()` lowering (the class host's same
+                    // cells are CS0176 rows on #2147) seen through the struct closure (lead ruling 2026-11-06).
+                    "CS1673" when cell.Target == BindingKind.StaticMethod => "#2147",
+                    "CS1673" => "#2434",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
                     "CS0103" when cell.Family == Family.Store => "#2151",
