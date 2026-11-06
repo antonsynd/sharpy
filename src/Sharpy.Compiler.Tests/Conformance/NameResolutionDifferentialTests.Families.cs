@@ -645,11 +645,12 @@ public partial class NameResolutionDifferentialTests
     // LOCAL (N5)
     // ------------------------------------------------------------------------------------------- //
 
-    private static readonly BindingKind[] LocalKinds =
-    {
-        BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst,
-        BindingKind.LocalDef, BindingKind.LambdaTypedLocal,
-    };
+    /// <summary>LOCAL's binder axis: the roster's generated values, the three it leaves out named there.</summary>
+    private static readonly BindingKind[] LocalKinds = NameResolutionRosters.LocalKinds
+        .Where(e => e.Value.Generated)
+        .Select(e => e.Key)
+        .OrderBy(k => k)
+        .ToArray();
 
     /// <summary>LOCAL's outer axis (finding 3): the roster's generated values, the pruned ones named there. The Builtin
     /// outer's name is the axis, so it has its own arm below.</summary>
@@ -1245,6 +1246,7 @@ public partial class NameResolutionDifferentialTests
             localOuter = NameResolutionRosters.LocalOuter.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             storeBodies = NameResolutionRosters.StoreBodies.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             localBodies = NameResolutionRosters.LocalBodies.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            localKinds = NameResolutionRosters.LocalKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             patterns = NameResolutionRosters.PatternNotes,
             readAxes = PrunedReadAxes,
         },
