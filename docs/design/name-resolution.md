@@ -84,10 +84,6 @@ class Box:
     size: int = 2
 ```
 
-The same place exists one scope out, where the outer binding is a builtin or an import: **a
-module-level initializer that reads a builtin or imported name at or before its own same-named
-declaration is refused.**
-
 The steer is "rename, or qualify". A Python-valid program therefore never silently changes meaning.
 Without the outer binding there is no ambiguity, and the forward read simply works (N3).
 

@@ -93,8 +93,6 @@ public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 {
     public TypeDefinitionOwnSymbolMatrixTests(ITestOutputHelper output) : base(output)
     {
-        // Every compile's generated C# would land in this test's result: muted (#2438, the per-test output ceiling).
-        MuteCompilePath = true;
     }
 
     internal enum Family

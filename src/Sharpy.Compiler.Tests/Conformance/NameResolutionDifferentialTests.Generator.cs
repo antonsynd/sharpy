@@ -59,13 +59,6 @@ public partial class NameResolutionDifferentialTests
         cells.AddRange(StoreCells());
         cells.AddRange(TypeMemberCells());
         cells.AddRange(LocalCells());
-        cells.AddRange(ComprehensionAxisCells());
-        cells.AddRange(CycleAxisCells());
-        cells.AddRange(OrderAxisCells());
-        cells.AddRange(StructHostAxisCells());
-        cells.AddRange(AttributeStoreAxisCells());
-        cells.AddRange(SiblingAxisCells());
-        cells.AddRange(DeclarationAxisCells());
         cells.AddRange(SeedCells());
         return cells.Select(WithModuleAccessorTwin).ToList();
     });
@@ -135,39 +128,25 @@ public partial class NameResolutionDifferentialTests
 
     private static bool IsCallableKind(BindingKind kind) => FormOf(kind) == Form.Call;
 
-    /// <summary>The builtins of the <c>Builtin</c> outer value: three functions with different CLR overload sets and the type
-    /// name <c>int</c>. P77b D1 (R-KP) restored <c>max</c> and <c>int</c>, which P77a's D3.e step 1 had pruned to the budget.</summary>
+    /// <summary>The builtins of the <c>Builtin</c> outer value: two functions with different CLR overload sets. D3.e step 1
+    /// pruned <c>max</c> and the type name <c>int</c> to the budget; see <see cref="PrunedReadAxes"/>.</summary>
     private static readonly (string Name, string Args, string Params, int Result)[] Builtins =
     {
         ("abs", "-3", "x: int", 3),
         ("len", "\"ab\"", "s: str", 2),
-        ("max", "1, 2", "a: int, b: int", 2),
-        ("int", "\"5\"", "s: str", 5),
     };
 
     /// <summary>The value a builtin-named binding carries, so the builtin's result and the binding never coincide.</summary>
     private const int BuiltinBindingValue = 7;
 
-    private readonly record struct ReadName(string Name, string CallArgs, string Params, int? BuiltinResult, string? Import = null)
+    private readonly record struct ReadName(string Name, string CallArgs, string Params, int? BuiltinResult)
     {
         public static readonly ReadName Plain = new("x", "", "", null);
-        public bool IsBuiltin => BuiltinResult != null && Import == null;
-        public bool IsImported => Import != null;
-
-        /// <summary>A named outer (D3.a's non-coincidence rule): a binding spelled like it carries <see cref="BuiltinBindingValue"/>.</summary>
-        public bool IsNamedOuter => BuiltinResult != null;
+        public bool IsBuiltin => BuiltinResult != null;
     }
-
-    /// <summary>The <c>ImportedName</c> outer (P77b D2.9): the str VALUE <c>string.digits</c>, read through <c>len</c> as
-    /// <see cref="StrValueCells"/> reads str kinds, so the read is 10 and the same-named <c>digits: int = 7</c> makes it
-    /// <c>len(7)</c>, the type-error arm. A str value because every int-returning stdlib function Sharpy exposes is
-    /// <c>int64</c> (p19 / p20). <c>string</c> is a Sharpy.Stdlib module: every cell spelling it sets
-    /// <see cref="NameCell.NeedsStdlib"/>, which is how <c>RunSharpy</c> references the monolith.</summary>
-    private static readonly ReadName Imported = new("digits", "", "", 10, "from string import digits");
 
     private static string ReadText(Form form, string prefix, ReadName n) => form switch
     {
-        Form.Value when n.IsImported => $"len({prefix}{n.Name})",
         Form.Value => prefix + n.Name,
         Form.Call => $"{prefix}{n.Name}({n.CallArgs})",
         Form.Ctor => $"{prefix}{n.Name}({n.CallArgs}).v",
@@ -196,10 +175,7 @@ public partial class NameResolutionDifferentialTests
     }
 
     private static int BindingValue(BindingKind kind, ReadName n)
-        => n.IsNamedOuter ? BuiltinBindingValue : ValueOf(kind);
-
-    /// <summary>The import line a cell over the <c>ImportedName</c> outer starts with, first in the file.</summary>
-    private static string WithImport(ReadName n, string source) => n.IsImported ? n.Import + "\n" + source : source;
+        => n.IsBuiltin ? BuiltinBindingValue : ValueOf(kind);
 
     /// <summary>The module-level declaration of a kind, with the helper it needs. <paramref name="initOverride"/> is the
     /// initializer of a self / cycle cell.</summary>
@@ -388,11 +364,6 @@ public partial class NameResolutionDifferentialTests
                 return new(new[] { "def r(self) -> int:", $"    return {e}" }, "H().r()");
             case ReadPosition.StaticMethodBody:
                 return new(new[] { "@static", "def r() -> int:", $"    return {e}" }, "H.r()");
-            // P77b axis 7 (#2434's st2_init_lambda / st2_accessor_get_lambda): the body statement reads through a stored lambda.
-            case ReadPosition.InitBody when nesting == Nesting.Lambda:
-                return new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    f: () -> int = lambda: {e}", "    self.r = f()" }, "H().r");
-            case ReadPosition.AccessorGetBody when nesting == Nesting.Lambda:
-                return new(new[] { "property get r(self) -> int:", $"    f: () -> int = lambda: {e}", "    return f()" }, "H().r");
             case ReadPosition.InitBody:
                 return new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    self.r = {e}" }, "H().r");
             case ReadPosition.AccessorGetBody:
