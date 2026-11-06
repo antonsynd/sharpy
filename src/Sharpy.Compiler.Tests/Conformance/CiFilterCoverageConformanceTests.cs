@@ -1,5 +1,9 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using YamlDotNet.RepresentationModel;
 
@@ -68,6 +72,78 @@ public class CiFilterCoverageConformanceTests
     }
 
     /// <summary>
+    /// A sweep leaves the Compiler shards by a <c>FullyQualifiedName!~X</c> in <c>COMPILER_MAIN_FILTER</c> and runs in
+    /// its own step, so it must be selected by exactly one step across every job (a shard is one step per matrix
+    /// value). The sweeps are read from both sides of that hand-off, because reading only the main filter would let the
+    /// deleted <c>!~</c> take its own sweep out of this fact.
+    /// </summary>
+    [Fact]
+    public void EverySweep_IsSelectedByExactlyOneStep()
+    {
+        var (steps, tests) = LoadStepsAndTests();
+        var sweepTokens = SweepTokens(steps);
+        Assert.True(sweepTokens.Count >= MinimumSweeps,
+            $"Found {sweepTokens.Count} sweeps ({string.Join(", ", sweepTokens)}), expected at least {MinimumSweeps}.");
+
+        var judged = 0;
+        var wrong = new List<string>();
+        foreach (var test in tests)
+        {
+            if (IsExempt(test) || !sweepTokens.Any(t => test.Fqn.Contains(t, StringComparison.Ordinal)))
+                continue;
+            judged++;
+            var selecting = steps.Where(s => EvaluateFilter(s.Filter, test)).Select(s => s.Name).ToList();
+            if (selecting.Count != 1)
+                wrong.Add($"  {test.Fqn}: {selecting.Count} step(s): {string.Join("; ", selecting)}");
+        }
+
+        Assert.True(judged >= MinimumSweepTests,
+            $"Judged {judged} sweep tests, expected at least {MinimumSweepTests}: the sweep names match nothing.");
+        Assert.True(wrong.Count == 0,
+            $"{wrong.Count} sweep test(s) not selected by exactly one CI step:\n{string.Join("\n", wrong)}");
+    }
+
+    /// <summary>
+    /// A skipped oracle guards nothing and leaves its job green, so every step that selects a class calling
+    /// <see cref="PythonInterpreter.RequireOrSkip(int)"/> must resolve <see cref="PythonInterpreter.RequireEnvironmentVariable"/>
+    /// to 1 from the workflow, job or step env. The three sweep classes are pinned: a scan that misses a direct caller
+    /// is red.
+    /// </summary>
+    [Fact]
+    public void EveryPythonOracleTest_RunsWithTheOracleRequired()
+    {
+        var (steps, tests) = LoadStepsAndTests();
+        var (oracleClasses, unattributed) = ScanPythonOracleClasses(tests);
+
+        Assert.True(unattributed.Count == 0,
+            "RequireOrSkip called outside any class with tests, so no step can be judged for it:\n"
+            + string.Join("\n", unattributed.Select(u => $"  {u}")));
+        Assert.Contains("Sharpy.Compiler.Tests.Properties.Differential.DifferentialExecutionTests", oracleClasses);
+        Assert.Contains("Sharpy.Compiler.Tests.Properties.Differential.FormatSpecDifferentialTests", oracleClasses);
+        Assert.Contains("Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests", oracleClasses);
+
+        var judged = 0;
+        var wrong = new List<string>();
+        foreach (var step in steps)
+        {
+            var selected = oracleClasses
+                .Where(c => tests.Any(t => t.Fqn.StartsWith(c + ".", StringComparison.Ordinal) && EvaluateFilter(step.Filter, t)))
+                .ToList();
+            if (selected.Count == 0)
+                continue;
+            judged++;
+            if (step.Env.GetValueOrDefault(PythonInterpreter.RequireEnvironmentVariable) != "1")
+                wrong.Add($"  {step.Name}: selects {string.Join(", ", selected)}");
+        }
+
+        Assert.True(judged >= MinimumOracleSteps,
+            $"Judged {judged} steps, expected at least {MinimumOracleSteps}: the filters select no python oracle test.");
+        Assert.True(wrong.Count == 0,
+            $"{wrong.Count} step(s) run a python oracle test without {PythonInterpreter.RequireEnvironmentVariable}=1, so it skips green:\n"
+            + string.Join("\n", wrong));
+    }
+
+    /// <summary>
     /// The evaluator resolves the workflow's matrix/env spelling to a literal filter, and refuses
     /// (throws) what it cannot read rather than treating it as "selects nothing" or "selects all".
     /// </summary>
@@ -99,13 +175,99 @@ public class CiFilterCoverageConformanceTests
 
     private (List<string> Filters, List<TestInfo> Tests) LoadFiltersAndTests()
     {
+        var (steps, tests) = LoadStepsAndTests();
+        return (steps.Select(s => s.Filter).ToList(), tests);
+    }
+
+    private (List<ResolvedStep> Steps, List<TestInfo> Tests) LoadStepsAndTests()
+    {
         var repoRoot = FindRepoRoot();
         var yaml = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "dotnet10.yml"));
-        var filters = ExtractCompilerTestFilters(yaml);
-        Assert.True(filters.Count >= 2,
-            $"Expected ≥2 Compiler.Tests steps, found {filters.Count}. Workflow restructured?");
-        return (filters, ReflectTests());
+        var steps = ExtractCompilerTestSteps(yaml);
+        Assert.True(steps.Count >= 2,
+            $"Expected ≥2 Compiler.Tests steps, found {steps.Count}. Workflow restructured?");
+        return (steps, ReflectTests());
     }
+
+    /// <summary>The seven sweeps <c>COMPILER_MAIN_FILTER</c> excludes today (measured). A literal, so that a shrinking
+    /// universe is red rather than a smaller check.</summary>
+    private const int MinimumSweeps = 7;
+
+    /// <summary>Just below the 84 test methods measured when this fact was written, exemptions aside. A literal, so that
+    /// sweep names matching nothing are red.</summary>
+    private const int MinimumSweepTests = 80;
+
+    /// <summary>The three pinned sweep steps; the shards that select a python twin come on top.</summary>
+    private const int MinimumOracleSteps = 3;
+
+    private static List<string> SweepTokens(IReadOnlyList<ResolvedStep> steps)
+    {
+        static IEnumerable<string> FqnTokens(string filter, FilterOp op) => Clauses(ParseFilter(filter))
+            .Where(c => c.Property == "FullyQualifiedName" && c.Op == op)
+            .Select(c => c.Value);
+
+        var mainFilter = steps[0].Env["COMPILER_MAIN_FILTER"];
+        var sweepSteps = steps.Where(s => Clauses(ParseFilter(s.Filter)).Any(
+            c => c is { Property: "Category", Op: FilterOp.Equals, Value: "GapDiscovery" }));
+        return FqnTokens(mainFilter, FilterOp.NotContains)
+            .Concat(sweepSteps.SelectMany(s => FqnTokens(s.Filter, FilterOp.Contains)))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The test classes that call <c>PythonInterpreter.RequireOrSkip</c>, in the shape of
+    /// <c>PythonOracleSkipCensusTests.Scan</c>: a call inside a lambda runs under the lambda's caller, and a call in a
+    /// helper of a test class counts for that class. <c>TestPreconditions.RequireOrSkip</c> is a different gate.
+    /// <c>Unattributed</c> holds the calls in a class with no tests of its own or around it.
+    /// </summary>
+    private static (List<string> Classes, List<string> Unattributed) ScanPythonOracleClasses(IReadOnlyList<TestInfo> tests)
+    {
+        var classes = new HashSet<string>(StringComparer.Ordinal);
+        var unattributed = new List<string>();
+        var projectDir = Path.Combine(FindRepoRoot(), "src", "Sharpy.Compiler.Tests");
+        foreach (var path in Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories))
+        {
+            var parts = Path.GetRelativePath(projectDir, path).Split(Path.DirectorySeparatorChar);
+            if (parts.Contains("bin") || parts.Contains("obj") || parts.Contains("TestFixtures") || parts.Contains("TestResults"))
+                continue;
+
+            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path).GetRoot();
+            foreach (var call in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                var isOracleGate = call.Expression is MemberAccessExpressionSyntax
+                {
+                    Name.Identifier.ValueText: "RequireOrSkip",
+                    Expression: IdentifierNameSyntax { Identifier.ValueText: nameof(PythonInterpreter) },
+                };
+                if (!isOracleGate || call.Ancestors().Any(a => a is AnonymousFunctionExpressionSyntax))
+                    continue;
+
+                var owner = EnclosingClassNames(call)
+                    .FirstOrDefault(c => tests.Any(t => t.Fqn.StartsWith(c + ".", StringComparison.Ordinal)));
+                if (owner != null)
+                    classes.Add(owner);
+                else
+                    unattributed.Add($"{path}:{call.GetLocation().GetLineSpan().StartLinePosition.Line + 1}");
+            }
+        }
+
+        return (classes.OrderBy(c => c, StringComparer.Ordinal).ToList(), unattributed);
+    }
+
+    /// <summary>The qualified name of each class around <paramref name="node"/>, innermost first, spelled as
+    /// <see cref="ReflectTests"/> spells them.</summary>
+    private static IEnumerable<string> EnclosingClassNames(SyntaxNode node)
+    {
+        var classes = node.Ancestors().OfType<ClassDeclarationSyntax>().Select(c => c.Identifier.ValueText).ToList();
+        var ns = string.Join('.', node.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().Reverse().Select(n => n.Name.ToString()));
+        for (var i = 0; i < classes.Count; i++)
+            yield return string.Join('.', classes.Skip(i).Reverse().Prepend(ns));
+    }
+
+    /// <summary>One <c>dotnet test</c> of this assembly as CI runs it: a step per matrix value, its filter resolved to a
+    /// literal, and the env the step sees (workflow, then job, then step).</summary>
+    private sealed record ResolvedStep(string Name, string Filter, IReadOnlyDictionary<string, string> Env);
 
     private enum FilterOp { Equals, NotEquals, Contains, NotContains }
 
@@ -303,15 +465,15 @@ public class CiFilterCoverageConformanceTests
 
     private static readonly Regex ShellVariable = new(@"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))");
 
-    private static List<string> ExtractCompilerTestFilters(string yaml)
+    private static List<ResolvedStep> ExtractCompilerTestSteps(string yaml)
     {
         var stream = new YamlStream();
         stream.Load(new StringReader(yaml));
         var root = (YamlMappingNode)stream.Documents[0].RootNode;
         var workflowEnv = ReadEnv(root);
 
-        var filters = new List<string>();
-        foreach (var (_, jobNode) in Child<YamlMappingNode>(root, "jobs")!.Children)
+        var resolved = new List<ResolvedStep>();
+        foreach (var (jobKey, jobNode) in Child<YamlMappingNode>(root, "jobs")!.Children)
         {
             var job = (YamlMappingNode)jobNode;
             var jobEnv = Merge(workflowEnv, ReadEnv(job));
@@ -340,13 +502,17 @@ public class CiFilterCoverageConformanceTests
                             $"Compiler.Tests command without exactly one quoted --filter: '{line.Trim()}'. " +
                             $"Update the evaluator in {nameof(CiFilterCoverageConformanceTests)}.");
                     var raw = filterArgs[0].Groups[1].Value;
+                    var stepName = Child<YamlScalarNode>(step, "name")?.Value ?? "(unnamed)";
                     foreach (var matrix in combinations)
-                        filters.Add(ResolveFilter(raw, matrix, stepEnv));
+                    {
+                        var label = $"{jobKey}/{stepName}" + (matrix.Count == 0 ? "" : $" [{string.Join(", ", matrix.Select(m => $"{m.Key}={m.Value}"))}]");
+                        resolved.Add(new ResolvedStep(label, ResolveFilter(raw, matrix, stepEnv), stepEnv));
+                    }
                 }
             }
         }
 
-        return filters;
+        return resolved;
     }
 
     private static string ResolveFilter(

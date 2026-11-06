@@ -87,6 +87,69 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.TimedOut, ""));
     }
 
+    /// <summary>D4.3: a run that times out once and runs at twice the timeout is that run's verdict.</summary>
+    [Fact]
+    public void Retry_ATimeoutThatRunsAtTwiceTheTimeout_IsRan()
+    {
+        var timeouts = new List<int>();
+
+        var run = RetryingATimeout(ms =>
+        {
+            timeouts.Add(ms);
+            return timeouts.Count == 1 ? Literal() with { TimedOut = true } : Literal();
+        }, 12_000, out var retried);
+
+        Assert.Equal(new[] { 12_000, 24_000 }, timeouts);
+        Assert.True(retried);
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3: one retry and no more, so a real hang stays red.</summary>
+    [Fact]
+    public void Retry_ASecondTimeout_IsNotRetriedAgain_AndStaysHarness()
+    {
+        var timeouts = new List<int>();
+
+        var run = RetryingATimeout(ms =>
+        {
+            timeouts.Add(ms);
+            return Literal() with { TimedOut = true };
+        }, 12_000, out var retried);
+
+        Assert.Equal(new[] { 12_000, 24_000 }, timeouts);
+        Assert.True(retried);
+        Assert.Equal(SharpyKind.TimedOut, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3: only a timeout is retried. A refusal or a throw is a verdict the first time.</summary>
+    [Fact]
+    public void Retry_ARunThatFinished_IsNotRetried()
+    {
+        var calls = 0;
+
+        var run = RetryingATimeout(_ =>
+        {
+            calls++;
+            return Literal("SPY0200");
+        }, 12_000, out var retried);
+
+        Assert.Equal(1, calls);
+        Assert.False(retried);
+        Assert.Equal(SharpyKind.Refused, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3's positive control through the sweep's own path: a real program that never ends times out at both
+    /// timeouts and is Harness, with or without the retry.</summary>
+    [Fact]
+    public void Retry_ARealHang_StaysHarness()
+    {
+        var run = RunSharpyRetryingATimeout("def main() -> None:\n    while True:\n        pass\n", 500, out _);
+
+        var kind = ClassifySharpy(run);
+        Assert.Equal(SharpyKind.TimedOut, kind);
+        Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), kind, run.Stdout));
+    }
+
     [Fact]
     public void Classifier_CodeSets_ClassifyByCode()
     {

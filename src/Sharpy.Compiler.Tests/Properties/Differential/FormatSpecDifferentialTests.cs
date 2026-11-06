@@ -38,7 +38,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// because the '#' alternate form diverges most visibly there (<c>format(3.0, "#g")</c> is
 /// <c>3.00000</c>; the point and the trailing zeros are exactly what '#' keeps, #1958). No cell is
 /// excluded at generation: every drawn spec, '#' included, is compared. Skips (no-op) when a
-/// suitable python3 is absent; CI pins 3.12.</para>
+/// suitable python3 is absent, except on CI, which pins 3.12 and fails instead.</para>
 ///
 /// <para>Where the three consumers (format(), str.format, f-strings) are tied together by
 /// <c>FormatEngineConsumerParityTests</c>, this generator only needs the format() route.</para>
@@ -160,6 +160,8 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
         var allowlist = Allowlist.Load();
         var divergences = new List<(Cell Cell, Column Column, string Detail, bool Allowlisted)>();
+        var missingVerdicts = new List<string>();
+        int pythonSyntaxErrors = 0, pythonTimeouts = 0, sharpyTimeouts = 0;
         int staticAgreements = 0;
         for (int i = 0; i < cells.Count; i++)
         {
@@ -171,8 +173,22 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                 var s = sharpy[key];
                 pythonById.TryGetValue(i * Columns.Length + c, out var py);
 
+                // A cell the oracle never judged is a generator bug: it fails the sweep below.
+                if (py is null)
+                {
+                    missingVerdicts.Add(key);
+                    continue;
+                }
+
                 // The Python side must have run the cell (no syntax error, no timeout) to be an oracle.
-                if (py is null || py.SyntaxError || py.TimedOut || s.TimedOut)
+                // These keep their skip, and the report counts them.
+                if (py.SyntaxError)
+                    pythonSyntaxErrors++;
+                else if (py.TimedOut)
+                    pythonTimeouts++;
+                else if (s.TimedOut)
+                    sharpyTimeouts++;
+                if (py.SyntaxError || py.TimedOut || s.TimedOut)
                     continue;
 
                 string sharpyOut = Normalize(s.Stdout);
@@ -225,12 +241,18 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             + $"engine column {engineDivergent} divergent, static column {staticDivergent} divergent "
             + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError/TypeError wording, "
             + $"{staticRuntimeOnly} refused only at runtime); "
-            + $"{eqPrefixCells} '='+'#'+radix cells. Wall={sw.Elapsed.TotalSeconds:F1}s.");
+            + $"{eqPrefixCells} '='+'#'+radix cells; {missingVerdicts.Count} missing python verdicts; skipped "
+            + $"{pythonSyntaxErrors} python syntax errors, {pythonTimeouts} python timeouts, {sharpyTimeouts} Sharpy timeouts. "
+            + $"Wall={sw.Elapsed.TotalSeconds:F1}s.");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE {o.Cell.Key(o.Column)}  {o.Detail}");
         foreach (var k in stale)
             Output.WriteLine($"  STALE {k}");
 
+        Assert.True(missingVerdicts.Count == 0,
+            $"Format-spec differential: missingVerdicts {missingVerdicts.Count}: python3 returned no verdict for these cells, "
+            + "so the batch and the corpus disagree:\n"
+            + string.Join("\n", missingVerdicts.Take(40).Select(k => "  " + k)));
         Assert.True(offenders.Count == 0,
             $"Format-spec differential: {offenders.Count} non-allowlisted divergence(s) between Sharpy and python3. "
             + "Fix the engine, or add an allowlist entry citing an issue:\n"
