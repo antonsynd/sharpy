@@ -38,7 +38,7 @@ public partial class NameResolutionDifferentialTests
             [(Family.Read, SharpyTag.MustRefuse, "kind:SPY0290")] = 274,
             [(Family.Read, SharpyTag.MustRefuse, "kind:enum-member-constant")] = 16,
             [(Family.Read, SharpyTag.MustRefuse, "kind:instance-at-initializer")] = 803,
-            [(Family.Read, SharpyTag.MustRefuseOrThrow, "N3-cycle")] = 28,
+            [(Family.Read, SharpyTag.MustRefuseOrThrow, "N3-cycle")] = 70,
             [(Family.Read, SharpyTag.MustRun, "A3")] = 32,
             [(Family.Read, SharpyTag.MustRun, "N1")] = 859,
             [(Family.Read, SharpyTag.MustRun, "N1+N3")] = 81,

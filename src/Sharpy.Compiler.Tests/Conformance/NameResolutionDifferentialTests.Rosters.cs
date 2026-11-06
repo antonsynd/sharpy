@@ -97,6 +97,28 @@ internal enum ComprehensionSlot
 /// <summary>Where a comprehension cell sits (P77b axis 1): its kind, the clause and the slot of the name.</summary>
 internal readonly record struct ComprehensionSite(ComprehensionKind Kind, ComprehensionClauseShape Clause, ComprehensionSlot Slot);
 
+/// <summary>The endpoint pair of an N3 cycle (P77b axis 2): which level each of the two initializers is at, the first declared
+/// first. The type level is a <c>@static</c> member; the ordered pair is the route python's load order reads.</summary>
+internal enum CyclePair
+{
+    ModuleModule,
+    ModuleType,
+    TypeModule,
+    TypeType,
+}
+
+/// <summary>How the first endpoint's initializer reaches the second (P77b axis 2): a closed LITERAL set {direct, through a
+/// <c>def</c>} named closed (deferred finding 3) — a read either sits in the initializer or in a function it calls (p07).</summary>
+internal enum CycleThrough
+{
+    Direct,
+    ThroughDef,
+}
+
+/// <summary>An N3 cycle cell's coordinates (P77b axis 2).</summary>
+internal readonly record struct CycleRoute(
+    CyclePair Pair, NameResolutionDifferentialTests.Spelling Spelling, CycleThrough Through, BindingKind First, BindingKind Second);
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -887,6 +909,115 @@ internal static class NameResolutionRosters
         (ReadPosition.FunctionBody, AxisMembership.Everywhere),
         (ReadPosition.StaticInitializer, AxisMembership.Out(ExcludedAxis.NotAKind,
             "python refuses it at compile time (3.13.18: SyntaxError 'assignment expression within a comprehension cannot be used in a class body'): no twin runs (deferred finding 2)")));
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 2: N3 cycle × route
+    // ---------------------------------------------------------------------------------------------------------
+
+    private const string NoInitializer = "no initializer: the kind's declaration reads nothing at load, so it closes no cycle";
+
+    private const string LiteralReadsNoName = "a literal initializer reads no name: it cannot close a cycle";
+
+    /// <summary>The cycle's endpoints (P77b deferred finding 3): total over roster 1's module-level, type-level and instance
+    /// groups. A value kind with an initializer of its own is an endpoint; every other kind is out with the reason.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> CycleEndpoints = Roster.Map(
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration")),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, LiteralReadsNoName)),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ModuleClass, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ModuleStruct, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ModuleEnum, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.StaticMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.ClassLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, LiteralReadsNoName)),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.InstanceField, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "construction-time, not load order: an instance initializer runs at each construction, after every load-time initializer")),
+        (BindingKind.InstanceProperty, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "construction-time, not load order: an instance initializer runs at each construction, after every load-time initializer")),
+        (BindingKind.InstanceMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializer)));
+
+    /// <summary>The universe <see cref="CycleEndpoints"/> is total over.</summary>
+    internal static IEnumerable<BindingKind> CycleEndpointUniverse() => ModuleLevelKinds.Concat(TypeLevelKinds).Concat(InstanceKinds);
+
+    private const string NoSelfAtLoad = "no `self` at a load-time initializer: a module or @static endpoint is read before any instance exists";
+
+    private const string NoCallableEndpoint =
+        "a value endpoint has no callable to call: the read through a helper def is CycleThrough.ThroughDef, on every spelling";
+
+    private const string NoBareTypeMember =
+        "a @static member is not visible bare outside its class body: the read is N1-methods' refusal, never a cycle";
+
+    private static RosterEntry<CycleThrough> BothThroughs() => Roster.To(CycleThrough.Direct, CycleThrough.ThroughDef);
+
+    /// <summary>The cycle's routes (P77b axis 2): total over <see cref="NameResolutionDifferentialTests.Spelling"/> × <see cref="CyclePair"/>.
+    /// The spelling is the read of a TYPE endpoint (a module endpoint is read bare); every (spelling, pair) is generated over
+    /// <see cref="CycleThrough"/> or out with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<NameResolutionDifferentialTests.Spelling, IReadOnlyDictionary<CyclePair, RosterEntry<CycleThrough>>> CycleRoutes = Roster.Map(
+        (NameResolutionDifferentialTests.Spelling.Bare, Roster.Map(
+            (CyclePair.ModuleModule, BothThroughs()),
+            (CyclePair.ModuleType, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoBareTypeMember)),
+            (CyclePair.TypeModule, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoBareTypeMember)),
+            (CyclePair.TypeType, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoBareTypeMember)))),
+        (NameResolutionDifferentialTests.Spelling.Qualified, Roster.Map(
+            (CyclePair.ModuleModule, Roster.Out<CycleThrough>(ExcludedAxis.ProjectRoute,
+                "a module binding has no qualifier in a single file: the module-qualified spelling needs a project route (i)")),
+            (CyclePair.ModuleType, BothThroughs()),
+            (CyclePair.TypeModule, BothThroughs()),
+            (CyclePair.TypeType, BothThroughs()))),
+        (NameResolutionDifferentialTests.Spelling.Alias, Roster.Map(
+            (CyclePair.ModuleModule, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, "a type alias names a type, never a module binding")),
+            (CyclePair.ModuleType, BothThroughs()),
+            (CyclePair.TypeModule, BothThroughs()),
+            (CyclePair.TypeType, BothThroughs()))),
+        (NameResolutionDifferentialTests.Spelling.Call, Roster.Map(
+            (CyclePair.ModuleModule, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+            (CyclePair.ModuleType, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+            (CyclePair.TypeModule, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+            (CyclePair.TypeType, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoCallableEndpoint)))),
+        (NameResolutionDifferentialTests.Spelling.SelfDot, Roster.Map(
+            (CyclePair.ModuleModule, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoSelfAtLoad)),
+            (CyclePair.ModuleType, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoSelfAtLoad)),
+            (CyclePair.TypeModule, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoSelfAtLoad)),
+            (CyclePair.TypeType, Roster.Out<CycleThrough>(ExcludedAxis.NotAKind, NoSelfAtLoad)))));
+
+    /// <summary>The endpoint kinds a pair joins, from <see cref="CycleEndpoints"/>' generated values: each level's kinds paired
+    /// by index with a rotation, so every endpoint kind sits on every pair it can and the product stays linear.</summary>
+    internal static IEnumerable<(BindingKind First, BindingKind Second)> CyclePairKinds(CyclePair pair)
+    {
+        var generated = CycleEndpoints.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(k => k).ToList();
+        var module = generated.Where(k => ModuleLevelKinds.Contains(k)).ToList();
+        var type = generated.Where(k => TypeLevelKinds.Contains(k)).ToList();
+        var (left, right, rotate) = pair switch
+        {
+            CyclePair.ModuleModule => (module, module, 1),
+            CyclePair.ModuleType => (module, type, 0),
+            CyclePair.TypeModule => (type, module, 0),
+            CyclePair.TypeType => (type, type, 1),
+            _ => throw new ArgumentOutOfRangeException(nameof(pair)),
+        };
+        if (left.Count == 0 || right.Count == 0)
+            yield break;
+        for (int i = 0; i < Math.Max(left.Count, right.Count); i++)
+            yield return (left[i % left.Count], right[(i + rotate) % right.Count]);
+    }
+
+    /// <summary>Every cycle cell the axis owes: each generated (spelling, pair, through) × the pair's endpoint kinds.</summary>
+    internal static IEnumerable<CycleRoute> CycleRouteCells() =>
+        from spelling in CycleRoutes
+        from pair in spelling.Value
+        from through in pair.Value.Image
+        from kinds in CyclePairKinds(pair.Key)
+        select new CycleRoute(pair.Key, spelling.Key, through, kinds.First, kinds.Second);
 
     /// <summary>The slots of a kind's own node, from <see cref="ComprehensionSlots"/>: the element side of the comprehension.</summary>
     internal static IEnumerable<ComprehensionSlot> KindSlots(ComprehensionKind kind)
@@ -2508,6 +2639,47 @@ public partial class NameResolutionDifferentialTests
         problems.AddRange(MembershipShapeProblems("ComprehensionWalrusHosts", NameResolutionRosters.ComprehensionWalrusHosts));
 
         AssertNoProblems(problems, "a walrus in a comprehension is generated at every slot and host python admits, the others out with the reason");
+    }
+
+    // =========================================================================================================
+    // P77b axis 2: N3 cycle × route
+    // =========================================================================================================
+
+    /// <summary>P77b deferred finding 3: the cycle's endpoints are a map total over roster 1's module-level, type-level and
+    /// instance groups, both directions, each kind an endpoint or out with its reason; both levels keep an endpoint.</summary>
+    [Fact]
+    public void CycleEndpointsRoster_IsTotalOverTheModuleTypeAndInstanceGroups()
+    {
+        var problems = Roster.TotalityProblems("CycleEndpoints", NameResolutionRosters.CycleEndpointUniverse(), NameResolutionRosters.CycleEndpoints.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("CycleEndpoints", NameResolutionRosters.CycleEndpoints));
+        var generated = NameResolutionRosters.CycleEndpoints.Where(e => e.Value.Generated).Select(e => e.Key).ToList();
+        if (!generated.Any(k => NameResolutionRosters.ModuleLevelKinds.Contains(k)))
+            problems.Add("CycleEndpoints: no module-level endpoint, so the module pairs generate nothing");
+        if (!generated.Any(k => NameResolutionRosters.TypeLevelKinds.Contains(k)))
+            problems.Add("CycleEndpoints: no type-level endpoint, so the type pairs generate nothing");
+
+        AssertNoProblems(problems, "an N3 cycle's endpoints are roster 1's value kinds with an initializer, each other kind naming why");
+    }
+
+    /// <summary>The cycle's routes are total over <see cref="Spelling"/> × <see cref="CyclePair"/>, both directions, each an image
+    /// of <see cref="CycleThrough"/> or out with its reason, and every <see cref="CycleThrough"/> value is generated somewhere.</summary>
+    [Fact]
+    public void CycleRoutesRoster_IsTotalOverSpellingsByEndpointPairs()
+    {
+        var problems = new List<string>();
+        foreach (var s in Enum.GetValues<Spelling>().Where(s => !NameResolutionRosters.CycleRoutes.ContainsKey(s)))
+            problems.Add($"CycleRoutes: Spelling.{s} has no cycle cell and no exclusion");
+        problems.AddRange(Roster.TotalityProblems("CycleRoutes (spelling)", Enum.GetValues<Spelling>(), NameResolutionRosters.CycleRoutes.Keys)
+            .Where(p => p.Contains("map entry with no source value", StringComparison.Ordinal)));
+        foreach (var (spelling, pairs) in NameResolutionRosters.CycleRoutes)
+        {
+            problems.AddRange(Roster.TotalityProblems($"CycleRoutes[{spelling}]", Enum.GetValues<CyclePair>(), pairs.Keys));
+            problems.AddRange(Roster.ShapeProblems(pairs).Select(p => $"CycleRoutes[{spelling}] {p}"));
+        }
+        problems.AddRange(Roster.TotalityProblems("CycleThrough", Enum.GetValues<CycleThrough>(),
+            NameResolutionRosters.CycleRoutes.Values.SelectMany(p => p.Values).SelectMany(e => e.Image)));
+
+        AssertNoProblems(problems, "every (spelling, endpoint pair) of an N3 cycle is generated over the through axis or out with its reason");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

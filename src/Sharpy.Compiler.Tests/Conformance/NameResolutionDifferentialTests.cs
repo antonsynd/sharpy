@@ -103,6 +103,9 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
+    /// <summary>P77b axis 2: the N3 cycle's endpoint pair, route and endpoint kinds.</summary>
+    public CycleRoute? Cycle { get; init; }
+
     /// <summary>P77b axis 1: the comprehension kind, clause and slot the cell's name sits in.</summary>
     public ComprehensionSite? Comprehension { get; init; }
 

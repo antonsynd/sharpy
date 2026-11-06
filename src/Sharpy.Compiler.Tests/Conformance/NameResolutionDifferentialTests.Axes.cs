@@ -189,4 +189,86 @@ public partial class NameResolutionDifferentialTests
                     yield return ComprehensionWalrusCell(site, host, u);
         }
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 2: N3 cycle × route
+    // ------------------------------------------------------------------------------------------- //
+
+    private static bool IsModuleEndpoint(BindingKind k) => NameResolutionRosters.ModuleLevelKinds.Contains(k);
+
+    /// <summary>The initializer position a cycle endpoint's own declaration carries.</summary>
+    private static ReadPosition InitializerPositionOf(BindingKind k) => k switch
+    {
+        BindingKind.ModuleVar or BindingKind.ModuleComputedConst => ReadPosition.ModuleInitializer,
+        BindingKind.ModuleProperty => ReadPosition.ModulePropertyInitializer,
+        _ => SelfPositionOf(k) ?? throw new ArgumentOutOfRangeException(nameof(k), k, "no initializer of its own"),
+    };
+
+    /// <summary>A two-endpoint N3 cycle: <c>a</c>'s initializer reads <c>b</c> (directly or through a helper <c>def</c>) and
+    /// <c>b</c>'s reads <c>a</c>, <c>a</c> declared first. A type endpoint is a member of <c>H</c> (the first type) or <c>J</c> (the
+    /// second), read through the route's spelling; a module endpoint is read bare. python raises NameError on the name the first
+    /// read spells, which is unbound while <c>a</c> initializes (N3 bullet 4: never a default).</summary>
+    private static NameCell CycleCell(CycleRoute route)
+    {
+        var a = new ReadName("a", "", "", null);
+        var b = new ReadName("b", "", "", null);
+        var firstOwner = "H";
+        var secondOwner = IsModuleEndpoint(route.First) ? "H" : "J";
+        var aliases = new List<string>();
+
+        string Read(BindingKind kind, ReadName n, string owner)
+        {
+            if (IsModuleEndpoint(kind))
+                return n.Name;
+            if (route.Spelling == Spelling.Alias)
+            {
+                var alias = owner == "H" ? "A0" : "A1";
+                if (!aliases.Contains($"type {alias} = {owner}"))
+                    aliases.Add($"type {alias} = {owner}");
+                return $"{alias}.{n.Name}";
+            }
+            return route.Spelling == Spelling.Qualified ? $"{owner}.{n.Name}"
+                : throw new ArgumentOutOfRangeException(nameof(route), route, "a type endpoint is read qualified or through an alias");
+        }
+
+        var readOfSecond = Read(route.Second, b, secondOwner);
+        var readOfFirst = Read(route.First, a, firstOwner);
+        var firstRead = readOfSecond.Split('.')[0];
+
+        var lines = new List<string>();
+        string firstInit = readOfSecond;
+        if (route.Through == CycleThrough.ThroughDef)
+        {
+            lines.AddRange(new[] { "def g0() -> int:", $"    return {readOfSecond}" });
+            firstInit = "g0()";
+        }
+
+        List<string> Declare(BindingKind kind, ReadName n, string owner, string init) => IsModuleEndpoint(kind)
+            ? ModuleDecl(kind, n, init)
+            : new[] { $"class {owner}:" }.Concat(Indent(MemberDecl(kind, n, init))).ToList();
+
+        lines.AddRange(Declare(route.First, a, firstOwner, firstInit));
+        lines.AddRange(Declare(route.Second, b, secondOwner, readOfFirst));
+        lines.AddRange(aliases);
+
+        string Access(BindingKind kind, ReadName n, string owner) => IsModuleEndpoint(kind) ? n.Name : $"{owner}.{n.Name}";
+        var source = Join(lines) + MainBlock($"print({Access(route.First, a, firstOwner)})", $"print({Access(route.Second, b, secondOwner)})");
+
+        var expected = Cycle(PyOutcome.Name(firstRead), "N3-cycle");
+        return new NameCell
+        {
+            Id = CellId("read", "cycle", route.Pair, route.Spelling, route.Through, route.First, route.Second),
+            Family = Family.Read,
+            Source = source,
+            Tag = expected.Tag,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = route.First,
+            Outer = BindingKind.None,
+            Position = InitializerPositionOf(route.First),
+            Cycle = route,
+        };
+    }
+
+    private static IEnumerable<NameCell> CycleAxisCells() => NameResolutionRosters.CycleRouteCells().Select(CycleCell);
 }
