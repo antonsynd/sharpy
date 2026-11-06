@@ -50,26 +50,7 @@ namespace Sharpy
         /// <summary>
         /// Returns an enumerator that iterates through the values.
         /// </summary>
-        public IEnumerator<V> GetEnumerator()
-        {
-            var dict = _owner.InnerDict;
-            int dictIndex = 0;
-            foreach (var kvp in dict)
-            {
-                if (_owner.HasNullKey && dictIndex == _owner.NullOrdinal)
-                {
-                    yield return _owner.NullValue;
-                }
-
-                yield return kvp.Value;
-                dictIndex++;
-            }
-
-            if (_owner.HasNullKey && _owner.NullOrdinal >= dict.Count)
-            {
-                yield return _owner.NullValue;
-            }
-        }
+        public IEnumerator<V> GetEnumerator() => _owner.EnumerateValuesInOrder().GetEnumerator();
 
         /// <summary>
         /// Python's <c>repr</c> of the view: <c>dict_values([...])</c> around the list repr of its values,
