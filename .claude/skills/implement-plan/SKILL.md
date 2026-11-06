@@ -14,9 +14,10 @@ Parse `$ARGUMENTS` for:
 1. **Plan path** — the first argument (a file path ending in `.md`)
 2. **--exclude flag** — optional, comma-separated list of section names to skip
 
-Plans live in `.claude/plans/` (repo-local, gitignored). Per-batch plans created before 2026-08-26 remain in `$HOME/.claude/plans/`. If `$ARGUMENTS` is empty, do **not** pick silently — list the three newest across both directories and ask which to implement:
+The plan to implement is the committed copy `/verify-plan` wrote to `docs/process/plans/<plan-id>.md` (policy: `docs/process/README.md`); the gitignored draft in `.claude/plans/` is read only when no committed copy exists, and Pre-Implementation §2 then commits it first. If `$ARGUMENTS` is empty, do **not** pick silently — list the three newest in each and ask which to implement:
 ```bash
-ls -t .claude/plans/*.md "$HOME"/.claude/plans/*.md 2>/dev/null | head -3
+ls -t docs/process/plans/*.md 2>/dev/null | head -3    # committed, verified plans — read these first
+ls -t .claude/plans/*.md 2>/dev/null | head -3         # drafts (gitignored) — only when the plan has no committed copy
 ```
 
 ## Pre-Implementation Checklist
@@ -40,6 +41,8 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
   - Stamp without an Adequacy line (verified before 2026-08-26) → treat as `N/A` for feature plans, and as `CELL` for bug-fix plans unless the plan already has a Defect Class section.
 - Read the `<!-- Scope:` stamp line and the plan's `## Scope` block (contract §11). `MULTI-GROUP` without `override: <owner's words>`, an output/layout-changing phase sharing a gate, or a residue group whose generator is not Phase 1 → **refuse**: "This plan bundles more than one group (or skips its generator). Split it per the charter, or say `override` to implement it knowingly." Record an override in the plan file. Plans stamped before 2026-09-27 have no Scope line: derive it from the plan's groups and apply the same rule. A light plan's `Adequacy-only` stamp carries the same `Adequacy:` and `Scope:` lines, so this step is identical at both tiers.
 
+- **Committed copy** — implement from `docs/process/plans/<plan-id>.md`. If the stamped plan exists only as a draft in `.claude/plans/` (a `/verify-plan` that ran before 2026-11-06, or one that skipped its commit step), `cp` it there and commit it by explicit pathspec (`process(plan): <plan-id> — <title> verified <result> @ <sha>`) before any other step, and use that path everywhere below. The committed plan is tracked, so every edit this skill makes to it — the `## Implementation Checklist`, an override record, a `## Revision log` line — is committed in the lead's own slices; an uncommitted plan edit is an unclaimed working-tree delta at the next wave check.
+
 ### 3. Report git status
 - Run `git status --short`. If there are uncommitted changes, REPORT them to the user and ask whether to proceed — do **not** stash, restore, or clean; the tree may hold a peer's work.
 
@@ -59,7 +62,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
 ### 1. Check the harness
 Team/task-board tools (`TeamCreate`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, `TeamDelete`) exist only in harnesses that expose them. **Check this session's tool list first.**
 - **Present** → create a team `implement-plan`, create tasks with `TaskCreate`, assign via `TaskUpdate`, monitor via `TaskList`.
-- **Absent** (the current Claude Code harness) → coordinate with `Agent` (background, `subagent_type` per the table below) + `SendMessage`, and keep the task checklist **in the plan file itself**: add a `## Implementation Checklist` section (one line per task: `- [ ] <task> — <owner> — blocked by <tasks>`) that the lead updates as tasks land. The plan file is the board.
+- **Absent** (the current Claude Code harness) → coordinate with `Agent` (background, `subagent_type` per the table below) + `SendMessage`, and keep the task checklist **in the plan file itself**: add a `## Implementation Checklist` section (one line per task: `- [ ] <task> — <owner> — blocked by <tasks>`) that the lead updates as tasks land. The plan file is the board — a tracked one, so checklist updates are committed with the lead's slices (Pre-Implementation §2).
 
 ### 2. Choose agents
 Determine which agents to spawn based on what the plan touches:
@@ -191,7 +194,7 @@ After all implementation tasks are complete, the lead runs the gate and spawns `
 After final verification:
 
 1. If a team exists: shut down teammates via `SendMessage` (`type: "shutdown_request"`) and delete the team via `TeamDelete`; otherwise confirm every background agent has reported
-2. Mark the plan's Implementation Checklist complete (or list what was deferred and why)
+2. Mark the plan's Implementation Checklist complete (or list what was deferred and why) and commit the plan file by explicit pathspec (`process(plan): <plan-id> — implementation checklist closed @ <sha>`); `/verify-implementation` appends its verify record to this same committed file
 3. Present a summary report to the user:
 
 ```markdown

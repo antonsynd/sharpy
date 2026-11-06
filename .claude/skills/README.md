@@ -51,17 +51,17 @@ The `/spy-*` and `/quick-check` skills accept inline source via the Write tool, 
 
 ## Planning & Verification
 
-Plans live in `.claude/plans/` (repo-local, gitignored); per-batch plans created before 2026-08-26 remain in `~/.claude/plans/` — pass the path explicitly for those.
+Plans split into **scratch** and **committed** (owner policy 2026-11-06, [docs/process/README.md](../../docs/process/README.md)): `/create-plan` writes a draft to `.claude/plans/` (repo-local, gitignored); `/verify-plan` copies a plan that passes to `docs/process/plans/<plan-id>.md` and commits it with its stamp; `/implement-plan` and `/verify-implementation` read that committed copy (the draft only when none exists) and commit their checklist and verify record into it. Round charters are committed development history too: `/batch-issues` edits the newest `docs/process/rounds/remediation-round-*-batching.md` in place and commits it at every call (git history replaces the per-call backup copies). `docs/process/` is excluded from the published docs site (`mkdocs.yml` `exclude_docs`), so neither the strict build nor the spec-block gate reads it.
 
 How much of the pipeline a group runs is its **tier**, set at `/batch-issues` and printed in the charter ([verification-contract.md §12](../../docs/design/verification-contract.md)): `band` (chore) runs no plan and no verify stage; `light` runs `/create-plan --light` → `/verify-plan` (adequacy-only) → `/implement-plan` → `/verify-implementation` (Agents 2–4); `full` runs every dimension and every auditor. A skill never runs a stage its tier skips without an `override:` recorded in the plan's `## Scope`.
 
 | Skill | Arguments | Purpose |
 |-------|-----------|---------|
-| `/batch-issues` | `[--charter <path>] [--since <sha>] [--issues 123,456]` | Read every open issue with comments, batch into class-level groups, surface decisions with options and door-type; after the owner rules, write the round charter (`remediation-round-<date>-batching.md`, template in the skill), post placements/rulings, file and close what the rulings create |
+| `/batch-issues` | `[--charter <path>] [--since <sha>] [--issues 123,456]` | Read every open issue with comments, batch into class-level groups, surface decisions with options and door-type; after the owner rules, write and commit the round charter (`docs/process/rounds/remediation-round-<date>-batching.md`, template in the skill), post placements/rulings, file and close what the rulings create |
 | `/create-plan` | `<issue numbers or description> [--light \| --full]` | Create an implementation plan at the group's charter tier (contract §12): `full` = phases + tasks; `light` = one-page design-of-record, no task list |
-| `/verify-plan` | `<path/to/plan.md> [--adequacy]` | Verify a plan: nine dimensions for a `full` plan; adequacy-only (matrix arms, guard mutations, design predicates, by a fresh reader) for a `light` plan |
+| `/verify-plan` | `<path/to/plan.md> [--adequacy]` | Verify a plan: nine dimensions for a `full` plan; adequacy-only (matrix arms, guard mutations, design predicates, by a fresh reader) for a `light` plan; commits a passing plan to `docs/process/plans/<plan-id>.md` |
 | `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a stamped plan (`Adequacy-only` stamp + clean `check_plan_refs.py` on a `light` plan) with coordinated agents, lead-owned gates, and mutation-tested guards; promotes a light plan to full when an unruled door surfaces |
-| `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation with refuting auditors (Agents 2–4 on a `light` plan, completeness by the lead), fix gaps/bugs/regressions, and commit fixes |
+| `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation with refuting auditors (Agents 2–4 on a `light` plan, completeness by the lead), fix gaps/bugs/regressions, commit fixes, and append the verify record to the committed plan |
 | `/compiler-audit` | `[focus-area]` | Run a comprehensive compiler health audit |
 
 ## Dogfooding
