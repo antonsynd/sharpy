@@ -796,7 +796,7 @@ public partial class NameResolutionDifferentialTests
                     string Id(string read) => CellId("local", k, read, $"outer={u}", body);
 
                     // Read below the binding: the innermost binding, in both languages.
-                    yield return LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain);
+                    yield return LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain) with { Timing = ReadTimings.SameBlockBelow };
 
                     // Read above the binding: python's UnboundLocalError at every outer.
                     var aboveForm = u is BindingKind.None or BindingKind.StaticMethod or BindingKind.StaticField or BindingKind.EnclosingLocal
@@ -805,7 +805,7 @@ public partial class NameResolutionDifferentialTests
                     var above = new List<string> { $"print({ReadText(aboveForm, "", plain)})" };
                     above.AddRange(LocalDecl(k, plain));
                     above.Add($"print({own})");
-                    yield return LocalProgram(Id("above"), k, u, body, above, Refuse(PyOutcome.Unbound("x"), AboveBindingRule(k, u)), null, plain);
+                    yield return LocalProgram(Id("above"), k, u, body, above, Refuse(PyOutcome.Unbound("x"), AboveBindingRule(k, u)), null, plain) with { Timing = ReadTimings.SameBlockAbove };
 
                     // Read from a nested def and a lambda called after the binding, the binding above the def.
                     var nested = LocalDecl(k, plain);
@@ -1347,6 +1347,7 @@ public partial class NameResolutionDifferentialTests
             cycleEndpoints = NameResolutionRosters.CycleEndpoints.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             cycleRoutes = NameResolutionRosters.CycleRoutes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             orderObservation = NameResolutionRosters.OrderObservationKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            readTimingBackEdgeLoops = NameResolutionRosters.ReadTimingLoops,
         },
         axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),

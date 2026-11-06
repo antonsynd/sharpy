@@ -13,6 +13,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(ComprehensionFedFailures(axisCells));
         failures.AddRange(CycleFedFailures(axisCells));
         failures.AddRange(OrderObservationFedFailures(axisCells));
+        failures.AddRange(ReadTimingFedFailures(pool, axisCells));
         return failures;
     }
 
@@ -514,5 +515,109 @@ public partial class NameResolutionDifferentialTests
             foreach (var order in new[] { Order.Earlier, Order.Later })
                 if (!axisCells.Contains(OrderObservationKey(kind, order)))
                     yield return $"OrderObservationKinds {kind} × {order} has no cell";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 4: LOCAL read timing
+    // ------------------------------------------------------------------------------------------- //
+
+    private static readonly BindingKind[] ClosureBeforeOuters = { BindingKind.None, BindingKind.ModuleVar, BindingKind.EnclosingLocal };
+
+    private static readonly BindingKind[] FailedGuardOuters = { BindingKind.None, BindingKind.ModuleVar };
+
+    private static readonly BindingKind[] BackEdgeBinders = { BindingKind.LocalLet, BindingKind.LocalVar };
+
+    private static string ClosureBeforeKey(LocalTarget target, BindingKind outer) => $"timing-closure-before: {target} × {outer}";
+
+    private static string BackEdgeKey(string loop, BindingKind binder) => $"timing-back-edge: {loop} × {binder}";
+
+    private static string FailedGuardKey(LocalTarget capture, BindingKind outer) => $"timing-failed-guard: {capture} × {outer}";
+
+    private static IEnumerable<NameCell> ReadTimingCells()
+    {
+        foreach (var target in Enum.GetValues<LocalTarget>())
+            foreach (var outer in ClosureBeforeOuters)
+                yield return ClosureBeforeCell(target, outer);
+        foreach (var loop in NameResolutionRosters.ReadTimingLoops)
+            foreach (var binder in BackEdgeBinders)
+                yield return BackEdgeCell(loop, binder);
+        foreach (var capture in NameResolutionRosters.ReadTimingCaptures)
+            foreach (var outer in FailedGuardOuters)
+                yield return FailedGuardCell(capture, outer);
+    }
+
+    /// <summary>A closure taken before the construct reads the target's name after it. Python's closure sees the leak (p11), and Sharpy's fresh target
+    /// cannot print that, so it is S2's refusal. No outer is N5's name check. A comprehension's target leaks nothing in either language, so its closure reads the outer.</summary>
+    private static NameCell ClosureBeforeCell(LocalTarget target, BindingKind outer)
+    {
+        var (construct, last) = ConstructOf(target, "x");
+        var stmts = new List<string> { "g: () -> int = lambda: x" };
+        stmts.AddRange(construct);
+        stmts.Add("print(g())");
+
+        Expected e;
+        if (target == LocalTarget.Comprehension)
+        {
+            // CPython 3.12's inlined comprehension (PEP 709) makes the enclosing function's `x` a cell of its own, so the closure finds no
+            // value there (measured on 3.12.13). The program means the same thing, and python's NameError is the one D2 lets a must-run carry.
+            var python = outer == BindingKind.EnclosingLocal ? PyOutcome.Name("x") : PyOutcome.Ran(outer == BindingKind.None ? 0 : ValueOf(outer));
+            e = outer == BindingKind.None ? Refuse(PyOutcome.Name("x"), "N5") : Run(python, ValueOf(outer), "N1");
+        }
+        else
+        {
+            // `except … as x` deletes the name, so python's closure finds a free variable with no value.
+            var python = target == LocalTarget.ExceptAs ? PyOutcome.Name("x") : PyOutcome.Ran(last!);
+            e = Refuse(python, outer == BindingKind.None ? "N5" : "S2");
+        }
+
+        return LocalProgram(CellId("local", "timing", "closure-before", target, $"outer={outer}"), BindingKind.LocalVar, outer, ReadPosition.FunctionBody, stmts, e, null, ReadName.Plain, target)
+            with
+        { Timing = ReadTimings.ClosureBeforeConstruct, AxisCell = ClosureBeforeKey(target, outer) };
+    }
+
+    /// <summary>The read above a body binding, at the next iteration: python reads the last iteration's (`13 0`), and the read is R-KX's "declared later".</summary>
+    private static NameCell BackEdgeCell(string loop, BindingKind binder)
+    {
+        var open = loop == "for-body"
+            ? new[] { "x: int = 13", "for w0 in range(2):" }
+            : new[] { "x: int = 13", "w0: int = 0", "while w0 < 2:" };
+        var stmts = new List<string>(open) { "    print(x)", binder == BindingKind.LocalLet ? "    let x = w0" : "    x: int = w0" };
+        if (loop == "while-body")
+            stmts.Add("    w0 += 1");
+        return LocalProgram(CellId("local", "timing", "back-edge", loop, binder), binder, BindingKind.None, ReadPosition.FunctionBody, stmts,
+                Refuse(PyOutcome.Ran(JoinOut(13, 0)), "N5-declared-later"), null, ReadName.Plain)
+            with
+        { Outer = BindingKind.LocalVar, Timing = ReadTimings.BackEdge, AxisCell = BackEdgeKey(loop, binder) };
+    }
+
+    /// <summary>R-KZ: a capture is fresh per arm, failed guard included. Python has bound it by the time the guard fails (p10).</summary>
+    private static NameCell FailedGuardCell(LocalTarget capture, BindingKind outer)
+    {
+        var pattern = capture == LocalTarget.MatchCapture ? "x" : "2 as x";
+        var stmts = new[] { "match 2:", $"    case {pattern} if x > 9:", "        pass", "    case _:", "        pass", "print(x)" };
+        return LocalProgram(CellId("local", "timing", "failed-guard", capture, $"outer={outer}"), BindingKind.LocalVar, outer, ReadPosition.FunctionBody, stmts,
+                Refuse(PyOutcome.Ran(2), outer == BindingKind.None ? "N5" : "S2"), null, ReadName.Plain, capture)
+            with
+        { Timing = ReadTimings.FailedGuard, AxisCell = FailedGuardKey(capture, outer) };
+    }
+
+    private static IEnumerable<string> ReadTimingFedFailures(IReadOnlyList<NameCell> pool, IReadOnlySet<string> axisCells)
+    {
+        var timings = pool.Where(c => c.Timing != null).Select(c => c.Timing!.Value).ToHashSet();
+        foreach (var timing in Enum.GetValues<ReadTimings>().Where(t => !timings.Contains(t)))
+            yield return $"ReadTimings {timing} has no generated cell";
+
+        foreach (var target in Enum.GetValues<LocalTarget>())
+            foreach (var outer in ClosureBeforeOuters)
+                if (!axisCells.Contains(ClosureBeforeKey(target, outer)))
+                    yield return $"ReadTimings closure-before × {target} × {outer} has no cell";
+        foreach (var loop in NameResolutionRosters.ReadTimingLoops)
+            foreach (var binder in BackEdgeBinders)
+                if (!axisCells.Contains(BackEdgeKey(loop, binder)))
+                    yield return $"ReadTimings back-edge × {loop} × {binder} has no cell";
+        foreach (var capture in NameResolutionRosters.ReadTimingCaptures)
+            foreach (var outer in FailedGuardOuters)
+                if (!axisCells.Contains(FailedGuardKey(capture, outer)))
+                    yield return $"ReadTimings failed-guard × {capture} × {outer} has no cell";
     }
 }

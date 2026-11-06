@@ -111,6 +111,17 @@ internal enum CyclePair
     SelfThroughDef,
 }
 
+/// <summary>When a LOCAL read happens against its binding (P77b axis 4). Named closed: control-flow timing has no compiler enumeration, so the
+/// five values are the ways N5's "visible from its binding" can be crossed in time.</summary>
+internal enum ReadTimings
+{
+    SameBlockBelow,
+    SameBlockAbove,
+    ClosureBeforeConstruct,
+    BackEdge,
+    FailedGuard,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -1188,6 +1199,12 @@ internal static class NameResolutionRosters
         (BindingKind.Builtin, AxisMembership.Out(ExcludedAxis.NotAKind, "the runtime's, with no initializer of the program's")),
         (BindingKind.ImportedName, AxisMembership.Out(ExcludedAxis.NotAKind, "its module runs it, and N3 orders that before this module's: a project route's question (i)")),
         (BindingKind.None, AxisMembership.Out(ExcludedAxis.NotAKind, "no binding")));
+
+    /// <summary>The loop families axis 4's back edge crosses, a subset of <see cref="BlockFamilies"/> the fact holds it to.</summary>
+    internal static readonly ImmutableArray<string> ReadTimingLoops = ImmutableArray.Create("for-body", "while-body");
+
+    /// <summary>The captures axis 4's failed guard binds: the two pattern targets of <see cref="LocalTarget"/>.</summary>
+    internal static readonly ImmutableArray<LocalTarget> ReadTimingCaptures = ImmutableArray.Create(LocalTarget.MatchCapture, LocalTarget.AsPatternCapture);
 
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
@@ -2547,6 +2564,17 @@ public partial class NameResolutionDifferentialTests
             BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleComputedConst, BindingKind.StaticField,
             BindingKind.StaticProperty, BindingKind.ClassComputedConst, BindingKind.InstanceField, BindingKind.InstanceProperty,
         });
+    }
+
+    [Fact]
+    public void ReadTimingsRoster_IsTheNamedClosedSetOverItsConstructs()
+    {
+        // A literal, not the enum again: the five timings are named closed, and a sixth is a decision.
+        Enum.GetNames<ReadTimings>().Should().Equal("SameBlockBelow", "SameBlockAbove", "ClosureBeforeConstruct", "BackEdge", "FailedGuard");
+
+        NameResolutionRosters.BlockFamilies.Keys.Should().Contain(NameResolutionRosters.ReadTimingLoops, "the back edge crosses roster 8's loop families");
+        NameResolutionRosters.Patterns.Keys.Should().Contain("GuardPattern", "the failed guard is roster 7's");
+        NameResolutionRosters.ReadTimingCaptures.Should().BeSubsetOf(Enum.GetValues<LocalTarget>());
     }
 
     [Fact]
