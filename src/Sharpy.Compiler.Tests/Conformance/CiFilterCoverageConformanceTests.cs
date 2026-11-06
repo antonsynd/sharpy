@@ -68,6 +68,64 @@ public class CiFilterCoverageConformanceTests
     }
 
     /// <summary>
+    /// Plan-3eba57 D4.1: a sweep runs EXACTLY once. The sweeps are the tests named by a
+    /// <c>FullyQualifiedName!~X</c> token of <c>COMPILER_MAIN_FILTER</c> (excluded from the shards)
+    /// together with the tests named by a <c>FullyQualifiedName~X</c> token of a step that selects
+    /// <c>Category=GapDiscovery</c> (the dedicated sweep steps) — the second half keeps a sweep in
+    /// the subject when its <c>!~</c> exclusion is dropped, which is exactly the defect (it would
+    /// then run in a shard AND in its own step). Every non-exempt such test is selected by exactly
+    /// one resolved step across ALL jobs (each matrix combination is its own step, so the seven
+    /// Compiler shards count seven). Judged per TEST, not per class: <c>InProcessIsolationSweepTests</c>
+    /// is two populations by design (its GapDiscovery mode in the `sweep` job, its regular slice in
+    /// a shard), each run once.
+    /// </summary>
+    [Fact]
+    public void EverySweep_IsSelectedByExactlyOneStep()
+    {
+        var (steps, workflowEnv, tests) = LoadStepsAndTests();
+
+        Assert.True(workflowEnv.TryGetValue("COMPILER_MAIN_FILTER", out var mainFilter),
+            "COMPILER_MAIN_FILTER is not defined in the workflow env. Workflow restructured?");
+        var excluded = Clauses(ParseFilter(mainFilter!))
+            .Where(c => c.Property == "FullyQualifiedName" && c.Op == FilterOp.NotContains)
+            .Select(c => c.Value);
+        var swept = steps
+            .Select(s => Clauses(ParseFilter(s.Filter)).ToList())
+            .Where(cs => cs.Any(c => c is { Property: "Category", Op: FilterOp.Equals, Value: "GapDiscovery" }))
+            .SelectMany(cs => cs.Where(c => c is { Property: "FullyQualifiedName", Op: FilterOp.Contains }).Select(c => c.Value));
+        var tokens = excluded.Concat(swept).Distinct().OrderBy(t => t, StringComparer.Ordinal).ToList();
+
+        var subjects = new Dictionary<string, int>();
+        var wrong = new List<string>();
+        foreach (var token in tokens)
+        {
+            subjects[token] = 0;
+            foreach (var test in tests.Where(t => t.Fqn.Contains(token, StringComparison.Ordinal) && !IsExempt(t)))
+            {
+                subjects[token]++;
+                var selecting = steps.Where(s => EvaluateFilter(s.Filter, test)).Select(s => s.Label).ToList();
+                if (selecting.Count != 1)
+                    wrong.Add($"  {test.Fqn} — selected by {selecting.Count} step(s)" +
+                              (selecting.Count == 0 ? "" : $": {string.Join("; ", selecting)}"));
+            }
+        }
+
+        // Positive control: the subject is the seven sweeps the workflow names today, each with tests.
+        Assert.True(tokens.Count >= 7,
+            $"only {tokens.Count} sweep token(s) found ({string.Join(", ", tokens)}): the !~ / Category=GapDiscovery reading went blind.");
+        var empty = subjects.Where(kv => kv.Value == 0).Select(kv => kv.Key).ToList();
+        Assert.True(empty.Count == 0, $"sweep token(s) naming no test: {string.Join(", ", empty)}");
+
+        Assert.True(wrong.Count == 0,
+            $"{wrong.Count} sweep test(s) not selected by exactly one CI step " +
+            $"(subjects per token: {string.Join(", ", subjects.Select(kv => $"{kv.Key}={kv.Value}"))}):\n" +
+            string.Join("\n", wrong.Take(50)) +
+            (wrong.Count > 50 ? $"\n  … and {wrong.Count - 50} more" : "") +
+            "\nA sweep excluded from COMPILER_MAIN_FILTER must have its own step, and a sweep with its own " +
+            "step must be excluded from COMPILER_MAIN_FILTER.");
+    }
+
+    /// <summary>
     /// The evaluator resolves the workflow's matrix/env spelling to a literal filter, and refuses
     /// (throws) what it cannot read rather than treating it as "selects nothing" or "selects all".
     /// </summary>
@@ -97,6 +155,70 @@ public class CiFilterCoverageConformanceTests
         Assert.False(EvaluateFilter("FullyQualifiedName~B.&FullyQualifiedName!~N.B", test));
     }
 
+    /// <summary>
+    /// The step resolver behind D4.1/D4.2: one step per (job, step, matrix combination) — a matrix
+    /// axis and an `include` list alike — each with its own literal filter and its resolved env
+    /// (workflow ∪ job ∪ step, inner wins); other test projects and `--list-tests` runs are not
+    /// steps; a `dotnet test` whose project it cannot read throws rather than drop out.
+    /// </summary>
+    [Fact]
+    public void StepResolver_YieldsOneStepPerMatrixCombination_WithItsEnv_AndRefusesAnUnreadableCommand()
+    {
+        const string Yaml = """
+            env:
+              MAIN: "Category!=Benchmark"
+              SHARD_1: "FullyQualifiedName~A."
+              SHARD_2: "FullyQualifiedName~B."
+              LEVEL: workflow
+            jobs:
+              shards:
+                env:
+                  LEVEL: job
+                strategy:
+                  matrix:
+                    shard: [1, 2]
+                steps:
+                - name: Shard ${{ matrix.shard }}
+                  run: |
+                    echo "filter: $MAIN"
+                    dotnet test src/Sharpy.Compiler.Tests --no-build --filter "$MAIN&$SHARD_${{ matrix.shard }}"
+              sweeps:
+                strategy:
+                  matrix:
+                    include:
+                      - name: x
+                        filter: "Category=GapDiscovery&FullyQualifiedName~X"
+                steps:
+                - name: Sweep ${{ matrix.name }}
+                  env:
+                    LEVEL: step
+                  run: dotnet test src/Sharpy.Compiler.Tests --no-build --filter "${{ matrix.filter }}"
+                - name: Other project
+                  run: dotnet test src/Sharpy.Lsp.Tests --no-build --filter "Category!=Benchmark"
+                - name: Listing
+                  run: dotnet test "$1" --no-build --list-tests --filter "$2"
+              folded:
+                steps:
+                - run: >
+                    dotnet test src/Sharpy.Compiler.Tests
+                    --filter "FullyQualifiedName~F"
+            """;
+
+        var steps = ExtractCompilerTestSteps(Yaml);
+        Assert.Equal(new[] { "shards/Shard 1", "shards/Shard 2", "sweeps/Sweep x", "folded/step 0" }, steps.Select(s => s.Label));
+        Assert.Equal(new[]
+        {
+            "Category!=Benchmark&FullyQualifiedName~A.",
+            "Category!=Benchmark&FullyQualifiedName~B.",
+            "Category=GapDiscovery&FullyQualifiedName~X",
+            "FullyQualifiedName~F",
+        }, steps.Select(s => s.Filter));
+        Assert.Equal(new[] { "job", "job", "step", "workflow" }, steps.Select(s => s.Env["LEVEL"]));
+
+        Assert.Throws<InvalidOperationException>(() => ExtractCompilerTestSteps(
+            Yaml.Replace("dotnet test src/Sharpy.Lsp.Tests --no-build", "dotnet test --no-build src/Sharpy.Compiler.Tests", StringComparison.Ordinal)));
+    }
+
     private (List<string> Filters, List<TestInfo> Tests) LoadFiltersAndTests()
     {
         var repoRoot = FindRepoRoot();
@@ -105,6 +227,17 @@ public class CiFilterCoverageConformanceTests
         Assert.True(filters.Count >= 2,
             $"Expected ≥2 Compiler.Tests steps, found {filters.Count}. Workflow restructured?");
         return (filters, ReflectTests());
+    }
+
+    private (List<ResolvedStep> Steps, Dictionary<string, string> WorkflowEnv, List<TestInfo> Tests) LoadStepsAndTests()
+    {
+        var yaml = File.ReadAllText(Path.Combine(FindRepoRoot(), ".github", "workflows", "dotnet10.yml"));
+        var steps = ExtractCompilerTestSteps(yaml);
+        Assert.True(steps.Count >= 2,
+            $"Expected ≥2 Compiler.Tests steps, found {steps.Count}. Workflow restructured?");
+        var stream = new YamlStream();
+        stream.Load(new StringReader(yaml));
+        return (steps, ReadEnv((YamlMappingNode)stream.Documents[0].RootNode), ReflectTests());
     }
 
     private enum FilterOp { Equals, NotEquals, Contains, NotContains }
@@ -294,8 +427,14 @@ public class CiFilterCoverageConformanceTests
     // parser GitHub's runner uses — so escaped-newline scalars join exactly as Actions joins them.
     // Any reference that cannot be resolved to a literal throws.
 
+    private static readonly Regex DotnetTestCommand =
+        new(@"^[^\S\n]*dotnet\s+test\b.*$", RegexOptions.Multiline);
+
     private static readonly Regex CompilerTestCommand =
-        new(@"^[^\S\n]*dotnet\s+test\s+\S*Sharpy\.Compiler\.Tests\S*(\s.*)?$", RegexOptions.Multiline);
+        new(@"^[^\S\n]*dotnet\s+test\s+\S*Sharpy\.Compiler\.Tests\S*(\s.*)?$");
+
+    private static readonly Regex OtherTestProjectCommand =
+        new(@"^[^\S\n]*dotnet\s+test\s+src/Sharpy\.(?!Compiler\.Tests\b)[A-Za-z]+\.Tests(\s.*)?$");
 
     private static readonly Regex FilterArgument = new(@"--filter\s+""([^""]+)""");
 
@@ -303,37 +442,61 @@ public class CiFilterCoverageConformanceTests
 
     private static readonly Regex ShellVariable = new(@"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))");
 
+    /// <summary>
+    /// One resolved Compiler.Tests step: a step of one job under one matrix combination (the seven
+    /// Compiler shards are seven steps), its literal filter, and the env it runs under (workflow ∪
+    /// job ∪ step, inner wins — the precedence Actions applies).
+    /// </summary>
+    private sealed record ResolvedStep(string Label, string Filter, IReadOnlyDictionary<string, string> Env);
+
     private static List<string> ExtractCompilerTestFilters(string yaml)
+        => ExtractCompilerTestSteps(yaml).Select(s => s.Filter).ToList();
+
+    private static List<ResolvedStep> ExtractCompilerTestSteps(string yaml)
     {
         var stream = new YamlStream();
         stream.Load(new StringReader(yaml));
         var root = (YamlMappingNode)stream.Documents[0].RootNode;
         var workflowEnv = ReadEnv(root);
 
-        var filters = new List<string>();
-        foreach (var (_, jobNode) in Child<YamlMappingNode>(root, "jobs")!.Children)
+        var steps = new List<ResolvedStep>();
+        foreach (var (jobKey, jobNode) in Child<YamlMappingNode>(root, "jobs")!.Children)
         {
+            var jobId = ((YamlScalarNode)jobKey).Value!;
             var job = (YamlMappingNode)jobNode;
             var jobEnv = Merge(workflowEnv, ReadEnv(job));
             var combinations = MatrixCombinations(job);
-            var steps = Child<YamlSequenceNode>(job, "steps");
-            if (steps == null)
+            var jobSteps = Child<YamlSequenceNode>(job, "steps");
+            if (jobSteps == null)
                 continue;
 
-            foreach (var stepNode in steps.Children)
+            for (var index = 0; index < jobSteps.Children.Count; index++)
             {
-                var step = (YamlMappingNode)stepNode;
+                var step = (YamlMappingNode)jobSteps.Children[index];
                 if (Child<YamlScalarNode>(step, "run")?.Value is not { } run)
                     continue;
                 var stepEnv = Merge(jobEnv, ReadEnv(step));
+                var stepName = Child<YamlScalarNode>(step, "name")?.Value ?? $"step {index}";
 
-                foreach (Match command in CompilerTestCommand.Matches(run))
+                foreach (Match test in DotnetTestCommand.Matches(run))
                 {
-                    var line = command.Value;
+                    var line = test.Value;
                     // `--list-tests` enumerates without running anything (the shard-partition job):
                     // counting it as coverage would make the guard vacuous.
                     if (line.Contains("--list-tests", StringComparison.Ordinal))
                         continue;
+                    if (!CompilerTestCommand.IsMatch(line))
+                    {
+                        // Another test project's step. Anything else — the project after an option, a
+                        // shell variable for the project — would be a Compiler.Tests step this
+                        // resolver cannot see, so it refuses rather than under-counting.
+                        if (OtherTestProjectCommand.IsMatch(line))
+                            continue;
+                        throw new InvalidOperationException(
+                            $"`dotnet test` command in {jobId}/{stepName} whose project this resolver cannot read: " +
+                            $"'{line.Trim()}'. Update the evaluator in {nameof(CiFilterCoverageConformanceTests)}.");
+                    }
+
                     var filterArgs = FilterArgument.Matches(line);
                     if (filterArgs.Count != 1)
                         throw new InvalidOperationException(
@@ -341,12 +504,17 @@ public class CiFilterCoverageConformanceTests
                             $"Update the evaluator in {nameof(CiFilterCoverageConformanceTests)}.");
                     var raw = filterArgs[0].Groups[1].Value;
                     foreach (var matrix in combinations)
-                        filters.Add(ResolveFilter(raw, matrix, stepEnv));
+                    {
+                        var label = $"{jobId}/{MatrixExpression.Replace(stepName, m => matrix.GetValueOrDefault(m.Groups[1].Value, m.Value))}";
+                        if (matrix.Count > 0 && label == $"{jobId}/{stepName}")
+                            label += $" [{string.Join(", ", matrix.Select(kv => $"{kv.Key}={kv.Value}"))}]";
+                        steps.Add(new ResolvedStep(label, ResolveFilter(raw, matrix, stepEnv), stepEnv));
+                    }
                 }
             }
         }
 
-        return filters;
+        return steps;
     }
 
     private static string ResolveFilter(
