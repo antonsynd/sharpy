@@ -13,6 +13,7 @@ public partial class NameResolutionDifferentialTests
         {
             [(Family.Local, SharpyTag.MustRefuse, "N5")] = 50,
             [(Family.Local, SharpyTag.MustRefuse, "N5-declared-later")] = 15,
+            [(Family.Local, SharpyTag.MustRefuse, "N5-self")] = 3,
             [(Family.Local, SharpyTag.MustRefuse, "S2")] = 69,
             [(Family.Local, SharpyTag.MustRefuse, "S3")] = 73,
             [(Family.Local, SharpyTag.MustRun, "#1974")] = 18,
@@ -23,7 +24,6 @@ public partial class NameResolutionDifferentialTests
             [(Family.Local, SharpyTag.Unruled, "unruled:L28")] = 6,
             [(Family.Local, SharpyTag.Unruled, "unruled:N5-before-binding")] = 120,
             [(Family.Local, SharpyTag.Unruled, "unruled:N5-match-capture")] = 52,
-            [(Family.Local, SharpyTag.Unruled, "unruled:N5-self")] = 3,
             [(Family.Local, SharpyTag.Unruled, "unruled:S2-builtin")] = 40,
             [(Family.Local, SharpyTag.Unruled, "unruled:rowless-construct")] = 16,
             [(Family.Read, SharpyTag.MayRefuse, "kind:SPY0340")] = 71,

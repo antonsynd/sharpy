@@ -329,6 +329,8 @@ public partial class NameResolutionDifferentialTests
         ["N2-module"] = new[] { "SPY0204", "SPY0230", "SPY0320" },
         // R-KX: a local read above its own binding, with no outer the read could mean, is the name check today.
         ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
+        // R-LE: a lambda-typed local reading itself stays refused, as C# refuses `Func<int> f = () => f();`.
+        ["N5-self"] = new[] { "SPY0200" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
