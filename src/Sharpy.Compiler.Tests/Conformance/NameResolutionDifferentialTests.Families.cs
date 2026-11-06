@@ -964,8 +964,8 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
-    /// <summary>A construct body's Block family, and the deviation row that names it (null = no row exists: `unruled`, #2426).</summary>
-    private sealed record BlockShape(string Family, string[] Open, int Depth, string[] Close, string? Row);
+    /// <summary>A construct body's Block family, and the deviation row that names it (R-LB: every family has one).</summary>
+    private sealed record BlockShape(string Family, string[] Open, int Depth, string[] Close, string Row);
 
     private static readonly BlockShape[] BlockShapes =
     {
@@ -973,15 +973,15 @@ public partial class NameResolutionDifferentialTests
         new("elif", new[] { "if False:", "    pass", "elif True:" }, 1, Array.Empty<string>(), "block-scoping-if"),
         new("if-else", new[] { "if False:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-if"),
         new("while-body", new[] { "w0: int = 0", "while w0 < 1:", "    w0 += 1" }, 1, Array.Empty<string>(), "block-scoping-while"),
-        new("while-else", new[] { "while False:", "    pass", "else:" }, 1, Array.Empty<string>(), null),
-        new("for-body", new[] { "for w0 in [1]:" }, 1, Array.Empty<string>(), null),
-        new("for-else", new[] { "for w0 in [1]:", "    pass", "else:" }, 1, Array.Empty<string>(), null),
+        new("while-else", new[] { "while False:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-while"),
+        new("for-body", new[] { "for w0 in [1]:" }, 1, Array.Empty<string>(), "block-scoping-for"),
+        new("for-else", new[] { "for w0 in [1]:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-for"),
         new("try", new[] { "try:" }, 1, new[] { "except ValueError:", "    pass" }, "block-scoping-try-except"),
         new("except", new[] { "try:", "    raise ValueError(\"v\")", "except ValueError:" }, 1, Array.Empty<string>(), "block-scoping-try-except"),
         new("try-else", new[] { "try:", "    pass", "except ValueError:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-try-except"),
         new("finally", new[] { "try:", "    pass", "finally:" }, 1, Array.Empty<string>(), "block-scoping-try-except"),
         new("with", new[] { "with CM() as w0:" }, 1, Array.Empty<string>(), "block-scoping-with"),
-        new("match-case", new[] { "match 1:", "    case 1:" }, 2, Array.Empty<string>(), null),
+        new("match-case", new[] { "match 1:", "    case 1:" }, 2, Array.Empty<string>(), "block-scoping-match"),
     };
 
     private static IEnumerable<NameCell> LetInConstructCells()
@@ -993,22 +993,11 @@ public partial class NameResolutionDifferentialTests
                     var stmts = new List<string>(b.Open) { new string(' ', 4 * b.Depth) + "let x = 15" };
                     stmts.AddRange(b.Close);
                     stmts.Add("print(x)");
-                    Expected e;
-                    string? shape = null;
-                    if (b.Row == null)
-                    {
-                        e = new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(15), "unruled:rowless-construct");
-                        shape = $"rowless-let:{b.Family}";
-                    }
-                    else if (u == BindingKind.None)
-                    {
-                        e = new Expected(SharpyTag.MustRefuse, null, PyOutcome.Ran(15), "N5", b.Row);
-                    }
-                    else
-                    {
-                        e = new Expected(SharpyTag.MustRun, "5", PyOutcome.Ran(15), "#1974", b.Row);
-                    }
-                    yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, shape, ReadName.Plain);
+                    // R-LB: a binder in a block body is block-scoped. No outer is the name check after the block; a visible outer reads the outer.
+                    var e = u == BindingKind.None
+                        ? new Expected(SharpyTag.MustRefuse, null, PyOutcome.Ran(15), "N5", b.Row)
+                        : new Expected(SharpyTag.MustRun, "5", PyOutcome.Ran(15), "N5-block-scope", b.Row);
+                    yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, null, ReadName.Plain);
                 }
     }
 
@@ -1218,10 +1207,6 @@ public partial class NameResolutionDifferentialTests
     /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
     internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        ["rowless-let:for-body"] = 4,
-        ["rowless-let:for-else"] = 4,
-        ["rowless-let:while-else"] = 4,
-        ["rowless-let:match-case"] = 4,
     };
 
     /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
@@ -1232,10 +1217,6 @@ public partial class NameResolutionDifferentialTests
         var parts = shape.Split(':');
         switch (parts[0])
         {
-            case "rowless-let":
-                return c.Family == Family.Local && c.Target == BindingKind.LocalLet
-                    && c.Id.Contains($"/let-in/{parts[1]}/", StringComparison.Ordinal)
-                    && BlockShapes.Any(b => b.Family == parts[1] && b.Row == null);
             case "seed":
                 return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
             default:

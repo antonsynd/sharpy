@@ -478,7 +478,6 @@ public partial class NameResolutionDifferentialTests
     /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red.</summary>
     [Theory]
     [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
-    [InlineData("rowless-let:if-then", Family.Local, BindingKind.LocalLet, BindingKind.None, "local/LocalLet/let-in/if-then/outer=None/FunctionBody")]
     internal void ClosedSet_AListedShapeOnTheWrongAxes_IsRed(string shape, Family family, BindingKind target, BindingKind outer, string id)
     {
         var cell = CellTagged(SharpyTag.Unruled, null) with { Id = id, Family = family, Target = target, Outer = outer, Shape = shape };
