@@ -421,6 +421,38 @@ public partial class NameResolutionDifferentialTests
 
         foreach (var cell in BuiltinStoreCells())
             yield return cell;
+        foreach (var cell in ImportedStoreCells())
+            yield return cell;
+    }
+
+    /// <summary>STORE × the ImportedName outer (P77b axis 9, D2.9): a bare store in a function or a method over the module's
+    /// imported name. Python makes it a function local; N6 refuses a bare store over a module binding (p22).</summary>
+    private static IEnumerable<NameCell> ImportedStoreCells()
+    {
+        var n = Imported;
+        foreach (var s in new[] { StoreSpelling.Assign, StoreSpelling.Augmented, StoreSpelling.Walrus })
+            foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
+            {
+                var (host, call) = Host(body, new[] { StoreText(s, n.Name), $"print({n.Name})" });
+                var main = call.Append($"print({ReadText(Form.Value, "", n)})").ToArray();
+                var python = s == StoreSpelling.Augmented ? PyOutcome.Unbound(n.Name) : PyOutcome.Ran(JoinOut(15, n.BuiltinResult!.Value));
+                var e = Refuse(python, "N6");
+                yield return new NameCell
+                {
+                    Id = CellId("store", s, "outer=ImportedName", body, "no-decl", n.Name),
+                    Family = Family.Store,
+                    Source = WithImport(n, Join(host) + MainBlock(main)),
+                    Tag = e.Tag,
+                    Model = e.Model,
+                    Python = e.Python,
+                    Rule = e.Rule,
+                    Target = BindingKind.ImportedName,
+                    Outer = BindingKind.ImportedName,
+                    Position = body,
+                    Form = FormEnum(s),
+                    NeedsStdlib = true,
+                };
+            }
     }
 
     private static NameCell LambdaWalrusCell(BindingKind outer)
@@ -664,10 +696,10 @@ public partial class NameResolutionDifferentialTests
         .Where(k => NameResolutionRosters.LocalKinds.TryGetValue(k, out var m) && m.Generated)
         .ToArray();
 
-    /// <summary>LOCAL's outer axis (finding 3): the roster's generated values, the pruned ones named there. The Builtin
-    /// outer's name is the axis, so it has its own arm below.</summary>
+    /// <summary>LOCAL's outer axis (finding 3): the roster's generated values, the pruned ones named there. The Builtin and
+    /// ImportedName outers' names are the axis, so each has its own arm below.</summary>
     private static readonly BindingKind[] LocalOuters = NameResolutionRosters.LocalOuter
-        .Where(e => e.Value.Generated && e.Key != BindingKind.Builtin)
+        .Where(e => e.Value.Generated && e.Key is not (BindingKind.Builtin or BindingKind.ImportedName))
         .Select(e => e.Key)
         .OrderBy(k => k)
         .ToArray();
@@ -822,6 +854,26 @@ public partial class NameResolutionDifferentialTests
                         yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(python, "S3"), null, n);
                     else
                         yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), "before-binding:builtin", n);
+                }
+        }
+
+        // The ImportedName outer (P77b axis 9, D2.9): a local spelled like the module's imported name, read below its binding
+        // (the local) and above it (python's UnboundLocalError; N5-declared-later, p21).
+        {
+            var n = Imported;
+            foreach (var k in LocalKinds)
+                foreach (var body in LocalBodies)
+                {
+                    var own = FormOf(k) == Form.Value ? n.Name : ReadText(FormOf(k), "", n);
+                    string Id(string read) => CellId("local", k, read, "outer=ImportedName", body, n.Name);
+                    NameCell Importing(NameCell c) => c with { Source = WithImport(n, c.Source), NeedsStdlib = true };
+                    yield return Importing(LocalProgram(Id("below"), k, BindingKind.ImportedName, body,
+                        LocalDecl(k, n).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, n));
+                    var above = new List<string> { $"print({ReadText(Form.Value, "", n)})" };
+                    above.AddRange(LocalDecl(k, n));
+                    above.Add($"print({own})");
+                    yield return Importing(LocalProgram(Id("above"), k, BindingKind.ImportedName, body, above,
+                        Refuse(PyOutcome.Unbound(n.Name), "N5-declared-later"), null, n));
                 }
         }
 
@@ -1342,6 +1394,7 @@ public partial class NameResolutionDifferentialTests
             .Concat(NameResolutionRosters.PositionLocalKinds)
             .Concat(NameResolutionRosters.NonSymbolKinds)
             .Append(BindingKind.Builtin)
+            .Append(BindingKind.ImportedName)
             .ToHashSet();
         foreach (var k in kinds.Where(k => !rosterKinds.Contains(k)))
             yield return $"BindingKind {k} is carried by a generated cell and is in no roster group";

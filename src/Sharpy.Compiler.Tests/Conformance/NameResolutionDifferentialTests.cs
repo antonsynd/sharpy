@@ -112,6 +112,10 @@ internal sealed record NameCell
     /// <summary>The Sharpy source the twin renders from when python has no spelling of the construct (a module accessor).</summary>
     public string? TwinSource { get; init; }
 
+    /// <summary>P77b D2.9: the source imports a Sharpy.Stdlib module, so <c>RunSharpy</c> references the monolith for this
+    /// cell alone. Set by the generator on the cells it builds over the <c>ImportedName</c> outer, never read off the source.</summary>
+    public bool NeedsStdlib { get; init; }
+
     /// <summary>Set by SEED cells: the table's issue cite for a red.</summary>
     public string? SeedCite { get; init; }
 
@@ -293,6 +297,9 @@ public partial class NameResolutionDifferentialTests
         [("SPY0401", "SPY0203")] = 12,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
+        // P77b R-LJ: a module binding spelled like an imported name is SPY0204 at its own declaration, before N2's module
+        // refusal of the read above it is reached (p23): refused by direction, pinned until N2's own diagnostic lands (#2423).
+        [("N2-module", "SPY0204")] = 3,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -302,21 +309,27 @@ public partial class NameResolutionDifferentialTests
     {
         // SPY0618 is P75's forward refusal, which the principle retires: 1 comprehension cell reaches it before the name check.
         ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
-        // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
-        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it. SPY0320
+        // is SPY0230's neighbour for the ImportedName read (P77b axis 9): `len(digits)` on the int member has no `__len__`.
+        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         // SPY0203 is SPY0230's neighbour for the EnumValue form (P77b D1's restored ModuleEnum outer): `x.RED.value` on the
-        // later int member the read wrongly binds is an undefined member, as `x(...)` on it is not callable.
-        ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
+        // later int member the read wrongly binds is an undefined member, as `x(...)` on it is not callable. SPY0320 is the
+        // same for the ImportedName read (P77b axis 9): `len(digits)` on the later int member has no `__len__`.
+        ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
+        // P77b R-LJ: SPY0204 is the module binding re-declaring an imported name (pinned in EarlierRefusals); SPY0230 is the
+        // later binding the read wrongly binds, called or measured as the wrong kind.
+        ["N2-module"] = new[] { "SPY0204", "SPY0230" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
         // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
-        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
+        // SPY0220 is the same for the ImportedName outer (P77b axis 9): `digits = 15` is typed against the str import.
+        ["N6"] = new[] { "SPY0200", "SPY0220", "SPY0222", "SPY0336", "SPY0342" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
-        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
@@ -347,9 +360,16 @@ public partial class NameResolutionDifferentialTests
         foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused))
         {
             var named = RuleNamesCode.Match(r.Cell.Rule);
-            if (!named.Success || r.Run.ErrorCodes.Contains(named.Groups[1].Value))
-                continue;
             var first = r.Run.ErrorCodes.First(c => !IgnoredCodes.Contains(c));
+            if (!named.Success)
+            {
+                // A rule that names no code is held to its admitted codes above; an earlier refusal pinned for it is counted.
+                if (EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
+                    seen[(r.Cell.Rule, first)] = seen.GetValueOrDefault((r.Cell.Rule, first)) + 1;
+                continue;
+            }
+            if (r.Run.ErrorCodes.Contains(named.Groups[1].Value))
+                continue;
             if (!EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
                 yield return $"RefusalCode: {r.Cell.Id} names {r.Cell.Rule} and was refused with {first}";
             seen[(r.Cell.Rule, first)] = seen.GetValueOrDefault((r.Cell.Rule, first)) + 1;
@@ -442,6 +462,10 @@ public partial class NameResolutionDifferentialTests
                     // `x.RED.value` the checker bound to the module enum outer while C# binds the class member (P77b D1's
                     // restored ModuleEnum outer): the checker and the emitter disagree on the binding, and N1 makes them agree.
                     "CS1061" when cell.Outer == BindingKind.ModuleEnum => "#2423",
+                    // An imported name read bare in a method beside a same-named member (P77b axis 9): the checker binds the import
+                    // and the emitter qualifies it as the module class's member. Routed with the N1 class's checker / emitter
+                    // disagreement; the H2 findings-ledger line asks the lead to confirm the class.
+                    "CS0117" when cell.Outer == BindingKind.ImportedName => "#2423",
                     // No default arm: an ICE nobody has triaged is red until a route names the check that cures it.
                     _ => $"UNROUTED({run.CsCode})",
                 };
@@ -465,7 +489,8 @@ public partial class NameResolutionDifferentialTests
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)
-                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) ? "#2425" : "#2423";
+                    // N5-declared-later is #2425's (R-KX): a read above the local's binding that reads the outer instead.
+                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) || cell.Rule == "N5-declared-later" ? "#2425" : "#2423";
                 // Only a read with no other binding can print a storage default; values-ready cannot change which binding is read.
                 return cell.Tag == SharpyTag.MustRefuse || cell.Outer != BindingKind.None ? "#2423" : "#2422";
             default:
@@ -571,6 +596,7 @@ public partial class NameResolutionDifferentialTests
         var cache = LoadCache(cachePath);
         int cached = 0;
         int retried = 0;
+        var timing = new ArmTiming();
         var runs = new SharpyRun[cells.Count];
         for (int i = 0; i < cells.Count; i++)
         {
@@ -582,7 +608,10 @@ public partial class NameResolutionDifferentialTests
             }
             else
             {
-                runs[i] = RunWithRetry((src, timeout) => RunSharpy(src, timeout), cells[i].Source, SharpyExecTimeoutMs, out var again);
+                var needsStdlib = cells[i].NeedsStdlib;
+                var started = Stopwatch.GetTimestamp();
+                runs[i] = RunWithRetry((src, timeout) => RunSharpy(src, timeout, needsStdlib), cells[i].Source, SharpyExecTimeoutMs, out var again);
+                timing.Add(needsStdlib, Stopwatch.GetElapsedTime(started).TotalSeconds);
                 if (again)
                     retried++;
                 if (cachePath != null)
@@ -640,7 +669,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(RefusalCodeFailures(results, partial));
 
         wall.Stop();
-        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, wall.Elapsed);
+        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, timing, wall.Elapsed);
         WriteProposedAllowlist(results);
 
         Output.WriteLine(report);
@@ -703,6 +732,7 @@ public partial class NameResolutionDifferentialTests
         bool partial,
         int cached,
         int retried,
+        ArmTiming timing,
         TimeSpan wall)
     {
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
@@ -741,6 +771,15 @@ public partial class NameResolutionDifferentialTests
             }).ToList(),
             secondsPerCell = results.Count == 0 ? 0 : wall.TotalSeconds / results.Count,
             wallSeconds = wall.TotalSeconds,
+            // P77b D2.9 "Reach": the Sharpy arm's compile + execute seconds per cell, the Stdlib-referencing axis-9 cells beside
+            // the Core-only rest (uncached cells only).
+            sharpyArm = new
+            {
+                coreOnlyCells = timing.CoreCells,
+                coreOnlySecondsPerCell = timing.CoreSecondsPerCell,
+                importedOuterCells = timing.StdlibCells,
+                importedOuterSecondsPerCell = timing.StdlibSecondsPerCell,
+            },
         };
 
         var dir = ReportDirectory();
@@ -772,7 +811,35 @@ public partial class NameResolutionDifferentialTests
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
         return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
             + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, retried {retried}, "
-            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
+            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell; Sharpy arm "
+            + $"{timing.CoreSecondsPerCell:F3}s/cell over {timing.CoreCells} Core-only cells, {timing.StdlibSecondsPerCell:F3}s/cell over "
+            + $"{timing.StdlibCells} ImportedName cells). {counts}";
+    }
+
+    /// <summary>The Sharpy arm's seconds, split by whether the cell referenced the Stdlib monolith (P77b D2.9's "Reach").</summary>
+    private sealed class ArmTiming
+    {
+        public int CoreCells { get; private set; }
+        public int StdlibCells { get; private set; }
+        private double _coreSeconds;
+        private double _stdlibSeconds;
+
+        public void Add(bool stdlib, double seconds)
+        {
+            if (stdlib)
+            {
+                StdlibCells++;
+                _stdlibSeconds += seconds;
+            }
+            else
+            {
+                CoreCells++;
+                _coreSeconds += seconds;
+            }
+        }
+
+        public double CoreSecondsPerCell => CoreCells == 0 ? 0 : _coreSeconds / CoreCells;
+        public double StdlibSecondsPerCell => StdlibCells == 0 ? 0 : _stdlibSeconds / StdlibCells;
     }
 
     private static void WriteProposedAllowlist(IReadOnlyList<CellResult> results)

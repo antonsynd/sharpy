@@ -141,14 +141,26 @@ public partial class NameResolutionDifferentialTests
     /// <summary>The value a builtin-named binding carries, so the builtin's result and the binding never coincide.</summary>
     private const int BuiltinBindingValue = 7;
 
-    private readonly record struct ReadName(string Name, string CallArgs, string Params, int? BuiltinResult)
+    private readonly record struct ReadName(string Name, string CallArgs, string Params, int? BuiltinResult, string? Import = null)
     {
         public static readonly ReadName Plain = new("x", "", "", null);
-        public bool IsBuiltin => BuiltinResult != null;
+        public bool IsBuiltin => BuiltinResult != null && Import == null;
+        public bool IsImported => Import != null;
+
+        /// <summary>A named outer (D3.a's non-coincidence rule): a binding spelled like it carries <see cref="BuiltinBindingValue"/>.</summary>
+        public bool IsNamedOuter => BuiltinResult != null;
     }
+
+    /// <summary>The <c>ImportedName</c> outer (P77b D2.9): the str VALUE <c>string.digits</c>, read through <c>len</c> as
+    /// <see cref="StrValueCells"/> reads str kinds, so the read is 10 and the same-named <c>digits: int = 7</c> makes it
+    /// <c>len(7)</c>, the type-error arm. A str value because every int-returning stdlib function Sharpy exposes is
+    /// <c>int64</c> (p19 / p20). <c>string</c> is a Sharpy.Stdlib module: every cell spelling it sets
+    /// <see cref="NameCell.NeedsStdlib"/>, which is how <c>RunSharpy</c> references the monolith.</summary>
+    private static readonly ReadName Imported = new("digits", "", "", 10, "from string import digits");
 
     private static string ReadText(Form form, string prefix, ReadName n) => form switch
     {
+        Form.Value when n.IsImported => $"len({prefix}{n.Name})",
         Form.Value => prefix + n.Name,
         Form.Call => $"{prefix}{n.Name}({n.CallArgs})",
         Form.Ctor => $"{prefix}{n.Name}({n.CallArgs}).v",
@@ -177,7 +189,10 @@ public partial class NameResolutionDifferentialTests
     }
 
     private static int BindingValue(BindingKind kind, ReadName n)
-        => n.IsBuiltin ? BuiltinBindingValue : ValueOf(kind);
+        => n.IsNamedOuter ? BuiltinBindingValue : ValueOf(kind);
+
+    /// <summary>The import line a cell over the <c>ImportedName</c> outer starts with, first in the file.</summary>
+    private static string WithImport(ReadName n, string source) => n.IsImported ? n.Import + "\n" + source : source;
 
     /// <summary>The module-level declaration of a kind, with the helper it needs. <paramref name="initOverride"/> is the
     /// initializer of a self / cycle cell.</summary>

@@ -50,8 +50,10 @@ internal enum BindingKind
     LocalDef,
     LambdaTypedLocal,
 
-    // a binding of the global scope (SymbolTable.PopulateBuiltins), and no binding at all
+    // the named outers: a binding of the global scope (SymbolTable.PopulateBuiltins) and a name a single-file
+    // `from <stdlib module> import <name>` binds (ImportResolver.BindImportName, P77b D2.9); and no binding at all
     Builtin,
+    ImportedName,
     None,
 }
 
@@ -142,7 +144,9 @@ internal enum PatternClass
 /// </summary>
 internal enum ExcludedAxis
 {
-    /// <summary>(i) module-qualified spelling, reads from another module, a later project file: needs a project route.</summary>
+    /// <summary>(i) the module-qualified spelling (<c>string.digits</c>), reads from another user module, a later project file:
+    /// needs a project route. The single-file <c>from &lt;stdlib module&gt; import &lt;name&gt;</c> is NOT out: it is
+    /// <see cref="BindingKind.ImportedName"/> (P77b axis 9).</summary>
     ProjectRoute,
 
     /// <summary>(ii) hosts interface/union/enum/generic: P78's and P75's hand matrices.</summary>

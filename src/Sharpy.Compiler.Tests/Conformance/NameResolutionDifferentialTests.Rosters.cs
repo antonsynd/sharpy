@@ -258,7 +258,7 @@ internal static class NameResolutionRosters
     /// initializer expression binds; <c>Transparent</c> holds only type parameters.
     /// </summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<BindingKind>> ScopeSplit = Roster.Map(
-        (ScopeKind.Module, Roster.To(ModuleLevelKinds.Add(BindingKind.Builtin).ToArray())),
+        (ScopeKind.Module, Roster.To(ModuleLevelKinds.Add(BindingKind.Builtin).Add(BindingKind.ImportedName).ToArray())),
         (ScopeKind.TypeBody, Roster.To(TypeLevelKinds.AddRange(InstanceKinds).ToArray())),
         (ScopeKind.FunctionLike, Roster.To(PositionLocalKinds.ToArray())),
         (ScopeKind.Block, Roster.To(
@@ -416,7 +416,10 @@ internal static class NameResolutionRosters
 
     private const string TypeParameter = "a type parameter is never a value binding (x)";
 
-    private const string ProjectRouteBinder = "an import or a project phase binds this: a single-file generator cannot enumerate it (i)";
+    private const string ProjectRouteBinder = "a project phase or a module-qualified spelling binds this: a single-file generator cannot enumerate it (i)";
+
+    /// <summary>The binder of every import spelling (<c>ImportResolver.BindImportName</c>), the source of <see cref="BindingKind.ImportedName"/>.</summary>
+    internal const string ImportBinderSite = "ImportResolver.Symbols.cs:BindImportName(symbol)";
 
     internal static readonly IReadOnlyDictionary<string, BinderImage> BinderSites = Roster.Map(
         // STORE forms
@@ -462,6 +465,10 @@ internal static class NameResolutionRosters
         ("SymbolTable.cs:PopulateBuiltins(name, typeSymbol)", BinderImage.Declaring(BindingKind.Builtin)),
         ("SymbolTable.cs:PopulateBuiltins(funcSymbol)", BinderImage.Declaring(BindingKind.Builtin)),
 
+        // The import seam (P77b axis 9, D2.9): every import spelling binds here; the single-file `from <stdlib module> import
+        // <name>` is the ImportedName outer. The module-qualified and other-user-module spellings stay out (i).
+        (ImportBinderSite, BinderImage.Declaring(BindingKind.ImportedName)),
+
         // Excluded: the census's own subject
         ("SymbolTable.cs:Define(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.Define wrapper over Scope.Define: every other row is its caller")),
         ("SymbolTable.cs:TryDefine(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.TryDefine wrapper over Scope.Define: every other row is its caller")),
@@ -495,7 +502,6 @@ internal static class NameResolutionRosters
         ("TypeChecker.Statements.Patterns.cs:BindRefusedCapture(recovery)", BinderImage.Out(ExcludedAxis.NotAKind, "error recovery: IsErrorRecovery models no program binding")),
         ("TypeChecker.Statements.Patterns.cs:CheckTupleUnpackingElements(newSymbol)", BinderImage.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple store (iii)")),
         ("TypeChecker.Statements.Unpacking.cs:DefineUnpackingSymbol(symbol)", BinderImage.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple / star store (iii)")),
-        ("ImportResolver.Symbols.cs:BindImportName(symbol)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("InheritanceResolver.cs:ResolveTransitiveBaseTypes(found)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("InheritanceResolver.cs:ResolveTransitiveBaseTypes(found)#2", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("TypeChecker.Expressions.cs:TryResolveInlineClrNamespace(moduleSymbol)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
@@ -870,6 +876,7 @@ internal static class NameResolutionRosters
         (BindingKind.InstanceMethod, AxisMembership.ClassEnclosed),
         (BindingKind.EnclosingLocal, AxisMembership.Everywhere),
         (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
         (BindingKind.None, AxisMembership.Everywhere),
         (BindingKind.NestedType, AxisMembership.Pruned("a type's bare name binds through the walk (Scope.ResolveName binds types); non-writable by meaning, ModuleClass keeps that arm")),
         (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)),
@@ -899,6 +906,7 @@ internal static class NameResolutionRosters
         (BindingKind.ModuleLiteralConst, AxisMembership.Everywhere),
         (BindingKind.EnclosingLocal, AxisMembership.Everywhere),
         (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
         (BindingKind.StaticField, AxisMembership.ClassEnclosed),
         (BindingKind.StaticMethod, AxisMembership.ClassEnclosed),
         (BindingKind.ModuleLet, AxisMembership.Pruned(AsModuleVar)),
@@ -1008,16 +1016,15 @@ internal static class NameResolutionRosters
         (("union", "case"), AxisMembership.Out(ExcludedAxis.NotAKind,
             "a union case is read through its constructor (`Later.V(3)`): the constructor row is the case")));
 
-    /// <summary>The universe of READ's bare outer axis: the module-level group, the builtin and no binding (P77b D1).
-    /// SEAM: axis 9 (D2.9) appends <c>BindingKind.ImportedName</c> here and gives it a row in <see cref="ReadOuter"/>;
-    /// the totality fact then requires the row.</summary>
+    /// <summary>The universe of READ's bare outer axis: the module-level group, the two named outers (the builtin and the
+    /// imported name, P77b axis 9) and no binding (P77b D1). The totality fact requires a row for each.</summary>
     internal static readonly ImmutableArray<BindingKind> ReadOuterUniverse =
-        ImmutableArray.Create(BindingKind.None).AddRange(ModuleLevelKinds).Add(BindingKind.Builtin);
+        ImmutableArray.Create(BindingKind.None).AddRange(ModuleLevelKinds).Add(BindingKind.Builtin).Add(BindingKind.ImportedName);
 
     /// <summary>READ's bare outer axis (P77b D1, R-KP): replaces P77a's hand array <c>ModuleOuters</c> and its budget
     /// prunes. Every value of <see cref="ReadOuterUniverse"/> is generated or out with its reason; the generator
     /// (<c>ReadClassCells</c>' bare outers) and <c>RosterFedFailures</c> read it, and the report lists the exclusions
-    /// under <c>rosters.excluded.readOuter</c>. The Builtin row is generated by the builtin-name arm.</summary>
+    /// under <c>rosters.excluded.readOuter</c>. The Builtin and ImportedName rows are generated by their own name arms.</summary>
     internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> ReadOuter = Roster.Map(
         (BindingKind.None, AxisMembership.Everywhere),
         (BindingKind.ModuleVar, AxisMembership.Everywhere),
@@ -1032,7 +1039,8 @@ internal static class NameResolutionRosters
         (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, "no expression read")),
         (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, "no expression read")),
         (BindingKind.ModuleTypeAlias, AxisMembership.Everywhere),
-        (BindingKind.Builtin, AxisMembership.Everywhere));
+        (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere));
 
     /// <summary>LOCAL's binder axis (P77b deferred finding 5): the image of <see cref="PositionLocalKinds"/>, the
     /// position-local kinds a declaration statement in the body binds. The three a statement cannot bind are out with
@@ -1415,7 +1423,7 @@ public partial class NameResolutionDifferentialTests
     public void BindingKindRoster_EveryKind_IsTheImageOfASource()
     {
         // Not the scope split, the kind groups or the binder census: those restate the kinds, so they could
-        // not catch an orphan. Builtin's source is the binder census and has its own fact below.
+        // not catch an orphan. Builtin's and ImportedName's source is the binder census, and each has its own fact below.
         var image = Roster.ImageOf(NameResolutionRosters.SymbolKinds)
             .Concat(Roster.ImageOf(NameResolutionRosters.TypeKinds))
             .Concat(Roster.ImageOf(NameResolutionRosters.MemberKinds))
@@ -1427,7 +1435,7 @@ public partial class NameResolutionDifferentialTests
 
         var problems = Enum.GetValues<BindingKind>()
             .Except(NameResolutionRosters.NonSymbolKinds)
-            .Where(k => k != BindingKind.Builtin && !image.Contains(k))
+            .Where(k => k is not (BindingKind.Builtin or BindingKind.ImportedName) && !image.Contains(k))
             .Select(k => $"BindingKind.{k} is the image of no source value (an orphan the compiler cannot bind)")
             .ToList();
         problems.AddRange(NameResolutionRosters.NonSymbolKinds
@@ -1445,6 +1453,7 @@ public partial class NameResolutionDifferentialTests
             .Concat(NameResolutionRosters.InstanceKinds)
             .Concat(NameResolutionRosters.PositionLocalKinds)
             .Append(BindingKind.Builtin)
+            .Append(BindingKind.ImportedName)
             .Append(BindingKind.None)
             .ToList();
 
@@ -1472,6 +1481,25 @@ public partial class NameResolutionDifferentialTests
 
         AssertNoProblems(problems, "a builtin IS a symbol, and the global scope's binder sites are its source (tenth pass finding 6)");
         NameResolutionRosters.NonSymbolKinds.Should().Equal(new[] { BindingKind.None }, "None is the one kind with no symbol");
+    }
+
+    /// <summary>P77b deferred finding 6: <see cref="BindingKindRoster_EveryKind_IsTheImageOfASource"/> excludes the binder
+    /// census, so ImportedName's source is held here: the import seam is a binder site of the compiler, its entry declares
+    /// ImportedName, and no other entry does.</summary>
+    [Fact]
+    public void BindingKindRoster_ImportedName_IsTheImportBinderSite()
+    {
+        var problems = new List<string>();
+        if (!CompilerBinders.Value.Sites.Any(s => s.Key == NameResolutionRosters.ImportBinderSite))
+            problems.Add($"{NameResolutionRosters.ImportBinderSite} is no binder site of the compiler");
+        if (!NameResolutionRosters.BinderSites.TryGetValue(NameResolutionRosters.ImportBinderSite, out var image)
+            || !image.Declares.Contains(BindingKind.ImportedName))
+            problems.Add($"{NameResolutionRosters.ImportBinderSite} binds every import and its entry does not declare BindingKind.ImportedName");
+        problems.AddRange(NameResolutionRosters.BinderSites
+            .Where(row => row.Value.Declares.Contains(BindingKind.ImportedName) && row.Key != NameResolutionRosters.ImportBinderSite)
+            .Select(row => $"{row.Key} declares BindingKind.ImportedName but is not the import seam"));
+
+        AssertNoProblems(problems, "an imported name IS a symbol, and the import seam is its one binder site (P77b D2.9)");
     }
 
     [Fact]
@@ -1665,7 +1693,7 @@ public partial class NameResolutionDifferentialTests
     public void BinderSiteRoster_StoreOuter_IsTotalOverBindingKind()
     {
         var problems = OuterAxisProblems("StoreOuter", NameResolutionRosters.StoreOuter).ToList();
-        foreach (var kind in NameResolutionRosters.ModuleLevelKinds.Where(k => k != BindingKind.ModuleLet).Append(BindingKind.EnclosingLocal).Append(BindingKind.Builtin).Append(BindingKind.None))
+        foreach (var kind in NameResolutionRosters.ModuleLevelKinds.Where(k => k != BindingKind.ModuleLet).Append(BindingKind.EnclosingLocal).Append(BindingKind.Builtin).Append(BindingKind.ImportedName).Append(BindingKind.None))
         {
             if (NameResolutionRosters.StoreOuter.TryGetValue(kind, out var member) && !(member.Generated && !member.ClassEnclosedBodiesOnly))
                 problems.Add($"StoreOuter: {kind} is an outer at every body (finding 1)");
@@ -2169,7 +2197,7 @@ public partial class NameResolutionDifferentialTests
         AssertNoProblems(problems, "TYPEMEMBER's pairs are the type-kind image × the member image, each left-out pair naming why");
     }
 
-    /// <summary>P77b D1: READ's bare outer axis is a map total over the module-level group ∪ {Builtin, None}, both
+    /// <summary>P77b D1: READ's bare outer axis is a map total over the module-level group ∪ {Builtin, ImportedName, None}, both
     /// directions, each value generated or out with a reason, and ModuleLet's reason is read from the compiler.</summary>
     [Fact]
     public void ReadOuterRoster_IsTotalOverModuleLevelKindsBuiltinAndNone()

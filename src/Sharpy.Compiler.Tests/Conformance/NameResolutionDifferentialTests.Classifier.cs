@@ -412,7 +412,10 @@ public partial class NameResolutionDifferentialTests
     /// no allowlist row notices. A drain plan never touches this table, because a verdict moving changes no tag.</summary>
     [Fact]
     public void Census_TheGeneratedPool_IsPinned()
-        => Assert.Empty(CensusFailures(GeneratedCells()));
+    {
+        var failures = CensusFailures(GeneratedCells()).ToList();
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
 
     /// <summary>The sweep's roster-fed check without python or a Sharpy run: every roster value the generator owes a cell has
     /// one, and no cell leaves its axis. It reads the rosters, never the census, so it stands when the census is off.</summary>

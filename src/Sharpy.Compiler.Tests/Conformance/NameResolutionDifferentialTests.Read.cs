@@ -44,7 +44,9 @@ public partial class NameResolutionDifferentialTests
 
         // An instance method read in its class body is the plain function: calling it (the Call and Ctor forms) is python's
         // TypeError for the missing self; an attribute read on it (the EnumValue form) is AttributeError, as for any callable.
-        PyOutcome MemberPy() => t == BindingKind.InstanceMethod && form is Form.Call or Form.Ctor
+        // The ImportedName read is `len(digits)`: on the member it is len of an int or a function, python's TypeError (D3.a's
+        // non-coincidence rule).
+        PyOutcome MemberPy() => outer == BindingKind.ImportedName || (t == BindingKind.InstanceMethod && form is Form.Call or Form.Ctor)
             ? PyOutcome.Other("TypeError")
             : EvalPython(t, form, member);
 
@@ -74,7 +76,7 @@ public partial class NameResolutionDifferentialTests
         {
             if (outer == BindingKind.None)
                 return PyOutcome.Name(n.Name);
-            if (outer == BindingKind.Builtin)
+            if (outer is BindingKind.Builtin or BindingKind.ImportedName)
                 return PyOutcome.Ran(n.BuiltinResult!.Value);
             return EvalPython(outer, form, ValueOf(outer));
         }
@@ -87,7 +89,7 @@ public partial class NameResolutionDifferentialTests
             if (outer == BindingKind.None)
                 return Refuse(PyOutcome.Name(n.Name), "N1-methods");
             var py = OuterPy();
-            if (outer == BindingKind.Builtin)
+            if (outer is BindingKind.Builtin or BindingKind.ImportedName)
                 return Run(n.BuiltinResult!.Value, "R-Y");
             return py.Kind == PyKind.Ran
                 ? Run(ValueOf(outer), "R-Y")
@@ -113,13 +115,16 @@ public partial class NameResolutionDifferentialTests
 
         if (order != Order.Earlier)
             return Refuse(visible, "N2");
+        if (outer == BindingKind.ImportedName)
+            return Refuse(visible, "N1-type-error");
         return FormOf(t) == form ? Run(member, "N1") : Refuse(visible, "N1-type-error");
     }
 
     private static NameCell ClassCell(
         BindingKind t, ReadPosition p, Nesting nesting, Order order, Spelling s, BindingKind outer, ReadName n)
     {
-        var form = FormFor(t, outer, s);
+        // The ImportedName read is the one Value read through `len`, whatever the target's own form (D2.9).
+        var form = outer == BindingKind.ImportedName ? Form.Value : FormFor(t, outer, s);
         var call = n;
         string prefix = s switch
         {
@@ -158,19 +163,19 @@ public partial class NameResolutionDifferentialTests
         }
 
         var lines = new List<string>();
-        if (outer != BindingKind.None && outer != BindingKind.Builtin && !IsLocalOuter(outer))
+        if (outer is not (BindingKind.None or BindingKind.Builtin or BindingKind.ImportedName) && !IsLocalOuter(outer))
             lines.AddRange(ModuleDecl(outer, n));
         lines.AddRange(helper);
         lines.Add(HostHeader(p));
         lines.AddRange(Indent(members));
         if (s == Spelling.Alias)
             lines.Add("type A = H");
-        var source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup));
+        var source = WithImport(n, WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)));
 
         var expected = ExpectClass(t, p, nesting, order, s, outer, n, form);
         return new NameCell
         {
-            Id = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsBuiltin ? n.Name : null),
+            Id = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsNamedOuter ? n.Name : null),
             Family = Family.Read,
             Source = source,
             Tag = expected.Tag,
@@ -180,6 +185,7 @@ public partial class NameResolutionDifferentialTests
             Target = t,
             Outer = outer,
             Position = p,
+            NeedsStdlib = n.IsImported,
         };
     }
 
@@ -224,10 +230,10 @@ public partial class NameResolutionDifferentialTests
     {
         var targets = TypeLevelTargets.Concat(InstanceTargets).ToArray();
         var earlierLater = new[] { Order.Earlier, Order.Later };
-        // READ's bare outer axis is the roster's generated values (P77b D1); the Builtin outer's name is the axis, so it has
-        // its own arm below.
+        // READ's bare outer axis is the roster's generated values (P77b D1); the Builtin and ImportedName outers' names are the
+        // axis, so each has its own arm below.
         var bareOuters = NameResolutionRosters.ReadOuterUniverse
-            .Where(k => k != BindingKind.Builtin && NameResolutionRosters.ReadOuter.TryGetValue(k, out var m) && m.Generated)
+            .Where(k => k is not (BindingKind.Builtin or BindingKind.ImportedName) && NameResolutionRosters.ReadOuter.TryGetValue(k, out var m) && m.Generated)
             .ToArray();
 
         foreach (var t in targets)
@@ -279,15 +285,7 @@ public partial class NameResolutionDifferentialTests
                     yield return QualifiedFromFunctionCell(t, o, s);
 
             // Self and cycle exist for the value kinds with an initializer of their own.
-            var selfPosition = t switch
-            {
-                BindingKind.StaticField => ReadPosition.StaticInitializer,
-                BindingKind.StaticProperty => ReadPosition.StaticPropertyDefault,
-                BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst => ReadPosition.ConstInitializer,
-                BindingKind.InstanceField => ReadPosition.InstanceFieldInitializer,
-                BindingKind.InstanceProperty => ReadPosition.InstancePropertyDefault,
-                _ => (ReadPosition?)null,
-            };
+            var selfPosition = SelfPositionOf(t);
             if (selfPosition is ReadPosition position)
             {
                 foreach (var u in bareOuters)
@@ -316,22 +314,53 @@ public partial class NameResolutionDifferentialTests
             // The Builtin outer value: type-level targets at the N2 positions × order, and ONE body position.
             if (t == BindingKind.NestedType)
                 continue;
-            var builtinPositions = new[]
-            {
-                ReadPosition.StaticInitializer, ReadPosition.InstanceFieldInitializer, ReadPosition.ConstInitializer,
-                ReadPosition.StaticPropertyDefault, ReadPosition.InstancePropertyDefault, ReadPosition.ParameterDefault,
-                ReadPosition.MethodBody,
-            };
             foreach (var n in Builtins.Select(b => new ReadName(b.Name, b.Args, b.Params, b.Result)))
             {
-                foreach (var p in builtinPositions)
+                foreach (var p in NamedOuterClassPositions)
                     foreach (var o in earlierLater)
                         yield return ClassCell(t, p, Nesting.Direct, o, Spelling.Bare, BindingKind.Builtin, n);
                 if (selfPosition is ReadPosition self)
                     yield return ClassCell(t, self, Nesting.Direct, Order.Self, Spelling.Bare, BindingKind.Builtin, n);
             }
         }
+
+        // The ImportedName outer (P77b axis 9, D2.9): the Builtin arm's positions × order {earlier, later, self} on the five
+        // targets the axis names, with the import's value. Later / self is N2 (p24), earlier the type-error arm (`len(7)`),
+        // the method body R-Y (the import is read).
+        foreach (var t in ImportedOuterClassTargets)
+        {
+            foreach (var p in NamedOuterClassPositions)
+                foreach (var o in earlierLater)
+                    yield return ClassCell(t, p, Nesting.Direct, o, Spelling.Bare, BindingKind.ImportedName, Imported);
+            if (SelfPositionOf(t) is ReadPosition self)
+                yield return ClassCell(t, self, Nesting.Direct, Order.Self, Spelling.Bare, BindingKind.ImportedName, Imported);
+        }
     }
+
+    /// <summary>The named outers' class positions: the N2 initializer positions and ONE body position.</summary>
+    private static readonly ReadPosition[] NamedOuterClassPositions =
+    {
+        ReadPosition.StaticInitializer, ReadPosition.InstanceFieldInitializer, ReadPosition.ConstInitializer,
+        ReadPosition.StaticPropertyDefault, ReadPosition.InstancePropertyDefault, ReadPosition.ParameterDefault,
+        ReadPosition.MethodBody,
+    };
+
+    /// <summary>Axis 9's class targets (D2.9): a value field of each storage, a property, a method and the literal const.</summary>
+    private static readonly BindingKind[] ImportedOuterClassTargets =
+    {
+        BindingKind.StaticField, BindingKind.InstanceField, BindingKind.StaticProperty, BindingKind.StaticMethod, BindingKind.ClassLiteralConst,
+    };
+
+    /// <summary>The initializer a value kind's own declaration carries, where its self read sits; null for a kind with none.</summary>
+    private static ReadPosition? SelfPositionOf(BindingKind t) => t switch
+    {
+        BindingKind.StaticField => ReadPosition.StaticInitializer,
+        BindingKind.StaticProperty => ReadPosition.StaticPropertyDefault,
+        BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst => ReadPosition.ConstInitializer,
+        BindingKind.InstanceField => ReadPosition.InstanceFieldInitializer,
+        BindingKind.InstanceProperty => ReadPosition.InstancePropertyDefault,
+        _ => null,
+    };
 
     private static NameCell QualifiedFromFunctionCell(BindingKind t, Order order, Spelling s)
     {
@@ -707,6 +736,56 @@ public partial class NameResolutionDifferentialTests
                 foreach (var arityMatches in new[] { false, true })
                     yield return BuiltinClassCell(n, o, arityMatches);
         }
+
+        // The ImportedName outer's module arm (P77b axis 9, R-LJ): a module-level initializer reading the imported name at
+        // or before its own same-named declaration is refused (N2's module sentence). Python reads the import (p23).
+        yield return ImportedModuleCell(ReadPosition.ModuleInitializer, Order.Later);
+        yield return ImportedModuleCell(ReadPosition.StaticInitializer, Order.Later);
+        yield return ImportedModuleCell(ReadPosition.ModuleInitializer, Order.Self);
+    }
+
+    private static NameCell ImportedModuleCell(ReadPosition p, Order order)
+    {
+        var n = Imported;
+        var e = ReadText(Form.Value, "", n);
+        List<string> lines;
+        string access;
+        if (order == Order.Self)
+        {
+            lines = ModuleDecl(BindingKind.ModuleVar, n, e);
+            access = n.Name;
+        }
+        else
+        {
+            List<string> reader;
+            if (p == ReadPosition.StaticInitializer)
+            {
+                var placed = PlaceInClass(p, Nesting.Direct, e);
+                reader = new List<string> { "class H:" };
+                reader.AddRange(Indent(placed.Members));
+                access = placed.Access;
+            }
+            else
+            {
+                (reader, access) = PlaceAtModule(p, Nesting.Direct, e);
+            }
+            lines = reader.Concat(ModuleDecl(BindingKind.ModuleVar, n)).ToList();
+        }
+        var expected = Refuse(PyOutcome.Ran(n.BuiltinResult!.Value), "N2-module");
+        return new NameCell
+        {
+            Id = CellId("read", BindingKind.ModuleVar, p, order, Form.Value, "outer=ImportedName", n.Name),
+            Family = Family.Read,
+            Source = WithImport(n, Join(lines) + MainPrinting(access, null)),
+            Tag = expected.Tag,
+            Model = expected.Model,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = BindingKind.ModuleVar,
+            Outer = BindingKind.ImportedName,
+            Position = p,
+            NeedsStdlib = true,
+        };
     }
 
     private static NameCell BuiltinModuleCell(BindingKind t, ReadPosition p, Nesting nesting, Order order, ReadName n, Form form)
