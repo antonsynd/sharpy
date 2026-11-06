@@ -119,6 +119,9 @@ internal sealed record NameCell
     /// <summary>Set by SEED cells: the table's issue cite for a red.</summary>
     public string? SeedCite { get; init; }
 
+    /// <summary>Set by LOCAL cells: when the read happens against the binding (axis 4).</summary>
+    public ReadTimings? Timing { get; init; }
+
     /// <summary>P77b's generated axes: <c>axis: value × value</c>, the key <see cref="NameResolutionDifferentialTests"/>' fed check
     /// computes from the axis's roster, so a roster value the generator owes a cell cannot go missing without a red.</summary>
     public string? AxisCell { get; init; }
