@@ -170,6 +170,17 @@ internal enum DeclarationShapes
     GlobalFromNestedDef,
 }
 
+/// <summary>The receiver of a store through a member access (P77b axis 8). Named closed: N7's spellings restricted to stores, plus #2435's derived type and instance local;
+/// a <c>MemberAccess</c> receiver has no compiler enumeration.</summary>
+internal enum AttributeReceiver
+{
+    SelfDot,
+    TypeName,
+    Alias,
+    DerivedType,
+    InstanceLocal,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -1317,6 +1328,65 @@ internal static class NameResolutionRosters
     /// <summary>The members axis 7 reads from a struct body: a value and a callable, each instance and <c>@static</c>.</summary>
     internal static readonly ImmutableArray<BindingKind> StructHostTargets = ImmutableArray.Create(
         BindingKind.InstanceField, BindingKind.StaticField, BindingKind.InstanceMethod, BindingKind.StaticMethod);
+
+    /// <summary>P77b axis 8: every arm of <c>FirstInvalidAssignmentTarget</c>'s switch, the compiler's one authority for an assignment target, is a form or out with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<string>> AssignmentTargetShapes = Roster.Map(
+        ("Identifier", Roster.To("the bare forms of STORE")),
+        ("MemberAccess", Roster.To("the attribute store")),
+        ("IndexAccess", Roster.Out<string>(ExcludedAxis.NotAKind, "the receiver is a read and the element is a value, no name is stored")),
+        ("TupleLiteral", Roster.Out<string>(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "tuple stores are #2154/#2156/P21d's (iii)")),
+        ("StarExpression", Roster.Out<string>(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "star stores are #2154/#2156/P21d's (iii)")));
+
+    /// <summary>The members an attribute store reaches: roster 1's type-level and instance kinds, each a row or out.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> AttributeStoreMembers = Roster.Map(
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.StaticMethod, AxisMembership.Everywhere),
+        (BindingKind.ClassLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.InstanceField, AxisMembership.Everywhere),
+        (BindingKind.InstanceProperty, AxisMembership.Everywhere),
+        (BindingKind.InstanceMethod, AxisMembership.Everywhere),
+        (BindingKind.NestedType, AxisMembership.Pruned("a type's name is non-writable by meaning: the STORE outer's ModuleClass keeps that arm")),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)));
+
+    /// <summary>Which store forms a member access can spell. The parser binds a name and never a member for the other three: measured SPY0143 on <c>(self.x := 15)</c>,
+    /// SPY0107 on <c>let self.x = 15</c> and SPY0104 on <c>f0(out let self.x)</c>, and python refuses the walrus alike.</summary>
+    internal static readonly IReadOnlyDictionary<StoreForm, AxisMembership> AttributeStoreForms = Roster.Map(
+        (StoreForm.Assign, AxisMembership.Everywhere),
+        (StoreForm.Augmented, AxisMembership.Everywhere),
+        (StoreForm.Walrus, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member")),
+        (StoreForm.OutLet, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member")),
+        (StoreForm.LetOrVar, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member")));
+
+    internal static string AttributeBodyKey(AttributeReceiver receiver, ReadPosition body) => $"{receiver} × {body}";
+
+    private const string NoSelfInScope = "no self in scope: SPY0200 on `self` is python's NameError, a type-system agreement (fidelity row 2), not a name verdict";
+
+    private const string OneBodyForTheReceiver = "the receiver × member product runs at the method body, and only self and the type name reach the other bodies (D2's table)";
+
+    /// <summary>Which receivers each body hosts. <c>self</c> follows <c>IsSelfBearing</c>, which the fact holds it to.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> AttributeStoreBodies = Roster.Map(
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.InitBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.StaticMethodBody), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfInScope)),
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfInScope)),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.InitBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.StaticMethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.FunctionBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)));
 
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
@@ -2807,6 +2877,75 @@ public partial class NameResolutionDifferentialTests
         // The scan's positive control and the two positions the arm hinges on, as literals.
         ClassBodies.Where(ThroughAClosure).Should().Contain(ReadPosition.LambdaStored).And.Contain(ReadPosition.NestedDefInMethod)
             .And.NotContain(ReadPosition.GeneratorBody).And.NotContain(ReadPosition.ComprehensionElement).And.NotContain(ReadPosition.NestedClassMethodBody);
+    }
+
+    private const string AssignmentTargetMethod = "FirstInvalidAssignmentTarget";
+
+    private static string TypeCheckerSource(string file)
+        => File.ReadAllText(Path.Combine(CompilerSourceDir(), "Semantic", file));
+
+    /// <summary>The <c>case &lt;Type&gt;</c> labels of the first switch in one method, read by Roslyn, and whether it has a default arm. A default arm is what makes the labels the universe: every other shape is SPY0225.</summary>
+    private static (IReadOnlyList<string> Arms, bool HasDefault) SwitchArmsOf(string source, string method)
+    {
+        var declaration = ParseCSharp(source, "scan.cs").GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>().Single(m => m.Identifier.Text == method);
+        var labels = declaration.DescendantNodes().OfType<SwitchStatementSyntax>().First().Sections.SelectMany(s => s.Labels).ToList();
+        var arms = labels.Select(label => label switch
+        {
+            CaseSwitchLabelSyntax value => value.Value.ToString(),
+            CasePatternSwitchLabelSyntax { Pattern: DeclarationPatternSyntax typed } => typed.Type.ToString(),
+            CasePatternSwitchLabelSyntax { Pattern: ConstantPatternSyntax constant } => constant.Expression.ToString(),
+            _ => null,
+        }).Where(a => a != null).Select(a => a!).ToList();
+        return (arms, labels.OfType<DefaultSwitchLabelSyntax>().Any());
+    }
+
+    [Fact]
+    public void AssignmentTargetShapesRoster_IsTotalOverTheSwitchArms()
+    {
+        var (arms, hasDefault) = SwitchArmsOf(TypeCheckerSource("TypeChecker.Utilities.cs"), AssignmentTargetMethod);
+        hasDefault.Should().BeTrue("the default arm is what makes every other shape SPY0225, so the scanned arms are the universe");
+        arms.Should().HaveCount(5, "a measured literal: " + string.Join(", ", arms));
+
+        var problems = Roster.TotalityProblems("AssignmentTargetShapes", arms, NameResolutionRosters.AssignmentTargetShapes.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.AssignmentTargetShapes));
+        AssertNoProblems(problems, "every arm of the compiler's one assignment-target switch is a form or out with its reason, and every row is an arm");
+    }
+
+    /// <summary>The scan's two controls: it sees an arm it was not told about, and the partial list it replaces really is partial.</summary>
+    [Fact]
+    public void AssignmentTargetShapesRoster_Scan_SeesASyntheticArmAndTheIsSitesAreAStrictSubset()
+    {
+        var source = TypeCheckerSource("TypeChecker.Utilities.cs");
+        var (arms, _) = SwitchArmsOf(source, AssignmentTargetMethod);
+        var withFoo = source.Replace("            case Identifier:\n            case MemberAccess:", "            case Foo:\n            case Identifier:\n            case MemberAccess:", StringComparison.Ordinal);
+        withFoo.Should().NotBe(source, "the control edits the real switch");
+        SwitchArmsOf(withFoo, AssignmentTargetMethod).Arms.Should().Contain("Foo").And.HaveCount(arms.Count + 1);
+
+        var isSites = System.Text.RegularExpressions.Regex.Matches(TypeCheckerSource("TypeChecker.Statements.cs"), @"assignment\.Target is (\w+)")
+            .Select(m => m.Groups[1].Value).Where(t => t != "not").Distinct().ToList();
+        isSites.Should().NotBeEmpty("the control reads a real list");
+        isSites.Should().BeSubsetOf(arms);
+        isSites.Should().HaveCountLessThan(arms.Count, "the assignment.Target is sites name only some of the shapes, which is why they are not the source");
+    }
+
+    [Fact]
+    public void AttributeStoreRosters_AreTotalOverTheirSources()
+    {
+        var problems = Roster.TotalityProblems("AttributeStoreMembers", NameResolutionRosters.TypeLevelKinds.Concat(NameResolutionRosters.InstanceKinds), NameResolutionRosters.AttributeStoreMembers.Keys).ToList();
+        problems.AddRange(Roster.TotalityProblems("AttributeStoreForms", Enum.GetValues<StoreForm>(), NameResolutionRosters.AttributeStoreForms.Keys));
+        var bodies = new[] { ReadPosition.MethodBody, ReadPosition.InitBody, ReadPosition.StaticMethodBody, ReadPosition.FunctionBody };
+        problems.AddRange(Roster.TotalityProblems("AttributeStoreBodies",
+            Enum.GetValues<AttributeReceiver>().SelectMany(r => bodies.Select(b => NameResolutionRosters.AttributeBodyKey(r, b))),
+            NameResolutionRosters.AttributeStoreBodies.Keys));
+        foreach (var body in bodies)
+            if (NameResolutionRosters.AttributeStoreBodies[NameResolutionRosters.AttributeBodyKey(AttributeReceiver.SelfDot, body)].Generated != IsSelfBearing(body))
+                problems.Add($"AttributeStoreBodies: self at {body} disagrees with IsSelfBearing, the predicate READ keys `self.` on");
+        AssertNoProblems(problems, "the attribute store's members, forms and bodies are the images of their sources");
+
+        // Literals, not the groups again.
+        NameResolutionRosters.AttributeStoreMembers.Count(e => e.Value.Generated).Should().Be(8);
+        NameResolutionRosters.AttributeStoreForms.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { StoreForm.Assign, StoreForm.Augmented });
+        Enum.GetNames<AttributeReceiver>().Should().Equal("SelfDot", "TypeName", "Alias", "DerivedType", "InstanceLocal");
     }
 
     [Fact]
