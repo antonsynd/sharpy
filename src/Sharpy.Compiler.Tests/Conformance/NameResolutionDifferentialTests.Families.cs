@@ -824,7 +824,7 @@ public partial class NameResolutionDifferentialTests
                     string Id(string read) => CellId("local", k, read, $"outer={u}", body);
 
                     // Read below the binding: the innermost binding, in both languages.
-                    yield return LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain);
+                    yield return Timed(ReadTiming.SameBlockBelow, LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain));
 
                     // Read above the binding: python's UnboundLocalError at every outer.
                     var aboveForm = u is BindingKind.None or BindingKind.StaticMethod or BindingKind.StaticField or BindingKind.EnclosingLocal
@@ -835,9 +835,9 @@ public partial class NameResolutionDifferentialTests
                     above.Add($"print({own})");
                     var python = PyOutcome.Unbound("x");
                     if (ClassOf(u) == "none" || IsCallableKind(k))
-                        yield return LocalProgram(Id("above"), k, u, body, above, Refuse(python, IsCallableKind(k) ? "S3" : "N5"), null, plain);
+                        yield return Timed(ReadTiming.SameBlockAbove, LocalProgram(Id("above"), k, u, body, above, Refuse(python, IsCallableKind(k) ? "S3" : "N5"), null, plain));
                     else
-                        yield return LocalProgram(Id("above"), k, u, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), $"before-binding:{ClassOf(u)}", plain);
+                        yield return Timed(ReadTiming.SameBlockAbove, LocalProgram(Id("above"), k, u, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), $"before-binding:{ClassOf(u)}", plain));
 
                     // Read from a nested def and a lambda called after the binding, the binding above the def.
                     var nested = LocalDecl(k, plain);
@@ -859,15 +859,15 @@ public partial class NameResolutionDifferentialTests
                     var own = ReadText(FormOf(k), "", n);
                     var builtinCall = ReadText(Form.Call, "", n);
                     string Id(string read) => CellId("local", k, read, "outer=Builtin", body, name);
-                    yield return LocalProgram(Id("below"), k, BindingKind.Builtin, body, LocalDecl(k, n).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, n);
+                    yield return Timed(ReadTiming.SameBlockBelow, LocalProgram(Id("below"), k, BindingKind.Builtin, body, LocalDecl(k, n).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, n));
                     var above = new List<string> { $"print({builtinCall})" };
                     above.AddRange(LocalDecl(k, n));
                     above.Add($"print({own})");
                     var python = PyOutcome.Unbound(name);
                     if (IsCallableKind(k))
-                        yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(python, "S3"), null, n);
+                        yield return Timed(ReadTiming.SameBlockAbove, LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(python, "S3"), null, n));
                     else
-                        yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), "before-binding:builtin", n);
+                        yield return Timed(ReadTiming.SameBlockAbove, LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), "before-binding:builtin", n));
                 }
         }
 
@@ -881,13 +881,13 @@ public partial class NameResolutionDifferentialTests
                     var own = FormOf(k) == Form.Value ? n.Name : ReadText(FormOf(k), "", n);
                     string Id(string read) => CellId("local", k, read, "outer=ImportedName", body, n.Name);
                     NameCell Importing(NameCell c) => c with { Source = WithImport(n, c.Source), NeedsStdlib = true };
-                    yield return Importing(LocalProgram(Id("below"), k, BindingKind.ImportedName, body,
-                        LocalDecl(k, n).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, n));
+                    yield return Timed(ReadTiming.SameBlockBelow, Importing(LocalProgram(Id("below"), k, BindingKind.ImportedName, body,
+                        LocalDecl(k, n).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, n)));
                     var above = new List<string> { $"print({ReadText(Form.Value, "", n)})" };
                     above.AddRange(LocalDecl(k, n));
                     above.Add($"print({own})");
-                    yield return Importing(LocalProgram(Id("above"), k, BindingKind.ImportedName, body, above,
-                        Refuse(PyOutcome.Unbound(n.Name), "N5-declared-later"), null, n));
+                    yield return Timed(ReadTiming.SameBlockAbove, Importing(LocalProgram(Id("above"), k, BindingKind.ImportedName, body, above,
+                        Refuse(PyOutcome.Unbound(n.Name), "N5-declared-later"), null, n)));
                 }
         }
 
@@ -909,6 +909,8 @@ public partial class NameResolutionDifferentialTests
                     new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(15), "unruled:L28"), "L28", plain);
 
         foreach (var cell in ConstructTargetCells())
+            yield return cell;
+        foreach (var cell in ReadTimingAxisCells())
             yield return cell;
 
         // LocalBodies' one lambda row: a comprehension target inside a stored lambda's body, the name read outside it.
@@ -1339,6 +1341,7 @@ public partial class NameResolutionDifferentialTests
             cycleRoutes = NameResolutionRosters.CycleRoutes.SelectMany(s => s.Value.Where(p => p.Value.Excluded != null).Select(p => (Key: $"{s.Key}/{p.Key}", p.Value.Reason)))
                 .ToDictionary(e => e.Key, e => e.Reason),
         },
+        readTimings = results.Where(r => r.Cell.Timing != null).GroupBy(r => r.Cell.Timing!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         observations = results.GroupBy(r => r.Cell.Observed.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         cycles = results.Where(r => r.Cell.Cycle != null)
             .GroupBy(r => $"{r.Cell.Cycle!.Value.Pair}/{r.Cell.Cycle!.Value.Spelling}/{r.Cell.Cycle!.Value.Through}")
@@ -1519,6 +1522,17 @@ public partial class NameResolutionDifferentialTests
                 yield return $"OrderObservationKinds {k} × {o} is generated by the roster and has no order cell";
         foreach (var c in orderCells.Where(c => !(NameResolutionRosters.OrderObservationKinds.TryGetValue(c.Target, out var m) && m.Generated)))
             yield return $"{c.Id}: an order cell on {c.Target}, which OrderObservationKinds does not generate";
+
+        // P77b axis 4: every read timing has a cell; the closure-before timing covers every LocalTarget, the back edge every loop
+        // family, the failed guard every capture.
+        foreach (var t in Enum.GetValues<ReadTiming>().Where(t => !pool.Any(c => c.Timing == t)))
+            yield return $"ReadTiming {t} has no generated cell";
+        foreach (var t in Enum.GetValues<LocalTarget>().Where(t => !pool.Any(c => c.Timing == ReadTiming.ClosureBeforeConstruct && c.Construct == t)))
+            yield return $"ReadTiming ClosureBeforeConstruct × {t} has no generated cell";
+        foreach (var f in NameResolutionRosters.BackEdgeLoopFamilies.Where(f => !pool.Any(c => c.Timing == ReadTiming.BackEdge && c.Id.Contains($"/back-edge/{f}/", StringComparison.Ordinal))))
+            yield return $"ReadTiming BackEdge × {f} has no generated cell";
+        foreach (var t in NameResolutionRosters.FailedGuardCaptures.Where(t => !pool.Any(c => c.Timing == ReadTiming.FailedGuard && c.Construct == t)))
+            yield return $"ReadTiming FailedGuard × {t} has no generated cell";
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.
         var typeMember = pool.Where(c => c.Family == Family.TypeMember).ToList();

@@ -97,6 +97,17 @@ internal enum ComprehensionSlot
 /// <summary>Where a comprehension cell sits (P77b axis 1): its kind, the clause and the slot of the name.</summary>
 internal readonly record struct ComprehensionSite(ComprehensionKind Kind, ComprehensionClauseShape Clause, ComprehensionSlot Slot);
 
+/// <summary>When a LOCAL read happens relative to the binding it reads (P77b axis 4): a closed LITERAL set named closed —
+/// control-flow timing has no compiler enumeration. The two same-block values are LocalCells' below / above arms.</summary>
+internal enum ReadTiming
+{
+    SameBlockBelow,
+    SameBlockAbove,
+    ClosureBeforeConstruct,
+    BackEdge,
+    FailedGuard,
+}
+
 /// <summary>What a program observes (P77b axis 3): a closed LITERAL set named closed — an observation has no compiler
 /// enumeration. Every cell observes a value; an order cell also observes when its initializers run.</summary>
 internal enum Observation
@@ -1073,6 +1084,25 @@ internal static class NameResolutionRosters
         (BindingKind.Builtin, AxisMembership.Out(ExcludedAxis.NotAKind, "bound outside the program: no initializer in it")),
         (BindingKind.ImportedName, AxisMembership.Out(ExcludedAxis.NotAKind, "bound by the imported module: no initializer in this program")),
         (BindingKind.None, AxisMembership.Out(ExcludedAxis.NotAKind, "no binding")));
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 4: LOCAL read timing
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The read timings (P77b axis 4): a closed LITERAL set named closed — control-flow timing has no compiler
+    /// enumeration — each value with the roster of the constructs it crosses. The fed check requires a cell per value.</summary>
+    internal static readonly IReadOnlyDictionary<ReadTiming, string> ReadTimings = Roster.Map(
+        (ReadTiming.SameBlockBelow, "LocalCells' below arm: every LocalKinds binder × outer × body"),
+        (ReadTiming.SameBlockAbove, "LocalCells' above arm: every LocalKinds binder × outer × body"),
+        (ReadTiming.ClosureBeforeConstruct, "a closure taken before the construct, over every LocalTarget (the binder census's LOCAL-target class)"),
+        (ReadTiming.BackEdge, "a read at the next iteration, over roster 8's loop-body families (BackEdgeLoopFamilies)"),
+        (ReadTiming.FailedGuard, "a capture under a failed guard, roster 7's GuardPattern over the pattern captures (FailedGuardCaptures)"));
+
+    /// <summary>The loop families a back-edge read crosses: roster 8's Block families whose body is a loop's.</summary>
+    internal static readonly ImmutableArray<string> BackEdgeLoopFamilies = ImmutableArray.Create("for-body", "while-body");
+
+    /// <summary>The construct targets a failed guard binds: the LOCAL targets the binder census's pattern-checker sites bind.</summary>
+    internal static readonly ImmutableArray<LocalTarget> FailedGuardCaptures = ImmutableArray.Create(LocalTarget.MatchCapture, LocalTarget.AsPatternCapture);
 
     /// <summary>The slots of a kind's own node, from <see cref="ComprehensionSlots"/>: the element side of the comprehension.</summary>
     internal static IEnumerable<ComprehensionSlot> KindSlots(ComprehensionKind kind)
@@ -2754,6 +2784,31 @@ public partial class NameResolutionDifferentialTests
             .Select(e => $"OrderObservationKinds: {e.Key} is generated and has no load or construction order"));
 
         AssertNoProblems(problems, "the order observation rides every kind whose initializer runs at load or construction, each other kind naming why");
+    }
+
+    // =========================================================================================================
+    // P77b axis 4: LOCAL read timing
+    // =========================================================================================================
+
+    /// <summary>The read timings are a closed literal set: every <see cref="ReadTiming"/> has a row, both directions, and the
+    /// constructs a timing crosses are roster values — the back edge's families are exactly roster 8's loop-body families, the
+    /// failed guard's captures are LocalTargets a pattern binds, and roster 7 classes <c>GuardPattern</c>.</summary>
+    [Fact]
+    public void ReadTimingsRoster_IsTotalAndCrossesRosterValues()
+    {
+        var problems = Roster.TotalityProblems("ReadTimings", Enum.GetValues<ReadTiming>(), NameResolutionRosters.ReadTimings.Keys).ToList();
+        var loopBodies = NameResolutionRosters.BlockFamilies
+            .Where(e => e.Value.Image.Any(c => c.LetInBody is BlockConstruct.ForBody or BlockConstruct.WhileBody)).Select(e => e.Key);
+        problems.AddRange(Roster.TotalityProblems("BackEdgeLoopFamilies", loopBodies, NameResolutionRosters.BackEdgeLoopFamilies));
+        // The pattern binders of the binder census: the sites in the pattern checker that bind a LOCAL target.
+        var captures = NameResolutionRosters.BinderSites
+            .Where(e => e.Key.StartsWith("TypeChecker.Statements.Patterns.cs:", StringComparison.Ordinal) && e.Value.Target != null)
+            .Select(e => e.Value.Target!.Value);
+        problems.AddRange(Roster.TotalityProblems("FailedGuardCaptures", captures, NameResolutionRosters.FailedGuardCaptures));
+        if (!NameResolutionRosters.Patterns.ContainsKey(nameof(GuardPattern)))
+            problems.Add("ReadTimings: roster 7 has no GuardPattern, so the failed guard crosses no roster value");
+
+        AssertNoProblems(problems, "axis 4's timings are named closed, and each crosses its constructs' rosters");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

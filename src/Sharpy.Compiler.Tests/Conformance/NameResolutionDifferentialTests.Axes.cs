@@ -346,4 +346,99 @@ public partial class NameResolutionDifferentialTests
         from e in NameResolutionRosters.OrderObservationKinds.Where(e => e.Value.Generated).OrderBy(e => e.Key)
         from o in new[] { Order.Earlier, Order.Later }
         select OrderCell(e.Key, o);
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 4: LOCAL read timing
+    // ------------------------------------------------------------------------------------------- //
+
+    private static NameCell Timed(ReadTiming timing, NameCell cell) => cell with { Timing = timing };
+
+    /// <summary>A closure taken BEFORE a construct binds the name, called after it (p11). python's construct binds the function's
+    /// own <c>x</c>, so the closure reads it; Sharpy's block-scoped target leaves the closure on the outer (S2, R-KZ, #2425), or
+    /// on nothing (N5). The comprehension's target does not leak in either language (N1); <c>out let</c> binds the function
+    /// scope, so the closure reads a later binding of its own scope (R-LC's L28: N5-declared-later, #2425).</summary>
+    private static NameCell ClosureBeforeCell(LocalTarget t, BindingKind outer)
+    {
+        var (construct, last) = ConstructOf(t, "x");
+        var stmts = new List<string> { "g: () -> int = lambda: x" };
+        stmts.AddRange(construct);
+        stmts.Add("print(g())");
+        var python = t switch
+        {
+            LocalTarget.ExceptAs => PyOutcome.Name("x"),
+            // Under an enclosing function's `x`, CPython 3.12+ (PEP 709's inlined comprehension) leaves the closure's `x` unbound
+            // after a comprehension whose target is `x` (3.13.18: NameError "cannot access free variable"; the generator-expression
+            // spelling, which is not inlined, prints 13). The rule is N1's either way: the target does not leak.
+            LocalTarget.Comprehension => outer is BindingKind.None or BindingKind.EnclosingLocal ? PyOutcome.Name("x") : PyOutcome.Ran(ValueOf(outer)),
+            _ => PyOutcome.Ran(last!),
+        };
+        var expected = t switch
+        {
+            LocalTarget.Comprehension => outer == BindingKind.None ? Refuse(python, "N5") : Run(python, ValueOf(outer), "N1"),
+            LocalTarget.OutLet => Refuse(python, "N5-declared-later"),
+            _ => Refuse(python, outer == BindingKind.None ? "N5" : "S2"),
+        };
+        return LocalProgram(CellId("local", "closure-before", t, $"outer={outer}"), BindingKind.LocalVar, outer, ReadPosition.FunctionBody,
+                stmts, expected, null, ReadName.Plain, t)
+            with
+        { Timing = ReadTiming.ClosureBeforeConstruct };
+    }
+
+    /// <summary>A read at a loop's next iteration of a binding made below it in the body (R-KX, #2425): python reads the previous
+    /// iteration's value; under Sharpy's block scope the read is above its binding.</summary>
+    private static NameCell BackEdgeCell(string family, BindingKind binder, BindingKind outer)
+    {
+        var (open, close) = family switch
+        {
+            "for-body" => (new[] { "for i0 in range(2):" }, Array.Empty<string>()),
+            "while-body" => (new[] { "i0: int = 0", "while i0 < 2:" }, new[] { "    i0 += 1" }),
+            _ => throw new ArgumentOutOfRangeException(nameof(family), family, "not a loop-body family"),
+        };
+        var binding = binder switch
+        {
+            BindingKind.LocalLet => "let x = 13",
+            BindingKind.LocalVar => "x: int = 13",
+            _ => throw new ArgumentOutOfRangeException(nameof(binder), binder, "the back edge's binders are let and annotated"),
+        };
+        var stmts = new List<string>(open) { "    if i0 > 0:", "        print(x)", "    " + binding };
+        stmts.AddRange(close);
+        return LocalProgram(CellId("local", "back-edge", family, binder, $"outer={outer}"), binder, outer, ReadPosition.FunctionBody,
+                stmts, Refuse(PyOutcome.Ran(13), "N5-declared-later"), null, ReadName.Plain)
+            with
+        { Timing = ReadTiming.BackEdge };
+    }
+
+    /// <summary>A capture whose guard fails, read after the match (p10): python bound the capture before the guard ran (R-KZ).</summary>
+    private static NameCell FailedGuardCell(LocalTarget capture, BindingKind outer)
+    {
+        var pattern = capture switch
+        {
+            LocalTarget.MatchCapture => "case x if x > 9:",
+            LocalTarget.AsPatternCapture => "case 2 as x if x > 9:",
+            _ => throw new ArgumentOutOfRangeException(nameof(capture), capture, "not a pattern capture"),
+        };
+        var stmts = new[] { "match 2:", "    " + pattern, "        pass", "    case _:", "        pass", "print(x)" };
+        var expected = Refuse(PyOutcome.Ran(2), outer == BindingKind.None ? "N5" : "S2");
+        return LocalProgram(CellId("local", "failed-guard", capture, $"outer={outer}"), BindingKind.LocalVar, outer, ReadPosition.FunctionBody,
+                stmts, expected, null, ReadName.Plain, capture)
+            with
+        { Timing = ReadTiming.FailedGuard };
+    }
+
+    /// <summary>Axis 4's new timings: closure-before × every LocalTarget × outer {None, ModuleVar, EnclosingLocal}; back edge ×
+    /// loop family × binder {let, annotated} × outer {None, ModuleVar}; failed guard × capture × outer {None, ModuleVar}. The two
+    /// same-block timings are LocalCells' below / above arms.</summary>
+    private static IEnumerable<NameCell> ReadTimingAxisCells()
+    {
+        foreach (var t in Enum.GetValues<LocalTarget>())
+            foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar, BindingKind.EnclosingLocal })
+                yield return ClosureBeforeCell(t, u);
+        foreach (var family in NameResolutionRosters.BackEdgeLoopFamilies)
+            foreach (var binder in new[] { BindingKind.LocalLet, BindingKind.LocalVar })
+                foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
+                    yield return BackEdgeCell(family, binder, u);
+        foreach (var capture in NameResolutionRosters.FailedGuardCaptures)
+            foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
+                yield return FailedGuardCell(capture, u);
+    }
 }

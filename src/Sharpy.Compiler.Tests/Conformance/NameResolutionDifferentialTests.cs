@@ -103,6 +103,9 @@ internal sealed record NameCell
     public LocalTarget? Construct { get; init; }
     public string? Shape { get; init; }
 
+    /// <summary>P77b axis 4: when a LOCAL read happens relative to its binding (null: a family with no LOCAL read timing).</summary>
+    public ReadTiming? Timing { get; init; }
+
     /// <summary>P77b axis 3: what the cell observes. Every cell observes a value; an order cell also observes initializer order.</summary>
     public Observation Observed { get; init; } = Observation.Value;
 
@@ -331,6 +334,9 @@ public partial class NameResolutionDifferentialTests
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
+        // P77b axis 4 (R-KX / R-LC): with no outer binding, a read above (a back edge, a closure taken before `out let`) its own
+        // binding is an undefined name at the read: SPY0200 is the name verdict itself, no type is involved.
+        ["N5-declared-later"] = new[] { "SPY0200" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
         // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
