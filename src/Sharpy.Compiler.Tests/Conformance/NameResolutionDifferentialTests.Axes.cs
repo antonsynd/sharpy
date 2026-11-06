@@ -19,6 +19,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(DeclaringRelationFedFailures(pool, axisCells));
         failures.AddRange(TypePositionSpellingFedFailures(axisCells));
         failures.AddRange(DeclarationShapeFedFailures(pool));
+        failures.AddRange(StructHostFedFailures(axisCells));
         return failures;
     }
 
@@ -1043,5 +1044,73 @@ public partial class NameResolutionDifferentialTests
         var shapes = pool.Where(c => c.Declaration != null).Select(c => c.Declaration!.Value).ToHashSet();
         foreach (var shape in Enum.GetValues<DeclarationShapes>().Where(v => !shapes.Contains(v)))
             yield return $"DeclarationShapes {shape} has no generated cell";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 7: the struct host at every body position (R-KT)
+    // ------------------------------------------------------------------------------------------- //
+
+    private static string StructHostKey(BindingKind target, ReadPosition body, Nesting nesting, Order order, Spelling spelling)
+        => $"struct-host: {target} × {body} × {nesting} × {order} × {spelling}";
+
+    private static IEnumerable<Spelling> StructHostSpellings(ReadPosition body)
+    {
+        yield return Spelling.Bare;
+        yield return Spelling.Qualified;
+        if (IsSelfBearing(body))
+            yield return Spelling.SelfDot;
+    }
+
+    /// <summary>The cells the struct host owes: every body × target × spelling at earlier order, later order on the method body, and <c>self.</c> in a stored lambda at the two bodies #2434 names.</summary>
+    private static IEnumerable<(BindingKind Target, ReadPosition Body, Nesting Nesting, Order Order, Spelling Spelling)> StructHostProduct()
+    {
+        foreach (var target in NameResolutionRosters.StructHostTargets)
+        {
+            foreach (var body in ClassBodies)
+                foreach (var spelling in StructHostSpellings(body))
+                {
+                    yield return (target, body, Nesting.Direct, Order.Earlier, spelling);
+                    if (body == ReadPosition.MethodBody)
+                        yield return (target, body, Nesting.Direct, Order.Later, spelling);
+                }
+
+            foreach (var body in NameResolutionRosters.StructLambdaNestingBodies)
+                yield return (target, body, Nesting.Lambda, Order.Earlier, Spelling.SelfDot);
+        }
+    }
+
+    private static IEnumerable<NameCell> StructHostCells()
+    {
+        if (!NameResolutionRosters.HostBodies.TryGetValue("struct", out var host) || !host.Generated)
+            yield break;
+        foreach (var (target, body, nesting, order, spelling) in StructHostProduct())
+            yield return StructHostCell(target, body, nesting, order, spelling);
+    }
+
+    /// <summary>The class host's arm at every position, where the struct runs what the class runs, except <c>self</c> reaching a C# closure: a captured struct would copy its value, so
+    /// R-KT refuses as C# does, and the comprehension and generator positions that run are the arm's positive control.</summary>
+    private static NameCell StructHostCell(BindingKind target, ReadPosition body, Nesting nesting, Order order, Spelling spelling)
+    {
+        var cell = ClassCell(target, body, nesting, order, spelling, BindingKind.None, ReadName.Plain, "struct H:");
+        var closure = nesting == Nesting.Lambda || NameResolutionRosters.StructClosureBodies.Contains(body);
+        var refused = spelling == Spelling.SelfDot && closure;
+        return cell with
+        {
+            Id = CellId("read", "struct", target, body, nesting == Nesting.Direct ? null : nesting, order, spelling),
+            Tag = refused ? SharpyTag.MustRefuse : cell.Tag,
+            Model = refused ? null : cell.Model,
+            Rule = refused ? "R-KT" : cell.Rule,
+            AxisCell = StructHostKey(target, body, nesting, order, spelling),
+        };
+    }
+
+    private static IEnumerable<string> StructHostFedFailures(IReadOnlySet<string> axisCells)
+    {
+        foreach (var (host, membership) in NameResolutionRosters.HostBodies.Where(e => e.Key == "struct" && e.Value.Generated))
+            foreach (var (target, body, nesting, order, spelling) in StructHostProduct())
+                if (!axisCells.Contains(StructHostKey(target, body, nesting, order, spelling)))
+                    yield return $"HostKinds {host} × {target} × {body} × {nesting} × {order} × {spelling} has no cell";
+        if (!Roster.ImageOf(NameResolutionRosters.HostKinds).Contains("struct"))
+            yield return "HostKinds has no struct row, so the struct host's cells are owed to nothing";
     }
 }

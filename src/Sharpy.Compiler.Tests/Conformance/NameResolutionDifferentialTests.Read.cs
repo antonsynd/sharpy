@@ -130,7 +130,7 @@ public partial class NameResolutionDifferentialTests
     }
 
     private static NameCell ClassCell(
-        BindingKind t, ReadPosition p, Nesting nesting, Order order, Spelling s, BindingKind outer, ReadName n)
+        BindingKind t, ReadPosition p, Nesting nesting, Order order, Spelling s, BindingKind outer, ReadName n, string? host = null)
     {
         var form = FormFor(t, outer, s);
         var call = n;
@@ -174,7 +174,7 @@ public partial class NameResolutionDifferentialTests
         if (outer is not (BindingKind.None or BindingKind.Builtin or BindingKind.ImportedName) && !IsLocalOuter(outer))
             lines.AddRange(ModuleDecl(outer, n));
         lines.AddRange(helper);
-        lines.Add(HostHeader(p));
+        lines.Add(host ?? HostHeader(p));
         lines.AddRange(Indent(members));
         if (s == Spelling.Alias)
             lines.Add("type A = H");
