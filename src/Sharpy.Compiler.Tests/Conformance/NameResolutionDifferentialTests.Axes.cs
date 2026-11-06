@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Sharpy.Compiler.Tests.Conformance;
 
 /// <summary>P77b's generated axes (D2's table): each reads its roster, and <see cref="AxisFedFailures"/> computes from the same roster the
@@ -9,6 +11,7 @@ public partial class NameResolutionDifferentialTests
         var axisCells = pool.Where(c => c.AxisCell != null).Select(c => c.AxisCell!).ToHashSet(StringComparer.Ordinal);
         var failures = new List<string>();
         failures.AddRange(ComprehensionFedFailures(axisCells));
+        failures.AddRange(CycleFedFailures(axisCells));
         return failures;
     }
 
@@ -261,5 +264,196 @@ public partial class NameResolutionDifferentialTests
                 }
             }
         }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 2: N3 cycle × route
+    // ------------------------------------------------------------------------------------------- //
+
+    private static IEnumerable<BindingKind> CycleEndpointsIn(ImmutableArray<BindingKind> group)
+        => group.Where(k => NameResolutionRosters.CycleEndpoints[k].Generated);
+
+    /// <summary>The (first declared, second declared) endpoints of one route. Self: one endpoint, a module value when it is read bare and a type's otherwise.</summary>
+    private static IEnumerable<(BindingKind A, BindingKind B)> CycleEndpointPairs(Spelling spelling, CyclePair pair)
+    {
+        var module = CycleEndpointsIn(NameResolutionRosters.ModuleLevelKinds);
+        var type = CycleEndpointsIn(NameResolutionRosters.TypeLevelKinds);
+        return pair switch
+        {
+            CyclePair.ModuleModule => module.SelectMany(a => module.Select(b => (a, b))),
+            CyclePair.ModuleType => module.SelectMany(a => type.Select(b => (a, b))),
+            CyclePair.TypeModule => type.SelectMany(a => module.Select(b => (a, b))),
+            CyclePair.TypeOtherType => type.SelectMany(a => type.Select(b => (a, b))),
+            CyclePair.SelfThroughDef => (spelling == Spelling.Bare ? module : type).Select(a => (a, a)),
+            _ => throw new ArgumentOutOfRangeException(nameof(pair)),
+        };
+    }
+
+    /// <summary>A direct self read is READ's <c>Order.Self</c>, and <c>self</c> at an initializer does not exist: a method is the only way to it, so both are through a def.</summary>
+    private static CycleThrough[] CycleThroughFor(Spelling spelling, CyclePair pair)
+        => spelling == Spelling.SelfDot || pair == CyclePair.SelfThroughDef
+            ? new[] { CycleThrough.ThroughDef }
+            : Enum.GetValues<CycleThrough>();
+
+    private static string CycleKey(Spelling spelling, CyclePair pair, CycleThrough through, BindingKind a, BindingKind b)
+        => $"cycle: {spelling} × {pair} × {through} × {a} × {b}";
+
+    private static IEnumerable<NameCell> CycleCells()
+    {
+        foreach (var spelling in Enum.GetValues<Spelling>())
+            foreach (var pair in Enum.GetValues<CyclePair>())
+            {
+                if (!NameResolutionRosters.CycleRoutes[NameResolutionRosters.CycleRouteKey(spelling, pair)].Generated)
+                    continue;
+                foreach (var through in CycleThroughFor(spelling, pair))
+                    foreach (var (a, b) in CycleEndpointPairs(spelling, pair))
+                        yield return CycleCell(spelling, pair, through, a, b);
+            }
+    }
+
+    private static List<string> CycleEndpointDecl(BindingKind kind, string name, string init)
+    {
+        var n = new ReadName(name, "", "", null);
+        return IsModuleLevel(kind) ? ModuleDecl(kind, n, init) : MemberDecl(kind, n, init);
+    }
+
+    private static ReadPosition CycleEndpointPosition(BindingKind kind) => kind switch
+    {
+        BindingKind.ModuleVar or BindingKind.ModuleComputedConst => ReadPosition.ModuleInitializer,
+        BindingKind.ModuleProperty => ReadPosition.ModulePropertyInitializer,
+        BindingKind.StaticField => ReadPosition.StaticInitializer,
+        BindingKind.StaticProperty => ReadPosition.StaticPropertyDefault,
+        BindingKind.ClassComputedConst => ReadPosition.ConstInitializer,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "not a cycle endpoint"),
+    };
+
+    /// <summary>The cycle's program: <c>a</c>, declared first, reads <c>b</c>, and <c>b</c> reads <c>a</c>. Through a def, <c>a</c>'s read goes through a
+    /// helper above both. Python stops at the first name its top-to-bottom load cannot read, and N3 says Sharpy never prints a default for it.</summary>
+    private static NameCell CycleCell(Spelling spelling, CyclePair pair, CycleThrough through, BindingKind a, BindingKind b)
+    {
+        // The read of a type's member under this route, and the python name it stops on.
+        (string Read, string PythonName, string[] Method) TypeRead(string type, string alias, string member) => spelling switch
+        {
+            Spelling.Qualified => ($"{type}.{member}", type, Array.Empty<string>()),
+            Spelling.Alias => ($"{alias}.{member}", alias, Array.Empty<string>()),
+            Spelling.SelfDot => ($"{type}().get0()", type, new[] { "def get0(self) -> int:", $"    return self.{member}" }),
+            _ => throw new ArgumentOutOfRangeException(nameof(spelling), spelling, "no type read"),
+        };
+
+        // SelfDot's read is already through a method: the helper would be a second hop of the same thing.
+        var helperNeeded = through == CycleThrough.ThroughDef && spelling != Spelling.SelfDot;
+        var lines = new List<string>();
+        void Helper(string read)
+        {
+            if (helperNeeded)
+                lines.AddRange(new[] { "def get() -> int:", $"    return {read}" });
+        }
+        string AInit(string read) => helperNeeded ? "get()" : read;
+
+        string print;
+        string python;
+        switch (pair)
+        {
+            case CyclePair.ModuleModule:
+                Helper("b");
+                lines.AddRange(CycleEndpointDecl(a, "a", AInit("b")));
+                lines.AddRange(CycleEndpointDecl(b, "b", "a"));
+                print = "a";
+                python = "b";
+                break;
+            case CyclePair.ModuleType:
+                {
+                    var (read, name, method) = TypeRead("H", "A", "b");
+                    Helper(read);
+                    lines.AddRange(CycleEndpointDecl(a, "a", AInit(read)));
+                    lines.Add("class H:");
+                    lines.AddRange(Indent(CycleEndpointDecl(b, "b", "a").Concat(method)));
+                    if (spelling == Spelling.Alias)
+                        lines.Add("type A = H");
+                    print = "a";
+                    python = name;
+                    break;
+                }
+            case CyclePair.TypeModule:
+                {
+                    var (read, _, method) = TypeRead("H", "A", "a");
+                    Helper("b");
+                    lines.Add("class H:");
+                    lines.AddRange(Indent(CycleEndpointDecl(a, "a", AInit("b")).Concat(method)));
+                    lines.AddRange(CycleEndpointDecl(b, "b", read));
+                    if (spelling == Spelling.Alias)
+                        lines.Add("type A = H");
+                    print = "H.a";
+                    python = "b";
+                    break;
+                }
+            case CyclePair.TypeOtherType:
+                {
+                    var (readB, name, methodB) = TypeRead("J", "B", "b");
+                    var readA = spelling == Spelling.Alias ? "A.a" : "H.a";
+                    Helper(readB);
+                    lines.Add("class H:");
+                    lines.AddRange(Indent(CycleEndpointDecl(a, "a", AInit(readB))));
+                    lines.Add("class J:");
+                    lines.AddRange(Indent(CycleEndpointDecl(b, "b", readA).Concat(methodB)));
+                    if (spelling == Spelling.Alias)
+                        lines.AddRange(new[] { "type A = H", "type B = J" });
+                    print = "H.a";
+                    python = name;
+                    break;
+                }
+            case CyclePair.SelfThroughDef when spelling == Spelling.Bare:
+                Helper("a");
+                lines.AddRange(CycleEndpointDecl(a, "a", "get()"));
+                print = "a";
+                python = "a";
+                break;
+            case CyclePair.SelfThroughDef:
+                {
+                    var (read, name, method) = TypeRead("H", "A", "a");
+                    Helper(read);
+                    lines.Add("class H:");
+                    lines.AddRange(Indent(CycleEndpointDecl(a, "a", helperNeeded ? "get()" : read).Concat(method)));
+                    if (spelling == Spelling.Alias)
+                        lines.Add("type A = H");
+                    print = "H.a";
+                    python = name;
+                    break;
+                }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(pair));
+        }
+
+        var expected = Cycle(PyOutcome.Name(python), "N3-cycle");
+        return new NameCell
+        {
+            Id = CellId("read", "cycle", spelling, pair, through, a, b),
+            Family = Family.Read,
+            Source = Join(lines) + MainBlock($"print({print})"),
+            Tag = expected.Tag,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = a,
+            Outer = BindingKind.None,
+            Position = CycleEndpointPosition(a),
+            AxisCell = CycleKey(spelling, pair, through, a, b),
+        };
+    }
+
+    private static IEnumerable<string> CycleFedFailures(IReadOnlySet<string> axisCells)
+    {
+        foreach (var (spelling, pair) in Enum.GetValues<Spelling>().SelectMany(s => Enum.GetValues<CyclePair>().Select(p => (s, p))))
+        {
+            if (!NameResolutionRosters.CycleRoutes.TryGetValue(NameResolutionRosters.CycleRouteKey(spelling, pair), out var member) || !member.Generated)
+                continue;
+            foreach (var through in CycleThroughFor(spelling, pair))
+                foreach (var (a, b) in CycleEndpointPairs(spelling, pair))
+                    if (!axisCells.Contains(CycleKey(spelling, pair, through, a, b)))
+                        yield return $"CycleRoutes {spelling} × {pair} × {through} × {a} × {b} has no cell";
+        }
+
+        foreach (var kind in NameResolutionRosters.CycleEndpoints.Where(e => e.Value.Generated).Select(e => e.Key))
+            if (!axisCells.Any(c => c.StartsWith("cycle: ", StringComparison.Ordinal) && c.Contains($" × {kind}", StringComparison.Ordinal)))
+                yield return $"CycleEndpoints {kind} is generated by the roster and has no cycle cell";
     }
 }

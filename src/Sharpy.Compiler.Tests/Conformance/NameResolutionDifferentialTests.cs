@@ -501,7 +501,7 @@ public partial class NameResolutionDifferentialTests
             case VerdictClass.RuntimeThrow:
                 return "#2422";
             case VerdictClass.SilentWrong:
-                if (cell.Rule == "N3-cycle" && cell.Id.Contains("/Alias/", StringComparison.Ordinal))
+                if (IsConstCycleThroughAlias(cell))
                     return "#2412";
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
@@ -514,6 +514,15 @@ public partial class NameResolutionDifferentialTests
             default:
                 throw new InvalidOperationException($"{verdict} is not a red class");
         }
+    }
+
+    /// <summary>#2412 is a CONST cycle written through an alias (SPY0278 misses it). Axis 2's other alias cycles have values to wait
+    /// on, and N3's readiness is what cures them.</summary>
+    private static bool IsConstCycleThroughAlias(NameCell cell)
+    {
+        if (cell.Rule != "N3-cycle" || !cell.Id.Contains("/Alias/", StringComparison.Ordinal))
+            return false;
+        return cell.AxisCell == null || cell.AxisCell.Split(" × ").TakeLast(2).All(k => k.EndsWith("ComputedConst", StringComparison.Ordinal));
     }
 
     private static bool IsAliasConstructorCell(NameCell cell)
