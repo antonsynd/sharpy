@@ -101,7 +101,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
     // needs longer is a perf outlier we would rather skip than let dominate the wall.
     private const int SharpyExecTimeoutMs = 12_000;
 
-    public DifferentialExecutionTests(ITestOutputHelper output) : base(output) { }
+    public DifferentialExecutionTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     /// <summary>
     /// Set immediately before each <see cref="IntegrationTestBase.CompileAndExecute"/> call; read

@@ -23,7 +23,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// control (no nameable BCL shape reaches one generic interface at two instantiations through a
 /// Sharpy base list alone).
 /// </summary>
-public class InterfaceInstantiationClosureMatrixTests : IntegrationTestBase, IDisposable
+public class InterfaceInstantiationClosureMatrixTests : IntegrationTestBase
 {
     private const int ConflictCellCount = 15;
     private const int AcceptedCellCount = 8;
@@ -36,7 +36,7 @@ public class InterfaceInstantiationClosureMatrixTests : IntegrationTestBase, IDi
         Directory.CreateDirectory(_tempDir);
     }
 
-    public void Dispose()
+    protected override void DisposeTestResources()
     {
         try
         { Directory.Delete(_tempDir, recursive: true); }

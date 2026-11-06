@@ -49,7 +49,7 @@ public class ManglingCollisionGridTests : IntegrationTestBase
 {
     private readonly ITestOutputHelper _output;
 
-    public ManglingCollisionGridTests(ITestOutputHelper output) : base(output) => _output = output;
+    public ManglingCollisionGridTests(ITestOutputHelper output) : base(output) => _output = Output;
 
     /// <summary>What a cell must do. Measured per cell, never derived from the implementation.</summary>
     private enum Outcome

@@ -32,8 +32,9 @@ public partial class NameResolutionDifferentialTests
     }
 
     /// <summary>A whole-solution gate read Test Run Failed with 0 failed tests @ b3bac05af: the sweep's buffered
-    /// compile output exhausted the testhost's heap when vstest serialized it. <c>RunSharpy</c> buffers nothing. The
-    /// same compile through the base class does, which shows the recorder sees a write and the mute was lifted.</summary>
+    /// compile output exhausted the testhost's heap when vstest serialized it. The harness mutes the compile path, so
+    /// <c>RunSharpy</c> buffers nothing. The same compile with the mute lifted does, which shows the recorder sees a
+    /// write.</summary>
     [Fact]
     public void RunSharpy_BuffersNothingInTheTestResult()
     {
@@ -46,6 +47,7 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal("1", Normalize(run.Stdout));
         Assert.Empty(recorded.Lines);
 
+        harness.MuteCompilePath = false;
         harness.CompileAndExecute(Program, "name_resolution.spy");
 
         Assert.Contains(recorded.Lines, line => line.Contains("Generated C#", StringComparison.Ordinal));

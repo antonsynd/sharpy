@@ -91,9 +91,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class TypeDefinitionOwnSymbolMatrixTests : IntegrationTestBase
 {
-    public TypeDefinitionOwnSymbolMatrixTests(ITestOutputHelper output) : base(output)
-    {
-    }
+    public TypeDefinitionOwnSymbolMatrixTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     internal enum Family
     {

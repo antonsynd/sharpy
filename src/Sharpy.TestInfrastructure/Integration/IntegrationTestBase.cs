@@ -26,9 +26,16 @@ namespace Sharpy.TestInfrastructure.Integration;
 /// <summary>
 /// Base class for end-to-end integration tests that compile Sharpy code to C# and execute it.
 /// </summary>
-public abstract class IntegrationTestBase
+/// <remarks>
+/// A test class's output goes through <see cref="TestResultOutput"/>, which bounds what one test may leave in its
+/// result. <see cref="Dispose"/> carries the verdict, so a subclass with something to release overrides
+/// <see cref="DisposeTestResources"/>.
+/// </remarks>
+public abstract class IntegrationTestBase : IDisposable
 {
     protected readonly ITestOutputHelper Output;
+
+    private readonly TestResultOutput _resultOutput;
 
     private static readonly Lazy<string> SharedTestCacheDir = new(() =>
     {
@@ -128,7 +135,41 @@ public abstract class IntegrationTestBase
 
     protected IntegrationTestBase(ITestOutputHelper output)
     {
-        Output = output;
+        _resultOutput = new TestResultOutput(output);
+        Output = _resultOutput;
+    }
+
+    /// <summary>
+    /// Whether the compile path's own writes (each compile's generated C# and its log) stay out of this test's
+    /// result. A sweep's constructor sets it: over thousands of compiles those writes are what fills the result. What
+    /// a test writes to <see cref="Output"/> itself is printed either way.
+    /// </summary>
+    protected bool MuteCompilePath
+    {
+        get => _resultOutput.MuteCompilePath;
+        set => _resultOutput.MuteCompilePath = value;
+    }
+
+    /// <summary>Fails the test when it wrote past <see cref="TestResultOutput.CharacterCeiling"/>: xUnit runs this after
+    /// the test method and a throw from it marks the test failed.</summary>
+    public void Dispose()
+    {
+        try
+        {
+            DisposeTestResources();
+        }
+        finally
+        {
+            _resultOutput.FailIfOverCeiling();
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>What a subclass releases when the test ends. <see cref="Dispose"/> is not virtual so that a subclass
+    /// cannot drop the ceiling's verdict by forgetting a base call.</summary>
+    protected virtual void DisposeTestResources()
+    {
     }
 
     protected virtual IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
@@ -224,7 +265,7 @@ public abstract class IntegrationTestBase
             // a synthetic project-of-one-file through ProjectCompiler — the exact path that
             // `sharpyc run/build <file>` uses. The harness no longer hand-wires the phases,
             // hardcodes IsEntryPoint, or threads no FeatureFlags.
-            var logger = new OutputTestLogger(Output);
+            var logger = new OutputTestLogger(_resultOutput.CompilePath);
 
             // Preserve the fixture's file name (inside a unique temp dir) so single-file
             // module naming and any #line directives match a real single-file compile of
@@ -309,9 +350,9 @@ public abstract class IntegrationTestBase
 
             var generatedCSharp = compileResult.GeneratedCSharp;
 
-            Output.WriteLine("=== Generated C# ===");
-            Output.WriteLine(generatedCSharp ?? "(no C# generated)");
-            Output.WriteLine("====================");
+            _resultOutput.CompilePath.WriteLine("=== Generated C# ===");
+            _resultOutput.CompilePath.WriteLine(generatedCSharp ?? "(no C# generated)");
+            _resultOutput.CompilePath.WriteLine("====================");
 
             if (!compileResult.Success || generatedCSharp == null)
             {
@@ -451,7 +492,7 @@ public abstract class IntegrationTestBase
         try
         {
             var pipelineStart = CallTiming.Start(timing);
-            var logger = new OutputTestLogger(Output);
+            var logger = new OutputTestLogger(_resultOutput.CompilePath);
 
             // Discover all .spy files in the directory (including subdirectories for packages).
             // Directory.GetFiles order is filesystem-dependent; sort ordinally so the test
@@ -469,11 +510,11 @@ public abstract class IntegrationTestBase
                 };
             }
 
-            Output.WriteLine($"Found {sourceFiles.Count} source files:");
+            _resultOutput.CompilePath.WriteLine($"Found {sourceFiles.Count} source files:");
             foreach (var file in sourceFiles)
             {
                 var relativePath = Path.GetRelativePath(projectDir, file);
-                Output.WriteLine($"  - {relativePath}");
+                _resultOutput.CompilePath.WriteLine($"  - {relativePath}");
             }
 
             // Create a project config for the test
@@ -527,14 +568,14 @@ public abstract class IntegrationTestBase
             }
 
             // Log generated C#
-            Output.WriteLine("=== Generated C# ===");
+            _resultOutput.CompilePath.WriteLine("=== Generated C# ===");
             foreach (var (fileName, code) in result.GeneratedCSharpFiles)
             {
-                Output.WriteLine($"// {fileName}");
-                Output.WriteLine(code);
-                Output.WriteLine("---");
+                _resultOutput.CompilePath.WriteLine($"// {fileName}");
+                _resultOutput.CompilePath.WriteLine(code);
+                _resultOutput.CompilePath.WriteLine("---");
             }
-            Output.WriteLine("====================");
+            _resultOutput.CompilePath.WriteLine("====================");
 
             return EmitAndRunProjectAssembly(
                 timing,
@@ -595,7 +636,7 @@ public abstract class IntegrationTestBase
         try
         {
             var pipelineStart = CallTiming.Start(timing);
-            var logger = new OutputTestLogger(Output);
+            var logger = new OutputTestLogger(_resultOutput.CompilePath);
 
             var defaultReferences = new List<string> { SharpyCoreReference.Location };
             defaultReferences.AddRange(GetAdditionalReferenceAssemblyPaths());
@@ -633,9 +674,9 @@ public abstract class IntegrationTestBase
 
             var generatedReport = FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles);
 
-            Output.WriteLine("=== Generated C# ===");
-            Output.WriteLine(generatedReport);
-            Output.WriteLine("====================");
+            _resultOutput.CompilePath.WriteLine("=== Generated C# ===");
+            _resultOutput.CompilePath.WriteLine(generatedReport);
+            _resultOutput.CompilePath.WriteLine("====================");
 
             if (!result.Success || result.GeneratedCSharpFiles.Count == 0)
             {
