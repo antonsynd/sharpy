@@ -220,9 +220,14 @@ public partial class NameResolutionDifferentialTests
     [InlineData("UnboundLocalError: cannot access local variable 'q' where it is not associated with a value", PyKind.UnboundLocalError, "q")]
     [InlineData("TypeError: 'int' object is not callable", PyKind.OtherError, "TypeError")]
     [InlineData("ValueError: x", PyKind.OtherError, "ValueError")]
+    // D2.12: axis 12's predicted refusals, python 3.12.13's exact lines. The value is the whole line, which is what the control compares.
+    [InlineData("SyntaxError: name 'x' is used prior to global declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to global declaration")]
+    [InlineData("SyntaxError: name 'x' is used prior to nonlocal declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to nonlocal declaration")]
+    [InlineData("SyntaxError: annotated name 'x' can't be global", PyKind.SyntaxError, "SyntaxError: annotated name 'x' can't be global")]
+    [InlineData("SyntaxError: no binding for nonlocal 'q' found", PyKind.SyntaxError, "SyntaxError: no binding for nonlocal 'q' found")]
     public void Classifier_PythonLastLine_ParsesKindAndName(string lastLine, PyKind kind, string value)
     {
-        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, false));
+        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, kind == PyKind.SyntaxError));
 
         Assert.Equal(new PyOutcome(kind, value), observed);
     }

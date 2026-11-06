@@ -391,7 +391,8 @@ public partial class NameResolutionDifferentialTests
         {
             foreach (var u in moduleOuters)
                 yield return ModuleStoreCell(s, u, ReadPosition.FunctionBody, true, true, Order.Earlier, false);
-            foreach (var body in new[] { ReadPosition.MethodBody, ReadPosition.NestedDefInFunction })
+            // Assign and Augmented from a nested def are axis 12's shape, generated with the two other bodies it names.
+            foreach (var body in s == StoreSpelling.Walrus ? new[] { ReadPosition.MethodBody, ReadPosition.NestedDefInFunction } : new[] { ReadPosition.MethodBody })
                 yield return ModuleStoreCell(s, BindingKind.ModuleVar, body, true, true, Order.Earlier, false);
             yield return ModuleStoreCell(s, BindingKind.ModuleVar, ReadPosition.FunctionBody, true, true, Order.Later, false);
             foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
@@ -441,6 +442,7 @@ public partial class NameResolutionDifferentialTests
                     Position = body,
                     Form = FormEnum(s),
                     Shape = "global-creates-binding",
+                    Declaration = DeclarationShapes.GlobalCreatesBinding,
                 };
             }
     }
