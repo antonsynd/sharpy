@@ -7,7 +7,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Tests.Infrastructure;
+using Sharpy.Compiler.Tests.Properties.Differential;
 using Sharpy.Compiler.Tests.Semantic;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParameterModifier = Sharpy.Compiler.Parser.Ast.ParameterModifier;
@@ -58,6 +60,35 @@ internal enum BlockConstruct
     Finally,
     With,
     MatchCase,
+}
+
+/// <summary>Where a name can sit in a comprehension (P77b axis 1, deferred row 1): the image of the Expression-typed properties
+/// of the comprehension and clause nodes, read by <see cref="NameResolutionRosters.ComprehensionSlots"/>.</summary>
+internal enum ComprehensionSlot
+{
+    Element,
+    Key,
+    Value,
+    Spread,
+    Iterable,
+    Condition,
+    Target,
+}
+
+/// <summary>Axis 1's two nestings. Named closed: a function body is python's ordinary comprehension scope and a class body is
+/// the one place its scope rule differs.</summary>
+internal enum ComprehensionNesting
+{
+    FunctionBody,
+    StaticInitializer,
+}
+
+/// <summary>How a read reaches an N3 cycle (P77b axis 2, deferred row 3). Named closed: N3's cycle is either the initializer's
+/// own read or a read through a call, and a call is one hop however deep.</summary>
+internal enum CycleThrough
+{
+    Direct,
+    ThroughDef,
 }
 
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
@@ -947,6 +978,91 @@ internal static class NameResolutionRosters
             "bound by the signature, never by a statement of the body, so no read above its binding exists")),
         (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind,
             "a lambda parameter or comprehension variable, bound inside its own expression: LocalTarget.Comprehension is its axis")));
+
+    /// <summary>P77b axis 1's slots (deferred row 1): every Expression-typed property of a comprehension or clause node, read by
+    /// reflection against this map, so a slot the AST gains is red until it has a row. <c>Spread</c> is a READ slot like the
+    /// others (`{**d for v in [1]}`), and <c>ForClause.Target</c> is the LOCAL-target row.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<ComprehensionSlot>> ComprehensionSlots = Roster.Map(
+        ("ListComprehension.Element", Roster.To(ComprehensionSlot.Element)),
+        ("SetComprehension.Element", Roster.To(ComprehensionSlot.Element)),
+        ("GeneratorExpression.Element", Roster.To(ComprehensionSlot.Element)),
+        ("DictComprehension.Key", Roster.To(ComprehensionSlot.Key)),
+        ("DictComprehension.Value", Roster.To(ComprehensionSlot.Value)),
+        ("DictSpreadComprehension.Spread", Roster.To(ComprehensionSlot.Spread)),
+        ("ForClause.Iterator", Roster.To(ComprehensionSlot.Iterable)),
+        ("ForClause.Target", Roster.To(ComprehensionSlot.Target)),
+        ("IfClause.Condition", Roster.To(ComprehensionSlot.Condition)));
+
+    /// <summary>The measured count of those properties, a literal so the reflection cannot silently read nothing.</summary>
+    internal const int ComprehensionSlotCensus = 9;
+
+    internal static string WalrusKey(ComprehensionSlot slot, ComprehensionNesting nesting) => $"{slot} × {nesting}";
+
+    /// <summary>python3 3.12.13's last line for each walrus it refuses, exactly: the exclusion's reason and its falsifier.</summary>
+    internal const string WalrusIterableRefusal = "SyntaxError: assignment expression cannot be used in a comprehension iterable expression";
+
+    internal const string WalrusClassBodyRefusal = "SyntaxError: assignment expression within a comprehension cannot be used in a class body";
+
+    internal const string WalrusTargetRefusal = "SyntaxError: cannot assign to named expression";
+
+    internal const string DictSpreadRefusal = "SyntaxError: dict unpacking cannot be used in dict comprehension";
+
+    /// <summary>Axis 1's walrus STORE cell at each slot × nesting (deferred row 2): generated, or out because python refuses the
+    /// program outright and a must-refuse over its SyntaxError would judge nothing about a name.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> ComprehensionWalrus = Roster.Map(
+        (WalrusKey(ComprehensionSlot.Element, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Key, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Value, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Condition, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Iterable, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableRefusal)),
+        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, DictSpreadRefusal)),
+        (WalrusKey(ComprehensionSlot.Target, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusTargetRefusal)),
+        (WalrusKey(ComprehensionSlot.Element, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Key, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Value, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Condition, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Iterable, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableRefusal)),
+        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, DictSpreadRefusal)),
+        (WalrusKey(ComprehensionSlot.Target, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusTargetRefusal)));
+
+    private const string NoInitializerToCycle = "no initializer of its own: a callable or a type declares no value a read could wait on";
+
+    /// <summary>The endpoints of <c>CycleRoutes</c> (P77b axis 2, deferred row 3): every module-level, type-level and instance kind is an
+    /// endpoint or out with its reason, in place of the prose "kinds with an initializer".</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> CycleEndpoints = Roster.Map(
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal reads no name, so no cycle passes through it")),
+        (BindingKind.ClassLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal reads no name, so no cycle passes through it")),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration, so the program never reaches the cycle")),
+        (BindingKind.ModuleDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleClass, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleStruct, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleEnum, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.StaticMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.InstanceMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.InstanceField, AxisMembership.Out(ExcludedAxis.NotAKind, "runs at construction, not at load: N3's order and cycle rules name module and type values")),
+        (BindingKind.InstanceProperty, AxisMembership.Out(ExcludedAxis.NotAKind, "runs at construction, not at load: N3's order and cycle rules name module and type values")));
+
+    /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
+    /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
+    /// value @ 82acda375 (<c>const y: int = i</c> included). A `\n` starts the statement's next line.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, RosterEntry<string>> LoopBodyBinders = Roster.Map(
+        (BindingKind.LocalVar, Roster.To("y = i", "y: int = i")),
+        (BindingKind.LocalLet, Roster.To("let y = i")),
+        (BindingKind.LocalComputedConst, Roster.To("const y: int = i")),
+        (BindingKind.LocalDef, Roster.To("def y() -> int:\n    return i")),
+        (BindingKind.LambdaTypedLocal, Roster.To("y: () -> int = lambda: i")),
+        (BindingKind.LocalLiteralConst, Roster.Out<string>(ExcludedAxis.NotAKind, "a literal is the same value every iteration, so fresh-per-iteration has nothing to show")));
 
     /// <summary>STORE's target scope (finding 4): the image of <see cref="ScopeKind"/>, the other three with their reasons.</summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<StoreTargetScope>> StoreTargetScopes = Roster.Map(
@@ -2087,6 +2203,111 @@ public partial class NameResolutionDifferentialTests
             });
         LocalKinds.Should().Equal(NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(k => k),
             "the generator reads the roster, and a hand array beside it is the open-axis shape");
+    }
+
+    [Fact]
+    public void LoopBodyBindersRoster_IsTotalOverLocalKinds()
+    {
+        var generated = NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key);
+        var problems = Roster.TotalityProblems("LoopBodyBinders", generated, NameResolutionRosters.LoopBodyBinders.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.LoopBodyBinders));
+
+        AssertNoProblems(problems, "axis 6's binder is LocalKinds' whole generated set, each kind a statement spelling or out with its reason");
+    }
+
+    [Fact]
+    public void ComprehensionSlotsRoster_IsTotalOverTheNodesExpressionProperties()
+    {
+        var nodes = typeof(Expression).Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && (typeof(ComprehensionClause).IsAssignableFrom(t)
+                || (typeof(Expression).IsAssignableFrom(t) && (t.Name.EndsWith("Comprehension", StringComparison.Ordinal) || t == typeof(GeneratorExpression)))))
+            .ToList();
+        var properties = nodes
+            .SelectMany(t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .Where(p => typeof(Expression).IsAssignableFrom(p.PropertyType))
+            .Select(PropertyKey)
+            .ToList();
+
+        properties.Should().HaveCount(NameResolutionRosters.ComprehensionSlotCensus,
+            "the census is a measured literal: " + string.Join(", ", properties.OrderBy(k => k, StringComparer.Ordinal)));
+
+        var problems = Roster.TotalityProblems("ComprehensionSlots", properties, NameResolutionRosters.ComprehensionSlots.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionSlots));
+        var image = Roster.ImageOf(NameResolutionRosters.ComprehensionSlots).ToHashSet();
+        problems.AddRange(Enum.GetValues<ComprehensionSlot>().Where(s => !image.Contains(s)).Select(s => $"ComprehensionSlot.{s} is the image of no property"));
+
+        AssertNoProblems(problems, "a slot a name can sit in is an Expression-typed property of the node, never a list in prose");
+    }
+
+    [Fact]
+    public void ComprehensionWalrusRoster_IsTheWholeProduct()
+    {
+        var product = Enum.GetValues<ComprehensionSlot>()
+            .SelectMany(slot => Enum.GetValues<ComprehensionNesting>().Select(nesting => NameResolutionRosters.WalrusKey(slot, nesting)));
+        var problems = Roster.TotalityProblems("ComprehensionWalrus", product, NameResolutionRosters.ComprehensionWalrus.Keys).ToList();
+        foreach (var (key, member) in NameResolutionRosters.ComprehensionWalrus)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"ComprehensionWalrus: {key} is generated AND excluded, or neither");
+        }
+
+        AssertNoProblems(problems, "every slot × nesting is a walrus cell or out with python's own refusal");
+    }
+
+    /// <summary>An exclusion's reason is a claim about python, and an excluded cell never runs for the control to catch it. So
+    /// each reason runs here, one program per distinct line, and it has to be python's exact last line.</summary>
+    [SkippableFact]
+    public void ComprehensionWalrusRoster_EachExclusion_IsPythonsOwnRefusal()
+    {
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        var probes = new[]
+        {
+            (Line: NameResolutionRosters.WalrusIterableRefusal, Source: "def f():\n    r = [v for v in [(y := 1)]]\n"),
+            (Line: NameResolutionRosters.WalrusClassBodyRefusal, Source: "class C:\n    r = [(y := v) for v in [1]]\n"),
+            (Line: NameResolutionRosters.WalrusTargetRefusal, Source: "def f():\n    r = [v for (y := v) in [1]]\n"),
+            (Line: NameResolutionRosters.DictSpreadRefusal, Source: "def f():\n    r = {**d for d in [{}]}\n"),
+        };
+
+        // The generated row with the same read runs: the control that the probe's shape is not refused for another reason.
+        var requests = probes.Select((p, i) => new PyRequest(i, p.Source))
+            .Append(new PyRequest(probes.Length, "def f():\n    r = [(y := v) for v in [1]]\n    return y\nprint(f())\n"))
+            .ToList();
+        var verdicts = oracle.RunBatch(requests, PythonBatchTimeoutMs);
+
+        for (int i = 0; i < probes.Length; i++)
+        {
+            Assert.True(verdicts[i].SyntaxError, $"{probes[i].Line}: python did not refuse the probe");
+            Assert.Equal(probes[i].Line, LastLine(verdicts[i].Stderr));
+        }
+
+        Assert.Equal(new PyOutcome(PyKind.Ran, "1"), ClassifyPython(verdicts[probes.Length]));
+
+        var reasons = NameResolutionRosters.ComprehensionWalrus.Values.Where(m => !m.Generated).Select(m => m.Reason!).ToHashSet(StringComparer.Ordinal);
+        reasons.Should().BeEquivalentTo(probes.Select(p => p.Line), "every reason on the roster has a probe here, and no probe outlives its reason");
+    }
+
+    [Fact]
+    public void CycleEndpointsRoster_IsTotalOverTheThreeKindGroups()
+    {
+        var universe = NameResolutionRosters.ModuleLevelKinds.Concat(NameResolutionRosters.TypeLevelKinds).Concat(NameResolutionRosters.InstanceKinds);
+        var problems = Roster.TotalityProblems("CycleEndpoints", universe, NameResolutionRosters.CycleEndpoints.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.CycleEndpoints)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"CycleEndpoints: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"CycleEndpoints: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "a kind is an N3 cycle endpoint or names why it cannot be one");
+
+        // Literals, not the groups again: what an endpoint is, and the closed set a read reaches it through.
+        NameResolutionRosters.CycleEndpoints.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleComputedConst,
+            BindingKind.StaticField, BindingKind.StaticProperty, BindingKind.ClassComputedConst,
+        });
+        Enum.GetValues<CycleThrough>().Should().Equal(CycleThrough.Direct, CycleThrough.ThroughDef);
     }
 
     [Fact]
