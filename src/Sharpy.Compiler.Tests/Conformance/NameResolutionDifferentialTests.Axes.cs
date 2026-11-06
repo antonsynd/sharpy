@@ -14,6 +14,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(CycleFedFailures(axisCells));
         failures.AddRange(OrderObservationFedFailures(axisCells));
         failures.AddRange(ReadTimingFedFailures(pool, axisCells));
+        failures.AddRange(LetInFedFailures(axisCells));
         return failures;
     }
 
@@ -619,5 +620,79 @@ public partial class NameResolutionDifferentialTests
             foreach (var outer in FailedGuardOuters)
                 if (!axisCells.Contains(FailedGuardKey(capture, outer)))
                     yield return $"ReadTimings failed-guard × {capture} × {outer} has no cell";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 5: the let-in binder × outer
+    // ------------------------------------------------------------------------------------------- //
+
+    private static string LetInKey(BindingKind binder, string family, LetInOuter outer) => $"let-in: {binder} × {family} × {outer}";
+
+    private static IEnumerable<NameCell> LetInBinderCells()
+    {
+        foreach (var binder in LocalKinds)
+            foreach (var b in BlockShapes)
+                foreach (var outer in Enum.GetValues<LetInOuter>())
+                {
+                    // `let` × {no outer, module} is LetInConstructCells' body control, which carries this key at the function body.
+                    if (binder == BindingKind.LocalLet && outer is LetInOuter.None or LetInOuter.Module)
+                        continue;
+                    if (NameResolutionRosters.LetInProduct[NameResolutionRosters.LetInKey(b.Family, outer)].Generated)
+                        yield return LetInBinderCell(binder, b, outer);
+                }
+    }
+
+    /// <summary>A binder in a block body is block-scoped (R-LB, R-LF). No outer is the name check after the block, an outer reads the outer, and python prints
+    /// the inner value through the family's row. A callable binder is read through the call form, so its outer is callable too: <c>x()</c> over an int is a type verdict.</summary>
+    private static NameCell LetInBinderCell(BindingKind binder, BlockShape b, LetInOuter outer)
+    {
+        var plain = ReadName.Plain;
+        var callable = IsCallableKind(binder);
+        var value = ValueOf(binder);
+        var block = new List<string>(b.Open);
+        block.AddRange(Indent(LocalDecl(binder, plain), 4 * b.Depth));
+        block.AddRange(b.Close);
+        block.Add($"print({ReadText(FormOf(binder), "", plain)})");
+
+        // The enclosing and same-function outer of the name, in the binder's own form.
+        var nearOuter = binder == BindingKind.LocalDef
+            ? new[] { "def x() -> int:", "    return 13" }
+            : binder == BindingKind.LambdaTypedLocal
+                ? new[] { "x: () -> int = lambda: 13" }
+                : new[] { "x: int = 13" };
+
+        var id = CellId("local", "let-in", b.Family, binder, $"outer={outer}", ReadPosition.FunctionBody);
+        NameCell Program(BindingKind programOuter, IReadOnlyList<string> stmts, Expected e) =>
+            LocalProgram(id, binder, programOuter, ReadPosition.FunctionBody, stmts, e, null, plain) with { AxisCell = LetInKey(binder, b.Family, outer) };
+        Expected Outer(int model, string rule) => new(SharpyTag.MustRun, Str(model), PyOutcome.Ran(value), rule, b.Row);
+
+        switch (outer)
+        {
+            case LetInOuter.None:
+                return Program(BindingKind.None, block, new Expected(SharpyTag.MustRefuse, null, PyOutcome.Ran(value), "N5", b.Row));
+            case LetInOuter.Module:
+                var moduleOuter = callable ? BindingKind.ModuleDef : BindingKind.ModuleVar;
+                return Program(moduleOuter, block, Outer(ValueOf(moduleOuter), "N5-block-scope"));
+            case LetInOuter.Enclosing:
+                var enclosing = new List<string>(nearOuter) { "def g1() -> None:" };
+                enclosing.AddRange(Indent(block));
+                enclosing.Add("g1()");
+                return Program(BindingKind.None, enclosing, Outer(13, "N5-block-scope")) with { Outer = BindingKind.EnclosingLocal };
+            case LetInOuter.SameFunction:
+                return Program(BindingKind.None, nearOuter.Concat(block).ToList(), Outer(13, "#1974")) with { Outer = BindingKind.LocalVar };
+            default:
+                throw new ArgumentOutOfRangeException(nameof(outer));
+        }
+    }
+
+    private static IEnumerable<string> LetInFedFailures(IReadOnlySet<string> axisCells)
+    {
+        foreach (var binder in NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key))
+            foreach (var (key, member) in NameResolutionRosters.LetInProduct.Where(e => e.Value.Generated))
+            {
+                var parts = key.Split(" × ");
+                if (!axisCells.Contains(LetInKey(binder, parts[0], Enum.Parse<LetInOuter>(parts[1]))))
+                    yield return $"LetInProduct {binder} × {key} has no cell";
+            }
     }
 }

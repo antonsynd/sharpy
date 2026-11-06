@@ -1020,7 +1020,10 @@ public partial class NameResolutionDifferentialTests
                     var e = u == BindingKind.None
                         ? new Expected(SharpyTag.MustRefuse, null, PyOutcome.Ran(15), "N5", b.Row)
                         : new Expected(SharpyTag.MustRun, "5", PyOutcome.Ran(15), "N5-block-scope", b.Row);
-                    yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, null, ReadName.Plain);
+                    yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, null, ReadName.Plain) with
+                    {
+                        AxisCell = body == ReadPosition.FunctionBody ? LetInKey(BindingKind.LocalLet, b.Family, u == BindingKind.None ? LetInOuter.None : LetInOuter.Module) : null,
+                    };
                 }
     }
 
@@ -1268,7 +1271,7 @@ public partial class NameResolutionDifferentialTests
         if (c.Family == Family.Seed)
             return SeedDeviations.GetValueOrDefault(c.Id["seed/".Length..]) == c.Deviation;
         var afterBlock = c.Family == Family.Local && c.Outer == BindingKind.None && c.Id.Contains("/after-block/", StringComparison.Ordinal);
-        var letInItsBlock = c.Family == Family.Local && c.Target == BindingKind.LocalLet
+        var letInItsBlock = c.Family == Family.Local && LocalKinds.Contains(c.Target)
             && BlockShapes.Any(b => b.Row == c.Deviation && c.Id.Contains($"/let-in/{b.Family}/", StringComparison.Ordinal));
         switch (c.Deviation)
         {
@@ -1348,6 +1351,7 @@ public partial class NameResolutionDifferentialTests
             cycleRoutes = NameResolutionRosters.CycleRoutes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             orderObservation = NameResolutionRosters.OrderObservationKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             readTimingBackEdgeLoops = NameResolutionRosters.ReadTimingLoops,
+            letInProduct = NameResolutionRosters.LetInProduct.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
         },
         axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),

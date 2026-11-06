@@ -429,6 +429,7 @@ local/WithAs/after-block/outer=ModuleVar/NestedClassMethodBody SilentWrong # #24
 local/WithAs/after-block/outer=ModuleVar/NestedDefInFunction SilentWrong # #2425 missing-refusal
 local/WithAs/after-block/outer=ModuleVar/NestedDefInMethod SilentWrong # #2425 missing-refusal
 local/WithAs/after-block/outer=ModuleVar/StaticMethodBody SilentWrong # #2425 missing-refusal
+local/let-in/if-then/LocalDef/outer=SameFunction/FunctionBody FalseRefusal # #1974 false-refusal
 local/timing/back-edge/for-body/LocalLet SilentWrong # #2425 missing-refusal
 local/timing/back-edge/for-body/LocalVar SilentWrong # #2425 missing-refusal
 local/timing/back-edge/while-body/LocalLet SilentWrong # #2425 missing-refusal
