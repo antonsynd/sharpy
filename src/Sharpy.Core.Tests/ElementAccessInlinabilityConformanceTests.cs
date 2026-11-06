@@ -22,8 +22,9 @@ namespace Sharpy.Core.Tests;
 /// <item>(c) every <c>call</c>/<c>callvirt</c> target — and (c'') every <c>newobj</c> target that is not an
 /// Exception constructor — is in the literal BCL <see cref="BclAllowSet"/>, or a Sharpy.Core method that is
 /// itself conformant (recursive, cycle-safe), or (c') a <see cref="MethodImplOptions.NoInlining"/> throw
-/// helper named in <see cref="HelperLiteral"/> and declared on <c>Sharpy.Index</c>; any other NoInlining
-/// callee is an out-of-line call on the path and is reported (#2404 refutation N1);</item>
+/// helper named in <see cref="HelperLiteral"/> and declared on <c>Sharpy.Index</c>, or (c''') the cold insert
+/// path named in <see cref="ColdPathLiteral"/>; any other NoInlining callee is an out-of-line call on the path
+/// and is reported (#2404 refutation N1);</item>
 /// <item>(d) the IL body is at most 100 B against a Release Core (the JIT's
 /// <c>DEFAULT_MAX_INLINE_SIZE</c>) and at most 128 B against a Debug Core, chosen at run time from the
 /// Core assembly's <see cref="DebuggableAttribute"/>;</item>
@@ -177,6 +178,17 @@ public class ElementAccessInlinabilityConformanceTests
     };
 
     /// <summary>
+    /// The [NoInlining] non-throw paths (c) admits, by key, checked both ways. Each is the work a BCL callee
+    /// did out of line before Core took it over, never an element read: <c>Dict.InsertNew</c> is the
+    /// new-key half of <c>Dictionary.set_Item</c>, which #2440 split out so the entries array can record
+    /// insertion order. Clause (f) still applies: the accessor keeps a path to <c>ret</c> that does not call it.
+    /// </summary>
+    private static readonly string[] ColdPathLiteral =
+    {
+        "Sharpy.Dict`2::InsertNew(K, V)",
+    };
+
+    /// <summary>
     /// The complete BCL call set of the roster bodies and their conformant Core callees (D5(c)).
     /// An entry no scanned body reaches is red (delete it).
     /// </summary>
@@ -192,8 +204,6 @@ public class ElementAccessInlinabilityConformanceTests
         "System.String::get_Chars(System.Int32)",
         "System.Char::ToString()",
         "System.Collections.Generic.Dictionary`2::TryGetValue(TKey, TValue&)",
-        "System.Collections.Generic.Dictionary`2::set_Item(TKey, TValue)",
-        "System.Collections.Generic.Dictionary`2::get_Count()",
         "System.Collections.Immutable.ImmutableDictionary`2::TryGetValue(TKey, TValue&)",
         // Row 16: List<T>.this[System.Index] => _list[index.GetOffset(_list.Count)].
         "System.Index::GetOffset(System.Int32)",
@@ -346,6 +356,26 @@ public class ElementAccessInlinabilityConformanceTests
         {
             violations.Add($"{Key(method)}: [helper literal] a [NoInlining] Core method holding newobj IndexError " +
                 "that the helper literal does not name");
+        }
+
+        // The cold-path literal, both ways: each key names a [NoInlining] member some roster body reaches.
+        foreach (var key in ColdPathLiteral)
+        {
+            if (!byKey.TryGetValue(key, out var coldPaths))
+            {
+                violations.Add($"{key}: [cold-path literal] no such method in Sharpy.Core — delete or re-key the entry");
+                continue;
+            }
+
+            if (coldPaths.Any(m => !HasNoInlining(m)))
+            {
+                violations.Add($"{key}: [cold-path literal] lacks [MethodImpl(MethodImplOptions.NoInlining)]");
+            }
+
+            if (!scanner.UsedColdPaths.Contains(key))
+            {
+                violations.Add($"{key}: [cold-path literal] no roster body or conformant Core callee calls it — delete the entry");
+            }
         }
 
         // The allow-set has no entry that no scanned body reaches.
@@ -721,6 +751,8 @@ public class ElementAccessInlinabilityConformanceTests
 
         public HashSet<string> UsedAllowSetEntries { get; } = new(StringComparer.Ordinal);
 
+        public HashSet<string> UsedColdPaths { get; } = new(StringComparer.Ordinal);
+
         public System.Collections.Generic.List<Finding> Clauses(MethodBase method)
         {
             var findings = new System.Collections.Generic.List<Finding>();
@@ -836,8 +868,16 @@ public class ElementAccessInlinabilityConformanceTests
                             continue;
                         }
 
+                        // (c''') the named cold path; (f) below still demands a path that skips it.
+                        if (Array.IndexOf(ColdPathLiteral, key) >= 0)
+                        {
+                            UsedColdPaths.Add(key);
+                            continue;
+                        }
+
                         findings.Add(new Finding('c', $"{verb} {key} at IL_{ins.Offset:X4} — a [NoInlining] Core callee that is " +
-                            "not a Sharpy.Index throw helper named in the helper literal (c'): an out-of-line call on the path"));
+                            "not a Sharpy.Index throw helper named in the helper literal (c') nor the cold-path literal: an " +
+                            "out-of-line call on the path"));
                         continue;
                     }
 
