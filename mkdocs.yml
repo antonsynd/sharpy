@@ -46,6 +46,7 @@ plugins:
 
 exclude_docs: |
   rejected_proposals/
+  process/
 
 nav:
   - Home: index.md
