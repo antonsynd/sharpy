@@ -26,13 +26,13 @@ Combined emit-csharp + run for quick debugging. Shows what C# is generated AND w
 
 **Phase 1 — Emit C#:**
 
-4. Run: `dotnet run --project src/Sharpy.Cli -- emit csharp "<source_file>" > .claude/tmp/last-quick-check-emit.log 2>&1` (with `dangerouslyDisableSandbox: true`).
+4. Run: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp "<source_file>" > .claude/tmp/last-quick-check-emit.log 2>&1` (with `dangerouslyDisableSandbox: true`; raw `dotnet run` is hook-blocked because it builds Sharpy.Cli — when the lock is held and the binary is current, use `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc emit csharp ...` lock-free).
 5. If exit 0: Print "=== GENERATED C# (last 100 lines) ===" then show `tail -100 .claude/tmp/last-quick-check-emit.log`
 6. If exit non-zero: Print "=== C# EMIT FAILED (last 80 lines) ===" then show `tail -80 .claude/tmp/last-quick-check-emit.log`. Skip Phase 2.
 
 **Phase 2 — Run:**
 
-7. Run: `dotnet run --project src/Sharpy.Cli -- run "<source_file>" > .claude/tmp/last-quick-check-run.log 2>&1` (with `dangerouslyDisableSandbox: true`).
+7. Run: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run "<source_file>" > .claude/tmp/last-quick-check-run.log 2>&1` (with `dangerouslyDisableSandbox: true`; or `sharpyc run ...` lock-free as in step 4).
 8. If exit 0: Print "=== RUN OUTPUT ===" then show contents of `.claude/tmp/last-quick-check-run.log`
 9. If exit non-zero: Print "=== RUN FAILED (last 80 lines) ===" then show `tail -80 .claude/tmp/last-quick-check-run.log`
 

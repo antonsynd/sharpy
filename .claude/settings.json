@@ -21,7 +21,7 @@
           },
           {
             "type": "command",
-            "command": "echo \"$TOOL_INPUT_FILE_PATH\" | grep -qE '\\.(expected|error)$' && echo 'WARN: Editing test expectation file — are you sure the implementation is correct?' || true",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/warn-expectation-edit.sh\"",
             "timeout": 5
           }
         ]
