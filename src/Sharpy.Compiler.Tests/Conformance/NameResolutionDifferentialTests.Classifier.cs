@@ -338,6 +338,12 @@ public partial class NameResolutionDifferentialTests
     public void Census_TheGeneratedPool_IsPinned()
         => Assert.Empty(CensusFailures(GeneratedCells()));
 
+    /// <summary>The sweep's roster-fed check without python or a Sharpy run: every roster value the generator owes a cell has
+    /// one, and no cell leaves its axis. It reads the rosters, never the census, so it stands when the census is off.</summary>
+    [Fact]
+    public void RosterFed_TheGeneratedPool_FeedsEveryRoster()
+        => Assert.Empty(RosterFedFailures(GeneratedCells()));
+
     /// <summary>A deviation names a ledger row, and the row exists (Acceptance 3). The named cells are the positive control.</summary>
     [Fact]
     public void Deviation_EveryCitedRow_IsInTheLedger()

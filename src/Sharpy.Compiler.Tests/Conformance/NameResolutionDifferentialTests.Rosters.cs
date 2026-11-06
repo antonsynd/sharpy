@@ -925,6 +925,23 @@ internal static class NameResolutionRosters
         (BindingKind.LocalDef, AxisMembership.Pruned(SameFunctionIsTargetScope)),
         (BindingKind.LambdaTypedLocal, AxisMembership.Pruned(SameFunctionIsTargetScope)));
 
+    /// <summary>LOCAL's binder axis (P77b deferred finding 5): the image of <see cref="PositionLocalKinds"/>, the
+    /// position-local kinds a declaration statement in the body binds. The three a statement cannot bind are out with
+    /// their reasons, so the binder axis cannot be narrower than the roster by omission.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> LocalKinds = Roster.Map(
+        (BindingKind.EnclosingLocal, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "the enclosing function's binding: LOCAL's outer axis (LocalOuter), never a binder of the body the read sits in")),
+        (BindingKind.Parameter, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "bound by the signature, not a statement of the body: there is no read above it, and READ's innermost arm reads it")),
+        (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "a lambda parameter or comprehension variable: bound by its expression, whose target is LOCAL's Comprehension construct")),
+        (BindingKind.LocalVar, AxisMembership.Everywhere),
+        (BindingKind.LocalLet, AxisMembership.Everywhere),
+        (BindingKind.LocalLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.LocalComputedConst, AxisMembership.Everywhere),
+        (BindingKind.LocalDef, AxisMembership.Everywhere),
+        (BindingKind.LambdaTypedLocal, AxisMembership.Everywhere));
+
     /// <summary>STORE's target scope (finding 4): the image of <see cref="ScopeKind"/>, the other three with their reasons.</summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<StoreTargetScope>> StoreTargetScopes = Roster.Map(
         (ScopeKind.Block, Roster.To(StoreTargetScope.SameBlock, StoreTargetScope.EnclosingBlock)),
@@ -2019,6 +2036,23 @@ public partial class NameResolutionDifferentialTests
             .Select(row => $"LocalOuter: {row.Key} is left out, and only D3.e's pruning order may leave a module or type kind out"));
 
         AssertNoProblems(problems, "LOCAL's outer is the whole roster, or a value names why it is pruned (finding 3)");
+    }
+
+    /// <summary>P77b deferred finding 5: LOCAL's binder axis is a map over roster 1's position-local group, both
+    /// directions, each value generated or out with a reason. A kind added to the group with no entry is red here.</summary>
+    [Fact]
+    public void LocalKindsRoster_IsTotalOverPositionLocalKinds()
+    {
+        var problems = Roster.TotalityProblems("LocalKinds", NameResolutionRosters.PositionLocalKinds, NameResolutionRosters.LocalKinds.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.LocalKinds)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"LocalKinds: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"LocalKinds: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "LOCAL's binder axis is the position-local kinds' image, each left-out kind naming why");
     }
 
     [Fact]
