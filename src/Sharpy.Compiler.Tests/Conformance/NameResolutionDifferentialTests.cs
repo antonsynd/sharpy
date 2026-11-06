@@ -501,6 +501,16 @@ public partial class NameResolutionDifferentialTests
             r.StandardOutput, r.StandardError, errors, all, cs);
     }
 
+    /// <summary>D4.3: a Sharpy run that times out is re-run ONCE at twice the timeout before <see cref="ClassifySharpy"/> sees
+    /// it, so one slow cell on a loaded machine is not a red; a second timeout stays a timeout (Harness, red). The run is a
+    /// parameter so the retry is testable without a real hang.</summary>
+    internal static SharpyRun RunWithRetry(Func<string, int, SharpyRun> run, string source, int timeoutMs, out bool retried)
+    {
+        var first = run(source, timeoutMs);
+        retried = first.TimedOut;
+        return first.TimedOut ? run(source, 2 * timeoutMs) : first;
+    }
+
     private static string SourceKey(string source)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)));
 
@@ -550,6 +560,7 @@ public partial class NameResolutionDifferentialTests
         var cachePath = Environment.GetEnvironmentVariable(CacheEnv);
         var cache = LoadCache(cachePath);
         int cached = 0;
+        int retried = 0;
         var runs = new SharpyRun[cells.Count];
         for (int i = 0; i < cells.Count; i++)
         {
@@ -561,7 +572,9 @@ public partial class NameResolutionDifferentialTests
             }
             else
             {
-                runs[i] = RunSharpy(cells[i].Source);
+                runs[i] = RunWithRetry((src, timeout) => RunSharpy(src, timeout), cells[i].Source, SharpyExecTimeoutMs, out var again);
+                if (again)
+                    retried++;
                 if (cachePath != null)
                     cache[key] = runs[i];
             }
@@ -617,7 +630,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(RefusalCodeFailures(results, partial));
 
         wall.Stop();
-        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, wall.Elapsed);
+        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, wall.Elapsed);
         WriteProposedAllowlist(results);
 
         Output.WriteLine(report);
@@ -679,6 +692,7 @@ public partial class NameResolutionDifferentialTests
         IReadOnlyList<string> ineffective,
         bool partial,
         int cached,
+        int retried,
         TimeSpan wall)
     {
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
@@ -700,6 +714,7 @@ public partial class NameResolutionDifferentialTests
             pythonControlCells = results.Count,
             generatorBugs = results.Count(r => r.Class == VerdictClass.GeneratorBug),
             harness = results.Count(r => r.Class == VerdictClass.Harness),
+            retried,
             allowlistSize = rows.Count,
             nonAllowlistedRed = offenders.Count,
             staleRows = stale,
@@ -746,7 +761,7 @@ public partial class NameResolutionDifferentialTests
 
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
         return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
-            + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, "
+            + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, retried {retried}, "
             + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
     }
 

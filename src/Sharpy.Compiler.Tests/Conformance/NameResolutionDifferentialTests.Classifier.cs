@@ -85,6 +85,52 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.TimedOut, ""));
     }
 
+    /// <summary>D4.3: a run that times out once and finishes at twice the timeout is judged on the second run (Ran); a run that
+    /// times out twice stays a timeout, which is Harness (the positive control: the retry hides no real hang).</summary>
+    [Fact]
+    public void Classifier_ATimeoutIsRetriedOnceAtTwiceTheTimeout()
+    {
+        var timeouts = new List<int>();
+        var timedOut = Literal() with { Success = false, ExitCode = null, TimedOut = true };
+        SharpyRun OnceSlow(string _, int timeout)
+        {
+            timeouts.Add(timeout);
+            return timeouts.Count == 1 ? timedOut : Literal();
+        }
+
+        var run = RunWithRetry(OnceSlow, "src", 100, out var retried);
+
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(run));
+        Assert.True(retried);
+        Assert.Equal(new[] { 100, 200 }, timeouts);
+
+        timeouts.Clear();
+        SharpyRun AlwaysSlow(string _, int timeout)
+        {
+            timeouts.Add(timeout);
+            return timedOut;
+        }
+
+        var hung = RunWithRetry(AlwaysSlow, "src", 100, out var retriedHung);
+
+        Assert.True(retriedHung);
+        Assert.Equal(new[] { 100, 200 }, timeouts);
+        Assert.Equal(SharpyKind.TimedOut, ClassifySharpy(hung));
+        Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, ""), ClassifySharpy(hung), hung.Stdout));
+
+        timeouts.Clear();
+        SharpyRun Fast(string _, int timeout)
+        {
+            timeouts.Add(timeout);
+            return Literal();
+        }
+
+        RunWithRetry(Fast, "src", 100, out var retriedFast);
+
+        Assert.False(retriedFast);
+        Assert.Equal(new[] { 100 }, timeouts);
+    }
+
     [Fact]
     public void Classifier_CodeSets_ClassifyByCode()
     {
