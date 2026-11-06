@@ -827,7 +827,7 @@ public partial class NameResolutionDifferentialTests
             foreach (var body in LocalBodies)
                 yield return LocalProgram(CellId("local", "L28", $"outer={u}", body), BindingKind.EnclosingLocal, u, body,
                     new[] { "def g() -> int:", "    return x", "x: int = 15", "print(g())" },
-                    new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(15), "unruled:L28"), "L28", plain);
+                    Refuse(PyOutcome.Ran(15), "N5-declared-later"), null, plain);
 
         foreach (var cell in ConstructTargetCells())
             yield return cell;
@@ -1219,7 +1219,6 @@ public partial class NameResolutionDifferentialTests
     /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
     internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        ["L28"] = 6,
         ["match-capture:none"] = 6,
         ["match-capture:visible"] = 46,
         ["match-capture:builtin"] = 16,
@@ -1260,7 +1259,6 @@ public partial class NameResolutionDifferentialTests
         ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
         ["store-non-writable:ModuleTypeAlias:global"] = 3,
         ["seed:A12"] = 1,
-        ["seed:B09"] = 1,
         ["seed:B21"] = 1,
         ["seed:B22"] = 1,
         ["seed:B24"] = 1,
@@ -1276,8 +1274,6 @@ public partial class NameResolutionDifferentialTests
         var capture = c.Construct is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture;
         switch (parts[0])
         {
-            case "L28":
-                return c.Family == Family.Local && c.Target == BindingKind.EnclosingLocal && c.Outer is BindingKind.None or BindingKind.ModuleVar;
             case "match-capture":
                 return c.Family == Family.Local && capture && parts[1] == (c.Outer switch
                 {
