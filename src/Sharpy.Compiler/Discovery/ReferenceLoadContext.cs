@@ -111,7 +111,13 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
            + "|" + string.Join(";", prior.Select(a => FileIdentity(a.Location)))
            + "|" + string.Join(";", modulePaths);
 
-    private static string FileIdentity(string path)
+    /// <summary>
+    /// A file's disk identity — full path, length and last write time, or the bare path when it does
+    /// not exist. Shared with the incremental cache's facts fingerprint
+    /// (<see cref="Project.IncrementalCompilationCache.ProjectFactsOf"/>), so a reference this context
+    /// would load afresh is also one that invalidates the cache.
+    /// </summary>
+    internal static string FileIdentity(string path)
     {
         var info = new FileInfo(path);
         return info.Exists

@@ -226,7 +226,7 @@ internal partial class ProjectCompiler
 
         if (_incremental)
         {
-            _incrementalCache = new IncrementalCompilationCache(config, _logger);
+            _incrementalCache = new IncrementalCompilationCache(config, _logger, _features);
             _incrementalCache.LoadAllCaches();
 
             // Build a dependency graph from cached dependencies to determine transitive affected files.

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
@@ -1104,7 +1105,7 @@ def main() -> None:
         var warmMain = Write("pkgwarm", "main.spy", main);
         var warmCore = Write(Path.Combine("pkgwarm", "lib"), "core.spy", core);
         var first = Build(Config("pkgwarm", warmMain, warmCore));
-        first.Success.Should().BeTrue("the collision-free layout builds. Diagnostics:\n" + Diagnostics(first));
+        first.Success.Should().BeTrue("the collision-free layout builds. Diagnostics:\n" + "");
 
         var warmLib = Write("pkgwarm", "lib.spy", lib);
         var warm = Build(Config("pkgwarm", warmMain, warmCore, warmLib));
@@ -1365,7 +1366,333 @@ def main() -> None:
             + "invalidation compares facts rather than disabling the cache");
     }
 
-    private static ProjectCompilationResult BuildCacheless(ProjectConfig config)
-        => new Compiler(new CompilerOptions { Incremental = false }, NullLogger.Instance)
+    private static ProjectCompilationResult BuildCacheless(ProjectConfig config, FeatureFlags? features = null)
+        => new Compiler(new CompilerOptions { Incremental = false, Features = features ?? FeatureFlags.None }, NullLogger.Instance)
             .CompileProject(config);
+
+    private static ProjectCompilationResult BuildWith(ProjectConfig config, FeatureFlags? features)
+        => new Compiler(new CompilerOptions { Incremental = true, Features = features ?? FeatureFlags.None }, NullLogger.Instance)
+            .CompileProject(config);
+
+    private const string FoldMainSource = "def main() -> None:\n    x = 2 * 3 + 4\n    print(x)\n";
+
+    /// <summary>
+    /// The options axis of the facts key: a build whose ONLY change is the feature set. A lowering flag
+    /// (<c>opt_const_fold</c>) changes the C# a unit emits, and nothing in a source file says so. At
+    /// ee9a007 the warm build ignored the flag in both directions — enabling it served the unfolded
+    /// <c>2 * 3 + 4</c>, disabling it again served the folded <c>10</c> — because the key held only
+    /// the layout facts. The four steps are the reported reproduction: cold off, warm on, warm on
+    /// again, warm off; each warm build is compared with a cache-less build under the same flags.
+    /// Two routes reach the effective set (<see cref="Sharpy.Compiler.Services.ProjectOptionsMerge"/>):
+    /// the CLI's <c>--enable-feature</c> (compiler options) and the project's <c>&lt;Features&gt;</c>.
+    /// Positive controls: the two cold builds differ (the flag has an effect, or this cell measures
+    /// nothing), and the unchanged third build is served from the cache (invalidation compares
+    /// facts rather than disabling the cache).
+    /// </summary>
+    [Theory]
+    [InlineData("cli")]
+    [InlineData("spyproj")]
+    public void TogglingOnlyAFeatureFlag_BuildsWhatAColdBuildBuilds(string route)
+    {
+        var area = "feature_" + route;
+        var main = Write(area, "main.spy", FoldMainSource);
+        var other = Write(area, "other.spy", "def helper() -> int:\n    return 1\n");
+        var flag = FeatureFlags.None.Enable("opt_const_fold");
+
+        ProjectConfig ConfigFor(bool on)
+        {
+            var config = Config(area, main, other);
+            return route == "spyproj" && on
+                ? new ProjectConfig
+                {
+                    ProjectFilePath = config.ProjectFilePath,
+                    ProjectDirectory = config.ProjectDirectory,
+                    RootNamespace = config.RootNamespace,
+                    SourceFiles = config.SourceFiles,
+                    Configuration = config.Configuration,
+                    Features = new List<string> { "opt_const_fold" },
+                }
+                : config;
+        }
+
+        FeatureFlags? OptionFlags(bool on) => route == "cli" && on ? flag : null;
+        ProjectCompilationResult Warm(bool on) => BuildWith(ConfigFor(on), OptionFlags(on));
+        ProjectCompilationResult Cold(bool on) => BuildCacheless(ConfigFor(on), OptionFlags(on));
+
+        string MainCs(ProjectCompilationResult r) => Generated(r)["main.cs"];
+
+        var coldOff = Cold(false);
+        var coldOn = Cold(true);
+        coldOff.Success.Should().BeTrue("cold, flag off. Diagnostics:\n" + Diagnostics(coldOff));
+        coldOn.Success.Should().BeTrue("cold, flag on. Diagnostics:\n" + Diagnostics(coldOn));
+        MainCs(coldOn).Should().NotBe(MainCs(coldOff),
+            $"[{route}] positive control: opt_const_fold must change the emitted C#, or the toggle below measures nothing");
+        MainCs(coldOn).Should().Contain("10", $"[{route}] the folded constant");
+
+        // Step 1: cold (no cache yet), flag off.
+        var step1 = Warm(false);
+        step1.Success.Should().BeTrue();
+        Generated(step1).Should().BeEquivalentTo(Generated(coldOff), $"[{route}] step 1 is a cold build");
+
+        // Step 2: flag on, no source edited.
+        var step2 = Warm(true);
+        step2.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(step2));
+        Generated(step2).Should().BeEquivalentTo(Generated(coldOn),
+            $"[{route}] enabling the flag with no source edit must emit what a cold build with the flag emits "
+            + "(ee9a007 served the unfolded C#)");
+
+        // Step 3: unchanged — the cache serves again.
+        var step3 = Warm(true);
+        Skipped(step3).Should().BeEquivalentTo(new[] { "main.spy", "other.spy" },
+            $"[{route}] with the feature set unchanged the cache serves again — the positive control that the "
+            + "invalidation compares facts rather than disabling the cache");
+        Generated(step3).Should().BeEquivalentTo(Generated(coldOn), $"[{route}] step 3");
+
+        // Step 4: flag off again.
+        var step4 = Warm(false);
+        step4.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(step4));
+        Generated(step4).Should().BeEquivalentTo(Generated(coldOff),
+            $"[{route}] disabling the flag with no source edit must emit what a cold build without it emits "
+            + "(ee9a007 kept serving the folded C#)");
+    }
+
+    /// <summary>
+    /// The reference axis of the facts key (#2114): the consumer's reference set changes and no
+    /// consumer source does. The cell drops the library's <c>&lt;Reference&gt;</c>: a cold build
+    /// refuses the import, and before the reference set joined the key the warm build served both
+    /// cached units and failed only at the emitted C# (SPY0908) — the shape #2114 reports for a
+    /// rebuilt library.
+    ///
+    /// <para>The rebuilt-library cell itself (#2114's exact sequence) is
+    /// <c>Sharpy.Cli.Tests.E2E.IncrementalOptionsKeyE2ETests</c>: in THIS process, once one compile has
+    /// loaded the library, a later cold compile still binds the old exports after the file is
+    /// replaced (#2114's process-lifetime cell), so warm ≡ cold cannot be measured here for it. A
+    /// removed reference needs no second load, so it measures the key in process.</para>
+    ///
+    /// <para>Positive controls: the consumer builds against the library; restoring the reference
+    /// builds again, and an unchanged build after that is served from the cache.</para>
+    /// </summary>
+    [Fact]
+    public void DroppingAReference_BuildsWhatAColdBuildBuilds()
+    {
+        const string area = "reference";
+        var libDir = Path.Combine(_tempDir, area, "lib");
+        var libFile = Write(Path.Combine(area, "lib"), "coldwarm_ref_m5.spy",
+            "def f() -> int:\n    return 1\n\n\ndef h() -> int:\n    return 2\n");
+        var lib = BuildCacheless(new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(libDir, "lib.spyproj"),
+            ProjectDirectory = libDir,
+            RootNamespace = "ColdWarmRefLib",
+            AssemblyName = "ColdWarmRefLib",
+            OutputType = "library",
+            SourceFiles = new List<string> { libFile },
+            Configuration = "Debug",
+        });
+        lib.Success.Should().BeTrue("the library builds. Diagnostics:\n" + Diagnostics(lib));
+        var libPath = lib.OutputAssemblyPath!;
+
+        var appDir = Path.Combine(_tempDir, area, "app");
+        var main = Write(Path.Combine(area, "app"), "main.spy",
+            "from coldwarm_ref_m5 import f, h\n\n\ndef main() -> None:\n    print(f())\n    print(h())\n");
+        var other = Write(Path.Combine(area, "app"), "other.spy", "def value() -> int:\n    return 1\n");
+
+        // The sharpyc route: the defaults join the project's references, and discovery reads the
+        // reference set from the compiler options (CompilerOptionsFactory.ForProject).
+        ProjectCompilationResult BuildApp(bool withReference, bool incremental)
+        {
+            var config = new ProjectConfig
+            {
+                ProjectFilePath = Path.Combine(appDir, "app.spyproj"),
+                ProjectDirectory = appDir,
+                RootNamespace = "ColdWarmRefApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string> { main, other },
+                References = withReference ? new List<string> { libPath } : new List<string>(),
+                Configuration = "Debug",
+            };
+            var defaults = DefaultReferences.Resolve();
+            DefaultReferences.ApplyTo(config, defaults);
+            var options = CompilerOptionsFactory.ForProject(
+                config, defaultReferences: defaults, incremental: incremental, features: FeatureFlags.None);
+            return new Compiler(options, NullLogger.Instance).CompileProject(config);
+        }
+
+        var first = BuildApp(withReference: true, incremental: true);
+        first.Success.Should().BeTrue("the consumer builds against the library. Diagnostics:\n" + Diagnostics(first));
+
+        var warm = BuildApp(withReference: false, incremental: true);
+        var cold = BuildApp(withReference: false, incremental: false);
+        _output.WriteLine("cold:\n" + Diagnostics(cold) + "\nwarm:\n" + Diagnostics(warm));
+        cold.Success.Should().BeFalse("positive control: without the reference a cold build refuses the import");
+
+        Diagnostics(warm).Should().Be(Diagnostics(cold),
+            "the warm build must report what the cold build reports — not serve units compiled against a "
+            + "reference the project no longer has (SPY0908 before the reference set joined the cache key, #2114)");
+        warm.Success.Should().Be(cold.Success);
+
+        var restored = BuildApp(withReference: true, incremental: true);
+        restored.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(restored));
+        var again = BuildApp(withReference: true, incremental: true);
+        Skipped(again).Should().BeEquivalentTo(new[] { "main.spy", "other.spy" },
+            "with the reference set unchanged the cache serves again — invalidation compares the reference "
+            + "set rather than disabling the cache");
+    }
+
+    /// <summary>
+    /// Totality of the facts key over every non-source input that reaches a cached unit: each axis,
+    /// moved alone, must move <see cref="IncrementalCompilationCache.ProjectFactsOf"/>. The two
+    /// differential cells above prove the key is CONSULTED for features and references; this proves it
+    /// COVERS each remaining axis, including those whose observable effect needs an environment a unit
+    /// test cannot build (a restored NuGet package, a test host). The policy-only axes
+    /// (warnings-as-errors, suppressed warnings) must NOT move it: the cache stores policy-free
+    /// diagnostics and the policy applies at replay (#1553) — the moving rows are this cell's
+    /// positive control.
+    /// </summary>
+    [Theory]
+    [InlineData("entry_point", true)]
+    [InlineData("output_type", true)]
+    [InlineData("root_namespace", true)]
+    [InlineData("source_root", true)]
+    [InlineData("project_features", true)]
+    [InlineData("option_features", true)]
+    [InlineData("target_framework", true)]
+    [InlineData("configuration", true)]
+    [InlineData("test_host", true)]
+    [InlineData("line_directives", true)]
+    [InlineData("reference_added", true)]
+    [InlineData("reference_rebuilt", true)]
+    [InlineData("module_path_added", true)]
+    [InlineData("module_path_assembly_rebuilt", true)]
+    [InlineData("package_added", true)]
+    [InlineData("package_version", true)]
+    [InlineData("warnings_as_errors", false)]
+    [InlineData("suppressed_warnings", false)]
+    public void TheFactsKey_MovesWithEveryNonSourceInput(string axis, bool moves)
+    {
+        var area = "key_" + axis;
+        var dir = Path.Combine(_tempDir, area);
+        var app = Write(Path.Combine(area, "src"), "app.spy", "def main() -> None:\n    print(1)\n");
+        var extra = Write(Path.Combine(area, "tools"), "extra.spy", "def helper() -> int:\n    return 1\n");
+        var reference = Write(Path.Combine(area, "refs"), "Dep.dll", "v1");
+        var moduleDir = Path.Combine(dir, "modules");
+        var moduleAssembly = Write(Path.Combine(area, "modules"), "Mod.dll", "v1");
+
+        ProjectConfig Make(Action<ProjectConfigDraft>? edit = null)
+        {
+            var d = new ProjectConfigDraft { SourceFiles = new List<string> { app } };
+            edit?.Invoke(d);
+            return new ProjectConfig
+            {
+                ProjectFilePath = Path.Combine(dir, "test.spyproj"),
+                ProjectDirectory = dir,
+                RootNamespace = d.RootNamespace,
+                OutputType = d.OutputType,
+                EntryPoint = d.EntryPoint,
+                SourceFiles = d.SourceFiles,
+                Configuration = d.Configuration,
+                TargetFramework = d.TargetFramework,
+                TestHost = d.TestHost,
+                EmitLineDirectives = d.EmitLineDirectives,
+                Features = d.Features,
+                References = d.References,
+                ModulePaths = d.ModulePaths,
+                PackageReferences = d.Packages,
+                WarningsAsErrors = d.WarningsAsErrors,
+                SuppressedWarnings = d.Suppressed,
+            };
+        }
+
+        var baseline = Make(d =>
+        {
+            d.References.Add(reference);
+            d.ModulePaths.Add(moduleDir);
+            d.Packages.Add(new PackageRef("Coldwarm.Nonexistent.Package", "1.0.0"));
+        });
+        var before = IncrementalCompilationCache.ProjectFactsOf(baseline);
+        IncrementalCompilationCache.ProjectFactsOf(baseline).Should().Be(before, "the key is deterministic");
+
+        FeatureFlags? optionFeatures = null;
+        ProjectConfig after = baseline;
+        void Base(ProjectConfigDraft d)
+        {
+            d.References.Add(reference);
+            d.ModulePaths.Add(moduleDir);
+            d.Packages.Add(new PackageRef("Coldwarm.Nonexistent.Package", "1.0.0"));
+        }
+
+        switch (axis)
+        {
+            case "entry_point": after = Make(d => { Base(d); d.EntryPoint = "app.spy"; }); break;
+            case "output_type": after = Make(d => { Base(d); d.OutputType = "exe"; }); break;
+            case "root_namespace": after = Make(d => { Base(d); d.RootNamespace = "Renamed"; }); break;
+            case "source_root": after = Make(d => { Base(d); d.SourceFiles.Add(extra); }); break;
+            case "project_features": after = Make(d => { Base(d); d.Features.Add("opt_const_fold"); }); break;
+            case "option_features": optionFeatures = FeatureFlags.None.Enable("opt_const_fold"); break;
+            case "target_framework": after = Make(d => { Base(d); d.TargetFramework = "net9.0"; }); break;
+            case "configuration": after = Make(d => { Base(d); d.Configuration = "Release"; }); break;
+            case "test_host": after = Make(d => { Base(d); d.TestHost = true; }); break;
+            case "line_directives": after = Make(d => { Base(d); d.EmitLineDirectives = false; }); break;
+            case "reference_added":
+                var second = Write(Path.Combine(area, "refs"), "Dep2.dll", "v1");
+                after = Make(d => { Base(d); d.References.Add(second); });
+                break;
+            case "reference_rebuilt":
+                File.WriteAllText(reference, "v2 rebuilt");
+                break;
+            case "module_path_added":
+                Directory.CreateDirectory(Path.Combine(dir, "modules2"));
+                after = Make(d => { Base(d); d.ModulePaths.Add(Path.Combine(dir, "modules2")); });
+                break;
+            case "module_path_assembly_rebuilt":
+                File.WriteAllText(moduleAssembly, "v2 rebuilt");
+                break;
+            case "package_added":
+                after = Make(d => { Base(d); d.Packages.Add(new PackageRef("Coldwarm.Other.Package", "2.0.0")); });
+                break;
+            case "package_version":
+                after = Make(d =>
+                {
+                    d.References.Add(reference);
+                    d.ModulePaths.Add(moduleDir);
+                    d.Packages.Add(new PackageRef("Coldwarm.Nonexistent.Package", "1.0.1"));
+                });
+                break;
+            case "warnings_as_errors": after = Make(d => { Base(d); d.WarningsAsErrors = true; }); break;
+            case "suppressed_warnings": after = Make(d => { Base(d); d.Suppressed.Add("SPY0451"); }); break;
+            default: throw new ArgumentOutOfRangeException(nameof(axis), axis, null);
+        }
+
+        var afterFacts = IncrementalCompilationCache.ProjectFactsOf(after, optionFeatures);
+        if (moves)
+        {
+            afterFacts.Should().NotBe(before, $"[{axis}] reaches a cached unit, so it must invalidate the cache");
+            IncrementalCompilationCache.ChangedFactKeys(before, afterFacts).Should().NotBeEmpty(
+                $"[{axis}] the invalidation log names the moved fact");
+        }
+        else
+        {
+            afterFacts.Should().Be(before,
+                $"[{axis}] is replay-time policy (#1553), so it must not discard the cache");
+        }
+    }
+
+    private sealed class ProjectConfigDraft
+    {
+        public string RootNamespace { get; set; } = "Key";
+        public string OutputType { get; set; } = "library";
+        public string? EntryPoint { get; set; }
+        public List<string> SourceFiles { get; set; } = new();
+        public string Configuration { get; set; } = "Debug";
+        public string TargetFramework { get; set; } = "net10.0";
+        public bool TestHost { get; set; }
+        public bool EmitLineDirectives { get; set; } = true;
+        public List<string> Features { get; } = new();
+        public List<string> References { get; } = new();
+        public List<string> ModulePaths { get; } = new();
+        public List<PackageRef> Packages { get; } = new();
+        public bool WarningsAsErrors { get; set; }
+        public HashSet<string> Suppressed { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
 }

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
@@ -193,7 +194,13 @@ internal class IncrementalCompilationCache
     /// </summary>
     /// <param name="projectConfig">The project configuration.</param>
     /// <param name="logger">Optional logger for debug output.</param>
-    public IncrementalCompilationCache(ProjectConfig projectConfig, ICompilerLogger? logger = null)
+    /// <param name="features">
+    /// The EFFECTIVE feature set the compilation runs with — CLI <c>--enable-feature</c> flags unioned
+    /// with the project's <c>&lt;Features&gt;</c> (<see cref="Services.ProjectOptionsMerge"/>). Null
+    /// means the project's own <c>&lt;Features&gt;</c> only, for callers that have no option layer.
+    /// </param>
+    public IncrementalCompilationCache(ProjectConfig projectConfig, ICompilerLogger? logger = null,
+        FeatureFlags? features = null)
     {
         _logger = logger ?? NullLogger.Instance;
 
@@ -202,25 +209,117 @@ internal class IncrementalCompilationCache
         Directory.CreateDirectory(objDir);
         _cacheFilePath = Path.Combine(objDir, ".sharpy-cache");
         _symbolCachePath = Path.Combine(objDir, ".sharpy-symbols");
-        _projectFacts = ProjectFactsOf(projectConfig);
+        _projectFacts = ProjectFactsOf(projectConfig, features);
 
         _fileHashes = LoadHashCache();
     }
 
     /// <summary>
-    /// The project facts a cached unit's recorded layout depends on (#2013 warm axis): the entry
-    /// point and output type decide which unit carries <c>Main</c> (the entry bit and the exe's entry
-    /// type), the root namespace and the common source root spell every module's namespace. None of
-    /// them is in a source file, so a content hash cannot see them change — editing only the
-    /// <c>.spyproj</c> served the stale entry bit and layout (CS1558/CS1555 behind SPY0908; the base
-    /// commit built and ran the OLD entry point). A change to any of them invalidates the whole cache.
+    /// Every compilation input that is not a source file but decides what a cached unit holds — its
+    /// generated C#, its symbols, its diagnostics, its recorded layout. A content hash cannot see any
+    /// of them change, so the whole set is compared as one fingerprint and a change to any of them
+    /// invalidates the whole cache.
+    /// <list type="bullet">
+    ///   <item>Layout (#2013 warm axis): the entry point and output type decide which unit carries
+    ///   <c>Main</c>; the root namespace and the module root spell every module's namespace. Editing
+    ///   only the <c>.spyproj</c> served the stale entry bit and layout (CS1558/CS1555 behind
+    ///   SPY0908; the base commit built and ran the OLD entry point).</item>
+    ///   <item>Options: the effective feature set (a lowering flag such as <c>opt_const_fold</c>
+    ///   changes the C# a unit emits; toggling it served the other setting's C#), the target
+    ///   framework, the configuration, the test-host bit and <c>#line</c> emission, all of which reach
+    ///   code generation.</item>
+    ///   <item>The reference closure (#2114): each <c>-r</c> assembly, each module search path's
+    ///   assemblies and each package's resolved assemblies, by path, size and write time. A changed
+    ///   assembly changes what the cached units' symbols bind to, so serving them was SPY0908 where
+    ///   a cold build reports SPY0301.</item>
+    /// </list>
+    /// Warnings-as-errors and suppressed warnings are deliberately absent: the cache stores
+    /// policy-free per-unit diagnostics and the project bag applies the policy at replay (#1553).
+    /// The compiler's own identity is checked separately (<see cref="GetCompilerVersion"/>).
+    /// Each line is <c>key=value</c>, so <see cref="ChangedFactKeys"/> can name what moved.
     /// </summary>
-    internal static string ProjectFactsOf(ProjectConfig config)
-        => string.Join("\n",
+    internal static string ProjectFactsOf(ProjectConfig config, FeatureFlags? features = null)
+    {
+        var effectiveFeatures = features ?? FeatureFlags.None.Enable(config.Features);
+        var lines = new List<string>
+        {
             "entry=" + (config.EntryPoint ?? string.Empty),
             "output=" + config.OutputType,
             "root-namespace=" + config.RootNamespace,
-            "source-root=" + PathNormalizer.Normalize(ProjectCompiler.ComputeSourceRootPath(config)));
+            "source-root=" + PathNormalizer.Normalize(ProjectCompiler.ComputeSourceRootPath(config)),
+            "features=" + string.Join(",", effectiveFeatures.EnabledFeatures),
+            "target-framework=" + config.TargetFramework,
+            "configuration=" + config.Configuration,
+            "test-host=" + config.TestHost,
+            "line-directives=" + config.EmitLineDirectives,
+        };
+
+        // Order is kept as written: the registry loads references in this order, so a reorder can
+        // change which assembly answers a name.
+        foreach (var reference in config.References)
+            lines.Add("reference=" + FileIdentity(reference));
+
+        foreach (var modulePath in config.ModulePaths)
+        {
+            var full = Path.GetFullPath(modulePath);
+            lines.Add("module-path=" + PathNormalizer.Normalize(full));
+            if (!Directory.Exists(full))
+                continue;
+            foreach (var assembly in Directory.EnumerateFiles(full, "*.dll").OrderBy(f => f, StringComparer.Ordinal))
+                lines.Add("module-path-assembly=" + FileIdentity(assembly));
+        }
+
+        foreach (var package in config.PackageReferences)
+        {
+            lines.Add($"package={package.Name}/{package.Version}");
+            // The resolved assemblies, not just the declared identity: a re-restore (or a resolved
+            // version that differs from the requested one, #1580) changes what the units bind to.
+            // A local ~/.nuget scan, the same one CompilerApi.BuildAnalysisCacheKey keys on.
+            foreach (var assembly in NuGetResolver.ResolvePackage(
+                package, config.TargetFramework, logger: null, config.ResolvedVersions))
+                lines.Add("package-assembly=" + FileIdentity(assembly));
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// A file's identity for the facts fingerprint — the reference load context's definition, so a
+    /// reference that appears, disappears or is rebuilt in place moves the fingerprint. A path the
+    /// file system refuses to describe is fingerprinted as unreadable rather than failing the build.
+    /// </summary>
+    private static string FileIdentity(string path)
+    {
+        try
+        {
+            return Discovery.ReferenceLoadContext.FileIdentity(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException
+            or NotSupportedException)
+        {
+            return path + ":unreadable";
+        }
+    }
+
+    /// <summary>
+    /// The keys whose lines differ between two facts fingerprints, for the invalidation log line.
+    /// A null <paramref name="before"/> (a cache written before facts existed) reports every key.
+    /// </summary>
+    internal static IReadOnlyList<string> ChangedFactKeys(string? before, string after)
+    {
+        static Dictionary<string, List<string>> Group(string? facts)
+            => (facts ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => (Key: line.Split('=', 2)[0], Line: line))
+                .GroupBy(x => x.Key, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Line).ToList(), StringComparer.Ordinal);
+
+        var b = Group(before);
+        var a = Group(after);
+        return b.Keys.Union(a.Keys, StringComparer.Ordinal)
+            .Where(key => !b.TryGetValue(key, out var bl) || !a.TryGetValue(key, out var al) || !bl.SequenceEqual(al))
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToList();
+    }
 
     /// <summary>
     /// Computes the SHA-256 hash of a file's contents.
@@ -737,7 +836,9 @@ internal class IncrementalCompilationCache
 
                 if (!string.Equals(metadata.ProjectFacts, _projectFacts, StringComparison.Ordinal))
                 {
-                    _logger.LogInfo("Project facts changed (entry point, output type, root namespace or source root); invalidating cache");
+                    _logger.LogInfo("Project facts changed ("
+                        + string.Join(", ", ChangedFactKeys(metadata.ProjectFacts, _projectFacts))
+                        + "); invalidating cache");
                     return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
 
