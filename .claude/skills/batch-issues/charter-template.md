@@ -1,4 +1,4 @@
-# Charter template — `.claude/plans/remediation-round-<YYYY-MM-DD>-batching.md`
+# Charter template — `docs/process/rounds/remediation-round-<YYYY-MM-DD>-batching.md` (tracked; committed at every batching call)
 
 Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plans and comments can cite `§3.x`.
 

@@ -3,7 +3,7 @@
 Header (every comment):
 
 ```
-**Batching <YYYY-MM-DD> @ <sha>** — charter `.claude/plans/remediation-round-<date>-batching.md` §<3.x>, **P<n> — <group name>** (order <k>[, one commit, no plan]).
+**Batching <YYYY-MM-DD> @ <sha>** — charter `docs/process/rounds/remediation-round-<date>-batching.md` §<3.x>, **P<n> — <group name>** (order <k>[, one commit, no plan]).
 ```
 
 ## Placement comment (batched issue, no ruling)
@@ -60,5 +60,5 @@ Header (every comment):
 
 Labels: `class-tracker`, `lane:<lane>`, `reach:<reach>`.
 
-Charter: `.claude/plans/remediation-round-<date>-batching.md` §<3.x> — <group>[ phase <k>]. Sibling: #<n>.
+Charter: `docs/process/rounds/remediation-round-<date>-batching.md` §<3.x> — <group>[ phase <k>]. Sibling: #<n>.
 ```

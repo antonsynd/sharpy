@@ -13,9 +13,10 @@ Verify that a plan has been fully and correctly implemented. Reads the plan, der
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-If `$ARGUMENTS` is empty, plans are split across two directories (repo-local `.claude/plans/`, gitignored, is the default; per-batch plans created before 2026-08-26 live in `~/.claude/plans/`). List the three newest across both and **ask** which one — never pick silently:
+The plan is the committed copy at `docs/process/plans/<plan-id>.md` (written by `/verify-plan`, updated by `/implement-plan`; policy: `docs/process/README.md`); the gitignored draft in `.claude/plans/` is read only when no committed copy exists, and the close step (§Cleanup and Report) then creates one. If `$ARGUMENTS` is empty, list the three newest in each and **ask** which one — never pick silently:
 ```bash
-ls -t .claude/plans/*.md ~/.claude/plans/*.md 2>/dev/null | head -3
+ls -t docs/process/plans/*.md 2>/dev/null | head -3    # committed, verified plans — read these first
+ls -t .claude/plans/*.md 2>/dev/null | head -3         # drafts (gitignored) — only when the plan has no committed copy
 ```
 
 Read the plan file completely before proceeding.
@@ -426,7 +427,8 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
-3. Present the verification report:
+3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (after the Verification Summary; verbatim, every count `@ sha`), then commit that one file by explicit pathspec — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit: the close is the plan's final state of record (`docs/process/README.md`). If the plan was read from `.claude/plans/` (no committed copy), `cp` it to `docs/process/plans/<plan-id>.md` first and commit it in the same commit. Never commit another plan or the charter alongside.
+4. Present the verification report:
 
 ```markdown
 ## Implementation Verification Report

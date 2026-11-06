@@ -9,7 +9,7 @@ Read `docs/design/verification-contract.md` §1 (class contract, standard cures)
 **Usage:**
 - `/batch-issues` — read all open issues, batch, present groups + per-issue recommendations + decisions
 - `/batch-issues --issues 1946,1947` — batch only these into the CURRENT round's charter (incremental placement after a verify round files new issues)
-- `/batch-issues --charter .claude/plans/remediation-round-YYYY-MM-DD-batching.md` — extend an existing charter instead of starting a new one
+- `/batch-issues --charter docs/process/rounds/remediation-round-YYYY-MM-DD-batching.md` — extend an existing charter instead of starting a new one
 
 The owner replies with rulings ("D1 a, D2 a-then-c, …"); the application turn then follows §"Turn 2".
 
@@ -17,7 +17,7 @@ The owner replies with rulings ("D1 a, D2 a-then-c, …"); the application turn 
 
 ### 1. Pin the state
 - `git rev-parse --short HEAD`, `git status --porcelain` — record the sha; batching is done on a clean tree at HEAD == origin/dev.
-- Find the newest charter: `ls -t .claude/plans/remediation-round-*-batching.md | head -1`. Read its §1 order, §2 done ledger, §3.10 parked list, §4 rulings and §6 cross-cutting notes. **Standing rulings are never re-asked**; the ruling sequence (R-A, R-B, …) continues from the last letter used.
+- Find the newest charter: `ls -t docs/process/rounds/remediation-round-*-batching.md | head -1` (charters are committed development history, edited in place and committed at every call — policy in `docs/process/README.md`). Read its §1 order, §2 done ledger, §3.10 parked list, §4 rulings and §6 cross-cutting notes. **Standing rulings are never re-asked**; the ruling sequence (R-A, R-B, …) continues from the last letter used.
 - Read the memory index for "don't re-ask" / "don't re-propose" entries (parked designs, rejected alternatives).
 
 ### 2. Read every open issue in full
@@ -67,16 +67,16 @@ Apply in this order; every step is idempotent and reported.
 
 1. **Assign ruling codes** continuing the predecessor's sequence (R-AV → R-AW …), one per decision, in D-number order.
 2. **File the tracking issues the rulings create** (a new phase, a new cell the ruling exposes, a design the owner scheduled "next"): `gh issue create --body-file`; body = Class / Ruling / Acceptance / charter pointer. Capture the numbers before writing the charter.
-3. **Write the charter** from `charter-template.md` (this directory) to `.claude/plans/remediation-round-<date>-batching.md` (gitignored). When extending a charter, add the new groups/rulings/changelog entry and update the census; never delete a ruling — supersede it with a strike-through and a pointer. A charter written before §12 (no `Tier` column) is **backfilled on first extension**: every open §1 row gets its tier and letter, every open §3 row its `**Tier:**` field, and the changelog entry says `tiers backfilled (§12)`; a group already in flight keeps the tier its stages have effectively run at (a plan with a nine-dimension stamp is `full`). Census line = `N open = P parked + B batched`, and it must reconcile with `gh issue list … | jq length` after the closures.
+3. **Write the charter** from `charter-template.md` (this directory) to `docs/process/rounds/remediation-round-<date>-batching.md` — a tracked file, committed in step 8, so it is edited in place: never write a dated backup copy beside it (git history is the backup). When extending a charter, add the new groups/rulings/changelog entry and update the census; never delete a ruling — supersede it with a strike-through and a pointer. A charter written before §12 (no `Tier` column) is **backfilled on first extension**: every open §1 row gets its tier and letter, every open §3 row its `**Tier:**` field, and the changelog entry says `tiers backfilled (§12)`; a group already in flight keeps the tier its stages have effectively run at (a plan with a nine-dimension stamp is `full`). Census line = `N open = P parked + B batched`, and it must reconcile with `gh issue list … | jq length` after the closures.
 4. **Post one comment per batched issue** (`comment-templates.md`): header with date + sha + charter path + §, group + order, the class contract in one sentence, the cure seam/matrix, and — on the decision's issue — the ruling text with the rejected alternatives. Write bodies to files, post in one loop, report `posted=N failed=[…]`.
 4b. **Label** every batched issue: `gh issue edit N --add-label lane:<lane> --add-label reach:<reach>` (labels exist after one run of `build_tools/ensure_issue_labels.sh`); the one issue per class gets `class-tracker`.
 5. **Close duplicates/fold-ins** with `gh issue close --reason "not planned" --comment` naming the home issue; a cell-only issue whose class has a tracker is posted on the tracker (cell comment template) and closed the same way; resolved design notes close with `--reason completed`.
 6. **Recount**: `gh issue list --state open | jq length` must equal the charter's census, and the per-lane counts (`gh issue list --state open --label lane:<x>`) must match the census line; fix the charter if not.
 7. **Memory**: write a `project_issue_batching_<date>.md` memory (state, rulings with "do not re-ask", order, next step) and add its index line; add a `feedback_` memory only for a NEW owner preference about the flow itself.
-8. **Do not commit.** The charter is gitignored; nothing in the tree changes. If skill files changed, say so and leave the commit to the owner.
+8. **Commit the charter.** `git add docs/process/rounds/remediation-round-<date>-batching.md` by explicit pathspec (never `-A` or `.`), check that `git diff --cached --stat` shows that one file, and commit as `process: <charter date> charter at call <n> @ <sha> — <one clause: groups placed, letters ruled>` with the trailer the harness provides. A condensation is its own commit. The charter is the only file in the commit — plans are committed by `/verify-plan` and `/verify-implementation`, not here; if skill files changed, say so and leave that commit to the owner. Report the commit sha.
 
 ### Recap (final message)
-Lead with the census and the order; list the rulings by code in one line each; list what was filed and closed; name the next step **by the first group's tier** — `band`: the chore commits; `light`: `/create-plan --light <issues>` then `/verify-plan` (adequacy-only); `full`: `/create-plan <issues>` then `/verify-plan`. No closing offer.
+Lead with the census, the order and the charter commit; list the rulings by code in one line each; list what was filed and closed; name the next step **by the first group's tier** — `band`: the chore commits; `light`: `/create-plan --light <issues>` then `/verify-plan` (adequacy-only); `full`: `/create-plan <issues>` then `/verify-plan`. No closing offer.
 
 ## Guardrails
 - A "closed" issue with a pinned wrong-behaviour test is not finished — check `KnownRed`/N/A rosters citing it before closing anything.
