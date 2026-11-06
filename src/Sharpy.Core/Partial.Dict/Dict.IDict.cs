@@ -7,194 +7,106 @@ namespace Sharpy
 
     public sealed partial class Dict<K, V> : IDict
     {
-        private bool IsNullIKey(object key) => key is null;
+        /// <summary>
+        /// The slot of an <c>object</c> key, or -1. A null key is the None slot whatever K is; a key that
+        /// is not a K is simply absent.
+        /// </summary>
+        private int FindSlotOfObject(object key)
+        {
+            if (key is null)
+            {
+                return _nullSlot;
+            }
+
+            return key is K typedKey ? FindSlot(typedKey) : -1;
+        }
 
         object? IDict.this[object key]
         {
             get
             {
-                if (IsNullIKey(key))
+                int slot = FindSlotOfObject(key);
+                if (slot < 0)
                 {
-                    if (_hasNullKey)
-                        return _nullValue;
                     throw new KeyError(key);
                 }
 
-                if (key is K typedKey)
-                {
-                    if (_dict.TryGetValue(typedKey, out V? value))
-                    {
-                        return value;
-                    }
-
-                    throw new KeyError(key);
-                }
-
-                throw new KeyError(key);
+                return _entries[slot].Value;
             }
             set
             {
-                if (IsNullIKey(key))
-                {
-                    if (!_hasNullKey)
-                        _nullOrdinal = _dict.Count;
-                    _nullValue = (V)value!;
-                    _hasNullKey = true;
-                    return;
-                }
+                StoreObject(key, value);
+            }
+        }
 
-                _dict[(K)key] = (V)value!;
+        private void StoreObject(object? key, object? value)
+        {
+            if (key is null)
+            {
+                StoreNull((V)value!);
+            }
+            else
+            {
+                this[(K)key] = (V)value!;
             }
         }
 
         IEnumerable<(object?, object?)> IDict.Items()
         {
-            int dictIndex = 0;
-            foreach (var kvp in _dict)
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
             {
-                if (_hasNullKey && dictIndex == _nullOrdinal)
-                {
-                    yield return (default(K), (object?)_nullValue);
-                }
-
-                yield return (kvp.Key, kvp.Value);
-                dictIndex++;
-            }
-
-            if (_hasNullKey && _nullOrdinal >= _dict.Count)
-            {
-                yield return (default(K), (object?)_nullValue);
+                yield return (cursor.Key, cursor.Value);
             }
         }
 
         IEnumerable<object?> IDict.Keys()
         {
-            int dictIndex = 0;
-            foreach (var key in _dict.Keys)
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
             {
-                if (_hasNullKey && dictIndex == _nullOrdinal)
-                {
-                    yield return default(K);
-                }
-
-                yield return key;
-                dictIndex++;
-            }
-
-            if (_hasNullKey && _nullOrdinal >= _dict.Count)
-            {
-                yield return default(K);
+                yield return cursor.Key;
             }
         }
 
         IEnumerable<object?> IDict.Values()
         {
-            int dictIndex = 0;
-            foreach (var kvp in _dict)
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
             {
-                if (_hasNullKey && dictIndex == _nullOrdinal)
-                {
-                    yield return _nullValue;
-                }
-
-                yield return kvp.Value;
-                dictIndex++;
-            }
-
-            if (_hasNullKey && _nullOrdinal >= _dict.Count)
-            {
-                yield return _nullValue;
+                yield return cursor.Value;
             }
         }
 
-        bool IDict.Contains(object key)
-        {
-            if (IsNullIKey(key))
-                return _hasNullKey;
-            return key is K typedKey && _dict.ContainsKey(typedKey);
-        }
+        bool IDict.Contains(object key) => FindSlotOfObject(key) >= 0;
 
         Optional<object?> IDict.Get(object key)
         {
-            if (IsNullIKey(key))
-            {
-                return _hasNullKey ? Optional<object?>.Some((object?)_nullValue) : Optional<object?>.None;
-            }
-
-            if (key is K typedKey && _dict.TryGetValue(typedKey, out V? value))
-            {
-                return Optional<object?>.Some(value);
-            }
-
-            return Optional<object?>.None;
+            int slot = FindSlotOfObject(key);
+            return slot >= 0 ? Optional<object?>.Some((object?)_entries[slot].Value) : Optional<object?>.None;
         }
 
         object? IDict.Get(object key, object? defaultValue)
         {
-            if (IsNullIKey(key))
-            {
-                return _hasNullKey ? (object?)_nullValue : defaultValue;
-            }
-
-            if (key is K typedKey && _dict.TryGetValue(typedKey, out V? value))
-            {
-                return value;
-            }
-
-            return defaultValue;
+            int slot = FindSlotOfObject(key);
+            return slot >= 0 ? _entries[slot].Value : defaultValue;
         }
 
         object? IDict.Pop(object key)
         {
-            if (IsNullIKey(key))
+            int slot = FindSlotOfObject(key);
+            if (slot < 0)
             {
-                if (_hasNullKey)
-                {
-                    V val = _nullValue;
-                    _hasNullKey = false;
-                    _nullValue = default!;
-                    return val;
-                }
-
                 throw new KeyError(key);
             }
 
-            if (key is K typedKey)
-            {
-                if (_dict.TryGetValue(typedKey, out V? value))
-                {
-                    _dict.Remove(typedKey);
-                    return value;
-                }
-
-                throw new KeyError(key);
-            }
-
-            throw new KeyError(key);
+            return RemoveSlot(slot);
         }
 
         object? IDict.Pop(object key, object? defaultValue)
         {
-            if (IsNullIKey(key))
-            {
-                if (_hasNullKey)
-                {
-                    V val = _nullValue;
-                    _hasNullKey = false;
-                    _nullValue = default!;
-                    return val;
-                }
-
-                return defaultValue;
-            }
-
-            if (key is K typedKey && _dict.TryGetValue(typedKey, out V? value))
-            {
-                _dict.Remove(typedKey);
-                return value;
-            }
-
-            return defaultValue;
+            int slot = FindSlotOfObject(key);
+            return slot >= 0 ? RemoveSlot(slot) : defaultValue;
         }
 
         (object?, object?) IDict.PopItem(bool last)
@@ -205,28 +117,15 @@ namespace Sharpy
 
         object? IDict.SetDefault(object key, object? defaultValue)
         {
-            if (IsNullIKey(key))
+            int slot = key is null ? _nullSlot : FindSlot((K)key);
+            if (slot >= 0)
             {
-                if (_hasNullKey)
-                    return _nullValue;
-
-                var typedValue = (V)defaultValue!;
-                _nullOrdinal = _dict.Count;
-                _nullValue = typedValue;
-                _hasNullKey = true;
-                return typedValue;
+                return _entries[slot].Value;
             }
 
-            var typedKey = (K)key;
-
-            if (_dict.TryGetValue(typedKey, out V? value))
-            {
-                return value;
-            }
-
-            var tv = (V)defaultValue!;
-            _dict[typedKey] = tv;
-            return tv;
+            var typedValue = (V)defaultValue!;
+            StoreObject(key, typedValue);
+            return typedValue;
         }
 
         void IDict.Clear()
@@ -243,17 +142,7 @@ namespace Sharpy
         {
             foreach (var (k, v) in other.Items())
             {
-                if (k is null)
-                {
-                    if (!_hasNullKey)
-                        _nullOrdinal = _dict.Count;
-                    _nullValue = (V)v!;
-                    _hasNullKey = true;
-                }
-                else
-                {
-                    _dict[(K)k] = (V)v!;
-                }
+                StoreObject(k, v);
             }
         }
 
@@ -261,45 +150,19 @@ namespace Sharpy
         {
             foreach (var (k, v) in other)
             {
-                if (k is null)
-                {
-                    if (!_hasNullKey)
-                        _nullOrdinal = _dict.Count;
-                    _nullValue = (V)v!;
-                    _hasNullKey = true;
-                }
-                else
-                {
-                    _dict[(K)k] = (V)v!;
-                }
+                StoreObject(k, v);
             }
         }
 
         void IDict.Remove(object key)
         {
-            if (IsNullIKey(key))
+            int slot = FindSlotOfObject(key);
+            if (slot < 0)
             {
-                if (!_hasNullKey)
-                {
-                    throw new KeyError(key);
-                }
-
-                _hasNullKey = false;
-                _nullValue = default!;
-                return;
+                throw new KeyError(key);
             }
 
-            if (key is K typedKey)
-            {
-                if (!_dict.Remove(typedKey))
-                {
-                    throw new KeyError(key);
-                }
-
-                return;
-            }
-
-            throw new KeyError(key);
+            RemoveSlot(slot);
         }
     }
 }

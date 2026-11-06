@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Sharpy
 {
@@ -32,17 +32,7 @@ namespace Sharpy
 
             foreach (var key in keys)
             {
-                if (IsNullKey(key))
-                {
-                    if (!result._hasNullKey)
-                        result._nullOrdinal = result._dict.Count;
-                    result._nullValue = value;
-                    result._hasNullKey = true;
-                }
-                else
-                {
-                    result._dict[key] = value;
-                }
+                result[key] = value;
             }
 
             return result;
@@ -74,19 +64,8 @@ namespace Sharpy
         /// </example>
         public Dict<K, V> Copy()
         {
-            var newDict = new Dict<K, V>();
-
-            foreach (var kv in _dict)
-            {
-                newDict._dict[kv.Key] = kv.Value;
-            }
-
-            if (_hasNullKey)
-            {
-                newDict._hasNullKey = true;
-                newDict._nullValue = _nullValue;
-                newDict._nullOrdinal = _nullOrdinal;
-            }
+            var newDict = new Dict<K, V>(_count);
+            newDict.StoreAllFrom(this);
 
             return newDict;
         }
@@ -108,17 +87,19 @@ namespace Sharpy
         /// </example>
         public void Clear()
         {
-            _dict.Clear();
-            _hasNullKey = false;
-            _nullValue = default!;
-            _nullOrdinal = 0;
+            _index.Clear();
+            Array.Clear(_entries, 0, _used);
+            _used = 0;
+            _first = 0;
+            _count = 0;
+            _nullSlot = -1;
         }
 
         /// <summary>
         /// Check if <paramref name="key"/> exists in the dictionary.
         /// Used by the compiler for <c>key in dict</c> expressions.
         /// </summary>
-        public bool Contains(K key) => IsNullKey(key) ? _hasNullKey : ContainsKey(key);
+        public bool Contains(K key) => ContainsKey(key);
 
         /// <summary>
         /// Return the value for <paramref name="key"/> if present, otherwise
@@ -135,17 +116,8 @@ namespace Sharpy
         /// </example>
         public Optional<V> Get(K key)
         {
-            if (IsNullKey(key))
-            {
-                return _hasNullKey ? Optional<V>.Some(_nullValue!) : Optional<V>.None;
-            }
-
-            if (_dict.TryGetValue(key, out V? value))
-            {
-                return Optional<V>.Some(value!);
-            }
-
-            return Optional<V>.None;
+            int slot = FindSlot(key);
+            return slot >= 0 ? Optional<V>.Some(_entries[slot].Value!) : Optional<V>.None;
         }
 
         /// <summary>
@@ -164,17 +136,8 @@ namespace Sharpy
         /// </example>
         public V Get(K key, V @default)
         {
-            if (IsNullKey(key))
-            {
-                return _hasNullKey ? _nullValue : @default;
-            }
-
-            if (_dict.TryGetValue(key, out V? value))
-            {
-                return value;
-            }
-
-            return @default;
+            int slot = FindSlot(key);
+            return slot >= 0 ? _entries[slot].Value : @default;
         }
 
         /// <summary>
@@ -223,26 +186,13 @@ namespace Sharpy
         /// </example>
         public V Pop(K key)
         {
-            if (IsNullKey(key))
+            int slot = FindSlot(key);
+            if (slot < 0)
             {
-                if (_hasNullKey)
-                {
-                    V val = _nullValue;
-                    _hasNullKey = false;
-                    _nullValue = default!;
-                    return val;
-                }
-
                 throw new KeyError(key);
             }
 
-            if (_dict.TryGetValue(key, out V? value))
-            {
-                _dict.Remove(key);
-                return value;
-            }
-
-            throw new KeyError(key);
+            return RemoveSlot(slot);
         }
 
         /// <summary>
@@ -260,26 +210,8 @@ namespace Sharpy
         /// </example>
         public V Pop(K key, V @default)
         {
-            if (IsNullKey(key))
-            {
-                if (_hasNullKey)
-                {
-                    V val = _nullValue;
-                    _hasNullKey = false;
-                    _nullValue = default!;
-                    return val;
-                }
-
-                return @default;
-            }
-
-            if (_dict.TryGetValue(key, out V? value))
-            {
-                _dict.Remove(key);
-                return value;
-            }
-
-            return @default;
+            int slot = FindSlot(key);
+            return slot >= 0 ? RemoveSlot(slot) : @default;
         }
 
         /// <summary>
@@ -300,24 +232,11 @@ namespace Sharpy
                 throw new KeyError("popitem(): dictionary is empty");
             }
 
-            if (_hasNullKey)
-            {
-                bool nullIsLast = _nullOrdinal >= _dict.Count;
-                bool nullIsFirst = _nullOrdinal == 0;
+            int slot = last ? _used - 1 : _first;
+            K key = _entries[slot].Key;
+            V value = RemoveSlot(slot);
 
-                if ((last && nullIsLast) || (!last && nullIsFirst))
-                {
-                    V val = _nullValue;
-                    _hasNullKey = false;
-                    _nullValue = default!;
-                    return (default!, val);
-                }
-            }
-
-            var pair = last ? _dict.Last() : _dict.First();
-            _dict.Remove(pair.Key);
-
-            return (pair.Key, pair.Value);
+            return (key, value);
         }
 
         /// <summary>
@@ -337,25 +256,14 @@ namespace Sharpy
         /// </example>
         public V SetDefault(K key, V @default)
         {
-            if (IsNullKey(key))
+            int slot = FindSlot(key);
+            if (slot >= 0)
             {
-                if (_hasNullKey)
-                {
-                    return _nullValue;
-                }
-
-                _nullOrdinal = _dict.Count;
-                _nullValue = @default;
-                _hasNullKey = true;
-                return @default;
+                return _entries[slot].Value;
             }
 
-            if (_dict.TryGetValue(key, out V? value))
-            {
-                return value;
-            }
-
-            return _dict[key] = @default;
+            InsertNew(key, @default);
+            return @default;
         }
 
         /// <summary>
@@ -415,33 +323,31 @@ namespace Sharpy
         /// <exception cref="KeyError">Thrown if the key does not exist.</exception>
         public void Remove(K key)
         {
-            if (IsNullKey(key))
-            {
-                if (!_hasNullKey)
-                {
-                    throw new KeyError(key);
-                }
-
-                _hasNullKey = false;
-                _nullValue = default!;
-                return;
-            }
-
-            if (!_dict.Remove(key))
+            int slot = FindSlot(key);
+            if (slot < 0)
             {
                 throw new KeyError(key);
             }
+
+            RemoveSlot(slot);
         }
 
         /// <summary>Convert to a standard .NET Dictionary.</summary>
         public Dictionary<K, V> ToDictionary()
         {
-            if (_hasNullKey)
+            if (_nullSlot >= 0)
             {
                 throw new TypeError("Cannot convert to Dictionary<K,V>: contains a None key that Dictionary does not support");
             }
 
-            return new Dictionary<K, V>(_dict);
+            var result = new Dictionary<K, V>(_count);
+            var cursor = CreateCursor();
+            while (cursor.MoveNext())
+            {
+                result.Add(cursor.Key, cursor.Value);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -455,17 +361,26 @@ namespace Sharpy
                 throw new System.ArgumentNullException(nameof(other));
             }
 
-            foreach (var kvp in other._dict)
-            {
-                _dict[kvp.Key] = kvp.Value;
-            }
+            StoreAllFrom(other);
+        }
 
-            if (other._hasNullKey)
+        /// <summary>
+        /// Stores every entry of <paramref name="other"/>, in its order. Self-update is safe: storing
+        /// onto existing keys adds none, so the cursor stays valid.
+        /// </summary>
+        private void StoreAllFrom(Dict<K, V> other)
+        {
+            var cursor = other.CreateCursor();
+            while (cursor.MoveNext())
             {
-                if (!_hasNullKey)
-                    _nullOrdinal = _dict.Count;
-                _nullValue = other._nullValue;
-                _hasNullKey = true;
+                if (cursor.Slot == other._nullSlot)
+                {
+                    StoreNull(cursor.Value);
+                }
+                else
+                {
+                    this[cursor.Key] = cursor.Value;
+                }
             }
         }
 

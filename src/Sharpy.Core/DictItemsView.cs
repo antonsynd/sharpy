@@ -40,26 +40,7 @@ namespace Sharpy
         /// <summary>
         /// Returns an enumerator that iterates through the items.
         /// </summary>
-        public IEnumerator<(K, V)> GetEnumerator()
-        {
-            var dict = _owner.InnerDict;
-            int dictIndex = 0;
-            foreach (var kvp in dict)
-            {
-                if (_owner.HasNullKey && dictIndex == _owner.NullOrdinal)
-                {
-                    yield return (default!, _owner.NullValue);
-                }
-
-                yield return (kvp.Key, kvp.Value);
-                dictIndex++;
-            }
-
-            if (_owner.HasNullKey && _owner.NullOrdinal >= dict.Count)
-            {
-                yield return (default!, _owner.NullValue);
-            }
-        }
+        public IEnumerator<(K, V)> GetEnumerator() => _owner.EnumerateItems().GetEnumerator();
 
         /// <summary>
         /// Return union with a set of items.

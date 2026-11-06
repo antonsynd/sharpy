@@ -36,6 +36,12 @@ internal partial class ProjectCompiler
         // Lowering (E2, #1056): build the middle-end IR once per project — over the merged,
         // project-level SemanticInfo — immediately before per-file code generation. Nothing reads
         // it yet; it is handed to each file's CodeGenContext for the first migrated construct.
+        //
+        // The merged SemanticInfo is closed to writes first (#2443): the last project-level writes
+        // (generator integration's MarkAsGenerated / SetModuleLayout, Phase 5b) are behind us, so
+        // every fact lowering and code generation read is now fixed. A PhaseViolationException
+        // from here on is a late write to record on #2443, not a reason to move this call.
+        SemanticInfo.Freeze();
         var ir = BuildLoweringIr(config);
 
         var generatedCSharp = new Dictionary<string, string>();
