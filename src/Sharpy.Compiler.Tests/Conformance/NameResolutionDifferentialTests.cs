@@ -366,6 +366,8 @@ public partial class NameResolutionDifferentialTests
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
         ["R-KG"] = new[] { "SPY0200" },
+        // R-KT: nothing refuses a struct `self` capture today, and the refusal's code lands with #2434.
+        ["R-KT"] = Array.Empty<string>(),
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
@@ -494,6 +496,8 @@ public partial class NameResolutionDifferentialTests
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     // A nested type's bare constructor read as a member invocation: #2397's cell, whichever nested type the reader sits in.
                     "CS1955" when cell.Target == BindingKind.NestedType => "#2397",
+                    // A lambda or local function capturing a struct's `this`: R-KT's refusal is the cure.
+                    "CS1673" => "#2434",
                     // `T !E` with no `Ok`: the spec has no implicit wrap, and the refusal is the cure.
                     "CS0029" when cell.Rule == "kind:result-wrap" => "#2249",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
@@ -531,6 +535,8 @@ public partial class NameResolutionDifferentialTests
             case VerdictClass.RuntimeThrow:
                 return "#2422";
             case VerdictClass.SilentWrong:
+                if (cell.Rule == "R-KT")
+                    return "#2434";
                 if (IsConstCycleThroughAlias(cell))
                     return "#2412";
                 if (cell.Family == Family.TypeMember)

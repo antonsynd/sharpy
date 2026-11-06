@@ -1291,6 +1291,33 @@ internal static class NameResolutionRosters
         (TypePosition.BaseList, AxisMembership.Everywhere),
         (TypePosition.PatternType, AxisMembership.Out(ExcludedAxis.NotAKind, "a pattern's type is roster 7's, read by TYPEMEMBER's pattern cells")));
 
+    /// <summary>P77b axis 7: a type kind's image as a host of body positions, total over <see cref="TypeKind"/>.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, RosterEntry<string>> HostKinds = Roster.Map(
+        (TypeKind.Class, Roster.To("class", "dataclass")),
+        (TypeKind.Struct, Roster.To("struct")),
+        (TypeKind.Interface, Roster.Out<string>(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's and P75's hand matrices (ii)")),
+        (TypeKind.Enum, Roster.Out<string>(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's and P75's hand matrices (ii)")),
+        (TypeKind.Union, Roster.Out<string>(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's and P75's hand matrices (ii)")),
+        (TypeKind.Delegate, Roster.Out<string>(ExcludedAxis.TypeParametersAndDelegates, "no Sharpy declaration (x)")));
+
+    /// <summary>Each host's membership of the body positions: READ's class arm is the class host, this axis the struct's.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> HostBodies = Roster.Map(
+        ("class", AxisMembership.Everywhere),
+        ("struct", AxisMembership.Everywhere),
+        ("dataclass", AxisMembership.Pruned("a dataclass body is a class body")));
+
+    /// <summary>R-KT's positions: where <c>self</c> reaches a C# closure, so a struct's would be captured (CS1673). A comprehension and a generator body are lowered
+    /// without capturing <c>this</c> and they run: the class arm's green there is this arm's positive control.</summary>
+    internal static readonly ImmutableArray<ReadPosition> StructClosureBodies = ImmutableArray.Create(
+        ReadPosition.LambdaStored, ReadPosition.LambdaImmediate, ReadPosition.LambdaPassed, ReadPosition.NestedDefInMethod);
+
+    /// <summary>The body positions that also spell a stored lambda around the read (#2434's <c>st2_init_lambda</c> and <c>st2_accessor_get_lambda</c>).</summary>
+    internal static readonly ImmutableArray<ReadPosition> StructLambdaNestingBodies = ImmutableArray.Create(ReadPosition.InitBody, ReadPosition.AccessorGetBody);
+
+    /// <summary>The members axis 7 reads from a struct body: a value and a callable, each instance and <c>@static</c>.</summary>
+    internal static readonly ImmutableArray<BindingKind> StructHostTargets = ImmutableArray.Create(
+        BindingKind.InstanceField, BindingKind.StaticField, BindingKind.InstanceMethod, BindingKind.StaticMethod);
+
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
     /// value @ 82acda375 (<c>const y: int = i</c> included). A `\n` starts the statement's next line.</summary>
@@ -2732,6 +2759,54 @@ public partial class NameResolutionDifferentialTests
         Enum.GetNames<DeclarationShapes>().Should().Equal(
             "GlobalOverLet", "GlobalOverConst", "NonlocalOverLet", "NonlocalOverConst", "GlobalCreatesBinding", "NonlocalNoBinding",
             "ReadBeforeGlobal", "ReadBeforeNonlocal", "LetAfterGlobal", "AnnotatedAfterGlobal", "GlobalFromInit", "GlobalFromAccessorSet", "GlobalFromNestedDef");
+    }
+
+    [Fact]
+    public void HostKindsRoster_IsTotalOverTypeKind()
+    {
+        var problems = Roster.TotalityProblems("HostKinds", Enum.GetValues<TypeKind>(), NameResolutionRosters.HostKinds.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.HostKinds));
+        problems.AddRange(Roster.TotalityProblems("HostBodies", Roster.ImageOf(NameResolutionRosters.HostKinds), NameResolutionRosters.HostBodies.Keys));
+        AssertNoProblems(problems, "a type kind hosts bodies or names why it does not, and each host is a body axis or pruned");
+
+        // Literals, not the enum again.
+        Roster.ImageOf(NameResolutionRosters.HostKinds).Should().BeEquivalentTo(new[] { "class", "dataclass", "struct" });
+        NameResolutionRosters.HostBodies.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { "class", "struct" });
+    }
+
+    /// <summary>R-KT's set is read off what the generator renders, never listed beside it: a position is a C# closure when its read sits in a lambda or in a def nested in a def.</summary>
+    [Fact]
+    public void HostKindsRoster_ClosureBodies_AreWhatPlaceInClassRendersThroughAClosure()
+    {
+        static int Leading(string line) => line.Length - line.TrimStart().Length;
+
+        static bool ThroughAClosure(ReadPosition p)
+        {
+            var lines = PlaceInClass(p, Nesting.Direct, "E0").Members;
+            var at = Enumerable.Range(0, lines.Count).First(i => lines[i].Contains("E0", StringComparison.Ordinal));
+            if (lines[at].Contains("lambda", StringComparison.Ordinal))
+                return true;
+
+            int defs = 0;
+            int indent = Leading(lines[at]);
+            for (int i = at - 1; i >= 0; i--)
+            {
+                if (Leading(lines[i]) >= indent)
+                    continue;
+                indent = Leading(lines[i]);
+                if (lines[i].TrimStart().StartsWith("def ", StringComparison.Ordinal))
+                    defs++;
+            }
+
+            return defs >= 2;
+        }
+
+        ClassBodies.Where(ThroughAClosure).Should().BeEquivalentTo(NameResolutionRosters.StructClosureBodies,
+            "R-KT refuses what C# refuses, so its positions are the ones rendered through a C# lambda or local function");
+
+        // The scan's positive control and the two positions the arm hinges on, as literals.
+        ClassBodies.Where(ThroughAClosure).Should().Contain(ReadPosition.LambdaStored).And.Contain(ReadPosition.NestedDefInMethod)
+            .And.NotContain(ReadPosition.GeneratorBody).And.NotContain(ReadPosition.ComprehensionElement).And.NotContain(ReadPosition.NestedClassMethodBody);
     }
 
     [Fact]

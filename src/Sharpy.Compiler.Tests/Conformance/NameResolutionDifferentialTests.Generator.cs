@@ -71,6 +71,7 @@ public partial class NameResolutionDifferentialTests
         cells.AddRange(AliasTypePositionCells());
         cells.AddRange(ResultValueFormCells());
         cells.AddRange(DeclarationShapeCells());
+        cells.AddRange(StructHostCells());
         cells.AddRange(SeedCells());
         return cells.Select(WithModuleAccessorTwin).ToList();
     });
@@ -379,9 +380,13 @@ public partial class NameResolutionDifferentialTests
             case ReadPosition.StaticMethodBody:
                 return new(new[] { "@static", "def r() -> int:", $"    return {e}" }, "H.r()");
             case ReadPosition.InitBody:
-                return new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    self.r = {e}" }, "H().r");
+                return nesting == Nesting.Lambda
+                    ? new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    f: () -> int = lambda: {e}", "    self.r = f()" }, "H().r")
+                    : new(new[] { "r: int = 0", "def __init__(self) -> None:", $"    self.r = {e}" }, "H().r");
             case ReadPosition.AccessorGetBody:
-                return new(new[] { "property get r(self) -> int:", $"    return {e}" }, "H().r");
+                return nesting == Nesting.Lambda
+                    ? new(new[] { "property get r(self) -> int:", $"    f: () -> int = lambda: {e}", "    return f()" }, "H().r")
+                    : new(new[] { "property get r(self) -> int:", $"    return {e}" }, "H().r");
             case ReadPosition.AccessorSetBody:
                 return new(
                     new[] { "q0: int = 0", "property get r(self) -> int:", "    return self.q0", "property set r(self, v0: int):", $"    self.q0 = {e}" },
