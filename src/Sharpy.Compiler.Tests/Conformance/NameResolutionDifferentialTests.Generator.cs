@@ -63,6 +63,7 @@ public partial class NameResolutionDifferentialTests
         cells.AddRange(ImportedOuterCells());
         cells.AddRange(ComprehensionCells());
         cells.AddRange(CycleCells());
+        cells.AddRange(OrderObservationCells());
         cells.AddRange(SeedCells());
         return cells.Select(WithModuleAccessorTwin).ToList();
     });
