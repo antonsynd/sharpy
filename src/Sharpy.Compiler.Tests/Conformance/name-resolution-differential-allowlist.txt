@@ -1950,6 +1950,8 @@ store/Assign/outer=EnclosingLocal/MethodBody/no-decl/inside-if SilentWrong # #24
 store/Assign/outer=EnclosingLocal/MethodBody/nonlocal FalseRefusal # #2424 false-refusal
 store/Assign/outer=ImportedName/FunctionBody Ice # #2424 ice
 store/Assign/outer=ImportedName/MethodBody Ice # #2424 ice
+store/Assign/outer=InstanceMethod/MethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
+store/Assign/outer=InstanceMethod/StaticMethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Assign/outer=ModuleClass/FunctionBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Assign/outer=ModuleClass/MethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Assign/outer=ModuleDef/FunctionBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
@@ -1988,6 +1990,8 @@ store/Assign/outer=ModuleVar/NestedDefInFunction/global/Earlier/later-read False
 store/Assign/outer=ModuleVar/NestedDefInFunction/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Assign/outer=ModuleVar/NestedDefInMethod/no-decl/Earlier/later-read Ice # #2151 ice
 store/Assign/outer=ModuleVar/StaticMethodBody/no-decl/Earlier/later-read Ice # #2151 ice
+store/Assign/outer=StaticMethod/MethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
+store/Assign/outer=StaticMethod/StaticMethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Augmented/outer=EnclosingLocal/FunctionBody/no-decl SilentWrong # #2424 missing-refusal
 store/Augmented/outer=EnclosingLocal/FunctionBody/nonlocal FalseRefusal # #2424 false-refusal
 store/Augmented/outer=EnclosingLocal/MethodBody/no-decl SilentWrong # #2424 missing-refusal
@@ -2024,6 +2028,8 @@ store/Walrus/outer=EnclosingLocal/MethodBody/no-decl SilentWrong # #2424 missing
 store/Walrus/outer=EnclosingLocal/MethodBody/nonlocal FalseRefusal # #2424 false-refusal
 store/Walrus/outer=ImportedName/FunctionBody Ice # #2424 ice
 store/Walrus/outer=ImportedName/MethodBody Ice # #2424 ice
+store/Walrus/outer=InstanceMethod/MethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
+store/Walrus/outer=InstanceMethod/StaticMethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Walrus/outer=ModuleClass/FunctionBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Walrus/outer=ModuleClass/MethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Walrus/outer=ModuleDef/FunctionBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
@@ -2060,6 +2066,8 @@ store/Walrus/outer=ModuleVar/NestedDefInFunction/global/Earlier/later-read False
 store/Walrus/outer=ModuleVar/NestedDefInFunction/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/Walrus/outer=ModuleVar/NestedDefInMethod/no-decl/Earlier/later-read Ice # #2151 ice
 store/Walrus/outer=ModuleVar/StaticMethodBody/no-decl/Earlier/later-read Ice # #2151 ice
+store/Walrus/outer=StaticMethod/MethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
+store/Walrus/outer=StaticMethod/StaticMethodBody/no-decl/Earlier/later-read SilentWrong # #2424 missing-refusal
 store/builtin/Assign/above/abs SilentWrong # #2424 missing-refusal
 store/builtin/Assign/above/int SilentWrong # #2424 missing-refusal
 store/builtin/Assign/above/len SilentWrong # #2424 missing-refusal
