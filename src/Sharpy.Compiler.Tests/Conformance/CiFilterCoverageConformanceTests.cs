@@ -1,5 +1,8 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using YamlDotNet.RepresentationModel;
 
@@ -123,6 +126,148 @@ public class CiFilterCoverageConformanceTests
             (wrong.Count > 50 ? $"\n  … and {wrong.Count - 50} more" : "") +
             "\nA sweep excluded from COMPILER_MAIN_FILTER must have its own step, and a sweep with its own " +
             "step must be excluded from COMPILER_MAIN_FILTER.");
+    }
+
+    /// <summary>
+    /// Plan-3eba57 D4.2: a python-oracle test never runs where a missing python is a skip. The
+    /// oracle tests are the test classes of every <c>[Fact]</c>/<c>[Theory]</c> (skippable or
+    /// not) of Sharpy.Compiler.Tests whose body calls <c>PythonInterpreter.RequireOrSkip(</c>
+    /// (Roslyn scan, the shape of <see cref="PythonOracleSkipCensusTests"/>' walk; a call inside a
+    /// lambda of the test body counts — it runs too; a helper method is not a site). Every resolved
+    /// step whose filter selects a test of such a class must run with
+    /// <see cref="PythonInterpreter.RequireEnvironmentVariable"/> = "1" in its resolved env
+    /// (workflow ∪ job ∪ step): otherwise a runner that lost `setup-python` reports the oracle
+    /// skipped and the job stays green — a skipped sweep guards nothing.
+    /// </summary>
+    [Fact]
+    public void EveryPythonOracleTest_RunsWithTheOracleRequired()
+    {
+        var (steps, _, tests) = LoadStepsAndTests();
+        var testsRoot = Path.Combine(FindRepoRoot(), "src", "Sharpy.Compiler.Tests");
+
+        var oracleClasses = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var file in Directory.EnumerateFiles(testsRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            var rel = Path.GetRelativePath(testsRoot, file).Replace('\\', '/');
+            if (rel.StartsWith("bin/", StringComparison.Ordinal) || rel.StartsWith("obj/", StringComparison.Ordinal)
+                || rel.Contains("TestFixtures/", StringComparison.Ordinal))
+                continue;
+            oracleClasses.UnionWith(PythonOracleTestClasses(rel, File.ReadAllText(file)));
+        }
+
+        // Positive control: the three sweeps that reach the oracle through their own direct
+        // RequireOrSkip calls — a scan that misses one of them is blind, not clean.
+        var simpleNames = oracleClasses.Select(c => c[(c.LastIndexOf('.') + 1)..]).ToHashSet(StringComparer.Ordinal);
+        foreach (var pinned in new[] { "DifferentialExecutionTests", "FormatSpecDifferentialTests", "NameResolutionDifferentialTests" })
+            Assert.True(simpleNames.Contains(pinned),
+                $"the RequireOrSkip scan did not select {pinned} (selected: {string.Join(", ", oracleClasses)}): the scan went blind.");
+
+        static string ClassOf(TestInfo t) => t.Fqn[..t.Fqn.LastIndexOf('.')];
+        var oracleTests = tests.Where(t => oracleClasses.Contains(ClassOf(t))).ToList();
+        var unreflected = oracleClasses.Except(oracleTests.Select(ClassOf)).ToList();
+        Assert.True(unreflected.Count == 0,
+            $"scanned oracle class(es) with no reflected test — the scan's class naming diverged from reflection: {string.Join(", ", unreflected)}");
+
+        var unguarded = new List<string>();
+        var checkedSteps = 0;
+        foreach (var step in steps)
+        {
+            var selected = oracleTests.Where(t => EvaluateFilter(step.Filter, t)).Select(ClassOf).Distinct().ToList();
+            if (selected.Count == 0)
+                continue;
+            checkedSteps++;
+            if (step.Env.GetValueOrDefault(PythonInterpreter.RequireEnvironmentVariable) != "1")
+                unguarded.Add($"  {step.Label} selects {string.Join(", ", selected.Select(c => c[(c.LastIndexOf('.') + 1)..]))}");
+        }
+
+        var unselected = oracleClasses.Where(c => !oracleTests.Any(t => ClassOf(t) == c && steps.Any(s => EvaluateFilter(s.Filter, t)))).ToList();
+        Assert.True(unselected.Count == 0, $"oracle class(es) selected by no step, so not judged: {string.Join(", ", unselected)}");
+        Assert.True(unguarded.Count == 0,
+            $"{unguarded.Count} of {checkedSteps} CI step(s) run python-oracle tests without " +
+            $"{PythonInterpreter.RequireEnvironmentVariable}=\"1\" in their workflow/job/step env — without python they SKIP green:\n" +
+            string.Join("\n", unguarded) +
+            $"\nSet {PythonInterpreter.RequireEnvironmentVariable}: \"1\" on the job (or the workflow).");
+    }
+
+    /// <summary>
+    /// The test classes (namespace-qualified, nested types joined by '.', as reflection names them
+    /// here) of the test methods in <paramref name="source"/> that call <c>PythonInterpreter.RequireOrSkip(</c>.
+    /// </summary>
+    private static IEnumerable<string> PythonOracleTestClasses(string path, string source)
+    {
+        var root = CSharpSyntaxTree.ParseText(source, path: path).GetRoot();
+        foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
+        {
+            bool isTest = method.AttributeLists.SelectMany(l => l.Attributes).Any(a =>
+            {
+                var name = a.Name.ToString();
+                var simple = name.Contains('.') ? name[(name.LastIndexOf('.') + 1)..] : name;
+                return new[] { "Fact", "Theory", "SkippableFact", "SkippableTheory" }
+                    .Any(n => simple == n || simple == n + "Attribute");
+            });
+            if (!isTest)
+                continue;
+            bool callsGate = method.DescendantNodes().OfType<InvocationExpressionSyntax>().Any(inv =>
+                inv.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "RequireOrSkip" } member
+                && member.Expression.ToString() is var receiver
+                && (receiver == nameof(PythonInterpreter) || receiver.EndsWith("." + nameof(PythonInterpreter), StringComparison.Ordinal)));
+            if (!callsGate)
+                continue;
+
+            var parts = new List<string>();
+            foreach (var ancestor in method.Ancestors())
+            {
+                if (ancestor is TypeDeclarationSyntax type)
+                    parts.Insert(0, type.Identifier.ValueText);
+                else if (ancestor is BaseNamespaceDeclarationSyntax ns)
+                    parts.Insert(0, ns.Name.ToString());
+            }
+            yield return string.Join(".", parts);
+        }
+    }
+
+    /// <summary>
+    /// Positive control for <see cref="PythonOracleTestClasses"/>: a direct call and a lambda-nested
+    /// call in a test name their (nested) class; a helper method, another gate's RequireOrSkip and a
+    /// non-gating PythonInterpreter call name nothing.
+    /// </summary>
+    [Fact]
+    public void PythonOracleScan_NamesTheClassOfEveryGatedTest_AndNoHelperOrOtherGate()
+    {
+        const string Source = """
+            namespace N.M;
+
+            public class Direct
+            {
+                [SkippableFact]
+                public void A() { var p = PythonInterpreter.RequireOrSkip(minMinor: 12); }
+            }
+
+            public class Outer
+            {
+                public class Nested
+                {
+                    [SkippableTheory]
+                    public void B(int x) { Run(() => Sharpy.TestInfrastructure.Oracles.PythonInterpreter.RequireOrSkip()); }
+                }
+            }
+
+            public class Helper { public static void H() { PythonInterpreter.RequireOrSkip(); } }
+
+            public class OtherGate
+            {
+                [SkippableFact]
+                public void C() { TestPreconditions.RequireOrSkip(true, "x"); }
+            }
+
+            public class NotAGate
+            {
+                [Fact]
+                public void D() { PythonInterpreter.TryLocate(); }
+            }
+            """;
+        Assert.Equal(new[] { "N.M.Direct", "N.M.Outer.Nested" },
+            PythonOracleTestClasses("control.cs", Source).OrderBy(c => c, StringComparer.Ordinal));
     }
 
     /// <summary>
