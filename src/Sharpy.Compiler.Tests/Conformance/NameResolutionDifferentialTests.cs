@@ -316,6 +316,8 @@ public partial class NameResolutionDifferentialTests
         // R-KP's restored builtins: the read of an overloaded function or a type constructor as a value, ahead of N6.
         [("N6", "SPY0336")] = 1,
         [("N6", "SPY0342")] = 1,
+        // A bare value in a `T !E` body above an earlier E: the return's type mismatch, the right direction until the kind's own refusal (#2249).
+        [("kind:result-wrap", "SPY0260")] = 1,
         // R-KY's neighbouring refusals until #2424 lands the rule's own.
         [("N6-type-kind", "SPY0134")] = 21,
         [("N6-type-kind", "SPY0222")] = 2,
@@ -358,6 +360,7 @@ public partial class NameResolutionDifferentialTests
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
         ["kind:SPY0212"] = new[] { "SPY0212" },
+        ["kind:result-wrap"] = new[] { "SPY0260" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
@@ -480,6 +483,8 @@ public partial class NameResolutionDifferentialTests
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
                     // A nested type's bare constructor read as a member invocation: #2397's cell, whichever nested type the reader sits in.
                     "CS1955" when cell.Target == BindingKind.NestedType => "#2397",
+                    // `T !E` with no `Ok`: the spec has no implicit wrap, and the refusal is the cure.
+                    "CS0029" when cell.Rule == "kind:result-wrap" => "#2249",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
                     "CS1955" or "CS8917" or "CS1729" or "CS0029" or "CS1501" => "#2423",
                     // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
@@ -503,6 +508,9 @@ public partial class NameResolutionDifferentialTests
                     return run.AllCodes.Contains("SPY0134") ? "#2424"
                         : run.AllCodes.Contains("SPY0600") ? "#2423"
                         : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
+                // An alias at a type position is refused as an unknown type (p17): #1925's class, the alias positions.
+                if (cell.TypeAt != null && cell.Target == BindingKind.ModuleTypeAlias)
+                    return "#1925";
                 // A nested-scope `def` over a same-function `def` of the name is SPY0204: #1974's question, whose B-rules admit nested shadowing.
                 if (cell.Rule == "#1974")
                     return "#1974";

@@ -2112,6 +2112,7 @@ read/order-observation/StaticField/Earlier SilentWrong # #2422 silent-wrong
 read/order-observation/StaticField/Later SilentWrong # #2422 silent-wrong
 read/order-observation/StaticProperty/Earlier SilentWrong # #2422 silent-wrong
 read/order-observation/StaticProperty/Later SilentWrong # #2422 silent-wrong
+read/result-form/BareValue/Later Ice # #2249 ice
 read/sibling/Bare/NestedClassMethodBody/Earlier Ice # #2397 ice
 read/sibling/Bare/NestedClassMethodBody/Later Ice # #2397 ice
 read/sibling/Bare/StaticInitializer/Earlier Ice # #2397 ice
@@ -2133,6 +2134,10 @@ read/str/StaticField/StaticInitializer/lambda RuntimeThrow # #2422 runtime-throw
 read/str/StaticProperty/StaticInitializer/deferred RuntimeThrow # #2422 runtime-throw
 read/str/StaticProperty/StaticInitializer/function RuntimeThrow # #2422 runtime-throw
 read/str/StaticProperty/StaticInitializer/lambda RuntimeThrow # #2422 runtime-throw
+read/type-position-alias/base-list/Earlier FalseRefusal # #1925 false-refusal
+read/type-position-alias/base-list/Later FalseRefusal # #1925 false-refusal
+read/type-position-alias/isinstance/Earlier Ice # #1925 ice
+read/type-position-alias/isinstance/Later Ice # #1925 ice
 seed/A02 FalseRefusal # #2422 false-refusal
 seed/A05 FalseRefusal # #2422 false-refusal
 seed/A07 SilentWrong # #2422 silent-wrong
