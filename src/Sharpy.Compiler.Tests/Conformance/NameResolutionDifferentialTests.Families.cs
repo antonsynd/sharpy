@@ -206,11 +206,9 @@ public partial class NameResolutionDifferentialTests
         if (IsTypeLevelMember(outer))
         {
             // variable_scoping.md, "Every store form is refused": a bare store to a class member is SPY0606 in every form, though
-            // python makes it a local. Only a method's name is still a local here: the spec's sentence reads as covering it and the
-            // compiler lets it through, and that question is posted on #2427.
-            return s == StoreSpelling.Augmented || !(outer is BindingKind.StaticMethod or BindingKind.InstanceMethod)
-                ? Refuse(pyNoDecl, "SPY0606")
-                : new Expected(SharpyTag.MustRun, local.Value, local, "R-Y");
+            // python makes it a local. P77b D6 R-LH (D20): a method's name is covered too; the compiler lets `=` / walrus through
+            // as a new local today, so those cells are missing-refusal rows citing #2424.
+            return Refuse(pyNoDecl, "SPY0606");
         }
         if (IsConstKind(outer))
             return Refuse(pyNoDecl, "kind:SPY0225");
@@ -1425,10 +1423,9 @@ public partial class NameResolutionDifferentialTests
         ["R-KU"] = c => c.Family == Family.Store && c.TargetShape == "MemberAccess" && c.Target is BindingKind.StaticField or BindingKind.StaticProperty
             && c.Receiver is AttributeReceiver.SelfDot or AttributeReceiver.Derived or AttributeReceiver.InstanceLocal,
         ["R-LG"] = c => c.Family == Family.Local && c.Id.StartsWith("local/closure-in-loop-body/", StringComparison.Ordinal),
-        // R-Y: a class body's member read bare from a body under a visible outer, and a method's name stored as a new local.
+        // R-Y: a class body's member read bare from a body under a visible outer. (A method's name stored bare is SPY0606 since P77b D6 R-LH.)
         ["R-Y"] = c => (c.Family == Family.Read && c.Relation == DeclaringRelation.Self && SpellingOf(c) == Spelling.Bare && c.Outer != BindingKind.None
-                && !IsLocalOuter(c.Outer) && c.Position is ReadPosition p && (ClassBodies.Contains(p) || p == ReadPosition.StaticInitializer) && !IsN2Region(c))
-            || (c.Family == Family.Store && c.Target is BindingKind.StaticMethod or BindingKind.InstanceMethod && c.TargetShape == null && c.Form is StoreForm.Assign or StoreForm.Walrus),
+                && !IsLocalOuter(c.Outer) && c.Position is ReadPosition p && (ClassBodies.Contains(p) || p == ReadPosition.StaticInitializer) && !IsN2Region(c)),
         // R1(b): an inherited class member read bare with nothing outside.
         ["R1(b)"] = c => c.Family == Family.Read && c.Relation == DeclaringRelation.Base && IsTypeLevelTarget(c.Target) && c.Outer == BindingKind.None,
         // S2: a construct target reusing a visible binding, read after the construct (captures and builtins included).
