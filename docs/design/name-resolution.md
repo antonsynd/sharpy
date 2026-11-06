@@ -69,8 +69,9 @@ def main() -> None:
 ### N2. Ambiguity is an error
 
 If reading top to bottom (Python) and reading by scope (N1) would give a name **different
-meanings**, Sharpy refuses. There is exactly one such place: **a class-body initializer that reads a
-member at or before that member's declaration, while an outer binding of the same name exists.**
+meanings**, Sharpy refuses. There are exactly two such places. The first: **a class-body initializer
+that reads a member at or before that member's declaration, while an outer binding of the same name
+exists.**
 
 ```python
 size: int = 8
@@ -86,6 +87,9 @@ class Box:
 
 The steer is "rename, or qualify". A Python-valid program therefore never silently changes meaning.
 Without the outer binding there is no ambiguity, and the forward read simply works (N3).
+
+The second: **a module-level initializer that reads a builtin or imported name at or before its own
+same-named declaration is refused.**
 
 *Today:* a later `@static`, property or method yields to the outer binding (prints `64`, Python's
 value), and a later literal `const` outranks it (prints Sharpy's value, not Python's). Census @
