@@ -870,7 +870,7 @@ public partial class NameResolutionDifferentialTests
     /// <summary>The seed folder's files, and the normaliser that makes a batch verdict comparable with the inventory's.</summary>
     private static class TwinSeed
     {
-        public const int SpyCount = 166;
+        public const int SpyCount = 168;
         public const int HandTwinCount = 32;
 
         private static readonly Regex Address = new("0x[0-9a-f]+", RegexOptions.CultureInvariant);

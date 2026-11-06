@@ -489,21 +489,41 @@ public partial class NameResolutionDifferentialTests
         Assert.Null(PythonControlFailure(cell with { Model = "7" }, PyOutcome.Ran("7")));
     }
 
-    /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red.</summary>
+    /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red. The
+    /// shapes P77b D6 retired (every R-KX…R-LJ arm) hold nowhere.</summary>
     [Theory]
-    [InlineData("L28", Family.Read, BindingKind.StaticField, BindingKind.None, "read/StaticField/MethodBody/Later/Bare/outer=None")]
-    [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
-    [InlineData("store-non-writable:ModuleDef:Assign", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/no-decl")]
-    [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
-    [InlineData("lambda-self", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/self/outer=None/FunctionBody")]
-    [InlineData("match-capture:none", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/For/after-block/outer=None/FunctionBody")]
-    [InlineData("rowless-let:if-then", Family.Local, BindingKind.LocalLet, BindingKind.None, "local/LocalLet/let-in/if-then/outer=None/FunctionBody")]
-    [InlineData("s2-builtin", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/For/after-block/outer=ModuleVar/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/global")]
+    [InlineData("global-creates-binding", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/lambda/outer=None/FunctionBody")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Seed, BindingKind.None, BindingKind.None, "seed/A12")]
+    [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/LocalVar/above/outer=ModuleVar/FunctionBody")]
+    [InlineData("seed:A12", Family.Seed, BindingKind.None, BindingKind.None, "seed/A12")]
     internal void ClosedSet_AListedShapeOnTheWrongAxes_IsRed(string shape, Family family, BindingKind target, BindingKind outer, string id)
     {
         var cell = CellTagged(SharpyTag.Unruled, null) with { Id = id, Family = family, Target = target, Outer = outer, Shape = shape };
 
         Assert.False(UnruledAxesHold(cell));
+    }
+
+    /// <summary>P77b D6 R-LF: a seed has no axes but its source, so the same-block shape reads it. B36 / B37 hold (the positive
+    /// control); the re-declaration moved into a nested block (block scoping, not the same-block question), B21's read-then-declare
+    /// and a non-seed cell do not.</summary>
+    [Fact]
+    public void ClosedSet_SameBlockRedeclarationAfterClosure_ReadsTheSource()
+    {
+        var holds = CellTagged(SharpyTag.Unruled, null) with
+        {
+            Id = "seed/B36",
+            Family = Family.Seed,
+            Shape = "same-block-redeclaration-after-closure",
+            Source = TwinSeed.Spy("B36"),
+        };
+
+        Assert.True(UnruledAxesHold(holds));
+        Assert.True(UnruledAxesHold(holds with { Source = TwinSeed.Spy("B37") }));
+        Assert.False(UnruledAxesHold(holds with { Source = holds.Source.Replace("    let x = 2", "    if True:\n        let x = 2", StringComparison.Ordinal) }));
+        Assert.False(UnruledAxesHold(holds with { Source = TwinSeed.Spy("B21") }));
+        Assert.False(UnruledAxesHold(holds with { Family = Family.Local }));
     }
 
     private static NameCell CellTagged(SharpyTag tag, string? model) => new()

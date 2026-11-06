@@ -342,6 +342,15 @@ public partial class NameResolutionDifferentialTests
         // P77b axis 12: the parser refuses every `global` / `nonlocal` line (SPY0134) until #2424 implements N6, so each N6
         // declaration shape is refused by direction before its own refusal is reached.
         [("N6-declaration", "SPY0134")] = 80,
+        // P77b D6 R-LI (D21): the lambda-typed local called above its binding under a non-callable outer binds the outer and is
+        // refused as a call on it (SPY0230), before #2425's "declared later" is reached: refused by direction.
+        [("N5-declared-later", "SPY0230")] = 12,
+        // P77b D6 R-KY (D11): a store to a def / type-kind name, refused today by its neighbours until #2424's own code lands —
+        // `global f` by the parser (SPY0134), `f += 1` as a type error on the def / type read (SPY0222 / SPY0342 / SPY0346).
+        [("N6-type-kind", "SPY0134")] = 21,
+        [("N6-type-kind", "SPY0222")] = 2,
+        [("N6-type-kind", "SPY0342")] = 6,
+        [("N6-type-kind", "SPY0346")] = 6,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -365,13 +374,20 @@ public partial class NameResolutionDifferentialTests
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
         // P77b axis 4 (R-KX / R-LC): with no outer binding, a read above (a back edge, a closure taken before `out let`) its own
-        // binding is an undefined name at the read: SPY0200 is the name verdict itself, no type is involved.
-        ["N5-declared-later"] = new[] { "SPY0200" },
+        // binding is an undefined name at the read: SPY0200 is the name verdict itself, no type is involved. P77b D6 R-LI: SPY0230
+        // is the lambda-typed local called above its binding under a non-callable outer — the read binds the outer (refused by
+        // direction, pinned in EarlierRefusals until #2425's "declared later" lands).
+        ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
+        // P77b D6 R-LE (D17): the lambda-typed local reading itself stays refused; the steer is message-only, never compared.
+        ["N5-self"] = new[] { "SPY0200" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424). SPY0336 and
         // SPY0342 are the same read of the builtin for an overloaded one (`max`) and a type name (`int`), P77b D1's restore.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
         // P77b axis 12: SPY0134 is the parser's refusal of the declaration line itself, pinned in EarlierRefusals until #2424.
         ["N6-declaration"] = new[] { "SPY0134" },
+        // P77b D6 R-KY (D11): the store's own code lands with #2424. Today `global f` is the parser's SPY0134, `f += 1` the type
+        // errors SPY0222 / SPY0342 / SPY0346 on the def or type read: each pinned in EarlierRefusals as a refusal by direction.
+        ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
         ["R-KG"] = new[] { "SPY0200" },
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
