@@ -936,6 +936,8 @@ public partial class NameResolutionDifferentialTests
                 new[] { "fs: list[() -> int] = [lambda: i for i in range(3)]", "print([g0() for g0 in fs])" },
                 new Expected(SharpyTag.MustRun, "[0, 1, 2]", PyOutcome.Ran("[2, 2, 2]"), "N5", "loop-variable-fresh-per-iteration"), null, plain);
         }
+        foreach (var cell in LoopBodyClosureAxisCells())
+            yield return cell;
     }
 
     private static (string[] Lines, object? Last) ConstructOf(LocalTarget t, string name) => t switch
@@ -1423,6 +1425,8 @@ public partial class NameResolutionDifferentialTests
             letInOuters = NameResolutionRosters.LetInOuters.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason)
                 .Append(new KeyValuePair<string, string?>("function-scope outers × other families", NameResolutionRosters.LetInOneFamilyReason))
                 .ToDictionary(e => e.Key, e => e.Value),
+            loopBodyClosureBinders = NameResolutionRosters.LoopBodyClosureBinders.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            loopBodyEnclosures = NameResolutionRosters.LoopBodyEnclosures.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
         },
         letIn = results.Where(r => r.Cell.Id.StartsWith("local/let-in/", StringComparison.Ordinal))
             .GroupBy(r => $"{r.Cell.Target}/outer={r.Cell.Outer}").OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
@@ -1620,6 +1624,8 @@ public partial class NameResolutionDifferentialTests
             yield return $"ReadTiming FailedGuard × {t} has no generated cell";
 
         foreach (var failure in LetInProduct(pool))
+            yield return failure;
+        foreach (var failure in LoopBodyClosureProduct(pool))
             yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.

@@ -22,6 +22,7 @@ public partial class NameResolutionDifferentialTests
             [(Family.Local, SharpyTag.MustRun, "N5")] = 42,
             [(Family.Local, SharpyTag.MustRun, "N5-block-scope")] = 51,
             [(Family.Local, SharpyTag.MustRun, "R-BM")] = 26,
+            [(Family.Local, SharpyTag.MustRun, "R-LG")] = 60,
             [(Family.Local, SharpyTag.Unruled, "unruled:L28")] = 6,
             [(Family.Local, SharpyTag.Unruled, "unruled:N5-before-binding")] = 120,
             [(Family.Local, SharpyTag.Unruled, "unruled:N5-match-capture")] = 52,

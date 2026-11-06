@@ -471,4 +471,102 @@ public partial class NameResolutionDifferentialTests
             yield return $"{c.Id}: a let-in cell on outer {c.Outer}, which LetInOuters does not generate";
     }
 
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 6: closure over a loop-BODY binding (R-LG)
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The reads of axis 6: the first closure, and every closure in order.</summary>
+    private static readonly (string Name, string Text)[] LoopBodyClosureReads = { ("first", "print(fs[0]())"), ("all", "print([g0() for g0 in fs])") };
+
+    /// <summary>The loop-body statement binding <c>y</c> from the loop counter <c>i</c>.</summary>
+    private static string[] LoopBodyBinder(BindingKind binder) => binder switch
+    {
+        BindingKind.LocalVar => new[] { "y: int = i" },
+        BindingKind.LocalLet => new[] { "let y = i" },
+        BindingKind.LocalComputedConst => new[] { "const y: int = i" },
+        BindingKind.LocalDef => new[] { "def y() -> int:", "    return i" },
+        BindingKind.LambdaTypedLocal => new[] { "y: () -> int = lambda: i" },
+        _ => throw new ArgumentOutOfRangeException(nameof(binder), binder, "not an axis-6 binder"),
+    };
+
+    /// <summary>The block a binder sits in inside the loop body, by its roster-8 family (or none: the loop body itself).</summary>
+    private static (string[] Open, int Depth) LoopBodyEnclosure(string enclosure) => enclosure switch
+    {
+        NameResolutionRosters.LoopBodyDirectEnclosure => (Array.Empty<string>(), 0),
+        "with" => (new[] { "with CM() as w0:" }, 1),
+        "except" => (new[] { "try:", "    raise ValueError(\"v\")", "except ValueError:" }, 1),
+        _ => throw new ArgumentOutOfRangeException(nameof(enclosure), enclosure, "not a generated axis-6 enclosure"),
+    };
+
+    /// <summary>A closure over a binding made in a loop body, called after the loop (R-LG, p18): Sharpy's binding is fresh per
+    /// iteration, so the closures read 0, 1, 2; python's is the function's one binding, read at the call (2).
+    /// A callable binder's body reads the counter: a <c>for</c> counter is itself fresh per iteration (the same row), a
+    /// <c>while</c> counter is the function's one variable in both languages, so there the closures agree on its last value.</summary>
+    private static NameCell LoopBodyClosureCell(BindingKind binder, string loop, string enclosure, (string Name, string Text) read)
+    {
+        var (open, close) = loop switch
+        {
+            "for-body" => (new[] { "for i in range(3):" }, Array.Empty<string>()),
+            "while-body" => (new[] { "i: int = 0", "while i < 3:" }, new[] { "    i += 1" }),
+            _ => throw new ArgumentOutOfRangeException(nameof(loop), loop, "not a loop-body family"),
+        };
+        var (enclosureOpen, depth) = LoopBodyEnclosure(enclosure);
+        var pad = new string(' ', 4 * (1 + depth));
+        var call = IsCallableKind(binder) ? "y()" : "y";
+        var stmts = new List<string> { "fs: list[() -> int] = []" };
+        stmts.AddRange(open);
+        stmts.AddRange(Indent(enclosureOpen));
+        stmts.AddRange(LoopBodyBinder(binder).Select(l => pad + l));
+        stmts.Add($"{pad}fs.append(lambda: {call})");
+        stmts.AddRange(close);
+        stmts.Add(read.Text);
+
+        var shared = IsCallableKind(binder) && loop == "while-body";
+        string Out(int each) => read.Name == "first" ? Str(shared ? 3 : each) : shared ? "[3, 3, 3]" : each == 0 ? "[0, 1, 2]" : $"[{each}, {each}, {each}]";
+        var model = Out(0);
+        var python = Out(2);
+        var e = new Expected(SharpyTag.MustRun, model, PyOutcome.Ran(python), "R-LG", model == python ? null : "loop-variable-fresh-per-iteration");
+        return LocalProgram(CellId("local", "closure-in-loop-body", binder, loop, enclosure, read.Name), binder, BindingKind.None,
+            ReadPosition.FunctionBody, stmts, e, null, ReadName.Plain);
+    }
+
+    /// <summary>Axis 6's cells: every generated binder × loop family × enclosure × read.</summary>
+    private static IEnumerable<NameCell> LoopBodyClosureAxisCells() =>
+        from b in NameResolutionRosters.LoopBodyClosureBinders.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(k => k)
+        from loop in NameResolutionRosters.BackEdgeLoopFamilies
+        from enclosure in LoopBodyEnclosureNames()
+        from read in LoopBodyClosureReads
+        select LoopBodyClosureCell(b, loop, enclosure, read);
+
+    private static IEnumerable<string> LoopBodyEnclosureNames() =>
+        new[] { NameResolutionRosters.LoopBodyDirectEnclosure }
+            .Concat(NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(f => f, StringComparer.Ordinal));
+
+    /// <summary>Axis 6's fed check (deferred finding 4): every <see cref="LocalKinds"/> binder is a row of
+    /// <see cref="NameResolutionRosters.LoopBodyClosureBinders"/> or out with its reason, and every generated (binder, loop,
+    /// enclosure) has a cell at each read; no axis-6 cell sits off the rosters.</summary>
+    private static IEnumerable<string> LoopBodyClosureProduct(IReadOnlyList<NameCell> pool)
+    {
+        var cells = pool.Where(c => c.Family == Family.Local && c.Id.StartsWith("local/closure-in-loop-body/", StringComparison.Ordinal)).ToList();
+        var enclosures = new[] { NameResolutionRosters.LoopBodyDirectEnclosure }
+            .Concat(NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key)).ToList();
+        foreach (var k in LocalKinds)
+        {
+            if (!NameResolutionRosters.LoopBodyClosureBinders.TryGetValue(k, out var m) || m.Generated == (m.Excluded != null))
+            {
+                yield return $"LoopBodyClosureBinders: LocalKinds binder {k} has neither a row nor an exclusion with its reason";
+                continue;
+            }
+            if (!m.Generated)
+                continue;
+            foreach (var loop in NameResolutionRosters.BackEdgeLoopFamilies)
+                foreach (var enclosure in enclosures)
+                    foreach (var (read, _) in LoopBodyClosureReads.Where(r => !cells.Any(c => c.Id == CellId("local", "closure-in-loop-body", k, loop, enclosure, r.Name))))
+                        yield return $"LoopBodyClosure: binder {k} × {loop} × {enclosure} × read {read} has no cell";
+        }
+        foreach (var c in cells.Where(c => !(NameResolutionRosters.LoopBodyClosureBinders.TryGetValue(c.Target, out var m) && m.Generated)))
+            yield return $"{c.Id}: an axis-6 cell on binder {c.Target}, which LoopBodyClosureBinders does not generate";
+        foreach (var c in cells.Where(c => !enclosures.Any(e => c.Id.Contains($"/{e}/", StringComparison.Ordinal))))
+            yield return $"{c.Id}: an axis-6 cell in an enclosure LoopBodyEnclosures does not generate";
+    }
 }

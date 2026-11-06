@@ -1130,6 +1130,48 @@ internal static class NameResolutionRosters
     /// <summary>Why the function-scope outers ride one block family (P77b axis 5): the plan's named prune.</summary>
     internal const string LetInOneFamilyReason = "one block family stands for the walk — " + StoreNestingReason;
 
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 6: closure over a loop-BODY binding (R-LG)
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The binders axis 6 closes over (P77b axis 6, deferred finding 4): total over <see cref="LocalKinds"/>' generated
+    /// binders, each a statement in the loop body binding <c>y</c> from the loop counter, or out with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> LoopBodyClosureBinders = Roster.Map(
+        (BindingKind.LocalVar, AxisMembership.Everywhere),
+        (BindingKind.LocalLet, AxisMembership.Everywhere),
+        // `const y: int = i`: a computed const binds a value per iteration, python's twin `y: int = i`.
+        (BindingKind.LocalComputedConst, AxisMembership.Everywhere),
+        (BindingKind.LocalLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "a literal const binds the same value at every iteration, so a fresh and a shared binding print alike: no cell can observe the axis (the counter is not a literal, so `const y: int = i` is LocalComputedConst's row)")),
+        (BindingKind.LocalDef, AxisMembership.Everywhere),
+        (BindingKind.LambdaTypedLocal, AxisMembership.Everywhere));
+
+    /// <summary>The enclosure of axis 6's binder inside the loop body that is no block of its own: the loop body itself.</summary>
+    internal const string LoopBodyDirectEnclosure = "direct";
+
+    /// <summary>The block families axis 6's binder may sit in inside the loop body (P77b axis 6): roster 8's statement-bodied
+    /// families (the let-in ones), the two
+    /// R-LG names generated, the loop families the loop axis itself, the others the plan's named prune.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> LoopBodyEnclosures = Roster.Map(
+        ("if-then", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("elif", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("if-else", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("while-body", AxisMembership.Out(ExcludedAxis.NotAKind, LoopBodyLoopFamilyReason)),
+        ("while-else", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("for-body", AxisMembership.Out(ExcludedAxis.NotAKind, LoopBodyLoopFamilyReason)),
+        ("for-else", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("try", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("except", AxisMembership.Everywhere),
+        ("try-else", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("finally", AxisMembership.Pruned(LoopBodyEnclosureReason)),
+        ("with", AxisMembership.Everywhere),
+        ("match-case", AxisMembership.Pruned(LoopBodyEnclosureReason)));
+
+    internal const string LoopBodyEnclosureReason = "same walk; R-LG names with/except";
+
+    internal const string LoopBodyLoopFamilyReason =
+        "the loop axis itself (BackEdgeLoopFamilies): the binder directly in the loop body is the `direct` enclosure";
+
     /// <summary>The slots of a kind's own node, from <see cref="ComprehensionSlots"/>: the element side of the comprehension.</summary>
     internal static IEnumerable<ComprehensionSlot> KindSlots(ComprehensionKind kind)
     {
@@ -2861,6 +2903,31 @@ public partial class NameResolutionDifferentialTests
             problems.Add($"LetInOuters: the function-scope family {NameResolutionRosters.StoreNestingFamily} is no let-in family of roster 8");
 
         AssertNoProblems(problems, "the let-in product's outers are the image of the scopes a store targets, each other scope naming why");
+    }
+
+    // =========================================================================================================
+    // P77b axis 6: closure over a loop-BODY binding
+    // =========================================================================================================
+
+    /// <summary>Axis 6's binder roster is total over <see cref="NameResolutionRosters.LocalKinds"/>' generated binders (both
+    /// directions), its enclosure roster total over roster 8's families, and the R-LG bodies {with, except} are generated.</summary>
+    [Fact]
+    public void LoopBodyClosureRosters_AreTotalOverLocalKindsAndBlockFamilies()
+    {
+        var binders = NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key);
+        var problems = Roster.TotalityProblems("LoopBodyClosureBinders", binders, NameResolutionRosters.LoopBodyClosureBinders.Keys).ToList();
+        problems.AddRange(MembershipShapeProblems("LoopBodyClosureBinders", NameResolutionRosters.LoopBodyClosureBinders));
+        // The families that host a statement body (a let-in construct): the comprehensions, `defer` and the match arm's pattern
+        // scope hold no statement a binder could be.
+        var statementFamilies = NameResolutionRosters.BlockFamilies.Where(e => e.Value.Image.Any(c => c.LetInBody != null)).Select(e => e.Key);
+        problems.AddRange(Roster.TotalityProblems("LoopBodyEnclosures", statementFamilies, NameResolutionRosters.LoopBodyEnclosures.Keys));
+        problems.AddRange(MembershipShapeProblems("LoopBodyEnclosures", NameResolutionRosters.LoopBodyEnclosures));
+        foreach (var family in new[] { "with", "except" }.Where(f => !(NameResolutionRosters.LoopBodyEnclosures.TryGetValue(f, out var m) && m.Generated)))
+            problems.Add($"LoopBodyEnclosures: R-LG's {family} body is not generated");
+        foreach (var family in NameResolutionRosters.BackEdgeLoopFamilies.Where(f => NameResolutionRosters.LoopBodyEnclosures.TryGetValue(f, out var m) && m.Generated))
+            problems.Add($"LoopBodyEnclosures: the loop family {family} is generated as an enclosure of its own loop body");
+
+        AssertNoProblems(problems, "axis 6 closes over every LocalKinds binder in every R-LG body, each other binder or family naming why");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull
