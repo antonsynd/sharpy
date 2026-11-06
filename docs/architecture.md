@@ -163,7 +163,7 @@ The `RoslynEmitter` is split into partial files by area — entry/name resolutio
 dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj [--incremental]
 ```
 
-**Incremental** (`IncrementalCompilationCache`, `SymbolSerializer`, `SymbolCache` in `Project/`): first build compiles everything and caches symbols + generated C# to `obj/{Config}/.sharpy-symbols`; later builds skip files whose content hash matches `obj/{Config}/.sharpy-cache` AND whose dependencies are unchanged (transitive, via the cached dependency graph). Caches invalidate on compiler-version change, schema-version change, or source change; force a full rebuild with `--clean` or by deleting the cache files.
+**Incremental** (`IncrementalCompilationCache`, `SymbolSerializer`, `SymbolCache` in `Project/`): first build compiles everything and caches symbols + generated C# to `obj/{Config}/.sharpy-symbols`; later builds skip files whose content hash matches `obj/{Config}/.sharpy-cache` AND whose dependencies are unchanged (transitive, via the cached dependency graph). Caches invalidate on compiler-version change, schema-version change, source change, or a change to any non-source input recorded in the facts key (`ProjectFactsOf`: entry point, output type, root namespace, source root, effective feature set, target framework, configuration, test host, `#line` emission, and each reference, module-path assembly and resolved package assembly by path, size and mtime; warnings-as-errors and suppressed warnings are replay-time policy and stay out); force a full rebuild with `--clean` or by deleting the cache files.
 
 ## Sharpy.Core
 
