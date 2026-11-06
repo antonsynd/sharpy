@@ -177,7 +177,7 @@ Base sha: 2279c0d (plan carried; tree == ee9a007a1). Tier: light (converged, CEL
 - [x] W1a #2438 chore (D8, 6ee0a81) + D3.5 FormatSpec null-skip (c928816; lead re-ran un-mute → red 2 ceiling throws → restored) — test-expert "chore" — blocked by none
 - [x] W1b CI gaps D4.1 (d3a60c1) + D4.2 (79de0f7; lead re-ran the job-env mutation: red → green) (yml job env, comments, two guards) — test-expert "ci" — blocked by none
 - [x] W1c docs D7 (74a0bf2, b72c5fc) (deviations.yaml rows executed, N2 sentence ×2) — test-expert "docs" — blocked by none
-- [ ] H1 D1 budget/restore (ReadOuter, Builtins max/int) + deferred 5 (LocalKinds map) + D4.3 retry + D5 TypeMemberShapes + re-ratchet — test-expert — blocked by W1a
+- [x] H1 (899b7cd, a4dcf02, b5ca19f, 34408d2; pool 7752, 298 s; lead re-ran ReadOuter[ModuleStruct] drop → 3 red → green) D1 budget/restore (ReadOuter, Builtins max/int) + deferred 5 (LocalKinds map) + D4.3 retry + D5 TypeMemberShapes + re-ratchet — test-expert — blocked by W1a
 - [ ] H2 axis 9 ImportedName (ImportedOuter_CompilesInProcess FIRST) + deferred 6, 7 + D3.1 round trip — test-expert — blocked by H1
 - [ ] H3 axes 1–4 + deferred 1, 2, 3 — test-expert — blocked by H2
 - [ ] H4 axes 5–8 + deferred 4 — test-expert — blocked by H3
