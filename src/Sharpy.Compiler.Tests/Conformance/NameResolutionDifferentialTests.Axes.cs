@@ -789,4 +789,71 @@ public partial class NameResolutionDifferentialTests
                 yield return $"{c.Id}: rule {c.Rule}, and R-KU is exactly a @static value member stored through self. / D. / h0.";
         }
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 10: the sibling nested type
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>A nested type <c>I</c> reading its container <c>H</c>'s other nested type <c>x</c> (p08). Bare <c>x().v</c>: a
+    /// class-body name is not bare inside a nested body (N1's methods rule; python NameError(x) at both positions). Qualified
+    /// <c>H.x().v</c>: N7, the container's member through its name; python reads it at the call from the method body and
+    /// raises NameError(H) from the <c>@static</c> initializer, which runs while <c>H</c>'s own body is still executing.</summary>
+    private static NameCell SiblingCell(Spelling s, ReadPosition p, Order order)
+    {
+        var n = ReadName.Plain;
+        var read = ReadText(Form.Ctor, s == Spelling.Qualified ? "H." : "", n);
+        var (reader, access) = p switch
+        {
+            ReadPosition.NestedClassMethodBody => (new[] { "class I:", "    def r(self) -> int:", $"        return {read}" }, "H.I().r()"),
+            ReadPosition.StaticInitializer => (new[] { "class I:", "    @static", $"    r: int = {read}" }, "H.I.r"),
+            _ => throw new ArgumentOutOfRangeException(nameof(p), p, "not a sibling position"),
+        };
+        var target = MemberDecl(BindingKind.NestedType, n);
+        var members = order == Order.Earlier ? target.Concat(reader) : reader.Concat(target);
+        var lines = new[] { "class H:" }.Concat(Indent(members));
+        int value = ValueOf(BindingKind.NestedType);
+        var expected = s switch
+        {
+            Spelling.Bare => Refuse(PyOutcome.Name(n.Name), "N1-methods"),
+            Spelling.Qualified => Run(p == ReadPosition.StaticInitializer ? PyOutcome.Name("H") : PyOutcome.Ran(value), value, "N7"),
+            _ => throw new ArgumentOutOfRangeException(nameof(s), s, "not a sibling spelling"),
+        };
+        return new NameCell
+        {
+            Id = CellId("read", BindingKind.NestedType, p, "sibling", order, s),
+            Family = Family.Read,
+            Source = Join(lines) + MainBlock($"print({access})"),
+            Tag = expected.Tag,
+            Model = expected.Model,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = BindingKind.NestedType,
+            Outer = BindingKind.None,
+            Position = p,
+            Relation = DeclaringRelation.Sibling,
+        };
+    }
+
+    /// <summary>Axis 10's cells: sibling × spelling × position × order.</summary>
+    private static IEnumerable<NameCell> SiblingAxisCells() =>
+        from s in NameResolutionRosters.SiblingSpellings
+        from p in NameResolutionRosters.SiblingPositions
+        from o in new[] { Order.Earlier, Order.Later }
+        select SiblingCell(s, p, o);
+
+    /// <summary>Axis 10's fed check: every declaring relation has a READ cell, every sibling (spelling, position, order) has its
+    /// cell, and no cell carries a relation the roster does not list.</summary>
+    private static IEnumerable<string> DeclaringRelationFed(IReadOnlyList<NameCell> pool)
+    {
+        var read = pool.Where(c => c.Family == Family.Read).ToList();
+        foreach (var r in Enum.GetValues<DeclaringRelation>().Where(r => !read.Any(c => c.Relation == r)))
+            yield return $"DeclaringRelation {r} has no generated READ cell";
+        foreach (var r in Enum.GetValues<DeclaringRelation>().Where(r => !NameResolutionRosters.DeclaringRelations.ContainsKey(r)))
+            yield return $"DeclaringRelation {r} has no DeclaringRelations row";
+        var siblings = read.Where(c => c.Relation == DeclaringRelation.Sibling).ToList();
+        foreach (var s in NameResolutionRosters.SiblingSpellings)
+            foreach (var p in NameResolutionRosters.SiblingPositions)
+                foreach (var o in new[] { Order.Earlier, Order.Later }.Where(o => !siblings.Any(c => c.Id == CellId("read", BindingKind.NestedType, p, "sibling", o, s))))
+                    yield return $"DeclaringRelation Sibling × {s} × {p} × {o} has no READ cell";
+    }
 }

@@ -1434,6 +1434,7 @@ public partial class NameResolutionDifferentialTests
         },
         letIn = results.Where(r => r.Cell.Id.StartsWith("local/let-in/", StringComparison.Ordinal))
             .GroupBy(r => $"{r.Cell.Target}/outer={r.Cell.Outer}").OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
+        declaringRelations = results.Where(r => r.Cell.Relation != null).GroupBy(r => r.Cell.Relation!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         readTimings = results.Where(r => r.Cell.Timing != null).GroupBy(r => r.Cell.Timing!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         observations = results.GroupBy(r => r.Cell.Observed.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         cycles = results.Where(r => r.Cell.Cycle != null)
@@ -1634,6 +1635,8 @@ public partial class NameResolutionDifferentialTests
         foreach (var failure in HostProduct(pool))
             yield return failure;
         foreach (var failure in AttributeStoreFed(pool))
+            yield return failure;
+        foreach (var failure in DeclaringRelationFed(pool))
             yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.

@@ -120,6 +120,18 @@ internal enum ReadTiming
     FailedGuard,
 }
 
+/// <summary>Where a type-level member a READ names is declared, relative to the type the read sits in (P77b axis 10): a closed
+/// LITERAL set named closed — <c>TypeSymbol.ContainingType</c> relations have no compiler enumeration, so this enum is the
+/// roster. <see cref="Sibling"/> is a nested type reading its container's other nested type.</summary>
+internal enum DeclaringRelation
+{
+    Self,
+    Base,
+    Other,
+    Enclosing,
+    Sibling,
+}
+
 /// <summary>What a program observes (P77b axis 3): a closed LITERAL set named closed — an observation has no compiler
 /// enumeration. Every cell observes a value; an order cell also observes when its initializers run.</summary>
 internal enum Observation
@@ -1269,6 +1281,30 @@ internal static class NameResolutionRosters
             (ReadPosition.NestedDefInMethod, NameResolutionDifferentialTests.Nesting.Direct),
             (ReadPosition.InitBody, NameResolutionDifferentialTests.Nesting.Lambda),
             (ReadPosition.AccessorGetBody, NameResolutionDifferentialTests.Nesting.Lambda));
+
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 10: the declaring relation (sibling nested type)
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The declaring relations (P77b axis 10): a closed LITERAL set named closed, each value with the READ arm that
+    /// generates it. The fed check requires a cell per value, so a relation added here without its arm is red.</summary>
+    internal static readonly IReadOnlyDictionary<DeclaringRelation, string> DeclaringRelations = Roster.Map(
+        (DeclaringRelation.Self, "ReadClassCells / ClassCell: the member is declared in the type the read sits in"),
+        (DeclaringRelation.Base, "ReadDeclaringCells' base arm: the member is declared in the reading type's base class"),
+        (DeclaringRelation.Other, "ReadDeclaringCells' other arm: an unrelated class read qualified"),
+        (DeclaringRelation.Enclosing, "ReadDeclaringCells' enclosing arm: a nested type reads its enclosing type (R-KG)"),
+        (DeclaringRelation.Sibling, "SiblingAxisCells: a nested type reads its container's other nested type (p08)"));
+
+    /// <summary>The spellings a sibling read takes (P77b axis 10): bare <c>x().v</c> and qualified through the container
+    /// <c>H.x().v</c>. <c>self.</c> names the reader's own members, never a sibling type; the alias and the call helper are
+    /// N7's spelling axis, already crossed with the self relation.</summary>
+    internal static readonly ImmutableArray<NameResolutionDifferentialTests.Spelling> SiblingSpellings =
+        ImmutableArray.Create(NameResolutionDifferentialTests.Spelling.Bare, NameResolutionDifferentialTests.Spelling.Qualified);
+
+    /// <summary>The positions a sibling read sits at (P77b axis 10): the nested type's method body and its <c>@static</c>
+    /// initializer — the body that reads at call time and the initializer that reads while the container's body runs.</summary>
+    internal static readonly ImmutableArray<ReadPosition> SiblingPositions =
+        ImmutableArray.Create(ReadPosition.NestedClassMethodBody, ReadPosition.StaticInitializer);
 
     internal const string LoopBodyLoopFamilyReason =
         "the loop axis itself (BackEdgeLoopFamilies): the binder directly in the loop body is the `direct` enclosure";
@@ -3206,6 +3242,23 @@ public partial class NameResolutionDifferentialTests
             .Select(k => $"AttributeStoreFormMembers: {k} is not a generated member"));
 
         AssertNoProblems(problems, "axis 8 stores every member kind in every form a member access admits, each other naming why");
+    }
+
+    // =========================================================================================================
+    // P77b axis 10: the declaring relation
+    // =========================================================================================================
+
+    /// <summary>The declaring relations are a closed literal set: every <see cref="DeclaringRelation"/> has a row naming its arm,
+    /// both directions, and the sibling arm's positions are a nested type's method body and initializer.</summary>
+    [Fact]
+    public void DeclaringRelationsRoster_IsTotalOverTheEnum()
+    {
+        var problems = Roster.TotalityProblems("DeclaringRelations", Enum.GetValues<DeclaringRelation>(), NameResolutionRosters.DeclaringRelations.Keys).ToList();
+        problems.AddRange(NameResolutionRosters.DeclaringRelations.Where(e => string.IsNullOrWhiteSpace(e.Value)).Select(e => $"DeclaringRelations: {e.Key} names no arm"));
+        problems.AddRange(NameResolutionRosters.SiblingPositions.Where(p => p is not (ReadPosition.NestedClassMethodBody or ReadPosition.StaticInitializer))
+            .Select(p => $"SiblingPositions: {p} is not a nested type's body or initializer"));
+
+        AssertNoProblems(problems, "axis 10's relations are named closed, each with the arm that generates it");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull

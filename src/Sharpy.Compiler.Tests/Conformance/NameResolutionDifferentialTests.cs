@@ -112,6 +112,10 @@ internal sealed record NameCell
     /// <c>HostHeader</c>'s class / <c>@dataclass</c> / struct initializer host).</summary>
     public Sharpy.Compiler.Semantic.TypeKind? Host { get; init; }
 
+    /// <summary>P77b axis 10: where the type-level member a READ names is declared, relative to the reading type (null: a cell
+    /// with no declaring type, or one the relation axis does not tag).</summary>
+    public DeclaringRelation? Relation { get; init; }
+
     /// <summary>P77b axis 4: when a LOCAL read happens relative to its binding (null: a family with no LOCAL read timing).</summary>
     public ReadTiming? Timing { get; init; }
 
@@ -487,6 +491,10 @@ public partial class NameResolutionDifferentialTests
                     // cells are CS0176 rows on #2147) seen through the struct closure (lead ruling 2026-11-06).
                     "CS1673" when cell.Target == BindingKind.StaticMethod => "#2147",
                     "CS1673" => "#2434",
+                    // P77b axis 10 (p08): a nested type reading its container's other nested type bare is #2397's nested-type
+                    // read. Keyed on the sibling relation, never on the NestedType target: the 154 own-body NestedType CS1955
+                    // rows keep their #2423 route (lead ruling 2026-11-06).
+                    "CS1955" when cell.Relation == DeclaringRelation.Sibling => "#2397",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
                     "CS0103" when cell.Family == Family.Store => "#2151",

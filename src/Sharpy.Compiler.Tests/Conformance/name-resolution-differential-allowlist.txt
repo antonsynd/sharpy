@@ -1081,6 +1081,8 @@ read/NestedType/NestedClassMethodBody/Earlier/Bare/outer=ModuleVar Ice # #2423 i
 read/NestedType/NestedClassMethodBody/Earlier/Bare/outer=None Ice # #2423 ice
 read/NestedType/NestedClassMethodBody/Later/Bare/outer=ModuleVar Ice # #2423 ice
 read/NestedType/NestedClassMethodBody/Later/Bare/outer=None Ice # #2423 ice
+read/NestedType/NestedClassMethodBody/sibling/Earlier/Bare Ice # #2397 ice
+read/NestedType/NestedClassMethodBody/sibling/Later/Bare Ice # #2397 ice
 read/NestedType/NestedDefInMethod/Earlier/Bare/outer=ModuleVar Ice # #2423 ice
 read/NestedType/NestedDefInMethod/Earlier/Bare/outer=None Ice # #2423 ice
 read/NestedType/NestedDefInMethod/Earlier/SelfDot/outer=None FalseRefusal # #2423 false-refusal
@@ -1129,6 +1131,8 @@ read/NestedType/StaticInitializer/Later/Bare/outer=ModuleStruct SilentWrong # #2
 read/NestedType/StaticInitializer/Later/Bare/outer=ModuleTypeAlias Ice # #2423 ice
 read/NestedType/StaticInitializer/Later/Bare/outer=ModuleVar Ice # #2423 ice
 read/NestedType/StaticInitializer/Later/Bare/outer=None Ice # #2423 ice
+read/NestedType/StaticInitializer/sibling/Earlier/Bare Ice # #2397 ice
+read/NestedType/StaticInitializer/sibling/Later/Bare Ice # #2397 ice
 read/NestedType/StaticMethodBody/Earlier/Bare/outer=ModuleVar Ice # #2423 ice
 read/NestedType/StaticMethodBody/Earlier/Bare/outer=None Ice # #2423 ice
 read/NestedType/StaticMethodBody/Later/Bare/outer=ModuleVar Ice # #2423 ice

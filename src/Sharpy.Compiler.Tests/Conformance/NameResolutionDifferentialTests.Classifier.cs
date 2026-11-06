@@ -297,6 +297,18 @@ public partial class NameResolutionDifferentialTests
         Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
     }
 
+    /// <summary>P77b axis 10: CS1955 routes to #2397 on a sibling nested-type read only. The same code on a nested type read in its
+    /// own class body keeps the N1 route (#2423), which is the control that the key is the relation and not the target.</summary>
+    [Theory]
+    [InlineData(DeclaringRelation.Sibling, "#2397")]
+    [InlineData(DeclaringRelation.Self, "#2423")]
+    internal void Cite_ASiblingNestedTypeIce_RoutesByTheRelation(DeclaringRelation relation, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRefuse, null) with { Target = BindingKind.NestedType, Relation = relation };
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = "CS1955" }), StringComparison.Ordinal);
+    }
+
     /// <summary>A union case reached through an alias refuses at both orders: the alias is the cause, not the order (#1925, not #2249).</summary>
     [Theory]
     [InlineData("typemember/union/constructor/alias/match/before", "#1925")]
