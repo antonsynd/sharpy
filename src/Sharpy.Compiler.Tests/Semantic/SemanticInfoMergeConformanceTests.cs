@@ -53,7 +53,7 @@ public class SemanticInfoMergeConformanceTests
     private const int MinimumSideTableFieldCount = 79;
 
     /// <summary>
-    /// The ratchet on the side-table count (#2443, E2 contract item 4): 88
+    /// The ratchet on the side-table count (#2443, E2 contract item 5): 88
     /// <c>ConcurrentDictionary</c> side-tables at the E2 resume (85 keyed on AST nodes, 3 on
     /// symbols). The emitter port moves facts into the lowering IR, so the count may only fall: a
     /// change that adds a table fails here, and a change that removes one lowers this pin with it.
