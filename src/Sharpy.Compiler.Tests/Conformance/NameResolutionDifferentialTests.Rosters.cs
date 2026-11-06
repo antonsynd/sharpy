@@ -871,7 +871,7 @@ internal static class NameResolutionRosters
     /// constructible as a <c>BindingPattern</c>, and that is LOCAL's <c>match</c> capture.</summary>
     internal static readonly IReadOnlyDictionary<string, string> PatternNotes = Roster.Map(
         (nameof(BindingPattern), TypedCaptureNote),
-        (nameof(AndPattern), "python has no `&` pattern, so a program spelling one has no twin for the control to judge; OrPattern, GuardPattern, AsPattern, TuplePattern and ListPattern keep the composite arm"));
+        (nameof(AndPattern), "python has no `and` pattern (Sharpy's `case p1 and p2:`), so a program spelling one has no twin for the control to judge; OrPattern, GuardPattern, AsPattern, TuplePattern and ListPattern keep the composite arm"));
 
     internal static readonly IReadOnlyDictionary<string, PatternClass> Patterns = Roster.Map(
         (nameof(TypePattern), PatternClass.NamesTypeOrMember),
@@ -2822,6 +2822,68 @@ public partial class NameResolutionDifferentialTests
 
         AstPropertyProducers(snippet, "snippet.cs", nameof(BindingPattern), nameof(BindingPattern.Type)).Should().HaveCount(2,
             "an initializer setting the property is a producer, with or without the namespace alias; the unset one and other types are not");
+    }
+
+    /// <summary>P77b D3.3: the number of <see cref="NameResolutionRosters.PatternNotes"/>, a measured literal.</summary>
+    private const int PatternNoteCount = 2;
+
+    /// <summary>P77b D3.3: a note exempts its pattern from the TYPEMEMBER feed by existing, so each note names the probe that shows
+    /// why no cell can carry the pattern and the way that probe fails. A falsifier returns null when its probe fails the stated way.</summary>
+    private static readonly IReadOnlyDictionary<string, Func<IReadOnlyList<NameCell>, string?>> PatternNoteFalsifiers =
+        new Dictionary<string, Func<IReadOnlyList<NameCell>, string?>>(StringComparer.Ordinal)
+        {
+            // python has no `and` pattern (Sharpy spells AndPattern `p1 and p2`, Parser.Statements.cs ParseAndPattern): the twin
+            // renderer has no row for one, so the python control could never judge the cell.
+            [nameof(AndPattern)] = _ => ProbeFailure(
+                "def main() -> None:\n    match 1:\n        case 1 and 1:\n            print(1)\n        case _:\n            print(0)\n",
+                ex => ex is NotSupportedException && ex.Message.Contains(nameof(AndPattern), StringComparison.Ordinal),
+                $"TwinRenderer.Render throws NotSupportedException naming {nameof(AndPattern)}"),
+            // The typed capture has no parser producer (SPY0102), and the untyped `case v:` is LOCAL's match capture.
+            [nameof(BindingPattern)] = pool => ProbeFailure(
+                "class Later:\n    pass\ndef main() -> None:\n    o: object = Later()\n    match o:\n        case v: Later:\n            print(1)\n        case _:\n            print(0)\n",
+                ex => ex is InvalidOperationException && ex.Message.Contains("SPY0102", StringComparison.Ordinal),
+                "the parser refuses the typed capture with SPY0102")
+                ?? (pool.Any(c => c.Family == Family.Local && c.Construct == LocalTarget.MatchCapture)
+                    ? null
+                    : "the untyped capture has no LOCAL MatchCapture cell to stand for it"),
+        };
+
+    /// <summary>Renders <paramref name="probe"/>'s twin: null when it fails the stated way, else what happened instead.</summary>
+    private static string? ProbeFailure(string probe, Func<Exception, bool> failsTheStatedWay, string stated)
+    {
+        try
+        {
+            TwinRenderer.Render(probe);
+            return $"the probe renders, and the note says {stated}";
+        }
+        catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
+        {
+            return failsTheStatedWay(ex) ? null : $"the probe fails with {ex.GetType().Name} ({ex.Message}), and the note says {stated}";
+        }
+    }
+
+    /// <summary>P77b D3.3: a note is not an exemption by existing. A noted pattern with ANY TYPEMEMBER pattern cell is red (the note
+    /// exempts nothing), a note with no falsifier or whose probe does not fail the stated way is red, and the count is a literal.</summary>
+    [Fact]
+    public void PatternKindRoster_EveryNote_HasAFalsifier()
+    {
+        var pool = GeneratedCells();
+        var typeMember = pool.Where(c => c.Family == Family.TypeMember).ToList();
+        var problems = new List<string>();
+        foreach (var name in NameResolutionRosters.PatternNotes.Keys)
+        {
+            if (typeMember.Any(c => c.Id.Contains($"pattern/{name}", StringComparison.Ordinal)))
+                problems.Add($"{name}: noted pattern generates cells, so its note exempts nothing");
+            if (!PatternNoteFalsifiers.TryGetValue(name, out var falsifier))
+                problems.Add($"{name}: the note has no falsifier");
+            else if (falsifier(pool) is string why)
+                problems.Add($"{name}: {why}");
+        }
+        foreach (var name in PatternNoteFalsifiers.Keys.Where(k => !NameResolutionRosters.PatternNotes.ContainsKey(k)))
+            problems.Add($"{name}: a falsifier with no note");
+
+        AssertNoProblems(problems, "every pattern note is falsified by its own probe, and no noted pattern has a cell");
+        NameResolutionRosters.PatternNotes.Should().HaveCount(PatternNoteCount, "the note count is a measured literal");
     }
 
     /// <summary>A construction of <paramref name="typeName"/> whose object initializer sets <paramref name="property"/>: how every AST
