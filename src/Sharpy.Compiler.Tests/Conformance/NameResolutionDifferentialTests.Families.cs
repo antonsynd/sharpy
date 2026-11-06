@@ -1342,7 +1342,11 @@ public partial class NameResolutionDifferentialTests
             localKinds = NameResolutionRosters.LocalKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             patterns = NameResolutionRosters.PatternNotes,
             readOuter = NameResolutionRosters.ReadOuter.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            comprehensionClauses = NameResolutionRosters.ComprehensionClauses.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key, e => e.Value.Reason),
+            comprehensionWalrus = NameResolutionRosters.ComprehensionWalrus.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
         },
+        axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
+            .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         targets = results.GroupBy(r => r.Cell.Target.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         outers = results.GroupBy(r => r.Cell.Outer.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         positions = results.Where(r => r.Cell.Position != null).GroupBy(r => r.Cell.Position!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
@@ -1441,6 +1445,9 @@ public partial class NameResolutionDifferentialTests
                 && !(NameResolutionRosters.LocalBodies.TryGetValue(body, out var e) && e.Image.Contains(t)))
                 yield return $"{c.Id}: {body} × {t} is not in LocalBodies";
         }
+
+        foreach (var failure in AxisFedFailures(pool))
+            yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.
         var typeMember = pool.Where(c => c.Family == Family.TypeMember).ToList();

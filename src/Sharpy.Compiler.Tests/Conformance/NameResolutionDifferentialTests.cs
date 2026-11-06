@@ -119,6 +119,10 @@ internal sealed record NameCell
     /// <summary>Set by SEED cells: the table's issue cite for a red.</summary>
     public string? SeedCite { get; init; }
 
+    /// <summary>P77b's generated axes: <c>axis: value × value</c>, the key <see cref="NameResolutionDifferentialTests"/>' fed check
+    /// computes from the axis's roster, so a roster value the generator owes a cell cannot go missing without a red.</summary>
+    public string? AxisCell { get; init; }
+
     /// <summary>The inventory's python verdict, compared in the runner's normal form instead of <see cref="Python"/>.</summary>
     public string? SeedPythonVerdict { get; init; }
 }
