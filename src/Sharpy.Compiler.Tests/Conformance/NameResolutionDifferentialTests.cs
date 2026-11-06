@@ -477,10 +477,19 @@ public partial class NameResolutionDifferentialTests
         => cell.Target == BindingKind.ModuleTypeAlias || cell.Outer == BindingKind.ModuleTypeAlias
             || (cell.Family == Family.TypeMember && cell.Id.Contains("/alias/", StringComparison.Ordinal));
 
-    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
+    /// <summary>P77b D2.9: set by <see cref="RunSharpy"/> for the one compile it wraps and read back by the override below, in
+    /// the shape of <c>DifferentialExecutionTests._currentProgramNeedsStdlib</c>. The Sharpy arm is a sequential loop over
+    /// one test instance, so a field is the whole mechanism; every cell that does not ask keeps the Core-only reference.</summary>
+    private bool _currentCellNeedsStdlib;
+
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+        => _currentCellNeedsStdlib ? new[] { SharpyStdlibReference.Location } : Enumerable.Empty<string>();
+
+    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs, bool needsStdlib = false)
     {
         bool wasMuted = MuteCompilePath;
         MuteCompilePath = true;
+        _currentCellNeedsStdlib = needsStdlib;
         ExecutionResult r;
         try
         {
@@ -489,6 +498,7 @@ public partial class NameResolutionDifferentialTests
         finally
         {
             MuteCompilePath = wasMuted;
+            _currentCellNeedsStdlib = false;
         }
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();

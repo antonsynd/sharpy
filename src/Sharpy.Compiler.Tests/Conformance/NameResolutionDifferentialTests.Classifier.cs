@@ -64,6 +64,22 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(VerdictClass.RuntimeThrow, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.RuntimeThrow, run.Stdout));
     }
 
+    /// <summary>P77b D2.9's order of work: the harness compiles a Stdlib import IN PROCESS before any axis-9 cell exists.
+    /// <c>string</c> is a Sharpy.Stdlib module and <c>CompileAndExecute</c> references Sharpy.Core alone unless the override
+    /// adds the monolith, so the imported outer is runnable only on a cell that asks (<c>needsStdlib</c>). The second compile
+    /// is the positive control of "every other cell keeps the Core-only reference": the same source unflagged is SPY0300.</summary>
+    [Fact]
+    public void ImportedOuter_CompilesInProcess()
+    {
+        const string Program = "from string import digits\ndef main() -> None:\n    print(len(digits))\n";
+
+        var run = RunSharpy(Program, needsStdlib: true);
+
+        Assert.True(ClassifySharpy(run) == SharpyKind.Ran && Normalize(run.Stdout) == "10",
+            $"expected Ran '10', got {ClassifySharpy(run)} '{Normalize(run.Stdout)}' [{string.Join(",", run.AllCodes)}]");
+        Assert.Contains("SPY0300", RunSharpy(Program).ErrorCodes);
+    }
+
     /// <summary>The positive control of "never SPY0908": a C#-compile failure reaches the classifier through the mapped
     /// diagnostics as Ice, and the same program is never read as a refusal.</summary>
     [Fact]
