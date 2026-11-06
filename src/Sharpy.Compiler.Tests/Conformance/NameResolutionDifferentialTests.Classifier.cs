@@ -473,6 +473,19 @@ public partial class NameResolutionDifferentialTests
         Assert.True(judged >= ModelPairFloor, $"{judged} judged pairs, below the floor {ModelPairFloor}");
     }
 
+    /// <summary>P77b D3.4: every rule the pool cites is a predicate on the cell's axes, total both ways, and every rule a refusing
+    /// cell cites has its admitted codes. The rule counts are measured literals (the positive control: a pool citing fewer rules,
+    /// or a predicate no cell carries, is red).</summary>
+    [Fact]
+    public void RuleAxes_EveryRuleCite_IsAnAxisPredicate()
+    {
+        var failures = RuleAxesFailures(GeneratedCells(), out var rules, out var refusingRules).ToList();
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        Assert.Equal(PinnedRuleCount, rules);
+        Assert.Equal(PinnedRefusingRuleCount, refusingRules);
+    }
+
     /// <summary>A deviation names a ledger row, and the row exists (Acceptance 3). The named cells are the positive control.</summary>
     [Fact]
     public void Deviation_EveryCitedRow_IsInTheLedger()

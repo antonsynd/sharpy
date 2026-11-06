@@ -1292,6 +1292,199 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
+    // ------------------------------------------------------------------------------------------- //
+    // P77b D3.4: a rule cite is an axis predicate
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>D3.4's measured literals @ 082dd03: the rules the pool cites (every one has a predicate, and every predicate a
+    /// cell), and the rules a refusing cell (must-refuse, must-refuse-or-throw, may-refuse) cites (every one has an admitted set).</summary>
+    internal const int PinnedRuleCount = 46;
+    internal const int PinnedRefusingRuleCount = 29;
+
+    /// <summary>The id segments that spell a READ cell's <see cref="Order"/> and <see cref="Spelling"/>: the two axes a
+    /// <see cref="NameCell"/> carries in its id alone.</summary>
+    private static Order? OrderOf(NameCell c)
+        => c.Id.Split('/').Select(t => Enum.TryParse<Order>(t, out var o) ? o : (Order?)null).FirstOrDefault(o => o != null);
+
+    private static Spelling? SpellingOf(NameCell c)
+        => c.Id.Split('/').Select(t => Enum.TryParse<Spelling>(t, out var s) ? s : (Spelling?)null).FirstOrDefault(s => s != null);
+
+    /// <summary>A READ cell riding a nesting (<see cref="Nesting"/> other than Direct) at its host position.</summary>
+    private static bool IsNestedRead(NameCell c)
+        => c.Id.Split('/').Any(t => t is nameof(Nesting.Lambda) or nameof(Nesting.ComprehensionElement) or nameof(Nesting.ComprehensionIterable));
+
+    /// <summary>A READ cell whose nesting is a body of its own (a lambda, a comprehension's element), so a class-body name is not
+    /// visible in it; a comprehension's iterable is evaluated in the host and stays class-visible (<c>ExpectClass</c>).</summary>
+    private static bool IsBodyNestedRead(NameCell c)
+        => c.Id.Split('/').Any(t => t is nameof(Nesting.Lambda) or nameof(Nesting.ComprehensionElement));
+
+    private static bool IdHas(NameCell c, string segment) => c.Id.Split('/').Contains(segment, StringComparer.Ordinal);
+
+    private static bool IsLocalBinder(BindingKind k) => LocalKinds.Contains(k);
+
+    private static bool IsTypeLevelTarget(BindingKind k) => NameResolutionRosters.TypeLevelKinds.Contains(k);
+
+    /// <summary>N2's region: a type-level member read bare and directly at its own class's initializer, at or before its own
+    /// declaration. N1, N1+N3 and N1-type-error never sit there; every N2 cell does.</summary>
+    private static bool IsN2Region(NameCell c)
+        => c.Family == Family.Read && c.Relation == DeclaringRelation.Self && IsTypeLevelTarget(c.Target) && c.Position is ReadPosition p
+            && IsInitializer(p) && !IsBodyNestedRead(c) && OrderOf(c) is Order.Later or Order.Self or Order.Cycle && c.Outer != BindingKind.None;
+
+    /// <summary>An enum member's value reading a module binding that is not a literal constant.</summary>
+    private static bool IsEnumMemberConstantRegion(NameCell c)
+        => c.Family == Family.Read && c.Position == ReadPosition.EnumMemberValue && c.Target != BindingKind.ModuleLiteralConst;
+
+    /// <summary>R-KT's region: a struct's instance member read through <c>self</c> from a C# closure position.</summary>
+    private static bool IsStructCaptureRegion(NameCell c)
+        => c.Family == Family.Read && c.Host == Sharpy.Compiler.Semantic.TypeKind.Struct && SpellingOf(c) == Spelling.SelfDot && IsInstance(c.Target)
+            && (c.Position is ReadPosition.LambdaStored or ReadPosition.LambdaImmediate or ReadPosition.LambdaPassed or ReadPosition.NestedDefInMethod
+                || (c.Position is ReadPosition.InitBody or ReadPosition.AccessorGetBody && IsNestedRead(c)));
+
+    /// <summary>A walrus in a comprehension's own slot (the comprehension-scope store of <c>walrus-in-comprehension-scope</c>).</summary>
+    private static bool IsComprehensionWalrus(NameCell c)
+        => c.Form == StoreForm.Walrus && (c.Comprehension != null || c.Position == ReadPosition.ComprehensionElement);
+
+    /// <summary>P77b D3.4: every rule the pool cites, as a predicate on the cell's axes (family, target / outer class, position class,
+    /// order, spelling, form, construct, relation, timing), in the shape of <see cref="UnruledAxesHold"/>. A rule retagged to another
+    /// that admits the same refusal codes moved only the census; here it lands off its predicate. The broad rules (N1, N1-type-error,
+    /// N1-innermost, N5, N6, N7) exclude the regions their narrower neighbours own.</summary>
+    internal static readonly IReadOnlyDictionary<string, Func<NameCell, bool>> RuleAxes = new Dictionary<string, Func<NameCell, bool>>(StringComparer.Ordinal)
+    {
+        // A fresh binding (`let` / annotated) at a store, and a block binder over a same-function binding (#1974's question).
+        ["#1974"] = c => (c.Family == Family.Store && c.Form == StoreForm.LetOrVar && c.Declaration == null)
+            || (c.Family == Family.Local && IdHas(c, "let-in") && c.Outer == BindingKind.LocalVar && IsLocalBinder(c.Target) && c.Target != BindingKind.LocalDef),
+        // An inherited class member read bare under a module variable.
+        ["A3"] = c => c.Family == Family.Read && c.Relation == DeclaringRelation.Base && IsTypeLevelTarget(c.Target) && c.Outer == BindingKind.ModuleVar,
+        // Order-free resolution: a bare or called read of its own binding, or a comprehension target.
+        ["N1"] = c => (c.Family == Family.Read && c.Relation is null or DeclaringRelation.Self or DeclaringRelation.Enclosing
+                && !IsLocalOuter(c.Outer) && SpellingOf(c) is null or Spelling.Bare or Spelling.Call && c.Observed == Observation.Value
+                && c.Cycle == null && OrderOf(c) is not (Order.Self or Order.Cycle) && !IsN2Region(c) && c.Target != BindingKind.ModuleLet
+                && !IsEnumMemberConstantRegion(c) && c.ResultForm != ResultValueForm.Bare
+                && !(IsInstance(c.Target) && c.Position is ReadPosition p && IsInitializer(p)))
+            || (c.Family == Family.Local && c.Construct == LocalTarget.Comprehension),
+        // A class member read before its declaration, bare, with nothing outside to shadow.
+        ["N1+N3"] = c => c.Family == Family.Read && c.Relation is DeclaringRelation.Self or DeclaringRelation.Other && IsTypeLevelTarget(c.Target)
+            && c.Outer == BindingKind.None,
+        ["N1-arity"] = c => c.Family == Family.Read && c.Outer == BindingKind.Builtin && c.Target == BindingKind.ModuleClass && IdHas(c, "arity-mismatch"),
+        // The innermost binding: a local read below / from a closure, or a class member shadowed by a local outer.
+        ["N1-innermost"] = c => (c.Family == Family.Local && IsLocalBinder(c.Target) && c.Construct == null
+                && (IdHas(c, "below") || IdHas(c, "nested-def") || IdHas(c, "lambda")))
+            || (c.Family == Family.Read && IsLocalOuter(c.Outer)),
+        // A class-body name read bare from a nested body (a method, a closure, a nested type's body).
+        ["N1-methods"] = c => c.Family == Family.Read && (IsTypeLevelTarget(c.Target) || IsInstance(c.Target))
+            && c.Relation is DeclaringRelation.Self or DeclaringRelation.Sibling && c.Outer == BindingKind.None && SpellingOf(c) == Spelling.Bare
+            && c.Position is ReadPosition p && (ClassBodies.Contains(p) || (p == ReadPosition.StaticInitializer && (IsBodyNestedRead(c) || c.Relation == DeclaringRelation.Sibling))),
+        // A module binding read from a nested scope (a comprehension or a lambda) at a module or class position.
+        ["N1-nesting"] = c => c.Family == Family.Read && IsModuleLevel(c.Target) && c.Outer == BindingKind.None && (c.Comprehension != null || IsNestedRead(c)),
+        // The read binds an outer of another form, and the read is ill-typed on it.
+        ["N1-type-error"] = c => c.Family == Family.Read && c.Outer != BindingKind.None && !IsLocalOuter(c.Outer) && SpellingOf(c) is Spelling.Bare or Spelling.Call
+            && !IsN2Region(c),
+        ["N2"] = IsN2Region,
+        // A module initializer reading a builtin or imported name at or before its own same-named declaration (R-LJ).
+        ["N2-module"] = c => c.Family == Family.Read && c.Outer is BindingKind.Builtin or BindingKind.ImportedName && IsModuleLevel(c.Target)
+            && OrderOf(c) is Order.Later or Order.Self,
+        // A module binding read at load time before its initializer ran.
+        ["N3"] = c => c.Family == Family.Read && IsModuleLevel(c.Target) && c.Outer == BindingKind.None && OrderOf(c) != Order.Earlier,
+        ["N3-cycle"] = c => c.Family == Family.Read && (c.Cycle != null || OrderOf(c) is Order.Self or Order.Cycle || IdHas(c, "self")),
+        ["N3-order"] = c => c.Family == Family.Read && c.Observed == Observation.Order && !IsInstance(c.Target),
+        ["construction-order"] = c => c.Family == Family.Read && c.Observed == Observation.Order && IsInstance(c.Target),
+        // N5: a local's own scope — no outer (or a type-level one a free name does not see), a construct read inside its block.
+        ["N5"] = c => (c.Family == Family.Local && IsLocalBinder(c.Target)
+                && (c.Outer is BindingKind.None or BindingKind.StaticField or BindingKind.StaticMethod || IdHas(c, "inside")))
+            || (c.Family == Family.Store && c.Declaration == null && c.TargetShape == null
+                && (c.Outer is BindingKind.None or BindingKind.Builtin || (c.Outer == BindingKind.ModuleVar && IsComprehensionWalrus(c)))),
+        // R-LB / R-LF: a block binder over a module or enclosing binding, read after the block, with the family's row.
+        ["N5-block-scope"] = c => c.Family == Family.Local && IdHas(c, "let-in") && IsLocalBinder(c.Target)
+            && c.Outer is BindingKind.ModuleVar or BindingKind.ModuleDef or BindingKind.EnclosingLocal && c.Deviation != null,
+        // R-KX / R-LC / R-LI: a read above its same-scope binding (a closure, a back edge, a nested def included).
+        ["N5-declared-later"] = c => c.Family == Family.Local && (c.Target != BindingKind.LocalDef || c.Outer == BindingKind.ImportedName)
+            && (c.Timing is ReadTiming.SameBlockAbove or ReadTiming.BackEdge or ReadTiming.ClosureBeforeConstruct || IdHas(c, "L28")),
+        ["N5-self"] = c => c.Family == Family.Local && c.Target == BindingKind.LambdaTypedLocal && IdHas(c, "self"),
+        // N6: a bare store across a function boundary onto a writable module, enclosing, builtin or imported binding.
+        ["N6"] = c => c.Family == Family.Store && c.Declaration == null && c.TargetShape == null && !IsComprehensionWalrus(c)
+            && c.Outer is BindingKind.ModuleVar or BindingKind.ModuleProperty or BindingKind.EnclosingLocal or BindingKind.Builtin or BindingKind.ImportedName,
+        ["N6-declaration"] = c => c.Family == Family.Store && c.Declaration is { Shape: not DeclarationShape.GlobalNoBinding },
+        ["unruled:global-creates-binding"] = c => c.Family == Family.Store && c.Declaration is { Shape: DeclarationShape.GlobalNoBinding },
+        ["N6-same-function"] = c => c.Family == Family.Store && c.Outer == BindingKind.LocalVar && c.Form is StoreForm.Assign or StoreForm.Augmented or StoreForm.Walrus,
+        // R-KY: a store to a def / type-kind name.
+        ["N6-type-kind"] = c => c.Family == Family.Store && IsNonWritableByMeaning(c.Outer) && c.Form is StoreForm.Assign or StoreForm.Augmented or StoreForm.Walrus,
+        // N7: a qualified read (`H.x`, `self.x`, `A.x`, a type position) or a member store, outside its narrower neighbours.
+        ["N7"] = c => (c.Family == Family.Read && (SpellingOf(c) is Spelling.Qualified or Spelling.SelfDot or Spelling.Alias or Spelling.Call
+                    || c.TypeSpelling != null || c.Id.Split('/')[^1].Contains('.') || IdHas(c, "GenericReceiver") || (IdHas(c, "str") && IsTypeLevelTarget(c.Target)))
+                && !IsStructCaptureRegion(c) && !(IsInstance(c.Target) && SpellingOf(c) is not Spelling.SelfDot) && c.ResultForm != ResultValueForm.Bare
+                && OrderOf(c) is not (Order.Self or Order.Cycle))
+            || (c.Family == Family.Store && c.TargetShape == "MemberAccess" && c.Target is BindingKind.StaticField or BindingKind.InstanceField or BindingKind.StaticProperty or BindingKind.InstanceProperty
+                && !(c.Target is BindingKind.StaticField or BindingKind.StaticProperty && c.Receiver is AttributeReceiver.SelfDot or AttributeReceiver.Derived or AttributeReceiver.InstanceLocal)
+                && !(IsInstance(c.Target) && c.Receiver is AttributeReceiver.Type or AttributeReceiver.Alias or AttributeReceiver.Derived)),
+        ["P52"] = c => c.Family == Family.TypeMember,
+        ["R-BM"] = c => c.Form == StoreForm.OutLet || c.Construct == LocalTarget.OutLet,
+        // R-KG: an enclosing type's member read bare from a nested type.
+        ["R-KG"] = c => c.Family == Family.Read && c.Relation == DeclaringRelation.Enclosing && IsTypeLevelTarget(c.Target) && SpellingOf(c) == Spelling.Bare,
+        ["R-KT"] = IsStructCaptureRegion,
+        // R-KU: a `@static` member stored through `self.`, a derived type or an instance.
+        ["R-KU"] = c => c.Family == Family.Store && c.TargetShape == "MemberAccess" && c.Target is BindingKind.StaticField or BindingKind.StaticProperty
+            && c.Receiver is AttributeReceiver.SelfDot or AttributeReceiver.Derived or AttributeReceiver.InstanceLocal,
+        ["R-LG"] = c => c.Family == Family.Local && c.Id.StartsWith("local/closure-in-loop-body/", StringComparison.Ordinal),
+        // R-Y: a class body's member read bare from a body under a visible outer, and a method's name stored as a new local.
+        ["R-Y"] = c => (c.Family == Family.Read && c.Relation == DeclaringRelation.Self && SpellingOf(c) == Spelling.Bare && c.Outer != BindingKind.None
+                && !IsLocalOuter(c.Outer) && c.Position is ReadPosition p && (ClassBodies.Contains(p) || p == ReadPosition.StaticInitializer) && !IsN2Region(c))
+            || (c.Family == Family.Store && c.Target is BindingKind.StaticMethod or BindingKind.InstanceMethod && c.TargetShape == null && c.Form is StoreForm.Assign or StoreForm.Walrus),
+        // R1(b): an inherited class member read bare with nothing outside.
+        ["R1(b)"] = c => c.Family == Family.Read && c.Relation == DeclaringRelation.Base && IsTypeLevelTarget(c.Target) && c.Outer == BindingKind.None,
+        // S2: a construct target reusing a visible binding, read after the construct (captures and builtins included).
+        ["S2"] = c => c.Family == Family.Local && c.Construct is LocalTarget.For or LocalTarget.ExceptAs or LocalTarget.WithAs or LocalTarget.MatchCapture or LocalTarget.AsPatternCapture
+            && c.Outer != BindingKind.None,
+        // S3 (R-LI): a local def called above its own binding.
+        ["S3"] = c => c.Family == Family.Local && c.Target == BindingKind.LocalDef && c.Timing == ReadTiming.SameBlockAbove && c.Outer != BindingKind.ImportedName,
+        ["SPY0401"] = c => c.Family == Family.Read && c.Position is ReadPosition p && IsConstantOnly(p),
+        ["kind:SPY0204"] = c => c.Family == Family.Local && IdHas(c, "let-in") && c.Target == BindingKind.LocalDef && c.Outer == BindingKind.LocalVar,
+        ["kind:SPY0225"] = c => c.Family == Family.Store && c.Target is BindingKind.ModuleLiteralConst or BindingKind.ModuleComputedConst or BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst,
+        // An instance member read or stored through the type.
+        ["kind:SPY0290"] = c => IsInstance(c.Target) && ((c.Family == Family.Read && SpellingOf(c) is Spelling.Qualified or Spelling.Alias or Spelling.Call)
+            || (c.Family == Family.Store && c.Receiver is AttributeReceiver.Type or AttributeReceiver.Alias or AttributeReceiver.Derived)),
+        ["kind:SPY0340"] = c => c.Family == Family.Read && c.Target == BindingKind.ModuleLet,
+        // R-LH: a method's name stored through a receiver.
+        ["kind:SPY0606"] = c => c.Family == Family.Store && c.TargetShape == "MemberAccess" && c.Target is BindingKind.StaticMethod or BindingKind.InstanceMethod,
+        // A bare store to a class member from a method body (variable_scoping.md, "Every store form is refused").
+        ["SPY0606"] = c => c.Family == Family.Store && c.TargetShape == null && IsTypeLevelMember(c.Outer) && c.Position is ReadPosition.MethodBody or ReadPosition.StaticMethodBody,
+        ["kind:enum-member-constant"] = IsEnumMemberConstantRegion,
+        ["kind:instance-at-initializer"] = c => c.Family == Family.Read && IsInstance(c.Target) && c.Relation == DeclaringRelation.Self && c.Position is ReadPosition p && IsInitializer(p),
+        ["kind:result-wrap"] = c => c.Family == Family.Read && c.ResultForm == ResultValueForm.Bare && c.TypeAt == TypePosition.ResultError,
+        ["seed"] = c => c.Family == Family.Seed,
+    };
+
+    internal static bool RuleAxesHold(NameCell c) => RuleAxes.TryGetValue(c.Rule, out var holds) && holds(c);
+
+    /// <summary>D3.4's check: <see cref="RuleAxes"/> is total both ways over the pool's rules, every cell is on its rule's axes, and
+    /// every rule a refusing cell cites has its admitted refusal codes (a seed's are its table row's).</summary>
+    internal static IEnumerable<string> RuleAxesFailures(IReadOnlyList<NameCell> pool, out int rules, out int refusingRules)
+    {
+        var failures = new List<string>();
+        var cited = pool.Select(c => c.Rule).ToHashSet(StringComparer.Ordinal);
+        rules = cited.Count;
+        foreach (var rule in cited.Where(r => !RuleAxes.ContainsKey(r)).OrderBy(r => r, StringComparer.Ordinal))
+            failures.Add($"RuleAxes: rule {rule} is cited and has no axis predicate");
+        foreach (var rule in RuleAxes.Keys.Where(r => !cited.Contains(r)).OrderBy(r => r, StringComparer.Ordinal))
+            failures.Add($"RuleAxes: the predicate for {rule} is carried by no cell");
+        var off = pool.Where(c => RuleAxes.ContainsKey(c.Rule) && !RuleAxesHold(c)).ToList();
+        failures.AddRange(off.Take(20).Select(c => $"RuleAxes: {c.Id} cites {c.Rule} and its axes are not that rule's"));
+        if (off.Count > 20)
+            failures.Add($"RuleAxes: … {off.Count} cells off their rule's axes in total");
+
+        var refusing = pool.Where(c => c.Tag is SharpyTag.MustRefuse or SharpyTag.MustRefuseOrThrow or SharpyTag.MayRefuse).ToList();
+        refusingRules = refusing.Select(c => c.Rule).Distinct(StringComparer.Ordinal).Count();
+        foreach (var rule in refusing.Where(c => c.SeedRefusalCodes == null).Select(c => c.Rule).Distinct(StringComparer.Ordinal)
+            .Where(r => !AdmittedRefusals.ContainsKey(r)).OrderBy(r => r, StringComparer.Ordinal))
+            failures.Add($"AdmittedRefusals: rule {rule} is cited by a refusing cell and has no admitted codes");
+        foreach (var c in refusing.Where(c => c.Family == Family.Seed && c.SeedRefusalCodes == null))
+            failures.Add($"AdmittedRefusals: seed {c.Id} refuses and its table row names no codes column");
+        foreach (var rule in AdmittedRefusals.Keys.Where(r => !refusing.Any(c => c.Rule == r)).OrderBy(r => r, StringComparer.Ordinal))
+            failures.Add($"AdmittedRefusals: {rule} is cited by no refusing cell");
+        if (rules != PinnedRuleCount || refusingRules != PinnedRefusingRuleCount)
+            failures.Add($"RuleAxes: {rules} rules / {refusingRules} refusing rules, pinned at {PinnedRuleCount} / {PinnedRefusingRuleCount}");
+        return failures;
+    }
+
     private static IEnumerable<string> ClosedSetFailures(IReadOnlyList<NameCell> pool)
     {
         foreach (var c in pool.Where(c => c.Deviation != null && !DeviationAxesHold(c)).Take(20))

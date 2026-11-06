@@ -389,6 +389,15 @@ public partial class NameResolutionDifferentialTests
         // errors SPY0222 / SPY0342 / SPY0346 on the def or type read: each pinned in EarlierRefusals as a refusal by direction.
         ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
         ["R-KG"] = new[] { "SPY0200" },
+        // P77b D3.4 (lead ruling 2026-11-06): a must-refuse rule whose cure allocates no code yet admits NOTHING, so any refusal
+        // today is red — none of these cells refuses today (they run, or reach Roslyn). The cure that allocates the code adds it.
+        // R-KT: a struct `self` captured by a C# closure (#2434). R-KU: a `@static` member stored through `self.` / a derived type /
+        // an instance (#2435). S2: a construct target reusing a visible binding, read after the construct (#2425). N1-arity: a class
+        // spelled like a builtin, called with the builtin's arity (#2423: N1 binds the class, and its constructor's arity refuses).
+        ["R-KT"] = Array.Empty<string>(),
+        ["R-KU"] = Array.Empty<string>(),
+        ["S2"] = Array.Empty<string>(),
+        ["N1-arity"] = Array.Empty<string>(),
         ["R1(b)"] = new[] { "SPY0200" },
         ["S3"] = new[] { "SPY0200", "SPY0230" },
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
@@ -666,6 +675,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(CensusFailures(pool));
         failures.AddRange(RosterFedFailures(pool));
         failures.AddRange(ModelPairingFailures(pool, out _, out _));
+        failures.AddRange(RuleAxesFailures(pool, out _, out _));
         if (pool.Count > CellBudget)
             failures.Add($"the pool is {pool.Count} cells and the budget is {CellBudget}: prune in D3.e's order");
 
