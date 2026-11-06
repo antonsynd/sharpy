@@ -138,7 +138,7 @@ public partial class NameResolutionDifferentialTests
     private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
     /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
-    private const int CellBudget = 8500;
+    private const int CellBudget = 8600;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
