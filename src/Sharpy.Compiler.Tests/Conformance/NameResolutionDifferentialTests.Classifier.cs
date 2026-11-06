@@ -53,6 +53,23 @@ public partial class NameResolutionDifferentialTests
         Assert.Contains(recorded.Lines, line => line.Contains("Generated C#", StringComparison.Ordinal));
     }
 
+    /// <summary>D2.9's order of work: the imported outer's compile path is proved through THIS harness before a cell rides it. The
+    /// verify round read SPY0300 from code and a 2026-10-22 measurement. The same source without the flag is the control: the
+    /// reference is what makes it compile, and the Core-only cells keep Core only.</summary>
+    [Fact]
+    public void ImportedOuter_CompilesInProcess()
+    {
+        const string Program = "from string import digits\ndef main() -> None:\n    print(len(digits))\n";
+
+        var withStdlib = RunSharpy(Program, needsStdlib: true);
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(withStdlib));
+        Assert.Equal("10", Normalize(withStdlib.Stdout));
+
+        var coreOnly = RunSharpy(Program);
+        Assert.Equal(SharpyKind.Refused, ClassifySharpy(coreOnly));
+        Assert.Contains("SPY0300", coreOnly.ErrorCodes);
+    }
+
     /// <summary>M9: a program that throws at run time is a child process's non-zero exit with no diagnostic, read
     /// positively from <c>ExitCode</c>. It is a third outcome, never "refused" and never "ran".</summary>
     [Fact]
@@ -143,7 +160,7 @@ public partial class NameResolutionDifferentialTests
     [Fact]
     public void Retry_ARealHang_StaysHarness()
     {
-        var run = RunSharpyRetryingATimeout("def main() -> None:\n    while True:\n        pass\n", 500, out _);
+        var run = RunSharpyRetryingATimeout("def main() -> None:\n    while True:\n        pass\n", 500, needsStdlib: false, out _);
 
         var kind = ClassifySharpy(run);
         Assert.Equal(SharpyKind.TimedOut, kind);

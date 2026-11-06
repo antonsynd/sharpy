@@ -112,6 +112,10 @@ internal sealed record NameCell
     /// <summary>The Sharpy source the twin renders from when python has no spelling of the construct (a module accessor).</summary>
     public string? TwinSource { get; init; }
 
+    /// <summary>Set by the generator on a cell whose source carries a Stdlib import (D2.9), never read back from the source.
+    /// Every other cell compiles against Sharpy.Core alone.</summary>
+    public bool NeedsStdlib { get; init; }
+
     /// <summary>Set by SEED cells: the table's issue cite for a red.</summary>
     public string? SeedCite { get; init; }
 
@@ -465,8 +469,19 @@ public partial class NameResolutionDifferentialTests
         => cell.Target == BindingKind.ModuleTypeAlias || cell.Outer == BindingKind.ModuleTypeAlias
             || (cell.Family == Family.TypeMember && cell.Id.Contains("/alias/", StringComparison.Ordinal));
 
-    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
+    /// <summary>D2.9: set immediately before each compile and read back by the override below. The Sharpy arm is a sequential
+    /// loop over one test instance, so a field is the whole mechanism (<c>DifferentialExecutionTests</c>' shape).</summary>
+    private bool _currentCellNeedsStdlib;
+
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
     {
+        if (_currentCellNeedsStdlib)
+            yield return SharpyStdlibReference.Location;
+    }
+
+    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs, bool needsStdlib = false)
+    {
+        _currentCellNeedsStdlib = needsStdlib;
         var r = CompileAndExecute(source, "name_resolution.spy", executionTimeoutMs: executionTimeoutMs);
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();
@@ -489,8 +504,8 @@ public partial class NameResolutionDifferentialTests
         return retried ? runAt(timeoutMs * 2) : run;
     }
 
-    private SharpyRun RunSharpyRetryingATimeout(string source, int timeoutMs, out bool retried)
-        => RetryingATimeout(ms => RunSharpy(source, ms), timeoutMs, out retried);
+    private SharpyRun RunSharpyRetryingATimeout(string source, int timeoutMs, bool needsStdlib, out bool retried)
+        => RetryingATimeout(ms => RunSharpy(source, ms, needsStdlib), timeoutMs, out retried);
 
     private static string SourceKey(string source)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)));
@@ -553,7 +568,7 @@ public partial class NameResolutionDifferentialTests
             }
             else
             {
-                runs[i] = RunSharpyRetryingATimeout(cells[i].Source, SharpyExecTimeoutMs, out var timedOutOnce);
+                runs[i] = RunSharpyRetryingATimeout(cells[i].Source, SharpyExecTimeoutMs, cells[i].NeedsStdlib, out var timedOutOnce);
                 if (timedOutOnce)
                     retried++;
                 if (cachePath != null)
