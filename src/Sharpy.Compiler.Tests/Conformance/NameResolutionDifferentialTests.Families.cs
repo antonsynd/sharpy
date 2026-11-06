@@ -235,8 +235,8 @@ public partial class NameResolutionDifferentialTests
         if (s == StoreSpelling.OutLet)
             lines.AddRange(OutLetHelper);
         var decl = outer == BindingKind.None || IsTypeLevelMember(outer) ? new List<string>()
-            : outer == BindingKind.ModuleUnion ? new List<string> { "union x:", "    case V(f: int)", "    case L()" }
-            : outer == BindingKind.ModuleInterface ? new List<string> { "interface x:", "    def m(self) -> int: ..." }
+            : outer == BindingKind.ModuleUnion ? UnionDecl.ToList()
+            : outer == BindingKind.ModuleInterface ? InterfaceDecl.ToList()
             : ModuleDecl(outer, n);
         if (order == Order.Earlier)
             lines.AddRange(decl.Concat(host));
@@ -268,6 +268,12 @@ public partial class NameResolutionDifferentialTests
             Shape = expected.Tag == SharpyTag.Unruled ? $"store-non-writable:{outer}:{(declared ? "global" : s.ToString())}" : null,
         };
     }
+
+    /// <summary>The union and interface declarations of the name <c>x</c>: neither has an expression read, so STORE spells them
+    /// as the outer it stores over, and D3.1's round trip declares them.</summary>
+    private static readonly string[] UnionDecl = { "union x:", "    case V(f: int)", "    case L()" };
+
+    private static readonly string[] InterfaceDecl = { "interface x:", "    def m(self) -> int: ..." };
 
     private static string TypeLevelRead(BindingKind k, ReadName n)
     {

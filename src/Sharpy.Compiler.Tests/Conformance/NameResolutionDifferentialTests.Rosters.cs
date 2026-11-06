@@ -296,7 +296,9 @@ internal static class NameResolutionRosters
             BindingKind.StaticField, BindingKind.InstanceField, BindingKind.ClassLiteralConst, BindingKind.ClassComputedConst)),
         (TypeBodyMemberKind.Property, Roster.To(BindingKind.StaticProperty, BindingKind.InstanceProperty)),
         (TypeBodyMemberKind.Event, Roster.Out<BindingKind>(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "events are #2400 (iii)")),
-        (TypeBodyMemberKind.Method, Roster.To(BindingKind.StaticMethod, BindingKind.InstanceMethod)));
+        // `__init__` is a Method member of its type (TypeBodyMembership.DescribeMemberOf reads it from TypeSymbol.Methods):
+        // P77b D3.1's round trip read it there.
+        (TypeBodyMemberKind.Method, Roster.To(BindingKind.StaticMethod, BindingKind.InstanceMethod, BindingKind.Constructor)));
 
     internal static readonly IReadOnlyDictionary<ParameterModifier, RosterEntry<BindingKind>> ParameterModifiers = Roster.Map(
         (ParameterModifier.None, Roster.To(BindingKind.Parameter)),
@@ -354,7 +356,7 @@ internal static class NameResolutionRosters
         (CubeKey(SymbolKind.Variable, ScopeKind.TypeBody, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.TypeBody, "IsParameter"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
 
-        (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal)),
+        (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.LambdaTypedLocal)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsConstant"), Roster.To(BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
@@ -385,8 +387,9 @@ internal static class NameResolutionRosters
 
     private const string MemberOnly = "@static and the __init__ name class mean something only on a type's member; here they are the ordinary def's kind";
 
-    /// <summary><c>SymbolKind.Function</c> × owner <see cref="ScopeKind"/> × function class. A lambda-typed local's binding is a
-    /// variable; its READ is the call, so D3.a maps it here, for the form.</summary>
+    /// <summary><c>SymbolKind.Function</c> × owner <see cref="ScopeKind"/> × function class. A lambda-typed local is NOT here: its
+    /// binding is a <c>VariableSymbol</c> (P77b D3.1's round trip), so <see cref="VariableCube"/> maps it; its READ is the call,
+    /// which is <c>FormOf</c>'s, not a symbol roster's.</summary>
     internal static readonly IReadOnlyDictionary<string, RosterEntry<BindingKind>> FunctionCube = Roster.Map(
         (CubeKey(SymbolKind.Function, ScopeKind.Module, NoFlag), Roster.To(BindingKind.ModuleDef)),
         (CubeKey(SymbolKind.Function, ScopeKind.Module, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, MemberOnly)),
@@ -394,7 +397,7 @@ internal static class NameResolutionRosters
         (CubeKey(SymbolKind.Function, ScopeKind.TypeBody, NoFlag), Roster.To(BindingKind.InstanceMethod)),
         (CubeKey(SymbolKind.Function, ScopeKind.TypeBody, "IsStatic"), Roster.To(BindingKind.StaticMethod)),
         (CubeKey(SymbolKind.Function, ScopeKind.TypeBody, "__init__"), Roster.To(BindingKind.Constructor)),
-        (CubeKey(SymbolKind.Function, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalDef, BindingKind.LambdaTypedLocal)),
+        (CubeKey(SymbolKind.Function, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalDef)),
         (CubeKey(SymbolKind.Function, ScopeKind.FunctionLike, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, MemberOnly)),
         (CubeKey(SymbolKind.Function, ScopeKind.FunctionLike, "__init__"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, MemberOnly)),
         (CubeKey(SymbolKind.Function, ScopeKind.Block, NoFlag), Roster.To(BindingKind.LocalDef)),
@@ -1095,7 +1098,15 @@ public partial class NameResolutionDifferentialTests
         "Sharpy.Compiler.Semantic.Scope",
     };
 
-    private sealed record BinderSite(string Key, int Line, string Receiver, string ReceiverType);
+    private sealed record BinderSite(string Key, int Line, string Receiver, string ReceiverType)
+    {
+        /// <summary>P77b D3.1: the Roslyn type of the argument bound to the binder's <c>Symbol</c> parameter (null for a
+        /// method group).</summary>
+        public string? BoundArgumentType { get; init; }
+
+        /// <summary>P77b D3.1: the Roslyn type of the enclosing checker method's first parameter, the AST node it binds for.</summary>
+        public string? CheckedNodeType { get; init; }
+    }
 
     private sealed record BinderScan(
         IReadOnlyList<BinderSite> Sites,
@@ -1192,7 +1203,11 @@ public partial class NameResolutionDifferentialTests
                 var baseKey = $"{file}:{EnclosingMethod(name)}({ArgumentText(invocation)})";
                 var ordinal = seen[baseKey] = seen.GetValueOrDefault(baseKey) + 1;
                 sites.Add(new BinderSite(
-                    ordinal == 1 ? baseKey : $"{baseKey}#{ordinal}", line, ReceiverText(name), receiverType));
+                    ordinal == 1 ? baseKey : $"{baseKey}#{ordinal}", line, ReceiverText(name), receiverType)
+                {
+                    BoundArgumentType = BoundArgumentType(model, method, invocation),
+                    CheckedNodeType = CheckedNodeType(model, name),
+                });
             }
         }
 
@@ -1235,6 +1250,28 @@ public partial class NameResolutionDifferentialTests
         }
 
         return "<no method>";
+    }
+
+    private static string? BoundArgumentType(SemanticModel model, IMethodSymbol binder, InvocationExpressionSyntax? invocation)
+    {
+        if (invocation == null)
+            return null;
+        var index = binder.Parameters.ToList().FindIndex(p => p.Type.Name == "Symbol");
+        var arguments = invocation.ArgumentList.Arguments;
+        return index < 0 || index >= arguments.Count ? null : model.GetTypeInfo(arguments[index].Expression).Type?.Name;
+    }
+
+    private static string? CheckedNodeType(SemanticModel model, SyntaxNode node)
+    {
+        var parameters = node.Ancestors().Select(a => a switch
+        {
+            LocalFunctionStatementSyntax local => local.ParameterList,
+            MethodDeclarationSyntax method => method.ParameterList,
+            ConstructorDeclarationSyntax constructor => constructor.ParameterList,
+            _ => null,
+        }).FirstOrDefault(p => p != null);
+        var first = parameters?.Parameters.FirstOrDefault()?.Type;
+        return first == null ? null : model.GetTypeInfo(first).Type?.Name;
     }
 
     private static string ArgumentText(InvocationExpressionSyntax? invocation)
