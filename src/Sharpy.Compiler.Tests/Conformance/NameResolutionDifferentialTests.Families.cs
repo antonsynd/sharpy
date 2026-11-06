@@ -1325,6 +1325,57 @@ public partial class NameResolutionDifferentialTests
             yield return $"UnruledShapes: '{shape}' is pinned at {pinned} cells and generates {counts.GetValueOrDefault(shape)}";
     }
 
+    /// <summary>P77b D3.2: the order token of an id, per family — READ / STORE spell <see cref="Order"/> as a path segment,
+    /// TYPEMEMBER as <c>before</c> / <c>after</c>. Two ids that differ only in this segment are the same cell at two orders.</summary>
+    private static readonly IReadOnlyDictionary<string, string> LaterToEarlierToken = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [nameof(Order.Later)] = nameof(Order.Earlier),
+        ["after"] = "before",
+    };
+
+    /// <summary>D3.2's measured literals @ 094c7c9: the later cells paired with their earlier twin, and the pairs judged (the
+    /// earlier twin's python ran). The floor is the plan's; the pins are the positive control a token-stripped id set drives to 0.</summary>
+    internal const int ModelPairFloor = 1000;
+    internal const int PinnedModelPairs = 1352;
+    internal const int PinnedJudgedModelPairs = 1219;
+
+    /// <summary>P77b D3.2: N3's promise is "the later order prints what the earlier order prints". Every must-run / may-refuse cell
+    /// at the later order (a model, observing a value) has its earlier twin; where the twin's python ran, the later model is that
+    /// stdout (the twin's model where it names a deviation). This reads every later model python cannot confirm directly — the
+    /// order-only NameError, and every RuntimeThrow / Ice row's model. An <see cref="Observation.Order"/> cell observes the
+    /// declaration order itself, which differs between orders by construction, so it is not a pair.</summary>
+    internal static IEnumerable<string> ModelPairingFailures(IReadOnlyList<NameCell> pool, out int pairs, out int judged)
+    {
+        var failures = new List<string>();
+        var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        pairs = 0;
+        judged = 0;
+        foreach (var later in pool.Where(c => c.Tag is SharpyTag.MustRun or SharpyTag.MayRefuse && c.Observed == Observation.Value))
+        {
+            var segments = later.Id.Split('/');
+            if (!segments.Any(LaterToEarlierToken.ContainsKey))
+                continue;
+            var twinId = string.Join("/", segments.Select(t => LaterToEarlierToken.GetValueOrDefault(t, t)));
+            if (!byId.TryGetValue(twinId, out var earlier))
+            {
+                failures.Add($"ModelPairing: {later.Id} is at the later order and has no earlier twin {twinId}");
+                continue;
+            }
+            pairs++;
+            if (earlier.Python.Kind != PyKind.Ran)
+                continue;
+            judged++;
+            var expected = earlier.Deviation == null ? earlier.Python.Value : earlier.Model;
+            if (later.Model != expected)
+                failures.Add($"ModelPairing: {later.Id} models '{later.Model}' and its earlier twin prints '{expected}'");
+        }
+        if (pairs < ModelPairFloor)
+            failures.Add($"ModelPairing: {pairs} later cells paired, below the floor {ModelPairFloor}");
+        if (pairs != PinnedModelPairs || judged != PinnedJudgedModelPairs)
+            failures.Add($"ModelPairing: {pairs} pairs / {judged} judged, pinned at {PinnedModelPairs} / {PinnedJudgedModelPairs}");
+        return failures;
+    }
+
     /// <summary>The report's coverage statement: cells per roster value on each axis.</summary>
     private static object RosterReport(IReadOnlyList<CellResult> results) => new
     {

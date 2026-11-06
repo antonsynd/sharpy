@@ -665,6 +665,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(ClosedSetFailures(pool));
         failures.AddRange(CensusFailures(pool));
         failures.AddRange(RosterFedFailures(pool));
+        failures.AddRange(ModelPairingFailures(pool, out _, out _));
         if (pool.Count > CellBudget)
             failures.Add($"the pool is {pool.Count} cells and the budget is {CellBudget}: prune in D3.e's order");
 

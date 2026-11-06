@@ -460,6 +460,19 @@ public partial class NameResolutionDifferentialTests
     public void RosterFed_TheGeneratedPool_FeedsEveryRoster()
         => Assert.Empty(RosterFedFailures(GeneratedCells()));
 
+    /// <summary>P77b D3.2: every later model is what its earlier twin prints. The pair and judged counts are measured literals
+    /// (the positive control: an id set with no order token pairs nothing and is red on the floor).</summary>
+    [Fact]
+    public void ModelPairing_EveryLaterModel_IsWhatTheEarlierTwinPrints()
+    {
+        var failures = ModelPairingFailures(GeneratedCells(), out var pairs, out var judged).ToList();
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        Assert.Equal(PinnedModelPairs, pairs);
+        Assert.Equal(PinnedJudgedModelPairs, judged);
+        Assert.True(judged >= ModelPairFloor, $"{judged} judged pairs, below the floor {ModelPairFloor}");
+    }
+
     /// <summary>A deviation names a ledger row, and the row exists (Acceptance 3). The named cells are the positive control.</summary>
     [Fact]
     public void Deviation_EveryCitedRow_IsInTheLedger()
