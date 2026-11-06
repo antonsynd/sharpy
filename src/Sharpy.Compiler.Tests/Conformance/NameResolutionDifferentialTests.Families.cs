@@ -1352,7 +1352,6 @@ public partial class NameResolutionDifferentialTests
             cycleEndpoints = NameResolutionRosters.CycleEndpoints.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             cycleRoutes = NameResolutionRosters.CycleRoutes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             orderObservation = NameResolutionRosters.OrderObservationKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
-            readTimingBackEdgeLoops = NameResolutionRosters.ReadTimingLoops,
             letInProduct = NameResolutionRosters.LetInProduct.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             loopBodyEnclosures = NameResolutionRosters.LoopBodyEnclosures.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
             loopBodyBinders = NameResolutionRosters.LoopBodyBinders.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
@@ -1363,6 +1362,19 @@ public partial class NameResolutionDifferentialTests
             attributeStoreMembers = NameResolutionRosters.AttributeStoreMembers.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             attributeStoreForms = NameResolutionRosters.AttributeStoreForms.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             attributeStoreBodies = NameResolutionRosters.AttributeStoreBodies.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+        },
+        // The axes named closed in D2's table: no compiler enumeration exists, so these literals are the roster.
+        closedSets = new
+        {
+            readTimings = Enum.GetNames<ReadTimings>(),
+            declaringRelation = Enum.GetNames<DeclaringRelation>(),
+            declarationShapes = Enum.GetNames<DeclarationShapes>(),
+            resultValueForm = Enum.GetNames<ResultValueForm>(),
+            attributeReceiver = Enum.GetNames<AttributeReceiver>(),
+            cyclePair = Enum.GetNames<CyclePair>(),
+            cycleThrough = Enum.GetNames<CycleThrough>(),
+            comprehensionNesting = Enum.GetNames<ComprehensionNesting>(),
+            letInOuter = Enum.GetNames<LetInOuter>(),
         },
         axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
