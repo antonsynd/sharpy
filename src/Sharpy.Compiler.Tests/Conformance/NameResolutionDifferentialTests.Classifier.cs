@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Differential;
+using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 
@@ -69,6 +71,25 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(SharpyKind.Refused, ClassifySharpy(coreOnly));
         Assert.Contains("SPY0300", coreOnly.ErrorCodes);
     }
+
+    /// <summary>Deferred row 7, for D3.1's <c>ImportedName</c> round trip: <c>CompilerApi</c>'s bare ctor resolves no modules, so the
+    /// round trip needs the two references the import reads through. The bare ctor is the control.</summary>
+    [Fact]
+    public void ImportedName_LooksUpThroughACompilerApiWithCoreAndStdlib()
+    {
+        const string Program = "from string import digits\ndef main() -> None:\n    print(len(digits))\n";
+
+        var withReferences = ImportResolvingCompilerApi().Analyze(Program);
+        Assert.Empty(withReferences.Diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).Select(d => d.Code));
+        Assert.NotNull(withReferences.SymbolTable);
+        Assert.NotNull(withReferences.SymbolTable!.Lookup("digits"));
+
+        var bare = new CompilerApi().Analyze(Program);
+        Assert.Contains(bare.Diagnostics, d => d.Code == "SPY0300");
+    }
+
+    private static CompilerApi ImportResolvingCompilerApi()
+        => new(null, new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location });
 
     /// <summary>M9: a program that throws at run time is a child process's non-zero exit with no diagnostic, read
     /// positively from <c>ExitCode</c>. It is a third outcome, never "refused" and never "ran".</summary>
@@ -257,6 +278,8 @@ public partial class NameResolutionDifferentialTests
     [InlineData(Family.Store, BindingKind.ModuleTypeAlias, BindingKind.ModuleTypeAlias, "store/Assign/outer=ModuleTypeAlias", VerdictClass.Ice, "CS0103", "#1925")]
     [InlineData(Family.TypeMember, BindingKind.None, BindingKind.None, "typemember/class/constructor/alias/bare/after", VerdictClass.Ice, "CS0103", "#1925")]
     [InlineData(Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar", VerdictClass.Ice, "CS0103", "#2151")]
+    [InlineData(Family.Store, BindingKind.ImportedName, BindingKind.ImportedName, "store/Assign/outer=ImportedName/FunctionBody", VerdictClass.Ice, "CS0103", "#2424")]
+    [InlineData(Family.Read, BindingKind.StaticField, BindingKind.ImportedName, "read/StaticField/MethodBody/Earlier/Bare/outer=ImportedName/digits", VerdictClass.Ice, "CS0117", "#2423")]
     [InlineData(Family.Read, BindingKind.StaticField, BindingKind.ModuleVar, "read/StaticField/field-init", VerdictClass.SilentWrong, null, "#2423")]
     [InlineData(Family.Read, BindingKind.StaticField, BindingKind.None, "read/StaticField/StaticInitializer", VerdictClass.SilentWrong, null, "#2422")]
     internal void Cite_RoutesToTheDrainingIssue(Family family, BindingKind target, BindingKind outer, string id, VerdictClass verdict, string? cs, string expected)
@@ -296,6 +319,7 @@ public partial class NameResolutionDifferentialTests
     [InlineData("CS0266", BindingKind.NestedType, "#2397")]
     [InlineData("CS9999", BindingKind.ModuleVar, "UNROUTED(CS9999)")]
     [InlineData("CS1061", BindingKind.ModuleVar, "UNROUTED(CS1061)")]
+    [InlineData("CS0117", BindingKind.ModuleVar, "UNROUTED(CS0117)")]
     internal void Cite_AnIce_RoutesByItsCode(string cs, BindingKind target, string expected)
     {
         var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target };

@@ -655,7 +655,7 @@ public partial class NameResolutionDifferentialTests
     /// <summary>LOCAL's outer axis (finding 3): the roster's generated values, the pruned ones named there. The Builtin
     /// outer's name is the axis, so it has its own arm below.</summary>
     private static readonly BindingKind[] LocalOuters = NameResolutionRosters.LocalOuter
-        .Where(e => e.Value.Generated && e.Key != BindingKind.Builtin)
+        .Where(e => e.Value.Generated && e.Key is not (BindingKind.Builtin or BindingKind.ImportedName))
         .Select(e => e.Key)
         .OrderBy(k => k)
         .ToArray();
@@ -691,9 +691,11 @@ public partial class NameResolutionDifferentialTests
             case BindingKind.LocalDef:
                 return new() { $"def {name}({n.Params}) -> int:", $"    return {value}" };
             case BindingKind.LambdaTypedLocal:
-                if (!n.IsBuiltin)
+                if (n.Params.Length == 0)
                     return new() { $"{name}: () -> int = lambda: {value}" };
-                var (types, lambdaParams) = name == "abs" ? ("int", "a0") : ("str", "a0");
+                var parameters = n.Params.Split(", ");
+                var types = string.Join(", ", parameters.Select(p => p[(p.IndexOf(": ", StringComparison.Ordinal) + 2)..]));
+                var lambdaParams = string.Join(", ", parameters.Select((_, i) => $"a{i}"));
                 return new() { $"{name}: ({types}) -> int = lambda {lambdaParams}: {value}" };
             default:
                 throw new ArgumentOutOfRangeException(nameof(k));
@@ -1011,6 +1013,147 @@ public partial class NameResolutionDifferentialTests
     }
 
     // ------------------------------------------------------------------------------------------- //
+    // Axis 9: a from-imported outer (D2.9, R-KX, R-LJ)
+    // ------------------------------------------------------------------------------------------- //
+
+    private const string ImportLine = "from string import digits";
+
+    /// <summary>The read of the imported outer. It is a str value read through <c>len</c>, because every int-returning stdlib
+    /// function Sharpy exposes is int64 and into <c>int</c> that is a type verdict, not a name verdict (probes p19, p20).</summary>
+    private const string ImportedReadText = "len(digits)";
+
+    /// <summary>The import's name, its read's result, and through <see cref="BindingValue"/> the same-named binding's value 7, so
+    /// `len(7)` is the type-error arm and the import's 10 never coincides with a binding.</summary>
+    private static readonly ReadName Imported = new("digits", "", "", 10);
+
+    private static NameCell WithImport(NameCell cell) => cell with { Source = $"{ImportLine}\n{cell.Source}", NeedsStdlib = true };
+
+    private static IEnumerable<NameCell> ImportedOuterCells()
+    {
+        var earlierLater = new[] { Order.Earlier, Order.Later };
+        var targets = new[]
+        {
+            BindingKind.StaticField, BindingKind.InstanceField, BindingKind.StaticProperty, BindingKind.StaticMethod, BindingKind.ClassLiteralConst,
+        };
+
+        foreach (var t in targets)
+        {
+            // Class N2: the Builtin outer's positions, every one read by the python twin's class-body scope, and one body.
+            foreach (var p in new[]
+            {
+                ReadPosition.StaticInitializer, ReadPosition.InstanceFieldInitializer, ReadPosition.ConstInitializer,
+                ReadPosition.StaticPropertyDefault, ReadPosition.InstancePropertyDefault, ReadPosition.ParameterDefault,
+                ReadPosition.MethodBody,
+            })
+                foreach (var o in earlierLater)
+                    yield return WithImport(ClassCell(t, p, Nesting.Direct, o, Spelling.Bare, BindingKind.ImportedName, Imported));
+
+            ReadPosition? self = t switch
+            {
+                BindingKind.StaticField => ReadPosition.StaticInitializer,
+                BindingKind.StaticProperty => ReadPosition.StaticPropertyDefault,
+                BindingKind.ClassLiteralConst => ReadPosition.ConstInitializer,
+                BindingKind.InstanceField => ReadPosition.InstanceFieldInitializer,
+                _ => null,
+            };
+            if (self is ReadPosition position)
+                yield return WithImport(ClassCell(t, position, Nesting.Direct, Order.Self, Spelling.Bare, BindingKind.ImportedName, Imported));
+        }
+
+        // The control: the import read with nothing else of the name, the probe every other arm is measured against.
+        yield return WithImport(new NameCell
+        {
+            Id = CellId("read", BindingKind.ImportedName, ReadPosition.FunctionBody, "control", "outer=ImportedName"),
+            Family = Family.Read,
+            Source = MainBlock($"print({ImportedReadText})"),
+            Tag = SharpyTag.MustRun,
+            Model = Str(Imported.BuiltinResult!.Value),
+            Python = PyOutcome.Ran(Imported.BuiltinResult!.Value),
+            Rule = "N1",
+            Target = BindingKind.ImportedName,
+            Outer = BindingKind.ImportedName,
+            Position = ReadPosition.FunctionBody,
+        });
+
+        // R-LJ: a module initializer reading the import above its own same-named declaration. Python reads the import.
+        foreach (var t in new[] { BindingKind.ModuleVar, BindingKind.ModuleLiteralConst, BindingKind.ModuleProperty, BindingKind.ModuleDef })
+        {
+            var lines = new List<string> { $"r: int = {ImportedReadText}" };
+            lines.AddRange(ModuleDecl(t, Imported));
+            yield return WithImport(new NameCell
+            {
+                Id = CellId("read", t, ReadPosition.ModuleInitializer, Order.Later, "outer=ImportedName"),
+                Family = Family.Read,
+                Source = Join(lines) + MainBlock("print(r)"),
+                Tag = SharpyTag.MustRefuse,
+                Python = PyOutcome.Ran(Imported.BuiltinResult!.Value),
+                Rule = "N2-module",
+                Target = t,
+                Outer = BindingKind.ImportedName,
+                Position = ReadPosition.ModuleInitializer,
+            });
+        }
+
+        // STORE: the import's type is str, so a crossing store is spelled in str: `digits = 15` would be a type verdict.
+        foreach (var s in Enum.GetValues<StoreSpelling>())
+            foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
+            {
+                var text = s switch
+                {
+                    StoreSpelling.Assign => "digits = \"ab\"",
+                    StoreSpelling.Augmented => "digits += \"c\"",
+                    StoreSpelling.Walrus => "(digits := \"ab\")",
+                    _ => StoreText(s, Imported.Name),
+                };
+                var (host, call) = Host(body, new[] { text, $"print({Imported.Name})" });
+                var lines = new List<string>();
+                if (s == StoreSpelling.OutLet)
+                    lines.AddRange(OutLetHelper);
+                lines.AddRange(host);
+                var main = new List<string>(call) { $"print({ImportedReadText})" };
+
+                var result = Imported.BuiltinResult!.Value;
+                Expected expected = s switch
+                {
+                    StoreSpelling.Augmented => Refuse(PyOutcome.Unbound(Imported.Name), "N6"),
+                    StoreSpelling.Assign or StoreSpelling.Walrus => Refuse(PyOutcome.Ran(JoinOut("ab", result)), "N6"),
+                    _ => new Expected(SharpyTag.MustRun, JoinOut(15, result), PyOutcome.Ran(JoinOut(15, result)), s == StoreSpelling.OutLet ? "R-BM" : "#1974"),
+                };
+                yield return WithImport(new NameCell
+                {
+                    Id = CellId("store", s, "outer=ImportedName", body),
+                    Family = Family.Store,
+                    Source = WithHelpers(Join(lines) + MainBlock(main.ToArray())),
+                    Tag = expected.Tag,
+                    Model = expected.Model,
+                    Python = expected.Python,
+                    Rule = expected.Rule,
+                    Target = BindingKind.ImportedName,
+                    Outer = BindingKind.ImportedName,
+                    Position = body,
+                    Form = FormEnum(s),
+                });
+            }
+
+        // LOCAL: a local binder spelled like the import, read below it and above it.
+        foreach (var k in LocalKinds)
+            foreach (var body in LocalBodies)
+            {
+                var own = ReadText(FormOf(k), "", Imported);
+                string Id(string read) => CellId("local", k, read, "outer=ImportedName", body);
+                yield return WithImport(LocalProgram(Id("below"), k, BindingKind.ImportedName, body,
+                    LocalDecl(k, Imported).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, Imported));
+
+                var above = new List<string> { $"print({ImportedReadText})" };
+                above.AddRange(LocalDecl(k, Imported));
+                above.Add($"print({own})");
+                var python = PyOutcome.Unbound(Imported.Name);
+                yield return WithImport(LocalProgram(Id("above"), k, BindingKind.ImportedName, body, above,
+                    Refuse(python, k == BindingKind.LocalDef ? "S3" : "N5-declared-later"), null, Imported));
+            }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
     // SEED (D7)
     // ------------------------------------------------------------------------------------------- //
 
@@ -1321,6 +1464,7 @@ public partial class NameResolutionDifferentialTests
             .Concat(NameResolutionRosters.PositionLocalKinds)
             .Concat(NameResolutionRosters.NonSymbolKinds)
             .Append(BindingKind.Builtin)
+            .Append(BindingKind.ImportedName)
             .ToHashSet();
         foreach (var k in kinds.Where(k => !rosterKinds.Contains(k)))
             yield return $"BindingKind {k} is carried by a generated cell and is in no roster group";
