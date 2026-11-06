@@ -3,7 +3,7 @@
 > **Date:** 2026-11-06
 > **Commit:** `ee9a007` (mainline = dev at the time of the audit), .NET SDK 10.0.403, CPython 3.13 as oracle.
 > **Scope:** 284 open issues and 1,385 issues closed since 2026-05-06; all 12 nightly runs and 181 PR/push CI runs since 2026-09-07; `src/` (static read plus live probes); `.claude/`, `build_tools/`, `docs/design`, `docs/audits`; 4,826 non-merge commits over six months; the Mojo 1.2 release review (artifact `TcHMHJ4gJTzq57cVqiomK7`).
-> **Method:** five parallel survey agents (issues, CI, compiler architecture, Core/Stdlib + test infrastructure, process/tooling), then the lead verified the highest-impact claims by building the solution and running probe programs. Every number below is measured unless marked **[inferred]**. Prior audits: [2026-06-20](audit-2026-06-20.md), [2026-07-09](strategic-review-2026-07-09.md).
+> **Method:** five parallel survey agents (issues, CI, compiler architecture, Core/Stdlib + test infrastructure, process/tooling), then the lead verified the highest-impact claims by building the solution and running probe programs. The owner then supplied the remediation-round charter (`remediation-round-2026-09-20-batching.md`, 718 KB, call 38); a second pass of 17 slice readers, one synthesis and one adversarial critic mapped every finding to its charter home and corrected this text where the charter showed a claim stale (§9). Every number below is measured unless marked **[inferred]**. Prior audits: [2026-06-20](audit-2026-06-20.md), [2026-07-09](strategic-review-2026-07-09.md).
 
 ---
 
@@ -132,7 +132,7 @@ Items marked **live** were reproduced in this audit with `sharpyc run` against C
 
 ### L3. The exception hierarchy diverges beyond the tracked `LookupError` cell
 
-`FileNotFoundError`, `PermissionError`, `FileExistsError`, `IsADirectoryError` are not under `OSError` (`Exceptions.cs:274-339`), `OSError : IOError` is inverted, `NotImplementedError` and `UnicodeEncodeError` have the wrong bases. #2124 (open) covers only `IndexError`/`KeyError`. Remedy is what #2124's body asks for: one table-driven test comparing every Core exception's base chain to `python3 -c "print(X.__mro__)"`, then one fix.
+`FileNotFoundError`, `PermissionError`, `FileExistsError`, `IsADirectoryError` are not under `OSError` (`Exceptions.cs:274-339`), `OSError : IOError` is inverted, `NotImplementedError` and `UnicodeEncodeError` have the wrong bases. This is chartered: P33 (light, execution row 8) takes #2124 as its first issue and its matrix is the whole `BaseException` tree with Python's own tree as the generator, so these are planned cells and the gap is ordering, not ownership. Remedy is what P33 already says: one table-driven test comparing every Core exception's base chain to `python3 -c "print(X.__mro__)"`, then one fix.
 
 ### L4. `round()` is an unguarded `Math.Round` wrapper (live)
 
@@ -140,7 +140,7 @@ Items marked **live** were reproduced in this audit with `sharpyc run` against C
 
 ### L5. The stdlib API-surface check exempts 15 modules with no issue cites
 
-Only 18 of 61 `spy/*.spy` are generated into shipped C#; 43 are declaration stubs. Their only correctness tie is `ApiSurfaceComparisonTests`, whose `KnownMismatchModules` HashSet exempts 15 modules (heapq, random, re, hashlib, functools, statistics, itertools, tempfile, socket, …) with no issue cites and no stale check, and an unmapped module only prints a warning. `check_allowlist_issue_state.sh` cannot see it. Remedy: move the set to an `api-surface-allowlist.txt` with per-method rows, fail on unmapped modules, and rule whether the 43 stubs are a product or debt.
+Only 18 of 61 `spy/*.spy` are generated into shipped C#; the charter's own census (R-GA) counts the rest as 7 re-export stubs and 35 logic-bearing duplicates of hand-written C#. Their only correctness tie is `ApiSurfaceComparisonTests`, whose `KnownMismatchModules` HashSet exempts 15 modules (heapq, random, re, hashlib, functools, statistics, itertools, tempfile, socket, …) with no issue cites and no stale check, and an unmapped module only prints a warning. `check_allowlist_issue_state.sh` cannot see it. This is chartered as P61 (full, row 12d, after P60): #2282 cites or deletes the 15 rows and the non-canonical renderings move to an `ideal/` tree with ledger rows. The remaining gap is that the exemption is invisible to the allowlist gate until P61 lands; moving the set to an `api-surface-allowlist.txt` now is a band-sized chore.
 
 ### L6. `netstandard2.1` ships but is never executed; the Python oracle version is unpinned
 
@@ -148,7 +148,7 @@ All six test projects target `net10.0`; the netstandard binaries are compiled an
 
 ### L7. Smaller items
 
-`str.isalnum` uses `char.IsLetterOrDigit` so `'²'`, `'½'`, `'Ⅷ'` are False (Python: True); `sorted` calls the key function per comparison, not per element (#2090, open, already contradicted by `deviations.yaml`); the bottom-up merge sort has no run detection; `Dict.Get` and `defaultdict.Get` return `Optional<V>` while `collection_types.md:41` says `V?` (an owner ruling to record); `Maketrans` returns `Dictionary<char,string>` and Difflib/Struct return raw `List<>` (CLAUDE.md anti-pattern); 13 hand-rolled index clamps bypass the `Index` seam that #2404 called "the single seam"; `List<T>` `<` boxes value-type elements through `Operator.Eq(object, object)` **[inferred]**; `math.expm1`/`log1p` naive outside tiny cutoffs (#2349) and `public static double Pi` is a mutable static; `src/test_discovery.cs` is dead and would not compile; nine hand-written plan files live under the "generated, never hand-edit" `docs/stdlib/`.
+`str.isalnum` uses `char.IsLetterOrDigit` so `'²'`, `'½'`, `'Ⅷ'` are False (Python: True; not chartered); `sorted` calls the key function per comparison, not per element (#2090 is ruled COMPARED by R-CK and planned in P34, row 7; the shipped behaviour contradicts the `deviations.yaml` ledger until then); the bottom-up merge sort has no run detection; `Dict.Get` and `defaultdict.Get` return `Optional<V>` while `collection_types.md:41` says `V?` (an owner ruling to record; not chartered); `Maketrans` returns `Dictionary<char,string>` and Difflib/Struct return raw `List<>` (CLAUDE.md anti-pattern; P39, light, row 27, with `IEnumerable<T>` deliberately exempt under R-DI); 13 hand-rolled index clamps in Core (`StringExtensions.Search.cs`, `List.Methods.cs`) bypass the `Index` seam that #2404 called "the single seam" (R-KN separately leaves six Stdlib accessors outside the contract on purpose); `List<T>` `<` boxes value-type elements through `Operator.Eq(object, object)` **[inferred]**; `math.expm1`/`log1p` naive outside tiny cutoffs (#2349 is P73, generator-first, row 9c; the 19 missing functions of #2350 land through P61's ledger under R-HL) and `public static double Pi` is a mutable static; `src/test_discovery.cs` is dead and would not compile; nine hand-written plan files live under the "generated, never hand-edit" `docs/stdlib/`.
 
 ---
 
@@ -165,33 +165,33 @@ All six test projects target `net10.0`; the netstandard binaries are compiled an
 
 ### Where it is eating itself
 
-**V1. Throughput.** Closures 483 → 305 → 113 (Aug → Oct); 284 open, 257 filed in Sep–Oct; 130 labeled `class-tracker` so the label no longer marks an umbrella; 124 titles say "residue", "sibling", "outlier" or "after P__" (25 open). Median time-to-close for bugs is 1.4 days, mostly batch closes by the filing session, so the median hides the long tail of class trackers. Ruling letters reached R-KN, roughly 250–300 owner rulings since 2026-09-20 **[inferred from lettering]**.
+**V1. Throughput.** Closures 483 → 305 → 113 (Aug → Oct); 284 open, 257 filed in Sep–Oct; 130 labeled `class-tracker` so the label no longer marks an umbrella; 124 titles say "residue", "sibling", "outlier" or "after P__" (25 open). Median time-to-close for bugs is 1.4 days, mostly batch closes by the filing session, so the median hides the long tail of class trackers. Ruling letters reach R-LJ: 274 owner rulings in this round (R-AW to R-LJ) and 322 since 2026-08-30. The charter's own census corroborates the trend: open issues went from 56 at the round's start to 283, and summing its done-ledger rows gives roughly 322 filed against 174 closed across 42 landings **[inferred: per-row sums, the charter states no total]**.
 
-**V2. Allowlists do not trend to empty.** Rows 608 → 2,047 in three weeks. `name-resolution-differential-allowlist.txt` has 1,408 well-formed rows but 787 cite one charter issue (#2423), so they drain only in bulk. `declaration-position-allowlist.txt` had 58 commits in nine days because ~8 generators share one ledger seeded red at base and drained in phases, and because any `#N` in reason text counts as a cite. `spec_blocks_allowlist.txt`: 466 blocks (37% of the spec's fenced code) do not compile and 459 cite #1952, so the issue-state gate is satisfied by keeping one tracker open; rows are sha1-keyed so editing an allowlisted example reddens two rows. `gap-discovery-contracts.md` describes this file out of date.
+**V2. Allowlists do not trend to empty.** Rows 608 → 2,047 in three weeks. `name-resolution-differential-allowlist.txt` has 1,408 well-formed rows but 787 cite one charter issue (#2423), so they drain only in bulk; #2423 is the first tracker of P78, third in the execution order, so the drain is scheduled, and the next group (P77b) deliberately adds about 430 more red rows first. The `#1952` spec-block rows did fall from 586 to 459. `declaration-position-allowlist.txt` had 58 commits in nine days because ~8 generators share one ledger seeded red at base and drained in phases, and because any `#N` in reason text counts as a cite. `spec_blocks_allowlist.txt`: 466 blocks (37% of the spec's fenced code) do not compile and 459 cite #1952, so the issue-state gate is satisfied by keeping one tracker open; rows are sha1-keyed so editing an allowlisted example reddens two rows. `gap-discovery-contracts.md` describes this file out of date.
 
-**V3. Test mass.** 327k lines of Compiler tests against 187k of compiler; 10.3k Compiler test methods; 119 `*Matrix*` files totaling 51.7k lines; 46k lines of sweep/conformance/differential harness; 58 inline `Known*`/`Exempt*` sets forming a second allowlist universe outside the gate. No code coverage tooling exists (no coverlet), so redundancy is unmeasurable. 29 groups of exact-duplicate fixtures (63 files). 74 `test:` commits in three weeks only re-pinned fixture counts or rosters after fixtures were added.
+**V3. Test mass.** 327k lines of Compiler tests against 187k of compiler; 10.3k Compiler test methods; 119 `*Matrix*` files totaling 51.7k lines; 46k lines of sweep/conformance/differential harness; 58 inline `Known*`/`Exempt*` sets forming a second allowlist universe outside the gate. No line-coverage tooling exists (no coverlet), so redundancy is unmeasurable; mutation testing exists as an owner-triggered Stryker instrument (R-GB, Lexer at 73.27%, ruled NO-GO for nightly). 29 groups of exact-duplicate fixtures (63 files). 74 `test:` commits in three weeks only re-pinned fixture counts or rosters after fixtures were added.
 
 **V4. Guards that passed vacuously, repeatedly.** Python-twin tests passed with no Python 3.12 (#2342); 114 `.warning` sidecars asserted nothing (#1277); spec blocks proved compilation but not output (#2286); a substring grep stood in for architectural enforcement (#1475); the nightly property soak never finished and nobody noticed for two runs (#2392); vstest OOM makes a passing run report "Test Run Failed" with 0 failed rows (#2438, open, seen three times). The pattern is that each guard's SKIP path was not itself guarded.
 
-**V5. The nightly finds little.** 12 runs since 2026-10-25: 8 green, 4 red; 3 reds were the soak breaking itself (#2392); the one real find (`raise None.m` → `throw null.M`, CS0023, seed `c4U0RdI-d-Uw`) was posted to #2365 against the wrong commit and then pinned as a known-red skip. It soaked `dev`, which lagged `mainline` by 118 and 137 commits on two measured nights. The fuzz oracle is crash-only and has never been red. The Core, Stdlib and LSP "property" jobs rerun whole suites (~30 runner-min) for about 15 samples.
+**V5. The nightly finds little.** 12 runs since 2026-10-25: 8 green, 4 red; 3 reds were the soak breaking itself (#2392); the one real find (`raise None.m` → `throw null.M`, CS0023, seed `c4U0RdI-d-Uw`) was posted to #2365 against the wrong commit and then pinned under owner ruling R-KK as a self-failing known-red filter that reports "n skipped (#2365)", fails the first time such a draw compiles, and drains with P17 (row 35). The residual risk the round's own verify note concedes is that the filter matches on the CS0023 code alone and can over-skip an unrelated draw. It soaked `dev`, which lagged `mainline` by 118 and 137 commits on two measured nights. The fuzz oracle is crash-only and has never been red. The Core, Stdlib and LSP "property" jobs rerun whole suites (~30 runner-min) for about 15 samples.
 
 ---
 
 ## 5. Process and tooling footguns, ranked by cost to future sessions
 
-**P1. The plan/verify pipeline is heavier than what it protects.** One group requires reading about 130 KB of procedure (contract 29 KB, CLAUDE.md 18.5 KB, create-plan 18, verify-plan 27, implement-plan 23, verify-implementation 37, gap-discovery-contracts 63). Plans grow to 196 KB over ten `--adequacy` passes. By the contract's own ledger `/verify-plan` returned PASS WITH CORRECTIONS on 53 of 53 first passes and "has never stopped a plan"; 112 of its 132 corrections were stale SHAs or wording. Each group needs at least four whole-solution gates (~30 min each) behind one machine-wide lock; the Stryker pilot held that lock for 7 h 23 min and waiters time out at 75 min. Verify rounds did land 14 real fixes in three weeks, so the execution stages pay; the reading and pinning stages are the bulk.
+**P1. The plan/verify pipeline is heavier than what it protects.** One group requires reading about 130 KB of procedure (contract 29 KB, CLAUDE.md 18.5 KB, create-plan 18, verify-plan 27, implement-plan 23, verify-implementation 37, gap-discovery-contracts 63). Plans grow to 196 KB over ten `--adequacy` passes. By the contract's own ledger `/verify-plan` returned PASS WITH CORRECTIONS on 53 of 53 first passes and "has never stopped a plan"; the one exception is P77a, whose tenth adequacy pass returned NEEDS REVISION and the owner overrode it to implement. 112 of its 132 corrections were stale SHAs or wording. Each full-tier group runs two to four whole-solution gates (~30 min each: the implement gate, the verify re-gate, the base-commit control run, and a final gate after remediation) behind one machine-wide lock **[inferred from the skill procedures; the charter states one commit gate per landing and no per-group count]**; the Stryker pilot held that lock for 7 h 23 min and waiters time out at 75 min. Verify rounds did land 14 real fixes in three weeks, so the execution stages pay; the reading and pinning stages are the bulk.
 
-**P2. CLAUDE.md contradicts its own enforcement.** Its Commands and Testing blocks list raw `dotnet build`/`dotnet test`, which the PreToolUse hook blocks. It says the commit gate is the whole solution; the wrapper header says "GATE ON A PROJECT, NOT ON sharpy.sln (#1384)" because a solution-level run produces a cross-project false red. Its pipeline line omits the Lowering IR stage that `architecture.md` includes. It says `gh` fails TLS; in a cloud session `gh issue view/list` returns HTTP 403 while `gh api` works, and every workflow skill uses the failing form. Rules 13 and 14 depend on a tier and a ledger that live in the gitignored `.claude/plans/`. The hook only matches `build|test`, so `/spy-run`, `/spy-emit` and `/quick-check` run `dotnet run --project src/Sharpy.Cli`, an unserialized MSBuild into the same `bin/obj` a gate may be using.
+**P2. CLAUDE.md contradicts its own enforcement.** Its Commands and Testing blocks list raw `dotnet build`/`dotnet test`, which the PreToolUse hook blocks. It says the commit gate is the whole solution; the wrapper header says "GATE ON A PROJECT, NOT ON sharpy.sln (#1384)" because a solution-level run produces a cross-project false red. Its pipeline line omits the Lowering IR stage that `architecture.md` includes. It says `gh` fails TLS; in a cloud session `gh issue view/list` returns HTTP 403 while `gh api` works, and every workflow skill uses the failing form. Its Axioms table still says `global`/`nonlocal` follow C# scoping, a rule the owner reversed in R-KD (writes across a function boundary need `global`/`nonlocal`, principle N6) and that P79 is scheduled to remove. Rules 13 and 14 depend on a tier and a ledger that live in the gitignored `.claude/plans/`. The hook only matches `build|test`, so `/spy-run`, `/spy-emit` and `/quick-check` run `dotnet run --project src/Sharpy.Cli`, an unserialized MSBuild into the same `bin/obj` a gate may be using.
 
 **P3. Three of four hooks are dead (confirmed).** `block-secrets.sh`, the `.expected/.error` warning and `format-on-save.sh` read `$TOOL_INPUT_FILE_PATH`, which Claude Code never sets (hooks receive JSON on stdin, as `enforce-dotnet-serialized.sh` correctly does). So secrets are not blocked, expectation edits are not warned, and nothing formats on save, which is why whitespace-only fix commits keep appearing and why `/push` needs a solution-wide `dotnet format --verify-no-changes`. `/commit` still claims formatting "is handled automatically by the PostToolUse hook".
 
-**P4. No fast inner loop is documented.** The guidance stops at "filtered run". A prebuilt `sharpyc` compiles and runs a program in 0.75 s and needs no lock; the compile server (`src/Sharpy.Cli/Services/CompileServer.cs`) exists and no skill uses it. Measured in this audit: Core tests 4,055 in 6 s wall (2.2 GB peak), Lexer + Parser 4,412 in 36 s (3.0 GB), CLI 1,127 in 109 s (4.0 GB). There is no `Fast` trait.
+**P4. No fast inner loop is documented.** The guidance stops at "filtered run". A prebuilt `sharpyc` compiles and runs a program in 0.75 s and needs no lock; the compile server (`src/Sharpy.Cli/Services/CompileServer.cs`) exists and no skill uses it, though the charter records open warm-correctness reds against it (a sticky `0x8013141E` after an in-place rebuild and stale analysis after an atomic replace, P28 #2114 and P42 #2322), so the prebuilt binary is the safe inner loop today and the server is one only after those land. In-process `run` is a parked door (R-GK, #2293). Measured in this audit: Core tests 4,055 in 6 s wall (2.2 GB peak), Lexer + Parser 4,412 in 36 s (3.0 GB), CLI 1,127 in 109 s (4.0 GB). There is no `Fast` trait.
 
 **P5. Shared fixed log paths and orphaned holders.** `/run-tests` does `rm -f .claude/tmp/last-test-run.log` before queueing on the lock, so two agents clobber each other; the same pattern applies to the gap-analysis, spy-run and quick-check logs. A hung orphaned `dotnet` child is never killed; waiters time out at 75 min. `/gap-analysis` omits the console logger the watchdog depends on.
 
 **P6. The dev/mainline flow adds noise and skips gates.** Full CI runs only on pushes to `mainline`; `dev` gets only `dev-staleness.yml`, so the spec-block, allowlist-state and allocation gates never run where code lands, and 124 direct mainline pushes versus about 10 PRs means regressions are caught after landing. 21 of the last 100 commits are merges. Commit subjects: median 93 characters over six months, 185 over the last three weeks, against the `/commit` skill's 72; release notes built from them run 47–56 KB.
 
-**P7. Machine-local state carries the project's vocabulary.** Issue bodies cite plan IDs (P41 … P77a) and ruling letters (R-DX … R-KN) defined only in gitignored `.claude/plans/` and the owner's memory index. A fresh session cannot interpret most of the tracker. The `git restore` incidents that justify the shared-tree rule appear in no issue.
+**P7. Machine-local state carries the project's vocabulary.** Issue bodies cite plan IDs (P41 … P81), execution rows (6c‴, 10h, 12d) and ruling letters (R-AW … R-LJ). Rulings themselves are mirrored as issue comments, but the index that resolves them (letter → issue, group → issues → tier → position, supersession chains such as R-JJ/R-JT/R-JV → R-KD) exists only in the 718 KB charter under gitignored `.claude/plans/`, which reached this audit as an upload. A fresh session cannot interpret most of the tracker without it. The `git restore` incidents that justify the shared-tree rule appear in no issue.
 
 **P8. Documents drift after decisions.** The 2026-07 roadmap closed all 25 issues within a week but its status block still says "issues filed". Free unions, structured parallelism and placement decorators were closed not-planned yet their design docs still read "Status: Design". `csharp14-user-defined-compound-assignment.md` calls `inplace_augassign` experimental after it graduated. `deviations.yaml` (114 executed rows) renders nowhere in the docs site, which the Mojo review (R7) already flagged. Eight spec files are absent from the mkdocs nav. `gap-discovery-contracts.md` is wrong about the spec-block allowlist.
 
@@ -223,11 +223,78 @@ The front end is cheap; type checking and codegen are 10× lexing and parsing, a
 
 ## 8. Status of the Mojo 1.2 review (2026-10-22)
 
-Of the twelve bugs it filed, five closed on 2026-10-31 (#2347 center rounding, #2348 whitespace set, #2354 struct self-field, #2355 semicolons, #2357 `int("1_000")`), #2358 was closed not-planned, and six remain open: #2349 and #2350 (math accuracy and 19 missing functions, ruled into a generator-first group), #2351 (`int.to_bytes` family), #2352 (bare tuple subject), #2353 (duplicate literal arm, SPY0908), #2356 (tuple ordering, reproduced here). The R5 union-printing ruling is pending on #2057. R7 (render `deviations.yaml` as a Python-developers guide) has not happened. Its structural suggestions align with this audit: a differential numerics corpus (R3), the leak corpus for the A2 class (R2), and executable spec blocks.
+Of the twelve bugs it filed, five landed as the call-29 band and closed (#2347 center rounding, with its fill-character cell 2 kept open in P17 under R-IT; #2348 whitespace set; #2354 struct self-field; #2355 semicolons; #2357 `int("1_000")`), #2358 was folded into #1951 (P17's constructor ring) and closed, and six remain open with charter homes: #2349 (expm1/log1p accuracy) is P73, generator-first, row 9c; #2350 (19 missing functions) lands through P61's ledger under R-HL; #2351 (`int.to_bytes` family) is in P17 under R-KL; #2352 and #2353 are P13b cells under R-IN; #2356 (tuple ordering, reproduced here) is P34 under R-IP. R5 was ruled at call 29 (R-IM, promoted): union values print in constructor spelling, as a planned P11g cell (row 17, lands alone). R7 (render `deviations.yaml` as a Python-developers guide) has no charter home. Its structural suggestions align with this audit: a differential numerics corpus (R3), the leak corpus for the A2 class (R2), and executable spec blocks.
 
 ---
 
-## 9. Recommended program
+## 9. Cross-reference with the remediation charter
+
+The owner's charter (`remediation-round-2026-09-20-batching.md`, 718 KB, 1,397 lines, at call 38) is the input to every `/create-plan`. It was read in 17 slices by parallel agents, joined against this report by one synthesis agent, and the join was adversarially checked by a critic that re-read the charter where the maps disagreed. The critic confirmed 14 corrections to earlier drafts of this text (all applied above) and rejected or downgraded three.
+
+### Coverage: where each finding already lives
+
+| Finding | Status | Charter home |
+|---|---|---|
+| A1 lowering in 88 tables, IR not the emitter's input, no freeze | **not chartered** | Only P18b deletes a table (`SequenceMaterialization`); P13b (R-IV), P57, P58 (R-FN) and P16b (#2003) add new node-keyed facts, P15 and P17 add arms, P51 and P72 leave the choice to the plan |
+| A2 TypeChecker ambient context, overload probing | partially | P17 phase 1 adds the error sentinel (R-AZ, #1946); R-JP deliberately avoids per-candidate trial typing in P74; no `CheckContext`, binder split or overlay |
+| A3 emitter type decisions, Rule-2 guard too wide | partially | Individual cells have homes (P49 markers, P17c pipe speller, P17d struct ctors, P25 `LruCache`, P29 R-CW access authority, P30 #2400 backing-field choice, R-HM last emitter reflection site); nothing narrows the carrier set or ratchets the 160 inspection sites |
+| A4 `UnknownType` dual meaning | partially | R-AZ sentinel in P17 (row 35, behind ~30 groups); P52 removes declaration-order Unknown; no `InferenceVariable` split or nested walk |
+| A5 string type identity, three codecs | partially | Instances placed in P21k, P18, P26, P31 (#2141), P32 (#2136), P34 (#2103); no definition-handle identity or single mapper |
+| A6 incremental cache key and serializer | partially | P28 (light, row 28) plans reference MVID/hash in the key and compile-server cells; P21k owns a warm-only SPY0909 (#2402); P18 #1975 plans a serializer bump; features/TFM/configuration in the key, the `opt_const_fold` repro and the no-change IL skip are not chartered; #1099 is parked |
+| A7 reflection in Semantic, bare catches | partially | R-DN keeps runtime reflection for P42 phase 1; #2222 metadata-only loading is later; P18 deletes the AppDomain scan; no scan over `Semantic/` |
+| A8 free-text diagnostics, SPY0908 net disarmed | partially | Dozens of SPY0908 cells become refusals from P77/P78 onward; P46b and P65 fix two message-text instances; typed descriptors and #1387 have no home |
+| L1 dict order after remove | **not chartered** | zero hits for insertion order; `popitem` appears only as a missing member in P38 |
+| L2 CLR exceptions where Python raises `ValueError` | partially | P35 owns datetime parse/overflow cells (#2109, #2133), P55 one `re` cell, P34 #2091, R-FH, R-IG; numpy's 44 CLR throws, the `date(y, m, d)` constructor and the spy tests asserting CLR types have no home |
+| L3 exception hierarchy | planned | P33, light, row 8, whole `BaseException` tree |
+| L4 `round()` | **not chartered** | zero hits |
+| L5 uncited API-surface exemption | planned | P61 (#2282 cite-or-delete, R-GA) |
+| L6 netstandard untested, oracle version | partially | R-HZ 3.12 floor; R-DO compiles against netstandard2.1 but does not execute; no pinned oracle file |
+| L7 small items | partially | P34, P73, P61, P39, P81, P38; `isalnum`, `dict.get` ruling, mutable `Pi`, dead file, misplaced plans have no home |
+| V1 throughput | partially | Rulings cap residue families (R-GF, R-GO, R-GU, R-HC); nothing tracks filed/closed |
+| V2 allowlist growth | partially | #2423 drains at P78, #1952 at P20 (last docs-only group, row 43); no cap per cite, no total-row metric; P77b adds ~430 rows |
+| V3 test mass | partially | Stryker pilot (R-GB); no coverlet, dedupe or count-pin policy |
+| V4 vacuous guards | partially | #2342 and #2392 done; #2438 rides P77b (R-KR); P63c, P62 and P60 repair recorded vacuous rows |
+| V5 nightly | partially | R-KK pin; nightly on mainline, soaked SHA and a non-crash fuzz oracle not chartered |
+| P1 process weight | partially | Tiers exist (R-JR); 47 of 68 open groups are still `full`; no gate or plan-size cap |
+| P2 CLAUDE.md | partially | Only the `global`/`nonlocal` axiom row (P79, R-KD) |
+| P3 dead hooks | **not chartered** | zero hits |
+| P4 inner loop | ruled against in part | #2293 in-process run parked (R-GK); compile server has open reds |
+| P5 logs and orphans | **not chartered** | only #2257 (console logger) landed |
+| P6 branching | partially | R-EF, R-GH, R-GM cover CI matrix, Windows and smoke; nothing on CI-on-dev or push policy |
+| P7 machine-local vocabulary | **not chartered** | rulings mirrored as comments; the index is not |
+| P8 stale docs, deviations rendering | partially | spec retirements ride P77–P79; R7 and the doc statuses have no home |
+| CI hygiene | partially | R-IX cost cut for shard 5; P77b fixes three CI gaps; timeouts, hang detection, cancel, cache, gates on mainline not chartered |
+| Mojo review | planned | every bug placed; R5 ruled (R-IM); R7 not chartered |
+
+### Queue economics
+
+| Measure | Value |
+|---|---|
+| Open groups in §1 | 68 (47 `full`, 21 `light`, 1 `band`) plus 16 parked |
+| Groups that must land alone | 9 certain (P77, P70, P11g, P26, P43, P36, P48, P18b, P45); tier letter (c) leaves up to ~20 more ambiguous |
+| Groups needing a generator first | ~26 |
+| Landings since 2026-09-20 | 42 (29 plan rounds, 13 chore bands) |
+| Gate test count | 32,148 → 83,542 in 46 days (2.6×); the last gate exited 1 with 0 failed on the #2438 OOM |
+| Whole-solution gates to drain the queue | ~183 at 3 per `full` and 2 per `light` group, ~90 h of exclusive lock at 30 min each **[inferred: the charter states no per-group count]** |
+| Filed vs closed across the 42 landings | ~322 filed, ~174 closed **[inferred per-row sums]**; 13 of 42 rows closed more than they filed |
+| Execution order (next) | P77b → P77 → P78 → P79 → P80 → P52 → P22c → P74 → P21k → P69 → P70 → P37 → P16b → P34 → P81 → P33 → P35 → P56 → P73 → P13b → … → P45 |
+
+The Core fidelity groups that cure the silent-wrong classes (P33 exceptions, P34 ordering, P35 culture and datetime) sit at execution positions 15 to 17, behind seven name-resolution and codemod groups, and the two live silent-wrong bugs found here (L1, L4) have no position at all.
+
+### The charter's own form as a footgun
+
+- 718 KB in 1,397 lines, with single lines of several KB. No session can read it whole, so it is read in slices and cross-slice inconsistencies survive: the title says "through call 37" at call 38; row 0 lists #2429 as open after it closed on 2026-11-05; P21k says "after P21j" after P21j was dissolved (R-KF); P66, P72 and P63c say "before P52" after P52 moved (R-KH); the rationale says "P54 sits first" after P54 landed.
+- Condensation deletes evidence: §5 class findings for landed groups are removed, and the 26 open §5 findings were last measured at 2026-10-05 SHAs yet are still cited. The backups the text points to could not be located from this session.
+- The positional vocabulary (rows 6c‴, 6c⁶⁗, 10h, 12d) and the printed §1 table order (P22c first) differ from the stated execution order (P22c seventh).
+- 274 ruling letters this round with supersession chains (R-JJ/R-JT/R-JV → R-KD/R-KF/R-KG; R-DF → R-DG; R-IR → R-KL); a reader has to resolve a chain to learn the current rule, and struck rulings are kept verbatim.
+- Tier letter (c) means "seam under Semantic/CodeGen OR lands alone", so lands-alone status cannot be derived; owner overrides to `light` (e) contradict the derived letters for P63c, P69, P70, P62, P77a, P77b; P39 is `light` while its contract says "Generator: REQUIRED"; P23 and P34 decline a generator that Rule 13 would require.
+- There is no machine-readable index. Every batching call and every audit, this one included, re-extracts group → issues → tier → position → rulings from prose with many agents.
+
+### What the cross-reference changes in the program
+
+Tier 0 items 1 to 6 are confirmed as having no charter home and are the cheapest unclaimed value: run them as one band riding P77b's gate beside #2438. Tier 1 item 7 (E2) needs an owner ruling before P13b, P51, P57 and P58 land, because they add the tables it would remove. Tier 2 item 15 becomes a generated index committed per batching call. The A6 options half (features, TFM, configuration) belongs as cells on #2114 with P28's matrix widened, or as a band chore now rather than at row 28.
+
+## 10. Recommended program
 
 ### Tier 0 — this week, cheap, high value
 
@@ -235,12 +302,12 @@ Of the twelve bugs it filed, five closed on 2026-10-31 (#2347 center rounding, #
 2. **Repair CLAUDE.md**: wrapper-form commands only; one gate shape written as a script (`.claude/scripts/gate` looping the five test projects with the console logger) and referenced from CLAUDE.md, the wrapper and the skills; add the Lowering stage to the pipeline line; add a six-line "Inner loop" (build once, probe with the prebuilt `sharpyc`, one fixture by `DisplayName~`, the owning project, gate at phase close); add a cloud-session note (`gh api` only, `dotnet` may need installing, `.claude/plans` absent). Cut to ≤8 KB and move measurements into scripts.
 3. **Add compilation options to the incremental cache key** (features, references, TFM, configuration) and a feature-flag and reference axis to the cold/warm differential; skip IL emission when nothing changed. Fold into #2114's class.
 4. **Point the nightly at `mainline`**, print the soaked SHA in the job summary, add `timeout-minutes` and `--blame-hang-timeout 10m` to every test job, `concurrency` with `cancel-in-progress` for PRs, NuGet caching, and split Compiler shard 5 (merge shards 1 and 6 to stay under the 20-job cap). Run the spec-block, allowlist-state and allocation gates on mainline pushes.
-5. **Fix `dict` ordering** with a compact ordered layout and a property test against the Python model; fix `round()` per `float.__round__`; wrap `date`/`time` constructors to raise `ValueError`; file L2 as one class issue with the exception-leak scans as its guard.
+5. **Fix `dict` ordering** with a compact ordered layout and a property test against the Python model; fix `round()` per `float.__round__`; wrap `date`/`time` constructors to raise `ValueError`; file L2 as one class issue with the exception-leak scans as its guard. None of these has a charter home; L1 and L4 are live silent-wrong bugs and fit as Core band chores riding P77b's gate beside #2438, and the L2 class issue belongs beside P35, which owns only the datetime parse and overflow cells.
 6. **Unique log paths** per wrapper invocation printed to stdout; let a waiter kill an orphaned child whose holder is dead and whose log is silent past the stall window.
 
 ### Tier 1 — the next one or two rounds, structural
 
-7. **Finish E2.** IR is the emitter's only input; `SemanticInfo.Freeze()` after validation; `MergeFrom` asserts disjointness; a ratchet on the table count (88, trending down). This is the structural cure for the SPY0908 class and should be chartered as the one `full`-tier group.
+7. **Finish E2.** IR is the emitter's only input; `SemanticInfo.Freeze()` after validation; `MergeFrom` asserts disjointness; a ratchet on the table count (88, trending down). This is the structural cure for the SPY0908 class and should be chartered as the one `full`-tier group. It needs an owner ruling before P13b, P51, P57 and P58 land: four open groups definitely add new node-keyed tables (P13b under R-IV, P57, P58 under R-FN, P16b for #2003) and up to four more extend or may add them, and only P18b deletes one. Either charter E2 or record that table growth is accepted; today the charter's standing Rule-2 cure (a node-keyed fact joined to `MergeFrom`) and this recommendation point in opposite directions **[inferred: the charter does not state a tension]**.
 8. **`ErrorType` / `InferenceVariable` split** with a deep Unknown walk at materialization; delete the 36 emitter guards.
 9. **`CheckContext` record** replacing the ambient fields; overload resolution on an overlay. Start with the five most-threaded fields and delete their save/restore sites.
 10. **Narrow the Rule-2 guard**: no type inspection in CodeGen outside `TypeSyntaxMapper`; ratchet the 160 sites to zero; replace name and line symbol lookups.
@@ -249,9 +316,9 @@ Of the twelve bugs it filed, five closed on 2026-10-31 (#2347 center rounding, #
 
 ### Tier 2 — process reset, decided by the owner at the next `/batch-issues`
 
-13. **Per-group budget**: at most two whole-solution gates, plans ≤15 KB, `/verify-plan` dropped for the `light` tier and folded into a ≤40-line checklist in `/implement-plan`. Track `filed / closed` per round as the primary health metric and pause new harness aperture when closed < filed for two rounds.
+13. **Per-group budget**: at most two whole-solution gates, plans ≤15 KB, and the remaining `/verify-plan --adequacy` stage dropped for the `light` tier (R-JR already cut it to matrix arms, guard mutations and design predicates) in favour of a ≤40-line checklist in `/implement-plan`. Track `filed / closed` per round as the primary health metric and pause new harness aperture when closed < filed for two rounds.
 14. **Allowlist policy**: report total rows in every round recap; cap rows per cited issue (no omnibus cites, so #1952 and #2423 split into bucket issues); one ledger file per generator; structured `cite=#N` fields the gate parses and reason text it does not; one `band` round draining or fragment-marking the 466 spec blocks so the spec is executable again.
-15. **Commit the round record**: charters or a one-page summary per round under `docs/process/rounds/` so plan IDs and ruling letters mean something to a fresh session; delete the `~/.claude/plans` fallback.
+15. **Commit the round record**: a generated one-page index per batching call under `docs/process/rounds/` (group → issues → tier → execution position → current rulings with supersession chains resolved) so plan IDs, row numbers and ruling letters mean something to a fresh session, and so the stale cross-references that survive condensation (see §9) get caught; delete the `~/.claude/plans` fallback.
 16. **Branching**: run full CI on `dev` pushes (or on dev→mainline PRs only) and fast-forward `mainline`, or drop `dev`. Enforce a ≤100-character subject with a commit-msg hook.
 17. **Measure before adding tests**: add coverlet, dedupe the 29 duplicate fixture groups with a hash guard, replace count-pinning census tests with set membership derived from the fixture directory, and adopt a test-LOC ÷ product-LOC budget as a charter fact.
 18. **Type identity by definition handle** and one CLR mapper (A5), the larger refactor, scheduled after E2 lands.
@@ -263,7 +330,7 @@ Of the twelve bugs it filed, five closed on 2026-10-31 (#2347 center rounding, #
 - Writing lowering facts from validators.
 - Citing an omnibus issue from an allowlist row.
 - Pinning fixture counts in tests.
-- Converting a nightly find in a known class into a known-red skip; treat a new seed in a pinned class as a signal that the class fix is incomplete.
+- Keying a known-red pin on an error code alone (the R-KK filter matches any CS0023); key such pins on the shape and location, and treat a new seed in a pinned class as a signal that the class fix is incomplete.
 - Filing per-cell residue issues before the class harness exists (the contract already says this; the 124 residue titles say it is not yet followed).
 
 ### Health metrics to report every round
@@ -272,7 +339,7 @@ Open issues and closures; SPY0908 inflow and outflow; total allowlist rows; `Sem
 
 ---
 
-## 10. What to protect
+## 11. What to protect
 
 The ratchets and their drain-on-fix discipline; the behavioral `MergeFrom` guard; symbol-level freezes that throw; the single compile path through `SyntheticProject`; `ReferenceLoadContext`; the SPY0908 policy as a contract with a non-vacuous `ILCompilesPropertyTests`; parser error recovery with unparser round-trip and CPython differential parsing; the single `CheckStore` seam and SyntaxFactory-only emission; `DispatchSiteInventoryTests` and the totality tests; the dotnet-serialized wrapper and its false-green guards; owner rulings framed as one-way or two-way doors; the DEVIATION-by-default fidelity scope; the generated-artifact staleness gates; the feature-flag lifecycle with gated/ungated fixture twins.
 
@@ -281,7 +348,8 @@ The ratchets and their drain-on-fix discipline; the behavioral `MergeFrom` guard
 ## Appendix: not verified
 
 - Defect-class counts are title-keyword matches and overlap; comment threads were read only for a handful of issues.
-- The ruling count (~250–300) is inferred from the R-KN lettering.
+- The per-group gate count (two to four) and the queue's gate and filed/closed totals are inferred from the skill procedures and from summing the charter's done-ledger rows; the charter itself states neither.
+- The charter's backup files named in its preamble could not be located from this session, so "the backups hold every census line verbatim" is unchecked.
 - The cause of the shard 5 slowdown is a timing correlation with #2324, not a per-test measurement.
 - Whether the September `BuiltinShadowingPropertyTests` reds were real bugs or seed flakes.
 - CI memory use (nothing records it) and queue time separate from run time.
