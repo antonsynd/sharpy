@@ -53,6 +53,14 @@ public class SemanticInfoMergeConformanceTests
     private const int MinimumSideTableFieldCount = 79;
 
     /// <summary>
+    /// The ratchet on the side-table count (#2443, E2 contract item 4): 88
+    /// <c>ConcurrentDictionary</c> side-tables at the E2 resume (85 keyed on AST nodes, 3 on
+    /// symbols). The emitter port moves facts into the lowering IR, so the count may only fall: a
+    /// change that adds a table fails here, and a change that removes one lowers this pin with it.
+    /// </summary>
+    private const int MaximumSideTableFieldCount = 88;
+
+    /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>
     /// into another — asserted by round-trip over EVERY reflected side-table field, not by a source
     /// scan. For each <c>ConcurrentDictionary&lt;TKey,TValue&gt;</c> field: fabricate a key (a
@@ -90,6 +98,70 @@ public class SemanticInfoMergeConformanceTests
             + "dropped in the per-file → project merge that code generation, the generator pipeline, "
             + "validators, and the LSP read from (Critical Rule 2 / #1042). Fields whose fabricated "
             + "entry did NOT survive the merge:\n" + string.Join("\n", dropped));
+    }
+
+    /// <summary>
+    /// #2443: the side-table count may not grow. Counted by the same reflective filter as the
+    /// round-trip above, so a table cannot be added under the merge guard without passing this pin.
+    /// </summary>
+    [Fact]
+    public void SideTableCount_IsPinnedAtOrBelowTheE2Ratchet()
+    {
+        var count = typeof(SemanticInfo)
+            .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+            .Count(IsSideTableField);
+
+        count.Should().BeLessThanOrEqualTo(MaximumSideTableFieldCount,
+            "SemanticInfo side-tables are being drained into the lowering IR (#2443); a new fact belongs "
+            + "in the lowering pass, not in a new node-keyed dictionary");
+        count.Should().BeGreaterThanOrEqualTo(MinimumSideTableFieldCount,
+            "the reflective filter must still see the side-tables (the pin would otherwise pass vacuously)");
+    }
+
+    /// <summary>
+    /// #2443: a key present in both operands of <c>MergeFrom</c> with DIFFERENT values throws,
+    /// naming the table and the node's position, instead of keeping the first value and dropping
+    /// the second. Planted on the public setter so the conflict is a real one.
+    /// </summary>
+    [Fact]
+    public void MergeFrom_ConflictingValuesForOneKey_Throws()
+    {
+        var node = new Identifier { Name = "x", LineStart = 3, ColumnStart = 7 };
+        var project = new SemanticInfo();
+        project.SetExpressionType(node, SemanticType.Int);
+
+        var perFile = new SemanticInfo { CurrentFilePath = "conflict.spy" };
+        perFile.SetExpressionType(node, SemanticType.Str);
+
+        var merge = () => project.MergeFrom(perFile);
+
+        var thrown = merge.Should().Throw<Sharpy.Compiler.Diagnostics.SemanticInfoMergeConflictException>().Which;
+        thrown.TableName.Should().Be("_expressionTypes");
+        thrown.Key.Should().Be("conflict.spy: Identifier at 3:7");
+        project.GetExpressionType(node).Should().Be(SemanticType.Int, "the target's value is not overwritten");
+    }
+
+    /// <summary>
+    /// Positive control for the conflict assertion: the same key with an EQUAL value merges
+    /// silently, including a list-valued table whose two copies are distinct list instances.
+    /// </summary>
+    [Fact]
+    public void MergeFrom_EqualValuesForOneKey_Merges()
+    {
+        var node = new Identifier { Name = "x" };
+        var call = new FunctionCall { Function = new Identifier { Name = "f" } };
+        var project = new SemanticInfo();
+        project.SetExpressionType(node, SemanticType.Int);
+        project.SetInferredTypeArguments(call, new List<SemanticType> { SemanticType.Int });
+
+        var perFile = new SemanticInfo();
+        perFile.SetExpressionType(node, SemanticType.Int);
+        perFile.SetInferredTypeArguments(call, new List<SemanticType> { SemanticType.Int });
+
+        var merge = () => project.MergeFrom(perFile);
+
+        merge.Should().NotThrow();
+        project.GetExpressionType(node).Should().Be(SemanticType.Int);
     }
 
     /// <summary>

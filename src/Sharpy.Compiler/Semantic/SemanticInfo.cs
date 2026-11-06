@@ -677,20 +677,108 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Symbol, ConcurrentBag<SymbolReference>> _symbolReferences = new();
 
     private SymbolTable? _symbolTable;
+    private string? _currentFilePath;
+
+    // Set by Freeze() (#2443). Volatile for the same reason as SemanticBinding's freeze flags:
+    // per-file instances are written on worker threads and read back on the project thread.
+    private volatile bool _frozen;
 
     /// <summary>
     /// The file path of the current compilation unit, used to tag symbol references.
     /// </summary>
-    public string? CurrentFilePath { get; internal set; }
+    public string? CurrentFilePath
+    {
+        get => _currentFilePath;
+        internal set
+        {
+            ThrowIfFrozen(nameof(CurrentFilePath), key: null);
+            _currentFilePath = value;
+        }
+    }
 
     public void SetSymbolTable(SymbolTable symbolTable)
     {
+        ThrowIfFrozen(nameof(_symbolTable), key: null);
         _symbolTable = symbolTable;
+    }
+
+    // === Phase gate (#2443) ===
+
+    /// <summary>
+    /// True once <see cref="Freeze"/> has been called; every write after that throws.
+    /// </summary>
+    public bool IsFrozen => _frozen;
+
+    /// <summary>
+    /// Closes this instance to writes (#2443, E2 contract item 3). After this call every setter,
+    /// <c>Mark*</c>/<c>Record*</c>/<c>Clear*</c> mutator and <see cref="MergeFrom"/> into this
+    /// instance throws <see cref="Diagnostics.PhaseViolationException"/>. The project compiler calls
+    /// it on the merged project-level instance immediately before the lowering pass, after the last
+    /// project-level writes (generator integration and the per-file layout carry-over), so every
+    /// fact the lowering pass and code generation read is fixed before either runs. The symbol-keyed
+    /// analogue is <see cref="SemanticBinding.FreezeVariableTypes"/>. A write that fires after the
+    /// freeze is a phase finding to record on #2443, not a reason to move the freeze later.
+    /// </summary>
+    public void Freeze() => _frozen = true;
+
+    private void ThrowIfFrozen(string tableName, object? key)
+    {
+        if (_frozen)
+        {
+            throw new Diagnostics.PhaseViolationException(
+                $"write {tableName}", "semantic analysis (SemanticInfo frozen before lowering, #2443)",
+                key == null ? null : DescribeKey(key, _currentFilePath));
+        }
+    }
+
+    /// <summary>Guarded store: the one way a setter writes a side-table entry (#2443).</summary>
+    private void Put<TKey, TValue>(
+        ConcurrentDictionary<TKey, TValue> table, TKey key, TValue value,
+        [CallerArgumentExpression(nameof(table))] string tableName = "")
+        where TKey : notnull
+    {
+        ThrowIfFrozen(tableName, key);
+        table[key] = value;
+    }
+
+    /// <summary>Guarded set-membership add for the <c>byte</c>-valued marker tables (#2443).</summary>
+    private void Mark<TKey>(
+        ConcurrentDictionary<TKey, byte> table, TKey key,
+        [CallerArgumentExpression(nameof(table))] string tableName = "")
+        where TKey : notnull
+    {
+        ThrowIfFrozen(tableName, key);
+        table.TryAdd(key, 0);
+    }
+
+    /// <summary>Guarded removal (#2443).</summary>
+    private void Forget<TKey, TValue>(
+        ConcurrentDictionary<TKey, TValue> table, TKey key,
+        [CallerArgumentExpression(nameof(table))] string tableName = "")
+        where TKey : notnull
+    {
+        ThrowIfFrozen(tableName, key);
+        table.TryRemove(key, out _);
+    }
+
+    /// <summary>
+    /// A side-table key for a diagnostic message: an AST node by kind and source position, a symbol
+    /// by kind and name, prefixed with the file it was recorded in when known.
+    /// </summary>
+    internal static string DescribeKey(object key, string? filePath)
+    {
+        var where = key switch
+        {
+            Node node => $"{node.GetType().Name} at {node.LineStart}:{node.ColumnStart}",
+            Symbol symbol => $"{symbol.GetType().Name} '{symbol.Name}'",
+            _ => key.ToString() ?? key.GetType().Name,
+        };
+        return filePath == null ? where : $"{filePath}: {where}";
     }
 
     public void SetExpressionType(Expression expr, SemanticType type)
     {
-        _expressionTypes[expr] = type;
+        Put(_expressionTypes, expr, type);
     }
 
     public SemanticType? GetExpressionType(Expression expr)
@@ -707,12 +795,12 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void ClearExpressionType(Expression expr)
     {
-        _expressionTypes.TryRemove(expr, out _);
+        Forget(_expressionTypes, expr);
     }
 
     public void SetIdentifierSymbol(Identifier id, Symbol symbol)
     {
-        _identifierSymbols[id] = symbol;
+        Put(_identifierSymbols, id, symbol);
         RecordReference(symbol, id);
     }
 
@@ -727,7 +815,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetDeclarationSymbol(VariableDeclaration declaration, Symbol symbol)
     {
-        _declarationSymbols[declaration] = symbol;
+        Put(_declarationSymbols, declaration, symbol);
     }
 
     /// <inheritdoc/>
@@ -738,7 +826,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void RecordDefinitelyAssignedBareLocal(VariableDeclaration decl)
     {
-        _definitelyAssignedBareLocals[decl] = 0;
+        Mark(_definitelyAssignedBareLocals, decl);
     }
 
     public bool IsDefinitelyAssignedBareLocal(VariableDeclaration decl)
@@ -749,7 +837,7 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>Records that a bare-local read is runtime-checked (#1839).</summary>
     public void RecordRuntimeCheckedRead(Identifier read, VariableDeclaration declaration)
     {
-        _runtimeCheckedReads[read] = new RuntimeCheckedRead(declaration);
+        Put(_runtimeCheckedReads, read, new RuntimeCheckedRead(declaration));
     }
 
     /// <summary>True when this identifier read is one the emitter must guard with CheckedLocal (#1839).</summary>
@@ -761,7 +849,7 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>Flags a bare-local symbol as needing a runtime assigned-flag (#1839).</summary>
     public void RecordRuntimeAssignedFlagLocal(VariableSymbol symbol)
     {
-        _runtimeAssignedFlagLocals[symbol] = 0;
+        Mark(_runtimeAssignedFlagLocals, symbol);
     }
 
     /// <summary>True when this local carries a runtime assigned-flag (#1839).</summary>
@@ -775,7 +863,7 @@ public class SemanticInfo : ISemanticQuery
     // calling this directly — otherwise a new route silently skips @deprecated warnings.
     public void SetCallTarget(FunctionCall call, FunctionSymbol target)
     {
-        _callTargets[call] = target;
+        Put(_callTargets, call, target);
     }
 
     public FunctionSymbol? GetCallTarget(FunctionCall call)
@@ -785,7 +873,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetDefaultInterfaceDispatch(FunctionCall call, string interfaceName)
     {
-        _defaultInterfaceDispatches[call] = interfaceName;
+        Put(_defaultInterfaceDispatches, call, interfaceName);
     }
 
     public string? GetDefaultInterfaceDispatch(FunctionCall call)
@@ -795,7 +883,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetClrPropertyCallLowering(FunctionCall call)
     {
-        _clrPropertyCallLowerings[call] = true;
+        Put(_clrPropertyCallLowerings, call, true);
     }
 
     public bool IsClrPropertyCall(FunctionCall call)
@@ -805,7 +893,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetCallableObjectDispatch(FunctionCall call, CallableObjectDispatch dispatch)
     {
-        _callableObjectDispatches[call] = dispatch;
+        Put(_callableObjectDispatches, call, dispatch);
     }
 
     public CallableObjectDispatch? GetCallableObjectDispatch(FunctionCall call)
@@ -815,7 +903,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetFunctoolsPartialSpec(FunctionCall call, FunctoolsPartialSpec spec)
     {
-        _functoolsPartialSpecs[call] = spec;
+        Put(_functoolsPartialSpecs, call, spec);
     }
 
     public FunctoolsPartialSpec? GetFunctoolsPartialSpec(FunctionCall call)
@@ -825,7 +913,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetCalleeRouting(FunctionCall call, CalleeRouting routing)
     {
-        _calleeRoutings[call] = routing;
+        Put(_calleeRoutings, call, routing);
     }
 
     public CalleeRouting? GetCalleeRouting(FunctionCall call)
@@ -835,7 +923,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetCalleeAliasTargetName(FunctionCall call, string targetName)
     {
-        _calleeAliasTargetNames[call] = targetName;
+        Put(_calleeAliasTargetNames, call, targetName);
     }
 
     public string? GetCalleeAliasTargetName(FunctionCall call)
@@ -864,8 +952,11 @@ public class SemanticInfo : ISemanticQuery
     public void SetTypeAnnotation(
         TypeAnnotation annotation, SemanticType type, Symbol? boundSymbol, bool cacheType = true)
     {
+        // Guarded up front: with cacheType false and no symbol this call writes nothing, but a
+        // setter call after the freeze is still a phase violation (#2443).
+        ThrowIfFrozen(nameof(_typeAnnotations), annotation);
         if (cacheType)
-            _typeAnnotations[annotation] = type;
+            Put(_typeAnnotations, annotation, type);
 
         if (boundSymbol != null)
             RecordReference(boundSymbol, annotation);
@@ -882,7 +973,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetNarrowedType(Expression expr, SemanticType narrowedType)
     {
-        _narrowedExpressionTypes[expr] = narrowedType;
+        Put(_narrowedExpressionTypes, expr, narrowedType);
     }
 
     /// <summary>
@@ -902,7 +993,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetNarrowedReadLowering(Expression expr, NarrowedReadLowering lowering)
     {
-        _narrowedReadLowerings[expr] = lowering;
+        Put(_narrowedReadLowerings, expr, lowering);
     }
 
     /// <summary>
@@ -922,7 +1013,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetReceiverUnwrap(Expression receiver, ReceiverUnwrapLowering lowering)
     {
-        _receiverUnwraps[receiver] = lowering;
+        Put(_receiverUnwraps, receiver, lowering);
     }
 
     /// <summary>
@@ -937,7 +1028,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetOptionalStoreWrap(Node storeNode, OptionalType wrapAs)
     {
-        _optionalStoreWraps[storeNode] = wrapAs;
+        Put(_optionalStoreWraps, storeNode, wrapAs);
     }
 
     public OptionalType? GetOptionalStoreWrap(Node storeNode)
@@ -952,9 +1043,9 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void PassNarrowedReadThrough(Expression read, SemanticType passedAs)
     {
-        _narrowedReadLowerings.TryRemove(read, out _);
-        _narrowedExpressionTypes.TryRemove(read, out _);
-        _narrowedReadPassThroughs[read] = passedAs;
+        Forget(_narrowedReadLowerings, read);
+        Forget(_narrowedExpressionTypes, read);
+        Put(_narrowedReadPassThroughs, read, passedAs);
     }
 
     /// <summary>The wrapper type a narrowed read was passed through as, or null.</summary>
@@ -971,7 +1062,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetSequenceMaterialization(Expression expr, SemanticType targetCollection)
     {
-        _sequenceMaterializations[expr] = targetCollection;
+        Put(_sequenceMaterializations, expr, targetCollection);
     }
 
     /// <summary>
@@ -993,7 +1084,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetCharMaterialization(Expression expr, CharMaterializationKind kind)
     {
-        _charMaterializations[expr] = kind;
+        Put(_charMaterializations, expr, kind);
     }
 
     /// <summary>
@@ -1005,7 +1096,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void ClearCharMaterialization(Expression expr)
     {
-        _charMaterializations.TryRemove(expr, out _);
+        Forget(_charMaterializations, expr);
     }
 
     /// <summary>
@@ -1029,7 +1120,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetTypeTestLowering(Node typeOperand, TypeTestLowering lowering)
     {
-        _typeTestLowerings[typeOperand] = lowering;
+        Put(_typeTestLowerings, typeOperand, lowering);
     }
 
     /// <summary>
@@ -1048,7 +1139,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetLoopTransferTarget(Node transferNode, LoopTransferTarget target)
     {
-        _loopTransferTargets[transferNode] = target;
+        Put(_loopTransferTargets, transferNode, target);
     }
 
     /// <summary>
@@ -1066,7 +1157,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetMatchHostsLoopTransfer(MatchStatement match)
     {
-        _matchHostsLoopTransfer[match] = true;
+        Put(_matchHostsLoopTransfer, match, true);
     }
 
     /// <summary>
@@ -1083,7 +1174,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetMatchNeedsUnreachableDefault(MatchStatement match)
     {
-        _matchNeedsUnreachableDefault[match] = true;
+        Put(_matchNeedsUnreachableDefault, match, true);
     }
 
     /// <summary>True iff the emitter must add the unreachable default to this match statement.</summary>
@@ -1097,7 +1188,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetMatchArmLowering(Pattern armPattern, MatchArmLowering lowering)
     {
-        _matchArmLowerings[armPattern] = lowering;
+        Put(_matchArmLowerings, armPattern, lowering);
     }
 
     /// <summary>The lowering fact recorded for a match arm's pattern, or null if none.</summary>
@@ -1113,7 +1204,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetAugmentedAssignMutation(Assignment node, string clrMethodName)
     {
-        _augmentedAssignMutations[node] = clrMethodName;
+        Put(_augmentedAssignMutations, node, clrMethodName);
     }
 
     /// <summary>
@@ -1132,7 +1223,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetTypeCoercionLowering(Expression coercion, TypeCoercionLowering lowering)
     {
-        _typeCoercionLowerings[coercion] = lowering;
+        Put(_typeCoercionLowerings, coercion, lowering);
     }
 
     /// <summary>
@@ -1151,7 +1242,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetConstructorReferenceLowering(Expression reference, ConstructorReferenceLowering lowering)
     {
-        _constructorReferenceLowerings[reference] = lowering;
+        Put(_constructorReferenceLowerings, reference, lowering);
     }
 
     /// <summary>
@@ -1170,7 +1261,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetCallableReferenceLowering(Expression reference, CallableReferenceLowering lowering)
     {
-        _callableReferenceLowerings[reference] = lowering;
+        Put(_callableReferenceLowerings, reference, lowering);
     }
 
     /// <summary>
@@ -1190,7 +1281,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetIterableProjection(Expression argument, IterableArgumentProjection projection)
     {
-        _iterableProjections[argument] = projection;
+        Put(_iterableProjections, argument, projection);
     }
 
     /// <summary>
@@ -1220,7 +1311,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetInferredTypeArguments(FunctionCall call, List<SemanticType> typeArguments)
     {
-        _inferredTypeArguments[call] = typeArguments;
+        Put(_inferredTypeArguments, call, typeArguments);
     }
 
     /// <summary>
@@ -1240,7 +1331,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetMemberAccessResolution(MemberAccess memberAccess, TypeSymbol owner, Symbol member)
     {
-        _memberAccessResolutions[memberAccess] = (owner, member);
+        Put(_memberAccessResolutions, memberAccess, (owner, member));
     }
 
     /// <summary>
@@ -1260,7 +1351,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetModuleMemberResolution(MemberAccess memberAccess, ModuleSymbol module, Symbol member)
     {
-        _moduleMemberResolutions[memberAccess] = (module, member);
+        Put(_moduleMemberResolutions, memberAccess, (module, member));
     }
 
     /// <inheritdoc cref="ISemanticQuery.GetModuleMemberResolution"/>
@@ -1280,7 +1371,7 @@ public class SemanticInfo : ISemanticQuery
     public void SetPatternUnionCase(
         Pattern pattern, TypeSymbol caseSymbol, IReadOnlyList<SemanticType>? parentTypeArgs = null)
     {
-        _patternUnionCases[pattern] = new PatternUnionCaseResolution(caseSymbol, parentTypeArgs);
+        Put(_patternUnionCases, pattern, new PatternUnionCaseResolution(caseSymbol, parentTypeArgs));
     }
 
     /// <summary>
@@ -1313,7 +1404,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetUnionCaseConstruction(FunctionCall call, TypeSymbol unionSymbol, TypeSymbol caseSymbol)
     {
-        _unionCaseConstructions[call] = new UnionCaseConstruction(unionSymbol, caseSymbol);
+        Put(_unionCaseConstructions, call, new UnionCaseConstruction(unionSymbol, caseSymbol));
     }
 
     /// <summary>
@@ -1327,7 +1418,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetPatternMemberAccessResolution(MemberAccessPattern pattern, TypeSymbol typeSymbol, int typeIndex)
     {
-        _patternMemberAccessResolutions[pattern] = (typeSymbol, typeIndex);
+        Put(_patternMemberAccessResolutions, pattern, (typeSymbol, typeIndex));
     }
 
     public (TypeSymbol TypeSymbol, int TypeIndex)? GetPatternMemberAccessResolution(MemberAccessPattern pattern)
@@ -1340,7 +1431,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetPatternConstantSymbol(Pattern pattern, VariableSymbol constantSymbol)
     {
-        _patternConstants[pattern] = constantSymbol;
+        Put(_patternConstants, pattern, constantSymbol);
     }
 
     /// <summary>
@@ -1360,7 +1451,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetPatternType(Pattern pattern, SemanticType type)
     {
-        _patternTypes[pattern] = type;
+        Put(_patternTypes, pattern, type);
     }
 
     /// <summary>
@@ -1374,7 +1465,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetPatternCoverage(Pattern pattern, PatternCoverage coverage)
     {
-        _patternCoverage[pattern] = coverage;
+        Put(_patternCoverage, pattern, coverage);
     }
 
     public PatternCoverage? GetPatternCoverage(Pattern pattern)
@@ -1390,7 +1481,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void MarkErrorRecovery(Expression expr)
     {
-        _errorRecoveryNodes.TryAdd(expr, 0);
+        Mark(_errorRecoveryNodes, expr);
     }
 
     /// <summary>
@@ -1398,7 +1489,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void MarkAnnotationErrorRecovery(TypeAnnotation annotation)
     {
-        _errorRecoveryAnnotations.TryAdd(annotation, 0);
+        Mark(_errorRecoveryAnnotations, annotation);
     }
 
     /// <summary>
@@ -1422,7 +1513,7 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>
     /// Marks a function as a generator (contains yield statements).
     /// </summary>
-    public void MarkAsGenerator(FunctionDef funcDef) => _generatorFunctions.TryAdd(funcDef, 0);
+    public void MarkAsGenerator(FunctionDef funcDef) => Mark(_generatorFunctions, funcDef);
 
     /// <summary>
     /// Returns true if the function has been marked as a generator.
@@ -1432,7 +1523,7 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>
     /// Marks an expression as an event access (for codegen to emit event += / -= correctly).
     /// </summary>
-    public void MarkAsEventAccess(Expression expr) => _eventAccessNodes.TryAdd(expr, 0);
+    public void MarkAsEventAccess(Expression expr) => Mark(_eventAccessNodes, expr);
 
     /// <summary>
     /// Returns true if the expression has been marked as an event access.
@@ -1451,7 +1542,7 @@ public class SemanticInfo : ISemanticQuery
     /// reference, so a read and a store of the same name are separate entries.
     /// </param>
     public void SetModuleAccessCrossesClassMember(Expression node)
-        => _moduleAccessCrossingClassMembers.TryAdd(node, 0);
+        => Mark(_moduleAccessCrossingClassMembers, node);
 
     /// <summary>
     /// Whether <paramref name="node"/> reaches a module-level variable shadowed by a same-named
@@ -1466,7 +1557,7 @@ public class SemanticInfo : ISemanticQuery
     /// <see cref="ClassBodySiblingRead.MemberCSharpName"/> bare, as C# resolves it there.
     /// </summary>
     public void SetClassBodySiblingRead(Identifier identifier, ClassBodySiblingRead read)
-        => _classBodySiblingReads[identifier] = read;
+        => Put(_classBodySiblingReads, identifier, read);
 
     /// <summary>
     /// The admitted class-body sibling <paramref name="identifier"/> reads, or null when it is not
@@ -1478,7 +1569,7 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>
     /// Marks an expression as a compile-time literal-derived string (PEP 675 #1731).
     /// </summary>
-    public void SetLiteralDerived(Expression expr) => _literalDerivedStrings.TryAdd(expr, 0);
+    public void SetLiteralDerived(Expression expr) => Mark(_literalDerivedStrings, expr);
 
     /// <summary>
     /// Returns true if the expression was marked as a literal-derived string.
@@ -1486,7 +1577,7 @@ public class SemanticInfo : ISemanticQuery
     public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.ContainsKey(expr);
 
     /// <summary>Marks a <c>__name__</c> read on a class object as python's <c>__name__</c> (#2035).</summary>
-    public void MarkPyDunderNameRead(Expression memberAccess) => _pyDunderNameReads.TryAdd(memberAccess, 0);
+    public void MarkPyDunderNameRead(Expression memberAccess) => Mark(_pyDunderNameReads, memberAccess);
 
     /// <summary>Whether the member access is a <c>__name__</c> read on a class object (#2035).</summary>
     public bool IsPyDunderNameRead(Expression memberAccess) => _pyDunderNameReads.ContainsKey(memberAccess);
@@ -1497,7 +1588,7 @@ public class SemanticInfo : ISemanticQuery
     /// store seam; the emitter casts the arm to that type (plan-14853b Decision 1, #1698).
     /// </summary>
     public void SetConditionalBranchNarrowing(Expression branch, SemanticType targetType)
-        => _conditionalBranchNarrowing[branch] = targetType;
+        => Put(_conditionalBranchNarrowing, branch, targetType);
 
     /// <summary>
     /// The narrow slot type recorded for a conditional-expression arm, or null when the arm needs no cast.
@@ -1508,7 +1599,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetArgumentSlotCast(Expression argument, SemanticType slot)
     {
-        _argumentSlotCasts[argument] = slot;
+        Put(_argumentSlotCasts, argument, slot);
     }
 
     /// <summary>
@@ -1530,9 +1621,9 @@ public class SemanticInfo : ISemanticQuery
     public void SetIntegerConstantCast(Expression constant, SemanticType? targetType)
     {
         if (targetType == null)
-            _integerConstantCasts.TryRemove(constant, out _);
+            Forget(_integerConstantCasts, constant);
         else
-            _integerConstantCasts[constant] = targetType;
+            Put(_integerConstantCasts, constant, targetType);
     }
 
     /// <summary>The type an integer constant must be cast to, or null when C# converts it unaided.</summary>
@@ -1548,7 +1639,7 @@ public class SemanticInfo : ISemanticQuery
     /// C# implicit operator (#1747, #1720 R-G).
     /// </summary>
     public void SetNullConditionalOptionalWrap(Expression access, OptionalType wrappedAs)
-        => _nullConditionalOptionalWraps[access] = wrappedAs;
+        => Put(_nullConditionalOptionalWraps, access, wrappedAs);
 
     /// <summary>
     /// The Optional the checker wrapped a null-conditional access into, or null when the member was
@@ -1561,7 +1652,7 @@ public class SemanticInfo : ISemanticQuery
     /// Marks an expression as denoting a type reference (rather than a value), e.g., a
     /// module-qualified reference to an exported TypeSymbol.
     /// </summary>
-    public void MarkTypeReference(Expression expr) => _typeReferenceNodes.TryAdd(expr, 0);
+    public void MarkTypeReference(Expression expr) => Mark(_typeReferenceNodes, expr);
 
     /// <summary>
     /// Returns true if the expression has been marked as a type reference.
@@ -1657,7 +1748,7 @@ public class SemanticInfo : ISemanticQuery
     /// <c>defaultdict(list)</c> convention. Codegen wraps a marked argument in
     /// <c>() =&gt; new TValue()</c> rather than passing the name through (#1175).
     /// </summary>
-    public void MarkTypeFactoryArgument(Expression expr) => _typeFactoryArguments.TryAdd(expr, 0);
+    public void MarkTypeFactoryArgument(Expression expr) => Mark(_typeFactoryArguments, expr);
 
     /// <summary>
     /// Returns true if the argument names a type used as a zero-argument factory callable.
@@ -1668,7 +1759,7 @@ public class SemanticInfo : ISemanticQuery
     /// Records how an f-string / t-string hole expression is rendered (#1814, #1815).
     /// </summary>
     public void SetInterpolationLowering(Expression expr, InterpolationLowering lowering) =>
-        _interpolationLowerings[expr] = lowering;
+        Put(_interpolationLowerings, expr, lowering);
 
     /// <summary>
     /// How an f-string / t-string hole expression is rendered, or null when the expression is not
@@ -1679,7 +1770,7 @@ public class SemanticInfo : ISemanticQuery
 
     /// <summary>Records how a <c>.name</c>/<c>.value</c> read on an enum instance lowers (#2007).</summary>
     public void SetEnumMemberAccessLowering(MemberAccess access, EnumMemberAccessLowering lowering) =>
-        _enumMemberAccessLowerings[access] = lowering;
+        Put(_enumMemberAccessLowerings, access, lowering);
 
     /// <summary>
     /// How a <c>.name</c>/<c>.value</c> read on an enum instance lowers, or null when the member
@@ -1690,7 +1781,7 @@ public class SemanticInfo : ISemanticQuery
 
     /// <summary>Records the module layout of <paramref name="node"/> — the own <see cref="Module"/> root, or a <see cref="FromImportStatement"/>'s source module (#2039).</summary>
     public void SetModuleLayout(Node node, ModuleLayout layout) =>
-        _moduleLayouts[node] = layout;
+        Put(_moduleLayouts, node, layout);
 
     /// <summary>The recorded module layout of <paramref name="node"/>, or null (#2039).</summary>
     public ModuleLayout? GetModuleLayout(Node node) =>
@@ -1701,7 +1792,7 @@ public class SemanticInfo : ISemanticQuery
     /// symbol it bound (#2371, #2385) — an empty list when it bound none.
     /// </summary>
     public void SetFromImportBoundNames(FromImportStatement fromImport, IReadOnlyList<FromImportBoundName> boundNames) =>
-        _fromImportBoundNames[fromImport] = boundNames;
+        Put(_fromImportBoundNames, fromImport, boundNames);
 
     /// <summary>
     /// The (name, bound symbol) pairs a from-import (star or explicit) bound in its file's module scope, or
@@ -1721,22 +1812,22 @@ public class SemanticInfo : ISemanticQuery
             : null;
 
     public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
-        _returnLowerings[ret] = lowering;
+        Put(_returnLowerings, ret, lowering);
 
     public ReturnLowering? GetReturnLowering(ReturnStatement ret) =>
         _returnLowerings.TryGetValue(ret, out var lowering) ? lowering : null;
 
     public void SetLambdaBodyLowering(Expression body, LambdaBodyLowering lowering) =>
-        _lambdaBodyLowerings[body] = lowering;
+        Put(_lambdaBodyLowerings, body, lowering);
 
     public void SetStatementLowering(ExpressionStatement stmt, StatementLowering lowering) =>
-        _statementLowerings[stmt] = lowering;
+        Put(_statementLowerings, stmt, lowering);
 
     public StatementLowering? GetStatementLowering(ExpressionStatement stmt) =>
         _statementLowerings.TryGetValue(stmt, out var lowering) ? lowering : null;
 
     public void SetSliceLowering(Expression expr, SliceLowering lowering) =>
-        _sliceLowerings[expr] = lowering;
+        Put(_sliceLowerings, expr, lowering);
 
     public SliceLowering? GetSliceLowering(Expression expr) =>
         _sliceLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
@@ -1745,13 +1836,14 @@ public class SemanticInfo : ISemanticQuery
         _lambdaBodyLowerings.TryGetValue(body, out var lowering) ? lowering : null;
 
     public void SetMatchScrutineeLowering(Expression scrutinee, MatchScrutineeLowering lowering) =>
-        _matchScrutineeLowerings[scrutinee] = lowering;
+        Put(_matchScrutineeLowerings, scrutinee, lowering);
 
     public MatchScrutineeLowering? GetMatchScrutineeLowering(Expression scrutinee) =>
         _matchScrutineeLowerings.TryGetValue(scrutinee, out var lowering) ? lowering : null;
 
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
+        ThrowIfFrozen(nameof(_generatorBindings), declaration);
         var binding = new GeneratorBinding(generatorType, trigger);
         _generatorBindings.AddOrUpdate(
             declaration,
@@ -1780,7 +1872,7 @@ public class SemanticInfo : ISemanticQuery
     /// <param name="generatorName">The name of the generator that produced it.</param>
     public void MarkAsGenerated(Statement statement, string generatorName)
     {
-        _generatedStatements[statement] = generatorName;
+        Put(_generatedStatements, statement, generatorName);
     }
 
     /// <summary>
@@ -1804,7 +1896,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetBracketAttributeResolvedNamespace(Decorator decorator, string clrNamespace)
     {
-        _bracketAttributeResolvedNamespaces[decorator] = clrNamespace;
+        Put(_bracketAttributeResolvedNamespaces, decorator, clrNamespace);
     }
 
     /// <summary>
@@ -1860,7 +1952,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetContextManagerLowering(Expression contextExpr, ContextManagerLowering lowering)
     {
-        _contextManagerLowerings[contextExpr] = lowering;
+        Put(_contextManagerLowerings, contextExpr, lowering);
     }
 
     /// <summary>
@@ -1884,7 +1976,7 @@ public class SemanticInfo : ISemanticQuery
     // resolved the `as` target and passes the symbol it bound.
     public void SetWithItemSymbol(WithItem item, VariableSymbol symbol)
     {
-        _withItemSymbols[item] = symbol;
+        Put(_withItemSymbols, item, symbol);
     }
 
     /// <summary>
@@ -1903,7 +1995,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetExceptHandlerSymbol(ExceptHandler handler, VariableSymbol symbol)
     {
-        _exceptHandlerSymbols[handler] = symbol;
+        Put(_exceptHandlerSymbols, handler, symbol);
     }
 
     /// <inheritdoc/>
@@ -1918,7 +2010,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetParameterSymbol(Parameter parameter, VariableSymbol symbol)
     {
-        _parameterSymbols[parameter] = symbol;
+        Put(_parameterSymbols, parameter, symbol);
     }
 
     /// <inheritdoc/>
@@ -1929,7 +2021,7 @@ public class SemanticInfo : ISemanticQuery
 
     /// <summary>Records the variable symbol a walrus expression binds (#1560 R2).</summary>
     public void SetWalrusSymbol(WalrusExpression walrus, VariableSymbol symbol)
-        => _walrusSymbols[walrus] = symbol;
+        => Put(_walrusSymbols, walrus, symbol);
 
     /// <summary>The variable symbol a walrus expression binds, or null when unchecked.</summary>
     public VariableSymbol? GetWalrusSymbol(WalrusExpression walrus)
@@ -1937,7 +2029,7 @@ public class SemanticInfo : ISemanticQuery
 
     /// <summary>Records the variable symbol an inline <c>out name: T</c> argument binds (#1560 R3).</summary>
     public void SetInlineOutSymbol(ModifiedArgument argument, VariableSymbol symbol)
-        => _inlineOutSymbols[argument] = symbol;
+        => Put(_inlineOutSymbols, argument, symbol);
 
     /// <summary>The variable symbol an inline <c>out</c> argument binds, or null when unchecked.</summary>
     public VariableSymbol? GetInlineOutSymbol(ModifiedArgument argument)
@@ -1949,7 +2041,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetRebindingPredecessor(VariableSymbol rebinding, VariableSymbol predecessor)
     {
-        _rebindingPredecessors[rebinding] = predecessor;
+        Put(_rebindingPredecessors, rebinding, predecessor);
     }
 
     /// <summary>
@@ -2002,7 +2094,7 @@ public class SemanticInfo : ISemanticQuery
     }
 
     public void SetTargetBinding(Node node, TargetBinding binding)
-        => _targetBindings[node] = binding;
+        => Put(_targetBindings, node, binding);
 
     public TargetBinding? GetTargetBinding(Node node)
         => _targetBindings.GetValueOrDefault(node);
@@ -2013,7 +2105,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetFunctionDeclarationSymbol(FunctionDef definition, FunctionSymbol symbol)
     {
-        _functionDeclarationSymbols[definition] = symbol;
+        Put(_functionDeclarationSymbols, definition, symbol);
     }
 
     /// <inheritdoc/>
@@ -2029,7 +2121,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetBinaryOpLowering(Expression binaryOp, BinaryOpLowering lowering)
     {
-        _binaryOpLowerings[binaryOp] = lowering;
+        Put(_binaryOpLowerings, binaryOp, lowering);
     }
 
     /// <summary>
@@ -2055,7 +2147,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetTruthinessLowering(Expression expr, TruthinessLowering lowering)
     {
-        _truthinessLowerings[expr] = lowering;
+        Put(_truthinessLowerings, expr, lowering);
     }
 
     /// <summary>
@@ -2073,12 +2165,12 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetIndexAccessLowering(Expression indexAccess, IndexAccessLowering lowering)
     {
-        _indexAccessLowerings[indexAccess] = lowering;
+        Put(_indexAccessLowerings, indexAccess, lowering);
     }
 
     public void SetMultiAxisAccessLowering(Expression multiAxis, MultiAxisAccessLowering lowering)
     {
-        _multiAxisAccessLowerings[multiAxis] = lowering;
+        Put(_multiAxisAccessLowerings, multiAxis, lowering);
     }
 
     public MultiAxisAccessLowering? GetMultiAxisAccessLowering(Expression multiAxis)
@@ -2088,7 +2180,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetOperatorLowering(Node node, OperatorLowering lowering)
     {
-        _operatorLowerings[node] = lowering;
+        Put(_operatorLowerings, node, lowering);
     }
 
     public OperatorLowering? GetOperatorLowering(Node node)
@@ -2098,7 +2190,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetIterationLowering(Expression iterator, IterationLowering lowering)
     {
-        _iterationLowerings[iterator] = lowering;
+        Put(_iterationLowerings, iterator, lowering);
     }
 
     public IterationLowering? GetIterationLowering(Expression iterator)
@@ -2108,7 +2200,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetComparisonChainLowering(Expression chain, ComparisonChainLowering lowering)
     {
-        _comparisonChainLowerings[chain] = lowering;
+        Put(_comparisonChainLowerings, chain, lowering);
     }
 
     public ComparisonChainLowering? GetComparisonChainLowering(Expression chain)
@@ -2138,7 +2230,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetInterfaceCastLowering(Expression memberAccess, InterfaceCastLowering lowering)
     {
-        _interfaceCastLowerings[memberAccess] = lowering;
+        Put(_interfaceCastLowerings, memberAccess, lowering);
     }
 
     /// <summary>
@@ -2162,7 +2254,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetDenotedType(Expression receiver, SemanticType type)
     {
-        _denotedTypes[receiver] = type;
+        Put(_denotedTypes, receiver, type);
     }
 
     /// <summary>
@@ -2176,7 +2268,7 @@ public class SemanticInfo : ISemanticQuery
 
     public void SetGenericReference(Expression indexAccess, GenericReference reference)
     {
-        _genericReferences[indexAccess] = reference;
+        Put(_genericReferences, indexAccess, reference);
     }
 
     /// <summary>
@@ -2195,7 +2287,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetResolvedClrMemberName(Expression memberAccess, string clrName)
     {
-        _resolvedClrMemberNames[memberAccess] = clrName;
+        Put(_resolvedClrMemberNames, memberAccess, clrName);
     }
 
     /// <summary>
@@ -2220,7 +2312,7 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public void SetStaticExtensionDispatch(Expression memberAccess, StaticExtensionDispatch dispatch)
     {
-        _staticExtensionDispatches[memberAccess] = dispatch;
+        Put(_staticExtensionDispatches, memberAccess, dispatch);
     }
 
     /// <summary>
@@ -2241,272 +2333,280 @@ public class SemanticInfo : ISemanticQuery
     /// Merges all entries from another SemanticInfo into this instance.
     /// Used to combine per-file SemanticInfo back into a project-level instance.
     /// </summary>
+    /// <remarks>
+    /// Each side-table is merged by its own loop. A key present in both instances must map to an
+    /// equal value; a conflict throws <see cref="Diagnostics.SemanticInfoMergeConflictException"/>
+    /// naming the table and the node instead of keeping whichever value arrived first (#2443, E2
+    /// contract item 4). <c>_symbolReferences</c> is a bag union and cannot conflict.
+    /// </remarks>
     public void MergeFrom(SemanticInfo other)
     {
+        ThrowIfFrozen(nameof(MergeFrom), key: null);
+
         foreach (var kvp in other._expressionTypes)
-            _expressionTypes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_expressionTypes, kvp, other);
 
         foreach (var kvp in other._identifierSymbols)
-            _identifierSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_identifierSymbols, kvp, other);
 
         foreach (var kvp in other._declarationSymbols)
-            _declarationSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_declarationSymbols, kvp, other);
 
         foreach (var kvp in other._definitelyAssignedBareLocals)
-            _definitelyAssignedBareLocals.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_definitelyAssignedBareLocals, kvp, other);
 
         foreach (var kvp in other._runtimeCheckedReads)
-            _runtimeCheckedReads.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_runtimeCheckedReads, kvp, other);
 
         foreach (var kvp in other._runtimeAssignedFlagLocals)
-            _runtimeAssignedFlagLocals.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_runtimeAssignedFlagLocals, kvp, other);
 
         foreach (var kvp in other._callTargets)
-            _callTargets.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_callTargets, kvp, other);
 
         foreach (var kvp in other._augmentedAssignMutations)
-            _augmentedAssignMutations.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_augmentedAssignMutations, kvp, other);
 
         foreach (var kvp in other._moduleAccessCrossingClassMembers)
-            _moduleAccessCrossingClassMembers.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_moduleAccessCrossingClassMembers, kvp, other);
 
         foreach (var kvp in other._classBodySiblingReads)
-            _classBodySiblingReads.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_classBodySiblingReads, kvp, other);
 
         foreach (var kvp in other._defaultInterfaceDispatches)
-            _defaultInterfaceDispatches.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_defaultInterfaceDispatches, kvp, other);
 
         foreach (var kvp in other._clrPropertyCallLowerings)
-            _clrPropertyCallLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_clrPropertyCallLowerings, kvp, other);
 
         foreach (var kvp in other._callableObjectDispatches)
-            _callableObjectDispatches.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_callableObjectDispatches, kvp, other);
 
         foreach (var kvp in other._functoolsPartialSpecs)
-            _functoolsPartialSpecs.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_functoolsPartialSpecs, kvp, other);
 
         foreach (var kvp in other._typeAnnotations)
-            _typeAnnotations.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_typeAnnotations, kvp, other);
 
         foreach (var kvp in other._narrowedExpressionTypes)
-            _narrowedExpressionTypes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_narrowedExpressionTypes, kvp, other);
 
         foreach (var kvp in other._narrowedReadLowerings)
-            _narrowedReadLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_narrowedReadLowerings, kvp, other);
 
         foreach (var kvp in other._optionalStoreWraps)
-            _optionalStoreWraps.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_optionalStoreWraps, kvp, other);
 
         foreach (var kvp in other._narrowedReadPassThroughs)
-            _narrowedReadPassThroughs.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_narrowedReadPassThroughs, kvp, other);
 
         foreach (var kvp in other._sequenceMaterializations)
-            _sequenceMaterializations.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_sequenceMaterializations, kvp, other);
 
         foreach (var kvp in other._argumentSlotCasts)
-            _argumentSlotCasts.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_argumentSlotCasts, kvp, other);
 
         foreach (var kvp in other._charMaterializations)
-            _charMaterializations.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_charMaterializations, kvp, other);
 
         foreach (var kvp in other._receiverUnwraps)
-            _receiverUnwraps.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_receiverUnwraps, kvp, other);
 
         foreach (var kvp in other._typeTestLowerings)
-            _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_typeTestLowerings, kvp, other);
 
         foreach (var kvp in other._loopTransferTargets)
-            _loopTransferTargets.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_loopTransferTargets, kvp, other);
 
         foreach (var kvp in other._matchHostsLoopTransfer)
-            _matchHostsLoopTransfer.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_matchHostsLoopTransfer, kvp, other);
 
         foreach (var kvp in other._matchNeedsUnreachableDefault)
-            _matchNeedsUnreachableDefault.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_matchNeedsUnreachableDefault, kvp, other);
 
         foreach (var kvp in other._matchArmLowerings)
-            _matchArmLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_matchArmLowerings, kvp, other);
 
         foreach (var kvp in other._inferredTypeArguments)
-            _inferredTypeArguments.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_inferredTypeArguments, kvp, other, SequenceValueComparer<SemanticType>.Instance);
 
         foreach (var kvp in other._memberAccessResolutions)
-            _memberAccessResolutions.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_memberAccessResolutions, kvp, other);
 
         foreach (var kvp in other._moduleMemberResolutions)
-            _moduleMemberResolutions.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_moduleMemberResolutions, kvp, other);
 
         foreach (var kvp in other._generatorFunctions)
-            _generatorFunctions.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_generatorFunctions, kvp, other);
 
         foreach (var kvp in other._eventAccessNodes)
-            _eventAccessNodes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_eventAccessNodes, kvp, other);
 
         foreach (var kvp in other._typeReferenceNodes)
-            _typeReferenceNodes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_typeReferenceNodes, kvp, other);
 
         foreach (var kvp in other._literalDerivedStrings)
-            _literalDerivedStrings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_literalDerivedStrings, kvp, other);
 
         foreach (var kvp in other._pyDunderNameReads)
-            _pyDunderNameReads.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_pyDunderNameReads, kvp, other);
 
         foreach (var kvp in other._conditionalBranchNarrowing)
-            _conditionalBranchNarrowing.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_conditionalBranchNarrowing, kvp, other);
 
         foreach (var kvp in other._integerConstantCasts)
-            _integerConstantCasts.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_integerConstantCasts, kvp, other);
 
         foreach (var kvp in other._nullConditionalOptionalWraps)
-            _nullConditionalOptionalWraps.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_nullConditionalOptionalWraps, kvp, other);
 
         foreach (var kvp in other._typeFactoryArguments)
-            _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_typeFactoryArguments, kvp, other);
 
         foreach (var kvp in other._interpolationLowerings)
-            _interpolationLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_interpolationLowerings, kvp, other);
 
         foreach (var kvp in other._enumMemberAccessLowerings)
-            _enumMemberAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_enumMemberAccessLowerings, kvp, other);
 
         foreach (var kvp in other._moduleLayouts)
-            _moduleLayouts.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_moduleLayouts, kvp, other);
 
         foreach (var kvp in other._fromImportBoundNames)
-            _fromImportBoundNames.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_fromImportBoundNames, kvp, other, SequenceValueComparer<FromImportBoundName>.Instance);
 
         foreach (var kvp in other._patternUnionCases)
-            _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_patternUnionCases, kvp, other);
 
         foreach (var kvp in other._unionCaseConstructions)
-            _unionCaseConstructions.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_unionCaseConstructions, kvp, other);
 
         foreach (var kvp in other._patternMemberAccessResolutions)
-            _patternMemberAccessResolutions.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_patternMemberAccessResolutions, kvp, other);
 
         foreach (var kvp in other._patternConstants)
-            _patternConstants.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_patternConstants, kvp, other);
 
         foreach (var kvp in other._patternTypes)
-            _patternTypes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_patternTypes, kvp, other);
 
         foreach (var kvp in other._patternCoverage)
-            _patternCoverage.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_patternCoverage, kvp, other);
 
         foreach (var kvp in other._errorRecoveryNodes)
-            _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_errorRecoveryNodes, kvp, other);
 
         foreach (var kvp in other._errorRecoveryAnnotations)
-            _errorRecoveryAnnotations.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_errorRecoveryAnnotations, kvp, other);
 
         foreach (var kvp in other._contextManagerLowerings)
-            _contextManagerLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_contextManagerLowerings, kvp, other);
 
         foreach (var kvp in other._withItemSymbols)
-            _withItemSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_withItemSymbols, kvp, other);
 
         foreach (var kvp in other._exceptHandlerSymbols)
-            _exceptHandlerSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_exceptHandlerSymbols, kvp, other);
 
         foreach (var kvp in other._parameterSymbols)
-            _parameterSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_parameterSymbols, kvp, other);
 
         foreach (var kvp in other._walrusSymbols)
-            _walrusSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_walrusSymbols, kvp, other);
 
         foreach (var kvp in other._inlineOutSymbols)
-            _inlineOutSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_inlineOutSymbols, kvp, other);
 
         foreach (var kvp in other._rebindingPredecessors)
-            _rebindingPredecessors.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_rebindingPredecessors, kvp, other);
 
         foreach (var kvp in other._functionDeclarationSymbols)
-            _functionDeclarationSymbols.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_functionDeclarationSymbols, kvp, other);
 
         foreach (var kvp in other._binaryOpLowerings)
-            _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_binaryOpLowerings, kvp, other);
 
         foreach (var kvp in other._truthinessLowerings)
-            _truthinessLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_truthinessLowerings, kvp, other);
 
         foreach (var kvp in other._indexAccessLowerings)
-            _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_indexAccessLowerings, kvp, other);
 
         foreach (var kvp in other._multiAxisAccessLowerings)
-            _multiAxisAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_multiAxisAccessLowerings, kvp, other);
 
         foreach (var kvp in other._operatorLowerings)
-            _operatorLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_operatorLowerings, kvp, other);
 
         foreach (var kvp in other._iterationLowerings)
-            _iterationLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_iterationLowerings, kvp, other);
 
         foreach (var kvp in other._comparisonChainLowerings)
-            _comparisonChainLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_comparisonChainLowerings, kvp, other);
 
         foreach (var kvp in other._denotedTypes)
-            _denotedTypes.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_denotedTypes, kvp, other);
 
         foreach (var kvp in other._genericReferences)
-            _genericReferences.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_genericReferences, kvp, other);
 
         foreach (var kvp in other._constructorReferenceLowerings)
-            _constructorReferenceLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_constructorReferenceLowerings, kvp, other);
 
         foreach (var kvp in other._callableReferenceLowerings)
-            _callableReferenceLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_callableReferenceLowerings, kvp, other);
 
         foreach (var kvp in other._typeCoercionLowerings)
-            _typeCoercionLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_typeCoercionLowerings, kvp, other);
 
         foreach (var kvp in other._iterableProjections)
-            _iterableProjections.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_iterableProjections, kvp, other);
 
         foreach (var kvp in other._resolvedClrMemberNames)
-            _resolvedClrMemberNames.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_resolvedClrMemberNames, kvp, other);
 
         foreach (var kvp in other._staticExtensionDispatches)
-            _staticExtensionDispatches.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_staticExtensionDispatches, kvp, other);
 
         // Generator bindings are populated per-file during type checking (TypeChecker.Definitions)
         // but read from the merged project SemanticInfo by the generator sub-pipeline
         // (ProjectCompiler.Generators). Without this merge they are silently dropped and no source
         // generator runs (#1042).
         foreach (var kvp in other._generatorBindings)
-            _generatorBindings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_generatorBindings, kvp, other, SequenceValueComparer<GeneratorBinding>.Instance);
 
         foreach (var kvp in other._generatedStatements)
-            _generatedStatements.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_generatedStatements, kvp, other);
 
         foreach (var kvp in other._bracketAttributeResolvedNamespaces)
-            _bracketAttributeResolvedNamespaces.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_bracketAttributeResolvedNamespaces, kvp, other);
 
         foreach (var kvp in other._calleeRoutings)
-            _calleeRoutings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_calleeRoutings, kvp, other);
 
         foreach (var kvp in other._calleeAliasTargetNames)
-            _calleeAliasTargetNames.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_calleeAliasTargetNames, kvp, other);
 
         foreach (var kvp in other._returnLowerings)
-            _returnLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_returnLowerings, kvp, other);
 
         foreach (var kvp in other._lambdaBodyLowerings)
-            _lambdaBodyLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_lambdaBodyLowerings, kvp, other);
 
         foreach (var kvp in other._statementLowerings)
-            _statementLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_statementLowerings, kvp, other);
 
         foreach (var kvp in other._sliceLowerings)
-            _sliceLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_sliceLowerings, kvp, other);
 
         foreach (var kvp in other._matchScrutineeLowerings)
-            _matchScrutineeLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_matchScrutineeLowerings, kvp, other);
 
         foreach (var kvp in other._interfaceCastLowerings)
-            _interfaceCastLowerings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_interfaceCastLowerings, kvp, other);
 
         foreach (var kvp in other._targetBindings)
-            _targetBindings.TryAdd(kvp.Key, kvp.Value);
+            MergeEntry(_targetBindings, kvp, other);
 
         foreach (var (symbol, refs) in other._symbolReferences)
         {
@@ -2518,10 +2618,48 @@ public class SemanticInfo : ISemanticQuery
         }
     }
 
+    /// <summary>
+    /// Copies one side-table entry from <paramref name="source"/> into <paramref name="table"/>. A key
+    /// already present must hold an equal value (by <paramref name="comparer"/>, else the value
+    /// type's default equality); a different value throws rather than being dropped (#2443).
+    /// </summary>
+    private static void MergeEntry<TKey, TValue>(
+        ConcurrentDictionary<TKey, TValue> table, KeyValuePair<TKey, TValue> entry, SemanticInfo source,
+        IEqualityComparer<TValue>? comparer = null,
+        [CallerArgumentExpression(nameof(table))] string tableName = "")
+        where TKey : notnull
+    {
+        var existing = table.GetOrAdd(entry.Key, entry.Value);
+        if ((comparer ?? EqualityComparer<TValue>.Default).Equals(existing, entry.Value))
+            return;
+
+        throw new Diagnostics.SemanticInfoMergeConflictException(
+            tableName, DescribeKey(entry.Key, source.CurrentFilePath), existing, entry.Value);
+    }
+
+    /// <summary>
+    /// Element-wise equality for the list-valued side-tables, whose per-file and project copies are
+    /// distinct list instances even when they record the same fact.
+    /// </summary>
+    private sealed class SequenceValueComparer<T> :
+        IEqualityComparer<List<T>>, IEqualityComparer<IReadOnlyList<T>>
+    {
+        public static readonly SequenceValueComparer<T> Instance = new();
+
+        public bool Equals(List<T>? x, List<T>? y) => SequenceEquals(x, y);
+        public bool Equals(IReadOnlyList<T>? x, IReadOnlyList<T>? y) => SequenceEquals(x, y);
+        public int GetHashCode(List<T> obj) => obj.Count;
+        public int GetHashCode(IReadOnlyList<T> obj) => obj.Count;
+
+        private static bool SequenceEquals(IReadOnlyList<T>? x, IReadOnlyList<T>? y)
+            => ReferenceEquals(x, y) || (x != null && y != null && x.SequenceEqual(y));
+    }
+
     // === Symbol Reference Tracking ===
 
     private void RecordReference(Symbol symbol, Node node)
     {
+        ThrowIfFrozen(nameof(_symbolReferences), node);
         if (node.Span == null)
             return;
 
