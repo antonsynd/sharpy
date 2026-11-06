@@ -192,19 +192,33 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Variables declared inside `if`/`elif`/`else` bodies leak into the surrounding scope."
-    sharpy_behavior: "Compound-statement bodies introduce a new scope; variables declared inside are not visible outside the block."
+    sharpy_behavior: "Compound-statement bodies introduce a new scope; variables declared inside are not visible outside the block. This holds for every binder declared in the body, not only `let x = …`: an annotated `x: int = …`, `const x: int = …`, a local `def`, and a lambda-typed `f: () -> int = lambda: …` are each SPY0200 when read after the block. When an enclosing binding of the same name exists (a module variable or `def`), the body's binding shadows it only inside the block, and a read after the block silently sees the outer binding (python3 sees the body's value)."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        if cond:
-            x = 1
-        print(x)  # works in Python
+        def main():
+            if True:
+                a = 1
+                b: int = 2
+                c: int = 3
+                def d() -> int:
+                    return 4
+                e = lambda: 5
+            print(a, b, c, d(), e())  # 1 2 3 4 5
+
+        main()
       sharpy: |
-        if cond:
-            x = 1
-        print(x)  # ERROR SPY0200: undefined identifier 'x' (block-scoped)
+        def main() -> None:
+            if True:
+                let a = 1
+                b: int = 2
+                const c: int = 3
+                def d() -> int:
+                    return 4
+                e: () -> int = lambda: 5
+            print(a, b, c, d(), e())  # ERROR SPY0200 for each of a, b, c, d, e (block-scoped)
 
   - id: block-scoping-for-loop-variable
     code: SPY0200
@@ -226,13 +240,51 @@ deviations:
             pass
         print(i)  # ERROR SPY0200: 'i' is block-scoped to the for loop
 
+  - id: block-scoping-for
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside a `for` body or its `else` body remain visible after the loop."
+    sharpy_behavior: "Variables declared inside a `for` body or a `for … else` body are not visible after the loop (the loop variable itself is `block-scoping-for-loop-variable`). This holds for every binder declared in the body, not only `let x = …`: an annotated `x: int = …`, `const x: int = …`, a local `def`, and a lambda-typed `f: () -> int = lambda: …` are each SPY0200 when read after the block. When an enclosing binding of the same name exists (a module variable or `def`), the body's binding shadows it only inside the block, and a read after the block silently sees the outer binding (python3 sees the body's value)."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        def main():
+            for i in [1]:
+                a = 1
+                b: int = 2
+                c: int = 3
+                def d() -> int:
+                    return 4
+                e = lambda: 5
+            else:
+                f: int = 6
+            print(a, b, c, d(), e(), f)  # 1 2 3 4 5 6
+
+        main()
+      sharpy: |
+        def main() -> None:
+            for i in [1]:
+                let a = 1
+                b: int = 2
+                const c: int = 3
+                def d() -> int:
+                    return 4
+                e: () -> int = lambda: 5
+            else:
+                f: int = 6
+            print(a, b, c, d(), e(), f)  # ERROR SPY0200 for each of a, b, c, d, e, f (block-scoped)
+
   - id: loop-variable-fresh-per-iteration
     code: null
     category: scoping
     audience: python
     severity: none
-    python_behavior: "A for-loop variable is one binding for the whole loop, so every closure created in the loop sees its last value."
-    sharpy_behavior: "A for-loop (and comprehension) variable is a fresh binding per iteration, as in C# `foreach`, Rust and Swift, so a closure captures that iteration's value. Designed deviation (docs/design/name-resolution.md N5)."
+    python_behavior: "A for-loop variable, and every name bound in a loop body, is one binding for the whole function, so every closure created in the loop sees its last value."
+    sharpy_behavior: "A for-loop (and comprehension) variable is a fresh binding per iteration, as in C# `foreach`, Rust and Swift, so a closure captures that iteration's value. So is every binding made in a `for` or `while` body — `y = …`, `y: int = …`, `let y = …`, a local `def`, a lambda-typed `y: () -> int = lambda: …` — including one made in a `with` or `except` body nested in the loop body: a closure over it sees that iteration's value where python3 sees the last. Designed deviation (docs/design/name-resolution.md N5)."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: null
     planned_diagnostic: null
@@ -242,12 +294,32 @@ deviations:
         for i in range(3):
             fs.append(lambda: i)
         print([f() for f in fs])  # [2, 2, 2]
+        gs = []
+        n = 0
+        while n < 3:
+            try:
+                raise ValueError("v")
+            except ValueError:
+                y: int = n
+                gs.append(lambda: y)
+            n += 1
+        print([g() for g in gs])  # [2, 2, 2]
       sharpy: |
         def main() -> None:
             fs: list[() -> int] = []
             for i in range(3):
                 fs.append(lambda: i)
             print([f() for f in fs])  # [0, 1, 2]
+            gs: list[() -> int] = []
+            n: int = 0
+            while n < 3:
+                try:
+                    raise ValueError("v")
+                except ValueError:
+                    y: int = n
+                    gs.append(lambda: y)
+                n += 1
+            print([g() for g in gs])  # [0, 1, 2]
 
   - id: construct-target-reuses-outer-name
     code: null
@@ -277,21 +349,42 @@ deviations:
     category: scoping
     audience: python
     severity: error
-    python_behavior: "Variables declared inside a `while` body remain visible after the loop."
-    sharpy_behavior: "Variables declared inside a `while` body are not visible after the loop."
+    python_behavior: "Variables declared inside a `while` body or its `else` body remain visible after the loop."
+    sharpy_behavior: "Variables declared inside a `while` body or a `while … else` body are not visible after the loop. This holds for every binder declared in the body, not only `let x = …`: an annotated `x: int = …`, `const x: int = …`, a local `def`, and a lambda-typed `f: () -> int = lambda: …` are each SPY0200 when read after the block. When an enclosing binding of the same name exists (a module variable or `def`), the body's binding shadows it only inside the block, and a read after the block silently sees the outer binding (python3 sees the body's value)."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        while cond():
-            result = compute()
-        print(result)
+        def main():
+            n = 0
+            while n < 1:
+                n += 1
+                a = 1
+                b: int = 2
+                c: int = 3
+                def d() -> int:
+                    return 4
+                e = lambda: 5
+            else:
+                f: int = 6
+            print(a, b, c, d(), e(), f)  # 1 2 3 4 5 6
+
+        main()
       sharpy: |
-        result: int = 0
-        while cond():
-            result = compute()
-        print(result)  # declare 'result' outside the loop
+        def main() -> None:
+            n: int = 0
+            while n < 1:
+                n += 1
+                let a = 1
+                b: int = 2
+                const c: int = 3
+                def d() -> int:
+                    return 4
+                e: () -> int = lambda: 5
+            else:
+                f: int = 6
+            print(a, b, c, d(), e(), f)  # ERROR SPY0200 for each of a, b, c, d, e, f (block-scoped)
 
   - id: block-scoping-try-except
     code: SPY0200
@@ -299,24 +392,39 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Variables declared in a `try` body are visible in `except`/`else`/`finally` and after the statement."
-    sharpy_behavior: "Each clause (`try`, `except`, `else`, `finally`) is its own scope. Cross-clause variables must be declared before the `try` statement."
+    sharpy_behavior: "Each clause (`try`, `except`, `else`, `finally`) is its own scope. Cross-clause variables must be declared before the `try` statement. This holds for every binder declared in the body, not only `let x = …`: an annotated `x: int = …`, `const x: int = …`, a local `def`, and a lambda-typed `f: () -> int = lambda: …` are each SPY0200 when read after the block. When an enclosing binding of the same name exists (a module variable or `def`), the body's binding shadows it only inside the block, and a read after the block silently sees the outer binding (python3 sees the body's value)."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        try:
-            result = risky()
-        except ValueError:
-            result = -1
-        print(result)
+        def main():
+            try:
+                a = 1
+                b: int = 2
+                raise ValueError("v")
+            except ValueError:
+                c: int = 3
+                def d() -> int:
+                    return 4
+            finally:
+                e = lambda: 5
+            print(a, b, c, d(), e())  # 1 2 3 4 5
+
+        main()
       sharpy: |
-        result: int = 0
-        try:
-            result = risky()
-        except ValueError:
-            result = -1
-        print(result)
+        def main() -> None:
+            try:
+                let a = 1
+                b: int = 2
+                raise ValueError("v")
+            except ValueError:
+                const c: int = 3
+                def d() -> int:
+                    return 4
+            finally:
+                e: () -> int = lambda: 5
+            print(a, b, c, d(), e())  # ERROR SPY0200 for each of a, b, c, d, e (block-scoped)
 
   - id: block-scoping-with
     code: SPY0200
@@ -324,19 +432,87 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Variables declared inside `with` (including the `as` binding) remain accessible after the block."
-    sharpy_behavior: "`with` body and `as` binding are block-scoped."
+    sharpy_behavior: "`with` body and `as` binding are block-scoped. This holds for every binder declared in the body, not only `let x = …`: an annotated `x: int = …`, `const x: int = …`, a local `def`, and a lambda-typed `f: () -> int = lambda: …` are each SPY0200 when read after the block. When an enclosing binding of the same name exists (a module variable or `def`), the body's binding shadows it only inside the block, and a read after the block silently sees the outer binding (python3 sees the body's value)."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        with open("f.txt") as f:
-            data = f.read()
-        print(data)
+        class CM:
+            def __enter__(self):
+                return 7
+            def __exit__(self, *exc):
+                pass
+
+        def main():
+            with CM() as w:
+                a = 1
+                b: int = 2
+                c: int = 3
+                def d() -> int:
+                    return 4
+                e = lambda: 5
+            print(w, a, b, c, d(), e())  # 7 1 2 3 4 5
+
+        main()
       sharpy: |
-        with open("f.txt") as f:
-            data = f.read()
-            print(data)  # use 'data' inside the block
+        class CM:
+            def __enter__(self) -> int:
+                return 7
+            def __exit__(self) -> None:
+                pass
+
+        def main() -> None:
+            with CM() as w:
+                let a = 1
+                b: int = 2
+                const c: int = 3
+                def d() -> int:
+                    return 4
+                e: () -> int = lambda: 5
+            print(w, a, b, c, d(), e())  # ERROR SPY0200 for each of w, a, b, c, d, e (block-scoped)
+
+  - id: block-scoping-match
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside a `match` `case` body remain visible after the `match` statement."
+    sharpy_behavior: "Each `case` body is its own scope; variables declared inside are not visible after the `match` statement. This holds for every binder declared in the body, not only `let x = …`: an annotated `x: int = …`, `const x: int = …`, a local `def`, and a lambda-typed `f: () -> int = lambda: …` are each SPY0200 when read after the block. When an enclosing binding of the same name exists (a module variable or `def`), the body's binding shadows it only inside the block, and a read after the block silently sees the outer binding (python3 sees the body's value)."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        def main():
+            n = 1
+            match n:
+                case 1:
+                    a = 1
+                    b: int = 2
+                    c: int = 3
+                    def d() -> int:
+                        return 4
+                    e = lambda: 5
+                case _:
+                    pass
+            print(a, b, c, d(), e())  # 1 2 3 4 5
+
+        main()
+      sharpy: |
+        def main() -> None:
+            n: int = 1
+            match n:
+                case 1:
+                    let a = 1
+                    b: int = 2
+                    const c: int = 3
+                    def d() -> int:
+                        return 4
+                    e: () -> int = lambda: 5
+                case _:
+                    pass
+            print(a, b, c, d(), e())  # ERROR SPY0200 for each of a, b, c, d, e (block-scoped)
 
   - id: comprehension-loop-variable-leak
     code: SPY0200
