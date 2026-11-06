@@ -11,17 +11,16 @@ public partial class NameResolutionDifferentialTests
     private static readonly IReadOnlyDictionary<(Family Family, SharpyTag Tag, string Rule), int> GeneratedCensus =
         new Dictionary<(Family, SharpyTag, string), int>
         {
-            [(Family.Local, SharpyTag.MustRefuse, "N5")] = 56,
+            [(Family.Local, SharpyTag.MustRefuse, "N5")] = 64,
             [(Family.Local, SharpyTag.MustRefuse, "N5-declared-later")] = 176,
             [(Family.Local, SharpyTag.MustRefuse, "N5-self")] = 3,
             [(Family.Local, SharpyTag.MustRefuse, "S2")] = 155,
             [(Family.Local, SharpyTag.MustRefuse, "S3")] = 38,
-            [(Family.Local, SharpyTag.MustRun, "#1974")] = 18,
             [(Family.Local, SharpyTag.MustRun, "N1")] = 33,
             [(Family.Local, SharpyTag.MustRun, "N1-innermost")] = 504,
             [(Family.Local, SharpyTag.MustRun, "N5")] = 42,
+            [(Family.Local, SharpyTag.MustRun, "N5-block-scope")] = 26,
             [(Family.Local, SharpyTag.MustRun, "R-BM")] = 26,
-            [(Family.Local, SharpyTag.Unruled, "unruled:rowless-construct")] = 16,
             [(Family.Read, SharpyTag.MayRefuse, "kind:SPY0340")] = 71,
             [(Family.Read, SharpyTag.MustRefuse, "N1-arity")] = 6,
             [(Family.Read, SharpyTag.MustRefuse, "N1-methods")] = 270,
