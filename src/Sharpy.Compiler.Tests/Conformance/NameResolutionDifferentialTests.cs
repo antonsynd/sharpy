@@ -327,6 +327,9 @@ public partial class NameResolutionDifferentialTests
         [("kind:result-wrap", "SPY0260")] = 1,
         // N6's declaration shapes: `global` / `nonlocal` is refused whatever it names, until #2424 reinstates them and reaches the rule's own refusal.
         [("N6-declaration", "SPY0134")] = 32,
+        // A method's name stored through a member access: the type mismatch or the via-type refusal, until #2424 and #2435 land SPY0606 there.
+        [("kind:SPY0606", "SPY0220")] = 6,
+        [("kind:SPY0606", "SPY0290")] = 3,
         // R-KY's neighbouring refusals until #2424 lands the rule's own.
         [("N6-type-kind", "SPY0134")] = 21,
         [("N6-type-kind", "SPY0222")] = 2,
@@ -373,6 +376,9 @@ public partial class NameResolutionDifferentialTests
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
         ["kind:SPY0212"] = new[] { "SPY0212" },
+        ["kind:SPY0606"] = new[] { "SPY0220", "SPY0290", "SPY0606" },
+        // R-KU: nothing refuses a @static store through self or a derived type today, and the refusal's code lands with #2435.
+        ["R-KU"] = Array.Empty<string>(),
         ["kind:result-wrap"] = new[] { "SPY0260" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
@@ -487,6 +493,8 @@ public partial class NameResolutionDifferentialTests
                     return "#2398";
                 return run.CsCode switch
                 {
+                    // The store side of #2147's receiver matrix: one member through every receiver, one verdict.
+                    "CS0176" or "CS0131" or "CS0198" or "CS1656" when IsAttributeStore(cell) => "#2435",
                     "CS0176" => "#2147",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
@@ -541,6 +549,9 @@ public partial class NameResolutionDifferentialTests
                     return "#2412";
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
+                // A must-run attribute store that prints the wrong value is `self.x op= v` in `__init__` losing its read (#2439); a must-refuse one is R-KU's.
+                if (IsAttributeStore(cell))
+                    return cell.Tag == SharpyTag.MustRun ? "#2439" : "#2435";
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)
@@ -560,6 +571,8 @@ public partial class NameResolutionDifferentialTests
             return false;
         return cell.AxisCell == null || cell.AxisCell.Split(" × ").TakeLast(2).All(k => k.EndsWith("ComputedConst", StringComparison.Ordinal));
     }
+
+    private static bool IsAttributeStore(NameCell cell) => cell.AxisCell?.StartsWith("attribute-store:", StringComparison.Ordinal) == true;
 
     private static bool IsAliasConstructorCell(NameCell cell)
         => cell.Target == BindingKind.ModuleTypeAlias || cell.Outer == BindingKind.ModuleTypeAlias

@@ -72,6 +72,7 @@ public partial class NameResolutionDifferentialTests
         cells.AddRange(ResultValueFormCells());
         cells.AddRange(DeclarationShapeCells());
         cells.AddRange(StructHostCells());
+        cells.AddRange(AttributeStoreCells());
         cells.AddRange(SeedCells());
         return cells.Select(WithModuleAccessorTwin).ToList();
     });

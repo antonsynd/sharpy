@@ -1359,6 +1359,10 @@ public partial class NameResolutionDifferentialTests
             typePositionSpellings = NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             hostKinds = NameResolutionRosters.HostKinds.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             hostBodies = NameResolutionRosters.HostBodies.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            assignmentTargets = NameResolutionRosters.AssignmentTargetShapes.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key, e => e.Value.Reason),
+            attributeStoreMembers = NameResolutionRosters.AttributeStoreMembers.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            attributeStoreForms = NameResolutionRosters.AttributeStoreForms.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            attributeStoreBodies = NameResolutionRosters.AttributeStoreBodies.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
         },
         axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),

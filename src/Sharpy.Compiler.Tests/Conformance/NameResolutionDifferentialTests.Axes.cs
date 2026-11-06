@@ -20,6 +20,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(TypePositionSpellingFedFailures(axisCells));
         failures.AddRange(DeclarationShapeFedFailures(pool));
         failures.AddRange(StructHostFedFailures(axisCells));
+        failures.AddRange(AttributeStoreFedFailures(axisCells));
         return failures;
     }
 
@@ -1112,5 +1113,133 @@ public partial class NameResolutionDifferentialTests
                     yield return $"HostKinds {host} × {target} × {body} × {nesting} × {order} × {spelling} has no cell";
         if (!Roster.ImageOf(NameResolutionRosters.HostKinds).Contains("struct"))
             yield return "HostKinds has no struct row, so the struct host's cells are owed to nothing";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 8: the attribute store (R-KU)
+    // ------------------------------------------------------------------------------------------- //
+
+    private static readonly BindingKind[] AttributeFormMembers = { BindingKind.InstanceField, BindingKind.StaticField };
+
+    private static string AttributeStoreKey(AttributeReceiver receiver, BindingKind member, StoreSpelling form, ReadPosition body)
+        => $"attribute-store: {receiver} × {member} × {form} × {body}";
+
+    /// <summary>What the table owes: every receiver × member by <c>=</c> at the method body, and both forms of the two field kinds through each receiver its other bodies host.</summary>
+    private static IEnumerable<(AttributeReceiver Receiver, BindingKind Member, StoreSpelling Form, ReadPosition Body)> AttributeStoreProduct()
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var members = NameResolutionRosters.AttributeStoreMembers.Where(e => e.Value.Generated).Select(e => e.Key);
+        foreach (var receiver in Enum.GetValues<AttributeReceiver>())
+            foreach (var member in members)
+                if (NameResolutionRosters.AttributeStoreBodies[NameResolutionRosters.AttributeBodyKey(receiver, ReadPosition.MethodBody)].Generated
+                    && seen.Add(AttributeStoreKey(receiver, member, StoreSpelling.Assign, ReadPosition.MethodBody)))
+                    yield return (receiver, member, StoreSpelling.Assign, ReadPosition.MethodBody);
+
+        foreach (var form in new[] { StoreSpelling.Assign, StoreSpelling.Augmented }.Where(f => NameResolutionRosters.AttributeStoreForms[FormEnum(f)].Generated))
+            foreach (var member in AttributeFormMembers)
+                foreach (var receiver in new[] { AttributeReceiver.SelfDot, AttributeReceiver.TypeName })
+                    foreach (var body in new[] { ReadPosition.MethodBody, ReadPosition.InitBody, ReadPosition.StaticMethodBody, ReadPosition.FunctionBody })
+                        if (NameResolutionRosters.AttributeStoreBodies[NameResolutionRosters.AttributeBodyKey(receiver, body)].Generated
+                            && seen.Add(AttributeStoreKey(receiver, member, form, body)))
+                            yield return (receiver, member, form, body);
+    }
+
+    private static IEnumerable<NameCell> AttributeStoreCells()
+    {
+        foreach (var (receiver, member, form, body) in AttributeStoreProduct())
+            yield return AttributeStoreCell(receiver, member, form, body);
+    }
+
+    /// <summary>A store through a member access, read back through the member's own spelling. The verdict is a rule on (receiver class, member kind), the table's: python's own meaning of a
+    /// <c>@static</c> store through <c>self</c>, a derived type or an instance is a new attribute, which leaves <c>H.x</c> alone, and that cannot be matched (R-KU).</summary>
+    private static NameCell AttributeStoreCell(AttributeReceiver receiver, BindingKind member, StoreSpelling form, ReadPosition body)
+    {
+        var plain = ReadName.Plain;
+        var isMethod = member is BindingKind.StaticMethod or BindingKind.InstanceMethod;
+        var isConst = member is BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst;
+        var value = isMethod ? 0 : ValueOf(member);
+        var instance = IsInstance(member);
+        var spelled = receiver switch
+        {
+            AttributeReceiver.SelfDot => "self",
+            AttributeReceiver.TypeName => "H",
+            AttributeReceiver.Alias => "A",
+            AttributeReceiver.DerivedType => "D",
+            AttributeReceiver.InstanceLocal => "h0",
+            _ => throw new ArgumentOutOfRangeException(nameof(receiver)),
+        };
+
+        var written = form == StoreSpelling.Augmented ? value + 1 : 15;
+        var store = form == StoreSpelling.Augmented ? $"{spelled}.x += 1" : $"{spelled}.x = 15";
+
+        // Which receivers write the member python reads back here. An instance attribute shadows a class one, and a class attribute a base's.
+        var read = isMethod ? "1"
+            : !instance ? "H.x"
+            : receiver == AttributeReceiver.InstanceLocal ? "h0.x"
+            : receiver == AttributeReceiver.SelfDot || body == ReadPosition.InitBody ? "self.x" // H() inside __init__ would recurse
+            : "H().x";
+        var pythonWrites = instance
+            ? receiver != AttributeReceiver.DerivedType
+            : receiver is AttributeReceiver.TypeName or AttributeReceiver.Alias;
+        var python = PyOutcome.Ran(isMethod ? 1 : pythonWrites ? written : value);
+
+        var throughType = receiver is AttributeReceiver.TypeName or AttributeReceiver.Alias or AttributeReceiver.DerivedType;
+        Expected expected;
+        if (isMethod)
+            expected = Refuse(python, "kind:SPY0606");
+        else if (isConst)
+            expected = Refuse(python, "kind:SPY0225");
+        else if (instance)
+            expected = throughType ? Refuse(python, "kind:SPY0290") : Run(python, written, "N7");
+        else
+            expected = receiver is AttributeReceiver.TypeName or AttributeReceiver.Alias ? Run(python, written, "N7") : Refuse(python, "R-KU");
+
+        var stmts = new List<string>();
+        if (receiver == AttributeReceiver.InstanceLocal)
+            stmts.Add("h0: H = H()");
+        stmts.Add(store);
+        stmts.Add($"print({read})");
+
+        var decl = MemberDecl(member, plain);
+        var lines = new List<string>();
+        var (host, call) = Host(body, stmts, decl);
+        if (body == ReadPosition.FunctionBody)
+        {
+            lines.Add("class H:");
+            lines.AddRange(Indent(decl));
+        }
+
+        lines.AddRange(host);
+        if (receiver == AttributeReceiver.Alias)
+            lines.Add("type A = H");
+        if (receiver == AttributeReceiver.DerivedType)
+            lines.AddRange(new[] { "class D(H):", "    pass" });
+
+        return new NameCell
+        {
+            Id = CellId("store", "attribute", receiver, member, form, body),
+            Family = Family.Store,
+            Source = WithHelpers(Join(lines) + MainBlock(call.ToArray())),
+            Tag = expected.Tag,
+            Model = expected.Model,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = member,
+            Outer = BindingKind.None,
+            Position = body,
+            Form = FormEnum(form),
+            AxisCell = AttributeStoreKey(receiver, member, form, body),
+        };
+    }
+
+    private static IEnumerable<string> AttributeStoreFedFailures(IReadOnlySet<string> axisCells)
+    {
+        foreach (var (receiver, member, form, body) in AttributeStoreProduct())
+            if (!axisCells.Contains(AttributeStoreKey(receiver, member, form, body)))
+                yield return $"AttributeStore {receiver} × {member} × {form} × {body} has no cell";
+
+        foreach (var shape in NameResolutionRosters.AssignmentTargetShapes.Where(e => e.Value.Image.Count > 0).Select(e => e.Key))
+            if (shape == "MemberAccess" && !axisCells.Any(c => c.StartsWith("attribute-store:", StringComparison.Ordinal)))
+                yield return "AssignmentTargetShapes MemberAccess has no attribute-store cell";
     }
 }
