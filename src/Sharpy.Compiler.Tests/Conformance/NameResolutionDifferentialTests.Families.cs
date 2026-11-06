@@ -1067,8 +1067,9 @@ public partial class NameResolutionDifferentialTests
 
     private static IEnumerable<NameCell> LetInConstructCells()
     {
+        // The `let` × family × body {Function, Method} control (P77a).
         foreach (var b in BlockShapes)
-            foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
+            foreach (var u in NameResolutionRosters.LetInEveryFamilyOuters)
                 foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
                 {
                     var stmts = new List<string>(b.Open) { new string(' ', 4 * b.Depth) + "let x = 15" };
@@ -1091,6 +1092,84 @@ public partial class NameResolutionDifferentialTests
                     }
                     yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, shape, ReadName.Plain);
                 }
+
+        // P77b axis 5: every other LocalKinds binder × family × outer {None, module} at the function body, and every binder ×
+        // the function-scope outers at the one family that stands for the walk.
+        foreach (var k in LocalKinds)
+        {
+            foreach (var b in BlockShapes)
+                foreach (var u in NameResolutionRosters.LetInEveryFamilyOuters.Where(_ => k != BindingKind.LocalLet))
+                    yield return LetInBinderCell(k, b, u);
+            var walk = BlockShapes.Single(b => b.Family == NameResolutionRosters.StoreNestingFamily);
+            foreach (var u in NameResolutionRosters.LetInOuters.Values.SelectMany(e => e.Image).Where(u => u != BindingKind.ModuleVar).OrderBy(u => u))
+                yield return LetInBinderCell(k, walk, u);
+        }
+    }
+
+    /// <summary>The outer a let-in binder of kind <paramref name="binder"/> is crossed with on the roster's <paramref name="outer"/>:
+    /// a callable binder's module outer is a <c>def</c>, so the call read after the block is well-typed at either binding.</summary>
+    internal static BindingKind LetInOuterFor(BindingKind binder, BindingKind outer)
+        => outer == BindingKind.ModuleVar && IsCallableKind(binder) ? BindingKind.ModuleDef : outer;
+
+    /// <summary>A P77b axis-5 cell: <paramref name="binder"/> declared in the family's block, its name read after the block. The
+    /// block scopes the binder (the family's deviation row): with no outer the read is N5's refusal, under a module or enclosing
+    /// binding it reads THAT binding (N5-block-scope, R-LB / R-LF; p12), and under a same-function binding it is the nested-scope
+    /// shadowing of #1974. python's binder is function-scoped, so python prints the binder's value in every cell.</summary>
+    private static NameCell LetInBinderCell(BindingKind binder, BlockShape b, BindingKind rosterOuter)
+    {
+        var plain = ReadName.Plain;
+        var outer = LetInOuterFor(binder, rosterOuter);
+        var callable = IsCallableKind(binder);
+        var read = ReadText(FormOf(binder), "", plain);
+        int inner = ValueOf(binder);
+
+        var stmts = new List<string>(b.Open);
+        stmts.AddRange(Indent(LocalDecl(binder, plain), 4 * b.Depth));
+        stmts.AddRange(b.Close);
+        stmts.Add($"print({read})");
+
+        // The function-scope outers, spelled in the binder's own form class (13: the enclosing local's value).
+        string[] FunctionOuter() => callable
+            ? new[] { "def x() -> int:", $"    return {ValueOf(BindingKind.EnclosingLocal)}" }
+            : new[] { $"x: int = {ValueOf(BindingKind.EnclosingLocal)}" };
+        var programOuter = outer;
+        if (outer == BindingKind.LocalVar)
+        {
+            stmts.InsertRange(0, FunctionOuter());
+            programOuter = BindingKind.None;
+        }
+        else if (outer == BindingKind.EnclosingLocal)
+        {
+            var wrapped = new List<string>(FunctionOuter()) { "def g1() -> None:" };
+            wrapped.AddRange(Indent(stmts));
+            wrapped.Add("g1()");
+            stmts = wrapped;
+            programOuter = BindingKind.None;
+        }
+
+        Expected e;
+        string? shape = null;
+        var python = PyOutcome.Ran(inner);
+        if (b.Row == null)
+        {
+            e = new Expected(SharpyTag.Unruled, null, python, "unruled:rowless-construct");
+            shape = $"rowless-let:{b.Family}";
+        }
+        else if (outer == BindingKind.None)
+            e = new Expected(SharpyTag.MustRefuse, null, python, "N5", b.Row);
+        else if (binder == BindingKind.LocalDef && outer == BindingKind.LocalVar)
+            // function_definition.md: a nested `def` may not re-declare a name a `def` of the same function declares in an
+            // enclosing block (SPY0204) — the spec's refusal of the def binder, by kind.
+            e = Refuse(python, "kind:SPY0204");
+        else
+        {
+            var visible = outer is BindingKind.LocalVar or BindingKind.EnclosingLocal ? ValueOf(BindingKind.EnclosingLocal) : ValueOf(outer);
+            e = new Expected(SharpyTag.MustRun, Str(visible), python, outer == BindingKind.LocalVar ? "#1974" : "N5-block-scope", b.Row);
+        }
+        return LocalProgram(CellId("local", "let-in", b.Family, binder, $"outer={outer}", ReadPosition.FunctionBody), binder, programOuter,
+                ReadPosition.FunctionBody, stmts, e, shape, plain)
+            with
+        { Outer = outer };
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -1166,10 +1245,10 @@ public partial class NameResolutionDifferentialTests
         ["before-binding:module"] = 60,
         ["before-binding:enclosing"] = 12,
         ["before-binding:builtin"] = 48,
-        ["rowless-let:for-body"] = 4,
-        ["rowless-let:for-else"] = 4,
-        ["rowless-let:while-else"] = 4,
-        ["rowless-let:match-case"] = 4,
+        ["rowless-let:for-body"] = 14,
+        ["rowless-let:for-else"] = 14,
+        ["rowless-let:while-else"] = 14,
+        ["rowless-let:match-case"] = 14,
         ["s2-builtin"] = 24,
         ["lambda-self"] = 3,
         ["store-non-writable:ModuleDef:Assign"] = 2,
@@ -1233,7 +1312,8 @@ public partial class NameResolutionDifferentialTests
                 return c.Family == Family.Local && c.Construct == null && !IsCallableKind(c.Target)
                     && c.Id.Contains("/above/", StringComparison.Ordinal) && ClassOf(c.Outer) == parts[1];
             case "rowless-let":
-                return c.Family == Family.Local && c.Target == BindingKind.LocalLet
+                // P77b axis 5: every let-in binder of LocalKinds, the `let` control and the binder product alike.
+                return c.Family == Family.Local && LocalKinds.Contains(c.Target)
                     && c.Id.Contains($"/let-in/{parts[1]}/", StringComparison.Ordinal)
                     && BlockShapes.Any(b => b.Family == parts[1] && b.Row == null);
             case "s2-builtin":
@@ -1258,7 +1338,7 @@ public partial class NameResolutionDifferentialTests
         if (c.Family == Family.Seed)
             return SeedDeviations.GetValueOrDefault(c.Id["seed/".Length..]) == c.Deviation;
         var afterBlock = c.Family == Family.Local && c.Outer == BindingKind.None && c.Id.Contains("/after-block/", StringComparison.Ordinal);
-        var letInItsBlock = c.Family == Family.Local && c.Target == BindingKind.LocalLet
+        var letInItsBlock = c.Family == Family.Local && LocalKinds.Contains(c.Target)
             && BlockShapes.Any(b => b.Row == c.Deviation && c.Id.Contains($"/let-in/{b.Family}/", StringComparison.Ordinal));
         switch (c.Deviation)
         {
@@ -1340,7 +1420,12 @@ public partial class NameResolutionDifferentialTests
             cycleEndpoints = NameResolutionRosters.CycleEndpoints.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             cycleRoutes = NameResolutionRosters.CycleRoutes.SelectMany(s => s.Value.Where(p => p.Value.Excluded != null).Select(p => (Key: $"{s.Key}/{p.Key}", p.Value.Reason)))
                 .ToDictionary(e => e.Key, e => e.Reason),
+            letInOuters = NameResolutionRosters.LetInOuters.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason)
+                .Append(new KeyValuePair<string, string?>("function-scope outers × other families", NameResolutionRosters.LetInOneFamilyReason))
+                .ToDictionary(e => e.Key, e => e.Value),
         },
+        letIn = results.Where(r => r.Cell.Id.StartsWith("local/let-in/", StringComparison.Ordinal))
+            .GroupBy(r => $"{r.Cell.Target}/outer={r.Cell.Outer}").OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         readTimings = results.Where(r => r.Cell.Timing != null).GroupBy(r => r.Cell.Timing!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         observations = results.GroupBy(r => r.Cell.Observed.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         cycles = results.Where(r => r.Cell.Cycle != null)
@@ -1533,6 +1618,9 @@ public partial class NameResolutionDifferentialTests
             yield return $"ReadTiming BackEdge × {f} has no generated cell";
         foreach (var t in NameResolutionRosters.FailedGuardCaptures.Where(t => !pool.Any(c => c.Timing == ReadTiming.FailedGuard && c.Construct == t)))
             yield return $"ReadTiming FailedGuard × {t} has no generated cell";
+
+        foreach (var failure in LetInProduct(pool))
+            yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.
         var typeMember = pool.Where(c => c.Family == Family.TypeMember).ToList();

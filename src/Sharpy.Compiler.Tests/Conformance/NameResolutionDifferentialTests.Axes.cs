@@ -441,4 +441,34 @@ public partial class NameResolutionDifferentialTests
             foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
                 yield return FailedGuardCell(capture, u);
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // P77b axis 5: let-in binder × outer
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The let-in product's fed check (P77b axis 5): every (binder, family) pair of <see cref="LocalKinds"/> ×
+    /// <see cref="BlockShapes"/> has a cell at each outer that crosses every family, every (binder, outer) pair of the
+    /// <see cref="NameResolutionRosters.LetInOuters"/> image has a cell, and no let-in cell sits on a binder or an outer the
+    /// rosters do not generate.</summary>
+    private static IEnumerable<string> LetInProduct(IReadOnlyList<NameCell> pool)
+    {
+        var letIn = pool.Where(c => c.Family == Family.Local && c.Id.StartsWith("local/let-in/", StringComparison.Ordinal)).ToList();
+        bool Has(BindingKind k, string family, BindingKind outer) =>
+            letIn.Any(c => c.Target == k && c.Outer == LetInOuterFor(k, outer) && c.Id.StartsWith($"local/let-in/{family}/", StringComparison.Ordinal));
+
+        var outers = NameResolutionRosters.LetInOuters.Values.SelectMany(e => e.Image).Append(NameResolutionRosters.LetInNoOuter).ToHashSet();
+        foreach (var (k, _) in NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated))
+        {
+            foreach (var b in BlockShapes)
+                foreach (var u in NameResolutionRosters.LetInEveryFamilyOuters.Where(u => !Has(k, b.Family, u)))
+                    yield return $"LetInProduct: binder {k} × family {b.Family} × outer {u} has no let-in cell";
+            foreach (var u in outers.Where(u => !Has(k, NameResolutionRosters.StoreNestingFamily, u)))
+                yield return $"LetInProduct: binder {k} × outer {u} has no let-in cell";
+        }
+        foreach (var c in letIn.Where(c => !(NameResolutionRosters.LocalKinds.TryGetValue(c.Target, out var m) && m.Generated)))
+            yield return $"{c.Id}: a let-in cell on binder {c.Target}, which LocalKinds does not generate";
+        foreach (var c in letIn.Where(c => !outers.Any(u => LetInOuterFor(c.Target, u) == c.Outer)))
+            yield return $"{c.Id}: a let-in cell on outer {c.Outer}, which LetInOuters does not generate";
+    }
+
 }

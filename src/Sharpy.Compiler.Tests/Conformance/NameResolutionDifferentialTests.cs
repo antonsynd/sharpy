@@ -345,6 +345,8 @@ public partial class NameResolutionDifferentialTests
         ["S3"] = new[] { "SPY0200", "SPY0230" },
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
+        // P77b axis 5: a block's `def` over a `def` of the same function in an enclosing block (function_definition.md).
+        ["kind:SPY0204"] = new[] { "SPY0204" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },

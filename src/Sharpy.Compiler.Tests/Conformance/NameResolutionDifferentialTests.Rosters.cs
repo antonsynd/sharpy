@@ -1104,6 +1104,32 @@ internal static class NameResolutionRosters
     /// <summary>The construct targets a failed guard binds: the LOCAL targets the binder census's pattern-checker sites bind.</summary>
     internal static readonly ImmutableArray<LocalTarget> FailedGuardCaptures = ImmutableArray.Create(LocalTarget.MatchCapture, LocalTarget.AsPatternCapture);
 
+    // ---------------------------------------------------------------------------------------------------------
+    // P77b axis 5: let-in binder × outer
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The let-in product's outer axis (P77b axis 5): the image of <see cref="StoreTargetScopes"/>, each scope a store can
+    /// target mapped to the binding of that scope a block's binder shadows. The binder's own block is out, and the no-binding
+    /// outer (<see cref="BindingKind.None"/>) is <see cref="LetInNoOuter"/>. A callable binder reads its outer through the call
+    /// form, so its module outer is spelled as a <c>def</c> (<see cref="BindingKind.ModuleDef"/>) and its function-scope outers
+    /// as a <c>def</c> of the same kind: the read after the block is never a type error, whichever binding it reaches.</summary>
+    internal static readonly IReadOnlyDictionary<StoreTargetScope, RosterEntry<BindingKind>> LetInOuters = Roster.Map(
+        (StoreTargetScope.SameBlock, Roster.Out<BindingKind>(ExcludedAxis.NotAKind,
+            "the binder's own block: a binding there is a same-block re-declaration (#1974's same-scope question), not an outer the block's binder shadows")),
+        (StoreTargetScope.EnclosingBlock, Roster.To(BindingKind.LocalVar)),
+        (StoreTargetScope.EnclosingFunction, Roster.To(BindingKind.EnclosingLocal)),
+        (StoreTargetScope.Module, Roster.To(BindingKind.ModuleVar)));
+
+    /// <summary>The let-in product's no-binding outer (P77b axis 5): the binder is the only binding of its name.</summary>
+    internal const BindingKind LetInNoOuter = BindingKind.None;
+
+    /// <summary>The outers the let-in product crosses with EVERY block family (P77b axis 5): no binding and the module scope. The
+    /// function-scope outers ride the <see cref="StoreNestingFamily"/> family alone (<see cref="LetInOneFamilyReason"/>).</summary>
+    internal static readonly ImmutableArray<BindingKind> LetInEveryFamilyOuters = ImmutableArray.Create(BindingKind.None, BindingKind.ModuleVar);
+
+    /// <summary>Why the function-scope outers ride one block family (P77b axis 5): the plan's named prune.</summary>
+    internal const string LetInOneFamilyReason = "one block family stands for the walk — " + StoreNestingReason;
+
     /// <summary>The slots of a kind's own node, from <see cref="ComprehensionSlots"/>: the element side of the comprehension.</summary>
     internal static IEnumerable<ComprehensionSlot> KindSlots(ComprehensionKind kind)
     {
@@ -2809,6 +2835,32 @@ public partial class NameResolutionDifferentialTests
             problems.Add("ReadTimings: roster 7 has no GuardPattern, so the failed guard crosses no roster value");
 
         AssertNoProblems(problems, "axis 4's timings are named closed, and each crosses its constructs' rosters");
+    }
+
+    // =========================================================================================================
+    // P77b axis 5: let-in binder × outer
+    // =========================================================================================================
+
+    /// <summary>The let-in product's outer axis is the image of <see cref="StoreTargetScope"/> (both directions, each scope mapped
+    /// to one binding or out with its reason), its every-family outers are the no-binding outer and the module scope's image, and
+    /// its function-scope family is a let-in family of roster 8.</summary>
+    [Fact]
+    public void LetInOutersRoster_IsTheImageOfStoreTargetScopes()
+    {
+        var problems = Roster.TotalityProblems("LetInOuters", Enum.GetValues<StoreTargetScope>(), NameResolutionRosters.LetInOuters.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.LetInOuters).Select(p => $"LetInOuters {p}"));
+        problems.AddRange(NameResolutionRosters.LetInOuters.Where(e => e.Value.Image.Count > 1).Select(e => $"LetInOuters: {e.Key} maps to more than one binding"));
+        var image = Roster.ImageOf(NameResolutionRosters.LetInOuters).ToHashSet();
+        var storeImage = Roster.ImageOf(NameResolutionRosters.StoreTargetScopes).ToHashSet();
+        problems.AddRange(NameResolutionRosters.LetInOuters.Keys.Where(k => !storeImage.Contains(k)).Select(k => $"LetInOuters: {k} is no scope a store targets"));
+        var everyFamily = new[] { NameResolutionRosters.LetInNoOuter }.Concat(NameResolutionRosters.LetInOuters[StoreTargetScope.Module].Image);
+        problems.AddRange(Roster.TotalityProblems("LetInEveryFamilyOuters", everyFamily, NameResolutionRosters.LetInEveryFamilyOuters));
+        problems.AddRange(image.Where(k => k != BindingKind.LocalVar && !(NameResolutionRosters.LocalOuter.TryGetValue(k, out var m) && m.Generated))
+            .Select(k => $"LetInOuters: {k} is no generated LocalOuter"));
+        if (!NameResolutionRosters.BlockFamilies.TryGetValue(NameResolutionRosters.StoreNestingFamily, out var walk) || !walk.Image.Any(c => c.LetInBody != null))
+            problems.Add($"LetInOuters: the function-scope family {NameResolutionRosters.StoreNestingFamily} is no let-in family of roster 8");
+
+        AssertNoProblems(problems, "the let-in product's outers are the image of the scopes a store targets, each other scope naming why");
     }
 
     private static IEnumerable<string> MembershipShapeProblems<TKey>(string axis, IReadOnlyDictionary<TKey, AxisMembership> map) where TKey : notnull
