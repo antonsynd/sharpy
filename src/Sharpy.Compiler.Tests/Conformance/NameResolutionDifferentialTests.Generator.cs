@@ -129,12 +129,14 @@ public partial class NameResolutionDifferentialTests
 
     private static bool IsCallableKind(BindingKind kind) => FormOf(kind) == Form.Call;
 
-    /// <summary>The builtins of the <c>Builtin</c> outer value: two functions with different CLR overload sets. D3.e step 1
-    /// pruned <c>max</c> and the type name <c>int</c> to the budget; see <see cref="PrunedReadAxes"/>.</summary>
+    /// <summary>The builtins of the <c>Builtin</c> outer value: functions with different CLR overload sets and arities (R-KP restored
+    /// <c>max</c>), and a type name read as a call (<c>int</c>).</summary>
     private static readonly (string Name, string Args, string Params, int Result)[] Builtins =
     {
         ("abs", "-3", "x: int", 3),
         ("len", "\"ab\"", "s: str", 2),
+        ("max", "1, 2", "a: int, b: int", 2),
+        ("int", "\"5\"", "s: str", 5),
     };
 
     /// <summary>The value a builtin-named binding carries, so the builtin's result and the binding never coincide.</summary>

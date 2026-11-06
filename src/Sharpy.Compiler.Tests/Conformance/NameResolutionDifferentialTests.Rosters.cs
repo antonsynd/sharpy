@@ -919,6 +919,25 @@ internal static class NameResolutionRosters
         (BindingKind.LocalDef, AxisMembership.Pruned(SameFunctionIsTargetScope)),
         (BindingKind.LambdaTypedLocal, AxisMembership.Pruned(SameFunctionIsTargetScope)));
 
+    /// <summary>READ's outer axis (P77b D1, R-KP): total over the module-level kinds and the three outers beside them. Replaces the hand
+    /// array and the budget prune: every kind that reads through an expression is generated.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> ReadOuter = Roster.Map(
+        (BindingKind.None, AxisMembership.Everywhere),
+        (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleDef, AxisMembership.Everywhere),
+        (BindingKind.ModuleClass, AxisMembership.Everywhere),
+        (BindingKind.ModuleStruct, AxisMembership.Everywhere),
+        (BindingKind.ModuleEnum, AxisMembership.Everywhere),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration")),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, "no expression read")),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, "no expression read")));
+
     private const string AsModuleVar = "a value binding of the module: the read above N5's binding shares ModuleVar's arm (N4), and ModuleVar stays";
 
     private const string AsModuleClass = "shares the F2 arm with ModuleClass, the one type kind that stays (D3.e's pruning order)";
@@ -2139,6 +2158,27 @@ public partial class NameResolutionDifferentialTests
     // =========================================================================================================
     // Roster 8: local constructs
     // =========================================================================================================
+
+    [Fact]
+    public void ReadOuterRoster_IsTotalOverModuleLevelKindsAndTheNamedOuters()
+    {
+        var universe = NameResolutionRosters.ModuleLevelKinds.Append(BindingKind.Builtin).Append(BindingKind.ImportedName).Append(BindingKind.None);
+        var problems = Roster.TotalityProblems("ReadOuter", universe, NameResolutionRosters.ReadOuter.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.ReadOuter)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"ReadOuter: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"ReadOuter: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "READ's outer is the whole module-level group and the named outers, never a hand array beside it");
+
+        // Literal, not the group again: R-KP restored exactly these, and what is left out is the three kinds with no read.
+        NameResolutionRosters.ReadOuter.Where(e => !e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(
+            new[] { BindingKind.ModuleLet, BindingKind.ModuleUnion, BindingKind.ModuleInterface });
+        Builtins.Select(b => b.Name).Should().Equal("abs", "len", "max", "int");
+    }
 
     [Fact]
     public void LocalConstructRoster_EveryBlockFamily_IsMapped()

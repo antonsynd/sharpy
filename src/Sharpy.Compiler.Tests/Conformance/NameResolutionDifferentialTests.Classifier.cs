@@ -307,6 +307,8 @@ public partial class NameResolutionDifferentialTests
     [InlineData("CS8917", BindingKind.ModuleVar, "#2423")]
     [InlineData("CS1729", BindingKind.ModuleClass, "#2423")]
     [InlineData("CS0029", BindingKind.LocalVar, "#2423")]
+    [InlineData("CS1501", BindingKind.ModuleVar, "#2423")]
+    [InlineData("CS1061", BindingKind.StaticMethod, "#2423")]
     [InlineData("CS0133", BindingKind.ModuleVar, "#2432")]
     [InlineData("CS1736", BindingKind.StaticProperty, "#2432")]
     [InlineData("CS0149", BindingKind.StaticProperty, "#2417")]
