@@ -100,6 +100,17 @@ internal enum CycleThrough
     ThroughDef,
 }
 
+/// <summary>Which endpoints an N3 cycle joins (P77b axis 2). Named closed: the cycle joins two module values, a module value and a type's in
+/// either file order, two types, or one value with itself through a def (p07: the direct self read is READ's <c>Order.Self</c>).</summary>
+internal enum CyclePair
+{
+    ModuleModule,
+    ModuleType,
+    TypeModule,
+    TypeOtherType,
+    SelfThroughDef,
+}
+
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
 internal enum StoreTargetScope
 {
@@ -1096,6 +1107,45 @@ internal static class NameResolutionRosters
         (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
         (BindingKind.InstanceField, AxisMembership.Out(ExcludedAxis.NotAKind, "runs at construction, not at load: N3's order and cycle rules name module and type values")),
         (BindingKind.InstanceProperty, AxisMembership.Out(ExcludedAxis.NotAKind, "runs at construction, not at load: N3's order and cycle rules name module and type values")));
+
+    private const string NoCallableEndpoint = "no endpoint is callable: a value is read, never called, and a read through a def is CycleThrough's";
+
+    private const string NoBareTypeRead = "a type's member has no bare spelling from outside its own body: READ's Order.Cycle holds the bare read inside one";
+
+    private const string NoModuleQualifier = "a module value's qualified spelling needs a module name, axis (i)";
+
+    private const string NoSelfAtModule = "a module value has no self";
+
+    internal static string CycleRouteKey(NameResolutionDifferentialTests.Spelling spelling, CyclePair pair) => $"{spelling} × {pair}";
+
+    /// <summary>P77b axis 2: how a read of each endpoint pair is spelled, total over <c>Spelling</c> × <see cref="CyclePair"/>. The bare read of
+    /// a module value stays bare in a pair with a type, since the pair's spelling is its type member's read.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> CycleRoutes = Roster.Map(
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.ModuleModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.ModuleType), AxisMembership.Out(ExcludedAxis.NotAKind, NoBareTypeRead)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.TypeModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoBareTypeRead)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.TypeOtherType), AxisMembership.Out(ExcludedAxis.NotAKind, NoBareTypeRead)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.SelfThroughDef), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.ProjectRoute, NoModuleQualifier)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.ModuleType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.TypeModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.TypeOtherType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.SelfThroughDef), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.NotAKind, "a type alias names a type, never a module value")),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.ModuleType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.TypeModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.TypeOtherType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.SelfThroughDef), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.ModuleType), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.TypeModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.TypeOtherType), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.SelfThroughDef), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfAtModule)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.ModuleType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.TypeModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.TypeOtherType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.SelfThroughDef), AxisMembership.Everywhere));
 
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
@@ -2407,6 +2457,32 @@ public partial class NameResolutionDifferentialTests
             BindingKind.StaticField, BindingKind.StaticProperty, BindingKind.ClassComputedConst,
         });
         Enum.GetValues<CycleThrough>().Should().Equal(CycleThrough.Direct, CycleThrough.ThroughDef);
+    }
+
+    [Fact]
+    public void CycleRoutesRoster_IsTotalOverSpellingAndPair()
+    {
+        var product = Enum.GetValues<Spelling>().SelectMany(s => Enum.GetValues<CyclePair>().Select(p => NameResolutionRosters.CycleRouteKey(s, p)));
+        var problems = Roster.TotalityProblems("CycleRoutes (a spelling × pair with no cycle cell and no exclusion)", product, NameResolutionRosters.CycleRoutes.Keys).ToList();
+        foreach (var (key, member) in NameResolutionRosters.CycleRoutes)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"CycleRoutes: {key} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"CycleRoutes: {key} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "every spelling × endpoint pair is a cell or names why it cannot be one");
+
+        // Literals, not the enums again: which routes generate cells, and that the two enums are the ones this table was written over.
+        NameResolutionRosters.CycleRoutes.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            "Bare × ModuleModule", "Bare × SelfThroughDef",
+            "Qualified × ModuleType", "Qualified × TypeModule", "Qualified × TypeOtherType", "Qualified × SelfThroughDef",
+            "Alias × ModuleType", "Alias × TypeModule", "Alias × TypeOtherType", "Alias × SelfThroughDef",
+            "SelfDot × ModuleType", "SelfDot × TypeModule", "SelfDot × TypeOtherType", "SelfDot × SelfThroughDef",
+        });
+        Enum.GetNames<Spelling>().Should().Equal("Bare", "Qualified", "Alias", "Call", "SelfDot");
     }
 
     [Fact]

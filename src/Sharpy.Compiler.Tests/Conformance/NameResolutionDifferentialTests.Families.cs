@@ -1344,6 +1344,8 @@ public partial class NameResolutionDifferentialTests
             readOuter = NameResolutionRosters.ReadOuter.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             comprehensionClauses = NameResolutionRosters.ComprehensionClauses.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key, e => e.Value.Reason),
             comprehensionWalrus = NameResolutionRosters.ComprehensionWalrus.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            cycleEndpoints = NameResolutionRosters.CycleEndpoints.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            cycleRoutes = NameResolutionRosters.CycleRoutes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
         },
         axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
             .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
