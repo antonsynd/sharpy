@@ -19,7 +19,7 @@ public partial class NameResolutionDifferentialTests
             [(Family.Local, SharpyTag.MustRun, "#1974")] = 6,
             [(Family.Local, SharpyTag.MustRun, "N1")] = 50,
             [(Family.Local, SharpyTag.MustRun, "N1-innermost")] = 504,
-            [(Family.Local, SharpyTag.MustRun, "N5")] = 42,
+            [(Family.Local, SharpyTag.MustRun, "N5")] = 114,
             [(Family.Local, SharpyTag.MustRun, "N5-block-scope")] = 97,
             [(Family.Local, SharpyTag.MustRun, "R-BM")] = 26,
             [(Family.Read, SharpyTag.MayRefuse, "kind:SPY0340")] = 71,

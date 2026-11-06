@@ -1242,6 +1242,15 @@ internal static class NameResolutionRosters
         (BindingKind.LambdaTypedLocal, Roster.To("y: () -> int = lambda: i")),
         (BindingKind.LocalLiteralConst, Roster.Out<string>(ExcludedAxis.NotAKind, "a literal is the same value every iteration, so fresh-per-iteration has nothing to show")));
 
+    private const string TheWalkIsTheSame = "same walk: R-LG names with and except, the bodies a fresh binding might not have reached";
+
+    /// <summary>Axis 6's enclosure (R-LG): the loop body itself, or a block family nested in it, total over the families that host a binder.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> LoopBodyEnclosures = Roster.Map(
+        BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)).Select(e => e.Key)
+            .Select(f => (f, f is "with" or "except" ? AxisMembership.Everywhere : AxisMembership.Out(ExcludedAxis.PrunedRepresentative, TheWalkIsTheSame)))
+            .Append(("direct", AxisMembership.Everywhere))
+            .ToArray());
+
     /// <summary>STORE's target scope (finding 4): the image of <see cref="ScopeKind"/>, the other three with their reasons.</summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<StoreTargetScope>> StoreTargetScopes = Roster.Map(
         (ScopeKind.Block, Roster.To(StoreTargetScope.SameBlock, StoreTargetScope.EnclosingBlock)),
@@ -2617,6 +2626,18 @@ public partial class NameResolutionDifferentialTests
         NameResolutionRosters.LetInProduct.Should().HaveCount(52);
         NameResolutionRosters.LetInProduct.Count(e => e.Value.Generated).Should().Be(28);
         BlockShapes.Select(b => b.Family).Should().BeEquivalentTo(families, "a family's row is what its cells cite");
+    }
+
+    [Fact]
+    public void LoopBodyEnclosuresRoster_IsTotalOverTheFamiliesThatHostABinder()
+    {
+        var universe = NameResolutionRosters.BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)).Select(e => e.Key).Append("direct");
+        AssertNoProblems(
+            Roster.TotalityProblems("LoopBodyEnclosures", universe, NameResolutionRosters.LoopBodyEnclosures.Keys),
+            "a family nested in a loop body is an enclosure or names why it is pruned");
+
+        // A literal, not the roster again: R-LG names exactly these.
+        NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { "direct", "with", "except" });
     }
 
     [Fact]

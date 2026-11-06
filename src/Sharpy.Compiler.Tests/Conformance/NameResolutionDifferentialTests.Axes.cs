@@ -15,6 +15,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(OrderObservationFedFailures(axisCells));
         failures.AddRange(ReadTimingFedFailures(pool, axisCells));
         failures.AddRange(LetInFedFailures(axisCells));
+        failures.AddRange(LoopBodyFedFailures(axisCells));
         return failures;
     }
 
@@ -694,5 +695,65 @@ public partial class NameResolutionDifferentialTests
                 if (!axisCells.Contains(LetInKey(binder, parts[0], Enum.Parse<LetInOuter>(parts[1]))))
                     yield return $"LetInProduct {binder} × {key} has no cell";
             }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 6: a closure over a loop-body binding (R-LG)
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The two ways axis 6 reads what the closures saw, and each read's model and python value: fresh per iteration against late binding.</summary>
+    private static readonly (string Label, string Read, string Model, string Python)[] LoopBodyReads =
+    {
+        ("first", "fs[0]()", "0", "2"),
+        ("every", "[g0() for g0 in fs]", "[0, 1, 2]", "[2, 2, 2]"),
+    };
+
+    private static string LoopBodyKey(BindingKind binder, int spelling, string loop, string enclosure, string read)
+        => $"loop-body-closure: {binder} × {spelling} × {loop} × {enclosure} × {read}";
+
+    private static IEnumerable<NameCell> LoopBodyClosureCells()
+    {
+        foreach (var (binder, entry) in NameResolutionRosters.LoopBodyBinders)
+            for (int spelling = 0; spelling < entry.Image.Count; spelling++)
+                foreach (var loop in NameResolutionRosters.ReadTimingLoops)
+                    foreach (var enclosure in NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key))
+                        foreach (var read in LoopBodyReads)
+                            yield return LoopBodyClosureCell(binder, spelling, entry.Image[spelling], loop, enclosure, read);
+    }
+
+    /// <summary>R-LG: every binding made in a loop body is fresh per iteration, so its closure keeps that iteration's value, where python's sees the last.
+    /// A while loop's iteration variable is a body binding too: the closure over a shared counter would read 3 in both languages and prove nothing.</summary>
+    private static NameCell LoopBodyClosureCell(BindingKind binder, int spelling, string text, string loop, string enclosure, (string Label, string Read, string Model, string Python) read)
+    {
+        var stmts = new List<string> { "fs: list[() -> int] = []" };
+        if (loop == "for-body")
+            stmts.Add("for i in range(3):");
+        else
+            stmts.AddRange(new[] { "w0: int = 0", "while w0 < 3:", "    i: int = w0", "    w0 += 1" });
+
+        var open = enclosure == "direct"
+            ? Array.Empty<string>()
+            : BlockShapes.Single(b => b.Family == enclosure).Open.Select(l => l.Replace("w0", "w1", StringComparison.Ordinal)).ToArray();
+        var depth = enclosure == "direct" ? 1 : 1 + BlockShapes.Single(b => b.Family == enclosure).Depth;
+        stmts.AddRange(Indent(open));
+        stmts.AddRange(Indent(text.Split('\n'), 4 * depth));
+        stmts.Add(new string(' ', 4 * depth) + $"fs.append(lambda: {ReadText(FormOf(binder), "", new ReadName("y", "", "", null))})");
+        stmts.Add($"print({read.Read})");
+
+        var expected = new Expected(SharpyTag.MustRun, read.Model, PyOutcome.Ran(read.Python), "N5", "loop-variable-fresh-per-iteration");
+        return LocalProgram(CellId("local", "closure-in-loop-body", binder, spelling, loop, enclosure, read.Label), binder, BindingKind.None, ReadPosition.FunctionBody, stmts, expected, null, ReadName.Plain)
+            with
+        { AxisCell = LoopBodyKey(binder, spelling, loop, enclosure, read.Label) };
+    }
+
+    private static IEnumerable<string> LoopBodyFedFailures(IReadOnlySet<string> axisCells)
+    {
+        foreach (var (binder, entry) in NameResolutionRosters.LoopBodyBinders)
+            for (int spelling = 0; spelling < entry.Image.Count; spelling++)
+                foreach (var loop in NameResolutionRosters.ReadTimingLoops)
+                    foreach (var enclosure in NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key))
+                        foreach (var read in LoopBodyReads)
+                            if (!axisCells.Contains(LoopBodyKey(binder, spelling, loop, enclosure, read.Label)))
+                                yield return $"LoopBodyBinders {binder} spelling {spelling} × {loop} × {enclosure} × {read.Label} has no cell";
     }
 }
