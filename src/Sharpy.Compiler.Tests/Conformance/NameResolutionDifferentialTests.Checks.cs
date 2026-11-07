@@ -24,9 +24,9 @@ public partial class NameResolutionDifferentialTests
 
     private const string RoundTripName = "x";
 
-    /// <summary>One program per kind, from the generator's own declarations wherever it has one, and how to reach the symbol: a module name, a member of
-    /// <c>H</c>, or the read of the name inside <c>f</c>. <c>Inner</c> has two binders, the comprehension's target and the lambda's parameter, which sit on
-    /// different rows of the cube, so it has two programs.</summary>
+    /// <summary>One program per row a kind sits on, from the generator's own declarations wherever it has one, and how to reach the symbol: a module name, a member of
+    /// <c>H</c>, or the read of the name inside <c>f</c>. A local sits on a function's row and a block's, so it has a program in each. <c>Inner</c> has three binders on three
+    /// rows: the comprehension's target, the lambda's parameter and the walrus an initializer hosts.</summary>
     private static IEnumerable<(BindingKind Kind, string Source, Func<SemanticResult, KindRoundTrip?> Find)> RoundTripPrograms()
     {
         foreach (var kind in NameResolutionRosters.ModuleLevelKinds)
@@ -57,6 +57,15 @@ public partial class NameResolutionDifferentialTests
         yield return (BindingKind.Parameter, "def f(x: int) -> int:\n    return x\n", r => FoundAtRead(r, RoundTripName));
         yield return (BindingKind.Inner, InF("return [x for x in [22]][0]"), r => FoundAtRead(r, RoundTripName));
         yield return (BindingKind.Inner, InF("return (lambda x: int: x)(22)"), r => FoundAtRead(r, RoundTripName));
+
+        // The Block rows, read inside a construct's body. The initializer host's row is the walrus an initializer binds.
+        string InBlock(params string[] body) => InF(new[] { "if True:" }.Concat(Indent(body)).Append("return 0").ToArray());
+        foreach (var kind in new[] { BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst })
+            yield return (kind, InBlock(LocalDecl(kind, ReadName.Plain).Append("return x").ToArray()), r => FoundAtRead(r, RoundTripName));
+        foreach (var kind in new[] { BindingKind.LocalDef, BindingKind.LambdaTypedLocal })
+            yield return (kind, InBlock(LocalDecl(kind, ReadName.Plain).Append("return x()").ToArray()), r => FoundAtRead(r, RoundTripName));
+        yield return (BindingKind.EnclosingLocal, InBlock("x: int = 13", "def g() -> int:", "    return x", "return g()"), r => FoundAtRead(r, RoundTripName));
+        yield return (BindingKind.Inner, "class H:\n    @static\n    c: int = (x := 5) + x\n", r => FoundAtRead(r, RoundTripName));
         yield return (BindingKind.Builtin, InF("return abs(-3)"), r => FoundAtRead(r, "abs"));
         yield return (BindingKind.ImportedName, "from string import digits\n" + InF("return len(digits)"), r => FoundAtRead(r, "digits"));
     }
@@ -143,11 +152,13 @@ public partial class NameResolutionDifferentialTests
                     yield return $"{kind}: TypeKind.{type.TypeKind}, whose row does not hold it";
                 break;
             case FunctionSymbol function:
-                var functionClass = found.IsConstructor ? "__init__" : function.IsStatic ? "IsStatic" : NameResolutionRosters.NoFlag;
+                var functionRow = NameResolutionRosters.CubeKey(SymbolKind.Function, scope, FunctionClass(found, function));
                 if (symbolKind.RefinedBy != nameof(NameResolutionRosters.FunctionCube))
                     yield return $"{kind}: SymbolKind.{found.Declared.Kind} is not refined by FunctionCube";
-                if (!NameResolutionRosters.FunctionCube[NameResolutionRosters.CubeKey(SymbolKind.Function, scope, functionClass)].Image.Contains(kind))
-                    yield return $"{kind}: {NameResolutionRosters.CubeKey(SymbolKind.Function, scope, functionClass)}, whose row does not hold it";
+                if (!NameResolutionRosters.FunctionCube[functionRow].Image.Contains(kind))
+                    yield return $"{kind}: {functionRow}, whose row does not hold it";
+                if (CubeCellsNoSymbolLandsOn.ContainsKey((functionRow, kind)))
+                    yield return $"{kind}: {functionRow} is where its read's form sits and no symbol of the kind lands, and this program's did: {CubeCellsNoSymbolLandsOn[(functionRow, kind)]}";
                 break;
             case VariableSymbol variable:
                 foreach (var problem in VariableRoundTripProblems(kind, found.Declared.Kind, variable, scope))
@@ -166,15 +177,15 @@ public partial class NameResolutionDifferentialTests
             yield return $"{kind}: a parameter symbol, whose row does not hold it";
 
         // Every flag of the cube's axis the symbol sets selects a row that holds the kind or names why the flag does not decide it, and no flag selects the NoFlag row.
-        var set = NameResolutionRosters.VariableCubeFlags.Where(f => f != NameResolutionRosters.NoFlag && VariableFlag(variable, f)).ToList();
-        foreach (var flag in set.DefaultIfEmpty(NameResolutionRosters.NoFlag))
+        var set = VariableCubeFlagsOf(variable).ToList();
+        foreach (var flag in set)
         {
             var row = NameResolutionRosters.VariableCube[NameResolutionRosters.CubeKey(SymbolKind.Variable, scope, flag)];
             if (row.Excluded == null && !row.Image.Contains(kind))
                 yield return $"{kind}: {NameResolutionRosters.CubeKey(SymbolKind.Variable, scope, flag)}, whose row does not hold it";
         }
-        if (set.Count > 0 && set.All(f => NameResolutionRosters.VariableCube[NameResolutionRosters.CubeKey(SymbolKind.Variable, scope, f)].Excluded != null))
-            yield return $"{kind}: every flag it sets ({string.Join(", ", set)}) is excluded at {scope}, so no row decides it";
+        if (set.All(f => NameResolutionRosters.VariableCube[NameResolutionRosters.CubeKey(SymbolKind.Variable, scope, f)].Excluded != null))
+            yield return $"{kind}: every row it lands on at {scope} ({string.Join(", ", set)}) is excluded, so no row decides it";
 
         // VariableFlags names the kinds each flag refines: all of them set it, and anything else setting it is a row the cube already holds or names as out.
         foreach (var (flag, entry) in NameResolutionRosters.VariableFlags.Where(e => e.Value.Image.Count > 0))
@@ -187,6 +198,66 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
+    private static string FunctionClass(KindRoundTrip found, FunctionSymbol function)
+        => found.IsConstructor ? "__init__" : function.IsStatic ? "IsStatic" : NameResolutionRosters.NoFlag;
+
+    /// <summary>The flags of the cube's axis the symbol sets, or no flag: each selects a row of <see cref="NameResolutionRosters.VariableCube"/>.</summary>
+    private static IEnumerable<string> VariableCubeFlagsOf(VariableSymbol variable)
+        => NameResolutionRosters.VariableCubeFlags.Where(f => f != NameResolutionRosters.NoFlag && VariableFlag(variable, f)).DefaultIfEmpty(NameResolutionRosters.NoFlag);
+
+    /// <summary>The cube rows a program's symbol lands on, read off the compiler's symbol: its class, its defining scope and its flags. The two named outers have no row.</summary>
+    private static IEnumerable<string> CubeRowsOf(BindingKind kind, KindRoundTrip found)
+    {
+        if (found.Scope is not ScopeKind scope || kind is BindingKind.Builtin or BindingKind.ImportedName)
+            return Enumerable.Empty<string>();
+        return found.Declared switch
+        {
+            FunctionSymbol function => new[] { NameResolutionRosters.CubeKey(SymbolKind.Function, scope, FunctionClass(found, function)) },
+            VariableSymbol variable => VariableCubeFlagsOf(variable).Select(flag => NameResolutionRosters.CubeKey(SymbolKind.Variable, scope, flag)),
+            _ => Enumerable.Empty<string>(),
+        };
+    }
+
+    /// <summary>A row × kind no program's symbol can land on, with the reason. A program landing there is red, so the reason cannot go stale.</summary>
+    private static readonly IReadOnlyDictionary<(string Row, BindingKind Kind), string> CubeCellsNoSymbolLandsOn = new Dictionary<(string, BindingKind), string>
+    {
+        [(NameResolutionRosters.CubeKey(SymbolKind.Function, ScopeKind.FunctionLike, NameResolutionRosters.NoFlag), BindingKind.LambdaTypedLocal)] =
+            "a lambda-typed local's binding is a variable, which VariableCube holds; D3.a maps it here for its read's form, the call, and no FunctionSymbol is one",
+    };
+
+    /// <summary>The cube's totality as content: a mapped row × kind is reached by a program whose symbol lands on it, or <see cref="CubeCellsNoSymbolLandsOn"/> says why none can; an excluded row states
+    /// its reason. Totality over the keys and the scope split cannot see a row whose image was swapped for other kinds of the split.</summary>
+    internal static (List<string> Problems, int Reached, int NoSymbol, int OutRows) CubeReachProblems(
+        IEnumerable<KeyValuePair<string, RosterEntry<BindingKind>>> rows,
+        IReadOnlySet<(string Row, BindingKind Kind)> reached,
+        IReadOnlySet<(string Row, BindingKind Kind)> noSymbol)
+    {
+        var problems = new List<string>();
+        int reachedCells = 0, noSymbolCells = 0, outRows = 0;
+        foreach (var (row, entry) in rows)
+        {
+            if (entry.Excluded != null)
+            {
+                outRows++;
+                if (string.IsNullOrWhiteSpace(entry.Reason))
+                    problems.Add($"{row} is excluded and states no reason");
+                continue;
+            }
+            if (entry.Image.Count == 0)
+                problems.Add($"{row} is neither mapped nor excluded");
+            foreach (var kind in entry.Image)
+            {
+                if (reached.Contains((row, kind)))
+                    reachedCells++;
+                else if (noSymbol.Contains((row, kind)))
+                    noSymbolCells++;
+                else
+                    problems.Add($"{row} says it holds {kind}, and no program's symbol lands there");
+            }
+        }
+        return (problems, reachedCells, noSymbolCells, outRows);
+    }
+
     /// <summary>D3.1: totality can only say each source value is mapped. The verify round swapped <c>TypeKind.Struct ↔ ModuleEnum</c>, two binder rows and a
     /// flag and every fact stayed green. This compiles each kind's declaration and asks the compiler. The maps that drive the generator
     /// (<c>StoreOuter</c>, <c>StoreBodies</c>, <c>LocalOuter</c>, <c>LocalBodies</c>, <c>ReadOuter</c>) are not read here: a swapped entry moves the census.</summary>
@@ -196,6 +267,7 @@ public partial class NameResolutionDifferentialTests
         var api = ImportResolvingCompilerApi();
         var problems = new List<string>();
         var programs = RoundTripPrograms().ToList();
+        var reached = new HashSet<(string Row, BindingKind Kind)>();
         foreach (var (kind, source, find) in programs)
         {
             var result = api.Analyze(source);
@@ -207,14 +279,38 @@ public partial class NameResolutionDifferentialTests
             if (found == null)
                 problems.Add($"{kind}: no symbol reached in\n{source}");
             else
+            {
                 problems.AddRange(RoundTripProblems(kind, found));
+                reached.UnionWith(CubeRowsOf(kind, found).Select(row => (row, kind)));
+            }
         }
-        AssertNoProblems(problems, "the compiler says what the roster says each kind is");
+        var (cubeProblems, reachedCells, noSymbolCells, outRows) = CubeReachProblems(
+            NameResolutionRosters.VariableCube.Concat(NameResolutionRosters.FunctionCube), reached, CubeCellsNoSymbolLandsOn.Keys.ToHashSet());
+        problems.AddRange(cubeProblems);
+        AssertNoProblems(problems, "the compiler says what the roster says each kind is, on every row the cubes hold");
 
-        // Literals, not the enum again: every kind but None, one program each and two for Inner.
+        // Literals, not the enum again: every kind but None, with a program per row it sits on.
         programs.Select(p => p.Kind).Distinct().Should().HaveCount(33);
-        programs.Should().HaveCount(34);
+        programs.Should().HaveCount(42);
         Enum.GetValues<BindingKind>().Except(programs.Select(p => p.Kind)).Should().Equal(BindingKind.None);
+        (reachedCells, noSymbolCells, outRows).Should().Be((31, 1, 30), "the rows × kinds reached, those no symbol can land on, and the rows excluded with a reason");
+        (NameResolutionRosters.VariableCube.Count, NameResolutionRosters.FunctionCube.Count).Should().Be((30, 18));
+    }
+
+    /// <summary>The reach check can fail: a row whose image no program lands on is red, a row × kind waived by its reason is not, and an excluded row needs a reason.</summary>
+    [Fact]
+    public void CubeReach_ARowNoProgramLandsOn_IsRed()
+    {
+        const string Row = "row";
+        KeyValuePair<string, RosterEntry<BindingKind>> Mapped(params BindingKind[] kinds) => new(Row, Roster.To(kinds));
+        var none = new HashSet<(string, BindingKind)>();
+        var landed = new HashSet<(string, BindingKind)> { (Row, BindingKind.LocalVar) };
+
+        CubeReachProblems(new[] { Mapped(BindingKind.LocalVar) }, landed, none).Problems.Should().BeEmpty();
+        CubeReachProblems(new[] { Mapped(BindingKind.LocalVar) }, none, none).Problems.Should().ContainSingle().Which.Should().Contain("no program's symbol lands there");
+        CubeReachProblems(new[] { Mapped(BindingKind.LocalLet, BindingKind.LocalVar) }, landed, none).Problems.Should().ContainSingle().Which.Should().Contain("LocalLet");
+        CubeReachProblems(new[] { Mapped(BindingKind.LocalVar) }, none, landed).NoSymbol.Should().Be(1);
+        CubeReachProblems(new[] { new KeyValuePair<string, RosterEntry<BindingKind>>(Row, Roster.Out<BindingKind>(ExcludedAxis.NotAKind, " ")) }, none, none).Problems.Should().ContainSingle().Which.Should().Contain("no reason");
     }
 
     /// <summary>The AST node each STORE form and LOCAL target is written as: what the enclosing checker method of its binder must be handed.</summary>
