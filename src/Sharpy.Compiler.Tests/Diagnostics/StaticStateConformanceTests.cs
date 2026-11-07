@@ -78,8 +78,6 @@ public class StaticStateConformanceTests
                 "Collection-type metadata table, initialized inline and read-only after.",
             [("Sharpy.Compiler.Diagnostics.DiagnosticExplanations", "_explanations")] =
                 "Diagnostic-code explanation table built once via BuildExplanations(), read-only after.",
-            [("Sharpy.Compiler.Discovery.CachedModuleDiscovery", "SharpyToClrNameMap")] =
-                "Sharpy→CLR name map, initialized inline and read-only after.",
             [("Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder", "ClrOperatorToDunder")] =
                 "CLR-operator→dunder map, initialized inline and read-only after.",
             [("Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder", "ExcludedObjectMethods")] =
