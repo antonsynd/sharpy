@@ -258,6 +258,41 @@ public partial class NameResolutionDifferentialTests
         return (problems, reachedCells, noSymbolCells, outRows);
     }
 
+    /// <summary>What a kind's declaration says in the parser's own nodes, for the kinds a declaration of the name spells. <c>let</c> is no symbol flag (the cube's comment says so), so a <c>let</c> spelled as a
+    /// variable lands on the same row of the same cube: only the node tells them apart. <c>Lambda</c> is the initializer's node, which tells a lambda-typed local from a variable holding anything else.</summary>
+    private static readonly IReadOnlyDictionary<BindingKind, (bool IsLet, bool IsConst, bool Lambda)> DeclarationSpellings = new Dictionary<BindingKind, (bool, bool, bool)>
+    {
+        [BindingKind.ModuleVar] = (false, false, false),
+        [BindingKind.ModuleLet] = (true, false, false),
+        [BindingKind.ModuleLiteralConst] = (false, true, false),
+        [BindingKind.ModuleComputedConst] = (false, true, false),
+        [BindingKind.StaticField] = (false, false, false),
+        [BindingKind.InstanceField] = (false, false, false),
+        [BindingKind.ClassLiteralConst] = (false, true, false),
+        [BindingKind.ClassComputedConst] = (false, true, false),
+        [BindingKind.LocalVar] = (false, false, false),
+        [BindingKind.LocalLet] = (true, false, false),
+        [BindingKind.LocalLiteralConst] = (false, true, false),
+        [BindingKind.LocalComputedConst] = (false, true, false),
+        [BindingKind.EnclosingLocal] = (false, false, false),
+        [BindingKind.LambdaTypedLocal] = (false, false, true),
+    };
+
+    /// <summary>The declaration of the name in the program is the node the kind says: <c>let x = e</c> is an <see cref="Assignment"/> with <c>IsLet</c>, and every other spelling a <see cref="VariableDeclaration"/>.</summary>
+    private static IEnumerable<string> DeclarationSpellingProblems(BindingKind kind, IEnumerable<Node> program)
+    {
+        if (!DeclarationSpellings.TryGetValue(kind, out var says))
+            yield break;
+        var nodes = program.SelectMany(Descendants).ToList();
+        var declared = nodes.OfType<VariableDeclaration>().Where(d => d.Name == RoundTripName).Select(d => (d.IsLet, d.IsConst, Lambda: d.InitialValue is LambdaExpression))
+            .Concat(nodes.OfType<Assignment>().Where(a => a.IsLet && a.Target is Identifier { Name: RoundTripName }).Select(a => (a.IsLet, IsConst: false, Lambda: a.Value is LambdaExpression)))
+            .ToList();
+        if (declared.Count != 1)
+            yield return $"{kind}: {declared.Count} declarations of {RoundTripName} in its program";
+        else if (declared[0] != says)
+            yield return $"{kind}: the parser says (IsLet, IsConst, lambda initializer) = {declared[0]}, and the kind is {says}";
+    }
+
     /// <summary>D3.1: totality can only say each source value is mapped. The verify round swapped <c>TypeKind.Struct ↔ ModuleEnum</c>, two binder rows and a
     /// flag and every fact stayed green. This compiles each kind's declaration and asks the compiler. The maps that drive the generator
     /// (<c>StoreOuter</c>, <c>StoreBodies</c>, <c>LocalOuter</c>, <c>LocalBodies</c>, <c>ReadOuter</c>) are not read here: a swapped entry moves the census.</summary>
@@ -281,6 +316,7 @@ public partial class NameResolutionDifferentialTests
             else
             {
                 problems.AddRange(RoundTripProblems(kind, found));
+                problems.AddRange(DeclarationSpellingProblems(kind, result.Ast!.Body));
                 reached.UnionWith(CubeRowsOf(kind, found).Select(row => (row, kind)));
             }
         }
@@ -295,6 +331,28 @@ public partial class NameResolutionDifferentialTests
         Enum.GetValues<BindingKind>().Except(programs.Select(p => p.Kind)).Should().Equal(BindingKind.None);
         (reachedCells, noSymbolCells, outRows).Should().Be((31, 1, 30), "the rows × kinds reached, those no symbol can land on, and the rows excluded with a reason");
         (NameResolutionRosters.VariableCube.Count, NameResolutionRosters.FunctionCube.Count).Should().Be((30, 18));
+    }
+
+    /// <summary>The spelling check can fail, on both sides of let: a variable spelled <c>let</c>, a <c>let</c> spelled as a variable. The cube cannot tell either, so these are its controls.</summary>
+    [Theory]
+    [InlineData(BindingKind.LocalLet, "let x = 5", null)]
+    [InlineData(BindingKind.LocalLet, "let x: int = 5", null)]
+    [InlineData(BindingKind.LocalVar, "x: int = 5", null)]
+    [InlineData(BindingKind.LocalLet, "x: int = 5", "the parser says")]
+    [InlineData(BindingKind.LocalVar, "let x = 5", "the parser says")]
+    [InlineData(BindingKind.LocalVar, "const x: int = 5", "the parser says")]
+    [InlineData(BindingKind.LocalLiteralConst, "x: int = 5", "the parser says")]
+    [InlineData(BindingKind.LambdaTypedLocal, "x: int = 5", "the parser says")]
+    [InlineData(BindingKind.LambdaTypedLocal, "x: () -> int = lambda: 5", null)]
+    [InlineData(BindingKind.LocalVar, "y: int = 5", "0 declarations")]
+    [InlineData(BindingKind.LocalDef, "y: int = 5", null)] // no declaration spells a def, so the map has no row for it
+    internal void DeclarationSpelling_ReadsTheParsersNode(BindingKind kind, string declaration, string? fails)
+    {
+        var problems = DeclarationSpellingProblems(kind, new CompilerApi().Parse($"def f() -> None:\n    {declaration}\n").Ast!.Body).ToList();
+        if (fails == null)
+            problems.Should().BeEmpty();
+        else
+            problems.Should().ContainSingle().Which.Should().Contain(fails);
     }
 
     /// <summary>The reach check can fail: a row whose image no program lands on is red, a row × kind waived by its reason is not, and an excluded row needs a reason.</summary>
