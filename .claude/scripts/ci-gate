@@ -140,6 +140,9 @@ def wait(run_ids: Iterable[int]) -> Dict[int, str]:
     pending = list(run_ids)
     conclusions: Dict[int, str] = {}
     last_status: Dict[int, str] = {}
+    # A run's status can go from in_progress back to queued while its later jobs wait for a runner
+    # (seen on run 42336433586), so only a run that has never started counts as not starting.
+    started: Set[int] = set()
     failures = 0
     start_deadline = time.monotonic() + START_TIMEOUT
     total_deadline = time.monotonic() + TOTAL_TIMEOUT
@@ -156,10 +159,12 @@ def wait(run_ids: Iterable[int]) -> Dict[int, str]:
             if state["status"] != last_status.get(run_id):
                 last_status[run_id] = state["status"]
                 print(f"run {run_id}: {state['status']} {state['url']}", flush=True)
+            if state["status"] not in QUEUED:
+                started.add(run_id)
             if state["status"] == "completed":
                 conclusions[run_id] = state["conclusion"]
                 pending.remove(run_id)
-            elif state["status"] in QUEUED and time.monotonic() > start_deadline:
+            elif run_id not in started and time.monotonic() > start_deadline:
                 die(NO_VERDICT, f"run {run_id} did not start within {START_TIMEOUT:.0f} s, so Actions "
                                 f"looks throttled or down. It is still queued: {state['url']}")
         if pending:

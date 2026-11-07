@@ -78,6 +78,8 @@ elif args[:2] == ["run", "view"]:
         sys.exit(0)
     fields = args[args.index("--json") + 1].split(",")
     run = state["runs"][run_id]
+    if run.get("status_seq"):
+        run["status"] = run["status_seq"].pop(0)
     save()
     out = {k: run[k] for k in fields if k in run}
     if "jobs" in fields:
@@ -285,6 +287,17 @@ class TestCiUnavailable:
         result = rig.gate()
         assert result.returncode == 3
         assert "did not start" in result.stderr
+
+    def test_a_started_run_going_back_to_queued_is_not_an_outage(
+        self, rig: Rig
+    ) -> None:
+        # Seen on run 42336433586. CI_GATE_START_TIMEOUT is 0 here, so the deadline has passed.
+        rig.state["runs"][str(DOTNET)] = run_record(
+            "success", status_seq=["in_progress", "queued", "completed"]
+        )
+        result = rig.gate()
+        assert result.returncode == 0, result.stderr
+        assert "CI GATE GREEN" in result.stdout
 
     def test_a_failing_dispatch_falls_back(self, rig: Rig) -> None:
         rig.state["dispatch_error"] = "HTTP 503: service unavailable"
