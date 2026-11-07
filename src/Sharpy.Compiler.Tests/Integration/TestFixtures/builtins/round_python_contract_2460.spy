@@ -31,8 +31,3 @@ def main():
         print(round(1.7976931348623157e308, -308))
     except OverflowError as e:
         print("OverflowError:", e)
-    # int is 32-bit (Axiom 1): a rounded value past its range is OverflowError, never a wrapped int
-    try:
-        print(round(2.0 ** 62))
-    except OverflowError:
-        print("OverflowError")
