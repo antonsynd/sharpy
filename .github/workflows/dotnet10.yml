@@ -8,7 +8,7 @@
 #   changes ─┬─ format                       whitespace-clean gate (needs no build, so beside it)
 #            └─ build ─┬─ test-fast          CLI + Core + Stdlib (one step each)
 #                      ├─ lsp (matrix 1..N)  LSP tests, sharded by namespace and sweep twin
-#                      ├─ compiler (1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace
+#                      ├─ compiler (1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace/class
 #                      ├─ sweep (matrix 2)   one job per long GapDiscovery sweep
 #                      ├─ sweeps-quick       the five short GapDiscovery sweeps, one step each
 #                      ├─ stdlib-spy-gates   .spy native compile + generated-C# staleness gates
@@ -86,25 +86,29 @@ env:
   # (CiFilterCoverageConformanceTests).
   COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&FullyQualifiedName!~NameResolutionDifferential&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
   # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
-  # PARTITION INVARIANT: shards 1–6 are positive namespace buckets (shard 5 excludes shard 4's
-  # sub-bucket by negation); shard 7 is "everything else" — the negation of every other bucket
-  # (`!~Properties.` negates shards 4+5, whose buckets are both inside `Properties.`). The
-  # `compiler-shard-partition` job re-proves on every run, by `--list-tests`, that the shards'
-  # union equals the main filter's list with no overlap, and `ci-summary` requires one trx per
-  # COMPILER_SHARD_<n>. Adding a shard: add COMPILER_SHARD_<n>, add <n> to the `compiler` matrix,
-  # and add its bucket's negation to the last shard.
-  # Balanced on per-shard trx spans of PR run 37378225480 @ 86825825e (#2179, maxParallelThreads 2),
-  # in s: 1 fixtures 124 · 2 Integration P–V + CodeGen 305 · Semantic 108 + 133 (then shards 3, 4)
-  # · Properties 492 (then shard 5: 287 s parallel phase led by CPythonDifferentialParse 178 and
-  # AmbiguityHotspot 169, then a 204 s run-alone PropertySerial phase) · 6 Conformance 150 ·
-  # 7 everything else 259. Re-balanced (#2179): the two Semantic shards merged into 3, and
-  # Properties split into 4 (Properties.Parser) and 5 (the rest).
+  # PARTITION INVARIANT: shards 1–6 are positive namespace or class buckets (shard 5 excludes the
+  # buckets of shards 4 and 6 by negation); shard 7 is "everything else"
+  # — the negation of every other bucket (`!~Properties.` negates shards 4–6, whose buckets are all
+  # inside `Properties.`). The `shard-partition` job re-proves on every run, by `--list-tests`, that
+  # the shards' union equals the main filter's list with no overlap, and `ci-summary` requires one
+  # trx per COMPILER_SHARD_<n>. Adding a shard: add COMPILER_SHARD_<n>, add <n> to the `compiler`
+  # matrix, and add its bucket's negation to the last shard.
+  # First balanced on per-shard trx spans of PR run 37378225480 @ 86825825e (#2179). Re-balanced
+  # (#2458, W0.4 of the 2026-11-06 remediation; the shard-5 cost cut itself is R-IX, #2324) on the
+  # last 20 mainline push runs (42372810738 back to 40623113848), test-step medians in s: 1 fixtures
+  # 142 · 2 305 · 3 228 · 4 291 · 5 916 · 6 Conformance 205 · 7 311 (jobs: 3.1 / 5.7 / 4.7 / 5.7 /
+  # 16.1 / 4.2 / 6.0 min). Shard 5's trx in run 42372810738 spans 942 s, 570 of them one class run
+  # alone in the PropertySerial phase: ErrorCompletenessPropertyTests (87 tests of 4–14 s, serial
+  # within the class). So that class is shard 6 on its own, the rest of `Properties.` stays in 5,
+  # and the old shards 1 and 6 (142 + 205 s) share shard 1, keeping the job count at seven.
   # Letter terms name only class initials that exist today: CiFilterCoverageConformanceTests
   # fails on a filter substring that matches no test. A new class whose initial has no term
   # falls through to shard 7 (Integration), so it is still run exactly once.
   # 1: the file-based fixture corpus (the Shard0..Shard7 classes of the FileBasedIntegrationTests
-  # namespace, #2179; the trailing dot selects them all).
-  COMPILER_SHARD_1: "FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests."
+  # namespace, #2179; the trailing dot selects them all) and Conformance (the non-sweep conformance
+  # suites; the sweeps are excluded by the main filter).
+  COMPILER_SHARD_1: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests.|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Conformance.)"
   # 2: Integration classes whose name starts P, S, T, U or V, plus CodeGen.
   COMPILER_SHARD_2: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.P|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.S|\
@@ -117,12 +121,14 @@ env:
   # 4: Properties.Parser (includes CPythonDifferentialParseTests, which needs the pinned python,
   # and AmbiguityHotspotPropertyTests — the two longest classes of the old Properties shard).
   COMPILER_SHARD_4: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Parser."
-  # 5: the rest of Properties (exactly `Properties.` minus shard 4), including the run-alone
-  # PropertySerial phase.
+  # 5: the rest of Properties (exactly `Properties.` minus shards 4 and 6), including the rest of
+  # the run-alone PropertySerial phase.
   COMPILER_SHARD_5: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Parser."
-  # 6: Conformance (non-sweep conformance suites; the sweeps are excluded by the main filter).
-  COMPILER_SHARD_6: "FullyQualifiedName~Sharpy.Compiler.Tests.Conformance."
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Parser.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Semantic.ErrorCompletenessPropertyTests."
+  # 6: ErrorCompletenessPropertyTests alone (570 s of shard 5's 942 s in run 42372810738); the
+  # trailing dot keeps a class whose name merely starts the same out of it.
+  COMPILER_SHARD_6: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Semantic.ErrorCompletenessPropertyTests."
   # 7: everything else — Integration classes outside shards 1–2, Parser, Lexer, Project,
   # Infrastructure, root-namespace tests, and any namespace added later. The negation of every
   # bucket above.
@@ -653,6 +659,10 @@ jobs:
     name: Shard partition check (compiler, lsp)
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The balance step lists the previous mainline run's jobs.
+      actions: read
 
     steps:
     - uses: actions/checkout@v7
@@ -711,6 +721,52 @@ jobs:
         check src/Sharpy.Compiler.Tests COMPILER_MAIN_FILTER COMPILER_SHARD_ || status=1
         check src/Sharpy.Lsp.Tests LSP_MAIN_FILTER LSP_SHARD_ || status=1
         exit $status
+    - name: Warn when the slowest shard takes over twice the median shard
+      # A job-summary warning, never a failure (#2458, W0.4). Read from the PREVIOUS successful
+      # `mainline` push run, not this one: this job runs beside the shards (all of them need only
+      # `build`), so this run's shard timings do not exist yet. So on a PR that moves a bucket the
+      # line describes the layout on mainline, which is the layout the next 20 push runs measure.
+      # A shard over 2x the median sets the wall clock while the others idle (shard 5 ran 16.1 min
+      # against a 5.7 min median over the 20 mainline push runs before this check).
+      if: ${{ !cancelled() }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -uo pipefail
+        runs="repos/$GITHUB_REPOSITORY/actions/workflows/dotnet10.yml/runs?branch=mainline&event=push&status=success&per_page=1"
+        run=$(gh api -X GET "$runs" --jq '.workflow_runs[0].id // empty')
+        if [ -z "$run" ] || ! gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100" > jobs.json; then
+          echo "::notice::shard balance not read: no previous successful mainline push run could be listed"
+          exit 0
+        fi
+        python3 - "$run" jobs.json <<'PY'
+        import json, os, re, statistics, sys
+        from datetime import datetime
+        run, path = sys.argv[1], sys.argv[2]
+        def at(s):
+            return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        suites = {}
+        for job in json.load(open(path))["jobs"]:
+            m = re.fullmatch(r"Test (Compiler|LSP) \(shard (\d+)\)", job["name"])
+            if m and job.get("started_at") and job.get("completed_at"):
+                minutes = (at(job["completed_at"]) - at(job["started_at"])).total_seconds() / 60
+                suites.setdefault(m.group(1), {})[int(m.group(2))] = minutes
+        if not suites:
+            sys.exit(f"run {run} has no 'Test Compiler/LSP (shard n)' job: the job names changed, update this step")
+        lines = [f"Shard balance of mainline run {run} (minutes per job; warn above 2x the median):", ""]
+        for suite, shards in sorted(suites.items()):
+            median = statistics.median(shards.values())
+            slowest = max(shards, key=shards.get)
+            ratio = shards[slowest] / median
+            cells = ", ".join(f"{n}: {v:.1f}" for n, v in sorted(shards.items()))
+            lines.append(f"- {suite}: {cells}; slowest shard {slowest} at {ratio:.2f}x the median {median:.1f}")
+            if ratio > 2:
+                print(f"::warning::{suite} shard {slowest} took {shards[slowest]:.1f} min, {ratio:.2f}x the "
+                      f"median shard ({median:.1f} min) in mainline run {run}: rebalance its COMPILER_/LSP_SHARD_ buckets")
+        print("\n".join(lines))
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write("\n".join(lines) + "\n")
+        PY
 
   windows:
     # #2291 (R-GH): the one host the rest of CI never runs. Roslyn's debug-information default is
