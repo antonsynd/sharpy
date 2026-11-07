@@ -12,4 +12,3 @@ ValueError: cannot convert float NaN to integer
 OverflowError: cannot convert float infinity to integer
 OverflowError: cannot convert float infinity to integer
 OverflowError: rounded value too large to represent
-OverflowError
