@@ -534,16 +534,24 @@ def test_seed_output_lists_unmarked_blocks_by_form(tmp_path):
 # ---------- Real compiler smoke test ----------
 
 
+SHARPYC_APPHOST = (
+    Path(__file__).resolve().parents[2] / "src/Sharpy.Cli/bin/Debug/net10.0/sharpyc"
+)
+
+
+# Needs a BUILT compiler: `dotnet run` would build from cold inside compile_one's 60 s limit, which
+# timed out on CI (run 42338092202). The same preference as check_spec_blocks.sh, without its
+# `dotnet run` fallback. python-build-tools.yml sets SHARPYC, so a missing binary is red there.
 @pytest.mark.skipif(
-    not os.environ.get("SHARPYC") and not os.path.exists("src/Sharpy.Cli"),
-    reason="needs sharpyc",
+    not os.environ.get("SHARPYC") and not SHARPYC_APPHOST.exists(),
+    reason="needs a built sharpyc",
 )
 def test_real_compiler_smoke():
     from spec_blocks import compile_one
 
-    sharpyc = os.environ.get("SHARPYC", "dotnet run --project src/Sharpy.Cli --")
+    sharpyc = os.environ.get("SHARPYC") or str(SHARPYC_APPHOST)
     good = compile_one(sharpyc, "def main() -> None:\n    x: int = 1\n    print(x)\n")
-    assert good.success is True
+    assert good.success is True, good.stderr
 
     bad = compile_one(sharpyc, "x: int = 'not an int'\n")
     assert bad.success is False

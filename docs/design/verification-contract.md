@@ -143,17 +143,32 @@ that stopped before running its independent steps.
 
 ## 6. The commit gate is the whole solution
 
-The gate is `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` across **all**
-test projects, run in the background while doing read-only work; a filtered run is the edit
-loop, never the gate. Ask what a change can **reach**, not which file it lives in: anything in
-`Semantic/` or `CodeGen/` surfaces in every project that compiles Sharpy source —
+The gate runs **all** test projects, in the background while doing read-only work; a filtered run
+is the edit loop, never the gate. Ask what a change can **reach**, not which file it lives in:
+anything in `Semantic/` or `CodeGen/` surfaces in every project that compiles Sharpy source —
 `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, the LSP front-end parity sweep (`FrontEndParityTests`),
 and the three GapDiscovery sweeps CI runs as *separate steps* (`InteropConformance` #1034,
-`MetamorphicCorpus` #1157, `DifferentialExecution` #1202 — the main Compiler step excludes them,
-so a local whole-solution run is the only thing that covers all three at once). A full run is
-~30 min wall clock (`maxParallelThreads` 2, measured @ af6f30901); read
-`.claude/tmp/dotnet-serialized-*.log` rather than re-running. A log
-whose binaries predate the change is not a green.
+`MetamorphicCorpus` #1157, `DifferentialExecution` #1202).
+
+**The default is GitHub CI:** push the branch, then `/ci-gate` (`.claude/scripts/ci-gate`), which
+dispatches `dotnet10.yml` and `python-build-tools.yml` at the exact commit and prints the count
+line. A run is typically 17–22 min (the 2026-11 runs), against about an hour locally (owner,
+2026-11-06; the last recorded local figure is ~30 min, `maxParallelThreads` 2, @ af6f30901). Every
+PR also runs the gate whatever its base, but a PR run tests the merge into the base, so its count
+is written `@ the PR merge ref of <sha>`. A close-out that claims a commit dispatches at that commit.
+A do-not-merge PR is never a way to reach CI: `mainline` has no required checks to block merging
+one, and a P77b attempt has already been merged by accident and reverted.
+
+**CI and local are not identical.** CI adds a clean checkout (no stale-binary false green), a
+required python oracle, the shard partition proof, the staleness and whitespace gates and a Windows
+smoke job. Local adds `MetamorphicCorpusInvarianceTests` (left out of CI on purpose,
+`CiFilterCoverageConformanceTests`; `/property-stress` covers it) and macOS.
+
+**The local gate is the fallback:** `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`,
+for when `/ci-gate` exits 3 (not started within 15 min, cancelled, unreachable, or no counts) or for
+what only local covers; say so in the report. Read `.claude/tmp/dotnet-serialized-*.log` rather than
+re-running. A log whose binaries predate the change is not a green. Mutation runs and single-test
+probes stay local, and so can a control for one failing test (§5).
 
 *Why:* Batch G verified four phases with `FullyQualifiedName~FileBasedIntegrationTests` and pushed
 10 live failures — unit tests with no symbol table, a validator-count pin, missing
@@ -161,9 +176,10 @@ whose binaries predate the change is not a green.
 project; Batch 10's own full-suite log was a stale-binary false green; the `ResolveDunderOverload`
 ICE lived only in Stdlib.Tests.
 
-*Check:* the commit that closes a phase cites a whole-solution run at its sha. Red = a close-out
-whose only evidence is a filtered run, a log older than the last build, or a sweep the change
-reaches that was not run.
+*Check:* the commit that closes a phase cites a whole-solution run at its sha, by CI run id or local
+log. A later commit that changes only plans or docs may carry `[skip ci]` and cite the last code
+commit's run. Red = a close-out whose only evidence is a filtered run, a log older than the last
+build, or a sweep the change reaches that was not run.
 
 ## 7. Regenerate early; read the diff as findings
 

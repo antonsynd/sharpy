@@ -1,0 +1,290 @@
+#!/usr/bin/env python3
+"""Run the whole-solution commit gate on GitHub CI and report it as one line.
+
+    .claude/scripts/ci-gate                 gate the current branch's pushed tip
+    .claude/scripts/ci-gate --ref BRANCH    gate another pushed branch
+    .claude/scripts/ci-gate --run RUN_ID    report an existing .NET 10 run (for example a PR's), and
+                                            the Python Build Tools run of the same commit and event
+
+The gate is `dotnet10.yml` plus `python-build-tools.yml`, dispatched at the branch tip. A dispatch
+tests that exact commit, while a pull_request run tests the merge of the PR into its base, which is
+why `--run` labels a PR run's sha as a merge ref. Green prints:
+
+    CI GATE GREEN: 83679/0/9 @ 64e3de8a7 (measured, run 42330321590)
+
+Exit codes, which decide what the caller does next:
+
+    0  green
+    1  red: a job or test failed (the failing tests are listed; attribute with a control run)
+    2  not runnable as asked: the ref is unpushed, differs from local, or lacks the trigger, or the
+       run id does not exist
+    3  CI gave no verdict: not started in time, cancelled, unreachable, or no counts.
+       Run the local gate instead (contract section 6).
+    4  nothing to gate: CI skipped the build and tests by design (a README-only PR run). Neither a
+       green nor a reason to run locally.
+
+It needs `gh` and the network, so in Claude Code run it with `dangerouslyDisableSandbox: true`. It
+never pushes: pushing stays an explicit step for the caller. The counts come from the GATE-COUNTS
+line that the `ci-summary` job of dotnet10.yml prints; build_tools/tests/test_ci_gate.py runs that
+job's script and this one against each other, so neither side can change the format alone.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from typing import Dict, Iterable, List, NoReturn, Optional, Set, Tuple
+
+GREEN, RED, NOT_RUNNABLE, NO_VERDICT, NOTHING_TO_GATE = 0, 1, 2, 3, 4
+
+DOTNET_WORKFLOW = "dotnet10.yml"
+PYTHON_WORKFLOW = "python-build-tools.yml"
+WORKFLOWS = (DOTNET_WORKFLOW, PYTHON_WORKFLOW)
+SUMMARY_JOB = "CI summary"
+
+# Knobs exist so the tests take seconds. Each production default is the reason it exists:
+POLL_SECONDS = float(os.environ.get("CI_GATE_POLL_SECONDS", "30"))
+# The run list lags a dispatch by a few seconds.
+APPEAR_TIMEOUT = float(os.environ.get("CI_GATE_APPEAR_TIMEOUT", "120"))
+# Past this a queued run is treated as Actions being throttled or down: fall back to local.
+START_TIMEOUT = float(os.environ.get("CI_GATE_START_TIMEOUT", "900"))
+# A normal run is 17-22 min and the stacked pushes of 2026-10-26 reached 37; a local gate is about 1 h.
+TOTAL_TIMEOUT = float(os.environ.get("CI_GATE_TOTAL_TIMEOUT", "5400"))
+# One failed call must not throw away a 20-minute wait, or send the caller to a 1 h local gate.
+MAX_POLL_FAILURES = int(os.environ.get("CI_GATE_MAX_POLL_FAILURES", "20"))
+
+COUNTS = re.compile(r"(?:^|\s)GATE-COUNTS passed=(\d+) failed=(\d+) skipped=(\d+)\s*$")
+# The leading whitespace matters: Actions echoes a step's script into its log, and the echoed
+# `print(f"GATE-FAILED ...")` line must not read as a failed test.
+FAILED_TEST = re.compile(r"(?:^|\s)GATE-FAILED (.+)$")
+README_ONLY = re.compile(r"(?:^|\s)GATE-SCOPE readme-only\s*$")
+QUEUED = {"queued", "waiting", "pending", "requested"}
+
+
+def die(code: int, message: str) -> NoReturn:
+    print(f"ci-gate: {message}", file=sys.stderr)
+    sys.exit(code)
+
+
+def run(*cmd: str) -> Tuple[int, str, str]:
+    done = subprocess.run(cmd, capture_output=True, text=True)
+    return done.returncode, done.stdout, done.stderr
+
+
+def require(*cmd: str, permanent: Tuple[str, ...] = ("HTTP 404",), hint: str = "") -> str:
+    """A call that must succeed. A failure is retried, and only a used-up budget means no verdict,
+    which is exit 3 from every path: an uncaught error here would exit 1, which reads as red. Text
+    in `permanent` marks an answer rather than an outage, so that exits 2 straight away."""
+    err = ""
+    for attempt in range(MAX_POLL_FAILURES):
+        code, out, err = run(*cmd)
+        if code == 0:
+            return out
+        if any(text in err for text in permanent):
+            die(NOT_RUNNABLE, f"{hint or ' '.join(cmd)}: {err.strip()}")
+        if attempt + 1 < MAX_POLL_FAILURES:
+            time.sleep(POLL_SECONDS)
+    die(NO_VERDICT, f"`{' '.join(cmd)}` failed {MAX_POLL_FAILURES} times, last: {err.strip()}")
+
+
+def resolve_ref(requested: Optional[str]) -> Tuple[str, str]:
+    """The branch and its REMOTE tip, refusing a tip that is not what the caller has locally."""
+    ref = requested or run("git", "branch", "--show-current")[1].strip()
+    if not ref:
+        die(NOT_RUNNABLE, "detached HEAD: name a pushed branch with --ref")
+    out = require("git", "ls-remote", "origin", f"refs/heads/{ref}")
+    if not out.strip():
+        die(NOT_RUNNABLE, f"{ref} is not on origin: push it first")
+    remote = out.split()[0]
+    # A ref with no local branch (a pushed ci/control-* branch) has nothing to differ from.
+    code, local, _ = run("git", "rev-parse", "--verify", "-q", f"refs/heads/{ref}")
+    if code == 0 and local.strip() != remote:
+        die(NOT_RUNNABLE, f"{ref} is {local.strip()[:9]} locally but {remote[:9]} on origin: the gate "
+                          "would measure the origin commit, so push or pull first")
+    return ref, remote
+
+
+def dispatched_ids(workflow: str, ref: str, sha: str) -> Set[int]:
+    out = require("gh", "run", "list", "--workflow", workflow, "--branch", ref, "--commit", sha,
+                  "--event", "workflow_dispatch", "--limit", "20", "--json", "databaseId")
+    return {row["databaseId"] for row in json.loads(out)}
+
+
+def companion_run(sha: str, event: str, title: str) -> Optional[int]:
+    """The Python Build Tools run that belongs with a .NET 10 run of this commit and event."""
+    rows = json.loads(require("gh", "run", "list", "--workflow", PYTHON_WORKFLOW, "--commit", sha,
+                              "--event", event, "--limit", "20", "--json", "databaseId,displayTitle"))
+    if event == "pull_request":
+        # Two PRs from one branch share the sha and the event, and test different merges. A PR run's
+        # display title is the title of the PR that triggered it, which is what tells them apart. The
+        # API's pull_requests field does not: run 42330321590, triggered by #2454, lists only #2453.
+        same_pr = [row for row in rows if row["displayTitle"] == title]
+        if rows and not same_pr:
+            print(f"no {PYTHON_WORKFLOW} run has this PR's title, so using this commit's newest")
+        rows = same_pr or rows
+    return max((row["databaseId"] for row in rows), default=None)
+
+
+def dispatch(ref: str, sha: str) -> Dict[str, int]:
+    before = {workflow: dispatched_ids(workflow, ref, sha) for workflow in WORKFLOWS}
+    for workflow in WORKFLOWS:
+        # A retry after a lost response can start a second run, which is harmless: the newest is read.
+        require("gh", "workflow", "run", workflow, "--ref", ref,
+                permanent=("workflow_dispatch", "HTTP 404"),
+                hint=f"{ref}'s copy of {workflow} has no workflow_dispatch trigger: merge "
+                     "origin/mainline into it, or use a PR run with --run")
+    runs: Dict[str, int] = {}
+    deadline = time.monotonic() + APPEAR_TIMEOUT
+    while len(runs) < len(WORKFLOWS):
+        for workflow in WORKFLOWS:
+            new = dispatched_ids(workflow, ref, sha) - before[workflow]
+            if new and workflow not in runs:
+                # The newest is ours; an older new one is a peer's run of this same commit.
+                runs[workflow] = max(new)
+        if len(runs) < len(WORKFLOWS):
+            if time.monotonic() > deadline:
+                missing = sorted(set(WORKFLOWS) - set(runs))
+                die(NO_VERDICT, f"no run appeared for {missing} after {APPEAR_TIMEOUT:.0f} s")
+            time.sleep(min(POLL_SECONDS, 5))
+    return runs
+
+
+def view(run_id: int, fields: str) -> dict:
+    """One attempt, for wait(), which keeps its own count of failures across runs."""
+    code, out, err = run("gh", "run", "view", str(run_id), "--json", fields)
+    if code != 0:
+        raise RuntimeError(err.strip())
+    return json.loads(out)
+
+
+def view_or_die(run_id: int, fields: str) -> dict:
+    return json.loads(require("gh", "run", "view", str(run_id), "--json", fields))
+
+
+def wait(run_ids: Iterable[int]) -> Dict[int, str]:
+    """Each run's conclusion, once all have completed."""
+    pending = list(run_ids)
+    conclusions: Dict[int, str] = {}
+    last_status: Dict[int, str] = {}
+    # A run's status can go from in_progress back to queued while its later jobs wait for a runner
+    # (seen on run 42336433586), so only a run that has never started counts as not starting.
+    started: Set[int] = set()
+    failures = 0
+    start_deadline = time.monotonic() + START_TIMEOUT
+    total_deadline = time.monotonic() + TOTAL_TIMEOUT
+    while pending:
+        for run_id in list(pending):
+            try:
+                state = view(run_id, "status,conclusion,url")
+                failures = 0
+            except RuntimeError as error:
+                failures += 1
+                if failures >= MAX_POLL_FAILURES:
+                    die(NO_VERDICT, f"{failures} polls failed in a row, last: {error}")
+                continue
+            if state["status"] != last_status.get(run_id):
+                last_status[run_id] = state["status"]
+                print(f"run {run_id}: {state['status']} {state['url']}", flush=True)
+            if state["status"] not in QUEUED:
+                started.add(run_id)
+            if state["status"] == "completed":
+                conclusions[run_id] = state["conclusion"]
+                pending.remove(run_id)
+            elif run_id not in started and time.monotonic() > start_deadline:
+                die(NO_VERDICT, f"run {run_id} did not start within {START_TIMEOUT:.0f} s, so Actions "
+                                f"looks throttled or down. It is still queued: {state['url']}")
+        if pending:
+            if time.monotonic() > total_deadline:
+                die(NO_VERDICT, f"runs {pending} did not finish within {TOTAL_TIMEOUT:.0f} s")
+            time.sleep(POLL_SECONDS)
+    return conclusions
+
+
+def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str], bool]:
+    """The counts, the failed test names and the README-only fact from the run's CI summary job."""
+    jobs = view_or_die(run_id, "jobs")["jobs"]
+    job = next((j for j in jobs if j["name"] == SUMMARY_JOB), None)
+    if job is None:
+        return None, [], False
+    log = require("gh", "run", "view", str(run_id), "--log", "--job", str(job["databaseId"]))
+    counts: Optional[Tuple[int, int, int]] = None
+    failed: List[str] = []
+    readme_only = False
+    for line in log.splitlines():
+        match = COUNTS.search(line)
+        if match:
+            counts = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+            continue
+        match = FAILED_TEST.search(line)
+        if match:
+            failed.append(match.group(1).strip())
+            continue
+        readme_only = readme_only or bool(README_ONLY.search(line))
+    return counts, failed, readme_only
+
+
+def verdict(dotnet_run: int, label: str, conclusions: Dict[int, str]) -> int:
+    """Prints the report. A green needs a success AND counts, so a run that selected nothing is no gate."""
+    counts, failed, readme_only = read_summary(dotnet_run)
+    for run_id, conclusion in conclusions.items():
+        if run_id != dotnet_run:
+            print(f"run {run_id}: {conclusion}")
+    tally = "no counts" if counts is None else "/".join(str(n) for n in counts)
+    line = f"{tally} @ {label} (measured, run {dotnet_run})"
+    results = set(conclusions.values())
+    if results - {"success", "failure"}:
+        print(f"CI GATE NO VERDICT: {line}, conclusions {sorted(results)}")
+        return NO_VERDICT
+    if "failure" in results:
+        print(f"CI GATE RED: {line}")
+        for name in failed:
+            print(f"FAILED {name}")
+        return RED
+    # Only ci-summary's own statement counts: zero tests without it is a run that selected nothing.
+    if readme_only and counts is not None and sum(counts) == 0:
+        print(f"CI GATE NOTHING TO GATE: run {dotnet_run} is a README-only change, so CI ran no build or tests")
+        return NOTHING_TO_GATE
+    if counts is None or sum(counts) == 0:
+        print(f"CI GATE NO VERDICT: {line}, the run succeeded without reporting any tests")
+        return NO_VERDICT
+    print(f"CI GATE GREEN: {line}")
+    return GREEN
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run the commit gate on GitHub CI.")
+    target = parser.add_mutually_exclusive_group()
+    target.add_argument("--ref", help="pushed branch to gate (default: the current branch)")
+    target.add_argument("--run", type=int, help="report an existing .NET 10 run, without dispatching")
+    args = parser.parse_args()
+
+    if args.run is not None:
+        info = view_or_die(args.run, "workflowName,headSha,event,displayTitle")
+        if info["workflowName"] != ".NET 10":
+            die(NOT_RUNNABLE, f"run {args.run} is {info['workflowName']!r}, not the .NET 10 gate")
+        label = info["headSha"][:9]
+        if info["event"] == "pull_request":
+            label = f"the PR merge ref of {label}"
+        runs = [args.run]
+        # The gate is both workflows, so a green here must not hide a red Python run (seen on PR
+        # #2455, run 42338092202). None exists when the event's path filter did not match.
+        companion = companion_run(info["headSha"], info["event"], info["displayTitle"])
+        if companion is not None:
+            runs.append(companion)
+        else:
+            print(f"no {PYTHON_WORKFLOW} run for this commit and event: its path filter did not match")
+        return verdict(args.run, label, wait(runs))
+
+    ref, sha = resolve_ref(args.ref)
+    print(f"gating {ref} @ {sha[:9]}", flush=True)
+    runs = dispatch(ref, sha)
+    return verdict(runs[DOTNET_WORKFLOW], sha[:9], wait(runs.values()))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

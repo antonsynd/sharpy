@@ -18,7 +18,7 @@ The brief is "find the input that shows the claim is wrong", not "check that it 
 
 - **Control run before attribution.** Before attributing any red to a change, run the same suite on the tree *without* the change — a `git worktree` at the plan's base commit — and report both readings. A red that also appears at the base is pre-existing; say so with both shas.
 - **Counts carry their sha.** Report `passed/failed/skipped @ <sha> (measured)` with the method (which projects, which filter). Never derive a number and report it in the same format as a measured one.
-- **A filtered run is not a gate.** The gate is the whole solution (`--filter "Category!=Benchmark"`, every test project); a component filter is the edit loop. Anything in `Semantic/` or `CodeGen/` reaches `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, `FrontEndParityTests`, and the three GapDiscovery sweeps CI runs separately (`InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution`).
+- **A filtered run is not a gate.** The gate is the whole solution, every test project: `.claude/scripts/ci-gate` on GitHub CI by default (it prints `passed/failed/skipped @ sha`; `--run <id>` reads an existing run), the local `--filter "Category!=Benchmark"` run when it exits 3. A component filter is the edit loop. Anything in `Semantic/` or `CodeGen/` reaches `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, `FrontEndParityTests`, and the three GapDiscovery sweeps CI runs separately (`InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution`).
 - **A log is a green only if its binaries postdate the change.** Check the log's `Test run for` lines and build timestamps against the commit under test.
 - **Refusals by direction** — `run`, never `emit`, for ICE reports (SPY0908 surfaces only at the C#-compile stage); `b: bool = expr` to split mistyped (SPY0220) from untyped (silence).
 - **A failing step invalidates its dependents, not its siblings** — complete every independent step and label suspect readings.
@@ -30,7 +30,7 @@ The brief is "find the input that shows the claim is wrong", not "check that it 
 All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
 
 ```bash
-.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"  # Whole-solution gate (~30 min; the logger keeps the stall watchdog fed, #2257)
+.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"  # LOCAL whole-solution gate, the fallback to /ci-gate (the logger keeps the stall watchdog fed, #2257)
 .claude/scripts/dotnet-serialized test --logger "trx;LogFileName=results.trx"         # Test with output
 .claude/scripts/dotnet-serialized test --collect:"XPlat Code Coverage"                # Coverage
 .claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run file.spy        # Behavior check (SPY0908 surfaces only here)
