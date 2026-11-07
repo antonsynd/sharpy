@@ -806,9 +806,12 @@ public partial class NameResolutionDifferentialTests
                 failures.Add($"{r.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r.Cell, r.Class, r.Run)}'");
         }
         failures.AddRange(RefusalCodeFailures(results, partial));
+        var models = ModelReaders(results, ModelPairing(pool).Judged);
+        if (!partial)
+            failures.AddRange(ModelReaderFailures(models, ModelsReadByNothingCensus));
 
         wall.Stop();
-        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, retried, wall.Elapsed, importedWall.Elapsed);
+        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, models, partial, cached, retried, wall.Elapsed, importedWall.Elapsed);
         WriteProposedAllowlist(results);
 
         Output.WriteLine(report);
@@ -877,6 +880,7 @@ public partial class NameResolutionDifferentialTests
         IReadOnlyList<string> stale,
         IReadOnlyList<string> moved,
         IReadOnlyList<string> ineffective,
+        ModelReadCensus models,
         bool partial,
         int cached,
         int retried,
@@ -910,6 +914,10 @@ public partial class NameResolutionDifferentialTests
             staleRows = stale,
             movedRows = moved,
             ineffectiveRows = ineffective,
+            modelsReadByNothing = models.Unread.ToDictionary(e => e.Key, e => e.Value.Count),
+            modelsReadByNothingTotal = models.UnreadCount,
+            judgedPairs = models.JudgedPairs,
+            judgedPairsReadByNothingElse = models.JudgedPairsReadByNothingElse,
             excludedAxes = Enum.GetNames<ExcludedAxis>(),
             rosters = RosterReport(results),
             unruledCells = results.Where(r => r.Cell.Tag == SharpyTag.Unruled).Select(r => new
@@ -954,6 +962,7 @@ public partial class NameResolutionDifferentialTests
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
         return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
             + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, retried {retried}, "
+            + $"models read by nothing {models.UnreadCount}, judged pairs {models.JudgedPairs} of which {models.JudgedPairsReadByNothingElse} read by nothing else, "
             + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell; "
             + $"imported outer {importedCells} cells at {importedSecondsPerCell:F3}s/cell). {counts}";
     }

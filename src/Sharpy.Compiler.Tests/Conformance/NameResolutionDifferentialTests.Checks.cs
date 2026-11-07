@@ -568,12 +568,14 @@ public partial class NameResolutionDifferentialTests
 
     /// <summary>N3's promise, read as a check on the models: the later order prints what the earlier order prints. Every <c>MustRun</c> / <c>MayRefuse</c> cell at the later order, and any
     /// cell python answers there with an order-only <c>NameError</c>, pairs with its earlier twin. Where python ran the twin, the later cell's model must equal that stdout, which the sweep's python
-    /// control holds <c>Python</c> to. A must-refuse cell has no model to read, so it pairs and is not judged. This reads the models python cannot confirm directly.</summary>
-    internal static (List<string> Failures, int Pairs, int Judged) ModelPairing(IReadOnlyList<NameCell> pool)
+    /// control holds <c>Python</c> to. A must-refuse cell has no model to read, so it pairs and is not judged. This reads some of the models python cannot confirm directly, and
+    /// <see cref="ModelReaders"/> counts the ones it does not.</summary>
+    internal static (List<string> Failures, int Pairs, IReadOnlySet<string> Judged) ModelPairing(IReadOnlyList<NameCell> pool)
     {
         var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var failures = new List<string>();
-        int pairs = 0, judged = 0;
+        int pairs = 0;
+        var judged = new HashSet<string>(StringComparer.Ordinal);
         foreach (var later in pool)
         {
             var twinId = EarlierOrderTwinId(later);
@@ -588,7 +590,7 @@ public partial class NameResolutionDifferentialTests
             pairs++;
             if (earlier.Python.Kind != PyKind.Ran || !carriesModel)
                 continue;
-            judged++;
+            judged.Add(later.Id);
             if (later.Model != earlier.Python.Value)
                 failures.Add($"ModelPairing: {later.Id} models '{later.Model}' and {twinId} prints '{earlier.Python.Value}'");
         }
@@ -602,10 +604,116 @@ public partial class NameResolutionDifferentialTests
 
         AssertNoProblems(failures, "N3 promises the later order prints what the earlier order prints");
 
-        // Measured literals: a generator that stops spelling the order token pairs nothing, and an absence of failures would read green.
-        judged.Should().BeGreaterThanOrEqualTo(1000, "D3.2's floor, ahead of the literal so that it can be the assertion that fails");
+        // Measured literals: a generator that stops spelling the order token pairs nothing, and an absence of failures would read green. This counts the pairs read and is no
+        // coverage claim on the models: most of them python or Sharpy reads as well, and the sweep's judgedPairsReadByNothingElse says how many the pairing alone holds.
+        judged.Count.Should().BeGreaterThanOrEqualTo(1000, "D3.2's floor, ahead of the literal so that it can be the assertion that fails");
         pairs.Should().Be(1741);
-        judged.Should().Be(1276);
+        judged.Count.Should().Be(1276);
+    }
+
+    /// <summary>Why no check reads a model, each a key of <see cref="ModelsReadByNothingCensus"/>.</summary>
+    internal const string UnreadEarlierTwinRaises = "the earlier twin raises in python too", UnreadNoOrderToPair = "no later order to pair",
+        UnreadSeedRaises = "a seed python answers with a raise", UnreadDeviationRow = "a deviation row excuses python";
+
+    /// <summary>The contract "every recorded model is read by a check", as far as it can be kept: the models a run read by nothing, per reason. Sharpy reads a model when a program ran and matched it (a
+    /// SilentWrong row is red under any model, so it reads nothing), python when it ran the twin and no deviation row excuses it, and <see cref="ModelPairing"/> when the earlier twin ran.
+    /// THE LIMIT, stated plainly: a count holds the set's size and not its values. Flipping one of these models is still green; a new unread model is red. A cure that makes a program run reads its model and moves this table, so a drain plan re-takes it.</summary>
+    internal static readonly IReadOnlyDictionary<string, int> ModelsReadByNothingCensus = new Dictionary<string, int>(StringComparer.Ordinal)
+    {
+        // `H.x` in H's own body and `A.x` above `type A`: python has no earlier order that runs, because the class is not bound inside its body at either order.
+        // 39 of them are refused and 6 run with a wrong value, whose SilentWrong row reads no model.
+        [UnreadEarlierTwinRaises] = 45,
+        // read/str's load-time reads and the Alias cells at the earlier order: the axis spells no twin. The twin would be a program the pool does not hold.
+        [UnreadNoOrderToPair] = 20,
+        // Seed reads of a later binding: python raises, and the seed table has no earlier order. 18 are refused and 7 run with a wrong value.
+        [UnreadSeedRaises] = 25,
+        [UnreadDeviationRow] = 1,
+    };
+
+    internal sealed record ModelReadCensus(IReadOnlyDictionary<string, IReadOnlyList<string>> Unread, int JudgedPairs, int JudgedPairsReadByNothingElse)
+    {
+        public int UnreadCount => Unread.Values.Sum(ids => ids.Count);
+    }
+
+    internal static ModelReadCensus ModelReaders(IEnumerable<CellResult> results, IReadOnlySet<string> judgedPairs)
+    {
+        var unread = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        int pairsAlone = 0;
+        foreach (var r in results.Where(r => r.Cell.Tag is SharpyTag.MustRun or SharpyTag.MayRefuse))
+        {
+            var sharpyReads = r.Kind == SharpyKind.Ran && r.Class == VerdictClass.Match;
+            var pythonReads = r.Python.Kind == PyKind.Ran && r.Cell.Deviation == null;
+            if (sharpyReads || pythonReads)
+                continue;
+            if (judgedPairs.Contains(r.Cell.Id))
+            {
+                pairsAlone++;
+                continue;
+            }
+            var reason = r.Cell.Family == Family.Seed ? UnreadSeedRaises
+                : r.Cell.Deviation != null && r.Python.Kind == PyKind.Ran ? UnreadDeviationRow
+                : EarlierOrderTwinId(r.Cell) != null ? UnreadEarlierTwinRaises
+                : UnreadNoOrderToPair;
+            if (!unread.TryGetValue(reason, out var ids))
+                unread[reason] = ids = new List<string>();
+            ids.Add(r.Cell.Id);
+        }
+        return new ModelReadCensus(unread.ToDictionary(e => e.Key, e => (IReadOnlyList<string>)e.Value, StringComparer.Ordinal), judgedPairs.Count, pairsAlone);
+    }
+
+    internal static IEnumerable<string> ModelReaderFailures(ModelReadCensus census, IReadOnlyDictionary<string, int> pinned)
+    {
+        foreach (var reason in census.Unread.Keys.Union(pinned.Keys, StringComparer.Ordinal).OrderBy(r => r, StringComparer.Ordinal))
+        {
+            var ids = census.Unread.GetValueOrDefault(reason) ?? Array.Empty<string>();
+            if (ids.Count != pinned.GetValueOrDefault(reason))
+                yield return $"ModelsReadByNothing: '{reason}' is pinned at {pinned.GetValueOrDefault(reason)} and measured {ids.Count}, among them {string.Join(", ", ids.Take(5))}";
+        }
+    }
+
+    /// <summary>Each reader on literals, and a model nothing reads lands on its reason. The census is red on a new unread model, which is all a count can do: see its comment.</summary>
+    [Fact]
+    public void ModelReaders_CountsWhatNoCheckReads()
+    {
+        static SharpyRun Run() => new(true, 0, false, false, "1", "", Array.Empty<string>(), Array.Empty<string>(), null);
+        static CellResult Result(NameCell cell, SharpyKind kind, PyOutcome python, VerdictClass verdict) => new(cell, Run(), kind, python, verdict, null);
+        NameCell Cell(string id, Family family = Family.Read, string? deviation = null) => new()
+        {
+            Id = id,
+            Family = family,
+            Source = "",
+            Tag = SharpyTag.MustRun,
+            Model = "1",
+            Python = PyOutcome.Ran("1"),
+            Rule = "N1",
+            Deviation = deviation,
+        };
+        var raises = PyOutcome.Name("x");
+        var ran = PyOutcome.Ran("1");
+
+        var census = ModelReaders(new[]
+        {
+            Result(Cell("read/sharpy"), SharpyKind.Ran, raises, VerdictClass.Match),
+            Result(Cell("read/python"), SharpyKind.Refused, ran, VerdictClass.FalseRefusal),
+            Result(Cell("read/pair/Later"), SharpyKind.Refused, raises, VerdictClass.FalseRefusal),
+            Result(Cell("read/silent/Later/twin"), SharpyKind.Ran, raises, VerdictClass.SilentWrong),
+            Result(Cell("read/none"), SharpyKind.RuntimeThrow, raises, VerdictClass.RuntimeThrow),
+            Result(Cell("seed/A", Family.Seed), SharpyKind.Refused, raises, VerdictClass.FalseRefusal),
+            Result(Cell("local/row", Family.Local, "row"), SharpyKind.Refused, ran, VerdictClass.FalseRefusal),
+        }, new HashSet<string>(new[] { "read/pair/Later" }, StringComparer.Ordinal));
+
+        census.JudgedPairs.Should().Be(1);
+        census.JudgedPairsReadByNothingElse.Should().Be(1);
+        census.UnreadCount.Should().Be(4);
+        census.Unread[UnreadEarlierTwinRaises].Should().Equal("read/silent/Later/twin");
+        census.Unread[UnreadNoOrderToPair].Should().Equal("read/none");
+        census.Unread[UnreadSeedRaises].Should().Equal("seed/A");
+        census.Unread[UnreadDeviationRow].Should().Equal("local/row");
+
+        var pinned = new Dictionary<string, int> { [UnreadEarlierTwinRaises] = 1, [UnreadNoOrderToPair] = 1, [UnreadSeedRaises] = 1, [UnreadDeviationRow] = 1 };
+        ModelReaderFailures(census, pinned).Should().BeEmpty();
+        ModelReaderFailures(census, new Dictionary<string, int>(pinned) { [UnreadNoOrderToPair] = 0 }).Should().ContainSingle().Which.Should().Contain("read/none");
+        ModelsReadByNothingCensus.Keys.Should().BeEquivalentTo(pinned.Keys, "the reasons a model can be unread are the keys, and each is measured in the sweep");
     }
 
     // ------------------------------------------------------------------------------------------- //
