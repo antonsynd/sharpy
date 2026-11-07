@@ -1682,6 +1682,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
     /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
     /// </summary>
+    /// W1.2 round() (#2460, 2026-11-07): +1 on the four comment pins only — growth, from the new fixture stem
+    /// builtins/round_python_contract_2460, the PR's only corpus change; control: the gate 83727/0/9 @ b6c372d63
+    /// (run 42387682334) held the previous literals with that fixture absent; no lexer/parser/formatter/LSP change
+    /// (#2460 is Core-only).
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
@@ -1689,10 +1693,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1647,
-            [(Comment, RangeWhole)] = 1647,
-            [(Comment, RangeLine)] = 1643,
-            [(Comment, OnType)] = 1643,
+            [(Comment, Full)] = 1648,
+            [(Comment, RangeWhole)] = 1648,
+            [(Comment, RangeLine)] = 1644,
+            [(Comment, OnType)] = 1644,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,
