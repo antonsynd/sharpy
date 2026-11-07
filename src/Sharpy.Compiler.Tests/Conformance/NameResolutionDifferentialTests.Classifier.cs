@@ -102,6 +102,8 @@ public partial class NameResolutionDifferentialTests
         Assert.NotEqual(0, run.ExitCode);
         Assert.Empty(run.ErrorCodes);
         Assert.Equal(VerdictClass.RuntimeThrow, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.RuntimeThrow, run.Stdout));
+        // The compile path is muted, so this text is all a red has to say why: a throw has no code to name.
+        Assert.Contains("ValueError", Describe(new CellResult(CellTagged(SharpyTag.MustRun, "1"), run, SharpyKind.RuntimeThrow, PyOutcome.Ran("1"), VerdictClass.RuntimeThrow, null)), StringComparison.Ordinal);
     }
 
     /// <summary>The positive control of "never SPY0908": a C#-compile failure reaches the classifier through the mapped

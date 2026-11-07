@@ -51,6 +51,11 @@ public class TestResultOutputTests
 
         public void Write(string message) => Output.WriteLine(message);
 
+        public string FailureOf(string source, int maxCharacters = 600) => CompileAndExecute(source, "main.spy").FailureSummary(maxCharacters);
+
+        public static string SummaryOf(string stderr = "", bool timedOut = false, Exception? exception = null)
+            => new ExecutionResult { StandardError = stderr, TimedOut = timedOut, Exception = exception }.FailureSummary();
+
         protected override void DisposeTestResources() => Released = true;
     }
 
@@ -145,6 +150,33 @@ public class TestResultOutputTests
         underCeiling.Write(Line(TestResultOutput.CharacterCeiling));
         underCeiling.Dispose();
         Assert.True(underCeiling.Released);
+    }
+
+    /// <summary>A run has reasons no compile reaches: a timeout with what the program wrote so far, and an exception out of
+    /// the harness. Each is said once: a crash's stderr is already inside its compile error.</summary>
+    [Fact]
+    public void FailureSummary_SaysEachOtherReason_Once()
+    {
+        Assert.Equal("timed out; stderr: partial", Probe.SummaryOf(stderr: "partial\n", timedOut: true));
+        Assert.Equal("harness threw", Probe.SummaryOf(exception: new InvalidOperationException("harness threw")));
+
+        var crash = new Probe(new RecordingOutput(), mute: true).FailureOf("def main() -> None:\n    raise ValueError(\"x\")\n");
+        Assert.DoesNotContain("stderr:", crash, StringComparison.Ordinal);
+    }
+
+    /// <summary>What a muted class has left to say why: a refusal's code, a throw's type, and a bound on either.</summary>
+    [Fact]
+    public void FailureSummary_NamesTheCodeOrTheThrow_WithinItsBound()
+    {
+        var probe = new Probe(new RecordingOutput(), mute: true);
+
+        Assert.Contains("SPY0200", probe.FailureOf("def main() -> None:\n    print(no_such_name)\n"), StringComparison.Ordinal);
+        Assert.Contains("ValueError", probe.FailureOf("def main() -> None:\n    raise ValueError(\"x\")\n"), StringComparison.Ordinal);
+        Assert.Equal("", probe.FailureOf(Program));
+
+        var bounded = probe.FailureOf("def main() -> None:\n    print(no_such_name)\n", maxCharacters: 10);
+        Assert.Equal(11, bounded.Length);
+        Assert.EndsWith("…", bounded, StringComparison.Ordinal);
     }
 
     [Theory]

@@ -802,10 +802,19 @@ public partial class NameResolutionDifferentialTests
     /// <summary>A seed cell's python column is its verdict from the seed table (the renderer facts' control), not a batch run.</summary>
     private static string PythonText(CellResult r) => r.Cell.SeedPythonVerdict ?? r.Python.ToString();
 
+    /// <summary>The verdict's text: a refusal and an internal failure are their codes, and a throw, which has none, is
+    /// what the program wrote on the way out.</summary>
     private static string Describe(CellResult r)
         => r.Kind == SharpyKind.Ran
             ? $"Ran '{Normalize(r.Run.Stdout)}'"
-            : $"{r.Kind} [{string.Join(",", r.Run.AllCodes.Distinct())}{(r.Run.CsCode != null ? " " + r.Run.CsCode : "")}]";
+            : $"{r.Kind} [{string.Join(",", r.Run.AllCodes.Distinct())}{(r.Run.CsCode != null ? " " + r.Run.CsCode : "")}]"
+                + (r.Kind == SharpyKind.RuntimeThrow ? $" stderr '{FirstLineBounded(r.Run.Stderr)}'" : "");
+
+    private static string FirstLineBounded(string text)
+    {
+        var line = text.TrimStart().Split('\n', 2)[0].TrimEnd();
+        return line.Length <= 200 ? line : line[..200] + "…";
+    }
 
     internal sealed record CellResult(
         NameCell Cell, SharpyRun Run, SharpyKind Kind, PyOutcome Python, VerdictClass Class, string? Control);

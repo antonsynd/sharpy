@@ -139,7 +139,7 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
                         failures.Add($"{label}: expected exactly one SPY0609 '{message}', got "
                             + (result.Success
                                 ? $"a program that ran, printing '{result.StandardOutput.TrimEnd()}'"
-                                : string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))));
+                                : result.FailureSummary()));
                         continue;
                     }
 

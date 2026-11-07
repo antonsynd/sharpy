@@ -142,6 +142,20 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
         Assert.Equal("sharpy-only-node:WalrusExpression-in-comprehension", ExecSubsetFilter.RejectionShape(module));
     }
 
+    /// <summary>The compile path is muted here, so a failed arm's text exists only in what the verdict carries. This drives
+    /// a program that does not compile through the sweep's own arm and classifier: a red has to say why.</summary>
+    [Fact]
+    public void AnArmThatFailsToCompile_ItsVerdictNamesTheErrorsCode()
+    {
+        var arm = RunSharpyArm(new Program("t", "def main() -> None:\n    print(no_such_name)\n"));
+
+        var classification = Classify(arm, new PyResult(Ok: true, Stdout: "1\n", Stderr: "", TimedOut: false, SyntaxError: false));
+
+        Assert.False(arm.Ok);
+        Assert.Equal(Verdict.PythonOkSharpyError, classification.Verdict);
+        Assert.Contains("SPY0200", classification.Detail, StringComparison.Ordinal);
+    }
+
     // A parse error throws with its codes (AstRewriter.Parse — the seam's parser).
     private static Module ParseForSubset(string source) => AstRewriter.Parse(source);
 
@@ -165,12 +179,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
             // stdlib closure is a dozen assemblies including MathNet and the SQLite provider, and
             // copying it into ~550 temp execution directories that never import anything would
             // dominate the sweep's wall clock.
-            _currentProgramNeedsStdlib = p.NeedsStdlib;
-            var r = CompileAndExecute(p.Source, "diff_exec.spy", executionTimeoutMs: SharpyExecTimeoutMs);
-            sharpy[p.Key] = new ArmOutcome(
-                Ok: RanToCompletion(r),
-                Stdout: r.StandardOutput,
-                TimedOut: r.TimedOut);
+            sharpy[p.Key] = RunSharpyArm(p);
         }
 
         // --- Python arm: one batch process. Append main() so CPython invokes Sharpy's auto-entry. ---
@@ -312,6 +321,17 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
                 + "to empty instead of accumulating lines nobody revisits:\n"
                 + string.Join("\n", stale.Take(40).Select(k => $"  {k}")));
         }
+    }
+
+    private ArmOutcome RunSharpyArm(Program p)
+    {
+        _currentProgramNeedsStdlib = p.NeedsStdlib;
+        var r = CompileAndExecute(p.Source, "diff_exec.spy", executionTimeoutMs: SharpyExecTimeoutMs);
+        return new ArmOutcome(
+            Ok: RanToCompletion(r),
+            Stdout: r.StandardOutput,
+            TimedOut: r.TimedOut,
+            Failure: r.FailureSummary());
     }
 
     // ----------------------------------------------------------------------------------------- //
@@ -1162,7 +1182,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
 
         return new(Verdict.PythonOkSharpyError,
             $"python ran (stdout={Quote(python.Stdout)}) but sharpy failed"
-            + (sharpy.TimedOut ? " (timeout)" : ""));
+            + (sharpy.TimedOut ? " (timeout)" : $": {sharpy.Failure}"));
     }
 
     /// <summary>
@@ -1887,6 +1907,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
                 detail = r.Detail,
                 sharpyOk = r.Sharpy.Ok,
                 sharpyStdout = r.Sharpy.Stdout,
+                sharpyFailure = r.Sharpy.Failure,
                 pythonOk = r.Python?.Ok,
                 pythonStdout = r.Python?.Stdout,
                 pythonStderr = FirstLine(r.Python?.Stderr ?? ""),
@@ -2045,7 +2066,7 @@ public partial class DifferentialExecutionTests : IntegrationTestBase
 
     private sealed record Corpus(List<Program> Programs, FixturePool FixturePool);
 
-    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut);
+    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut, string Failure);
 
     private sealed record Classification(Verdict Verdict, string Detail, string SkipClass = "");
 

@@ -203,6 +203,27 @@ public abstract class IntegrationTestBase : IDisposable
         /// May be empty for errors originating from the C# compilation or execution phases.
         /// </summary>
         public List<CompilerDiagnostic> RawDiagnostics { get; init; } = new();
+
+        /// <summary>
+        /// Why this run did not succeed, on one line and at most <paramref name="maxCharacters"/> characters: the error
+        /// diagnostics with their codes, any other compile error, the exception, the timeout and stderr. A class that mutes
+        /// the compile path has only its own messages to say why, and a sweep keeps one of these per program, so it is
+        /// bounded here rather than at each message.
+        /// </summary>
+        public string FailureSummary(int maxCharacters = 600)
+        {
+            var parts = RawDiagnostics.Where(d => d.IsError).Select(d => $"{d.Code}: {d.Message}").ToList();
+            parts.AddRange(CompilationErrors.Where(e => !parts.Any(p => p.Contains(e, StringComparison.Ordinal))));
+            if (Exception != null && !parts.Any(p => p.Contains(Exception.Message, StringComparison.Ordinal)))
+                parts.Add(Exception.Message);
+            if (TimedOut)
+                parts.Add("timed out");
+            if (!string.IsNullOrWhiteSpace(StandardError) && !parts.Any(p => p.Contains(StandardError.Trim(), StringComparison.Ordinal)))
+                parts.Add("stderr: " + StandardError.Trim());
+
+            var text = string.Join("; ", parts).ReplaceLineEndings(" ");
+            return text.Length <= maxCharacters ? text : text[..maxCharacters] + "…";
+        }
     }
 
     /// <summary>
