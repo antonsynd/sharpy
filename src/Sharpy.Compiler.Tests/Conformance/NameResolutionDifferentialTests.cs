@@ -368,10 +368,14 @@ public partial class NameResolutionDifferentialTests
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
+        // N1-arity: nothing refuses today (the CS1501 ICE is #2423's), so the entry is a ratchet: a refusal under this rule is red until it names its code.
+        ["N1-arity"] = Array.Empty<string>(),
         ["R-KG"] = new[] { "SPY0200" },
         // R-KT: nothing refuses a struct `self` capture today, and the refusal's code lands with #2434.
         ["R-KT"] = Array.Empty<string>(),
         ["R1(b)"] = new[] { "SPY0200" },
+        // S2: a capture past its block over a visible outer runs today, and the refusal's code lands with #2425. Empty, so the entry is a ratchet.
+        ["S2"] = Array.Empty<string>(),
         ["S3"] = new[] { "SPY0200", "SPY0230" },
         ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },

@@ -1332,6 +1332,9 @@ public partial class NameResolutionDifferentialTests
         foreach (var c in pool.Where(c => c.Deviation != null && !DeviationAxesHold(c)).Take(20))
             yield return $"DeviationAxes: {c.Id} cites {c.Deviation} and its axes are not that row's";
 
+        foreach (var failure in RuleAxesFailures(pool))
+            yield return failure;
+
         // N3's cycles are the one question where a throw also keeps the promise. Any other rule under this tag would read a throw as agreement.
         foreach (var c in pool.Where(c => c.Tag == SharpyTag.MustRefuseOrThrow && c.Rule is not ("N3-cycle" or "seed")).Take(20))
             yield return $"MustRefuseOrThrow: {c.Id} under rule {c.Rule}, and only an N3 cycle may refuse or throw";
