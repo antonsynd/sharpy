@@ -38,7 +38,7 @@ public class PythonOracleSkipCensusTests
 
     private sealed record Violation(string File, int Line, string Rule);
 
-    private static IEnumerable<string> TestSourceFiles(string repoRoot)
+    internal static IEnumerable<string> TestSourceFiles(string repoRoot)
     {
         var src = Path.Combine(repoRoot, "src");
         var roots = Directory.GetDirectories(src)

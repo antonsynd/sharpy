@@ -29,7 +29,8 @@ namespace Sharpy.TestInfrastructure.Integration;
 /// <remarks>
 /// A test class's output goes through <see cref="TestResultOutput"/>, which bounds what one test may leave in its
 /// result. <see cref="Dispose"/> carries the verdict, so a subclass with something to release overrides
-/// <see cref="DisposeTestResources"/>.
+/// <see cref="DisposeTestResources"/>. A subclass writes through <see cref="Output"/>, never a helper of its own: both
+/// are held by <c>TestResultOutputTests.NoIntegrationTestBaseSubclass_WritesAroundTheCeiling_OrDropsItsVerdict</c>.
 /// </remarks>
 public abstract class IntegrationTestBase : IDisposable
 {
@@ -167,7 +168,8 @@ public abstract class IntegrationTestBase : IDisposable
     }
 
     /// <summary>What a subclass releases when the test ends. <see cref="Dispose"/> is not virtual so that a subclass
-    /// cannot drop the ceiling's verdict by forgetting a base call.</summary>
+    /// cannot drop the ceiling's verdict by forgetting a base call. C# still lets one re-implement
+    /// <see cref="IDisposable"/> to the same effect, which only the scan named in the class's remarks refuses.</summary>
     protected virtual void DisposeTestResources()
     {
     }
