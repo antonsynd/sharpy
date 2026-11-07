@@ -24,6 +24,7 @@ Read the plan file completely before proceeding.
 ## Operational contract (applies to every command below)
 
 - **Every `dotnet` invocation goes through `.claude/scripts/dotnet-serialized`** (drop-in: same args, output, exit code). Raw `dotnet` is blocked by `.claude/hooks/enforce-dotnet-serialized.sh`. The wrapper must run with `dangerouslyDisableSandbox: true` (sandboxed callers exit 125); `gh` needs the same.
+- **The whole-solution gate is `/ci-gate`** (GitHub CI at the pushed commit, ~20 min). The local wrapper command is its fallback when it exits 3, recorded as such in the report (contract §6). `dotnet` for builds, regeneration, mutations and probes stays local.
 - Output is teed to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (`-latest.log` symlinks the newest, and may rotate to a *peer's* run — check the `Test run for <path>` line and the binary timestamp before trusting a log). Read logs instead of re-running (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901).
 - **Counts carry their sha:** every number in this skill's outputs is written `passed/failed/skipped @ <sha> (measured)`. A derived number is never written in that format.
 - Commits use the trailer the harness provides for this session; never hard-code a model name.
@@ -57,9 +58,9 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 ### 3. Establish the baseline @ HEAD
 
 - `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed. If it fails, **stop and report** (the implementation is broken; nothing downstream can be measured).
-- `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` — run in the **background** and continue with the read-only steps; record `passed/failed/skipped @ HEAD (measured)` when it returns. This is the commit gate (contract §6); a filtered run is never a substitute.
+- Push HEAD's branch and run `/ci-gate` in the **background**, continuing with the read-only steps; record `passed/failed/skipped @ HEAD (measured)` when it returns. This is the commit gate (contract §6); a filtered run is never a substitute. If HEAD already has a green dispatched run, read it with `.claude/scripts/ci-gate --run <id>` instead of running another.
 - `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — record whether formatting is clean (raw `dotnet format` is hook-blocked).
-- If the working tree is dirty with a peer's work, do the build and gate in a `git worktree add ../sharpy.worktrees/wt-head HEAD` instead of the shared tree.
+- If the working tree is dirty with a peer's work, do the build (and a local gate, if it falls back to one) in a `git worktree add ../sharpy.worktrees/wt-head HEAD` instead of the shared tree. CI is unaffected: it measures the pushed commit.
 
 ### 4. Identify the plan's deliverables
 
@@ -142,29 +143,32 @@ before committing; never `git add -A` or `git add .`. Restore a mutation-test fr
 made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
 with `dangerouslyDisableSandbox: true`.
 
-1. Whole-solution gate at HEAD, in a worktree so peers' edits cannot move under you:
+1. Whole-solution gate at HEAD: if the lead's `/ci-gate` already reported a run for $HEAD, read it
+   with `.claude/scripts/ci-gate --run <id>` and confirm the sha. Otherwise run `.claude/scripts/ci-gate`
+   on the pushed branch whose tip is $HEAD. A filtered run is not the gate. Only on exit 3, fall back
+   to the local gate, in a worktree so peers' edits cannot move under you:
    `git worktree add ../sharpy.worktrees/wt-verify-head $HEAD` then, inside it,
    `.claude/scripts/dotnet-serialized build sharpy.sln` and
    `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`.
-   A filtered run is not the gate. A log whose binaries predate the build is not a green.
-   (If the lead's background gate already produced a log for $HEAD, read it — but confirm the
-   `Test run for` lines and timestamps belong to $HEAD.)
+   A log whose binaries predate the build is not a green; confirm its `Test run for` lines and
+   timestamps belong to $HEAD.
 
 2. CONTROL RUN before attributing any red: for every failing test, run the SAME test (same filter)
-   in a worktree at $BASE: `git worktree add ../sharpy.worktrees/wt-verify-base $BASE`. Red at HEAD and
+   in a worktree at $BASE: `git worktree add ../sharpy.worktrees/wt-verify-base $BASE`. When many
+   tests are red, use a whole-run control instead (`/ci-gate` › Control runs). Red at HEAD and
    green at BASE = regression. Red at both = pre-existing; report it, do not attribute it. Also
    triage any red against the open-class list in the parent round plan (ILCompiles/CsClean fresh
    seeds re-roll open classes — a red may be a fresh-seed discovery, not this plan's doing).
 
 3. Blast-radius sweeps the plan names (Adversarial Review › Blast radius), and always when the
-   range touches Semantic/ or CodeGen/: Sharpy.Stdlib.Tests and Sharpy.Cli.Tests are in the gate;
-   run separately with the wrapper:
+   range touches Semantic/ or CodeGen/: Sharpy.Stdlib.Tests and Sharpy.Cli.Tests are in the gate,
+   and a CI gate runs each sweep below in its own step, so report them from that run. Run one with
+   the wrapper only to probe a red or when the gate fell back to local:
    - `--filter "FullyQualifiedName~FrontEndParityTests"` (LSP parity)
    - `--filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"`
    - `--filter "Category=GapDiscovery&FullyQualifiedName~MetamorphicCorpus"`
    - `--filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution"`
-   CI runs these as separate steps and excludes them from the main Compiler step, so the gate
-   alone does not cover them.
+   CI excludes the sweeps from its main Compiler step, so a run of that step alone does not cover them.
 
 4. Regenerate generated artifacts in the HEAD worktree and READ THE DIFF AS FINDINGS:
    `build_tools/regenerate_spy_stdlib.sh` (spy-sourced stdlib C#), the spy-test C# regen, stdlib
@@ -414,8 +418,8 @@ After all fixes are committed (`FINAL=<sha>`):
 
 1. `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed
 2. Regeneration is clean: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger produce no diff at `$FINAL` (the `/push` staleness gates)
-3. `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` — whole solution, `@ $FINAL (measured)`; no red that was green at `$BASE`; pass count ≥ the `$HEAD` baseline minus any tests deliberately removed (say which)
-4. The blast-radius sweeps Agent 2 ran (`FrontEndParityTests`, `InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution` as the plan names them) — re-run those the fixes reach
+3. Push `$FINAL` and run `/ci-gate` (the local fallback on exit 3) — whole solution, `@ $FINAL (measured)`; no red that was green at `$BASE`; pass count ≥ the `$HEAD` baseline minus any tests deliberately removed (say which)
+4. The blast-radius sweeps Agent 2 ran (`FrontEndParityTests`, `InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution` as the plan names them) — a CI gate at `$FINAL` already re-ran them; after a local fallback, re-run those the fixes reach
 5. `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — clean
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome

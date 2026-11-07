@@ -24,6 +24,10 @@
 # A README.md-only change (README is a trigger path because the windows job runs its hello world)
 # skips `format`, `build` and everything under it: `changes` decides, `windows` still runs, and
 # ci-summary then expects only the windows trx.
+#
+# This workflow is the default commit gate (docs/design/verification-contract.md section 6). Every
+# PR runs it, and `.claude/scripts/ci-gate` dispatches it at a branch tip with no PR at all, so a
+# do-not-merge PR is never needed to reach it.
 
 name: .NET 10
 
@@ -37,8 +41,9 @@ on:
       - '.github/workflows/dotnet10.yml'
       - 'build_tools/smoke_hello.sh'
       - 'README.md'
+  # Every PR, whatever its base: restricting this to `mainline` is what made a do-not-merge PR the
+  # only way to gate a PR into `dev`. A pull_request run tests the merge into the base, not the head.
   pull_request:
-    branches: [ "mainline" ]
     paths:
       - 'src/**'
       - 'Directory.Build.props'
@@ -46,6 +51,16 @@ on:
       - '.github/workflows/dotnet10.yml'
       - 'build_tools/smoke_hello.sh'
       - 'README.md'
+  # The gate at an exact commit, with no PR: `.claude/scripts/ci-gate`. Path filters don't apply, and
+  # `changes` treats the unknown range as a code change, so a dispatch always runs the full suite.
+  workflow_dispatch:
+
+# A newer push to a PR cancels that PR's run. Everything else gets a group of its own, because
+# GitHub keeps only one PENDING run per group and replaces it, even with cancel-in-progress off: a
+# group shared by `mainline` pushes would silently drop the middle of a stack of them.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -777,7 +792,7 @@ jobs:
         if os.environ.get("CODE") == "false":
             expected = ["windows"]
         found = {os.path.basename(p)[:-4]: p for p in glob.glob("trx/**/*.trx", recursive=True)}
-        rows, problems, classes = [], [], []
+        rows, problems, classes, failed_tests = [], [], [], []
         sums = {"compiler": [0, 0, 0, 0], "lsp": [0, 0, 0, 0]}
         def stamp(s):
             # trx stamps carry 7 fractional digits; fromisoformat takes at most 6 before Python 3.11.
@@ -797,6 +812,7 @@ jobs:
             # NotExecuted, so count those.
             skipped = sum(1 for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "NotExecuted")
             vals = [int(c.get(a, "0")) for a in ("total", "passed", "failed")] + [skipped]
+            failed_tests += [r.get("testName", "?") for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "Failed"]
             if vals[0] == 0:
                 problems.append(f"{name}: zero tests")
             for suite in sums:
@@ -815,8 +831,13 @@ jobs:
                 k[2] = start if k[2] is None else min(k[2], start)
                 k[3] = end if k[3] is None else max(k[3], end)
             classes += [(name, cls, n, busy, (end - start).total_seconds()) for cls, (n, busy, start, end) in per.items()]
+        # The gate's one total, read by .claude/scripts/ci-gate (build_tools/tests/test_ci_gate.py pins
+        # the format). Windows re-runs tests the shards already count, so it stays out of the total.
+        counted = [r for r in rows if r[0] != "windows" and r[1] != "-"]
+        gate = [sum(r[i] for r in counted) for i in (1, 2, 3, 4)]
         for suite, total in sums.items():
             rows.append((f"{suite} (sum of shards)", *total))
+        rows.append(("gate total (all but windows)", *gate))
         lines = ["| trx | Total | Passed | Failed | Skipped |", "|---|---:|---:|---:|---:|"]
         lines += [f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} |" for r in rows]
         classes.sort(key=lambda c: -c[4])
@@ -825,6 +846,9 @@ jobs:
         lines += [f"| {t} | {cls} | {n} | {span:.0f} | {busy:.0f} |" for t, cls, n, busy, span in classes[:25]]
         lines += ["", "</details>"]
         print("\n".join(lines))
+        print(f"GATE-COUNTS passed={gate[1]} failed={gate[2]} skipped={gate[3]}")
+        for name in failed_tests:
+            print(f"GATE-FAILED {name}")
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
             f.write("\n".join(lines) + "\n")
         for p in problems:
