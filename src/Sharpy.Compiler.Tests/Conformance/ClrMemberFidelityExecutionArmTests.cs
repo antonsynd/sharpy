@@ -29,7 +29,7 @@ public class ClrMemberFidelityExecutionArmTests : IntegrationTestBase
 {
     private readonly ITestOutputHelper _output;
 
-    public ClrMemberFidelityExecutionArmTests(ITestOutputHelper output) : base(output) => _output = output;
+    public ClrMemberFidelityExecutionArmTests(ITestOutputHelper output) : base(output) => _output = Output;
 
     /// <summary>
     /// The probe is capable of hitting: a program whose generated C# genuinely fails to compile

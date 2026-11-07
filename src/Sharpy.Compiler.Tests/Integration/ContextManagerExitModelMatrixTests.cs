@@ -47,7 +47,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// </summary>
 public class ContextManagerExitModelMatrixTests : IntegrationTestBase
 {
-    public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output) { }
+    public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     // ── Axes ──
 
@@ -89,8 +89,7 @@ public class ContextManagerExitModelMatrixTests : IntegrationTestBase
                 }
                 if (!result.RawDiagnostics.Any(d => d.Code == cell.RefusalCode))
                 {
-                    failures.Add($"{cell.Label}: expected {cell.RefusalCode} but got "
-                                 + string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+                    failures.Add($"{cell.Label}: expected {cell.RefusalCode} but got " + result.FailureSummary());
                 }
                 // Never a C#-compile refusal wearing a diagnostic: SPY0908 means the generated C#
                 // did not compile, which is the failure mode the named refusals replace.
@@ -101,8 +100,7 @@ public class ContextManagerExitModelMatrixTests : IntegrationTestBase
 
             if (!result.Success)
             {
-                failures.Add($"{cell.Label}: expected to run but failed: "
-                             + string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+                failures.Add($"{cell.Label}: expected to run but failed: " + result.FailureSummary());
                 continue;
             }
 

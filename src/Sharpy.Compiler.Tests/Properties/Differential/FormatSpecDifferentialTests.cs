@@ -38,7 +38,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// because the '#' alternate form diverges most visibly there (<c>format(3.0, "#g")</c> is
 /// <c>3.00000</c>; the point and the trailing zeros are exactly what '#' keeps, #1958). No cell is
 /// excluded at generation: every drawn spec, '#' included, is compared. Skips (no-op) when a
-/// suitable python3 is absent; CI pins 3.12.</para>
+/// suitable python3 is absent, except on CI, which pins 3.12 and fails instead.</para>
 ///
 /// <para>Where the three consumers (format(), str.format, f-strings) are tied together by
 /// <c>FormatEngineConsumerParityTests</c>, this generator only needs the format() route.</para>
@@ -46,7 +46,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 [Trait("Category", "GapDiscovery")]
 public class FormatSpecDifferentialTests : IntegrationTestBase
 {
-    public FormatSpecDifferentialTests(ITestOutputHelper output) : base(output) { }
+    public FormatSpecDifferentialTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     // A fixed integer seed drives a System.Random so the generated corpus is byte-for-byte identical
     // run-to-run and machine-to-machine on a pinned runtime — a sweep whose inputs drift cannot be
@@ -138,12 +138,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         {
             foreach (var column in Columns)
             {
-                var r = CompileAndExecute(ProgramFor(cell, column, forPython: false), "format_spec_diff.spy", executionTimeoutMs: SharpyExecTimeoutMs);
-                var staticRefusals = r.RawDiagnostics
-                    .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
-                    .Select(d => d.Message)
-                    .ToList();
-                sharpy[cell.Key(column)] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
+                sharpy[cell.Key(column)] = RunSharpyArm(ProgramFor(cell, column, forPython: false), "format_spec_diff.spy");
             }
         }
 
@@ -160,6 +155,8 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
         var allowlist = Allowlist.Load();
         var divergences = new List<(Cell Cell, Column Column, string Detail, bool Allowlisted)>();
+        var missingVerdicts = new List<string>();
+        int pythonSyntaxErrors = 0, pythonTimeouts = 0, sharpyTimeouts = 0;
         int staticAgreements = 0;
         for (int i = 0; i < cells.Count; i++)
         {
@@ -171,8 +168,22 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                 var s = sharpy[key];
                 pythonById.TryGetValue(i * Columns.Length + c, out var py);
 
+                // A cell the oracle never judged is a generator bug: it fails the sweep below.
+                if (py is null)
+                {
+                    missingVerdicts.Add(key);
+                    continue;
+                }
+
                 // The Python side must have run the cell (no syntax error, no timeout) to be an oracle.
-                if (py is null || py.SyntaxError || py.TimedOut || s.TimedOut)
+                // These keep their skip, and the report counts them.
+                if (py.SyntaxError)
+                    pythonSyntaxErrors++;
+                else if (py.TimedOut)
+                    pythonTimeouts++;
+                else if (s.TimedOut)
+                    sharpyTimeouts++;
+                if (py.SyntaxError || py.TimedOut || s.TimedOut)
                     continue;
 
                 string sharpyOut = Normalize(s.Stdout);
@@ -185,10 +196,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                 }
                 else if (!s.Ok)
                 {
-                    string refusals = s.StaticRefusals.Count > 0 ? " SPY0609='" + string.Join("' / '", s.StaticRefusals) + "'" : "";
-                    divergences.Add((cell, column,
-                        $"Sharpy failed to compile/run (python ok): spec='{cell.Spec}' pyout='{pythonOut}'{refusals}",
-                        allowlist.Matches(key)));
+                    divergences.Add((cell, column, SharpyFailedDetail(cell.Spec, pythonOut, s), allowlist.Matches(key)));
                 }
                 else if (column == Column.Static && IsCPythonRefusal(pythonOut))
                 {
@@ -225,12 +233,18 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             + $"engine column {engineDivergent} divergent, static column {staticDivergent} divergent "
             + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError/TypeError wording, "
             + $"{staticRuntimeOnly} refused only at runtime); "
-            + $"{eqPrefixCells} '='+'#'+radix cells. Wall={sw.Elapsed.TotalSeconds:F1}s.");
+            + $"{eqPrefixCells} '='+'#'+radix cells; {missingVerdicts.Count} missing python verdicts; skipped "
+            + $"{pythonSyntaxErrors} python syntax errors, {pythonTimeouts} python timeouts, {sharpyTimeouts} Sharpy timeouts. "
+            + $"Wall={sw.Elapsed.TotalSeconds:F1}s.");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE {o.Cell.Key(o.Column)}  {o.Detail}");
         foreach (var k in stale)
             Output.WriteLine($"  STALE {k}");
 
+        Assert.True(missingVerdicts.Count == 0,
+            $"Format-spec differential: missingVerdicts {missingVerdicts.Count}: python3 returned no verdict for these cells, "
+            + "so the batch and the corpus disagree:\n"
+            + string.Join("\n", missingVerdicts.Take(40).Select(k => "  " + k)));
         Assert.True(offenders.Count == 0,
             $"Format-spec differential: {offenders.Count} non-allowlisted divergence(s) between Sharpy and python3. "
             + "Fix the engine, or add an allowlist entry citing an issue:\n"
@@ -242,6 +256,31 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             $"Format-spec differential: only {staticAgreements} static-column cell(s) agree by a compile-time SPY0609 "
             + $"(< {StaticTwinAgreementFloor}): the static twin no longer refuses the literal specs CPython refuses.");
     }
+
+    /// <summary>The compile path is muted here, so a failed arm's text exists only in what its divergence carries. This
+    /// drives a program that does not compile through the sweep's own arm and detail: a red has to say why, past the
+    /// SPY0609 refusals the arm collects anyway.</summary>
+    [Fact]
+    public void AnArmThatFailsToCompile_ItsDetailNamesTheErrorsCode()
+    {
+        var arm = RunSharpyArm("def main() -> None:\n    print(no_such_name)\n", "format_spec_diff.spy");
+
+        Assert.False(arm.Ok);
+        Assert.Contains("SPY0200", SharpyFailedDetail("x", "1", arm), StringComparison.Ordinal);
+    }
+
+    private ArmOutcome RunSharpyArm(string source, string fileName)
+    {
+        var r = CompileAndExecute(source, fileName, executionTimeoutMs: SharpyExecTimeoutMs);
+        var staticRefusals = r.RawDiagnostics
+            .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
+            .Select(d => d.Message)
+            .ToList();
+        return new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals, r.FailureSummary());
+    }
+
+    private static string SharpyFailedDetail(string spec, string pythonOut, ArmOutcome s)
+        => $"Sharpy failed to compile/run (python ok): spec='{spec}' pyout='{pythonOut}': {s.Failure}";
 
     /// <summary>
     /// The grammar-totality stratum (#2017): cells the seeded generator cannot reach (its alphabet is
@@ -275,12 +314,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             {
                 int id = i * Columns.Length + c;
                 var (sharpySource, pythonSource) = cells[i].Programs(Columns[c]);
-                var r = CompileAndExecute(sharpySource, "format_grammar_stratum.spy", executionTimeoutMs: SharpyExecTimeoutMs);
-                var staticRefusals = r.RawDiagnostics
-                    .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
-                    .Select(d => d.Message)
-                    .ToList();
-                sharpy[id] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
+                sharpy[id] = RunSharpyArm(sharpySource, "format_grammar_stratum.spy");
                 requests.Add(new PyRequest(id, pythonSource + "\nmain()\n"));
             }
         }
@@ -311,8 +345,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                     agrees = sharpyOut == pythonOut && !(Columns[c] == Column.Static && cells[i].StaticSpec && IsCPythonRefusal(pythonOut));
                 if (!agrees)
                 {
-                    string refusals = s.StaticRefusals.Count > 0 ? " SPY0609='" + string.Join("' / '", s.StaticRefusals) + "'" : "";
-                    divergences.Add($"{key}: sharpy{(s.Ok ? "" : " (failed)")}='{sharpyOut}'{refusals} python='{pythonOut}'");
+                    divergences.Add($"{key}: sharpy{(s.Ok ? "" : " (failed)")}='{sharpyOut}' python='{pythonOut}'{(s.Ok ? "" : ": " + s.Failure)}");
                     continue;
                 }
                 if (!s.Ok)
@@ -780,7 +813,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         return sb.ToString();
     }
 
-    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut, IReadOnlyList<string> StaticRefusals);
+    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut, IReadOnlyList<string> StaticRefusals, string Failure);
 
     private sealed class Allowlist
     {

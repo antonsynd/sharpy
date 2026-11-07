@@ -18,7 +18,7 @@ public class GenericTypePropertyTests : IntegrationTestBase
 
     public GenericTypePropertyTests(ITestOutputHelper output) : base(output)
     {
-        _output = output;
+        _output = Output;
     }
 
     /// <summary>

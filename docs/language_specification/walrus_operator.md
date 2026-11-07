@@ -123,6 +123,17 @@ print(x)  # ERROR: 'x' does not exist in this scope
 
 **Departure from Python:** In Python 3.8+, walrus assignments inside comprehensions leak to the containing scope. Sharpy deliberately differs here for cleaner semantics: the syntactic boundary (`[...]`, `{...}`) equals the semantic boundary. Everything inside the comprehension delimiters stays inside.
 
+**A name that already exists outside:** the comprehension's binding stays inside, so a later read of the same name would see the outer value where Python sees the walrus's. That program is refused rather than printing something different. A module, parameter or enclosing outer read in the comprehension's own body is refused today as a use before assignment, and the rule's own diagnostic lands with #2425. Two shapes do not hold this yet: an outer declared in the same function runs and prints Python's value (the ruling is open on #2427), and an outer with no read in that body is written by the walrus (#2425):
+
+<!-- spec-sweep: error SPY0600 -->
+```python
+x: int = 5
+
+def f() -> None:
+    ys: list[int] = [(x := v * 2) for v in [3]]
+    print(x)  # ERROR: Python prints 6, and the module's x is 5
+```
+
 **If you need a value after the comprehension:**
 
 ```python
@@ -334,7 +345,7 @@ xs: list[int] = [1, 2, 3]
 r = [y for y in (t := xs)]   # error SPY0704: walrus operator not allowed in iterable
 ```
 
-A walrus in the **element** or **condition** position of a comprehension is accepted:
+A walrus in the **element** or **condition** position of a comprehension is accepted, unless it reuses a name that already exists outside and that name is read after it (see above):
 
 ```python
 def main() -> None:

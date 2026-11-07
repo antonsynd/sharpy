@@ -22,7 +22,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// should, and it fails when the thing it guards against actually happens. A guard only verified
 /// in its passing direction is the defect this whole class of work exists to remove.</para>
 /// </summary>
-public class FixtureExpectationSyntaxTests : FileBasedIntegrationTestsBase, IDisposable
+public class FixtureExpectationSyntaxTests : FileBasedIntegrationTestsBase
 {
     private readonly string _fixturesDir;
 
@@ -34,7 +34,7 @@ public class FixtureExpectationSyntaxTests : FileBasedIntegrationTestsBase, IDis
         Directory.CreateDirectory(_fixturesDir);
     }
 
-    public void Dispose()
+    protected override void DisposeTestResources()
     {
         try
         {

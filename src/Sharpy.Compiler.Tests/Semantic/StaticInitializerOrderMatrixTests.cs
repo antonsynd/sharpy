@@ -60,6 +60,7 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
 {
     public StaticInitializerOrderMatrixTests(ITestOutputHelper output) : base(output)
     {
+        MuteCompilePath = true;
     }
 
     /// <summary>The SPY0618 code (<c>DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead</c>), spelled as a

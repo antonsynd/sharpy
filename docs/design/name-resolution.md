@@ -69,8 +69,9 @@ def main() -> None:
 ### N2. Ambiguity is an error
 
 If reading top to bottom (Python) and reading by scope (N1) would give a name **different
-meanings**, Sharpy refuses. There is exactly one such place: **a class-body initializer that reads a
-member at or before that member's declaration, while an outer binding of the same name exists.**
+meanings**, Sharpy refuses. There are exactly two such places. The first: **a class-body initializer
+that reads a member at or before that member's declaration, while an outer binding of the same name
+exists.**
 
 ```python
 size: int = 8
@@ -86,6 +87,9 @@ class Box:
 
 The steer is "rename, or qualify". A Python-valid program therefore never silently changes meaning.
 Without the outer binding there is no ambiguity, and the forward read simply works (N3).
+
+The second: **a module-level initializer that reads a builtin or imported name at or before its own
+same-named declaration is refused.**
 
 *Today:* a later `@static`, property or method yields to the outer binding (prints `64`, Python's
 value), and a later literal `const` outranks it (prints Sharpy's value, not Python's). Census @
@@ -159,12 +163,16 @@ def main() -> None:
 ```
 
    The refusal applies to any visible binding the target reuses — local, enclosing or module. Without
-   a later read the program is legal and prints what Python prints.
+   a later read the program is legal and prints what Python prints. A walrus inside a comprehension is
+   the same shape: its binding is local to the comprehension, so where a visible outer name is read
+   after it, the program is refused (owner ruling 2026-11-06).
 3. Forward reads that Python rejects with `NameError` run (N1 + N3). This is an addition, not a
    divergence of output.
 
 *Today:* the target is a fresh binding and the later read silently sees the outer value. Census @
-d2d5cbcab: 4 refused sites (2 `for`, 2 `with`). Implemented by #2425.
+d2d5cbcab: 4 refused sites (2 `for`, 2 `with`). Implemented by #2425. A comprehension's walrus today is
+SPY0600 over a module, parameter or enclosing outer read in its own body, runs over an outer in the same
+function (ruling open on #2427), and writes an outer with no read in that body (#2425).
 
 ### N6. Writing across a function boundary needs a declaration
 

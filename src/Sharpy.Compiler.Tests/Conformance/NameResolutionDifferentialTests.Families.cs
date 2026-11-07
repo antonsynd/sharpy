@@ -186,7 +186,7 @@ public partial class NameResolutionDifferentialTests
                 var overwritten = s == StoreSpelling.Augmented || laterRead
                     ? PyOutcome.Other(s != StoreSpelling.Augmented && outer == BindingKind.ModuleEnum ? "AttributeError" : "TypeError")
                     : through;
-                return new Expected(SharpyTag.Unruled, null, overwritten, "unruled:N6-non-writable");
+                return Refuse(overwritten, "N6-type-kind");
             }
             return new Expected(SharpyTag.MustRun, through.Value, through, "N6");
         }
@@ -204,16 +204,13 @@ public partial class NameResolutionDifferentialTests
         if (IsTypeLevelMember(outer))
         {
             // variable_scoping.md, "Every store form is refused": a bare store to a class member is SPY0606 in every form, though
-            // python makes it a local. Only a method's name is still a local here: the spec's sentence reads as covering it and the
-            // compiler lets it through, and that question is posted on #2427.
-            return s == StoreSpelling.Augmented || !(outer is BindingKind.StaticMethod or BindingKind.InstanceMethod)
-                ? Refuse(pyNoDecl, "SPY0606")
-                : new Expected(SharpyTag.MustRun, local.Value, local, "R-Y");
+            // python makes it a local. R-LH: a method's name is a class member like any other.
+            return Refuse(pyNoDecl, "SPY0606");
         }
         if (IsConstKind(outer))
             return Refuse(pyNoDecl, "kind:SPY0225");
         if (IsNonWritableByMeaning(outer))
-            return new Expected(SharpyTag.Unruled, null, pyNoDecl, "unruled:N6-non-writable");
+            return Refuse(pyNoDecl, "N6-type-kind");
         return Refuse(pyNoDecl, "N6");
     }
 
@@ -265,7 +262,6 @@ public partial class NameResolutionDifferentialTests
             Outer = outer,
             Position = body,
             Form = FormEnum(s),
-            Shape = expected.Tag == SharpyTag.Unruled ? $"store-non-writable:{outer}:{(declared ? "global" : s.ToString())}" : null,
         };
     }
 
@@ -395,7 +391,8 @@ public partial class NameResolutionDifferentialTests
         {
             foreach (var u in moduleOuters)
                 yield return ModuleStoreCell(s, u, ReadPosition.FunctionBody, true, true, Order.Earlier, false);
-            foreach (var body in new[] { ReadPosition.MethodBody, ReadPosition.NestedDefInFunction })
+            // Assign and Augmented from a nested def are axis 12's shape, generated with the two other bodies it names.
+            foreach (var body in s == StoreSpelling.Walrus ? new[] { ReadPosition.MethodBody, ReadPosition.NestedDefInFunction } : new[] { ReadPosition.MethodBody })
                 yield return ModuleStoreCell(s, BindingKind.ModuleVar, body, true, true, Order.Earlier, false);
             yield return ModuleStoreCell(s, BindingKind.ModuleVar, ReadPosition.FunctionBody, true, true, Order.Later, false);
             foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
@@ -421,6 +418,33 @@ public partial class NameResolutionDifferentialTests
 
         foreach (var cell in BuiltinStoreCells())
             yield return cell;
+    }
+
+    /// <summary>Axis 12's one open door: `global y` with no module binding. Python creates the binding; N6 leaves the question to
+    /// #2424's plan, default no. Today SPY0134 refuses every `global` until that plan reinstates it.</summary>
+    private static IEnumerable<NameCell> GlobalCreatesBindingCells()
+    {
+        foreach (var s in new[] { StoreSpelling.Assign, StoreSpelling.Augmented })
+            foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
+            {
+                var (host, call) = Host(body, new[] { "global y", StoreText(s, "y"), "print(y)" });
+                var main = new List<string>(call) { "print(y)" };
+                yield return new NameCell
+                {
+                    Id = CellId("store", "declaration", "global-creates-binding", s, body),
+                    Family = Family.Store,
+                    Source = Join(host) + MainBlock(main.ToArray()),
+                    Tag = SharpyTag.Unruled,
+                    Python = s == StoreSpelling.Assign ? PyOutcome.Ran(JoinOut(15, 15)) : PyOutcome.Name("y"),
+                    Rule = "unruled:global-creates-binding",
+                    Target = BindingKind.None,
+                    Outer = BindingKind.None,
+                    Position = body,
+                    Form = FormEnum(s),
+                    Shape = "global-creates-binding",
+                    Declaration = DeclarationShapes.GlobalCreatesBinding,
+                };
+            }
     }
 
     private static NameCell LambdaWalrusCell(BindingKind outer)
@@ -459,10 +483,9 @@ public partial class NameResolutionDifferentialTests
             Id = CellId("store", "walrus-in-comprehension", $"outer={outer}", body),
             Family = Family.Store,
             Source = Join(lines) + MainBlock(call.ToArray()),
-            Tag = moduleOuter ? SharpyTag.MustRun : SharpyTag.MustRefuse,
-            Model = moduleOuter ? "5" : null,
+            Tag = SharpyTag.MustRefuse,
             Python = PyOutcome.Ran(6),
-            Rule = "N5",
+            Rule = moduleOuter ? "S2-walrus" : "N5",
             Deviation = "walrus-in-comprehension-scope",
             Target = outer,
             Outer = outer,
@@ -525,7 +548,12 @@ public partial class NameResolutionDifferentialTests
 
     private sealed record MemberShape(string Kind, string Member, string[] Decl, string Expr, int Value, bool Chainable = false, string? Chained = null);
 
+    /// <summary>D5: the shapes the roster generates. A shape is spelled below and the roster decides it, so a pair moved out is named there
+    /// with its reason, and a generated pair whose spelling is dropped is <see cref="TypeMemberShapeFedFailures"/>' red.</summary>
     private static IEnumerable<MemberShape> MemberShapes()
+        => SpelledMemberShapes().Where(m => NameResolutionRosters.TypeMemberShapes.GetValueOrDefault(NameResolutionRosters.TypeMemberKey(m.Kind, m.Member))?.Generated != false);
+
+    private static IEnumerable<MemberShape> SpelledMemberShapes()
     {
         foreach (var (kind, header) in new[] { ("class", new[] { "class Later:" }), ("struct", new[] { "struct Later:" }), ("dataclass", new[] { "@dataclass", "class Later:" }) })
         {
@@ -546,6 +574,34 @@ public partial class NameResolutionDifferentialTests
         yield return new("interface", "method", iface, "via(C())", 1);
         string[] ifaceProp = { "interface Later:", "    property p: int", "class C(Later):", "    property p: int = 1", "def via(i: Later) -> int:", "    return i.p" };
         yield return new("interface", "property", ifaceProp, "via(C())", 1);
+        // The interface's one field a read can reach: a non-const interface field is a property nothing can spell a read of (SPY0203 through an instance).
+        yield return new("interface", "field", new[] { "interface Later:", "    const K: int = 1" }, "Later.K", 1);
+        yield return new("interface", "static-method", new[] { "interface Later:", "    @static", "    def s() -> int:", "        return 1" }, "Later.s()", 1);
+
+        yield return new("union", "method", new[] { "union Later:", "    case V(f: int)", "    def get(self) -> int:", "        return 1" }, "Later.V(3).get()", 1);
+    }
+
+    /// <summary>A cell's place on <see cref="NameResolutionRosters.TypeMemberShapes"/>. The optional-method and pattern labels are their own sub-axes, not members.</summary>
+    private static string? TypeMemberAxisCell(string kind, string label)
+    {
+        var member = label[..label.IndexOf('/')];
+        return member is "optional-method" or "pattern" ? null : $"typemember: {NameResolutionRosters.TypeMemberKey(kind, member)}";
+    }
+
+    /// <summary>D5: a generated pair has a cell, an out pair has none, and every cell's pair is the roster's. The census alone used to catch a dropped pair.</summary>
+    private static IEnumerable<string> TypeMemberShapeFedFailures(IReadOnlySet<string> axisCells)
+    {
+        foreach (var (key, member) in NameResolutionRosters.TypeMemberShapes)
+        {
+            var has = axisCells.Contains($"typemember: {key}");
+            if (member.Generated && !has)
+                yield return $"TypeMemberShapes {key} is generated by the roster and has no TYPEMEMBER cell";
+            if (!member.Generated && has)
+                yield return $"TypeMemberShapes {key} is out with '{member.Reason}' and a TYPEMEMBER cell carries it";
+        }
+        foreach (var cell in axisCells.Where(c => c.StartsWith("typemember: ", StringComparison.Ordinal)))
+            if (!NameResolutionRosters.TypeMemberShapes.ContainsKey(cell["typemember: ".Length..]))
+                yield return $"TYPEMEMBER cell {cell} is on no row of TypeMemberShapes";
     }
 
     private static NameCell TypeMemberCell(string label, IEnumerable<string> decl, IEnumerable<string> main, IReadOnlyList<string>? support, string model, Order order, string kind)
@@ -565,6 +621,7 @@ public partial class NameResolutionDifferentialTests
             Model = model,
             Python = PyOutcome.Ran(model),
             Rule = "P52",
+            AxisCell = TypeMemberAxisCell(kind, label),
             Target = kind switch
             {
                 "struct" => BindingKind.ModuleStruct,
@@ -607,14 +664,17 @@ public partial class NameResolutionDifferentialTests
             yield return TypeMemberCell("optional-method/bare/match", optional,
                 new[] { "match Later().get():", "    case Some(v):", "        print(v)", "    case _:", "        print(0)" }, null, "1", order, "class");
 
-            // A union's member is its case constructor, read through the match.
-            string[] union = { "union Later:", "    case V(f: int)", "    case L()" };
-            yield return TypeMemberCell("constructor/bare/match", union,
-                new[] { "match Later.V(3):", "    case V(v):", "        print(v)", "    case _:", "        print(0)" }, null, "3", order, "union");
-            yield return TypeMemberCell("constructor/alias/match", union.Append("type A = Later"),
-                new[] { "match A.V(3):", "    case V(v):", "        print(v)", "    case _:", "        print(0)" }, null, "3", order, "union");
-            yield return TypeMemberCell("constructor/bare/store-then-match", union,
-                new[] { "u0: Later = Later.V(3)", "match u0:", "    case V(v):", "        print(v)", "    case L():", "        print(0)" }, null, "3", order, "union");
+            // A union's case constructor, read through the match.
+            if (NameResolutionRosters.TypeMemberShapes[NameResolutionRosters.TypeMemberKey("union", "constructor")].Generated)
+            {
+                string[] union = { "union Later:", "    case V(f: int)", "    case L()" };
+                yield return TypeMemberCell("constructor/bare/match", union,
+                    new[] { "match Later.V(3):", "    case V(v):", "        print(v)", "    case _:", "        print(0)" }, null, "3", order, "union");
+                yield return TypeMemberCell("constructor/alias/match", union.Append("type A = Later"),
+                    new[] { "match A.V(3):", "    case V(v):", "        print(v)", "    case _:", "        print(0)" }, null, "3", order, "union");
+                yield return TypeMemberCell("constructor/bare/store-then-match", union,
+                    new[] { "u0: Later = Later.V(3)", "match u0:", "    case V(v):", "        print(v)", "    case L():", "        print(0)" }, null, "3", order, "union");
+            }
 
             // The pattern position: the sub-axis is roster 7, every Pattern subclass by class.
             string[] cls = { "class Later:", "    pass", "class Other:", "    pass" };
@@ -645,16 +705,17 @@ public partial class NameResolutionDifferentialTests
     // LOCAL (N5)
     // ------------------------------------------------------------------------------------------- //
 
-    private static readonly BindingKind[] LocalKinds =
-    {
-        BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst,
-        BindingKind.LocalDef, BindingKind.LambdaTypedLocal,
-    };
+    /// <summary>LOCAL's binder axis: the roster's generated values, the three it leaves out named there.</summary>
+    private static readonly BindingKind[] LocalKinds = NameResolutionRosters.LocalKinds
+        .Where(e => e.Value.Generated)
+        .Select(e => e.Key)
+        .OrderBy(k => k)
+        .ToArray();
 
     /// <summary>LOCAL's outer axis (finding 3): the roster's generated values, the pruned ones named there. The Builtin
     /// outer's name is the axis, so it has its own arm below.</summary>
     private static readonly BindingKind[] LocalOuters = NameResolutionRosters.LocalOuter
-        .Where(e => e.Value.Generated && e.Key != BindingKind.Builtin)
+        .Where(e => e.Value.Generated && e.Key is not (BindingKind.Builtin or BindingKind.ImportedName))
         .Select(e => e.Key)
         .OrderBy(k => k)
         .ToArray();
@@ -690,9 +751,11 @@ public partial class NameResolutionDifferentialTests
             case BindingKind.LocalDef:
                 return new() { $"def {name}({n.Params}) -> int:", $"    return {value}" };
             case BindingKind.LambdaTypedLocal:
-                if (!n.IsBuiltin)
+                if (n.Params.Length == 0)
                     return new() { $"{name}: () -> int = lambda: {value}" };
-                var (types, lambdaParams) = name == "abs" ? ("int", "a0") : ("str", "a0");
+                var parameters = n.Params.Split(", ");
+                var types = string.Join(", ", parameters.Select(p => p[(p.IndexOf(": ", StringComparison.Ordinal) + 2)..]));
+                var lambdaParams = string.Join(", ", parameters.Select((_, i) => $"a{i}"));
                 return new() { $"{name}: ({types}) -> int = lambda {lambdaParams}: {value}" };
             default:
                 throw new ArgumentOutOfRangeException(nameof(k));
@@ -739,6 +802,15 @@ public partial class NameResolutionDifferentialTests
         };
     }
 
+    /// <summary>The rule a read above a local's own binding answers to. S3 is a def's alone (R-LI); under a visible outer, or for a
+    /// lambda-typed local at any outer, the read is "declared later in this scope" (R-KX); with no outer it is N5's name check.</summary>
+    private static string AboveBindingRule(BindingKind binder, BindingKind outer)
+    {
+        if (binder == BindingKind.LocalDef)
+            return "S3";
+        return ClassOf(outer) == "none" && binder != BindingKind.LambdaTypedLocal ? "N5" : "N5-declared-later";
+    }
+
     private static string ClassOf(BindingKind outer) => outer switch
     {
         BindingKind.None or BindingKind.StaticMethod or BindingKind.StaticField => "none",
@@ -762,7 +834,7 @@ public partial class NameResolutionDifferentialTests
                     string Id(string read) => CellId("local", k, read, $"outer={u}", body);
 
                     // Read below the binding: the innermost binding, in both languages.
-                    yield return LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain);
+                    yield return LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain) with { Timing = ReadTimings.SameBlockBelow };
 
                     // Read above the binding: python's UnboundLocalError at every outer.
                     var aboveForm = u is BindingKind.None or BindingKind.StaticMethod or BindingKind.StaticField or BindingKind.EnclosingLocal
@@ -771,11 +843,7 @@ public partial class NameResolutionDifferentialTests
                     var above = new List<string> { $"print({ReadText(aboveForm, "", plain)})" };
                     above.AddRange(LocalDecl(k, plain));
                     above.Add($"print({own})");
-                    var python = PyOutcome.Unbound("x");
-                    if (ClassOf(u) == "none" || IsCallableKind(k))
-                        yield return LocalProgram(Id("above"), k, u, body, above, Refuse(python, IsCallableKind(k) ? "S3" : "N5"), null, plain);
-                    else
-                        yield return LocalProgram(Id("above"), k, u, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), $"before-binding:{ClassOf(u)}", plain);
+                    yield return LocalProgram(Id("above"), k, u, body, above, Refuse(PyOutcome.Unbound("x"), AboveBindingRule(k, u)), null, plain) with { Timing = ReadTimings.SameBlockAbove };
 
                     // Read from a nested def and a lambda called after the binding, the binding above the def.
                     var nested = LocalDecl(k, plain);
@@ -801,11 +869,7 @@ public partial class NameResolutionDifferentialTests
                     var above = new List<string> { $"print({builtinCall})" };
                     above.AddRange(LocalDecl(k, n));
                     above.Add($"print({own})");
-                    var python = PyOutcome.Unbound(name);
-                    if (IsCallableKind(k))
-                        yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(python, "S3"), null, n);
-                    else
-                        yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, new Expected(SharpyTag.Unruled, null, python, "unruled:N5-before-binding"), "before-binding:builtin", n);
+                    yield return LocalProgram(Id("above"), k, BindingKind.Builtin, body, above, Refuse(PyOutcome.Unbound(name), AboveBindingRule(k, BindingKind.Builtin)), null, n);
                 }
         }
 
@@ -816,7 +880,7 @@ public partial class NameResolutionDifferentialTests
                 new[] { "def x(k: int) -> int:", "    return 0 if k == 0 else x(k - 1) + 1", "print(x(3))" }, Run(3, "N5"), null, plain);
             yield return LocalProgram(CellId("local", BindingKind.LambdaTypedLocal, "self", body), BindingKind.LambdaTypedLocal, BindingKind.None, body,
                 new[] { "x: (int) -> int = lambda k: x(k - 1) + 1 if k > 0 else 0", "print(x(3))" },
-                new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(3), "unruled:N5-self"), "lambda-self", plain);
+                Refuse(PyOutcome.Ran(3), "N5-self"), null, plain);
         }
 
         // L28: a nested def reading an enclosing local declared below the def but bound before the call.
@@ -824,7 +888,14 @@ public partial class NameResolutionDifferentialTests
             foreach (var body in LocalBodies)
                 yield return LocalProgram(CellId("local", "L28", $"outer={u}", body), BindingKind.EnclosingLocal, u, body,
                     new[] { "def g() -> int:", "    return x", "x: int = 15", "print(g())" },
-                    new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(15), "unruled:L28"), "L28", plain);
+                    Refuse(PyOutcome.Ran(15), "N5-declared-later"), null, plain);
+
+        // L28 through a lambda: N7 says inside a lambda gets the same answer, and a hand probe printed the module's 5 here with no cell to see it.
+        foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
+            foreach (var body in LocalBodies)
+                yield return LocalProgram(CellId("local", "L28", "lambda", $"outer={u}", body), BindingKind.EnclosingLocal, u, body,
+                    new[] { "g: () -> int = lambda: x", "x: int = 15", "print(g())" },
+                    Refuse(PyOutcome.Ran(15), "N5-declared-later"), null, plain);
 
         foreach (var cell in ConstructTargetCells())
             yield return cell;
@@ -898,8 +969,8 @@ public partial class NameResolutionDifferentialTests
                             break;
                         case LocalTarget.MatchCapture:
                         case LocalTarget.AsPatternCapture:
-                            e = new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(last!), "unruled:N5-match-capture");
-                            shape = $"match-capture:{(u == BindingKind.None ? "none" : "visible")}";
+                            // R-KZ: a capture is fresh per arm. No outer is the name check after the arm, a visible outer is S2's refusal.
+                            e = Refuse(PyOutcome.Ran(last!), u == BindingKind.None ? "N5" : "S2");
                             break;
                         default:
                             var python = t == LocalTarget.ExceptAs ? PyOutcome.Unbound("x") : PyOutcome.Ran(last!);
@@ -942,7 +1013,8 @@ public partial class NameResolutionDifferentialTests
                 }
             }
 
-        // S2 × Builtin: is a builtin a visible binding the target reuses? Only the comprehension is agreed.
+        // S2 × Builtin (R-LA): a builtin is a visible binding the target reuses, so the later call is refused. The comprehension
+        // target's scope ends at its own bracket, so it reads the builtin.
         foreach (var (name, args, pars, result) in Builtins)
         {
             var n = new ReadName(name, args, pars, result);
@@ -954,15 +1026,14 @@ public partial class NameResolutionDifferentialTests
                     var e = t == LocalTarget.Comprehension
                         ? Run(result, "N1")
                         // `except … as abs` deletes the name, so python's later call is unbound; the other targets call an int.
-                        : new Expected(SharpyTag.Unruled, null, t == LocalTarget.ExceptAs ? PyOutcome.Unbound(name) : PyOutcome.Other("TypeError"), "unruled:S2-builtin");
-                    var shape = t == LocalTarget.Comprehension ? null : t is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture ? "match-capture:builtin" : "s2-builtin";
-                    yield return LocalProgram(CellId("local", t, "after-block", "outer=Builtin", body, name), BindingKind.LocalVar, BindingKind.Builtin, body, stmts, e, shape, n, t);
+                        : Refuse(t == LocalTarget.ExceptAs ? PyOutcome.Unbound(name) : PyOutcome.Other("TypeError"), "S2");
+                    yield return LocalProgram(CellId("local", t, "after-block", "outer=Builtin", body, name), BindingKind.LocalVar, BindingKind.Builtin, body, stmts, e, null, n, t);
                 }
         }
     }
 
-    /// <summary>A construct body's Block family, and the deviation row that names it (null = no row exists: `unruled`, #2426).</summary>
-    private sealed record BlockShape(string Family, string[] Open, int Depth, string[] Close, string? Row);
+    /// <summary>A construct body's Block family, and the deviation row that names it (R-LB: every family has one).</summary>
+    private sealed record BlockShape(string Family, string[] Open, int Depth, string[] Close, string Row);
 
     private static readonly BlockShape[] BlockShapes =
     {
@@ -970,15 +1041,15 @@ public partial class NameResolutionDifferentialTests
         new("elif", new[] { "if False:", "    pass", "elif True:" }, 1, Array.Empty<string>(), "block-scoping-if"),
         new("if-else", new[] { "if False:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-if"),
         new("while-body", new[] { "w0: int = 0", "while w0 < 1:", "    w0 += 1" }, 1, Array.Empty<string>(), "block-scoping-while"),
-        new("while-else", new[] { "while False:", "    pass", "else:" }, 1, Array.Empty<string>(), null),
-        new("for-body", new[] { "for w0 in [1]:" }, 1, Array.Empty<string>(), null),
-        new("for-else", new[] { "for w0 in [1]:", "    pass", "else:" }, 1, Array.Empty<string>(), null),
+        new("while-else", new[] { "while False:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-while"),
+        new("for-body", new[] { "for w0 in [1]:" }, 1, Array.Empty<string>(), "block-scoping-for"),
+        new("for-else", new[] { "for w0 in [1]:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-for"),
         new("try", new[] { "try:" }, 1, new[] { "except ValueError:", "    pass" }, "block-scoping-try-except"),
         new("except", new[] { "try:", "    raise ValueError(\"v\")", "except ValueError:" }, 1, Array.Empty<string>(), "block-scoping-try-except"),
         new("try-else", new[] { "try:", "    pass", "except ValueError:", "    pass", "else:" }, 1, Array.Empty<string>(), "block-scoping-try-except"),
         new("finally", new[] { "try:", "    pass", "finally:" }, 1, Array.Empty<string>(), "block-scoping-try-except"),
         new("with", new[] { "with CM() as w0:" }, 1, Array.Empty<string>(), "block-scoping-with"),
-        new("match-case", new[] { "match 1:", "    case 1:" }, 2, Array.Empty<string>(), null),
+        new("match-case", new[] { "match 1:", "    case 1:" }, 2, Array.Empty<string>(), "block-scoping-match"),
     };
 
     private static IEnumerable<NameCell> LetInConstructCells()
@@ -990,23 +1061,155 @@ public partial class NameResolutionDifferentialTests
                     var stmts = new List<string>(b.Open) { new string(' ', 4 * b.Depth) + "let x = 15" };
                     stmts.AddRange(b.Close);
                     stmts.Add("print(x)");
-                    Expected e;
-                    string? shape = null;
-                    if (b.Row == null)
+                    // R-LB: a binder in a block body is block-scoped. No outer is the name check after the block; a visible outer reads the outer.
+                    var e = u == BindingKind.None
+                        ? new Expected(SharpyTag.MustRefuse, null, PyOutcome.Ran(15), "N5", b.Row)
+                        : new Expected(SharpyTag.MustRun, "5", PyOutcome.Ran(15), "N5-block-scope", b.Row);
+                    yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, null, ReadName.Plain) with
                     {
-                        e = new Expected(SharpyTag.Unruled, null, PyOutcome.Ran(15), "unruled:rowless-construct");
-                        shape = $"rowless-let:{b.Family}";
-                    }
-                    else if (u == BindingKind.None)
-                    {
-                        e = new Expected(SharpyTag.MustRefuse, null, PyOutcome.Ran(15), "N5", b.Row);
-                    }
-                    else
-                    {
-                        e = new Expected(SharpyTag.MustRun, "5", PyOutcome.Ran(15), "#1974", b.Row);
-                    }
-                    yield return LocalProgram(CellId("local", "let-in", b.Family, $"outer={u}", body), BindingKind.LocalLet, u, body, stmts, e, shape, ReadName.Plain);
+                        AxisCell = body == ReadPosition.FunctionBody ? LetInKey(BindingKind.LocalLet, b.Family, u == BindingKind.None ? LetInOuter.None : LetInOuter.Module) : null,
+                    };
                 }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 9: a from-imported outer (D2.9, R-KX, R-LJ)
+    // ------------------------------------------------------------------------------------------- //
+
+    private const string ImportLine = "from string import digits";
+
+    /// <summary>The read of the imported outer. It is a str value read through <c>len</c>, because every int-returning stdlib
+    /// function Sharpy exposes is int64 and into <c>int</c> that is a type verdict, not a name verdict (probes p19, p20).</summary>
+    private const string ImportedReadText = "len(digits)";
+
+    /// <summary>The import's name, its read's result, and through <see cref="BindingValue"/> the same-named binding's value 7, so
+    /// `len(7)` is the type-error arm and the import's 10 never coincides with a binding.</summary>
+    private static readonly ReadName Imported = new("digits", "", "", 10);
+
+    private static NameCell WithImport(NameCell cell) => cell with { Source = $"{ImportLine}\n{cell.Source}", NeedsStdlib = true };
+
+    private static IEnumerable<NameCell> ImportedOuterCells()
+    {
+        var earlierLater = new[] { Order.Earlier, Order.Later };
+        var targets = new[]
+        {
+            BindingKind.StaticField, BindingKind.InstanceField, BindingKind.StaticProperty, BindingKind.StaticMethod, BindingKind.ClassLiteralConst,
+        };
+
+        foreach (var t in targets)
+        {
+            // Class N2: the Builtin outer's positions, every one read by the python twin's class-body scope, and one body.
+            foreach (var p in new[]
+            {
+                ReadPosition.StaticInitializer, ReadPosition.InstanceFieldInitializer, ReadPosition.ConstInitializer,
+                ReadPosition.StaticPropertyDefault, ReadPosition.InstancePropertyDefault, ReadPosition.ParameterDefault,
+                ReadPosition.MethodBody,
+            })
+                foreach (var o in earlierLater)
+                    yield return WithImport(ClassCell(t, p, Nesting.Direct, o, Spelling.Bare, BindingKind.ImportedName, Imported));
+
+            ReadPosition? self = t switch
+            {
+                BindingKind.StaticField => ReadPosition.StaticInitializer,
+                BindingKind.StaticProperty => ReadPosition.StaticPropertyDefault,
+                BindingKind.ClassLiteralConst => ReadPosition.ConstInitializer,
+                BindingKind.InstanceField => ReadPosition.InstanceFieldInitializer,
+                _ => null,
+            };
+            if (self is ReadPosition position)
+                yield return WithImport(ClassCell(t, position, Nesting.Direct, Order.Self, Spelling.Bare, BindingKind.ImportedName, Imported));
+        }
+
+        // The control: the import read with nothing else of the name, the probe every other arm is measured against.
+        yield return WithImport(new NameCell
+        {
+            Id = CellId("read", BindingKind.ImportedName, ReadPosition.FunctionBody, "control", "outer=ImportedName"),
+            Family = Family.Read,
+            Source = MainBlock($"print({ImportedReadText})"),
+            Tag = SharpyTag.MustRun,
+            Model = Str(Imported.BuiltinResult!.Value),
+            Python = PyOutcome.Ran(Imported.BuiltinResult!.Value),
+            Rule = "N1",
+            Target = BindingKind.ImportedName,
+            Outer = BindingKind.ImportedName,
+            Position = ReadPosition.FunctionBody,
+        });
+
+        // R-LJ: a module initializer reading the import above its own same-named declaration. Python reads the import.
+        foreach (var t in new[] { BindingKind.ModuleVar, BindingKind.ModuleLiteralConst, BindingKind.ModuleProperty, BindingKind.ModuleDef })
+        {
+            var lines = new List<string> { $"r: int = {ImportedReadText}" };
+            lines.AddRange(ModuleDecl(t, Imported));
+            yield return WithImport(new NameCell
+            {
+                Id = CellId("read", t, ReadPosition.ModuleInitializer, Order.Later, "outer=ImportedName"),
+                Family = Family.Read,
+                Source = Join(lines) + MainBlock("print(r)"),
+                Tag = SharpyTag.MustRefuse,
+                Python = PyOutcome.Ran(Imported.BuiltinResult!.Value),
+                Rule = "N2-module",
+                Target = t,
+                Outer = BindingKind.ImportedName,
+                Position = ReadPosition.ModuleInitializer,
+            });
+        }
+
+        // STORE: the import's type is str, so a crossing store is spelled in str: `digits = 15` would be a type verdict.
+        foreach (var s in Enum.GetValues<StoreSpelling>())
+            foreach (var body in new[] { ReadPosition.FunctionBody, ReadPosition.MethodBody })
+            {
+                var text = s switch
+                {
+                    StoreSpelling.Assign => "digits = \"ab\"",
+                    StoreSpelling.Augmented => "digits += \"c\"",
+                    StoreSpelling.Walrus => "(digits := \"ab\")",
+                    _ => StoreText(s, Imported.Name),
+                };
+                var (host, call) = Host(body, new[] { text, $"print({Imported.Name})" });
+                var lines = new List<string>();
+                if (s == StoreSpelling.OutLet)
+                    lines.AddRange(OutLetHelper);
+                lines.AddRange(host);
+                var main = new List<string>(call) { $"print({ImportedReadText})" };
+
+                var result = Imported.BuiltinResult!.Value;
+                Expected expected = s switch
+                {
+                    StoreSpelling.Augmented => Refuse(PyOutcome.Unbound(Imported.Name), "N6"),
+                    StoreSpelling.Assign or StoreSpelling.Walrus => Refuse(PyOutcome.Ran(JoinOut("ab", result)), "N6"),
+                    _ => new Expected(SharpyTag.MustRun, JoinOut(15, result), PyOutcome.Ran(JoinOut(15, result)), s == StoreSpelling.OutLet ? "R-BM" : "#1974"),
+                };
+                yield return WithImport(new NameCell
+                {
+                    Id = CellId("store", s, "outer=ImportedName", body),
+                    Family = Family.Store,
+                    Source = WithHelpers(Join(lines) + MainBlock(main.ToArray())),
+                    Tag = expected.Tag,
+                    Model = expected.Model,
+                    Python = expected.Python,
+                    Rule = expected.Rule,
+                    Target = BindingKind.ImportedName,
+                    Outer = BindingKind.ImportedName,
+                    Position = body,
+                    Form = FormEnum(s),
+                });
+            }
+
+        // LOCAL: a local binder spelled like the import, read below it and above it.
+        foreach (var k in LocalKinds)
+            foreach (var body in LocalBodies)
+            {
+                var own = ReadText(FormOf(k), "", Imported);
+                string Id(string read) => CellId("local", k, read, "outer=ImportedName", body);
+                yield return WithImport(LocalProgram(Id("below"), k, BindingKind.ImportedName, body,
+                    LocalDecl(k, Imported).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, Imported));
+
+                var above = new List<string> { $"print({ImportedReadText})" };
+                above.AddRange(LocalDecl(k, Imported));
+                above.Add($"print({own})");
+                yield return WithImport(LocalProgram(Id("above"), k, BindingKind.ImportedName, body, above,
+                    Refuse(PyOutcome.Unbound(Imported.Name), AboveBindingRule(k, BindingKind.ImportedName)), null, Imported));
+            }
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -1025,6 +1228,14 @@ public partial class NameResolutionDifferentialTests
         ["B11"] = "loop-variable-fresh-per-iteration",
         ["B12"] = "loop-variable-fresh-per-iteration",
         ["D15"] = "block-scoping-if",
+    };
+
+    /// <summary>The seeds that stay unruled, each on its question: a same-block re-declaration an earlier closure sees (R-LF, #1974's
+    /// B-rules decide between SPY0204 and a store the closure must see, never today's 13).</summary>
+    private static readonly IReadOnlyDictionary<string, string> SeedUnruledShapes = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["B36"] = "same-block-redeclaration-after-closure",
+        ["B37"] = "same-block-redeclaration-after-closure",
     };
 
     private static IEnumerable<NameCell> SeedCells()
@@ -1056,7 +1267,7 @@ public partial class NameResolutionDifferentialTests
                 SeedPythonVerdict = verdicts[id],
                 SeedCite = parts.Length > 3 && parts[3].Length > 0 ? parts[3] : "#2423",
                 SeedRefusalCodes = (parts.Length > 4 ? parts[4] : "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal),
-                Shape = tag == SharpyTag.Unruled ? $"seed:{id}" : null,
+                Shape = tag == SharpyTag.Unruled ? SeedUnruledShapes.GetValueOrDefault(id) : null,
                 Target = BindingKind.None,
                 Outer = BindingKind.None,
             };
@@ -1075,53 +1286,8 @@ public partial class NameResolutionDifferentialTests
     /// not answered. The count is what stops an arm widening under a listed name: every cell it retags moves one of these.</summary>
     internal static readonly IReadOnlyDictionary<string, int> UnruledShapeCounts = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        ["L28"] = 6,
-        ["match-capture:none"] = 6,
-        ["match-capture:visible"] = 46,
-        ["match-capture:builtin"] = 8,
-        ["before-binding:module"] = 60,
-        ["before-binding:enclosing"] = 12,
-        ["before-binding:builtin"] = 24,
-        ["rowless-let:for-body"] = 4,
-        ["rowless-let:for-else"] = 4,
-        ["rowless-let:while-else"] = 4,
-        ["rowless-let:match-case"] = 4,
-        ["s2-builtin"] = 12,
-        ["lambda-self"] = 3,
-        ["store-non-writable:ModuleDef:Assign"] = 2,
-        ["store-non-writable:ModuleDef:Augmented"] = 2,
-        ["store-non-writable:ModuleDef:Walrus"] = 2,
-        ["store-non-writable:ModuleDef:global"] = 3,
-        ["store-non-writable:ModuleClass:Assign"] = 2,
-        ["store-non-writable:ModuleClass:Augmented"] = 2,
-        ["store-non-writable:ModuleClass:Walrus"] = 2,
-        ["store-non-writable:ModuleClass:global"] = 3,
-        ["store-non-writable:ModuleStruct:Assign"] = 2,
-        ["store-non-writable:ModuleStruct:Augmented"] = 2,
-        ["store-non-writable:ModuleStruct:Walrus"] = 2,
-        ["store-non-writable:ModuleStruct:global"] = 3,
-        ["store-non-writable:ModuleEnum:Assign"] = 2,
-        ["store-non-writable:ModuleEnum:Augmented"] = 2,
-        ["store-non-writable:ModuleEnum:Walrus"] = 2,
-        ["store-non-writable:ModuleEnum:global"] = 3,
-        ["store-non-writable:ModuleUnion:Assign"] = 2,
-        ["store-non-writable:ModuleUnion:Augmented"] = 2,
-        ["store-non-writable:ModuleUnion:Walrus"] = 2,
-        ["store-non-writable:ModuleUnion:global"] = 3,
-        ["store-non-writable:ModuleInterface:Assign"] = 2,
-        ["store-non-writable:ModuleInterface:Augmented"] = 2,
-        ["store-non-writable:ModuleInterface:Walrus"] = 2,
-        ["store-non-writable:ModuleInterface:global"] = 3,
-        ["store-non-writable:ModuleTypeAlias:Assign"] = 2,
-        ["store-non-writable:ModuleTypeAlias:Augmented"] = 2,
-        ["store-non-writable:ModuleTypeAlias:Walrus"] = 2,
-        ["store-non-writable:ModuleTypeAlias:global"] = 3,
-        ["seed:A12"] = 1,
-        ["seed:B09"] = 1,
-        ["seed:B21"] = 1,
-        ["seed:B22"] = 1,
-        ["seed:B24"] = 1,
-        ["seed:B28"] = 1,
+        ["global-creates-binding"] = 4,
+        ["same-block-redeclaration-after-closure"] = 2,
     };
 
     /// <summary>Does the cell's shape label name the axes the cell is actually on? The label alone proves nothing: an arm can
@@ -1129,39 +1295,15 @@ public partial class NameResolutionDifferentialTests
     internal static bool UnruledAxesHold(NameCell c)
     {
         var shape = c.Shape ?? "";
-        var parts = shape.Split(':');
-        var capture = c.Construct is LocalTarget.MatchCapture or LocalTarget.AsPatternCapture;
-        switch (parts[0])
+        switch (shape)
         {
-            case "L28":
-                return c.Family == Family.Local && c.Target == BindingKind.EnclosingLocal && c.Outer is BindingKind.None or BindingKind.ModuleVar;
-            case "lambda-self":
-                return c.Family == Family.Local && c.Target == BindingKind.LambdaTypedLocal && c.Outer == BindingKind.None
-                    && c.Id.Contains("/self/", StringComparison.Ordinal);
-            case "match-capture":
-                return c.Family == Family.Local && capture && parts[1] == (c.Outer switch
-                {
-                    BindingKind.None => "none",
-                    BindingKind.Builtin => "builtin",
-                    _ => "visible",
-                });
-            case "before-binding":
-                return c.Family == Family.Local && c.Construct == null && !IsCallableKind(c.Target)
-                    && c.Id.Contains("/above/", StringComparison.Ordinal) && ClassOf(c.Outer) == parts[1];
-            case "rowless-let":
-                return c.Family == Family.Local && c.Target == BindingKind.LocalLet
-                    && c.Id.Contains($"/let-in/{parts[1]}/", StringComparison.Ordinal)
-                    && BlockShapes.Any(b => b.Family == parts[1] && b.Row == null);
-            case "s2-builtin":
-                return c.Family == Family.Local && c.Outer == BindingKind.Builtin
-                    && c.Construct is LocalTarget.For or LocalTarget.WithAs or LocalTarget.ExceptAs;
-            case "store-non-writable":
-                return c.Family == Family.Store && IsNonWritableByMeaning(c.Outer) && c.Outer.ToString() == parts[1]
-                    && (parts[2] == "global"
-                        ? c.Id.Contains("/global/", StringComparison.Ordinal)
-                        : c.Id.StartsWith($"store/{parts[2]}/", StringComparison.Ordinal) && c.Id.Contains("/no-decl/", StringComparison.Ordinal));
-            case "seed":
-                return c.Family == Family.Seed && c.Id == $"seed/{parts[1]}";
+            case "global-creates-binding":
+                return c.Family == Family.Store && c.Outer == BindingKind.None
+                    && c.Form is StoreForm.Assign or StoreForm.Augmented
+                    && c.Id.StartsWith("store/declaration/global-creates-binding/", StringComparison.Ordinal);
+            case "same-block-redeclaration-after-closure":
+                return c.Family == Family.Seed && c.Id.StartsWith("seed/", StringComparison.Ordinal)
+                    && SeedUnruledShapes.GetValueOrDefault(c.Id["seed/".Length..]) == shape;
             default:
                 return false;
         }
@@ -1174,7 +1316,7 @@ public partial class NameResolutionDifferentialTests
         if (c.Family == Family.Seed)
             return SeedDeviations.GetValueOrDefault(c.Id["seed/".Length..]) == c.Deviation;
         var afterBlock = c.Family == Family.Local && c.Outer == BindingKind.None && c.Id.Contains("/after-block/", StringComparison.Ordinal);
-        var letInItsBlock = c.Family == Family.Local && c.Target == BindingKind.LocalLet
+        var letInItsBlock = c.Family == Family.Local && LocalKinds.Contains(c.Target)
             && BlockShapes.Any(b => b.Row == c.Deviation && c.Id.Contains($"/let-in/{b.Family}/", StringComparison.Ordinal));
         switch (c.Deviation)
         {
@@ -1191,10 +1333,43 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
+    /// <summary>The other direction of <see cref="DeviationAxesHold"/>: the row a cell's axes require, whichever arm it is on. R-LB gives every block family its row, and a
+    /// must-refuse cell keeps python's different answer on the ledger as much as a must-run one. Null for a cell the axes give no row, and then only the forward check reads it.</summary>
+    internal static string? RequiredDeviation(NameCell c)
+    {
+        if (c.Family == Family.Seed)
+            return SeedDeviations.GetValueOrDefault(c.Id["seed/".Length..]);
+        if (c.Family == Family.Store)
+            return c.Form == StoreForm.Walrus && c.Position == ReadPosition.ComprehensionElement ? "walrus-in-comprehension-scope" : null;
+        if (c.Family != Family.Local)
+            return null;
+        if (c.Id.StartsWith("local/closure-in-", StringComparison.Ordinal))
+            return "loop-variable-fresh-per-iteration";
+        if (c.Outer == BindingKind.None && c.Id.Contains("/after-block/", StringComparison.Ordinal))
+            return c.Construct switch
+            {
+                LocalTarget.For => "block-scoping-for-loop-variable",
+                LocalTarget.WithAs => "block-scoping-with",
+                _ => null,
+            };
+        return LocalKinds.Contains(c.Target)
+            ? BlockShapes.FirstOrDefault(b => c.Id.Contains($"/let-in/{b.Family}/", StringComparison.Ordinal))?.Row
+            : null;
+    }
+
+    internal static IEnumerable<string> RequiredDeviationFailures(IEnumerable<NameCell> pool)
+        => pool.Where(c => RequiredDeviation(c) is string row && c.Deviation != row)
+            .Select(c => $"DeviationAxes: {c.Id} ({c.Tag}) sits on the axes of {RequiredDeviation(c)} and carries {c.Deviation ?? "no row"}");
+
     private static IEnumerable<string> ClosedSetFailures(IReadOnlyList<NameCell> pool)
     {
         foreach (var c in pool.Where(c => c.Deviation != null && !DeviationAxesHold(c)).Take(20))
             yield return $"DeviationAxes: {c.Id} cites {c.Deviation} and its axes are not that row's";
+        foreach (var failure in RequiredDeviationFailures(pool).Take(20))
+            yield return failure;
+
+        foreach (var failure in RuleAxesFailures(pool))
+            yield return failure;
 
         // N3's cycles are the one question where a throw also keeps the promise. Any other rule under this tag would read a throw as agreement.
         foreach (var c in pool.Where(c => c.Tag == SharpyTag.MustRefuseOrThrow && c.Rule is not ("N3-cycle" or "seed")).Take(20))
@@ -1245,9 +1420,41 @@ public partial class NameResolutionDifferentialTests
             localOuter = NameResolutionRosters.LocalOuter.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             storeBodies = NameResolutionRosters.StoreBodies.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             localBodies = NameResolutionRosters.LocalBodies.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            localKinds = NameResolutionRosters.LocalKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
             patterns = NameResolutionRosters.PatternNotes,
-            readAxes = PrunedReadAxes,
+            readOuter = NameResolutionRosters.ReadOuter.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            comprehensionClauses = NameResolutionRosters.ComprehensionClauses.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key, e => e.Value.Reason),
+            comprehensionWalrus = NameResolutionRosters.ComprehensionWalrus.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            cycleEndpoints = NameResolutionRosters.CycleEndpoints.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            cycleRoutes = NameResolutionRosters.CycleRoutes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            orderObservation = NameResolutionRosters.OrderObservationKinds.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            letInProduct = NameResolutionRosters.LetInProduct.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            loopBodyEnclosures = NameResolutionRosters.LoopBodyEnclosures.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            loopBodyBinders = NameResolutionRosters.LoopBodyBinders.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            typePositionSpellings = NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            hostKinds = NameResolutionRosters.HostKinds.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            hostBodies = NameResolutionRosters.HostBodies.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            assignmentTargets = NameResolutionRosters.AssignmentTargetShapes.Where(e => e.Value.Excluded != null).ToDictionary(e => e.Key, e => e.Value.Reason),
+            attributeStoreMembers = NameResolutionRosters.AttributeStoreMembers.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            attributeStoreForms = NameResolutionRosters.AttributeStoreForms.Where(e => !e.Value.Generated).ToDictionary(e => e.Key.ToString(), e => e.Value.Reason),
+            attributeStoreBodies = NameResolutionRosters.AttributeStoreBodies.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
+            typeMemberShapes = NameResolutionRosters.TypeMemberShapes.Where(e => !e.Value.Generated).ToDictionary(e => e.Key, e => e.Value.Reason),
         },
+        // The axes named closed in D2's table: no compiler enumeration exists, so these literals are the roster.
+        closedSets = new
+        {
+            readTimings = Enum.GetNames<ReadTimings>(),
+            declaringRelation = Enum.GetNames<DeclaringRelation>(),
+            declarationShapes = Enum.GetNames<DeclarationShapes>(),
+            resultValueForm = Enum.GetNames<ResultValueForm>(),
+            attributeReceiver = Enum.GetNames<AttributeReceiver>(),
+            cyclePair = Enum.GetNames<CyclePair>(),
+            cycleThrough = Enum.GetNames<CycleThrough>(),
+            comprehensionNesting = Enum.GetNames<ComprehensionNesting>(),
+            letInOuter = Enum.GetNames<LetInOuter>(),
+        },
+        axisCells = results.Where(r => r.Cell.AxisCell != null).GroupBy(r => r.Cell.AxisCell![..r.Cell.AxisCell!.IndexOf(':')])
+            .OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         targets = results.GroupBy(r => r.Cell.Target.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         outers = results.GroupBy(r => r.Cell.Outer.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
         positions = results.Where(r => r.Cell.Position != null).GroupBy(r => r.Cell.Position!.Value.ToString()).OrderBy(g => g.Key, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count()),
@@ -1274,17 +1481,16 @@ public partial class NameResolutionDifferentialTests
                 && entry.Excluded == null)
                 yield return $"BlockFamily {family} hosts a let and has no LOCAL cell";
 
-        // READ's outer: every module-level kind is generated or pruned with its reason, and a pruned entry names something real.
-        foreach (var k in NameResolutionRosters.ModuleLevelKinds.Where(k => !ModuleOuters.Contains(k) && !PrunedReadAxes.ContainsKey($"outer {k}")))
-            yield return $"ModuleLevelKinds {k} is neither a generated READ outer nor pruned";
-        foreach (var key in PrunedReadAxes.Keys)
+        // READ's outer: every module-level kind, the two named outers and None are generated with a READ cell or out with a reason.
+        var read = pool.Where(c => c.Family == Family.Read).ToList();
+        foreach (var k in NameResolutionRosters.ModuleLevelKinds.Append(BindingKind.Builtin).Append(BindingKind.ImportedName).Append(BindingKind.None))
         {
-            var parts = key.Split(' ');
-            var real = parts[0] == "outer"
-                ? Enum.TryParse<BindingKind>(parts[1], out var k) && NameResolutionRosters.ModuleLevelKinds.Contains(k) && !ModuleOuters.Contains(k)
-                : key.StartsWith("Builtin name ", StringComparison.Ordinal) && Builtins.All(b => b.Name != parts[2]);
-            if (!real)
-                yield return $"PrunedReadAxes '{key}' names nothing the generator left out";
+            if (!NameResolutionRosters.ReadOuter.TryGetValue(k, out var member))
+                yield return $"ModuleLevelKinds {k} is neither a generated READ outer nor out with its reason";
+            else if (member.Generated && !read.Any(c => c.Outer == k))
+                yield return $"ReadOuter {k} is generated by the roster and has no READ cell";
+            else if (!member.Generated && read.Any(c => c.Outer == k))
+                yield return $"ReadOuter {k} is out with '{member.Reason}' and a READ cell carries it";
         }
 
         var forms = pool.Where(c => c.Form != null).Select(c => c.Form!.Value).ToHashSet();
@@ -1319,6 +1525,7 @@ public partial class NameResolutionDifferentialTests
             .Concat(NameResolutionRosters.PositionLocalKinds)
             .Concat(NameResolutionRosters.NonSymbolKinds)
             .Append(BindingKind.Builtin)
+            .Append(BindingKind.ImportedName)
             .ToHashSet();
         foreach (var k in kinds.Where(k => !rosterKinds.Contains(k)))
             yield return $"BindingKind {k} is carried by a generated cell and is in no roster group";
@@ -1346,6 +1553,9 @@ public partial class NameResolutionDifferentialTests
                 && !(NameResolutionRosters.LocalBodies.TryGetValue(body, out var e) && e.Image.Contains(t)))
                 yield return $"{c.Id}: {body} × {t} is not in LocalBodies";
         }
+
+        foreach (var failure in AxisFedFailures(pool))
+            yield return failure;
 
         // Every pattern that carries a name has a cell, or a note saying why it cannot have one.
         var typeMember = pool.Where(c => c.Family == Family.TypeMember).ToList();

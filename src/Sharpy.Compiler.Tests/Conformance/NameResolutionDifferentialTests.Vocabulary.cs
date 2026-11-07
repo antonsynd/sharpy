@@ -50,8 +50,9 @@ internal enum BindingKind
     LocalDef,
     LambdaTypedLocal,
 
-    // a binding of the global scope (SymbolTable.PopulateBuiltins), and no binding at all
+    // a binding of the global scope (SymbolTable.PopulateBuiltins), a from-import's name in the module scope, and no binding at all
     Builtin,
+    ImportedName,
     None,
 }
 
@@ -142,7 +143,8 @@ internal enum PatternClass
 /// </summary>
 internal enum ExcludedAxis
 {
-    /// <summary>(i) module-qualified spelling, reads from another module, a later project file: needs a project route.</summary>
+    /// <summary>(i) module-qualified spelling, reads from another user module, a later project file: needs a project route. The
+    /// single-file <c>from &lt;stdlib module&gt; import &lt;name&gt;</c> is NOT this axis: it is <see cref="BindingKind.ImportedName"/>.</summary>
     ProjectRoute,
 
     /// <summary>(ii) hosts interface/union/enum/generic: P78's and P75's hand matrices.</summary>
@@ -218,32 +220,5 @@ internal enum ExcludedAxis
 [Trait("Category", "GapDiscovery")]
 public partial class NameResolutionDifferentialTests : IntegrationTestBase
 {
-    private readonly CompilePathOutput _compilePathOutput;
-
-    public NameResolutionDifferentialTests(ITestOutputHelper output) : this(new CompilePathOutput(output)) { }
-
-    private NameResolutionDifferentialTests(CompilePathOutput output) : base(output) => _compilePathOutput = output;
-
-    /// <summary>
-    /// The output the base class writes through. <see cref="IntegrationTestBase"/> records each compile's generated
-    /// C# in the test's output, xUnit keeps that in memory until the test ends, and vstest then serializes it as one
-    /// string. Over a sweep's thousands of compiles that string exhausted the testhost's heap, so the compile path
-    /// is muted and only what a fact prints itself gets through.
-    /// </summary>
-    private sealed class CompilePathOutput(ITestOutputHelper inner) : ITestOutputHelper
-    {
-        public bool Muted { get; set; }
-
-        public void WriteLine(string message)
-        {
-            if (!Muted)
-                inner.WriteLine(message);
-        }
-
-        public void WriteLine(string format, params object[] args)
-        {
-            if (!Muted)
-                inner.WriteLine(format, args);
-        }
-    }
+    public NameResolutionDifferentialTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 }

@@ -112,8 +112,29 @@ internal sealed record NameCell
     /// <summary>The Sharpy source the twin renders from when python has no spelling of the construct (a module accessor).</summary>
     public string? TwinSource { get; init; }
 
+    /// <summary>Set by the generator on a cell whose source carries a Stdlib import (D2.9), never read back from the source.
+    /// Every other cell compiles against Sharpy.Core alone.</summary>
+    public bool NeedsStdlib { get; init; }
+
     /// <summary>Set by SEED cells: the table's issue cite for a red.</summary>
     public string? SeedCite { get; init; }
+
+    /// <summary>Set by LOCAL cells: when the read happens against the binding (axis 4).</summary>
+    public ReadTimings? Timing { get; init; }
+
+    /// <summary>Set by READ cells that name a declaring class: how that class relates to the reader's (axis 10).</summary>
+    public DeclaringRelation? Relation { get; init; }
+
+    /// <summary>Set by the declaration cells: which of N6's shapes this cell spells (axis 12).</summary>
+    public DeclarationShapes? Declaration { get; init; }
+
+    /// <summary>The python text itself, for the one program whose meaning the renderer's annotation row would change: <c>global x</c> then
+    /// <c>x: int = 3</c> is python's SyntaxError and <c>x = 3</c> is not (D2.12).</summary>
+    public string? RawPythonTwin { get; init; }
+
+    /// <summary>P77b's generated axes: <c>axis: value × value</c>, the key <see cref="NameResolutionDifferentialTests"/>' fed check
+    /// computes from the axis's roster, so a roster value the generator owes a cell cannot go missing without a red.</summary>
+    public string? AxisCell { get; init; }
 
     /// <summary>The inventory's python verdict, compared in the runner's normal form instead of <see cref="Python"/>.</summary>
     public string? SeedPythonVerdict { get; init; }
@@ -124,14 +145,14 @@ public partial class NameResolutionDifferentialTests
     private const int SharpyExecTimeoutMs = 12_000;
     private const int PythonBatchTimeoutMs = 3_600_000;
     private const string AllowlistFileName = "name-resolution-differential-allowlist.txt";
-    private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
+    internal const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
     /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
-    private const int CellBudget = 6500;
+    private const int CellBudget = 8900;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
-    private const string CacheEnv = "NAME_RES_DIFF_SHARPY_CACHE";
+    internal const string CacheEnv = "NAME_RES_DIFF_SHARPY_CACHE";
 
     /// <summary>D2's ICE set: any of these in <c>RawDiagnostics</c> is an internal failure, never a refusal.</summary>
     internal static readonly HashSet<string> IceCodes = new(StringComparer.Ordinal)
@@ -290,6 +311,32 @@ public partial class NameResolutionDifferentialTests
         [("SPY0401", "SPY0200")] = 9,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
+        // A comprehension's walrus over a visible module name: SPY0600 refuses the read ahead of the rule's own code (#2425).
+        [("S2-walrus", "SPY0600")] = 21,
+        // R-LJ: a module declaration re-declaring an imported name is refused as a collision before N2's own refusal exists.
+        [("N2-module", "SPY0204")] = 4,
+        // D2.9: the imported outer's read is `len(digits)`, and over an int-valued member of the name that is the protocol refusal.
+        [("N1-type-error", "SPY0320")] = 21,
+        [("N2", "SPY0320")] = 7,
+        [("N2-module", "SPY0320")] = 2,
+        // The restored enum outer's read is `.RED`, and on a later const or an earlier int member that is the no-such-member refusal.
+        [("N2", "SPY0203")] = 19,
+        [("SPY0401", "SPY0203")] = 12,
+        // R-KP's restored builtins: the read of an overloaded function or a type constructor as a value, ahead of N6.
+        [("N6", "SPY0336")] = 1,
+        [("N6", "SPY0342")] = 1,
+        // A bare value in a `T !E` body above an earlier E: the return's type mismatch, the right direction until the kind's own refusal (#2249).
+        [("kind:result-wrap", "SPY0260")] = 1,
+        // N6's declaration shapes: `global` / `nonlocal` is refused whatever it names, until #2424 reinstates them and reaches the rule's own refusal.
+        [("N6-declaration", "SPY0134")] = 32,
+        // A method's name stored through a member access: the type mismatch or the via-type refusal, until #2424 and #2435 land SPY0606 there.
+        [("kind:SPY0606", "SPY0220")] = 6,
+        [("kind:SPY0606", "SPY0290")] = 3,
+        // R-KY's neighbouring refusals until #2424 lands the rule's own.
+        [("N6-type-kind", "SPY0134")] = 21,
+        [("N6-type-kind", "SPY0222")] = 2,
+        [("N6-type-kind", "SPY0342")] = 6,
+        [("N6-type-kind", "SPY0346")] = 6,
     };
 
     /// <summary>The error codes a refusal may carry, per rule. A refusal is only agreement when it is THIS rule's refusal: a
@@ -300,18 +347,47 @@ public partial class NameResolutionDifferentialTests
         // SPY0618 is P75's forward refusal, which the principle retires: 1 comprehension cell reaches it before the name check.
         ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
         // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
-        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
-        ["N2"] = new[] { "SPY0230", "SPY0278", "SPY0401", "SPY0618" },
+        // SPY0320 is `len(7)` over the imported outer's same-named member (D2.9).
+        ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
+        // SPY0320: a later literal const outranks the import today, so its read is `len(7)`.
+        // SPY0203: over a later const, the enum outer's read is `.RED` on an int.
+        ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
         ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
+        // R-LJ: SPY0204 is a same-named module declaration refused over the import until #2423 lands the rule's own refusal.
+        // SPY0320 sits beside it when the later declaration is a literal const or a def: the read is then `len` of that.
+        ["N2-module"] = new[] { "SPY0204", "SPY0230", "SPY0320" },
+        // R-KX: a local read above its own binding, with no outer the read could mean, is the name check today.
+        ["N5-declared-later"] = new[] { "SPY0200", "SPY0230" },
+        // R-LE: a lambda-typed local reading itself stays refused, as C# refuses `Func<int> f = () => f();`.
+        ["N5-self"] = new[] { "SPY0200" },
+        // R-KY: `global` over a def or type is SPY0134 until #2424 reinstates the declaration. A bare `+=` reads the def or type as a
+        // value first: SPY0222, SPY0342 or SPY0346. Each is the right direction under a neighbouring check.
+        // N6's bullets: the declaration itself is SPY0134 until #2424 reinstates it.
+        ["N6-declaration"] = new[] { "SPY0134" },
+        ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
-        ["N6"] = new[] { "SPY0200", "SPY0222" },
+        // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
+        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
+        // N1-arity: nothing refuses today (the CS1729 ICE is #2423's), so the entry is a ratchet: a refusal under this rule is red until it names its code.
+        ["N1-arity"] = Array.Empty<string>(),
+        // The owner's ruling on a comprehension's walrus: SPY0600 refuses the read today, by accident of #2144's gap; the rule's own code lands with #2425.
+        ["S2-walrus"] = new[] { "SPY0600" },
         ["R-KG"] = new[] { "SPY0200" },
+        // R-KT: nothing refuses a struct `self` capture today, and the refusal's code lands with #2434.
+        ["R-KT"] = Array.Empty<string>(),
         ["R1(b)"] = new[] { "SPY0200" },
+        // S2: a capture past its block over a visible outer runs today, and the refusal's code lands with #2425. Empty, so the entry is a ratchet.
+        ["S2"] = Array.Empty<string>(),
         ["S3"] = new[] { "SPY0200", "SPY0230" },
-        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0401" },
+        ["SPY0401"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         ["SPY0606"] = new[] { "SPY0200", "SPY0606" },
+        ["kind:SPY0212"] = new[] { "SPY0212" },
+        ["kind:SPY0606"] = new[] { "SPY0220", "SPY0290", "SPY0606" },
+        // R-KU: nothing refuses a @static store through self or a derived type today, and the refusal's code lands with #2435.
+        ["R-KU"] = Array.Empty<string>(),
+        ["kind:result-wrap"] = new[] { "SPY0260" },
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
@@ -330,6 +406,35 @@ public partial class NameResolutionDifferentialTests
         return foreign.Count == 0 ? null : $"RefusalReason: {cell.Id}: rule {cell.Rule} does not admit {string.Join(",", foreign)}";
     }
 
+    /// <summary>An admitted code no cell produces today, and the cure that lands it. <see cref="AdmittedRefusals"/> is a ratchet only if it cannot be opened with no red, and
+    /// these are the entries that hold a code ahead of the refusal it names. Each cites the issue whose fix produces the code, which is when the entry goes.</summary>
+    internal static readonly IReadOnlyDictionary<(string Rule, string Code), string> AdmittedWaitingOnACure = new Dictionary<(string, string), string>
+    {
+        // A method's name stored through a member access is the type mismatch or the via-type refusal until the receiver matrix lands the rule's own code.
+        [("kind:SPY0606", "SPY0606")] = "#2435",
+    };
+
+    /// <summary>The ratchet's other direction: an admitted code some cell under the rule produces, or one named as waiting with its cite. A waiting code that is produced now, or
+    /// that the rule no longer admits, has outlived its entry. The inputs are plain data, so a fact holds this without a sweep.</summary>
+    internal static IEnumerable<string> AdmittedCodeFailures(
+        IReadOnlyDictionary<string, string[]> admitted,
+        IReadOnlyDictionary<(string Rule, string Code), string> waiting,
+        IReadOnlySet<(string Rule, string Code)> observed)
+    {
+        foreach (var (rule, codes) in admitted)
+            foreach (var code in codes.Where(c => !observed.Contains((rule, c)) && !waiting.ContainsKey((rule, c))))
+                yield return $"AdmittedRefusals: {rule} admits {code}, and no cell under it was refused with {code}: delete the code, or name it as waiting on its cure";
+        foreach (var ((rule, code), cite) in waiting)
+        {
+            if (!IssueCite.IsMatch(cite))
+                yield return $"AdmittedRefusals: {rule}'s {code} is waiting on '{cite}', which cites no issue";
+            if (observed.Contains((rule, code)))
+                yield return $"AdmittedRefusals: {rule}'s {code} is waiting on {cite}, and a cell was refused with it: delete the waiting entry";
+            if (!admitted.TryGetValue(rule, out var codes) || !codes.Contains(code))
+                yield return $"AdmittedRefusals: {rule}'s {code} is waiting on {cite}, and the rule does not admit it";
+        }
+    }
+
     private static IEnumerable<string> RefusalCodeFailures(IReadOnlyList<CellResult> results, bool partial)
     {
         var seen = new Dictionary<(string Rule, string Seen), int>();
@@ -341,7 +446,15 @@ public partial class NameResolutionDifferentialTests
         foreach (var r in results.Where(r => r.Kind == SharpyKind.Refused))
         {
             var named = RuleNamesCode.Match(r.Cell.Rule);
-            if (!named.Success || r.Run.ErrorCodes.Contains(named.Groups[1].Value))
+            if (!named.Success)
+            {
+                // A rule that names no code still pins the neighbouring refusals it stands on, or one could spread under its name.
+                foreach (var code in r.Run.ErrorCodes.Distinct().Where(c => EarlierRefusals.ContainsKey((r.Cell.Rule, c))))
+                    seen[(r.Cell.Rule, code)] = seen.GetValueOrDefault((r.Cell.Rule, code)) + 1;
+                continue;
+            }
+
+            if (r.Run.ErrorCodes.Contains(named.Groups[1].Value))
                 continue;
             var first = r.Run.ErrorCodes.First(c => !IgnoredCodes.Contains(c));
             if (!EarlierRefusals.ContainsKey((r.Cell.Rule, first)))
@@ -352,6 +465,12 @@ public partial class NameResolutionDifferentialTests
             yield break;
         foreach (var (key, count) in EarlierRefusals.Where(e => seen.GetValueOrDefault(e.Key) != e.Value))
             yield return $"RefusalCode: {key.Rule} refused with {key.Seen} is pinned at {count} cells and measured {seen.GetValueOrDefault(key)}";
+
+        var observed = results.Where(r => r.Kind == SharpyKind.Refused && r.Cell.SeedRefusalCodes == null)
+            .SelectMany(r => r.Run.ErrorCodes.Select(code => (r.Cell.Rule, code)))
+            .ToHashSet();
+        foreach (var failure in AdmittedCodeFailures(AdmittedRefusals, AdmittedWaitingOnACure, observed))
+            yield return failure;
     }
 
     /// <summary>A row of the allowlist: the class it pins, the issue that drains it and its lane.</summary>
@@ -417,16 +536,37 @@ public partial class NameResolutionDifferentialTests
                     return "#2398";
                 return run.CsCode switch
                 {
+                    // The store side of #2147's receiver matrix: one member through every receiver, one verdict.
+                    "CS0176" or "CS0131" or "CS0198" or "CS1656" when IsAttributeStore(cell) => "#2435",
                     "CS0176" => "#2147",
+                    // A @static interface method read through its interface: the emitter renders it an instance member.
+                    "CS0120" when cell.Family == Family.TypeMember && cell.Target == BindingKind.ModuleInterface => "#2111",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
+                    // A store over an import names the imported value unqualified. There is no write-through to qualify, and N6's refusal is the cure.
+                    "CS0103" when cell.Family == Family.Store && cell.Outer == BindingKind.ImportedName => "#2424",
                     "CS0103" when cell.Family == Family.Store => "#2151",
                     "CS0103" when cell.Source.Contains("lambda", StringComparison.Ordinal) => "#2420",
+                    // A nested type's bare constructor read as a member invocation: #2397's cell, whichever nested type the reader sits in.
+                    "CS1955" when cell.Target == BindingKind.NestedType => "#2397",
+                    // A lambda or local function capturing a struct's `this`: R-KT's refusal is the cure.
+                    "CS1673" when cell.Rule == "R-KT" => "#2434",
+                    // The same CS1673 on a @static member, which needs no capture: `this.X()` is #2147's spelling.
+                    "CS1673" => "#2147",
+                    // S3 and the read above a same-scope declaration are N5's, whichever check the bad read reaches.
+                    "CS1955" when cell.Family == Family.Local && cell.Rule is "S3" or "N5-declared-later" => "#2425",
+                    // `T !E` with no `Ok`: the spec has no implicit wrap, and the refusal is the cure.
+                    "CS0029" when cell.Rule == "kind:result-wrap" => "#2249",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
-                    "CS1955" or "CS8917" or "CS1729" or "CS0029" => "#2423",
+                    "CS1955" or "CS8917" or "CS1729" or "CS0029" or "CS1501" => "#2423",
+                    // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
+                    // qualifies it through the program's own module.
+                    "CS0117" when cell.Outer == BindingKind.ImportedName => "#2423",
                     // A position that needs a constant was handed something else and nothing refused it.
                     "CS0133" or "CS1736" => "#2432",
                     "CS0149" or "CS0266" or "CS1061" when cell.Target == BindingKind.NestedType => "#2397",
+                    // `.RED` on a method's own name: the member is what the name means here, and nothing refused the read of it.
+                    "CS1061" when cell.Target == BindingKind.StaticMethod => "#2423",
                     "CS0149" or "CS0266" when cell.Target == BindingKind.StaticProperty => "#2417",
                     // A later binding reaches the emitter untyped; N1's order-free resolution types it.
                     "CS0149" or "CS0266" or "CS1503" => "#2423",
@@ -438,22 +578,35 @@ public partial class NameResolutionDifferentialTests
                     return IsAliasConstructorCell(cell) ? "#1925" : "#2249";
                 if (cell.Family == Family.Store)
                     return run.AllCodes.Contains("SPY0134") ? "#2424"
-                        : run.AllCodes.Contains("SPY0600") ? "#2423"
+                        : run.AllCodes.Contains("SPY0600") ? "#2144"
                         : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
+                // An alias at a type position is refused as an unknown type (p17): #1925's class, the alias positions.
+                if (cell.TypeAt != null && cell.Target == BindingKind.ModuleTypeAlias)
+                    return "#1925";
+                // A nested-scope `def` over a same-function `def` of the name is SPY0204: #1974's question, whose B-rules admit nested shadowing.
+                if (cell.Rule == "#1974")
+                    return "#1974";
                 return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
                     ? "#2422"
                     : "#2423";
             case VerdictClass.RuntimeThrow:
                 return "#2422";
             case VerdictClass.SilentWrong:
-                if (cell.Rule == "N3-cycle" && cell.Id.Contains("/Alias/", StringComparison.Ordinal))
+                if (cell.Rule == "R-KT")
+                    return "#2434";
+                if (IsConstCycleThroughAlias(cell))
                     return "#2412";
                 if (cell.Family == Family.TypeMember)
                     return "#2249";
+                // A must-run attribute store that prints the wrong value is `self.x op= v` in `__init__` losing its read (#2439); a must-refuse one is R-KU's.
+                if (IsAttributeStore(cell))
+                    return cell.Tag == SharpyTag.MustRun ? "#2439" : "#2435";
+                if (cell.Rule == "S2-walrus")
+                    return "#2425";
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)
-                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) ? "#2425" : "#2423";
+                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) || cell.Rule is "S3" or "N5-declared-later" ? "#2425" : "#2423";
                 // Only a read with no other binding can print a storage default; values-ready cannot change which binding is read.
                 return cell.Tag == SharpyTag.MustRefuse || cell.Outer != BindingKind.None ? "#2423" : "#2422";
             default:
@@ -461,22 +614,35 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
+    /// <summary>#2412 is a CONST cycle written through an alias (SPY0278 misses it). Axis 2's other alias cycles have values to wait
+    /// on, and N3's readiness is what cures them.</summary>
+    private static bool IsConstCycleThroughAlias(NameCell cell)
+    {
+        if (cell.Rule != "N3-cycle" || !cell.Id.Contains("/Alias/", StringComparison.Ordinal))
+            return false;
+        return cell.AxisCell == null || cell.AxisCell.Split(" × ").TakeLast(2).All(k => k.EndsWith("ComputedConst", StringComparison.Ordinal));
+    }
+
+    private static bool IsAttributeStore(NameCell cell) => cell.AxisCell?.StartsWith("attribute-store:", StringComparison.Ordinal) == true;
+
     private static bool IsAliasConstructorCell(NameCell cell)
         => cell.Target == BindingKind.ModuleTypeAlias || cell.Outer == BindingKind.ModuleTypeAlias
             || (cell.Family == Family.TypeMember && cell.Id.Contains("/alias/", StringComparison.Ordinal));
 
-    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs)
+    /// <summary>D2.9: set immediately before each compile and read back by the override below. The Sharpy arm is a sequential
+    /// loop over one test instance, so a field is the whole mechanism (<c>DifferentialExecutionTests</c>' shape).</summary>
+    private bool _currentCellNeedsStdlib;
+
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
     {
-        _compilePathOutput.Muted = true;
-        ExecutionResult r;
-        try
-        {
-            r = CompileAndExecute(source, "name_resolution.spy", executionTimeoutMs: executionTimeoutMs);
-        }
-        finally
-        {
-            _compilePathOutput.Muted = false;
-        }
+        if (_currentCellNeedsStdlib)
+            yield return SharpyStdlibReference.Location;
+    }
+
+    private SharpyRun RunSharpy(string source, int executionTimeoutMs = SharpyExecTimeoutMs, bool needsStdlib = false)
+    {
+        _currentCellNeedsStdlib = needsStdlib;
+        var r = CompileAndExecute(source, "name_resolution.spy", executionTimeoutMs: executionTimeoutMs);
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();
         var errors = diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
@@ -486,6 +652,36 @@ public partial class NameResolutionDifferentialTests
             .Where(m => m.Success).Select(m => m.Value).FirstOrDefault();
         return new SharpyRun(r.Success, r.ExitCode, r.Exception != null, r.TimedOut,
             r.StandardOutput, r.StandardError, errors, all, cs);
+    }
+
+    /// <summary>D4.3: one slow cell on a loaded runner is not a verdict, so a timed-out run gets ONE more run at twice
+    /// the timeout before <see cref="ClassifySharpy"/> sees it. A second timeout comes back as it is and stays Harness.
+    /// The report's <c>retried</c> count keeps a real slowdown visible.</summary>
+    internal static SharpyRun RetryingATimeout(Func<int, SharpyRun> runAt, int timeoutMs, out bool retried)
+    {
+        var run = runAt(timeoutMs);
+        retried = run.TimedOut;
+        return retried ? runAt(timeoutMs * 2) : run;
+    }
+
+    /// <summary>What <see cref="RunSharpyRetryingATimeout"/> runs a program with, when a fact sets it. No run has timed out
+    /// in any sweep so far, so a stub is the only way through the helper's retry; a fact holds what the sweep calls.</summary>
+    private Func<string, int, bool, SharpyRun>? _sharpyRunnerForAFact;
+
+    private SharpyRun RunSharpyRetryingATimeout(string source, int timeoutMs, bool needsStdlib, out bool retried)
+        => RetryingATimeout(ms => (_sharpyRunnerForAFact ?? RunSharpy)(source, ms, needsStdlib), timeoutMs, out retried);
+
+    /// <summary>The sweep's own reductions. On a dev machine each is an edit-loop tool with a banner. <c>CI</c> is set on
+    /// the runner that is the gate, where the workflow says the full pool always runs: a strided ratchet is a partial
+    /// guarantee, and a cached verdict cannot see a compiler change.</summary>
+    internal static IEnumerable<string> ReducedRunFailures(string? ci, bool partial, int limit, string? cachePath)
+    {
+        if (string.IsNullOrEmpty(ci))
+            yield break;
+        if (partial)
+            yield return $"{StrideEnv}={limit} ran a stride of the pool and CI is set: the full pool always runs in CI";
+        if (cachePath != null)
+            yield return $"{CacheEnv}={cachePath} reused recorded Sharpy results and CI is set: a cached verdict cannot see a compiler change";
     }
 
     private static string SourceKey(string source)
@@ -524,7 +720,7 @@ public partial class NameResolutionDifferentialTests
                 continue; // the seed's python verdicts are TwinRenderer_SeedPythonVerdicts_Reproduce's control
             try
             {
-                requests.Add(new PyRequest(i, TwinRenderer.Render(cells[i].TwinSource ?? cells[i].Source)));
+                requests.Add(new PyRequest(i, cells[i].RawPythonTwin ?? TwinRenderer.Render(cells[i].TwinSource ?? cells[i].Source)));
             }
             catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
             {
@@ -535,8 +731,11 @@ public partial class NameResolutionDifferentialTests
 
         // --- Sharpy arm: production compile + execute, sequential, `run` and never `emit`. ---
         var cachePath = Environment.GetEnvironmentVariable(CacheEnv);
+        failures.AddRange(ReducedRunFailures(Environment.GetEnvironmentVariable("CI"), partial, limit, cachePath));
         var cache = LoadCache(cachePath);
         int cached = 0;
+        int retried = 0;
+        var importedWall = new Stopwatch();
         var runs = new SharpyRun[cells.Count];
         for (int i = 0; i < cells.Count; i++)
         {
@@ -548,7 +747,12 @@ public partial class NameResolutionDifferentialTests
             }
             else
             {
-                runs[i] = RunSharpy(cells[i].Source);
+                if (cells[i].NeedsStdlib)
+                    importedWall.Start();
+                runs[i] = RunSharpyRetryingATimeout(cells[i].Source, SharpyExecTimeoutMs, cells[i].NeedsStdlib, out var timedOutOnce);
+                importedWall.Stop();
+                if (timedOutOnce)
+                    retried++;
                 if (cachePath != null)
                     cache[key] = runs[i];
             }
@@ -602,9 +806,12 @@ public partial class NameResolutionDifferentialTests
                 failures.Add($"{r.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r.Cell, r.Class, r.Run)}'");
         }
         failures.AddRange(RefusalCodeFailures(results, partial));
+        var models = ModelReaders(results, ModelPairing(pool).Judged);
+        if (!partial)
+            failures.AddRange(ModelReaderFailures(models, ModelsReadByNothingCensus));
 
         wall.Stop();
-        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, partial, cached, wall.Elapsed);
+        var report = WriteReport(pool, results, rows, offenders, stale, moved, ineffective, models, partial, cached, retried, wall.Elapsed, importedWall.Elapsed);
         WriteProposedAllowlist(results);
 
         Output.WriteLine(report);
@@ -633,10 +840,19 @@ public partial class NameResolutionDifferentialTests
     /// <summary>A seed cell's python column is its verdict from the seed table (the renderer facts' control), not a batch run.</summary>
     private static string PythonText(CellResult r) => r.Cell.SeedPythonVerdict ?? r.Python.ToString();
 
+    /// <summary>The verdict's text: a refusal and an internal failure are their codes, and a throw, which has none, is
+    /// what the program wrote on the way out.</summary>
     private static string Describe(CellResult r)
         => r.Kind == SharpyKind.Ran
             ? $"Ran '{Normalize(r.Run.Stdout)}'"
-            : $"{r.Kind} [{string.Join(",", r.Run.AllCodes.Distinct())}{(r.Run.CsCode != null ? " " + r.Run.CsCode : "")}]";
+            : $"{r.Kind} [{string.Join(",", r.Run.AllCodes.Distinct())}{(r.Run.CsCode != null ? " " + r.Run.CsCode : "")}]"
+                + (r.Kind == SharpyKind.RuntimeThrow ? $" stderr '{FirstLineBounded(r.Run.Stderr)}'" : "");
+
+    private static string FirstLineBounded(string text)
+    {
+        var line = text.TrimStart().Split('\n', 2)[0].TrimEnd();
+        return line.Length <= 200 ? line : line[..200] + "…";
+    }
 
     internal sealed record CellResult(
         NameCell Cell, SharpyRun Run, SharpyKind Kind, PyOutcome Python, VerdictClass Class, string? Control);
@@ -664,10 +880,15 @@ public partial class NameResolutionDifferentialTests
         IReadOnlyList<string> stale,
         IReadOnlyList<string> moved,
         IReadOnlyList<string> ineffective,
+        ModelReadCensus models,
         bool partial,
         int cached,
-        TimeSpan wall)
+        int retried,
+        TimeSpan wall,
+        TimeSpan importedWall)
     {
+        int importedCells = results.Count(r => r.Cell.NeedsStdlib);
+        double importedSecondsPerCell = importedCells == 0 ? 0 : importedWall.TotalSeconds / importedCells;
         var perFamily = results.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(
             g => g.Key.ToString(),
             g => g.GroupBy(r => r.Class).OrderBy(c => c.Key).ToDictionary(c => c.Key.ToString(), c => c.Count()));
@@ -687,11 +908,16 @@ public partial class NameResolutionDifferentialTests
             pythonControlCells = results.Count,
             generatorBugs = results.Count(r => r.Class == VerdictClass.GeneratorBug),
             harness = results.Count(r => r.Class == VerdictClass.Harness),
+            retried,
             allowlistSize = rows.Count,
             nonAllowlistedRed = offenders.Count,
             staleRows = stale,
             movedRows = moved,
             ineffectiveRows = ineffective,
+            modelsReadByNothing = models.Unread.ToDictionary(e => e.Key, e => e.Value.Count),
+            modelsReadByNothingTotal = models.UnreadCount,
+            judgedPairs = models.JudgedPairs,
+            judgedPairsReadByNothingElse = models.JudgedPairsReadByNothingElse,
             excludedAxes = Enum.GetNames<ExcludedAxis>(),
             rosters = RosterReport(results),
             unruledCells = results.Where(r => r.Cell.Tag == SharpyTag.Unruled).Select(r => new
@@ -702,6 +928,8 @@ public partial class NameResolutionDifferentialTests
                 python = PythonText(r),
             }).ToList(),
             secondsPerCell = results.Count == 0 ? 0 : wall.TotalSeconds / results.Count,
+            importedOuterCells = importedCells,
+            importedOuterSecondsPerCell = importedSecondsPerCell,
             wallSeconds = wall.TotalSeconds,
         };
 
@@ -733,8 +961,10 @@ public partial class NameResolutionDifferentialTests
 
         var counts = string.Join("; ", perFamily.Select(f => $"{f.Key}: " + string.Join(" ", f.Value.Select(c => $"{c.Key}={c.Value}"))));
         return $"name-resolution-differential: pool {pool.Count}, run {results.Count}, python agreed {pythonAgreed}/{results.Count}, "
-            + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, "
-            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell). {counts}";
+            + $"allowlist {rows.Count}, non-allowlisted {offenders.Count}, stale {stale.Count}, moved {moved.Count}, retried {retried}, "
+            + $"models read by nothing {models.UnreadCount}, judged pairs {models.JudgedPairs} of which {models.JudgedPairsReadByNothingElse} read by nothing else, "
+            + $"wall {wall.TotalSeconds:F1}s ({(results.Count == 0 ? 0 : wall.TotalSeconds / results.Count):F3}s/cell; "
+            + $"imported outer {importedCells} cells at {importedSecondsPerCell:F3}s/cell). {counts}";
     }
 
     private static void WriteProposedAllowlist(IReadOnlyList<CellResult> results)

@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Properties.Differential;
+using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 
@@ -32,8 +34,9 @@ public partial class NameResolutionDifferentialTests
     }
 
     /// <summary>A whole-solution gate read Test Run Failed with 0 failed tests @ b3bac05af: the sweep's buffered
-    /// compile output exhausted the testhost's heap when vstest serialized it. <c>RunSharpy</c> buffers nothing. The
-    /// same compile through the base class does, which shows the recorder sees a write and the mute was lifted.</summary>
+    /// compile output exhausted the testhost's heap when vstest serialized it. The harness mutes the compile path, so
+    /// <c>RunSharpy</c> buffers nothing. The same compile with the mute lifted does, which shows the recorder sees a
+    /// write.</summary>
     [Fact]
     public void RunSharpy_BuffersNothingInTheTestResult()
     {
@@ -46,10 +49,47 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal("1", Normalize(run.Stdout));
         Assert.Empty(recorded.Lines);
 
+        harness.MuteCompilePath = false;
         harness.CompileAndExecute(Program, "name_resolution.spy");
 
         Assert.Contains(recorded.Lines, line => line.Contains("Generated C#", StringComparison.Ordinal));
     }
+
+    /// <summary>D2.9's order of work: the imported outer's compile path is proved through THIS harness before a cell rides it. The
+    /// verify round read SPY0300 from code and a 2026-10-22 measurement. The same source without the flag is the control: the
+    /// reference is what makes it compile, and the Core-only cells keep Core only.</summary>
+    [Fact]
+    public void ImportedOuter_CompilesInProcess()
+    {
+        const string Program = "from string import digits\ndef main() -> None:\n    print(len(digits))\n";
+
+        var withStdlib = RunSharpy(Program, needsStdlib: true);
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(withStdlib));
+        Assert.Equal("10", Normalize(withStdlib.Stdout));
+
+        var coreOnly = RunSharpy(Program);
+        Assert.Equal(SharpyKind.Refused, ClassifySharpy(coreOnly));
+        Assert.Contains("SPY0300", coreOnly.ErrorCodes);
+    }
+
+    /// <summary>Deferred row 7, for D3.1's <c>ImportedName</c> round trip: <c>CompilerApi</c>'s bare ctor resolves no modules, so the
+    /// round trip needs the two references the import reads through. The bare ctor is the control.</summary>
+    [Fact]
+    public void ImportedName_LooksUpThroughACompilerApiWithCoreAndStdlib()
+    {
+        const string Program = "from string import digits\ndef main() -> None:\n    print(len(digits))\n";
+
+        var withReferences = ImportResolvingCompilerApi().Analyze(Program);
+        Assert.Empty(withReferences.Diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).Select(d => d.Code));
+        Assert.NotNull(withReferences.SymbolTable);
+        Assert.NotNull(withReferences.SymbolTable!.Lookup("digits"));
+
+        var bare = new CompilerApi().Analyze(Program);
+        Assert.Contains(bare.Diagnostics, d => d.Code == "SPY0300");
+    }
+
+    private static CompilerApi ImportResolvingCompilerApi()
+        => new(null, new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location });
 
     /// <summary>M9: a program that throws at run time is a child process's non-zero exit with no diagnostic, read
     /// positively from <c>ExitCode</c>. It is a third outcome, never "refused" and never "ran".</summary>
@@ -62,6 +102,8 @@ public partial class NameResolutionDifferentialTests
         Assert.NotEqual(0, run.ExitCode);
         Assert.Empty(run.ErrorCodes);
         Assert.Equal(VerdictClass.RuntimeThrow, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.RuntimeThrow, run.Stdout));
+        // The compile path is muted, so this text is all a red has to say why: a throw has no code to name.
+        Assert.Contains("ValueError", Describe(new CellResult(CellTagged(SharpyTag.MustRun, "1"), run, SharpyKind.RuntimeThrow, PyOutcome.Ran("1"), VerdictClass.RuntimeThrow, null)), StringComparison.Ordinal);
     }
 
     /// <summary>The positive control of "never SPY0908": a C#-compile failure reaches the classifier through the mapped
@@ -83,6 +125,114 @@ public partial class NameResolutionDifferentialTests
 
         Assert.Equal(SharpyKind.TimedOut, ClassifySharpy(run));
         Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), SharpyKind.TimedOut, ""));
+    }
+
+    /// <summary>D4.3: a run that times out once and runs at twice the timeout is that run's verdict.</summary>
+    [Fact]
+    public void Retry_ATimeoutThatRunsAtTwiceTheTimeout_IsRan()
+    {
+        var timeouts = new List<int>();
+
+        var run = RetryingATimeout(ms =>
+        {
+            timeouts.Add(ms);
+            return timeouts.Count == 1 ? Literal() with { TimedOut = true } : Literal();
+        }, 12_000, out var retried);
+
+        Assert.Equal(new[] { 12_000, 24_000 }, timeouts);
+        Assert.True(retried);
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3: one retry and no more, so a real hang stays red.</summary>
+    [Fact]
+    public void Retry_ASecondTimeout_IsNotRetriedAgain_AndStaysHarness()
+    {
+        var timeouts = new List<int>();
+
+        var run = RetryingATimeout(ms =>
+        {
+            timeouts.Add(ms);
+            return Literal() with { TimedOut = true };
+        }, 12_000, out var retried);
+
+        Assert.Equal(new[] { 12_000, 24_000 }, timeouts);
+        Assert.True(retried);
+        Assert.Equal(SharpyKind.TimedOut, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3: only a timeout is retried. A refusal or a throw is a verdict the first time.</summary>
+    [Fact]
+    public void Retry_ARunThatFinished_IsNotRetried()
+    {
+        var calls = 0;
+
+        var run = RetryingATimeout(_ =>
+        {
+            calls++;
+            return Literal("SPY0200");
+        }, 12_000, out var retried);
+
+        Assert.Equal(1, calls);
+        Assert.False(retried);
+        Assert.Equal(SharpyKind.Refused, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3 through the helper the sweep's loop calls (<see cref="TheSweepsLoop_ReachesSharpyOnlyThroughTheRetryingHelper"/>
+    /// holds that it does), with a stub in the runner's place: the retry keeps the source and the stdlib flag, and its
+    /// verdict is the run's.</summary>
+    [Fact]
+    public void Retry_TheSweepsHelper_RunsATimedOutProgramAgainAtTwiceTheTimeout()
+    {
+        var calls = new List<(string Source, int TimeoutMs, bool NeedsStdlib)>();
+        _sharpyRunnerForAFact = (source, timeoutMs, needsStdlib) =>
+        {
+            calls.Add((source, timeoutMs, needsStdlib));
+            return calls.Count == 1 ? Literal() with { TimedOut = true } : Literal();
+        };
+
+        var run = RunSharpyRetryingATimeout("program", 12_000, needsStdlib: true, out var retried);
+
+        Assert.Equal(new[] { ("program", 12_000, true), ("program", 24_000, true) }, calls);
+        Assert.True(retried);
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3 through the same helper and the real compile path: a program that never ends is run twice, at the
+    /// timeout and at twice it, and only then is Harness.</summary>
+    [Fact]
+    public void Retry_ARealHang_StaysHarness()
+    {
+        var timeouts = new List<int>();
+        _sharpyRunnerForAFact = (source, timeoutMs, needsStdlib) =>
+        {
+            timeouts.Add(timeoutMs);
+            return RunSharpy(source, timeoutMs, needsStdlib);
+        };
+
+        var run = RunSharpyRetryingATimeout("def main() -> None:\n    while True:\n        pass\n", 500, needsStdlib: false, out var retried);
+
+        Assert.Equal(new[] { 500, 1000 }, timeouts);
+        Assert.True(retried);
+        var kind = ClassifySharpy(run);
+        Assert.Equal(SharpyKind.TimedOut, kind);
+        Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), kind, run.Stdout));
+    }
+
+    /// <summary>The reductions are red under CI and a banner elsewhere, and the sweep's own run under CI is neither.</summary>
+    [Fact]
+    public void ReducedRun_FailsUnderCi_AndStaysABannerOnADevMachine()
+    {
+        var both = ReducedRunFailures("true", partial: true, limit: 10, cachePath: "c.json").ToList();
+        Assert.Equal(2, both.Count);
+        Assert.Contains(both, f => f.StartsWith(StrideEnv + "=10", StringComparison.Ordinal));
+        Assert.Contains(both, f => f.StartsWith(CacheEnv + "=c.json", StringComparison.Ordinal));
+        Assert.Single(ReducedRunFailures("1", partial: true, limit: 10, cachePath: null));
+        Assert.Single(ReducedRunFailures("true", partial: false, limit: 0, cachePath: "c.json"));
+
+        Assert.Empty(ReducedRunFailures("true", partial: false, limit: 0, cachePath: null));
+        Assert.Empty(ReducedRunFailures(null, partial: true, limit: 10, cachePath: "c.json"));
+        Assert.Empty(ReducedRunFailures("", partial: true, limit: 10, cachePath: "c.json"));
     }
 
     [Fact]
@@ -117,9 +267,14 @@ public partial class NameResolutionDifferentialTests
     [InlineData("UnboundLocalError: cannot access local variable 'q' where it is not associated with a value", PyKind.UnboundLocalError, "q")]
     [InlineData("TypeError: 'int' object is not callable", PyKind.OtherError, "TypeError")]
     [InlineData("ValueError: x", PyKind.OtherError, "ValueError")]
+    // D2.12: axis 12's predicted refusals, python 3.12.13's exact lines. The value is the whole line, which is what the control compares.
+    [InlineData("SyntaxError: name 'x' is used prior to global declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to global declaration")]
+    [InlineData("SyntaxError: name 'x' is used prior to nonlocal declaration", PyKind.SyntaxError, "SyntaxError: name 'x' is used prior to nonlocal declaration")]
+    [InlineData("SyntaxError: annotated name 'x' can't be global", PyKind.SyntaxError, "SyntaxError: annotated name 'x' can't be global")]
+    [InlineData("SyntaxError: no binding for nonlocal 'q' found", PyKind.SyntaxError, "SyntaxError: no binding for nonlocal 'q' found")]
     public void Classifier_PythonLastLine_ParsesKindAndName(string lastLine, PyKind kind, string value)
     {
-        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, false));
+        var observed = ClassifyPython(new PyResult(false, "", $"Traceback (most recent call last):\n  File \"<string>\", line 1\n{lastLine}\n", false, kind == PyKind.SyntaxError));
 
         Assert.Equal(new PyOutcome(kind, value), observed);
     }
@@ -175,6 +330,8 @@ public partial class NameResolutionDifferentialTests
     [InlineData(Family.Store, BindingKind.ModuleTypeAlias, BindingKind.ModuleTypeAlias, "store/Assign/outer=ModuleTypeAlias", VerdictClass.Ice, "CS0103", "#1925")]
     [InlineData(Family.TypeMember, BindingKind.None, BindingKind.None, "typemember/class/constructor/alias/bare/after", VerdictClass.Ice, "CS0103", "#1925")]
     [InlineData(Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar", VerdictClass.Ice, "CS0103", "#2151")]
+    [InlineData(Family.Store, BindingKind.ImportedName, BindingKind.ImportedName, "store/Assign/outer=ImportedName/FunctionBody", VerdictClass.Ice, "CS0103", "#2424")]
+    [InlineData(Family.Read, BindingKind.StaticField, BindingKind.ImportedName, "read/StaticField/MethodBody/Earlier/Bare/outer=ImportedName/digits", VerdictClass.Ice, "CS0117", "#2423")]
     [InlineData(Family.Read, BindingKind.StaticField, BindingKind.ModuleVar, "read/StaticField/field-init", VerdictClass.SilentWrong, null, "#2423")]
     [InlineData(Family.Read, BindingKind.StaticField, BindingKind.None, "read/StaticField/StaticInitializer", VerdictClass.SilentWrong, null, "#2422")]
     internal void Cite_RoutesToTheDrainingIssue(Family family, BindingKind target, BindingKind outer, string id, VerdictClass verdict, string? cs, string expected)
@@ -187,7 +344,7 @@ public partial class NameResolutionDifferentialTests
 
     [Theory]
     [InlineData("SPY0134", "#2424")]
-    [InlineData("SPY0600", "#2423")]
+    [InlineData("SPY0600", "#2144")]
     [InlineData("SPY0999", "UNROUTED(SPY0999)")]
     internal void Cite_AStoreRefusal_RoutesByItsCode(string code, string expected)
     {
@@ -202,6 +359,8 @@ public partial class NameResolutionDifferentialTests
     [InlineData("CS8917", BindingKind.ModuleVar, "#2423")]
     [InlineData("CS1729", BindingKind.ModuleClass, "#2423")]
     [InlineData("CS0029", BindingKind.LocalVar, "#2423")]
+    [InlineData("CS1501", BindingKind.ModuleVar, "#2423")]
+    [InlineData("CS1061", BindingKind.StaticMethod, "#2423")]
     [InlineData("CS0133", BindingKind.ModuleVar, "#2432")]
     [InlineData("CS1736", BindingKind.StaticProperty, "#2432")]
     [InlineData("CS0149", BindingKind.StaticProperty, "#2417")]
@@ -214,6 +373,7 @@ public partial class NameResolutionDifferentialTests
     [InlineData("CS0266", BindingKind.NestedType, "#2397")]
     [InlineData("CS9999", BindingKind.ModuleVar, "UNROUTED(CS9999)")]
     [InlineData("CS1061", BindingKind.ModuleVar, "UNROUTED(CS1061)")]
+    [InlineData("CS0117", BindingKind.ModuleVar, "UNROUTED(CS0117)")]
     internal void Cite_AnIce_RoutesByItsCode(string cs, BindingKind target, string expected)
     {
         var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target };
@@ -332,6 +492,69 @@ public partial class NameResolutionDifferentialTests
         Assert.True(DeviationAxesHold(cell with { Id = "seed/D15" }));
     }
 
+    /// <summary>The admitted-code ratchet on literals: opening an entry is red, a waiting entry says so with its cite, and a waiting entry that outlives its reason is red.</summary>
+    [Fact]
+    public void AdmittedCodes_AnEntryNoCellProduces_IsRedUnlessItWaitsOnACure()
+    {
+        var admitted = new Dictionary<string, string[]> { ["R"] = new[] { "SPY0200", "SPY0999" }, ["Q"] = Array.Empty<string>() };
+        var observed = new HashSet<(string, string)> { ("R", "SPY0200") };
+        var waiting = new Dictionary<(string, string), string> { [("R", "SPY0999")] = "#1" };
+        var none = new Dictionary<(string, string), string>();
+
+        Assert.Empty(AdmittedCodeFailures(admitted, waiting, observed));
+        Assert.Contains("R admits SPY0999", Assert.Single(AdmittedCodeFailures(admitted, none, observed)), StringComparison.Ordinal);
+        Assert.Contains("Q admits SPY0999", Assert.Single(AdmittedCodeFailures(new Dictionary<string, string[]> { ["Q"] = new[] { "SPY0999" } }, none, observed)), StringComparison.Ordinal);
+        Assert.Contains("cites no issue", Assert.Single(AdmittedCodeFailures(admitted, new Dictionary<(string, string), string> { [("R", "SPY0999")] = "soon" }, observed)), StringComparison.Ordinal);
+        Assert.Contains("delete the waiting entry", Assert.Single(AdmittedCodeFailures(admitted, waiting, new HashSet<(string, string)> { ("R", "SPY0200"), ("R", "SPY0999") })), StringComparison.Ordinal);
+        Assert.Contains("the rule does not admit it", Assert.Single(AdmittedCodeFailures(new Dictionary<string, string[]> { ["R"] = new[] { "SPY0200" } }, waiting, observed)), StringComparison.Ordinal);
+
+        // The real table: a measured literal, and each entry waits on a code its rule admits.
+        Assert.Equal(new[] { ("kind:SPY0606", "SPY0606") }, AdmittedWaitingOnACure.Keys);
+        Assert.Empty(AdmittedWaitingOnACure.Where(e => !AdmittedRefusals[e.Key.Rule].Contains(e.Key.Code) || !IssueCite.IsMatch(e.Value)).Select(e => e.Key.ToString()));
+    }
+
+    /// <summary>R-LB's other direction: the axes that give a cell a row require it on both arms. A must-refuse cell's row is read by nothing else, because a refusal never compares a stdout.</summary>
+    [Fact]
+    public void Deviation_TheAxesRequireTheirRow_OnBothArms()
+    {
+        var pool = GeneratedCells();
+        Assert.Empty(RequiredDeviationFailures(pool));
+
+        // Measured literals, seeds included: a generator that stopped generating a row's axes would otherwise pass an emptier check.
+        var required = pool.Where(c => RequiredDeviation(c) != null).GroupBy(c => RequiredDeviation(c)!, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => (g.Key, g.Count(c => c.Tag == SharpyTag.MustRefuse), g.Count(c => c.Tag == SharpyTag.MustRun))).ToList();
+        Assert.Equal(
+            new[]
+            {
+                ("block-scoping-for", 14, 14),
+                ("block-scoping-for-loop-variable", 3, 0),
+                ("block-scoping-if", 21, 34),
+                ("block-scoping-match", 7, 7),
+                ("block-scoping-try-except", 28, 28),
+                ("block-scoping-while", 14, 14),
+                ("block-scoping-with", 10, 7),
+                ("loop-variable-fresh-per-iteration", 0, 80),
+                ("walrus-in-comprehension-scope", 44, 0),
+            },
+            required);
+
+        // The control: each shape of the axes, its row taken away, on the must-refuse arm and the must-run one.
+        foreach (var id in new[]
+        {
+            "local/let-in/try-else/LocalDef/outer=None/FunctionBody",
+            "local/let-in/if-then/outer=ModuleVar/FunctionBody",
+            "local/For/after-block/outer=None/MethodBody",
+            "local/closure-in-loop/FunctionBody",
+            "store/walrus-in-comprehension/outer=None/FunctionBody",
+            "seed/D15",
+        })
+        {
+            var cell = pool.Single(c => c.Id == id);
+            Assert.Empty(RequiredDeviationFailures(new[] { cell }));
+            Assert.Contains("carries no row", Assert.Single(RequiredDeviationFailures(new[] { cell with { Deviation = null } })), StringComparison.Ordinal);
+        }
+    }
+
     /// <summary>The generator's output is pinned, compiler-independent: a dropped axis or a retagged arm moves a count here even when
     /// no allowlist row notices. A drain plan never touches this table, because a verdict moving changes no tag.</summary>
     [Fact]
@@ -369,19 +592,29 @@ public partial class NameResolutionDifferentialTests
 
     /// <summary>The unruled tag's closed set reads the cell's axes, not its label: a listed shape on the wrong axes is red.</summary>
     [Theory]
-    [InlineData("L28", Family.Read, BindingKind.StaticField, BindingKind.None, "read/StaticField/MethodBody/Later/Bare/outer=None")]
-    [InlineData("before-binding:module", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/above/outer=None/FunctionBody")]
-    [InlineData("store-non-writable:ModuleDef:Assign", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/Assign/outer=ModuleVar/FunctionBody/no-decl")]
-    [InlineData("seed:A12", Family.Read, BindingKind.None, BindingKind.None, "seed/A13")]
-    [InlineData("lambda-self", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/LocalVar/self/outer=None/FunctionBody")]
-    [InlineData("match-capture:none", Family.Local, BindingKind.LocalVar, BindingKind.None, "local/For/after-block/outer=None/FunctionBody")]
-    [InlineData("rowless-let:if-then", Family.Local, BindingKind.LocalLet, BindingKind.None, "local/LocalLet/let-in/if-then/outer=None/FunctionBody")]
-    [InlineData("s2-builtin", Family.Local, BindingKind.LocalVar, BindingKind.ModuleVar, "local/For/after-block/outer=ModuleVar/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Local, BindingKind.None, BindingKind.None, "store/declaration/global-creates-binding/Assign/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Store, BindingKind.ModuleVar, BindingKind.ModuleVar, "store/declaration/global-creates-binding/Assign/FunctionBody")]
+    [InlineData("global-creates-binding", Family.Store, BindingKind.None, BindingKind.None, "store/Assign/outer=None/FunctionBody/no-decl")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Read, BindingKind.None, BindingKind.None, "seed/B36")]
+    [InlineData("same-block-redeclaration-after-closure", Family.Seed, BindingKind.None, BindingKind.None, "seed/B35")]
+    [InlineData("seed:A12", Family.Seed, BindingKind.None, BindingKind.None, "seed/A12")]
     internal void ClosedSet_AListedShapeOnTheWrongAxes_IsRed(string shape, Family family, BindingKind target, BindingKind outer, string id)
     {
         var cell = CellTagged(SharpyTag.Unruled, null) with { Id = id, Family = family, Target = target, Outer = outer, Shape = shape };
 
         Assert.False(UnruledAxesHold(cell));
+    }
+
+    /// <summary>The closed set's own positive control: the theory above only reads false, so this reads the real cells true, and pins
+    /// the set to the two questions D6 leaves open.</summary>
+    [Fact]
+    public void ClosedSet_TheTwoOpenQuestions_AreTheOnlyUnruledCells()
+    {
+        var unruled = GeneratedCells().Where(c => c.Tag == SharpyTag.Unruled).ToList();
+
+        Assert.Equal(new[] { "global-creates-binding", "same-block-redeclaration-after-closure" }, UnruledShapeCounts.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Equal(new[] { "global-creates-binding", "same-block-redeclaration-after-closure" }, unruled.Select(c => c.Shape!).Distinct().OrderBy(k => k, StringComparer.Ordinal));
+        Assert.All(unruled, c => Assert.True(UnruledAxesHold(c), $"{c.Id} is labelled '{c.Shape}' and its axes are not that question's"));
     }
 
     private static NameCell CellTagged(SharpyTag tag, string? model) => new()

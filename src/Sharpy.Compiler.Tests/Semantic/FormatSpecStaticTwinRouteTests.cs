@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
 {
-    public FormatSpecStaticTwinRouteTests(ITestOutputHelper output) : base(output) { }
+    public FormatSpecStaticTwinRouteTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     /// <summary>
     /// One value and one literal spec. <c>StaticMessage</c> is CPython's wording when the spec is
@@ -139,7 +139,7 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
                         failures.Add($"{label}: expected exactly one SPY0609 '{message}', got "
                             + (result.Success
                                 ? $"a program that ran, printing '{result.StandardOutput.TrimEnd()}'"
-                                : string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))));
+                                : result.FailureSummary()));
                         continue;
                     }
 

@@ -192,19 +192,20 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Variables declared inside `if`/`elif`/`else` bodies leak into the surrounding scope."
-    sharpy_behavior: "Compound-statement bodies introduce a new scope; variables declared inside are not visible outside the block."
+    sharpy_behavior: "Compound-statement bodies introduce a new scope; variables declared inside are not visible outside the block. Every binder behaves alike: `let`, an annotated declaration, `const`, a local `def` and a lambda-typed local. When an outer binding of the name is visible, the read after the block is not refused: it prints the OUTER value where python prints the inner one."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        if cond:
+        if True:
             x = 1
-        print(x)  # works in Python
+        print(x)  # 1 in Python
       sharpy: |
-        if cond:
-            x = 1
-        print(x)  # ERROR SPY0200: undefined identifier 'x' (block-scoped)
+        def main() -> None:
+            if True:
+                let x = 1
+            print(x)  # ERROR SPY0200: undefined identifier 'x' (block-scoped)
 
   - id: block-scoping-for-loop-variable
     code: SPY0200
@@ -231,8 +232,8 @@ deviations:
     category: scoping
     audience: python
     severity: none
-    python_behavior: "A for-loop variable is one binding for the whole loop, so every closure created in the loop sees its last value."
-    sharpy_behavior: "A for-loop (and comprehension) variable is a fresh binding per iteration, as in C# `foreach`, Rust and Swift, so a closure captures that iteration's value. Designed deviation (docs/design/name-resolution.md N5)."
+    python_behavior: "A for-loop variable, and any name bound in a loop body, is one binding for the whole loop, so every closure created in the loop sees its last value."
+    sharpy_behavior: "A for-loop (and comprehension) variable is a fresh binding per iteration, as in C# `foreach`, Rust and Swift, so a closure captures that iteration's value. The same holds for every binding made in a loop body (`for` or `while`), including inside a `with` or `except` body in the loop. Designed deviation (docs/design/name-resolution.md N5)."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: null
     planned_diagnostic: null
@@ -242,12 +243,38 @@ deviations:
         for i in range(3):
             fs.append(lambda: i)
         print([f() for f in fs])  # [2, 2, 2]
+        gs = []
+        for i in range(3):
+            y = i
+            gs.append(lambda: y)
+        print([g() for g in gs])  # [2, 2, 2]
+        hs = []
+        for i in range(3):
+            try:
+                raise ValueError("v")
+            except ValueError:
+                z = i
+                hs.append(lambda: z)
+        print([h() for h in hs])  # [2, 2, 2]
       sharpy: |
         def main() -> None:
             fs: list[() -> int] = []
             for i in range(3):
                 fs.append(lambda: i)
             print([f() for f in fs])  # [0, 1, 2]
+            gs: list[() -> int] = []
+            for i in range(3):
+                y: int = i
+                gs.append(lambda: y)
+            print([g() for g in gs])  # [0, 1, 2]
+            hs: list[() -> int] = []
+            for i in range(3):
+                try:
+                    raise ValueError("v")
+                except ValueError:
+                    z: int = i
+                    hs.append(lambda: z)
+            print([h() for h in hs])  # [0, 1, 2]
 
   - id: construct-target-reuses-outer-name
     code: null
@@ -277,21 +304,69 @@ deviations:
     category: scoping
     audience: python
     severity: error
-    python_behavior: "Variables declared inside a `while` body remain visible after the loop."
-    sharpy_behavior: "Variables declared inside a `while` body are not visible after the loop."
+    python_behavior: "Variables declared inside a `while` body or its `else` clause remain visible after the loop."
+    sharpy_behavior: "Variables declared inside a `while` body or its `else` clause are not visible after the loop. Every binder behaves alike: `let`, an annotated declaration, `const`, a local `def` and a lambda-typed local. When an outer binding of the name is visible, the read after the block is not refused: it prints the OUTER value where python prints the inner one."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        while cond():
-            result = compute()
-        print(result)
+        while False:
+            pass
+        else:
+            result = 2
+        print(result)  # 2 in Python
       sharpy: |
-        result: int = 0
-        while cond():
-            result = compute()
-        print(result)  # declare 'result' outside the loop
+        def main() -> None:
+            while False:
+                pass
+            else:
+                let result = 2
+            print(result)  # ERROR SPY0200: 'result' is block-scoped; declare it outside the loop
+
+  - id: block-scoping-for
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside a `for` body or its `else` clause remain visible after the loop."
+    sharpy_behavior: "Variables declared inside a `for` body or its `else` clause are not visible after the loop. Every binder behaves alike: `let`, an annotated declaration, `const`, a local `def` and a lambda-typed local. When an outer binding of the name is visible, the read after the block is not refused: it prints the OUTER value where python prints the inner one. The loop variable itself is `block-scoping-for-loop-variable`."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        for i in [1]:
+            result = 2
+        print(result)  # 2 in Python
+      sharpy: |
+        def main() -> None:
+            for i in [1]:
+                let result = 2
+            print(result)  # ERROR SPY0200: 'result' is block-scoped; declare it outside the loop
+
+  - id: block-scoping-match
+    code: SPY0200
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "Variables declared inside a `match` case body remain visible after the statement."
+    sharpy_behavior: "Variables declared inside a `match` case body are not visible after the statement. Every binder behaves alike: `let`, an annotated declaration, `const`, a local `def` and a lambda-typed local. When an outer binding of the name is visible, the read after the block is not refused: it prints the OUTER value where python prints the inner one. A match expression arm cannot hold a declaration."
+    spec_ref: docs/language_specification/variable_scoping.md
+    existing_diagnostic: SPY0200
+    planned_diagnostic: null
+    example:
+      python: |
+        match 1:
+            case 1:
+                result = 2
+        print(result)  # 2 in Python
+      sharpy: |
+        def main() -> None:
+            match 1:
+                case 1:
+                    let result = 2
+            print(result)  # ERROR SPY0200: 'result' is block-scoped; declare it outside the match
 
   - id: block-scoping-try-except
     code: SPY0200
@@ -299,24 +374,24 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Variables declared in a `try` body are visible in `except`/`else`/`finally` and after the statement."
-    sharpy_behavior: "Each clause (`try`, `except`, `else`, `finally`) is its own scope. Cross-clause variables must be declared before the `try` statement."
+    sharpy_behavior: "Each clause (`try`, `except`, `else`, `finally`) is its own scope. Cross-clause variables must be declared before the `try` statement. Every binder behaves alike: `let`, an annotated declaration, `const`, a local `def` and a lambda-typed local. When an outer binding of the name is visible, the read after the block is not refused: it prints the OUTER value where python prints the inner one."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
         try:
-            result = risky()
+            result = 2
         except ValueError:
             result = -1
-        print(result)
+        print(result)  # 2 in Python
       sharpy: |
-        result: int = 0
-        try:
-            result = risky()
-        except ValueError:
-            result = -1
-        print(result)
+        def main() -> None:
+            try:
+                let result = 2
+            except ValueError:
+                pass
+            print(result)  # ERROR SPY0200: 'result' is block-scoped; declare it before the try
 
   - id: block-scoping-with
     code: SPY0200
@@ -324,19 +399,31 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Variables declared inside `with` (including the `as` binding) remain accessible after the block."
-    sharpy_behavior: "`with` body and `as` binding are block-scoped."
+    sharpy_behavior: "`with` body and `as` binding are block-scoped. Every binder behaves alike: `let`, an annotated declaration, `const`, a local `def` and a lambda-typed local. When an outer binding of the name is visible, the read after the block is not refused: it prints the OUTER value where python prints the inner one."
     spec_ref: docs/language_specification/variable_scoping.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null
     example:
       python: |
-        with open("f.txt") as f:
-            data = f.read()
-        print(data)
+        class CM:
+            def __enter__(self):
+                return 7
+            def __exit__(self, a, b, c):
+                pass
+        with CM() as f:
+            data = f + 1
+        print(data)  # 8 in Python
       sharpy: |
-        with open("f.txt") as f:
-            data = f.read()
-            print(data)  # use 'data' inside the block
+        class CM:
+            def __enter__(self) -> int:
+                return 7
+            def __exit__(self) -> None:
+                pass
+
+        def main() -> None:
+            with CM() as f:
+                let data = f + 1
+            print(data)  # ERROR SPY0200: 'data' is block-scoped; use it inside the block
 
   - id: comprehension-loop-variable-leak
     code: SPY0200
@@ -362,7 +449,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Python 3.8+: walrus (`:=`) inside a comprehension binds in the *enclosing* scope and leaks out."
-    sharpy_behavior: "Walrus inside a comprehension is local to the comprehension. The syntactic boundary equals the semantic boundary."
+    sharpy_behavior: "Walrus inside a comprehension is local to the comprehension. The syntactic boundary equals the semantic boundary. Where a visible outer name is read after it, the program is refused rather than printing the outer value (SPY0600 today, the rule's own code lands with #2425; the row's SPY0200 is the name with no outer, as in the example)."
     spec_ref: docs/language_specification/walrus_operator.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null

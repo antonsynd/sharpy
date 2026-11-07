@@ -73,9 +73,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class ClassBodyReadPositionMatrixTests : IntegrationTestBase
 {
-    public ClassBodyReadPositionMatrixTests(ITestOutputHelper output) : base(output)
-    {
-    }
+    public ClassBodyReadPositionMatrixTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     // ---------------------------------------------------------------------------------------------------------------
     // The position phrases — the contract P21h Phase 4 implements to. A refused SPY0200 names its position with exactly

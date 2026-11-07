@@ -29,7 +29,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </summary>
 public class FormatEngineConsumerParityTests : IntegrationTestBase
 {
-    public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) { }
+    public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     /// <summary>One value, one spec — rendered four ways, expected to agree with python3.</summary>
     private sealed record Cell(string Label, string Decl, string Value, string Spec, string Expected);
@@ -422,7 +422,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
                     .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
                     .ToList();
                 if (spy0609.Count == 0)
-                    failures.Add($"{cell.Label}/static: expected SPY0609, got: {string.Join("; ", staticResult.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}");
+                    failures.Add($"{cell.Label}/static: expected SPY0609, got: {staticResult.FailureSummary()}");
                 else if (!spy0609.Any(d => d.Message.Contains(cell.Message, StringComparison.Ordinal)))
                     failures.Add($"{cell.Label}/static: expected '{cell.Message}', got: {string.Join("; ", spy0609.Select(d => d.Message))}");
             }
@@ -443,7 +443,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             {
                 var haystack = dynamicResult.StandardError + "\n" + string.Join("\n", dynamicResult.CompilationErrors);
                 if (!haystack.Contains(cell.Message, StringComparison.Ordinal))
-                    failures.Add($"{cell.Label}/dynamic: expected '{cell.Message}', got stderr: {dynamicResult.StandardError.Trim()}");
+                    failures.Add($"{cell.Label}/dynamic: expected '{cell.Message}', got: {dynamicResult.FailureSummary()}");
             }
         }
 
@@ -573,7 +573,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             }
             var haystack = result.StandardError + "\n" + string.Join("\n", result.CompilationErrors);
             if (!haystack.Contains(cell.Message, StringComparison.Ordinal))
-                failures.Add($"{cell.Label}: expected '{cell.Message}', got stderr: {result.StandardError.Trim()}");
+                failures.Add($"{cell.Label}: expected '{cell.Message}', got: {result.FailureSummary()}");
         }
 
         Assert.True(failures.Count == 0,
@@ -746,7 +746,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         if (result.Success || result.StandardOutput.Contains(RefusalSentinel, StringComparison.Ordinal))
             failures.Add($"{id}: expected a COMPILE-time SPY0609, but the program ran: stdout='{result.StandardOutput.TrimEnd()}'");
         else if (spy0609.Count == 0)
-            failures.Add($"{id}: expected SPY0609, got: {string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}");
+            failures.Add($"{id}: expected SPY0609, got: {result.FailureSummary()}");
         else if (!spy0609.Any(d => d.Message == message))
             failures.Add($"{id}: expected SPY0609 '{message}', got: {string.Join("; ", spy0609.Select(d => d.Message))}");
     }

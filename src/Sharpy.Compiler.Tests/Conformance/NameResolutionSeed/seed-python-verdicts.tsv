@@ -56,6 +56,8 @@ B32	4
 B33	1
 B34	1
 B35	[1, 2]
+B36	2
+B37	2
 C01	3
 C02	EXC NameError: name 'b' is not defined
 C03	EXC NameError: name 'H' is not defined

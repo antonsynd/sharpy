@@ -7,7 +7,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Tests.Infrastructure;
+using Sharpy.Compiler.Tests.Properties.Differential;
 using Sharpy.Compiler.Tests.Semantic;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParameterModifier = Sharpy.Compiler.Parser.Ast.ParameterModifier;
@@ -58,6 +60,125 @@ internal enum BlockConstruct
     Finally,
     With,
     MatchCase,
+}
+
+/// <summary>Where a name can sit in a comprehension (P77b axis 1, deferred row 1): the image of the Expression-typed properties
+/// of the comprehension and clause nodes, read by <see cref="NameResolutionRosters.ComprehensionSlots"/>.</summary>
+internal enum ComprehensionSlot
+{
+    Element,
+    Key,
+    Value,
+    Spread,
+    Iterable,
+    Condition,
+    Target,
+}
+
+/// <summary>Axis 1's two nestings. Named closed: a function body is python's ordinary comprehension scope and a class body is
+/// the one place its scope rule differs.</summary>
+internal enum ComprehensionNesting
+{
+    FunctionBody,
+    StaticInitializer,
+}
+
+/// <summary>Axis 1's clause shapes, the image of <see cref="NameResolutionRosters.ComprehensionClauses"/>: one <c>for</c>, a second
+/// <c>for</c>, an <c>if</c>. A name in a second <c>for</c>'s iterable sits in the comprehension's own scope, where the first's does not.</summary>
+internal enum ComprehensionClauseShape
+{
+    OneFor,
+    SecondFor,
+    IfClause,
+}
+
+/// <summary>How a read reaches an N3 cycle (P77b axis 2, deferred row 3). Named closed: N3's cycle is either the initializer's
+/// own read or a read through a call, and a call is one hop however deep.</summary>
+internal enum CycleThrough
+{
+    Direct,
+    ThroughDef,
+}
+
+/// <summary>Which endpoints an N3 cycle joins (P77b axis 2). Named closed: the cycle joins two module values, a module value and a type's in
+/// either file order, two types, or one value with itself through a def (p07: the direct self read is READ's <c>Order.Self</c>).</summary>
+internal enum CyclePair
+{
+    ModuleModule,
+    ModuleType,
+    TypeModule,
+    TypeOtherType,
+    SelfThroughDef,
+}
+
+/// <summary>When a LOCAL read happens against its binding (P77b axis 4). Named closed: control-flow timing has no compiler enumeration, so the
+/// five values are the ways N5's "visible from its binding" can be crossed in time.</summary>
+internal enum ReadTimings
+{
+    SameBlockBelow,
+    SameBlockAbove,
+    ClosureBeforeConstruct,
+    BackEdge,
+    FailedGuard,
+}
+
+/// <summary>The outer classes of P77b axis 5's let-in product: the image of <see cref="NameResolutionRosters.StoreTargetScopes"/> (Module, FunctionLike
+/// as the enclosing function, Block as the same function) and no outer.</summary>
+internal enum LetInOuter
+{
+    None,
+    Module,
+    Enclosing,
+    SameFunction,
+}
+
+/// <summary>The class declaring a name a READ reaches, against the class reading it (P77b axis 10). Named closed: <c>TypeSymbol.ContainingType</c>
+/// relations have no compiler enumeration.</summary>
+internal enum DeclaringRelation
+{
+    Self,
+    Base,
+    Other,
+    Enclosing,
+    Sibling,
+}
+
+/// <summary>How a <c>T !E</c> body returns (P77b axis 11). Named closed from <c>tagged_unions_result.md</c>: every example returns <c>Ok(...)</c> or <c>Err(...)</c>, and no implicit wrap exists.</summary>
+internal enum ResultValueForm
+{
+    Ok,
+    BareValue,
+    Err,
+}
+
+/// <summary>N6's declaration shapes (P77b axis 12). Named closed by N6's own bullets (<c>name-resolution.md</c>): a declaration over a binding it cannot write, with
+/// nothing to name, after a use, before a same-scope declaration (R-KX), and from each body a function can be.</summary>
+internal enum DeclarationShapes
+{
+    GlobalOverLet,
+    GlobalOverConst,
+    NonlocalOverLet,
+    NonlocalOverConst,
+    GlobalCreatesBinding,
+    NonlocalNoBinding,
+    ReadBeforeGlobal,
+    ReadBeforeNonlocal,
+    LetAfterGlobal,
+    AnnotatedAfterGlobal,
+    GlobalFromInit,
+    GlobalFromAccessorSet,
+    GlobalFromNestedDef,
+}
+
+/// <summary>The receiver of a store through a member access (P77b axis 8). Named closed: N7's spellings restricted to stores, plus #2435's derived type and instance local;
+/// a <c>MemberAccess</c> receiver has no compiler enumeration.</summary>
+internal enum AttributeReceiver
+{
+    SelfDot,
+    TypeName,
+    Alias,
+    DerivedType,
+    InstanceLocal,
 }
 
 /// <summary>The scope a STORE targets (tenth pass finding 4): the image of <see cref="ScopeKind"/>.</summary>
@@ -258,7 +379,7 @@ internal static class NameResolutionRosters
     /// initializer expression binds; <c>Transparent</c> holds only type parameters.
     /// </summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<BindingKind>> ScopeSplit = Roster.Map(
-        (ScopeKind.Module, Roster.To(ModuleLevelKinds.Add(BindingKind.Builtin).ToArray())),
+        (ScopeKind.Module, Roster.To(ModuleLevelKinds.Add(BindingKind.Builtin).Add(BindingKind.ImportedName).ToArray())),
         (ScopeKind.TypeBody, Roster.To(TypeLevelKinds.AddRange(InstanceKinds).ToArray())),
         (ScopeKind.FunctionLike, Roster.To(PositionLocalKinds.ToArray())),
         (ScopeKind.Block, Roster.To(
@@ -284,8 +405,8 @@ internal static class NameResolutionRosters
 
     internal static readonly IReadOnlyDictionary<TypeKind, RosterEntry<BindingKind>> TypeKinds = Roster.Map(
         (TypeKind.Class, Roster.To(BindingKind.ModuleClass, BindingKind.NestedType)),
-        (TypeKind.Struct, Roster.To(BindingKind.ModuleStruct)),
-        (TypeKind.Interface, Roster.To(BindingKind.ModuleInterface)),
+        (TypeKind.Struct, Roster.To(BindingKind.ModuleStruct, BindingKind.NestedType)),
+        (TypeKind.Interface, Roster.To(BindingKind.ModuleInterface, BindingKind.NestedType)),
         (TypeKind.Enum, Roster.To(BindingKind.ModuleEnum)),
         (TypeKind.Union, Roster.To(BindingKind.ModuleUnion)),
         (TypeKind.Delegate, Roster.Out<BindingKind>(ExcludedAxis.TypeParametersAndDelegates,
@@ -354,13 +475,13 @@ internal static class NameResolutionRosters
         (CubeKey(SymbolKind.Variable, ScopeKind.TypeBody, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.TypeBody, "IsParameter"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
 
-        (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal)),
+        (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.LambdaTypedLocal)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsConstant"), Roster.To(BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsParameter"), Roster.To(BindingKind.Parameter, BindingKind.Inner)),
 
-        (CubeKey(SymbolKind.Variable, ScopeKind.Block, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.Inner)),
+        (CubeKey(SymbolKind.Variable, ScopeKind.Block, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.Inner, BindingKind.LambdaTypedLocal)),
         (CubeKey(SymbolKind.Variable, ScopeKind.Block, "IsConstant"), Roster.To(BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst)),
         (CubeKey(SymbolKind.Variable, ScopeKind.Block, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.Block, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
@@ -386,7 +507,7 @@ internal static class NameResolutionRosters
     private const string MemberOnly = "@static and the __init__ name class mean something only on a type's member; here they are the ordinary def's kind";
 
     /// <summary><c>SymbolKind.Function</c> × owner <see cref="ScopeKind"/> × function class. A lambda-typed local's binding is a
-    /// variable; its READ is the call, so D3.a maps it here, for the form.</summary>
+    /// variable (<see cref="VariableCube"/> holds it, which D3.1's round trip reads); its READ is the call, so D3.a maps it here too, for the form.</summary>
     internal static readonly IReadOnlyDictionary<string, RosterEntry<BindingKind>> FunctionCube = Roster.Map(
         (CubeKey(SymbolKind.Function, ScopeKind.Module, NoFlag), Roster.To(BindingKind.ModuleDef)),
         (CubeKey(SymbolKind.Function, ScopeKind.Module, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, MemberOnly)),
@@ -413,6 +534,8 @@ internal static class NameResolutionRosters
     // ---------------------------------------------------------------------------------------------------------
 
     internal const string CheckModifiedArgumentSite = "TypeChecker.Expressions.cs:CheckModifiedArgument(newSymbol)";
+
+    internal const string ImportBinderSite = "ImportResolver.Symbols.cs:BindImportName(symbol)";
 
     private const string TypeParameter = "a type parameter is never a value binding (x)";
 
@@ -462,6 +585,10 @@ internal static class NameResolutionRosters
         ("SymbolTable.cs:PopulateBuiltins(name, typeSymbol)", BinderImage.Declaring(BindingKind.Builtin)),
         ("SymbolTable.cs:PopulateBuiltins(funcSymbol)", BinderImage.Declaring(BindingKind.Builtin)),
 
+        // The one import binder (D2.9): its single-file spelling is a named outer beside Builtin. The module-qualified and
+        // other-user-module spellings of the same site stay ExcludedAxis.ProjectRoute (i).
+        (ImportBinderSite, BinderImage.Declaring(BindingKind.ImportedName)),
+
         // Excluded: the census's own subject
         ("SymbolTable.cs:Define(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.Define wrapper over Scope.Define: every other row is its caller")),
         ("SymbolTable.cs:TryDefine(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.TryDefine wrapper over Scope.Define: every other row is its caller")),
@@ -495,7 +622,6 @@ internal static class NameResolutionRosters
         ("TypeChecker.Statements.Patterns.cs:BindRefusedCapture(recovery)", BinderImage.Out(ExcludedAxis.NotAKind, "error recovery: IsErrorRecovery models no program binding")),
         ("TypeChecker.Statements.Patterns.cs:CheckTupleUnpackingElements(newSymbol)", BinderImage.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple store (iii)")),
         ("TypeChecker.Statements.Unpacking.cs:DefineUnpackingSymbol(symbol)", BinderImage.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "a tuple / star store (iii)")),
-        ("ImportResolver.Symbols.cs:BindImportName(symbol)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("InheritanceResolver.cs:ResolveTransitiveBaseTypes(found)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("InheritanceResolver.cs:ResolveTransitiveBaseTypes(found)#2", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
         ("TypeChecker.Expressions.cs:TryResolveInlineClrNamespace(moduleSymbol)", BinderImage.Out(ExcludedAxis.ProjectRoute, ProjectRouteBinder)),
@@ -725,7 +851,7 @@ internal static class NameResolutionRosters
     /// constructible as a <c>BindingPattern</c>, and that is LOCAL's <c>match</c> capture.</summary>
     internal static readonly IReadOnlyDictionary<string, string> PatternNotes = Roster.Map(
         (nameof(BindingPattern), TypedCaptureNote),
-        (nameof(AndPattern), "python has no `&` pattern, so a program spelling one has no twin for the control to judge; OrPattern, GuardPattern, AsPattern, TuplePattern and ListPattern keep the composite arm"));
+        (nameof(AndPattern), "python has no `and` pattern, so a program spelling one has no twin for the control to judge; OrPattern, GuardPattern, AsPattern, TuplePattern and ListPattern keep the composite arm"));
 
     internal static readonly IReadOnlyDictionary<string, PatternClass> Patterns = Roster.Map(
         (nameof(TypePattern), PatternClass.NamesTypeOrMember),
@@ -870,6 +996,7 @@ internal static class NameResolutionRosters
         (BindingKind.InstanceMethod, AxisMembership.ClassEnclosed),
         (BindingKind.EnclosingLocal, AxisMembership.Everywhere),
         (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
         (BindingKind.None, AxisMembership.Everywhere),
         (BindingKind.NestedType, AxisMembership.Pruned("a type's bare name binds through the walk (Scope.ResolveName binds types); non-writable by meaning, ModuleClass keeps that arm")),
         (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)),
@@ -881,6 +1008,25 @@ internal static class NameResolutionRosters
         (BindingKind.LocalComputedConst, AxisMembership.Pruned(SameFunctionIsTargetScope)),
         (BindingKind.LocalDef, AxisMembership.Pruned(SameFunctionIsTargetScope)),
         (BindingKind.LambdaTypedLocal, AxisMembership.Pruned(SameFunctionIsTargetScope)));
+
+    /// <summary>READ's outer axis (P77b D1, R-KP): total over the module-level kinds and the three outers beside them. Replaces the hand
+    /// array and the budget prune: every kind that reads through an expression is generated.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> ReadOuter = Roster.Map(
+        (BindingKind.None, AxisMembership.Everywhere),
+        (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleDef, AxisMembership.Everywhere),
+        (BindingKind.ModuleClass, AxisMembership.Everywhere),
+        (BindingKind.ModuleStruct, AxisMembership.Everywhere),
+        (BindingKind.ModuleEnum, AxisMembership.Everywhere),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration")),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, "no expression read")),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, "no expression read")));
 
     private const string AsModuleVar = "a value binding of the module: the read above N5's binding shares ModuleVar's arm (N4), and ModuleVar stays";
 
@@ -899,6 +1045,7 @@ internal static class NameResolutionRosters
         (BindingKind.ModuleLiteralConst, AxisMembership.Everywhere),
         (BindingKind.EnclosingLocal, AxisMembership.Everywhere),
         (BindingKind.Builtin, AxisMembership.Everywhere),
+        (BindingKind.ImportedName, AxisMembership.Everywhere),
         (BindingKind.StaticField, AxisMembership.ClassEnclosed),
         (BindingKind.StaticMethod, AxisMembership.ClassEnclosed),
         (BindingKind.ModuleLet, AxisMembership.Pruned(AsModuleVar)),
@@ -925,6 +1072,342 @@ internal static class NameResolutionRosters
         (BindingKind.LocalDef, AxisMembership.Pruned(SameFunctionIsTargetScope)),
         (BindingKind.LambdaTypedLocal, AxisMembership.Pruned(SameFunctionIsTargetScope)));
 
+    /// <summary>The position-local kinds LOCAL's binder axis generates (P77b deferred row 5): the ones a declaration statement
+    /// binds. The other three are bound by something that is not a statement of the body under test.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> LocalKinds = Roster.Map(
+        (BindingKind.LocalVar, AxisMembership.Everywhere),
+        (BindingKind.LocalLet, AxisMembership.Everywhere),
+        (BindingKind.LocalLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.LocalComputedConst, AxisMembership.Everywhere),
+        (BindingKind.LocalDef, AxisMembership.Everywhere),
+        (BindingKind.LambdaTypedLocal, AxisMembership.Everywhere),
+        (BindingKind.EnclosingLocal, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "a LocalVar seen from a nested def: it sits on LocalOuter as the outer a binder shadows, and its declaration statement is the LocalVar row")),
+        (BindingKind.Parameter, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "bound by the signature, never by a statement of the body, so no read above its binding exists")),
+        (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind,
+            "a lambda parameter or comprehension variable, bound inside its own expression: LocalTarget.Comprehension is its axis")));
+
+    /// <summary>P77b axis 1's kinds: a comprehension family of <see cref="BlockFamilies"/> and the AST node it scopes, total over both.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<Type>> ComprehensionKinds = Roster.Map(
+        ("list-comprehension", Roster.To(typeof(ListComprehension))),
+        ("set-comprehension", Roster.To(typeof(SetComprehension))),
+        ("dict-comprehension", Roster.To(typeof(DictComprehension))),
+        ("dict-spread-comprehension", Roster.To(typeof(DictSpreadComprehension))),
+        ("generator-expression", Roster.To(typeof(GeneratorExpression))));
+
+    /// <summary>P77b axis 1's clauses: every <see cref="ComprehensionClause"/> subclass and every <c>bool</c> it declares is a row or out
+    /// with its reason, by reflection (the <see cref="VariableFlags"/> shape).</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<ComprehensionClauseShape>> ComprehensionClauses = Roster.Map(
+        ("ForClause", Roster.To(ComprehensionClauseShape.OneFor, ComprehensionClauseShape.SecondFor)),
+        ("IfClause", Roster.To(ComprehensionClauseShape.IfClause)),
+        ("ForClause.IsAsync", Roster.Out<ComprehensionClauseShape>(ExcludedAxis.AsyncBodies,
+            "`async for` needs the twin's await chain, which is not a name axis (xiii)")));
+
+    /// <summary>P77b axis 1's slots (deferred row 1): every Expression-typed property of a comprehension or clause node, read by
+    /// reflection against this map, so a slot the AST gains is red until it has a row. <c>Spread</c> is a READ slot like the
+    /// others (`{**d for v in [1]}`), and <c>ForClause.Target</c> is the LOCAL-target row.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<ComprehensionSlot>> ComprehensionSlots = Roster.Map(
+        ("ListComprehension.Element", Roster.To(ComprehensionSlot.Element)),
+        ("SetComprehension.Element", Roster.To(ComprehensionSlot.Element)),
+        ("GeneratorExpression.Element", Roster.To(ComprehensionSlot.Element)),
+        ("DictComprehension.Key", Roster.To(ComprehensionSlot.Key)),
+        ("DictComprehension.Value", Roster.To(ComprehensionSlot.Value)),
+        ("DictSpreadComprehension.Spread", Roster.To(ComprehensionSlot.Spread)),
+        ("ForClause.Iterator", Roster.To(ComprehensionSlot.Iterable)),
+        ("ForClause.Target", Roster.To(ComprehensionSlot.Target)),
+        ("IfClause.Condition", Roster.To(ComprehensionSlot.Condition)));
+
+    /// <summary>The measured count of those properties, a literal so the reflection cannot silently read nothing.</summary>
+    internal const int ComprehensionSlotCensus = 9;
+
+    internal static string WalrusKey(ComprehensionSlot slot, ComprehensionNesting nesting) => $"{slot} × {nesting}";
+
+    /// <summary>python3 3.12.13's last line for each walrus it refuses, exactly: the exclusion's reason and its falsifier.</summary>
+    internal const string WalrusIterableRefusal = "SyntaxError: assignment expression cannot be used in a comprehension iterable expression";
+
+    internal const string WalrusClassBodyRefusal = "SyntaxError: assignment expression within a comprehension cannot be used in a class body";
+
+    internal const string WalrusTargetRefusal = "SyntaxError: cannot assign to named expression";
+
+    internal const string DictSpreadRefusal = "SyntaxError: dict unpacking cannot be used in dict comprehension";
+
+    /// <summary>Axis 1's walrus STORE cell at each slot × nesting (deferred row 2): generated, or out because python refuses the
+    /// program outright and a must-refuse over its SyntaxError would judge nothing about a name.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> ComprehensionWalrus = Roster.Map(
+        (WalrusKey(ComprehensionSlot.Element, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Key, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Value, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Condition, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
+        (WalrusKey(ComprehensionSlot.Iterable, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableRefusal)),
+        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, DictSpreadRefusal)),
+        (WalrusKey(ComprehensionSlot.Target, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusTargetRefusal)),
+        (WalrusKey(ComprehensionSlot.Element, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Key, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Value, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Condition, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
+        (WalrusKey(ComprehensionSlot.Iterable, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableRefusal)),
+        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, DictSpreadRefusal)),
+        (WalrusKey(ComprehensionSlot.Target, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusTargetRefusal)));
+
+    private const string NoInitializerToCycle = "no initializer of its own: a callable or a type declares no value a read could wait on";
+
+    /// <summary>The endpoints of <c>CycleRoutes</c> (P77b axis 2, deferred row 3): every module-level, type-level and instance kind is an
+    /// endpoint or out with its reason, in place of the prose "kinds with an initializer".</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> CycleEndpoints = Roster.Map(
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal reads no name, so no cycle passes through it")),
+        (BindingKind.ClassLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal reads no name, so no cycle passes through it")),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration, so the program never reaches the cycle")),
+        (BindingKind.ModuleDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleClass, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleStruct, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleEnum, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.StaticMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.InstanceMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToCycle)),
+        (BindingKind.InstanceField, AxisMembership.Out(ExcludedAxis.NotAKind, "runs at construction, not at load: N3's order and cycle rules name module and type values")),
+        (BindingKind.InstanceProperty, AxisMembership.Out(ExcludedAxis.NotAKind, "runs at construction, not at load: N3's order and cycle rules name module and type values")));
+
+    private const string NoCallableEndpoint = "no endpoint is callable: a value is read, never called, and a read through a def is CycleThrough's";
+
+    private const string NoBareTypeRead = "a type's member has no bare spelling from outside its own body: READ's Order.Cycle holds the bare read inside one";
+
+    private const string NoModuleQualifier = "a module value's qualified spelling needs a module name, axis (i)";
+
+    private const string NoSelfAtModule = "a module value has no self";
+
+    internal static string CycleRouteKey(NameResolutionDifferentialTests.Spelling spelling, CyclePair pair) => $"{spelling} × {pair}";
+
+    /// <summary>P77b axis 2: how a read of each endpoint pair is spelled, total over <c>Spelling</c> × <see cref="CyclePair"/>. The bare read of
+    /// a module value stays bare in a pair with a type, since the pair's spelling is its type member's read.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> CycleRoutes = Roster.Map(
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.ModuleModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.ModuleType), AxisMembership.Out(ExcludedAxis.NotAKind, NoBareTypeRead)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.TypeModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoBareTypeRead)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.TypeOtherType), AxisMembership.Out(ExcludedAxis.NotAKind, NoBareTypeRead)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Bare, CyclePair.SelfThroughDef), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.ProjectRoute, NoModuleQualifier)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.ModuleType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.TypeModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.TypeOtherType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Qualified, CyclePair.SelfThroughDef), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.NotAKind, "a type alias names a type, never a module value")),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.ModuleType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.TypeModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.TypeOtherType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Alias, CyclePair.SelfThroughDef), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.ModuleType), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.TypeModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.TypeOtherType), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.Call, CyclePair.SelfThroughDef), AxisMembership.Out(ExcludedAxis.NotAKind, NoCallableEndpoint)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.ModuleModule), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfAtModule)),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.ModuleType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.TypeModule), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.TypeOtherType), AxisMembership.Everywhere),
+        (CycleRouteKey(NameResolutionDifferentialTests.Spelling.SelfDot, CyclePair.SelfThroughDef), AxisMembership.Everywhere));
+
+    private const string NoInitializerToObserve = "no initializer to observe: a callable or a type runs nothing at its declaration";
+
+    private const string NoLoadOrder = "a local runs where its block does, which is LOCAL's read timing, never a load order";
+
+    /// <summary>P77b axis 3's ORDER observation (the VALUE observation is every other cell): total over <see cref="BindingKind"/>. A kind with an
+    /// initializer that can call a helper prints from it; `init` before `main` is N3 bullet 2.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> OrderObservationKinds = Roster.Map(
+        (BindingKind.ModuleVar, AxisMembership.Everywhere),
+        (BindingKind.ModuleProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleComputedConst, AxisMembership.Everywhere),
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.InstanceField, AxisMembership.Everywhere),
+        (BindingKind.InstanceProperty, AxisMembership.Everywhere),
+        (BindingKind.ModuleLet, AxisMembership.Out(ExcludedAxis.RefusedByKind, "SPY0340 at its own declaration")),
+        (BindingKind.ModuleLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal calls no helper, so it has no order to observe")),
+        (BindingKind.ClassLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, "a literal calls no helper, so it has no order to observe")),
+        (BindingKind.ModuleDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleClass, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleStruct, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleEnum, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleUnion, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleInterface, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.ModuleTypeAlias, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.StaticMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.NestedType, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.InstanceMethod, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoInitializerToObserve)),
+        (BindingKind.EnclosingLocal, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.Parameter, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.Inner, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalVar, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalLet, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalLiteralConst, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalComputedConst, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LocalDef, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.LambdaTypedLocal, AxisMembership.Out(ExcludedAxis.NotAKind, NoLoadOrder)),
+        (BindingKind.Builtin, AxisMembership.Out(ExcludedAxis.NotAKind, "the runtime's, with no initializer of the program's")),
+        (BindingKind.ImportedName, AxisMembership.Out(ExcludedAxis.NotAKind, "its module runs it, and N3 orders that before this module's: a project route's question (i)")),
+        (BindingKind.None, AxisMembership.Out(ExcludedAxis.NotAKind, "no binding")));
+
+    /// <summary>The loop families axis 4's back edge crosses, a subset of <see cref="BlockFamilies"/> the fact holds it to.</summary>
+    internal static readonly ImmutableArray<string> ReadTimingLoops = ImmutableArray.Create("for-body", "while-body");
+
+    /// <summary>The captures axis 4's failed guard binds: the two pattern targets of <see cref="LocalTarget"/>.</summary>
+    internal static readonly ImmutableArray<LocalTarget> ReadTimingCaptures = ImmutableArray.Create(LocalTarget.MatchCapture, LocalTarget.AsPatternCapture);
+
+    internal static string LetInKey(string family, LetInOuter outer) => $"{family} × {outer}";
+
+    private const string OneFamilyStandsForTheWalk = "one block family stands for the walk: StoreNestingReason";
+
+    /// <summary>P77b axis 5: every family that hosts a <c>let</c> × every outer class. No outer and the module are generated at each family; the
+    /// two outers a nested scope shadows run at <see cref="StoreNestingFamily"/>, since every Block family is walked alike.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> LetInProduct = Roster.Map(
+        BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null))
+            .SelectMany(e => Enum.GetValues<LetInOuter>().Select(o => (
+                LetInKey(e.Key, o),
+                o is LetInOuter.None or LetInOuter.Module || e.Key == StoreNestingFamily
+                    ? AxisMembership.Everywhere
+                    : AxisMembership.Out(ExcludedAxis.PrunedRepresentative, OneFamilyStandsForTheWalk))))
+            .ToArray());
+
+    /// <summary>P77b axis 11: an alias spelled at every type position, or out with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<TypePosition, AxisMembership> TypePositionSpellings = Roster.Map(
+        (TypePosition.VariableAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ReturnAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ParameterAnnotation, AxisMembership.Everywhere),
+        (TypePosition.ExceptClause, AxisMembership.Everywhere),
+        (TypePosition.AliasTarget, AxisMembership.Everywhere),
+        (TypePosition.PropertyAnnotation, AxisMembership.Everywhere),
+        (TypePosition.AccessorReturn, AxisMembership.Everywhere),
+        (TypePosition.UnionCaseField, AxisMembership.Everywhere),
+        (TypePosition.LambdaReturn, AxisMembership.Everywhere),
+        (TypePosition.CallableReturn, AxisMembership.Everywhere),
+        (TypePosition.CallableParameter, AxisMembership.Everywhere),
+        (TypePosition.OutInlineType, AxisMembership.Everywhere),
+        (TypePosition.Coercion, AxisMembership.Everywhere),
+        (TypePosition.IsInstance, AxisMembership.Everywhere),
+        (TypePosition.TryExceptionType, AxisMembership.Everywhere),
+        (TypePosition.ResultError, AxisMembership.Everywhere),
+        (TypePosition.GenericArgument, AxisMembership.Everywhere),
+        (TypePosition.BaseList, AxisMembership.Everywhere),
+        (TypePosition.PatternType, AxisMembership.Out(ExcludedAxis.NotAKind, "a pattern's type is roster 7's, read by TYPEMEMBER's pattern cells")));
+
+    /// <summary>P77b axis 7: a type kind's image as a host of body positions, total over <see cref="TypeKind"/>.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, RosterEntry<string>> HostKinds = Roster.Map(
+        (TypeKind.Class, Roster.To("class", "dataclass")),
+        (TypeKind.Struct, Roster.To("struct")),
+        (TypeKind.Interface, Roster.Out<string>(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's and P75's hand matrices (ii)")),
+        (TypeKind.Enum, Roster.Out<string>(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's and P75's hand matrices (ii)")),
+        (TypeKind.Union, Roster.Out<string>(ExcludedAxis.InterfaceUnionEnumGenericHosts, "P78's and P75's hand matrices (ii)")),
+        (TypeKind.Delegate, Roster.Out<string>(ExcludedAxis.TypeParametersAndDelegates, "no Sharpy declaration (x)")));
+
+    /// <summary>Each host's membership of the body positions: READ's class arm is the class host, this axis the struct's.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> HostBodies = Roster.Map(
+        ("class", AxisMembership.Everywhere),
+        ("struct", AxisMembership.Everywhere),
+        ("dataclass", AxisMembership.Pruned("a dataclass body is a class body")));
+
+    /// <summary>R-KT's positions: where <c>self</c> reaches a C# closure, so a struct's would be captured (CS1673). A comprehension and a generator body are lowered
+    /// without capturing <c>this</c> and they run: the class arm's green there is this arm's positive control.</summary>
+    internal static readonly ImmutableArray<ReadPosition> StructClosureBodies = ImmutableArray.Create(
+        ReadPosition.LambdaStored, ReadPosition.LambdaImmediate, ReadPosition.LambdaPassed, ReadPosition.NestedDefInMethod);
+
+    /// <summary>The body positions that also spell a stored lambda around the read (#2434's <c>st2_init_lambda</c> and <c>st2_accessor_get_lambda</c>).</summary>
+    internal static readonly ImmutableArray<ReadPosition> StructLambdaNestingBodies = ImmutableArray.Create(ReadPosition.InitBody, ReadPosition.AccessorGetBody);
+
+    /// <summary>The members axis 7 reads from a struct body: a value and a callable, each instance and <c>@static</c>.</summary>
+    internal static readonly ImmutableArray<BindingKind> StructHostTargets = ImmutableArray.Create(
+        BindingKind.InstanceField, BindingKind.StaticField, BindingKind.InstanceMethod, BindingKind.StaticMethod);
+
+    /// <summary>P77b axis 8: every arm of <c>FirstInvalidAssignmentTarget</c>'s switch, the compiler's one authority for an assignment target, is a form or out with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<string, RosterEntry<string>> AssignmentTargetShapes = Roster.Map(
+        ("Identifier", Roster.To("the bare forms of STORE")),
+        ("MemberAccess", Roster.To("the attribute store")),
+        ("IndexAccess", Roster.Out<string>(ExcludedAxis.NotAKind, "the receiver is a read and the element is a value, no name is stored")),
+        ("TupleLiteral", Roster.Out<string>(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "tuple stores are #2154/#2156/P21d's (iii)")),
+        ("StarExpression", Roster.Out<string>(ExcludedAxis.EventsSplitPropertiesTupleStarStores, "star stores are #2154/#2156/P21d's (iii)")));
+
+    /// <summary>The members an attribute store reaches: roster 1's type-level and instance kinds, each a row or out.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, AxisMembership> AttributeStoreMembers = Roster.Map(
+        (BindingKind.StaticField, AxisMembership.Everywhere),
+        (BindingKind.StaticProperty, AxisMembership.Everywhere),
+        (BindingKind.StaticMethod, AxisMembership.Everywhere),
+        (BindingKind.ClassLiteralConst, AxisMembership.Everywhere),
+        (BindingKind.ClassComputedConst, AxisMembership.Everywhere),
+        (BindingKind.InstanceField, AxisMembership.Everywhere),
+        (BindingKind.InstanceProperty, AxisMembership.Everywhere),
+        (BindingKind.InstanceMethod, AxisMembership.Everywhere),
+        (BindingKind.NestedType, AxisMembership.Pruned("a type's name is non-writable by meaning: the STORE outer's ModuleClass keeps that arm")),
+        (BindingKind.Constructor, AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)));
+
+    /// <summary>Which store forms a member access can spell. The parser binds a name and never a member for the other three: measured SPY0143 on <c>(self.x := 15)</c>,
+    /// SPY0107 on <c>let self.x = 15</c> and SPY0104 on <c>f0(out let self.x)</c>, and python refuses the walrus alike.</summary>
+    internal static readonly IReadOnlyDictionary<StoreForm, AxisMembership> AttributeStoreForms = Roster.Map(
+        (StoreForm.Assign, AxisMembership.Everywhere),
+        (StoreForm.Augmented, AxisMembership.Everywhere),
+        (StoreForm.Walrus, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member")),
+        (StoreForm.OutLet, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member")),
+        (StoreForm.LetOrVar, AxisMembership.Out(ExcludedAxis.NotAKind, "the parser binds a name, never a member")));
+
+    internal static string AttributeBodyKey(AttributeReceiver receiver, ReadPosition body) => $"{receiver} × {body}";
+
+    private const string NoSelfInScope = "no self in scope: SPY0200 on `self` is python's NameError, a type-system agreement (fidelity row 2), not a name verdict";
+
+    private const string OneBodyForTheReceiver = "the receiver × member product runs at the method body, and only self and the type name reach the other bodies (D2's table)";
+
+    /// <summary>Which receivers each body hosts. <c>self</c> follows <c>IsSelfBearing</c>, which the fact holds it to.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> AttributeStoreBodies = Roster.Map(
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.InitBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.StaticMethodBody), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfInScope)),
+        (AttributeBodyKey(AttributeReceiver.SelfDot, ReadPosition.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfInScope)),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.InitBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.StaticMethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.TypeName, ReadPosition.FunctionBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.Alias, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.DerivedType, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.MethodBody), AxisMembership.Everywhere),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
+        (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)));
+
+    /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
+    /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
+    /// value @ 82acda375 (<c>const y: int = i</c> included). A `\n` starts the statement's next line.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, RosterEntry<string>> LoopBodyBinders = Roster.Map(
+        (BindingKind.LocalVar, Roster.To("y = i", "y: int = i")),
+        (BindingKind.LocalLet, Roster.To("let y = i")),
+        (BindingKind.LocalComputedConst, Roster.To("const y: int = i")),
+        (BindingKind.LocalDef, Roster.To("def y() -> int:\n    return i")),
+        (BindingKind.LambdaTypedLocal, Roster.To("y: () -> int = lambda: i")),
+        (BindingKind.LocalLiteralConst, Roster.Out<string>(ExcludedAxis.NotAKind, "a literal is the same value every iteration, so fresh-per-iteration has nothing to show")));
+
+    private const string TheWalkIsTheSame = "same walk: R-LG names with and except, the bodies a fresh binding might not have reached";
+
+    /// <summary>Axis 6's enclosure (R-LG): the loop body itself, or a block family nested in it, total over the families that host a binder.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> LoopBodyEnclosures = Roster.Map(
+        BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)).Select(e => e.Key)
+            .Select(f => (f, f is "with" or "except" ? AxisMembership.Everywhere : AxisMembership.Out(ExcludedAxis.PrunedRepresentative, TheWalkIsTheSame)))
+            .Append(("direct", AxisMembership.Everywhere))
+            .ToArray());
+
     /// <summary>STORE's target scope (finding 4): the image of <see cref="ScopeKind"/>, the other three with their reasons.</summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, RosterEntry<StoreTargetScope>> StoreTargetScopes = Roster.Map(
         (ScopeKind.Block, Roster.To(StoreTargetScope.SameBlock, StoreTargetScope.EnclosingBlock)),
@@ -935,6 +1418,85 @@ internal static class NameResolutionRosters
         (ScopeKind.Transparent, Roster.Out<StoreTargetScope>(ExcludedAxis.TypeParametersAndDelegates, "declares no variable")),
         (ScopeKind.InitializerHost, Roster.Out<StoreTargetScope>(ExcludedAxis.NotAKind,
             "an initializer is an expression: only a walrus binds there, as the Inner kind, and it is not a function boundary")));
+
+    // ---------------------------------------------------------------------------------------------------------
+    // D5: TYPEMEMBER's declaring kind × member, the shape that had no roster
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>TYPEMEMBER's declaring kinds: <see cref="TypeKinds"/>' sources by the spelling that declares them. The two class spellings
+    /// route differently (a dataclass synthesizes its constructor), so each is a value.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, RosterEntry<string>> TypeMemberDeclaringKinds = Roster.Map(
+        (TypeKind.Class, Roster.To("class", "dataclass")),
+        (TypeKind.Struct, Roster.To("struct")),
+        (TypeKind.Interface, Roster.To("interface")),
+        (TypeKind.Enum, Roster.To("enum")),
+        (TypeKind.Union, Roster.To("union")),
+        (TypeKind.Delegate, Roster.Out<string>(ExcludedAxis.TypeParametersAndDelegates, "the delegate kind has no member to read (x)")));
+
+    /// <summary>The members <see cref="TypeBodyMemberKind"/> does not tell apart and TYPEMEMBER's reads do: each is read by another spelling.</summary>
+    internal static readonly ImmutableArray<string> TypeMemberExtraMembers = ImmutableArray.Create("constructor", "static-method", "case");
+
+    internal static string TypeMemberKey(string kind, string member) => $"{kind} × {member}";
+
+    private const string EventsAreTheirOwnAxis = "events are #2400 (iii)";
+
+    private const string NoCaseInThisBody = "a case belongs to an enum or a union: `case W()` in this body is SPY0103 (measured @ d076feee7)";
+
+    private const string EnumBodyHoldsCases = "an enum body holds `NAME = value` cases and nothing else: SPY0101 or SPY0103 (measured @ d076feee7)";
+
+    private const string UnionBodyHoldsCasesAndMethods = "a union body holds cases and instance methods: SPY0104 (measured @ d076feee7)";
+
+    /// <summary>Which member each declaring kind can declare (D5). An <c>Out</c> entry is a pair the kind cannot declare, measured by
+    /// compiling it, or an axis named elsewhere. A pair it can declare is generated, which a roster over the pairs that happened to be
+    /// spelled could not say: <c>union × method</c> is in the spec, and <c>interface × field</c> and <c>interface × static-method</c> compile.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> TypeMemberShapes = Roster.Map(
+        (TypeMemberKey("class", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("class", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("dataclass", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("dataclass", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("struct", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("struct", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("interface", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("interface", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "constructor"), AxisMembership.Out(ExcludedAxis.NotAKind, "an interface has no constructor: SPY0413 (measured @ d076feee7)")),
+        (TypeMemberKey("interface", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("enum", "field"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "property"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "event"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "method"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "constructor"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "static-method"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "case"), AxisMembership.Everywhere),
+
+        (TypeMemberKey("union", "field"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "property"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "event"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("union", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("union", "static-method"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, "a union's case is read through its constructor call: the union × constructor row")));
 
     /// <summary>The Block family <see cref="StoreNesting.InsideIf"/> stands for.</summary>
     internal const string StoreNestingFamily = "if-then";
@@ -961,7 +1523,7 @@ public partial class NameResolutionDifferentialTests
         "Sharpy.Compiler.Semantic.Scope",
     };
 
-    private sealed record BinderSite(string Key, int Line, string Receiver, string ReceiverType);
+    private sealed record BinderSite(string Key, int Line, string Receiver, string ReceiverType, string? ArgumentType, IReadOnlyList<string> EnclosingParameters);
 
     private sealed record BinderScan(
         IReadOnlyList<BinderSite> Sites,
@@ -1058,7 +1620,9 @@ public partial class NameResolutionDifferentialTests
                 var baseKey = $"{file}:{EnclosingMethod(name)}({ArgumentText(invocation)})";
                 var ordinal = seen[baseKey] = seen.GetValueOrDefault(baseKey) + 1;
                 sites.Add(new BinderSite(
-                    ordinal == 1 ? baseKey : $"{baseKey}#{ordinal}", line, ReceiverText(name), receiverType));
+                    ordinal == 1 ? baseKey : $"{baseKey}#{ordinal}", line, ReceiverText(name), receiverType,
+                    invocation == null ? null : model.GetTypeInfo(invocation.ArgumentList.Arguments.Last().Expression).Type?.Name,
+                    EnclosingParameterTypes(name)));
             }
         }
 
@@ -1082,6 +1646,21 @@ public partial class NameResolutionDifferentialTests
             access.Expression.ToString(),
         _ => "this",
     };
+
+    /// <summary>The type names of the enclosing method's parameters, the last dotted segment: what that method is handed.</summary>
+    private static IReadOnlyList<string> EnclosingParameterTypes(SyntaxNode node)
+    {
+        var list = node.Ancestors().Select(a => a switch
+        {
+            LocalFunctionStatementSyntax local => local.ParameterList,
+            MethodDeclarationSyntax method => method.ParameterList,
+            ConstructorDeclarationSyntax constructor => constructor.ParameterList,
+            _ => null,
+        }).FirstOrDefault(p => p != null);
+        return list == null
+            ? Array.Empty<string>()
+            : list.Parameters.Select(p => p.Type?.ToString().Split('.').Last() ?? "").ToList();
+    }
 
     private static string EnclosingMethod(SyntaxNode node)
     {
@@ -1289,7 +1868,7 @@ public partial class NameResolutionDifferentialTests
     public void BindingKindRoster_EveryKind_IsTheImageOfASource()
     {
         // Not the scope split, the kind groups or the binder census: those restate the kinds, so they could
-        // not catch an orphan. Builtin's source is the binder census and has its own fact below.
+        // not catch an orphan. Builtin's and ImportedName's source is the binder census, each with its own fact below.
         var image = Roster.ImageOf(NameResolutionRosters.SymbolKinds)
             .Concat(Roster.ImageOf(NameResolutionRosters.TypeKinds))
             .Concat(Roster.ImageOf(NameResolutionRosters.MemberKinds))
@@ -1301,7 +1880,7 @@ public partial class NameResolutionDifferentialTests
 
         var problems = Enum.GetValues<BindingKind>()
             .Except(NameResolutionRosters.NonSymbolKinds)
-            .Where(k => k != BindingKind.Builtin && !image.Contains(k))
+            .Where(k => k != BindingKind.Builtin && k != BindingKind.ImportedName && !image.Contains(k))
             .Select(k => $"BindingKind.{k} is the image of no source value (an orphan the compiler cannot bind)")
             .ToList();
         problems.AddRange(NameResolutionRosters.NonSymbolKinds
@@ -1319,6 +1898,7 @@ public partial class NameResolutionDifferentialTests
             .Concat(NameResolutionRosters.InstanceKinds)
             .Concat(NameResolutionRosters.PositionLocalKinds)
             .Append(BindingKind.Builtin)
+            .Append(BindingKind.ImportedName)
             .Append(BindingKind.None)
             .ToList();
 
@@ -1346,6 +1926,23 @@ public partial class NameResolutionDifferentialTests
 
         AssertNoProblems(problems, "a builtin IS a symbol, and the global scope's binder sites are its source (tenth pass finding 6)");
         NameResolutionRosters.NonSymbolKinds.Should().Equal(new[] { BindingKind.None }, "None is the one kind with no symbol");
+    }
+
+    /// <summary>D2.9, deferred row 6: <c>EveryKind_IsTheImageOfASource</c> excludes the binder census, so this is the kind's catcher.
+    /// The site is read from the scan as well as the map: a renamed binder cannot leave the row naming nothing.</summary>
+    [Fact]
+    public void BindingKindRoster_ImportedName_IsTheImportBinderSite()
+    {
+        CompilerBinders.Value.Sites.Select(s => s.Key).Should().Contain(NameResolutionRosters.ImportBinderSite,
+            "ImportResolver.BindImportName is the one binder a from-import reaches");
+
+        var declaring = NameResolutionRosters.BinderSites
+            .Where(row => row.Value.Declares.Contains(BindingKind.ImportedName))
+            .Select(row => row.Key)
+            .ToList();
+
+        declaring.Should().Equal(new[] { NameResolutionRosters.ImportBinderSite },
+            "the import binder declares ImportedName, and no other binder site does");
     }
 
     [Fact]
@@ -1984,6 +2581,27 @@ public partial class NameResolutionDifferentialTests
     // =========================================================================================================
 
     [Fact]
+    public void ReadOuterRoster_IsTotalOverModuleLevelKindsAndTheNamedOuters()
+    {
+        var universe = NameResolutionRosters.ModuleLevelKinds.Append(BindingKind.Builtin).Append(BindingKind.ImportedName).Append(BindingKind.None);
+        var problems = Roster.TotalityProblems("ReadOuter", universe, NameResolutionRosters.ReadOuter.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.ReadOuter)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"ReadOuter: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"ReadOuter: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "READ's outer is the whole module-level group and the named outers, never a hand array beside it");
+
+        // Literal, not the group again: R-KP restored exactly these, and what is left out is the three kinds with no read.
+        NameResolutionRosters.ReadOuter.Where(e => !e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(
+            new[] { BindingKind.ModuleLet, BindingKind.ModuleUnion, BindingKind.ModuleInterface });
+        Builtins.Select(b => b.Name).Should().Equal("abs", "len", "max", "int");
+    }
+
+    [Fact]
     public void LocalConstructRoster_EveryBlockFamily_IsMapped()
     {
         var families = FamiliesClassifiedAs(ScopeKind.Block);
@@ -2019,6 +2637,447 @@ public partial class NameResolutionDifferentialTests
             .Select(row => $"LocalOuter: {row.Key} is left out, and only D3.e's pruning order may leave a module or type kind out"));
 
         AssertNoProblems(problems, "LOCAL's outer is the whole roster, or a value names why it is pruned (finding 3)");
+    }
+
+    [Fact]
+    public void LocalKindsRoster_IsTotalOverPositionLocalKinds()
+    {
+        var problems = Roster.TotalityProblems("LocalKinds", NameResolutionRosters.PositionLocalKinds, NameResolutionRosters.LocalKinds.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.LocalKinds)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"LocalKinds: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"LocalKinds: {kind} is excluded with no reason");
+            if (member.ClassEnclosedBodiesOnly)
+                problems.Add($"LocalKinds: {kind} is a local, and a local binds alike at every body");
+        }
+
+        AssertNoProblems(problems, "LOCAL's binder axis is the position-local group, with a reason on each kind it leaves out");
+
+        // A literal, not the group again: the group is what could lose a value and still read total.
+        NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(
+            new[]
+            {
+                BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LocalLiteralConst,
+                BindingKind.LocalComputedConst, BindingKind.LocalDef, BindingKind.LambdaTypedLocal,
+            });
+        LocalKinds.Should().Equal(NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key).OrderBy(k => k),
+            "the generator reads the roster, and a hand array beside it is the open-axis shape");
+    }
+
+    [Fact]
+    public void LoopBodyBindersRoster_IsTotalOverLocalKinds()
+    {
+        var generated = NameResolutionRosters.LocalKinds.Where(e => e.Value.Generated).Select(e => e.Key);
+        var problems = Roster.TotalityProblems("LoopBodyBinders", generated, NameResolutionRosters.LoopBodyBinders.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.LoopBodyBinders));
+
+        AssertNoProblems(problems, "axis 6's binder is LocalKinds' whole generated set, each kind a statement spelling or out with its reason");
+    }
+
+    [Fact]
+    public void ComprehensionSlotsRoster_IsTotalOverTheNodesExpressionProperties()
+    {
+        var nodes = typeof(Expression).Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && (typeof(ComprehensionClause).IsAssignableFrom(t)
+                || (typeof(Expression).IsAssignableFrom(t) && (t.Name.EndsWith("Comprehension", StringComparison.Ordinal) || t == typeof(GeneratorExpression)))))
+            .ToList();
+        var properties = nodes
+            .SelectMany(t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .Where(p => typeof(Expression).IsAssignableFrom(p.PropertyType))
+            .Select(PropertyKey)
+            .ToList();
+
+        properties.Should().HaveCount(NameResolutionRosters.ComprehensionSlotCensus,
+            "the census is a measured literal: " + string.Join(", ", properties.OrderBy(k => k, StringComparer.Ordinal)));
+
+        var problems = Roster.TotalityProblems("ComprehensionSlots", properties, NameResolutionRosters.ComprehensionSlots.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionSlots));
+        var image = Roster.ImageOf(NameResolutionRosters.ComprehensionSlots).ToHashSet();
+        problems.AddRange(Enum.GetValues<ComprehensionSlot>().Where(s => !image.Contains(s)).Select(s => $"ComprehensionSlot.{s} is the image of no property"));
+
+        AssertNoProblems(problems, "a slot a name can sit in is an Expression-typed property of the node, never a list in prose");
+    }
+
+    [Fact]
+    public void ComprehensionKindsRoster_IsTotalOverTheBlockFamiliesAndTheNodes()
+    {
+        var families = NameResolutionRosters.BlockFamilies
+            .Where(e => e.Value.Image.Any(c => c.Target == LocalTarget.Comprehension))
+            .Select(e => e.Key);
+        var problems = Roster.TotalityProblems("ComprehensionKinds (a comprehension family)", families, NameResolutionRosters.ComprehensionKinds.Keys).ToList();
+
+        var nodes = ConcreteSubclasses(typeof(Expression))
+            .Where(n => n.EndsWith("Comprehension", StringComparison.Ordinal) || n == nameof(GeneratorExpression));
+        problems.AddRange(Roster.TotalityProblems("ComprehensionKinds (an Expression subclass)", nodes,
+            Roster.ImageOf(NameResolutionRosters.ComprehensionKinds).Select(t => t.Name)));
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionKinds));
+
+        AssertNoProblems(problems, "axis 1's kind is every comprehension family and every comprehension node, both directions");
+        NameResolutionRosters.ComprehensionKinds.Should().HaveCount(5, "a measured literal, so the two reflections cannot both read nothing");
+    }
+
+    [Fact]
+    public void ComprehensionClausesRoster_IsTotalOverTheSubclassesAndTheirFlags()
+    {
+        var clauses = typeof(Expression).Assembly.GetTypes()
+            .Where(t => typeof(ComprehensionClause).IsAssignableFrom(t) && !t.IsAbstract)
+            .ToList();
+        var universe = clauses.Select(t => t.Name)
+            .Concat(clauses.SelectMany(t => BoolProperties(t, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Select(b => $"{t.Name}.{b}")));
+        var problems = Roster.TotalityProblems("ComprehensionClauses (a clause subclass or a clause flag)", universe, NameResolutionRosters.ComprehensionClauses.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.ComprehensionClauses));
+
+        AssertNoProblems(problems, "a clause or a clause flag is a row, or out with its reason");
+        NameResolutionRosters.ComprehensionClauses.Keys.Should().BeEquivalentTo(new[] { "ForClause", "IfClause", "ForClause.IsAsync" }, "measured literals");
+        Roster.ImageOf(NameResolutionRosters.ComprehensionClauses).Should().BeEquivalentTo(Enum.GetValues<ComprehensionClauseShape>());
+    }
+
+    [Fact]
+    public void ComprehensionWalrusRoster_IsTheWholeProduct()
+    {
+        var product = Enum.GetValues<ComprehensionSlot>()
+            .SelectMany(slot => Enum.GetValues<ComprehensionNesting>().Select(nesting => NameResolutionRosters.WalrusKey(slot, nesting)));
+        var problems = Roster.TotalityProblems("ComprehensionWalrus", product, NameResolutionRosters.ComprehensionWalrus.Keys).ToList();
+        foreach (var (key, member) in NameResolutionRosters.ComprehensionWalrus)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"ComprehensionWalrus: {key} is generated AND excluded, or neither");
+        }
+
+        AssertNoProblems(problems, "every slot × nesting is a walrus cell or out with python's own refusal");
+    }
+
+    /// <summary>An exclusion's reason is a claim about python, and an excluded cell never runs for the control to catch it. So
+    /// each reason runs here, one program per distinct line, and it has to be python's exact last line.</summary>
+    [SkippableFact]
+    public void ComprehensionWalrusRoster_EachExclusion_IsPythonsOwnRefusal()
+    {
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        var probes = new[]
+        {
+            (Line: NameResolutionRosters.WalrusIterableRefusal, Source: "def f():\n    r = [v for v in [(y := 1)]]\n"),
+            (Line: NameResolutionRosters.WalrusClassBodyRefusal, Source: "class C:\n    r = [(y := v) for v in [1]]\n"),
+            (Line: NameResolutionRosters.WalrusTargetRefusal, Source: "def f():\n    r = [v for (y := v) in [1]]\n"),
+            (Line: NameResolutionRosters.DictSpreadRefusal, Source: "def f():\n    r = {**d for d in [{}]}\n"),
+        };
+
+        // The generated row with the same read runs: the control that the probe's shape is not refused for another reason.
+        var requests = probes.Select((p, i) => new PyRequest(i, p.Source))
+            .Append(new PyRequest(probes.Length, "def f():\n    r = [(y := v) for v in [1]]\n    return y\nprint(f())\n"))
+            .ToList();
+        var verdicts = oracle.RunBatch(requests, PythonBatchTimeoutMs);
+
+        for (int i = 0; i < probes.Length; i++)
+        {
+            Assert.True(verdicts[i].SyntaxError, $"{probes[i].Line}: python did not refuse the probe");
+            Assert.Equal(probes[i].Line, LastLine(verdicts[i].Stderr));
+        }
+
+        Assert.Equal(new PyOutcome(PyKind.Ran, "1"), ClassifyPython(verdicts[probes.Length]));
+
+        var reasons = NameResolutionRosters.ComprehensionWalrus.Values.Where(m => !m.Generated).Select(m => m.Reason!).ToHashSet(StringComparer.Ordinal);
+        reasons.Should().BeEquivalentTo(probes.Select(p => p.Line), "every reason on the roster has a probe here, and no probe outlives its reason");
+    }
+
+    [Fact]
+    public void CycleEndpointsRoster_IsTotalOverTheThreeKindGroups()
+    {
+        var universe = NameResolutionRosters.ModuleLevelKinds.Concat(NameResolutionRosters.TypeLevelKinds).Concat(NameResolutionRosters.InstanceKinds);
+        var problems = Roster.TotalityProblems("CycleEndpoints", universe, NameResolutionRosters.CycleEndpoints.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.CycleEndpoints)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"CycleEndpoints: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"CycleEndpoints: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "a kind is an N3 cycle endpoint or names why it cannot be one");
+
+        // Literals, not the groups again: what an endpoint is, and the closed set a read reaches it through.
+        NameResolutionRosters.CycleEndpoints.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleComputedConst,
+            BindingKind.StaticField, BindingKind.StaticProperty, BindingKind.ClassComputedConst,
+        });
+        Enum.GetValues<CycleThrough>().Should().Equal(CycleThrough.Direct, CycleThrough.ThroughDef);
+    }
+
+    [Fact]
+    public void CycleRoutesRoster_IsTotalOverSpellingAndPair()
+    {
+        var product = Enum.GetValues<Spelling>().SelectMany(s => Enum.GetValues<CyclePair>().Select(p => NameResolutionRosters.CycleRouteKey(s, p)));
+        var problems = Roster.TotalityProblems("CycleRoutes (a spelling × pair with no cycle cell and no exclusion)", product, NameResolutionRosters.CycleRoutes.Keys).ToList();
+        foreach (var (key, member) in NameResolutionRosters.CycleRoutes)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"CycleRoutes: {key} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"CycleRoutes: {key} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "every spelling × endpoint pair is a cell or names why it cannot be one");
+
+        // Literals, not the enums again: which routes generate cells, and that the two enums are the ones this table was written over.
+        NameResolutionRosters.CycleRoutes.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            "Bare × ModuleModule", "Bare × SelfThroughDef",
+            "Qualified × ModuleType", "Qualified × TypeModule", "Qualified × TypeOtherType", "Qualified × SelfThroughDef",
+            "Alias × ModuleType", "Alias × TypeModule", "Alias × TypeOtherType", "Alias × SelfThroughDef",
+            "SelfDot × ModuleType", "SelfDot × TypeModule", "SelfDot × TypeOtherType", "SelfDot × SelfThroughDef",
+        });
+        Enum.GetNames<Spelling>().Should().Equal("Bare", "Qualified", "Alias", "Call", "SelfDot");
+    }
+
+    [Fact]
+    public void OrderObservationKindsRoster_IsTotalOverBindingKind()
+    {
+        var problems = Roster.TotalityProblems("OrderObservationKinds", Enum.GetValues<BindingKind>(), NameResolutionRosters.OrderObservationKinds.Keys).ToList();
+        foreach (var (kind, member) in NameResolutionRosters.OrderObservationKinds)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"OrderObservationKinds: {kind} is generated AND excluded, or neither");
+            if (member.Excluded != null && string.IsNullOrWhiteSpace(member.Reason))
+                problems.Add($"OrderObservationKinds: {kind} is excluded with no reason");
+        }
+
+        AssertNoProblems(problems, "every binding kind is an order cell or names why its initializer has no order to observe");
+
+        // A literal, not the enum again: the kinds D2's table names, and that the two observations are a closed pair.
+        NameResolutionRosters.OrderObservationKinds.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            BindingKind.ModuleVar, BindingKind.ModuleProperty, BindingKind.ModuleComputedConst, BindingKind.StaticField,
+            BindingKind.StaticProperty, BindingKind.ClassComputedConst, BindingKind.InstanceField, BindingKind.InstanceProperty,
+        });
+    }
+
+    [Fact]
+    public void ReadTimingsRoster_IsTheNamedClosedSetOverItsConstructs()
+    {
+        // A literal, not the enum again: the five timings are named closed, and a sixth is a decision.
+        Enum.GetNames<ReadTimings>().Should().Equal("SameBlockBelow", "SameBlockAbove", "ClosureBeforeConstruct", "BackEdge", "FailedGuard");
+
+        NameResolutionRosters.BlockFamilies.Keys.Should().Contain(NameResolutionRosters.ReadTimingLoops, "the back edge crosses roster 8's loop families");
+        NameResolutionRosters.Patterns.Keys.Should().Contain("GuardPattern", "the failed guard is roster 7's");
+        NameResolutionRosters.ReadTimingCaptures.Should().BeSubsetOf(Enum.GetValues<LocalTarget>());
+    }
+
+    [Fact]
+    public void LetInProductRoster_IsTotalOverTheLetFamiliesAndTheOuters()
+    {
+        var families = NameResolutionRosters.BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)).Select(e => e.Key).ToList();
+        var product = families.SelectMany(f => Enum.GetValues<LetInOuter>().Select(o => NameResolutionRosters.LetInKey(f, o)));
+        AssertNoProblems(
+            Roster.TotalityProblems("LetInProduct", product, NameResolutionRosters.LetInProduct.Keys),
+            "every family hosting a let × every outer class is a cell or names why it is pruned");
+
+        // Literals, not the roster again: thirteen families × four outers, of which the module and no-outer columns and one family's other two generate.
+        families.Should().HaveCount(13);
+        Enum.GetNames<LetInOuter>().Should().Equal("None", "Module", "Enclosing", "SameFunction");
+        NameResolutionRosters.LetInProduct.Should().HaveCount(52);
+        NameResolutionRosters.LetInProduct.Count(e => e.Value.Generated).Should().Be(28);
+        BlockShapes.Select(b => b.Family).Should().BeEquivalentTo(families, "a family's row is what its cells cite");
+    }
+
+    [Fact]
+    public void LoopBodyEnclosuresRoster_IsTotalOverTheFamiliesThatHostABinder()
+    {
+        var universe = NameResolutionRosters.BlockFamilies.Where(e => e.Value.Image.Any(i => i.LetInBody != null)).Select(e => e.Key).Append("direct");
+        AssertNoProblems(
+            Roster.TotalityProblems("LoopBodyEnclosures", universe, NameResolutionRosters.LoopBodyEnclosures.Keys),
+            "a family nested in a loop body is an enclosure or names why it is pruned");
+
+        // A literal, not the roster again: R-LG names exactly these.
+        NameResolutionRosters.LoopBodyEnclosures.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { "direct", "with", "except" });
+    }
+
+    [Fact]
+    public void DeclaringRelationRoster_IsTheNamedClosedSet()
+    {
+        // A literal, not the enum again: a relation the literal does not name is a decision, not a value.
+        Enum.GetNames<DeclaringRelation>().Should().Equal("Self", "Base", "Other", "Enclosing", "Sibling");
+    }
+
+    [Fact]
+    public void TypePositionSpellingsRoster_IsTotalOverTypePosition()
+    {
+        var problems = Roster.TotalityProblems("TypePositionSpellings", Enum.GetValues<TypePosition>(), NameResolutionRosters.TypePositionSpellings.Keys).ToList();
+        foreach (var (position, member) in NameResolutionRosters.TypePositionSpellings)
+        {
+            if (member.Generated == (member.Excluded != null))
+                problems.Add($"TypePositionSpellings: {position} is generated AND excluded, or neither");
+        }
+
+        AssertNoProblems(problems, "an alias reaches every type position, or the position names why not");
+
+        // Literals, not the enum again: what is left out, the count the census of type annotations stands on, and the closed result forms.
+        NameResolutionRosters.TypePositionSpellings.Where(e => !e.Value.Generated).Select(e => e.Key).Should().Equal(TypePosition.PatternType);
+        NameResolutionRosters.TypePositionSpellings.Should().HaveCount(19);
+        Enum.GetNames<ResultValueForm>().Should().Equal("Ok", "BareValue", "Err");
+    }
+
+    [Fact]
+    public void DeclarationShapesRoster_IsTheNamedClosedSet()
+    {
+        // A literal, not the enum again: N6's bullets, and a shape the literal does not name is a decision.
+        Enum.GetNames<DeclarationShapes>().Should().Equal(
+            "GlobalOverLet", "GlobalOverConst", "NonlocalOverLet", "NonlocalOverConst", "GlobalCreatesBinding", "NonlocalNoBinding",
+            "ReadBeforeGlobal", "ReadBeforeNonlocal", "LetAfterGlobal", "AnnotatedAfterGlobal", "GlobalFromInit", "GlobalFromAccessorSet", "GlobalFromNestedDef");
+    }
+
+    [Fact]
+    public void HostKindsRoster_IsTotalOverTypeKind()
+    {
+        var problems = Roster.TotalityProblems("HostKinds", Enum.GetValues<TypeKind>(), NameResolutionRosters.HostKinds.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.HostKinds));
+        problems.AddRange(Roster.TotalityProblems("HostBodies", Roster.ImageOf(NameResolutionRosters.HostKinds), NameResolutionRosters.HostBodies.Keys));
+        AssertNoProblems(problems, "a type kind hosts bodies or names why it does not, and each host is a body axis or pruned");
+
+        // Literals, not the enum again.
+        Roster.ImageOf(NameResolutionRosters.HostKinds).Should().BeEquivalentTo(new[] { "class", "dataclass", "struct" });
+        NameResolutionRosters.HostBodies.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { "class", "struct" });
+    }
+
+    /// <summary>R-KT's set is read off what the generator renders, never listed beside it: a position is a C# closure when its read sits in a lambda or in a def nested in a def.</summary>
+    [Fact]
+    public void HostKindsRoster_ClosureBodies_AreWhatPlaceInClassRendersThroughAClosure()
+    {
+        static int Leading(string line) => line.Length - line.TrimStart().Length;
+
+        static bool ThroughAClosure(ReadPosition p)
+        {
+            var lines = PlaceInClass(p, Nesting.Direct, "E0").Members;
+            var at = Enumerable.Range(0, lines.Count).First(i => lines[i].Contains("E0", StringComparison.Ordinal));
+            if (lines[at].Contains("lambda", StringComparison.Ordinal))
+                return true;
+
+            int defs = 0;
+            int indent = Leading(lines[at]);
+            for (int i = at - 1; i >= 0; i--)
+            {
+                if (Leading(lines[i]) >= indent)
+                    continue;
+                indent = Leading(lines[i]);
+                if (lines[i].TrimStart().StartsWith("def ", StringComparison.Ordinal))
+                    defs++;
+            }
+
+            return defs >= 2;
+        }
+
+        ClassBodies.Where(ThroughAClosure).Should().BeEquivalentTo(NameResolutionRosters.StructClosureBodies,
+            "R-KT refuses what C# refuses, so its positions are the ones rendered through a C# lambda or local function");
+
+        // The scan's positive control and the two positions the arm hinges on, as literals.
+        ClassBodies.Where(ThroughAClosure).Should().Contain(ReadPosition.LambdaStored).And.Contain(ReadPosition.NestedDefInMethod)
+            .And.NotContain(ReadPosition.GeneratorBody).And.NotContain(ReadPosition.ComprehensionElement).And.NotContain(ReadPosition.NestedClassMethodBody);
+    }
+
+    private const string AssignmentTargetMethod = "FirstInvalidAssignmentTarget";
+
+    private static string TypeCheckerSource(string file)
+        => File.ReadAllText(Path.Combine(CompilerSourceDir(), "Semantic", file));
+
+    /// <summary>The <c>case &lt;Type&gt;</c> labels of the first switch in one method, read by Roslyn, and whether it has a default arm. A default arm is what makes the labels the universe: every other shape is SPY0225.</summary>
+    private static (IReadOnlyList<string> Arms, bool HasDefault) SwitchArmsOf(string source, string method)
+    {
+        var declaration = ParseCSharp(source, "scan.cs").GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>().Single(m => m.Identifier.Text == method);
+        var labels = declaration.DescendantNodes().OfType<SwitchStatementSyntax>().First().Sections.SelectMany(s => s.Labels).ToList();
+        var arms = labels.Select(label => label switch
+        {
+            CaseSwitchLabelSyntax value => value.Value.ToString(),
+            CasePatternSwitchLabelSyntax { Pattern: DeclarationPatternSyntax typed } => typed.Type.ToString(),
+            CasePatternSwitchLabelSyntax { Pattern: ConstantPatternSyntax constant } => constant.Expression.ToString(),
+            _ => null,
+        }).Where(a => a != null).Select(a => a!).ToList();
+        return (arms, labels.OfType<DefaultSwitchLabelSyntax>().Any());
+    }
+
+    [Fact]
+    public void AssignmentTargetShapesRoster_IsTotalOverTheSwitchArms()
+    {
+        var (arms, hasDefault) = SwitchArmsOf(TypeCheckerSource("TypeChecker.Utilities.cs"), AssignmentTargetMethod);
+        hasDefault.Should().BeTrue("the default arm is what makes every other shape SPY0225, so the scanned arms are the universe");
+        arms.Should().HaveCount(5, "a measured literal: " + string.Join(", ", arms));
+
+        var problems = Roster.TotalityProblems("AssignmentTargetShapes", arms, NameResolutionRosters.AssignmentTargetShapes.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.AssignmentTargetShapes));
+        AssertNoProblems(problems, "every arm of the compiler's one assignment-target switch is a form or out with its reason, and every row is an arm");
+    }
+
+    /// <summary>The scan's two controls: it sees an arm it was not told about, and the partial list it replaces really is partial.</summary>
+    [Fact]
+    public void AssignmentTargetShapesRoster_Scan_SeesASyntheticArmAndTheIsSitesAreAStrictSubset()
+    {
+        var source = TypeCheckerSource("TypeChecker.Utilities.cs");
+        var (arms, _) = SwitchArmsOf(source, AssignmentTargetMethod);
+        var withFoo = source.Replace("            case Identifier:\n            case MemberAccess:", "            case Foo:\n            case Identifier:\n            case MemberAccess:", StringComparison.Ordinal);
+        withFoo.Should().NotBe(source, "the control edits the real switch");
+        SwitchArmsOf(withFoo, AssignmentTargetMethod).Arms.Should().Contain("Foo").And.HaveCount(arms.Count + 1);
+
+        var isSites = System.Text.RegularExpressions.Regex.Matches(TypeCheckerSource("TypeChecker.Statements.cs"), @"assignment\.Target is (\w+)")
+            .Select(m => m.Groups[1].Value).Where(t => t != "not").Distinct().ToList();
+        isSites.Should().NotBeEmpty("the control reads a real list");
+        isSites.Should().BeSubsetOf(arms);
+        isSites.Should().HaveCountLessThan(arms.Count, "the assignment.Target is sites name only some of the shapes, which is why they are not the source");
+    }
+
+    [Fact]
+    public void AttributeStoreRosters_AreTotalOverTheirSources()
+    {
+        var problems = Roster.TotalityProblems("AttributeStoreMembers", NameResolutionRosters.TypeLevelKinds.Concat(NameResolutionRosters.InstanceKinds), NameResolutionRosters.AttributeStoreMembers.Keys).ToList();
+        problems.AddRange(Roster.TotalityProblems("AttributeStoreForms", Enum.GetValues<StoreForm>(), NameResolutionRosters.AttributeStoreForms.Keys));
+        var bodies = new[] { ReadPosition.MethodBody, ReadPosition.InitBody, ReadPosition.StaticMethodBody, ReadPosition.FunctionBody };
+        problems.AddRange(Roster.TotalityProblems("AttributeStoreBodies",
+            Enum.GetValues<AttributeReceiver>().SelectMany(r => bodies.Select(b => NameResolutionRosters.AttributeBodyKey(r, b))),
+            NameResolutionRosters.AttributeStoreBodies.Keys));
+        foreach (var body in bodies)
+            if (NameResolutionRosters.AttributeStoreBodies[NameResolutionRosters.AttributeBodyKey(AttributeReceiver.SelfDot, body)].Generated != IsSelfBearing(body))
+                problems.Add($"AttributeStoreBodies: self at {body} disagrees with IsSelfBearing, the predicate READ keys `self.` on");
+        AssertNoProblems(problems, "the attribute store's members, forms and bodies are the images of their sources");
+
+        // Literals, not the groups again.
+        NameResolutionRosters.AttributeStoreMembers.Count(e => e.Value.Generated).Should().Be(8);
+        NameResolutionRosters.AttributeStoreForms.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[] { StoreForm.Assign, StoreForm.Augmented });
+        Enum.GetNames<AttributeReceiver>().Should().Equal("SelfDot", "TypeName", "Alias", "DerivedType", "InstanceLocal");
+        // A receiver re-pruned by an `Out` entry is still total, so totality cannot see it, and the census and the allowlist can be re-pinned with it.
+        NameResolutionRosters.AttributeStoreBodies.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            "SelfDot × MethodBody", "SelfDot × InitBody",
+            "TypeName × MethodBody", "TypeName × InitBody", "TypeName × StaticMethodBody", "TypeName × FunctionBody",
+            "Alias × MethodBody", "DerivedType × MethodBody", "InstanceLocal × MethodBody",
+        });
+    }
+
+    [Fact]
+    public void TypeMemberShapesRoster_IsTotalOverTheDeclaringKindsAndMembers()
+    {
+        var problems = Roster.TotalityProblems("TypeMemberDeclaringKinds", Enum.GetValues<TypeKind>(), NameResolutionRosters.TypeMemberDeclaringKinds.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.TypeMemberDeclaringKinds));
+        problems.AddRange(Roster.TotalityProblems("TypeMemberDeclaringKinds' excluded sources",
+            NameResolutionRosters.TypeKinds.Where(e => e.Value.Excluded != null).Select(e => e.Key),
+            NameResolutionRosters.TypeMemberDeclaringKinds.Where(e => e.Value.Excluded != null).Select(e => e.Key)));
+        var members = Enum.GetValues<TypeBodyMemberKind>().Select(k => k.ToString().ToLowerInvariant()).Concat(NameResolutionRosters.TypeMemberExtraMembers).ToList();
+        problems.AddRange(Roster.TotalityProblems("TypeMemberShapes",
+            Roster.ImageOf(NameResolutionRosters.TypeMemberDeclaringKinds).SelectMany(k => members.Select(m => NameResolutionRosters.TypeMemberKey(k, m))),
+            NameResolutionRosters.TypeMemberShapes.Keys));
+        problems.AddRange(NameResolutionRosters.TypeMemberShapes
+            .Where(e => !e.Value.Generated && string.IsNullOrWhiteSpace(e.Value.Reason))
+            .Select(e => $"TypeMemberShapes: {e.Key} is out with no reason"));
+        AssertNoProblems(problems, "every declaring kind × member is generated or out with its reason");
+
+        // A literal, not the roster again: an `Out` entry is still total, so totality cannot see a re-prune, and the census can be re-pinned with it.
+        NameResolutionRosters.TypeMemberShapes.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            "class × field", "class × property", "class × method", "class × constructor", "class × static-method",
+            "dataclass × field", "dataclass × property", "dataclass × method", "dataclass × constructor", "dataclass × static-method",
+            "struct × field", "struct × property", "struct × method", "struct × constructor", "struct × static-method",
+            "interface × field", "interface × property", "interface × method", "interface × static-method",
+            "enum × case",
+            "union × method", "union × constructor",
+        });
     }
 
     [Fact]

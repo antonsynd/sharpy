@@ -34,7 +34,7 @@ public class ClrImportNameFidelityTests : IntegrationTestBase
     // CompileAndExecute, not CompilerApi.Compile: an outcome that only shows up at the C# STAGE
     // (SPY0908) is invisible to a harness that stops after semantic analysis, and both KnownSpy0908
     // cells below are exactly that shape. #1837 is the same vacuity one harness over.
-    public ClrImportNameFidelityTests(ITestOutputHelper output) : base(output) => _output = output;
+    public ClrImportNameFidelityTests(ITestOutputHelper output) : base(output) => _output = Output;
 
     private enum Expect
     {
