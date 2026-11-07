@@ -6,8 +6,10 @@
 # 22.1 GB peak (docs/audits/stryker-lexer-pilot-2026-10-11.md), past a hosted job's 6 h and 16 GB.
 # It stays owner-triggered via build_tools/stryker/run.sh.
 #
-# Scheduled runs fire from the workflow file on the default branch (mainline), but soak `dev`,
-# where work lands first. A failure email goes to whoever last edited the cron line.
+# Scheduled runs fire from the workflow file on the default branch (mainline) and soak mainline,
+# the branch a release is cut from (#2458, W0.4: they soaked `dev` while the run page named
+# mainline's sha). Each job writes the soaked ref and sha to its job summary, so a red names its
+# commit. A failure email goes to whoever last edited the cron line.
 name: Nightly
 
 on:
@@ -17,7 +19,7 @@ on:
     inputs:
       ref:
         description: Branch or sha to soak
-        default: dev
+        default: mainline
       seconds_per_property:
         description: CsCheck_Time, the seconds each property sample runs
         default: '15'
@@ -67,7 +69,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || 'dev' }}
+          ref: ${{ inputs.ref || 'mainline' }}
+      - name: Name the soaked commit
+        env:
+          REF: ${{ inputs.ref || 'mainline' }}
+        run: |
+          echo "Soaked \`$REF\` at \`$(git rev-parse HEAD)\`: $(git log -1 --format=%s)" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
@@ -124,7 +131,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || 'dev' }}
+          ref: ${{ inputs.ref || 'mainline' }}
+      - name: Name the soaked commit
+        env:
+          REF: ${{ inputs.ref || 'mainline' }}
+        run: |
+          echo "Soaked \`$REF\` at \`$(git rev-parse HEAD)\`: $(git log -1 --format=%s)" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
