@@ -492,6 +492,27 @@ public partial class NameResolutionDifferentialTests
         Assert.True(DeviationAxesHold(cell with { Id = "seed/D15" }));
     }
 
+    /// <summary>The admitted-code ratchet on literals: opening an entry is red, a waiting entry says so with its cite, and a waiting entry that outlives its reason is red.</summary>
+    [Fact]
+    public void AdmittedCodes_AnEntryNoCellProduces_IsRedUnlessItWaitsOnACure()
+    {
+        var admitted = new Dictionary<string, string[]> { ["R"] = new[] { "SPY0200", "SPY0999" }, ["Q"] = Array.Empty<string>() };
+        var observed = new HashSet<(string, string)> { ("R", "SPY0200") };
+        var waiting = new Dictionary<(string, string), string> { [("R", "SPY0999")] = "#1" };
+        var none = new Dictionary<(string, string), string>();
+
+        Assert.Empty(AdmittedCodeFailures(admitted, waiting, observed));
+        Assert.Contains("R admits SPY0999", Assert.Single(AdmittedCodeFailures(admitted, none, observed)), StringComparison.Ordinal);
+        Assert.Contains("Q admits SPY0999", Assert.Single(AdmittedCodeFailures(new Dictionary<string, string[]> { ["Q"] = new[] { "SPY0999" } }, none, observed)), StringComparison.Ordinal);
+        Assert.Contains("cites no issue", Assert.Single(AdmittedCodeFailures(admitted, new Dictionary<(string, string), string> { [("R", "SPY0999")] = "soon" }, observed)), StringComparison.Ordinal);
+        Assert.Contains("delete the waiting entry", Assert.Single(AdmittedCodeFailures(admitted, waiting, new HashSet<(string, string)> { ("R", "SPY0200"), ("R", "SPY0999") })), StringComparison.Ordinal);
+        Assert.Contains("the rule does not admit it", Assert.Single(AdmittedCodeFailures(new Dictionary<string, string[]> { ["R"] = new[] { "SPY0200" } }, waiting, observed)), StringComparison.Ordinal);
+
+        // The real table: a measured literal, and each entry waits on a code its rule admits.
+        Assert.Equal(new[] { ("kind:SPY0606", "SPY0606") }, AdmittedWaitingOnACure.Keys);
+        Assert.Empty(AdmittedWaitingOnACure.Where(e => !AdmittedRefusals[e.Key.Rule].Contains(e.Key.Code) || !IssueCite.IsMatch(e.Value)).Select(e => e.Key.ToString()));
+    }
+
     /// <summary>R-LB's other direction: the axes that give a cell a row require it on both arms. A must-refuse cell's row is read by nothing else, because a refusal never compares a stdout.</summary>
     [Fact]
     public void Deviation_TheAxesRequireTheirRow_OnBothArms()

@@ -406,6 +406,35 @@ public partial class NameResolutionDifferentialTests
         return foreign.Count == 0 ? null : $"RefusalReason: {cell.Id}: rule {cell.Rule} does not admit {string.Join(",", foreign)}";
     }
 
+    /// <summary>An admitted code no cell produces today, and the cure that lands it. <see cref="AdmittedRefusals"/> is a ratchet only if it cannot be opened with no red, and
+    /// these are the entries that hold a code ahead of the refusal it names. Each cites the issue whose fix produces the code, which is when the entry goes.</summary>
+    internal static readonly IReadOnlyDictionary<(string Rule, string Code), string> AdmittedWaitingOnACure = new Dictionary<(string, string), string>
+    {
+        // A method's name stored through a member access is the type mismatch or the via-type refusal until the receiver matrix lands the rule's own code.
+        [("kind:SPY0606", "SPY0606")] = "#2435",
+    };
+
+    /// <summary>The ratchet's other direction: an admitted code some cell under the rule produces, or one named as waiting with its cite. A waiting code that is produced now, or
+    /// that the rule no longer admits, has outlived its entry. The inputs are plain data, so a fact holds this without a sweep.</summary>
+    internal static IEnumerable<string> AdmittedCodeFailures(
+        IReadOnlyDictionary<string, string[]> admitted,
+        IReadOnlyDictionary<(string Rule, string Code), string> waiting,
+        IReadOnlySet<(string Rule, string Code)> observed)
+    {
+        foreach (var (rule, codes) in admitted)
+            foreach (var code in codes.Where(c => !observed.Contains((rule, c)) && !waiting.ContainsKey((rule, c))))
+                yield return $"AdmittedRefusals: {rule} admits {code}, and no cell under it was refused with {code}: delete the code, or name it as waiting on its cure";
+        foreach (var ((rule, code), cite) in waiting)
+        {
+            if (!IssueCite.IsMatch(cite))
+                yield return $"AdmittedRefusals: {rule}'s {code} is waiting on '{cite}', which cites no issue";
+            if (observed.Contains((rule, code)))
+                yield return $"AdmittedRefusals: {rule}'s {code} is waiting on {cite}, and a cell was refused with it: delete the waiting entry";
+            if (!admitted.TryGetValue(rule, out var codes) || !codes.Contains(code))
+                yield return $"AdmittedRefusals: {rule}'s {code} is waiting on {cite}, and the rule does not admit it";
+        }
+    }
+
     private static IEnumerable<string> RefusalCodeFailures(IReadOnlyList<CellResult> results, bool partial)
     {
         var seen = new Dictionary<(string Rule, string Seen), int>();
@@ -436,6 +465,12 @@ public partial class NameResolutionDifferentialTests
             yield break;
         foreach (var (key, count) in EarlierRefusals.Where(e => seen.GetValueOrDefault(e.Key) != e.Value))
             yield return $"RefusalCode: {key.Rule} refused with {key.Seen} is pinned at {count} cells and measured {seen.GetValueOrDefault(key)}";
+
+        var observed = results.Where(r => r.Kind == SharpyKind.Refused && r.Cell.SeedRefusalCodes == null)
+            .SelectMany(r => r.Run.ErrorCodes.Select(code => (r.Cell.Rule, code)))
+            .ToHashSet();
+        foreach (var failure in AdmittedCodeFailures(AdmittedRefusals, AdmittedWaitingOnACure, observed))
+            yield return failure;
     }
 
     /// <summary>A row of the allowlist: the class it pins, the issue that drains it and its lane.</summary>
