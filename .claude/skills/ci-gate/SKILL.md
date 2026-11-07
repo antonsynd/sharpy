@@ -31,7 +31,7 @@ Run the commit gate (contract §6) on GitHub CI: about 20 min, against about an 
 
 ## Reading a PR's run
 
-Every PR runs both workflows when its diff reaches their paths. `.claude/scripts/ci-gate --run <run-id>` reports the `.NET 10` run alone, labelled `the PR merge ref of <sha>`, because a PR run tests the merge into the base and not the head commit. Check `Python Build Tools` separately with `gh pr checks <pr>`. Use a dispatch when the claim has to be about the commit itself, which a plan's close-out gate does.
+Every PR runs both workflows when its diff reaches their paths. Pass the `.NET 10` run's id to `.claude/scripts/ci-gate --run <run-id>`. It also checks the `Python Build Tools` run of the same commit and event, and says so if there is none. The count is labelled `the PR merge ref of <sha>`, because a PR run tests the merge into the base and not the head commit. Use a dispatch when the claim has to be about the commit itself, which a plan's close-out gate does.
 
 ## Avoiding wasted runs
 

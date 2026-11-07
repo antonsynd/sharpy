@@ -542,9 +542,27 @@ def test_real_compiler_smoke():
     from spec_blocks import compile_one
 
     sharpyc = os.environ.get("SHARPYC", "dotnet run --project src/Sharpy.Cli --")
-    good = compile_one(sharpyc, "def main() -> None:\n    x: int = 1\n    print(x)\n")
-    assert good.success is True
+    # With no SHARPYC, the first call builds the CLI from cold. compile_one's default of 60 s is for
+    # a built compiler: on CI this test took 35-57 s when green, and timed out on run 42338092202.
+    cold_build_timeout = 600
+    good = compile_one(
+        sharpyc,
+        "def main() -> None:\n    x: int = 1\n    print(x)\n",
+        timeout=cold_build_timeout,
+    )
+    assert good.success is True, good.stderr
 
-    bad = compile_one(sharpyc, "x: int = 'not an int'\n")
+    bad = compile_one(sharpyc, "x: int = 'not an int'\n", timeout=cold_build_timeout)
     assert bad.success is False
     assert bad.first_error_code is not None
+
+
+def test_compile_one_honours_its_timeout(tmp_path):
+    from spec_blocks import compile_one
+
+    slow = tmp_path / "slow-sharpyc"
+    slow.write_text("#!/bin/sh\nsleep 2\necho '[]'\n")
+    slow.chmod(0o755)
+
+    assert compile_one(str(slow), "x = 1\n", timeout=1).stderr == "timeout"
+    assert compile_one(str(slow), "x = 1\n", timeout=30).success is True

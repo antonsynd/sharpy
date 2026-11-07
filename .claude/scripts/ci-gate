@@ -3,7 +3,8 @@
 
     .claude/scripts/ci-gate                 gate the current branch's pushed tip
     .claude/scripts/ci-gate --ref BRANCH    gate another pushed branch
-    .claude/scripts/ci-gate --run RUN_ID    report an existing .NET 10 run (for example a PR's)
+    .claude/scripts/ci-gate --run RUN_ID    report an existing .NET 10 run (for example a PR's), and
+                                            the Python Build Tools run of the same commit and event
 
 The gate is `dotnet10.yml` plus `python-build-tools.yml`, dispatched at the branch tip. A dispatch
 tests that exact commit, while a pull_request run tests the merge of the PR into its base, which is
@@ -39,7 +40,8 @@ from typing import Dict, Iterable, List, NoReturn, Optional, Set, Tuple
 GREEN, RED, NOT_RUNNABLE, NO_VERDICT = 0, 1, 2, 3
 
 DOTNET_WORKFLOW = "dotnet10.yml"
-WORKFLOWS = (DOTNET_WORKFLOW, "python-build-tools.yml")
+PYTHON_WORKFLOW = "python-build-tools.yml"
+WORKFLOWS = (DOTNET_WORKFLOW, PYTHON_WORKFLOW)
 SUMMARY_JOB = "CI summary"
 
 # Knobs exist so the tests take seconds. Each production default is the reason it exists:
@@ -100,6 +102,12 @@ def resolve_ref(requested: Optional[str]) -> Tuple[str, str]:
 def dispatched_ids(workflow: str, ref: str, sha: str) -> Set[int]:
     out = require("gh", "run", "list", "--workflow", workflow, "--branch", ref, "--commit", sha,
                   "--event", "workflow_dispatch", "--limit", "20", "--json", "databaseId")
+    return {row["databaseId"] for row in json.loads(out)}
+
+
+def run_ids_for_event(workflow: str, sha: str, event: str) -> Set[int]:
+    out = require("gh", "run", "list", "--workflow", workflow, "--commit", sha,
+                  "--event", event, "--limit", "20", "--json", "databaseId")
     return {row["databaseId"] for row in json.loads(out)}
 
 
@@ -232,7 +240,15 @@ def main() -> int:
         label = info["headSha"][:9]
         if info["event"] == "pull_request":
             label = f"the PR merge ref of {label}"
-        return verdict(args.run, label, wait([args.run]))
+        runs = [args.run]
+        # The gate is both workflows, so a green here must not hide a red Python run (seen on PR
+        # #2455, run 42338092202). None exists when the event's path filter did not match.
+        companion = run_ids_for_event(PYTHON_WORKFLOW, info["headSha"], info["event"])
+        if companion:
+            runs.append(max(companion))
+        else:
+            print(f"no {PYTHON_WORKFLOW} run for this commit and event: its path filter did not match")
+        return verdict(args.run, label, wait(runs))
 
     ref, sha = resolve_ref(args.ref)
     print(f"gating {ref} @ {sha[:9]}", flush=True)

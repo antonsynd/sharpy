@@ -333,6 +333,26 @@ class TestRunSelection:
         assert f"@ the PR merge ref of {SHA[:9]} (measured" in result.stdout
         assert rig.dispatched() == []
 
+    def test_report_mode_reds_on_a_red_python_run(self, rig: Rig) -> None:
+        # Seen on PR #2455: run 42338092202 was red while --run printed CI GATE GREEN.
+        rig.state["runs"][str(DOTNET)] = run_record(
+            workflowName=".NET 10", headSha=SHA, event="pull_request"
+        )
+        rig.state["old_ids"] = {"python-build-tools.yml": [PYTHON]}
+        rig.state["runs"][str(PYTHON)] = run_record("failure")
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 1
+        assert "GREEN" not in result.stdout
+        assert "CI GATE RED" in result.stdout
+
+    def test_report_mode_says_when_there_is_no_python_run(self, rig: Rig) -> None:
+        rig.state["runs"][str(DOTNET)] = run_record(
+            workflowName=".NET 10", headSha=SHA, event="pull_request"
+        )
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 0, result.stderr
+        assert "no python-build-tools.yml run" in result.stdout
+
     def test_report_mode_refuses_another_workflow(self, rig: Rig) -> None:
         rig.state["runs"][str(DOTNET)] = run_record(
             workflowName="CodeQL", headSha=SHA, event="push"
