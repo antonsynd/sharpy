@@ -405,8 +405,8 @@ internal static class NameResolutionRosters
 
     internal static readonly IReadOnlyDictionary<TypeKind, RosterEntry<BindingKind>> TypeKinds = Roster.Map(
         (TypeKind.Class, Roster.To(BindingKind.ModuleClass, BindingKind.NestedType)),
-        (TypeKind.Struct, Roster.To(BindingKind.ModuleStruct)),
-        (TypeKind.Interface, Roster.To(BindingKind.ModuleInterface)),
+        (TypeKind.Struct, Roster.To(BindingKind.ModuleStruct, BindingKind.NestedType)),
+        (TypeKind.Interface, Roster.To(BindingKind.ModuleInterface, BindingKind.NestedType)),
         (TypeKind.Enum, Roster.To(BindingKind.ModuleEnum)),
         (TypeKind.Union, Roster.To(BindingKind.ModuleUnion)),
         (TypeKind.Delegate, Roster.Out<BindingKind>(ExcludedAxis.TypeParametersAndDelegates,
@@ -475,13 +475,13 @@ internal static class NameResolutionRosters
         (CubeKey(SymbolKind.Variable, ScopeKind.TypeBody, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.TypeBody, "IsParameter"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
 
-        (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal)),
+        (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.LambdaTypedLocal)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsConstant"), Roster.To(BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.FunctionLike, "IsParameter"), Roster.To(BindingKind.Parameter, BindingKind.Inner)),
 
-        (CubeKey(SymbolKind.Variable, ScopeKind.Block, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.Inner)),
+        (CubeKey(SymbolKind.Variable, ScopeKind.Block, NoFlag), Roster.To(BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.EnclosingLocal, BindingKind.Inner, BindingKind.LambdaTypedLocal)),
         (CubeKey(SymbolKind.Variable, ScopeKind.Block, "IsConstant"), Roster.To(BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst)),
         (CubeKey(SymbolKind.Variable, ScopeKind.Block, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
         (CubeKey(SymbolKind.Variable, ScopeKind.Block, "IsModuleProperty"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, NotInThisScope)),
@@ -507,7 +507,7 @@ internal static class NameResolutionRosters
     private const string MemberOnly = "@static and the __init__ name class mean something only on a type's member; here they are the ordinary def's kind";
 
     /// <summary><c>SymbolKind.Function</c> × owner <see cref="ScopeKind"/> × function class. A lambda-typed local's binding is a
-    /// variable; its READ is the call, so D3.a maps it here, for the form.</summary>
+    /// variable (<see cref="VariableCube"/> holds it, which D3.1's round trip reads); its READ is the call, so D3.a maps it here too, for the form.</summary>
     internal static readonly IReadOnlyDictionary<string, RosterEntry<BindingKind>> FunctionCube = Roster.Map(
         (CubeKey(SymbolKind.Function, ScopeKind.Module, NoFlag), Roster.To(BindingKind.ModuleDef)),
         (CubeKey(SymbolKind.Function, ScopeKind.Module, "IsStatic"), Roster.Out<BindingKind>(ExcludedAxis.NotAKind, MemberOnly)),
@@ -1523,7 +1523,7 @@ public partial class NameResolutionDifferentialTests
         "Sharpy.Compiler.Semantic.Scope",
     };
 
-    private sealed record BinderSite(string Key, int Line, string Receiver, string ReceiverType);
+    private sealed record BinderSite(string Key, int Line, string Receiver, string ReceiverType, string? ArgumentType, IReadOnlyList<string> EnclosingParameters);
 
     private sealed record BinderScan(
         IReadOnlyList<BinderSite> Sites,
@@ -1620,7 +1620,9 @@ public partial class NameResolutionDifferentialTests
                 var baseKey = $"{file}:{EnclosingMethod(name)}({ArgumentText(invocation)})";
                 var ordinal = seen[baseKey] = seen.GetValueOrDefault(baseKey) + 1;
                 sites.Add(new BinderSite(
-                    ordinal == 1 ? baseKey : $"{baseKey}#{ordinal}", line, ReceiverText(name), receiverType));
+                    ordinal == 1 ? baseKey : $"{baseKey}#{ordinal}", line, ReceiverText(name), receiverType,
+                    invocation == null ? null : model.GetTypeInfo(invocation.ArgumentList.Arguments.Last().Expression).Type?.Name,
+                    EnclosingParameterTypes(name)));
             }
         }
 
@@ -1644,6 +1646,21 @@ public partial class NameResolutionDifferentialTests
             access.Expression.ToString(),
         _ => "this",
     };
+
+    /// <summary>The type names of the enclosing method's parameters, the last dotted segment: what that method is handed.</summary>
+    private static IReadOnlyList<string> EnclosingParameterTypes(SyntaxNode node)
+    {
+        var list = node.Ancestors().Select(a => a switch
+        {
+            LocalFunctionStatementSyntax local => local.ParameterList,
+            MethodDeclarationSyntax method => method.ParameterList,
+            ConstructorDeclarationSyntax constructor => constructor.ParameterList,
+            _ => null,
+        }).FirstOrDefault(p => p != null);
+        return list == null
+            ? Array.Empty<string>()
+            : list.Parameters.Select(p => p.Type?.ToString().Split('.').Last() ?? "").ToList();
+    }
 
     private static string EnclosingMethod(SyntaxNode node)
     {
