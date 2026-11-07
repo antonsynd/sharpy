@@ -1686,6 +1686,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// builtins/round_python_contract_2460, the PR's only corpus change; control: the gate 83727/0/9 @ b6c372d63
     /// (run 42387682334) held the previous literals with that fixture absent; no lexer/parser/formatter/LSP change
     /// (#2460 is Core-only).
+    /// W1.5 exception MRO (#2124, 2026-11-07): +1 on the four comment pins only — growth, from the new fixture stem
+    /// exceptions/except_python_base_class_hierarchy_2124, the PR's only corpus change; control: the gate 83778/0/9
+    /// @ 321b55022 (run 42396062974) held the previous literals with that fixture absent; no lexer/parser/formatter/LSP
+    /// change (#2124 is Core-only).
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
@@ -1693,10 +1697,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 485,
             [(Identity, RangeLine)] = 481,
             [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1648,
-            [(Comment, RangeWhole)] = 1648,
-            [(Comment, RangeLine)] = 1644,
-            [(Comment, OnType)] = 1644,
+            [(Comment, Full)] = 1649,
+            [(Comment, RangeWhole)] = 1649,
+            [(Comment, RangeLine)] = 1645,
+            [(Comment, OnType)] = 1645,
             [(Crlf, Full)] = 485,
             [(Crlf, RangeWhole)] = 485,
             [(Crlf, RangeLine)] = 481,

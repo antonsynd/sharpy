@@ -2568,3 +2568,30 @@ deviations:
             print(1) if flag else print(2)   # SPY0603: expression statement of type 'None' must be a call; write the branch as an if statement
             lambda: 1                        # SPY0603: a lambda cannot be an expression statement; call it or bind it to a name
             math                             # SPY0603: a module reference cannot be an expression statement
+
+  - id: exception-hierarchy-oserror-family-dotnet-bridge
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "`IOError` is `OSError`, and `FileNotFoundError`, `FileExistsError`, `IsADirectoryError` and `PermissionError` are `OSError` subclasses, so `except OSError` catches every one of them."
+    sharpy_behavior: "The OSError family is bridged to .NET's I/O exceptions (Axiom 1; spec table \"Exception Type Hierarchy\"): `IOError : System.IO.IOException`, `OSError : IOError`, `FileNotFoundError : System.IO.FileNotFoundException`, `FileExistsError` and `IsADirectoryError : System.IO.IOException`, `PermissionError : System.UnauthorizedAccessException`. So `except OSError` catches only `OSError` itself: a raised `IOError`, `FileNotFoundError`, `PermissionError` or `FileExistsError` passes it by. `except IOError` catches `OSError` but none of the four subclasses either (they derive from the .NET types, not from `IOError`). Every other builtin exception's chain is python's, measured by `ExceptionHierarchyPythonMroTests` (#2124), which takes the spec's base for these rows."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise FileNotFoundError('missing.txt')
+        except OSError:
+            print('caught as OSError')     # printed
+        except Exception:
+            print('caught as Exception')
+      sharpy: |
+        def main():
+            try:
+                raise FileNotFoundError('missing.txt')
+            except OSError:
+                print('caught as OSError')
+            except Exception:
+                print('caught as Exception')   # printed: FileNotFoundError is not an OSError

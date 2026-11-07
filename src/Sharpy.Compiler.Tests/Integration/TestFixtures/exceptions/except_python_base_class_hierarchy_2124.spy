@@ -1,0 +1,34 @@
+# Builtin exception hierarchy mirrors CPython (#2124): a base-class handler catches
+# its python subclasses; the last block is the exact-type control.
+def main():
+    d: dict[str, int] = {}
+    try:
+        print(d['k'])
+    except LookupError:
+        print('caught KeyError as LookupError')
+
+    xs: list[int] = []
+    try:
+        print(xs[0])
+    except LookupError:
+        print('caught IndexError as LookupError')
+
+    try:
+        raise NotImplementedError('todo')
+    except RuntimeError as e:
+        print(f'caught NotImplementedError as RuntimeError: {e}')
+
+    try:
+        raise UnicodeError('bad codec')
+    except ValueError as e:
+        print(f'caught UnicodeError as ValueError: {e}')
+
+    try:
+        raise UnboundLocalError('unbound')
+    except NameError as e:
+        print(f'caught UnboundLocalError as NameError: {e}')
+
+    try:
+        print(d['missing'])
+    except KeyError as e:
+        print(f'caught KeyError: {e}')

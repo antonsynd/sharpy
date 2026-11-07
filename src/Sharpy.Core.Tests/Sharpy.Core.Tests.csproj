@@ -16,6 +16,8 @@
   <ItemGroup>
     <!-- Reference the main library project -->
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
+    <!-- PythonInterpreter (the shared python3 oracle locator, #2300/#2342) for ExceptionHierarchyPythonMroTests (#2124) -->
+    <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
 
     <!-- Unit testing framework (choose one based on preference) -->
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
