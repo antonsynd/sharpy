@@ -812,7 +812,10 @@ jobs:
             # NotExecuted, so count those.
             skipped = sum(1 for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "NotExecuted")
             vals = [int(c.get(a, "0")) for a in ("total", "passed", "failed")] + [skipped]
-            failed_tests += [r.get("testName", "?") for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "Failed"]
+            # A windows failure is named but not in the gate total below, so its name says so: without
+            # the label, `CI GATE RED: N/0/9` followed by a test name would look like a contradiction.
+            prefix = "[windows] " if name == "windows" else ""
+            failed_tests += [prefix + r.get("testName", "?") for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "Failed"]
             if vals[0] == 0:
                 problems.append(f"{name}: zero tests")
             for suite in sums:
@@ -847,6 +850,8 @@ jobs:
         lines += ["", "</details>"]
         print("\n".join(lines))
         print(f"GATE-COUNTS passed={gate[1]} failed={gate[2]} skipped={gate[3]}")
+        if os.environ.get("CODE") == "false":
+            print("GATE-SCOPE readme-only")
         for name in failed_tests:
             print(f"GATE-FAILED {name}")
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:

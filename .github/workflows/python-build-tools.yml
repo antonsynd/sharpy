@@ -73,10 +73,21 @@ jobs:
         # click is required by the build_tools CLI (used by the stdlib docs check)
         pip install click
 
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+
+    # test_real_compiler_smoke needs a compiler. Building it here keeps a cold build out of the test,
+    # where it raced compile_one's 60 s limit (35-57 s when green, timed out on run 42338092202).
+    - name: Build sharpyc
+      run: dotnet build src/Sharpy.Cli
+
     - name: Run tests with pytest
       env:
         # Add repo root to PYTHONPATH to support 'from build_tools.' imports
         PYTHONPATH: ${{ github.workspace }}
+        SHARPYC: ${{ github.workspace }}/src/Sharpy.Cli/bin/Debug/net10.0/sharpyc
       run: |
         python -m pytest build_tools/tests/ -v --tb=short
 

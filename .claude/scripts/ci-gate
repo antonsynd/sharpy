@@ -16,9 +16,12 @@ Exit codes, which decide what the caller does next:
 
     0  green
     1  red: a job or test failed (the failing tests are listed; attribute with a control run)
-    2  not runnable as asked: the ref is unpushed, differs from local, or lacks the trigger
+    2  not runnable as asked: the ref is unpushed, differs from local, or lacks the trigger, or the
+       run id does not exist
     3  CI gave no verdict: not started in time, cancelled, unreachable, or no counts.
        Run the local gate instead (contract section 6).
+    4  nothing to gate: CI skipped the build and tests by design (a README-only PR run). Neither a
+       green nor a reason to run locally.
 
 It needs `gh` and the network, so in Claude Code run it with `dangerouslyDisableSandbox: true`. It
 never pushes: pushing stays an explicit step for the caller. The counts come from the GATE-COUNTS
@@ -37,7 +40,7 @@ import sys
 import time
 from typing import Dict, Iterable, List, NoReturn, Optional, Set, Tuple
 
-GREEN, RED, NOT_RUNNABLE, NO_VERDICT = 0, 1, 2, 3
+GREEN, RED, NOT_RUNNABLE, NO_VERDICT, NOTHING_TO_GATE = 0, 1, 2, 3, 4
 
 DOTNET_WORKFLOW = "dotnet10.yml"
 PYTHON_WORKFLOW = "python-build-tools.yml"
@@ -52,13 +55,14 @@ APPEAR_TIMEOUT = float(os.environ.get("CI_GATE_APPEAR_TIMEOUT", "120"))
 START_TIMEOUT = float(os.environ.get("CI_GATE_START_TIMEOUT", "900"))
 # A normal run is 17-22 min and the stacked pushes of 2026-10-26 reached 37; a local gate is about 1 h.
 TOTAL_TIMEOUT = float(os.environ.get("CI_GATE_TOTAL_TIMEOUT", "5400"))
-# One poll failing must not throw away a 20-minute wait.
+# One failed call must not throw away a 20-minute wait, or send the caller to a 1 h local gate.
 MAX_POLL_FAILURES = int(os.environ.get("CI_GATE_MAX_POLL_FAILURES", "20"))
 
 COUNTS = re.compile(r"(?:^|\s)GATE-COUNTS passed=(\d+) failed=(\d+) skipped=(\d+)\s*$")
 # The leading whitespace matters: Actions echoes a step's script into its log, and the echoed
 # `print(f"GATE-FAILED ...")` line must not read as a failed test.
 FAILED_TEST = re.compile(r"(?:^|\s)GATE-FAILED (.+)$")
+README_ONLY = re.compile(r"(?:^|\s)GATE-SCOPE readme-only\s*$")
 QUEUED = {"queued", "waiting", "pending", "requested"}
 
 
@@ -72,12 +76,20 @@ def run(*cmd: str) -> Tuple[int, str, str]:
     return done.returncode, done.stdout, done.stderr
 
 
-def require(*cmd: str) -> str:
-    """A `gh` read that has no retry loop around it: failing means CI cannot be reached."""
-    code, out, err = run(*cmd)
-    if code != 0:
-        die(NO_VERDICT, f"`{' '.join(cmd)}` failed: {err.strip()}")
-    return out
+def require(*cmd: str, permanent: Tuple[str, ...] = ("HTTP 404",), hint: str = "") -> str:
+    """A call that must succeed. A failure is retried, and only a used-up budget means no verdict,
+    which is exit 3 from every path: an uncaught error here would exit 1, which reads as red. Text
+    in `permanent` marks an answer rather than an outage, so that exits 2 straight away."""
+    err = ""
+    for attempt in range(MAX_POLL_FAILURES):
+        code, out, err = run(*cmd)
+        if code == 0:
+            return out
+        if any(text in err for text in permanent):
+            die(NOT_RUNNABLE, f"{hint or ' '.join(cmd)}: {err.strip()}")
+        if attempt + 1 < MAX_POLL_FAILURES:
+            time.sleep(POLL_SECONDS)
+    die(NO_VERDICT, f"`{' '.join(cmd)}` failed {MAX_POLL_FAILURES} times, last: {err.strip()}")
 
 
 def resolve_ref(requested: Optional[str]) -> Tuple[str, str]:
@@ -85,9 +97,7 @@ def resolve_ref(requested: Optional[str]) -> Tuple[str, str]:
     ref = requested or run("git", "branch", "--show-current")[1].strip()
     if not ref:
         die(NOT_RUNNABLE, "detached HEAD: name a pushed branch with --ref")
-    code, out, err = run("git", "ls-remote", "origin", f"refs/heads/{ref}")
-    if code != 0:
-        die(NO_VERDICT, f"git ls-remote failed: {err.strip()}")
+    out = require("git", "ls-remote", "origin", f"refs/heads/{ref}")
     if not out.strip():
         die(NOT_RUNNABLE, f"{ref} is not on origin: push it first")
     remote = out.split()[0]
@@ -105,21 +115,29 @@ def dispatched_ids(workflow: str, ref: str, sha: str) -> Set[int]:
     return {row["databaseId"] for row in json.loads(out)}
 
 
-def run_ids_for_event(workflow: str, sha: str, event: str) -> Set[int]:
-    out = require("gh", "run", "list", "--workflow", workflow, "--commit", sha,
-                  "--event", event, "--limit", "20", "--json", "databaseId")
-    return {row["databaseId"] for row in json.loads(out)}
+def companion_run(sha: str, event: str, title: str) -> Optional[int]:
+    """The Python Build Tools run that belongs with a .NET 10 run of this commit and event."""
+    rows = json.loads(require("gh", "run", "list", "--workflow", PYTHON_WORKFLOW, "--commit", sha,
+                              "--event", event, "--limit", "20", "--json", "databaseId,displayTitle"))
+    if event == "pull_request":
+        # Two PRs from one branch share the sha and the event, and test different merges. A PR run's
+        # display title is the title of the PR that triggered it, which is what tells them apart. The
+        # API's pull_requests field does not: run 42330321590, triggered by #2454, lists only #2453.
+        same_pr = [row for row in rows if row["displayTitle"] == title]
+        if rows and not same_pr:
+            print(f"no {PYTHON_WORKFLOW} run has this PR's title, so using this commit's newest")
+        rows = same_pr or rows
+    return max((row["databaseId"] for row in rows), default=None)
 
 
 def dispatch(ref: str, sha: str) -> Dict[str, int]:
     before = {workflow: dispatched_ids(workflow, ref, sha) for workflow in WORKFLOWS}
     for workflow in WORKFLOWS:
-        code, _, err = run("gh", "workflow", "run", workflow, "--ref", ref)
-        if code != 0 and "workflow_dispatch" in err:
-            die(NOT_RUNNABLE, f"{ref}'s copy of {workflow} has no workflow_dispatch trigger: merge "
-                              f"origin/mainline into it, or use a PR run with --run ({err.strip()})")
-        if code != 0:
-            die(NO_VERDICT, f"could not dispatch {workflow}: {err.strip()}")
+        # A retry after a lost response can start a second run, which is harmless: the newest is read.
+        require("gh", "workflow", "run", workflow, "--ref", ref,
+                permanent=("workflow_dispatch", "HTTP 404"),
+                hint=f"{ref}'s copy of {workflow} has no workflow_dispatch trigger: merge "
+                     "origin/mainline into it, or use a PR run with --run")
     runs: Dict[str, int] = {}
     deadline = time.monotonic() + APPEAR_TIMEOUT
     while len(runs) < len(WORKFLOWS):
@@ -137,10 +155,15 @@ def dispatch(ref: str, sha: str) -> Dict[str, int]:
 
 
 def view(run_id: int, fields: str) -> dict:
+    """One attempt, for wait(), which keeps its own count of failures across runs."""
     code, out, err = run("gh", "run", "view", str(run_id), "--json", fields)
     if code != 0:
         raise RuntimeError(err.strip())
     return json.loads(out)
+
+
+def view_or_die(run_id: int, fields: str) -> dict:
+    return json.loads(require("gh", "run", "view", str(run_id), "--json", fields))
 
 
 def wait(run_ids: Iterable[int]) -> Dict[int, str]:
@@ -182,15 +205,16 @@ def wait(run_ids: Iterable[int]) -> Dict[int, str]:
     return conclusions
 
 
-def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str]]:
-    """The counts and failed test names that the run's CI summary job printed."""
-    jobs = view(run_id, "jobs")["jobs"]
+def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str], bool]:
+    """The counts, the failed test names and the README-only fact from the run's CI summary job."""
+    jobs = view_or_die(run_id, "jobs")["jobs"]
     job = next((j for j in jobs if j["name"] == SUMMARY_JOB), None)
     if job is None:
-        return None, []
+        return None, [], False
     log = require("gh", "run", "view", str(run_id), "--log", "--job", str(job["databaseId"]))
     counts: Optional[Tuple[int, int, int]] = None
     failed: List[str] = []
+    readme_only = False
     for line in log.splitlines():
         match = COUNTS.search(line)
         if match:
@@ -199,12 +223,14 @@ def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str]
         match = FAILED_TEST.search(line)
         if match:
             failed.append(match.group(1).strip())
-    return counts, failed
+            continue
+        readme_only = readme_only or bool(README_ONLY.search(line))
+    return counts, failed, readme_only
 
 
 def verdict(dotnet_run: int, label: str, conclusions: Dict[int, str]) -> int:
     """Prints the report. A green needs a success AND counts, so a run that selected nothing is no gate."""
-    counts, failed = read_summary(dotnet_run)
+    counts, failed, readme_only = read_summary(dotnet_run)
     for run_id, conclusion in conclusions.items():
         if run_id != dotnet_run:
             print(f"run {run_id}: {conclusion}")
@@ -219,6 +245,10 @@ def verdict(dotnet_run: int, label: str, conclusions: Dict[int, str]) -> int:
         for name in failed:
             print(f"FAILED {name}")
         return RED
+    # Only ci-summary's own statement counts: zero tests without it is a run that selected nothing.
+    if readme_only and counts is not None and sum(counts) == 0:
+        print(f"CI GATE NOTHING TO GATE: run {dotnet_run} is a README-only change, so CI ran no build or tests")
+        return NOTHING_TO_GATE
     if counts is None or sum(counts) == 0:
         print(f"CI GATE NO VERDICT: {line}, the run succeeded without reporting any tests")
         return NO_VERDICT
@@ -234,7 +264,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.run is not None:
-        info = view_or_die(args.run, "workflowName,headSha,event")
+        info = view_or_die(args.run, "workflowName,headSha,event,displayTitle")
         if info["workflowName"] != ".NET 10":
             die(NOT_RUNNABLE, f"run {args.run} is {info['workflowName']!r}, not the .NET 10 gate")
         label = info["headSha"][:9]
@@ -243,9 +273,9 @@ def main() -> int:
         runs = [args.run]
         # The gate is both workflows, so a green here must not hide a red Python run (seen on PR
         # #2455, run 42338092202). None exists when the event's path filter did not match.
-        companion = run_ids_for_event(PYTHON_WORKFLOW, info["headSha"], info["event"])
-        if companion:
-            runs.append(max(companion))
+        companion = companion_run(info["headSha"], info["event"], info["displayTitle"])
+        if companion is not None:
+            runs.append(companion)
         else:
             print(f"no {PYTHON_WORKFLOW} run for this commit and event: its path filter did not match")
         return verdict(args.run, label, wait(runs))
@@ -254,13 +284,6 @@ def main() -> int:
     print(f"gating {ref} @ {sha[:9]}", flush=True)
     runs = dispatch(ref, sha)
     return verdict(runs[DOTNET_WORKFLOW], sha[:9], wait(runs.values()))
-
-
-def view_or_die(run_id: int, fields: str) -> dict:
-    try:
-        return view(run_id, fields)
-    except RuntimeError as error:
-        die(NO_VERDICT, f"could not read run {run_id}: {error}")
 
 
 if __name__ == "__main__":

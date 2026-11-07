@@ -25,13 +25,14 @@ Run the commit gate (contract §6) on GitHub CI: about 20 min, against about an 
    | Exit | Meaning | Next |
    |---|---|---|
    | 0 | `CI GATE GREEN: passed/failed/skipped @ sha (measured, run N)` | Record that line as the gate result |
-   | 1 | Red, with one `FAILED <test>` line per failed test, or a failed job with no test named | Read the failed job (`gh run view N --log-failed`), then attribute any red with a control run (below) |
-   | 2 | Not runnable: unpushed, differs from origin, or the branch predates the trigger | Do what the message says. A branch that predates the trigger merges `origin/mainline`, or reads an existing PR run with `--run` |
-   | 3 | CI gave no verdict: not started within 15 min, cancelled, unreachable, or no counts | **Fall back to the local gate** (below) and say in the report that you did |
+   | 1 | Red, with one `FAILED <test>` line per failed test, or a failed job with no test named. A `[windows]` name isn't in the failed count, because the total leaves Windows out | Read the failed job (`gh run view N --log-failed`), then attribute any red with a control run (below) |
+   | 2 | Not runnable: unpushed, differs from origin, the branch predates the trigger, or the run id doesn't exist | Do what the message says. A branch that predates the trigger merges `origin/mainline`, or reads an existing PR run with `--run` |
+   | 3 | CI gave no verdict: not started within 15 min, cancelled, unreachable after retries, or no counts | **Fall back to the local gate** (below) and say in the report that you did |
+   | 4 | Nothing to gate: a README-only PR run, where CI skips the build and tests by design | Nothing to do. It isn't a green, so don't cite it as one, and no local run is needed |
 
 ## Reading a PR's run
 
-Every PR runs both workflows when its diff reaches their paths. Pass the `.NET 10` run's id to `.claude/scripts/ci-gate --run <run-id>`. It also checks the `Python Build Tools` run of the same commit and event, and says so if there is none. The count is labelled `the PR merge ref of <sha>`, because a PR run tests the merge into the base and not the head commit. Use a dispatch when the claim has to be about the commit itself, which a plan's close-out gate does.
+Every PR runs both workflows when its diff reaches their paths. Pass the `.NET 10` run's id to `.claude/scripts/ci-gate --run <run-id>`. It also checks the `Python Build Tools` run of the same commit, event and PR title, and says so if there is none. Two PRs from one branch with the same title can't be told apart. The count is labelled `the PR merge ref of <sha>`, because a PR run tests the merge into the base and not the head commit. Use a dispatch when the claim has to be about the commit itself, which a plan's close-out gate does.
 
 ## Avoiding wasted runs
 

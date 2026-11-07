@@ -241,7 +241,7 @@ def extract_blocks(spec_dir: str) -> List[Block]:
     return blocks
 
 
-def compile_one(sharpyc: str, source: str, timeout: int = 60) -> CompileResult:
+def compile_one(sharpyc: str, source: str) -> CompileResult:
     with tempfile.NamedTemporaryFile(
         suffix=".spy", mode="w", delete=False, encoding="utf-8"
     ) as f:
@@ -252,7 +252,7 @@ def compile_one(sharpyc: str, source: str, timeout: int = 60) -> CompileResult:
             sharpyc.split() + ["emit", "diagnostics", "--format", "json", tmp],
             capture_output=True,
             text=True,
-            timeout=timeout,
+            timeout=60,
         )
         first_error = None
         try:

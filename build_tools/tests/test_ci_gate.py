@@ -55,6 +55,21 @@ def fail(message):
     sys.stderr.write(message + "\n")
     sys.exit(1)
 
+# "flaky" fails the next N calls of one kind, which is how a transient gh failure looks.
+if args[:2] == ["workflow", "run"]:
+    kind = "dispatch"
+elif args[:2] == ["run", "list"]:
+    kind = "list"
+elif "--log" in args:
+    kind = "log"
+elif "jobs" in args:
+    kind = "jobs"
+else:
+    kind = "view"
+if state.get("flaky", {}).get(kind, 0) > 0:
+    state["flaky"][kind] -= 1
+    fail("HTTP 502: Bad Gateway")
+
 if args[:2] == ["workflow", "run"]:
     if state.get("dispatch_error"):
         fail(state["dispatch_error"])
@@ -69,13 +84,16 @@ elif args[:2] == ["run", "list"]:
         if state["listed"] > state.get("list_lag", 0):
             ids += [state["new_ids"][workflow]]
     save()
-    print(json.dumps([{"databaseId": i} for i in ids]))
+    titles = state.get("titles", {})
+    print(json.dumps([{"databaseId": i, "displayTitle": titles.get(str(i), "")} for i in ids]))
 elif args[:2] == ["run", "view"]:
     run_id = args[2]
     if "--log" in args:
         save()
         sys.stdout.write(state["log"])
         sys.exit(0)
+    if run_id not in state["runs"]:
+        fail("failed to get run: HTTP 404: Not Found")
     fields = args[args.index("--json") + 1].split(",")
     run = state["runs"][run_id]
     if run.get("status_seq"):
@@ -312,6 +330,49 @@ class TestCiUnavailable:
         assert "no run appeared" in result.stderr
 
 
+class TestTransientFailures:
+    """CI_GATE_MAX_POLL_FAILURES is 3 here, so 2 failures are survivable and 3 are not."""
+
+    @pytest.mark.parametrize("kind", ["dispatch", "list", "jobs", "log"])
+    def test_a_transient_failure_does_not_lose_the_runs(
+        self, rig: Rig, kind: str
+    ) -> None:
+        rig.state["flaky"] = {kind: 2}
+        result = rig.gate()
+        assert result.returncode == 0, result.stderr
+        assert "CI GATE GREEN" in result.stdout
+
+    @pytest.mark.parametrize("kind", ["dispatch", "list", "jobs", "log"])
+    def test_an_outage_is_no_verdict_and_never_reads_as_red(
+        self, rig: Rig, kind: str
+    ) -> None:
+        # The jobs read used to raise uncaught, and Python's exit 1 is this script's RED.
+        rig.state["flaky"] = {kind: 99}
+        result = rig.gate()
+        assert result.returncode == 3, result.stderr
+        assert "Traceback" not in result.stderr
+
+    def test_an_unknown_run_id_is_a_usage_error_and_is_not_retried(
+        self, rig: Rig
+    ) -> None:
+        rig.env["CI_GATE_POLL_SECONDS"] = (
+            "30"  # A retry would run past the 30 s test timeout.
+        )
+        result = rig.gate("--run", "999")
+        assert result.returncode == 2
+        assert "HTTP 404" in result.stderr
+
+
+def pr_run(conclusion: str = "success", title: str = "this PR") -> Dict:
+    return run_record(
+        conclusion,
+        workflowName=".NET 10",
+        headSha=SHA,
+        event="pull_request",
+        displayTitle=title,
+    )
+
+
 class TestRunSelection:
     def test_an_earlier_run_of_the_same_commit_is_not_taken_for_ours(
         self, rig: Rig
@@ -325,9 +386,7 @@ class TestRunSelection:
         assert f"run {DOTNET})" in result.stdout
 
     def test_report_mode_labels_a_pr_run_as_the_merge_ref(self, rig: Rig) -> None:
-        rig.state["runs"][str(DOTNET)] = run_record(
-            workflowName=".NET 10", headSha=SHA, event="pull_request"
-        )
+        rig.state["runs"][str(DOTNET)] = pr_run()
         result = rig.gate("--run", str(DOTNET))
         assert result.returncode == 0, result.stderr
         assert f"@ the PR merge ref of {SHA[:9]} (measured" in result.stdout
@@ -335,10 +394,9 @@ class TestRunSelection:
 
     def test_report_mode_reds_on_a_red_python_run(self, rig: Rig) -> None:
         # Seen on PR #2455: run 42338092202 was red while --run printed CI GATE GREEN.
-        rig.state["runs"][str(DOTNET)] = run_record(
-            workflowName=".NET 10", headSha=SHA, event="pull_request"
-        )
+        rig.state["runs"][str(DOTNET)] = pr_run()
         rig.state["old_ids"] = {"python-build-tools.yml": [PYTHON]}
+        rig.state["titles"] = {str(PYTHON): "this PR"}
         rig.state["runs"][str(PYTHON)] = run_record("failure")
         result = rig.gate("--run", str(DOTNET))
         assert result.returncode == 1
@@ -346,12 +404,68 @@ class TestRunSelection:
         assert "CI GATE RED" in result.stdout
 
     def test_report_mode_says_when_there_is_no_python_run(self, rig: Rig) -> None:
-        rig.state["runs"][str(DOTNET)] = run_record(
-            workflowName=".NET 10", headSha=SHA, event="pull_request"
-        )
+        rig.state["runs"][str(DOTNET)] = pr_run()
         result = rig.gate("--run", str(DOTNET))
         assert result.returncode == 0, result.stderr
         assert "no python-build-tools.yml run" in result.stdout
+
+    def test_report_mode_ignores_another_prs_newer_python_run(self, rig: Rig) -> None:
+        # Two PRs from one branch share the sha and the event: #2453 and #2454 did.
+        other = PYTHON + 100
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        rig.state["old_ids"] = {"python-build-tools.yml": [PYTHON, other]}
+        rig.state["titles"] = {str(PYTHON): "this PR", str(other): "another PR"}
+        rig.state["runs"][str(other)] = run_record("failure")
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 0, result.stdout
+        assert f"run {PYTHON}: success" in result.stdout
+        assert str(other) not in result.stdout
+
+    def test_report_mode_falls_back_to_the_newest_when_no_title_matches(
+        self, rig: Rig
+    ) -> None:
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        rig.state["old_ids"] = {"python-build-tools.yml": [PYTHON]}
+        rig.state["titles"] = {str(PYTHON): "a retitled PR"}
+        rig.state["runs"][str(PYTHON)] = run_record("failure")
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 1
+        assert "using this commit's newest" in result.stdout
+
+    def test_report_mode_of_a_push_does_not_compare_titles(self, rig: Rig) -> None:
+        # A dispatched run's title is its workflow's name, so titles only identify a PR.
+        rig.state["runs"][str(DOTNET)] = run_record(
+            workflowName=".NET 10",
+            headSha=SHA,
+            event="workflow_dispatch",
+            displayTitle=".NET 10",
+        )
+        rig.state["old_ids"] = {"python-build-tools.yml": [PYTHON]}
+        rig.state["titles"] = {str(PYTHON): "Python Build Tools"}
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 0, result.stdout
+        assert "using this commit's newest" not in result.stdout
+        assert f"run {PYTHON}: success" in result.stdout
+
+    def test_a_readme_only_run_has_nothing_to_gate(self, rig: Rig) -> None:
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        rig.state["log"] = (
+            "x\ty\t2026-11-07T00:00:00Z GATE-COUNTS passed=0 failed=0 skipped=0\n"
+            "x\ty\t2026-11-07T00:00:00Z GATE-SCOPE readme-only\n"
+        )
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 4, result.stdout
+        assert "NOTHING TO GATE" in result.stdout
+        assert "GREEN" not in result.stdout
+
+    def test_a_red_readme_only_run_is_still_red(self, rig: Rig) -> None:
+        # The windows job still runs on a README-only change, and it can fail.
+        rig.state["runs"][str(DOTNET)] = pr_run("failure")
+        rig.state["log"] = (
+            "x\ty\t2026-11-07T00:00:00Z GATE-COUNTS passed=0 failed=0 skipped=0\n"
+            "x\ty\t2026-11-07T00:00:00Z GATE-SCOPE readme-only\n"
+        )
+        assert rig.gate("--run", str(DOTNET)).returncode == 1
 
     def test_report_mode_refuses_another_workflow(self, rig: Rig) -> None:
         rig.state["runs"][str(DOTNET)] = run_record(
@@ -398,24 +512,32 @@ class TestCiSummaryContract:
     ]
 
     def summarize(
-        self, tmp: Path, failed: Optional[List[str]] = None
+        self,
+        tmp: Path,
+        failed: Optional[List[str]] = None,
+        windows_failed: Optional[List[str]] = None,
+        readme_only: bool = False,
     ) -> subprocess.CompletedProcess:
         directory = tmp / "trx"
         directory.mkdir()
-        files = {
-            "cli": trx(10, 9, [], skipped=1),
-            "core": trx(20, 20, []),
-            "stdlib": trx(30, 30, []),
-            "compiler-shard-1": trx(40, 40 - len(failed or []), failed or []),
-            "lsp-shard-1": trx(50, 50, []),
-            "windows": trx(14, 14, []),
-        }
-        files.update({f"sweep-{s}": trx(1, 1, []) for s in self.SWEEPS})
+        windows_failures = windows_failed or []
+        files = {"windows": trx(14, 14 - len(windows_failures), windows_failures)}
+        if not readme_only:
+            files.update(
+                {
+                    "cli": trx(10, 9, [], skipped=1),
+                    "core": trx(20, 20, []),
+                    "stdlib": trx(30, 30, []),
+                    "compiler-shard-1": trx(40, 40 - len(failed or []), failed or []),
+                    "lsp-shard-1": trx(50, 50, []),
+                }
+            )
+            files.update({f"sweep-{s}": trx(1, 1, []) for s in self.SWEEPS})
         for name, body in files.items():
             (directory / f"{name}.trx").write_text(body)
         env = {
             **os.environ,
-            "CODE": "true",
+            "CODE": "false" if readme_only else "true",
             "GITHUB_STEP_SUMMARY": str(tmp / "summary.md"),
             "COMPILER_SHARD_1": "x",
             "LSP_SHARD_1": "x",
@@ -440,6 +562,47 @@ class TestCiSummaryContract:
         output = self.summarize(tmp_path, failed=["Ns.Class.Method"])
         assert "GATE-COUNTS passed=155 failed=1 skipped=1" in output.stdout
         assert "GATE-FAILED Ns.Class.Method" in output.stdout
+
+    def test_a_windows_failure_is_labelled_because_the_total_omits_it(
+        self, tmp_path: Path
+    ) -> None:
+        output = self.summarize(tmp_path, windows_failed=["Win.Class.Method"])
+        assert "GATE-COUNTS passed=156 failed=0 skipped=1" in output.stdout
+        assert "GATE-FAILED [windows] Win.Class.Method" in output.stdout
+
+    def test_only_a_readme_only_run_states_its_scope(self, tmp_path: Path) -> None:
+        assert "GATE-SCOPE" not in self.summarize(tmp_path).stdout
+        readme_dir = tmp_path / "readme"
+        readme_dir.mkdir()
+        output = self.summarize(readme_dir, readme_only=True)
+        assert output.returncode == 0, output.stderr
+        assert "GATE-COUNTS passed=0 failed=0 skipped=0" in output.stdout
+        assert "GATE-SCOPE readme-only" in output.stdout
+
+    def test_ci_gate_reads_a_real_readme_only_summary(
+        self, tmp_path: Path, rig: Rig
+    ) -> None:
+        output = self.summarize(tmp_path, readme_only=True)
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        rig.state["log"] = "".join(
+            f"CI summary\tstep\t2026-11-07T00:00:00Z {line}\n"
+            for line in (ci_summary_script() + "\n" + output.stdout).splitlines()
+        )
+        assert rig.gate("--run", str(DOTNET)).returncode == 4
+
+    def test_the_echoed_script_alone_does_not_state_a_scope(self, rig: Rig) -> None:
+        # A run that selected nothing, whose log still echoes the print statement: exit 4 here would
+        # wave through the case exit 3 exists for.
+        lines = [
+            *ci_summary_script().splitlines(),
+            "GATE-COUNTS passed=0 failed=0 skipped=0",
+        ]
+        rig.state["log"] = "".join(
+            f"CI summary\tstep\t2026-11-07T00:00:00Z {line}\n" for line in lines
+        )
+        result = rig.gate()
+        assert result.returncode == 3, result.stdout
+        assert "NOTHING TO GATE" not in result.stdout
 
     def test_ci_gate_parses_what_ci_summary_really_prints(
         self, tmp_path: Path, rig: Rig
@@ -490,6 +653,19 @@ class TestGateTriggers:
             in text
         )
         assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in text
+
+
+def test_the_python_job_gives_pytest_a_built_compiler() -> None:
+    # Without SHARPYC, test_real_compiler_smoke skips on a clean checkout and guards nothing.
+    text = PYTHON_YML.read_text()
+    build = text.index("run: dotnet build src/Sharpy.Cli")
+    pytest_step = text.index("- name: Run tests with pytest")
+    pytest_env = text[pytest_step : text.index("python -m pytest", pytest_step)]
+    assert build < pytest_step
+    assert (
+        "SHARPYC: ${{ github.workspace }}/src/Sharpy.Cli/bin/Debug/net10.0/sharpyc"
+        in pytest_env
+    )
 
 
 def test_a_workflow_change_runs_this_harness() -> None:
