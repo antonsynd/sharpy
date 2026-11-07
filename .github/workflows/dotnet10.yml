@@ -494,8 +494,9 @@ jobs:
   sweeps-quick:
     # Four GapDiscovery sweeps that take 50-90 s each on CI (run 38983789798) and the
     # name-resolution differential (P77a; its full pool is bounded at 13 min on a dev machine, and
-    # its CI wall is recorded on the first push), one step each in one job. Each still writes its
-    # own sweep-<name>.trx, and each reports even if an earlier one failed.
+    # on CI this job took 12 m 16 s, of which that step 7 m 00 s, @ 8c0602b35, run 42332177803,
+    # measured), one step each in one job. Each still writes its own sweep-<name>.trx, and each
+    # reports even if an earlier one failed.
     name: Sweeps (interop, differential-execution, format-spec, formatter-emit, name-resolution)
     needs: build
     runs-on: ubuntu-latest
