@@ -35,7 +35,7 @@ If `$ARGUMENTS` is non-empty, use it as the commit message body.
 If `$ARGUMENTS` is empty, analyze the staged diff and generate a message:
 - Use the commit style from the `git log` output (this repo uses conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `chore:`, `docs:`)
 - Focus on the **why**, not the **what**
-- Keep the first line under 72 characters
+- Keep the first line at most 72 characters. This is a gate, not advice (W3.4 / D5, 2026-11-07): CI's `Commit Subjects` workflow runs `bash build_tools/check_commit_subjects.sh` over every PR and every `dev`/`mainline` push; merge and `Revert "…"` subjects are exempt. Put the issue reference (`refs #N`, `(#N)`) in the body when the subject is tight.
 - Add a body paragraph if the change is non-trivial
 
 ### 4. Create the commit

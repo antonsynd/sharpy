@@ -1,0 +1,48 @@
+# Commit-subject length gate (W3.4, owner ruling D5 of 2026-11-07): every non-merge, non-revert commit
+# subject in a PR, or in a push to dev/mainline, is at most 72 characters — the `/commit` skill's figure,
+# made a gate by build_tools/check_commit_subjects.py. No path filter: a docs-only PR has subjects too.
+# The two gate workflows (dotnet10.yml, python-build-tools.yml) are path-filtered and dispatched by
+# `.claude/scripts/ci-gate`, which needs no subject check (a dispatch has no range), so this is its own
+# small workflow rather than a job on either of them.
+
+name: Commit Subjects
+
+on:
+  push:
+    branches: [ "dev", "mainline" ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  subjects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Check commit subjects (≤ 72 chars; merges and reverts exempt)
+      env:
+        EVENT: ${{ github.event_name }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BEFORE: ${{ github.event.before }}
+        AFTER: ${{ github.sha }}
+      run: |
+        if [ "$EVENT" = "pull_request" ]; then
+          range="$BASE_SHA..$HEAD_SHA"
+        elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+          echo "new branch push: no range to check"; exit 0
+        else
+          range="$BEFORE..$AFTER"
+        fi
+        bash build_tools/check_commit_subjects.sh "$range"
