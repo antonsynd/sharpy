@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
 {
-    public FormatSpecStaticTwinRouteTests(ITestOutputHelper output) : base(output) { }
+    public FormatSpecStaticTwinRouteTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     /// <summary>
     /// One value and one literal spec. <c>StaticMessage</c> is CPython's wording when the spec is
