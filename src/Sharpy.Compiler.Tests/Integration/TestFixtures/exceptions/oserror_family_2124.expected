@@ -1,0 +1,11 @@
+1 FileNotFoundError caught as OSError
+2 PermissionError caught as OSError
+3 IOError caught as OSError
+4 OSError caught as IOError
+5 FileNotFoundError caught as IOError
+5b FileExistsError caught as OSError: FileExistsError
+5c IsADirectoryError caught as OSError: IsADirectoryError
+6 OSError True
+6 OSError
+7 open(missing) caught as OSError: FileNotFoundError
+10 open(dir) caught as OSError: IsADirectoryError

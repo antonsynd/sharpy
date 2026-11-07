@@ -19,12 +19,12 @@ Sharpy uses .NET's exception hierarchy directly:
 | `LookupError` | `Exception` | Base for key/index errors |
 | `IndexError` | `LookupError` | Index out of bounds |
 | `KeyError` | `LookupError` | Dict key not found |
-| `IOError` | `IOException` | I/O operation failed |
-| `OSError` | `IOError` | OS-level error (alias for IOError) |
-| `FileNotFoundError` | `FileNotFoundException` | File not found |
-| `FileExistsError` | `IOException` | File already exists |
-| `IsADirectoryError` | `IOException` | Expected file, got directory |
-| `PermissionError` | `UnauthorizedAccessException` | Permission denied |
+| `OSError` | `IOException` | OS-level or I/O operation failed |
+| `IOError` | — | The same class as `OSError` (Python 3: `IOError is OSError`), not a subclass |
+| `FileNotFoundError` | `OSError` | File not found |
+| `FileExistsError` | `OSError` | File already exists |
+| `IsADirectoryError` | `OSError` | Expected file, got directory |
+| `PermissionError` | `OSError` | Permission denied |
 | `StopIteration` | `Exception` | Iterator exhausted |
 | `UnicodeError` | `ValueError` | Base for Unicode encoding/decoding errors |
 | `UnicodeEncodeError` | `UnicodeError` | Unicode encoding failed |
@@ -35,6 +35,20 @@ Sharpy uses .NET's exception hierarchy directly:
 | `ExceptionGroup` | `AggregateException` | Group of exceptions (PEP 654) |
 | `JSONDecodeError` | `ValueError` | Invalid JSON (in `json` module) |
 | `StatisticsError` | `Exception` | Statistics computation error (in `statistics` module) |
+
+### `OSError`
+
+`FileNotFoundError`, `FileExistsError`, `IsADirectoryError` and `PermissionError`
+derive from `OSError`, matching CPython, so `except OSError` catches every one of
+them, whether user code raises it or a file/OS operation (`open()`, `os.mkdir`,
+...) reports it. `IOError` names the same class as `OSError`: `except IOError`
+and `except OSError` catch exactly the same exceptions, and `type(IOError("x")).__name__`
+is `"OSError"`.
+
+`OSError` derives from .NET's `System.IO.IOException`, so .NET code catching
+`IOException` sees `OSError` and all four subclasses. .NET code catching the more
+specific `System.IO.FileNotFoundException` or `System.UnauthorizedAccessException`
+does not see Sharpy's `FileNotFoundError` or `PermissionError`.
 
 ### `ArithmeticError`
 

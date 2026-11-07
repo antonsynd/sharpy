@@ -120,7 +120,7 @@ namespace Sharpy.OsModule
             }
             catch (global::System.Exception)
             {
-                throw new global::Sharpy.IOError("Directory not empty: '" + path + "'");
+                throw new global::Sharpy.OSError("Directory not empty: '" + path + "'");
             }
         }
 

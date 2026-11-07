@@ -81,7 +81,7 @@ def rmdir(path: str) -> None:
     try:
         Directory.delete(path, False)
     except Exception:
-        raise IOError("Directory not empty: '" + path + "'")
+        raise OSError("Directory not empty: '" + path + "'")
 
 def listdir(path: str = ".") -> list[str]:
     """Return a list containing the names of the entries in the directory."""

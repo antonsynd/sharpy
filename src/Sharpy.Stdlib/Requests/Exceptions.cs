@@ -7,7 +7,7 @@ namespace Sharpy
     /// Equivalent to Python's <c>requests.RequestException</c>.
     /// </summary>
     [SharpyModuleType("requests")]
-    public class RequestException : IOError
+    public class RequestException : OSError
     {
         /// <summary>The HTTP response associated with this error, if any.</summary>
         public Response? Response { get; }

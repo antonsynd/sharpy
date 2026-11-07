@@ -294,7 +294,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests
                 os.Rmdir(path);
 #line hidden
             }
-            catch (IOError)
+            catch (OSError)
             {
                 __raised_5 = true;
             }
