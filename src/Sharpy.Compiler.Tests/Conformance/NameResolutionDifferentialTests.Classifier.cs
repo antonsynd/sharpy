@@ -188,6 +188,22 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), kind, run.Stdout));
     }
 
+    /// <summary>The reductions are red under CI and a banner elsewhere, and the sweep's own run under CI is neither.</summary>
+    [Fact]
+    public void ReducedRun_FailsUnderCi_AndStaysABannerOnADevMachine()
+    {
+        var both = ReducedRunFailures("true", partial: true, limit: 10, cachePath: "c.json").ToList();
+        Assert.Equal(2, both.Count);
+        Assert.Contains(both, f => f.StartsWith(StrideEnv + "=10", StringComparison.Ordinal));
+        Assert.Contains(both, f => f.StartsWith(CacheEnv + "=c.json", StringComparison.Ordinal));
+        Assert.Single(ReducedRunFailures("1", partial: true, limit: 10, cachePath: null));
+        Assert.Single(ReducedRunFailures("true", partial: false, limit: 0, cachePath: "c.json"));
+
+        Assert.Empty(ReducedRunFailures("true", partial: false, limit: 0, cachePath: null));
+        Assert.Empty(ReducedRunFailures(null, partial: true, limit: 10, cachePath: "c.json"));
+        Assert.Empty(ReducedRunFailures("", partial: true, limit: 10, cachePath: "c.json"));
+    }
+
     [Fact]
     public void Classifier_CodeSets_ClassifyByCode()
     {

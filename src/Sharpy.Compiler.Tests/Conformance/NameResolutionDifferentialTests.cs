@@ -631,6 +631,18 @@ public partial class NameResolutionDifferentialTests
 
     private SharpyRun RunSharpyRetryingATimeout(string source, int timeoutMs, bool needsStdlib, out bool retried)
         => RetryingATimeout(ms => RunSharpy(source, ms, needsStdlib), timeoutMs, out retried);
+    /// <summary>The sweep's own reductions. On a dev machine each is an edit-loop tool with a banner. <c>CI</c> is set on
+    /// the runner that is the gate, where the workflow says the full pool always runs: a strided ratchet is a partial
+    /// guarantee, and a cached verdict cannot see a compiler change.</summary>
+    internal static IEnumerable<string> ReducedRunFailures(string? ci, bool partial, int limit, string? cachePath)
+    {
+        if (string.IsNullOrEmpty(ci))
+            yield break;
+        if (partial)
+            yield return $"{StrideEnv}={limit} ran a stride of the pool and CI is set: the full pool always runs in CI";
+        if (cachePath != null)
+            yield return $"{CacheEnv}={cachePath} reused recorded Sharpy results and CI is set: a cached verdict cannot see a compiler change";
+    }
 
     private static string SourceKey(string source)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)));
@@ -679,6 +691,7 @@ public partial class NameResolutionDifferentialTests
 
         // --- Sharpy arm: production compile + execute, sequential, `run` and never `emit`. ---
         var cachePath = Environment.GetEnvironmentVariable(CacheEnv);
+        failures.AddRange(ReducedRunFailures(Environment.GetEnvironmentVariable("CI"), partial, limit, cachePath));
         var cache = LoadCache(cachePath);
         int cached = 0;
         int retried = 0;
