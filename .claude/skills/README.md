@@ -74,8 +74,8 @@ How much of the pipeline a group runs is its **tier**, set at `/batch-issues` an
 ## Investigating Failures
 
 ```bash
-grep -n "Failed\|error" .claude/tmp/dotnet-serialized-latest.log   # newest run (may be a peer's)
-ls -lt .claude/tmp/dotnet-serialized-*.log                          # pick the slot by mtime
+grep -n "Failed\|error" <log>   # <log>: the path your wrapper call printed ("dotnet-serialized: log -> <log>")
+cat .claude/tmp/dotnet-serialized-latest.path   # the NEWEST invocation's log (may be a peer's)
 ```
 
 A log proves a green only if its binaries postdate the change under test — check the `Test run for` lines against the commit.

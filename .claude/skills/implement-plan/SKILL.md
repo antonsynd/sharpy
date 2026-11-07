@@ -52,7 +52,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
 
 ### 5. Establish the baseline (measured, background)
 - `.claude/scripts/dotnet-serialized build sharpy.sln` (`dangerouslyDisableSandbox: true`) — if it fails, stop and report the build error
-- Establish the whole-solution baseline: reuse the base commit's `mainline` run if it has one (`.claude/scripts/ci-gate --run <id>`, found with `gh run list --workflow dotnet10.yml --commit <sha>`), otherwise push the branch and run `/ci-gate` **in the background** (~20 min) while continuing with read-only setup. If it exits 3, fall back to the local gate (`/ci-gate` › The local fallback, contract §6) and read the counts from `.claude/tmp/dotnet-serialized-{0,1,2}.log` (the `-latest.log` symlink can rotate to a peer's run; verify the log's `Test run for` lines name this run).
+- Establish the whole-solution baseline: reuse the base commit's `mainline` run if it has one (`.claude/scripts/ci-gate --run <id>`, found with `gh run list --workflow dotnet10.yml --commit <sha>`), otherwise push the branch and run `/ci-gate` **in the background** (~20 min) while continuing with read-only setup. If it exits 3, fall back to the local gate (`/ci-gate` › The local fallback, contract §6) and read the counts from the log path that run printed (`dotnet-serialized: log -> <path>`; each invocation has its own).
 - Record it as **`passed/failed/skipped @ <sha> (measured)`** — never a derived number.
 - If red: **triage before attributing** — check the parent round plan's open-class list (ILCompiles fresh seeds re-roll open classes) and the pre-existing allowlist reds; label each red as `pre-existing (#NNN)` or `unexplained`. Warn the user and ask whether to proceed.
 
@@ -126,10 +126,9 @@ with `dangerouslyDisableSandbox: true`.
 
 SERIALIZED DOTNET:
 The wrapper takes an exclusive lock so only one dotnet process runs at a time; concurrent test runs
-consume 5–10 GB RAM EACH. It is a drop-in replacement (same args, output, exit code) and tees output
-to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (`-latest.log` symlinks the newest run — it may be a
-peer's). A whole-solution run is ~30 min; read a recent log before re-running:
-  grep -i "FAIL\|error" .claude/tmp/dotnet-serialized-latest.log
+consume 5–10 GB RAM EACH. It is a drop-in replacement (same args, output, exit code) and tees each
+run to its own log, printing `dotnet-serialized: log -> <path>` first. A whole-solution run is
+~30 min; read that log before re-running:  grep -i "FAIL\|error" <path>
 
 WORKFLOW:
 1. Read the plan section for your task

@@ -25,7 +25,7 @@ Read the plan file completely before proceeding.
 
 - **Every `dotnet` invocation goes through `.claude/scripts/dotnet-serialized`** (drop-in: same args, output, exit code). Raw `dotnet` is blocked by `.claude/hooks/enforce-dotnet-serialized.sh`. The wrapper must run with `dangerouslyDisableSandbox: true` (sandboxed callers exit 125); `gh` needs the same.
 - **The whole-solution gate is `/ci-gate`** (GitHub CI at the pushed commit, ~20 min). The local wrapper command is its fallback when it exits 3, recorded as such in the report (contract §6). `dotnet` for builds, regeneration, mutations and probes stays local.
-- Output is teed to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (`-latest.log` symlinks the newest, and may rotate to a *peer's* run — check the `Test run for <path>` line and the binary timestamp before trusting a log). Read logs instead of re-running (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901).
+- Each wrapper call tees to its own log and prints `dotnet-serialized: log -> <path>` first; read that path (check the binary timestamp before trusting a log). Read logs instead of re-running (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901).
 - **Counts carry their sha:** every number in this skill's outputs is written `passed/failed/skipped @ <sha> (measured)`. A derived number is never written in that format.
 - Commits use the trailer the harness provides for this session; never hard-code a model name.
 

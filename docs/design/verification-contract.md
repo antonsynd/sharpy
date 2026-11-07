@@ -166,7 +166,7 @@ smoke job. Local adds `MetamorphicCorpusInvarianceTests` (left out of CI on purp
 
 **The local gate is the fallback:** `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`,
 for when `/ci-gate` exits 3 (not started within 15 min, cancelled, unreachable, or no counts) or for
-what only local covers; say so in the report. Read `.claude/tmp/dotnet-serialized-*.log` rather than
+what only local covers; say so in the report. Read the log path the wrapper printed (`dotnet-serialized: log -> <path>`) rather than
 re-running. A log whose binaries predate the change is not a green. Mutation runs and single-test
 probes stay local, and so can a control for one failing test (§5).
 
