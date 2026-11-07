@@ -1,4 +1,5 @@
-# Stdlib CLR-throw allowlist (ratchet ledger) for StdlibClrThrowScanTests (#2461).
+# Stdlib CLR-throw allowlist (ratchet ledger) for StdlibClrThrowScanTests (class issue #2461; rows cite the
+# standing tracker #2467, owner ruling D13 of 2026-11-07, because every row here is a permanent bug guard).
 #
 # The contract: a Stdlib boundary raises Python's exception (ValueError, TypeError, IndexError, ...)
 # for an expected failure of user input, so `except ValueError` catches it. A
@@ -7,29 +8,29 @@
 # (bin, obj, spy/, modules/ excluded) must have a row here; a row the scan no longer finds is stale
 # and red too (delete it as the site converts).
 #
-# Row: `<repo-relative file>:<Type>.<Member>:<ExceptionType> xN # #2461 <reason>`
+# Row: `<repo-relative file>:<Type>.<Member>:<ExceptionType> xN # #2467 <reason>`
 #   The anchor is the enclosing type and member, never a line number; N is the number of such
-#   throws in that member. Every row cites #2461 and says why the throw is a bug guard.
+#   throws in that member. Every row cites #2467 and says why the throw is a bug guard.
 #
 # DO NOT DELETE THIS FILE: the scan throws if it is missing rather than passing silently.
 
-src/Sharpy.Stdlib/Numpy/NdArray.cs:NdArray.NdArray:ArgumentException x3 # #2461 bug guard: the internal view constructor (strides/offset from slicing, reshape, transpose); no Sharpy program passes it a shape
-src/Sharpy.Stdlib/Numpy/NdArray.Operators.cs:NdArray.Apply:NotSupportedException x4 # #2461 bug guard: exhaustive switch over the internal BinaryOpKind enum; the default arm is unreachable
-src/Sharpy.Stdlib/Numpy/Numpy.Comparison.cs:Numpy.CompareElementwise:InvalidOperationException x1 # #2461 bug guard: exhaustive switch over the internal CompareKind enum; the default arm is unreachable
-src/Sharpy.Stdlib/Toml/Toml.cs:Toml.ConvertToFieldType:InvalidOperationException x1 # #2461 internal signal: caught in Toml.Loads<T> and returned as Err(TOMLDecodeError), a ValueError; it never escapes the Stdlib
-src/Sharpy.Stdlib/Yaml/Yaml.cs:YamlObjectNode.GetChild:InvalidOperationException x1 # #2461 bug guard: TypedLoadContract calls GetChild only with a key the node's own Keys returned, so the node is a mapping
-src/Sharpy.Stdlib/Yaml/Yaml.cs:YamlFloatTypeConverter.ReadYaml:NotSupportedException x1 # #2461 bug guard: the converter is registered on the serializer only; YamlDotNet never calls ReadYaml on it
-src/Sharpy.Stdlib/Yaml/Yaml.cs:YamlStringStyleConverter.ReadYaml:NotSupportedException x1 # #2461 bug guard: the converter is registered on the serializer only; YamlDotNet never calls ReadYaml on it
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.Approx:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertAlmostEqual:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertCountEqual:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertFalse:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertGreater:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertIn:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertIsNone:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertIsNotNone:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertLess:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertNotIn:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertRaises:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertRegex:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
-src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertTrue:NotSupportedException x1 # #2461 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Numpy/NdArray.cs:NdArray.NdArray:ArgumentException x3 # #2467 bug guard: the internal view constructor (strides/offset from slicing, reshape, transpose); no Sharpy program passes it a shape
+src/Sharpy.Stdlib/Numpy/NdArray.Operators.cs:NdArray.Apply:NotSupportedException x4 # #2467 bug guard: exhaustive switch over the internal BinaryOpKind enum; the default arm is unreachable
+src/Sharpy.Stdlib/Numpy/Numpy.Comparison.cs:Numpy.CompareElementwise:InvalidOperationException x1 # #2467 bug guard: exhaustive switch over the internal CompareKind enum; the default arm is unreachable
+src/Sharpy.Stdlib/Toml/Toml.cs:Toml.ConvertToFieldType:InvalidOperationException x1 # #2467 internal signal: caught in Toml.Loads<T> and returned as Err(TOMLDecodeError), a ValueError; it never escapes the Stdlib
+src/Sharpy.Stdlib/Yaml/Yaml.cs:YamlObjectNode.GetChild:InvalidOperationException x1 # #2467 bug guard: TypedLoadContract calls GetChild only with a key the node's own Keys returned, so the node is a mapping
+src/Sharpy.Stdlib/Yaml/Yaml.cs:YamlFloatTypeConverter.ReadYaml:NotSupportedException x1 # #2467 bug guard: the converter is registered on the serializer only; YamlDotNet never calls ReadYaml on it
+src/Sharpy.Stdlib/Yaml/Yaml.cs:YamlStringStyleConverter.ReadYaml:NotSupportedException x1 # #2467 bug guard: the converter is registered on the serializer only; YamlDotNet never calls ReadYaml on it
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.Approx:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertAlmostEqual:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertCountEqual:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertFalse:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertGreater:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertIn:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertIsNone:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertIsNotNone:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertLess:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertNotIn:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertRaises:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertRegex:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
+src/Sharpy.Stdlib/Unittest/__Init__.cs:Unittest.AssertTrue:NotSupportedException x1 # #2467 bug guard: a type-resolution marker the compiler lowers at every call site; reaching the body is a compiler bug
