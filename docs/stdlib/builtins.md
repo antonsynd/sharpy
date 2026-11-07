@@ -2171,7 +2171,7 @@ but not `IEnumerable[T]` (i.e., types with __reversed__ but no __iter__).
 
 ### `round(x: float) -> int`
 
-Round a number to the nearest integer.
+Round a number to the nearest integer, half to even.
 
 **Parameters:**
 
@@ -2181,16 +2181,18 @@ Round a number to the nearest integer.
 
 ```python
 round(3.7)       # 4
-round(2.5)       # 2 (banker's rounding)
+round(2.5)       # 2 (half to even)
 round(3.14159, 2) # 3.14
 ```
 
-!!! note
-    Uses .NET's banker's rounding (round half to even). For example, Round(2.5) returns 2, not 3.
+**Raises:**
+
+- `ValueError` -- x is NaN.
+- `OverflowError` -- x is infinite, or the rounded value does not fit an `int`.
 
 ### `round(x: float, n: int) -> float`
 
-Round a number to n decimal places.
+Round a number to n decimal places (n may be negative), correctly rounded, half to even.
 
 **Parameters:**
 
@@ -2199,12 +2201,13 @@ Round a number to n decimal places.
 
 **Returns:** The rounded value
 
-!!! note
-    Uses .NET's banker's rounding (round half to even).
+**Raises:**
+
+- `OverflowError` -- The rounded value is too large to represent.
 
 ### `round(x: float32) -> int`
 
-Round a float to the nearest integer.
+Round a float to the nearest integer, half to even.
 
 **Parameters:**
 
@@ -2212,12 +2215,14 @@ Round a float to the nearest integer.
 
 **Returns:** The rounded value
 
-!!! note
-    Uses .NET's banker's rounding (round half to even).
+**Raises:**
+
+- `ValueError` -- x is NaN.
+- `OverflowError` -- x is infinite, or the rounded value does not fit an `int`.
 
 ### `round(x: float32, n: int) -> float32`
 
-Round a float to n decimal places.
+Round a float to n decimal places (n may be negative), correctly rounded, half to even.
 
 **Parameters:**
 
@@ -2226,12 +2231,13 @@ Round a float to n decimal places.
 
 **Returns:** The rounded value
 
-!!! note
-    Uses .NET's banker's rounding (round half to even).
+**Raises:**
+
+- `OverflowError` -- The rounded value is too large to represent.
 
 ### `round(x: decimal) -> int`
 
-Round a decimal to the nearest integer.
+Round a decimal to the nearest integer, half to even.
 
 **Parameters:**
 
@@ -2239,12 +2245,13 @@ Round a decimal to the nearest integer.
 
 **Returns:** The rounded value
 
-!!! note
-    Uses .NET's banker's rounding (round half to even).
+**Raises:**
+
+- `OverflowError` -- The rounded value does not fit an `int`.
 
 ### `round(x: decimal, n: int) -> decimal`
 
-Round a decimal to n decimal places.
+Round a decimal to n decimal places (n may be negative), exactly, half to even.
 
 **Parameters:**
 
@@ -2253,8 +2260,64 @@ Round a decimal to n decimal places.
 
 **Returns:** The rounded value
 
-!!! note
-    Uses .NET's banker's rounding (round half to even).
+**Raises:**
+
+- `OverflowError` -- The rounded value is too large for a decimal.
+
+### `round(x: int, n: int) -> int`
+
+Round an int to n decimal places: n >= 0 returns x; a negative n rounds half to even at 10^-n.
+
+**Parameters:**
+
+- `x` (int) -- The number to round
+- `n` (int) -- The number of decimal places
+
+**Returns:** The rounded value
+
+```python
+round(15, -1)   # 20
+round(25, -1)   # 20 (half to even)
+```
+
+**Raises:**
+
+- `OverflowError` -- The rounded value does not fit an `int`.
+
+### `round(x: int64, n: int) -> int64`
+
+Round a long to n decimal places: n >= 0 returns x; a negative n rounds half to even at 10^-n.
+
+**Parameters:**
+
+- `x` (int64) -- The number to round
+- `n` (int) -- The number of decimal places
+
+**Returns:** The rounded value
+
+**Raises:**
+
+- `OverflowError` -- The rounded value does not fit a `long`.
+
+### `round(x: int) -> int`
+
+Round an int to the nearest integer: x itself.
+
+**Parameters:**
+
+- `x` (int) -- The number to round
+
+**Returns:** x
+
+### `round(x: int64) -> int64`
+
+Round a long to the nearest integer: x itself.
+
+**Parameters:**
+
+- `x` (int64) -- The number to round
+
+**Returns:** x
 
 ### `set(enumerable: IEnumerable[T]) -> set[T]`
 

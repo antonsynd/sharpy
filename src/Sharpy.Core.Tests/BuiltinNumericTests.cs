@@ -102,13 +102,11 @@ public class BuiltinNumeric_Tests
     }
 
     [Fact]
-    public void Round_NegativePrecision_ThrowsArgumentOutOfRangeException()
+    public void Round_NegativePrecision_RoundsToTensPlace()
     {
-        // NOTE: Python supports round(x, -2) to round to nearest 100, but .NET's
-        // Math.Round does not support negative digits. The Sharpy implementation
-        // currently throws ArgumentOutOfRangeException for negative precision.
-        FluentActions.Invoking(() => Round(1234.5, -2))
-            .Should().Throw<ArgumentOutOfRangeException>();
+        // python3: round(1234.5, -2) == 1200.0 (#2460: negative digits are CPython's contract,
+        // not .NET's ArgumentOutOfRangeException).
+        Round(1234.5, -2).Should().Be(1200.0);
     }
 
     [Fact]

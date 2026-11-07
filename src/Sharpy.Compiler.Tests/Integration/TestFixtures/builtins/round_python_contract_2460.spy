@@ -1,0 +1,38 @@
+# round() per CPython float.__round__ / int.__round__ (#2460)
+def main():
+    # correctly rounded: 2.675 is below the tie in binary
+    print(round(2.675, 2))
+    # any int digits: negative, zero, past the precision
+    print(round(1e10, -3))
+    print(round(123.456, -2))
+    print(round(1.23456789, 20))
+    print(round(2.5, 0))
+    print(round(-1.5, -1))
+    # half to even
+    print(round(0.5), round(1.5), round(2.5), round(-0.5))
+    # nan and infinities round to themselves when digits are given
+    print(round(float("inf"), 2), round(float("nan"), 2), round(1e300, 2))
+    # round(int, int) returns an int, half to even on the integer
+    print(round(5, -1), round(15, -1), round(25, -1), round(-25, -1))
+    print(round(2 ** 40, -3))
+    try:
+        print(round(float("nan")))
+    except ValueError as e:
+        print("ValueError:", e)
+    try:
+        print(round(float("inf")))
+    except OverflowError as e:
+        print("OverflowError:", e)
+    try:
+        print(round(-float("inf")))
+    except OverflowError as e:
+        print("OverflowError:", e)
+    try:
+        print(round(1.7976931348623157e308, -308))
+    except OverflowError as e:
+        print("OverflowError:", e)
+    # int is 32-bit (Axiom 1): a rounded value past its range is OverflowError, never a wrapped int
+    try:
+        print(round(2.0 ** 62))
+    except OverflowError:
+        print("OverflowError")
