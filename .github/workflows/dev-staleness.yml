@@ -40,6 +40,14 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      # Read-only; dotnet10.yml's `build` job saves it (#2458).
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       run: dotnet restore sharpy.sln
     - name: Build compiler CLI

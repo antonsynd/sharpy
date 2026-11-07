@@ -80,6 +80,15 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
+    - name: Restore the NuGet package cache
+      # Read-only; dotnet10.yml's `build` job saves it (#2458).
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
+
     # test_real_compiler_smoke needs a compiler. Building it here keeps a cold build out of the test,
     # where it raced compile_one's 60 s limit (35-57 s when green, timed out on run 42338092202).
     - name: Build sharpyc

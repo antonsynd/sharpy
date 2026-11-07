@@ -256,8 +256,26 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      # #2458 (W0.4): ~/.nuget/packages keyed on every csproj/props/targets. Only this job saves
+      # it (below, on a miss); every other .NET job here and in nightly, dev-staleness,
+      # python-build-tools and benchmarks restores it read-only, so parallel jobs never race a save.
+      # A cache saved on mainline is readable from every branch. `dotnet restore` still runs and
+      # fetches whatever the cache lacks, so a stale or missing cache costs only time.
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       run: dotnet restore
+    - name: Save the NuGet package cache
+      if: ${{ steps.nuget.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v6
+      with:
+        path: ~/.nuget/packages
+        key: ${{ steps.nuget.outputs.cache-primary-key }}
     - name: Build
       run: dotnet build --no-restore
     - name: Verify all test projects are covered
@@ -303,6 +321,13 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
       run: dotnet restore
@@ -357,6 +382,13 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
       run: dotnet restore
@@ -420,6 +452,13 @@ jobs:
       # Same interpreter environment the main Compiler pass had before #2178. Keep this list in
       # step with ORACLE_THIRD_PARTY (build_tools/differential_exec/run_programs.py).
       run: python -m pip install "pyyaml>=6,<7"
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
       run: dotnet restore
@@ -489,6 +528,13 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
       run: dotnet restore
@@ -552,6 +598,13 @@ jobs:
       # cells can never be compared because the children cannot import it — which is what
       # a runner without PyYAML produces. Keep this list in step with ORACLE_THIRD_PARTY.
       run: python -m pip install "pyyaml>=6,<7"
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
       run: dotnet restore
@@ -639,6 +692,13 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Download build output
       uses: actions/download-artifact@v8
       with:
@@ -688,6 +748,13 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       run: dotnet restore
     - name: Download build output
