@@ -67,7 +67,7 @@ public partial class NameResolutionDifferentialTests
             [(Family.Store, SharpyTag.MustRun, "N7")] = 18,
             [(Family.Store, SharpyTag.MustRun, "R-BM")] = 66,
             [(Family.Store, SharpyTag.Unruled, "unruled:global-creates-binding")] = 4,
-            [(Family.TypeMember, SharpyTag.MustRun, "P52")] = 410,
+            [(Family.TypeMember, SharpyTag.MustRun, "P52")] = 450,
         };
 
     internal static IEnumerable<string> CensusFailures(IReadOnlyList<NameCell> pool)

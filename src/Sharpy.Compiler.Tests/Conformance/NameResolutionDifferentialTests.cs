@@ -496,6 +496,8 @@ public partial class NameResolutionDifferentialTests
                     // The store side of #2147's receiver matrix: one member through every receiver, one verdict.
                     "CS0176" or "CS0131" or "CS0198" or "CS1656" when IsAttributeStore(cell) => "#2435",
                     "CS0176" => "#2147",
+                    // A @static interface method read through its interface: the emitter renders it an instance member.
+                    "CS0120" when cell.Family == Family.TypeMember && cell.Target == BindingKind.ModuleInterface => "#2111",
                     // Checked first: `x().v` through `type x = T` is CS0103 in a plain main, with no store, lambda or order in it.
                     "CS0103" when IsAliasConstructorCell(cell) => "#1925",
                     // A store over an import names the imported value unqualified. There is no write-through to qualify, and N6's refusal is the cure.
