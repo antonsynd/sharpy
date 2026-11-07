@@ -629,8 +629,13 @@ public partial class NameResolutionDifferentialTests
         return retried ? runAt(timeoutMs * 2) : run;
     }
 
+    /// <summary>What <see cref="RunSharpyRetryingATimeout"/> runs a program with, when a fact sets it. No run has timed out
+    /// in any sweep so far, so a stub is the only way through the helper's retry; a fact holds what the sweep calls.</summary>
+    private Func<string, int, bool, SharpyRun>? _sharpyRunnerForAFact;
+
     private SharpyRun RunSharpyRetryingATimeout(string source, int timeoutMs, bool needsStdlib, out bool retried)
-        => RetryingATimeout(ms => RunSharpy(source, ms, needsStdlib), timeoutMs, out retried);
+        => RetryingATimeout(ms => (_sharpyRunnerForAFact ?? RunSharpy)(source, ms, needsStdlib), timeoutMs, out retried);
+
     /// <summary>The sweep's own reductions. On a dev machine each is an edit-loop tool with a banner. <c>CI</c> is set on
     /// the runner that is the gate, where the workflow says the full pool always runs: a strided ratchet is a partial
     /// guarantee, and a cached verdict cannot see a compiler change.</summary>

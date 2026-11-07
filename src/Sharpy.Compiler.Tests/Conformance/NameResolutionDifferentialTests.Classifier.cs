@@ -176,13 +176,42 @@ public partial class NameResolutionDifferentialTests
         Assert.Equal(SharpyKind.Refused, ClassifySharpy(run));
     }
 
-    /// <summary>D4.3's positive control through the sweep's own path: a real program that never ends times out at both
-    /// timeouts and is Harness, with or without the retry.</summary>
+    /// <summary>D4.3 through the helper the sweep's loop calls (<see cref="TheSweepsLoop_ReachesSharpyOnlyThroughTheRetryingHelper"/>
+    /// holds that it does), with a stub in the runner's place: the retry keeps the source and the stdlib flag, and its
+    /// verdict is the run's.</summary>
+    [Fact]
+    public void Retry_TheSweepsHelper_RunsATimedOutProgramAgainAtTwiceTheTimeout()
+    {
+        var calls = new List<(string Source, int TimeoutMs, bool NeedsStdlib)>();
+        _sharpyRunnerForAFact = (source, timeoutMs, needsStdlib) =>
+        {
+            calls.Add((source, timeoutMs, needsStdlib));
+            return calls.Count == 1 ? Literal() with { TimedOut = true } : Literal();
+        };
+
+        var run = RunSharpyRetryingATimeout("program", 12_000, needsStdlib: true, out var retried);
+
+        Assert.Equal(new[] { ("program", 12_000, true), ("program", 24_000, true) }, calls);
+        Assert.True(retried);
+        Assert.Equal(SharpyKind.Ran, ClassifySharpy(run));
+    }
+
+    /// <summary>D4.3 through the same helper and the real compile path: a program that never ends is run twice, at the
+    /// timeout and at twice it, and only then is Harness.</summary>
     [Fact]
     public void Retry_ARealHang_StaysHarness()
     {
-        var run = RunSharpyRetryingATimeout("def main() -> None:\n    while True:\n        pass\n", 500, needsStdlib: false, out _);
+        var timeouts = new List<int>();
+        _sharpyRunnerForAFact = (source, timeoutMs, needsStdlib) =>
+        {
+            timeouts.Add(timeoutMs);
+            return RunSharpy(source, timeoutMs, needsStdlib);
+        };
 
+        var run = RunSharpyRetryingATimeout("def main() -> None:\n    while True:\n        pass\n", 500, needsStdlib: false, out var retried);
+
+        Assert.Equal(new[] { 500, 1000 }, timeouts);
+        Assert.True(retried);
         var kind = ClassifySharpy(run);
         Assert.Equal(SharpyKind.TimedOut, kind);
         Assert.Equal(VerdictClass.Harness, Judge(CellTagged(SharpyTag.MustRun, "1"), kind, run.Stdout));
