@@ -139,6 +139,24 @@ below 1.0. `list_comprehensions` (~1.05x) and `string_ops` (~1.35x) remain above
 1.0; neither residual is closable by D4's collection-focused changes. See the
 residual analysis on issue #1051.
 
+## round() Kernel (W1.2, #2460)
+
+> `benchmarks/core-round/` (outside `sharpy.sln`; README there). Measured 2026-11-07 @ dev 3f103e098, cloud
+> container 4 cores, .NET 10, Release Core, `DOTNET_TieredCompilation=0`, median of 30 after 5 warm-ups,
+> two interleaved passes; the owner asked for the number after W1.2 landed `round()` on CPython's contract.
+
+| Variant | pass 1 ns/call | pass 2 ns/call | verdict |
+|---|---:|---:|---|
+| `builtins-int` — `Builtins.Round(double)` | 2.7 | 3.1 | ≈ `math-int` (nanoseconds both; inside the floor) |
+| `math-int` — `(int)Math.Round(x, ToEven)` (replaced route) | 1.7 | 0.9 | |
+| `builtins-2` — `Builtins.Round(double, 2)` | 629.8 | 667.7 | **≈ 400× `math-2`**, both passes agree |
+| `math-2` — `Math.Round(x, 2, ToEven)` (replaced route) | 1.8 | 1.2 | |
+| `builtins-neg2` — `Builtins.Round(double, -2)` | 533.9 | 507.3 | no baseline route (`Math.Round` throws for n < 0) |
+| `builtins-int-neg1` — `Builtins.Round(int, -1)` | 101.0 | 139.2 | new overload, no baseline route |
+
+`round(x)` is unchanged in cost; `round(x, n)` is ~0.5 µs/call on the correctly-rounded path. No corpus
+file calls `round(x, n)`, so no CI row moves. A fast path is a cell for a future chore, not chartered.
+
 ## D5 Numeric-Path Results (#1052)
 
 > **Recorded:** 2026-07-12 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301 · Python 3.12.13
