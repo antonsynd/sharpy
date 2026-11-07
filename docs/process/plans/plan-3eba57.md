@@ -173,6 +173,7 @@ Class-level bullets; each names its mutation / positive control and the evidence
 - deferred findings resolved in code @ f00284596
 - 2026-11-06 — owner's ruling on D9 (option A) and the promotion to full, recorded above. Rows 7 and 12 of the Defect Class table are NOT revised: the code departs from them by the lead's rulings, each stated in the commit that made it and in the Implementation Summary. Axis 12's `global` over a writable binding from `__init__`, a setter or a nested def is `MustRun` N6 (the table says all `MustRefuse`; N6 is the design of record). Axis 7's @static targets keep the class arm, since neither captures `this` (the table lists them as refused; R-KT is "never wider"). `CellBudget` is 8900, over D1's 8500, with no axis pruned.
 - 2026-11-07 — the entry above's "Implementation Summary" has no section; those departures are stated in the commits it names and in this log. T9's "moves among `TryDeclareMember`'s five kinds should (from reading)" is measured false (G_BIND, Verification Record). Design sections unchanged. D1's and line 85's stale statements stand as written and are corrected by the record.
+- 2026-11-07 — owner's rulings on the verification record's doors, all five as recommended: same-function walrus writes through, narrowing D9 (#2427); `global x` over a `for`, `with` or `except` target is refused (#2427); #2397's Contract narrows and axis 10 stands (#2397); #2438 reopened until the merge; #2433 ends at T12 as Acceptance 10 says, its residue moving to one new class issue. Design sections and the code are unchanged: the docs and harness cells these rulings imply belong to the implementing plans, placed at the next `/batch-issues`.
 
 ## Implementation Checklist
 
@@ -194,7 +195,7 @@ Tier light · base ee9a007a1 · lead-written decomposition (contract §12). Lane
 - [x] T10c standalone verifier @ d27b2f158 (206 programs): F1 → door D9, owner's A; F2 corrects the lead's axis 7 ruling; F3, F4, F5 and the guards in 7c2132904; docs 9b8e5ee79; F8 left for #2424's cure — lead
 - [x] T11 final gate ON GITHUB CI (owner, 2026-11-06: instead of the local whole-solution run, to free the machine; owner's option A, two PRs from one branch: a PR to `dev` for the owner and Fable, and a draft do-not-merge PR to `mainline` only because `dotnet10.yml` triggers on no other base): push, open both, read the draft's `ci-summary` and the trx artifacts for counts + Acceptance 8's largest per-result stdout + the `sweeps-quick` wall; red → control at `origin/mainline`. Local stays: uncached sweep wall (Acceptance 2's dev limit), mutations, spec examples, staleness gates, allowlist cite gate, format whitespace; verification-expert — lead — blocked by T10 — **83679/0/9 @ 64e3de8a7 (measured; CI counts summed from the trx files, run 42330321590, 20 min; not directly comparable to the local baseline 83542/0/9 @ ee9a007a1)**. The first run, 42328122819 @ 0aa753f18, was red on the ceiling alone (4 results D8 did not name, the compile path's log; control `mainline` @ 1f94bfb06 success), cured in 64e3de8a7. Largest per-result stdout 918,762 < 1,000,000. `sweeps-quick` 11 m 25 s, its name-resolution step 6 m 15 s. Local @ 9b8e5ee79: class 211/0/0, pool 8889, python 8889/8889, wall 445.6 s, allowlist 2595; spec blocks, oracle ledger and both staleness gates exit 0; format whitespace and allowlist cites exit 0 again @ 64e3de8a7
 - [x] T11b `/verify-implementation` (full, Agents 1–4), remediation in two serial lanes, third rebase onto `origin/dev` @ 1fa2340f7 (#2455: CI runs on every PR, so #2454 stays closed) — **83727/0/9 @ c976ba05b (measured, run 42350273916)**; the record is below — lead
-- [ ] T12 close-out AFTER the owner's merge: drain-set comments, the D9 ruling on #2425 and #2427, the guard limits on #2433, close #2433 / #2438 — lead — blocked by T11 + owner's merge
+- [ ] T12 close-out AFTER the owner's merge: drain-set comments, the D9 ruling on #2425 and #2427, the guard limits on #2433, file one class issue with the residue of #2433 and #2438 (owner, 2026-11-07), close #2433 / #2438 — lead — blocked by T11 + owner's merge
 
 ### Third rebase map (T11b)
 
@@ -305,8 +306,8 @@ Acceptance 1–9 hold, with no regression. **The class cure is refuted as a clos
 | Unresolved | 0 |
 
 Issues to Close:
-- **#2433** criterion A1–A10. A1–A9 evidence @ c976ba05b. **NOT YET:** T12 follows the owner's merge, and the residue on the issue returns to `/batch-issues`; recommended to stay open until that batching rules.
-- **#2438** criterion A8, evidence @ c976ba05b (largest result 918,768). **State diverges:** it is CLOSED on GitHub from the other attempt's comment, and the owner decides whether it reopens.
+- **#2433** criterion A1–A10. A1–A9 evidence @ c976ba05b. **NOT YET:** T12 follows the owner's merge. Owner, 2026-11-07: T12 ends it as Acceptance 10 says, and the residue moves to one new class issue for `/batch-issues`.
+- **#2438** criterion A8, evidence @ c976ba05b (largest result 918,768). It was CLOSED on GitHub from the other attempt's comment. Owner, 2026-11-07: reopened, since the fix is not on `dev` until this merge; T12 ends it.
 
 ### Regressions (Agent 2)
 
@@ -399,9 +400,9 @@ No new issue. Every class has an open tracker, so all went as comments.
 
 ### Unresolved Items
 
-1. **Owner doors:** same-function walrus (recommended: write through, #2427); `global x` over a construct target (#2427); #2397 vs axis 10 (recommended: narrow the Contract, #2397).
-2. **#2438's state** and whether **#2433** stays open past the merge (recommended yes): owner's.
-3. **The class residue on #2433** returns to `/batch-issues`.
+1. **Owner doors, ruled 2026-11-07:** same-function walrus writes through (#2427 issuecomment-6706861071); `global x` over a construct target is refused (same comment); #2397's Contract narrows (#2397 issuecomment-6706861250). Still open on those comments: a walrus over a `let`, whether `nonlocal` gets the same refusal, and three new cells on #2397.
+2. **#2438** reopened (issuecomment-6706861721) and **#2433** ends at T12 (issuecomment-6706861438): owner, 2026-11-07.
+3. **The class residue** of #2433 and #2438 moves to one new class issue at T12, for `/batch-issues`.
 4. **The other attempt's drain-set comments** sit on some cited trackers (seen on #2397 and #2151), so T12's will overlap them. Reported, not read further.
 5. **T12** itself: after the owner's merge.
 
