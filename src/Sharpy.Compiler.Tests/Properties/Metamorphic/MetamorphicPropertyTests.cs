@@ -17,7 +17,7 @@ public class MetamorphicPropertyTests : IntegrationTestBase
     // covers all ~1,500 executing fixtures rather than these 12 samples). These facts keep the
     // hand-picked programs as fast, per-transform smoke coverage.
 
-    public MetamorphicPropertyTests(ITestOutputHelper output) : base(output) { }
+    public MetamorphicPropertyTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     [Fact]
     public void CommentInsertion_PreservesOutput()
