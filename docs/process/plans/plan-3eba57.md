@@ -172,6 +172,7 @@ Class-level bullets; each names its mutation / positive control and the evidence
 - 2026-11-06 @ ee9a007a1 — `/implement-plan` owner override of the `Adequacy: CELL` gate, owner's word: "override" (asked once per contract §12, the seven deferred rows shown; recommended option, `CellBudget = 8500` as R-KP read). Plan and charter restored to `.claude/plans/` from 2279c0d3e (removed from the tree by the checkout off the carry branch).
 - deferred findings resolved in code @ f00284596
 - 2026-11-06 — owner's ruling on D9 (option A) and the promotion to full, recorded above. Rows 7 and 12 of the Defect Class table are NOT revised: the code departs from them by the lead's rulings, each stated in the commit that made it and in the Implementation Summary. Axis 12's `global` over a writable binding from `__init__`, a setter or a nested def is `MustRun` N6 (the table says all `MustRefuse`; N6 is the design of record). Axis 7's @static targets keep the class arm, since neither captures `this` (the table lists them as refused; R-KT is "never wider"). `CellBudget` is 8900, over D1's 8500, with no axis pruned.
+- 2026-11-07 — the entry above's "Implementation Summary" has no section; those departures are stated in the commits it names and in this log. T9's "moves among `TryDeclareMember`'s five kinds should (from reading)" is measured false (G_BIND, Verification Record). Design sections unchanged. D1's and line 85's stale statements stand as written and are corrected by the record.
 
 ## Implementation Checklist
 
@@ -192,7 +193,14 @@ Tier light · base ee9a007a1 · lead-written decomposition (contract §12). Lane
 - [x] T10b second rebase on `origin/dev` @ 1f94bfb06 (owner: dev moved), map below; #2452 filed for the union cells, the ledger's other two rows are cells of #2383 and #2148 — lead
 - [x] T10c standalone verifier @ d27b2f158 (206 programs): F1 → door D9, owner's A; F2 corrects the lead's axis 7 ruling; F3, F4, F5 and the guards in 7c2132904; docs 9b8e5ee79; F8 left for #2424's cure — lead
 - [x] T11 final gate ON GITHUB CI (owner, 2026-11-06: instead of the local whole-solution run, to free the machine; owner's option A, two PRs from one branch: a PR to `dev` for the owner and Fable, and a draft do-not-merge PR to `mainline` only because `dotnet10.yml` triggers on no other base): push, open both, read the draft's `ci-summary` and the trx artifacts for counts + Acceptance 8's largest per-result stdout + the `sweeps-quick` wall; red → control at `origin/mainline`. Local stays: uncached sweep wall (Acceptance 2's dev limit), mutations, spec examples, staleness gates, allowlist cite gate, format whitespace; verification-expert — lead — blocked by T10 — **83679/0/9 @ 64e3de8a7 (measured; CI counts summed from the trx files, run 42330321590, 20 min; not directly comparable to the local baseline 83542/0/9 @ ee9a007a1)**. The first run, 42328122819 @ 0aa753f18, was red on the ceiling alone (4 results D8 did not name, the compile path's log; control `mainline` @ 1f94bfb06 success), cured in 64e3de8a7. Largest per-result stdout 918,762 < 1,000,000. `sweeps-quick` 11 m 25 s, its name-resolution step 6 m 15 s. Local @ 9b8e5ee79: class 211/0/0, pool 8889, python 8889/8889, wall 445.6 s, allowlist 2595; spec blocks, oracle ledger and both staleness gates exit 0; format whitespace and allowlist cites exit 0 again @ 64e3de8a7
+- [x] T11b `/verify-implementation` (full, Agents 1–4), remediation in two serial lanes, third rebase onto `origin/dev` @ 1fa2340f7 (#2455: CI runs on every PR, so #2454 stays closed) — **83727/0/9 @ c976ba05b (measured, run 42350273916)**; the record is below — lead
 - [ ] T12 close-out AFTER the owner's merge: drain-set comments, the D9 ruling on #2425 and #2427, the guard limits on #2433, close #2433 / #2438 — lead — blocked by T11 + owner's merge
+
+### Third rebase map (T11b)
+
+Onto 1fa2340f7, 65 commits, titles identical, no conflict. Old → new; shas in the T-lines and in comments posted before it chain through this map:
+
+a825fe373 → 45e471408 · 2aa507dac → 7ca41f3b8 · 857687903 → 19398d7d9 · eddee328a → 35906eb5b · 5ba2cdafb → 6d6ceb489 · 6edff82ea → 5e7898601 · 609c7752a → 11eb648ff · 690bb1e2e → f17d625ab · 762126e92 → b72eeea13 · 3e55dcbf4 → cffc77bc6 · 50d065df6 → c381911bb · 4ee0fb7ee → 5930ac31f · ac08a1ea3 → e98548403 · 9e642aec3 → 8efac3a66 · 9ec286c17 → ee2ee20f5 · 735af08ae → badbd64b8 · 097f9b666 → 652b052e1 · c6058e31a → ef5cac4f2 · 3a5e5704b → 0370c68b3 · b817c4847 → f9208618f · 902aae456 → c328eb106 · 5a1d74608 → 415690fbc · 54059b520 → f644e0aaa · 81510bb78 → 61eeb7cfa · 88859760a → 5c83571e3 · f703987b0 → f42b9024b · 470b1560b → 75b522181 · 476cca045 → 78c07c9d1 · db31338cf → 55e4552a2 · d0c55f035 → f2127473c · 1d94c945c → 68920ce97 · 604042b0e → b8a737473 · 44dd33d12 → 86af02155 · e058792de → 6b507f7c3 · cf7a3ae17 → aa8281937 · 7d136759c → 827e83703 · a549df7a2 → 6cdba39bd · 75cb4b3c7 → 4c80e2d14 · 18b016e65 → 93772d669 · 6abaf1ebb → 53e740e73 · 6659c128f → ee5305c00 · bdb0e5824 → b6e45eb8d · 8447f7819 → a8c595fc9 · 7bf1700dd → bbf891bd8 · d27b2f158 → 3b4b865fb · 7c2132904 → 4f47b6c18 · 9b8e5ee79 → 35f7c28f3 · 0aa753f18 → e31244ff6 · 64e3de8a7 → 4d200ecad · 8c0602b35 → e473e024e · 1ed40232a → 72306a616 · 9f63e5e6e → 1abc6e144 · 1a915f976 → bb90ae46d · ece54c5c0 → 0e931f1a9 · a13bb1e7d → a291d689a · e35952ccc → 07eb33b49 · 0a0531f94 → 7ee9e5cb9 · 39b215382 → cb7a45c84 · 6e79afe0c → ecdfc1bf5 · 35415f7d5 → 3d944037d · e42a477f1 → 6aeb70532 · 4864e7afc → 16b565230 · 9b1a8ec1f → db43a7c55 · 0dfd95da5 → f784a90d1 · ebe3365c2 → 3d29071f0
 
 ### Second rebase map (T10b)
 
@@ -273,3 +281,130 @@ e730b7df7 → c4cd91299 · 86d154637 → 70fda2807 · 4c1ee2bc8 → 3030049d7 ·
 - The five trx character counts of D8 (8,145,515 …) — from #2438's trx @ fd925ddca; not re-measured.
 - The 1,152 / 184 / 242 / 4 restore counts @ 5f8a4c4e2 and the 321 s wall — re-taken by acceptance 2's first full run.
 - `CiFilterCoverageConformanceTests.ExtractCompilerTestFilters` resolves the `sweep` job's matrix filters (needed for D4.1's "across all jobs") — the evaluator's comment says it resolves matrix/env spellings; not executed here.
+
+## Implementation Verification Record
+
+**Plan:** docs/process/plans/plan-3eba57.md (stamp: CONVERGED; Adequacy: CELL, so Agent 4 built its own matrix)
+**Tier:** full, promoted by D9. Agents 1–4 ran.
+**Branch:** `dev` locally, pushed to `local/p77b-implement-plan` (#2453). Owner's instruction: gate on CI, not this host. #2454 stays closed: #2455 made CI run on every PR and forbids a do-not-merge PR.
+**Scope:** audited `1f94bfb06..8c0602b35`, then rebased; `1fa2340f7..c976ba05b` at close (66 commits: 50 implementation, 16 remediation). Map below.
+**Verified on:** 2026-11-07
+
+### Verdict
+
+Acceptance 1–9 hold, with no regression. **The class cure is refuted as a closed class:** the plan's twelve axes are generated and mostly load-bearing, but the prober's own matrix found axes the principle names with no cell and no exclusion, and some mutations stay green. Those go to the next `/batch-issues` per this skill's no-widening rule. They are not fixed here.
+
+### Completeness (Agent 1)
+
+| Status | Count |
+|---|---|
+| DONE (evidence cited): A1–A8, deferred rows R1–R7, D1, D2.8, D2.9, D2.12, D3.1–D3.5, D5, D8, D9 | 24 |
+| Was PARTIAL (now fixed): stale yml CI-wall promise, D9's unqualified doc sentences, the contract row's overstated claims | 3 |
+| Was MISSING (now fixed) | 0 |
+| DIVERGED, acceptable: CI wall, largest result and counts are in the plan's T11 line and not a commit body; `ModelPairingFailures` is `ModelPairing` in code; 64e3de8a7's mutation is the failed CI run; the revision log's "Implementation Summary" pointer has no section, and the departures are in the commit bodies and the log itself | 4 |
+| Unresolved | 0 |
+
+Issues to Close:
+- **#2433** criterion A1–A10. A1–A9 evidence @ c976ba05b. **NOT YET:** T12 follows the owner's merge, and the residue on the issue returns to `/batch-issues`; recommended to stay open until that batching rules.
+- **#2438** criterion A8, evidence @ c976ba05b (largest result 918,768). **State diverges:** it is CLOSED on GitHub from the other attempt's comment, and the owner decides whether it reopens.
+
+### Regressions (Agent 2)
+
+- **Baseline @ HEAD:** 83679/0/9 @ 8c0602b35 (measured, run 42332177803, PR merge ref whose tree equals HEAD's).
+- **Post-remediation @ FINAL:** 83727/0/9 @ c976ba05b (measured, run 42350273916, dispatched; Python Build Tools 42350275623 success; 23 jobs success; PR run 42350268205 success).
+- **Regressions found (red @ HEAD, green @ BASE):** 0. One regression in kind, not a red: muting lost `DifferentialExecutionTests`' failure text, now fixed.
+- **Pre-existing reds (red at both):** 0. The same 9 skips at both.
+- **Expectation changes in range:** 0 `.expected`, 0 `.skip`. Seed tsv edits are each cited to a ruling in D6.
+- **Test diff audited BASE → HEAD:** +63 new, −9 absent, all re-pointed `NameResolution` theory rows.
+
+### Attribution (control run)
+
+- **Control @ BASE:** 83625/0/9 @ 1f94bfb06 (measured, run 42316452562, same CI filter set).
+- No red to attribute. The rebase moved BASE to 1fa2340f7, which has no dotnet10 run of its own; #2455's diff is CI and build_tools only, and no control was needed.
+- A lane's mid-work red (`PropertyOracleConformanceTests` R3, from a code literal) was caught by a wider filter before any push and is cured in ecdfc1bf5.
+
+### Class contract status (Agents 3 + 4)
+
+- **Violated contract:** the harness generates ≥ 1 cell on every axis the principle names and checks what it claims; every roster is a compiler enumeration's image, every model is read, and CI runs the sweep with python or fails.
+- **Standing harness:** `NameResolutionDifferentialTests` @ FINAL green, 230/0/0, pool 8889 under budget 8900, python 8889/8889, allowlist 2595, non-allowlisted 0, stale 0, moved 0, retried 0, wall 434.5 s (0.049 s/cell), models read by nothing 91, judged pairs 1276 of which 124 read by nothing else. Read from the sweep's trx @ c976ba05b (measured). `sweeps-quick` 13 m 31 s by job timestamps.
+- **Allowlist delta over the range:** +1189 added (each with an issue), −2 removed, 130 re-cited, 0 stale. Remediation changed none. All 19 cites OPEN; `check_allowlist_issue_state.sh` exit 0 @ c976ba05b.
+- **Cells probed / passed / failed:** 971 programs (889 probes + 82 pool cells); matrix source: built. Of the 542 scored: 260 same, 104 refused, 13 fresh-per-iteration model, 122 different output, 37 ICE, 6 python raises. Approximate, because some hand twins were wrong. Sampled verdicts: 81 of 82 match, the other Unruled. Axis changes 2 of 2: expression wrappers, mistyped forward read. Lead re-ran a sample on a pinned copy of the binary.
+- **Unseen classes A–I** filed; see Issues below. Not reached: other-module routes, interface and union hosts, async, decorators, attribute args, `ref`/`in`, value types beyond int and str, LSP.
+- **Seam-or-arm verdicts:** 4 SEAM (D5, D8, D3.5, D4.1), 7 ARM, 1 MIXED. D4.2 and D4.3 are fixed at their seam (1abc6e144, bb90ae46d, a291d689a); D3.1 is deepened (16b565230, db43a7c55); D9, D3.2, D3.4 and the D3.1 binder rows are filed on #2433.
+- **Refusals by direction:** the harness emits none. 43 of 43 arm programs agree with their recorded class, with no worked→rejected. Compiler diff empty; name-keyed count 101 = 101.
+
+### Guards mutation-tested (Agent 3; lanes; lead)
+
+- **Red when broken @ HEAD:** Y1, Y7–Y9, AL1–AL5, G_RETRY_CORE, G_BIND Constructor↔LocalDef, D8's real-xUnit controls and all four later mutes, R1–R11, FS, G_BUDGET.
+- **Green when broken:** 35 mutations. **Fixed 23:** Y2–Y6, Y11, SW; O2 a–e; G_RETRY_CALLSITE, G_RETRY_HELPER; G_LET; G_CUBE ×3; G_HOLLOW; C6; C7; D8 routes a, c. **Filed 12 on #2433:** C1, C2–C4, C5/T1, G_BIND ×6, D8 route b.
+- **Inert:** D4.3 at the sweep's call site, now red. **Inverted:** none found. **Vacuous at first try, inside remediation:** "summary drops stderr" (literal row added, now red).
+- **Absence assertions given a positive control:** `StepDisarmedBy` clean control and 21 pinned spellings; the read-place check's positive control and 172-judged literal; the ceiling scan's 247-subclass floor.
+- **Lead's own spot check on the rebased tree:** Y4 → 1 failed of 28, `EverySweepOrOracleStep_CanFailItsJob`, naming the step and "if"; G_LET → 1 failed, `BindingKindRoster_Content_RoundTripsThroughTheCompiler`, message names IsLet; restored → 29/0/0. My first Y4 was a duplicate YAML key that reddened five facts through a parse error; it was discarded and redone by replacing the step's existing `if:`.
+
+Limits stated plainly: a flip of one of the 91 unread models stays green; the lanes' mutations ran on each lane's combined final tree, and intermediate commits were not built one by one; the ceiling has not run on macOS at this sha.
+
+### Architectural Review (Agent 3, Section B)
+
+- **Critical:** 2 (D4 half-checked: fixed; D9 one arm: filed + door).
+- **Warnings:** 5 (contract row overstated: fixed; D9 doc residue: fixed; 243 cite rows, ceiling routes, `Spelled` predicates: ceiling a and c fixed, the rest filed).
+- **Suggestions:** 6, of which `Retry_ARealHang`'s name and the call-site guard are done; the other 4 are unaddressed cleanups (`RecordingOutput` duplicate, `AliasReaders` tuple, `IsConstCycleThroughAlias` label parse, FormatSpec's repeated condition).
+
+### Generated artifacts
+
+- CI @ c976ba05b: `Stdlib .spy compile + staleness gates` success, `Generated C# is whitespace-clean` success. Agent 2 @ 8c0602b35: ledger `--check` exit 0 (116), `stdlib generate --check` exit 0, no diff.
+- Local @ 72306a616 bytes (spec diff to FINAL empty): `check_spec_blocks.sh` exit 0, failing 0, output-mismatch 0, pool 1257. Local @ c976ba05b: `format whitespace` exit 0.
+- `Dev Staleness Gates` triggers on a push to `dev`, so it has no run on this branch; it runs at merge.
+- Finding read from the diff: plan line 85's "`check_spec_blocks.sh` covers the design doc's blocks" is false (`spec_blocks.py:5` excludes `docs/design/`). Inert here; filed on #2426.
+
+### Fixes Applied
+
+| Commit | Description | Category |
+|---|---|---|
+| 72306a616 | the walrus sentence says which outers it holds for today | missing-impl (docs) |
+| 1abc6e144 | the oracle guard follows the call graph | guard-fix |
+| bb90ae46d | a sweep or oracle step that cannot fail its job is red | guard-fix |
+| 0e931f1a9 | a reduced or cached sweep is red under CI | guard-fix |
+| a291d689a | the sweep's loop reaches Sharpy only through the retrying helper | guard-fix (inert) |
+| 07eb33b49 | a muted class's red says why, in a bounded summary | regression in kind |
+| 7ee9e5cb9 | no subclass writes around the ceiling or drops its verdict | guard-fix |
+| cb7a45c84 | the sweeps job's comment states its CI wall as measured | cleanup |
+| ecdfc1bf5 | the arm-failure fact leaves the property lane's oracle scan | regression (own) |
+| 3d944037d | an axis-1 read cell's program reads the name at its slot | guard-fix |
+| 6aeb70532 | the axes that give a deviation row require it on both arms | guard-fix |
+| 16b565230 | the round trip reaches every cube row, or says why no symbol can | guard-fix |
+| db43a7c55 | a declaration's spelling comes from the parser's node | guard-fix |
+| f784a90d1 | an admitted code no cell produces is red unless it waits on a cure | guard-fix |
+| 3d29071f0 | the models no check reads are a closed count by reason | guard-fix |
+| c976ba05b | the contract row says what the checks hold and where they stop | missing-impl (docs) |
+
+### Issues Created (one per class — contract §10)
+
+No new issue. Every class has an open tracker, so all went as comments.
+
+| Tracker | Class (contract) | Cells | Lane · reach |
+|---|---|---|---|
+| #2423 | N1: callee position ignores the local binding; class member × comprehension slot; order changes the type verdict; local def over a module type | 13 × 4, 33, 13 × 4 + controls, 6 | silent-wrong + ice · program |
+| #2425 | S2: target shape, read form, outer; closure above a binder; walrus write-through | 6 axes | silent-wrong · program |
+| #2422 | N3: cycle routes, bullet 5, no-initializer default, load order | 4 + 1 + 3 + 1 | silent-wrong + runtime-throw · probe |
+| #2424 | N6: tuple and star store crossing; one program under two rules | 3 | silent-wrong · program |
+| #2148 | store statement in a class body | 3 | ice · program |
+| #2426 | doc collisions: N6 vs `let`, `case x` under const, N2 wording, spec-block scope | 4 | docs |
+| #2427 | doors: same-function walrus, `global x` over a target | 2 | owner |
+| #2397 | Contract vs axis 10: a nested type's bare `N()` | door, 140 rows | owner |
+| #2433 | harness residue: guard limits, nine hand arrays, refuted Outs, unseen axes, 243 cites, walrus at an initializer | 12 mutations + lists | tooling · probe |
+| #2438 | ceiling's reach off the base; message sites with no guard | 2 | tooling · probe |
+
+- Ledger: 34 lines recorded → 0 issues filed → 10 tracker comments → 0 deviation rows.
+- **Round ratio:** filed 0 / closed 0 (T12 follows merge). Open per lane: silent-wrong 54, ice 66, false-refusal 50, missing-refusal 14, runtime-throw 3, message 11, tooling 28.
+
+### Unresolved Items
+
+1. **Owner doors:** same-function walrus (recommended: write through, #2427); `global x` over a construct target (#2427); #2397 vs axis 10 (recommended: narrow the Contract, #2397).
+2. **#2438's state** and whether **#2433** stays open past the merge (recommended yes): owner's.
+3. **The class residue on #2433** returns to `/batch-issues`.
+4. **The other attempt's drain-set comments** sit on some cited trackers (seen on #2397 and #2151), so T12's will overlap them. Reported, not read further.
+5. **T12** itself: after the owner's merge.
+
+### Files Changed
+
+`git diff --stat 1fa2340f7..c976ba05b`: 49 files changed, 7288 insertions(+), 615 deletions(-). No file under `src/Sharpy.Compiler`, `src/Sharpy.Core`, `src/Sharpy.Stdlib`, `src/Sharpy.Lsp` or `src/Sharpy.Cli`. Tests, TestInfrastructure, one workflow, docs and this plan: the plan's declared scope. `git status` clean.
