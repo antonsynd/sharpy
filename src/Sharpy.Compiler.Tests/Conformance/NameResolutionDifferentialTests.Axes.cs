@@ -11,6 +11,7 @@ public partial class NameResolutionDifferentialTests
         var axisCells = pool.Where(c => c.AxisCell != null).Select(c => c.AxisCell!).ToHashSet(StringComparer.Ordinal);
         var failures = new List<string>();
         failures.AddRange(ComprehensionFedFailures(axisCells));
+        failures.AddRange(ComprehensionReadPlaceFailures(pool).Failures);
         failures.AddRange(CycleFedFailures(axisCells));
         failures.AddRange(OrderObservationFedFailures(axisCells));
         failures.AddRange(ReadTimingFedFailures(pool, axisCells));

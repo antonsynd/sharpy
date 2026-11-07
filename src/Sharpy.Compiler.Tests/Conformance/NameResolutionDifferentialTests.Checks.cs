@@ -329,6 +329,72 @@ public partial class NameResolutionDifferentialTests
     }
 
     // ------------------------------------------------------------------------------------------- //
+    // D3.1: a READ cell's program, where its label says
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The expression a comprehension holds at one slot, reached by the slot roster's property name: a node's own (<c>DictComprehension.Key</c>) or a clause's (<c>ForClause.Iterator</c>, the second for's on <see cref="SecondIterable"/>).</summary>
+    private static Expression? ComprehensionSlotExpression(Expression comprehension, string slot)
+    {
+        var second = slot == SecondIterable;
+        var value = second ? ComprehensionSlot.Iterable : Enum.Parse<ComprehensionSlot>(slot);
+        var node = comprehension.GetType();
+        var key = NameResolutionRosters.ComprehensionSlots.Where(e => e.Value.Image.Contains(value)).Select(e => e.Key)
+            .Single(k => k.StartsWith(node.Name + ".", StringComparison.Ordinal) || k.StartsWith(nameof(ForClause) + ".", StringComparison.Ordinal) || k.StartsWith(nameof(IfClause) + ".", StringComparison.Ordinal));
+        var ownerName = key[..key.IndexOf('.')];
+        var clauses = (IEnumerable<ComprehensionClause>)node.GetProperty("Clauses")!.GetValue(comprehension)!;
+        Node? owner = ownerName == node.Name ? comprehension : clauses.Where(c => c.GetType().Name == ownerName).Skip(second ? 1 : 0).FirstOrDefault();
+        return owner?.GetType().GetProperty(key[(key.IndexOf('.') + 1)..])?.GetValue(owner) as Expression;
+    }
+
+    /// <summary>The fed check reads a label, and a label cannot say what the program does: <c>[x]</c> hollowed to <c>[5]</c> keeps the id, the axis key, the tag and the rule. This parses each
+    /// axis-1 READ cell with the compiler's parser and reads the slot the label names: the read name is there, and the comprehension reads it nowhere else.</summary>
+    internal static (List<string> Failures, int Judged) ComprehensionReadPlaceFailures(IEnumerable<NameCell> pool)
+    {
+        const string Prefix = "comprehension-read: ";
+        var api = new CompilerApi();
+        var failures = new List<string>();
+        int judged = 0;
+        foreach (var cell in pool.Where(c => c.AxisCell?.StartsWith(Prefix, StringComparison.Ordinal) == true))
+        {
+            judged++;
+            var axes = cell.AxisCell![Prefix.Length..].Split(" × ");
+            var node = NameResolutionRosters.ComprehensionKinds[axes[0]].Image[0];
+            var slot = axes[2];
+            var ast = api.Parse(cell.Source).Ast;
+            var comprehension = ast?.Body.Cast<Node>().SelectMany(Descendants).OfType<Expression>().FirstOrDefault(e => e.GetType() == node);
+            if (comprehension == null)
+            {
+                failures.Add($"ComprehensionReadPlace: {cell.Id} has no {node.Name} in its program");
+                continue;
+            }
+            var read = ComprehensionSlotExpression(comprehension, slot);
+            if (read == null || !Descendants(read).OfType<Identifier>().Any(i => i.Name == RoundTripName))
+                failures.Add($"ComprehensionReadPlace: {cell.Id} says {slot} reads {RoundTripName}, and the program's {node.Name} has no read of it there");
+            else if (Descendants(comprehension).OfType<Identifier>().Count(i => i.Name == RoundTripName) != 1)
+                failures.Add($"ComprehensionReadPlace: {cell.Id} says {slot} reads {RoundTripName}, and the program's {node.Name} also reads it elsewhere");
+        }
+        return (failures, judged);
+    }
+
+    /// <summary>The pool's axis-1 reads each read what their label says. Hollowing a slot is the control: same id, same label, no read. A slot that also reads elsewhere is the other direction.</summary>
+    [Fact]
+    public void ComprehensionReadPlace_EachCellReadsAtTheSlotItsLabelNames()
+    {
+        var pool = GeneratedCells();
+        var (failures, judged) = ComprehensionReadPlaceFailures(pool);
+        AssertNoProblems(failures, "a label says where the program reads the name, and the program has to");
+        judged.Should().BeGreaterThanOrEqualTo(150, "the judged floor, ahead of the literal so that it can be the assertion that fails");
+        judged.Should().Be(172, "a measured literal: 43 kind × shape × slot, by 2 nestings and 2 orders");
+
+        var iterable = pool.Single(c => c.AxisCell == ComprehensionReadKey("list-comprehension", ComprehensionClauseShape.OneFor, nameof(ComprehensionSlot.Iterable), ComprehensionNesting.FunctionBody, Order.Earlier));
+        ComprehensionReadPlaceFailures(new[] { iterable }).Failures.Should().BeEmpty("the control's untouched program");
+        ComprehensionReadPlaceFailures(new[] { iterable with { Source = iterable.Source.Replace("[x]", "[5]", StringComparison.Ordinal) } }).Failures
+            .Should().ContainSingle().Which.Should().Contain("has no read of it there");
+        ComprehensionReadPlaceFailures(new[] { iterable with { Source = iterable.Source.Replace("[v0 for", "[x for", StringComparison.Ordinal) } }).Failures
+            .Should().ContainSingle().Which.Should().Contain("also reads it elsewhere");
+    }
+
+    // ------------------------------------------------------------------------------------------- //
     // D3.2: the models nothing read
     // ------------------------------------------------------------------------------------------- //
 
