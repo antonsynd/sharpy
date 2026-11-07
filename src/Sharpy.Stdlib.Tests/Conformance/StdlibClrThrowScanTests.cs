@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
+using Sharpy.Compiler.Diagnostics;
 
 namespace Sharpy.Stdlib.Tests.Conformance;
 
@@ -75,6 +76,7 @@ public class StdlibClrThrowScanTests
         var root = SysPath.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Stdlib.Tests", "Spy");
         var hits = new System.Collections.Generic.List<string>();
         foreach (var file in Directory.EnumerateFiles(root, "*.spy", SearchOption.AllDirectories)
+                     .Where(f => !CrashBundleWriter.IsNonSourceSegment(SysPath.GetRelativePath(root, f))) // #1660: never a bin/obj/crash-bundle copy
                      .OrderBy(f => f, StringComparer.Ordinal))
         {
             var lines = File.ReadAllLines(file);
