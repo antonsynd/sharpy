@@ -16,6 +16,8 @@ on:
       # (#1508). Without it here a wrapper-only change rides to mainline with its own
       # regression harness never run — which is how the same lock hazard shipped three times.
       - '.claude/scripts/**'
+      # The `hooks` job runs .claude/hooks/test-hooks.sh against the hooks beside it.
+      - '.claude/hooks/**'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
@@ -32,6 +34,8 @@ on:
       - '!build_tools/**/*.md'
       # See the push filter above (#1508).
       - '.claude/scripts/**'
+      # The `hooks` job runs .claude/hooks/test-hooks.sh against the hooks beside it.
+      - '.claude/hooks/**'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
@@ -107,6 +111,35 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
       run: |
         python -m build_tools stdlib generate --check
+
+  # The falsification harness for the Claude Code hooks (W0.1, 7c9567288; run in CI since #2458,
+  # W0.4): 61 cases in about 13 s locally, needing bash and python3 only (each hook's `dotnet` is a
+  # stub). Its python branch of format-on-save.sh SKIPS without ruff or black on PATH, so ruff is
+  # installed and the step fails on any skip: a runner without it would otherwise pass 59 cases.
+  hooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Install ruff
+      run: python -m pip install "ruff==0.16.9"
+
+    - name: Run the hook harness (fails on any FAIL or SKIP)
+      run: |
+        set -o pipefail
+        bash .claude/hooks/test-hooks.sh | tee hooks.log
+        grep -Eq '^hooks: [0-9]+ passed, 0 failed, 0 skipped$' hooks.log \
+          || { echo "::error::test-hooks.sh failed or skipped a case (see the PASS/FAIL/SKIP lines above)"; exit 1; }
 
   # Dual-execution oracle (#1030): the ported CPython tests under
   # src/Sharpy.Stdlib.Tests/Spy/cpython/ must also pass under stock python3,

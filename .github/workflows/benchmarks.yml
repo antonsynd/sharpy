@@ -4,6 +4,13 @@
 name: Benchmarks
 
 on:
+  # Pushes as well as PRs (#2458, W0.4): mainline takes about ten direct pushes per PR, so a
+  # PR-only allocation gate ran 13 times against 124 pushes (audit 2026-11-06 §6).
+  push:
+    branches: [ "mainline" ]
+    paths:
+      - 'src/Sharpy.Compiler/**'
+      - 'src/Sharpy.Compiler.Benchmarks/**'
   pull_request:
     branches: [ "mainline" ]
     paths:

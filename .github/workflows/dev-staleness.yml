@@ -6,11 +6,14 @@
 # had been failing since mid-batch and nothing on dev ran it. This workflow runs just the
 # build and the two staleness gates (~a few minutes) on every dev push that could affect
 # generated artifacts. Content mirrors the "Verify .spy * staleness" steps in dotnet10.yml.
+#
+# It runs on mainline pushes too (#2458, W0.4): the spec-block and allowlist-issue-state gates
+# live only here, so before that they never ran where a release is cut from.
 name: Dev Staleness Gates
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "dev", "mainline" ]
     paths:
       - 'src/**'
       - 'Directory.Build.props'
