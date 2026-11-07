@@ -314,9 +314,24 @@ internal partial class ProjectCompiler
         // Compilation-wide rather than per-file: CS5001 carries Location.None and belongs to no
         // file. The suppressed CS errors stay observable (debug log + AssemblyCompilationResult).
         var compilationAlreadyFailed = _diagnostics.HasErrors;
+        var entryTypeName = EntryTypeNameOf(_projectModel!);
+
+        // A warm build whose Phase 7 inputs all match the last successful build's, with that build's
+        // output files still on disk as it wrote them, would hand Roslyn the same compilation: leave
+        // the assembly as it is and replay what Phase 7 reported (#2114).
+        string? emissionKey = null;
+        if (_incrementalCache != null && !compilationAlreadyFailed)
+        {
+            emissionKey = IncrementalCompilationCache.EmissionKeyOf(config, generatedCSharp, entryTypeName);
+            if (_incrementalCache.UpToDateAssemblyDiagnostics(emissionKey, config) is { } replayed)
+            {
+                return ReplayUpToDateAssembly(config, generatedCSharp, replayed);
+            }
+        }
+
         var assemblyResult = assemblyCompiler.CompileToAssembly(
             generatedCSharp, generated.Trees, config, compilationAlreadyFailed,
-            entryTypeName: EntryTypeNameOf(_projectModel!));
+            entryTypeName: entryTypeName);
 
         // Add assembly metrics to project metrics
         if (assemblyResult.Metrics != null)
@@ -356,9 +371,14 @@ internal partial class ProjectCompiler
         // while the bag carries the refusal (#2028).
         var success = !_diagnostics.HasErrors;
 
-        // Save incremental compilation cache on success
+        // Save incremental compilation cache on success, with the assembly this build just wrote
         if (success && _incrementalCache != null)
         {
+            if (emissionKey != null && assemblyResult.OutputAssemblyPath != null)
+            {
+                _incrementalCache.RecordEmittedAssembly(emissionKey, config,
+                    assemblyResult.Diagnostics.GetAll().Select(CachedDiagnostic.From).ToList());
+            }
             SaveIncrementalCaches(config);
         }
 
@@ -369,6 +389,54 @@ internal partial class ProjectCompiler
             OutputAssemblyPath = success ? assemblyResult.OutputAssemblyPath : null,
             GeneratedCSharpFiles = generatedCSharp,
             SuppressedGeneratedCodeDiagnostics = assemblyResult.SuppressedGeneratedCodeDiagnostics,
+            Metrics = ProjectMetrics,
+            DependencyGraph = _dependencyGraph,
+            ProjectModel = _projectModel,
+            EffectiveFeatures = _features,
+            ImportResolver = _importResolverBacking,
+            UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
+                ?? (IReadOnlySet<string>)new HashSet<string>()
+        };
+    }
+
+    /// <summary>
+    /// Phase 7 for a build whose inputs match the last successful build's
+    /// (<see cref="IncrementalCompilationCache.UpToDateAssemblyDiagnostics"/>): the assembly on disk is
+    /// that build's and stays as it is, Roslyn does not run, and what that build's Phase 7 reported is
+    /// replayed through the project bag, which applies this build's warning policy (#1553). The
+    /// assembly-compilation metrics keep their rows, each with this build's cost: none of them ran.
+    /// </summary>
+    private ProjectCompilationResult ReplayUpToDateAssembly(
+        ProjectConfig config, Dictionary<string, string> generatedCSharp, IReadOnlyList<CachedDiagnostic> replayed)
+    {
+        _logger.LogInfo("Phase 7: Assembly up to date; IL emission skipped");
+
+        var metrics = new CompilationMetrics(projectName: config.RootNamespace, configuration: config.Configuration);
+        foreach (var phase in new[]
+        {
+            CompilerPhaseNames.CSharpParsing, CompilerPhaseNames.ReferenceResolution,
+            CompilerPhaseNames.RoslynCompilation, CompilerPhaseNames.IlEmission,
+        })
+        {
+            metrics.RecordExternalPhase(phase, TimeSpan.Zero);
+        }
+        ProjectMetrics.SetAssemblyMetrics(metrics);
+
+        var assemblyDiagnostics = new DiagnosticBag();
+        foreach (var cached in replayed)
+            assemblyDiagnostics.Add(cached.ToDiagnostic());
+        MergeWithPhase(_diagnostics, assemblyDiagnostics, CompilerPhase.Assembly);
+
+        var success = !_diagnostics.HasErrors;
+        if (success)
+            SaveIncrementalCaches(config);
+
+        return new ProjectCompilationResult
+        {
+            Success = success,
+            Diagnostics = _diagnostics,
+            OutputAssemblyPath = success ? config.OutputAssemblyPath : null,
+            GeneratedCSharpFiles = generatedCSharp,
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel,

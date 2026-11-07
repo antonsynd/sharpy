@@ -215,24 +215,7 @@ internal partial class ProjectCompiler
                     {
                         foreach (var cd in cachedDiags)
                         {
-                            var severity = Enum.TryParse<CompilerDiagnosticSeverity>(cd.Severity, out var s)
-                                ? s : CompilerDiagnosticSeverity.Warning;
-                            var phase = Enum.TryParse<CompilerPhase>(cd.Phase, out var p)
-                                ? p : CompilerPhase.Unknown;
-                            var span = cd is { SpanStart: { } spanStart, SpanLength: { } spanLength }
-                                ? new Sharpy.Compiler.Text.TextSpan(spanStart, spanLength)
-                                : (Sharpy.Compiler.Text.TextSpan?)null;
-                            var related = cd.RelatedLocations?
-                                .Select(rl => new DiagnosticRelatedLocation(
-                                    rl.Message, rl.Line, rl.Column, rl.FilePath,
-                                    rl is { SpanStart: { } rs, SpanLength: { } rn }
-                                        ? new Sharpy.Compiler.Text.TextSpan(rs, rn)
-                                        : (Sharpy.Compiler.Text.TextSpan?)null))
-                                .ToList();
-                            var diag = new CompilerDiagnostic(
-                                cd.Message, severity, cd.Line, cd.Column, cd.FilePath,
-                                cd.Code, phase, span, cd.Data, related);
-
+                            var diag = cd.ToDiagnostic();
                             unit.Diagnostics.Add(diag);
                             _diagnostics.Add(diag);
                         }
