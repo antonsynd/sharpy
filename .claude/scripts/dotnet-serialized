@@ -3,12 +3,14 @@
 # Uses mkdir-based locking (atomic on all platforms) so concurrent agents queue
 # instead of OOM-ing the system.
 #
-# Drop-in replacement for `dotnet`: same arguments, same stdout/stderr, same exit code.
-# The ONLY difference is that concurrent calls block until the lock is free.
-#
-# All stdout+stderr is tee'd to .claude/tmp/dotnet-serialized-{0,1,2}.log (rotating
-# deque of 3). Agents can read these logs instead of re-running an 8-minute test suite.
-# The symlink .claude/tmp/dotnet-serialized-latest.log always points to the current run.
+# Drop-in replacement for `dotnet`: same arguments, same stdout/stderr, same exit code, except
+# that concurrent calls block until the lock is free and stdout starts with one extra line:
+#   dotnet-serialized: log -> <abs>/.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log
+# printed before queueing. That file is THIS invocation's own tee of stdout+stderr. The path is
+# also written to .claude/tmp/dotnet-serialized-latest.path, which names the NEWEST invocation and
+# so may be a peer's: parse your own line when you can. Read the log instead of re-running a suite.
+# A fixed slot name let two concurrent runs share a log (#2458, audit §5); do not bring one back.
+# Logs older than 7 days in that directory, and only there, are deleted at each start.
 #
 # Usage:  .claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q
 #         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
@@ -78,8 +80,8 @@ WATCHDOG_GRACE="${DOTNET_SERIALIZED_WATCHDOG_GRACE:-10}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
-LOG_DEQUE_SIZE=3
-LOG_INDEX_FILE="${LOG_DIR}/dotnet-serialized-index"
+LOG_POINTER_FILE="${LOG_DIR}/dotnet-serialized-latest.path"
+LOG_RETENTION_MINUTES=10080  # 7 days
 
 cleanup() {
     rm -rf "$LOCK_DIR" 2>/dev/null
@@ -175,6 +177,7 @@ acquire_lock() {
             continue
         fi
         nodir_failures=0
+        reap_orphan
         if is_lock_stale; then
             echo "WARNING: Removing stale dotnet lock (owner PID gone)." >&2
             rm -rf "$LOCK_DIR" 2>/dev/null
@@ -303,15 +306,35 @@ watchdog_report() {
     echo "Partial output: $LOG_FILE"
 }
 
-next_log_slot() {
-    mkdir -p "$LOG_DIR"
-    local idx=0
-    if [ -f "$LOG_INDEX_FILE" ]; then
-        idx=$(cat "$LOG_INDEX_FILE" 2>/dev/null)
-        idx=$(( (idx + 1) % LOG_DEQUE_SIZE ))
-    fi
-    echo "$idx" > "$LOG_INDEX_FILE"
-    echo "$idx"
+# Orphan reaper (#2458). A holder killed mid-run (a caller's timeout, a usage limit) leaves its
+# dotnet child reparented to init, and its watchdog exits with it (#2076), so nothing judges that
+# child again: is_lock_stale keeps the lock on the live child and every waiter sat out TIMEOUT.
+# A waiter therefore applies the watchdog's own test on the dead holder's behalf, and kills the
+# child only when ALL hold: the child is alive and is a dotnet process (a recycled pid is not),
+# the holder pid is dead (a live holder's own watchdog judges its run), and the holder's
+# published log exists and has been silent past STALL_SECONDS (a lock-only holder publishes
+# none, so is never reaped). Returns 0 when it killed; the caller then re-judges staleness.
+reap_orphan() {
+    local child owner log last quiet
+    child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+    case "$child" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$child" 2>/dev/null || return 1
+    ps -o command= -p "$child" 2>/dev/null | grep -q dotnet || return 1
+    owner=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+    case "$owner" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$owner" 2>/dev/null && return 1
+    log=$(cat "$LOCK_LOG_FILE" 2>/dev/null)
+    [ -n "$log" ] && [ -f "$log" ] || return 1
+    last=$(file_mtime "$log")
+    case "$last" in ''|*[!0-9]*) return 1 ;; esac
+    quiet=$(( $(date +%s) - last ))
+    [ "$quiet" -gt "$STALL_SECONDS" ] || return 1
+    echo "WARNING: reaping orphaned dotnet PID $child: holder $owner is dead and its log $log" \
+         "has been silent ${quiet}s (threshold ${STALL_SECONDS}s)." >&2
+    kill_tree "$child" -TERM
+    sleep "$WATCHDOG_GRACE"
+    kill_tree "$child" -KILL
+    return 0
 }
 
 # Kill runaway csharp-ls processes (>80% CPU, >2 min) before acquiring the lock.
@@ -435,14 +458,19 @@ case "${1:-}" in
         ;;
 esac
 
+mkdir -p "$LOG_DIR"
+find "$LOG_DIR" -maxdepth 1 -name 'dotnet-serialized-*' ! -name "${LOG_POINTER_FILE##*/}" \
+    \( -type f -o -type l \) -mmin +"$LOG_RETENTION_MINUTES" -delete 2>/dev/null
+LOG_FILE="${LOG_DIR}/dotnet-serialized-$(date +%Y%m%d-%H%M%S)-$$.log"
+: > "$LOG_FILE"
+echo "$LOG_FILE" > "${LOG_POINTER_FILE}.$$" && mv -f "${LOG_POINTER_FILE}.$$" "$LOG_POINTER_FILE"
+echo "dotnet-serialized: log -> $LOG_FILE"
+
 acquire_lock
 
-SLOT=$(next_log_slot)
-LOG_FILE="${LOG_DIR}/dotnet-serialized-${SLOT}.log"
-echo "$LOG_FILE" > "$LOCK_LOG_FILE"
-
+# Re-stamp after the queue wait: the watchdog judges progress by this file's mtime.
 : > "$LOG_FILE"
-ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
+echo "$LOG_FILE" > "$LOCK_LOG_FILE"
 
 # Record the dotnet process's OWN pid where is_lock_stale can find it (see there): `bash -c`
 # starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
