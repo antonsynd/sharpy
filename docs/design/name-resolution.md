@@ -163,7 +163,9 @@ def main() -> None:
 ```
 
    The refusal applies to any visible binding the target reuses — local, enclosing or module. Without
-   a later read the program is legal and prints what Python prints.
+   a later read the program is legal and prints what Python prints. A walrus inside a comprehension is
+   the same shape: its binding is local to the comprehension, so where a visible outer name is read
+   after it, the program is refused (owner ruling 2026-11-06).
 3. Forward reads that Python rejects with `NameError` run (N1 + N3). This is an addition, not a
    divergence of output.
 
