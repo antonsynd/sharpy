@@ -1624,16 +1624,36 @@ def main() -> None:
 
         switch (axis)
         {
-            case "entry_point": after = Make(d => { Base(d); d.EntryPoint = "app.spy"; }); break;
-            case "output_type": after = Make(d => { Base(d); d.OutputType = "exe"; }); break;
-            case "root_namespace": after = Make(d => { Base(d); d.RootNamespace = "Renamed"; }); break;
-            case "source_root": after = Make(d => { Base(d); d.SourceFiles.Add(extra); }); break;
-            case "project_features": after = Make(d => { Base(d); d.Features.Add("opt_const_fold"); }); break;
-            case "option_features": optionFeatures = FeatureFlags.None.Enable("opt_const_fold"); break;
-            case "target_framework": after = Make(d => { Base(d); d.TargetFramework = "net9.0"; }); break;
-            case "configuration": after = Make(d => { Base(d); d.Configuration = "Release"; }); break;
-            case "test_host": after = Make(d => { Base(d); d.TestHost = true; }); break;
-            case "line_directives": after = Make(d => { Base(d); d.EmitLineDirectives = false; }); break;
+            case "entry_point":
+                after = Make(d => { Base(d); d.EntryPoint = "app.spy"; });
+                break;
+            case "output_type":
+                after = Make(d => { Base(d); d.OutputType = "exe"; });
+                break;
+            case "root_namespace":
+                after = Make(d => { Base(d); d.RootNamespace = "Renamed"; });
+                break;
+            case "source_root":
+                after = Make(d => { Base(d); d.SourceFiles.Add(extra); });
+                break;
+            case "project_features":
+                after = Make(d => { Base(d); d.Features.Add("opt_const_fold"); });
+                break;
+            case "option_features":
+                optionFeatures = FeatureFlags.None.Enable("opt_const_fold");
+                break;
+            case "target_framework":
+                after = Make(d => { Base(d); d.TargetFramework = "net9.0"; });
+                break;
+            case "configuration":
+                after = Make(d => { Base(d); d.Configuration = "Release"; });
+                break;
+            case "test_host":
+                after = Make(d => { Base(d); d.TestHost = true; });
+                break;
+            case "line_directives":
+                after = Make(d => { Base(d); d.EmitLineDirectives = false; });
+                break;
             case "reference_added":
                 var second = Write(Path.Combine(area, "refs"), "Dep2.dll", "v1");
                 after = Make(d => { Base(d); d.References.Add(second); });
@@ -1659,9 +1679,14 @@ def main() -> None:
                     d.Packages.Add(new PackageRef("Coldwarm.Nonexistent.Package", "1.0.1"));
                 });
                 break;
-            case "warnings_as_errors": after = Make(d => { Base(d); d.WarningsAsErrors = true; }); break;
-            case "suppressed_warnings": after = Make(d => { Base(d); d.Suppressed.Add("SPY0451"); }); break;
-            default: throw new ArgumentOutOfRangeException(nameof(axis), axis, null);
+            case "warnings_as_errors":
+                after = Make(d => { Base(d); d.WarningsAsErrors = true; });
+                break;
+            case "suppressed_warnings":
+                after = Make(d => { Base(d); d.Suppressed.Add("SPY0451"); });
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(axis), axis, null);
         }
 
         var afterFacts = IncrementalCompilationCache.ProjectFactsOf(after, optionFeatures);
