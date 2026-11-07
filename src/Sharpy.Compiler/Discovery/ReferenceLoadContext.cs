@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Security.Cryptography;
+using System.Text;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery;
@@ -39,6 +41,14 @@ namespace Sharpy.Compiler.Discovery;
 /// alive. The process-wide Type-keyed caches cache only process-stable types
 /// (<see cref="AssemblyVisibility.IsProcessStable(System.Type)"/>, Design Decision 3), so nothing else
 /// pins a context.</para>
+///
+/// <para><b>The file now at the path, not the image the process mapped from it.</b> The runtime keeps
+/// one image per file path while any context holds it, so a new context loading a path a live context
+/// already loaded is handed the OLD image even after the file was replaced: a rebuilt library bound
+/// v1's exports in every later compile of the process (#2114's in-process cell, SPY0908 CS0117 where a
+/// fresh process reports SPY0301), and the overload index built from that image was filed under v2's
+/// content hash. <see cref="LoadCurrent"/> loads a path whose identity moved since this process first
+/// loaded it from a copy named by the new identity, which no live context can hold an image of.</para>
 /// </summary>
 [ThreadSafe]
 internal sealed class ReferenceLoadContext : AssemblyLoadContext
@@ -51,6 +61,12 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
         new(StringComparer.Ordinal);
 
     private static readonly object s_createGate = new();
+
+    /// <summary>
+    /// Path -> the identity of the file this process first loaded from it (<see cref="LoadCurrent"/>).
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, string> s_firstLoadedIdentity =
+        new(StringComparer.Ordinal);
 
     private readonly IReadOnlyList<Assembly> _prior;
     private readonly IReadOnlyList<string> _searchDirectories;
@@ -68,7 +84,7 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
         _searchDirectories = directories;
         Resolving += ResolveFromSearchDirectories;
 
-        Reference = LoadFromAssemblyPath(fullPath);
+        Reference = LoadCurrent(fullPath);
         if (AssemblyVisibility.SafeSimpleName(Reference) is { } simple)
             _own.TryAdd(simple, Reference);
     }
@@ -127,6 +143,48 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
     }
 
     /// <summary>
+    /// Loads the file now at <paramref name="fullPath"/>. The path itself while its identity is the one
+    /// this process first loaded from it; otherwise an immutable copy keyed by the current identity,
+    /// because the runtime would answer the path with the image it already mapped (see the summary).
+    /// </summary>
+    private Assembly LoadCurrent(string fullPath)
+    {
+        var identity = FileIdentity(fullPath);
+        var first = s_firstLoadedIdentity.GetOrAdd(fullPath, identity);
+        return LoadFromAssemblyPath(string.Equals(first, identity, StringComparison.Ordinal)
+            ? fullPath
+            : CopyNamedByIdentity(fullPath, identity));
+    }
+
+    /// <summary>
+    /// <paramref name="fullPath"/>'s content under a directory named by <paramref name="identity"/>, with
+    /// the same file name (so the copy keeps the simple name dependency probing looks for). Written once
+    /// per identity through a temporary file, so a concurrent writer never exposes a partial copy.
+    /// </summary>
+    private static string CopyNamedByIdentity(string fullPath, string identity)
+    {
+        var key = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))[..16];
+        var directory = Path.Combine(Path.GetTempPath(), "sharpy-reference-images", key);
+        var copy = Path.Combine(directory, Path.GetFileName(fullPath));
+        if (File.Exists(copy))
+            return copy;
+
+        Directory.CreateDirectory(directory);
+        var staging = copy + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        File.Copy(fullPath, staging);
+        try
+        {
+            File.Move(staging, copy);
+        }
+        catch (IOException) when (File.Exists(copy))
+        {
+            // Another loader published the same identity's copy first; it is the same bytes.
+            File.Delete(staging);
+        }
+        return copy;
+    }
+
+    /// <summary>
     /// A dependency named by a reference: a reference loaded before this one, or this context's own
     /// load, by simple name; else null — the default context answers (one framework / Sharpy.Core
     /// identity).
@@ -157,7 +215,7 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
                 continue;
             try
             {
-                var assembly = LoadFromAssemblyPath(Path.GetFullPath(candidate));
+                var assembly = LoadCurrent(Path.GetFullPath(candidate));
                 _own.TryAdd(simple, assembly);
                 return assembly;
             }
