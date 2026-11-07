@@ -671,6 +671,53 @@ internal record CachedDiagnostic
     public int? SpanLength { get; init; }
     public Dictionary<string, string>? Data { get; init; }
     public List<CachedRelatedLocation>? RelatedLocations { get; init; }
+
+    /// <summary>The cache form of <paramref name="d"/>, every member as it is.</summary>
+    public static CachedDiagnostic From(Diagnostics.CompilerDiagnostic d) => new()
+    {
+        Code = d.Code,
+        Message = d.Message,
+        Severity = d.Severity.ToString(),
+        Line = d.Line,
+        Column = d.Column,
+        FilePath = d.FilePath,
+        Phase = d.Phase.ToString(),
+        SpanStart = d.Span?.Start,
+        SpanLength = d.Span?.Length,
+        Data = d.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty),
+        RelatedLocations = d.RelatedLocations?
+            .Select(rl => new CachedRelatedLocation
+            {
+                Message = rl.Message,
+                Line = rl.Line,
+                Column = rl.Column,
+                FilePath = rl.FilePath,
+                SpanStart = rl.Span?.Start,
+                SpanLength = rl.Span?.Length
+            })
+            .ToList()
+    };
+
+    /// <summary>The diagnostic this entry was captured from, for replay (#1553).</summary>
+    public Diagnostics.CompilerDiagnostic ToDiagnostic()
+    {
+        var severity = Enum.TryParse<Diagnostics.CompilerDiagnosticSeverity>(Severity, out var s)
+            ? s : Diagnostics.CompilerDiagnosticSeverity.Warning;
+        var phase = Enum.TryParse<Diagnostics.CompilerPhase>(Phase, out var p)
+            ? p : Diagnostics.CompilerPhase.Unknown;
+        var span = this is { SpanStart: { } spanStart, SpanLength: { } spanLength }
+            ? new Text.TextSpan(spanStart, spanLength)
+            : (Text.TextSpan?)null;
+        var related = RelatedLocations?
+            .Select(rl => new Diagnostics.DiagnosticRelatedLocation(
+                rl.Message, rl.Line, rl.Column, rl.FilePath,
+                rl is { SpanStart: { } rs, SpanLength: { } rn }
+                    ? new Text.TextSpan(rs, rn)
+                    : (Text.TextSpan?)null))
+            .ToList();
+        return new Diagnostics.CompilerDiagnostic(
+            Message, severity, Line, Column, FilePath, Code, phase, span, Data, related);
+    }
 }
 
 /// <summary>
