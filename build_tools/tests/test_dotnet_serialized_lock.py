@@ -174,8 +174,19 @@ class Rig:
         return _read_pid(self.lock_dir / "child")
 
     def latest_log(self) -> Optional[Path]:
-        link = self.logs / "dotnet-serialized-latest.log"
-        return link.resolve() if link.exists() else None
+        """The log the pointer file names: the NEWEST invocation's (#2458)."""
+        pointer = self.logs / "dotnet-serialized-latest.path"
+        return Path(pointer.read_text(encoding="utf-8").strip()) if pointer.exists() else None
+
+
+LOG_LINE = re.compile(r"^dotnet-serialized: log -> (.+)$", re.MULTILINE)
+
+
+def log_of(stdout: str) -> Path:
+    """The log path a wrapper invocation printed for ITSELF; fails if it printed none."""
+    found = LOG_LINE.findall(stdout)
+    assert len(found) == 1, f"expected exactly one log line, got {found!r} in {stdout!r}"
+    return Path(found[0])
 
 
 @pytest.fixture()
@@ -427,6 +438,72 @@ class TestOrphanedChild:
         assert "Total: 1" in reclaimed.stdout
 
 
+class TestOrphanReaper:
+    """
+    #2458 (audit §5). A holder killed mid-run leaves its dotnet child to init, and its watchdog
+    exits with it (#2076), so before the reaper the orphan held the lock until it ended on its
+    own and every waiter died at TIMEOUT (124). A waiter now applies the stall test on the dead
+    holder's behalf. The two negatives are the reaper's limits: a live holder's run, and a run
+    whose log is still moving, are never killed.
+    """
+
+    REAPER_KNOBS = dict(
+        DOTNET_SERIALIZED_STALL_SECONDS="2",
+        DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
+    )
+
+    def _orphan(self, rig: Rig, body: str, kill_holder: bool = True) -> tuple[int, subprocess.Popen]:
+        started = rig.root / "child_started"
+        rig.fake_dotnet(
+            f'case " $* " in *" --hang "*) : > "{started}"; {body} ;; esac\n'
+            'echo "Total: 1"\n'
+        )
+        holder = rig.spawn("test", "--hang", DOTNET_SERIALIZED_TIMEOUT="120")
+        wait_for(started.exists, what="the fake dotnet to reach its hang")
+        child = rig.child_pid()
+        assert child is not None and _alive(child)
+        if kill_holder:
+            holder.kill()
+            holder.wait(timeout=30)
+            wait_for(lambda: not _alive(holder.pid), what="the holder shell to die")
+            assert rig.lock_pid() == holder.pid, "the dead holder must still own the lock"
+        return child, holder
+
+    def test_a_dead_holders_silent_child_is_reaped(self, rig: Rig):
+        """
+        Mutation-tested: making ``reap_orphan`` return 1 before it kills reds this at
+        "orphan not reaped (exit 124)"; restored, green.
+        """
+        child, _ = self._orphan(rig, "sleep 120")
+        time.sleep(3)  # the holder's log is now silent past STALL_SECONDS
+
+        peer = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="20", **self.REAPER_KNOBS)
+
+        assert peer.returncode == 0, f"orphan not reaped (exit {peer.returncode}); stderr={peer.stderr!r}"
+        assert "reaping orphaned dotnet PID %d" % child in peer.stderr
+        wait_for(lambda: not _alive(child), what="the reaped child to be gone")
+        assert "Total: 1" in log_of(peer.stdout).read_text(encoding="utf-8")
+
+    def test_a_live_holders_silent_child_is_never_reaped(self, rig: Rig):
+        child, holder = self._orphan(rig, "sleep 120", kill_holder=False)
+        time.sleep(3)
+
+        peer = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="4", **self.REAPER_KNOBS)
+
+        assert peer.returncode == 124, f"a live holder's run was taken (exit {peer.returncode})"
+        assert _alive(child) and _alive(holder.pid)
+        assert "reaping" not in peer.stderr
+
+    def test_a_dead_holders_child_whose_log_moves_is_never_reaped(self, rig: Rig):
+        child, _ = self._orphan(rig, "while :; do echo tick; sleep 0.3; done")
+
+        peer = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="6", **self.REAPER_KNOBS)
+
+        assert peer.returncode == 124, f"a child with a moving log was killed (exit {peer.returncode})"
+        assert _alive(child)
+        assert "reaping" not in peer.stderr
+
+
 class TestLockOnlyVerbs:
     def test_acquire_lock_refuses_a_dead_holder(self, rig: Rig):
         """A dead holder would wedge every peer for the full TIMEOUT with nothing running."""
@@ -473,14 +550,14 @@ class TestLockOnlyVerbs:
 
     def test_lock_only_verbs_consume_no_log_slot(self, rig: Rig):
         """
-        The verbs exit before the tee pipeline. If they rotated the 3-slot deque, a bench_ab
-        round (two acquire/release pairs each) would evict the logs an agent is meant to read.
+        The verbs exit before the tee pipeline. If they wrote a log or moved the pointer, a
+        bench_ab round (two acquire/release pairs each) would repoint the file an agent reads.
         """
         assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
         assert rig.run("--release-lock", str(os.getpid())).returncode == 0
         assert rig.run("--lock-generation").returncode == 0
 
-        assert not (rig.logs / "dotnet-serialized-index").exists()
+        assert not (rig.logs / "dotnet-serialized-latest.path").exists()
         assert not list(rig.logs.glob("dotnet-serialized-*.log"))
 
 
@@ -635,31 +712,74 @@ class TestZeroResultsGuard:
 
 
 class TestLogging:
-    def test_output_is_tee_d_to_the_rotating_deque(self, rig: Rig):
+    def test_output_is_tee_d_to_the_invocations_own_log(self, rig: Rig):
         rig.fake_dotnet('echo "Total: 1"\necho "to stderr" >&2')
 
         result = rig.run("test")
 
         assert result.returncode == 0
-        log = rig.latest_log()
-        assert log is not None
+        log = log_of(result.stdout)
+        assert rig.latest_log() == log, "the pointer file names the newest invocation's log"
         text = log.read_text(encoding="utf-8")
         assert "Total: 1" in text
         assert (
             "to stderr" in text
         ), "stderr is merged into the log (2>&1) so failures are in it"
 
-    def test_the_deque_rotates_over_three_slots(self, rig: Rig):
-        rig.fake_dotnet('echo "Total: 1"')
-        for _ in range(4):
-            assert rig.run("test").returncode == 0
+    def test_two_concurrent_runs_do_not_clobber_each_others_log(self, rig: Rig):
+        """
+        #2458 (audit §5): the 3-slot rotation let two concurrent runs share a slot, and the
+        ``-latest.log`` symlink could name a peer's run. Each invocation now owns its log.
 
-        slots = sorted(p.name for p in rig.logs.glob("dotnet-serialized-[0-9].log"))
-        assert slots == [
-            "dotnet-serialized-0.log",
-            "dotnet-serialized-1.log",
-            "dotnet-serialized-2.log",
-        ]
+        A holds the lock while B queues behind it, so both are live at once — the case a slot
+        clobbered. Mutation-tested: a fixed ``LOG_FILE`` name in the wrapper reds this at
+        "two invocations shared one log"; restored, green.
+        """
+        started = rig.root / "a_started"
+        release = rig.root / "a_release"
+        rig.fake_dotnet(
+            f'echo "begin $2"\n'
+            f'if [ "$2" = A ]; then : > "{started}"; '
+            f'while [ ! -e "{release}" ]; do sleep 0.1; done; fi\n'
+            f'echo "Total: 1 end $2"\n'
+        )
+        a = rig.spawn("test", "A")
+        wait_for(started.exists, what="A to hold the lock and run")
+        pointer = rig.logs / "dotnet-serialized-latest.path"
+        inode_a = pointer.stat().st_ino
+        b = rig.spawn("test", "B")
+        # B replaces the pointer (write + rename, so a new inode) before it queues.
+        wait_for(lambda: pointer.stat().st_ino != inode_a, what="B to publish its log path")
+        assert rig.lock_pid() == a.pid, "B must be queued behind A, not running beside it"
+        release.touch()
+        out_a, _ = a.communicate(timeout=60)
+        out_b, _ = b.communicate(timeout=60)
+        assert (a.returncode, b.returncode) == (0, 0)
+
+        log_a, log_b = log_of(out_a), log_of(out_b)
+        assert log_a != log_b, f"two invocations shared one log: {log_a}"
+        text_a = log_a.read_text(encoding="utf-8")
+        text_b = log_b.read_text(encoding="utf-8")
+        assert "begin A" in text_a and "Total: 1 end A" in text_a and " B" not in text_a
+        assert "begin B" in text_b and "Total: 1 end B" in text_b and " A" not in text_b
+        assert rig.latest_log() == log_b, "the pointer names the newest invocation"
+
+    def test_retention_deletes_only_old_wrapper_logs_in_the_log_dir(self, rig: Rig):
+        rig.fake_dotnet('echo "Total: 1"')
+        week_ago = time.time() - 8 * 24 * 3600
+        old_log = rig.logs / "dotnet-serialized-20200101-000000-1.log"
+        old_other = rig.logs / "last-test-run.log"
+        fresh_log = rig.logs / "dotnet-serialized-fresh.log"
+        for f in (old_log, old_other, fresh_log):
+            f.write_text("x", encoding="utf-8")
+        for f in (old_log, old_other):
+            os.utime(f, (week_ago, week_ago))
+
+        assert rig.run("test").returncode == 0
+
+        assert not old_log.exists(), "a wrapper log older than 7 days is deleted"
+        assert old_other.exists(), "nothing but the wrapper's own logs is touched"
+        assert fresh_log.exists(), "a log younger than 7 days is kept"
 
 
 class TestStallWatchdog:
@@ -823,7 +943,7 @@ def _wrapper_subshells(parent: int) -> list[int]:
     of a holding wrapper whose command line EQUALS the wrapper's own is the background
     ``watchdog`` subshell — a forked subshell keeps its parent's argv. The pipeline's first
     element shows as the fake ``dotnet`` stub and the second as ``tee``. Equality, not a
-    ``dotnet-serialized`` substring: tee's argv is ``tee .../dotnet-serialized-0.log``.
+    ``dotnet-serialized`` substring: tee's argv is ``tee .../dotnet-serialized-<ts>-<pid>.log``.
     """
     out = subprocess.run(
         ["ps", "-A", "-o", "pid=,ppid=,command="],

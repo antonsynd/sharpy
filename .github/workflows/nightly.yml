@@ -6,8 +6,10 @@
 # 22.1 GB peak (docs/audits/stryker-lexer-pilot-2026-10-11.md), past a hosted job's 6 h and 16 GB.
 # It stays owner-triggered via build_tools/stryker/run.sh.
 #
-# Scheduled runs fire from the workflow file on the default branch (mainline), but soak `dev`,
-# where work lands first. A failure email goes to whoever last edited the cron line.
+# Scheduled runs fire from the workflow file on the default branch (mainline) and soak mainline,
+# the branch a release is cut from (#2458, W0.4: they soaked `dev` while the run page named
+# mainline's sha). Each job writes the soaked ref and sha to its job summary, so a red names its
+# commit. A failure email goes to whoever last edited the cron line.
 name: Nightly
 
 on:
@@ -17,7 +19,7 @@ on:
     inputs:
       ref:
         description: Branch or sha to soak
-        default: dev
+        default: mainline
       seconds_per_property:
         description: CsCheck_Time, the seconds each property sample runs
         default: '15'
@@ -32,7 +34,9 @@ jobs:
   properties:
     name: properties (${{ matrix.project }})
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # Per project, about 1.5-7x its slowest job over the last 10 nightly runs (42338333168 back to
+    # 40817936952): Compiler 76 min, Lsp 24, Core and Stdlib 2 (#2458, W0.4).
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
@@ -40,13 +44,17 @@ jobs:
           # Census is the owner-run MutationCensus report: ~87 rows x CsCheck_Time in ONE test, past the
           # 20 min hang timeout, and it asserts only that it ran (#2392). It also needs SHARPY_CENSUS=1.
           - project: Sharpy.Compiler.Tests
+            timeout: 120
             filter: "(Category=RandomProperty|Category=Property)&Category!=Census"
           # These three have a handful of CsCheck samples, not all tagged, so they run whole.
           - project: Sharpy.Core.Tests
+            timeout: 15
             filter: "Category!=Benchmark"
           - project: Sharpy.Stdlib.Tests
+            timeout: 15
             filter: "Category!=Benchmark"
           - project: Sharpy.Lsp.Tests
+            timeout: 45
             filter: "Category!=Benchmark"
     env:
       # Most samples pass an explicit `iter:`, which CsCheck_Iter does not override. CsCheck_Time
@@ -61,11 +69,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || 'dev' }}
+          ref: ${{ inputs.ref || 'mainline' }}
+      - name: Name the soaked commit
+        env:
+          REF: ${{ inputs.ref || 'mainline' }}
+        run: |
+          echo "Soaked \`$REF\` at \`$(git rev-parse HEAD)\`: $(git log -1 --format=%s)" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - name: Restore the NuGet package cache
+        # Read-only; dotnet10.yml's `build` job saves it (#2458).
+        id: nuget
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: nuget-${{ runner.os }}-
       - name: Setup Python
         # The differential-parse and execution oracles, pinned as in dotnet10.yml.
         uses: actions/setup-python@v7
@@ -76,6 +97,8 @@ jobs:
       - name: Build
         run: dotnet build src/${{ matrix.project }}
       - name: Property soak
+        # The hang limit here is 20 min, not the 10 min of dotnet10.yml: CsCheck_Time and
+        # SHARPY_PROPERTY_ITER scale every property's own run time on purpose.
         run: |
           set -o pipefail
           dotnet test src/${{ matrix.project }} --no-build \
@@ -98,7 +121,8 @@ jobs:
   fuzz:
     name: fuzz (scale ${{ inputs.fuzz_scale || '300' }})
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # About 2x the slowest fuzz job (44 min) over the same 10 nightly runs.
+    timeout-minutes: 90
     env:
       SHARPY_FUZZ_SCALE: ${{ inputs.fuzz_scale || '300' }}
       # A new salt each run, so each night draws inputs no PR run draws. A failure message names
@@ -107,11 +131,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || 'dev' }}
+          ref: ${{ inputs.ref || 'mainline' }}
+      - name: Name the soaked commit
+        env:
+          REF: ${{ inputs.ref || 'mainline' }}
+        run: |
+          echo "Soaked \`$REF\` at \`$(git rev-parse HEAD)\`: $(git log -1 --format=%s)" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - name: Restore the NuGet package cache
+        # Read-only; dotnet10.yml's `build` job saves it (#2458).
+        id: nuget
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: nuget-${{ runner.os }}-
       - name: Build
         run: dotnet build src/Sharpy.Compiler.Tests
       - name: Fuzz soak

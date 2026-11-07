@@ -11,14 +11,10 @@ Build the Sharpy solution. Output is smart-truncated to avoid token overload whi
 - On success: Shows "BUILD SUCCEEDED" + last 10 lines
 - On failure: Shows "BUILD FAILED" + last 100 lines + points to full log
 
-**Log location:** `.claude/tmp/last-build.log`
+**Log location:** the wrapper's own per-invocation log, whose path it prints (`dotnet-serialized: log -> <path>`).
 
 ## Steps
 
-1. Run `mkdir -p .claude/tmp` to ensure log directory exists
-2. Clear the old log with `rm -f .claude/tmp/last-build.log`
-3. Run: `.claude/scripts/dotnet-serialized build sharpy.sln > .claude/tmp/last-build.log 2>&1`
-4. Check exit code:
-   - Exit 0: Print "=== BUILD SUCCEEDED ===" then `tail -10 .claude/tmp/last-build.log`
-   - Exit non-zero: Print "=== BUILD FAILED (last 100 lines) ===" then `tail -100 .claude/tmp/last-build.log`, then echo "=== Full log: .claude/tmp/last-build.log ==="
-5. Return the actual exit code from dotnet build
+1. Run: `.claude/scripts/dotnet-serialized build sharpy.sln | sed -n 's/^dotnet-serialized: log -> //p'; echo "exit=${PIPESTATUS[0]}"` — prints the log path (`<log>`) and the exit code.
+2. Exit 0: print "=== BUILD SUCCEEDED ===" then `tail -10 <log>`. Non-zero: print "=== BUILD FAILED (last 100 lines) ===" then `tail -100 <log>`, then "=== Full log: <log> ===".
+3. Return the actual exit code from dotnet build

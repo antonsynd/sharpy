@@ -1,143 +1,103 @@
 # CLAUDE.md
 
-Rules and workflow for Claude Code in this repository. Architecture reference lives in [docs/architecture.md](docs/architecture.md) and the authoritative language spec in `docs/language_specification/`. `build_tools/` has its own CLAUDE.md.
+Architecture: [docs/architecture.md](docs/architecture.md). "Contract §N": [verification-contract.md](docs/design/verification-contract.md).
 
-**GitHub:** `antonsynd/sharpy` · **Pipeline:** `.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → RoslynEmitter → C# → .NET IL`
+**GitHub:** `antonsynd/sharpy` · **Pipeline:** `.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → Lowering (IR) → RoslynEmitter → C# → .NET IL`
 
 ## Commands
 
-> **Prerequisites:** .NET 10 SDK (`net10.0` TFM). Python 3.9+ for `build_tools/`.
+Needs .NET 10, Python 3.9+. Prefer skills: `/build`, `/run-tests`, `/spy-run`, `/spy-emit`, `/quick-check`, `/ci-gate`, `/commit`, `/push`.
 
 ```bash
-dotnet build sharpy.sln                              # Build all
-dotnet test                                          # All tests (slow; prefer per-project filters for iteration)
-dotnet run --project src/Sharpy.Cli -- run file.spy          # Compile and execute
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C# (also: ast, tokens, diagnostics)
-dotnet run --project src/Sharpy.Cli -- project x.spyproj     # Multi-file build (--incremental skips unchanged files; --clean forces full rebuild)
+.claude/scripts/dotnet-serialized build sharpy.sln
+src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy
+src/Sharpy.Cli/bin/Debug/net10.0/sharpyc emit csharp file.spy
+src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
+.claude/scripts/dotnet-serialized test src/Sharpy.Compiler.Tests --filter "DisplayName~name" --logger "console;verbosity=normal"
 ```
+
+**Inner loop:**
+1. Build once (`/build`).
+2. Probe with the built `sharpyc` (a stale one reproduces fixed bugs).
+3. One fixture: the `DisplayName~` line above.
+4. The owning test project, filtered (`FullyQualifiedName~X`).
+5. `/ci-gate` at phase close.
+6. Read the log the wrapper printed; do not re-run.
+
+**Cloud session:**
+- No `dotnet`: `dotnet-install.sh --channel 10.0 --install-dir /root/.dotnet`; `export DOTNET_ROOT=/root/.dotnet`.
+- `gh issue`/`gh pr` return 403: read with `gh api -X GET …`; write with `gh api -X POST …/issues/N/comments -F body=@file.md`.
+- `gh api --paginate` is refused: page with `&page=N`.
+- Run dotnet and gh with `dangerouslyDisableSandbox: true`.
 
 ## Operational Contracts
 
-Each of these exists because violating it has crashed sessions or destroyed work. Do not relax them.
-
-- **Sandbox:** all `dotnet` commands hang in the default sandbox, and `gh` fails TLS certificate verification. Run both with `dangerouslyDisableSandbox: true`.
-- **Serialized dotnet:** when multiple agents run in parallel, **NEVER** call `dotnet build`/`dotnet test` directly — use `.claude/scripts/dotnet-serialized` (drop-in wrapper: same args, output, exit code; exclusive **mkdir-based** lock at `~/.claude/locks/dotnet.lock`, atomic on all platforms). A whole-solution `dotnet test` peaks at 18.5 GB tree RSS on an otherwise idle machine (16.1 GB in the Compiler testhost, most of it outside its 5 GB managed-heap limit) and at 8.9 GB under the usual load — the GC grows into free memory (measured 2026-10-06 @ a823001a6 / 8a15ce512, swap flat both times, #2256); two in parallel will swap the machine. Enforced by the PreToolUse hook `.claude/hooks/enforce-dotnet-serialized.sh`.
-- **Parallel agents share one working tree.** "Read-only" is not a sufficient instruction — it has failed twice; agents read `git restore` as cleanup rather than modification. Enumerate the prohibition in agent prompts: *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*, and say the tree is shared. A silent revert leaves no stash and no reflog entry, so commit lead work in small slices and re-check `git diff --stat` after each agent wave.
-- **Test logs:** the serialized wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation, so an older log isn't clobbered by a new run; `-latest.log` symlinks the newest). Grep these instead of re-running suites (~30 min wall clock; `Sharpy.Compiler.Tests` is ~27 of it at `maxParallelThreads` 2, measured @ af6f30901). The `[Trait("Category","GapDiscovery")]` sweeps run by default and are ~18% of its test time — `Category!=GapDiscovery` saves a few minutes, but they are no longer the long pole.
-- **Prefer skills over raw commands:** `/build`, `/run-tests`, `/ci-gate`, `/spy-emit`, `/spy-run`, `/quick-check`, `/commit`, `/push`, … (the harness injects the full list each session; sources in `.claude/skills/`). Skills handle logging, truncation, and temp files; the `/spy-*` skills accept inline source via the Write tool, avoiding bash-escaping issues with `#` and backticks in Sharpy source. Investigate failures by reading `.claude/tmp/*.log`, not by re-running.
-- **Plans are scratch until verified, then committed** ([docs/process/README.md](docs/process/README.md)): `/create-plan` writes a draft to `.claude/plans/` (repo-local, gitignored); `/verify-plan` copies a passing plan to `docs/process/plans/<plan-id>.md` and commits it with its stamp; `/implement-plan` and `/verify-implementation` read that committed copy first (`.claude/plans/` second) and commit the checklist and the verify record into it at close. Round charters live in `docs/process/rounds/`, edited in place and committed at every `/batch-issues` call. `docs/process/` stays in `mkdocs.yml` `exclude_docs` — the strict docs build neither publishes nor lints it.
+- **Serialized dotnet:** never call `dotnet build`/`test`/`run` directly; use `.claude/scripts/dotnet-serialized` (same args, output, exit code), enforced by a PreToolUse hook.
+- **Parallel agents share one working tree.** Tell agents *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*. Commit in small slices; re-check `git diff --stat` after each wave.
+- **Test logs:** every `.claude/scripts/dotnet-serialized` call tees stdout+stderr to its own `.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log` and prints `dotnet-serialized: log -> <path>` as its first stdout line, before it queues. `.claude/tmp/dotnet-serialized-latest.path` names the newest invocation's log, which may be a peer's. Read your own printed path, and grep it instead of re-running a suite. Logs older than 7 days are deleted. A waiter reaps a dead holder's dotnet child once that child's log has been silent past the stall window. Timings and lock facts: the wrapper's header.
+- **Plans** are scratch in `.claude/plans/` until `/verify-plan` commits them ([process](docs/process/README.md)).
 
 ## Critical Rules
 
-1. **Never modify expected values to make tests pass** — fix the implementation.
-2. **RoslynEmitter is a pure translator** — `SyntaxFactory` exclusively (no string templating); makes no type/lowering decisions and performs no reflection. All such decisions are made in semantic analysis and materialized for the emitter to read via one of two patterns, each with its own materialization boundary: (a) **symbol-keyed** on `Symbol.CodeGenInfo`, frozen at `MaterializeCodeGenInfo` — use when a discovered `Symbol` owns the fact; (b) **node-keyed** in a `SemanticInfo` dictionary (e.g. `BinaryOpLowering`, `IndexAccessLowering`, resolved CLR member names), merged at `SemanticInfo.MergeFrom` — use when the fact belongs to an AST node with no owning symbol. CLR inspection belongs to `Discovery/ClrTypeBridge`/`ClrTypeHelper`. Enforced by `EmitterCarrierOnlyConformanceTests`: the deny universe is every type in the compiler's `Semantic` namespaces (enumerated by reflection, so it cannot go stale), and CodeGen may name only the materialized-fact carriers, ratcheted per-file-per-type against issues that drain on fix. `EmitterBannedTokenScanTests` is a five-substring backstop, **not** Rule-2 evidence (#1475). **Any new node-keyed `SemanticInfo` dictionary must be added to `SemanticInfo.MergeFrom`** or its entries are silently dropped in the per-file→project merge that code generation reads from.
-3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes.
-4. **Axiom precedence**: .NET > Type Safety > Python Syntax (see Axioms below).
-5. **C# 9.0 minimum for Sharpy.Core** — `Sharpy.Core` and `Sharpy.Stdlib` multi-target `net10.0;netstandard2.1`. On `netstandard2.1`: `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). On `net10.0`: `LangVersion 14`; use `#if NET10_0_OR_GREATER` for net10.0-only paths. `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
-6. **Always verify Python behavior first** — run `python3 -c "..."` (or `/verify-python`) before implementing Python semantics.
-7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change the implementation to match the spec, never the reverse.
-8. **TODO/BUG/FIXME comments must have GitHub issues** — create the issue first (`gh issue create`) and reference it in the comment (`// TODO(#123): ...`).
-9. **Warnings are errors** — `TreatWarningsAsErrors` solution-wide via `Directory.Build.props`.
-10. **Every active diagnostic code needs a `DiagnosticExplanations` entry** (`Diagnostics/DiagnosticExplanations.cs`, guarded by `DiagnosticExplanationsTests`).
-11. **Fix the class, not the cell** — name the violated contract and the cell matrix; an issue's repro list is a symptom report, not a test plan. Contract and standard cures: [docs/design/verification-contract.md](docs/design/verification-contract.md) §1, harnesses: [gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md).
-12. **Guards are falsifiable** — mutation-test every new test/guard/harness (break the guarded thing → red, restore → green, both recorded in the commit body); the exemption is never the subject; absence assertions need a positive control; refusals are verified by direction against the prior commit (`run`, not `emit`). [verification-contract.md](docs/design/verification-contract.md) §2–§3.
-13. **One group per plan, one gate** — chores ride along only when seam-free; a group that changes printed output or emitted layout lands alone; a residue group (P11b, P14c) or a ≥2-axis × ≥3-value matrix builds a generative/differential harness FIRST and drains its allowlist, never another hand matrix. **The tier is a charter fact** — `band` (chore: no plan, no verify stage), `light` (design-of-record plan; `/verify-plan` grades only matrix arms, guard mutations and design predicates; `/verify-implementation` without the completeness auditor), `full` (every dimension, every auditor) — set at `/batch-issues` by a named letter, never run against, never lowered once planning begins. [verification-contract.md](docs/design/verification-contract.md) §11–§12.
-14. **File by class, label at creation** — a cell outside the task's contract is a comment on its class tracker or ONE class issue with a cell table, labeled `lane:*` + `reach:*`; lane agents append to the findings ledger and never `gh issue create`, the lead files per wave; the sibling-cell prober's budget is the matrix plus two axis changes; a divergence on a DEVIATION-by-default Python surface is a `docs/deviations.yaml` row, not an issue. [verification-contract.md](docs/design/verification-contract.md) §10, [python-fidelity-scope.md](docs/design/python-fidelity-scope.md).
+1. **Never modify expected values to make tests pass**; fix the implementation.
+2. **RoslynEmitter is a pure translator**: `SyntaxFactory` only, no type/lowering decisions or reflection. Semantic analysis materializes (a) symbol-keyed on `Symbol.CodeGenInfo` (frozen at `MaterializeCodeGenInfo`) or (b) node-keyed in `SemanticInfo`, where **a new dictionary must join `MergeFrom`** or its entries are dropped. CLR inspection: `ClrTypeBridge`/`ClrTypeHelper`. [Guards](docs/architecture.md#code-generation).
+3. **Immutable AST**: annotations go in `SemanticInfo`.
+4. **Axiom precedence**: .NET > Type Safety > Python Syntax.
+5. **C# 9.0 minimum for Sharpy.Core**: Core/Stdlib also target `netstandard2.1` (no global usings, file-scoped namespaces, record structs); net10.0-only code goes under `#if NET10_0_OR_GREATER`.
+6. **Verify Python behavior first** (`python3 -c` or `/verify-python`).
+7. **The spec is authoritative**: read `docs/language_specification/` first; change the implementation, never the spec.
+8. **TODO/BUG/FIXME need an issue**, created first: `// TODO(#123): ...`.
+9. **Warnings are errors** (`Directory.Build.props`).
+10. **Every active diagnostic code has a `DiagnosticExplanations` entry.**
+11. **Fix the class, not the cell**: name the contract and its cell matrix; a repro list is a symptom report (contract §1).
+12. **Guards are falsifiable**: mutation-test every new guard (break -> red, restore -> green, both in the commit body); the exemption is never the subject; absences need a positive control; refusals are verified by direction with `run` (contract §2–§3).
+13. **One group per plan, one gate**: chores only when seam-free; output/layout changes land alone; a residue group or ≥2-axis × ≥3-value matrix builds a generator first; the tier (`band`/`light`/`full`) is a charter fact, never lowered (contract §11–§12).
+14. **File by class, label at creation** (`lane:*` + `reach:*`): one class issue (cell table) or a tracker comment; lane agents append to the ledger; the lead files per wave; sibling-cell probing gets the matrix plus two axis changes; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row (contract §10, [fidelity scope](docs/design/python-fidelity-scope.md)).
 
 ## Axioms
 
-Precedence when the three axioms conflict: **.NET > Type Safety > Python Syntax**. If a conflict resolves at zero cost, satisfy all three. Standing resolutions:
+Satisfy all three when free. Axiom 1 governs the implementation, not the Pythonic surface.
 
 | Conflict | Resolution |
-|----------|------------|
-| `//` and `%` semantics | Both **floored** (Python semantics, zero cost — see `arithmetic_operators.md`): `//` lowers to `Sharpy.Builtins.FloorDiv`, `%` to `Sharpy.Builtins.FloorMod`; the divmod identity `a == (a // b) * b + (a % b)` holds |
-| String indexing | Axiom 1 wins — UTF-16 code units with helper methods |
-| `global`/`nonlocal` | Axiom 1 wins — C# scoping rules apply |
-| Duck typing | Axioms 1+3 win — explicit interfaces |
-
-Axiom 1 (.NET-first) governs the **implementation**, not the user-facing API — the surface stays Pythonic.
+|---|---|
+| `//`, `%` | Floored, as Python (`Builtins.FloorDiv`/`FloorMod`) |
+| String indexing | Axiom 1: UTF-16 code units, helper methods |
+| `global`/`nonlocal` | Superseded by R-KD: N6 (#2424) reinstates them; SPY0134 until it lands ([name-resolution](docs/design/name-resolution.md)) |
+| Duck typing | Axioms 1+3: explicit interfaces |
 
 ## Design Anti-Patterns
 
-| Pattern | Problem |
-|---------|---------|
-| "Add X because Python has it" | Feature creep — each feature must earn its complexity |
-| Runtime type checking | Should be compile-time |
-| Wrapper types for Pythonic API | Use extension methods instead |
-| Multiple ways to do the same thing | Consistency issue |
-| Magic behavior | Unpredictable; prefer explicit |
-| Raw .NET collections in public APIs | Use `Sharpy.List<T>`, `Dict<K,V>`, `Set<T>` |
-| `Optional<T>` return from stdlib | Return nullable; users opt in via `maybe` |
-| Throwing for expected failures | Return `Result<T, E>`; reserve exceptions for bugs |
+Avoid "add X because Python has it"; runtime type checking; wrapper types (use extension methods); multiple ways to do the same thing; magic behavior; raw .NET collections in public APIs; `Optional<T>` stdlib returns; throwing for expected failures.
 
 ## Implementing Features
 
-Touch components in dependency order:
+Work in pipeline order, then LSP, then tests. Experimental features are default-off: `FeatureFlags.KnownFeatures`, `FeatureGateChecker` (SPY0331), [lifecycle](docs/design/feature-lifecycle.md). TypeChecker vs. validators, LSP positions: architecture.
 
-```
-Lexer (Lexer/) → Parser (Parser/Ast/) → Semantic (Semantic/) → Validation (Semantic/Validation/) → CodeGen (CodeGen/) → LSP (src/Sharpy.Lsp/Handlers/) → Tests
-```
-
-- **Experimental features** are default-off behind a flag ([docs/design/feature-lifecycle.md](docs/design/feature-lifecycle.md)): register in `FeatureFlags.KnownFeatures`, gate via the `FeatureGateChecker` registry (ungated use → SPY0331), then graduate or delete per that policy.
-- **TypeChecker vs. ValidationPipeline**: TypeChecker owns type mismatches and anything needing in-progress inference; validators own self-contained AST analyses. New validators subclass `ValidatingAstWalker` (visitor) or `SemanticValidatorBase` (custom traversal) and set `Order` (full registry in docs/architecture.md).
-- **LSP handlers** must use `Symbol.EffectiveNameLine/Column` for text edits and highlight ranges (falls back from name-token position to statement start).
-
-## Diagnostic Code Allocation
-
-All diagnostics use the `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
-
-| Range | Level | Component |
-|-------|-------|-----------|
-| SPY0001–SPY0099 | Error | Lexer |
-| SPY0100–SPY0199 | Error | Parser |
-| SPY0200–SPY0399 | Error | Semantic |
-| SPY0400–SPY0449 | Error | Validation (fully allocated — overflow to SPY0490–SPY0499) |
-| SPY0450–SPY0489 | Warning | Validation |
-| SPY0490–SPY0499 | Error | Validation overflow |
-| SPY0500–SPY0599 | Error | Code generation |
-| SPY0600–SPY0699 | Error | Semantic overflow |
-| SPY0700–SPY0799 | Error/Warning | Validation overflow |
-| SPY0900–SPY0999 | Error | Infrastructure |
-| SPY1000–SPY1099 | Info | Informational |
+**Diagnostics** (`DiagnosticCodes.cs`, errors unless noted): Lexer 0001-0099; Parser 0100-0199; Semantic 0200-0399, 0600-0699; Validation 0400-0449, 0490-0499, 0700-0799 (also warnings), warnings 0450-0489; CodeGen 0500-0599; Infra 0900-0999; Info 1000-1099.
 
 ## Core & Stdlib Conventions
 
-- **Wrap .NET internally, expose the Python API** — `list.append()`, not `Add()`. Partial-class layout: `Partial.{Type}/` directories; `partial class Builtins` split per function (`Print.cs`, `Len.cs`, …). Match Python semantics: negative indexing, slicing, Python-matching exceptions.
-- **Error handling:** absence → return `T?` (users opt into `Optional<T>` via `maybe`); expected failure → return `Result<T, E>` with typed errors; bugs → throw. **No dual APIs** — never provide both throwing and Result-returning variants; `try`/`maybe` bridge .NET interop generically.
-- **Public API surface:** Sharpy collection types (`List<T>`, `Dict<K,V>`, `Set<T>`) in public signatures — never raw or namespace-aliased .NET collections (internal code may use them). Optional parameters are nullable with `= null` (C#) or `T? = None()` (`.spy`), never `Optional<T>`.
-- **`None` semantics:** bare `None` is null for `T?` (nullable); `None()` constructs the `Optional` union variant.
-- **Spy-sourced stdlib modules:** for modules in the `MODULES` mapping of `build_tools/regenerate_spy_stdlib.sh`, the C# under `<Module>/` is **generated** from the `.spy` source in `spy/` — never hand-edit it; run the script (CI gate: `check_spy_staleness.sh`).
-- **The compiler has zero compile-time dependency on Stdlib** — modules are discovered at runtime via `ModuleRegistry.LoadReference()`.
-- **Language before compiler (the layer ladder):** a Python behaviour on a Core/Stdlib type is expressed at the LOWEST rung that can carry it, and every plan design decision names its rung and why the lower rungs cannot: (1) Sharpy source — a spy-sourced stdlib module or a spec example; (2) Core/Stdlib C# in the dunder table's spelling (`docs/language_specification/dunder_methods.md`), discovered by reflection — `__eq__` is `operator ==`/`!=` + `Equals` (model `Dict.cs`), `__len__`/`__bool__`/`__reversed__` are `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `__contains__` is a public `Contains(T)`, `__iter__` is `IEnumerable<T>`; (3) a bridge/registry rule keyed on CLR identity (`ClrTypeBridge`, `ProtocolMembership.HasClrProtocol`); (4) a semantic rule keyed on a builtin NAME (`BuiltinNames.X`) — last resort, with a comment naming what the CLR surface cannot express. The checker discovers CLR operators from BOTH operand types (`TypeInferenceService.TryInferClrBinaryOp`), so a cross-type operator is an overload on either type, never a checker arm. A name-keyed rule where rung 2 was available is the "name-keyed alias diverging from reflection" meta-class (#1933).
-- **Dunder-driven protocol synthesis:** the compiler synthesizes `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>` during inheritance resolution when `__len__`/`__bool__`/`__reversed__` is present; visible to the type checker (SPY1001).
+- **Wrap .NET, expose Python** (`list.append()`, not `Add()`; negative indexing, slicing, Python exceptions).
+- **Errors:** absence -> `T?`; expected failure -> `Result<T, E>`; bugs -> throw. No dual APIs; `try`/`maybe` bridge .NET.
+- **Public API:** Sharpy `List`/`Dict`/`Set`; optional parameters `= null` / `T? = None()`, never `Optional<T>`. Bare `None` is null; `None()` is the `Optional` variant.
+- **Spy-sourced modules**: C# is generated by `build_tools/regenerate_spy_stdlib.sh`; never hand-edit it.
+- **No compile-time compiler -> Stdlib reference** (`ModuleRegistry.LoadReference()`).
+- **Layer ladder:** a Python behaviour goes on the lowest rung that carries it, named in the plan: (1) Sharpy source, (2) Core/Stdlib C# in `dunder_methods.md` spelling, (3) a CLR-keyed bridge rule, (4) a name-keyed rule (last resort). [More](docs/architecture.md#sharpystdlib).
 
 ## Testing
 
+**Fixtures** (`Integration/TestFixtures/`, `/add-test-fixture`): `.spy` + `.expected` (exact stdout) or `.error` (substring; `@line:col` checks location); multi-file = a dir with `main.spy`; `.warning` (empty = none); `.expected.cs` snapshot (`/regenerate-snapshots`); `.features` (with an ungated SPY0331 twin); `.skip`.
+
+**Gap-discovery sweeps** ratchet on an allowlist; each row cites an open issue, deleted on fix ([gap-discovery-contracts](docs/design/gap-discovery-contracts.md)). **Spec blocks** compile or carry a marker (`check_spec_blocks.sh`).
+
+**Commit gate** = the whole solution: `/ci-gate` on the pushed tip. On exit 3, the local fallback, in the background:
+
 ```bash
-dotnet test --filter "FullyQualifiedName~Lexer"                       # By component
-dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"   # File-based tests
-dotnet test --filter "DisplayName~test_name"                          # By test name
+.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"
 ```
 
-**File-based fixtures** (`src/Sharpy.Compiler.Tests/Integration/TestFixtures/`; scaffold with `/add-test-fixture`):
-
-- `.spy` + `.expected` (exact stdout match) or `.error` (substring match; a line ending `@line:col` also verifies diagnostic location).
-- Multi-file: a subdirectory with a `main.spy` entry point plus `main.expected`/`main.error`.
-- `.warning` — empty file means expect **no** warnings; non-empty lines are expected substrings. Combinable with `.expected`.
-- `.expected.cs` — C# snapshot (Roslyn-normalized), used for a selective set of representative fixtures. Regenerate via `/regenerate-snapshots` or `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
-- `.features` — one experimental feature name per line (`main.features` for multi-file, applies project-wide). Unknown names fail fixture discovery loudly. Pair each gated fixture with an ungated twin expecting SPY0331 — see `TestFixtures/experimental/`.
-- `.skip` — skip the fixture.
-
-**Programmatic tests** inherit `IntegrationTestBase` and assert on `CompileAndExecute(source)` (`result.Success`, `result.StandardOutput`). Multi-file tests use `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(...).CreateProjectFile()` then `Compile()`).
-
-**Gap-discovery sweeps** are standing conformance harnesses that hunt whole defect classes (contracts and roster: [docs/design/gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md); run via `/gap-analysis`). They **ratchet** against an allowlist file next to the test: a non-allowlisted failure fails the suite; every allowlist entry cites an issue and is deleted when fixed ("drain on fix" — stale entries fail); allowlists must trend to empty. Never add an entry without an issue reference; never close a member bug by patching one cell — enforce the class contract. Allowlist rows citing closed issues are gated by `build_tools/check_allowlist_issue_state.sh`.
-
-**Python-fidelity scope:** which Python surfaces are compared and filed as bugs, and which divergences are `docs/deviations.yaml` rows by default (message text beyond the type name, which operand a refusal names, any surface the table does not list), is fixed by [docs/design/python-fidelity-scope.md](docs/design/python-fidelity-scope.md); promotion is an owner ruling at `/batch-issues`.
-
-**Spec blocks** are gated by `build_tools/check_spec_blocks.sh` (every fenced Sharpy block in the language spec must compile or carry a marker).
-
-**Commit gate** = the whole solution, **on GitHub CI by default**: push the branch, then `/ci-gate` (`.claude/scripts/ci-gate`, ~20 min), run in the background while doing read-only work; a filtered run is the edit loop, never the gate. Every PR also runs it, whatever its base, but tests the merge into the base rather than the head commit. **Never open a do-not-merge PR to reach CI.** **Local fallback**, when `/ci-gate` exits 3 (CI gave no verdict) or for what CI cannot cover (`MetamorphicCorpusInvarianceTests`, a macOS-only failure): `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` across all test projects (the console logger is part of the command: at default verbosity a green gate is silent for up to 1566 s @ 8a15ce512, inside 162 s of the wrapper's 1728 s stall watchdog — #2257). Blast radius of `Semantic/`/`CodeGen/` changes: `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, `FrontEndParityTests` (LSP), and the three GapDiscovery sweeps CI runs as separate steps (`InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution`). Counts are reported `passed/failed/skipped @ sha (measured)`; a red is attributed only after a control run at the base commit ([verification-contract.md](docs/design/verification-contract.md) §5–§6).
+Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at the base. Timings, blast radius: contract §5–§6.
 
 ## Git & Release
 
-Use `/commit` and `/push` — `/push` runs the generated-artifact staleness gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) that CI also enforces. Run `/bump-version` before release-destined pushes.
+`/commit`, `/push` (runs CI's staleness gates); `/bump-version` before release-destined pushes.
