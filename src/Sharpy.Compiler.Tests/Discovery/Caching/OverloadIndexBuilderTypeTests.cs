@@ -121,9 +121,13 @@ public class OverloadIndexBuilderTypeTests
         // FileExistsError, IsADirectoryError) extend IOException, FileNotFoundException,
         // UnauthorizedAccessException, or ValueError (JSONDecodeError). ZeroDivisionError,
         // OverflowError and InvalidOperation extend ArithmeticError, matching CPython (#1189).
+        // KeyError/IndexError extend LookupError, NotImplementedError RuntimeError, UnboundLocalError
+        // NameError and UnicodeEncodeError UnicodeError, matching CPython (#2124; the whole chain is
+        // measured against python by Sharpy.Core.Tests' ExceptionHierarchyPythonMroTests).
         var allowedBaseTypes = new HashSet<string?>
         {
-            "Exception", "IOException", "IOError", "FileNotFoundException", "UnauthorizedAccessException", "ValueError", "AggregateException", "ArithmeticError"
+            "Exception", "IOException", "IOError", "FileNotFoundException", "UnauthorizedAccessException", "ValueError", "AggregateException", "ArithmeticError",
+            "LookupError", "RuntimeError", "NameError", "UnicodeError"
         };
         foreach (var exType in exceptionTypes)
         {

@@ -10,15 +10,15 @@ Sharpy uses .NET's exception hierarchy directly:
 | `ValueError` | `Exception` | Invalid argument value |
 | `TypeError` | `Exception` | Type mismatch |
 | `RuntimeError` | `Exception` | General runtime error |
-| `NotImplementedError` | `Exception` | Not yet implemented |
+| `NotImplementedError` | `RuntimeError` | Not yet implemented |
 | `AttributeError` | `Exception` | Attribute not found |
 | `ArithmeticError` | `Exception` | Base for arithmetic errors |
 | `ZeroDivisionError` | `ArithmeticError` | Division by zero |
 | `OverflowError` | `ArithmeticError` | Numeric overflow |
 | `InvalidOperation` | `ArithmeticError` | Undefined arithmetic (decimal `%` by zero) |
 | `LookupError` | `Exception` | Base for key/index errors |
-| `IndexError` | `Exception` | Index out of bounds |
-| `KeyError` | `Exception` | Dict key not found |
+| `IndexError` | `LookupError` | Index out of bounds |
+| `KeyError` | `LookupError` | Dict key not found |
 | `IOError` | `IOException` | I/O operation failed |
 | `OSError` | `IOError` | OS-level error (alias for IOError) |
 | `FileNotFoundError` | `FileNotFoundException` | File not found |
@@ -26,9 +26,13 @@ Sharpy uses .NET's exception hierarchy directly:
 | `IsADirectoryError` | `IOException` | Expected file, got directory |
 | `PermissionError` | `UnauthorizedAccessException` | Permission denied |
 | `StopIteration` | `Exception` | Iterator exhausted |
-| `UnicodeEncodeError` | `Exception` | Unicode encoding failed |
+| `UnicodeError` | `ValueError` | Base for Unicode encoding/decoding errors |
+| `UnicodeEncodeError` | `UnicodeError` | Unicode encoding failed |
 | `ArgumentError` | `Exception` | Generic argument error |
 | `SystemExit` | `Exception` | Program exit request |
+| `NameError` | `Exception` | Name not found |
+| `UnboundLocalError` | `NameError` | Local read before assignment |
+| `ExceptionGroup` | `AggregateException` | Group of exceptions (PEP 654) |
 | `JSONDecodeError` | `ValueError` | Invalid JSON (in `json` module) |
 | `StatisticsError` | `Exception` | Statistics computation error (in `statistics` module) |
 

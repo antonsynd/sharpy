@@ -116,9 +116,10 @@ namespace Sharpy
 
     /// <summary>
     /// Raised when an abstract method requires a derived class to override it.
-    /// Equivalent to Python's <c>NotImplementedError</c>.
+    /// Equivalent to Python's <c>NotImplementedError</c>, a <see cref="RuntimeError"/> subclass
+    /// as in CPython, so <c>except RuntimeError</c> catches it (#2124).
     /// </summary>
-    public class NotImplementedError : Exception
+    public class NotImplementedError : RuntimeError
     {
         /// <summary>Create a NotImplementedError with the specified message.</summary>
         public NotImplementedError(string message) : base(message)
@@ -285,11 +286,17 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Lookup error exception (base class for KeyError, IndexError in Python;
-    /// used directly for codec/encoding lookup failures).
+    /// Lookup error exception: the base class of <see cref="KeyError"/> and
+    /// <see cref="IndexError"/>, as in CPython, so <c>except LookupError</c> catches both (#2124);
+    /// also raised directly for codec/encoding lookup failures.
     /// </summary>
     public class LookupError : Exception
     {
+        /// <summary>For a subclass that renders its own message (<see cref="KeyError"/>).</summary>
+        protected LookupError() : base()
+        {
+        }
+
         /// <summary>Create a LookupError with the specified message.</summary>
         public LookupError(string message) : base(message)
         {
@@ -380,8 +387,9 @@ namespace Sharpy
     /// <c>UnboundLocalError</c>. The compiler emits a runtime check for a local whose assignment
     /// can be suppressed by a <c>with</c> block (#1839): a read reachable only through the
     /// suppression edge is checked, not refused, so the program matches Python at runtime.
+    /// A <see cref="NameError"/> subclass as in CPython, so <c>except NameError</c> catches it (#2124).
     /// </summary>
-    public class UnboundLocalError : Exception
+    public class UnboundLocalError : NameError
     {
         /// <summary>Create an UnboundLocalError with an explicit message.</summary>
         public UnboundLocalError(string message) : base(message)

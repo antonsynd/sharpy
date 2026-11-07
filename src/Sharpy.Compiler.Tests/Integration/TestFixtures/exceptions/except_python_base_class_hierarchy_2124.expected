@@ -1,0 +1,6 @@
+caught KeyError as LookupError
+caught IndexError as LookupError
+caught NotImplementedError as RuntimeError: todo
+caught UnicodeError as ValueError: bad codec
+caught UnboundLocalError as NameError: unbound
+caught KeyError: 'missing'
