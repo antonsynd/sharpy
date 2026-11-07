@@ -313,4 +313,64 @@ public partial class NameResolutionDifferentialTests
         // Measured literals: 40 declared kinds judged, 5 of them TryDeclareMember's Symbol-typed wrapper (a field or a method), 11 written forms and targets, 8 type definitions.
         (declaring, baseTyped, written, typeDefinitions).Should().Be((40, 5, 11, 8));
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // D3.2: the models nothing read
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The same cell at the earlier order: its id with the order token swapped. Null for a cell with no later order to pair. TYPEMEMBER spells the token
+    /// <c>after</c> and every other family the <see cref="Order"/> value's own name.</summary>
+    internal static string? EarlierOrderTwinId(NameCell cell)
+    {
+        if (cell.Family == Family.TypeMember)
+            return cell.Id.EndsWith("/after", StringComparison.Ordinal) ? cell.Id[..^"after".Length] + "before" : null;
+        var parts = cell.Id.Split('/');
+        var at = Array.IndexOf(parts, nameof(Order.Later));
+        if (at < 0)
+            return null;
+        parts[at] = nameof(Order.Earlier);
+        return string.Join("/", parts);
+    }
+
+    /// <summary>N3's promise, read as a check on the models: the later order prints what the earlier order prints. Every <c>MustRun</c> / <c>MayRefuse</c> cell at the later order, and any
+    /// cell python answers there with an order-only <c>NameError</c>, pairs with its earlier twin. Where python ran the twin, the later cell's model must equal that stdout, which the sweep's python
+    /// control holds <c>Python</c> to. A must-refuse cell has no model to read, so it pairs and is not judged. This reads the models python cannot confirm directly.</summary>
+    internal static (List<string> Failures, int Pairs, int Judged) ModelPairing(IReadOnlyList<NameCell> pool)
+    {
+        var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var failures = new List<string>();
+        int pairs = 0, judged = 0;
+        foreach (var later in pool)
+        {
+            var twinId = EarlierOrderTwinId(later);
+            var carriesModel = later.Tag is SharpyTag.MustRun or SharpyTag.MayRefuse;
+            if (twinId == null || !(carriesModel || later.Python.Kind == PyKind.NameError))
+                continue;
+            if (!byId.TryGetValue(twinId, out var earlier))
+            {
+                failures.Add($"ModelPairing: {later.Id} has no twin {twinId}");
+                continue;
+            }
+            pairs++;
+            if (earlier.Python.Kind != PyKind.Ran || !carriesModel)
+                continue;
+            judged++;
+            if (later.Model != earlier.Python.Value)
+                failures.Add($"ModelPairing: {later.Id} models '{later.Model}' and {twinId} prints '{earlier.Python.Value}'");
+        }
+        return (failures, pairs, judged);
+    }
+
+    [Fact]
+    public void ModelPairing_TheLaterOrderPrintsWhatTheEarlierOrderPrints()
+    {
+        var (failures, pairs, judged) = ModelPairing(GeneratedCells());
+
+        AssertNoProblems(failures, "N3 promises the later order prints what the earlier order prints");
+
+        // Measured literals: a generator that stops spelling the order token pairs nothing, and an absence of failures would read green.
+        pairs.Should().Be(1741);
+        judged.Should().Be(1276);
+        judged.Should().BeGreaterThanOrEqualTo(1000, "D3.2's floor");
+    }
 }
