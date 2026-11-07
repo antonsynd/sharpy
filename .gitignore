@@ -272,3 +272,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Stand-alone measurement kernels under benchmarks/ (outside sharpy.sln)
+benchmarks/**/bin/
+benchmarks/**/obj/
