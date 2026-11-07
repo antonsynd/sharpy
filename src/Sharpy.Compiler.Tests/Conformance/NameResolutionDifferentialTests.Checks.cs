@@ -431,4 +431,178 @@ public partial class NameResolutionDifferentialTests
 
         NameResolutionRosters.PatternNotes.Should().HaveCount(2, "a measured literal: a new note is a new exemption");
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // D3.4: a rule's cite is an axis predicate
+    // ------------------------------------------------------------------------------------------- //
+
+    private static bool IsTypeLevel(BindingKind k) => NameResolutionRosters.TypeLevelKinds.Contains(k);
+
+    private static bool IsInstanceLevel(BindingKind k) => NameResolutionRosters.InstanceKinds.Contains(k);
+
+    private static bool IsModuleKind(BindingKind k) => NameResolutionRosters.ModuleLevelKinds.Contains(k);
+
+    private static bool IsPositionLocal(BindingKind k) => NameResolutionRosters.PositionLocalKinds.Contains(k);
+
+    private static bool IsNamedOuter(BindingKind k) => k is BindingKind.Builtin or BindingKind.ImportedName;
+
+    private static bool IsVisibleModuleOuter(BindingKind k) => IsModuleKind(k) || IsNamedOuter(k);
+
+    /// <summary>A segment of the cell's id: the order and spelling tokens the generator writes there and no property carries.</summary>
+    private static bool Spelled(NameCell c, string token) => c.Id.Split('/').Contains(token);
+
+    private static bool ThroughAMember(NameCell c) => Spelled(c, nameof(Spelling.Qualified)) || Spelled(c, nameof(Spelling.Alias)) || Spelled(c, nameof(Spelling.SelfDot))
+        || c.Id.Contains("/base/H.x", StringComparison.Ordinal) || c.Id.Contains("/base/B.x", StringComparison.Ordinal) || c.Id.Contains("/base/self.x", StringComparison.Ordinal);
+
+    private static bool Nested(NameCell c) => Spelled(c, nameof(Nesting.Lambda)) || Spelled(c, nameof(Nesting.ComprehensionIterable)) || Spelled(c, nameof(Nesting.ComprehensionElement));
+
+    /// <summary>READ's module-level split: a read at load time at the later order is N3's. The nesting is the id's token, the one place the cell keeps it.</summary>
+    private static bool ModuleReadAtLoadLater(NameCell c) => Spelled(c, nameof(Order.Later)) && c.Position is ReadPosition p
+        && ModuleReadAtLoad(p, Spelled(c, nameof(Nesting.Lambda)) ? Nesting.Lambda : Spelled(c, nameof(Nesting.ComprehensionIterable)) ? Nesting.ComprehensionIterable : Spelled(c, nameof(Nesting.ComprehensionElement)) ? Nesting.ComprehensionElement : Nesting.Direct);
+
+    /// <summary>A class body's bare read that sees the member: an initializer at the earlier order (the later order is N2's, or N1+N3's with no outer).</summary>
+    private static bool ClassBodySeesTheMember(NameCell c) => c.Relation == DeclaringRelation.Self && Spelled(c, nameof(Order.Earlier)) && c.Position is ReadPosition p && IsInitializer(p);
+
+    /// <summary>A position evaluated while the program loads, so a read can see a value before it is ready.</summary>
+    private static bool AtLoad(NameCell c) => c.Position is ReadPosition.ModuleInitializer or ReadPosition.ModulePropertyInitializer
+        or ReadPosition.StaticInitializer or ReadPosition.ConstInitializer or ReadPosition.StaticPropertyDefault;
+
+    /// <summary>D3.4: what each rule says, as a predicate on the axes of the cell citing it, so a rule retagged to one admitting the same codes is red here and not only in the census.
+    /// Every rule in the pool has an entry and every entry has a cell. The tag is on the axes: <c>MustRun</c> and <c>MustRefuse</c> under one rule are its two arms.</summary>
+    internal static readonly IReadOnlyDictionary<string, Func<NameCell, bool>> RuleAxes = new Dictionary<string, Func<NameCell, bool>>(StringComparer.Ordinal)
+    {
+        // N1: the innermost binding that means the read.
+        ["N1"] = c => c.Tag == SharpyTag.MustRun && (c.Family == Family.Read
+            ? !IsPositionLocal(c.Outer) && !ThroughAMember(c) && !(c.Position == ReadPosition.ModuleInitializer && Nested(c) && !Spelled(c, nameof(Nesting.Lambda)))
+                && (IsTypeLevel(c.Target) ? ClassBodySeesTheMember(c) || c.Relation == DeclaringRelation.Enclosing : !ModuleReadAtLoadLater(c))
+            : c.Family == Family.Local && c.Construct == LocalTarget.Comprehension),
+        ["N1+N3"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRun && IsTypeLevel(c.Target) && c.Outer == BindingKind.None
+            && (Spelled(c, nameof(Order.Later)) || c.Relation == DeclaringRelation.Other),
+        ["N1-arity"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Outer == BindingKind.Builtin && Spelled(c, "arity-mismatch") && !Spelled(c, "int"),
+        ["N1-innermost"] = c => c.Tag == SharpyTag.MustRun && (c.Family == Family.Read ? IsLocalOuter(c.Outer) : c.Family == Family.Local && IsPositionLocal(c.Target) && !Spelled(c, "let-in")),
+        ["N1-methods"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Outer == BindingKind.None && (IsTypeLevel(c.Target) || IsInstanceLevel(c.Target))
+            && Spelled(c, nameof(Spelling.Bare)) && c.Relation is DeclaringRelation.Self or DeclaringRelation.Sibling,
+        ["N1-nesting"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRun && IsModuleKind(c.Target) && c.Outer == BindingKind.None
+            && (c.Position == ReadPosition.ComprehensionElement ? c.Id.StartsWith("read/comprehension/", StringComparison.Ordinal) : c.Position == ReadPosition.ModuleInitializer && Nested(c)),
+        // The read reaches the outer, and the read is ill-typed. A class body that sees its own later member is N2's, and a def or import under a builtin's name read at load is N2-module's.
+        ["N1-type-error"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsVisibleModuleOuter(c.Outer) && !ThroughAMember(c)
+            && !Spelled(c, "arity-mismatch") && !Spelled(c, "arity-match")
+            && (!IsModuleKind(c.Target) || (c.Outer == BindingKind.Builtin && c.Target != BindingKind.ModuleDef))
+            && (!IsTypeLevel(c.Target) || c.Relation != DeclaringRelation.Self || Spelled(c, nameof(Order.Earlier)) || Nested(c) || c.Position is not ReadPosition p || !IsInitializer(p)),
+
+        // N2: a class body's read of an outer name it later declares.
+        ["N2"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsTypeLevel(c.Target) && IsVisibleModuleOuter(c.Outer) && c.Position is ReadPosition p && IsInitializer(p)
+            && !Spelled(c, nameof(Order.Earlier)),
+        ["N2-module"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsModuleKind(c.Target) && IsNamedOuter(c.Outer) && Spelled(c, nameof(Order.Later)) && !Spelled(c, "arity-mismatch"),
+
+        // N3: the later order prints what the earlier prints, and a cycle has no order to print.
+        ["N3"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRun && c.Outer == BindingKind.None
+            && (c.Id.StartsWith("read/order-observation/", StringComparison.Ordinal) || (IsModuleKind(c.Target) && (ModuleReadAtLoadLater(c) || c.Id.StartsWith("read/str/", StringComparison.Ordinal)))),
+        ["N3-cycle"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuseOrThrow && c.Outer == BindingKind.None && AtLoad(c),
+
+        // N5: a local is visible from its binding, in its block.
+        ["N5"] = c => c.Family == Family.Local
+            ? c.Tag == SharpyTag.MustRun
+                ? c.Outer == BindingKind.None || (c.Outer == BindingKind.ModuleVar && Spelled(c, "inside"))
+                : c.Tag == SharpyTag.MustRefuse && !Spelled(c, "self") && (c.Outer == BindingKind.None || IsTypeLevel(c.Outer))
+            : c.Family == Family.Store && !IsAttributeStore(c) && c.Declaration == null && (c.Outer is BindingKind.None or BindingKind.Builtin
+                || (c.Form == StoreForm.Walrus && c.Outer == BindingKind.ModuleVar)),
+        ["N5-block-scope"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRun && Spelled(c, "let-in") && c.Outer != BindingKind.None,
+        ["N5-declared-later"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && IsPositionLocal(c.Target) && c.Target != BindingKind.LocalDef
+            && (Spelled(c, "above") || Spelled(c, "L28") || c.Timing is ReadTimings.SameBlockAbove or ReadTimings.BackEdge),
+        ["N5-self"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && c.Target == BindingKind.LambdaTypedLocal && Spelled(c, "self"),
+
+        // N6: a store over a binding reaches it only through a declaration, and a declaration needs one it can write.
+        ["N6"] = c => c.Family == Family.Store && c.Form is StoreForm.Assign or StoreForm.Augmented or StoreForm.Walrus
+            && (c.Outer is BindingKind.ModuleVar or BindingKind.ModuleProperty or BindingKind.EnclosingLocal || IsNamedOuter(c.Outer))
+            && (c.Tag == SharpyTag.MustRun) == (Spelled(c, "global") || Spelled(c, "nonlocal") || c.Declaration != null),
+        ["N6-declaration"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && c.Declaration != null,
+        ["N6-same-function"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRun && c.Outer == BindingKind.LocalVar && c.Target == BindingKind.LocalVar,
+        ["N6-type-kind"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsNonWritableByMeaning(c.Outer),
+
+        // N7: a member through a spelling that names its owner.
+        ["N7"] = c => c.Tag == SharpyTag.MustRun && (c.Family == Family.Read
+            ? ThroughAMember(c) || Spelled(c, nameof(Spelling.Call)) || Spelled(c, "GenericReceiver") || (c.TypeAt != null && c.Target == BindingKind.ModuleTypeAlias)
+                || (c.Id.StartsWith("read/str/", StringComparison.Ordinal) && IsTypeLevel(c.Target))
+            : c.Family == Family.Store && IsAttributeStore(c) && c.Form is StoreForm.Assign or StoreForm.Augmented),
+
+        ["#1974"] = c => c.Tag == SharpyTag.MustRun && (c.Family == Family.Store ? c.Form == StoreForm.LetOrVar
+            : c.Family == Family.Local && c.Outer == BindingKind.LocalVar && Spelled(c, "let-in")),
+        ["A3"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRun && c.Relation == DeclaringRelation.Base && Spelled(c, nameof(Spelling.Bare)) && IsModuleKind(c.Outer),
+        ["P52"] = c => c.Family == Family.TypeMember && c.Tag == SharpyTag.MustRun && c.Outer == BindingKind.None && IsModuleKind(c.Target),
+        ["R-BM"] = c => c.Tag == SharpyTag.MustRun && (c.Family == Family.Store ? c.Form == StoreForm.OutLet : c.Family == Family.Local && c.Construct == LocalTarget.OutLet),
+        ["R-KG"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsTypeLevel(c.Target) && c.Outer == BindingKind.None && c.Relation == DeclaringRelation.Enclosing && Spelled(c, nameof(Spelling.Bare)),
+        // R-KT's closure over a struct's `self`. A @static member reached through self needs no `this`, so a static field keeps the class arm (the lead's ruling on axis 7).
+        ["R-KT"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Id.StartsWith("read/struct/", StringComparison.Ordinal) && Spelled(c, nameof(Spelling.SelfDot)) && c.Target != BindingKind.StaticField,
+        // R-KU: a @static store through what is not its owner's name.
+        ["R-KU"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsAttributeStore(c) && c.Target is BindingKind.StaticField or BindingKind.StaticProperty
+            && (Spelled(c, nameof(AttributeReceiver.SelfDot)) || Spelled(c, nameof(AttributeReceiver.DerivedType)) || Spelled(c, nameof(AttributeReceiver.InstanceLocal))),
+        ["R-Y"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRun && c.Relation == DeclaringRelation.Self && (IsTypeLevel(c.Target) || IsInstanceLevel(c.Target))
+            && IsVisibleModuleOuter(c.Outer) && Spelled(c, nameof(Spelling.Bare)),
+        ["R1(b)"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Relation == DeclaringRelation.Base && c.Outer == BindingKind.None && Spelled(c, nameof(Spelling.Bare)),
+
+        // S2 / S3: a read past a binding's own visibility, over an outer name that must not silently answer it.
+        ["S2"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && c.Target == BindingKind.LocalVar && c.Construct != null && c.Outer != BindingKind.None,
+        ["S3"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && c.Target == BindingKind.LocalDef && Spelled(c, "above"),
+
+        ["SPY0401"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Position is ReadPosition p && IsConstantOnly(p),
+        ["SPY0606"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsTypeLevelMember(c.Outer) && !IsAttributeStore(c),
+
+        ["kind:SPY0212"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Outer == BindingKind.Builtin && c.Target == BindingKind.ModuleClass && Spelled(c, "int"),
+        ["kind:SPY0225"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && c.Target is BindingKind.ModuleLiteralConst or BindingKind.ModuleComputedConst or BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst,
+        ["kind:SPY0290"] = c => c.Tag == SharpyTag.MustRefuse && IsInstanceLevel(c.Target) && (c.Family == Family.Read
+            ? ThroughAMember(c) || Spelled(c, nameof(Spelling.Call))
+            : c.Family == Family.Store && IsAttributeStore(c) && (Spelled(c, nameof(AttributeReceiver.TypeName)) || Spelled(c, nameof(AttributeReceiver.Alias)) || Spelled(c, nameof(AttributeReceiver.DerivedType)))),
+        ["kind:SPY0340"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MayRefuse && c.Target == BindingKind.ModuleLet,
+        ["kind:SPY0606"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsAttributeStore(c) && c.Target is BindingKind.StaticMethod or BindingKind.InstanceMethod,
+        ["kind:enum-member-constant"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Position == ReadPosition.EnumMemberValue,
+        ["kind:instance-at-initializer"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsInstanceLevel(c.Target) && Spelled(c, nameof(Spelling.Bare)) && c.Position is ReadPosition p && IsInitializer(p),
+        ["kind:result-wrap"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.TypeAt == TypePosition.ResultError,
+
+        ["seed"] = c => c.Family == Family.Seed && c.Id.StartsWith("seed/", StringComparison.Ordinal),
+        ["unruled:global-creates-binding"] = c => c.Tag == SharpyTag.Unruled && UnruledAxesHold(c),
+    };
+
+    internal static bool RuleAxesHold(NameCell c) => RuleAxes.TryGetValue(c.Rule, out var axes) && axes(c);
+
+    private static bool RefusalIsAnOutcome(NameCell c) => c.Tag is SharpyTag.MustRefuse or SharpyTag.MustRefuseOrThrow or SharpyTag.MayRefuse;
+
+    /// <summary>D3.4's three directions: a cell's rule has a predicate and the cell is on its axes, a predicate has a cell, and a rule a refusal could answer to says which codes it admits. A seed carries its own.</summary>
+    internal static IEnumerable<string> RuleAxesFailures(IReadOnlyList<NameCell> pool)
+    {
+        foreach (var rule in pool.Select(c => c.Rule).Distinct(StringComparer.Ordinal).Where(r => !RuleAxes.ContainsKey(r)))
+            yield return $"RuleAxes: rule {rule} is cited and has no predicate";
+        foreach (var rule in RuleAxes.Keys.Where(r => pool.All(c => c.Rule != r)))
+            yield return $"RuleAxes: the predicate for {rule} is carried by no cell";
+
+        var off = pool.Where(c => RuleAxes.ContainsKey(c.Rule) && !RuleAxesHold(c)).ToList();
+        foreach (var c in off.Take(40))
+            yield return $"RuleAxes: {c.Id} cites {c.Rule} and its axes are not that rule's (tag {c.Tag}, target {c.Target}, outer {c.Outer}, position {c.Position})";
+        if (off.Count > 40)
+            yield return $"RuleAxes: … {off.Count} cells off their rule's axes in total: {string.Join(", ", off.GroupBy(c => c.Rule).Select(g => $"{g.Key} {g.Count()}"))}";
+
+        var refusing = pool.Where(RefusalIsAnOutcome).ToList();
+        foreach (var rule in refusing.Where(c => c.SeedRefusalCodes == null).Select(c => c.Rule).Distinct(StringComparer.Ordinal).Where(r => !AdmittedRefusals.ContainsKey(r)))
+            yield return $"AdmittedRefusals: rule {rule} is carried by a cell a refusal could answer and has no entry";
+        foreach (var rule in AdmittedRefusals.Keys.Where(r => refusing.All(c => c.Rule != r)))
+            yield return $"AdmittedRefusals: {rule} has an entry and no cell a refusal could answer";
+    }
+
+    [Fact]
+    public void RuleAxes_EveryCiteIsOnItsRulesAxes()
+    {
+        var pool = GeneratedCells();
+        AssertNoProblems(RuleAxesFailures(pool), "a rule's cite is a claim about the cell's axes, and a refusal under it says which codes it admits");
+
+        // The retag the census alone used to see: if all of a rule's cells fit another rule's predicate, moving them there moves no axis.
+        var hidden = pool.GroupBy(c => c.Rule, StringComparer.Ordinal)
+            .SelectMany(q => RuleAxes.Where(r => r.Key != q.Key && q.All(r.Value)).Select(r => $"every cell of {q.Key} fits {r.Key}'s predicate"))
+            .ToList();
+        AssertNoProblems(hidden, "two rules that cannot be told apart by their axes are one rule, or a loose predicate");
+
+        // Measured literals: a generator that stopped citing a rule would otherwise pass an emptier check.
+        RuleAxes.Should().HaveCount(43);
+        // 28 rules with an entry, and the seeds', which carry their own codes.
+        pool.Where(RefusalIsAnOutcome).Select(c => c.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(29);
+    }
 }
