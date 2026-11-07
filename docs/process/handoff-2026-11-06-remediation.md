@@ -40,7 +40,7 @@ Everything revision 1 listed as an owner task card has landed on `dev` and `main
 | Step zero (merge the audit branch) | c9c076112, 6f13a627d | done |
 | CI as the default gate | #2455 (1fa2340f7) | `/ci-gate`; every PR runs the full gate whatever its base; concurrency groups; `workflow_dispatch` |
 
-Still in flight: **#2453** (P77b, base `dev`; a `/verify-implementation` session may change it). When it lands: the name-resolution allowlist grows from 1,408 to 2,595 rows by design, `docs/process/plans/plan-3eba57.md` is the first committed plan, and the #2438 OOM fix returns (it was merged in #2444 and reverted in #2446, so **#2438 is closed but its fix is not on `dev` today**).
+Still in flight: **#2453** (P77b, base `dev`; a `/verify-implementation` session may change it). When it lands: the name-resolution allowlist grows from 1,408 to 2,595 rows by design, its plan `plan-3eba57` is the first committed plan under `docs/process/plans/`, and the #2438 OOM fix returns (it was merged in #2444 and reverted in #2446, so **#2438 is closed but its fix is not on `dev` today**).
 
 Re-check before claiming anything:
 
