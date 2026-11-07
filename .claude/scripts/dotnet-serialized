@@ -12,6 +12,14 @@
 # A fixed slot name let two concurrent runs share a log (#2458, audit §5); do not bring one back.
 # Logs older than 7 days in that directory, and only there, are deleted at each start.
 #
+# WHY ONE AT A TIME (moved from CLAUDE.md "Serialized dotnet"). A whole-solution test run peaks at
+# 18.5 GB tree RSS on an otherwise idle machine (16.1 GB in the Compiler testhost, most of it outside
+# its 5 GB managed-heap limit) and at 8.9 GB under the usual load -- the GC grows into free memory
+# (measured 2026-10-06 @ a823001a6 / 8a15ce512, swap flat both times, #2256); two in parallel will
+# swap the machine. Enforced for agents by the PreToolUse hook .claude/hooks/enforce-dotnet-serialized.sh.
+# In Claude Code, every dotnet call (this wrapper included) hangs in the default sandbox, and gh fails
+# TLS certificate verification there: run both with dangerouslyDisableSandbox: true.
+#
 # Usage:  .claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q
 #         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
 #

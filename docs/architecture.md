@@ -146,6 +146,8 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 
 The `RoslynEmitter` is split into partial files by area — entry/name resolution (`RoslynEmitter.cs`), `.Expressions.*` (Access, Calls, Comprehensions, Literals, Operators), `.Statements.*` (Assignments, ControlFlow), `.TypeDeclarations`, `.ClassMembers.*` (Constructors, Dataclass, Events, Iterators, LruCache, Methods, Properties), `.CompilationUnit`, `.ModuleClass`, `.Operators`, `.Patterns`, `.TestFixtures`, plus `RoslynEmitterFactory.cs`.
 
+**Emitter purity guards (CLAUDE.md Rule 2).** Pick the materialization pattern by owner: **symbol-keyed** on `Symbol.CodeGenInfo` (frozen at `MaterializeCodeGenInfo`) when a discovered `Symbol` owns the fact; **node-keyed** in a `SemanticInfo` dictionary (e.g. `BinaryOpLowering`, `IndexAccessLowering`, resolved CLR member names; merged at `SemanticInfo.MergeFrom`) when the fact belongs to an AST node with no owning symbol. CLR inspection belongs to `Discovery/ClrTypeBridge`/`ClrTypeHelper`. Enforced by `EmitterCarrierOnlyConformanceTests`: the deny universe is every type in the compiler's `Semantic` namespaces (enumerated by reflection, so it cannot go stale), and CodeGen may name only the materialized-fact carriers, ratcheted per-file-per-type against issues that drain on fix. `EmitterBannedTokenScanTests` is a five-substring backstop, **not** Rule-2 evidence (#1475).
+
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
 - Local variables → `Symbol.CodeGenInfo` (precomputed by `LocalNameAllocator` at `ComputeForModule`; monotonic versioning: x, x_1, x_2; rebinding chains share the root's spelling)
@@ -160,7 +162,7 @@ The `RoslynEmitter` is split into partial files by area — entry/name resolutio
 `ProjectCompiler` (in `Project/`) and `ProjectFileParser` (the single `.spyproj` parser + discovery helper, in `ProjectConfig.cs`) handle multi-file projects:
 
 ```bash
-dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj [--incremental]
+src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project path/to/project.spyproj [--incremental]
 ```
 
 **Incremental** (`IncrementalCompilationCache`, `SymbolSerializer`, `SymbolCache` in `Project/`): first build compiles everything and caches symbols + generated C# to `obj/{Config}/.sharpy-symbols`; later builds skip files whose content hash matches `obj/{Config}/.sharpy-cache` AND whose dependencies are unchanged (transitive, via the cached dependency graph). Caches invalidate on compiler-version change, schema-version change, source change, or a change to any non-source input recorded in the facts key (`ProjectFactsOf`: entry point, output type, root namespace, source root, effective feature set, target framework, configuration, test host, `#line` emission, and each reference, module-path assembly and resolved package assembly by path, size and mtime; warnings-as-errors and suppressed warnings are replay-time policy and stay out); force a full rebuild with `--clean` or by deleting the cache files.
@@ -172,7 +174,7 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj [--increm
 - **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
 - **Core modules**: Operator (comparison helpers) and Copy (shallow/deep copy) stay in Core due to collection type dependencies
 - **Python semantics**: negative indexing, slicing, Python-matching exceptions
-- Multi-targets `net10.0;netstandard2.1` — C# 9.0 on `netstandard2.1`, `LangVersion 14` on `net10.0` (`#if NET10_0_OR_GREATER` for net10.0-only paths)
+- Multi-targets `net10.0;netstandard2.1` — C# 9.0 on `netstandard2.1` (no global usings, file-scoped namespaces, or record structs), `LangVersion 14` on `net10.0` (`#if NET10_0_OR_GREATER` for net10.0-only paths). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` only, with `LangVersion latest`
 
 ## Sharpy.Stdlib
 
@@ -181,6 +183,8 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj [--increm
 - Depends on Sharpy.Core (ProjectReference), not the reverse; same multi-targeting as Core. The compiler has **zero compile-time dependency** on Stdlib — modules are discovered at runtime via `ModuleRegistry.LoadReference()`.
 - NuGet deps: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3), Tomlyn (toml), YamlDotNet (yaml).
 - **Protocol interfaces** enable builtin dispatch at compile time: `ISized` (`int Count`, for `len()`), `IBoolConvertible` (`bool IsTrue`, for `bool()`), `IReverseEnumerable<T>` (`GetReverseEnumerator()`, for `reversed()`). The emitter implicitly adds them to a class's base list when the corresponding dunder (`__len__`/`__bool__`/`__reversed__`) is present, emitting the SPY1001 info diagnostic.
+- **Dunder-driven protocol synthesis** (CLAUDE.md › Core & Stdlib Conventions): the compiler synthesizes `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>` during inheritance resolution when `__len__`/`__bool__`/`__reversed__` is present, so the type checker sees them (SPY1001).
+- **The layer ladder** (CLAUDE.md › Core & Stdlib Conventions; language before compiler): a Python behaviour on a Core/Stdlib type is expressed at the LOWEST rung that can carry it, and every plan design decision names its rung and why the lower rungs cannot: (1) Sharpy source — a spy-sourced stdlib module or a spec example; (2) Core/Stdlib C# in the dunder table's spelling (`docs/language_specification/dunder_methods.md`), discovered by reflection — `__eq__` is `operator ==`/`!=` + `Equals` (model `Dict.cs`), `__len__`/`__bool__`/`__reversed__` are `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `__contains__` is a public `Contains(T)`, `__iter__` is `IEnumerable<T>`; (3) a bridge/registry rule keyed on CLR identity (`ClrTypeBridge`, `ProtocolMembership.HasClrProtocol`); (4) a semantic rule keyed on a builtin NAME (`BuiltinNames.X`) — last resort, with a comment naming what the CLR surface cannot express. The checker discovers CLR operators from BOTH operand types (`TypeInferenceService.TryInferClrBinaryOp`), so a cross-type operator is an overload on either type, never a checker arm. A name-keyed rule where rung 2 was available is the "name-keyed alias diverging from reflection" meta-class (#1933).
 
 ## Testing Patterns
 
@@ -191,9 +195,9 @@ errors/bad.spy + bad.error            # Failure (substring in error; line ending
 multifile/main.spy + lib.spy + main.expected  # Multi-file (dir with main.spy entry point)
 feature/test.spy + test.expected.cs   # C# snapshot (Roslyn-normalized)
 ```
-Auto-discovered. `.skip` skips, `.warning` for warning expectations, `.features` enables experimental features (one name per line; unknown names fail discovery loudly).
+Auto-discovered. `.skip` skips, `.warning` for warning expectations (an empty file expects **no** warnings; non-empty lines are expected substrings; combinable with `.expected`), `.features` enables experimental features (one name per line, `main.features` project-wide for multi-file; unknown names fail discovery loudly; pair each gated fixture with an ungated twin expecting SPY0331, see `TestFixtures/experimental/`).
 
-Regenerate C# snapshots: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
+Regenerate C# snapshots: `/regenerate-snapshots`, or `UPDATE_SNAPSHOTS=true .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~FileBasedIntegrationTests" --logger "console;verbosity=normal"`
 
 ### Programmatic Tests
 ```csharp

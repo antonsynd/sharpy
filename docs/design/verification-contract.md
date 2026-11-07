@@ -166,7 +166,12 @@ smoke job. Local adds `MetamorphicCorpusInvarianceTests` (left out of CI on purp
 
 **The local gate is the fallback:** `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`,
 for when `/ci-gate` exits 3 (not started within 15 min, cancelled, unreachable, or no counts) or for
-what only local covers; say so in the report. Read the log path the wrapper printed (`dotnet-serialized: log -> <path>`) rather than
+what only local covers; say so in the report. Local timings (moved from CLAUDE.md): a whole-solution
+run is ~30 min wall clock, `Sharpy.Compiler.Tests` ~27 of it at `maxParallelThreads` 2 (measured
+@ af6f30901). The `[Trait("Category","GapDiscovery")]` sweeps run by default and are ~18% of its test
+time; `Category!=GapDiscovery` saves a few minutes, but they are no longer the long pole. The console
+logger is part of the command: at default verbosity a green gate is silent for up to 1566 s
+@ 8a15ce512, inside 162 s of the wrapper's 1728 s stall watchdog (#2257; the wrapper's header). Read the log path the wrapper printed (`dotnet-serialized: log -> <path>`) rather than
 re-running. A log whose binaries predate the change is not a green. Mutation runs and single-test
 probes stay local, and so can a control for one failing test (§5).
 
