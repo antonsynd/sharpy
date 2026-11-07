@@ -17,5 +17,8 @@ Policy (owner, 2026-11-06):
   rulings with supersession chains resolved) is the intended companion; see
   `docs/audits/health-check-2026-11-06.md` §9 for why.
 
-The predecessor charter (`remediation-round-2026-08-30-batching.md`, rulings R-A…R-AV) is not yet
-committed; it lives in the owner's `.claude/plans/`.
+The predecessor charter (`rounds/remediation-round-2026-08-30-batching.md`, rulings R-A…R-AV) and the
+plans that predate this policy were committed as they stood on the owner's machine (owner, 2026-11-07,
+handoff D9 option B). Those plans carry no commit stamp and may include drafts, so a plan's own
+checklist and verification record say how far it got, not its presence here. The current charter's
+pre-policy per-call backups stayed machine-local.
