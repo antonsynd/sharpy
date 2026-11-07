@@ -747,10 +747,14 @@ public partial class NameResolutionDifferentialTests
                 ? Refuse(PyOutcome.Ran(n.BuiltinResult!.Value), "N2-module")
                 : Run(BuiltinBindingValue, "N1");
         }
+        else if (atLoad && order == Order.Later)
+        {
+            // R-LJ's sentence, whose own example is `r: int = abs(-3)` above `abs: int = 7`: python reads the builtin, and the program is refused.
+            expected = Refuse(PyOutcome.Ran(n.BuiltinResult!.Value), "N2-module");
+        }
         else
         {
-            var python = atLoad && order == Order.Later ? PyOutcome.Ran(n.BuiltinResult!.Value) : PyOutcome.Other("TypeError");
-            expected = Refuse(python, "N1-type-error");
+            expected = Refuse(PyOutcome.Other("TypeError"), "N1-type-error");
         }
 
         return new NameCell

@@ -240,10 +240,10 @@ public partial class NameResolutionDifferentialTests
             Family = Family.Store,
             Source = Program(twin: false),
             TwinSource = family == "dict-spread-comprehension" ? Program(twin: true) : null,
-            Tag = moduleOuter ? SharpyTag.MustRun : SharpyTag.MustRefuse,
-            Model = moduleOuter ? "5" : null,
+            Tag = SharpyTag.MustRefuse,
             Python = PyOutcome.Ran(6),
-            Rule = "N5",
+            // The owner's ruling (2026-11-06, option A): a comprehension's walrus is fresh, so a later read of the outer name would print what python does not. Refused, as S2 refuses a loop target.
+            Rule = moduleOuter ? "S2-walrus" : "N5",
             Deviation = "walrus-in-comprehension-scope",
             Target = outer,
             Outer = outer,
@@ -1090,15 +1090,15 @@ public partial class NameResolutionDifferentialTests
     }
 
     /// <summary>The class host's arm at every position, where the struct runs what the class runs, except <c>self</c> capturing a struct in a C# closure: a captured struct would copy its
-    /// value, so R-KT refuses as C# does. The comprehension and generator positions that run, and the static field C# does not capture, are the arm's positive controls.</summary>
+    /// value, so R-KT refuses as C# does. The comprehension and generator positions that run, and the @static members that capture nothing, are the arm's positive controls.</summary>
     private static NameCell StructHostCell(BindingKind target, ReadPosition body, Nesting nesting, Order order, Spelling spelling)
     {
         var cell = ClassCell(target, body, nesting, order, spelling, BindingKind.None, ReadName.Plain, "struct H:");
         var closure = nesting == Nesting.Lambda || NameResolutionRosters.StructClosureBodies.Contains(body);
 
-        // R-KT refuses what C# refuses (CS1673), never wider. `self.x` on a @static field lowers to `H.x`, nothing captures `this`, and it prints python's
-        // value (measured 2 / 2), so it keeps the class arm: this target is the arm's "never wider" control. `self.x()` on a @static def is CS1673, and is refused.
-        var refused = spelling == Spelling.SelfDot && closure && target != BindingKind.StaticField;
+        // R-KT refuses a capture C# has to refuse (CS1673), never wider. A @static member through `self` needs no `this`: the field lowers to `H.x` and prints python's value (measured 2 / 2),
+        // and the method's CS1673 is #2147's `this.X()` spelling, the bug the same read has at MethodBody and on a class. Both keep the class arm, so they are the arm's "never wider" controls.
+        var refused = spelling == Spelling.SelfDot && closure && target is not (BindingKind.StaticField or BindingKind.StaticMethod);
         return cell with
         {
             Id = CellId("read", "struct", target, body, nesting == Nesting.Direct ? null : nesting, order, spelling),

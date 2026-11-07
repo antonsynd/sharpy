@@ -311,6 +311,8 @@ public partial class NameResolutionDifferentialTests
         [("SPY0401", "SPY0200")] = 9,
         // `x += 1` on a method's name in a method body: the undefined local is reported, so SPY0606 is not reached.
         [("SPY0606", "SPY0200")] = 4,
+        // A comprehension's walrus over a visible module name: SPY0600 refuses the read ahead of the rule's own code (#2425).
+        [("S2-walrus", "SPY0600")] = 21,
         // R-LJ: a module declaration re-declaring an imported name is refused as a collision before N2's own refusal exists.
         [("N2-module", "SPY0204")] = 4,
         // D2.9: the imported outer's read is `len(digits)`, and over an int-valued member of the name that is the protocol refusal.
@@ -368,8 +370,10 @@ public partial class NameResolutionDifferentialTests
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
-        // N1-arity: nothing refuses today (the CS1501 ICE is #2423's), so the entry is a ratchet: a refusal under this rule is red until it names its code.
+        // N1-arity: nothing refuses today (the CS1729 ICE is #2423's), so the entry is a ratchet: a refusal under this rule is red until it names its code.
         ["N1-arity"] = Array.Empty<string>(),
+        // The owner's ruling on a comprehension's walrus: SPY0600 refuses the read today, by accident of #2144's gap; the rule's own code lands with #2425.
+        ["S2-walrus"] = new[] { "SPY0600" },
         ["R-KG"] = new[] { "SPY0200" },
         // R-KT: nothing refuses a struct `self` capture today, and the refusal's code lands with #2434.
         ["R-KT"] = Array.Empty<string>(),
@@ -511,7 +515,11 @@ public partial class NameResolutionDifferentialTests
                     // A nested type's bare constructor read as a member invocation: #2397's cell, whichever nested type the reader sits in.
                     "CS1955" when cell.Target == BindingKind.NestedType => "#2397",
                     // A lambda or local function capturing a struct's `this`: R-KT's refusal is the cure.
-                    "CS1673" => "#2434",
+                    "CS1673" when cell.Rule == "R-KT" => "#2434",
+                    // The same CS1673 on a @static member, which needs no capture: `this.X()` is #2147's spelling.
+                    "CS1673" => "#2147",
+                    // S3 and the read above a same-scope declaration are N5's, whichever check the bad read reaches.
+                    "CS1955" when cell.Family == Family.Local && cell.Rule is "S3" or "N5-declared-later" => "#2425",
                     // `T !E` with no `Ok`: the spec has no implicit wrap, and the refusal is the cure.
                     "CS0029" when cell.Rule == "kind:result-wrap" => "#2249",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
@@ -535,7 +543,7 @@ public partial class NameResolutionDifferentialTests
                     return IsAliasConstructorCell(cell) ? "#1925" : "#2249";
                 if (cell.Family == Family.Store)
                     return run.AllCodes.Contains("SPY0134") ? "#2424"
-                        : run.AllCodes.Contains("SPY0600") ? "#2423"
+                        : run.AllCodes.Contains("SPY0600") ? "#2144"
                         : $"UNROUTED({string.Join(",", run.ErrorCodes)})";
                 // An alias at a type position is refused as an unknown type (p17): #1925's class, the alias positions.
                 if (cell.TypeAt != null && cell.Target == BindingKind.ModuleTypeAlias)
@@ -558,10 +566,12 @@ public partial class NameResolutionDifferentialTests
                 // A must-run attribute store that prints the wrong value is `self.x op= v` in `__init__` losing its read (#2439); a must-refuse one is R-KU's.
                 if (IsAttributeStore(cell))
                     return cell.Tag == SharpyTag.MustRun ? "#2439" : "#2435";
+                if (cell.Rule == "S2-walrus")
+                    return "#2425";
                 if (cell.Family == Family.Store)
                     return "#2424";
                 if (cell.Family == Family.Local)
-                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) || cell.Rule == "N5-declared-later" ? "#2425" : "#2423";
+                    return cell.Rule.StartsWith("S2", StringComparison.Ordinal) || cell.Rule is "S3" or "N5-declared-later" ? "#2425" : "#2423";
                 // Only a read with no other binding can print a storage default; values-ready cannot change which binding is read.
                 return cell.Tag == SharpyTag.MustRefuse || cell.Outer != BindingKind.None ? "#2423" : "#2422";
             default:

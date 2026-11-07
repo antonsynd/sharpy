@@ -383,9 +383,9 @@ public partial class NameResolutionDifferentialTests
         AssertNoProblems(failures, "N3 promises the later order prints what the earlier order prints");
 
         // Measured literals: a generator that stops spelling the order token pairs nothing, and an absence of failures would read green.
+        judged.Should().BeGreaterThanOrEqualTo(1000, "D3.2's floor, ahead of the literal so that it can be the assertion that fails");
         pairs.Should().Be(1741);
         judged.Should().Be(1276);
-        judged.Should().BeGreaterThanOrEqualTo(1000, "D3.2's floor");
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -444,6 +444,7 @@ public partial class NameResolutionDifferentialTests
         AssertNoProblems(problems, "a note exempts a pattern from generating cells, so it has to be true and able to go stale");
 
         NameResolutionRosters.PatternNotes.Should().HaveCount(2, "a measured literal: a new note is a new exemption");
+        PatternNoteFalsifiers.Keys.Should().BeEquivalentTo(NameResolutionRosters.PatternNotes.Keys, "a falsifier outliving its note checks nothing");
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -498,10 +499,10 @@ public partial class NameResolutionDifferentialTests
             && Spelled(c, nameof(Spelling.Bare)) && c.Relation is DeclaringRelation.Self or DeclaringRelation.Sibling,
         ["N1-nesting"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRun && IsModuleKind(c.Target) && c.Outer == BindingKind.None
             && (c.Position == ReadPosition.ComprehensionElement ? c.Id.StartsWith("read/comprehension/", StringComparison.Ordinal) : c.Position == ReadPosition.ModuleInitializer && Nested(c)),
-        // The read reaches the outer, and the read is ill-typed. A class body that sees its own later member is N2's, and a def or import under a builtin's name read at load is N2-module's.
+        // The read reaches the outer, and the read is ill-typed. A class body that sees its own later member is N2's, and any binding or import under a builtin's name read at load is N2-module's.
         ["N1-type-error"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsVisibleModuleOuter(c.Outer) && !ThroughAMember(c)
             && !Spelled(c, "arity-mismatch") && !Spelled(c, "arity-match")
-            && (!IsModuleKind(c.Target) || (c.Outer == BindingKind.Builtin && c.Target != BindingKind.ModuleDef))
+            && (!IsModuleKind(c.Target) || (c.Outer == BindingKind.Builtin && c.Target != BindingKind.ModuleDef && !ModuleReadAtLoadLater(c)))
             && (!IsTypeLevel(c.Target) || c.Relation != DeclaringRelation.Self || Spelled(c, nameof(Order.Earlier)) || Nested(c) || c.Position is not ReadPosition p || !IsInitializer(p)),
 
         // N2: a class body's read of an outer name it later declares.
@@ -520,14 +521,14 @@ public partial class NameResolutionDifferentialTests
                 ? c.Outer == BindingKind.None || (c.Outer == BindingKind.ModuleVar && Spelled(c, "inside"))
                 : c.Tag == SharpyTag.MustRefuse && !Spelled(c, "self") && (c.Outer == BindingKind.None || IsTypeLevel(c.Outer))
             : c.Family == Family.Store && !IsAttributeStore(c) && c.Declaration == null && (c.Outer is BindingKind.None or BindingKind.Builtin
-                || (c.Form == StoreForm.Walrus && c.Outer == BindingKind.ModuleVar)),
+                ),
         ["N5-block-scope"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRun && Spelled(c, "let-in") && c.Outer != BindingKind.None,
         ["N5-declared-later"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && IsPositionLocal(c.Target) && c.Target != BindingKind.LocalDef
             && (Spelled(c, "above") || Spelled(c, "L28") || c.Timing is ReadTimings.SameBlockAbove or ReadTimings.BackEdge),
         ["N5-self"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && c.Target == BindingKind.LambdaTypedLocal && Spelled(c, "self"),
 
         // N6: a store over a binding reaches it only through a declaration, and a declaration needs one it can write.
-        ["N6"] = c => c.Family == Family.Store && c.Form is StoreForm.Assign or StoreForm.Augmented or StoreForm.Walrus
+        ["N6"] = c => c.Family == Family.Store && c.Deviation == null && c.Form is StoreForm.Assign or StoreForm.Augmented or StoreForm.Walrus
             && (c.Outer is BindingKind.ModuleVar or BindingKind.ModuleProperty or BindingKind.EnclosingLocal || IsNamedOuter(c.Outer))
             && (c.Tag == SharpyTag.MustRun) == (Spelled(c, "global") || Spelled(c, "nonlocal") || c.Declaration != null),
         ["N6-declaration"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && c.Declaration != null,
@@ -546,8 +547,9 @@ public partial class NameResolutionDifferentialTests
         ["P52"] = c => c.Family == Family.TypeMember && c.Tag == SharpyTag.MustRun && c.Outer == BindingKind.None && IsModuleKind(c.Target),
         ["R-BM"] = c => c.Tag == SharpyTag.MustRun && (c.Family == Family.Store ? c.Form == StoreForm.OutLet : c.Family == Family.Local && c.Construct == LocalTarget.OutLet),
         ["R-KG"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && IsTypeLevel(c.Target) && c.Outer == BindingKind.None && c.Relation == DeclaringRelation.Enclosing && Spelled(c, nameof(Spelling.Bare)),
-        // R-KT's closure over a struct's `self`. A @static member reached through self needs no `this`, so a static field keeps the class arm (the lead's ruling on axis 7).
-        ["R-KT"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Id.StartsWith("read/struct/", StringComparison.Ordinal) && Spelled(c, nameof(Spelling.SelfDot)) && c.Target != BindingKind.StaticField,
+        // R-KT's closure over a struct's `self`. A @static member reached through self needs no `this`, so both keep the class arm (the lead's ruling on axis 7).
+        ["R-KT"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Id.StartsWith("read/struct/", StringComparison.Ordinal) && Spelled(c, nameof(Spelling.SelfDot))
+            && IsInstanceLevel(c.Target) && (Spelled(c, nameof(Nesting.Lambda)) || (c.Position is ReadPosition closure && NameResolutionRosters.StructClosureBodies.Contains(closure))),
         // R-KU: a @static store through what is not its owner's name.
         ["R-KU"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsAttributeStore(c) && c.Target is BindingKind.StaticField or BindingKind.StaticProperty
             && (Spelled(c, nameof(AttributeReceiver.SelfDot)) || Spelled(c, nameof(AttributeReceiver.DerivedType)) || Spelled(c, nameof(AttributeReceiver.InstanceLocal))),
@@ -557,6 +559,8 @@ public partial class NameResolutionDifferentialTests
 
         // S2 / S3: a read past a binding's own visibility, over an outer name that must not silently answer it.
         ["S2"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && c.Target == BindingKind.LocalVar && c.Construct != null && c.Outer != BindingKind.None,
+        // The owner's ruling on a comprehension's walrus over a visible module name read after it (2026-11-06).
+        ["S2-walrus"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && c.Form == StoreForm.Walrus && c.Outer == BindingKind.ModuleVar && c.Deviation == "walrus-in-comprehension-scope",
         ["S3"] = c => c.Family == Family.Local && c.Tag == SharpyTag.MustRefuse && c.Target == BindingKind.LocalDef && Spelled(c, "above"),
 
         ["SPY0401"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Position is ReadPosition p && IsConstantOnly(p),
@@ -565,7 +569,7 @@ public partial class NameResolutionDifferentialTests
         ["kind:SPY0212"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Outer == BindingKind.Builtin && c.Target == BindingKind.ModuleClass && Spelled(c, "int"),
         ["kind:SPY0225"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && c.Target is BindingKind.ModuleLiteralConst or BindingKind.ModuleComputedConst or BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst,
         ["kind:SPY0290"] = c => c.Tag == SharpyTag.MustRefuse && IsInstanceLevel(c.Target) && (c.Family == Family.Read
-            ? ThroughAMember(c) || Spelled(c, nameof(Spelling.Call))
+            ? !Spelled(c, nameof(Spelling.SelfDot)) && (ThroughAMember(c) || Spelled(c, nameof(Spelling.Call)))
             : c.Family == Family.Store && IsAttributeStore(c) && (Spelled(c, nameof(AttributeReceiver.TypeName)) || Spelled(c, nameof(AttributeReceiver.Alias)) || Spelled(c, nameof(AttributeReceiver.DerivedType)))),
         ["kind:SPY0340"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MayRefuse && c.Target == BindingKind.ModuleLet,
         ["kind:SPY0606"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsAttributeStore(c) && c.Target is BindingKind.StaticMethod or BindingKind.InstanceMethod,
@@ -615,8 +619,8 @@ public partial class NameResolutionDifferentialTests
         AssertNoProblems(hidden, "two rules that cannot be told apart by their axes are one rule, or a loose predicate");
 
         // Measured literals: a generator that stopped citing a rule would otherwise pass an emptier check.
-        RuleAxes.Should().HaveCount(43);
-        // 28 rules with an entry, and the seeds', which carry their own codes.
-        pool.Where(RefusalIsAnOutcome).Select(c => c.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(29);
+        RuleAxes.Should().HaveCount(44);
+        // 29 rules with an entry, and the seeds', which carry their own codes.
+        pool.Where(RefusalIsAnOutcome).Select(c => c.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(30);
     }
 }
