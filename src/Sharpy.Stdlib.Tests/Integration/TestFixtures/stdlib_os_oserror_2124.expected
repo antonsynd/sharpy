@@ -1,0 +1,2 @@
+8 mkdir(existing) caught as OSError: FileExistsError
+8 mkdir(existing) caught as IOError: FileExistsError

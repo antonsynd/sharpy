@@ -295,7 +295,7 @@ internal class BuiltinRegistry
         }
 
         // Wire up BaseType for discovered exception types whose CLR base is outside the
-        // discovery index (e.g., TypeError -> System.Exception, IOError -> IOException).
+        // discovery index (e.g., TypeError -> System.Exception, OSError -> IOException).
         // Types with Sharpy-defined intermediate bases (ZeroDivisionError -> ArithmeticError)
         // were already wired during discovery (#1596).
         WireExceptionBaseTypes();
@@ -332,6 +332,15 @@ internal class BuiltinRegistry
                 typeSymbol.Constructors.AddRange(Discovery.ClrConstructorSurface.Build(clrType));
 
             _types[typeSymbol.Name] = typeSymbol;
+        }
+
+        // A discovery name mapping whose Sharpy name has no type of its own is an identity:
+        // the name binds to the mapped type's symbol itself, so `IOError` IS `OSError` in
+        // annotations, `except`, `raise` and `isinstance` (#2124).
+        foreach (var (sharpyName, clrName) in CachedModuleDiscovery.SharpyToClrNameMap)
+        {
+            if (!_types.ContainsKey(sharpyName) && _types.TryGetValue(clrName, out var target))
+                _types[sharpyName] = target;
         }
     }
 

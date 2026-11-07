@@ -235,27 +235,13 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Raised when an I/O operation fails.
-    /// Equivalent to Python's <c>OSError</c> (aliased as <c>IOError</c>).
+    /// Raised when a system function returns a system-related error, including I/O failures.
+    /// Equivalent to Python's <c>OSError</c>. Python 3's <c>IOError</c> is the same class
+    /// (<c>IOError is OSError</c>), so the Sharpy name <c>IOError</c> resolves to this type.
+    /// Derives from <c>System.IO.IOException</c>, so .NET code catching <c>IOException</c> sees it
+    /// and every subclass (#2124).
     /// </summary>
-    public class IOError : IOException
-    {
-        /// <summary>Create an IOError with the specified message.</summary>
-        public IOError(string message) : base(message)
-        {
-        }
-
-        /// <summary>Create an IOError with the specified message and inner exception.</summary>
-        public IOError(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-    }
-
-    /// <summary>
-    /// Raised when a system function returns a system-related error.
-    /// Equivalent to Python's <c>OSError</c>. In Python 3, OSError and IOError are aliases.
-    /// </summary>
-    public class OSError : IOError
+    public class OSError : IOException
     {
         /// <summary>Create an OSError with the specified message.</summary>
         public OSError(string message) : base(message)
@@ -272,7 +258,7 @@ namespace Sharpy
     /// Raised when a file or directory is requested but not found.
     /// Equivalent to Python's <c>FileNotFoundError</c>.
     /// </summary>
-    public class FileNotFoundError : FileNotFoundException
+    public class FileNotFoundError : OSError
     {
         /// <summary>Create a FileNotFoundError with the specified message.</summary>
         public FileNotFoundError(string message) : base(message)
@@ -311,7 +297,7 @@ namespace Sharpy
     /// <summary>
     /// File exists error — raised when trying to create a file that already exists.
     /// </summary>
-    public class FileExistsError : IOException
+    public class FileExistsError : OSError
     {
         /// <summary>Create a FileExistsError with the specified message.</summary>
         public FileExistsError(string message) : base(message)
@@ -327,7 +313,7 @@ namespace Sharpy
     /// <summary>
     /// Permission error — raised when an operation lacks sufficient access rights.
     /// </summary>
-    public class PermissionError : UnauthorizedAccessException
+    public class PermissionError : OSError
     {
         /// <summary>Create a PermissionError with the specified message.</summary>
         public PermissionError(string message) : base(message)
@@ -343,7 +329,7 @@ namespace Sharpy
     /// <summary>
     /// Is a directory error — raised when a file operation is attempted on a directory.
     /// </summary>
-    public class IsADirectoryError : IOException
+    public class IsADirectoryError : OSError
     {
         /// <summary>Create an IsADirectoryError with the specified message.</summary>
         public IsADirectoryError(string message) : base(message)

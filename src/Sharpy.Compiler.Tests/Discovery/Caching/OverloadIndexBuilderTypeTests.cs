@@ -117,16 +117,16 @@ public class OverloadIndexBuilderTypeTests
         // Assert
         var builtins = index.Modules["builtins"];
         var exceptionTypes = builtins.Types.Where(t => t.IsException).ToList();
-        // Most exception types directly extend Exception, but some (IOError, FileNotFoundError,
-        // FileExistsError, IsADirectoryError) extend IOException, FileNotFoundException,
-        // UnauthorizedAccessException, or ValueError (JSONDecodeError). ZeroDivisionError,
+        // Most exception types directly extend Exception, but OSError extends IOException,
+        // FileNotFoundError, FileExistsError, IsADirectoryError and PermissionError extend OSError
+        // (#2124 D15), ExceptionGroup AggregateException, and JSONDecodeError ValueError. ZeroDivisionError,
         // OverflowError and InvalidOperation extend ArithmeticError, matching CPython (#1189).
         // KeyError/IndexError extend LookupError, NotImplementedError RuntimeError, UnboundLocalError
         // NameError and UnicodeEncodeError UnicodeError, matching CPython (#2124; the whole chain is
         // measured against python by Sharpy.Core.Tests' ExceptionHierarchyPythonMroTests).
         var allowedBaseTypes = new HashSet<string?>
         {
-            "Exception", "IOException", "IOError", "FileNotFoundException", "UnauthorizedAccessException", "ValueError", "AggregateException", "ArithmeticError",
+            "Exception", "IOException", "OSError", "ValueError", "AggregateException", "ArithmeticError",
             "LookupError", "RuntimeError", "NameError", "UnicodeError"
         };
         foreach (var exType in exceptionTypes)
