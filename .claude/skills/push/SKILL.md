@@ -26,6 +26,16 @@ Run in parallel:
 
 If the branch is `main` or `mainline`, **warn the user** that they're about to push directly to the main branch and confirm before proceeding.
 
+### 1.1. Commit-subject length gate
+
+CI's `Commit Subjects` workflow (W3.4 / D5) fails a PR or a `dev`/`mainline` push whose non-merge, non-revert commit subjects exceed 72 characters. Run the same check on the outgoing commits before pushing:
+
+```bash
+bash build_tools/check_commit_subjects.sh "$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo origin/dev)..HEAD"
+```
+
+A red here means amend or reword (`git commit --amend` for the tip; `git rebase` for older ones, on your own unpushed commits only) before pushing — CI will say the same thing after the push.
+
 ### 1.25. Version bump check (dev/mainline only)
 
 If the current branch is `dev` or `mainline`, check whether a version bump is needed before pushing:
