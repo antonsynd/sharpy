@@ -145,14 +145,14 @@ public partial class NameResolutionDifferentialTests
     private const int SharpyExecTimeoutMs = 12_000;
     private const int PythonBatchTimeoutMs = 3_600_000;
     private const string AllowlistFileName = "name-resolution-differential-allowlist.txt";
-    private const string StrideEnv = "NAME_RES_DIFF_LIMIT";
+    internal const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
     /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
     private const int CellBudget = 8900;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
-    private const string CacheEnv = "NAME_RES_DIFF_SHARPY_CACHE";
+    internal const string CacheEnv = "NAME_RES_DIFF_SHARPY_CACHE";
 
     /// <summary>D2's ICE set: any of these in <c>RawDiagnostics</c> is an internal failure, never a refusal.</summary>
     internal static readonly HashSet<string> IceCodes = new(StringComparer.Ordinal)

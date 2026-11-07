@@ -144,6 +144,142 @@ public partial class CiFilterCoverageConformanceTests
     }
 
     /// <summary>
+    /// "CI runs the sweep with python present or fails" has a second half the two facts above do not read: a step that
+    /// selects the sweep can still be unable to fail its job. So every step that selects a sweep or a python-oracle class,
+    /// and the job around it, is judged by <see cref="StepDisarmedBy"/>. The floors are literals, so a parser that stopped
+    /// reading <c>if:</c> or <c>run:</c> is red rather than a smaller check.
+    /// </summary>
+    [Fact]
+    public void EverySweepOrOracleStep_CanFailItsJob()
+    {
+        var (steps, tests) = LoadStepsAndTests();
+        var sweepTokens = SweepTokens(steps);
+        var (oracleClasses, _) = ScanPythonOracleClasses(tests);
+        var guarded = tests
+            .Where(t => sweepTokens.Any(token => t.Fqn.Contains(token, StringComparison.Ordinal))
+                || oracleClasses.Any(c => t.Fqn.StartsWith(c + ".", StringComparison.Ordinal)))
+            .Where(t => !IsExempt(t))
+            .ToList();
+        var judged = steps.Where(s => guarded.Any(t => EvaluateFilter(s.Filter, t))).ToList();
+
+        Assert.True(judged.Count >= MinimumJudgedSteps,
+            $"Judged {judged.Count} steps, expected at least {MinimumJudgedSteps}: {string.Join("; ", judged.Select(s => s.Name))}.");
+        var conditioned = judged.Count(s => s.Arming.StepIf != null);
+        Assert.True(conditioned >= MinimumConditionedSteps,
+            $"Read an if: on {conditioned} judged steps, expected at least {MinimumConditionedSteps}: the parser stopped reading if:.");
+        var commanded = judged.Count(s => s.Arming.Run.Contains(s.Arming.TestCommand.Trim(), StringComparison.Ordinal)
+            && s.Arming.TestCommand.Contains("dotnet test", StringComparison.Ordinal));
+        Assert.True(commanded == judged.Count,
+            $"Read a test command in the run: of {commanded} of {judged.Count} judged steps: the parser stopped reading run:.");
+
+        var wrong = judged
+            .SelectMany(s => StepDisarmedBy(s).Select(rule => $"  {s.Name}: {rule}"))
+            .ToList();
+        Assert.True(wrong.Count == 0,
+            $"{wrong.Count} way(s) a sweep or python-oracle step cannot fail its job, or does not run what it selects:\n"
+            + string.Join("\n", wrong));
+    }
+
+    private const string KnownCondition = "${{ !cancelled() && steps.unpack.outcome == 'success' }}";
+
+    private const string SweepCommand =
+        "dotnet test src/Sharpy.Compiler.Tests --no-build --filter \"Category=GapDiscovery\" --logger \"trx;LogFileName=s.trx\" --results-directory TestResults";
+
+    /// <summary>The rules of <see cref="EverySweepOrOracleStep_CanFailItsJob"/> over a workflow of one step, each disarmed
+    /// spelling on its own, because today's yml reaches none of them.</summary>
+    [Theory]
+    [InlineData("continue-on-error: true", "", SweepCommand, "continue-on-error on the job")]
+    [InlineData("continue-on-error: ${{ matrix.experimental }}", "", SweepCommand, "continue-on-error on the job")]
+    [InlineData("", "continue-on-error: true", SweepCommand, "continue-on-error on the step")]
+    [InlineData("if: ${{ false }}", "", SweepCommand, "if: on the job")]
+    [InlineData("", "if: false", SweepCommand, "if: on the step")]
+    [InlineData("", "if: ${{ false }}", SweepCommand, "if: on the step")]
+    [InlineData("", "if: ${{ !cancelled() }}", SweepCommand, "if: on the step")]
+    [InlineData("", "", SweepCommand + " || true", "exit status is not the step's")]
+    [InlineData("", "", SweepCommand + " || :", "exit status is not the step's")]
+    [InlineData("", "", SweepCommand + "; true", "exit status is not the step's")]
+    [InlineData("", "", SweepCommand + " | tee sweep.log", "exit status is not the step's")]
+    [InlineData("", "", SweepCommand + " &", "exit status is not the step's")]
+    [InlineData("", "", "echo start || true\n" + SweepCommand, "a || in run:")]
+    [InlineData("", "", "set +e\n" + SweepCommand, "set +e")]
+    [InlineData("", "", "set +o errexit\n" + SweepCommand, "set +e")]
+    [InlineData("", "", SweepCommand + "\ntrue", "not the last line")]
+    [InlineData("", "", "export SHARPY_REQUIRE_PYTHON_ORACLE=0\n" + SweepCommand, "assigns SHARPY_REQUIRE_PYTHON_ORACLE")]
+    [InlineData("", "", "unset SHARPY_REQUIRE_PYTHON_ORACLE\n" + SweepCommand, "assigns SHARPY_REQUIRE_PYTHON_ORACLE")]
+    [InlineData("", "", "echo \"" + NameResolutionDifferentialTests.StrideEnv + "=10\" >> \"$GITHUB_ENV\"\n" + SweepCommand, "assigns " + NameResolutionDifferentialTests.StrideEnv)]
+    [InlineData("", "env: { " + NameResolutionDifferentialTests.StrideEnv + ": \"10\" }", SweepCommand, "sets " + NameResolutionDifferentialTests.StrideEnv)]
+    [InlineData("env: { " + NameResolutionDifferentialTests.CacheEnv + ": c.json }", "", SweepCommand, "sets " + NameResolutionDifferentialTests.CacheEnv)]
+    public void StepDisarmedBy_NamesEachDisarmedSpelling(string jobLine, string stepLine, string run, string rule)
+    {
+        var step = Assert.Single(ExtractCompilerTestSteps(OneStepWorkflow(jobLine, stepLine, run)));
+
+        Assert.Contains(StepDisarmedBy(step), r => r.Contains(rule, StringComparison.Ordinal));
+    }
+
+    /// <summary>What the theory's rows differ from: this spelling is the workflow's own and no rule fires on it. An earlier
+    /// step's write to <c>$GITHUB_ENV</c> reaches the sweep step through the runner, so it counts for the job.</summary>
+    [Fact]
+    public void StepDisarmedBy_LeavesTheKnownSpellingAlone_AndReadsTheJobsOtherSteps()
+    {
+        var clean = Assert.Single(ExtractCompilerTestSteps(OneStepWorkflow("continue-on-error: false", "if: " + KnownCondition, SweepCommand)));
+        Assert.Empty(StepDisarmedBy(clean));
+        Assert.Equal(KnownCondition, clean.Arming.StepIf);
+
+        var other = OneStepWorkflow("", "", SweepCommand).Replace(
+            "    steps:\n",
+            "    steps:\n    - name: earlier\n      run: echo \"SHARPY_REQUIRE_PYTHON_ORACLE=0\" >> \"$GITHUB_ENV\"\n",
+            StringComparison.Ordinal);
+        var step = Assert.Single(ExtractCompilerTestSteps(other));
+        Assert.Contains(StepDisarmedBy(step), r => r.Contains("assigns SHARPY_REQUIRE_PYTHON_ORACLE", StringComparison.Ordinal));
+    }
+
+    private static string OneStepWorkflow(string jobLine, string stepLine, string run)
+        => "jobs:\n  j:\n"
+            + (jobLine.Length > 0 ? $"    {jobLine}\n" : "")
+            + "    steps:\n    - name: s\n"
+            + (stepLine.Length > 0 ? $"      {stepLine}\n" : "")
+            + "      run: |\n"
+            + string.Concat(run.Split('\n').Select(line => $"        {line}\n"));
+
+    /// <summary>The ways a selected step does not run its tests or cannot fail its job. A step's <c>if:</c> outside
+    /// <see cref="AllowedRunConditions"/> is one of them; so is a test command whose exit status the shell discards.</summary>
+    private static IEnumerable<string> StepDisarmedBy(ResolvedStep step)
+    {
+        var arming = step.Arming;
+        if (arming.StepContinueOnError is not (null or "false"))
+            yield return $"continue-on-error on the step is '{arming.StepContinueOnError}', so a failure leaves the job green";
+        if (arming.JobContinueOnError is not (null or "false"))
+            yield return $"continue-on-error on the job is '{arming.JobContinueOnError}', so a failure leaves the workflow green";
+        if (arming.StepIf != null && !AllowedRunConditions.Contains(arming.StepIf))
+            yield return $"if: on the step is '{arming.StepIf}', not one of the closed set, so the step may not run";
+        if (arming.JobIf != null && !AllowedRunConditions.Contains(arming.JobIf))
+            yield return $"if: on the job is '{arming.JobIf}', not one of the closed set, so the job may not run";
+
+        var outsideQuotes = DoubleQuoted.Replace(arming.TestCommand, "");
+        if (outsideQuotes.IndexOfAny(new[] { ';', '|', '&' }) >= 0)
+            yield return $"the test command's exit status is not the step's: '{arming.TestCommand.Trim()}'";
+        if (arming.Run.TrimEnd().Split('\n')[^1].Trim() != arming.TestCommand.Trim())
+            yield return "the test command is not the last line of run:, so another command decides the step";
+        if (arming.Run.Contains("||", StringComparison.Ordinal))
+            yield return "a || in run: discards an exit status";
+        if (DisarmedShell.IsMatch(arming.Run))
+            yield return "set +e in run: lets the shell go on past a failure";
+
+        foreach (var name in new[] { PythonInterpreter.RequireEnvironmentVariable, NameResolutionDifferentialTests.StrideEnv, NameResolutionDifferentialTests.CacheEnv })
+        {
+            var assigned = new Regex($@"(?<![A-Za-z0-9_]){name}\s*=|\bunset\s+{name}\b");
+            if (arming.JobRuns.Any(assigned.IsMatch))
+                yield return $"a run: in the job assigns {name}, which the workflow's env does not show";
+        }
+
+        foreach (var name in new[] { NameResolutionDifferentialTests.StrideEnv, NameResolutionDifferentialTests.CacheEnv })
+        {
+            if (step.Env.ContainsKey(name))
+                yield return $"the env sets {name}: a reduced or cached sweep is not the sweep";
+        }
+    }
+
+    /// <summary>
     /// The evaluator resolves the workflow's matrix/env spelling to a literal filter, and refuses
     /// (throws) what it cannot read rather than treating it as "selects nothing" or "selects all".
     /// </summary>
@@ -200,6 +336,23 @@ public partial class CiFilterCoverageConformanceTests
     /// <summary>The three pinned sweep steps; the shards that select a python twin come on top.</summary>
     private const int MinimumOracleSteps = 3;
 
+    /// <summary>The seven sweep steps and the three Compiler shards that select a python twin, measured when this fact was
+    /// written. A literal, so that a step list this fact stopped judging is red.</summary>
+    private const int MinimumJudgedSteps = 10;
+
+    /// <summary>The five steps of <c>sweeps-quick</c> carry a step-level <c>if:</c> today (measured). A literal, so that a
+    /// parser reading no <c>if:</c> is red.</summary>
+    private const int MinimumConditionedSteps = 5;
+
+    /// <summary>The closed set of <c>if:</c> a judged step or job may carry: the one spelling on them today. It runs the
+    /// step whenever the job is not cancelled and its build output unpacked, so an earlier sweep's red does not skip it.
+    /// </summary>
+    private static readonly HashSet<string> AllowedRunConditions = new(StringComparer.Ordinal) { KnownCondition };
+
+    private static readonly Regex DoubleQuoted = new(@"""[^""]*""");
+
+    private static readonly Regex DisarmedShell = new(@"\bset\s+\+\w*e|\bset\s+\+o\s+errexit\b");
+
     private static List<string> SweepTokens(IReadOnlyList<ResolvedStep> steps)
     {
         static IEnumerable<string> FqnTokens(string filter, FilterOp op) => Clauses(ParseFilter(filter))
@@ -216,8 +369,14 @@ public partial class CiFilterCoverageConformanceTests
     }
 
     /// <summary>One <c>dotnet test</c> of this assembly as CI runs it: a step per matrix value, its filter resolved to a
-    /// literal, and the env the step sees (workflow, then job, then step).</summary>
-    private sealed record ResolvedStep(string Name, string Filter, IReadOnlyDictionary<string, string> Env);
+    /// literal, the env the step sees (workflow, then job, then step), and what decides whether it can fail its job.</summary>
+    private sealed record ResolvedStep(string Name, string Filter, IReadOnlyDictionary<string, string> Env, StepArming Arming);
+
+    /// <summary>The step's <c>run:</c> and the test command's line in it, its and its job's <c>if:</c> and
+    /// <c>continue-on-error:</c>, and the <c>run:</c> of every step in the job.</summary>
+    private sealed record StepArming(
+        string Run, string TestCommand, string? StepIf, string? StepContinueOnError,
+        string? JobIf, string? JobContinueOnError, IReadOnlyList<string> JobRuns);
 
     private enum FilterOp { Equals, NotEquals, Contains, NotContains }
 
@@ -431,6 +590,10 @@ public partial class CiFilterCoverageConformanceTests
             var steps = Child<YamlSequenceNode>(job, "steps");
             if (steps == null)
                 continue;
+            var jobRuns = steps.Children
+                .Select(s => Child<YamlScalarNode>((YamlMappingNode)s, "run")?.Value)
+                .OfType<string>()
+                .ToList();
 
             foreach (var stepNode in steps.Children)
             {
@@ -456,7 +619,12 @@ public partial class CiFilterCoverageConformanceTests
                     foreach (var matrix in combinations)
                     {
                         var label = $"{jobKey}/{stepName}" + (matrix.Count == 0 ? "" : $" [{string.Join(", ", matrix.Select(m => $"{m.Key}={m.Value}"))}]");
-                        resolved.Add(new ResolvedStep(label, ResolveFilter(raw, matrix, stepEnv), stepEnv));
+                        var arming = new StepArming(
+                            run, line,
+                            Child<YamlScalarNode>(step, "if")?.Value, Child<YamlScalarNode>(step, "continue-on-error")?.Value,
+                            Child<YamlScalarNode>(job, "if")?.Value, Child<YamlScalarNode>(job, "continue-on-error")?.Value,
+                            jobRuns);
+                        resolved.Add(new ResolvedStep(label, ResolveFilter(raw, matrix, stepEnv), stepEnv, arming));
                     }
                 }
             }
