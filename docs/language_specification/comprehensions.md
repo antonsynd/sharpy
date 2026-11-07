@@ -176,7 +176,7 @@ results = [y * 2 for x in items if (y := expensive(x)) > 0]
 print(y)  # ERROR: 'y' does not exist in this scope
 ```
 
-**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy, the syntactic boundary (`[...]` / `{...}`) is the semantic boundary: nothing leaks. See [walrus_operator.md](walrus_operator.md) for more details.
+**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy, the syntactic boundary (`[...]` / `{...}`) is the semantic boundary: nothing leaks. A walrus that reuses a name already visible outside, with that name read after it, is refused rather than printing the outer value. See [walrus_operator.md](walrus_operator.md) for more details.
 
 **PEP 572 Prohibited Positions (SPY0704):**
 
@@ -191,7 +191,7 @@ r = [i := 0 for i in xs]      # error SPY0704: walrus rebinds 'i'
 ```
 
 A walrus in the **element** or **condition** position is accepted — it is local to the
-comprehension:
+comprehension, unless it reuses a visible outer name read after it (see above):
 
 ```python
 xs: list[int] = [1, 2, 3]

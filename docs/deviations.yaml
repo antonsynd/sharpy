@@ -449,7 +449,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Python 3.8+: walrus (`:=`) inside a comprehension binds in the *enclosing* scope and leaks out."
-    sharpy_behavior: "Walrus inside a comprehension is local to the comprehension. The syntactic boundary equals the semantic boundary. Where a visible outer name is read after it, the program is refused rather than printing the outer value."
+    sharpy_behavior: "Walrus inside a comprehension is local to the comprehension. The syntactic boundary equals the semantic boundary. Where a visible outer name is read after it, the program is refused rather than printing the outer value (SPY0600 today, the rule's own code lands with #2425; the row's SPY0200 is the name with no outer, as in the example)."
     spec_ref: docs/language_specification/walrus_operator.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null

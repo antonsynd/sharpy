@@ -99,7 +99,7 @@ def main() -> None:
     print(y)          # ERROR: 'y' does not exist in this scope
 ```
 
-**Note:** This differs from Python 3.8+, where walrus in comprehensions leaks to the outer scope. In Sharpy, the syntactic boundary equals the semantic boundary—comprehension delimiters (`[...]`, `{...}`) which fully contain all variables declared within.
+**Note:** This differs from Python 3.8+, where walrus in comprehensions leaks to the outer scope. In Sharpy, the syntactic boundary equals the semantic boundary—comprehension delimiters (`[...]`, `{...}`) which fully contain all variables declared within. A walrus that reuses a visible outer name read after it is refused; see [walrus_operator.md](walrus_operator.md).
 
 ### Example
 

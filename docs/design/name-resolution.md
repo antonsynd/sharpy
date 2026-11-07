@@ -170,7 +170,9 @@ def main() -> None:
    divergence of output.
 
 *Today:* the target is a fresh binding and the later read silently sees the outer value. Census @
-d2d5cbcab: 4 refused sites (2 `for`, 2 `with`). Implemented by #2425.
+d2d5cbcab: 4 refused sites (2 `for`, 2 `with`). Implemented by #2425. A comprehension's walrus today is
+SPY0600 over a module, parameter or enclosing outer read in its own body, runs over an outer in the same
+function (ruling open on #2427), and writes an outer with no read in that body (#2425).
 
 ### N6. Writing across a function boundary needs a declaration
 
