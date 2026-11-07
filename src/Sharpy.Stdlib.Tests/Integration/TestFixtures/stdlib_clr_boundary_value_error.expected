@@ -1,0 +1,12 @@
+date: day is out of range for month
+date month: month must be in 1..12
+date year: year 10000 is out of range
+time: hour must be in 0..23
+time microsecond: microsecond must be in 0..999999
+datetime: day is out of range for month
+datetime minute: minute must be in 0..59
+broadcast: operands could not be broadcast together with shapes (3,) (2,)
+reshape: cannot reshape array of size 4 into shape (3,2)
+zeros: negative dimensions are not allowed
+concatenate: all the input array dimensions except for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 3 and the array at index 1 has size 2
+clip: 2.0 2.0 2.0
