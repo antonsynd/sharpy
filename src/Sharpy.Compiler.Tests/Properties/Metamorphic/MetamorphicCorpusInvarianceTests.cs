@@ -43,7 +43,7 @@ public class MetamorphicCorpusInvarianceTests : IntegrationTestBase
 
     private const int ExecutionTimeoutMs = 20_000;
 
-    public MetamorphicCorpusInvarianceTests(ITestOutputHelper output) : base(output) { }
+    public MetamorphicCorpusInvarianceTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     [Fact]
     public void TransformedFixtures_PrintTheirFixturesExpectedOutput()

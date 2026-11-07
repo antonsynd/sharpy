@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Collection("PropertySerial")]
 public class TypeSoundnessPropertyTests : IntegrationTestBase
 {
-    public TypeSoundnessPropertyTests(ITestOutputHelper output) : base(output) { }
+    public TypeSoundnessPropertyTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     [Fact]
     public void TypedProgram_ExecutesWithoutRuntimeTypeErrors()

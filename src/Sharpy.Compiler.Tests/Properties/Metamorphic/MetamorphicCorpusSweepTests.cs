@@ -71,7 +71,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
         OutcomeDiagRegression, OutcomeIce, OutcomeCsLeak, OutcomeCrash,
     };
 
-    public MetamorphicCorpusSweepTests(ITestOutputHelper output) : base(output) { }
+    public MetamorphicCorpusSweepTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     [Fact]
     public void MetamorphicCorpusSweep_TransformedFixtures_CompileWithoutDiagnosticRegression()
