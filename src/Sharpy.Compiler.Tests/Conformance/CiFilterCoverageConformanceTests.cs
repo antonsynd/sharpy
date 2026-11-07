@@ -1,8 +1,5 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using YamlDotNet.RepresentationModel;
@@ -18,7 +15,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// workflow env before evaluation, and the shard-partition job's `--list-tests` runs are not
 /// counted as coverage.
 /// </summary>
-public class CiFilterCoverageConformanceTests
+public partial class CiFilterCoverageConformanceTests
 {
     private static readonly (string Predicate, string Rationale)[] Exemptions =
     {
@@ -104,10 +101,11 @@ public class CiFilterCoverageConformanceTests
     }
 
     /// <summary>
-    /// A skipped oracle guards nothing and leaves its job green, so every step that selects a class calling
-    /// <see cref="PythonInterpreter.RequireOrSkip(int)"/> must resolve <see cref="PythonInterpreter.RequireEnvironmentVariable"/>
-    /// to 1 from the workflow, job or step env. The three sweep classes are pinned: a scan that misses a direct caller
-    /// is red.
+    /// A skipped oracle guards nothing and leaves its job green, so every step that selects a class reaching the python
+    /// oracle (<see cref="ScanPythonOracleClasses"/>) must resolve <see cref="PythonInterpreter.RequireEnvironmentVariable"/>
+    /// to 1 from the workflow, job or step env. The three sweep classes are pinned, so a scan that misses a direct caller
+    /// is red, and so are two classes it must not name: one reads a repo file through <see cref="PythonInterpreter"/> and
+    /// one calls the other gate, <c>TestPreconditions.RequireOrSkip</c>.
     /// </summary>
     [Fact]
     public void EveryPythonOracleTest_RunsWithTheOracleRequired()
@@ -121,6 +119,8 @@ public class CiFilterCoverageConformanceTests
         Assert.Contains("Sharpy.Compiler.Tests.Properties.Differential.DifferentialExecutionTests", oracleClasses);
         Assert.Contains("Sharpy.Compiler.Tests.Properties.Differential.FormatSpecDifferentialTests", oracleClasses);
         Assert.Contains("Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests", oracleClasses);
+        Assert.DoesNotContain("Sharpy.Compiler.Tests.Conformance.PythonOracleSkipCensusTests", oracleClasses);
+        Assert.DoesNotContain("Sharpy.Compiler.Tests.RuntimeClosureResolverTests", oracleClasses);
 
         var judged = 0;
         var wrong = new List<string>();
@@ -213,56 +213,6 @@ public class CiFilterCoverageConformanceTests
             .Concat(sweepSteps.SelectMany(s => FqnTokens(s.Filter, FilterOp.Contains)))
             .Distinct(StringComparer.Ordinal)
             .ToList();
-    }
-
-    /// <summary>
-    /// The test classes that call <c>PythonInterpreter.RequireOrSkip</c>, in the shape of
-    /// <c>PythonOracleSkipCensusTests.Scan</c>: a call inside a lambda runs under the lambda's caller, and a call in a
-    /// helper of a test class counts for that class. <c>TestPreconditions.RequireOrSkip</c> is a different gate.
-    /// <c>Unattributed</c> holds the calls in a class with no tests of its own or around it.
-    /// </summary>
-    private static (List<string> Classes, List<string> Unattributed) ScanPythonOracleClasses(IReadOnlyList<TestInfo> tests)
-    {
-        var classes = new HashSet<string>(StringComparer.Ordinal);
-        var unattributed = new List<string>();
-        var projectDir = Path.Combine(FindRepoRoot(), "src", "Sharpy.Compiler.Tests");
-        foreach (var path in Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories))
-        {
-            var parts = Path.GetRelativePath(projectDir, path).Split(Path.DirectorySeparatorChar);
-            if (parts.Contains("bin") || parts.Contains("obj") || parts.Contains("TestFixtures") || parts.Contains("TestResults"))
-                continue;
-
-            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path).GetRoot();
-            foreach (var call in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
-            {
-                var isOracleGate = call.Expression is MemberAccessExpressionSyntax
-                {
-                    Name.Identifier.ValueText: "RequireOrSkip",
-                    Expression: IdentifierNameSyntax { Identifier.ValueText: nameof(PythonInterpreter) },
-                };
-                if (!isOracleGate || call.Ancestors().Any(a => a is AnonymousFunctionExpressionSyntax))
-                    continue;
-
-                var owner = EnclosingClassNames(call)
-                    .FirstOrDefault(c => tests.Any(t => t.Fqn.StartsWith(c + ".", StringComparison.Ordinal)));
-                if (owner != null)
-                    classes.Add(owner);
-                else
-                    unattributed.Add($"{path}:{call.GetLocation().GetLineSpan().StartLinePosition.Line + 1}");
-            }
-        }
-
-        return (classes.OrderBy(c => c, StringComparer.Ordinal).ToList(), unattributed);
-    }
-
-    /// <summary>The qualified name of each class around <paramref name="node"/>, innermost first, spelled as
-    /// <see cref="ReflectTests"/> spells them.</summary>
-    private static IEnumerable<string> EnclosingClassNames(SyntaxNode node)
-    {
-        var classes = node.Ancestors().OfType<ClassDeclarationSyntax>().Select(c => c.Identifier.ValueText).ToList();
-        var ns = string.Join('.', node.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().Reverse().Select(n => n.Name.ToString()));
-        for (var i = 0; i < classes.Count; i++)
-            yield return string.Join('.', classes.Skip(i).Reverse().Prepend(ns));
     }
 
     /// <summary>One <c>dotnet test</c> of this assembly as CI runs it: a step per matrix value, its filter resolved to a
