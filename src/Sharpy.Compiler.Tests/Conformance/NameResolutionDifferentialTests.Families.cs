@@ -1333,10 +1333,40 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
+    /// <summary>The other direction of <see cref="DeviationAxesHold"/>: the row a cell's axes require, whichever arm it is on. R-LB gives every block family its row, and a
+    /// must-refuse cell keeps python's different answer on the ledger as much as a must-run one. Null for a cell the axes give no row, and then only the forward check reads it.</summary>
+    internal static string? RequiredDeviation(NameCell c)
+    {
+        if (c.Family == Family.Seed)
+            return SeedDeviations.GetValueOrDefault(c.Id["seed/".Length..]);
+        if (c.Family == Family.Store)
+            return c.Form == StoreForm.Walrus && c.Position == ReadPosition.ComprehensionElement ? "walrus-in-comprehension-scope" : null;
+        if (c.Family != Family.Local)
+            return null;
+        if (c.Id.StartsWith("local/closure-in-", StringComparison.Ordinal))
+            return "loop-variable-fresh-per-iteration";
+        if (c.Outer == BindingKind.None && c.Id.Contains("/after-block/", StringComparison.Ordinal))
+            return c.Construct switch
+            {
+                LocalTarget.For => "block-scoping-for-loop-variable",
+                LocalTarget.WithAs => "block-scoping-with",
+                _ => null,
+            };
+        return LocalKinds.Contains(c.Target)
+            ? BlockShapes.FirstOrDefault(b => c.Id.Contains($"/let-in/{b.Family}/", StringComparison.Ordinal))?.Row
+            : null;
+    }
+
+    internal static IEnumerable<string> RequiredDeviationFailures(IEnumerable<NameCell> pool)
+        => pool.Where(c => RequiredDeviation(c) is string row && c.Deviation != row)
+            .Select(c => $"DeviationAxes: {c.Id} ({c.Tag}) sits on the axes of {RequiredDeviation(c)} and carries {c.Deviation ?? "no row"}");
+
     private static IEnumerable<string> ClosedSetFailures(IReadOnlyList<NameCell> pool)
     {
         foreach (var c in pool.Where(c => c.Deviation != null && !DeviationAxesHold(c)).Take(20))
             yield return $"DeviationAxes: {c.Id} cites {c.Deviation} and its axes are not that row's";
+        foreach (var failure in RequiredDeviationFailures(pool).Take(20))
+            yield return failure;
 
         foreach (var failure in RuleAxesFailures(pool))
             yield return failure;

@@ -492,6 +492,48 @@ public partial class NameResolutionDifferentialTests
         Assert.True(DeviationAxesHold(cell with { Id = "seed/D15" }));
     }
 
+    /// <summary>R-LB's other direction: the axes that give a cell a row require it on both arms. A must-refuse cell's row is read by nothing else, because a refusal never compares a stdout.</summary>
+    [Fact]
+    public void Deviation_TheAxesRequireTheirRow_OnBothArms()
+    {
+        var pool = GeneratedCells();
+        Assert.Empty(RequiredDeviationFailures(pool));
+
+        // Measured literals, seeds included: a generator that stopped generating a row's axes would otherwise pass an emptier check.
+        var required = pool.Where(c => RequiredDeviation(c) != null).GroupBy(c => RequiredDeviation(c)!, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => (g.Key, g.Count(c => c.Tag == SharpyTag.MustRefuse), g.Count(c => c.Tag == SharpyTag.MustRun))).ToList();
+        Assert.Equal(
+            new[]
+            {
+                ("block-scoping-for", 14, 14),
+                ("block-scoping-for-loop-variable", 3, 0),
+                ("block-scoping-if", 21, 34),
+                ("block-scoping-match", 7, 7),
+                ("block-scoping-try-except", 28, 28),
+                ("block-scoping-while", 14, 14),
+                ("block-scoping-with", 10, 7),
+                ("loop-variable-fresh-per-iteration", 0, 80),
+                ("walrus-in-comprehension-scope", 44, 0),
+            },
+            required);
+
+        // The control: each shape of the axes, its row taken away, on the must-refuse arm and the must-run one.
+        foreach (var id in new[]
+        {
+            "local/let-in/try-else/LocalDef/outer=None/FunctionBody",
+            "local/let-in/if-then/outer=ModuleVar/FunctionBody",
+            "local/For/after-block/outer=None/MethodBody",
+            "local/closure-in-loop/FunctionBody",
+            "store/walrus-in-comprehension/outer=None/FunctionBody",
+            "seed/D15",
+        })
+        {
+            var cell = pool.Single(c => c.Id == id);
+            Assert.Empty(RequiredDeviationFailures(new[] { cell }));
+            Assert.Contains("carries no row", Assert.Single(RequiredDeviationFailures(new[] { cell with { Deviation = null } })), StringComparison.Ordinal);
+        }
+    }
+
     /// <summary>The generator's output is pinned, compiler-independent: a dropped axis or a retagged arm moves a count here even when
     /// no allowlist row notices. A drain plan never touches this table, because a verdict moving changes no tag.</summary>
     [Fact]
