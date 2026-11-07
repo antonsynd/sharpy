@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -16,7 +17,23 @@ namespace Sharpy.Compiler.Project;
 /// (<see cref="IncrementalCompilationCache.ProjectFactsOf"/>). A cache written before this field
 /// existed deserializes it as null, which never equals a computed value, so it invalidates once.
 /// </param>
-internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes, string? ProjectFacts = null);
+/// <param name="EmittedAssembly">
+/// The assembly the last successful build wrote (<see cref="EmittedAssemblyRecord"/>), so a warm build
+/// whose Phase 7 inputs are unchanged can skip IL emission. Null in a cache written before the field
+/// existed, which only means the next build emits.
+/// </param>
+internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes, string? ProjectFacts = null,
+    EmittedAssemblyRecord? EmittedAssembly = null);
+
+/// <summary>
+/// What Phase 7 of the last successful build consumed and produced (#2114). <see cref="EmissionKey"/>
+/// is every Phase 7 input the facts key does not already hold
+/// (<see cref="IncrementalCompilationCache.EmissionKeyOf"/>); <see cref="Outputs"/> is the identity of
+/// each file Phase 7 wrote, as it wrote them (<see cref="IncrementalCompilationCache.OutputIdentityOf"/>);
+/// <see cref="Diagnostics"/> is what Phase 7 reported, policy-free like every cached diagnostic (#1553),
+/// so a skipped Phase 7 can replay it.
+/// </summary>
+internal record EmittedAssemblyRecord(string EmissionKey, string Outputs, List<CachedDiagnostic>? Diagnostics);
 
 /// <summary>
 /// Versioned envelope for the symbol cache to handle schema evolution.
@@ -165,6 +182,12 @@ internal class IncrementalCompilationCache
     private readonly ICompilerLogger _logger;
     private Dictionary<string, string> _fileHashes;
     private Dictionary<string, FileCacheEntry>? _fileCache;
+
+    /// <summary>
+    /// The last successful build's Phase 7 record, loaded with the hash cache and only when the
+    /// compiler version and the project facts still match (it is invalidated with them).
+    /// </summary>
+    private EmittedAssemblyRecord? _emittedAssembly;
 
     /// <summary>
     /// Generator outputs cached via <see cref="CacheGeneratorOutput"/> before the
@@ -322,6 +345,83 @@ internal class IncrementalCompilationCache
     }
 
     /// <summary>
+    /// Every Phase 7 input that is not already in the facts key (<see cref="ProjectFactsOf"/>): the C#
+    /// handed to Roslyn, by content, which covers every source, generator and cache-served unit at
+    /// once; the assembly name, the output path and the exe's entry type; and the runtime the
+    /// references and the runtime config come from (the framework version, the corlib and Sharpy.Core
+    /// the compiler runs against). With the facts, the compiler version and these unchanged, Roslyn
+    /// would be handed the same compilation, so the assembly it emitted last time is still the answer.
+    /// </summary>
+    internal static string EmissionKeyOf(
+        ProjectConfig config, IReadOnlyDictionary<string, string> csharpSources, string? entryTypeName)
+    {
+        using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var (path, text) in csharpSources.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            sha.AppendData(Encoding.UTF8.GetBytes(path));
+            sha.AppendData(new byte[] { 0 });
+            sha.AppendData(Encoding.UTF8.GetBytes(text));
+            sha.AppendData(new byte[] { 0 });
+        }
+
+        return string.Join("\n",
+            "csharp=" + Convert.ToHexStringLower(sha.GetHashAndReset()),
+            "assembly-name=" + (config.AssemblyName ?? config.RootNamespace),
+            "output-path=" + PathNormalizer.Normalize(Path.GetFullPath(config.OutputAssemblyPath)),
+            "entry-type=" + (entryTypeName ?? string.Empty),
+            "runtime=" + Environment.Version,
+            "corlib=" + FileIdentity(typeof(object).Assembly.Location),
+            "sharpy-core=" + FileIdentity(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
+    }
+
+    /// <summary>
+    /// The identity of every file Phase 7 writes beside the assembly — the assembly, its pdb, its
+    /// runtime config, its deps file and a test project's scaffold — present or absent. A skip leaves
+    /// these files as they are, so it is only sound while they are the ones the recorded build wrote.
+    /// </summary>
+    internal static string OutputIdentityOf(ProjectConfig config)
+    {
+        var assembly = Path.GetFullPath(config.OutputAssemblyPath);
+        var scaffold = Path.Combine(Path.GetDirectoryName(assembly) ?? string.Empty,
+            Path.GetFileNameWithoutExtension(assembly) + ".csproj");
+        return string.Join("\n", new[]
+        {
+            assembly,
+            Path.ChangeExtension(assembly, ".pdb"),
+            Path.ChangeExtension(assembly, ".runtimeconfig.json"),
+            Path.ChangeExtension(assembly, ".deps.json"),
+            scaffold,
+        }.Select(path => File.Exists(path) ? FileIdentity(path) : path + ":absent"));
+    }
+
+    /// <summary>
+    /// The diagnostics to replay when the last successful build's assembly is still the one this build
+    /// would emit: the emission key matches and every output file is the one that build wrote. Null
+    /// when Phase 7 has to run.
+    /// </summary>
+    public IReadOnlyList<CachedDiagnostic>? UpToDateAssemblyDiagnostics(string emissionKey, ProjectConfig config)
+    {
+        if (_emittedAssembly is not { } record
+            || !string.Equals(record.EmissionKey, emissionKey, StringComparison.Ordinal)
+            || !string.Equals(record.Outputs, OutputIdentityOf(config), StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return record.Diagnostics ?? (IReadOnlyList<CachedDiagnostic>)Array.Empty<CachedDiagnostic>();
+    }
+
+    /// <summary>
+    /// Records the assembly Phase 7 just wrote, after it wrote every output file. Persisted with the
+    /// hash cache by <see cref="SaveCache"/>, which only a successful build reaches.
+    /// </summary>
+    public void RecordEmittedAssembly(string emissionKey, ProjectConfig config, List<CachedDiagnostic>? diagnostics)
+    {
+        _emittedAssembly = new EmittedAssemblyRecord(
+            emissionKey, OutputIdentityOf(config), diagnostics is { Count: > 0 } ? diagnostics : null);
+    }
+
+    /// <summary>
     /// Computes the SHA-256 hash of a file's contents.
     /// </summary>
     public static string ComputeFileHash(string filePath)
@@ -436,7 +536,7 @@ internal class IncrementalCompilationCache
     {
         try
         {
-            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes, _projectFacts);
+            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes, _projectFacts, _emittedAssembly);
             var json = JsonSerializer.Serialize(metadata, s_jsonOptions);
 
             var directory = Path.GetDirectoryName(_cacheFilePath);
@@ -464,6 +564,7 @@ internal class IncrementalCompilationCache
     {
         _fileHashes.Clear();
         _fileCache?.Clear();
+        _emittedAssembly = null;
         _pendingGeneratorOutputs?.Clear();
 
         DeleteFileIfExists(_cacheFilePath);
@@ -814,6 +915,7 @@ internal class IncrementalCompilationCache
 
     private Dictionary<string, string> LoadHashCache()
     {
+        _emittedAssembly = null;
         if (!File.Exists(_cacheFilePath))
         {
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -841,6 +943,8 @@ internal class IncrementalCompilationCache
                         + "); invalidating cache");
                     return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
+
+                _emittedAssembly = metadata.EmittedAssembly;
 
                 // Convert to case-insensitive dictionary
                 var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
