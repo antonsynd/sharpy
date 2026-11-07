@@ -3,6 +3,7 @@
 > **For:** a Fable orchestrator session that coordinates Opus subagents (each may spawn its own for verification).
 > **From:** the health-check session (`docs/audits/health-check-2026-11-06.md`), which also filed #2443 and placed it in the charter as P82.
 > **Revision 2, 2026-11-07 @ 1fa2340f7**, after a read-only smoke run of revision 1 by three Opus agents (§11). Revision 1 was written at ee9a007a1; five of its items landed the same day and PR #2455 changed the gate, so its §2, its gate text and 11 of its 14 scorecard rows were stale or unmeasurable. This revision records what landed, builds on #2455, and makes every metric one command.
+> **Revision 3, 2026-11-07 @ 18a11bbb7:** #2453 merged, `dev` and `mainline` synced, D9 ruled, P77b's close-out (T12) assigned here (§4), the `gh api` comment form corrected (§3), rules that lived only in the owner's machine-local memory moved to §8, kickoff updated (§9). Everything else is revision 2's text, so its "Now" column is @ 1fa2340f7; §5.1 has the newer reading.
 > **Authority:** owner rulings in the charter §4 and on #2443 are binding and are not re-asked. For Wave 0 the only ruling that matters is R-LK; find it with `grep -n '^| R-LK' docs/process/rounds/remediation-round-2026-09-20-batching.md`. Everything that needs a new ruling is in §7 and waits.
 > **This is not a plan and not a charter.** It says what to do first, how to tell whether it is working, and when to stop.
 
@@ -40,7 +41,7 @@ Everything revision 1 listed as an owner task card has landed on `dev` and `main
 | Step zero (merge the audit branch) | c9c076112, 6f13a627d | done |
 | CI as the default gate | #2455 (1fa2340f7) | `/ci-gate`; every PR runs the full gate whatever its base; concurrency groups; `workflow_dispatch` |
 
-Still in flight: **#2453** (P77b, base `dev`; a `/verify-implementation` session may change it). When it lands: the name-resolution allowlist grows from 1,408 to 2,595 rows by design, its plan `plan-3eba57` is the first committed plan under `docs/process/plans/`, and the #2438 OOM fix returns (it was merged in #2444 and reverted in #2446, so **#2438 is closed but its fix is not on `dev` today**).
+Nothing was in flight at revision 3: no PR was open and W0.2–W0.4 were unclaimed. **#2453** (P77b) merged as 87ac3853e, and `dev` and `mainline` were synced at 18a11bbb7. The name-resolution allowlist is 2,595 rows by design. `plan-3eba57` and 62 older plans are under `docs/process/plans/` (D9). The #2438 OOM fix came back with #2453, and #2438 is **open** until T12 closes it (§4).
 
 Re-check before claiming anything:
 
@@ -48,7 +49,7 @@ Re-check before claiming anything:
 git fetch origin --prune
 git log --oneline --no-merges origin/dev --since=2026-11-06 | head -40
 git branch -r --no-merged origin/dev
-gh api -X GET "repos/antonsynd/sharpy/pulls?state=all&sort=updated&per_page=10" --jq '.[] | [.number, .state, .head.ref, .title] | @tsv'
+gh api -X GET "repos/antonsynd/sharpy/pulls?state=all&sort=updated&direction=desc&per_page=10" --jq '.[] | [.number, .state, .head.ref, .title] | @tsv'
 gh api -X GET "repos/antonsynd/sharpy/issues/2443/comments" --jq '.[] | .created_at + " " + (.body | split("\n")[0])'
 ```
 
@@ -67,7 +68,7 @@ These are the project's existing rules, restated because each has been violated 
 
   Commit lead work in small slices and re-check `git diff --stat` after each worker wave.
 - **The gate.** `/ci-gate` on the pushed branch tip (CLAUDE.md "Commit gate"; contract §6). The local fallback is `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`, only when `/ci-gate` exits 3 or for what CI does not cover. **One gate** = one `passed/failed/skipped @ sha` line cited in a commit body or recap, by CI run id or local log. Automatic PR runs are evidence but are not counted as gates spent.
-- **Cloud container.** If `dotnet --version` fails: `dotnet-install.sh --channel 10.0 --install-dir /root/.dotnet` and `export DOTNET_ROOT=/root/.dotnet`. `gh issue`/`gh pr` return 403; read with `gh api -X GET …` and write with `gh api -X POST repos/antonsynd/sharpy/issues/N/comments -f body=@file.md`. `gh api --paginate` is refused by the proxy; page with `&page=N`.
+- **Cloud container.** If `dotnet --version` fails: `dotnet-install.sh --channel 10.0 --install-dir /root/.dotnet` and `export DOTNET_ROOT=/root/.dotnet`. `gh issue`/`gh pr` return 403; read with `gh api -X GET …` and write with `gh api -X POST repos/antonsynd/sharpy/issues/N/comments -F body=@file.md` (capital `-F`: `-f` posts the literal text `@file.md`). `gh api --paginate` is refused by the proxy; page with `&page=N`. **Not verified from a container:** `/ci-gate` calls `gh workflow run` and `gh run view`. If they are refused it exits 3, and the local fallback is forbidden under 16 GB, so cite the PR's automatic run instead (§9).
 - **Rule 1 and Rule 12.** Never change an expected value to pass. Every new guard is mutation-tested (break → red, restore → green) and the record goes in the commit body. A guard with a SKIP path asserts that the SKIP path is not what ran.
 - **Python first.** `python3 -c "..."` before implementing any Python semantics (Rule 6). Oracle is 3.12 in CI, 3.13 locally; say which you used (D6).
 - **Class, not cell.** A bug found while working is a comment on its class tracker or one class issue with a cell table, labeled `lane:*` + `reach:*`. Workers append to a findings ledger in the lead's scratchpad; the lead files once per wave, and the ledger is flushed to issues at wave end so nothing another session needs stays in a scratchpad.
@@ -91,6 +92,20 @@ No emitted C# changes in this wave. W0.2–W0.4 share one `/ci-gate` run at the 
 | W0.3 | **Logs and orphans.** Unique log path per wrapper invocation, printed on stdout and also written to a fixed pointer file the backgrounding skills can read (`.claude/tmp/dotnet-serialized-latest.path`); skills read the path, never a slot name; a waiter kills an orphaned child whose holder PID is dead and whose log is silent past `STALL_SECONDS`; `/gap-analysis` gets the console logger. Retention: the wrapper deletes logs older than 7 days under `.claude/tmp/` only. | 2 | OPEN | two concurrent `/run-tests` do not clobber; a killed holder's child is reaped | `build_tools/tests/test_dotnet_serialized_lock.py` gains both cases, each mutation-recorded | S |
 | W0.4 | **CI hygiene.** Nightly checks out `mainline` and prints the soaked SHA in the job summary; `timeout-minutes` and `--blame-hang-timeout 10m` on every test job; NuGet cache; split Compiler shard 5 (16 min median against 3–6 for the others) and merge shards 1 and 6 to stay under the 20-job cap; the spec-block, allowlist-state and allocation gates run on `mainline` pushes too; `shard-partition` warns when max/median shard time exceeds 2; a job runs `.claude/hooks/test-hooks.sh`. (Concurrency groups landed with #2455; strike that bullet.) R-IX owns the shard-5 cost cut as a charter item; the split here is the mechanical half and is recorded on R-IX's issue. | 2 | PARTIAL | the nightly job summary cites a `mainline` SHA; every test job has both timeouts; `test-hooks.sh` runs in CI. The wall-clock targets (median ≤ 12 min, slowest shard ≤ 8 min) are **measured over the next 20 push runs and reported in the Wave-1 recap**, not checked inside this wave | `shard-partition`, `CiFilterCoverageConformanceTests`; one dispatched nightly run if the lead has dispatch rights, otherwise the next scheduled run | M |
 | W0.5 | **Band half of #2443.** | 1 | LANDED 70608d421 | review only: `SemanticInfoFreezeTests` and `SemanticInfoMergeConformanceTests` green @ HEAD; the equal-value tolerance is D12, not a defect | — | — |
+
+### P77b close-out (T12): run it once, right after the baseline scorecard
+
+This is not a Wave 0 item. It is the last unchecked line of `docs/process/plans/plan-3eba57.md`, unblocked by #2453's merge; the owner assigned it here on 2026-11-07. It changes no code. Report its filed and closed counts apart from Wave 0's in the recap. The plan's "Issues to Close", Acceptance 10 and Implementation Verification Record are the terms; what follows is what they do not say.
+
+1. **Check first.** No row may cite the issues being closed: `git grep -E '#(2433|2438)([^0-9]|$)' -- src build_tools .github`, with `#2423` as the positive control. `\b` in `git grep -E` matched nothing on the owner's Mac, so that spelling is not a valid check, and this check has not been run at revision 3. Confirm `MuteCompilePath` is on `origin/dev`. If either check fails, stop and report.
+2. **Drain-set comments.** Go by what `src/Sharpy.Compiler.Tests/Conformance/name-resolution-differential-allowlist.txt` cites, not the plan's list. Rows per cite @ feaadc8d0: #2423 1154, #2425 359, #1925 291, #2397 207, #2422 176, #2424 139, #2147 128, #2151 33, #2432 29, #2435 20, #2434 12, #2111 10, #2412 9, #2249 9, #2417 6, #2398 6, #2420 3, #1974 3, #2439 1. The plan names #2150, which now has no row, and omits #2111 and #2439. A GitHub comment is capped at 65,536 characters, so #2423's list probably needs more than one. Comments from the reverted attempt already sit on some of these trackers, so say that this one supersedes them.
+3. **Two more comments the plan owes:** the D7 rows on #2426, and the two unruled shapes `global-creates-binding` and `same-block-redeclaration-after-closure` on #2427.
+4. **D9 on #2425 and #2427.** Post the plan's D9 (owner's option A, rule `S2-walrus`) on both, and say that the 2026-11-07 ruling on #2427 narrows it for a binding of the same function. A filtered search found no D9 comment dated 2026-11-06 on either issue.
+5. **One new class issue** (owner, 2026-11-07), labels `lane:tooling`, `reach:probe`, `class-tracker`: a cell table on top, then the residue moved from the comments of 2026-11-07T07:13 on #2433 and #2438 (guard limits, nine hand arrays, refuted Outs, axes with no cell, walrus at an initializer, not-reached list, the 243 rows, the ceiling's reach, message sites with no guard). Copy the text rather than rewriting it, and link it both ways. Walrus at an initializer is lane `ice`; say so in its cell. The next `/batch-issues` places the issue.
+6. **Close #2433** with Acceptance 1–9's evidence, the report path and counts (83727/0/9 @ c976ba05b, run 42350273916; pool 8889, allowlist 2595). The report path was not looked up at this revision. **Close #2438** on Acceptance 8 (largest result 918,768 @ c976ba05b).
+7. **Finish:** run `bash build_tools/check_allowlist_issue_state.sh`, tick T12 in the plan, and commit that with `[skip ci]`.
+
+**Do not read** #2444, #2446 or branch `remote/p77b-implement-plan`: the owner compares the two attempts independently. When reading the trackers, filter comments with `select((.body|test("#2444|#2446|remote/p77b"))|not)`. **Do not rule on** what the owner left open: a walrus over a `let`, whether `nonlocal` gets the `global` refusal, and #2397's three new cells. Those wait for `/batch-issues`, with the five rulings already on the issues.
 
 ### Wave 1 — live silent-wrong bugs
 
@@ -141,6 +156,8 @@ One command, run from the repo root with `gh` and the network (`dangerouslyDisab
 
 It prints every row below with the HEAD sha and how it was measured. Baseline is the audit @ ee9a007a1; "now" is this revision @ 1fa2340f7, which already includes the five landed cards. The direction column is what matters; two metrics moving the wrong way in one wave is a stop rule.
 
+**Reading at revision 3, @ feaadc8d0, with P77b in:** 287 open; 77 SPY0908/CS; allowlist 3,234 total, 639 outside seed-plan harnesses; 41 distinct cites; pin 88 / 88; test ÷ compiler LOC **1.78**; procedure 144,617 and CLAUDE.md 19,360; 63 committed plans; 8 of 8 CLAUDE.md commands blocked. Judge Wave 0 against its own start reading, because the rise from 1.75 to 1.78 predates it. `--base` is `origin/dev` at session start: 1fa2340f7 would count all of P77b as the wave's commits.
+
 | Metric | Baseline @ ee9a007 | Now @ 1fa2340f7 | Direction | Notes |
 |---|---|---|---|---|
 | Open issues; closed ÷ filed in the wave | 284; Oct 113 ÷ 211 | 286; 2 ÷ 5 since 11-06 | closed ≥ filed | class fixes close several at once; a wave that only files has failed |
@@ -178,7 +195,7 @@ Cruft: 1 #NNNN or audit §A1 · 2 −N lines/rows/bytes, or guard-for-silent-beh
 
 Stop the wave, write the recap, and hand the decision to the owner when any of these holds:
 
-- The scorecard moves the wrong way on two metrics in one wave, or allowlist rows outside seed-plan harnesses or procedure bytes rise in any wave. A seed-plan harness is one whose committed plan (`docs/process/plans/`) says it adds rows; P77b is the only one today.
+- The scorecard moves the wrong way on two metrics in one wave, or allowlist rows outside seed-plan harnesses or procedure bytes rise in any wave. A seed-plan harness is one listed in `SEED_PLAN_FILES` in `.claude/scripts/scorecard`; P77b is the only one today. The older plans committed under D9 do not extend that list, whatever they say about rows.
 - An item has two gate citations and is not done.
 - A worker proposes a new `SemanticInfo` dictionary (the pin reds), a hand matrix (contract §11: ≥2 axes × ≥3 values written out by hand), or an allowlist file not named in §4.
 - A guard's mutation test does not go red.
@@ -226,7 +243,7 @@ Open doors the orchestrator must not walk through on its own. Each has a default
 | D6 | Python oracle: pin 3.12 (CI) or 3.13 (owner machine, #2350's measurements) in one file | 3.12 | two-way |
 | D7 | `dict.get` returns `Optional<V>` (today) or `V?` (spec `collection_types.md:41`) | unchanged; fix the spec text to match or mark pending | one-way for callers |
 | D8 | File the audit's remaining untracked items now (W1.2, W1.4 class issue, the tooling class issue for W0.2–W0.4, L7's `isalnum`, dead `src/test_discovery.cs`, hand-written plans under `docs/stdlib/`) or at the next batching call? | file the class issues the waves need (W0 tooling, W1.2, W1.4) when their first commit is ready; the rest at the next call | two-way |
-| D9 | Historical plans and the 2026-08-30 charter: commit under `docs/process/` or leave machine-local | leave; only the current charter is committed | two-way |
+| D9 | **Ruled 2026-11-07, option B:** 62 older plans and the 2026-08-30 charter are committed under `docs/process/` as they stood (feaadc8d0); they carry no stamp and may include drafts. The current charter's 22 per-call backups stayed machine-local, so the evidence condensation removed is not in the repo. | done; `/batch-issues` records it | one-way in practice: the repo is public, so deleted files stay in history |
 | D10 | **Record:** #2455 added the `/ci-gate` skill and script (4.4 KB of procedure, 290-line script, 674-line test) against §1's "no new skill". Net-zero argument: it ends do-not-merge PRs (one was merged by accident and reverted) and turns a ~1 h local gate into ~20 min of CI. Accept as recorded, or ask for the skill to fold into `/push`? | accepted as recorded | two-way |
 | D11 | **Record:** this revision adds `.claude/scripts/scorecard` (one script, no skill, no document). Net-zero argument: it replaces the 14 prose "how to measure" cells, 11 of which could not be followed, and the smoke agents spent ~150 k tokens re-deriving them. Keep, or inline the commands in §5.1? | keep | two-way |
 | D12 | W0.5 landed `MergeFrom` as **equal-value tolerant** (a key in both operands passes when the values are equal; #2443 item 4 permits it) rather than strictly disjoint as the issue title and charter row 0 say. Accept as the item-4 design and reword the title and row, or open a P82 cell to measure whether any per-file infos actually share keys and tighten to disjoint? | accept; reword at the next `/batch-issues` | one-way once P82 tranches rely on the tolerance |
@@ -235,7 +252,16 @@ Open doors the orchestrator must not walk through on its own. Each has a default
 
 ## 8. Known hazards
 
-- **#2438 is closed but its fix is not on `dev`.** vstest can OOM on the result send, so a passing local run prints "Test Run Failed" with 0 failed rows. The fix (a per-test output ceiling and a compile-output mute) was merged in #2444 and reverted in #2446; it returns with #2453. Until then, count the Failed rows in a local log; exit 1 alone is not a failure. CI gates are unaffected: `ci-summary` counts from `.trx`.
+- **The #2438 ceiling binds `IntegrationTestBase` subclasses only.** vstest can OOM on the result send, so a passing local run can print "Test Run Failed" with 0 failed rows. The fix came back with #2453, but the two largest results sit outside the base class (#2438's comment of 2026-11-07). In a local log, count the Failed rows; exit 1 alone is not a failure. CI gates are unaffected: `ci-summary` counts from `.trx`.
+- **Rules that lived only in the owner's machine-local memory, which a cloud session does not have:**
+  - `close`, `fix` or `resolve` in any form directly before `#N` in a commit message closes that issue when the commit reaches `mainline`, even after a negation or with a colon ("not fixed: #2036" closed #2036). A wrongly closed issue reddens the allowlist gate and every `TODO(#N)`. Comments and issue bodies do not trigger this.
+  - Agent `isolation: "worktree"` bases on `origin/mainline`, not `dev`; switch to the dev sha and cherry-pick back.
+  - In a mutation run, restore with `shutil.copy` plus a `touch`, never `copy2`: the kept mtime makes incremental builds skip the restored file and reports a false green.
+  - An `if (false)` mutation fails the build (CS0162), which proves nothing about the guard. Use `if (x.Length < 0)` and check the build's exit code.
+  - Subagent results truncate near 6k characters; have workers write reports to a file.
+  - Worker summaries need repo-relative paths, and a worker's "no route" claim from a grep needs a run.
+- **`test-hooks.sh` read 60 passed, 1 failed on the owner's Mac @ feaadc8d0**, against the 61/0/0 in §2 and §4. The failing case is `cs: dotnet format run from the file's project dir with a relative --include`. The cause was not investigated. Run it in the container; if it is red there too, that is a W0.1 finding for the ledger.
+- **`scorecard` uses GNU `date -d`.** On macOS the CI-wall row crashes and the nightly row may too. Linux containers should be unaffected; this was not run on one.
 - The stall watchdog and the console logger are coupled (#2257) on the **local fallback** only. Omit the logger and a green local gate looks like a stall.
 - The `-latest.log` symlink can point at a peer's run until W0.3 lands. Read the path the wrapper printed.
 - A `sharpyc` binary older than HEAD reproduces fixed bugs (the dict fix and the freeze landed after the audit's build). Build once before probing.
@@ -249,14 +275,22 @@ Open doors the orchestrator must not walk through on its own. Each has a default
 
 ## 9. Kickoff prompt for the orchestrator session
 
+Next steps, in order: §2 re-check → baseline scorecard → P77b close-out (§4) → Wave-0 tooling issue → W0.3, W0.2, W0.4 → one PR into `dev` with its gate → recap (§6) and proposed charter diff → the owner merges and rules on §7 → Wave 1.
+
 Paste this to start:
 
 ```
 Read docs/process/handoff-2026-11-06-remediation.md in full (skip §10). Then read the comments on issue #2443 (gh api -X GET repos/antonsynd/sharpy/issues/2443/comments) and the R-LK row of the charter (grep -n '^| R-LK' docs/process/rounds/remediation-round-2026-09-20-batching.md). Do not read the audit or the rest of the charter unless an item sends you there.
 
-Then: (1) run the §2 re-check and report what has landed since 1fa2340f7, including whether #2453 merged; (2) build once with the serialized wrapper, run .claude/scripts/scorecard --since <today> --base 1fa2340f7, and keep the output for the recap; (3) file the Wave-0 tooling class issue (§4, Wave 0 header) and post the scorecard on it; (4) run W0.3 then W0.2 with one Opus worker each, and W0.4 in parallel, every prompt carrying the §3 worker preamble verbatim; (5) put the §5.2 cruft trailer in every commit; (6) stop on any §5.3 rule and write the §6 recap instead of continuing.
+Then: (1) run the §2 re-check and report what has landed since 18a11bbb7; (2) build once with the serialized wrapper, run .claude/scripts/scorecard --since <today> --base <origin/dev at session start>, and keep the output for the recap; (3) run the P77b close-out in §4 yourself, and stop if its first check fails; (4) file the Wave-0 tooling class issue (§4, Wave 0 header) and post the scorecard on it; (5) run W0.3 then W0.2 with one Opus worker each, and W0.4 in parallel, every prompt carrying the §3 worker preamble verbatim; (6) put the §5.2 cruft trailer in every commit; (7) stop on any §5.3 rule and write the §6 recap instead of continuing.
 
-Use only Opus subagents. Do not run a whole-solution test locally; the gate is /ci-gate. Do not re-ask any ruling in the charter §4 or any §7 default. Put every decision you cannot make into §7's format and wait.
+Landing: work on one branch cut from origin/dev and open one PR into dev when Wave 0 is ready. Do not merge it, and do not push Wave 0 work to dev or mainline; the owner merges. The close-out's plan tick is the one exception: commit it on that branch too, so it lands with the PR.
+
+Gate: use /ci-gate. If it exits 3, or GitHub refuses its gh calls from this container, cite the PR's automatic run instead (.claude/scripts/ci-gate --run RUN_ID, or read the run with gh api). If that fails too, stop and report. Never fall back to a whole-solution test in a container under 16 GB.
+
+Never put close, fix or resolve in any form directly before #N in a commit message, even in a negated sentence or with a colon: it closes the issue when the commit reaches mainline.
+
+Use only Opus subagents. Do not re-ask any ruling in the charter §4 or any §7 default. Put every decision you cannot make into §7's format and wait.
 ```
 
 ---
@@ -265,7 +299,7 @@ Use only Opus subagents. Do not run a whole-solution test locally; the gate is /
 
 - Audit: `docs/audits/health-check-2026-11-06.md` (§2 architecture, §3 runtime, §5 process, §9 charter cross-reference, §10 program). Artifact: `https://claude.ai/artifact/NBauE8wv83sCoatKnUzf9o`.
 - Charter: `docs/process/rounds/remediation-round-2026-09-20-batching.md` (§1 row 0 and 6c⁶⁷″, §4 R-LK). Policy: `docs/process/README.md`.
-- Trackers: #2443 (P82), #2114 (cache key class), #2124 / P33 (exception tree), #2438 (OOM false red; closed, fix reverted), #2440 (dict order; close after W1.1 review), #2365 (R-KK pin), #1952 and #2423 (omnibus allowlist cites), #2433 / #2453 (P77b).
+- Trackers: #2443 (P82), #2114 (cache key class), #2124 / P33 (exception tree), #2438 (OOM false red; open until T12, fix back with #2453), #2440 (dict order; close after W1.1 review), #2365 (R-KK pin), #1952 and #2423 (omnibus allowlist cites), #2433 / #2453 (P77b).
 - Design: `docs/design/lowering-ir.md` (E1/E2), `docs/design/spy0908-policy.md`, `docs/design/verification-contract.md` §6 (gate), §11–§12 (tiers), `docs/design/python-fidelity-scope.md`.
 - Scripts: `.claude/scripts/ci-gate`, `.claude/scripts/scorecard`, `.claude/scripts/dotnet-serialized`, `.claude/hooks/test-hooks.sh`, `build_tools/check_allowlist_issue_state.sh`, `build_tools/check_spec_blocks.sh`.
 
