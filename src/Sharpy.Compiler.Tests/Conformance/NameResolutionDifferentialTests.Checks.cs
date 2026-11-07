@@ -373,4 +373,62 @@ public partial class NameResolutionDifferentialTests
         judged.Should().Be(1276);
         judged.Should().BeGreaterThanOrEqualTo(1000, "D3.2's floor");
     }
+
+    // ------------------------------------------------------------------------------------------- //
+    // D3.3: a pattern note is an exemption, so it needs a way to be wrong
+    // ------------------------------------------------------------------------------------------- //
+
+    private static string CaseProgram(string pattern) => $"def main() -> None:\n    match 1:\n        case {pattern}:\n            print(1)\n";
+
+    /// <summary>Each note's probe: null when the note's stated failure still holds. A note exempts by existing, so it has to be able to go stale.</summary>
+    private static readonly IReadOnlyDictionary<string, Func<IReadOnlyList<NameCell>, string?>> PatternNoteFalsifiers =
+        new Dictionary<string, Func<IReadOnlyList<NameCell>, string?>>(StringComparer.Ordinal)
+        {
+            // The note: python has no `and` pattern, so the twin of a program spelling one has nothing to judge. `|` is the control: the renderer does render a composite.
+            [nameof(AndPattern)] = _ =>
+            {
+                TwinRenderer.Render(CaseProgram("int() | object()"));
+                try
+                {
+                    TwinRenderer.Render(CaseProgram("int() and object()"));
+                    return "the twin of `case int() and object():` renders, so the note's reason is gone";
+                }
+                catch (NotSupportedException refused) when (refused.Message.Contains(nameof(AndPattern), StringComparison.Ordinal))
+                {
+                    return null;
+                }
+            },
+            // The note: `case v: Later` has no parser producer and the untyped capture is LOCAL's match capture. `case v:` is the control: the capture itself parses.
+            [nameof(BindingPattern)] = pool =>
+            {
+                var api = new CompilerApi();
+                string Typed = CaseProgram("v: Later");
+                if (!api.Analyze(Typed).Diagnostics.Any(d => d.Code == "SPY0102"))
+                    return "`case v: Later:` is no longer SPY0102, so the typed capture has a producer";
+                if (api.Analyze(CaseProgram("v")).Diagnostics.Any(d => d.Code == "SPY0102"))
+                    return "`case v:` is SPY0102 too, so the probe reads nothing about the type";
+                return pool.Any(c => c.Family == Family.Local && c.Construct == LocalTarget.MatchCapture)
+                    ? null
+                    : "no generated LOCAL match-capture cell carries the untyped capture the note points at";
+            },
+        };
+
+    [Fact]
+    public void PatternKindRoster_EveryNote_HasAFalsifier()
+    {
+        var pool = GeneratedCells();
+        var problems = new List<string>();
+        foreach (var name in NameResolutionRosters.PatternNotes.Keys)
+        {
+            if (pool.Any(c => c.Family == Family.TypeMember && c.Id.Contains($"pattern/{name}", StringComparison.Ordinal)))
+                problems.Add($"noted pattern generates cells: {name}");
+            if (!PatternNoteFalsifiers.TryGetValue(name, out var probe))
+                problems.Add($"{name} is noted and has no falsifier");
+            else if (probe(pool) is string stale)
+                problems.Add($"{name}: {stale}");
+        }
+        AssertNoProblems(problems, "a note exempts a pattern from generating cells, so it has to be true and able to go stale");
+
+        NameResolutionRosters.PatternNotes.Should().HaveCount(2, "a measured literal: a new note is a new exemption");
+    }
 }
