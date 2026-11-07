@@ -270,7 +270,7 @@ public partial class NameResolutionDifferentialTests
     public void BinderSiteRoster_Content_EachSiteBindsWhatItsRowDeclares()
     {
         var problems = new List<string>();
-        int declaring = 0, baseTyped = 0, written = 0, typeDefinitions = 0;
+        int declaring = 0, baseTyped = 0, written = 0, typeDefinitions = 0, declaringRows = 0;
         foreach (var site in CompilerBinders.Value.Sites)
         {
             if (!NameResolutionRosters.BinderSites.TryGetValue(site.Key, out var image))
@@ -293,6 +293,19 @@ public partial class NameResolutionDifferentialTests
                     if (!NameResolutionRosters.TypeKinds[TypeDefinitionNodes[node]].Image.Contains(kind))
                         problems.Add($"{site.Key} sits in a method handed a {node} and its row declares {kind}, which TypeKind.{TypeDefinitionNodes[node]} does not hold");
                 }
+
+                // Two rows of one symbol class, a def's or a parameter's, which the argument's type cannot tell apart. The phase can: NameResolver binds declarations
+                // before any body is read, and the checker's declaring rows sit inside one. A store form's row is out of this: its one site binds at any level.
+                if (image.Form == null && image.Target == null)
+                {
+                    declaringRows++;
+                    if (site.Key.StartsWith("NameResolver.", StringComparison.Ordinal) && IsPositionLocal(kind))
+                        problems.Add($"{site.Key} runs before any body is read and its row declares {kind}, a local");
+                    if (site.Key.StartsWith("TypeChecker.", StringComparison.Ordinal) && IsModuleKind(kind))
+                        problems.Add($"{site.Key} sits inside a body and its row declares {kind}, a module binding");
+                    if (site.EnclosingParameters.Contains(nameof(LambdaExpression)) != (kind == BindingKind.Inner))
+                        problems.Add($"{site.Key} takes [{string.Join(", ", site.EnclosingParameters)}] and its row declares {kind}: a declaring row's Inner is a lambda's parameter");
+                }
             }
 
             if (image.Form is StoreForm form)
@@ -312,6 +325,7 @@ public partial class NameResolutionDifferentialTests
 
         // Measured literals: 40 declared kinds judged, 5 of them TryDeclareMember's Symbol-typed wrapper (a field or a method), 11 written forms and targets, 8 type definitions.
         (declaring, baseTyped, written, typeDefinitions).Should().Be((40, 5, 11, 8));
+        declaringRows.Should().Be(28, "the declared kinds on declaring rows, read against their phase and node");
     }
 
     // ------------------------------------------------------------------------------------------- //
