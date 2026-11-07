@@ -25,11 +25,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionHeadersDefaultsToEmptyDict()
         {
-#line (30, 5) - (30, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (27, 5) - (27, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (31, 5) - (31, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (28, 5) - (28, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.NotNull(s.Headers);
-#line (32, 5) - (32, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (29, 5) - (29, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(s.Headers));
 #line hidden
         }
@@ -37,22 +37,22 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionHeadersCanBeSetAndPersist()
         {
-#line (36, 5) - (36, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (33, 5) - (33, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (37, 5) - (37, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (34, 5) - (34, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Sharpy.Dict<string, string> headers = new Sharpy.Dict<string, string>()
 #line hidden
             {
             };
-#line (38, 5) - (38, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (35, 5) - (35, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             headers["User-Agent"] = "sharpy/1.0";
-#line (39, 5) - (39, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (36, 5) - (36, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             headers["X-Custom"] = "value";
-#line (40, 5) - (40, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (37, 5) - (37, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Headers = headers;
-#line (41, 5) - (41, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (38, 5) - (38, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("sharpy/1.0", s.Headers["User-Agent"]);
-#line (42, 5) - (42, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (39, 5) - (39, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("value", s.Headers["X-Custom"]);
 #line hidden
         }
@@ -60,11 +60,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionHeadersDirectMutationViaIndexerPersists()
         {
-#line (46, 5) - (46, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (43, 5) - (43, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (47, 5) - (47, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (44, 5) - (44, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Headers["Accept"] = "application/json";
-#line (48, 5) - (48, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (45, 5) - (45, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("application/json", s.Headers["Accept"]);
 #line hidden
         }
@@ -72,11 +72,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionCookiesDefaultsToEmptyDict()
         {
-#line (54, 5) - (54, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (51, 5) - (51, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (55, 5) - (55, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (52, 5) - (52, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.NotNull(s.Cookies);
-#line (56, 5) - (56, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (53, 5) - (53, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(s.Cookies));
 #line hidden
         }
@@ -84,22 +84,22 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionCookiesCanBeSetAndPersist()
         {
-#line (60, 5) - (60, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (57, 5) - (57, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (61, 5) - (61, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (58, 5) - (58, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Sharpy.Dict<string, string> cookies = new Sharpy.Dict<string, string>()
 #line hidden
             {
             };
-#line (62, 5) - (62, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (59, 5) - (59, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             cookies["session_id"] = "abc123";
-#line (63, 5) - (63, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (60, 5) - (60, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             cookies["theme"] = "dark";
-#line (64, 5) - (64, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (61, 5) - (61, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Cookies = cookies;
-#line (65, 5) - (65, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (62, 5) - (62, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("abc123", s.Cookies["session_id"]);
-#line (66, 5) - (66, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (63, 5) - (63, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("dark", s.Cookies["theme"]);
 #line hidden
         }
@@ -107,9 +107,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionAuthDefaultsToNull()
         {
-#line (72, 5) - (72, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (69, 5) - (69, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (73, 5) - (73, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (70, 5) - (70, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Null(s.Auth);
 #line hidden
         }
@@ -117,11 +117,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionAuthCanBeSetAndPersist()
         {
-#line (77, 5) - (77, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (74, 5) - (74, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (78, 5) - (78, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (75, 5) - (75, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Auth = ("alice", "secret");
-#line (79, 5) - (79, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (76, 5) - (76, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.NotNull(s.Auth);
 #line hidden
         }
@@ -129,13 +129,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionAuthCanBeClearedToNull()
         {
-#line (83, 5) - (83, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (80, 5) - (80, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (84, 5) - (84, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (81, 5) - (81, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Auth = ("alice", "secret");
-#line (85, 5) - (85, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (82, 5) - (82, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Auth = null;
-#line (86, 5) - (86, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (83, 5) - (83, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Null(s.Auth);
 #line hidden
         }
@@ -143,9 +143,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionAllowRedirectsDefaultsToTrue()
         {
-#line (92, 5) - (92, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (89, 5) - (89, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (93, 5) - (93, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (90, 5) - (90, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.True(s.AllowRedirects);
 #line hidden
         }
@@ -153,15 +153,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionAllowRedirectsCanBeSetToFalse()
         {
-#line (97, 5) - (97, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (94, 5) - (94, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (98, 5) - (98, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (95, 5) - (95, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.AllowRedirects = false;
-#line (99, 5) - (99, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (96, 5) - (96, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.False(s.AllowRedirects);
-#line (100, 5) - (100, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (97, 5) - (97, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.AllowRedirects = true;
-#line (101, 5) - (101, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (98, 5) - (98, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.True(s.AllowRedirects);
 #line hidden
         }
@@ -169,9 +169,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionMaxRedirectsDefaultsTo30()
         {
-#line (107, 5) - (107, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (104, 5) - (104, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (108, 5) - (108, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (105, 5) - (105, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(30, s.MaxRedirects);
 #line hidden
         }
@@ -179,31 +179,73 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionMaxRedirectsCanBeChanged()
         {
-#line (112, 5) - (112, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (109, 5) - (109, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (113, 5) - (113, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (110, 5) - (110, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.MaxRedirects = 10;
-#line (114, 5) - (114, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (111, 5) - (111, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(10, s.MaxRedirects);
-#line (115, 5) - (115, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (112, 5) - (112, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.MaxRedirects = 1;
-#line (116, 5) - (116, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (113, 5) - (113, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(1, s.MaxRedirects);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestSessionMaxRedirectsRejectsZeroAndNegative()
+        {
+#line (118, 5) - (118, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+            global::Sharpy.Session s = new global::Sharpy.Session();
+#line (119, 5) - (120, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+            bool __raised_0 = false;
+#line hidden
+            try
+            {
+#line (120, 9) - (120, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+                s.MaxRedirects = 0;
+#line hidden
+            }
+            catch (ValueError)
+            {
+                __raised_0 = true;
+            }
+
+            if (!__raised_0)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+#line (121, 5) - (122, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+            bool __raised_1 = false;
+#line hidden
+            try
+            {
+#line (122, 9) - (122, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+                s.MaxRedirects = -1;
+#line hidden
+            }
+            catch (ValueError)
+            {
+                __raised_1 = true;
+            }
+
+            if (!__raised_1)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+#line (123, 5) - (123, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+            Xunit.Assert.Equal(30, s.MaxRedirects);
 #line hidden
         }
 
         [Xunit.FactAttribute]
         public void TestSessionMaxRedirectsCanBeOverridden()
         {
-#line (120, 5) - (120, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (127, 5) - (127, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (121, 5) - (121, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (128, 5) - (128, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.MaxRedirects = 7;
-#line (122, 5) - (122, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (129, 5) - (129, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(7, s.MaxRedirects);
-#line (123, 5) - (123, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (130, 5) - (130, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.MaxRedirects = 100;
-#line (124, 5) - (124, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (131, 5) - (131, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(100, s.MaxRedirects);
 #line hidden
         }
@@ -211,9 +253,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionVerifyDefaultsToTrue()
         {
-#line (130, 5) - (130, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (137, 5) - (137, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (131, 5) - (131, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (138, 5) - (138, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.True(s.Verify);
 #line hidden
         }
@@ -221,15 +263,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionVerifyCanBeSetToFalse()
         {
-#line (135, 5) - (135, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (142, 5) - (142, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (136, 5) - (136, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (143, 5) - (143, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Verify = false;
-#line (137, 5) - (137, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (144, 5) - (144, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.False(s.Verify);
-#line (138, 5) - (138, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (145, 5) - (145, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Verify = true;
-#line (139, 5) - (139, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (146, 5) - (146, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.True(s.Verify);
 #line hidden
         }
@@ -237,15 +279,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionVerifyRoundTrips()
         {
-#line (143, 5) - (143, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (150, 5) - (150, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (144, 5) - (144, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (151, 5) - (151, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Verify = false;
-#line (145, 5) - (145, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (152, 5) - (152, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.False(s.Verify);
-#line (146, 5) - (146, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (153, 5) - (153, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Verify = true;
-#line (147, 5) - (147, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (154, 5) - (154, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.True(s.Verify);
 #line hidden
         }
@@ -253,9 +295,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionProxiesDefaultIsNull()
         {
-#line (153, 5) - (153, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (160, 5) - (160, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (154, 5) - (154, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (161, 5) - (161, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Null(s.Proxies);
 #line hidden
         }
@@ -263,24 +305,24 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionProxiesCanBeSetToDict()
         {
-#line (158, 5) - (158, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (165, 5) - (165, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (159, 5) - (159, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (166, 5) - (166, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Sharpy.Dict<string, string> proxies = new Sharpy.Dict<string, string>()
 #line hidden
             {
             };
-#line (160, 5) - (160, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (167, 5) - (167, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             proxies["http"] = "http://proxy.example.com:8080";
-#line (161, 5) - (161, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (168, 5) - (168, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             proxies["https"] = "http://secure-proxy.example.com:8443";
-#line (162, 5) - (162, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (169, 5) - (169, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Proxies = proxies;
-#line (163, 5) - (163, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (170, 5) - (170, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.NotNull(s.Proxies);
-#line (164, 5) - (164, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (171, 5) - (171, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("http://proxy.example.com:8080", s.Proxies!["http"]);
-#line (165, 5) - (165, 73) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (172, 5) - (172, 73) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal("http://secure-proxy.example.com:8443", s.Proxies!["https"]);
 #line hidden
         }
@@ -288,22 +330,22 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionProxiesCanBeClearedBackToNull()
         {
-#line (169, 5) - (169, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (176, 5) - (176, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (170, 5) - (170, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (177, 5) - (177, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Sharpy.Dict<string, string> proxies = new Sharpy.Dict<string, string>()
 #line hidden
             {
             };
-#line (171, 5) - (171, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (178, 5) - (178, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             proxies["http"] = "http://proxy.example.com:8080";
-#line (172, 5) - (172, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (179, 5) - (179, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Proxies = proxies;
-#line (173, 5) - (173, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (180, 5) - (180, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.NotNull(s.Proxies);
-#line (174, 5) - (174, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (181, 5) - (181, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Proxies = null;
-#line (175, 5) - (175, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (182, 5) - (182, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Null(s.Proxies);
 #line hidden
         }
@@ -311,18 +353,18 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
         [Xunit.FactAttribute]
         public void TestSessionProxiesEmptyDictIsAllowed()
         {
-#line (179, 5) - (179, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (186, 5) - (186, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             global::Sharpy.Session s = new global::Sharpy.Session();
-#line (180, 5) - (180, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (187, 5) - (187, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Sharpy.Dict<string, string> empty = new Sharpy.Dict<string, string>()
 #line hidden
             {
             };
-#line (181, 5) - (181, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (188, 5) - (188, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             s.Proxies = empty;
-#line (182, 5) - (182, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (189, 5) - (189, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.NotNull(s.Proxies);
-#line (183, 5) - (183, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
+#line (190, 5) - (190, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(s.Proxies!));
 #line hidden
         }
