@@ -25,6 +25,14 @@
 # skips `format`, `build` and everything under it: `changes` decides, `windows` still runs, and
 # ci-summary then expects only the windows trx.
 #
+# Hang limits (#2458, W0.4): every job has a `timeout-minutes` at least 2x its slowest duration
+# over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
+# the ~11 min projected for the class-split shard 6), never under 5, in place of the 6-hour
+# default; every test run has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
+# run red ("The active test run was aborted") long before the job limit. The longest single test,
+# NameResolutionDifferential_Sweep, took 372 s in 42372810738. No dump is taken
+# (`--blame-hang-dump-type none`): a full one is ~700 MB and nothing uploads it.
+#
 # This workflow is the default commit gate (docs/design/verification-contract.md section 6). Every
 # PR runs it, and `.claude/scripts/ci-gate` dispatches it at a branch tip with no PR at all, so a
 # do-not-merge PR is never needed to reach it.
@@ -179,6 +187,7 @@ jobs:
   changes:
     name: Detect a README-only change
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
 
@@ -219,6 +228,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - uses: actions/checkout@v7
@@ -238,6 +248,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v7
@@ -284,6 +295,7 @@ jobs:
     name: Test CLI, Core, Stdlib
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v7
@@ -307,13 +319,13 @@ jobs:
     # Each assembly reports even if an earlier one failed.
     - name: Test CLI
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=cli.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=cli.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Test Core
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=core.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=core.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Test Stdlib
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=stdlib.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=stdlib.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -327,6 +339,7 @@ jobs:
     name: Test LSP (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       # Each FormattingRouteParitySweepTests twin census fails instead of skipping when its twin's
       # theory did not run over every stem in the same process: a shard filter that separated a
@@ -360,7 +373,7 @@ jobs:
       run: |
         if [ -z "${LSP_SHARD_${{ matrix.shard }}:-}" ]; then echo "::error::LSP_SHARD_${{ matrix.shard }} is not defined in the workflow env"; exit 1; fi
         echo "filter: $LSP_MAIN_FILTER&$LSP_SHARD_${{ matrix.shard }}"
-        dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "$LSP_MAIN_FILTER&$LSP_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=lsp-shard-${{ matrix.shard }}.trx" --results-directory TestResults
+        dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "$LSP_MAIN_FILTER&$LSP_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=lsp-shard-${{ matrix.shard }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -374,6 +387,7 @@ jobs:
     name: Test Compiler (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       # The numeric-literal twin (Sharpy.Compiler.Tests.Lexer.NumericLiteralTwinTests, #2300) FAILS
       # instead of skipping when no Python 3.12+ interpreter is found: a runner that lost the
@@ -424,7 +438,7 @@ jobs:
       run: |
         if [ -z "${COMPILER_SHARD_${{ matrix.shard }}:-}" ]; then echo "::error::COMPILER_SHARD_${{ matrix.shard }} is not defined in the workflow env"; exit 1; fi
         echo "filter: $COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}"
-        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults
+        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -440,6 +454,7 @@ jobs:
     name: Sweep (${{ matrix.name }})
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -487,7 +502,7 @@ jobs:
         zstd -dc build-output.tar.zst | tar -xf -
         rm build-output.tar.zst
     - name: Sweep ${{ matrix.name }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "${{ matrix.filter }}" --logger "trx;LogFileName=sweep-${{ matrix.name }}.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "${{ matrix.filter }}" --logger "trx;LogFileName=sweep-${{ matrix.name }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -506,6 +521,7 @@ jobs:
     name: Sweeps (interop, differential-execution, format-spec, formatter-emit, name-resolution)
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       # The python oracles below FAIL instead of skipping when no Python 3.12+ interpreter is found:
       # a skipped sweep guards nothing and the job's other facts would keep it green. Job level, so
@@ -555,7 +571,7 @@ jobs:
       # ratchet once the reviewed allowlist
       # (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance" --logger "trx;LogFileName=sweep-interop-conformance.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance" --logger "trx;LogFileName=sweep-interop-conformance.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Sweep differential-execution
       # CPython differential execution oracle (#1202). Sharpy-compiled stdout vs batched
       # `python3` over the shared executable subset. Since #1202 the fixture arm sweeps its
@@ -567,7 +583,7 @@ jobs:
       # entry cites a docs/deviations.yaml id or an issue number.
       # Needs the python steps above; the test FAILS without a suitable python3.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution" --logger "trx;LogFileName=sweep-differential-execution.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution" --logger "trx;LogFileName=sweep-differential-execution.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Sweep format-spec-differential
       # Format-spec differential sweep (#1943, #1944, #1945). Generated PEP-3101 spec x
       # operand-kind cells (fixed-seed System.Random, 240 cells) compared byte-for-byte
@@ -578,7 +594,7 @@ jobs:
       # Excluded from the Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly
       # once.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential" --logger "trx;LogFileName=sweep-format-spec-differential.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential" --logger "trx;LogFileName=sweep-format-spec-differential.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Sweep name-resolution-differential
       # Name-resolution differential sweep (#2421, P77a). Generated programs over rosters of the
       # compiler's own enumerations: for every program python3 runs, Sharpy `run` prints the same
@@ -590,7 +606,7 @@ jobs:
       # suitable python3, like the sweeps above: its roster facts would still pass and keep
       # ci-summary's zero-test check green.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Sweep formatter-emit-invariance
       # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
       # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
@@ -601,7 +617,7 @@ jobs:
       # sweep (FormatterMeaningPreservationSweepTests) runs inline in the Compiler shards;
       # this one is excluded there by name so it runs exactly once.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance" --logger "trx;LogFileName=sweep-formatter-emit-invariance.trx" --results-directory TestResults
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance" --logger "trx;LogFileName=sweep-formatter-emit-invariance.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -615,6 +631,7 @@ jobs:
     name: Stdlib .spy compile + staleness gates
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v7
@@ -659,6 +676,7 @@ jobs:
     name: Shard partition check (compiler, lsp)
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       # The balance step lists the previous mainline run's jobs.
@@ -776,7 +794,7 @@ jobs:
     # build-output tarball is not a Windows build.
     name: Windows (debug-info guard + published hello world)
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@v7
@@ -788,7 +806,7 @@ jobs:
       run: >
         dotnet test src/Sharpy.Compiler.Tests --verbosity normal
         --filter "FullyQualifiedName~DebugInformationFormatTests|FullyQualifiedName~LineDirectiveRuntimeTests|FullyQualifiedName~DotnetHostTests"
-        --logger "trx;LogFileName=windows.trx" --results-directory TestResults
+        --logger "trx;LogFileName=windows.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -816,6 +834,7 @@ jobs:
     if: ${{ always() }}
     needs: [changes, format, build, test-fast, lsp, compiler, sweep, sweeps-quick, stdlib-spy-gates, shard-partition, windows]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       # 'false' on a README.md-only change (see `changes`): only the windows job ran.
       CODE: ${{ needs.changes.outputs.code }}

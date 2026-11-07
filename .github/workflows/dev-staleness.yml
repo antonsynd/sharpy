@@ -28,6 +28,8 @@ on:
 jobs:
   staleness:
     runs-on: ubuntu-latest
+    # 5-10 min over the last 10 runs (42372231109 back to 41280192162).
+    timeout-minutes: 30
 
     permissions:
       contents: read
@@ -51,6 +53,7 @@ jobs:
 
   allowlist-issue-state:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     permissions:
       contents: read

@@ -49,6 +49,8 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Runs take ~4 min end to end (e.g. 42372810631); the 6-hour default is what a hang would cost.
+    timeout-minutes: 20
 
     permissions:
       contents: read
@@ -103,6 +105,7 @@ jobs:
   # The Python 3.12 setup here is shared with Phase 9 (grammar-fuzz differential).
   dual-execute-oracle:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     permissions:
       contents: read
