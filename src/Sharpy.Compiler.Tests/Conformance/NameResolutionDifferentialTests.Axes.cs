@@ -21,6 +21,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(DeclarationShapeFedFailures(pool));
         failures.AddRange(StructHostFedFailures(axisCells));
         failures.AddRange(AttributeStoreFedFailures(axisCells));
+        failures.AddRange(TypeMemberShapeFedFailures(axisCells));
         return failures;
     }
 

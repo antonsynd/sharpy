@@ -1419,6 +1419,85 @@ internal static class NameResolutionRosters
         (ScopeKind.InitializerHost, Roster.Out<StoreTargetScope>(ExcludedAxis.NotAKind,
             "an initializer is an expression: only a walrus binds there, as the Inner kind, and it is not a function boundary")));
 
+    // ---------------------------------------------------------------------------------------------------------
+    // D5: TYPEMEMBER's declaring kind × member, the shape that had no roster
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>TYPEMEMBER's declaring kinds: <see cref="TypeKinds"/>' sources by the spelling that declares them. The two class spellings
+    /// route differently (a dataclass synthesizes its constructor), so each is a value.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, RosterEntry<string>> TypeMemberDeclaringKinds = Roster.Map(
+        (TypeKind.Class, Roster.To("class", "dataclass")),
+        (TypeKind.Struct, Roster.To("struct")),
+        (TypeKind.Interface, Roster.To("interface")),
+        (TypeKind.Enum, Roster.To("enum")),
+        (TypeKind.Union, Roster.To("union")),
+        (TypeKind.Delegate, Roster.Out<string>(ExcludedAxis.TypeParametersAndDelegates, "the delegate kind has no member to read (x)")));
+
+    /// <summary>The members <see cref="TypeBodyMemberKind"/> does not tell apart and TYPEMEMBER's reads do: each is read by another spelling.</summary>
+    internal static readonly ImmutableArray<string> TypeMemberExtraMembers = ImmutableArray.Create("constructor", "static-method", "case");
+
+    internal static string TypeMemberKey(string kind, string member) => $"{kind} × {member}";
+
+    private const string EventsAreTheirOwnAxis = "events are #2400 (iii)";
+
+    private const string NoCaseInThisBody = "a case belongs to an enum or a union: `case W()` in this body is SPY0103 (measured @ d076feee7)";
+
+    private const string EnumBodyHoldsCases = "an enum body holds `NAME = value` cases and nothing else: SPY0101 or SPY0103 (measured @ d076feee7)";
+
+    private const string UnionBodyHoldsCasesAndMethods = "a union body holds cases and instance methods: SPY0104 (measured @ d076feee7)";
+
+    /// <summary>Which member each declaring kind can declare (D5). An <c>Out</c> entry is a pair the kind cannot declare, measured by
+    /// compiling it, or an axis named elsewhere. A pair it can declare is generated, which a roster over the pairs that happened to be
+    /// spelled could not say: <c>union × method</c> is in the spec, and <c>interface × field</c> and <c>interface × static-method</c> compile.</summary>
+    internal static readonly IReadOnlyDictionary<string, AxisMembership> TypeMemberShapes = Roster.Map(
+        (TypeMemberKey("class", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("class", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("class", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("dataclass", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("dataclass", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("dataclass", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("struct", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("struct", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("struct", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("interface", "field"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "property"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "event"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores, EventsAreTheirOwnAxis)),
+        (TypeMemberKey("interface", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "constructor"), AxisMembership.Out(ExcludedAxis.NotAKind, "an interface has no constructor: SPY0413 (measured @ d076feee7)")),
+        (TypeMemberKey("interface", "static-method"), AxisMembership.Everywhere),
+        (TypeMemberKey("interface", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, NoCaseInThisBody)),
+
+        (TypeMemberKey("enum", "field"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "property"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "event"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "method"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "constructor"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "static-method"), AxisMembership.Out(ExcludedAxis.NotAKind, EnumBodyHoldsCases)),
+        (TypeMemberKey("enum", "case"), AxisMembership.Everywhere),
+
+        (TypeMemberKey("union", "field"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "property"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "event"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "method"), AxisMembership.Everywhere),
+        (TypeMemberKey("union", "constructor"), AxisMembership.Everywhere),
+        (TypeMemberKey("union", "static-method"), AxisMembership.Out(ExcludedAxis.NotAKind, UnionBodyHoldsCasesAndMethods)),
+        (TypeMemberKey("union", "case"), AxisMembership.Out(ExcludedAxis.NotAKind, "a union's case is read through its constructor call: the union × constructor row")));
+
     /// <summary>The Block family <see cref="StoreNesting.InsideIf"/> stands for.</summary>
     internal const string StoreNestingFamily = "if-then";
 
@@ -2952,6 +3031,35 @@ public partial class NameResolutionDifferentialTests
             "SelfDot × MethodBody", "SelfDot × InitBody",
             "TypeName × MethodBody", "TypeName × InitBody", "TypeName × StaticMethodBody", "TypeName × FunctionBody",
             "Alias × MethodBody", "DerivedType × MethodBody", "InstanceLocal × MethodBody",
+        });
+    }
+
+    [Fact]
+    public void TypeMemberShapesRoster_IsTotalOverTheDeclaringKindsAndMembers()
+    {
+        var problems = Roster.TotalityProblems("TypeMemberDeclaringKinds", Enum.GetValues<TypeKind>(), NameResolutionRosters.TypeMemberDeclaringKinds.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(NameResolutionRosters.TypeMemberDeclaringKinds));
+        problems.AddRange(Roster.TotalityProblems("TypeMemberDeclaringKinds' excluded sources",
+            NameResolutionRosters.TypeKinds.Where(e => e.Value.Excluded != null).Select(e => e.Key),
+            NameResolutionRosters.TypeMemberDeclaringKinds.Where(e => e.Value.Excluded != null).Select(e => e.Key)));
+        var members = Enum.GetValues<TypeBodyMemberKind>().Select(k => k.ToString().ToLowerInvariant()).Concat(NameResolutionRosters.TypeMemberExtraMembers).ToList();
+        problems.AddRange(Roster.TotalityProblems("TypeMemberShapes",
+            Roster.ImageOf(NameResolutionRosters.TypeMemberDeclaringKinds).SelectMany(k => members.Select(m => NameResolutionRosters.TypeMemberKey(k, m))),
+            NameResolutionRosters.TypeMemberShapes.Keys));
+        problems.AddRange(NameResolutionRosters.TypeMemberShapes
+            .Where(e => !e.Value.Generated && string.IsNullOrWhiteSpace(e.Value.Reason))
+            .Select(e => $"TypeMemberShapes: {e.Key} is out with no reason"));
+        AssertNoProblems(problems, "every declaring kind × member is generated or out with its reason");
+
+        // A literal, not the roster again: an `Out` entry is still total, so totality cannot see a re-prune, and the census can be re-pinned with it.
+        NameResolutionRosters.TypeMemberShapes.Where(e => e.Value.Generated).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            "class × field", "class × property", "class × method", "class × constructor", "class × static-method",
+            "dataclass × field", "dataclass × property", "dataclass × method", "dataclass × constructor", "dataclass × static-method",
+            "struct × field", "struct × property", "struct × method", "struct × constructor", "struct × static-method",
+            "interface × field", "interface × property", "interface × method", "interface × static-method",
+            "enum × case",
+            "union × method", "union × constructor",
         });
     }
 
