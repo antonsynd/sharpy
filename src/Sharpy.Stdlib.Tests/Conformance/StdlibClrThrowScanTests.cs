@@ -11,7 +11,8 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// <summary>
 /// A Stdlib boundary raises Python's exception for an expected failure of user input, never a CLR
 /// <c>ArgumentException</c> / <c>ArgumentOutOfRangeException</c> / <c>InvalidOperationException</c> /
-/// <c>NotSupportedException</c> that <c>except ValueError</c> cannot catch (#2461; CLAUDE.md "Core &amp;
+/// <c>NotSupportedException</c> that <c>except ValueError</c> cannot catch (class issue #2461; the standing
+/// bug-guard rows cite the permanent tracker #2467 per the owner's D13 ruling of 2026-11-07; CLAUDE.md "Core &amp;
 /// Stdlib Conventions": expected failure is a Python exception or a <c>Result</c>, a CLR throw is for
 /// bugs only).
 ///
@@ -20,7 +21,7 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// <c>modules/</c>, excluded, as <see cref="StdlibModuleGlobalRosterTests"/> does) for every
 /// <c>throw new X(...)</c> statement or expression whose type is one of the four. Each is keyed
 /// <c>file:Type.Member:X</c> (the enclosing type and member, never a line number) and counted; the
-/// multiset must equal <c>Conformance/stdlib-clr-throw-allowlist.txt</c>, where each row cites #2461
+/// multiset must equal <c>Conformance/stdlib-clr-throw-allowlist.txt</c>, where each row cites #2467
 /// and names why the throw is a bug guard. An unlisted throw is red; a listed one the scan no longer
 /// finds is red (stale: delete the row).</para>
 ///
@@ -44,7 +45,7 @@ public class StdlibClrThrowScanTests
         preprocessorSymbols: new[] { "NET", "NET10_0", "NET10_0_OR_GREATER", "NETCOREAPP", "RELEASE" });
 
     private static readonly Regex AllowlistRow = new(
-        @"^(?<key>\S+:\S+:\S+) x(?<n>\d+) # #2461 (?<reason>\S.*)$", RegexOptions.Compiled);
+        @"^(?<key>\S+:\S+:\S+) x(?<n>\d+) # #2467 (?<reason>\S.*)$", RegexOptions.Compiled);
 
     private static readonly Regex SpyClrAssertion = new(
         @"(?:assert_raises\(\s*|except\s+\(?\s*)(?:[A-Za-z_][\w]*\.)*(?<type>[A-Za-z_]\w*Exception)\b",
@@ -63,9 +64,9 @@ public class StdlibClrThrowScanTests
             .Select(kv => $"{kv.Key} x{kv.Value}").OrderBy(s => s, StringComparer.Ordinal).ToList();
 
         Assert.True(unlisted.Count == 0 && stale.Count == 0,
-            "Stdlib CLR throws disagree with Conformance/stdlib-clr-throw-allowlist.txt (#2461).\n"
+            "Stdlib CLR throws disagree with Conformance/stdlib-clr-throw-allowlist.txt (#2467).\n"
             + "An expected failure of user input raises Python's exception (ValueError, TypeError, IndexError, ...);\n"
-            + "only an unreachable bug guard may stay, as a row citing #2461 with its reason.\n"
+            + "only an unreachable bug guard may stay, as a row citing #2467 with its reason.\n"
             + "Unlisted (convert, or allowlist with a reason):\n  " + string.Join("\n  ", unlisted)
             + "\nStale (delete the row):\n  " + string.Join("\n  ", stale));
     }
@@ -88,7 +89,7 @@ public class StdlibClrThrowScanTests
         }
 
         Assert.True(hits.Count == 0,
-            "Spy tests assert a CLR exception type; assert the Python exception the Stdlib raises instead (#2461):\n  "
+            "Spy tests assert a CLR exception type; assert the Python exception the Stdlib raises instead (#2467):\n  "
             + string.Join("\n  ", hits));
     }
 
@@ -223,7 +224,7 @@ public class StdlibClrThrowScanTests
             "stdlib-clr-throw-allowlist.txt");
         if (!File.Exists(path))
             throw new FileNotFoundException(
-                "Conformance/stdlib-clr-throw-allowlist.txt is missing; its presence arms the #2461 ratchet.", path);
+                "Conformance/stdlib-clr-throw-allowlist.txt is missing; its presence arms the #2467 ratchet.", path);
 
         var rows = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var raw in File.ReadAllLines(path))
@@ -233,7 +234,7 @@ public class StdlibClrThrowScanTests
                 continue;
 
             var m = AllowlistRow.Match(line);
-            Assert.True(m.Success, $"malformed allowlist row (want `file:Type.Member:Exception xN # #2461 reason`): {line}");
+            Assert.True(m.Success, $"malformed allowlist row (want `file:Type.Member:Exception xN # #2467 reason`): {line}");
             Assert.False(rows.ContainsKey(m.Groups["key"].Value), $"duplicate allowlist row: {line}");
             rows[m.Groups["key"].Value] = int.Parse(m.Groups["n"].Value, System.Globalization.CultureInfo.InvariantCulture);
         }
