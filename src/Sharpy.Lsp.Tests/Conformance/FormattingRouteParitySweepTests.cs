@@ -1690,31 +1690,33 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// exceptions/except_python_base_class_hierarchy_2124, the PR's only corpus change; control: the gate 83778/0/9
     /// @ 321b55022 (run 42396062974) held the previous literals with that fixture absent; no lexer/parser/formatter/LSP
     /// change (#2124 is Core-only).
-    /// W1.7 OSError family (#2124, 2026-11-07): +1 on the four comment pins only — growth, from the new fixture stem
+    /// W1.7 OSError family (#2124, 2026-11-07): +1 on every twin's live routes (identity, comment, crlf, cr: all four;
+    /// wide: full and range-whole, its line routes stay 0) — growth, from the new fixture stem
     /// exceptions/oserror_family_2124, the PR's only Compiler.Tests corpus change; control: PR #2473's gate @ b94e222ce
-    /// (run 42399075412) held the previous literals with that fixture absent; the identity mapping IOError -> OSError
-    /// touches no lexer/parser/formatter path.
+    /// (run 42399075412) held the previous literals with that fixture absent, and PR #2475's run 42403863522 @ d9a2c5fee
+    /// showed exactly +1 on each of these 18 pins and nothing else; the identity mapping IOError -> OSError touches no
+    /// lexer/parser/formatter path.
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
-            [(Identity, Full)] = 485,
-            [(Identity, RangeWhole)] = 485,
-            [(Identity, RangeLine)] = 481,
-            [(Identity, OnType)] = 481,
+            [(Identity, Full)] = 486,
+            [(Identity, RangeWhole)] = 486,
+            [(Identity, RangeLine)] = 482,
+            [(Identity, OnType)] = 482,
             [(Comment, Full)] = 1650,
             [(Comment, RangeWhole)] = 1650,
             [(Comment, RangeLine)] = 1646,
             [(Comment, OnType)] = 1646,
-            [(Crlf, Full)] = 485,
-            [(Crlf, RangeWhole)] = 485,
-            [(Crlf, RangeLine)] = 481,
-            [(Crlf, OnType)] = 481,
-            [(Cr, Full)] = 485,
-            [(Cr, RangeWhole)] = 485,
-            [(Cr, RangeLine)] = 481,
-            [(Cr, OnType)] = 481,
-            [(Wide, Full)] = 485,
-            [(Wide, RangeWhole)] = 485,
+            [(Crlf, Full)] = 486,
+            [(Crlf, RangeWhole)] = 486,
+            [(Crlf, RangeLine)] = 482,
+            [(Crlf, OnType)] = 482,
+            [(Cr, Full)] = 486,
+            [(Cr, RangeWhole)] = 486,
+            [(Cr, RangeLine)] = 482,
+            [(Cr, OnType)] = 482,
+            [(Wide, Full)] = 486,
+            [(Wide, RangeWhole)] = 486,
             [(Wide, RangeLine)] = 0,
             [(Wide, OnType)] = 0,
         };
