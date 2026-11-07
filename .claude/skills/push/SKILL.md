@@ -52,7 +52,7 @@ This is advisory — the push is not blocked. Skip silently if the version alrea
 >   match the CI-created one) and, if it lands first on a different commit, points the release at the
 >   wrong tree. Let the push to `mainline` create the tag.
 > - The tag lands on the **bump commit**. Make sure that commit is green *before* it reaches
->   `mainline` — run the whole-solution gate and the whitespace check (§1.5) first — because the tag
+>   `mainline` — run `/ci-gate` on its branch and the whitespace check (§1.5) first — because the tag
 >   (and the published NuGet/GitHub release) freeze on it. A follow-up fix pushed afterward does not
 >   move the already-created tag; re-pointing a published release tag is disruptive and can re-trigger
 >   `release.yml` into a duplicate-NuGet-push failure. Prefer to push a clean bump commit once.

@@ -6,6 +6,8 @@ argument-hint: "[filter]"
 
 Run Sharpy tests with optional filter. Output is smart-truncated to avoid token overload while preserving full logs for investigation.
 
+This is the local edit loop. The whole-solution commit gate is `/ci-gate` by default; an unfiltered `/run-tests` is its local fallback (contract §6).
+
 **Usage:** `/run-tests [filter]` where filter can be:
 - `Lexer`, `Parser`, `Semantic`, `Codegen` - component names
 - `Integration`, `FileBased` - test categories

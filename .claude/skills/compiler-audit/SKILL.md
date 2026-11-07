@@ -14,7 +14,7 @@ If `$ARGUMENTS` is non-empty, narrow to that focus area (e.g. `semantic`, `codeg
 
 - **Read-only.** Read files, search, run tests. No edits, no `git` mutations. Shared-tree block (contract §9): *The working tree is shared. Never run `git checkout`, `git restore`, `git clean`, `git stash`, `git reset`, or `rm` on repo paths. REPORT `git status`; do not "make it clean".*
 - **dotnet only via the wrapper**, with `dangerouslyDisableSandbox: true` (a PreToolUse hook blocks raw `dotnet`; sandboxed callers exit 125): `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~X" --no-build`. Filtered runs are for the agent's own probes.
-- **The whole-solution run happens once**, started by the lead in the background before spawning (`.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`, ~30 min). Hand every agent the log path (`.claude/tmp/dotnet-serialized-N.log`, the wrapper prints which slot) — agents read it, they do not re-run it. Note the log's binaries must postdate HEAD's build; a log older than the last build is not a measurement.
+- **The whole-solution run happens once**, started by the lead in the background before spawning: `/ci-gate` by default (~20 min), or the local `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` when it exits 3. Hand every agent the run id (`gh run view <id> --log`, `gh run download <id> -p 'trx-*'`) or the log path (`.claude/tmp/dotnet-serialized-N.log`, the wrapper prints which slot) — agents read it, they do not re-run it. A run must be at HEAD; a local log's binaries must postdate HEAD's build, and a log older than the last build is not a measurement.
 - **Every count carries its sha**: `value @ <sha> (measured)`, never derived. `git rev-parse --short HEAD` first.
 - **Output shape:** Critical / Warning / Opportunity, each finding with the file:line, the probe that produced it, and what a non-finding would have looked like.
 
@@ -23,7 +23,7 @@ If `$ARGUMENTS` is non-empty, narrow to that focus area (e.g. `semantic`, `codeg
 ### 1. Baseline and harness check
 
 1. `git rev-parse --short HEAD`; `git status --short` (REPORT it; a dirty tree is a fact for the report, not something to fix).
-2. Start the whole-solution gate in the background via the wrapper; record the log slot.
+2. Start the whole-solution gate in the background; record the run id (or, after a local fallback, the log slot).
 3. Check the session's tool list for team/task tools (`TeamCreate`, `TaskCreate`, `TaskUpdate`, `TaskList`). If present, a `compiler-audit` team with one task per dimension is fine. If absent (the common case), spawn each dimension as a background `Agent` and keep the dimension checklist in your own scratch notes — there is no task board.
 4. Locate the **previous audit** in `docs/audits/` (`ls -t docs/audits/audit-*.md | head -1`; two prior reports exist) — its census tables are the trend baseline.
 
