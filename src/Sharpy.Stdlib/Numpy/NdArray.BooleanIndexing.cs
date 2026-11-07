@@ -12,7 +12,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="mask">Boolean mask with the same shape as this array.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="mask"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when the mask shape does not match this array's shape.</exception>
+        /// <exception cref="IndexError">Thrown when the mask shape does not match this array's shape.</exception>
         public NdArray<T> GetMasked(NdArray<bool> mask)
         {
             if (mask == null)
@@ -120,9 +120,8 @@ namespace Sharpy
 
             if (values.Ndim != 1)
             {
-                throw new ArgumentException(
-                    $"values must be 1-D for boolean assignment, got {values.Ndim}-D",
-                    nameof(values));
+                throw new ValueError(
+                    $"values must be 1-D for boolean assignment, got {values.Ndim}-D");
             }
 
             int ndim = _shape.Length;
@@ -137,9 +136,8 @@ namespace Sharpy
                 {
                     if (valuesConsumed >= values.Size)
                     {
-                        throw new ArgumentException(
-                            $"NumPy boolean array indexing assignment cannot assign {values.Size} input values to {valuesConsumed + 1} output values where the mask is true",
-                            nameof(values));
+                        throw new ValueError(
+                            $"NumPy boolean array indexing assignment cannot assign {values.Size} input values to {valuesConsumed + 1} output values where the mask is true");
                     }
 
                     int dataOffset = _offset;
@@ -172,18 +170,17 @@ namespace Sharpy
         {
             if (mask.Ndim != Ndim)
             {
-                throw new ArgumentException(
-                    $"boolean index did not match indexed array along dimension 0; mask has rank {mask.Ndim} but array has rank {Ndim}",
-                    nameof(mask));
+                // numpy: IndexError (a mask of higher rank is "too many indices") (#2461).
+                throw new IndexError(
+                    $"too many indices for array: array is {Ndim}-dimensional, but {mask.Ndim} were indexed");
             }
 
             for (int d = 0; d < _shape.Length; d++)
             {
                 if (mask.Shape[d] != _shape[d])
                 {
-                    throw new ArgumentException(
-                        $"boolean index did not match indexed array along dimension {d}; size {mask.Shape[d]} != {_shape[d]}",
-                        nameof(mask));
+                    throw new IndexError(
+                        $"boolean index did not match indexed array along axis {d}; size of axis is {_shape[d]} but size of corresponding boolean axis is {mask.Shape[d]}");
                 }
             }
         }

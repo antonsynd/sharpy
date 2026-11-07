@@ -181,7 +181,7 @@ namespace Sharpy
 
             if (a.Size == 0)
             {
-                throw new InvalidOperationException(
+                throw new ValueError(
                     $"zero-size array to reduction operation {opName} which has no identity");
             }
         }
@@ -196,8 +196,8 @@ namespace Sharpy
             int normalized = NormalizeAxis(axis, a.Shape.Length);
             if (a.Shape[normalized] == 0)
             {
-                throw new InvalidOperationException(
-                    $"zero-size axis {axis} for reduction operation {opName} which has no identity");
+                throw new ValueError(
+                    $"zero-size array to reduction operation {opName} which has no identity");
             }
         }
 
@@ -224,9 +224,8 @@ namespace Sharpy
             int a = axis < 0 ? axis + ndim : axis;
             if (a < 0 || a >= ndim)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(axis),
-                    $"axis {axis} is out of bounds for array of dimension {ndim}");
+                // numpy raises AxisError, a ValueError (and IndexError) subclass (#2461).
+                throw new ValueError($"axis {axis} is out of bounds for array of dimension {ndim}");
             }
 
             return a;

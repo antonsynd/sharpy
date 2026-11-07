@@ -208,7 +208,7 @@ namespace Sharpy
                 return (T)(object)r;
             }
 
-            throw new NotSupportedException(
+            throw new TypeError(
                 $"arithmetic on an ndarray of dtype '{MapDtype(typeof(T))}' is not supported");
         }
 
@@ -234,7 +234,7 @@ namespace Sharpy
                 return (T)(object)(-(long)(object)x!);
             }
 
-            throw new NotSupportedException(
+            throw new TypeError(
                 $"negation on an ndarray of dtype '{MapDtype(typeof(T))}' is not supported");
         }
     }

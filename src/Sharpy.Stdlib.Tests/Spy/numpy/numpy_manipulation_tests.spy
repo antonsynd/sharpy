@@ -16,7 +16,6 @@
 #     the bool mask at runtime.
 
 import numpy as np
-from system import ArgumentException
 from unittest import assert_raises
 
 # -- concatenate --
@@ -53,7 +52,7 @@ def test_concatenate_2d_axis1():
 def test_concatenate_mismatched_dim_throws():
     a = np.zeros(6).reshape(2, 3)
     b = np.zeros(4).reshape(2, 2)
-    with assert_raises(ArgumentException):
+    with assert_raises(ValueError):
         np.concatenate([a, b], 0)
 
 # -- stack --
@@ -244,10 +243,12 @@ def test_clip_preserves_shape():
     assert r.shape[1] == 2
 
 @test
-def test_clip_min_greater_than_max_throws():
-    a = np.array([1.0, 2.0])
-    with assert_raises(ArgumentException):
-        np.clip(a, 5.0, 2.0)
+def test_clip_min_greater_than_max_returns_max():
+    # numpy 2.5.3 (python3 3.13.18): np.clip(a, 5.0, 2.0) is minimum(maximum(a, 5.0), 2.0),
+    # so every element becomes max; no error (#2461).
+    a = np.array([1.0, 3.0, 7.0])
+    r = np.clip(a, 5.0, 2.0)
+    assert np.allclose(r, np.array([2.0, 2.0, 2.0]))
 
 
 @test

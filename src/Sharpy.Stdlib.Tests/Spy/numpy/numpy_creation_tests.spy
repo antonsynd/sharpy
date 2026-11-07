@@ -15,7 +15,6 @@
 #     .spy list literal cannot bind to (#959).
 
 import numpy as np
-from system import ArgumentException
 from unittest import assert_raises
 
 # -- array --
@@ -66,7 +65,7 @@ def test_zeros_dtype_is_float64():
 
 @test
 def test_zeros_negative_dimension_throws():
-    with assert_raises(ArgumentException):
+    with assert_raises(ValueError):
         np.zeros(-1)
 
 # -- ones --
@@ -113,7 +112,7 @@ def test_eye_zero_returns_empty_matrix():
 
 @test
 def test_eye_negative_throws():
-    with assert_raises(ArgumentException):
+    with assert_raises(ValueError):
         np.eye(-1)
 
 # -- arange --
@@ -174,7 +173,8 @@ def test_arange_negative_step_decreases():
 
 @test
 def test_arange_zero_step_throws():
-    with assert_raises(ArgumentException):
+    # numpy: np.arange(0.0, 5.0, 0.0) raises ZeroDivisionError (#2461).
+    with assert_raises(ZeroDivisionError):
         np.arange(0.0, 5.0, 0.0)
 
 @test
@@ -214,7 +214,7 @@ def test_linspace_num_zero_returns_empty():
 
 @test
 def test_linspace_negative_num_throws():
-    with assert_raises(ArgumentException):
+    with assert_raises(ValueError):
         np.linspace(0.0, 1.0, -1)
 
 # -- empty --
