@@ -15,13 +15,10 @@
 #     setter — not expressible in type-safe Sharpy (Axiom 3).
 #   - Session_RequestAfterDispose_ReturnsErr: Session exposes only IDisposable.Dispose
 #     (no Python close() surface), so disposal cannot be triggered from .spy.
-#   - Session_MaxRedirects_RejectsZeroAndNegative (and the RequestsAdvancedTests
-#     duplicate): the setter throws ArgumentOutOfRangeException, which is not part of
-#     Sharpy's catchable exception hierarchy (catches only as a bare Exception, not as
-#     ValueError), so assert_raises cannot match it.
 #   - All Module-level auth / Send-based tests: route through internal Requests.Send.
 
 import requests
+from unittest import assert_raises
 
 # --- Session.Headers ---
 
@@ -114,6 +111,16 @@ def test_session_max_redirects_can_be_changed():
     assert s.MaxRedirects == 10
     s.MaxRedirects = 1
     assert s.MaxRedirects == 1
+
+@test
+def test_session_max_redirects_rejects_zero_and_negative():
+    # Ported from Session_MaxRedirects_RejectsZeroAndNegative: the setter raises ValueError (#2461).
+    s: requests.Session = requests.Session()
+    with assert_raises(ValueError):
+        s.MaxRedirects = 0
+    with assert_raises(ValueError):
+        s.MaxRedirects = -1
+    assert s.MaxRedirects == 30
 
 @test
 def test_session_max_redirects_can_be_overridden():

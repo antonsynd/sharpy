@@ -25,15 +25,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArrayFrom1dDataCreatesNdarray()
         {
-#line (25, 5) - (25, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (24, 5) - (24, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
-#line (26, 5) - (26, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (25, 5) - (25, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(1, arr.Ndim);
-#line (27, 5) - (27, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (26, 5) - (26, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3, arr.Size);
-#line (28, 5) - (28, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (27, 5) - (27, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (29, 5) - (29, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (28, 5) - (28, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d })));
 #line hidden
         }
@@ -41,7 +41,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArrayCopiesData()
         {
-#line (33, 5) - (33, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (32, 5) - (32, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var data = new Sharpy.List<double>()
 #line hidden
             {
@@ -49,11 +49,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
                 2.0d,
                 3.0d
             };
-#line (34, 5) - (34, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (33, 5) - (33, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Array(data);
-#line (35, 5) - (35, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (34, 5) - (34, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             data[0] = 99.0d;
-#line (37, 5) - (37, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (36, 5) - (36, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d })));
 #line hidden
         }
@@ -61,16 +61,16 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArrayEmptyCreatesEmpty()
         {
-#line (41, 5) - (41, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (40, 5) - (40, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Sharpy.List<double> empty = new Sharpy.List<double>()
 #line hidden
             {
             };
-#line (42, 5) - (42, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (41, 5) - (41, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Array(empty);
-#line (43, 5) - (43, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (42, 5) - (42, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, arr.Size);
-#line (44, 5) - (44, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (43, 5) - (43, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
 #line hidden
         }
@@ -78,11 +78,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestZeros1dAllElementsZero()
         {
-#line (50, 5) - (50, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (49, 5) - (49, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Zeros(5);
-#line (51, 5) - (51, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (50, 5) - (50, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (52, 5) - (52, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (51, 5) - (51, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 0.0d, 0.0d, 0.0d, 0.0d, 0.0d })));
 #line hidden
         }
@@ -90,15 +90,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestZeros2dAllElementsZero()
         {
-#line (56, 5) - (56, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (55, 5) - (55, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Zeros(2, 3);
-#line (57, 5) - (57, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (56, 5) - (56, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, arr.Ndim);
-#line (58, 5) - (58, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (57, 5) - (57, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (59, 5) - (59, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (58, 5) - (58, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 1));
-#line (60, 5) - (60, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (59, 5) - (59, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(6, arr.Size);
 #line hidden
         }
@@ -106,9 +106,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestZerosDtypeIsFloat64()
         {
-#line (64, 5) - (64, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (63, 5) - (63, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Zeros(3);
-#line (65, 5) - (65, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (64, 5) - (64, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal("float64", arr.Dtype);
 #line hidden
         }
@@ -116,32 +116,32 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestZerosNegativeDimensionThrows()
         {
-#line (69, 5) - (70, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (68, 5) - (69, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             bool __raised_0 = false;
 #line hidden
             try
             {
-#line (70, 9) - (70, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (69, 9) - (69, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                 np.Zeros(-1);
 #line hidden
             }
-            catch (ArgumentException)
+            catch (ValueError)
             {
                 __raised_0 = true;
             }
 
             if (!__raised_0)
-                throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
         }
 
         [Xunit.FactAttribute]
         public void TestOnes1dAllElementsOne()
         {
-#line (76, 5) - (76, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (75, 5) - (75, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Ones(4);
-#line (77, 5) - (77, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (76, 5) - (76, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(4, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (78, 5) - (78, 61) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (77, 5) - (77, 61) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 1.0d, 1.0d, 1.0d, 1.0d })));
 #line hidden
         }
@@ -149,15 +149,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestOnes2dAllElementsOne()
         {
-#line (82, 5) - (82, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (81, 5) - (81, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Ones(2, 2);
-#line (83, 5) - (83, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (82, 5) - (82, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, arr.Ndim);
-#line (84, 5) - (84, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (83, 5) - (83, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (85, 5) - (85, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (84, 5) - (84, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 1));
-#line (87, 5) - (87, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (86, 5) - (86, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(4.0d, np.Sum(arr));
 #line hidden
         }
@@ -165,15 +165,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestEye2x2IsIdentity()
         {
-#line (93, 5) - (93, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (92, 5) - (92, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Eye(2);
-#line (94, 5) - (94, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (93, 5) - (93, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, arr.Ndim);
-#line (95, 5) - (95, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (94, 5) - (94, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (96, 5) - (96, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (95, 5) - (95, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 1));
-#line (98, 5) - (98, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (97, 5) - (97, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(2.0d, np.Sum(arr));
 #line hidden
         }
@@ -181,13 +181,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestEye3x3IsIdentity()
         {
-#line (102, 5) - (102, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (101, 5) - (101, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Eye(3);
-#line (103, 5) - (103, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (102, 5) - (102, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (104, 5) - (104, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (103, 5) - (103, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 1));
-#line (105, 5) - (105, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (104, 5) - (104, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3.0d, np.Sum(arr));
 #line hidden
         }
@@ -195,13 +195,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestEyeZeroReturnsEmptyMatrix()
         {
-#line (109, 5) - (109, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (108, 5) - (108, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Eye(0);
-#line (110, 5) - (110, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (109, 5) - (109, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (111, 5) - (111, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (110, 5) - (110, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 1));
-#line (112, 5) - (112, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (111, 5) - (111, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, arr.Size);
 #line hidden
         }
@@ -209,32 +209,32 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestEyeNegativeThrows()
         {
-#line (116, 5) - (117, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (115, 5) - (116, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             bool __raised_1 = false;
 #line hidden
             try
             {
-#line (117, 9) - (117, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (116, 9) - (116, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                 np.Eye(-1);
 #line hidden
             }
-            catch (ArgumentException)
+            catch (ValueError)
             {
                 __raised_1 = true;
             }
 
             if (!__raised_1)
-                throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
         }
 
         [Xunit.FactAttribute]
         public void TestArangeSingleArgumentReadsItAsStop()
         {
-#line (126, 5) - (126, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (125, 5) - (125, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             global::Sharpy.NdArray<double> arr = np.Arange(6.0d);
-#line (127, 5) - (127, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (126, 5) - (126, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(6, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (128, 5) - (128, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (127, 5) - (127, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 0.0d, 1.0d, 2.0d, 3.0d, 4.0d, 5.0d })));
 #line hidden
         }
@@ -242,11 +242,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeSingleArgumentTruncatesAFractionalStop()
         {
-#line (134, 5) - (134, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (133, 5) - (133, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             global::Sharpy.NdArray<double> arr = np.Arange(2.5d);
-#line (135, 5) - (135, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (134, 5) - (134, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (136, 5) - (136, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (135, 5) - (135, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 0.0d, 1.0d, 2.0d })));
 #line hidden
         }
@@ -254,13 +254,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeSingleArgumentWithNonPositiveStopIsEmpty()
         {
-#line (141, 5) - (141, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (140, 5) - (140, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             global::Sharpy.NdArray<double> zero = np.Arange(0.0d);
-#line (142, 5) - (142, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (141, 5) - (141, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, zero.Size);
-#line (144, 5) - (144, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (143, 5) - (143, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             global::Sharpy.NdArray<double> negative = np.Arange(-3.0d);
-#line (145, 5) - (145, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (144, 5) - (144, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, negative.Size);
 #line hidden
         }
@@ -268,7 +268,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeSingleArgumentAgreesWithTheExplicitTwoArgumentForm()
         {
-#line (150, 5) - (150, 61) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (149, 5) - (149, 61) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(np.Arange(6.0d), np.Arange(0.0d, 6.0d)));
 #line hidden
         }
@@ -276,11 +276,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeDefaultStepGenerates()
         {
-#line (154, 5) - (154, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (153, 5) - (153, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Arange(0.0d, 5.0d);
-#line (155, 5) - (155, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (154, 5) - (154, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (156, 5) - (156, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (155, 5) - (155, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 0.0d, 1.0d, 2.0d, 3.0d, 4.0d })));
 #line hidden
         }
@@ -288,11 +288,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeCustomStepGenerates()
         {
-#line (160, 5) - (160, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (159, 5) - (159, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Arange(0.0d, 10.0d, 2.0d);
-#line (161, 5) - (161, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (160, 5) - (160, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (162, 5) - (162, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (161, 5) - (161, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 0.0d, 2.0d, 4.0d, 6.0d, 8.0d })));
 #line hidden
         }
@@ -300,9 +300,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeStopEqualsStartReturnsEmpty()
         {
-#line (166, 5) - (166, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (165, 5) - (165, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Arange(5.0d, 5.0d);
-#line (167, 5) - (167, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (166, 5) - (166, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(0, arr.Size);
 #line hidden
         }
@@ -310,11 +310,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
         [Xunit.FactAttribute]
         public void TestArangeNegativeStepDecreases()
         {
-#line (171, 5) - (171, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (170, 5) - (170, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             var arr = np.Arange(5.0d, 0.0d, -1.0d);
-#line (172, 5) - (172, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (171, 5) - (171, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
-#line (173, 5) - (173, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (172, 5) - (172, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
             Xunit.Assert.True(np.Allclose(arr, np.Array(new Sharpy.List<double>() { 5.0d, 4.0d, 3.0d, 2.0d, 1.0d })));
 #line hidden
         }
@@ -331,13 +331,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
                 np.Arange(0.0d, 5.0d, 0.0d);
 #line hidden
             }
-            catch (ArgumentException)
+            catch (ZeroDivisionError)
             {
                 __raised_2 = true;
             }
 
             if (!__raised_2)
-                throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
+                throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
         }
 
         [Xunit.FactAttribute]
@@ -418,13 +418,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
                 np.Linspace(0.0d, 1.0d, -1);
 #line hidden
             }
-            catch (ArgumentException)
+            catch (ValueError)
             {
                 __raised_3 = true;
             }
 
             if (!__raised_3)
-                throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
         }
 
         [Xunit.FactAttribute]

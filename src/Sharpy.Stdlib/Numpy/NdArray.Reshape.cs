@@ -14,7 +14,7 @@ namespace Sharpy
         /// inferred from the total element count and the remaining dimensions.
         /// </param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="newShape"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when more than one dimension is -1, or the inferred shape does not match <see cref="Size"/>.</exception>
+        /// <exception cref="ValueError">Thrown when more than one dimension is -1, or the inferred shape does not match <see cref="Size"/>.</exception>
         public NdArray<T> Reshape(params int[] newShape)
         {
             if (newShape == null)
@@ -176,14 +176,14 @@ namespace Sharpy
                 {
                     if (inferAxis != -1)
                     {
-                        throw new ArgumentException("can only specify one unknown dimension", nameof(shape));
+                        throw new ValueError("can only specify one unknown dimension");
                     }
 
                     inferAxis = i;
                 }
                 else if (shape[i] < 0)
                 {
-                    throw new ArgumentException($"negative dimensions not allowed: {shape[i]}", nameof(shape));
+                    throw new ValueError("negative dimensions not allowed");
                 }
                 else
                 {
@@ -198,26 +198,36 @@ namespace Sharpy
             {
                 if (known == 0)
                 {
-                    throw new ArgumentException("cannot reshape array of size " + totalSize + " into shape with unknown dimension and zero-size known dimensions", nameof(shape));
+                    throw new ValueError(CannotReshape(totalSize, shape));
                 }
 
                 if (totalSize % known != 0)
                 {
-                    throw new ArgumentException(
-                        $"cannot reshape array of size {totalSize} into shape with product of known dimensions {known}",
-                        nameof(shape));
+                    throw new ValueError(CannotReshape(totalSize, shape));
                 }
 
                 resolved[inferAxis] = totalSize / known;
             }
             else if (known != totalSize)
             {
-                throw new ArgumentException(
-                    $"cannot reshape array of size {totalSize} into shape with product {known}",
-                    nameof(shape));
+                throw new ValueError(CannotReshape(totalSize, shape));
             }
 
             return resolved;
+        }
+
+        // numpy's text: "cannot reshape array of size 6 into shape (2,newaxis,4)" — the unknown
+        // dimension spelled "newaxis" (#2461).
+        private static string CannotReshape(int totalSize, int[] shape)
+        {
+            var parts = new string[shape.Length];
+            for (int i = 0; i < shape.Length; i++)
+            {
+                parts[i] = shape[i] == -1 ? "newaxis" : shape[i].ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            string spelled = shape.Length == 1 ? "(" + parts[0] + ",)" : "(" + string.Join(",", parts) + ")";
+            return "cannot reshape array of size " + totalSize.ToString(System.Globalization.CultureInfo.InvariantCulture) + " into shape " + spelled;
         }
     }
 }

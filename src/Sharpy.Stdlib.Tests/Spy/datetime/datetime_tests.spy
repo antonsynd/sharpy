@@ -14,13 +14,11 @@
 #   - DatetimeModule_ExposesExpectedTypes: typeof()/Type reflection
 #     (Datetime.DateType == typeof(Date)) has no Sharpy surface. Non-portable.
 #
-# Note: invalid-date construction throws System.ArgumentOutOfRangeException (the
-# .NET DateTime ctor surfaces it directly), imported via `from system import ...`.
+# Note: invalid-date construction raises ValueError with CPython's text (#2461).
 # tzinfo (typed object/ITzinfo?) is compared with `is` (reference identity, what
 # the C# .Should().Be(tz) checks for reference types) — object '==' is Axiom-3
 # rejected.
 
-from system import ArgumentOutOfRangeException
 from unittest import assert_raises
 
 import datetime
@@ -62,9 +60,146 @@ def test_date_today_returns_current_date():
     assert 1 <= today.day <= 31
 
 @test
-def test_date_invalid_date_throws_argument_out_of_range():
-    with assert_raises(ArgumentOutOfRangeException):
+def test_date_invalid_date_raises_value_error():
+    with assert_raises(ValueError):
         datetime.date(2024, 13, 1)
+
+# --- Constructor arguments out of range: ValueError with CPython 3.13.18's text (#2461) ---
+
+@test
+def test_date_feb29_non_leap_raises_value_error():
+    text = ""
+    try:
+        datetime.date(2023, 2, 29)
+    except ValueError as e:
+        text = str(e)
+    assert text == "day is out of range for month"
+
+@test
+def test_date_month_13_raises_value_error():
+    text = ""
+    try:
+        datetime.date(2023, 13, 1)
+    except ValueError as e:
+        text = str(e)
+    assert text == "month must be in 1..12"
+
+@test
+def test_date_day_0_raises_value_error():
+    text = ""
+    try:
+        datetime.date(2023, 1, 0)
+    except ValueError as e:
+        text = str(e)
+    assert text == "day is out of range for month"
+
+@test
+def test_date_year_0_raises_value_error():
+    text = ""
+    try:
+        datetime.date(0, 1, 1)
+    except ValueError as e:
+        text = str(e)
+    assert text == "year 0 is out of range"
+
+@test
+def test_date_year_10000_raises_value_error():
+    text = ""
+    try:
+        datetime.date(10000, 1, 1)
+    except ValueError as e:
+        text = str(e)
+    assert text == "year 10000 is out of range"
+
+@test
+def test_date_fromordinal_0_raises_value_error():
+    text = ""
+    try:
+        datetime.date.fromordinal(0)
+    except ValueError as e:
+        text = str(e)
+    assert text == "ordinal must be >= 1"
+
+@test
+def test_date_replace_month_13_raises_value_error():
+    text = ""
+    try:
+        datetime.date(2023, 1, 31).replace(month=13)
+    except ValueError as e:
+        text = str(e)
+    assert text == "month must be in 1..12"
+
+@test
+def test_time_hour_25_raises_value_error():
+    text = ""
+    try:
+        datetime.time(25, 0)
+    except ValueError as e:
+        text = str(e)
+    assert text == "hour must be in 0..23"
+
+@test
+def test_time_hour_negative_raises_value_error():
+    text = ""
+    try:
+        datetime.time(-1)
+    except ValueError as e:
+        text = str(e)
+    assert text == "hour must be in 0..23"
+
+@test
+def test_time_minute_60_raises_value_error():
+    text = ""
+    try:
+        datetime.time(0, 60)
+    except ValueError as e:
+        text = str(e)
+    assert text == "minute must be in 0..59"
+
+@test
+def test_time_second_60_raises_value_error():
+    text = ""
+    try:
+        datetime.time(0, 0, 60)
+    except ValueError as e:
+        text = str(e)
+    assert text == "second must be in 0..59"
+
+@test
+def test_time_microsecond_1000000_raises_value_error():
+    text = ""
+    try:
+        datetime.time(0, 0, 0, 1000000)
+    except ValueError as e:
+        text = str(e)
+    assert text == "microsecond must be in 0..999999"
+
+@test
+def test_datetime_feb29_non_leap_raises_value_error():
+    text = ""
+    try:
+        datetime.datetime(2023, 2, 29)
+    except ValueError as e:
+        text = str(e)
+    assert text == "day is out of range for month"
+
+@test
+def test_datetime_hour_24_raises_value_error():
+    text = ""
+    try:
+        datetime.datetime(2023, 1, 1, 24)
+    except ValueError as e:
+        text = str(e)
+    assert text == "hour must be in 0..23"
+
+@test
+def test_datetime_replace_month_13_raises_value_error():
+    text = ""
+    try:
+        datetime.datetime(2023, 1, 1).replace(month=13)
+    except ValueError as e:
+        text = str(e)
+    assert text == "month must be in 1..12"
 
 # --- Time ---
 

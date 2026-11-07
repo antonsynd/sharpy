@@ -13,6 +13,7 @@ namespace Sharpy
         /// <summary>Create a date from year, month, and day.</summary>
         public Date(int year, int month, int day)
         {
+            DatetimeArgs.CheckDate(year, month, day);
             _date = new System.DateTime(year, month, day);
         }
 
@@ -86,6 +87,7 @@ namespace Sharpy
         /// <summary>Create a Date from a proleptic Gregorian ordinal.</summary>
         public static Date Fromordinal(int ordinal)
         {
+            DatetimeArgs.CheckOrdinal(ordinal);
             return new Date(new System.DateTime((ordinal - 1) * TimeSpan.TicksPerDay));
         }
 
@@ -202,6 +204,7 @@ namespace Sharpy
         /// <summary>Create a time from hour, minute, second, and microsecond.</summary>
         public Time(int hour = 0, int minute = 0, int second = 0, int microsecond = 0)
         {
+            DatetimeArgs.CheckTime(hour, minute, second, microsecond);
             // Convert microseconds to ticks (10 ticks = 1 microsecond)
             long ticks = new TimeSpan(0, hour, minute, second).Ticks + (microsecond * 10L);
             _time = new TimeSpan(ticks);
@@ -344,6 +347,8 @@ namespace Sharpy
         /// <summary>Create a datetime from year, month, day, and optional time components.</summary>
         public DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0, ITzinfo? tzinfo = null)
         {
+            DatetimeArgs.CheckDate(year, month, day);
+            DatetimeArgs.CheckTime(hour, minute, second, microsecond);
             _dateTime = new System.DateTime(year, month, day, hour, minute, second).AddTicks(microsecond * 10L);
             _tzinfo = tzinfo;
         }
@@ -974,6 +979,49 @@ namespace Sharpy
                 }
             }
             return result.ToString();
+        }
+    }
+
+    /// <summary>
+    /// CPython's constructor-argument checks for <c>date</c>, <c>time</c> and <c>datetime</c>: an
+    /// out-of-range component raises <see cref="ValueError"/> with CPython's text, in CPython's order
+    /// (year, month, day, hour, minute, second, microsecond), before any <c>System.DateTime</c> or
+    /// <c>TimeSpan</c> sees it (#2461).
+    /// </summary>
+    internal static class DatetimeArgs
+    {
+        internal const int MinYear = 1;
+        internal const int MaxYear = 9999;
+        private const int MaxOrdinal = 3652059; // date(9999, 12, 31).toordinal()
+
+        internal static void CheckDate(int year, int month, int day)
+        {
+            if (year < MinYear || year > MaxYear)
+                throw new ValueError("year " + year.ToString(CultureInfo.InvariantCulture) + " is out of range");
+            if (month < 1 || month > 12)
+                throw new ValueError("month must be in 1..12");
+            if (day < 1 || day > System.DateTime.DaysInMonth(year, month))
+                throw new ValueError("day is out of range for month");
+        }
+
+        internal static void CheckTime(int hour, int minute, int second, int microsecond)
+        {
+            if (hour < 0 || hour > 23)
+                throw new ValueError("hour must be in 0..23");
+            if (minute < 0 || minute > 59)
+                throw new ValueError("minute must be in 0..59");
+            if (second < 0 || second > 59)
+                throw new ValueError("second must be in 0..59");
+            if (microsecond < 0 || microsecond > 999999)
+                throw new ValueError("microsecond must be in 0..999999");
+        }
+
+        internal static void CheckOrdinal(int ordinal)
+        {
+            if (ordinal < 1)
+                throw new ValueError("ordinal must be >= 1");
+            if (ordinal > MaxOrdinal)
+                throw new ValueError("year 10000 is out of range");
         }
     }
 

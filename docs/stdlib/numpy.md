@@ -380,7 +380,7 @@ common row length determine the 2-D shape.
 
 **Raises:**
 
-- `ArgumentException` -- Rows have differing lengths.
+- `ValueError` -- Rows have differing lengths.
 
 ### `numpy.zeros(*shape: int) -> ndarray[float]`
 
@@ -860,7 +860,7 @@ Return a 1-D copy containing the elements where *mask* is True.
 **Raises:**
 
 - `ArgumentNullException` -- Thrown when *mask* is null.
-- `ArgumentException` -- Thrown when the mask shape does not match this array's shape.
+- `IndexError` -- Thrown when the mask shape does not match this array's shape.
 
 ### `set_masked(mask: ndarray[bool], value: T)`
 
@@ -942,7 +942,7 @@ inferred from the total element count and the remaining dimensions.
 **Raises:**
 
 - `ArgumentNullException` -- Thrown when *newShape* is null.
-- `ArgumentException` -- Thrown when more than one dimension is -1, or the inferred shape does not match `size`.
+- `ValueError` -- Thrown when more than one dimension is -1, or the inferred shape does not match `size`.
 
 ### `transpose() -> ndarray[T]`
 
@@ -987,7 +987,7 @@ Python semantics.
 
 **Raises:**
 
-- `InvalidOperationException` -- Thrown when this array is not 2-dimensional.
+- `ValueError` -- Thrown when this array is not 2-dimensional.
 - `IndexError` -- Thrown when *i* is out of range.
 
 ### `get_column(j: int) -> ndarray[T]`
@@ -1001,5 +1001,5 @@ Python semantics.
 
 **Raises:**
 
-- `InvalidOperationException` -- Thrown when this array is not 2-dimensional.
+- `ValueError` -- Thrown when this array is not 2-dimensional.
 - `IndexError` -- Thrown when *j* is out of range.

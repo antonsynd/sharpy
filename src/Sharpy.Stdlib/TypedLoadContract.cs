@@ -106,15 +106,9 @@ namespace Sharpy
                 if (!CouldRecurse(field.FieldType))
                     continue;
 
-                IDocumentNode child;
-                try
-                {
-                    child = FindChild(node, field.NormalizedKey);
-                }
-                catch
-                {
+                var child = FindChild(node, field.NormalizedKey);
+                if (child == null)
                     continue;
-                }
 
                 var nested = WalkValue(field.FieldType, child, path);
                 if (nested != null)
@@ -193,7 +187,7 @@ namespace Sharpy
             return type != typeof(string) && !type.IsPrimitive && FieldDescriptorsOf(type).Count > 0;
         }
 
-        private static IDocumentNode FindChild(IDocumentNode node, string normalizedKey)
+        private static IDocumentNode? FindChild(IDocumentNode node, string normalizedKey)
         {
             foreach (var key in node.Keys)
             {
@@ -201,7 +195,7 @@ namespace Sharpy
                     return node.GetChild(key);
             }
 
-            throw new InvalidOperationException("key not found");
+            return null;
         }
 
         /// <summary>

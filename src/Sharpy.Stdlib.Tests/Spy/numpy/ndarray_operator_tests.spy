@@ -13,7 +13,6 @@
 #     requires 2-D element indexing on the operator result which may not resolve.
 
 import numpy as np
-from system import ArgumentException
 from unittest import assert_raises
 
 # -- same-shape arithmetic --
@@ -112,12 +111,12 @@ def test_add_broadcast_1d_to_matrix():
 def test_add_incompatible_shapes_throws():
     a = np.array([1.0, 2.0, 3.0])
     b = np.array([1.0, 2.0, 3.0, 4.0])
-    with assert_raises(ArgumentException):
+    with assert_raises(ValueError):
         _ = a + b
 
 @test
 def test_add_incompatible_matrices_throws():
     a = np.zeros(6).reshape(2, 3)
     b = np.zeros(12).reshape(4, 3)
-    with assert_raises(ArgumentException):
+    with assert_raises(ValueError):
         _ = a + b

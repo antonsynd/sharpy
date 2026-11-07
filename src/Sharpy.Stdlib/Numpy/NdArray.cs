@@ -25,7 +25,7 @@ namespace Sharpy
         /// <param name="data">Flat data buffer in row-major order. Length must equal the product of <paramref name="shape"/>.</param>
         /// <param name="shape">Shape of the array. Each dimension must be non-negative.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="data"/> or <paramref name="shape"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when shape contains negative dimensions or <paramref name="data"/> length does not equal the product of <paramref name="shape"/>.</exception>
+        /// <exception cref="ValueError">Thrown when shape contains negative dimensions or <paramref name="data"/> length does not equal the product of <paramref name="shape"/>.</exception>
         public NdArray(T[] data, int[] shape)
         {
             if (data == null)
@@ -43,7 +43,7 @@ namespace Sharpy
             {
                 if (shape[i] < 0)
                 {
-                    throw new ArgumentException($"shape dimension {i} is negative: {shape[i]}", nameof(shape));
+                    throw new ValueError("negative dimensions are not allowed");
                 }
 
                 size = checked(size * shape[i]);
@@ -51,9 +51,9 @@ namespace Sharpy
 
             if (data.Length != size)
             {
-                throw new ArgumentException(
-                    $"data length {data.Length} does not match shape product {size}",
-                    nameof(data));
+                throw new ValueError(
+                    "cannot reshape array of size " + data.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + " into shape " + Broadcasting.FormatShape(shape));
             }
 
             _data = data;
