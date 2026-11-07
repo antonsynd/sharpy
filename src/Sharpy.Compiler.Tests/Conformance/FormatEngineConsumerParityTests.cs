@@ -29,7 +29,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </summary>
 public class FormatEngineConsumerParityTests : IntegrationTestBase
 {
-    public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) { }
+    public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     /// <summary>One value, one spec — rendered four ways, expected to agree with python3.</summary>
     private sealed record Cell(string Label, string Decl, string Value, string Spec, string Expected);

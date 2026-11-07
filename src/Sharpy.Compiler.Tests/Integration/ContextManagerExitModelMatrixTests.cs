@@ -47,7 +47,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// </summary>
 public class ContextManagerExitModelMatrixTests : IntegrationTestBase
 {
-    public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output) { }
+    public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     // ── Axes ──
 
