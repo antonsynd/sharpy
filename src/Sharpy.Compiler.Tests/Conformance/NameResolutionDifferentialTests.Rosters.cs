@@ -851,7 +851,7 @@ internal static class NameResolutionRosters
     /// constructible as a <c>BindingPattern</c>, and that is LOCAL's <c>match</c> capture.</summary>
     internal static readonly IReadOnlyDictionary<string, string> PatternNotes = Roster.Map(
         (nameof(BindingPattern), TypedCaptureNote),
-        (nameof(AndPattern), "python has no `&` pattern, so a program spelling one has no twin for the control to judge; OrPattern, GuardPattern, AsPattern, TuplePattern and ListPattern keep the composite arm"));
+        (nameof(AndPattern), "python has no `and` pattern, so a program spelling one has no twin for the control to judge; OrPattern, GuardPattern, AsPattern, TuplePattern and ListPattern keep the composite arm"));
 
     internal static readonly IReadOnlyDictionary<string, PatternClass> Patterns = Roster.Map(
         (nameof(TypePattern), PatternClass.NamesTypeOrMember),
