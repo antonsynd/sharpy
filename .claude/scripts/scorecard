@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+# scorecard — measure the remediation scorecard in one command.
+#
+#   .claude/scripts/scorecard [--since YYYY-MM-DD] [--base SHA] [--no-network] [--no-probe]
+#
+# Prints a markdown table, one row per metric of docs/process/handoff-2026-11-06-remediation.md §5.1,
+# each value tagged with the HEAD sha it was measured at. The smoke run of 2026-11-07 found that 11 of
+# the 14 rows could not be measured from the prose "how to measure" column without guessing (globstar,
+# a markdown-escaped regex, the LOC denominator, the .spyproj path, the hello-world program, manual
+# paging because `gh api --paginate` is refused by the cloud proxy). This script is that column.
+#
+#   --since      the wave's start date for filed/closed counts and the commit window (default: today)
+#   --base       the commit the wave started from, for commit mix and gate citations (default: origin/dev
+#                merge-base with HEAD, falling back to HEAD~20)
+#   --no-network skip the GitHub rows (issues, CI, nightly)
+#   --no-probe   skip the sharpyc rows (warm build, hello world); they need a built CLI
+#
+# Needs `gh` and the network for the GitHub rows (in Claude Code: dangerouslyDisableSandbox: true).
+# Never builds: a stale sharpyc is reported, not fixed, because the build takes the dotnet lock.
+set -uo pipefail
+
+REPO=antonsynd/sharpy
+SINCE=$(date -u +%F)
+BASE=""
+NETWORK=1
+PROBE=1
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --since) SINCE="$2"; shift 2 ;;
+        --base) BASE="$2"; shift 2 ;;
+        --no-network) NETWORK=0; shift ;;
+        --no-probe) PROBE=0; shift ;;
+        *) echo "scorecard: unknown argument $1" >&2; exit 2 ;;
+    esac
+done
+
+ROOT=$(git rev-parse --show-toplevel) || exit 2
+cd "$ROOT" || exit 2
+HEAD_SHA=$(git rev-parse --short=9 HEAD)
+if [ -z "$BASE" ]; then
+    BASE=$(git merge-base HEAD origin/dev 2>/dev/null || git rev-parse HEAD~20)
+fi
+BASE_SHORT=$(git rev-parse --short=9 "$BASE")
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/scorecard.XXXXXX")
+trap 'rm -rf "$SCRATCH"' EXIT
+
+row() { printf '| %s | %s | %s |\n' "$1" "$2" "$3"; }
+note() { printf '%s\n' "$*" >&2; }
+
+# gh api without --paginate: the cloud proxy refuses the numeric-id Link URLs it follows.
+gh_pages() { # gh_pages <path-with-?> <jq-filter-per-item>  → one JSON item per line
+    local path=$1 filter=$2 page=1 n
+    while :; do
+        n=$(gh api -X GET "${path}&per_page=100&page=${page}" --jq "length" 2>/dev/null) || return 1
+        gh api -X GET "${path}&per_page=100&page=${page}" --jq ".[] | ${filter}" 2>/dev/null
+        [ "${n:-0}" -lt 100 ] && break
+        page=$((page + 1))
+    done
+}
+
+echo "## Scorecard @ ${HEAD_SHA} ($(date -u +%FT%H:%MZ)); wave window since ${SINCE}; base ${BASE_SHORT}"
+echo
+echo '| Metric | Value | How it was measured |'
+echo '|---|---|---|'
+
+# 1–2. Issues ----------------------------------------------------------------------------------------
+if [ "$NETWORK" = 1 ]; then
+    if gh_pages "repos/$REPO/issues?state=open" 'select(.pull_request|not) | {n:.number,t:.title}' > "$SCRATCH/open.jsonl"; then
+        OPEN=$(wc -l < "$SCRATCH/open.jsonl")
+        LEAK=$(jq -r 'select(.t|test("SPY0908|CS[0-9]{4}")) | .n' "$SCRATCH/open.jsonl" | wc -l)
+        gh_pages "repos/$REPO/issues?state=all&since=${SINCE}T00:00:00Z" \
+            'select(.pull_request|not) | {n:.number,c:.created_at,x:.closed_at}' > "$SCRATCH/since.jsonl"
+        FILED=$(jq -r --arg s "$SINCE" 'select(.c >= $s) | .n' "$SCRATCH/since.jsonl" | wc -l)
+        CLOSED=$(jq -r --arg s "$SINCE" 'select(.x != null and .x >= $s) | .n' "$SCRATCH/since.jsonl" | wc -l)
+        row "Open issues; closed ÷ filed since $SINCE" "$OPEN open; $CLOSED closed ÷ $FILED filed" \
+            "issues API, PRs excluded, paged by hand"
+        row "Open SPY0908 / CS-leak issues" "$LEAK" 'title matches `SPY0908|CS[0-9]{4}`'
+    else
+        row "Open issues" "unavailable (gh api failed)" "—"
+    fi
+else
+    row "Open issues; SPY0908" "skipped (--no-network)" "—"
+fi
+
+# 3. Allowlists --------------------------------------------------------------------------------------
+# Rows are non-blank, non-comment lines of every tracked *allowlist*.txt. Harnesses that landed with a
+# charter plan that seeds rows on purpose are listed separately: their growth is the plan, not drift.
+SEED_PLAN_FILES='name-resolution-differential-allowlist.txt'   # P77b (#2433), plan-3eba57
+git ls-files '*allowlist*.txt' > "$SCRATCH/files.txt"
+TOTAL=0; SEEDED=0
+: > "$SCRATCH/cites.txt"
+while IFS= read -r f; do
+    n=$(grep -cvE '^[[:space:]]*(#|$)' "$f" || true)
+    TOTAL=$((TOTAL + n))
+    case "$(basename "$f")" in *$SEED_PLAN_FILES*) SEEDED=$((SEEDED + n)) ;; esac
+    grep -vE '^[[:space:]]*(#|$)' "$f" | grep -oE '#[0-9]+' >> "$SCRATCH/cites.txt" || true
+done < "$SCRATCH/files.txt"
+FILES=$(wc -l < "$SCRATCH/files.txt")
+NONEMPTY=$(while IFS= read -r f; do grep -qvE '^[[:space:]]*(#|$)' "$f" && echo "$f"; done < "$SCRATCH/files.txt" | wc -l)
+CITED=$(sort -u "$SCRATCH/cites.txt" | wc -l)
+row "Allowlist rows: total / outside seed-plan harnesses" "$TOTAL / $((TOTAL - SEEDED))" \
+    "$FILES files ($NONEMPTY non-empty); seed-plan harnesses: $SEED_PLAN_FILES ($SEEDED rows)"
+row "Distinct issues cited by allowlist rows" "$CITED" \
+    'rows citing a closed issue must be 0: `build_tools/check_allowlist_issue_state.sh`'
+
+# 4. SemanticInfo dictionary fields ------------------------------------------------------------------
+PIN=$(grep -oE 'MaximumSideTableFieldCount = [0-9]+' src/Sharpy.Compiler.Tests/Semantic/SemanticInfoMergeConformanceTests.cs | grep -oE '[0-9]+$')
+FIELDS=$(grep -cE '^\s*private readonly (Concurrent)?Dictionary<' src/Sharpy.Compiler/Semantic/SemanticInfo.cs || true)
+row "SemanticInfo dictionary fields (pin ≤ / counted)" "${PIN:-?} / $FIELDS" \
+    "pin in SemanticInfoMergeConformanceTests; private readonly dictionary fields in SemanticInfo.cs (85 node-keyed + 3 symbol-keyed at 70608d421)"
+
+# 5. Test LOC ÷ compiler LOC -------------------------------------------------------------------------
+TLOC=$(git ls-files 'src/Sharpy.Compiler.Tests/*.cs' | xargs cat | wc -l)
+PLOC=$(git ls-files 'src/Sharpy.Compiler/*.cs' | xargs cat | wc -l)
+row "Test LOC ÷ compiler LOC" "$(awk -v t="$TLOC" -v p="$PLOC" 'BEGIN{printf "%.2f", t/p}') ($TLOC ÷ $PLOC)" \
+    'Sharpy.Compiler.Tests `*.cs` ÷ Sharpy.Compiler `*.cs`, tracked files (the audit'"'"'s 1.75 definition)'
+
+# 6. Procedure bytes ---------------------------------------------------------------------------------
+PROC_FILES="CLAUDE.md .claude/skills/create-plan/SKILL.md .claude/skills/verify-plan/SKILL.md .claude/skills/implement-plan/SKILL.md .claude/skills/verify-implementation/SKILL.md .claude/skills/commit/SKILL.md .claude/skills/push/SKILL.md .claude/skills/ci-gate/SKILL.md"
+PROC=0
+for f in $PROC_FILES; do [ -f "$f" ] && PROC=$((PROC + $(wc -c < "$f"))); done
+row "Procedure bytes per light group; CLAUDE.md" "$PROC; $(wc -c < CLAUDE.md)" \
+    "CLAUDE.md + create-plan, verify-plan, implement-plan, verify-implementation, commit, push, ci-gate skills"
+
+# 7–8. Commits since base: mix and gate citations --------------------------------------------------
+git log --no-merges --format='%s' "$BASE..HEAD" > "$SCRATCH/subjects.txt"
+NCOMMITS=$(wc -l < "$SCRATCH/subjects.txt")
+MIX=$(sed -nE 's/^([a-z]+)(\([^)]*\))?!?:.*/\1/p' "$SCRATCH/subjects.txt" | sort | uniq -c | sort -rn | awk '{printf "%s %s, ", $2, $1}' | sed 's/, $//')
+REVERTS=$(grep -c '^Revert' "$SCRATCH/subjects.txt" || true)
+GATES=$(git log --no-merges --format='%b' "$BASE..HEAD" | grep -cE '([0-9]+/[0-9]+/[0-9]+ @ [0-9a-f]{7,}|CI GATE GREEN)' || true)
+row "Commit mix since base ($NCOMMITS non-merge; $REVERTS reverts)" "${MIX:-none}" "conventional prefix of the subject; merges excluded; a reverted range is reported, not removed"
+row "Whole-solution gate citations since base" "$GATES" 'bodies containing `passed/failed/skipped @ sha` or `CI GATE GREEN`; one gate = one citation; automatic PR runs are not gates'
+
+# 9–10. CI -------------------------------------------------------------------------------------------
+if [ "$NETWORK" = 1 ]; then
+    if gh api -X GET "repos/$REPO/actions/workflows/dotnet10.yml/runs?event=push&per_page=20" \
+        --jq '.workflow_runs[] | select(.conclusion != null) | [.id, .run_started_at, .updated_at] | @tsv' > "$SCRATCH/runs.tsv" 2>/dev/null && [ -s "$SCRATCH/runs.tsv" ]; then
+        : > "$SCRATCH/walls.txt"; : > "$SCRATCH/slow.txt"
+        while IFS=$'\t' read -r id started updated; do
+            echo $(( ($(date -d "$updated" +%s) - $(date -d "$started" +%s)) / 60 )) >> "$SCRATCH/walls.txt"
+            gh api -X GET "repos/$REPO/actions/runs/$id/jobs?per_page=100" \
+                --jq '.jobs[] | select(.completed_at != null) | [(((.completed_at|fromdate) - (.started_at|fromdate)) / 60 | floor), .name] | @tsv' 2>/dev/null \
+                | sort -rn | head -1 >> "$SCRATCH/slow.txt"
+        done < "$SCRATCH/runs.tsv"
+        N=$(wc -l < "$SCRATCH/walls.txt")
+        MED_WALL=$(sort -n "$SCRATCH/walls.txt" | awk -v n="$N" 'NR==int((n+1)/2)')
+        MED_SLOW=$(cut -f1 "$SCRATCH/slow.txt" | sort -n | awk -v n="$N" 'NR==int((n+1)/2)')
+        SLOW_NAME=$(cut -f2 "$SCRATCH/slow.txt" | sort | uniq -c | sort -rn | head -1 | sed 's/^ *[0-9]* //')
+        row "CI median wall / slowest job (last $N push runs on mainline)" "${MED_WALL} min / ${MED_SLOW} min ($SLOW_NAME)" \
+            "dotnet10.yml push runs; wall = updated_at − run_started_at; slowest = longest job per run, median"
+    else
+        row "CI wall" "unavailable" "—"
+    fi
+    NREF=$(grep -oE "ref: .*'(dev|mainline)'" .github/workflows/nightly.yml | head -1 | grep -oE "'(dev|mainline)'")
+    if gh api -X GET "repos/$REPO/actions/workflows/nightly.yml/runs?per_page=12" \
+        --jq '.workflow_runs[] | [.conclusion, (.run_started_at|.[0:10]), .id] | @tsv' > "$SCRATCH/nightly.tsv" 2>/dev/null; then
+        NOK=$(grep -c '^success' "$SCRATCH/nightly.tsv" || true)
+        NFAIL=$(grep -vc '^success' "$SCRATCH/nightly.tsv" || true)
+        FAILS=$(grep -v '^success' "$SCRATCH/nightly.tsv" | awk '{printf "%s(%s) ", $2, $3}')
+        row "Nightly, last 12: green / red; soaks" "$NOK / $NFAIL; soaks ${NREF:-?}" \
+            "reds to classify by log: real find = a named failing test; self-inflicted = hang abort, 'Total tests: Unknown', infra. Reds: ${FAILS:-none}"
+    fi
+else
+    row "CI wall; nightly" "skipped (--no-network)" "—"
+fi
+
+# 11–12. Probes with the built CLI -----------------------------------------------------------------
+SHARPYC=src/Sharpy.Cli/bin/Debug/net10.0/sharpyc
+if [ "$PROBE" = 1 ] && [ -x "$SHARPYC" ]; then
+    if [ -z "${DOTNET_ROOT:-}" ] && command -v dotnet >/dev/null; then
+        export DOTNET_ROOT; DOTNET_ROOT=$(dirname "$(readlink -f "$(command -v dotnet)")")
+    fi
+    BIN_T=$(stat -c %Y "$SHARPYC"); HEAD_T=$(git log -1 --format=%ct HEAD)
+    STALE=""; [ "$BIN_T" -lt "$HEAD_T" ] && STALE=" (sharpyc predates HEAD: rebuild before trusting probes)"
+    # warm no-change build, on a copy: an in-place build writes bin/ and obj/ into src/Sharpy.Stdlib/spy/
+    cp -r src/Sharpy.Stdlib/spy/. "$SCRATCH/stdlib/" 2>/dev/null
+    ( cd "$SCRATCH/stdlib" && "$ROOT/$SHARPYC" project stdlib.spyproj --incremental --metrics-format text >/dev/null 2>&1
+      "$ROOT/$SHARPYC" project stdlib.spyproj --incremental --metrics-format text 2>&1 ) > "$SCRATCH/warm.txt"
+    WARM=$(awk '/Files Compiled/{fc=$NF} /^IL Emission/{il=$3" "$4} /^TOTAL/{t=$2" "$3} END{if(t!="")printf "TOTAL %s; IL emission %s; files compiled %s", t, il, fc}' "$SCRATCH/warm.txt")
+    row "Warm no-change incremental build (stdlib.spyproj)" "${WARM:-no metrics line found}$STALE" \
+        'second `sharpyc project stdlib.spyproj --incremental --metrics-format text` on a scratch copy'
+    printf 'def main():\n    print("hello, world")\n' > "$SCRATCH/hello.spy"
+    "$SHARPYC" run "$SCRATCH/hello.spy" >/dev/null 2>&1
+    : > "$SCRATCH/hello.times"
+    for _ in 1 2 3; do
+        s=$(date +%s.%N); "$SHARPYC" run "$SCRATCH/hello.spy" > "$SCRATCH/hello.out" 2>&1; rc=$?; e=$(date +%s.%N)
+        awk -v s="$s" -v e="$e" -v rc="$rc" 'BEGIN{printf "%.2f(rc=%d)\n", e-s, rc}' >> "$SCRATCH/hello.times"
+    done
+    row "Hello world \`sharpyc run\`, warm (3 runs, s)" "$(tr '\n' ' ' < "$SCRATCH/hello.times")$STALE" \
+        '`def main(): print("hello, world")`; exit code must be 0 (a module-level print is a compile error that takes 0.7 s)'
+else
+    row "Warm build; hello world" "skipped (no built sharpyc or --no-probe)" "build with the serialized wrapper first"
+fi
+
+# 13. Fresh-session test, the checkable half --------------------------------------------------------
+HOOK=.claude/hooks/enforce-dotnet-serialized.sh
+BLOCKED=0; CMDS=0
+while IFS= read -r cmd; do
+    [ -z "$cmd" ] && continue
+    CMDS=$((CMDS + 1))
+    printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK" >/dev/null 2>&1
+    [ $? -eq 2 ] && BLOCKED=$((BLOCKED + 1))
+done < <(awk '/^```bash/{f=1;next} /^```/{f=0} f' CLAUDE.md | sed 's/[[:space:]]*#.*$//' | grep -v '^[[:space:]]*$')
+PLANS=$(ls docs/process/plans/*.md 2>/dev/null | wc -l)
+row "Fresh-session test: CLAUDE.md commands the hook blocks; committed plans" "$BLOCKED of $CMDS; $PLANS" \
+    "each fenced bash line of CLAUDE.md fed to enforce-dotnet-serialized.sh as stdin JSON (rc 2 = blocked); files under docs/process/plans/"
+
+# 14. Hooks --------------------------------------------------------------------------------------------
+if [ -x .claude/hooks/test-hooks.sh ]; then
+    HOOKS=$(TMPDIR="$SCRATCH" bash .claude/hooks/test-hooks.sh 2>&1 | grep -E '^hooks: ' | tail -1)
+    row "Hooks that run" "${HOOKS:-test-hooks.sh printed no summary}" '`.claude/hooks/test-hooks.sh`'
+fi
+
+echo
+echo "Baselines and directions: docs/process/handoff-2026-11-06-remediation.md §5.1."
