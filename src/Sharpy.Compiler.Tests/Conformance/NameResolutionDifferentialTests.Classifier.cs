@@ -297,7 +297,7 @@ public partial class NameResolutionDifferentialTests
 
     [Theory]
     [InlineData("SPY0134", "#2424")]
-    [InlineData("SPY0600", "#2423")]
+    [InlineData("SPY0600", "#2144")]
     [InlineData("SPY0999", "UNROUTED(SPY0999)")]
     internal void Cite_AStoreRefusal_RoutesByItsCode(string code, string expected)
     {

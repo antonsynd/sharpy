@@ -483,10 +483,9 @@ public partial class NameResolutionDifferentialTests
             Id = CellId("store", "walrus-in-comprehension", $"outer={outer}", body),
             Family = Family.Store,
             Source = Join(lines) + MainBlock(call.ToArray()),
-            Tag = moduleOuter ? SharpyTag.MustRun : SharpyTag.MustRefuse,
-            Model = moduleOuter ? "5" : null,
+            Tag = SharpyTag.MustRefuse,
             Python = PyOutcome.Ran(6),
-            Rule = "N5",
+            Rule = moduleOuter ? "S2-walrus" : "N5",
             Deviation = "walrus-in-comprehension-scope",
             Target = outer,
             Outer = outer,
@@ -889,6 +888,13 @@ public partial class NameResolutionDifferentialTests
             foreach (var body in LocalBodies)
                 yield return LocalProgram(CellId("local", "L28", $"outer={u}", body), BindingKind.EnclosingLocal, u, body,
                     new[] { "def g() -> int:", "    return x", "x: int = 15", "print(g())" },
+                    Refuse(PyOutcome.Ran(15), "N5-declared-later"), null, plain);
+
+        // L28 through a lambda: N7 says inside a lambda gets the same answer, and a hand probe printed the module's 5 here with no cell to see it.
+        foreach (var u in new[] { BindingKind.None, BindingKind.ModuleVar })
+            foreach (var body in LocalBodies)
+                yield return LocalProgram(CellId("local", "L28", "lambda", $"outer={u}", body), BindingKind.EnclosingLocal, u, body,
+                    new[] { "g: () -> int = lambda: x", "x: int = 15", "print(g())" },
                     Refuse(PyOutcome.Ran(15), "N5-declared-later"), null, plain);
 
         foreach (var cell in ConstructTargetCells())
