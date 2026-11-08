@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler.Semantic;
 using Xunit;
 using Xunit.Abstractions;
@@ -28,8 +29,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///
 /// <para>
 /// <b>The allowed set is derived structurally, not spelled.</b> Seeds are the carriers Rule 2
-/// names: the <c>SemanticType</c> hierarchy, the <c>Symbol</c> hierarchy, the standalone symbol
-/// records, <c>SemanticInfo</c> and <c>CodeGenInfo</c>. From those it takes the transitive closure
+/// names: the standalone symbol records, <c>SemanticInfo</c>, <c>CodeGenInfo</c> and
+/// <c>SemanticBinding</c>. From those it takes the transitive closure
 /// of the semantic types appearing in their public signatures — so the node-keyed fact records
 /// (<c>BinaryOpLowering</c>, <c>NarrowedReadLowering</c>, <c>TypeTestLowering</c>, …) and the
 /// enums they carry join automatically. Adding a new fact record and reading it from CodeGen needs
@@ -53,6 +54,19 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// (<c>Semantic.TypeSubstitution.Apply</c>) ARE checked, because the qualifier's last segment is a
 /// known namespace segment. Every way of naming a denied type as a type — declaration, cast,
 /// pattern, generic argument, static call — is covered.
+/// </para>
+///
+/// <para>
+/// <b>The <c>SemanticType</c> and <c>Symbol</c> hierarchies are inspection-denied (#2443).</b>
+/// They were carrier hierarchy roots until P82; <see cref="CarrierHierarchyRoots"/> is now empty
+/// and every type in the two hierarchies (by reflection, <c>IsAssignableFrom</c>) is denied in
+/// CodeGen whatever the closure says, because <c>SemanticInfo</c>'s and <c>CodeGenInfo</c>'s
+/// signatures would otherwise re-admit them. The emitter may hand a <c>SemanticType</c> to
+/// <c>TypeSyntaxMapper</c> but may not inspect one outside it (#2443 contract item 1), so
+/// <see cref="InspectionExemptFile"/> is exempt from the <c>type-name</c> kind. Every site that
+/// still inspects is a row of <c>CodeGen/emitter-inspection-allowlist.txt</c>, four kinds
+/// (<see cref="InspectionKinds"/>), counted per (file, kind, name) and ratcheted both ways by
+/// <see cref="CodeGenInspectionSites_MatchTheAllowlist"/>; the file drains to empty.
 /// </para>
 ///
 /// <para>
@@ -95,11 +109,27 @@ public class EmitterCarrierOnlyConformanceTests
     };
 
     /// <summary>
-    /// Structural seeds: the materialized-fact carriers Critical Rule 2 names. Hierarchy roots are
-    /// expanded to every derived type; the standalone symbol records are not <c>Symbol</c>
-    /// subclasses and so are listed.
+    /// Structural seeds: hierarchy roots whose every derived type is a carrier. EMPTY since P82
+    /// (#2443): <c>SemanticType</c> and <c>Symbol</c> moved to
+    /// <see cref="InspectionDeniedHierarchyRoots"/>. The standalone symbol records are not
+    /// <c>Symbol</c> subclasses and stay in <see cref="CarrierSeeds"/>.
     /// </summary>
-    private static readonly string[] CarrierHierarchyRoots = { "SemanticType", "Symbol" };
+    private static readonly string[] CarrierHierarchyRoots = Array.Empty<string>();
+
+    /// <summary>
+    /// Hierarchies denied in CodeGen whatever the carrier closure says (#2443): every type
+    /// assignable to one of these roots. Their remaining CodeGen mentions are rows of the
+    /// inspection allowlist, not <see cref="Ratchet"/> entries.
+    /// </summary>
+    private static readonly string[] InspectionDeniedHierarchyRoots = { "SemanticType", "Symbol" };
+
+    /// <summary>
+    /// The one CodeGen file allowed to name the inspection-denied hierarchies (#2443 contract
+    /// item 1: the emitter may pass a <c>SemanticType</c> to <c>TypeSyntaxMapper</c> but may not
+    /// inspect one outside it). Exempt from the <c>type-name</c> kind only; its mention count is
+    /// printed (<c>CARRIER-INSPECTION-EXEMPT</c>), not ratcheted.
+    /// </summary>
+    internal const string InspectionExemptFile = "TypeSyntaxMapper.cs";
 
     private static readonly string[] CarrierSeeds =
     {
@@ -117,7 +147,8 @@ public class EmitterCarrierOnlyConformanceTests
     };
 
     /// <summary>
-    /// Denied types CodeGen still names, with the measured site count per file and the issue that
+    /// Closure-denied types (outside the <see cref="InspectionDeniedHierarchyRoots"/> hierarchies)
+    /// CodeGen still names, with the measured site count per file and the issue that
     /// removes them. Counted, not merely listed: a NEW reference to an already-ratcheted type in
     /// an already-ratcheted file raises the count and fails, so the ratchet cannot absorb fresh
     /// violations under an existing entry.
@@ -138,20 +169,30 @@ public class EmitterCarrierOnlyConformanceTests
     {
         var universe = SemanticUniverse();
         var allowed = AllowedCarrierNames(universe);
-        var denied = universe.Select(SimpleName).Where(n => !allowed.Contains(n)).ToHashSet(StringComparer.Ordinal);
+        var hierarchy = InspectionDeniedNames(universe);
+        var closureDenied = universe.Select(SimpleName)
+            .Where(n => !allowed.Contains(n) && !hierarchy.Contains(n))
+            .ToHashSet(StringComparer.Ordinal);
+        var denied = DeniedNames(universe);
 
         // A deny universe that collapsed to nothing would pass for free — the failure mode a guard
-        // must not have (the same shape as an empty-corpus sweep).
-        denied.Should().HaveCountGreaterThan(50,
-            "the deny universe is every non-carrier type in the Semantic namespaces; if it shrank "
-            + "to a handful, the structural allow-list has swallowed the assembly and this guard "
-            + "no longer guards anything");
+        // must not have (the same shape as an empty-corpus sweep). The floor is on the CLOSURE's
+        // share: the hierarchy deny set alone would clear it while the closure swallowed the rest.
+        closureDenied.Should().HaveCountGreaterThan(50,
+            "the closure-denied set is every non-carrier, non-hierarchy type in the Semantic "
+            + "namespaces; if it shrank to a handful, the structural allow-list has swallowed the "
+            + "assembly and this guard no longer guards anything");
 
-        var violations = ScanCodeGenSources(denied, NamespaceSegments(universe));
+        // Hierarchy mentions are the inspection allowlist's business
+        // (CodeGenInspectionSites_MatchTheAllowlist); this guard ratchets the rest.
+        var violations = ScanCodeGenSources(denied, NamespaceSegments(universe))
+            .Where(v => !hierarchy.Contains(v.Type))
+            .ToList();
 
         _output.WriteLine(
-            $"Semantic universe: {universe.Count} types — {allowed.Count} allowed carriers, "
-            + $"{denied.Count} denied. Violations: {violations.Count}.");
+            $"Semantic universe: {universe.Count} types — {allowed.Count} allowed by the closure, "
+            + $"{denied.Count} denied ({closureDenied.Count} closure-denied + {hierarchy.Count} "
+            + $"inspection-denied hierarchy types). Closure violations: {violations.Count}.");
         foreach (var violation in violations)
             _output.WriteLine($"  {violation}");
 
@@ -239,8 +280,7 @@ public class EmitterCarrierOnlyConformanceTests
     public void Ratchet_HasNoStaleEntries()
     {
         var universe = SemanticUniverse();
-        var allowed = AllowedCarrierNames(universe);
-        var denied = universe.Select(SimpleName).Where(n => !allowed.Contains(n)).ToHashSet(StringComparer.Ordinal);
+        var denied = DeniedNames(universe);
         var violations = ScanCodeGenSources(denied, NamespaceSegments(universe));
 
         foreach (var (file, type, count, issue) in Ratchet)
@@ -449,10 +489,12 @@ public class EmitterCarrierOnlyConformanceTests
 
         var clean = new (string Label, string Source)[]
         {
+            // SemanticType and Symbol are inspection-denied since #2443, so the control names only
+            // the carriers that remain; the expression type is passed on, never named.
             ("carrier reads",
                 @"class C {
-                    ExpressionSyntax M(Expression e, SemanticInfo info, Symbol s) {
-                        SemanticType? t = info.GetExpressionType(e);
+                    ExpressionSyntax M(Expression e, SemanticInfo info, PropertySymbol s) {
+                        var t = info.GetExpressionType(e);
                         CodeGenInfo? cg = s.CodeGenInfo;
                         NarrowedReadLowering? n = info.GetNarrowedReadLowering(e);
                         return Build(t, cg, n);
@@ -475,6 +517,334 @@ public class EmitterCarrierOnlyConformanceTests
                 + "unusable and push people to weaken it.\nFlagged:\n  "
                 + string.Join("\n  ", violations));
         }
+    }
+
+    // ---- the inspection allowlist (#2443) ------------------------------------------------------
+
+    /// <summary>The allowlist file, next to this test in <c>src/Sharpy.Compiler.Tests/CodeGen/</c>.</summary>
+    internal const string InspectionAllowlistFileName = "emitter-inspection-allowlist.txt";
+
+    private const string KindTypeName = "type-name";
+    private const string KindTypeRead = "type-read";
+    private const string KindNameLookup = "name-lookup";
+    private const string KindDeclarationLine = "declaration-line";
+
+    /// <summary>
+    /// The four ways CodeGen still inspects a <c>SemanticType</c> or <c>Symbol</c> instead of
+    /// reading a materialized fact (#2443 contract item 6):
+    /// <list type="bullet">
+    /// <item><c>type-name</c> — an inspection-denied hierarchy type named in a CodeGen file
+    /// (declaration, cast, pattern, generic argument, static call), per (file, type), by the
+    /// <see cref="ScanSource"/> identifier scan;</item>
+    /// <item><c>type-read</c> — a <c>GetExpressionType(</c> / <c>GetExpressionSemanticType(</c>
+    /// invocation, per (file, accessor), by Roslyn invocation nodes;</item>
+    /// <item><c>name-lookup</c> — a lookup by <c>.Name ==</c> in a lambda predicate
+    /// (<c>predicate</c>, the W2.1 census's <c>(\w+) =&gt;\s*\1\.Name ==</c> 2-line window and
+    /// its exclusions, every match in the window) or a union-case <c>.Name == "Some"/"Ok"/"Err"/"None"</c> compare
+    /// (<c>union-case-compare</c>), per (file, shape), by comment-aware line scan;</item>
+    /// <item><c>declaration-line</c> — a <c>DeclarationLine</c> reference, per file, by Roslyn
+    /// identifier nodes.</item>
+    /// </list>
+    /// </summary>
+    private static readonly string[] InspectionKinds =
+        { KindTypeName, KindTypeRead, KindNameLookup, KindDeclarationLine };
+
+    internal readonly record struct InspectionSite(string File, int Line, string Kind, string Name, string Source)
+    {
+        public override string ToString() => $"{File}:{Line} — {Kind} {Name} — {Source}";
+    }
+
+    internal readonly record struct InspectionRow(
+        int LineNumber, string File, string Kind, string Name, int Count, string Cite, string Note);
+
+    /// <summary>
+    /// The inspection allowlist as a ratchet that drains both ways: every (file, kind, name) with
+    /// sites needs a row whose count equals the measured site count — more sites is a NEW
+    /// inspection (fail), fewer is a STALE row (fail: lower it, or delete the row at zero, in the
+    /// commit that removed the sites). A row whose file no longer exists fails; every row cites
+    /// an issue (<c>cite=#N</c>). The per-kind totals are printed as
+    /// <c>CARRIER-INSPECTION-CENSUS</c> lines so a recap can quote them.
+    /// </summary>
+    [Fact]
+    public void CodeGenInspectionSites_MatchTheAllowlist()
+    {
+        var universe = SemanticUniverse();
+        var hierarchy = InspectionDeniedNames(universe);
+        var segments = NamespaceSegments(universe);
+        var directory = EmitterBannedTokenScanTests.FindCodeGenSourceDirectory();
+
+        var sites = new List<InspectionSite>();
+        var exemptMentions = 0;
+        foreach (var path in Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories)
+                     .OrderBy(f => f, StringComparer.Ordinal))
+        {
+            var fileName = Path.GetFileName(path);
+            var fileSites = ScanInspectionSites(fileName, File.ReadAllText(path), hierarchy, segments);
+            exemptMentions += fileSites.Count(s => IsInspectionExempt(s.File, s.Kind));
+            sites.AddRange(fileSites.Where(s => !IsInspectionExempt(s.File, s.Kind)));
+        }
+
+        foreach (var kind in InspectionKinds)
+        {
+            var ofKind = sites.Where(s => s.Kind == kind).ToList();
+            _output.WriteLine(
+                $"CARRIER-INSPECTION-CENSUS kind={kind} sites={ofKind.Count} "
+                + $"files={ofKind.Select(s => s.File).Distinct(StringComparer.Ordinal).Count()}");
+        }
+
+        _output.WriteLine(
+            $"CARRIER-INSPECTION-EXEMPT file={InspectionExemptFile} kind={KindTypeName} mentions={exemptMentions}");
+
+        var measured = sites
+            .GroupBy(s => (s.File, s.Kind, s.Name))
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var rows = LoadInspectionAllowlist(out var problems);
+
+        foreach (var row in rows)
+        {
+            if (!File.Exists(Path.Combine(directory, row.File)))
+            {
+                problems.Add($"line {row.LineNumber}: {row.File} no longer exists in CodeGen/ — delete the row");
+                continue;
+            }
+
+            var actual = measured.TryGetValue((row.File, row.Kind, row.Name), out var found) ? found.Count : 0;
+            if (actual > row.Count)
+            {
+                problems.Add(
+                    $"line {row.LineNumber}: {row.File} | {row.Kind} | {row.Name} allows {row.Count} but "
+                    + $"{actual} sites exist — a NEW inspection; read a materialized fact instead "
+                    + $"({row.Cite}):\n    " + string.Join("\n    ", found!));
+            }
+            else if (actual < row.Count)
+            {
+                problems.Add(
+                    $"line {row.LineNumber}: {row.File} | {row.Kind} | {row.Name} allows {row.Count} but "
+                    + $"only {actual} remain — STALE: lower the count (delete the row at 0) in the "
+                    + "commit that removed them (allowlists drain on fix)");
+            }
+        }
+
+        var listed = rows.Select(r => (r.File, r.Kind, r.Name)).ToHashSet();
+        foreach (var (key, group) in measured.OrderBy(kv => kv.Key.ToString(), StringComparer.Ordinal))
+        {
+            if (!listed.Contains(key))
+            {
+                problems.Add(
+                    $"{key.File} | {key.Kind} | {key.Name}: {group.Count} sites without a row — the "
+                    + "emitter may not inspect a SemanticType/Symbol (#2443); materialize the fact:\n    "
+                    + string.Join("\n    ", group));
+            }
+        }
+
+        problems.Should().BeEmpty(
+            "every remaining CodeGen inspection of a SemanticType/Symbol is a counted row of "
+            + $"{InspectionAllowlistFileName} citing its class issue, and the file drains both ways.\n"
+            + string.Join("\n", problems)
+            + "\n\nMeasured rows (counts only — keep each row's note):\n"
+            + string.Join("\n", measured
+                .OrderBy(kv => kv.Key.File, StringComparer.Ordinal)
+                .ThenBy(kv => Array.IndexOf(InspectionKinds, kv.Key.Kind))
+                .ThenBy(kv => kv.Key.Name, StringComparer.Ordinal)
+                .Select(kv => $"{kv.Key.File} | {kv.Key.Kind} | {kv.Key.Name} | {kv.Value.Count} | cite=#2443 |")));
+    }
+
+    /// <summary>
+    /// M-d, executable: an in-memory source that names a <c>SemanticType</c> subtype is flagged as
+    /// a <c>type-name</c> inspection; one that only hands the recorded type to
+    /// <c>TypeSyntaxMapper</c> is not (#2443 contract item 1).
+    /// </summary>
+    [Fact]
+    public void SyntheticHierarchyInspection_IsFlagged_MapperHandOffIsNot()
+    {
+        var universe = SemanticUniverse();
+        var hierarchy = InspectionDeniedNames(universe);
+        var segments = NamespaceSegments(universe);
+
+        hierarchy.Should().Contain(new[] { "SemanticType", "Symbol", "OptionalType", "GenericType", "UnknownType" },
+            "the inspection-denied set is every type assignable to SemanticType or Symbol");
+        hierarchy.Should().NotContain(new[] { "PropertySymbol", "SemanticInfo", "CodeGenInfo" },
+            "standalone symbol records and the fact stores are carriers, not hierarchy members");
+
+        var flagged = ScanInspectionSites("Mutation.cs",
+            "class C { bool M(Expression e) => _info.GetExpressionType(e) is OptionalType; }",
+            hierarchy, segments);
+        flagged.Should().Contain(s => s.Kind == KindTypeName && s.Name == "OptionalType",
+            "an `is OptionalType` test is the emitter inspecting a SemanticType");
+
+        var handOff = ScanInspectionSites("Control.cs",
+            "class C { TypeSyntax M(PropertySymbol p) => _typeMapper.MapSemanticType(p.CodeGenInfo.Type); }",
+            hierarchy, segments);
+        handOff.Should().BeEmpty(
+            "passing a recorded type to TypeSyntaxMapper is the permitted shape, not an inspection.\nFlagged:\n  "
+            + string.Join("\n  ", handOff));
+    }
+
+    /// <summary>
+    /// Positive and negative controls for the three line/invocation kinds, so a scanner that
+    /// stopped seeing a shape fails here before the allowlist silently goes empty.
+    /// </summary>
+    [Fact]
+    public void SyntheticInspectionKinds_AreMeasured()
+    {
+        var empty = new HashSet<string>(StringComparer.Ordinal);
+        var source = string.Join("\n",
+            "class C {",
+            "  void M(Expression e, TypeSymbolLike t, Func f) {",
+            "    var a = _info.GetExpressionType(e);",
+            "    var b = GetExpressionSemanticType(e);",
+            "    var m = t.Methods.FirstOrDefault(m => m.Name == f.Name && m.DeclarationLine == f.LineStart);",
+            "    if (unionCase?.Name == \"Some\") { }",
+            "    // var c = GetExpressionType(e); x.Where(m => m.Name == y); DeclarationLine",
+            "    var d = decl.Decorators.Any(d => d.Name == \"dataclass\");",
+            "  }",
+            "}");
+        var sites = ScanInspectionSites("Synthetic.cs", source, empty, empty);
+
+        sites.Where(s => s.Kind == KindTypeRead).Select(s => s.Name).Should().BeEquivalentTo(
+            new[] { "GetExpressionType", "GetExpressionSemanticType" }, "one site per accessor call, none in comments");
+        sites.Where(s => s.Kind == KindNameLookup).Select(s => s.Name).Should().BeEquivalentTo(
+            new[] { "predicate", "union-case-compare" },
+            "a lambda Name predicate over a member collection and a union-case compare; the decorator "
+            + "lookup and the comment are not counted");
+        sites.Count(s => s.Kind == KindDeclarationLine).Should().Be(1, "one DeclarationLine reference outside comments");
+    }
+
+    /// <summary>True when <paramref name="kind"/> is not counted in <paramref name="file"/>.</summary>
+    private static bool IsInspectionExempt(string file, string kind)
+        => kind == KindTypeName && string.Equals(file, InspectionExemptFile, StringComparison.Ordinal);
+
+    private static readonly Regex PredicateLookup = new(@"\b(\w+) =>\s*\1\.Name ==", RegexOptions.CultureInvariant);
+    private static readonly Regex AstDeclarationContext =
+        new(@"OfType<(Parser\.Ast\.)?VariableDeclaration>", RegexOptions.CultureInvariant);
+    private static readonly Regex NonSymbolContext =
+        new(@"OfType<|Decorators|KeywordArguments|\.Body\b|body\.", RegexOptions.CultureInvariant);
+    private static readonly Regex UnionCaseCompare = new(
+        @"\b\w+\??\.Name == (""(Some|Ok|Err|None)""|WellKnownCaseNames\.\w+)", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Every inspection site of one source, all four kinds, unfiltered by the exemption.
+    /// <c>name-lookup</c> ports the W2.1 census generator (<c>w23.py</c>) —
+    /// lines whose trimmed text starts with <c>//</c> or <c>*</c> are skipped, the window is the
+    /// previous and current trimmed lines, a <c>VariableDeclaration</c> lookup counts (AST) and a
+    /// decorator / keyword-argument / body lookup does not — so its counts are the census's.
+    /// </summary>
+    internal static List<InspectionSite> ScanInspectionSites(
+        string fileName, string source, IReadOnlySet<string> hierarchy, IReadOnlySet<string> namespaceSegments)
+    {
+        var lines = source.Split('\n');
+        string Text(int line) => line - 1 < lines.Length ? lines[line - 1].Trim() : string.Empty;
+        int LineOf(SyntaxNode node) => node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+
+        var sites = ScanSource(fileName, source, hierarchy, namespaceSegments)
+            .Select(v => new InspectionSite(v.File, v.Line, KindTypeName, v.Type, v.Source))
+            .ToList();
+
+        var root = CSharpSyntaxTree.ParseText(source).GetRoot();
+        foreach (var call in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            var callee = call.Expression switch
+            {
+                SimpleNameSyntax simple => simple.Identifier.Text,
+                MemberAccessExpressionSyntax access => access.Name.Identifier.Text,
+                MemberBindingExpressionSyntax binding => binding.Name.Identifier.Text,
+                _ => null,
+            };
+            if (callee is "GetExpressionType" or "GetExpressionSemanticType")
+                sites.Add(new InspectionSite(fileName, LineOf(call), KindTypeRead, callee, Text(LineOf(call))));
+        }
+
+        foreach (var name in root.DescendantNodes().OfType<IdentifierNameSyntax>()
+                     .Where(n => n.Identifier.Text == "DeclarationLine"))
+        {
+            sites.Add(new InspectionSite(fileName, LineOf(name), KindDeclarationLine, "DeclarationLine", Text(LineOf(name))));
+        }
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith('*'))
+                continue;
+            var code = line.Contains('"', StringComparison.Ordinal)
+                ? line
+                : line.Split("//", 2)[0];
+
+            var window = string.Join(" ", lines[Math.Max(0, i - 1)..(i + 1)].Select(l => l.Trim()));
+            // Every predicate in the window, not only the first (the census took the first, which
+            // hides a line whose previous line also holds a predicate).
+            var onThisLine = PredicateLookup.Matches(window)
+                .Any(m => Regex.IsMatch(line, @"\b" + Regex.Escape(m.Groups[1].Value) + @"\.Name =="));
+            if (onThisLine)
+            {
+                var context = string.Join(" ", lines[Math.Max(0, i - 2)..(i + 1)]);
+                if (AstDeclarationContext.IsMatch(context) || !NonSymbolContext.IsMatch(context))
+                    sites.Add(new InspectionSite(fileName, i + 1, KindNameLookup, "predicate", trimmed));
+            }
+
+            for (var k = UnionCaseCompare.Matches(code).Count; k > 0; k--)
+                sites.Add(new InspectionSite(fileName, i + 1, KindNameLookup, "union-case-compare", trimmed));
+        }
+
+        return sites;
+    }
+
+    /// <summary>
+    /// Parses <see cref="InspectionAllowlistFileName"/>: <c>#</c> lines and blank lines are
+    /// comments; a row is <c>file | kind | name | count | cite=#N | note</c>. Malformed rows,
+    /// unknown kinds, non-positive counts, a missing cite and duplicate keys are problems.
+    /// </summary>
+    private static List<InspectionRow> LoadInspectionAllowlist(out List<string> problems)
+    {
+        problems = new List<string>();
+        var path = FindInspectionAllowlistPath();
+        File.Exists(path).Should().BeTrue(
+            $"CodeGen/{InspectionAllowlistFileName} is expected at {path}; its presence arms the ratchet");
+
+        var rows = new List<InspectionRow>();
+        var seen = new HashSet<(string, string, string)>();
+        var lines = File.ReadAllLines(path);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var text = lines[i].Trim();
+            if (text.Length == 0 || text.StartsWith('#'))
+                continue;
+
+            var fields = text.Split('|').Select(f => f.Trim()).ToArray();
+            if (fields.Length != 6)
+            {
+                problems.Add($"line {i + 1}: expected `file | kind | name | count | cite=#N | note`, got `{text}`");
+                continue;
+            }
+
+            if (!InspectionKinds.Contains(fields[1]))
+                problems.Add($"line {i + 1}: unknown kind `{fields[1]}` (kinds: {string.Join(", ", InspectionKinds)})");
+            if (!int.TryParse(fields[3], out var count) || count <= 0)
+                problems.Add($"line {i + 1}: count `{fields[3]}` must be a positive integer (delete a row at 0)");
+            if (!Regex.IsMatch(fields[4], @"^cite=#\d+$"))
+                problems.Add($"line {i + 1}: `{fields[4]}` must be `cite=#N` naming the class issue");
+            if (!seen.Add((fields[0], fields[1], fields[2])))
+                problems.Add($"line {i + 1}: duplicate row for {fields[0]} | {fields[1]} | {fields[2]}");
+
+            rows.Add(new InspectionRow(i + 1, fields[0], fields[1], fields[2], count, fields[4], fields[5]));
+        }
+
+        return rows;
+    }
+
+    private static string FindInspectionAllowlistPath()
+    {
+        var current = AppContext.BaseDirectory;
+        while (current != null)
+        {
+            var candidate = Path.Combine(current, "src", "Sharpy.Compiler.Tests", "CodeGen", InspectionAllowlistFileName);
+            if (File.Exists(candidate))
+                return candidate;
+            current = Directory.GetParent(current)?.FullName;
+        }
+
+        return Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "CodeGen", InspectionAllowlistFileName));
     }
 
     // ---- the deny universe -------------------------------------------------------------------
@@ -509,10 +879,36 @@ public class EmitterCarrierOnlyConformanceTests
             .ToList();
     }
 
+    /// <summary>
+    /// The deny set: every type outside the carrier closure, plus every type in the
+    /// inspection-denied hierarchies whether or not the closure reached it.
+    /// </summary>
     private static HashSet<string> DeniedNames(IReadOnlyList<Type> universe)
     {
         var allowed = AllowedCarrierNames(universe);
-        return universe.Select(SimpleName).Where(n => !allowed.Contains(n)).ToHashSet(StringComparer.Ordinal);
+        var denied = universe.Select(SimpleName).Where(n => !allowed.Contains(n)).ToHashSet(StringComparer.Ordinal);
+        denied.UnionWith(InspectionDeniedNames(universe));
+        return denied;
+    }
+
+    /// <summary>
+    /// Every type assignable to an <see cref="InspectionDeniedHierarchyRoots"/> root, enumerated by
+    /// reflection — a <c>SemanticType</c> added tomorrow is inspection-denied tomorrow.
+    /// </summary>
+    private static HashSet<string> InspectionDeniedNames(IReadOnlyList<Type> universe)
+    {
+        var byName = universe.ToLookup(SimpleName, StringComparer.Ordinal);
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var root in InspectionDeniedHierarchyRoots)
+        {
+            var rootType = byName[root].FirstOrDefault();
+            rootType.Should().NotBeNull(
+                $"'{root}' is an inspection-denied hierarchy root (#2443); if it was renamed or moved "
+                + "out of the Semantic namespaces this guard is derived from a type that no longer exists");
+            names.UnionWith(universe.Where(t => rootType!.IsAssignableFrom(t)).Select(SimpleName));
+        }
+
+        return names;
     }
 
     /// <summary>
@@ -540,8 +936,8 @@ public class EmitterCarrierOnlyConformanceTests
 
     /// <summary>
     /// The materialized-fact carriers, derived from the type system rather than spelled: the
-    /// <c>SemanticType</c> and <c>Symbol</c> hierarchies (every derived type), the standalone
-    /// symbol records, <c>SemanticInfo</c> and <c>CodeGenInfo</c> — closed transitively over the
+    /// <see cref="CarrierHierarchyRoots"/> hierarchies (none since #2443), the standalone
+    /// symbol records, <c>SemanticInfo</c>, <c>CodeGenInfo</c> and <c>SemanticBinding</c> — closed transitively over the
     /// semantic types their public signatures expose, so every node-keyed fact record and the
     /// enums it carries are allowed the moment they are reachable from a carrier. The catalog
     /// entries are added as LEAVES: allowed themselves, but not expanded, because a catalog's
