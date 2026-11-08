@@ -940,14 +940,18 @@ internal class TypeSyntaxMapper
     /// The C# real-literal suffix an unsuffixed float literal takes from its recorded type
     /// (#1301: <c>x: float32 = 0.1</c> is CS0664 as a double): <c>"f"</c> for <c>float32</c>,
     /// <c>"m"</c> for <c>decimal</c>, else <c>null</c> (the caller's default double form). The
-    /// emitter assembles the literal text; this only maps the type (#2443 item 1).
+    /// emitter assembles the literal text; this only maps the type (#2443 item 1). Identity is the
+    /// catalog singleton's (record equality, as <see cref="MapSemanticType"/> reads it), never the
+    /// name string (#1304, #1356).
     /// </summary>
-    public static string? RealLiteralSuffix(SemanticType? type) => type switch
+    public static string? RealLiteralSuffix(SemanticType? type)
     {
-        BuiltinType { Name: "float32" } => "f",
-        BuiltinType { Name: "decimal" } => "m",
-        _ => null,
-    };
+        if (type == SemanticType.Float32)
+            return "f";
+        if (type == SemanticType.Decimal)
+            return "m";
+        return null;
+    }
 
     public TypeSyntax CreateCollectionType(string collectionName, TypeSyntax elementType)
     {
