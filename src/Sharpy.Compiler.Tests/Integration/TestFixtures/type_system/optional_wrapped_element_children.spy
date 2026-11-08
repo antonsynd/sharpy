@@ -1,0 +1,27 @@
+# Wrapped tuple elements whose own IR node the emitter reads: each element stored
+# into a narrowed Optional slot is wrapped in Some(...), and the element's own
+# lowering (a list comprehension, a tuple equality, a tuple index and a dict index,
+# a generator) is read through the wrap (plan-1faae3 D5).
+
+
+def main() -> None:
+    xs = [1, 2, 3]
+    t: tuple[int, str] = (1, "a")
+    w: tuple[int, str] = (5, "b")
+    d: dict[str, int] = {"k": 6}
+    a: list[int]? = Some([0])
+    g: bool? = Some(False)
+    n: int? = Some(0)
+    p: int? = Some(0)
+    q: int? = Some(0)
+    e: Iterator[int]? = Some(iter([0]))
+    if a is not None and g is not None and n is not None:
+        if p is not None and q is not None and e is not None:
+            a, n = [x * 2 for x in xs], 4
+            print(a, n)
+            g, n = t == (1, "a"), 9
+            print(g, n)
+            p, q = w[0], d["k"]
+            print(p, q)
+            e, n = (x * 3 for x in xs), 5
+            print(list(e), n)

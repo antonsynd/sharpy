@@ -1,0 +1,35 @@
+# Positive controls for the emitter's name-keyed type compares (plan-1faae3 Phase 0):
+# collection-literal element types, the dict-spread comprehension, float32/decimal
+# literal suffixes, the bytes/list -> array bridge and the parenthesized `match (None)`
+# scrutinee (cast to a typed null).
+
+
+def count_bytes(a: array[uint8]) -> int:
+    return len(a)
+
+
+def count_ints(a: array[int]) -> int:
+    return len(a)
+
+
+def main() -> None:
+    xs = [1, 2, 3]
+    ys: list[str] = []
+    d = {"a": 1, "b": 2}
+    s = {4, 5}
+    print(xs, ys, d, s)
+    print({**src for src in [d, {"c": 3}]})
+    f: float32 = 0.5
+    h: decimal = 1.25
+    k: decimal = 3.0
+    print(f, h, k)
+    print(count_bytes(b"abcd"), count_ints([7, 8]))
+    match (None):
+        case None:
+            print("paren None")
+        case _:
+            print("other")
+    v: int = match (None):
+        case None: 1
+        case _: 2
+    print(v)
