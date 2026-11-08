@@ -201,3 +201,49 @@ Board for the P82 tranche-2 lane (implementer: one Opus worker, sequential; lead
 - "0 throws" for both agreement sweeps (D2 exactness, D4 old-vs-new): measured only at implementation.
 - `DispatchSiteInventoryTests` row count per new pass helper: depends on the helper's shape.
 - The `type-name` deltas D4 quotes "from the scanner": measured at Phase 3.
+
+## Implementation Verification Record
+
+**Plan:** `docs/process/plans/plan-1faae3.md` (stamp: PASS WITH CORRECTIONS; Adequacy: CLASS) · **Tier:** full (c), Agents 1–4. No Agent tool was available to the lead, so the lead ran the four briefs in sequence (1 completeness, 2 regression, 3 class-cure, 4 sibling-cell prober).
+**Scope:** P82's commits only, measured as `8d0367e0a..b42973a7e` (the PR merge's first parent is dev-with-P85, so this diff is exactly P82's; P85's merge 8c1fd2cbd is not audited). Base `be11fca77`; HEAD `b42973a7e` (tree = `a90f01448`'s); 1 remediation commit. **Verified on:** 2026-11-08.
+
+### Baseline, controls, gate
+- Gate @ HEAD: `84053/0/9 @ a90f01448 (measured, run 42528698154)`; the tree of `b42973a7e` equals `a90f01448`'s, so the gate covers HEAD.
+- Controls: base `83975/0/9 @ 64e17a7f2 (run 42498119732)` (`src` identical to be11fca77); dev-with-P85 `84015/0/9 @ 210570a26 (run 42524091317)` (`src` identical to 8d0367e0a). +38 passes against dev, 0 reds. First dispatch `84010/3/9 @ bceae2da2 (run 42523772234)` is the direction record (two LSP pins, one scan red), all fixed by 0c4e6e950 / a90f01448.
+- Local build @ b42973a7e: 0 warnings, 0 errors. `format whitespace --verify-no-changes`: clean @ HEAD and @ f464281d0.
+
+### Completeness (Agent 1)
+DONE, with evidence: Phase 0 (3 `.expected.cs`, 2 `.spy`, 2 `.expected`; every claimed C# string grepped in the snapshots; `.ToArray()` ×2 sit on one line); Phase 1 (kinds + seeded rows); Phase 2 (`IrTypedNullScrutinee`, two pass arms, two emitter reads, `MatchScrutineeLowering` 0 code hits in `src`, only a comment in `SemanticInfoFreezeTests`); Phase 3 (mapper methods, six sites); Phase 4 (roster + totality); Phase 5 (`lowering-ir.md` null-IR paragraph and tranche-2 appendix, `architecture.md:53`). Counts re-measured @ b42973a7e: pin 84; `Dictionary<` fields 84; floor 88; `Set\w*Lowering(` 71 → 70; `IrNodeFor<IrTypedNullScrutinee>` 2; allowlist 188 rows = type-name 130 + type-name-compare 8 + type-read 32 + name-lookup 15 + declaration-line 3, all `cite=#2443`; `.expected.cs` 173; emitter LOC 26,997 @ be11fca77 → 26,966 @ f5c64af34 (−31, P82) → 26,972 @ HEAD (dev's P85 adds +6, 27,003 @ 8d0367e0a). The `DispatchSiteInventoryTests` row was not needed: `TypeNullScrutinee` is an `if` with no dispatch default, and the inventory is green in the gate. Issues to Close: #2443 stays OPEN (tracker), as planned.
+
+### Regressions (Agent 2)
+- 0 regressions. 0 `.expected`/`.error`/`.warning`/`.skip` modified; 5 added (Phase 0).
+- Regeneration @ b42973a7e: `check_spy_staleness.sh` all up to date; `check_spy_tests_staleness.sh` 119/119 up to date; `python3 -m build_tools stdlib generate --force` leaves the tree clean.
+- Allowlists: `emitter-inspection-allowlist.txt` +22 rows, every one `cite=#2443`; `BuiltinTypeNameComparisonScanTests` drained its `GenerateFloatLiteral` exemption (0c4e6e950). `code-action-shape-allowlist.txt`: three rows each move by one cell (65→66, 94→95, 1→2) under their existing classes #2294/#2296 for the two new stems. This is a census move, not a P82 failure.
+
+### Class contract status (Agents 3 + 4)
+- **Contract:** #2443 items 1, 2, 6. **Seam or arm:** SEAM for all three hunks. Both match hosts go through one predicate (`IsTypedNullScrutinee`) and one swap (`TypeNullScrutinee`); the six compares go through two mapper methods; both kinds are closed against reflection/syntax enumerations. Old-vs-new equivalence was read arm by arm (arity, `Count` bound, Unknown handling, dict-spread's no-Unknown-check).
+- **Rung (1b):** `Name == BuiltinNames.` in `Semantic/` 101 → 101; CodeGen name compares 47 → 41 (six moved into the exempt mapper, as D4 rules).
+- **Rule 2 / tranche-1 failure kinds:** no `SemanticInfo` key was added (one table deleted with its `MergeFrom` stanza). The index swap replaces the scrutinee's own entry only. `IrTreeRewriter`'s default arm returns typed nodes unchanged, and with all three `opt_*` flags on, the three Phase 0 fixtures emit identical C# at both shas and match `.expected`. #1720: `EmittedOptionalConstructionConformanceTests` scans the whole `.expected.cs` corpus, including the 3 new snapshots, and is green in the gate.
+- **Byte identity:** NOT REFUTED. Emitted at `8d0367e0a` vs `b42973a7e`: every fixture containing `match`, `float32`, `decimal` or `{**` (322): 244 identical C#, 78 identical refusals, 0 DIFF. Plus 14 scratch probes and a two-module project cold + warm `--incremental` (identical modulo `#line` paths; same stdout) and the REPL (identical).
+- **Cells probed:** match-scrutinee shapes `None`/`(None)`/`((None))` × statement/expression × host (module initializer, function, method, generator, async, try/finally, nested match, loop, expression-in-parentheses, wrapped tuple element). Literal shapes × knownness (typed/untyped empty, nested, `T | None` element, `object` element, mixed int/float, user generic element, dict-spread over typed, empty and `list` values). Real literals × position (field, default, return, argument, list/dict/tuple element, exponent form). Axis changes (2): multi-file + warm `--incremental`; REPL. Not reached: the source-generator sub-pipeline host. 0 cells moved between shas; 0 FAIL attributable to P82.
+- **Refusals by direction:** none; no diagnostic added or removed.
+
+### Guards mutation-tested (Agent 3, re-run by the lead)
+- **M7** (`RealLiteralSuffix` → `null`): broken → red, 12 failed / 3,698 passed / 3,710 @ b42973a7e+M7; restored → green, 3,710 / 0 (`FileBasedIntegrationTests|TypeSyntaxMapperTests`). The direction reproduces. The recorded "6" is narrower than this filter: the extra reds are other float32/decimal fixtures (`float32_literal_positions_1688`, `decimal_literal_exponent_forms`, `store_conversion_positions_1698`, …). Not vacuous.
+- **M4** (`IsTypedNullScrutinee` → `false`, also the inert-fix check): broken → red, 3 failed / 3,680 passed / 3,683 @ b42973a7e+M4 (`IrTotalityTests` case, `match_bare_none_scrutinee_1526`, `emitter_type_name_compare_controls`); restored → green, 3,683 / 0 (`FileBasedIntegrationTests|IrTotalityTests`). Matches the record's 3.
+- The other recorded pairs (M1–M3, M5, M6, M8a/b, M9, M10) were read, not re-run. Vacuous / inverted / inert: 0.
+
+### Architectural review (Agent 3, Section B)
+- Critical 0 · Warnings 1 (fixed) · Suggestions 0. 4b8f36e89 left `CreateCollectionType`'s `<summary>` above `MapBuiltinTypeArguments` (two summaries on one method, none on the other), and 010773247 left three double blank lines in `SemanticInfo.cs`. Both are fixed in f464281d0.
+
+### Fixes applied
+| Commit | Description | Category |
+|---|---|---|
+| f464281d0 | chore(codegen): restore CreateCollectionType's doc; drop stray blanks | cleanup |
+
+### Ledger (no issues filed by this round)
+- +1 row: `a: float32 = -0.5` / `decimal = -1.5` / `-(0.5)` / `+0.5` → SPY0220, while `a: int = -3` runs. Spec: "same rule as integer constants". false-refusal · program; pre-existing and identical at 8d0367e0a and HEAD; outside the plan's contract.
+- +1 de-dup row: the `n, k = v, 3` CS0029 unpacking (narrowed `int?` + fresh name) is #2494 cell 3, re-measured; no filing.
+
+### Acceptance
+Met at HEAD; the remediation tip f464281d0 changes comments and whitespace only. Gate for f464281d0: the lead's `/ci-gate`.
