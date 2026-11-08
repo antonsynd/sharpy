@@ -185,7 +185,7 @@ Claude-Session: https://claude.ai/code/session_01LGMKZYTnPZhvmJyZw5sgYV
 
 ## Implementation Checklist
 Board for `/implement-plan` (lead: this session; workers: fresh Opus agents, one per phase, sequential — every phase edits `LoweringPass.cs`, `IrTreeRewriter.cs`, `SemanticInfo.cs` and the pin). Base `48c6afb3e` (dev; `src/` identical to the verified `5d0187ecd`).
-- [ ] P0 — Phase 0 positive-control fixtures (test-only; 3 `.expected.cs`) — worker P0 — blocked by none
+- [x] P0 — Phase 0 positive-control fixtures (test-only; 3 `.expected.cs`) — worker P0 — LANDED 9b4552c18 (3/3 fixtures; #1720 guard 4/4, 0 sites; python3 = sharpyc on all 3)
 - [ ] P1 — `_augmentedAssignMutations` → `IrCollectionMutation`; agreement sweep + its positive control; pin 87; M1, M2; spy-stdlib/spy-test regen byte-identical (the regen task, first Lowering/CodeGen touch) — worker P1 — blocked by P0
 - [ ] P2 — `_lambdaBodyLowerings` → `IrElidedNoneBody`; pin 86; M3, M4 — worker P2 — blocked by P1
 - [ ] P3 — `_optionalStoreWraps` → `IrOptionalStoreWrap` / `IrOptionalWrappedElement` / `IrOptionalWalrusStore`; walrus fixture (ruled cells); sweep incl. deferred F1 (walrus read looks through the wrapped element) and F2 (walrus count per filter); pin 85; M5–M9 — worker P3 — blocked by P2
