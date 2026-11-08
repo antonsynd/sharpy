@@ -65,7 +65,17 @@ internal partial class ProjectCompiler
     /// (#2345, R-HD): the explicit N, else semantic analysis's documented default of 100. The
     /// parser keeps its own per-file default of 25 (<c>ProjectCompiler.Parsing</c>).
     /// </summary>
-    private int SinkErrorCap => _maxErrors > 0 ? _maxErrors : 100;
+    private int SinkErrorCap => SinkErrorCapOf(_maxErrors);
+
+    private static int SinkErrorCapOf(int maxErrors) => maxErrors > 0 ? maxErrors : 100;
+
+    /// <summary>
+    /// The project's diagnostic sink: the one bag that applies the build's policy — warnings-as-errors,
+    /// suppressed warnings and the <c>--max-errors</c> cap (<see cref="SinkErrorCap"/>). Shared by a
+    /// compile and the whole-build up-to-date replay, so a replayed report meets the same policy (#2468).
+    /// </summary>
+    private static DiagnosticBag ProjectSinkOf(bool warningsAsErrors, HashSet<string> suppressedWarnings, int maxErrors)
+        => new(warningsAsErrors, suppressedWarnings) { ErrorCap = SinkErrorCapOf(maxErrors) };
 
     /// <summary>
     /// Merges <paramref name="source"/> into <paramref name="target"/>, back-filling any
@@ -216,7 +226,7 @@ internal partial class ProjectCompiler
         // every phase that iterates ProjectModel.Units sees a deterministic order.
         config.SourceFiles.Sort(StringComparer.Ordinal);
 
-        _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings) { ErrorCap = SinkErrorCap };
+        _diagnostics = ProjectSinkOf(_warningsAsErrors, _suppressedWarnings, _maxErrors);
         _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
 

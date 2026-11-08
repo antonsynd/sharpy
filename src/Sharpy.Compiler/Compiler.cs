@@ -86,10 +86,10 @@ public class Compiler
 
     /// <summary>
     /// Loads the referenced assemblies into the module registry, once per <see cref="Compiler"/>. Called
-    /// at each compilation entry (<see cref="CompileProject(ProjectConfig, CancellationToken)"/>,
-    /// <see cref="Compile(string, string, CancellationToken)"/>,
-    /// <see cref="Analyze(string, string, CancellationToken, bool)"/>), not in the constructor, so a
-    /// compilation that returns before its first phase can load nothing (#2468). A reference
+    /// at each compilation entry (<see cref="CompileProject(ProjectConfig, CancellationToken)"/> after its
+    /// up-to-date check, <see cref="Compile(string, string, CancellationToken)"/>,
+    /// <see cref="Analyze(string, string, CancellationToken, bool)"/>), not in the constructor: a warm
+    /// project build whose every input matches the last build's loads nothing (#2468). A reference
     /// that fails to load records SPY0305/SPY0306 on the registry, which every entry surfaces.
     /// </summary>
     private void EnsureReferencesLoaded()
@@ -136,6 +136,18 @@ public class Compiler
         // single shared definition of the merge (also used by CompilerApi.AnalyzeProject), so the
         // compile and analyze paths can never diverge (#1109). MaxErrors comes from options only.
         var projectOptions = ProjectOptionsMerge.Merge(_options, projectConfig);
+
+        // A warm build whose every input is the last successful build's: replay that build's report
+        // under this build's policy and load nothing (#2468). Stamped like the full path below, so a
+        // reference load that ran anyway shows up as discovery time.
+        if (projectOptions.UpToDateCheck
+            && ProjectCompiler.TryReplayUpToDateBuild(projectConfig, projectOptions, _logger) is { } upToDate)
+        {
+            if (_discoveryTime > TimeSpan.Zero)
+                upToDate.Metrics?.SetDiscoveryTime(_discoveryTime);
+            return upToDate;
+        }
+
         EnsureReferencesLoaded();
         _moduleRegistry?.BeginCompilation();
 
@@ -580,6 +592,15 @@ public class CompilerOptions
     /// are cached in the project's obj/ directory.
     /// </summary>
     public bool Incremental { get; set; }
+
+    /// <summary>
+    /// With <see cref="Incremental"/>, check before any work whether every input of the build is the
+    /// last successful build's (sources, facts, environment, outputs); when it is, replay that build's
+    /// diagnostics under this build's policy and return without loading a reference (#2468). Set by
+    /// <see cref="CompilerOptionsFactory.ForProject"/> for the CLI's <c>--incremental</c>; in-process
+    /// callers that set only <see cref="Incremental"/> exercise the per-unit cache instead.
+    /// </summary>
+    public bool UpToDateCheck { get; set; }
 
     /// <summary>
     /// Output type: "exe" or "library". Controls whether the compiler requires
