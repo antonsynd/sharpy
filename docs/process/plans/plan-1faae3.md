@@ -138,8 +138,8 @@ Bodies: `refs #2443`, cruft trailer (§5.2), attribution; e.g. Phase 2: `Cruft: 
 
 ## Implementation Checklist
 Board for the P82 tranche-2 lane (implementer: one Opus worker, sequential; lead pushes, runs `/ci-gate`, opens the PR). Base `be11fca77` (dev).
-- [ ] T1 — Phase 0 positive controls (3 `.expected.cs`, 2 `.spy`, 2 `.expected`) — implementer — blocked by none
-- [ ] T2 — Phase 1 inspection kinds `type-name-compare` + reflection `type-read`; rows seeded; M1–M3 — implementer — blocked by T1
+- [x] T1 — Phase 0 positive controls (3 `.expected.cs`, 2 `.spy`, 2 `.expected`) — implementer — blocked by none — LANDED 570cd145d (23/23; python3 = sharpyc; subject shortened to ≤ 72)
+- [x] T2 — Phase 1 inspection kinds `type-name-compare` + reflection `type-read`; rows seeded; M1–M3 — implementer — blocked by T1 — LANDED 111eac007 (rows 166 → 192: type-name-compare 11 rows / 20 sites, type-read 17 → 32; M1 2 red / M2 2 red / M3 1 red; `is` + switch counted: `Assignments.cs:762` is the warned `r.Name is` spelling)
 - [ ] T3 — Phase 2 `_matchScrutineeLowerings` → `IrTypedNullScrutinee`; sweep + control; pin 84, floor 88, `Set*Lowering` 70; M4–M6 — implementer — blocked by T2
 - [ ] T4 — Regen after Phase 2: spy stdlib + spy tests + snapshots byte-identical (STOP on any diff) — implementer — blocked by T3
 - [ ] T5 — Phase 3 six compares → `TypeSyntaxMapper`; sweep + control; M7–M8 — implementer — blocked by T4
