@@ -642,12 +642,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, SliceLowering> _sliceLowerings =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map match scrutinee expressions to a typed-null cast when the scrutinee is a bare NoneLiteral.
-    // Absent ⇒ normal scrutinee emission. Void-call scrutinees are REFUSED (SPY0275), not lowered.
-    // Keyed by node identity (#1526, Critical Rule 2 pattern (b)).
-    private readonly ConcurrentDictionary<Expression, MatchScrutineeLowering> _matchScrutineeLowerings =
-        new(ReferenceEqualityComparer.Instance);
-
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is a thread-safe bag of references.
     // The FilePath may be null for the main file in single-file compilation.
@@ -1780,11 +1774,6 @@ public class SemanticInfo : ISemanticQuery
     public SliceLowering? GetSliceLowering(Expression expr) =>
         _sliceLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
 
-    public void SetMatchScrutineeLowering(Expression scrutinee, MatchScrutineeLowering lowering) =>
-        Put(_matchScrutineeLowerings, scrutinee, lowering);
-
-    public MatchScrutineeLowering? GetMatchScrutineeLowering(Expression scrutinee) =>
-        _matchScrutineeLowerings.TryGetValue(scrutinee, out var lowering) ? lowering : null;
 
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
@@ -2535,8 +2524,6 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._sliceLowerings)
             MergeEntry(_sliceLowerings, kvp, other);
 
-        foreach (var kvp in other._matchScrutineeLowerings)
-            MergeEntry(_matchScrutineeLowerings, kvp, other);
 
         foreach (var kvp in other._interfaceCastLowerings)
             MergeEntry(_interfaceCastLowerings, kvp, other);
@@ -3433,13 +3420,6 @@ public sealed record SliceLowering(
     SemanticType? ResultType = null,
     int[]? TupleElementIndices = null);
 
-public enum MatchScrutineeLoweringKind
-{
-    /// <summary>The scrutinee is a bare NoneLiteral — cast to <c>(object?)null</c> for a valid switch.</summary>
-    CastToNullableObject
-}
-
-public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
 
 /// <summary>
 /// A per-match-arm lowering fact (P13 D5). <see cref="OmitUnreachableDiscard"/> marks a trailing

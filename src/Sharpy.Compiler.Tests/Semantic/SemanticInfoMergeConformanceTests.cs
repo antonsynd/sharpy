@@ -61,8 +61,9 @@ public class SemanticInfoMergeConformanceTests
     /// 86: <c>_lambdaBodyLowerings</c> moved onto <c>IrElidedNoneBody</c> (P82 tranche 1).
     /// 85: <c>_optionalStoreWraps</c> moved onto <c>IrOptionalStoreWrap</c>,
     /// <c>IrOptionalWrappedElement</c> and <c>IrOptionalWalrusStore</c> (P82 tranche 1).
+    /// 84: <c>_matchScrutineeLowerings</c> moved onto <c>IrTypedNullScrutinee</c> (P82 tranche 2).
     /// </summary>
-    private const int MaximumSideTableFieldCount = 85;
+    private const int MaximumSideTableFieldCount = 84;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

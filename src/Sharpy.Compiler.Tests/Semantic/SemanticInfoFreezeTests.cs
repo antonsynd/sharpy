@@ -30,9 +30,10 @@ public class SemanticInfoFreezeTests
     {
         var mutators = Mutators().ToList();
         // 89 @ P82 tranche 1 (#2443): three setters were deleted with their tables
-        // (SetAugmentedAssignMutation, SetLambdaBodyLowering, SetOptionalStoreWrap); re-measure and
-        // lower the floor only when a setter is deleted by design, never because the filter changed.
-        mutators.Should().HaveCountGreaterThanOrEqualTo(89,
+        // (SetAugmentedAssignMutation, SetLambdaBodyLowering, SetOptionalStoreWrap); 88 @ P82
+        // tranche 2 (SetMatchScrutineeLowering). Re-measure and lower the floor only when a setter
+        // is deleted by design, never because the filter changed.
+        mutators.Should().HaveCountGreaterThanOrEqualTo(88,
             "the reflected roster must see every setter; a shrunk count means the filter changed");
 
         var frozen = new SemanticInfo();
