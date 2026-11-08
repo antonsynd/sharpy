@@ -185,4 +185,4 @@ RoslynEmitter.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticT
 RoslynEmitter.cs | type-name | Symbol | 11 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.cs | type-name | TypeSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.cs | type-name | VariableSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
-TypeSyntaxMapper.cs | type-read | GetExpressionType | 1 | cite=#2443 | the expression-type read inside TypeSyntaxMapper; counted pending a ruling on contract item 1
+TypeSyntaxMapper.cs | type-read | GetExpressionType | 1 | cite=#2443 | the node-type lookup inside TypeSyntaxMapper (its contract is SemanticType -> TypeSyntax); drains when callers pass the SemanticType they already hold
