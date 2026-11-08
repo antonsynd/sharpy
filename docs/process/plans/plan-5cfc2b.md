@@ -209,5 +209,5 @@ D1 gains a member-kind conjunct. The only fact on hand is `SemanticInfo.GetMembe
 - [x] Phase 1 T2: product, cells, fed-failure check, `CellBudget`, red-at-base pins (M1–M3 recorded) — implementer — blocked by Phase 1 T1
 - [x] Phase 2 T1: D1 conjunct at `Constructors.cs:140`, every `#2439` allowlist row deleted, D3 (a) re-pin (D1-revert mutation recorded) — implementer — blocked by Phase 1 T2
 - [x] Regen: `regenerate_spy_stdlib.sh` + snapshot regen, diff read as findings (predicted: no movement) — implementer — blocked by Phase 2 T1
-- [ ] Phase 2 T2: `init_augmented_store_2439` + experimental `@=`/`defer` fixtures and the ungated twin — implementer — blocked by Phase 2 T1
+- [x] Phase 2 T2: `init_augmented_store_2439` + experimental `@=`/`defer` fixtures and the ungated twin — implementer — blocked by Phase 2 T1
 - [ ] Gate: `/ci-gate` on the pushed tip, PR — lead — blocked by every task above
