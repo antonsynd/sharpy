@@ -219,11 +219,12 @@ internal partial class ProjectCompiler
 
     /// <summary>
     /// Builds the middle-end lowering IR for the whole project (E2, #1056). Runs once per compile,
-    /// after <c>SemanticInfo.MergeFrom</c> and immediately before per-file code generation, over the
-    /// merged project-level <see cref="SemanticInfo"/> (Design Decision 2). The work is bracketed by
-    /// the <see cref="CompilerPhaseNames.Lowering"/> phase metric; the result is stored on the
-    /// project model and returned for the per-file <see cref="CodeGenContext"/>. In E2 Phase 1
-    /// nothing reads the IR, and the emitted C# is unchanged.
+    /// after <c>SemanticInfo.MergeFrom</c> and <c>Freeze()</c> and immediately before per-file code
+    /// generation, over the merged project-level <see cref="SemanticInfo"/> (Design Decision 2) and the
+    /// project's <see cref="SemanticBinding"/>, from which the pass reads declared slot types (P82 #2443).
+    /// The work is bracketed by the <see cref="CompilerPhaseNames.Lowering"/> phase metric; the result
+    /// is stored on the project model and returned for the per-file <see cref="CodeGenContext"/>, whose
+    /// emitter reads the migrated lowering decisions from the IR, not from <see cref="SemanticInfo"/>.
     /// </summary>
     private IrCompilation BuildLoweringIr(ProjectConfig config)
     {
