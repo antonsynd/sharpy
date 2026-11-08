@@ -27,7 +27,8 @@ Sharpy uses .NET's exception hierarchy directly:
 | `PermissionError` | `OSError` | Permission denied |
 | `StopIteration` | `Exception` | Iterator exhausted |
 | `UnicodeError` | `ValueError` | Base for Unicode encoding/decoding errors |
-| `UnicodeEncodeError` | `UnicodeError` | Unicode encoding failed |
+| `UnicodeEncodeError` | `UnicodeError` | Unicode encoding failed (`str.encode`, `errors="strict"`) |
+| `UnicodeDecodeError` | `UnicodeError` | Unicode decoding failed (`bytes.decode`, `errors="strict"`) |
 | `ArgumentError` | `Exception` | Generic argument error |
 | `SystemExit` | `Exception` | Program exit request |
 | `NameError` | `Exception` | Name not found |

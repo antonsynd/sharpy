@@ -1,0 +1,56 @@
+# str.encode / bytes.decode honour python's errors argument (#2477): strict raises
+# UnicodeEncodeError / UnicodeDecodeError with python's five fields, replace substitutes,
+# ignore drops. Matrix: codec x errors x input, then the decode mirror, then the
+# except UnicodeError / except ValueError controls (issue cell 6).
+def main():
+    encodings: list[str] = ['ascii', 'utf-8', 'latin-1']
+    handlers: list[str] = ['strict', 'replace', 'ignore']
+    texts: list[str] = ['cafe', 'café€', 'a\udc80b', 'aéé b']
+    for enc in encodings:
+        for h in handlers:
+            for t in texts:
+                try:
+                    print(f'encode {enc} {h} {ascii(t)}: {t.encode(enc, h)}')
+                except UnicodeEncodeError as e:
+                    print(f'encode {enc} {h} {ascii(t)}: {type(e).__name__} {e.encoding} {e.start} {e.end} {e.reason} | {e}')
+
+    # bytes([...]), not b'\x..' literals: the formatter cannot round-trip a high-byte escape yet.
+    datas: list[bytes] = [b'caf' + bytes([0xc3, 0xa9]), bytes([0xff]), b'caf' + bytes([0xe9]), b'a' + bytes([0xe2, 0x82]) + b'b', bytes([0xf0, 0x9f, 0x98])]
+    for enc in encodings:
+        for h in handlers:
+            for d in datas:
+                try:
+                    print(f'decode {enc} {h} {d}: {ascii(d.decode(enc, h))}')
+                except UnicodeDecodeError as e:
+                    print(f'decode {enc} {h} {d}: {type(e).__name__} {e.encoding} {e.start} {e.end} {e.reason} | {e}')
+
+    print('cafe'.encode('ascii', 'bogus'))
+    try:
+        print('café'.encode('ascii', 'bogus'))
+    except LookupError as e:
+        print(f'{type(e).__name__}: {e}')
+    try:
+        print(bytes([0xff]).decode('utf-8', 'bogus'))
+    except LookupError as e:
+        print(f'{type(e).__name__}: {e}')
+    try:
+        print(bytes([0xff]).decode('bogus'))
+    except LookupError as e:
+        print(f'{type(e).__name__}: {e}')
+
+    try:
+        print('café'.encode('ascii'))
+    except UnicodeError as e:
+        print(f'caught {type(e).__name__} as UnicodeError: {e}')
+    try:
+        print(bytes([0xff]).decode('utf-8'))
+    except UnicodeError as e:
+        print(f'caught {type(e).__name__} as UnicodeError: {e}')
+    try:
+        print('café'.encode('ascii'))
+    except ValueError as e:
+        print(f'caught {type(e).__name__} as ValueError: {e}')
+    try:
+        print(bytes([0xff]).decode('utf-8'))
+    except ValueError as e:
+        print(f'caught {type(e).__name__} as ValueError: {e}')

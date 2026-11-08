@@ -230,10 +230,13 @@ Return a copy of the string in which each character has been mapped
 through the given translation table.
 Python: `str.translate(table)`
 
-### `encode(encoding: str = "utf-8") -> bytes`
+### `encode(encoding: str = "utf-8", errors: str = "strict") -> bytes`
 
-Encode the string using the specified encoding and return as bytes.
-Python: `str.encode(encoding='utf-8')`
+Encode the string using the specified encoding and return as bytes. An unencodable
+character raises `UnicodeEncodeError` under `errors="strict"`, becomes
+`?` under `"replace"` and is dropped under `"ignore"`; any other handler name
+raises `LookupError` when an error occurs (#2477).
+Python: `str.encode(encoding='utf-8', errors='strict')`
 
 ### `find(sub: str) -> int`
 
