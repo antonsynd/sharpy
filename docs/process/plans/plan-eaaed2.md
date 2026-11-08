@@ -183,6 +183,16 @@ Claude-Session: https://claude.ai/code/session_01LGMKZYTnPZhvmJyZw5sgYV
 - src/Sharpy.Compiler/CodeGen/ (RoslynEmitter.Statements.Assignments.cs, RoslynEmitter.Expressions.Access.Calls.cs, RoslynEmitter.Expressions.Literals.cs)
 - src/Sharpy.Compiler.Tests/Semantic/SemanticInfoMergeConformanceTests.cs
 
+## Implementation Checklist
+Board for `/implement-plan` (lead: this session; workers: fresh Opus agents, one per phase, sequential — every phase edits `LoweringPass.cs`, `IrTreeRewriter.cs`, `SemanticInfo.cs` and the pin). Base `48c6afb3e` (dev; `src/` identical to the verified `5d0187ecd`).
+- [ ] P0 — Phase 0 positive-control fixtures (test-only; 3 `.expected.cs`) — worker P0 — blocked by none
+- [ ] P1 — `_augmentedAssignMutations` → `IrCollectionMutation`; agreement sweep + its positive control; pin 87; M1, M2; spy-stdlib/spy-test regen byte-identical (the regen task, first Lowering/CodeGen touch) — worker P1 — blocked by P0
+- [ ] P2 — `_lambdaBodyLowerings` → `IrElidedNoneBody`; pin 86; M3, M4 — worker P2 — blocked by P1
+- [ ] P3 — `_optionalStoreWraps` → `IrOptionalStoreWrap` / `IrOptionalWrappedElement` / `IrOptionalWalrusStore`; walrus fixture (ruled cells); sweep incl. deferred F1 (walrus read looks through the wrapped element) and F2 (walrus count per filter); pin 85; M5–M9 — worker P3 — blocked by P2
+- [ ] P4 — docs (`architecture.md`, `lowering-ir.md` Appendix, stale comments) — worker P4 — blocked by P3
+- [ ] Lead per wave: `git diff --stat` scope check; re-run the largest recorded mutation; ledger de-dup
+- [ ] Final — build, `/ci-gate` @ PR tip vs baseline, blast-radius sweeps, staleness gates, `format whitespace --verify-no-changes`, standalone `verification-expert` — lead — blocked by P0–P4
+
 ## Revision log
 - @ ef6039e33 — revised after the 1st pass (NEEDS REVISION, Dimension 4): applied owner ruling D2 option 1 (2026-11-08). Tranche is `_augmentedAssignMutations`/`_optionalStoreWraps`/`_lambdaBodyLowerings`. D1: `_optionalStoreWraps` becomes a MOVE (five arms; walrus has no reader; no shared helper); `_inferredTypeArguments` stays NOT-MOVE on the corrected facts; `_matchScrutineeLowerings` moves to tranche 2. D2: store-wrap carriers. Phase 0: store-wrap fixture. Phase 3: replaced. Counts: 72 → 71, 12 → 0. Mutations renumbered M1–M7.
 - @ 5d0187ecd — revised after the 2nd pass (NEEDS REVISION, Dimension 4): owner option B (D2 addendum): the walrus write's tuple-literal reader is a key collision (the bug), fixed. (a)/(c)/(d) read `Slot(s)` via a new `SemanticBinding` input; (a) adds `not UnknownType`. Kept departure from D2's sketch ("become shared helpers"): none, argued in D1. S2: own-site wrap carried (`IrOptionalWalrusStore`, D2 second addendum); Phase 0's walrus moves to the walrus fixture; the sweep compares walrus keys.
