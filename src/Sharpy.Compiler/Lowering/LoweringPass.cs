@@ -205,11 +205,49 @@ internal sealed partial class LoweringPass
             DictComprehension dictComp
                 => LowerComprehension(dictComp, BuiltinNames.Dict, dictComp.Clauses,
                     elementIsSpread: false, semanticInfo, state),
+            // A None-bodied lambda against a void delegate carries the body elision on the IR node
+            // (P82 #2443, migrates _lambdaBodyLowerings).
+            LambdaExpression lambda when IsElidedNoneBodyLambda(lambda, semanticInfo)
+                => LowerElidedNoneBodyLambda(lambda, semanticInfo, state),
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
                 LowerChildren(expression, semanticInfo, state)),
         };
         state.Index[expression] = ir;
         return ir;
+    }
+
+    /// <summary>
+    /// A lambda whose body, through grouping parentheses, is <c>None</c> and whose recorded type
+    /// returns void (<c>f = lambda: None</c>): the C# delegate is an <c>Action</c>, so the body is an
+    /// empty block (#1514). A lambda under a value-returning slot (<c>g: () -> str | None = lambda:
+    /// None</c>) keeps its body (<c>() => null</c>).
+    /// </summary>
+    private static bool IsElidedNoneBodyLambda(LambdaExpression lambda, SemanticInfo semanticInfo)
+        => AstHelper.UnwrapParenthesized(lambda.Body) is NoneLiteral
+            && semanticInfo.GetExpressionType(lambda) is Semantic.FunctionType { ReturnType: VoidType };
+
+    /// <summary>
+    /// Lowers a None-bodied void lambda (<see cref="IsElidedNoneBodyLambda"/>): the children lower as
+    /// for any expression, then the body's node is replaced, in place, by an
+    /// <see cref="IrElidedNoneBody"/> holding the same children, so the tree stays total and ordered.
+    /// </summary>
+    private static IrOpaqueExpression LowerElidedNoneBodyLambda(
+        LambdaExpression lambda, SemanticInfo semanticInfo, LoweringState state)
+    {
+        var children = LowerChildren(lambda, semanticInfo, state);
+        var body = state.Index[lambda.Body];
+        var elided = new IrElidedNoneBody(body.Type, body.Span, body.Children);
+        state.Index[lambda.Body] = elided;
+
+        var builder = children.ToBuilder();
+        for (var i = 0; i < builder.Count; i++)
+        {
+            if (ReferenceEquals(builder[i], body))
+                builder[i] = elided;
+        }
+
+        return new IrOpaqueExpression(lambda, semanticInfo.GetExpressionType(lambda), SpanOf(lambda),
+            builder.ToImmutable());
     }
 
     private static IrEqualityComparison LowerEqualityComparison(BinaryOp binOp, SemanticInfo semanticInfo, LoweringState state)

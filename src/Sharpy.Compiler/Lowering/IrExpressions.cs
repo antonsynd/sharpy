@@ -292,3 +292,25 @@ internal sealed record IrOpaqueExpression(
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;
 }
+
+/// <summary>
+/// The lowered body of a lambda whose body is <c>None</c> against a void delegate target
+/// (<c>f = lambda: None</c> → <c>() => { }</c>, #1514; P82 #2443 migrates
+/// <c>SemanticInfo._lambdaBodyLowerings</c>). The pass builds it in place of the body's opaque node
+/// exactly when the body, through grouping parentheses, is a <c>NoneLiteral</c> and the lambda's
+/// recorded type returns void; any other lambda body lowers as usual. The emitter emits an empty
+/// block body when the lambda's body lowered to this kind.
+/// </summary>
+/// <param name="Type">The body's resolved type, when the type checker recorded one.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The body's lowered children, in <c>GetChildNodes</c> order (totality):
+/// empty for a bare <c>None</c>, the inner <c>None</c> for a parenthesized one. The node wraps only a
+/// <c>NoneLiteral</c>, so the shared rewriter has nothing to fold beneath it.</param>
+internal sealed record IrElidedNoneBody(
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}

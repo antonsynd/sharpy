@@ -58,8 +58,9 @@ public class SemanticInfoMergeConformanceTests
     /// symbols). The emitter port moves facts into the lowering IR, so the count may only fall: a
     /// change that adds a table fails here, and a change that removes one lowers this pin with it.
     /// 87: <c>_augmentedAssignMutations</c> moved onto <c>IrCollectionMutation</c> (P82 tranche 1).
+    /// 86: <c>_lambdaBodyLowerings</c> moved onto <c>IrElidedNoneBody</c> (P82 tranche 1).
     /// </summary>
-    private const int MaximumSideTableFieldCount = 87;
+    private const int MaximumSideTableFieldCount = 86;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

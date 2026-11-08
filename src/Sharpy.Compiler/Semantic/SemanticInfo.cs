@@ -643,12 +643,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<ReturnStatement, ReturnLowering> _returnLowerings =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map lambda body expressions to an elision decision when the body is a NoneLiteral against
-    // a void delegate target (Action). Absent ⇒ normal body emission. Keyed by node identity
-    // (#1514, Critical Rule 2 pattern (b)).
-    private readonly ConcurrentDictionary<Expression, LambdaBodyLowering> _lambdaBodyLowerings =
-        new(ReferenceEqualityComparer.Instance);
-
     private readonly ConcurrentDictionary<ExpressionStatement, StatementLowering> _statementLowerings =
         new(ReferenceEqualityComparer.Instance);
 
@@ -1791,9 +1785,6 @@ public class SemanticInfo : ISemanticQuery
     public ReturnLowering? GetReturnLowering(ReturnStatement ret) =>
         _returnLowerings.TryGetValue(ret, out var lowering) ? lowering : null;
 
-    public void SetLambdaBodyLowering(Expression body, LambdaBodyLowering lowering) =>
-        Put(_lambdaBodyLowerings, body, lowering);
-
     public void SetStatementLowering(ExpressionStatement stmt, StatementLowering lowering) =>
         Put(_statementLowerings, stmt, lowering);
 
@@ -1805,9 +1796,6 @@ public class SemanticInfo : ISemanticQuery
 
     public SliceLowering? GetSliceLowering(Expression expr) =>
         _sliceLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
-
-    public LambdaBodyLowering? GetLambdaBodyLowering(Expression body) =>
-        _lambdaBodyLowerings.TryGetValue(body, out var lowering) ? lowering : null;
 
     public void SetMatchScrutineeLowering(Expression scrutinee, MatchScrutineeLowering lowering) =>
         Put(_matchScrutineeLowerings, scrutinee, lowering);
@@ -2560,9 +2548,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._returnLowerings)
             MergeEntry(_returnLowerings, kvp, other);
-
-        foreach (var kvp in other._lambdaBodyLowerings)
-            MergeEntry(_lambdaBodyLowerings, kvp, other);
 
         foreach (var kvp in other._statementLowerings)
             MergeEntry(_statementLowerings, kvp, other);
@@ -3351,14 +3336,6 @@ public enum ReturnLoweringKind
 }
 
 public sealed record ReturnLowering(ReturnLoweringKind Kind);
-
-public enum LambdaBodyLoweringKind
-{
-    /// <summary>The lambda body is a NoneLiteral against a void delegate — emit an empty block body.</summary>
-    ElideNoneBody
-}
-
-public sealed record LambdaBodyLowering(LambdaBodyLoweringKind Kind);
 
 public enum StatementLoweringKind
 {

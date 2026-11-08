@@ -232,6 +232,67 @@ public class IrTotalityTests
         Assert.Equal(expected, methods);
     }
 
+    /// <summary>
+    /// P82 (#2443): a None-bodied lambda against a void delegate lowers its body to an
+    /// <see cref="IrElidedNoneBody"/> (migrates <c>SemanticInfo._lambdaBodyLowerings</c>), keyed on
+    /// the body: <c>f = lambda: None</c> → node; <c>g: () -> str | None = lambda: None</c> → none (the
+    /// return is not void, so <c>() => null</c>); <c>k = lambda: (None)</c> → node on the parenthesized
+    /// body, holding the inner <c>None</c>. The lambda itself stays opaque, its body child substituted
+    /// in place, and the tree stays total.
+    /// </summary>
+    [Fact]
+    public void NoneBodiedVoidLambda_LowersBodyToIrElidedNoneBody_AndStaysTotal()
+    {
+        const string source = """
+            def main():
+                f = lambda: None
+                g: () -> str | None = lambda: None
+                k = lambda: (None)
+                f()
+                k()
+                print(g() is None)
+            """;
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+
+        // Totality: one IR node per AST expression/statement, keyed by identity.
+        var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+        foreach (var node in WalkExpressionsAndStatements(ast))
+        {
+            Assert.True(astNodes.Add(node), $"AST node visited more than once: {node.GetType().Name}");
+            Assert.True(index.ContainsKey(node), $"AST {node.GetType().Name} @ {SpanOf(node)} did not lower to an IR node");
+            Assert.Equal(SpanOf(node), index[node].Span);
+        }
+
+        Assert.Equal(astNodes.Count, index.Count);
+        Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+
+        var lambdas = astNodes.OfType<LambdaExpression>()
+            .OrderBy(l => SpanOf(l).Start)
+            .ToList();
+        Assert.Equal(3, lambdas.Count);
+        var (f, g, k) = (lambdas[0], lambdas[1], lambdas[2]);
+
+        // f: the bare None body is the node, and it is the lambda's body child.
+        var fBody = Assert.IsType<IrElidedNoneBody>(index[f.Body]);
+        Assert.Empty(fBody.Children);
+        Assert.Contains(index[f].Children, child => ReferenceEquals(child, fBody));
+
+        // g: a value-returning slot keeps its body.
+        Assert.IsType<NoneLiteral>(g.Body);
+        Assert.IsType<IrOpaqueExpression>(index[g.Body]);
+
+        // k: the node keys on the parenthesized body and holds the inner None's node.
+        var parenthesized = Assert.IsType<Parenthesized>(k.Body);
+        var kBody = Assert.IsType<IrElidedNoneBody>(index[k.Body]);
+        var inner = Assert.Single(kBody.Children);
+        Assert.Same(index[parenthesized.Expression], inner);
+        Assert.Contains(index[k].Children, child => ReferenceEquals(child, kBody));
+
+        Assert.Equal(2, CollectNodes<IrElidedNoneBody>(ir).Count);
+    }
+
     private static IReadOnlyList<T> CollectNodes<T>(IrCompilation ir) where T : IrNode
     {
         var result = new List<T>();
