@@ -301,6 +301,14 @@ deviations:
   spec_ref: docs/language_specification/tagged_unions.md
   existing_diagnostic: SPY0113
   planned_diagnostic: null
+- id: frozen-dataclass-init-assignment
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/dataclass.md
+  existing_diagnostic: SPY0706
+  planned_diagnostic: null
 - id: generator-multi-pass
   category: semantics
   audience: python
