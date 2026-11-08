@@ -1774,7 +1774,6 @@ public class SemanticInfo : ISemanticQuery
     public SliceLowering? GetSliceLowering(Expression expr) =>
         _sliceLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
 
-
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
         ThrowIfFrozen(nameof(_generatorBindings), declaration);
@@ -2523,7 +2522,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._sliceLowerings)
             MergeEntry(_sliceLowerings, kvp, other);
-
 
         foreach (var kvp in other._interfaceCastLowerings)
             MergeEntry(_interfaceCastLowerings, kvp, other);
@@ -3419,7 +3417,6 @@ public sealed record SliceLowering(
     SliceLoweringKind Kind,
     SemanticType? ResultType = null,
     int[]? TupleElementIndices = null);
-
 
 /// <summary>
 /// A per-match-arm lowering fact (P13 D5). <see cref="OmitUnreachableDiscard"/> marks a trailing

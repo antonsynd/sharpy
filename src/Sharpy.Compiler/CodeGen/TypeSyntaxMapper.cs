@@ -908,9 +908,6 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
-    /// Creates a Sharpy collection type with element type
-    /// </summary>
-    /// <summary>
     /// The mapped type arguments of a builtin generic (#2443 item 1: the emitter hands the recorded
     /// type here instead of inspecting it): the first <paramref name="arity"/> arguments of
     /// <paramref name="type"/> when it is a <c>GenericType</c> named <paramref name="builtinName"/>
@@ -953,6 +950,9 @@ internal class TypeSyntaxMapper
         return null;
     }
 
+    /// <summary>
+    /// Creates a Sharpy collection type with element type
+    /// </summary>
     public TypeSyntax CreateCollectionType(string collectionName, TypeSyntax elementType)
     {
         var baseType = GetMappedTypeName(collectionName);
