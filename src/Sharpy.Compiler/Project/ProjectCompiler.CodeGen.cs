@@ -239,7 +239,7 @@ internal partial class ProjectCompiler
                 .Select(unit => (unit.FilePath, unit.Ast!))
                 .ToList();
 
-            var ir = new LoweringPass().Lower(modules, SemanticInfo, SymbolTable);
+            var ir = new LoweringPass().Lower(modules, SemanticInfo, _projectModel.SemanticBinding, SymbolTable);
             ir = RunIrOptimizationPasses(ir);
             _projectModel.IrCompilation = ir;
             return ir;

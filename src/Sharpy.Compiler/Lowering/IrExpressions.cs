@@ -314,3 +314,49 @@ internal sealed record IrElidedNoneBody(
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;
 }
+
+/// <summary>
+/// A tuple-literal element that an unpacking assignment stores into a narrowed <c>T?</c> (Optional)
+/// target (<c>p, q = 30, 40</c> with <c>p</c> narrowed): the element is a payload value and is printed
+/// as <c>Optional&lt;T&gt;.Some(element)</c> (R-T, #1785; P82 #2443 migrates
+/// <c>SemanticInfo._optionalStoreWraps</c>). Keyed in the index on the element's AST node; the
+/// element's own lowered node is its single child, so a fact the element carries (an
+/// <see cref="IrOptionalWalrusStore"/>, an <see cref="IrIndexAccess"/>, a foldable operation) stays
+/// in the tree and the emitter's by-key read looks through this node to it.
+/// </summary>
+/// <param name="WrapAs">The target slot's Optional type.</param>
+/// <param name="Type">The element's resolved (payload) type, when the type checker recorded one.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The element's own lowered node, the only child.</param>
+internal sealed record IrOptionalWrappedElement(
+    OptionalType WrapAs,
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
+/// A walrus (<c>c := 42</c>) that rebinds a narrowed <c>T?</c> (Optional) slot with a payload value: the
+/// stored value is wrapped at the walrus's own site, <c>(c = Optional&lt;int&gt;.Some(42)).Unwrap()</c>
+/// (R-T, #1720; P82 #2443 migrates the walrus entries of <c>SemanticInfo._optionalStoreWraps</c>, owner
+/// ruling D2 "S2"). The walrus's value is the payload, so a walrus written as a tuple element is not
+/// itself an element store. When an unpacking also stores the element into a narrowed Optional target
+/// (<c>p, q = (c := 45, 4)</c>), this node is the single child of that element's
+/// <see cref="IrOptionalWrappedElement"/>.
+/// </summary>
+/// <param name="WrapAs">The rebound slot's Optional type.</param>
+/// <param name="Type">The walrus's resolved (payload) type, when the type checker recorded one.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered value, in <c>GetChildNodes</c> order (totality).</param>
+internal sealed record IrOptionalWalrusStore(
+    OptionalType WrapAs,
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}

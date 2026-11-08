@@ -75,6 +75,34 @@ internal abstract class IrTreeRewriter
                         : mutation;
                 }
 
+            case IrOptionalStoreWrap storeWrap:
+                {
+                    // The target and value are foldable operands (P82 #2443): `d = 2 + 3` under a
+                    // narrowed Optional slot still folds its value.
+                    var children = RewriteChildren(storeWrap.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOptionalStoreWrap(storeWrap.WrapAs, storeWrap.Span, children)
+                        : storeWrap;
+                }
+
+            case IrOptionalWrappedElement wrappedElement:
+                {
+                    // The wrapped element is a foldable operand (P82 #2443): `p, q = 2 + 3, 4`.
+                    var children = RewriteChildren(wrappedElement.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOptionalWrappedElement(wrappedElement.WrapAs, wrappedElement.Type, wrappedElement.Span, children)
+                        : wrappedElement;
+                }
+
+            case IrOptionalWalrusStore walrusStore:
+                {
+                    // The walrus's value is a foldable operand (P82 #2443): `(c := 2 + 3)`.
+                    var children = RewriteChildren(walrusStore.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOptionalWalrusStore(walrusStore.WrapAs, walrusStore.Type, walrusStore.Span, children)
+                        : walrusStore;
+                }
+
             default:
                 // Typed nodes (equality, index, member, lowered loop, scope guard, with-item, constant,
                 // stack array): the shared walk does not descend into them — conservative and rare, and a

@@ -131,6 +131,26 @@ public class ConstFoldPassTests
         CompileCSharp(source, fold: false).Should().Contain("2 + 3", "the fold is the flag's doing");
     }
 
+    /// <summary>
+    /// P82 (#2443): an unpacking element stored into a narrowed Optional target is a typed IR node
+    /// (<c>IrOptionalWrappedElement</c>) holding the element's own node, and the shared rewriter
+    /// descends into it, so the fold reaches the element: <c>p, q = 2 + 3, 4</c> folds and keeps its
+    /// wrap.
+    /// </summary>
+    [Fact]
+    public void Enabled_FoldsInsideOptionalWrappedElement_WrapKept()
+    {
+        const string source = "def f() -> int:\n    p: int? = Some(1)\n    q: int? = Some(2)\n"
+            + "    if p is not None and q is not None:\n        p, q = 2 + 3, 4\n        return p + q\n"
+            + "    return 0\n";
+
+        var cs = CompileCSharp(source, fold: true);
+
+        cs.Should().Contain("Optional<int>.Some(5)", "the wrapped element folds and keeps its wrap");
+        cs.Should().NotContain("2 + 3", "the wrapped element is reached by the fold pass");
+        CompileCSharp(source, fold: false).Should().Contain("Optional<int>.Some(2 + 3)", "the fold is the flag's doing");
+    }
+
     [Fact]
     public void NonFiniteDoubleResult_StaysUnfolded()
     {

@@ -97,13 +97,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, ReceiverUnwrapLowering> _receiverUnwraps =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map an Assignment or WalrusExpression node to the OptionalType the emitter must wrap the
-    // stored value in. Recorded by the TypeChecker when a payload-typed value stores into a
-    // narrowed Optional slot (R-T payload rule, #1755 B) so the emitter prints
-    // Optional<T>.Some(value) at that site. Rule 2: the checker decides, the emitter prints.
-    private readonly ConcurrentDictionary<Node, OptionalType> _optionalStoreWraps =
-        new(ReferenceEqualityComparer.Instance);
-
     // Map a narrowed read (Identifier / MemberAccess / IndexAccess) that a store PASSED THROUGH as
     // its own declared wrapper (StoreVerdict.AcceptedNarrowedPassThrough, R-T) to that wrapper
     // type. Recording it removes the read's accessor and narrowed type — the emitter prints the
@@ -1011,16 +1004,6 @@ public class SemanticInfo : ISemanticQuery
     public ReceiverUnwrapLowering? GetReceiverUnwrap(Expression receiver)
     {
         return _receiverUnwraps.TryGetValue(receiver, out var lowering) ? lowering : null;
-    }
-
-    public void SetOptionalStoreWrap(Node storeNode, OptionalType wrapAs)
-    {
-        Put(_optionalStoreWraps, storeNode, wrapAs);
-    }
-
-    public OptionalType? GetOptionalStoreWrap(Node storeNode)
-    {
-        return _optionalStoreWraps.TryGetValue(storeNode, out var opt) ? opt : null;
     }
 
     /// <summary>
@@ -2352,9 +2335,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._narrowedReadLowerings)
             MergeEntry(_narrowedReadLowerings, kvp, other);
-
-        foreach (var kvp in other._optionalStoreWraps)
-            MergeEntry(_optionalStoreWraps, kvp, other);
 
         foreach (var kvp in other._narrowedReadPassThroughs)
             MergeEntry(_narrowedReadPassThroughs, kvp, other);

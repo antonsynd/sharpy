@@ -2178,9 +2178,19 @@ internal partial class RoslynEmitter
     /// or <c>null</c> (P82 #2443). An index miss reads as "not this kind": a unit context built over
     /// <c>IrCompilation.Empty</c> has no index, and keeps the absent-fact path a missing
     /// <c>SemanticInfo</c> entry used to give.
+    /// <para>The index holds one node per key, so a tuple element an unpacking stores into a narrowed
+    /// Optional target is keyed to its <see cref="IrOptionalWrappedElement"/>, and the element's own
+    /// node — a walrus store (<c>p, q = (c := 45, 4)</c>), an index access, a folded constant — is that
+    /// node's single child. A read of any other kind looks through to it, so the wrap hides no fact.</para>
     /// </summary>
     private TIr? IrNodeFor<TIr>(Node ast) where TIr : IrNode
-        => _context.Ir.Index.TryGetValue(ast, out var node) ? node as TIr : null;
+    {
+        if (!_context.Ir.Index.TryGetValue(ast, out var node))
+            return null;
+        if (node is TIr hit)
+            return hit;
+        return node is IrOptionalWrappedElement { Children: [TIr element] } ? element : null;
+    }
 
     /// <summary>
     /// Reads the index-access lowering strategy from the lowering IR (E2 #1056, migrates
@@ -2189,10 +2199,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private IndexAccessLowering? GetIrIndexAccessLowering(IndexAccess indexAccess)
     {
-        return _context.Ir.Index.TryGetValue(indexAccess, out var node)
-            && node is IrIndexAccess irIndexAccess
-            ? irIndexAccess.Strategy
-            : null;
+        return IrNodeFor<IrIndexAccess>(indexAccess)?.Strategy;
     }
 
     /// <summary>
@@ -2202,10 +2209,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private StaticExtensionDispatch? GetIrStaticExtensionDispatch(MemberAccess memberAccess)
     {
-        return _context.Ir.Index.TryGetValue(memberAccess, out var node)
-            && node is IrMemberAccess irMemberAccess
-            ? irMemberAccess.ExtensionDispatch
-            : null;
+        return IrNodeFor<IrMemberAccess>(memberAccess)?.ExtensionDispatch;
     }
 
     /// <summary>
@@ -2215,10 +2219,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private string? GetIrResolvedClrMemberName(MemberAccess memberAccess)
     {
-        return _context.Ir.Index.TryGetValue(memberAccess, out var node)
-            && node is IrMemberAccess irMemberAccess
-            ? irMemberAccess.ResolvedClrMemberName
-            : null;
+        return IrNodeFor<IrMemberAccess>(memberAccess)?.ResolvedClrMemberName;
     }
 
     private ExpressionSyntax GenerateIndexAccess(IndexAccess indexAccess)

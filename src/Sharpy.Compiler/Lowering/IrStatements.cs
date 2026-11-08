@@ -103,3 +103,25 @@ internal sealed record IrCollectionMutation(
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;
 }
+
+/// <summary>
+/// A lowered store of a payload value into a narrowed <c>T?</c> (Optional) slot that re-wraps the value
+/// as <c>Optional&lt;T&gt;.Some(value)</c> (R-T payload rule, #1755 B; P82 #2443 migrates
+/// <c>SemanticInfo._optionalStoreWraps</c>). The pass builds it for an <see cref="Assignment"/> to an
+/// identifier whose declared slot is an <see cref="OptionalType"/> when the store is a plain <c>=</c>
+/// recorded at the payload type, an augmented operator (the result re-wraps), or a <c>??=</c> whose
+/// value is not itself Optional; any other assignment stays an <see cref="IrOpaqueStatement"/> (an
+/// in-place collection mutation, <see cref="IrCollectionMutation"/>, is decided first).
+/// </summary>
+/// <param name="WrapAs">The slot's Optional type: the emitter prints <c>Optional&lt;T&gt;.Some(value)</c>
+/// for it.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered target and value, in <c>GetChildNodes</c> order (totality).</param>
+internal sealed record IrOptionalStoreWrap(
+    OptionalType WrapAs,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrStatement(Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}

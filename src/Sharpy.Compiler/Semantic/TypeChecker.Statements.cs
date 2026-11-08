@@ -233,8 +233,8 @@ internal partial class TypeChecker
                     && (IsAssignable(inferredType, payloadType)
                         || IsAcceptedVerdict(ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, payloadType))))
                 {
-                    if (storeTarget is OptionalType wrapOpt)
-                        _semanticInfo.SetOptionalStoreWrap(assignment, wrapOpt);
+                    // The payload type on the rebinding is the store-wrap fact: the lowering pass
+                    // derives IrOptionalStoreWrap from it (P82 #2443).
                     inferredType = ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, payloadType) switch
                     {
                         StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
@@ -564,19 +564,8 @@ internal partial class TypeChecker
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
             }
 
-            // R-T: an augmented result on a narrowed Optional identifier re-wraps.
-            if (assignment.Target is Identifier augWrapId)
-            {
-                var augPred = (_symbolTable.Lookup(augWrapId.Name, searchParents: false)
-                    ?? _symbolTable.Lookup(augWrapId.Name, searchParents: true)) as VariableSymbol;
-                if (augPred != null
-                    && DeclaredBindingType(augPred) is OptionalType augWrapOpt
-                    && HasRemoveNoneFact(augWrapId.Name))
-                {
-                    _semanticInfo.SetOptionalStoreWrap(assignment, augWrapOpt);
-                }
-            }
-
+            // R-T: an augmented result on a narrowed Optional identifier re-wraps; the lowering pass
+            // derives the wrap (IrOptionalStoreWrap, P82 #2443) from the target's declared slot.
             return;
         }
 
@@ -682,16 +671,14 @@ internal partial class TypeChecker
                 assignment, assignment.Span))
             return;
 
-        if (targetType is OptionalType optionalSlot)
+        if (targetType is OptionalType)
         {
             // C#'s `??` does not apply to Optional<T>: the emitter prints x.IsSome ? x : value.
+            // A payload RHS wraps (`x ??= 42` → Optional<int>.Some(42)); an Optional RHS
+            // (`x ??= Some(42)`, `x ??= o`) is the whole slot and does not — the lowering pass
+            // derives the wrap from the value's recorded type (IrOptionalStoreWrap, P82 #2443).
             _semanticInfo.SetOperatorLowering(assignment,
                 new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
-
-            // A payload RHS wraps (`x ??= 42` → Optional<int>.Some(42)); an Optional RHS
-            // (`x ??= Some(42)`, `x ??= o`) is the whole slot and does not.
-            if (!IsAssignable(valueType, optionalSlot))
-                _semanticInfo.SetOptionalStoreWrap(assignment, optionalSlot);
         }
     }
 

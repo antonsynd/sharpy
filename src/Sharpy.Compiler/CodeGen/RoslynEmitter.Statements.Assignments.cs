@@ -137,7 +137,7 @@ internal partial class RoslynEmitter
                         value = ApplyOptionalDelegateConversion(assign.Value, value, declaredVarSym.Type);
 
                     // R-T: a payload store into a narrowed Optional wraps the value.
-                    if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
+                    if (IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } wrapOpt)
                         value = WrapInOptionalSome(value, wrapOpt);
 
                     // A store to a runtime-checked local sets its assigned-flag inline (#1839).
@@ -218,7 +218,7 @@ internal partial class RoslynEmitter
                 // R-T: a narrowed Optional augmented result re-wraps.
                 // ??= handles its own wrapping via OptionalCoalesceBothOptional.
                 if (assign.Operator != AssignmentOperator.NullCoalesceAssign
-                    && _context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } augWrapOpt)
+                    && IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } augWrapOpt)
                     augmentedValue = WrapInOptionalSome(augmentedValue, augWrapOpt);
 
                 return ExpressionStatement(
@@ -933,7 +933,7 @@ internal partial class RoslynEmitter
     /// the float32/decimal literal re-typing and the conditional branch casts are already applied
     /// by the time <paramref name="right"/> reaches here — <c>GenerateExpression(assign.Value)</c>
     /// reads them per node, exactly as the plain-store path does — and the Optional wrap is the
-    /// plain store's <c>WrapInOptionalSome</c> from the same <c>SetOptionalStoreWrap</c> fact.
+    /// plain store's <c>WrapInOptionalSome</c> from the same <see cref="IrOptionalStoreWrap"/> node.
     /// Rule 2: nothing here asks what the slot is or whether the value fits; an absent wrap fact
     /// means the checker admitted the RHS as the whole slot (<c>x ??= Some(v)</c>, <c>x ??= o</c>).
     /// <paramref name="left"/> is the raw slot: the checker types a <c>??=</c> target by its
@@ -947,7 +947,7 @@ internal partial class RoslynEmitter
                 == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
             // A payload RHS into an Optional slot wraps: x ??= 42 → x.IsSome ? x : Optional<int>.Some(42).
-            if (_context.SemanticInfo?.GetOptionalStoreWrap(assignNode) is { } coalWrapOpt)
+            if (IrNodeFor<IrOptionalStoreWrap>(assignNode)?.WrapAs is { } coalWrapOpt)
                 right = WrapInOptionalSome(right, coalWrapOpt);
 
             return Conditional(
@@ -994,7 +994,7 @@ internal partial class RoslynEmitter
             == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
             // A payload RHS into an Optional slot wraps: x ??= 42 → Some(42).
-            if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
+            if (IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } wrapOpt)
                 value = WrapInOptionalSome(value, wrapOpt);
 
             // if (!target.IsSome) { <rhs evals>; target = value; }
