@@ -16,7 +16,7 @@
 # Regenerate from a FULL run: .claude/tmp/code-action-sweep/<twin>-actual-pins.txt. A drained pin is deleted.
 extract-method identity diagnostics 2938 90f4452a5a38198d 846 5b850f354b16a2d9 # #2294 adds SPY0202 (and 5588 other cells)
 extract-method identity parse 556 8281aae34cb5b26f 556 8281aae34cb5b26f # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
-extract-variable identity diagnostics 347 97e1363df03c5f76 65 27ddf6ef08668e61 # #2294 adds SPY0220 (and 257 other cells)
+extract-variable identity diagnostics 347 97e1363df03c5f76 66 121e46134cb203f3 # #2294 adds SPY0220 (and 257 other cells)
 extract-variable identity parse 58 cdd8c8038415ed3c 58 cdd8c8038415ed3c # #2294 does not parse (SPY0114 List type shorthand requires an element type:) (and 32 other cells)
 implement identity diagnostics 47 5f85d258900d6553 6 958ea3e0a6810d12 # #2296 adds SPY0224,SPY0522 (and 13 other cells)
 inline-function identity diagnostics 47 314ac7143c11c0bd 14 636bc0dd9745c36b # #2296 removes an error (and 36 other cells)
@@ -27,10 +27,10 @@ inline-variable cr parse 1 938c261138eab501 0 - # #2232 does not parse: inlining
 inline-variable crlf parse 1 938c261138eab501 0 - # #2232 does not parse: inlining a module variable that a class-body read binds (classes/class_body_inherited_read_outer_binding_2384) (FULL-only on this twin; measured @ 17614da6b)
 organize-imports identity diagnostics 18 4f51e3e0d9bd8a64 0 - # #2296 removes an error
 prefix-underscore identity diagnostics 7 aef8d5f7d19d8d95 1 47ec1f14bc7f4d75 # #2296 removes an error (and 6 other cells)
-remove-annotation identity diagnostics 538 422ee70e6b7fa64d 94 ed1f5f5fd95ce3bf # #2296 adds SPY0227 (and 518 other cells)
+remove-annotation identity diagnostics 538 422ee70e6b7fa64d 95 ceb69be901d121f3 # #2296 adds SPY0227 (and 518 other cells)
 remove-import identity diagnostics 18 b5484e02da1684c7 4 c64f809e53e1ecee # #2296 removes an error
 rename identity diagnostics 47 8c840a099f0a5e2e 5 15f4ccba7bc6d7a7 # #2296 adds SPY0200 (and 33 other cells)
-to-if identity diagnostics 4 35d1e4876190ef73 1 96a879de4c764cb2 # #2296 adds SPY0402 (and 4 other cells)
+to-if identity diagnostics 4 35d1e4876190ef73 2 1577aa43cb79e69e # #2296 adds SPY0402 (and 4 other cells)
 wrap-try identity diagnostics 2340 5eee61f3befbab4f 382 9ebb2d3589934afd # #2296 adds SPY0200 (and 770 other cells)
 extract-method crlf diagnostics 2938 90f4452a5a38198d 105 bf8bfa6bb1deea8f # #2294 adds SPY0202 (and 5588 other cells)
 extract-method crlf parse 555 7a82d3f9edc07125 74 6514280e29d40b36 # #2294 does not parse (SPY0104 Expected RightBracket, got Comma) (and 387 other cells)
