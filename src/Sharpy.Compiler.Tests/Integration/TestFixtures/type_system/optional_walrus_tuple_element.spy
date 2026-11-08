@@ -17,3 +17,7 @@ def main() -> None:
         print(p, q, c)
         if (c := 46) > 0:
             print(c)
+        # Cell 6: wrapped elements whose own IR nodes carry facts (a folded power, an index access).
+        xs: list[int] = [7]
+        p, q = 2 ** 3, xs[-1]
+        print(p, q)

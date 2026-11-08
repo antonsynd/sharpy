@@ -19,7 +19,7 @@ namespace OptionalWalrusTupleElement
             Optional<int> p = Optional<int>.Some(2);
 #line (10, 5) - (10, 23) 12 "optional_walrus_tuple_element.spy"
             Optional<int> q = Optional<int>.Some(3);
-#line (11, 5) - (19, 21) 12 "optional_walrus_tuple_element.spy"
+#line (11, 5) - (23, 20) 12 "optional_walrus_tuple_element.spy"
             if (c.IsSome && p.IsSome && q.IsSome)
 #line hidden
             {
@@ -43,6 +43,18 @@ namespace OptionalWalrusTupleElement
                     global::Sharpy.Builtins.Print(c.Unwrap());
 #line hidden
                 }
+
+#line (21, 9) - (21, 29) 16 "optional_walrus_tuple_element.spy"
+                Sharpy.List<int> xs = new Sharpy.List<int>()
+#line hidden
+                {
+                    7
+                };
+#line (22, 9) - (22, 30) 16 "optional_walrus_tuple_element.spy"
+                (p, q) = (Optional<int>.Some(8), Optional<int>.Some(xs[-1]));
+#line (23, 9) - (23, 20) 16 "optional_walrus_tuple_element.spy"
+                global::Sharpy.Builtins.Print(p.Unwrap(), q.Unwrap());
+#line hidden
             }
         }
     }

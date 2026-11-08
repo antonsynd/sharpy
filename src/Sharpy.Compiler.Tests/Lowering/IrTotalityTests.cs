@@ -354,6 +354,7 @@ public class IrTotalityTests
     /// All five walruses carry it; a walrus written as a tuple element (cells 1–3) is NOT an element
     /// wrap (the key collision was the bug); cell 4's walrus is an unpacking element into the
     /// narrowed <c>p</c>, so the index holds the element node with the walrus store as its child.
+    /// Cell 6 wraps elements whose own nodes are typed (a folded power, an index access).
     /// </summary>
     [Fact]
     public void OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement()
@@ -385,14 +386,25 @@ public class IrTotalityTests
             Assert.Single(store.Children);
         }
 
-        // Cell 4's other element (`4`, into the narrowed `q`) wraps; nothing else does.
-        var unpack = astNodes.OfType<Assignment>().Single(a => a.Target is TupleLiteral);
-        var literal = Assert.IsType<TupleLiteral>(AstHelper.UnwrapParenthesized(unpack.Value));
+        // Cell 4's other element (`4`, into the narrowed `q`) wraps.
+        var unpacks = astNodes.OfType<Assignment>().Where(a => a.Target is TupleLiteral)
+            .OrderBy(a => SpanOf(a).Start).ToList();
+        Assert.Equal(2, unpacks.Count);
+        var literal = Assert.IsType<TupleLiteral>(AstHelper.UnwrapParenthesized(unpacks[0].Value));
         Assert.IsType<IrOptionalWrappedElement>(index[literal.Elements[1]]);
-        Assert.Equal(2, CollectNodes<IrOptionalWrappedElement>(ir).Count);
+
+        // Cell 6 (`p, q = 2 ** 3, xs[-1]`): each wrapped element holds its own typed node, the
+        // folded power and the index access, so neither fact is hidden by the wrap.
+        var typed = Assert.IsType<TupleLiteral>(AstHelper.UnwrapParenthesized(unpacks[1].Value));
+        var power = Assert.IsType<IrOptionalWrappedElement>(index[typed.Elements[0]]);
+        Assert.IsType<IrConstant>(Assert.Single(power.Children));
+        var subscript = Assert.IsType<IrOptionalWrappedElement>(index[typed.Elements[1]]);
+        Assert.IsType<IrIndexAccess>(Assert.Single(subscript.Children));
+
+        Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count);
         Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count);
         Assert.Empty(CollectNodes<IrOptionalStoreWrap>(ir));
-        Assert.Equal(astNodes.Count + 2, CountExpressionAndStatementNodes(ir));
+        Assert.Equal(astNodes.Count + 4, CountExpressionAndStatementNodes(ir));
     }
 
     /// <summary>
@@ -414,17 +426,34 @@ public class IrTotalityTests
         Assert.Empty(CollectNodes<IrOptionalStoreWrap>(ir));
     }
 
-    /// <summary>The index holds one node per AST expression/statement, keyed by identity, at its span.</summary>
+    /// <summary>
+    /// The index holds one node per AST expression/statement, keyed by identity, at its span. A
+    /// constant integer power lowers to a leaf <see cref="IrConstant"/> whose operands are folded away
+    /// and not lowered (<c>LoweringPass.TryLowerFoldedPower</c>), so the walk does not descend into it,
+    /// nor into a wrapped element holding one.
+    /// </summary>
     private static HashSet<Node> AssertIndexTotal(Module ast, IrIndex index)
     {
         var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
-        foreach (var node in WalkExpressionsAndStatements(ast))
+
+        void Visit(Node parent)
         {
-            Assert.True(astNodes.Add(node), $"AST node visited more than once: {node.GetType().Name}");
-            Assert.True(index.ContainsKey(node), $"AST {node.GetType().Name} @ {SpanOf(node)} did not lower to an IR node");
-            Assert.Equal(SpanOf(node), index[node].Span);
+            foreach (var child in parent.GetChildNodes())
+            {
+                if (child is Expression or Statement)
+                {
+                    Assert.True(astNodes.Add(child), $"AST node visited more than once: {child.GetType().Name}");
+                    Assert.True(index.ContainsKey(child), $"AST {child.GetType().Name} @ {SpanOf(child)} did not lower to an IR node");
+                    Assert.Equal(SpanOf(child), index[child].Span);
+                    if (index[child] is IrConstant or IrOptionalWrappedElement { Children: [IrConstant] })
+                        continue;
+                }
+
+                Visit(child);
+            }
         }
 
+        Visit(ast);
         Assert.Equal(astNodes.Count, index.Count);
         return astNodes;
     }
