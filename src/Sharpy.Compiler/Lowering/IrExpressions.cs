@@ -316,6 +316,29 @@ internal sealed record IrElidedNoneBody(
 }
 
 /// <summary>
+/// The scrutinee of a <c>match</c> (statement or expression) that is, through grouping parentheses,
+/// the literal <c>None</c> (<c>match None:</c>, #1526; P82 #2443 migrates
+/// <c>SemanticInfo._matchScrutineeLowerings</c>): C# cannot switch on a bare <c>null</c> (CS8119), so
+/// the emitter casts it to a typed null, <c>(object?)null</c>, and the arms were checked against
+/// <c>object?</c>. Keyed in the index on the scrutinee as written (a parenthesized scrutinee keys the
+/// <c>Parenthesized</c> node, as the type checker's write did). The pass builds it in place of
+/// the scrutinee's opaque node; any other scrutinee lowers as usual.
+/// </summary>
+/// <param name="Type">The scrutinee's resolved type (the checker records <c>object?</c>).</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The scrutinee's lowered children, in <c>GetChildNodes</c> order (totality):
+/// empty for a bare <c>None</c>, the inner node for a parenthesized one. The node wraps only a
+/// <c>NoneLiteral</c>, so the shared rewriter has nothing to fold beneath it.</param>
+internal sealed record IrTypedNullScrutinee(
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
 /// A tuple-literal element that an unpacking assignment stores into a narrowed <c>T?</c> (Optional)
 /// target (<c>p, q = 30, 40</c> with <c>p</c> narrowed): the element is a payload value and is printed
 /// as <c>Optional&lt;T&gt;.Some(element)</c> (R-T, #1785; P82 #2443 migrates

@@ -910,6 +910,49 @@ internal class TypeSyntaxMapper
     /// <summary>
     /// Creates a Sharpy collection type with element type
     /// </summary>
+    /// <summary>
+    /// The mapped type arguments of a builtin generic (#2443 item 1: the emitter hands the recorded
+    /// type here instead of inspecting it): the first <paramref name="arity"/> arguments of
+    /// <paramref name="type"/> when it is a <c>GenericType</c> named <paramref name="builtinName"/>
+    /// with at least that many arguments, and, when <paramref name="requireKnownArguments"/>, none of
+    /// them <c>UnknownType</c>; otherwise <c>null</c> and the caller falls back to <c>object</c> per
+    /// argument. Without <paramref name="requireKnownArguments"/> an <c>UnknownType</c> argument maps
+    /// to <c>object</c> (<see cref="MapSemanticType"/>).
+    /// </summary>
+    public IReadOnlyList<TypeSyntax>? MapBuiltinTypeArguments(
+        SemanticType? type, string builtinName, int arity, bool requireKnownArguments)
+    {
+        if (type is not GenericType generic
+            || generic.Name != builtinName
+            || generic.TypeArguments.Count < arity)
+        {
+            return null;
+        }
+
+        var arguments = generic.TypeArguments.Take(arity).ToList();
+        if (requireKnownArguments && arguments.Any(argument => argument is UnknownType))
+            return null;
+
+        return arguments.Select(MapSemanticType).ToList();
+    }
+
+    /// <summary>
+    /// The C# real-literal suffix an unsuffixed float literal takes from its recorded type
+    /// (#1301: <c>x: float32 = 0.1</c> is CS0664 as a double): <c>"f"</c> for <c>float32</c>,
+    /// <c>"m"</c> for <c>decimal</c>, else <c>null</c> (the caller's default double form). The
+    /// emitter assembles the literal text; this only maps the type (#2443 item 1). Identity is the
+    /// catalog singleton's (record equality, as <see cref="MapSemanticType"/> reads it), never the
+    /// name string (#1304, #1356).
+    /// </summary>
+    public static string? RealLiteralSuffix(SemanticType? type)
+    {
+        if (type == SemanticType.Float32)
+            return "f";
+        if (type == SemanticType.Decimal)
+            return "m";
+        return null;
+    }
+
     public TypeSyntax CreateCollectionType(string collectionName, TypeSyntax elementType)
     {
         var baseType = GetMappedTypeName(collectionName);

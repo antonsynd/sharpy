@@ -43,8 +43,6 @@ internal partial class TypeChecker
 
         if (UnwrapParenthesized(scrutinee) is NoneLiteral)
         {
-            _semanticInfo.SetMatchScrutineeLowering(scrutinee,
-                new MatchScrutineeLowering(MatchScrutineeLoweringKind.CastToNullableObject));
             var lowered = new NullableType { UnderlyingType = SemanticType.Object };
             _semanticInfo.SetExpressionType(scrutinee, lowered);
             return lowered;

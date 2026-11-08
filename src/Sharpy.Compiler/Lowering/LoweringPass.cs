@@ -140,6 +140,11 @@ internal sealed partial class LoweringPass
 
         var children = LowerChildren(statement, semanticInfo, state);
 
+        // A `match None:` scrutinee carries the typed-null cast on the IR (P82 #2443, migrates
+        // _matchScrutineeLowerings).
+        if (statement is MatchStatement { Scrutinee: var statementScrutinee })
+            children = TypeNullScrutinee(statementScrutinee, children, state);
+
         if (scopeName != null)
             state.QualifiedNamePrefix.RemoveAt(state.QualifiedNamePrefix.Count - 1);
 
@@ -234,6 +239,11 @@ internal sealed partial class LoweringPass
             // (P82 #2443, migrates _lambdaBodyLowerings).
             LambdaExpression lambda when IsElidedNoneBodyLambda(lambda, semanticInfo)
                 => LowerElidedNoneBodyLambda(lambda, semanticInfo, state),
+            // A `match None` expression's scrutinee carries the typed-null cast on the IR (P82 #2443,
+            // migrates _matchScrutineeLowerings).
+            MatchExpression matchExpr
+                => new IrOpaqueExpression(matchExpr, semanticInfo.GetExpressionType(matchExpr), SpanOf(matchExpr),
+                    TypeNullScrutinee(matchExpr.Scrutinee, LowerChildren(matchExpr, semanticInfo, state), state)),
             // A walrus rebinding a narrowed Optional slot with a payload wraps at its own site
             // (P82 #2443, migrates _optionalStoreWraps' walrus entries; owner ruling D2 "S2").
             WalrusExpression walrus when OptionalWalrusWrapOf(walrus, semanticInfo, state) is { } walrusWrapAs
@@ -388,6 +398,40 @@ internal sealed partial class LoweringPass
 
         return new IrOpaqueExpression(lambda, semanticInfo.GetExpressionType(lambda), SpanOf(lambda),
             builder.ToImmutable());
+    }
+
+    /// <summary>
+    /// A match scrutinee that is, through grouping parentheses, <c>None</c> — the type checker's
+    /// #1526 policy condition (<c>ApplyVoidScrutineePolicy</c>), over a <c>NoneLiteral</c> whose type
+    /// is always <c>None</c> (void). An AST-kind predicate: no other scrutinee is cast.
+    /// </summary>
+    private static bool IsTypedNullScrutinee(Expression scrutinee)
+        => AstHelper.UnwrapParenthesized(scrutinee) is NoneLiteral;
+
+    /// <summary>
+    /// Replaces, in place, a <see cref="IsTypedNullScrutinee"/> scrutinee's lowered node — the index
+    /// entry and its slot among the match's <paramref name="children"/> — by an
+    /// <see cref="IrTypedNullScrutinee"/> holding the same children, so the tree stays total and
+    /// ordered. Any other scrutinee leaves <paramref name="children"/> as they are.
+    /// </summary>
+    private static ImmutableArray<IrNode> TypeNullScrutinee(
+        Expression scrutinee, ImmutableArray<IrNode> children, LoweringState state)
+    {
+        if (!IsTypedNullScrutinee(scrutinee))
+            return children;
+
+        var lowered = state.Index[scrutinee];
+        var typed = new IrTypedNullScrutinee(lowered.Type, lowered.Span, lowered.Children);
+        state.Index[scrutinee] = typed;
+
+        var builder = children.ToBuilder();
+        for (var i = 0; i < builder.Count; i++)
+        {
+            if (ReferenceEquals(builder[i], lowered))
+                builder[i] = typed;
+        }
+
+        return builder.ToImmutable();
     }
 
     private static IrEqualityComparison LowerEqualityComparison(BinaryOp binOp, SemanticInfo semanticInfo, LoweringState state)

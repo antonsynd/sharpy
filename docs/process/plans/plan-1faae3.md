@@ -136,6 +136,17 @@ Bodies: `refs #2443`, cruft trailer (§5.2), attribution; e.g. Phase 2: `Cruft: 
 ## Class trackers
 - #2443; #2162 (P37: a planning ledger cell). Out-of-contract cells go to the ledger for the lead to post; no implementer runs `gh issue create`.
 
+## Implementation Checklist
+Board for the P82 tranche-2 lane (implementer: one Opus worker, sequential; lead pushes, runs `/ci-gate`, opens the PR). Base `be11fca77` (dev).
+- [x] T1 — Phase 0 positive controls (3 `.expected.cs`, 2 `.spy`, 2 `.expected`) — implementer — blocked by none — LANDED 570cd145d (23/23; python3 = sharpyc; subject shortened to ≤ 72)
+- [x] T2 — Phase 1 inspection kinds `type-name-compare` + reflection `type-read`; rows seeded; M1–M3 — implementer — blocked by T1 — LANDED 111eac007 (rows 166 → 192: type-name-compare 11 rows / 20 sites, type-read 17 → 32; M1 2 red / M2 2 red / M3 1 red; `is` + switch counted: `Assignments.cs:762` is the warned `r.Name is` spelling)
+- [x] T3 — Phase 2 `_matchScrutineeLowerings` → `IrTypedNullScrutinee`; sweep + control; pin 84, floor 88, `Set*Lowering` 70; M4–M6 — implementer — blocked by T2 — LANDED 010773247 (sweep 3671/3671 + 2 regen scripts, 0 throws; control 1 throw `Parenthesized @ 27:11`; pin 84, floor 88, `Set*Lowering` 70; M4 3 red / M5 2 red / M6 2 red; no dispatch row needed)
+- [x] T4 — Regen after Phase 2: spy stdlib + spy tests + snapshots byte-identical (STOP on any diff) — implementer — blocked by T3 — DONE @ 010773247: no diff (spy stdlib, spy tests, stdlib docs `--check`; every `.expected.cs` byte-identical)
+- [x] T5 — Phase 3 six compares → `TypeSyntaxMapper`; sweep + control; M7–M8 — implementer — blocked by T4 — LANDED 4b8f36e89 (sweep 3671/3671 + regen, 0 throws; control: no fixture reaches `dict[K, Unknown]` → unit cell; `type-name-compare` 20 → 14 sites, `type-name` 407 → 398; M7 6 red / M8a 1 / M8b 1)
+- [x] T6 — Regen after Phase 3: byte-identical (STOP on any diff) — implementer — blocked by T5 — DONE @ 4b8f36e89: no diff (as T4; blast radius 10526/10526, FrontEndParity 1/1)
+- [x] T7 — Phase 4 look-through roster totality + rows; M9–M10 — implementer — blocked by T6 — LANDED f5c64af34 (roster 9 = 7 pinned + 2 excluded; M9 6 red, each row confirmed by emit; M10 1 red naming both entries)
+- [x] T8 — Phase 5 docs (`lowering-ir.md`, `architecture.md:53`) with counts @ the Phase 4 sha — implementer — blocked by T7 — LANDED 15c2148d2 (emitter LOC 26,997 → 26,966; allowlist 166 → 188; `.expected.cs` 170 → 173)
+
 ## Verification Summary
 
 **Result:** PASS WITH CORRECTIONS

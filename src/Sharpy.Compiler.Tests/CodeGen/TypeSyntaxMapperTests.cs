@@ -25,6 +25,66 @@ public class TypeSyntaxMapperTests
         _typeMapper = new TypeSyntaxMapper(_context);
     }
 
+    #region Builtin Type-Argument and Real-Suffix Hand-offs (#2443 item 1, plan-1faae3 D4)
+
+    private static GenericType Builtin(string name, params SemanticType[] arguments)
+        => new() { Name = name, TypeArguments = arguments.ToList() };
+
+    private static string? Render(IReadOnlyList<TypeSyntax>? arguments)
+        => arguments == null ? null : string.Join(", ", arguments.Select(a => a.ToString()));
+
+    [Fact]
+    public void MapBuiltinTypeArguments_MatchingNameAndArity_MapsTheLeadingArguments()
+    {
+        Render(_typeMapper.MapBuiltinTypeArguments(Builtin("list", SemanticType.Int), "list", 1, true))
+            .Should().Be("int");
+        Render(_typeMapper.MapBuiltinTypeArguments(Builtin("dict", SemanticType.Str, SemanticType.Int), "dict", 2, true))
+            .Should().Be("string, int");
+        Render(_typeMapper.MapBuiltinTypeArguments(Builtin("set", SemanticType.Str, SemanticType.Int), "set", 1, true))
+            .Should().Be("string", "only the first arity arguments are mapped");
+    }
+
+    [Fact]
+    public void MapBuiltinTypeArguments_TooFewArgumentsOrNotAGeneric_IsNull()
+    {
+        _typeMapper.MapBuiltinTypeArguments(Builtin("dict", SemanticType.Str), "dict", 2, false).Should().BeNull();
+        _typeMapper.MapBuiltinTypeArguments(Builtin("list"), "list", 1, false).Should().BeNull();
+        _typeMapper.MapBuiltinTypeArguments(SemanticType.Int, "list", 1, false).Should().BeNull();
+        _typeMapper.MapBuiltinTypeArguments(null, "list", 1, false).Should().BeNull();
+    }
+
+    [Fact]
+    public void MapBuiltinTypeArguments_OtherName_IsNull()
+    {
+        // A generic of another name (a user `Box[int]`, a `set[int]` asked as a list) is not the builtin.
+        _typeMapper.MapBuiltinTypeArguments(Builtin("Box", SemanticType.Int), "list", 1, false).Should().BeNull();
+        _typeMapper.MapBuiltinTypeArguments(Builtin("set", SemanticType.Int), "list", 1, true).Should().BeNull();
+    }
+
+    [Fact]
+    public void MapBuiltinTypeArguments_UnknownArgument_IsNullOnlyWhenKnownArgumentsAreRequired()
+    {
+        var partial = Builtin("dict", SemanticType.Str, SemanticType.Unknown);
+        // dict literal: either argument Unknown -> null, the caller emits <object, object>.
+        _typeMapper.MapBuiltinTypeArguments(partial, "dict", 2, requireKnownArguments: true).Should().BeNull();
+        // dict-spread comprehension: an Unknown argument maps to object on its own.
+        Render(_typeMapper.MapBuiltinTypeArguments(partial, "dict", 2, requireKnownArguments: false))
+            .Should().Be("string, object");
+    }
+
+    [Fact]
+    public void RealLiteralSuffix_FollowsTheRecordedRealType()
+    {
+        TypeSyntaxMapper.RealLiteralSuffix(SemanticType.Float32).Should().Be("f");
+        TypeSyntaxMapper.RealLiteralSuffix(SemanticType.Decimal).Should().Be("m");
+        TypeSyntaxMapper.RealLiteralSuffix(SemanticType.Float).Should().BeNull("float is the default double form");
+        TypeSyntaxMapper.RealLiteralSuffix(SemanticType.Int).Should().BeNull();
+        TypeSyntaxMapper.RealLiteralSuffix(SemanticType.Unknown).Should().BeNull();
+        TypeSyntaxMapper.RealLiteralSuffix(null).Should().BeNull();
+    }
+
+    #endregion
+
     #region Built-in Type Mapping Tests
 
     [Theory]

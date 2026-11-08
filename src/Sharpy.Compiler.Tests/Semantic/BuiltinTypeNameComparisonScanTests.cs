@@ -60,10 +60,6 @@ public class BuiltinTypeNameComparisonScanTests
         // (pre-ruled by the #1356 plan as a surviving alias hedge).
         ["RoslynEmitter.Expressions.Access.Calls.cs::ApplyArrayBridge"] =
             "alias hedge on the uint8/byte spelling pair (bytes interop)",
-        // float32 literal suffix follows the narrowing recorded in SemanticInfo (#1301);
-        // float32 has exactly one spelling, and the read is of a materialized fact.
-        ["RoslynEmitter.Expressions.cs::GenerateFloatLiteral"] =
-            "float32 suffix decision from the recorded narrowing (#1301); single-spelling type",
         // bytes ↔ array[uint8] assignability + LiteralStringType's str-assignability arm
         // (pre-ruled). NOTE: the method-name key covers both IsAssignableTo overloads in this file.
         ["SemanticType.cs::IsAssignableTo"] =

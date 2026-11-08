@@ -63,8 +63,9 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// CodeGen whatever the closure says, because <c>SemanticInfo</c>'s and <c>CodeGenInfo</c>'s
 /// signatures would otherwise re-admit them. The emitter may hand a <c>SemanticType</c> to
 /// <c>TypeSyntaxMapper</c> but may not inspect one outside it (#2443 contract item 1), so
-/// <see cref="InspectionExemptFile"/> is exempt from the <c>type-name</c> kind. Every site that
-/// still inspects is a row of <c>CodeGen/emitter-inspection-allowlist.txt</c>, four kinds
+/// <see cref="InspectionExemptFile"/> is exempt from the <c>type-name</c> and
+/// <c>type-name-compare</c> kinds. Every site that
+/// still inspects is a row of <c>CodeGen/emitter-inspection-allowlist.txt</c>, five kinds
 /// (<see cref="InspectionKinds"/>), counted per (file, kind, name) and ratcheted both ways by
 /// <see cref="CodeGenInspectionSites_MatchTheAllowlist"/>; the file drains to empty.
 /// </para>
@@ -126,8 +127,9 @@ public class EmitterCarrierOnlyConformanceTests
     /// <summary>
     /// The one CodeGen file allowed to name the inspection-denied hierarchies (#2443 contract
     /// item 1: the emitter may pass a <c>SemanticType</c> to <c>TypeSyntaxMapper</c> but may not
-    /// inspect one outside it). Exempt from the <c>type-name</c> kind only; its mention count is
-    /// printed (<c>CARRIER-INSPECTION-EXEMPT</c>), not ratcheted.
+    /// inspect one outside it). Exempt from the <c>type-name</c> and <c>type-name-compare</c>
+    /// kinds only; its per-kind mention counts are printed (<c>CARRIER-INSPECTION-EXEMPT</c>), not
+    /// ratcheted.
     /// </summary>
     internal const string InspectionExemptFile = "TypeSyntaxMapper.cs";
 
@@ -526,18 +528,28 @@ public class EmitterCarrierOnlyConformanceTests
 
     private const string KindTypeName = "type-name";
     private const string KindTypeRead = "type-read";
+    private const string KindTypeNameCompare = "type-name-compare";
     private const string KindNameLookup = "name-lookup";
     private const string KindDeclarationLine = "declaration-line";
 
     /// <summary>
-    /// The four ways CodeGen still inspects a <c>SemanticType</c> or <c>Symbol</c> instead of
+    /// The five ways CodeGen still inspects a <c>SemanticType</c> or <c>Symbol</c> instead of
     /// reading a materialized fact (#2443 contract item 6):
     /// <list type="bullet">
     /// <item><c>type-name</c> — an inspection-denied hierarchy type named in a CodeGen file
     /// (declaration, cast, pattern, generic argument, static call), per (file, type), by the
     /// <see cref="ScanSource"/> identifier scan;</item>
-    /// <item><c>type-read</c> — a <c>GetExpressionType(</c> / <c>GetExpressionSemanticType(</c>
-    /// invocation, per (file, accessor), by Roslyn invocation nodes;</item>
+    /// <item><c>type-read</c> — an invocation of a <see cref="TypeReadAccessors"/> member (every
+    /// public <c>SemanticInfo</c> / <c>SemanticBinding</c> method returning a <c>SemanticType</c>,
+    /// or an <c>IEnumerable&lt;T&gt;</c> of one, by reflection, plus the emitter's
+    /// <c>GetExpressionSemanticType</c>), per (file, accessor), by Roslyn invocation nodes;</item>
+    /// <item><c>type-name-compare</c> — a name compare on an inspection-denied type, per (file,
+    /// shape), by Roslyn syntax (<see cref="ScanTypeNameCompares"/>): <c>name-compare</c> is
+    /// <c>r.Name</c> / <c>r?.Name</c> under <c>==</c>, <c>!=</c>, <c>is</c> or a <c>switch</c>,
+    /// with <c>r</c> a parameter, explicitly typed local or pattern designation of a denied type;
+    /// <c>name-subpattern</c> is a <c>Name:</c> subpattern of a recursive pattern whose type is
+    /// denied. Counted apart from <c>type-name</c> because one declaration can guard many compares
+    /// (a new compare on an existing binding moves no <c>type-name</c> count);</item>
     /// <item><c>name-lookup</c> — a lookup by <c>.Name ==</c> in a lambda predicate
     /// (<c>predicate</c>, the W2.1 census's <c>(\w+) =&gt;\s*\1\.Name ==</c> 2-line window and
     /// its exclusions, every match in the window) or a union-case <c>.Name == "Some"/"Ok"/"Err"/"None"</c> compare
@@ -547,7 +559,7 @@ public class EmitterCarrierOnlyConformanceTests
     /// </list>
     /// </summary>
     private static readonly string[] InspectionKinds =
-        { KindTypeName, KindTypeRead, KindNameLookup, KindDeclarationLine };
+        { KindTypeName, KindTypeNameCompare, KindTypeRead, KindNameLookup, KindDeclarationLine };
 
     internal readonly record struct InspectionSite(string File, int Line, string Kind, string Name, string Source)
     {
@@ -574,13 +586,13 @@ public class EmitterCarrierOnlyConformanceTests
         var directory = EmitterBannedTokenScanTests.FindCodeGenSourceDirectory();
 
         var sites = new List<InspectionSite>();
-        var exemptMentions = 0;
+        var exempt = new List<InspectionSite>();
         foreach (var path in Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories)
                      .OrderBy(f => f, StringComparer.Ordinal))
         {
             var fileName = Path.GetFileName(path);
             var fileSites = ScanInspectionSites(fileName, File.ReadAllText(path), hierarchy, segments);
-            exemptMentions += fileSites.Count(s => IsInspectionExempt(s.File, s.Kind));
+            exempt.AddRange(fileSites.Where(s => IsInspectionExempt(s.File, s.Kind)));
             sites.AddRange(fileSites.Where(s => !IsInspectionExempt(s.File, s.Kind)));
         }
 
@@ -592,8 +604,12 @@ public class EmitterCarrierOnlyConformanceTests
                 + $"files={ofKind.Select(s => s.File).Distinct(StringComparer.Ordinal).Count()}");
         }
 
-        _output.WriteLine(
-            $"CARRIER-INSPECTION-EXEMPT file={InspectionExemptFile} kind={KindTypeName} mentions={exemptMentions}");
+        foreach (var kind in ExemptKinds)
+        {
+            _output.WriteLine(
+                $"CARRIER-INSPECTION-EXEMPT file={InspectionExemptFile} kind={kind} "
+                + $"mentions={exempt.Count(s => s.Kind == kind)}");
+        }
 
         var measured = sites
             .GroupBy(s => (s.File, s.Kind, s.Name))
@@ -710,9 +726,97 @@ public class EmitterCarrierOnlyConformanceTests
         sites.Count(s => s.Kind == KindDeclarationLine).Should().Be(1, "one DeclarationLine reference outside comments");
     }
 
+    /// <summary>
+    /// The two kinds closed against compiler enumerations (plan-1faae3 D3), scanned with the REAL
+    /// inspection-denied set: <c>type-name-compare</c> binds a receiver through the syntax, and
+    /// <c>type-read</c> counts every reflected <c>SemanticType</c> getter.
+    /// </summary>
+    [Fact]
+    public void ClosedInspectionKinds_AreMeasured()
+    {
+        var universe = SemanticUniverse();
+        var hierarchy = InspectionDeniedNames(universe);
+        var segments = NamespaceSegments(universe);
+        hierarchy.Should().Contain(new[] { "GenericType", "BuiltinType", "TypeSymbol" },
+            "the cells below bind receivers of these denied types");
+
+        TypeReadAccessors.Should().Contain(new[]
+            {
+                "GetExpressionType", "GetExpressionSemanticType", "GetDenotedType", "GetTypeAnnotation",
+                "GetInferredTypeArguments", "GetPatternUnionCaseTypeArguments", "GetVariableType",
+            },
+            "SemanticType getters, list-of-SemanticType getters and SemanticBinding getters are all type reads");
+        TypeReadAccessors.Should().NotContain(new[] { "GetOperatorLowering", "MergeFrom" },
+            "a getter that returns no SemanticType is not a type read");
+
+        var source = string.Join("\n",
+            "class C {",
+            "  void M(SemanticType t, object x, VariableDeclaration varDecl, TypeSymbol? unionCase, Expression e) {",
+            "    if (t is GenericType g && g.Name == \"list\") { }",
+            "    if (x is BuiltinType { Name: \"uint8\" }) { }",
+            "    var d = _info.GetDenotedType(e);",
+            "    if (varDecl.Type.Name == \"auto\") { }",
+            "    if (unionCase?.Name == \"Some\") { }",
+            "  }",
+            "}");
+        var sites = ScanInspectionSites("Synthetic.cs", source, hierarchy, segments);
+
+        sites.Where(s => s.Kind == KindTypeNameCompare).Select(s => (s.Name, s.Line)).Should().BeEquivalentTo(
+            new[] { (ShapeNameCompare, 3), (ShapeNameSubpattern, 4) },
+            "a compare on a pattern-designated GenericType and a Name subpattern of BuiltinType count; the AST "
+            + "receiver (varDecl.Type) does not, and the union-case compare on a TypeSymbol is a name-lookup row, "
+            + "not both.\nSites:\n  " + string.Join("\n  ", sites));
+        sites.Where(s => s.Kind == KindNameLookup).Select(s => s.Name).Should().Equal(
+            new[] { "union-case-compare" }, "the union-case compare is counted once, as name-lookup");
+        sites.Where(s => s.Kind == KindTypeRead).Select(s => s.Name).Should().Equal(
+            new[] { "GetDenotedType" }, "GetDenotedType returns a SemanticType");
+
+        const string mapperCompare = "class M { bool F(SemanticType t) => t is GenericType { Name: \"dict\" }; }";
+        var inMapper = ScanInspectionSites(InspectionExemptFile, mapperCompare, hierarchy, segments);
+        var twin = ScanInspectionSites("RoslynEmitter.Twin.cs", mapperCompare, hierarchy, segments);
+        inMapper.Should().Contain(s => s.Kind == KindTypeNameCompare, "the scanner sees the mapper's compare");
+        inMapper.Where(s => !IsInspectionExempt(s.File, s.Kind)).Should().BeEmpty(
+            "TypeSyntaxMapper.cs is exempt from type-name and type-name-compare (#2443 item 1)");
+        twin.Where(s => !IsInspectionExempt(s.File, s.Kind) && s.Kind == KindTypeNameCompare).Should().ContainSingle(
+            "the same compare in any other CodeGen file is counted");
+    }
+
+    /// <summary>The kinds <see cref="InspectionExemptFile"/> is exempt from (#2443 contract item 1).</summary>
+    private static readonly string[] ExemptKinds = { KindTypeName, KindTypeNameCompare };
+
     /// <summary>True when <paramref name="kind"/> is not counted in <paramref name="file"/>.</summary>
     private static bool IsInspectionExempt(string file, string kind)
-        => kind == KindTypeName && string.Equals(file, InspectionExemptFile, StringComparison.Ordinal);
+        => ExemptKinds.Contains(kind) && string.Equals(file, InspectionExemptFile, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The <c>type-read</c> accessors, by reflection: every public method declared on
+    /// <c>SemanticInfo</c> or <c>SemanticBinding</c> whose return type is assignable to
+    /// <c>SemanticType</c> or is an <c>IEnumerable&lt;T&gt;</c> of such a <c>T</c>, plus the
+    /// emitter helper <c>GetExpressionSemanticType</c> (which wraps <c>GetExpressionType</c>). A
+    /// getter added tomorrow is counted tomorrow; a two-name literal would not see it (#2443 item 6).
+    /// </summary>
+    internal static readonly IReadOnlySet<string> TypeReadAccessors = ComputeTypeReadAccessors();
+
+    private static IReadOnlySet<string> ComputeTypeReadAccessors()
+    {
+        static bool IsSemanticTypeLike(Type t)
+            => typeof(SemanticType).IsAssignableFrom(t)
+               || (t != typeof(string) && t.GetInterfaces().Append(t)
+                   .Any(i => i.IsGenericType
+                             && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                             && typeof(SemanticType).IsAssignableFrom(i.GetGenericArguments()[0])));
+
+        var names = new HashSet<string>(StringComparer.Ordinal) { "GetExpressionSemanticType" };
+        foreach (var carrier in new[] { typeof(SemanticInfo), typeof(SemanticBinding) })
+        {
+            names.UnionWith(carrier
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(m => !m.IsSpecialName && IsSemanticTypeLike(m.ReturnType))
+                .Select(m => m.Name));
+        }
+
+        return names;
+    }
 
     private static readonly Regex PredicateLookup = new(@"\b(\w+) =>\s*\1\.Name ==", RegexOptions.CultureInvariant);
     private static readonly Regex AstDeclarationContext =
@@ -750,9 +854,11 @@ public class EmitterCarrierOnlyConformanceTests
                 MemberBindingExpressionSyntax binding => binding.Name.Identifier.Text,
                 _ => null,
             };
-            if (callee is "GetExpressionType" or "GetExpressionSemanticType")
+            if (callee is not null && TypeReadAccessors.Contains(callee))
                 sites.Add(new InspectionSite(fileName, LineOf(call), KindTypeRead, callee, Text(LineOf(call))));
         }
+
+        sites.AddRange(ScanTypeNameCompares(fileName, root, hierarchy, Text));
 
         foreach (var name in root.DescendantNodes().OfType<IdentifierNameSyntax>()
                      .Where(n => n.Identifier.Text == "DeclarationLine"))
@@ -787,6 +893,121 @@ public class EmitterCarrierOnlyConformanceTests
         }
 
         return sites;
+    }
+
+    private const string ShapeNameCompare = "name-compare";
+    private const string ShapeNameSubpattern = "name-subpattern";
+
+    /// <summary>
+    /// The <c>type-name-compare</c> kind (#2443 item 6, plan-1faae3 rule (b)): every name compare on
+    /// a receiver the syntax binds to an inspection-denied type.
+    /// <list type="bullet">
+    /// <item><c>name-compare</c>: <c>r.Name</c> or <c>r?.Name</c> as an operand of <c>==</c> /
+    /// <c>!=</c>, the subject of an <c>is</c> pattern, or a <c>switch</c>'s governing expression,
+    /// where <c>r</c> is bound in the same member as a parameter, an explicitly typed local
+    /// (<c>foreach</c> and <c>out</c> included) or a pattern designation whose type (nullable,
+    /// qualified) is in <paramref name="hierarchy"/>. A compare matched by the union-case shape is a
+    /// <c>name-lookup</c> row instead, never both.</item>
+    /// <item><c>name-subpattern</c>: a <c>Name:</c> subpattern of a recursive pattern whose type is
+    /// denied (<c>is BuiltinType { Name: "uint8" }</c>).</item>
+    /// </list>
+    /// Closed by what the syntax can bind: a <c>var</c>-declared receiver, a field or a member-access
+    /// receiver needs a semantic model to type and is not counted (its declaration, if any, is a
+    /// <c>type-name</c> site); an AST receiver is not denied. Measured @ plan-1faae3 Phase 1: no
+    /// <c>string.Equals(r.Name, …)</c> spelling exists in CodeGen.
+    /// </summary>
+    private static IEnumerable<InspectionSite> ScanTypeNameCompares(
+        string fileName, SyntaxNode root, IReadOnlySet<string> hierarchy, Func<int, string> text)
+    {
+        int LineOf(SyntaxNode node) => node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+
+        bool IsDenied(TypeSyntax? type) => type switch
+        {
+            NullableTypeSyntax nullable => IsDenied(nullable.ElementType),
+            QualifiedNameSyntax qualified => IsDenied(qualified.Right),
+            AliasQualifiedNameSyntax alias => IsDenied(alias.Name),
+            IdentifierNameSyntax identifier => hierarchy.Contains(identifier.Identifier.Text),
+            _ => false,
+        };
+
+        static string? Designated(VariableDesignationSyntax? designation)
+            => designation is SingleVariableDesignationSyntax single ? single.Identifier.Text : null;
+
+        var scopes = root.DescendantNodes().OfType<MemberDeclarationSyntax>()
+            .Where(m => m is not BaseTypeDeclarationSyntax and not BaseNamespaceDeclarationSyntax
+                        and not DelegateDeclarationSyntax);
+        foreach (var scope in scopes)
+        {
+            var bound = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var node in scope.DescendantNodes())
+            {
+                var name = node switch
+                {
+                    ParameterSyntax parameter when IsDenied(parameter.Type) => parameter.Identifier.Text,
+                    DeclarationPatternSyntax pattern when IsDenied(pattern.Type) => Designated(pattern.Designation),
+                    RecursivePatternSyntax pattern when IsDenied(pattern.Type) => Designated(pattern.Designation),
+                    DeclarationExpressionSyntax declaration when IsDenied(declaration.Type)
+                        => Designated(declaration.Designation),
+                    ForEachStatementSyntax loop when IsDenied(loop.Type) => loop.Identifier.Text,
+                    _ => null,
+                };
+                if (name is not null)
+                    bound.Add(name);
+                if (node is VariableDeclarationSyntax variables && IsDenied(variables.Type))
+                    bound.UnionWith(variables.Variables.Select(v => v.Identifier.Text));
+            }
+
+            foreach (var node in scope.DescendantNodes())
+            {
+                // r.Name / r?.Name, r bound to a denied type.
+                ExpressionSyntax? read = node switch
+                {
+                    MemberAccessExpressionSyntax { Name.Identifier.Text: "Name", Expression: IdentifierNameSyntax receiver }
+                        access when bound.Contains(receiver.Identifier.Text)
+                                    && access.Parent is not ConditionalAccessExpressionSyntax => access,
+                    ConditionalAccessExpressionSyntax
+                    {
+                        Expression: IdentifierNameSyntax receiver,
+                        WhenNotNull: MemberBindingExpressionSyntax { Name.Identifier.Text: "Name" },
+                    } conditional when bound.Contains(receiver.Identifier.Text) => conditional,
+                    _ => null,
+                };
+                if (read is not null)
+                {
+                    var outer = read.Parent is ParenthesizedExpressionSyntax paren ? paren : (SyntaxNode)read;
+                    var compare = outer.Parent switch
+                    {
+                        BinaryExpressionSyntax binary
+                            when binary.IsKind(SyntaxKind.EqualsExpression) || binary.IsKind(SyntaxKind.NotEqualsExpression)
+                            => binary,
+                        IsPatternExpressionSyntax isPattern when isPattern.Expression == outer => isPattern,
+                        SwitchStatementSyntax switchStatement when switchStatement.Expression == outer => outer,
+                        SwitchExpressionSyntax switchExpression when switchExpression.GoverningExpression == outer
+                            => outer,
+                        _ => null,
+                    };
+                    if (compare is not null && !UnionCaseCompare.IsMatch(compare.ToString()))
+                    {
+                        var line = LineOf(compare);
+                        yield return new InspectionSite(fileName, line, KindTypeNameCompare, ShapeNameCompare, text(line));
+                    }
+                }
+
+                // T { Name: … }, T denied.
+                if (node is RecursivePatternSyntax { PropertyPatternClause: { } clause } recursive && IsDenied(recursive.Type))
+                {
+                    foreach (var sub in clause.Subpatterns)
+                    {
+                        if (sub.NameColon?.Name.Identifier.Text == "Name"
+                            || sub.ExpressionColon?.Expression is IdentifierNameSyntax { Identifier.Text: "Name" })
+                        {
+                            var line = LineOf(sub);
+                            yield return new InspectionSite(fileName, line, KindTypeNameCompare, ShapeNameSubpattern, text(line));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>

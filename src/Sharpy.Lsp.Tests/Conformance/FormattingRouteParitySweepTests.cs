@@ -1705,6 +1705,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// class_with_init/init_augmented_store_2439 (P85's corpus change, with experimental/init_augmented_matmul_2439 and its
     /// ungated twin); control: ac9fe9170 with the three stems absent held the previous literals (16953/0); P85 changed no
     /// lexer/parser/formatter/LSP code (one constructor-emitter predicate).
+    /// #2443 P82 tranche 2 (2026-11-08): +2 on the four comment pins only — growth, from the two new fixture stems
+    /// basics/emitter_type_name_compare_controls and type_system/optional_wrapped_element_children (plan-1faae3 Phase 0,
+    /// the tranche's only corpus change); control: dev @ 8d0367e0a held the previous literals with those stems absent,
+    /// and the merged tip measured exactly +2 on each of the four and nothing else; the tranche changed no
+    /// lexer/parser/formatter/LSP code.
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
@@ -1712,10 +1717,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 486,
             [(Identity, RangeLine)] = 482,
             [(Identity, OnType)] = 482,
-            [(Comment, Full)] = 1655,
-            [(Comment, RangeWhole)] = 1655,
-            [(Comment, RangeLine)] = 1651,
-            [(Comment, OnType)] = 1651,
+            [(Comment, Full)] = 1657,
+            [(Comment, RangeWhole)] = 1657,
+            [(Comment, RangeLine)] = 1653,
+            [(Comment, OnType)] = 1653,
             [(Crlf, Full)] = 486,
             [(Crlf, RangeWhole)] = 486,
             [(Crlf, RangeLine)] = 482,

@@ -295,6 +295,68 @@ public class IrTotalityTests
     }
 
     /// <summary>
+    /// P82 tranche 2 (#2443, plan-1faae3 D2): a <c>match</c> scrutinee that is, through grouping
+    /// parentheses, <c>None</c> lowers to an <see cref="IrTypedNullScrutinee"/> (migrates
+    /// <c>SemanticInfo._matchScrutineeLowerings</c>), keyed on the scrutinee as written, over the five
+    /// Phase 0 scrutinees: <c>match None:</c> ×2 and <c>match None</c> (expression) in
+    /// <c>match/match_bare_none_scrutinee_1526</c>, <c>match (None):</c> statement and expression in
+    /// <c>basics/emitter_type_name_compare_controls</c> (the node on the <c>Parenthesized</c> holding
+    /// the inner <c>None</c>). The negative <c>x: object | None = None; match x:</c> stays opaque
+    /// (emits <c>switch (x)</c>, prints <c>none</c> = python3). The match's own node stays opaque, its
+    /// scrutinee child substituted in place, and the index stays total.
+    /// </summary>
+    [Fact]
+    public void NoneMatchScrutinee_LowersToIrTypedNullScrutinee_AndStaysTotal()
+    {
+        var positives = new (string Fixture, int Bare, int Parenthesized)[]
+        {
+            (Path.Combine("match", "match_bare_none_scrutinee_1526.spy"), 3, 0),
+            (Path.Combine("basics", "emitter_type_name_compare_controls.spy"), 0, 2),
+        };
+        foreach (var (fixture, bare, parenthesized) in positives)
+        {
+            var (model, ir) = CompileToIr(File.ReadAllText(Path.Combine(FixturesRoot, fixture)));
+            var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+            var index = ir.Index;
+            var astNodes = AssertIndexTotal(ast, index);
+
+            var matches = astNodes.Where(n => n is MatchStatement or MatchExpression).ToList();
+            Assert.Equal(bare + parenthesized, matches.Count);
+            foreach (var match in matches)
+            {
+                var scrutinee = match is MatchStatement statement
+                    ? statement.Scrutinee
+                    : ((MatchExpression)match).Scrutinee;
+                var typed = Assert.IsType<IrTypedNullScrutinee>(index[scrutinee]);
+                Assert.Contains(index[match].Children, child => ReferenceEquals(child, typed));
+                if (scrutinee is Parenthesized paren)
+                    Assert.Same(index[paren.Expression], Assert.Single(typed.Children));
+                else
+                    Assert.Empty(typed.Children);
+            }
+
+            Assert.Equal(parenthesized, matches.Count(m => (m is MatchStatement s ? s.Scrutinee : ((MatchExpression)m).Scrutinee) is Parenthesized));
+            Assert.Equal(bare + parenthesized, CollectNodes<IrTypedNullScrutinee>(ir).Count);
+        }
+
+        const string negative = """
+            def main() -> None:
+                x: object | None = None
+                match x:
+                    case None:
+                        print("none")
+                    case _:
+                        print("other")
+            """;
+        var (negModel, negIr) = CompileToIr(negative);
+        var negAst = negModel.Units.Values.Single(u => u.Ast != null).Ast!;
+        var negNodes = AssertIndexTotal(negAst, negIr.Index);
+        var negMatch = Assert.Single(negNodes.OfType<MatchStatement>());
+        Assert.IsType<IrOpaqueExpression>(negIr.Index[negMatch.Scrutinee]);
+        Assert.Empty(CollectNodes<IrTypedNullScrutinee>(negIr));
+    }
+
+    /// <summary>
     /// P82 (#2443): a payload store into a narrowed Optional slot lowers to an
     /// <see cref="IrOptionalStoreWrap"/> on the assignment, and an unpacking element stored into a
     /// narrowed Optional target to an <see cref="IrOptionalWrappedElement"/> holding the element's own

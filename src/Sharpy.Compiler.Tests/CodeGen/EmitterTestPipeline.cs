@@ -54,7 +54,9 @@ internal static class EmitterTestPipeline
     /// </summary>
     /// <param name="runValidators">Run the default <see cref="ValidationPipeline"/> inside CheckModule, as FileCompilationPipeline does.</param>
     /// <param name="emitLineDirectives">Override <see cref="CodeGenContext.EmitLineDirectives"/> (default: the context's default, true).</param>
-    internal static Analysis Analyze(Module module, bool isEntryPoint = false, string? sourceFilePath = null, bool runValidators = false, bool? emitLineDirectives = null)
+    /// <param name="rewriteIr">Replaces the lowered IR before the emitter reads it — a constructed-IR
+    /// test's way to hand the emitter a node the pass would not build (plan-1faae3 D5).</param>
+    internal static Analysis Analyze(Module module, bool isEntryPoint = false, string? sourceFilePath = null, bool runValidators = false, bool? emitLineDirectives = null, Func<IrCompilation, IrCompilation>? rewriteIr = null)
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
@@ -84,6 +86,8 @@ internal static class EmitterTestPipeline
             semanticInfo,
             semanticBinding,
             symbolTable);
+        if (rewriteIr != null)
+            ir = rewriteIr(ir);
 
         var context = new CodeGenContext(symbolTable, builtins)
         {

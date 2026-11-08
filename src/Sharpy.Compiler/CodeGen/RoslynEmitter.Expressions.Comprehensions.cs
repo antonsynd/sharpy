@@ -356,18 +356,12 @@ internal partial class RoslynEmitter
     {
         var tempName = GenerateTempVarName("comp");
 
-        // Determine K, V from the semantic type of the spread value (dict[K,V])
-        var spreadSemanticType = GetExpressionSemanticType(dictSpreadComp.Spread);
-        TypeSyntax kTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        TypeSyntax vTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-
-        if (spreadSemanticType is GenericType gDictType
-            && gDictType.Name == BuiltinNames.Dict
-            && gDictType.TypeArguments.Count >= 2)
-        {
-            kTypeSyntax = _typeMapper.MapSemanticType(gDictType.TypeArguments[0]);
-            vTypeSyntax = _typeMapper.MapSemanticType(gDictType.TypeArguments[1]);
-        }
+        // Determine K, V from the semantic type of the spread value (dict[K,V]); an Unknown argument
+        // maps to object on its own.
+        var spreadArguments = _typeMapper.MapBuiltinTypeArguments(
+            GetExpressionSemanticType(dictSpreadComp.Spread), BuiltinNames.Dict, arity: 2, requireKnownArguments: false);
+        var kTypeSyntax = spreadArguments?[0] ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        var vTypeSyntax = spreadArguments?[1] ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, kTypeSyntax, vTypeSyntax);
 
