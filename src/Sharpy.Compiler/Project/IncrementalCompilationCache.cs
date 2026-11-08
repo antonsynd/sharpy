@@ -22,8 +22,22 @@ namespace Sharpy.Compiler.Project;
 /// whose Phase 7 inputs are unchanged can skip IL emission. Null in a cache written before the field
 /// existed, which only means the next build emits.
 /// </param>
+/// <param name="LastBuild">
+/// The last successful build's whole-build record (<see cref="UpToDateRecord"/>), so a warm build whose
+/// every input matches can replay it without compiling (#2468). Null in a cache written before the field
+/// existed, which only means the next build is not up to date.
+/// </param>
 internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes, string? ProjectFacts = null,
-    EmittedAssemblyRecord? EmittedAssembly = null);
+    EmittedAssemblyRecord? EmittedAssembly = null, UpToDateRecord? LastBuild = null);
+
+/// <summary>
+/// What the last successful build was given and reported, beyond what the cache already keys (#2468):
+/// <see cref="SourceSet"/> is its source files (<see cref="IncrementalCompilationCache.SourceSetOf"/>),
+/// <see cref="Environment"/> its build environment (<see cref="IncrementalCompilationCache.EnvironmentOf"/>),
+/// and <see cref="Diagnostics"/> everything it reported, policy-free
+/// (<see cref="Sharpy.Compiler.Diagnostics.DiagnosticBag.Reported"/>), so a replay applies the current policy.
+/// </summary>
+internal record UpToDateRecord(string SourceSet, string Environment, List<CachedDiagnostic>? Diagnostics);
 
 /// <summary>
 /// What Phase 7 of the last successful build consumed and produced (#2114). <see cref="EmissionKey"/>
@@ -188,6 +202,12 @@ internal class IncrementalCompilationCache
     /// compiler version and the project facts still match (it is invalidated with them).
     /// </summary>
     private EmittedAssemblyRecord? _emittedAssembly;
+
+    /// <summary>
+    /// The last successful build's whole-build record, loaded beside <see cref="_emittedAssembly"/> and
+    /// under the same compiler-version and project-facts checks (#2468).
+    /// </summary>
+    private UpToDateRecord? _lastBuild;
 
     /// <summary>
     /// Generator outputs cached via <see cref="CacheGeneratorOutput"/> before the
@@ -366,13 +386,29 @@ internal class IncrementalCompilationCache
 
         return string.Join("\n",
             "csharp=" + Convert.ToHexStringLower(sha.GetHashAndReset()),
+            "entry-type=" + (entryTypeName ?? string.Empty),
+            EnvironmentOf(config));
+    }
+
+    /// <summary>
+    /// The build environment: the lines of <see cref="EmissionKeyOf"/> that depend on neither the
+    /// sources nor the facts — the assembly name, the output path, and the runtime the references and
+    /// the runtime config come from. One definition for Phase 7's key and the whole-build record
+    /// (<see cref="UpToDateRecord.Environment"/>, #2468).
+    /// </summary>
+    internal static string EnvironmentOf(ProjectConfig config)
+        => string.Join("\n",
             "assembly-name=" + (config.AssemblyName ?? config.RootNamespace),
             "output-path=" + PathNormalizer.Normalize(Path.GetFullPath(config.OutputAssemblyPath)),
-            "entry-type=" + (entryTypeName ?? string.Empty),
             "runtime=" + Environment.Version,
             "corlib=" + FileIdentity(typeof(object).Assembly.Location),
             "sharpy-core=" + FileIdentity(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
-    }
+
+    /// <summary>
+    /// A build's source set: every source path, normalized, ordinal-sorted, one per line (#2468).
+    /// </summary>
+    internal static string SourceSetOf(IEnumerable<string> sourceFiles)
+        => string.Join("\n", sourceFiles.Select(PathNormalizer.Normalize).OrderBy(p => p, StringComparer.Ordinal));
 
     /// <summary>
     /// The identity of every file Phase 7 writes beside the assembly — the assembly, its pdb, its
@@ -419,6 +455,40 @@ internal class IncrementalCompilationCache
     {
         _emittedAssembly = new EmittedAssemblyRecord(
             emissionKey, OutputIdentityOf(config), diagnostics is { Count: > 0 } ? diagnostics : null);
+    }
+
+    /// <summary>
+    /// Records the build that is about to be saved as the whole-build record (#2468): its source set,
+    /// its environment and everything it reported, policy-free. Called on every successful save, so the
+    /// record is never older than the hashes and the file cache beside it.
+    /// </summary>
+    public void RecordLastBuild(ProjectConfig config, IEnumerable<Diagnostics.CompilerDiagnostic> reported)
+    {
+        var diagnostics = reported.Select(CachedDiagnostic.From).ToList();
+        _lastBuild = new UpToDateRecord(SourceSetOf(config.SourceFiles), EnvironmentOf(config),
+            diagnostics.Count > 0 ? diagnostics : null);
+    }
+
+    /// <summary>
+    /// The last successful build's report, when every input of this build is that build's: the compiler
+    /// version and the facts (checked by the constructor, which drops the record on a mismatch), the
+    /// source set, every source's content and its cached C# (<see cref="HasValidFileCache"/> re-hashes
+    /// the file against its entry), the environment, and the output files as that build wrote them.
+    /// Null when the build has to run (#2468).
+    /// </summary>
+    public IReadOnlyList<CachedDiagnostic>? UpToDateBuildDiagnostics(ProjectConfig config)
+    {
+        if (_lastBuild is not { } record
+            || _emittedAssembly is not { } emitted
+            || !string.Equals(record.SourceSet, SourceSetOf(config.SourceFiles), StringComparison.Ordinal)
+            || !string.Equals(record.Environment, EnvironmentOf(config), StringComparison.Ordinal)
+            || !string.Equals(emitted.Outputs, OutputIdentityOf(config), StringComparison.Ordinal)
+            || !config.SourceFiles.All(HasValidFileCache))
+        {
+            return null;
+        }
+
+        return record.Diagnostics ?? (IReadOnlyList<CachedDiagnostic>)Array.Empty<CachedDiagnostic>();
     }
 
     /// <summary>
@@ -536,7 +606,7 @@ internal class IncrementalCompilationCache
     {
         try
         {
-            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes, _projectFacts, _emittedAssembly);
+            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes, _projectFacts, _emittedAssembly, _lastBuild);
             var json = JsonSerializer.Serialize(metadata, s_jsonOptions);
 
             var directory = Path.GetDirectoryName(_cacheFilePath);
@@ -565,6 +635,7 @@ internal class IncrementalCompilationCache
         _fileHashes.Clear();
         _fileCache?.Clear();
         _emittedAssembly = null;
+        _lastBuild = null;
         _pendingGeneratorOutputs?.Clear();
 
         DeleteFileIfExists(_cacheFilePath);
@@ -916,6 +987,7 @@ internal class IncrementalCompilationCache
     private Dictionary<string, string> LoadHashCache()
     {
         _emittedAssembly = null;
+        _lastBuild = null;
         if (!File.Exists(_cacheFilePath))
         {
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -945,6 +1017,7 @@ internal class IncrementalCompilationCache
                 }
 
                 _emittedAssembly = metadata.EmittedAssembly;
+                _lastBuild = metadata.LastBuild;
 
                 // Convert to case-insensitive dictionary
                 var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

@@ -54,8 +54,7 @@ internal partial class ProjectCompiler
             // The unit key: the source path below the pinned module root when the .spyproj sets
             // <SourceRoot>, so `project --emit-cs-to` mirrors module names; otherwise below the
             // project directory.
-            var relativePath = Path.GetRelativePath(config.SourceRoot ?? config.ProjectDirectory, sourceFile);
-            var csharpFileName = Path.ChangeExtension(relativePath, ".cs");
+            var csharpFileName = CSharpUnitKeyOf(config, sourceFile);
 
             // Include cached C# code for skipped files
             if (unit.Phase == CompilationPhase.Skipped)
@@ -208,6 +207,15 @@ internal partial class ProjectCompiler
 
         return new GeneratedCode(generatedCSharp, generatedTrees);
     }
+
+    /// <summary>
+    /// A unit's key in <see cref="ProjectCompilationResult.GeneratedCSharpFiles"/>: its source path below
+    /// the pinned module root when the <c>.spyproj</c> sets <c>&lt;SourceRoot&gt;</c>, else below the
+    /// project directory, with a <c>.cs</c> extension. Shared by code generation and the up-to-date
+    /// replay, which serves the cached C# under the keys a compile gives it (#2468).
+    /// </summary>
+    internal static string CSharpUnitKeyOf(ProjectConfig config, string sourceFile)
+        => Path.ChangeExtension(Path.GetRelativePath(config.SourceRoot ?? config.ProjectDirectory, sourceFile), ".cs");
 
     /// <summary>
     /// Builds the middle-end lowering IR for the whole project (E2, #1056). Runs once per compile,

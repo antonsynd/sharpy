@@ -223,6 +223,7 @@ public static class CompilerOptionsFactory
             SuppressedWarnings = suppressed,
             MaxErrors = maxErrors,
             Incremental = incremental,
+            UpToDateCheck = incremental,
             Features = (features ?? FeatureFlags.None).Enable(config.Features),
         });
     }
@@ -318,6 +319,7 @@ public static class CompilerOptionsFactory
             : new HashSet<string>(spec.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
         MaxErrors = spec.MaxErrors,
         Incremental = spec.Incremental,
+        UpToDateCheck = spec.UpToDateCheck,
         OutputType = spec.OutputType,
         Namespace = spec.Namespace,
         Features = spec.Features ?? FeatureFlags.None,
@@ -367,6 +369,12 @@ internal sealed class CompilerOptionsSpec
     public int MaxErrors { get; init; }
 
     public bool Incremental { get; init; }
+
+    /// <summary>
+    /// The whole-build up-to-date check (#2468). Only <see cref="CompilerOptionsFactory.ForProject"/>
+    /// sets it, with <c>incremental</c>: the CLI's three project routes.
+    /// </summary>
+    public bool UpToDateCheck { get; init; }
 
     public string OutputType { get; init; } = "exe";
 
