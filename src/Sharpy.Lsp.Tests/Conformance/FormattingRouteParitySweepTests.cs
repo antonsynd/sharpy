@@ -1696,6 +1696,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// (run 42399075412) held the previous literals with that fixture absent, and PR #2475's run 42403863522 @ d9a2c5fee
     /// showed exactly +1 on each of these 18 pins and nothing else; the identity mapping IOError -> OSError touches no
     /// lexer/parser/formatter path.
+    /// #2477 str.encode/bytes.decode errors (2026-11-08): +1 on the four comment pins only — growth, from the new
+    /// fixture stem strings/str_encode_bytes_decode_errors_2477, PR #2483's only corpus change; control: dev @ ef6039e33
+    /// (PR #2480's gate, run 42428774727) held the previous literals with that fixture absent, and PR #2483's run
+    /// 42435086456 @ df0030a06 showed exactly +1 on each of the four; no lexer/parser/formatter/LSP change (#2477 is
+    /// Core-only).
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
@@ -1703,10 +1708,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 486,
             [(Identity, RangeLine)] = 482,
             [(Identity, OnType)] = 482,
-            [(Comment, Full)] = 1650,
-            [(Comment, RangeWhole)] = 1650,
-            [(Comment, RangeLine)] = 1646,
-            [(Comment, OnType)] = 1646,
+            [(Comment, Full)] = 1651,
+            [(Comment, RangeWhole)] = 1651,
+            [(Comment, RangeLine)] = 1647,
+            [(Comment, OnType)] = 1647,
             [(Crlf, Full)] = 486,
             [(Crlf, RangeWhole)] = 486,
             [(Crlf, RangeLine)] = 482,

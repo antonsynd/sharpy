@@ -1,38 +1,29 @@
 encode ascii strict 'cafe': b'cafe'
 encode ascii strict 'caf\xe9\u20ac': UnicodeEncodeError ascii 3 5 ordinal not in range(128) | 'ascii' codec can't encode characters in position 3-4: ordinal not in range(128)
-encode ascii strict 'a\udc80b': UnicodeEncodeError ascii 1 2 ordinal not in range(128) | 'ascii' codec can't encode character '\udc80' in position 1: ordinal not in range(128)
 encode ascii strict 'a\xe9\xe9 b': UnicodeEncodeError ascii 1 3 ordinal not in range(128) | 'ascii' codec can't encode characters in position 1-2: ordinal not in range(128)
 encode ascii replace 'cafe': b'cafe'
 encode ascii replace 'caf\xe9\u20ac': b'caf??'
-encode ascii replace 'a\udc80b': b'a?b'
 encode ascii replace 'a\xe9\xe9 b': b'a?? b'
 encode ascii ignore 'cafe': b'cafe'
 encode ascii ignore 'caf\xe9\u20ac': b'caf'
-encode ascii ignore 'a\udc80b': b'ab'
 encode ascii ignore 'a\xe9\xe9 b': b'a b'
 encode utf-8 strict 'cafe': b'cafe'
 encode utf-8 strict 'caf\xe9\u20ac': b'caf\xc3\xa9\xe2\x82\xac'
-encode utf-8 strict 'a\udc80b': UnicodeEncodeError utf-8 1 2 surrogates not allowed | 'utf-8' codec can't encode character '\udc80' in position 1: surrogates not allowed
 encode utf-8 strict 'a\xe9\xe9 b': b'a\xc3\xa9\xc3\xa9 b'
 encode utf-8 replace 'cafe': b'cafe'
 encode utf-8 replace 'caf\xe9\u20ac': b'caf\xc3\xa9\xe2\x82\xac'
-encode utf-8 replace 'a\udc80b': b'a?b'
 encode utf-8 replace 'a\xe9\xe9 b': b'a\xc3\xa9\xc3\xa9 b'
 encode utf-8 ignore 'cafe': b'cafe'
 encode utf-8 ignore 'caf\xe9\u20ac': b'caf\xc3\xa9\xe2\x82\xac'
-encode utf-8 ignore 'a\udc80b': b'ab'
 encode utf-8 ignore 'a\xe9\xe9 b': b'a\xc3\xa9\xc3\xa9 b'
 encode latin-1 strict 'cafe': b'cafe'
 encode latin-1 strict 'caf\xe9\u20ac': UnicodeEncodeError latin-1 4 5 ordinal not in range(256) | 'latin-1' codec can't encode character '\u20ac' in position 4: ordinal not in range(256)
-encode latin-1 strict 'a\udc80b': UnicodeEncodeError latin-1 1 2 ordinal not in range(256) | 'latin-1' codec can't encode character '\udc80' in position 1: ordinal not in range(256)
 encode latin-1 strict 'a\xe9\xe9 b': b'a\xe9\xe9 b'
 encode latin-1 replace 'cafe': b'cafe'
 encode latin-1 replace 'caf\xe9\u20ac': b'caf\xe9?'
-encode latin-1 replace 'a\udc80b': b'a?b'
 encode latin-1 replace 'a\xe9\xe9 b': b'a\xe9\xe9 b'
 encode latin-1 ignore 'cafe': b'cafe'
 encode latin-1 ignore 'caf\xe9\u20ac': b'caf\xe9'
-encode latin-1 ignore 'a\udc80b': b'ab'
 encode latin-1 ignore 'a\xe9\xe9 b': b'a\xe9\xe9 b'
 decode ascii strict b'caf\xc3\xa9': UnicodeDecodeError ascii 3 4 ordinal not in range(128) | 'ascii' codec can't decode byte 0xc3 in position 3: ordinal not in range(128)
 decode ascii strict b'\xff': UnicodeDecodeError ascii 0 1 ordinal not in range(128) | 'ascii' codec can't decode byte 0xff in position 0: ordinal not in range(128)

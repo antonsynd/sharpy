@@ -5,7 +5,10 @@
 def main():
     encodings: list[str] = ['ascii', 'utf-8', 'latin-1']
     handlers: list[str] = ['strict', 'replace', 'ignore']
-    texts: list[str] = ['cafe', 'café€', 'a\udc80b', 'aéé b']
+    # No lone-surrogate text here: the formatter decodes a '\udc80' escape into an unpaired
+    # surrogate the UTF-8 writer cannot encode (sharpyc format crashes; the emit-invariance
+    # sweep aborts), and chr(0xdc80) throws; Core's UnicodeCodecErrorTests carry that cell.
+    texts: list[str] = ['cafe', 'café€', 'aéé b']
     for enc in encodings:
         for h in handlers:
             for t in texts:
