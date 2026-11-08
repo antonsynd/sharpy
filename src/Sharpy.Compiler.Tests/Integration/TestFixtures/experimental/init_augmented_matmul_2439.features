@@ -1,0 +1,3 @@
+# Enables the experimental `@` operator and `defer` for the __init__ augmented-store cells (#2439).
+matmul
+defer

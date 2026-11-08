@@ -22,6 +22,7 @@ public partial class NameResolutionDifferentialTests
         failures.AddRange(DeclarationShapeFedFailures(pool));
         failures.AddRange(StructHostFedFailures(axisCells));
         failures.AddRange(AttributeStoreFedFailures(axisCells));
+        failures.AddRange(AugmentedInitFedFailures(axisCells));
         failures.AddRange(TypeMemberShapeFedFailures(axisCells));
         return failures;
     }
@@ -1247,5 +1248,146 @@ public partial class NameResolutionDifferentialTests
         foreach (var shape in NameResolutionRosters.AssignmentTargetShapes.Where(e => e.Value.Image.Count > 0).Select(e => e.Key))
             if (shape == "MemberAccess" && !axisCells.Any(c => c.StartsWith("attribute-store:", StringComparison.Ordinal)))
                 yield return "AssignmentTargetShapes MemberAccess has no attribute-store cell";
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // Axis 8, the augmented store (P85, #2439): host × position × target × operator
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>Which operator rows a cell packs: the scalar rows, or the collection rows <c>Classify</c> mutates in place. Separate cells,
+    /// so a collection row's ICE cannot mask a scalar row's wrong value.</summary>
+    internal enum AugmentedSlots
+    {
+        Scalar,
+        Collection,
+    }
+
+    /// <summary>The collection family is a field's: a property's setter is another seam (ledger), and an element or a tuple holds no collection here.</summary>
+    private static IEnumerable<AugmentedSlots> AugmentedSlotsOf(AugmentedTargetKey target)
+        => target.Member is BindingKind.InstanceField or BindingKind.StaticField
+            ? new[] { AugmentedSlots.Scalar, AugmentedSlots.Collection }
+            : new[] { AugmentedSlots.Scalar };
+
+    private static string AugmentedInitKey(string host, StoreNesting position, AugmentedTargetKey target, AugmentedSlots slots, ReadPosition body)
+        => $"attribute-store: augmented × {host} × {position} × {target} × {slots} × {body}";
+
+    /// <summary>What the generator spells: every host × position × target × slot family at <c>__init__</c>, and the same statements in a method body
+    /// on the class host, the position the cure routes to.</summary>
+    private static IEnumerable<(string Host, StoreNesting Position, AugmentedTargetKey Target, AugmentedSlots Slots, ReadPosition Body)> AugmentedInitProduct()
+    {
+        var targets = NameResolutionRosters.AugmentedInitTargets.Where(e => e.Value.Generated).Select(e => e.Key).ToList();
+        foreach (var host in Roster.ImageOf(NameResolutionRosters.HostKinds))
+            foreach (var position in Enum.GetValues<StoreNesting>())
+                foreach (var target in targets)
+                    foreach (var slots in AugmentedSlotsOf(target))
+                        yield return (host, position, target, slots, ReadPosition.InitBody);
+        foreach (var target in targets)
+            foreach (var slots in AugmentedSlotsOf(target))
+                yield return ("class", StoreNesting.Top, target, slots, ReadPosition.MethodBody);
+    }
+
+    private static IEnumerable<NameCell> AugmentedInitCells()
+    {
+        foreach (var (host, position, target, slots, body) in AugmentedInitProduct())
+            yield return AugmentedInitCell(host, position, target, slots, body);
+    }
+
+    private static string[] AugmentedHostHeader(string host) => host switch
+    {
+        "class" => new[] { "class H:" },
+        "struct" => new[] { "struct H:" },
+        "dataclass" => new[] { "@dataclass", "class H:" },
+        _ => throw new ArgumentOutOfRangeException(nameof(host), host, "not an image of HostKinds"),
+    };
+
+    /// <summary>
+    /// One augmented store per operator row, packed into one program and read back by one <c>print</c> in row order. The verdict is a rule on the
+    /// target alone: a tuple is SPY0225 (python's SyntaxError), every other target runs and prints python's values, at <c>__init__</c>'s top level,
+    /// inside a block, and in a method body alike.
+    /// </summary>
+    private static NameCell AugmentedInitCell(string host, StoreNesting position, AugmentedTargetKey target, AugmentedSlots slots, ReadPosition body)
+    {
+        var rows = NameResolutionRosters.AugmentedOperators.Values.SelectMany(e => e.Image)
+            .Where(r => (r.Collection != null) == (slots == AugmentedSlots.Collection)).ToList();
+        var stem = slots == AugmentedSlots.Collection ? "b" : "a";
+        var decl = new List<string>();
+        var stores = new List<string>();
+        var reads = new List<string>();
+        var tuple = target.Shape == "TupleLiteral";
+        if (tuple)
+        {
+            decl.AddRange(new[] { "a0: int = 20", "a1: int = 20" });
+            stores.Add("self.a0, self.a1 += 1");
+            reads.Add("self.a0");
+        }
+        else
+        {
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var row = rows[i];
+                var name = $"{stem}{i}";
+                var (lines, slot) = (target.Shape, target.Member) switch
+                {
+                    ("IndexAccess", _) => (new[] { $"{name}: list[{row.SlotType}] = [{row.Initial}]" }, $"self.{name}[0]"),
+                    (_, BindingKind.InstanceField) => (new[] { $"{name}: {row.SlotType} = {row.Initial}" }, $"self.{name}"),
+                    (_, BindingKind.InstanceProperty) => (new[] { $"property {name}: {row.SlotType} = {row.Initial}" }, $"self.{name}"),
+                    (_, BindingKind.StaticField) => (new[] { "@static", $"{name}: {row.SlotType} = {row.Initial}" }, $"H.{name}"),
+                    (_, BindingKind.StaticProperty) => (new[] { "@static", $"property {name}: {row.SlotType} = {row.Initial}" }, $"H.{name}"),
+                    _ => throw new ArgumentOutOfRangeException(nameof(target), target, "not a generated augmented target"),
+                };
+                decl.AddRange(lines);
+                stores.Add($"{slot} {row.Spelling} {row.Operand}");
+                reads.Add(row.Sorted ? $"sorted({slot})" : slot);
+            }
+        }
+
+        var statements = position == StoreNesting.Top ? stores : new[] { "if True:" }.Concat(Indent(stores)).ToList();
+        var lines2 = new List<string>(AugmentedHostHeader(host));
+        lines2.AddRange(Indent(decl));
+        lines2.Add(body == ReadPosition.InitBody ? "    def __init__(self) -> None:" : "    def f(self) -> None:");
+        lines2.AddRange(Indent(statements.Append($"print({string.Join(", ", reads)})"), 8));
+        var call = body == ReadPosition.InitBody ? "h0: H = H()" : "H().f()";
+
+        var model = string.Join(" ", rows.Select(r => r.Printed));
+        var expected = tuple
+            ? new Expected(SharpyTag.MustRefuse, null, new PyOutcome(PyKind.SyntaxError, "SyntaxError: 'tuple' is an illegal expression for augmented assignment"), "kind:SPY0225")
+            : new Expected(SharpyTag.MustRun, model, PyOutcome.Ran(model), "N7");
+        var spelled = target.Receiver == null ? new object?[] { target.Shape } : new object?[] { target.Receiver, target.Member };
+
+        return new NameCell
+        {
+            Id = CellId(new object?[] { "store", "attribute", "augmented", host, body, position }.Concat(spelled).Append(tuple ? null : slots).ToArray()),
+            Family = Family.Store,
+            Source = Join(lines2) + MainBlock(call),
+            Tag = expected.Tag,
+            Model = expected.Model,
+            Python = expected.Python,
+            Rule = expected.Rule,
+            Target = target.Member ?? BindingKind.InstanceField,
+            Outer = BindingKind.None,
+            Position = body,
+            Form = StoreForm.Augmented,
+            Shape = target.Shape,
+            AxisCell = AugmentedInitKey(host, position, target, slots, body),
+        };
+    }
+
+    /// <summary>What the rosters owe, enumerated from them and not from <see cref="AugmentedInitProduct"/>, so a host, position, target or slot family the
+    /// product stops spelling is red here.</summary>
+    private static IEnumerable<string> AugmentedInitFedFailures(IReadOnlySet<string> axisCells)
+    {
+        var targets = NameResolutionRosters.AugmentedInitTargets.Where(e => e.Value.Generated).Select(e => e.Key).ToList();
+        foreach (var host in Roster.ImageOf(NameResolutionRosters.HostKinds))
+            foreach (var position in Enum.GetValues<StoreNesting>())
+                foreach (var target in targets)
+                    foreach (var slots in AugmentedSlotsOf(target))
+                        if (!axisCells.Contains(AugmentedInitKey(host, position, target, slots, ReadPosition.InitBody)))
+                            yield return $"AugmentedInit {host} × {position} × {target} × {slots} × InitBody has no cell";
+        foreach (var target in targets)
+            foreach (var slots in AugmentedSlotsOf(target))
+                if (!axisCells.Contains(AugmentedInitKey("class", StoreNesting.Top, target, slots, ReadPosition.MethodBody)))
+                    yield return $"AugmentedInit class × Top × {target} × {slots} × MethodBody (the control) has no cell";
+        if (!axisCells.Any(c => c.StartsWith("attribute-store: augmented × ", StringComparison.Ordinal) && c.Contains(" × Collection × ", StringComparison.Ordinal)))
+            yield return "AugmentedOperators' collection rows have no cell";
     }
 }

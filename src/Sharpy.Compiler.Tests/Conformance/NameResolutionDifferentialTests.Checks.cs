@@ -895,7 +895,10 @@ public partial class NameResolutionDifferentialTests
         ["SPY0606"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && IsTypeLevelMember(c.Outer) && !IsAttributeStore(c),
 
         ["kind:SPY0212"] = c => c.Family == Family.Read && c.Tag == SharpyTag.MustRefuse && c.Outer == BindingKind.Builtin && c.Target == BindingKind.ModuleClass && Spelled(c, "int"),
-        ["kind:SPY0225"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse && c.Target is BindingKind.ModuleLiteralConst or BindingKind.ModuleComputedConst or BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst,
+        // A const target, or a tuple of attribute targets under an augmented operator (python's SyntaxError, P85).
+        ["kind:SPY0225"] = c => c.Family == Family.Store && c.Tag == SharpyTag.MustRefuse
+            && (c.Target is BindingKind.ModuleLiteralConst or BindingKind.ModuleComputedConst or BindingKind.ClassLiteralConst or BindingKind.ClassComputedConst
+                || (IsAttributeStore(c) && c.Form == StoreForm.Augmented && c.Shape == "TupleLiteral")),
         ["kind:SPY0290"] = c => c.Tag == SharpyTag.MustRefuse && IsInstanceLevel(c.Target) && (c.Family == Family.Read
             ? !Spelled(c, nameof(Spelling.SelfDot)) && (ThroughAMember(c) || Spelled(c, nameof(Spelling.Call)))
             : c.Family == Family.Store && IsAttributeStore(c) && (Spelled(c, nameof(AttributeReceiver.TypeName)) || Spelled(c, nameof(AttributeReceiver.Alias)) || Spelled(c, nameof(AttributeReceiver.DerivedType)))),

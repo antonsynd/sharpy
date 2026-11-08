@@ -202,3 +202,12 @@ D1 gains a member-kind conjunct. The only fact on hand is `SemanticInfo.GetMembe
 - The red-at-base classes Phase 1 predicts (scalar SilentWrong, field collection Ice). Only the generator's first run measures cell classes; my `run` probes agree cell-for-cell.
 - LSP comment-census and code-action pin moves (+1 each). Measured only when the fixtures land.
 - Issue #2435's state and comments were not read (`--issues` not run, per the lead). #2439 is open, and comment 6724244460 is the owner's R-LL placement as cited.
+
+## Implementation Checklist
+
+- [x] Phase 1 T1: `AugmentedOperators` + `AugmentedInitTargets` rosters and their totality facts — implementer — blocked by none
+- [x] Phase 1 T2: product, cells, fed-failure check, `CellBudget`, red-at-base pins (M1–M3 recorded) — implementer — blocked by Phase 1 T1
+- [x] Phase 2 T1: D1 conjunct at `Constructors.cs:140`, every `#2439` allowlist row deleted, D3 (a) re-pin (D1-revert mutation recorded) — implementer — blocked by Phase 1 T2
+- [x] Regen: `regenerate_spy_stdlib.sh` + snapshot regen, diff read as findings (predicted: no movement) — implementer — blocked by Phase 2 T1
+- [x] Phase 2 T2: `init_augmented_store_2439` + experimental `@=`/`defer` fixtures and the ungated twin — implementer — blocked by Phase 2 T1
+- [ ] Gate: `/ci-gate` on the pushed tip, PR — lead — blocked by every task above
