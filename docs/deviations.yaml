@@ -2568,3 +2568,38 @@ deviations:
             print(1) if flag else print(2)   # SPY0603: expression statement of type 'None' must be a call; write the branch as an if statement
             lambda: 1                        # SPY0603: a lambda cannot be an expression statement; call it or bind it to a name
             math                             # SPY0603: a module reference cannot be an expression statement
+
+  - id: frozen-dataclass-init-assignment
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "`@dataclass(frozen=True)` installs a `__setattr__` that raises `FrozenInstanceError` on every attribute store, including a store inside a user-written `__init__`; a custom initializer has to go through `object.__setattr__(self, 'x', v)`."
+    sharpy_behavior: "A frozen field is emitted as an init-only C# property, which C# lets the constructor's own body set (dataclass.md: settable in an object initializer or directly in the constructor's body). So `self.<field> = v` and `self.<field> op= v` in an explicit `__init__` run; the same store in `__post_init__` or any other method is refused with SPY0706. Ruled D4 (a) 2026-11-08 (owner, remediation handoff): Axiom 1 — the init-accessor rule is the .NET one, and refusing the constructor store would make `frozen=True` with a custom `__init__` unusable. Measured @ be11fca77 (`sharpyc run`, python 3.13)."
+    spec_ref: docs/language_specification/dataclass.md
+    existing_diagnostic: SPY0706
+    planned_diagnostic: null
+    example:
+      python: |
+        from dataclasses import dataclass
+
+        @dataclass(frozen=True)
+        class Square:
+            side: float
+            area: float = 0.0
+            def __init__(self, side: float) -> None:
+                self.side = side          # FrozenInstanceError: cannot assign to field 'side'
+                self.area = side * side
+        print(Square(3.0).area)
+      sharpy: |
+        @dataclass(frozen=True)
+        class Square:
+            side: float
+            area: float = 0.0
+
+            def __init__(self, side: float) -> None:
+                self.side = side          # runs: the constructor body may set an init-only property
+                self.area = side * side
+
+        def main() -> None:
+            print(Square(3.0).area)       # 9.0
