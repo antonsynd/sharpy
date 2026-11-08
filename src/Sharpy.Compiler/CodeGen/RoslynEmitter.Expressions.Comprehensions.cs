@@ -202,10 +202,7 @@ internal partial class RoslynEmitter
         if (_context.Ir.OptimizedComprehensions.TryGetValue(comprehension, out var optimized))
             return optimized;
 
-        return _context.Ir.Index.TryGetValue(comprehension, out var node)
-            && node is IrLoweredLoop loop
-            ? loop
-            : null;
+        return IrNodeFor<IrLoweredLoop>(comprehension);
     }
 
     /// <summary>
@@ -221,9 +218,7 @@ internal partial class RoslynEmitter
     /// <c>ComprehensionFusionPassTests</c>.
     /// </remarks>
     private IrLoweredGenerator? GetIrLoweredGenerator(Expression genExpr)
-        => _context.Ir.Index.TryGetValue(genExpr, out var node) && node is IrLoweredGenerator generator
-            ? generator
-            : null;
+        => IrNodeFor<IrLoweredGenerator>(genExpr);
 
     /// <summary>
     /// Builds the constructor capacity argument for a product-of-counts presized comprehension (E3

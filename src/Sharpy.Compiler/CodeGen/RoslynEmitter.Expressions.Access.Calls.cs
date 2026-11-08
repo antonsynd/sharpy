@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -52,7 +53,7 @@ internal partial class RoslynEmitter
             .Select(p => Parameter(EscapedIdentifier(ParameterCSharpName(p))))
             .ToArray();
 
-        if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
+        if (IrNodeFor<IrElidedNoneBody>(lambda.Body) != null)
         {
             if (parameters.Length == 0)
                 return ParenthesizedLambdaExpression().WithBlock(Block());
@@ -117,7 +118,7 @@ internal partial class RoslynEmitter
             parameters.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramType));
         }
 
-        if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
+        if (IrNodeFor<IrElidedNoneBody>(lambda.Body) != null)
         {
             if (parameters.Count == 0)
                 return ParenthesizedLambdaExpression().WithBlock(Block());
@@ -223,7 +224,7 @@ internal partial class RoslynEmitter
             returnType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
-        if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
+        if (IrNodeFor<IrElidedNoneBody>(lambda.Body) != null)
         {
             return LocalFunctionStatement(returnType, Identifier(functionName))
                 .WithParameterList(ParameterList(SeparatedList(parameters)))

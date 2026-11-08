@@ -252,6 +252,9 @@ public class DispatchSiteInventoryTests
         // Lowering pass — dispatch over AST/IrNode types in lowering
         ["Lowering/LoweringPass.cs::LoweringPass.LowerChildren"] = "refusal-net:FileBasedIntegrationTests",
         ["Lowering/LoweringPass.cs::LoweringPass.LowerExpression"] = "refusal-net:FileBasedIntegrationTests",
+        // P82 tranche 1 (#2443): the unpacking arm pairs tuple-literal elements with their targets (D1 (b)); the
+        // store-wrap fixtures and IrTotalityTests exercise every arm, the snapshot corpus is the net.
+        ["Lowering/LoweringPass.cs::LoweringPass.MarkWrappedTupleElements"] = "refusal-net:FileBasedIntegrationTests",
         // __qualname__ scopes (#2057): only class/struct/interface/enum/function statements open one.
         ["Lowering/LoweringPass.cs::LoweringPass.LowerStatement"] = "documented-by-design:Lowering/LoweringPass.cs:LowerStatement",
         ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.TryFoldExpression"] = "refusal-net:FileBasedIntegrationTests",

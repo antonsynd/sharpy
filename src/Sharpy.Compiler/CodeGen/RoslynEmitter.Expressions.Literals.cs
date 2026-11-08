@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -269,10 +270,10 @@ internal partial class RoslynEmitter
         var elements = GenerateExpressionsInOrder(tuple.Elements, elem =>
         {
             var expr = GenerateExpression(elem);
-            // R-T: a per-element OptionalStoreWrap fact means the element is a payload value
-            // stored into a narrowed Optional slot — wrap it, mirroring the plain-store wrap
-            // at RoslynEmitter.Statements.Assignments.cs:123 (#1785).
-            if (_context.SemanticInfo?.GetOptionalStoreWrap(elem) is { } wrapOpt)
+            // R-T: an element an unpacking stores into a narrowed Optional target is a payload
+            // value — wrap it, mirroring the plain-store wrap (#1785). A walrus element is not an
+            // element store: its own site wraps the rebinding (IrOptionalWalrusStore).
+            if (IrNodeFor<IrOptionalWrappedElement>(elem)?.WrapAs is { } wrapOpt)
                 expr = WrapInOptionalSome(expr, wrapOpt);
             return expr;
         });
@@ -761,6 +762,11 @@ internal partial class RoslynEmitter
         // Generate the value expression
         var value = GenerateExpression(walrus.Value);
 
+        // R-T: a payload rebinding a narrowed Optional slot wraps at the walrus's own site
+        // (`(c = Optional<int>.Some(42)).Unwrap()`, #1720, D2 "S2"). Read through a wrapped tuple
+        // element: in `p, q = (c := 45, 4)` the walrus store is the element node's child.
+        var walrusWrap = IrNodeFor<IrOptionalWalrusStore>(walrus)?.WrapAs;
+
         // The binding is a recorded fact (#1560 R2): the checker linked the walrus to its symbol
         // and classified it. A rebind assigns to the chain head's one C# local — inline in every
         // mode, since nothing needs declaring — and a fresh binding declares it below. The
@@ -776,6 +782,8 @@ internal partial class RoslynEmitter
             varName = GetCSharpNameForSymbol(symbol);
             if (binding.Kind == TargetBindingKind.Rebinds)
             {
+                if (walrusWrap != null)
+                    value = WrapInOptionalSome(value, walrusWrap);
                 var assignExpr = ParenthesizedExpression(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
