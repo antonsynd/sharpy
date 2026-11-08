@@ -148,7 +148,7 @@ public partial class NameResolutionDifferentialTests
     internal const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
     /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
-    private const int CellBudget = 8900;
+    private const int CellBudget = 8945;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
@@ -557,6 +557,8 @@ public partial class NameResolutionDifferentialTests
                     "CS1955" when cell.Family == Family.Local && cell.Rule is "S3" or "N5-declared-later" => "#2425",
                     // `T !E` with no `Ok`: the spec has no implicit wrap, and the refusal is the cure.
                     "CS0029" when cell.Rule == "kind:result-wrap" => "#2249",
+                    // `self.xs *= 2` at __init__'s top level emitted as `this.Xs = 2`: the constructor arm drops the read and the operator (#2439).
+                    "CS0029" when IsAttributeStore(cell) && cell.Form == StoreForm.Augmented && cell.Position == ReadPosition.InitBody => "#2439",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
                     "CS1955" or "CS8917" or "CS1729" or "CS0029" or "CS1501" => "#2423",
                     // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
