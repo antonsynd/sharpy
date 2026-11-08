@@ -211,6 +211,23 @@ internal enum FunctionNameClass
 }
 
 /// <summary>
+/// P85 (#2439): one row of axis 8's operator roster. A scalar row's <see cref="Collection"/> is null; a collection row names the
+/// collection whose in-place mutator <c>AugmentedCollectionAssignment.Classify</c> returns for the operator. The slot's initial value,
+/// the operand and the result print three different things, so a store that keeps only the operand, or drops the operator, is seen.
+/// </summary>
+internal sealed record AugmentedOperatorRow(string Spelling, string? Collection, string SlotType, string Initial, string Operand, string Printed)
+{
+    /// <summary>A set prints in no order python promises, so its read is <c>sorted(...)</c>, and <see cref="Printed"/> is that list.</summary>
+    internal bool Sorted => Collection == "set";
+}
+
+/// <summary>P85 (#2439): an augmented store's target: an assignment-target shape and, for a member access, its receiver and member.</summary>
+internal sealed record AugmentedTargetKey(string Shape, AttributeReceiver? Receiver = null, BindingKind? Member = null)
+{
+    public override string ToString() => Receiver == null ? Shape : $"{Shape} × {Receiver} × {Member}";
+}
+
+/// <summary>
 /// A roster source value's image: the vocabulary values it realises, or the table that refines it, or the
 /// excluded axis with its reason. Exactly one of the three, which <see cref="Roster.ShapeProblems{TKey,TImage}"/>
 /// asserts, so a source is mapped exactly one way.
@@ -1387,6 +1404,86 @@ internal static class NameResolutionRosters
         (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.InitBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
         (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.StaticMethodBody), AxisMembership.Pruned(OneBodyForTheReceiver)),
         (AttributeBodyKey(AttributeReceiver.InstanceLocal, ReadPosition.FunctionBody), AxisMembership.Pruned(OneBodyForTheReceiver)));
+
+    /// <summary>
+    /// P85 axis 8 (#2439): the operators of an augmented store, total over <see cref="AssignmentOperator"/>. A generated operator has one scalar
+    /// row and one row per collection <c>AugmentedCollectionAssignment.Classify</c> mutates in place for it; the fact holds the collection rows to
+    /// that set by calling it. <c>//=</c> and <c>%=</c> start negative, so a truncating division prints differently from python's floor.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<AssignmentOperator, RosterEntry<AugmentedOperatorRow>> AugmentedOperators = Roster.Map(
+        (AssignmentOperator.Assign, Roster.Out<AugmentedOperatorRow>(ExcludedAxis.NotAKind, "the plain store: axis 8's Assign form cells")),
+        (AssignmentOperator.PlusAssign, Roster.To(
+            new AugmentedOperatorRow("+=", null, "int", "20", "7", "27"),
+            new AugmentedOperatorRow("+=", "list", "list[int]", "[1]", "[2]", "[1, 2]"))),
+        (AssignmentOperator.MinusAssign, Roster.To(
+            new AugmentedOperatorRow("-=", null, "int", "20", "7", "13"),
+            new AugmentedOperatorRow("-=", "set", "set[int]", "{1, 2}", "{2}", "[1]"))),
+        (AssignmentOperator.StarAssign, Roster.To(
+            new AugmentedOperatorRow("*=", null, "int", "20", "7", "140"),
+            new AugmentedOperatorRow("*=", "list", "list[int]", "[1, 2]", "2", "[1, 2, 1, 2]"))),
+        (AssignmentOperator.SlashAssign, Roster.To(new AugmentedOperatorRow("/=", null, "float", "5.0", "2.0", "2.5"))),
+        (AssignmentOperator.DoubleSlashAssign, Roster.To(new AugmentedOperatorRow("//=", null, "int", "-20", "7", "-3"))),
+        (AssignmentOperator.PercentAssign, Roster.To(new AugmentedOperatorRow("%=", null, "int", "-20", "7", "1"))),
+        (AssignmentOperator.PowerAssign, Roster.To(new AugmentedOperatorRow("**=", null, "int", "2", "5", "32"))),
+        (AssignmentOperator.AndAssign, Roster.To(
+            new AugmentedOperatorRow("&=", null, "int", "12", "10", "8"),
+            new AugmentedOperatorRow("&=", "set", "set[int]", "{1, 2}", "{2, 3}", "[2]"))),
+        (AssignmentOperator.OrAssign, Roster.To(
+            new AugmentedOperatorRow("|=", null, "int", "12", "3", "15"),
+            new AugmentedOperatorRow("|=", "set", "set[int]", "{1, 2}", "{3}", "[1, 2, 3]"),
+            new AugmentedOperatorRow("|=", "dict", "dict[str, int]", "{\"k\": 1}", "{\"m\": 2}", "{'k': 1, 'm': 2}"))),
+        (AssignmentOperator.XorAssign, Roster.To(
+            new AugmentedOperatorRow("^=", null, "int", "12", "5", "9"),
+            new AugmentedOperatorRow("^=", "set", "set[int]", "{1, 2}", "{2, 3}", "[1, 3]"))),
+        (AssignmentOperator.LeftShiftAssign, Roster.To(new AugmentedOperatorRow("<<=", null, "int", "3", "2", "12"))),
+        (AssignmentOperator.RightShiftAssign, Roster.To(new AugmentedOperatorRow(">>=", null, "int", "64", "3", "8"))),
+        (AssignmentOperator.NullCoalesceAssign, Roster.Out<AugmentedOperatorRow>(ExcludedAxis.NotAKind,
+            "`??=` has no python spelling, so no twin: the hand fixture class_with_init/init_augmented_store_2439 carries it")),
+        (AssignmentOperator.MatMulAssign, Roster.Out<AugmentedOperatorRow>(ExcludedAxis.GatedConstruct,
+            "`@=` is behind the matmul feature (GatedConstruct.cs): the experimental hand fixture init_augmented_matmul_2439 carries it")));
+
+    private const string MethodNotAStoreTarget = "a method is refused as a store target by kind: axis 8's Assign and Augmented cells (kind:SPY0606)";
+
+    private const string ConstIsIceAtEveryPosition = "a const store is #2435's ICE (CS0131/CS0176) at every position: axis 8's Assign and Augmented cells, ledger";
+
+    private const string InstanceThroughTheType = "an instance member through the type name is refused by kind (SPY0290): axis 8's existing cells";
+
+    private const string NestedTypeNotWritable = "a type's name is non-writable by meaning, as AttributeStoreMembers prunes it";
+
+    /// <summary>
+    /// P85 axis 8 (#2439): the targets of an augmented store at InitBody, total over <see cref="AssignmentTargetShapes"/>' keys, with a member
+    /// access refined by <see cref="AttributeStoreMembers"/>' keys × the receivers <see cref="AttributeStoreBodies"/> generates at InitBody.
+    /// An event's <c>+=</c> is not an <see cref="AttributeStoreMembers"/> kind: no python twin (ExcludedAxis.EventsSplitPropertiesTupleStarStores),
+    /// so the hand fixture carries it.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<AugmentedTargetKey, AxisMembership> AugmentedInitTargets = Roster.Map(
+        (new AugmentedTargetKey("Identifier"), AxisMembership.Out(ExcludedAxis.NotAKind, "a bare name's augmented store is STORE's bare family, which no constructor arm intercepts")),
+        (new AugmentedTargetKey("IndexAccess"), AxisMembership.Everywhere),
+        (new AugmentedTargetKey("TupleLiteral"), AxisMembership.Everywhere),
+        (new AugmentedTargetKey("StarExpression"), AxisMembership.Out(ExcludedAxis.EventsSplitPropertiesTupleStarStores,
+            "a starred augmented target is the parser's refusal: star stores are #2154/#2156/P21d's")),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.InstanceField), AxisMembership.Everywhere),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.InstanceProperty), AxisMembership.Everywhere),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.StaticField), AxisMembership.Out(ExcludedAxis.RefusedByKind,
+            "#2435's cells (R-KU): store/attribute/SelfDot/StaticField/Augmented/InitBody, the plan's D3")),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.StaticProperty), AxisMembership.Out(ExcludedAxis.RefusedByKind,
+            "#2435's class: CS0176 at __init__ top and in a method alike, no Augmented cell; ledger")),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.StaticMethod), AxisMembership.Out(ExcludedAxis.RefusedByKind, MethodNotAStoreTarget)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.InstanceMethod), AxisMembership.Out(ExcludedAxis.RefusedByKind, MethodNotAStoreTarget)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.ClassLiteralConst), AxisMembership.Out(ExcludedAxis.RefusedByKind, ConstIsIceAtEveryPosition)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.ClassComputedConst), AxisMembership.Out(ExcludedAxis.RefusedByKind, ConstIsIceAtEveryPosition)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.NestedType), AxisMembership.Pruned(NestedTypeNotWritable)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.SelfDot, BindingKind.Constructor), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.InstanceField), AxisMembership.Out(ExcludedAxis.RefusedByKind, InstanceThroughTheType)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.InstanceProperty), AxisMembership.Out(ExcludedAxis.RefusedByKind, InstanceThroughTheType)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.StaticField), AxisMembership.Everywhere),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.StaticProperty), AxisMembership.Everywhere),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.StaticMethod), AxisMembership.Out(ExcludedAxis.RefusedByKind, MethodNotAStoreTarget)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.InstanceMethod), AxisMembership.Out(ExcludedAxis.RefusedByKind, MethodNotAStoreTarget)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.ClassLiteralConst), AxisMembership.Out(ExcludedAxis.RefusedByKind, ConstIsIceAtEveryPosition)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.ClassComputedConst), AxisMembership.Out(ExcludedAxis.RefusedByKind, ConstIsIceAtEveryPosition)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.NestedType), AxisMembership.Pruned(NestedTypeNotWritable)),
+        (new AugmentedTargetKey("MemberAccess", AttributeReceiver.TypeName, BindingKind.Constructor), AxisMembership.Out(ExcludedAxis.NotAKind, NoSelfOrBareSpelling)));
 
     /// <summary>Axis 6's binder (deferred row 4): the statements each LOCAL binder spells in a loop body, reading the iteration variable
     /// <c>i</c> and binding <c>y</c>, total over <see cref="LocalKinds"/>'s generated kinds. Each runs and prints the first iteration's
@@ -3048,6 +3145,76 @@ public partial class NameResolutionDifferentialTests
             "SelfDot × MethodBody", "SelfDot × InitBody",
             "TypeName × MethodBody", "TypeName × InitBody", "TypeName × StaticMethodBody", "TypeName × FunctionBody",
             "Alias × MethodBody", "DerivedType × MethodBody", "InstanceLocal × MethodBody",
+        });
+    }
+
+    private static readonly string[] ClassifiedCollections = { "list", "set", "dict" };
+
+    /// <summary>The (operator, collection) pairs <c>Classify</c> mutates in place, by calling it on a <c>self.x op= v</c> node.</summary>
+    internal static IEnumerable<string> ClassifiedCollectionPairs()
+        => Enum.GetValues<AssignmentOperator>().SelectMany(op => ClassifiedCollections
+            .Where(c => AugmentedCollectionAssignment.Classify(
+                new Assignment { Operator = op, Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "x" } },
+                new GenericType { Name = c }) != null)
+            .Select(c => $"{op} × {c}"));
+
+    /// <summary>The operator a spelling parses to: the row's python spelling is the key's, read back by the compiler's own parser.</summary>
+    private static AssignmentOperator? ParsedOperator(string spelling)
+    {
+        var tokens = new LexerNs.Lexer($"x {spelling} 1\n").TokenizeAll();
+        return new ParserNs.Parser(tokens).ParseModule().Body.OfType<Assignment>().SingleOrDefault()?.Operator;
+    }
+
+    [Fact]
+    public void AugmentedOperatorsRoster_IsTotalOverAssignmentOperator_AndItsCollectionRowsAreClassifys()
+    {
+        var roster = NameResolutionRosters.AugmentedOperators;
+        var problems = Roster.TotalityProblems("AugmentedOperators", Enum.GetValues<AssignmentOperator>(), roster.Keys).ToList();
+        problems.AddRange(Roster.ShapeProblems(roster));
+        foreach (var (op, entry) in roster.Where(e => e.Value.Image.Count > 0))
+        {
+            if (entry.Image.Count(r => r.Collection == null) != 1)
+                problems.Add($"AugmentedOperators: {op} has {entry.Image.Count(r => r.Collection == null)} scalar rows, and a generated operator has exactly one");
+            foreach (var row in entry.Image.Where(r => ParsedOperator(r.Spelling) != op))
+                problems.Add($"AugmentedOperators: {op}'s row spells '{row.Spelling}', which parses as {ParsedOperator(row.Spelling)?.ToString() ?? "nothing"}");
+        }
+
+        var rows = roster.SelectMany(e => e.Value.Image.Where(r => r.Collection != null).Select(r => $"{e.Key} × {r.Collection}"));
+        problems.AddRange(Roster.TotalityProblems("AugmentedOperators' collection rows", ClassifiedCollectionPairs(), rows));
+        AssertNoProblems(problems, "every operator has a scalar row or names why not, and the collection rows are the pairs Classify mutates in place");
+
+        // Literals, not the roster again: the 12 scalar operators and Classify's 7 arms.
+        roster.SelectMany(e => e.Value.Image).Count(r => r.Collection == null).Should().Be(12);
+        ClassifiedCollectionPairs().Should().HaveCount(7);
+        roster.Where(e => e.Value.Image.Count == 0).Select(e => e.Key).Should().BeEquivalentTo(new[]
+        {
+            AssignmentOperator.Assign, AssignmentOperator.NullCoalesceAssign, AssignmentOperator.MatMulAssign,
+        });
+    }
+
+    /// <summary>The universe: each assignment-target shape, a member access refined by every attribute-store member × each receiver InitBody hosts.</summary>
+    internal static IEnumerable<AugmentedTargetKey> AugmentedTargetUniverse()
+        => NameResolutionRosters.AssignmentTargetShapes.Keys.SelectMany(shape => shape != "MemberAccess"
+            ? new[] { new AugmentedTargetKey(shape) }
+            : Enum.GetValues<AttributeReceiver>()
+                .Where(r => NameResolutionRosters.AttributeStoreBodies[NameResolutionRosters.AttributeBodyKey(r, ReadPosition.InitBody)].Generated)
+                .SelectMany(r => NameResolutionRosters.AttributeStoreMembers.Keys.Select(m => new AugmentedTargetKey(shape, r, m))));
+
+    [Fact]
+    public void AugmentedInitTargetsRoster_IsTotalOverTheTargetShapesMembersAndInitReceivers()
+    {
+        var roster = NameResolutionRosters.AugmentedInitTargets;
+        var problems = Roster.TotalityProblems("AugmentedInitTargets", AugmentedTargetUniverse(), roster.Keys).ToList();
+        problems.AddRange(roster.Where(e => !e.Value.Generated && string.IsNullOrWhiteSpace(e.Value.Reason)).Select(e => $"AugmentedInitTargets: {e.Key} is out with no reason"));
+        AssertNoProblems(problems, "every target shape × member × InitBody receiver is generated or out with its reason");
+
+        // A literal, not the roster again: an `Out` entry is still total, so totality cannot see a re-prune.
+        AugmentedTargetUniverse().Should().HaveCount(24);
+        roster.Where(e => e.Value.Generated).Select(e => e.Key.ToString()).Should().BeEquivalentTo(new[]
+        {
+            "IndexAccess", "TupleLiteral",
+            "MemberAccess × SelfDot × InstanceField", "MemberAccess × SelfDot × InstanceProperty",
+            "MemberAccess × TypeName × StaticField", "MemberAccess × TypeName × StaticProperty",
         });
     }
 
