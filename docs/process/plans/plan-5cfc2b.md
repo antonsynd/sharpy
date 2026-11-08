@@ -59,7 +59,7 @@ Emitted C#: event cell `this.Pinged = …OnPing; this.Pinged = …OnPong;`; `??=
 - **Lane / reach:** silent-wrong · program. **Fidelity row:** "Value of an expression; stdout of print" (COMPARED).
 - **Standing harness that should have caught it:** the name-resolution differential, axis 8 (`NameResolutionDifferentialTests.Axes.cs:1124`); it caught the `+=` cell (allowlist row `store/attribute/SelfDot/InstanceField/Augmented/InitBody SilentWrong # #2439`) but its product (`Axes.cs:1133`) has no operator, host or nesting axis and its Augmented × InitBody loop covers only `AttributeFormMembers` = {InstanceField, StaticField} (`Axes.cs:1126`).
 - **Generator:** EXISTS (charter §3.20p, §6); Phase 1 extends axis 8 before any hand fixture; hand fixtures cover only the three values the generator cannot render in python: `??=`, event `+=`/`-=`, gated `@=`.
-- **Owner rulings:** R-LL (a) (linked above); **D3 (a)** ruled 2026-11-08.
+- **Owner rulings:** R-LL (a) (linked above); D3 ruled (a).
 
 ## Adversarial Review (pre-mortem)
 
@@ -81,7 +81,7 @@ Emitted C#: event cell `this.Pinged = …OnPing; this.Pinged = …OnPong;`; `??=
 
 Add a product `AttributeAugmentedProduct()`: host × position × target × slot family {scalar, collection} at `InitBody`, plus a `MethodBody` control at (class, Top) per target. Add a cell builder that hosts the cell as `class H:` / `struct H:` / `@dataclass class H:`, and a fed-failure check (`AttributeStoreFedFailures`' pattern) so a product tuple without a cell fails the sweep. **Size:** 5 MustRun targets + 1 refusal, with 2 slot families on the two field targets = 8 per (host × position) → 48 cells + 8 method-body controls = **56** (an estimate; the generated count is measured and recorded). `CellBudget` (`NameResolutionDifferentialTests.cs:151`, 8900; pool 8889 @ 87ac3853e per the #2439 drain comment) is raised to the measured pool after Phase 1; the commit body records base pool, generated count and new budget. The budget is a ceiling (`pool.Count > CellBudget`, `:705`) and cannot catch an over-estimate; the fed-failure check catches a missing cell.
 
-**D3 — RULED (a), owner 2026-11-08 "your rec": the `self.<@static> op=` InitBody row.** After D1, `store/attribute/SelfDot/StaticField/Augmented/InitBody` (allowlist, today `Ice # #2435`) takes the method-body route and prints python's-wrong `12` (`…/MethodBody SilentWrong # #2435`). Options:
+**D3 — RULED (a), owner 2026-11-08: the `self.<@static> op=` InitBody row.** After D1, `store/attribute/SelfDot/StaticField/Augmented/InitBody` (allowlist, today `Ice # #2435`) takes the method-body route and prints python's-wrong `12` (`…/MethodBody SilentWrong # #2435`). Options:
 - **(a, recommended)** Re-pin the row `Ice` → `SilentWrong`, still citing #2435, lane token `missing-refusal` like its `…/MethodBody` twin, in the fixing commit; InitBody then agrees with MethodBody and P30's R-KU refusal drains both. Post the cell to #2435.
 - **(b)** Exclude `@static` members from D1 to keep the ICE: a position-specific special case re-creating the divergence this contract forbids.
 - **(c)** Hold P85 until R-KU lands: breaks R-LT's order.
