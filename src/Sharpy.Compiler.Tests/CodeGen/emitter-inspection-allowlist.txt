@@ -103,21 +103,18 @@ RoslynEmitter.Expressions.Access.cs | type-read | GetExpressionType | 6 | cite=#
 RoslynEmitter.Expressions.Access.cs | type-read | GetInferredTypeArguments | 4 | cite=#2443 | reads a SemanticType via GetInferredTypeArguments (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
 RoslynEmitter.Expressions.Access.cs | type-read | GetNullConditionalOptionalWrap | 1 | cite=#2443 | reads a SemanticType via GetNullConditionalOptionalWrap (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
 RoslynEmitter.Expressions.Access.cs | name-lookup | predicate | 4 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
-RoslynEmitter.Expressions.Comprehensions.cs | type-name | GenericType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Comprehensions.cs | type-name | GenericType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.Comprehensions.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.Comprehensions.cs | type-name | UnknownType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
-RoslynEmitter.Expressions.Comprehensions.cs | type-name-compare | name-compare | 1 | cite=#2443 | compares a SemanticType's Name (`r.Name ==`/`is`) to pick a lowering; hand the type to TypeSyntaxMapper or read an IR node
 RoslynEmitter.Expressions.Comprehensions.cs | type-read | GetExpressionSemanticType | 7 | cite=#2443 | reads the recorded expression SemanticType to choose emission
 RoslynEmitter.Expressions.Literals.cs | type-name | BuiltinType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
-RoslynEmitter.Expressions.Literals.cs | type-name | GenericType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Literals.cs | type-name | GenericType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.Literals.cs | type-name | TupleType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
-RoslynEmitter.Expressions.Literals.cs | type-name | UnknownType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
-RoslynEmitter.Expressions.Literals.cs | type-name-compare | name-compare | 3 | cite=#2443 | compares a SemanticType's Name (`r.Name ==`/`is`) to pick a lowering; hand the type to TypeSyntaxMapper or read an IR node
 RoslynEmitter.Expressions.Literals.cs | type-read | GetExpressionSemanticType | 7 | cite=#2443 | reads the recorded expression SemanticType to choose emission
 RoslynEmitter.Expressions.Operators.cs | type-name | FunctionSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.Expressions.Operators.cs | type-read | GetConditionalBranchNarrowing | 1 | cite=#2443 | reads a SemanticType via GetConditionalBranchNarrowing (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
 RoslynEmitter.Expressions.Operators.cs | type-read | GetExpressionSemanticType | 3 | cite=#2443 | reads the recorded expression SemanticType to choose emission
-RoslynEmitter.Expressions.cs | type-name | BuiltinType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | BuiltinType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.cs | type-name | FunctionSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.Expressions.cs | type-name | GenericType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.cs | type-name | ModuleSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
@@ -128,7 +125,6 @@ RoslynEmitter.Expressions.cs | type-name | Symbol | 2 | cite=#2443 | names a Sym
 RoslynEmitter.Expressions.cs | type-name | TypeSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.Expressions.cs | type-name | UnknownType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.cs | type-name | VariableSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
-RoslynEmitter.Expressions.cs | type-name-compare | name-compare | 2 | cite=#2443 | compares a SemanticType's Name (`r.Name ==`/`is`) to pick a lowering; hand the type to TypeSyntaxMapper or read an IR node
 RoslynEmitter.Expressions.cs | type-read | GetArgumentSlotCast | 1 | cite=#2443 | reads a SemanticType via GetArgumentSlotCast (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
 RoslynEmitter.Expressions.cs | type-read | GetExpressionSemanticType | 5 | cite=#2443 | reads the recorded expression SemanticType to choose emission
 RoslynEmitter.Expressions.cs | type-read | GetExpressionType | 3 | cite=#2443 | reads the recorded expression SemanticType to choose emission

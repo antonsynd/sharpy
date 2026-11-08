@@ -30,18 +30,9 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
         // new Sharpy.List<T> { elem1, elem2, elem3 }
-        TypeSyntax elementType;
-        if (GetExpressionSemanticType(list) is GenericType listSemType &&
-            listSemType.Name == BuiltinNames.List &&
-            listSemType.TypeArguments.Count > 0 &&
-            listSemType.TypeArguments[0] is not UnknownType)
-        {
-            elementType = _typeMapper.MapSemanticType(listSemType.TypeArguments[0]);
-        }
-        else
-        {
-            elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        var elementType = _typeMapper.MapBuiltinTypeArguments(
+                GetExpressionSemanticType(list), BuiltinNames.List, arity: 1, requireKnownArguments: true)?[0]
+            ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         // E3 stack-collections (opt_stack_collections, #1057): a list literal the pass proved cannot
         // escape (its only use is as a for-statement iterator) emits as a raw array instead of the
@@ -81,21 +72,11 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateDictLiteral(DictLiteral dict)
     {
         // new System.Collections.Generic.Dictionary<K,V> { { key1, value1 }, { key2, value2 } }
-        TypeSyntax keyType, valueType;
-        if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
-            dictSemType.Name == BuiltinNames.Dict &&
-            dictSemType.TypeArguments.Count >= 2 &&
-            dictSemType.TypeArguments[0] is not UnknownType &&
-            dictSemType.TypeArguments[1] is not UnknownType)
-        {
-            keyType = _typeMapper.MapSemanticType(dictSemType.TypeArguments[0]);
-            valueType = _typeMapper.MapSemanticType(dictSemType.TypeArguments[1]);
-        }
-        else
-        {
-            keyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            valueType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        // Either argument Unknown -> both object.
+        var dictArguments = _typeMapper.MapBuiltinTypeArguments(
+            GetExpressionSemanticType(dict), BuiltinNames.Dict, arity: 2, requireKnownArguments: true);
+        var keyType = dictArguments?[0] ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        var valueType = dictArguments?[1] ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
 
@@ -162,18 +143,9 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
         // new Sharpy.Set<T> { elem1, elem2, elem3 }
-        TypeSyntax elementType;
-        if (GetExpressionSemanticType(set) is GenericType setSemType &&
-            setSemType.Name == BuiltinNames.Set &&
-            setSemType.TypeArguments.Count > 0 &&
-            setSemType.TypeArguments[0] is not UnknownType)
-        {
-            elementType = _typeMapper.MapSemanticType(setSemType.TypeArguments[0]);
-        }
-        else
-        {
-            elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        var elementType = _typeMapper.MapBuiltinTypeArguments(
+                GetExpressionSemanticType(set), BuiltinNames.Set, arity: 1, requireKnownArguments: true)?[0]
+            ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var setType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);
 
