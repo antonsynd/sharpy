@@ -1039,7 +1039,8 @@ public class DiagnosticBagTests
     public void Reported_IsThePolicyFreeReport_ProvenanceStamped()
     {
         var bag = new DiagnosticBag(warningsAsErrors: true,
-            new HashSet<string>(new[] { "SPY0452" }, StringComparer.OrdinalIgnoreCase)) { ErrorCap = 1 };
+            new HashSet<string>(new[] { "SPY0452" }, StringComparer.OrdinalIgnoreCase))
+        { ErrorCap = 1 };
         var other = new DiagnosticBag();
         other.Add(new CompilerDiagnostic("unused a", CompilerDiagnosticSeverity.Warning, 1, 1, Code: "SPY0451"));
         other.Add(new CompilerDiagnostic("unused b", CompilerDiagnosticSeverity.Warning, 2, 1, Code: "SPY0451"));

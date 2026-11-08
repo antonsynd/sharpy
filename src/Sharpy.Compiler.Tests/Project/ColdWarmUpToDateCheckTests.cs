@@ -361,80 +361,80 @@ def main() -> None:
                 break;
 
             case "warn_as_error":
-            {
-                var replay = Build(baseline, warnAsError: true);
-                UpToDate(replay).Should().BeTrue($"[{row}] policy is not an input: the build is up to date");
-                replay.Success.Should().BeFalse($"[{row}] the replayed warnings fail under --warn-as-error");
-                replay.OutputAssemblyPath.Should().BeNull($"[{row}] a failed build names no output (#2028)");
-                var cold = Cold(baseline, warnAsError: true);
-                cold.Success.Should().BeFalse($"[{row}] control: cold fails under the same policy");
-                Diagnostics(replay).Should().Be(Diagnostics(cold), $"[{row}] the replay is cold under the live policy");
-                break;
-            }
+                {
+                    var replay = Build(baseline, warnAsError: true);
+                    UpToDate(replay).Should().BeTrue($"[{row}] policy is not an input: the build is up to date");
+                    replay.Success.Should().BeFalse($"[{row}] the replayed warnings fail under --warn-as-error");
+                    replay.OutputAssemblyPath.Should().BeNull($"[{row}] a failed build names no output (#2028)");
+                    var cold = Cold(baseline, warnAsError: true);
+                    cold.Success.Should().BeFalse($"[{row}] control: cold fails under the same policy");
+                    Diagnostics(replay).Should().Be(Diagnostics(cold), $"[{row}] the replay is cold under the live policy");
+                    break;
+                }
 
             case "nowarn_lifted":
-            {
-                Diagnostics(twin).Should().NotContain("SPY0451", $"[{row}] control: --nowarn hides the warning");
-                var replay = Build(baseline);
-                UpToDate(replay).Should().BeTrue($"[{row}] policy is not an input: the build is up to date");
-                var cold = Cold(baseline);
-                Diagnostics(cold).Should().Contain("SPY0451", $"[{row}] control: cold without --nowarn warns");
-                Diagnostics(replay).Should().Be(Diagnostics(cold),
-                    $"[{row}] the record is policy-free, so the lifted warning reappears");
-                replay.Success.Should().Be(cold.Success);
-                break;
-            }
+                {
+                    Diagnostics(twin).Should().NotContain("SPY0451", $"[{row}] control: --nowarn hides the warning");
+                    var replay = Build(baseline);
+                    UpToDate(replay).Should().BeTrue($"[{row}] policy is not an input: the build is up to date");
+                    var cold = Cold(baseline);
+                    Diagnostics(cold).Should().Contain("SPY0451", $"[{row}] control: cold without --nowarn warns");
+                    Diagnostics(replay).Should().Be(Diagnostics(cold),
+                        $"[{row}] the record is policy-free, so the lifted warning reappears");
+                    replay.Success.Should().Be(cold.Success);
+                    break;
+                }
 
             case "max_errors":
-            {
-                var replay = Build(baseline, warnAsError: true, maxErrors: 1);
-                UpToDate(replay).Should().BeTrue($"[{row}] policy is not an input: the build is up to date");
-                var cold = Cold(baseline, warnAsError: true, maxErrors: 1);
-                Diagnostics(cold).Should().Contain("SPY0905", $"[{row}] control: cold caps at one error");
-                Diagnostics(replay).Should().Be(Diagnostics(cold), $"[{row}] the replay is capped as cold is");
-                replay.Diagnostics.ErrorCount.Should().Be(1);
-                break;
-            }
+                {
+                    var replay = Build(baseline, warnAsError: true, maxErrors: 1);
+                    UpToDate(replay).Should().BeTrue($"[{row}] policy is not an input: the build is up to date");
+                    var cold = Cold(baseline, warnAsError: true, maxErrors: 1);
+                    Diagnostics(cold).Should().Contain("SPY0905", $"[{row}] control: cold caps at one error");
+                    Diagnostics(replay).Should().Be(Diagnostics(cold), $"[{row}] the replay is capped as cold is");
+                    replay.Diagnostics.ErrorCount.Should().Be(1);
+                    break;
+                }
 
             case "consumer_csharp":
-            {
-                var cold = Cold(baseline);
-                Generated(twin).Should().NotBeEmpty($"[{row}] the replay serves C#");
-                Generated(twin).Should().Equal(Generated(cold),
-                    $"[{row}] --emit-cs-to / --emit-csharp on an up-to-date build write what cold writes");
-                twin.OutputAssemblyPath.Should().Be(cold.OutputAssemblyPath,
-                    $"[{row}] F4: --emit-csharp writes beside the output path, as cold's");
-                break;
-            }
+                {
+                    var cold = Cold(baseline);
+                    Generated(twin).Should().NotBeEmpty($"[{row}] the replay serves C#");
+                    Generated(twin).Should().Equal(Generated(cold),
+                        $"[{row}] --emit-cs-to / --emit-csharp on an up-to-date build write what cold writes");
+                    twin.OutputAssemblyPath.Should().Be(cold.OutputAssemblyPath,
+                        $"[{row}] F4: --emit-csharp writes beside the output path, as cold's");
+                    break;
+                }
 
             case "liveness":
-            {
-                File.Delete(other);
-                var removed = Config(area, new[] { lib, main });
-                var rebuilt = AssertRebuiltAsCold(row, removed, coldLast: false);
-                rebuilt.Success.Should().BeTrue();
-                var again = Build(removed);
-                UpToDate(again).Should().BeTrue(
-                    $"[{row}] the removed file's stale hash is inert: the next no-change build is up to date");
-                Diagnostics(again).Should().Be(Diagnostics(rebuilt));
-                break;
-            }
+                {
+                    File.Delete(other);
+                    var removed = Config(area, new[] { lib, main });
+                    var rebuilt = AssertRebuiltAsCold(row, removed, coldLast: false);
+                    rebuilt.Success.Should().BeTrue();
+                    var again = Build(removed);
+                    UpToDate(again).Should().BeTrue(
+                        $"[{row}] the removed file's stale hash is inert: the next no-change build is up to date");
+                    Diagnostics(again).Should().Be(Diagnostics(rebuilt));
+                    break;
+                }
 
             case "pre_w16_cache":
-            {
-                DoctorCache(area, root => root.Remove("LastBuild").Should().BeTrue($"[{row}] the record exists"));
-                var log = new InfoCapturingLogger();
-                var perUnit = Build(baseline, logger: log);
-                UpToDate(perUnit).Should().BeFalse($"[{row}] a cache without the record is not up to date");
-                perUnit.Success.Should().BeTrue();
-                log.InfoMessages.Should().Contain(EmissionSkipped,
-                    $"[{row}] the per-unit path replays Phase 7 (W1.3), the record's second write site");
-                var again = Build(baseline);
-                UpToDate(again).Should().BeTrue($"[{row}] the replay-path save wrote the record");
-                Diagnostics(again).Should().Be(Diagnostics(perUnit),
-                    $"[{row}] the replay equals the build that wrote the record");
-                break;
-            }
+                {
+                    DoctorCache(area, root => root.Remove("LastBuild").Should().BeTrue($"[{row}] the record exists"));
+                    var log = new InfoCapturingLogger();
+                    var perUnit = Build(baseline, logger: log);
+                    UpToDate(perUnit).Should().BeFalse($"[{row}] a cache without the record is not up to date");
+                    perUnit.Success.Should().BeTrue();
+                    log.InfoMessages.Should().Contain(EmissionSkipped,
+                        $"[{row}] the per-unit path replays Phase 7 (W1.3), the record's second write site");
+                    var again = Build(baseline);
+                    UpToDate(again).Should().BeTrue($"[{row}] the replay-path save wrote the record");
+                    Diagnostics(again).Should().Be(Diagnostics(perUnit),
+                        $"[{row}] the replay equals the build that wrote the record");
+                    break;
+                }
 
             case "symbols_deleted":
                 File.Delete(SymbolsPath(area));
