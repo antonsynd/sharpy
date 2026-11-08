@@ -1028,4 +1028,37 @@ public class DiagnosticBagTests
         var hints = bag.GetHints();
         Assert.Single(hints);
     }
+
+    /// <summary>
+    /// <see cref="DiagnosticBag.Reported"/> is the report before this bag's policy (#2468): a warning the
+    /// bag suppresses, promotes or drops past its cap is still reported as the warning it was, with its
+    /// provenance stamp, so a replay through a bag with another policy yields what that policy makes of
+    /// it. Positive control: the bag's own contents do show the policy.
+    /// </summary>
+    [Fact]
+    public void Reported_IsThePolicyFreeReport_ProvenanceStamped()
+    {
+        var bag = new DiagnosticBag(warningsAsErrors: true,
+            new HashSet<string>(new[] { "SPY0452" }, StringComparer.OrdinalIgnoreCase)) { ErrorCap = 1 };
+        var other = new DiagnosticBag();
+        other.Add(new CompilerDiagnostic("unused a", CompilerDiagnosticSeverity.Warning, 1, 1, Code: "SPY0451"));
+        other.Add(new CompilerDiagnostic("unused b", CompilerDiagnosticSeverity.Warning, 2, 1, Code: "SPY0451"));
+        other.Add(new CompilerDiagnostic("silenced", CompilerDiagnosticSeverity.Warning, 3, 1, Code: "SPY0452"));
+
+        using (bag.BeginPhaseScope(CompilerPhase.TypeChecking))
+            bag.Merge(other);
+
+        Assert.Equal(new[] { "SPY0451", "SPY0905" }, bag.GetAll().Select(d => d.Code).ToArray());
+        Assert.True(bag.GetAll()[0].IsError);
+
+        var reported = bag.Reported;
+        Assert.Equal(new[] { "SPY0451", "SPY0451", "SPY0452" }, reported.Select(d => d.Code).ToArray());
+        Assert.All(reported, d => Assert.Equal(CompilerDiagnosticSeverity.Warning, d.Severity));
+        Assert.All(reported, d => Assert.Equal(CompilerPhase.TypeChecking, d.Phase));
+        Assert.All(reported, d => Assert.Null(d.Data));
+
+        var replay = new DiagnosticBag();
+        replay.AddRange(reported);
+        Assert.Equal(3, replay.WarningCount);
+    }
 }
