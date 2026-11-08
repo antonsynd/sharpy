@@ -1701,6 +1701,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// (PR #2480's gate, run 42428774727) held the previous literals with that fixture absent, and PR #2483's run
     /// 42435086456 @ df0030a06 showed exactly +1 on each of the four; no lexer/parser/formatter/LSP change (#2477 is
     /// Core-only).
+    /// #2439 __init__ augmented store (2026-11-08): +1 on the four comment pins only — growth, from the new fixture stem
+    /// class_with_init/init_augmented_store_2439 (P85's corpus change, with experimental/init_augmented_matmul_2439 and its
+    /// ungated twin); control: ac9fe9170 with the three stems absent held the previous literals (16953/0); P85 changed no
+    /// lexer/parser/formatter/LSP code (one constructor-emitter predicate).
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
@@ -1708,10 +1712,10 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             [(Identity, RangeWhole)] = 486,
             [(Identity, RangeLine)] = 482,
             [(Identity, OnType)] = 482,
-            [(Comment, Full)] = 1654,
-            [(Comment, RangeWhole)] = 1654,
-            [(Comment, RangeLine)] = 1650,
-            [(Comment, OnType)] = 1650,
+            [(Comment, Full)] = 1655,
+            [(Comment, RangeWhole)] = 1655,
+            [(Comment, RangeLine)] = 1651,
+            [(Comment, OnType)] = 1651,
             [(Crlf, Full)] = 486,
             [(Crlf, RangeWhole)] = 486,
             [(Crlf, RangeLine)] = 482,
@@ -2841,7 +2845,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             [Identity] = 9,  // 12/138 (8.70%)
             [Comment] = 6,   // 2/34 (5.88%)
-            [Wide] = 54,     // 2484/4684 (53.03%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
+            // 2731/5031 (54.28%) @ ac9fe9170 + P85's fixtures (#2439) — was 54 (2484/4684, 53.03% @ 17aba6fb6, P50, owner ruling
+            // 2026-10-13); corpus growth only: the same compiler without the three stems measures 2542/4828 (52.65%), the one sampled-in
+            // stem class_with_init/init_augmented_store_2439 adds 203 cells with work and declines 189 (single lines inside a long
+            // __init__ body, refused by construction on this twin), and P85 changed no lexer/parser/formatter/LSP code.
+            [Wide] = 55,
         };
 
     /// <summary>
