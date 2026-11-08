@@ -114,6 +114,23 @@ public class ConstFoldPassTests
         }
     }
 
+    /// <summary>
+    /// P82 (#2443): an in-place collection mutation is a typed IR node (<c>IrCollectionMutation</c>),
+    /// and the shared rewriter descends into it, so the fold reaches its value: <c>xs += [2 + 3]</c>
+    /// still emits the mutator, with the folded element.
+    /// </summary>
+    [Fact]
+    public void Enabled_FoldsInsideCollectionMutationValue()
+    {
+        const string source = "def f() -> list[int]:\n    xs: list[int] = [1]\n    xs += [2 + 3]\n    return xs\n";
+
+        var cs = CompileCSharp(source, fold: true);
+
+        cs.Should().Contain(".Extend(", "the augmented assignment stays an in-place mutation");
+        cs.Should().NotContain("2 + 3", "the mutation's value is reached by the fold pass");
+        CompileCSharp(source, fold: false).Should().Contain("2 + 3", "the fold is the flag's doing");
+    }
+
     [Fact]
     public void NonFiniteDoubleResult_StaysUnfolded()
     {

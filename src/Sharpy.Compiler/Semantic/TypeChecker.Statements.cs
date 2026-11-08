@@ -421,15 +421,13 @@ internal partial class TypeChecker
             }
 
             // Collection-mutation path (#1682): validate the RHS against the mutator's Python
-            // contract and record the mutation — no InferBinaryOpType needed.
+            // contract — no InferBinaryOpType needed. The mutation itself is not recorded here: the
+            // lowering pass derives it from the same Classify over the target's recorded type
+            // (IrCollectionMutation, P82 #2443).
             if (classified is not null)
             {
-                if (targetType is not UnknownType && valueType is not UnknownType
-                    && !ValidateCollectionMutationRhs(classified, assignment, targetType, valueType))
-                {
-                    return;
-                }
-                _semanticInfo.SetAugmentedAssignMutation(assignment, classified.ClrName);
+                if (targetType is not UnknownType && valueType is not UnknownType)
+                    ValidateCollectionMutationRhs(classified, assignment, targetType, valueType);
                 return;
             }
 

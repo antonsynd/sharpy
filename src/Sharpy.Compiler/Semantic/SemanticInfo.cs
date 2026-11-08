@@ -193,13 +193,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MemberAccess, (ModuleSymbol Module, Symbol Member)> _moduleMemberResolutions =
         new(ReferenceEqualityComparer.Instance);
 
-    // #1428: augmented assignment mutation lowering — when an augmented assignment matches the
-    // Classify table, the emitter emits a mutation call (e.g. xs.Extend(ys)) instead of the
-    // default rebind. Keyed on the Assignment node; value is the CLR method name on the
-    // Sharpy.Core collection.
-    private readonly ConcurrentDictionary<Assignment, string> _augmentedAssignMutations =
-        new(ReferenceEqualityComparer.Instance);
-
     // #1519: default-interface dispatch — when a call dispatches to a default method on an
     // interface the class doesn't override, the emitter must cast through that interface.
     // Keyed on the FunctionCall node; value is the interface name (C# spelling, post-mangling).
@@ -1195,25 +1188,6 @@ public class SemanticInfo : ISemanticQuery
     public MatchArmLowering? GetMatchArmLowering(Pattern armPattern)
     {
         return _matchArmLowerings.TryGetValue(armPattern, out var lowering) ? lowering : null;
-    }
-
-    /// <summary>
-    /// Records that this augmented assignment should lower to a mutation call instead of the default
-    /// rebind (#1428). Set by the TypeChecker when the assignment matches
-    /// <see cref="AugmentedCollectionAssignment.Classify"/>.
-    /// </summary>
-    public void SetAugmentedAssignMutation(Assignment node, string clrMethodName)
-    {
-        Put(_augmentedAssignMutations, node, clrMethodName);
-    }
-
-    /// <summary>
-    /// Gets the mutation method name for an augmented assignment, or <c>null</c> when the assignment
-    /// keeps the default rebind semantics (flag off, or not a classified shape).
-    /// </summary>
-    public string? GetAugmentedAssignMutation(Assignment node)
-    {
-        return _augmentedAssignMutations.TryGetValue(node, out var method) ? method : null;
     }
 
     /// <summary>
@@ -2363,9 +2337,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._callTargets)
             MergeEntry(_callTargets, kvp, other);
-
-        foreach (var kvp in other._augmentedAssignMutations)
-            MergeEntry(_augmentedAssignMutations, kvp, other);
 
         foreach (var kvp in other._moduleAccessCrossingClassMembers)
             MergeEntry(_moduleAccessCrossingClassMembers, kvp, other);

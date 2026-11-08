@@ -65,6 +65,16 @@ internal abstract class IrTreeRewriter
                         : opaqueStatement;
                 }
 
+            case IrCollectionMutation mutation:
+                {
+                    // The target and value are foldable operands (P82 #2443): descend as the opaque
+                    // arms do, so an E3 pass reaches `xs += [2 + 3]`'s value.
+                    var children = RewriteChildren(mutation.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrCollectionMutation(mutation.ClrMethodName, mutation.Span, children)
+                        : mutation;
+                }
+
             default:
                 // Typed nodes (equality, index, member, lowered loop, scope guard, with-item, constant,
                 // stack array): the shared walk does not descend into them — conservative and rare, and a

@@ -100,6 +100,19 @@ internal sealed partial class LoweringPass
         if (scopeName != null)
             state.QualifiedNamePrefix.Add(scopeName);
 
+        // An augmented assignment on a mutable collection carries its in-place mutator on the IR
+        // node (P82 #2443, migrates _augmentedAssignMutations): the classifier the checker validated
+        // the RHS with, over the target's recorded type. Every other assignment stays opaque.
+        if (statement is Assignment assignment
+            && AugmentedCollectionAssignment.Classify(assignment, semanticInfo.GetExpressionType(assignment.Target))?.ClrName
+                is { } mutationMethod)
+        {
+            var mutation = new IrCollectionMutation(mutationMethod, SpanOf(assignment),
+                LowerChildren(assignment, semanticInfo, state));
+            state.Index[assignment] = mutation;
+            return mutation;
+        }
+
         var children = LowerChildren(statement, semanticInfo, state);
 
         if (scopeName != null)

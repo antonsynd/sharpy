@@ -81,3 +81,25 @@ internal sealed record IrWithItem(
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children => ImmutableArray.Create<IrNode>(ContextExpr);
 }
+
+/// <summary>
+/// A lowered augmented assignment on a mutable collection (<c>xs += ys</c>, <c>s |= t</c>,
+/// <c>d |= e</c>, …) that mutates in place rather than rebinding (#1428, #1614; P82 #2443 migrates
+/// <c>SemanticInfo._augmentedAssignMutations</c>). The pass builds it exactly when
+/// <c>AugmentedCollectionAssignment.Classify</c> names a mutator for the assignment and the target's
+/// recorded type; any other assignment stays an <see cref="IrOpaqueStatement"/>. The emitter reads
+/// <see cref="ClrMethodName"/> and emits <c>receiver.ClrMethodName(value)</c>.
+/// </summary>
+/// <param name="ClrMethodName">The CLR method name on the Sharpy.Core collection (e.g. <c>Extend</c>).
+/// A <c>string</c>, not the classifier's record, because code generation may not see Semantic types
+/// (<c>EmitterCarrierOnlyConformanceTests</c>).</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered target and value, in <c>GetChildNodes</c> order (totality).</param>
+internal sealed record IrCollectionMutation(
+    string ClrMethodName,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrStatement(Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}

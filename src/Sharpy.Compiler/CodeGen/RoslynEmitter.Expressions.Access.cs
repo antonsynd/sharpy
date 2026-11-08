@@ -2174,6 +2174,15 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The lowering-IR node of kind <typeparamref name="TIr"/> that <paramref name="ast"/> lowered to,
+    /// or <c>null</c> (P82 #2443). An index miss reads as "not this kind": a unit context built over
+    /// <c>IrCompilation.Empty</c> has no index, and keeps the absent-fact path a missing
+    /// <c>SemanticInfo</c> entry used to give.
+    /// </summary>
+    private TIr? IrNodeFor<TIr>(Node ast) where TIr : IrNode
+        => _context.Ir.Index.TryGetValue(ast, out var node) ? node as TIr : null;
+
+    /// <summary>
     /// Reads the index-access lowering strategy from the lowering IR (E2 #1056, migrates
     /// <c>_indexAccessLowerings</c>). Returns <c>null</c> when the node has no
     /// <see cref="IrIndexAccess"/>, which the caller treats as the default native element access.

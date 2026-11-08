@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Parser.Ast;
@@ -168,6 +169,67 @@ public class IrTotalityTests
 
         Assert.Equal(astNodes.Count, index.Count);
         Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+    }
+
+    private static readonly string FixturesRoot = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "Sharpy.Compiler.Tests", "Integration", "TestFixtures"));
+
+    /// <summary>
+    /// P82 (#2443): an augmented assignment on a mutable collection lowers to an
+    /// <see cref="IrCollectionMutation"/> carrying its CLR mutator (migrates
+    /// <c>SemanticInfo._augmentedAssignMutations</c>), over the Phase 0 positive-control fixture:
+    /// the seven <c>Classify</c> arms on identifiers, the member and index targets, the narrowed
+    /// Optional / nullable receivers. The <c>n += 2</c> int rebind stays opaque, and the tree stays total.
+    /// </summary>
+    [Fact]
+    public void AugmentedCollectionMutation_LowersToIrCollectionMutation_AndStaysTotal()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "basics", "augmented_collection_mutation_targets.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+
+        // Totality: one IR node per AST expression/statement, keyed by identity.
+        var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+        foreach (var node in WalkExpressionsAndStatements(ast))
+        {
+            Assert.True(astNodes.Add(node), $"AST node visited more than once: {node.GetType().Name}");
+            Assert.True(index.ContainsKey(node), $"AST {node.GetType().Name} @ {SpanOf(node)} did not lower to an IR node");
+            Assert.Equal(SpanOf(node), index[node].Span);
+        }
+
+        Assert.Equal(astNodes.Count, index.Count);
+        Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+
+        // One IrCollectionMutation per mutating store, none for the int rebind.
+        var augmented = astNodes.OfType<Assignment>()
+            .Where(a => a.Operator != AssignmentOperator.Assign)
+            .ToList();
+        Assert.Equal(13, augmented.Count);
+        foreach (var assignment in augmented)
+        {
+            var isIntRebind = assignment.Target is Identifier { Name: "n" };
+            if (isIntRebind)
+                Assert.IsType<IrOpaqueStatement>(index[assignment]);
+            else
+                Assert.IsType<IrCollectionMutation>(index[assignment]);
+        }
+
+        var methods = CollectNodes<IrCollectionMutation>(ir)
+            .Select(m => m.ClrMethodName)
+            .OrderBy(m => m, StringComparer.Ordinal)
+            .ToArray();
+        string[] expected =
+        {
+            "DifferenceUpdate",
+            "Extend", "Extend", "Extend", "Extend", "Extend", "Extend",
+            "InPlaceRepeat",
+            "IntersectionUpdate",
+            "SymmetricDifferenceUpdate",
+            "Update", "Update",
+        };
+        Assert.Equal(expected, methods);
     }
 
     private static IReadOnlyList<T> CollectNodes<T>(IrCompilation ir) where T : IrNode
