@@ -1,0 +1,71 @@
+# Augmented assignment on a list/set/dict mutates in place (#1614): every Classify
+# arm on an identifier target, the member and index targets, narrowed Optional and
+# nullable receivers (local and member), and the int rebind control. Each mutation
+# prints through an alias, so a rebind instead of a mutation changes stdout.
+
+
+class Holder:
+    items: list[int]
+    o: list[int] | None
+
+    def __init__(self) -> None:
+        self.items = [1]
+        self.o = [1]
+
+    def add(self) -> None:
+        self.items += [2]
+
+    def add_narrowed(self) -> None:
+        if self.o is not None:
+            self.o += [2]
+
+
+def main() -> None:
+    xs = [1]
+    xs_alias = xs
+    xs += [2, 3]
+    xs *= 2
+    print(xs_alias)
+
+    s = {1, 2, 3, 4}
+    s_alias = s
+    s ^= {3, 9}
+    s -= {1}
+    s |= {2}
+    s &= {2, 4, 9}
+    print(sorted(s_alias))
+
+    d = {"a": 1}
+    d_alias = d
+    d |= {"b": 2}
+    print(d_alias)
+
+    h = Holder()
+    items_alias = h.items
+    h.add()
+    print(items_alias)
+
+    m: dict[str, list[int]] = {"k": [1]}
+    inner = m["k"]
+    m["k"] += [5]
+    print(inner)
+
+    opt: list[int]? = Some([1])
+    if opt is not None:
+        opt_alias = opt
+        opt += [2]
+        print(opt_alias)
+
+    u: list[int] | None = [7]
+    if u is not None:
+        u_alias = u
+        u += [8]
+        print(u_alias)
+
+    o_alias = h.o
+    h.add_narrowed()
+    print(o_alias)
+
+    n = 1
+    n += 2
+    print(n)

@@ -131,7 +131,7 @@ internal partial class ProjectCompiler
             .OrderBy(unit => unit.FilePath, StringComparer.Ordinal)
             .Select(unit => (unit.FilePath, unit.Ast!))
             .ToList();
-        var generatorIr = new LoweringPass().Lower(generatorModules, SemanticInfo, SymbolTable);
+        var generatorIr = new LoweringPass().Lower(generatorModules, SemanticInfo, _projectModel!.SemanticBinding, SymbolTable);
 
         foreach (var filePath in partition.GeneratorFiles)
         {

@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.IO;
 using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 using Sharpy.Compiler.Tests.Helpers;
@@ -168,6 +170,292 @@ public class IrTotalityTests
 
         Assert.Equal(astNodes.Count, index.Count);
         Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+    }
+
+    private static readonly string FixturesRoot = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "Sharpy.Compiler.Tests", "Integration", "TestFixtures"));
+
+    /// <summary>
+    /// P82 (#2443): an augmented assignment on a mutable collection lowers to an
+    /// <see cref="IrCollectionMutation"/> carrying its CLR mutator (migrates
+    /// <c>SemanticInfo._augmentedAssignMutations</c>), over the Phase 0 positive-control fixture:
+    /// the seven <c>Classify</c> arms on identifiers, the member and index targets, the narrowed
+    /// Optional / nullable receivers. The <c>n += 2</c> int rebind stays opaque, and the tree stays total.
+    /// </summary>
+    [Fact]
+    public void AugmentedCollectionMutation_LowersToIrCollectionMutation_AndStaysTotal()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "basics", "augmented_collection_mutation_targets.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+
+        // Totality: one IR node per AST expression/statement, keyed by identity.
+        var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+        foreach (var node in WalkExpressionsAndStatements(ast))
+        {
+            Assert.True(astNodes.Add(node), $"AST node visited more than once: {node.GetType().Name}");
+            Assert.True(index.ContainsKey(node), $"AST {node.GetType().Name} @ {SpanOf(node)} did not lower to an IR node");
+            Assert.Equal(SpanOf(node), index[node].Span);
+        }
+
+        Assert.Equal(astNodes.Count, index.Count);
+        Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+
+        // One IrCollectionMutation per mutating store, none for the int rebind.
+        var augmented = astNodes.OfType<Assignment>()
+            .Where(a => a.Operator != AssignmentOperator.Assign)
+            .ToList();
+        Assert.Equal(13, augmented.Count);
+        foreach (var assignment in augmented)
+        {
+            var isIntRebind = assignment.Target is Identifier { Name: "n" };
+            if (isIntRebind)
+                Assert.IsType<IrOpaqueStatement>(index[assignment]);
+            else
+                Assert.IsType<IrCollectionMutation>(index[assignment]);
+        }
+
+        var methods = CollectNodes<IrCollectionMutation>(ir)
+            .Select(m => m.ClrMethodName)
+            .OrderBy(m => m, StringComparer.Ordinal)
+            .ToArray();
+        string[] expected =
+        {
+            "DifferenceUpdate",
+            "Extend", "Extend", "Extend", "Extend", "Extend", "Extend",
+            "InPlaceRepeat",
+            "IntersectionUpdate",
+            "SymmetricDifferenceUpdate",
+            "Update", "Update",
+        };
+        Assert.Equal(expected, methods);
+    }
+
+    /// <summary>
+    /// P82 (#2443): a None-bodied lambda against a void delegate lowers its body to an
+    /// <see cref="IrElidedNoneBody"/> (migrates <c>SemanticInfo._lambdaBodyLowerings</c>), keyed on
+    /// the body: <c>f = lambda: None</c> → node; <c>g: () -> str | None = lambda: None</c> → none (the
+    /// return is not void, so <c>() => null</c>); <c>k = lambda: (None)</c> → node on the parenthesized
+    /// body, holding the inner <c>None</c>. The lambda itself stays opaque, its body child substituted
+    /// in place, and the tree stays total.
+    /// </summary>
+    [Fact]
+    public void NoneBodiedVoidLambda_LowersBodyToIrElidedNoneBody_AndStaysTotal()
+    {
+        const string source = """
+            def main():
+                f = lambda: None
+                g: () -> str | None = lambda: None
+                k = lambda: (None)
+                f()
+                k()
+                print(g() is None)
+            """;
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+
+        // Totality: one IR node per AST expression/statement, keyed by identity.
+        var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+        foreach (var node in WalkExpressionsAndStatements(ast))
+        {
+            Assert.True(astNodes.Add(node), $"AST node visited more than once: {node.GetType().Name}");
+            Assert.True(index.ContainsKey(node), $"AST {node.GetType().Name} @ {SpanOf(node)} did not lower to an IR node");
+            Assert.Equal(SpanOf(node), index[node].Span);
+        }
+
+        Assert.Equal(astNodes.Count, index.Count);
+        Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+
+        var lambdas = astNodes.OfType<LambdaExpression>()
+            .OrderBy(l => SpanOf(l).Start)
+            .ToList();
+        Assert.Equal(3, lambdas.Count);
+        var (f, g, k) = (lambdas[0], lambdas[1], lambdas[2]);
+
+        // f: the bare None body is the node, and it is the lambda's body child.
+        var fBody = Assert.IsType<IrElidedNoneBody>(index[f.Body]);
+        Assert.Empty(fBody.Children);
+        Assert.Contains(index[f].Children, child => ReferenceEquals(child, fBody));
+
+        // g: a value-returning slot keeps its body.
+        Assert.IsType<NoneLiteral>(g.Body);
+        Assert.IsType<IrOpaqueExpression>(index[g.Body]);
+
+        // k: the node keys on the parenthesized body and holds the inner None's node.
+        var parenthesized = Assert.IsType<Parenthesized>(k.Body);
+        var kBody = Assert.IsType<IrElidedNoneBody>(index[k.Body]);
+        var inner = Assert.Single(kBody.Children);
+        Assert.Same(index[parenthesized.Expression], inner);
+        Assert.Contains(index[k].Children, child => ReferenceEquals(child, kBody));
+
+        Assert.Equal(2, CollectNodes<IrElidedNoneBody>(ir).Count);
+    }
+
+    /// <summary>
+    /// P82 (#2443): a payload store into a narrowed Optional slot lowers to an
+    /// <see cref="IrOptionalStoreWrap"/> on the assignment, and an unpacking element stored into a
+    /// narrowed Optional target to an <see cref="IrOptionalWrappedElement"/> holding the element's own
+    /// node (migrates <c>SemanticInfo._optionalStoreWraps</c>), over the Phase 0 positive-control
+    /// fixture: the seven wrapped assignments (<c>d = 5</c>, <c>x += 5</c>, <c>y ??= 42</c>,
+    /// <c>b.o ??= 3</c>, <c>arr[0] ??= 9</c>, <c>arr[1] ??= 8</c>, <c>w ??= a</c>) and the elements
+    /// <c>30</c>, <c>40</c>; the Optional-valued, nullable-slot and fresh-target controls stay opaque.
+    /// The index stays total (one node per key); the tree holds one extra node per wrapped element.
+    /// </summary>
+    [Fact]
+    public void OptionalStoreWrap_LowersToStoreWrapAndWrappedElement_AndStaysTotal()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "type_system", "optional_store_wrap_sites.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+        var astNodes = AssertIndexTotal(ast, index);
+
+        int[] wrappedLines = { 19, 23, 26, 32, 36, 37, 51 };
+        var assignments = astNodes.OfType<Assignment>().ToList();
+        foreach (var assignment in assignments)
+        {
+            if (wrappedLines.Contains(assignment.LineStart))
+            {
+                var wrap = Assert.IsType<IrOptionalStoreWrap>(index[assignment]);
+                Assert.Equal(SemanticType.Int, wrap.WrapAs.UnderlyingType);
+            }
+            else
+            {
+                Assert.IsType<IrOpaqueStatement>(index[assignment]);
+            }
+        }
+
+        Assert.Equal(wrappedLines.Length, CollectNodes<IrOptionalStoreWrap>(ir).Count);
+
+        // `p, q = 30, 40`: both elements wrap, each holding its own literal's node.
+        var unpack = assignments.Single(a => a.LineStart == 43);
+        foreach (var element in Assert.IsType<TupleLiteral>(unpack.Value).Elements)
+        {
+            var wrapped = Assert.IsType<IrOptionalWrappedElement>(index[element]);
+            Assert.IsType<IrOpaqueExpression>(Assert.Single(wrapped.Children));
+        }
+
+        // `g, k = Some(5), 1`: an Optional value and a fresh target, no element wrap.
+        var control = assignments.Single(a => a.LineStart == 46);
+        foreach (var element in Assert.IsType<TupleLiteral>(control.Value).Elements)
+            Assert.IsNotType<IrOptionalWrappedElement>(index[element]);
+
+        Assert.Equal(2, CollectNodes<IrOptionalWrappedElement>(ir).Count);
+        Assert.Empty(CollectNodes<IrOptionalWalrusStore>(ir));
+        Assert.Equal(astNodes.Count + 2, CountExpressionAndStatementNodes(ir));
+    }
+
+    /// <summary>
+    /// P82 (#2443, owner ruling D2 "S2"): a walrus rebinding a narrowed Optional slot with a payload
+    /// lowers to an <see cref="IrOptionalWalrusStore"/> at its own site, over the ruled-cell fixture.
+    /// All five walruses carry it; a walrus written as a tuple element (cells 1–3) is NOT an element
+    /// wrap (the key collision was the bug); cell 4's walrus is an unpacking element into the
+    /// narrowed <c>p</c>, so the index holds the element node with the walrus store as its child.
+    /// Cell 6 wraps elements whose own nodes are typed (a folded power, an index access).
+    /// </summary>
+    [Fact]
+    public void OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "type_system", "optional_walrus_tuple_element.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+        var astNodes = AssertIndexTotal(ast, index);
+
+        var walruses = astNodes.OfType<WalrusExpression>().OrderBy(w => SpanOf(w).Start).ToList();
+        Assert.Equal(5, walruses.Count);
+        for (var cell = 0; cell < walruses.Count; cell++)
+        {
+            var walrus = walruses[cell];
+            IrOptionalWalrusStore store;
+            if (cell == 3)
+            {
+                var element = Assert.IsType<IrOptionalWrappedElement>(index[walrus]);
+                store = Assert.IsType<IrOptionalWalrusStore>(Assert.Single(element.Children));
+                Assert.Equal(SemanticType.Int, element.WrapAs.UnderlyingType);
+            }
+            else
+            {
+                store = Assert.IsType<IrOptionalWalrusStore>(index[walrus]);
+            }
+
+            Assert.Equal(SemanticType.Int, store.WrapAs.UnderlyingType);
+            Assert.Single(store.Children);
+        }
+
+        // Cell 4's other element (`4`, into the narrowed `q`) wraps.
+        var unpacks = astNodes.OfType<Assignment>().Where(a => a.Target is TupleLiteral)
+            .OrderBy(a => SpanOf(a).Start).ToList();
+        Assert.Equal(2, unpacks.Count);
+        var literal = Assert.IsType<TupleLiteral>(AstHelper.UnwrapParenthesized(unpacks[0].Value));
+        Assert.IsType<IrOptionalWrappedElement>(index[literal.Elements[1]]);
+
+        // Cell 6 (`p, q = 2 ** 3, xs[-1]`): each wrapped element holds its own typed node, the
+        // folded power and the index access, so neither fact is hidden by the wrap.
+        var typed = Assert.IsType<TupleLiteral>(AstHelper.UnwrapParenthesized(unpacks[1].Value));
+        var power = Assert.IsType<IrOptionalWrappedElement>(index[typed.Elements[0]]);
+        Assert.IsType<IrConstant>(Assert.Single(power.Children));
+        var subscript = Assert.IsType<IrOptionalWrappedElement>(index[typed.Elements[1]]);
+        Assert.IsType<IrIndexAccess>(Assert.Single(subscript.Children));
+
+        Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count);
+        Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count);
+        Assert.Empty(CollectNodes<IrOptionalStoreWrap>(ir));
+        Assert.Equal(astNodes.Count + 4, CountExpressionAndStatementNodes(ir));
+    }
+
+    /// <summary>
+    /// P82 (#2443): precedence on an <see cref="Assignment"/> is mutation, then wrap. A narrowed
+    /// <c>list[int]?</c> receiver's <c>opt += [2]</c> has an Optional slot (so the augmented wrap
+    /// predicate alone would fire), but it mutates in place: <see cref="IrCollectionMutation"/>.
+    /// </summary>
+    [Fact]
+    public void NarrowedOptionalListAugmentedStore_IsACollectionMutation_NotAStoreWrap()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "basics", "augmented_collection_mutation_targets.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var astNodes = AssertIndexTotal(ast, ir.Index);
+
+        var narrowedOptional = astNodes.OfType<Assignment>()
+            .Single(a => a.Target is Identifier { Name: "opt" } && a.Operator == AssignmentOperator.PlusAssign);
+        Assert.Equal("Extend", Assert.IsType<IrCollectionMutation>(ir.Index[narrowedOptional]).ClrMethodName);
+        Assert.Empty(CollectNodes<IrOptionalStoreWrap>(ir));
+    }
+
+    /// <summary>
+    /// The index holds one node per AST expression/statement, keyed by identity, at its span. A
+    /// constant integer power lowers to a leaf <see cref="IrConstant"/> whose operands are folded away
+    /// and not lowered (<c>LoweringPass.TryLowerFoldedPower</c>), so the walk does not descend into it,
+    /// nor into a wrapped element holding one.
+    /// </summary>
+    private static HashSet<Node> AssertIndexTotal(Module ast, IrIndex index)
+    {
+        var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+
+        void Visit(Node parent)
+        {
+            foreach (var child in parent.GetChildNodes())
+            {
+                if (child is Expression or Statement)
+                {
+                    Assert.True(astNodes.Add(child), $"AST node visited more than once: {child.GetType().Name}");
+                    Assert.True(index.ContainsKey(child), $"AST {child.GetType().Name} @ {SpanOf(child)} did not lower to an IR node");
+                    Assert.Equal(SpanOf(child), index[child].Span);
+                    if (index[child] is IrConstant or IrOptionalWrappedElement { Children: [IrConstant] })
+                        continue;
+                }
+
+                Visit(child);
+            }
+        }
+
+        Visit(ast);
+        Assert.Equal(astNodes.Count, index.Count);
+        return astNodes;
     }
 
     private static IReadOnlyList<T> CollectNodes<T>(IrCompilation ir) where T : IrNode

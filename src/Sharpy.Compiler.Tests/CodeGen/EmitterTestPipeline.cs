@@ -82,6 +82,7 @@ internal static class EmitterTestPipeline
         var ir = new LoweringPass().Lower(
             new[] { (sourceFilePath ?? "<test>", module) },
             semanticInfo,
+            semanticBinding,
             symbolTable);
 
         var context = new CodeGenContext(symbolTable, builtins)

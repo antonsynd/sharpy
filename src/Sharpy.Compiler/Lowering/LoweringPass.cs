@@ -37,14 +37,18 @@ internal sealed partial class LoweringPass
     /// caller supplies these in a deterministic (source-path-ordered) sequence so the resulting
     /// module order does not depend on enumeration order.</param>
     /// <param name="semanticInfo">The merged, project-level semantic facts.</param>
+    /// <param name="semanticBinding">The project's frozen symbol-to-type bindings: an INPUT the pass reads
+    /// a variable's declared slot from (<c>GetVariableType</c> of its root binding, as the checker's
+    /// <c>DeclaredBindingType</c> does), not a table (P82 #2443).</param>
     /// <param name="symbolTable">The global symbol table. Consumed by later migration phases; the
     /// v1 opaque lowering does not need it.</param>
     public IrCompilation Lower(
         IReadOnlyList<(string FilePath, Module Ast)> modules,
         SemanticInfo semanticInfo,
+        SemanticBinding semanticBinding,
         SymbolTable symbolTable)
     {
-        var state = new LoweringState();
+        var state = new LoweringState(semanticBinding);
 
         var irModules = ImmutableArray.CreateBuilder<IrModule>(modules.Count);
         foreach (var (filePath, ast) in modules)
@@ -99,6 +103,40 @@ internal sealed partial class LoweringPass
         };
         if (scopeName != null)
             state.QualifiedNamePrefix.Add(scopeName);
+
+        // An augmented assignment on a mutable collection carries its in-place mutator on the IR
+        // node (P82 #2443, migrates _augmentedAssignMutations): the classifier the checker validated
+        // the RHS with, over the target's recorded type. Every other assignment stays opaque.
+        if (statement is Assignment assignment
+            && AugmentedCollectionAssignment.Classify(assignment, semanticInfo.GetExpressionType(assignment.Target))?.ClrName
+                is { } mutationMethod)
+        {
+            var mutation = new IrCollectionMutation(mutationMethod, SpanOf(assignment),
+                LowerChildren(assignment, semanticInfo, state));
+            state.Index[assignment] = mutation;
+            return mutation;
+        }
+
+        // A payload store into a narrowed Optional slot re-wraps (R-T; P82 #2443, migrates
+        // _optionalStoreWraps): a plain, augmented or `??=` store to an identifier carries the slot on
+        // the statement; an unpacking from a tuple literal marks each element stored into a narrowed
+        // Optional target, which LowerExpression wraps when it reaches the element.
+        if (statement is Assignment storeAssignment)
+        {
+            if (OptionalStoreWrapOf(storeAssignment, semanticInfo, state) is { } wrapAs)
+            {
+                var storeWrap = new IrOptionalStoreWrap(wrapAs, SpanOf(storeAssignment),
+                    LowerChildren(storeAssignment, semanticInfo, state));
+                state.Index[storeAssignment] = storeWrap;
+                return storeWrap;
+            }
+
+            if (storeAssignment.Operator == AssignmentOperator.Assign
+                && storeAssignment.Target is TupleLiteral unpackTargets)
+            {
+                MarkWrappedTupleElements(unpackTargets.Elements, storeAssignment.Value, semanticInfo, state);
+            }
+        }
 
         var children = LowerChildren(statement, semanticInfo, state);
 
@@ -192,11 +230,164 @@ internal sealed partial class LoweringPass
             DictComprehension dictComp
                 => LowerComprehension(dictComp, BuiltinNames.Dict, dictComp.Clauses,
                     elementIsSpread: false, semanticInfo, state),
+            // A None-bodied lambda against a void delegate carries the body elision on the IR node
+            // (P82 #2443, migrates _lambdaBodyLowerings).
+            LambdaExpression lambda when IsElidedNoneBodyLambda(lambda, semanticInfo)
+                => LowerElidedNoneBodyLambda(lambda, semanticInfo, state),
+            // A walrus rebinding a narrowed Optional slot with a payload wraps at its own site
+            // (P82 #2443, migrates _optionalStoreWraps' walrus entries; owner ruling D2 "S2").
+            WalrusExpression walrus when OptionalWalrusWrapOf(walrus, semanticInfo, state) is { } walrusWrapAs
+                => new IrOptionalWalrusStore(walrusWrapAs, semanticInfo.GetExpressionType(walrus), SpanOf(walrus),
+                    LowerChildren(walrus, semanticInfo, state)),
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
                 LowerChildren(expression, semanticInfo, state)),
         };
+
+        // A tuple element an unpacking stores into a narrowed Optional target: its own node becomes
+        // the single child of the wrap, so a fact it carries (a walrus store, an index access, a
+        // foldable operation) stays in the tree (D2: one node per key, the element's nested).
+        if (state.WrappedElements.Remove(expression, out var elementWrapAs))
+            ir = new IrOptionalWrappedElement(elementWrapAs, ir.Type, ir.Span, ImmutableArray.Create<IrNode>(ir));
+
         state.Index[expression] = ir;
         return ir;
+    }
+
+    /// <summary>
+    /// The declared slot of a variable: its root binding's type, read binding-first as the checker's
+    /// <c>DeclaredBindingType</c> reads it (<c>SemanticBinding.GetVariableType</c>, else the symbol's
+    /// own <c>Type</c> when the binding is unset).
+    /// </summary>
+    private static SemanticType? DeclaredSlotOf(Symbol? symbol, SemanticInfo semanticInfo, LoweringState state)
+    {
+        if (symbol is not VariableSymbol variable)
+            return null;
+        var root = semanticInfo.GetRootBinding(variable);
+        var bound = state.SemanticBinding.GetVariableType(root);
+        return bound != SemanticType.Unknown ? bound : root.Type;
+    }
+
+    /// <summary>
+    /// D1 (a)/(b): the store into <paramref name="target"/> was recorded at a payload type under a
+    /// declared Optional slot — the checker's payload branch, the only one that leaves a non-Optional
+    /// type on the target under an Optional slot (an Unknown type is an error the store skipped).
+    /// </summary>
+    private static OptionalType? PayloadStoreWrapOf(Identifier target, SemanticInfo semanticInfo, LoweringState state)
+        => DeclaredSlotOf(semanticInfo.GetIdentifierSymbol(target), semanticInfo, state) is OptionalType slot
+            && semanticInfo.GetExpressionType(target) is not (OptionalType or UnknownType)
+            ? slot
+            : null;
+
+    /// <summary>
+    /// The Optional slot an assignment's stored value re-wraps into, or <c>null</c> (D1 (a), (c), (d)).
+    /// (a) A plain <c>=</c> to an identifier recorded at the payload type. (c) An augmented operator on
+    /// an identifier with an Optional slot (an un-narrowed one is refused, SPY0222; the in-place
+    /// collection mutation is decided before this). (d) A <c>??=</c> whose value is not itself
+    /// Optional, into an identifier's declared slot or a member/index target's recorded (declared)
+    /// type.
+    /// </summary>
+    private static OptionalType? OptionalStoreWrapOf(Assignment assignment, SemanticInfo semanticInfo, LoweringState state)
+    {
+        switch (assignment.Operator)
+        {
+            case AssignmentOperator.Assign:
+                return assignment.Target is Identifier plainTarget
+                    ? PayloadStoreWrapOf(plainTarget, semanticInfo, state)
+                    : null;
+
+            case AssignmentOperator.NullCoalesceAssign:
+                {
+                    var slot = assignment.Target is Identifier coalesceTarget
+                        ? DeclaredSlotOf(semanticInfo.GetIdentifierSymbol(coalesceTarget), semanticInfo, state)
+                        : semanticInfo.GetExpressionType(assignment.Target);
+                    return slot is OptionalType optionalSlot
+                        && semanticInfo.GetExpressionType(assignment.Value) is not OptionalType
+                        ? optionalSlot
+                        : null;
+                }
+
+            default:
+                return assignment.Target is Identifier augmentedTarget
+                    && DeclaredSlotOf(semanticInfo.GetIdentifierSymbol(augmentedTarget), semanticInfo, state)
+                        is OptionalType augmentedSlot
+                    ? augmentedSlot
+                    : null;
+        }
+    }
+
+    /// <summary>
+    /// D1 (b): pairs a tuple target with a spread-free tuple-literal value by position (recursing into
+    /// nested tuple targets, as the checker's unpacking does) and marks each value element whose
+    /// identifier target took a payload store under a narrowed Optional slot.
+    /// </summary>
+    private static void MarkWrappedTupleElements(
+        ImmutableArray<Expression> targets, Expression value, SemanticInfo semanticInfo, LoweringState state)
+    {
+        if (AstHelper.UnwrapParenthesized(value) is not TupleLiteral literal
+            || literal.Elements.Any(e => e is SpreadElement)
+            || targets.Any(t => t is StarExpression)
+            || literal.Elements.Length != targets.Length)
+        {
+            return;
+        }
+
+        for (var i = 0; i < targets.Length; i++)
+        {
+            switch (targets[i])
+            {
+                case Identifier target when PayloadStoreWrapOf(target, semanticInfo, state) is { } wrapAs:
+                    state.WrappedElements[literal.Elements[i]] = wrapAs;
+                    break;
+                case TupleLiteral nested:
+                    MarkWrappedTupleElements(nested.Elements, literal.Elements[i], semanticInfo, state);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// D1 (e): a walrus that rebinds a narrowed Optional slot with a payload — its recorded type is
+    /// the payload exactly on the checker's wrap branch (the slot on the void and the else branches,
+    /// Unknown on an error).
+    /// </summary>
+    private static OptionalType? OptionalWalrusWrapOf(WalrusExpression walrus, SemanticInfo semanticInfo, LoweringState state)
+        => DeclaredSlotOf(semanticInfo.GetWalrusSymbol(walrus), semanticInfo, state) is OptionalType slot
+            && semanticInfo.GetExpressionType(walrus) is not (OptionalType or UnknownType)
+            ? slot
+            : null;
+
+    /// <summary>
+    /// A lambda whose body, through grouping parentheses, is <c>None</c> and whose recorded type
+    /// returns void (<c>f = lambda: None</c>): the C# delegate is an <c>Action</c>, so the body is an
+    /// empty block (#1514). A lambda under a value-returning slot (<c>g: () -> str | None = lambda:
+    /// None</c>) keeps its body (<c>() => null</c>).
+    /// </summary>
+    private static bool IsElidedNoneBodyLambda(LambdaExpression lambda, SemanticInfo semanticInfo)
+        => AstHelper.UnwrapParenthesized(lambda.Body) is NoneLiteral
+            && semanticInfo.GetExpressionType(lambda) is Semantic.FunctionType { ReturnType: VoidType };
+
+    /// <summary>
+    /// Lowers a None-bodied void lambda (<see cref="IsElidedNoneBodyLambda"/>): the children lower as
+    /// for any expression, then the body's node is replaced, in place, by an
+    /// <see cref="IrElidedNoneBody"/> holding the same children, so the tree stays total and ordered.
+    /// </summary>
+    private static IrOpaqueExpression LowerElidedNoneBodyLambda(
+        LambdaExpression lambda, SemanticInfo semanticInfo, LoweringState state)
+    {
+        var children = LowerChildren(lambda, semanticInfo, state);
+        var body = state.Index[lambda.Body];
+        var elided = new IrElidedNoneBody(body.Type, body.Span, body.Children);
+        state.Index[lambda.Body] = elided;
+
+        var builder = children.ToBuilder();
+        for (var i = 0; i < builder.Count; i++)
+        {
+            if (ReferenceEquals(builder[i], body))
+                builder[i] = elided;
+        }
+
+        return new IrOpaqueExpression(lambda, semanticInfo.GetExpressionType(lambda), SpanOf(lambda),
+            builder.ToImmutable());
     }
 
     private static IrEqualityComparison LowerEqualityComparison(BinaryOp binOp, SemanticInfo semanticInfo, LoweringState state)
@@ -320,7 +511,19 @@ internal sealed partial class LoweringPass
     /// </summary>
     private sealed class LoweringState
     {
+        public LoweringState(SemanticBinding semanticBinding) => SemanticBinding = semanticBinding;
+
+        /// <summary>The pass input the declared slot of a variable is read from (<see cref="DeclaredSlotOf"/>).</summary>
+        public SemanticBinding SemanticBinding { get; }
+
         public Dictionary<Node, IrNode> Index { get; } = new(ReferenceEqualityComparer.Instance);
+
+        /// <summary>
+        /// Tuple-literal elements an unpacking assignment stores into a narrowed Optional target, marked
+        /// before the assignment's children lower and consumed when <see cref="LowerExpression"/> reaches
+        /// each one.
+        /// </summary>
+        public Dictionary<Expression, OptionalType> WrappedElements { get; } = new(ReferenceEqualityComparer.Instance);
         public Dictionary<WithItem, IrWithItem> WithItems { get; } = new(ReferenceEqualityComparer.Instance);
         public HashSet<FunctionDef> GeneratorFunctions { get; } = new(ReferenceEqualityComparer.Instance);
         public Dictionary<FunctionDef, string> GeneratorQualifiedNames { get; } = new(ReferenceEqualityComparer.Instance);

@@ -57,8 +57,12 @@ public class SemanticInfoMergeConformanceTests
     /// <c>ConcurrentDictionary</c> side-tables at the E2 resume (85 keyed on AST nodes, 3 on
     /// symbols). The emitter port moves facts into the lowering IR, so the count may only fall: a
     /// change that adds a table fails here, and a change that removes one lowers this pin with it.
+    /// 87: <c>_augmentedAssignMutations</c> moved onto <c>IrCollectionMutation</c> (P82 tranche 1).
+    /// 86: <c>_lambdaBodyLowerings</c> moved onto <c>IrElidedNoneBody</c> (P82 tranche 1).
+    /// 85: <c>_optionalStoreWraps</c> moved onto <c>IrOptionalStoreWrap</c>,
+    /// <c>IrOptionalWrappedElement</c> and <c>IrOptionalWalrusStore</c> (P82 tranche 1).
     /// </summary>
-    private const int MaximumSideTableFieldCount = 88;
+    private const int MaximumSideTableFieldCount = 85;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

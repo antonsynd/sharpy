@@ -1721,8 +1721,8 @@ internal partial class TypeChecker
                             || IsAcceptedVerdict(ClassifyStore(
                                 StorePosition.TupleElement, valueElemNode, elementType, payloadType))))
                     {
-                        if (declaredSlot is OptionalType wrapOpt)
-                            _semanticInfo.SetOptionalStoreWrap(valueElemNode!, wrapOpt);
+                        // The payload type on the rebinding is the element-wrap fact: the lowering
+                        // pass derives IrOptionalWrappedElement from it (P82 #2443).
                         elementType = ClassifyStore(
                             StorePosition.TupleElement, valueElemNode, elementType, payloadType) switch
                         {

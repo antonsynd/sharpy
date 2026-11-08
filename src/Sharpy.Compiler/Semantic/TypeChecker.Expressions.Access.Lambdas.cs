@@ -180,12 +180,6 @@ internal partial class TypeChecker
             _inLambdaBody = previousInLambdaBody;
         }
 
-        if (returnType is VoidType && UnwrapParenthesized(lambda.Body) is NoneLiteral)
-        {
-            _semanticInfo.SetLambdaBodyLowering(lambda.Body,
-                new LambdaBodyLowering(LambdaBodyLoweringKind.ElideNoneBody));
-        }
-
         _currentFunctionIsAsync = previousIsAsync;
         _currentFacts = savedFacts;
         _symbolTable.ExitScope();
