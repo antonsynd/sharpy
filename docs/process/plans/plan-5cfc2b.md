@@ -210,4 +210,90 @@ D1 gains a member-kind conjunct. The only fact on hand is `SemanticInfo.GetMembe
 - [x] Phase 2 T1: D1 conjunct at `Constructors.cs:140`, every `#2439` allowlist row deleted, D3 (a) re-pin (D1-revert mutation recorded) — implementer — blocked by Phase 1 T2
 - [x] Regen: `regenerate_spy_stdlib.sh` + snapshot regen, diff read as findings (predicted: no movement) — implementer — blocked by Phase 2 T1
 - [x] Phase 2 T2: `init_augmented_store_2439` + experimental `@=`/`defer` fixtures and the ungated twin — implementer — blocked by Phase 2 T1
-- [ ] Gate: `/ci-gate` on the pushed tip, PR — lead — blocked by every task above
+- [x] Gate: `/ci-gate` on the pushed tip, PR — lead — blocked by every task above (PR #2504, merge 8d0367e0a; `84015/0/9 @ 210570a26 (measured, run 42524091317)`)
+
+## Implementation Verification Record
+
+**Plan:** `docs/process/plans/plan-5cfc2b.md` (stamp: PASS WITH CORRECTIONS; Adequacy: CLASS)
+**Tier:** full (c) — Agents 1–4 (contract §12). Deviation: the session had no Agent tool, so the lead ran all four auditor briefs in sequence, in one context; Agent 5 was not spawned (the fixtures' python claims were checked with python3 directly).
+**Branch:** `claude/p85-verify`
+**Scope:** `be11fca77..8d0367e0a` (base = parent of e5f6c26eb; 6 implementation commits e5f6c26eb, a80b65996, ea19a9749, ac9fe9170, 6e2f83b26, 210570a26; 0 remediation commits; the range also carries the unrelated merge 4d22e0007 (#2502: `docs/deviations.yaml`, oracle ledger), which is outside this audit)
+**Verified on:** 2026-11-08
+
+### Completeness (Agent 1)
+
+| Status | Count |
+|--------|-------|
+| DONE (evidence cited) | 14 |
+| Was PARTIAL (now fixed) | 0 |
+| Was MISSING (now fixed) | 0 |
+| DIVERGED (acceptable, why) | 1 |
+| Unresolved | 0 |
+
+- DONE: the `AugmentedOperators` and `AugmentedInitTargets` rosters plus their two totality facts (`Rosters.cs`); the product, cells, fed-failure check and `CellBudget` 8945 (`Axes.cs`; pool 8889 → 8945 = +56, matching D2's 56); M1/M1b/M1c/M2/M3 recorded in the a80b65996/ea19a9749 bodies; the D1 conjunct with its #2439 comment (`Constructors.cs:145`); 0 `#2439` allowlist rows; the D3 row re-pinned `SilentWrong # #2435 missing-refusal`; the D1-revert record in the ac9fe9170 body; the regen record with zero files moved; the main fixture (3 hosts × 12 scalar + str `+=` + 7 collection arms + an aliased list + `??=` absent/present + event `+=`/`+=`/`-=`, plus the `@suppress` and before-`super().__init__()` routes); the experimental `@=` + `defer` fixture with `.features`; the ungated SPY0331 twin (`!count 2`); LSP pins re-pinned with controls; the D3 move posted on #2435 (2026-11-08T21:32Z); the verify-plan warnings 2 (aliased list, `is src` → True) and 3 (`//=`/`%=` on −20) addressed in both roster and fixture.
+- DIVERGED, accepted: `SampledRangeLineCeilingPercent[Wide]` 54 → 55 (not predicted by the plan; owner ruling D5 (a), corpus growth from one sampled-in stem, controlled at ac9fe9170 with the stems absent).
+- Census deltas agree with the product: Store × MustRefuse × kind:SPY0225 28 → 35 (+7 tuple cells), Store × MustRun × N7 18 → 67 (+49 = 56 − 7).
+
+Issues to Close:
+- **#2439.** Criterion (a): every §Current-State top cell prints python's value under `sharpyc run`. Re-run @ 8d0367e0a with the 15 original probes (`lanes/p85/{ops_class,ops_struct,ops_dataclass,t_coll,t_coll2,t_prop,t_coalesce,t_event,t_matmul (--enable-feature matmul),t_static_type,t_index,t_deep,t_tuple,t_static_self,t_struct_mixed}.spy`): each prints the python/nested column. The values are `27 13 140 2.5 2 6 32 8 15 9 12 8 abcd [1, 2, 3]` on all three hosts; the collections; `12 20`; `5 3`; `ping`/`pong`; `13`; `12`; `[10, 2] {'a': 7}`; `12`; SPY0225; `12` (D3); and `2`/`14`. Criterion (b): `grep -c '#2439'` on the allowlist → 0 @ 8d0367e0a. Criterion (c): the sweep and the `init_augmented*` fixtures are green in the gate `84015/0/9 @ 210570a26 (measured, run 42524091317)`, whose "Sweep name-resolution-differential" step is a success. Criterion (d): the D1-revert counts are in the ac9fe9170 body and reproduced here (below). **CLOSEABLE @ 8d0367e0a.**
+
+### Regressions (Agent 2)
+
+- **Baseline @ HEAD:** `84015/0/9 @ 210570a26 (measured, run 42524091317)`. The merge 8d0367e0a differs from 210570a26 only by #2502's `docs/deviations.yaml` and `build_tools/cpython_oracle/ledger.yaml`. Build @ 8d0367e0a succeeds with 0 warnings. `format whitespace --verify-no-changes` exits 0 @ 8d0367e0a.
+- **Post-remediation @ FINAL:** no remediation, so FINAL = HEAD for code; the round's only commit is this record.
+- **Regressions found (red @ HEAD, green @ BASE):** 0. The gate has 0 failed.
+- **Pre-existing reds (red at both):** 0.
+- **Expectation changes in range:** 0 `.expected` modified, 0 `.skip` added. Added: 2 `.expected` and 1 `.error`.
+- **Sweeps @ 210570a26 (run 42524091317):** interop-conformance, differential-execution, format-spec, name-resolution, formatter-emit-invariance and metamorphic-corpus are all success. The "Stdlib .spy compile + staleness gates" job (spy-stdlib C# and spy-test C# staleness) is success.
+- **Allowlist delta:** name-resolution: −1 R-LL `#2439` row; +9 then −9 Phase 1 `#2439` rows; 1 re-pinned (D3); +7 `#2503` rows; 0 rows without an issue. code-action-shape: 15 digest re-pins, controlled. FormattingRouteParity: 4 comment pins +1 each; wide ceiling 54 → 55 (D5).
+- **Representative execution @ 8d0367e0a (`sharpyc run`):** `init_augmented_store_2439` and `init_augmented_matmul_2439` (with `--enable-feature matmul --enable-feature defer`) match their `.expected` byte for byte; the ungated twin emits both SPY0331s.
+
+### Attribution (control run)
+
+- **Control @ BASE:** `83975/0/9 @ 64e17a7f2 (measured, run 42498119732)`. No compiler source changed between 64e17a7f2 and be11fca77. The +40 passes at HEAD are the range's new facts, cells and fixtures; no red needed attribution.
+
+### Class contract status (Agents 3 + 4)
+
+- **Violated contract:** an augmented store `t op= v` evaluates `t = t op v` (with the collection mutator, `??=` and event semantics) identically at every statement position (plan).
+- **Standing harness:** the name-resolution differential, axis 8, extended by this plan (+56 cells: host × position × target × operator). Green @ 210570a26 in the gate and 252/0/0 @ 8d0367e0a (measured, filtered `DisplayName~init_augmented|FullyQualifiedName~NameResolutionDifferential`).
+- **Allowlist delta:** −10 `#2439` (drained), +7 `#2503` (filed, labelled), 1 re-pinned per D3, 0 stale.
+- **Cells probed / passed / failed:** 30 / 30 / 0 in contract (matrix source: the plan). That is the 15 Current-State top cells and 15 sibling probes over the plan's matrix plus two axis changes:
+  - **Axis 1, operand form** (the bypassed arm carried the parameter mapping, `FlushIntoStatement` hoisting and the Optional-delegate conversion): parameter `27`; C#-keyword parameters `checked`/`lock` `54`; comprehension `[1, 0, 2, 4] 7`; walrus `24 4`; empty literals `[1] {'k': 1}`; f-string then `*=` `a3-6a3-6`; `??=` with a method group onto `Ping | None` (`ping`/`pong`, equal to its nested twin).
+  - **Axis 2, host form:** generic `G[T]` `13 [5, 5]`; inherited field `2`; name-mangled `__p` `6`; nested class `80`; defaulted parameter `21`/`25`.
+  - **Entry route × operator family:** `@suppress` over a collection `*=` and `??=` `[1, 2, 1, 2] 2`; `defer` with event `+=` and `//=` `-3`/ping/pong; a store before `self.__init__(7)` (see the ledger: the operator is right, the order is not).
+  - Not reached: the LSP/warm route (the blast radius names neither), a multi-file base class, a property with a custom setter (already ledger row 2).
+- **Seam-or-arm verdicts:** 1 SEAM, 0 ARM. `GenerateConstructorBodyStatement` is `GenerateSuite`'s only generator-passing caller (`Constructors.cs:211`) and the only `self.<m>` store interceptor in CodeGen. The conjunct sits after all four entry routes. Rule 1b: `Name == BuiltinNames.*` count is 101 at both base and HEAD; Semantic/ and Lowering/ are untouched; no SemanticInfo carrier was added.
+- **Refusals by direction:** 0 newly emitted. D3 is ICE (SPY0908 CS0176) → SilentWrong, as ruled. List `*=` and gated `@=` go ICE/wrong → correct.
+
+### Guards mutation-tested (Agent 3)
+
+- **Red when broken:** the D1 revert was reproduced here in the shared tree, restored from a `cp` copy. Broken → red: 249/3/0 @ 8d0367e0a+mutation (measured). The 3 red are `init_augmented_store_2439`, `init_augmented_matmul_2439` and `NameResolutionDifferential_Sweep`, with "non-allowlisted 10, moved 1 (D3 row), python agreed 8945/8945" (log `dotnet-serialized-20261108-220721-1330.log`). Restored → green: 252/0/0 @ 8d0367e0a (measured; log `dotnet-serialized-20261108-221555-19312.log`). This matches the ac9fe9170 record (3 red; 10 cells + 1 moved). M1/M1b/M1c/M2/M3 were read from the commit bodies and not re-run.
+- **Vacuous / inverted / inert:** 0. The fixture outputs discriminate: pre-fix, the main fixture is SPY0908 CS0029 and the gated one prints 4/d/9. The ungated twin stays green either way, as a refusal twin should.
+- **Absence assertions given a positive control:** n/a. The sweep's `non-allowlisted 0` has M3 at base as its positive control.
+
+### Architectural Review (Agent 3, Section B)
+
+- **Critical:** 0 · **Warnings:** 0 · **Suggestions:** 1. `ImplementingIssue`'s pre-existing arm (`NameResolutionDifferentialTests.cs:605–607`, 86af02155) routes every must-run SilentWrong attribute store to `#2439`. Once #2439 closes, a red of a different class, such as ledger row 2's setter-skip, would be proposed against a closed issue. Rerouting it is a choice for whoever files the next attribute-store class; no row takes the arm today. No TODO/FIXME or debug leftovers in the added lines; no emitter type decision; the predicate reads AST syntax only.
+
+### Generated artifacts
+
+- Regen recorded at ac9fe9170 (spy-stdlib, spy-test, snapshots): 0 files moved. CI staleness gates are green @ 210570a26.
+
+### Fixes Applied
+
+None. No regression, vacuous guard, missing deliverable, stale artifact or formatting finding.
+
+### Issues Created (one per class — contract §10)
+
+None by this round. Two out-of-contract rows were appended to the lane ledger (`<scratchpad>/lanes/p85/findings-ledger.md`) for the lead to file:
+- A statement ahead of a constructor-initializer call (`self.__init__(…)` / `super().__init__()`) runs after the hoisted `: this(…)` / `: base(…)`. This is operator-blind: `self.x *= 3; self.__init__(7)` prints 81 against python's 67, `=` prints 5 against 12, and `+= 5; super().__init__()` prints 105 against 100. `constructors.md:45` requires `self.__init__` first and nothing refuses it. Lane: missing-refusal / silent-wrong · reach:program.
+- `super().__init__()` on a base with no explicit `__init__` is SPY0203. Lane: false-refusal · reach:program.
+- Ledger: 6 → 8 rows. Round ratio: filed 0 / closed 0 by this round; #2439 is CLOSEABLE.
+
+### Unresolved Items
+
+None.
+
+### Files Changed
+
+`git diff --stat be11fca77..8d0367e0a`: 20 files, +776 −27 (2 from #2502), plus this record.
