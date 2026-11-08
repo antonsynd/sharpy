@@ -1,0 +1,188 @@
+# emitter-inspection-allowlist — EmitterCarrierOnlyConformanceTests.CodeGenInspectionSites_MatchTheAllowlist.
+#
+# Every site where CodeGen still INSPECTS a SemanticType or Symbol instead of reading a materialized
+# fact (Critical Rule 2; P82 class issue #2443, contract item 6). Since P82 the SemanticType and Symbol
+# hierarchies are not carriers: CarrierHierarchyRoots is empty and every type assignable to either
+# root is inspection-denied in CodeGen/, except that TypeSyntaxMapper.cs may name them (contract
+# item 1: the emitter may pass a SemanticType to TypeSyntaxMapper but may not inspect one outside it).
+#
+# Row: file | kind | name | count | cite=#N | note    (file = a CodeGen/ file name; one row per key)
+# Kinds, as the test measures them:
+#   type-name         a hierarchy type named (declaration, cast, pattern, generic argument, static
+#                     call) — Roslyn identifier scan, per (file, type); TypeSyntaxMapper.cs exempt
+#   type-read         GetExpressionType( / GetExpressionSemanticType( invocations, per (file, accessor)
+#   name-lookup       predicate: a lambda `x => x.Name ==` lookup over a member collection (2-line
+#                     window, decorator/keyword-argument/body lookups excluded); union-case-compare:
+#                     `.Name == "Some"/"Ok"/"Err"/"None"` (or WellKnownCaseNames.*)
+#   declaration-line  DeclarationLine references, per file
+#
+# Ratchet, both ways: more sites than the count fails (a NEW inspection: materialize the fact);
+# fewer fails (STALE: lower the count, delete the row at 0, in the commit that removed the sites);
+# sites without a row fail; a row naming a file that no longer exists fails. Drains to empty.
+# Counts measured by the test's own scanner at 0ea13e3a6.
+CodeGenContext.cs | type-name | Symbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+NameResolutionService.cs | type-name | ModuleSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+NameResolutionService.cs | type-name | Symbol | 4 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+NameResolutionService.cs | type-name | VariableSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.Access.cs | name-lookup | predicate | 2 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.Access.cs | declaration-line | DeclarationLine | 1 | cite=#2443 | disambiguates an overload Symbol by source line
+RoslynEmitter.ClassMembers.Constructors.cs | type-name | FunctionSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.Constructors.cs | type-name | NullableType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Constructors.cs | type-name | OptionalType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Constructors.cs | type-name | UnknownType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Constructors.cs | type-read | GetExpressionSemanticType | 1 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.ClassMembers.Constructors.cs | name-lookup | predicate | 2 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.Dataclass.cs | type-name | NullableType | 6 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Dataclass.cs | type-name | OptionalType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Dataclass.cs | type-name | TypeSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.Dataclass.cs | type-name | VariableSymbol | 12 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.Dataclass.cs | name-lookup | predicate | 3 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.Events.cs | type-name | NullableType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Events.cs | name-lookup | predicate | 2 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.LruCache.cs | type-name | FunctionSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.LruCache.cs | type-name | TupleType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.LruCache.cs | name-lookup | predicate | 1 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.LruCache.cs | declaration-line | DeclarationLine | 2 | cite=#2443 | disambiguates an overload Symbol by source line
+RoslynEmitter.ClassMembers.Methods.cs | type-name | NullableType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Methods.cs | type-name | TaskType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ClassMembers.Methods.cs | name-lookup | predicate | 5 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.Methods.cs | declaration-line | DeclarationLine | 1 | cite=#2443 | disambiguates an overload Symbol by source line
+RoslynEmitter.ClassMembers.Properties.cs | name-lookup | predicate | 1 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.ClassMembers.cs | type-name | TypeSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.cs | type-name | VariableSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ClassMembers.cs | name-lookup | predicate | 3 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.CompilationUnit.cs | type-name | FunctionSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.CompilationUnit.cs | type-name | ModuleSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.CompilationUnit.cs | type-name | Symbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.CompilationUnit.cs | type-name | TypeSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.CompilationUnit.cs | type-name | VariableSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | BuiltinType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | FunctionSymbol | 13 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | FunctionType | 6 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | GenericType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | NullableType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | OptionalType | 6 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | ResultType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | TupleType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | TypeSymbol | 4 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | UnknownType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | UserDefinedType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.Calls.cs | type-name | VariableSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.Calls.cs | type-read | GetExpressionSemanticType | 6 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.Access.Calls.cs | name-lookup | predicate | 6 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.Expressions.Access.cs | type-name | FunctionSymbol | 17 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.cs | type-name | FunctionType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | GenericType | 9 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | ModuleSymbol | 13 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.cs | type-name | NullableType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | OptionalType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | SemanticType | 7 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | Symbol | 5 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.cs | type-name | TupleType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | TypeAliasSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.cs | type-name | TypeSymbol | 21 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.cs | type-name | UnknownType | 8 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | UserDefinedType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Access.cs | type-name | VariableSymbol | 5 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Access.cs | type-read | GetExpressionSemanticType | 12 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.Access.cs | type-read | GetExpressionType | 6 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.Access.cs | name-lookup | predicate | 4 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.Expressions.Comprehensions.cs | type-name | GenericType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Comprehensions.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Comprehensions.cs | type-name | UnknownType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Comprehensions.cs | type-read | GetExpressionSemanticType | 7 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.Literals.cs | type-name | BuiltinType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Literals.cs | type-name | GenericType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Literals.cs | type-name | TupleType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Literals.cs | type-name | UnknownType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.Literals.cs | type-read | GetExpressionSemanticType | 7 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.Operators.cs | type-name | FunctionSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.Operators.cs | type-read | GetExpressionSemanticType | 3 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.cs | type-name | BuiltinType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | FunctionSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.cs | type-name | GenericType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | ModuleSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.cs | type-name | OptionalType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | ResultType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | SemanticType | 8 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | Symbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.cs | type-name | TypeSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.cs | type-name | UnknownType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Expressions.cs | type-name | VariableSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Expressions.cs | type-read | GetExpressionSemanticType | 5 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Expressions.cs | type-read | GetExpressionType | 3 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.ModuleClass.cs | type-name | FunctionSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ModuleClass.cs | type-name | GenericType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ModuleClass.cs | type-name | SemanticType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ModuleClass.cs | type-name | TaskType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ModuleClass.cs | type-name | TupleType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ModuleClass.cs | type-name | TypeSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ModuleClass.cs | type-name | VariableSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.ModuleClass.cs | type-name | VoidType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.ModuleClass.cs | name-lookup | predicate | 1 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.Operators.cs | type-name | ResultType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Operators.cs | type-name | UserDefinedType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Operators.cs | type-read | GetExpressionSemanticType | 1 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Operators.cs | name-lookup | predicate | 3 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.Patterns.cs | type-name | GenericType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-name | NullableType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-name | OptionalType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-name | ResultType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-name | SemanticType | 11 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-name | Symbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Patterns.cs | type-name | TupleType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-name | TypeSymbol | 6 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Patterns.cs | type-name | UserDefinedType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Patterns.cs | type-read | GetExpressionSemanticType | 1 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Patterns.cs | type-read | GetExpressionType | 2 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Patterns.cs | name-lookup | union-case-compare | 8 | cite=#2443 | identifies a union case by its Name instead of a recorded case fact
+RoslynEmitter.Statements.Assignments.cs | type-name | ConstructorReferenceType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Assignments.cs | type-name | FunctionType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Assignments.cs | type-name | GenericType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Assignments.cs | type-name | Symbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Statements.Assignments.cs | type-name | TupleType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Assignments.cs | type-name | UnknownType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Assignments.cs | type-name | UserDefinedType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Assignments.cs | type-name | VariableSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Statements.Assignments.cs | type-read | GetExpressionSemanticType | 12 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Statements.Assignments.cs | type-read | GetExpressionType | 1 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Statements.Assignments.cs | name-lookup | predicate | 1 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.Statements.ControlFlow.cs | type-name | FunctionSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Statements.ControlFlow.cs | type-name | NullableType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.ControlFlow.cs | type-name | OptionalType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.ControlFlow.cs | type-name | SemanticType | 5 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.ControlFlow.cs | type-name | TypeSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Statements.ControlFlow.cs | type-read | GetExpressionSemanticType | 3 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | FunctionType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | GenericType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | Symbol | 4 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | TupleType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | UnknownType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | UserDefinedType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.LocalDeclarations.cs | type-name | VariableSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.Statements.Unpacking.cs | type-name | GenericType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Unpacking.cs | type-name | SemanticType | 5 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.Unpacking.cs | type-name | TupleType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.cs | type-name | GenericType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.cs | type-name | TaskType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.Statements.cs | type-read | GetExpressionSemanticType | 1 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.TestFixtures.cs | type-name | NullableType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TestFixtures.cs | type-name | TaskType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TypeDeclarations.cs | type-name | FunctionSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.TypeDeclarations.cs | type-name | NullableType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TypeDeclarations.cs | type-name | SemanticType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TypeDeclarations.cs | type-name | TaskType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TypeDeclarations.cs | type-name | TypeSymbol | 17 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.TypeDeclarations.cs | type-name | UnknownType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TypeDeclarations.cs | type-name | VariableSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.TypeDeclarations.cs | type-name | VoidType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.TypeDeclarations.cs | name-lookup | predicate | 10 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
+RoslynEmitter.cs | type-name | FunctionSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.cs | type-name | ModuleSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
+RoslynEmitter.cs | type-name | Symbol | 11 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.cs | type-name | TypeSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+RoslynEmitter.cs | type-name | VariableSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
+TypeSyntaxMapper.cs | type-read | GetExpressionType | 1 | cite=#2443 | the node-type lookup inside TypeSyntaxMapper (its contract is SemanticType -> TypeSyntax); drains when callers pass the SemanticType they already hold
