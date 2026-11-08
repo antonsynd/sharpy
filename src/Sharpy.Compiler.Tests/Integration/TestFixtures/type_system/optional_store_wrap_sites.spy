@@ -1,0 +1,60 @@
+# Optional store-wrap sites: a plain int value stored into an Optional[int] slot
+# narrowed to int (or into an Optional element/member) is wrapped in Some(...) at
+# the store; Optional values (also inside a tuple store) and nullable `int | None`
+# slots are controls that must NOT be wrapped.
+
+type OI = int?
+
+
+class Box:
+    o: int?
+
+    def __init__(self) -> None:
+        self.o = None()
+
+
+def main() -> None:
+    d: int? = Some(1)
+    if d is not None:
+        d = 5
+        print(d + 1)
+    x: int? = Some(10)
+    if x is not None:
+        x += 5
+        print(x)
+    y: int? = None()
+    y ??= 42
+    print(y.unwrap())
+    z: int? = None()
+    z ??= Some(7)
+    print(z.unwrap())
+    b = Box()
+    b.o ??= 3
+    print(b.o.unwrap())
+    arr: array[OI] = array[OI](2)
+    arr[1] = Some(2)
+    arr[0] ??= 9
+    arr[1] ??= 8
+    print(arr[0].unwrap())
+    print(arr[1].unwrap())
+    p: int? = Some(1)
+    q: int? = Some(2)
+    if p is not None and q is not None:
+        p, q = 30, 40
+        print(p + q)
+    g: int? = None()
+    g, k = Some(5), 1
+    print(g.unwrap() + k)
+    a: int? = Some(3)
+    w: int? = None()
+    if a is not None:
+        w ??= a
+    print(w.unwrap())
+    n: int | None = 4
+    if n is not None:
+        n += 1
+        n = 7
+        print(n)
+    v: int? = None()
+    v = Some(4)
+    print(v.unwrap())
