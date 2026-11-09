@@ -19,7 +19,6 @@ Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | A
 Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Select(s => s.Source).Distinct().Should().HaveCount(4, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
 Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.Source.Contains("(...)")).Should().HaveCount(2, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
 Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.Source.Contains("): ...")).Should().HaveCount(1, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
-Sharpy.Compiler.Tests/CodeGen/GenerateExpressionReentryTests.cs | private const int MaxUncompilableFixtures = 19; | ×1 | in | fixture-stem count (D3 iii): plan-88736c D3 converts it to a set file
 Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | derivations.Should().Be(2); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
 Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | private const int ReaderCount = 15; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
 Sharpy.Compiler.Tests/CodeGen/ReparseEquivalenceConformanceTests.cs | const int cap = 25; | ×3 | tuning-constant | cap
