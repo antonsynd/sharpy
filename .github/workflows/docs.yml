@@ -34,7 +34,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version-file: .python-version
 
       - name: Install MkDocs Material and build tools deps
         run: pip install mkdocs-material click
