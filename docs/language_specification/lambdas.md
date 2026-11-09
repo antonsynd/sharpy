@@ -1,5 +1,6 @@
 # Lambda Expressions
 
+<!-- spec-sweep: fragment -->
 ```python
 # Single expression lambda
 square = lambda x: x ** 2
@@ -19,6 +20,7 @@ result = apply(10, lambda x: x ** 2)
 
 Arrow lambdas provide a concise, typed alternative to the `lambda` keyword. Parameters are always typed, and the syntax uses `->` to separate parameters from the body:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Basic arrow lambda
 square = (x: int) -> x ** 2
@@ -106,6 +108,7 @@ transform([1, 2, 3], lambda x: str(x))  # ✅ T=int inferred from list, x: int
 
 **Invalid contexts (insufficient type information):**
 
+<!-- spec-sweep: error SPY0343 -->
 ```python
 # ❌ No type context - ERROR
 g = lambda x, y: x + y

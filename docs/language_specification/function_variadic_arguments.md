@@ -4,6 +4,7 @@ Sharpy supports a limited form of variadic arguments using the `*args` syntax. U
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 def function_name(*args: T) -> ReturnType:
     # args is an array[T] inside the function
@@ -76,6 +77,7 @@ format_items("!", 1, 2, 3, other="end")  # 'other' must be passed as keyword arg
 
 ### Only one `*args` per function
 
+<!-- spec-sweep: error SPY0110 -->
 ```python
 # ❌ Invalid - multiple *args
 def broken(*a: int, *b: str) -> None:  # ERROR
@@ -89,7 +91,10 @@ event `add`/`remove` accessor each receive exactly one value — the one C# hand
 property getter receives none at all. There is no accessor shape that takes a varying number of
 arguments, so a variadic there is refused at the declaration (**SPY0496**):
 
+<!-- spec-sweep: error SPY0496 -->
 ```python
+delegate Handler(sender: object) -> None
+
 class Reading:
     # ❌ Invalid - an accessor has no argument list to vary
     property set samples(self, *values: int):

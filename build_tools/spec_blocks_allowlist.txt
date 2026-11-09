@@ -85,10 +85,7 @@ function_parameters.md::61cf31491b  # SPY0353 first #1952
 function_parameters.md::679a768603  # SPY0109 first #1952
 function_types.md::24acd11b25  # SPY0104 first #1977
 function_types.md::e891fe1fdc  # SPY0104 first #1977
-function_variadic_arguments.md::07cd79d7a4  # SPY0202 first #1952
 function_variadic_arguments.md::17c2cd6add  # SPY0354 first #1952
-function_variadic_arguments.md::3a846d7c08  # SPY0202 first #1952
-function_variadic_arguments.md::b66ca1cdaf  # SPY0110 first #1952
 function_variadic_arguments.md::dd9c3284b0  # SPY0909 first #1952
 function_variadic_arguments.md::f5dcda38ed  # SPY0354 first #1952
 function_variadic_arguments.md::fee07323b6  # SPY0227 first #1952
@@ -111,10 +108,7 @@ interface_default_methods.md::5637229cf8  # SPY0240 first #1952
 interface_default_methods.md::c0bd2f17df  # SPY0248 first #1952
 interface_default_methods.md::f4bc136131  # SPY0248 first #1952
 lambdas.md::0726bdc749  # SPY0203 first #1952
-lambdas.md::0911d9a784  # SPY0200 first #1952
-lambdas.md::24cf8c73c2  # SPY0343 first #1952
 lambdas.md::32e542e9aa  # SPY0203 first #1952
-lambdas.md::d80dbc7638  # SPY0343 first #1952
 lambdas.md::ecb81f76af  # SPY0343 first #1952
 lambdas.md::f9edad7cde  # SPY0220 first #1952
 lexer_implementation.md::071c8f7c95  # SPY0226 first #1952
