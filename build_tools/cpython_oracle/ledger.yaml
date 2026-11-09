@@ -301,6 +301,14 @@ deviations:
   spec_ref: docs/language_specification/fstrings.md
   existing_diagnostic: SPY0609
   planned_diagnostic: null
+- id: fraction-zero-division-texts
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/design/python-fidelity-scope.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: free-union-syntax
   category: types
   audience: python

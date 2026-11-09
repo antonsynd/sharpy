@@ -2139,6 +2139,41 @@ deviations:
         except ValueError as e:
             print(e)                          # 9 not in list
 
+  - id: fraction-zero-division-texts
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`fractions.Fraction` raises `ZeroDivisionError` whose text is the construction it refused, with the numerator spelled out: `Fraction(1, 0)` for the constructor, for `/` and for `0 ** -1` (CPython 3.13 and 3.14 `Lib/fractions.py`); `%` and `//` fall through to int arithmetic (`integer modulo by zero` in 3.13)."
+    sharpy_behavior: "The exception TYPE is python's (COMPARED); the message text beyond the type name is a deviation by default (R-CI, D1 of python-fidelity-scope.md). `Sharpy.Stdlib` `Fraction` spells the constructor refusal `Fraction(_, 0)` (no numerator), and its operators carry their own texts with no CPython counterpart: `Fraction division by zero`, `Fraction modulo by zero`, `Fraction floor division by zero`, `0 cannot be raised to a negative power`. Found by the W3.6 message pass (#2516)."
+    spec_ref: docs/design/python-fidelity-scope.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from fractions import Fraction
+        try: Fraction(1, 0)
+        except ZeroDivisionError as e: print(e)      # Fraction(1, 0)
+        try: Fraction(1) / Fraction(0)
+        except ZeroDivisionError as e: print(e)      # Fraction(1, 0)
+        try: Fraction(1) % Fraction(0)
+        except ZeroDivisionError as e: print(e)      # integer modulo by zero
+      sharpy: |
+        from fractions import Fraction
+        def main() -> None:
+            try:
+                Fraction(1, 0)
+            except ZeroDivisionError as e:
+                print(e)                             # Fraction(_, 0)
+            try:
+                print(Fraction(1) / Fraction(0))
+            except ZeroDivisionError as e:
+                print(e)                             # Fraction division by zero
+            try:
+                print(Fraction(1) % Fraction(0))
+            except ZeroDivisionError as e:
+                print(e)                             # Fraction modulo by zero
+
   - id: sort-refusal-operand-order
     code: null
     category: stdlib
