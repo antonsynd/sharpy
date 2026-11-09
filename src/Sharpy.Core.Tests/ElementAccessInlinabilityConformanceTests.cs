@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -218,7 +219,7 @@ public class ElementAccessInlinabilityConformanceTests
     // The Facts.
     // ------------------------------------------------------------------------------------------------
 
-    [Fact]
+    [SkippableFact]
     public void CoreElementAccessRoster_IsInlinableShaped_AndTotal()
     {
         var violations = new System.Collections.Generic.List<string>();
@@ -239,6 +240,38 @@ public class ElementAccessInlinabilityConformanceTests
 
             list.Add(method);
         }
+
+        // The coverage-on test mode (#2512, plan-88736c D1): the collector's static instrumentation puts a
+        // hit probe (ldsfld of its injected tracker) into every Core body, which inflates (d) and breaks
+        // (f)'s `call; throw` adjacency in the running assembly, though the shipped Core is unchanged. That
+        // run skips this roster; the PR run (the gate) is never coverage-on, so it always evaluates it. The
+        // skip is not trusted to the detector alone: the roster bodies that really load an injected field
+        // are counted independently, and the two must agree, so a plain run can never take the skip.
+        var probedRows = new System.Collections.Generic.List<string>();
+        var probeScanErrors = new System.Collections.Generic.List<string>();
+        foreach (var (row, key) in Roster)
+        {
+            foreach (var method in byKey.TryGetValue(key, out var ms) ? ms : new System.Collections.Generic.List<MethodBase>())
+            {
+                if (TryDecode(method, probeScanErrors) is { } decoded
+                    && decoded.Instructions.Any(ins => ins.OpCode == OpCodes.Ldsfld
+                        && TryResolveMember(method, ins.Token, probeScanErrors) is FieldInfo { DeclaringType: { } owner }
+                        && CoverageInstrumentation.IsInjected(owner)))
+                {
+                    probedRows.Add($"row {row} {key}");
+                }
+            }
+        }
+
+        bool instrumented = CoverageInstrumentation.IsInstrumented(CoreAssembly);
+        Assert.True(instrumented == (probedRows.Count > 0),
+            $"coverage detector says instrumented={instrumented}, but {probedRows.Count} roster bodies load a " +
+            $"field of a {CoverageInstrumentation.InjectedNamespacePrefix}.* type: the detector and the IL disagree, " +
+            "so the skip below cannot be trusted:\n  " + string.Join("\n  ", probedRows));
+        TestPreconditions.RequireOrSkip(!instrumented,
+            $"Sharpy.Core is statically instrumented by Microsoft.CodeCoverage (--collect \"Code Coverage\"): " +
+            $"{probedRows.Count} roster bodies carry its hit probe, so their IL is not the shipped IL. This roster is " +
+            "evaluated by the coverage-off (PR) run (#2512).");
 
         // The roster: every row resolves, and every row's body is inlinable-shaped.
         _output.WriteLine("row  IL B  EH  method");

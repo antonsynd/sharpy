@@ -32,6 +32,10 @@
 # run red ("The active test run was aborted") long before the job limit. The longest single test,
 # NameResolutionDifferential_Sweep, took 372 s in 42372810738. No dump is taken
 # (`--blame-hang-dump-type none`): a full one is ~700 MB and nothing uploads it.
+# Coverage-on runs (COVERAGE_ON below) carry their own limit, 2x their coverage-on duration: the
+# covered jobs' `timeout-minutes` read the same predicate (`test-fast` 20/15, `lsp` 30/20,
+# `compiler` 40/25), set from local measurement (#2512: Compiler shard 3 +102%); the first
+# coverage-on push re-measures them.
 #
 # This workflow is the default commit gate (docs/design/verification-contract.md section 6). Every
 # PR runs it, and `.claude/scripts/ci-gate` dispatches it at a branch tip with no PR at all, so a
@@ -62,6 +66,12 @@ on:
   # The gate at an exact commit, with no PR: `.claude/scripts/ci-gate`. Path filters don't apply, and
   # `changes` treats the unknown range as a code change, so a dispatch always runs the full suite.
   workflow_dispatch:
+    inputs:
+      coverage:
+        # Boolean, not string: a string input makes "false" truthy in `inputs.coverage`.
+        description: Collect line coverage (as a mainline push does)
+        type: boolean
+        default: false
 
 # A newer push to a PR cancels that PR's run. Everything else gets a group of its own, because
 # GitHub keeps only one PENDING run per group and replaces it, even with cancel-in-progress off: a
@@ -74,6 +84,13 @@ permissions:
   contents: read
 
 env:
+  # Coverage (#2512, plan-88736c D1/D22): on for a mainline push or a dispatch with `coverage: true`,
+  # off on every PR and on ci-gate's default dispatch. The ONE predicate, spelled identically here
+  # and in each covered job's `timeout-minutes` (which cannot read `env`). Read by every covered
+  # test step (`--collect "Code Coverage" --settings build_tools/coverage.runsettings`), by each
+  # job's `coverage_reduce.py --name` step and by ci-summary's `--merge`. Measured, never gated:
+  # no threshold. Sweeps and windows are not covered.
+  COVERAGE_ON: ${{ (github.event_name == 'push' || inputs.coverage) }}
   # The pre-#2178 "Test Compiler" step filter, verbatim. Every Compiler shard runs
   # COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>, so each GapDiscovery sweep excluded here by name
   # still runs exactly once (in its own `sweep` job) and never inline in a shard.
@@ -313,7 +330,7 @@ jobs:
     name: Test CLI, Core, Stdlib
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ (github.event_name == 'push' || inputs.coverage) && 20 || 15 }}
 
     steps:
     - uses: actions/checkout@v7
@@ -344,19 +361,36 @@ jobs:
     # Each assembly reports even if an earlier one failed.
     - name: Test CLI
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=cli.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
+      run: |
+        cov=(); if [ "$COVERAGE_ON" = "true" ]; then cov=(--collect "Code Coverage" --settings build_tools/coverage.runsettings); fi
+        dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=cli.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none "${cov[@]}"
+    - name: Reduce CLI coverage
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' && env.COVERAGE_ON == 'true' }}
+      run: python3 build_tools/coverage_reduce.py --name cli
     - name: Test Core
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=core.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
+      run: |
+        cov=(); if [ "$COVERAGE_ON" = "true" ]; then cov=(--collect "Code Coverage" --settings build_tools/coverage.runsettings); fi
+        dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=core.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none "${cov[@]}"
+    - name: Reduce Core coverage
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' && env.COVERAGE_ON == 'true' }}
+      run: python3 build_tools/coverage_reduce.py --name core
     - name: Test Stdlib
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=stdlib.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
+      run: |
+        cov=(); if [ "$COVERAGE_ON" = "true" ]; then cov=(--collect "Code Coverage" --settings build_tools/coverage.runsettings); fi
+        dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=stdlib.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none "${cov[@]}"
+    - name: Reduce Stdlib coverage
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' && env.COVERAGE_ON == 'true' }}
+      run: python3 build_tools/coverage_reduce.py --name stdlib
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
         name: trx-fast
-        path: TestResults/*.trx
+        path: |
+          TestResults/*.trx
+          TestResults/coverage-*.json
         retention-days: 14
         if-no-files-found: warn
 
@@ -364,7 +398,7 @@ jobs:
     name: Test LSP (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: ${{ (github.event_name == 'push' || inputs.coverage) && 30 || 20 }}
     env:
       # Each FormattingRouteParitySweepTests twin census fails instead of skipping when its twin's
       # theory did not run over every stem in the same process: a shard filter that separated a
@@ -405,13 +439,19 @@ jobs:
       run: |
         if [ -z "${LSP_SHARD_${{ matrix.shard }}:-}" ]; then echo "::error::LSP_SHARD_${{ matrix.shard }} is not defined in the workflow env"; exit 1; fi
         echo "filter: $LSP_MAIN_FILTER&$LSP_SHARD_${{ matrix.shard }}"
-        dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "$LSP_MAIN_FILTER&$LSP_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=lsp-shard-${{ matrix.shard }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
+        cov=(); if [ "$COVERAGE_ON" = "true" ]; then cov=(--collect "Code Coverage" --settings build_tools/coverage.runsettings); fi
+        dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "$LSP_MAIN_FILTER&$LSP_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=lsp-shard-${{ matrix.shard }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none "${cov[@]}"
+    - name: Reduce coverage
+      if: ${{ !cancelled() && env.COVERAGE_ON == 'true' }}
+      run: python3 build_tools/coverage_reduce.py --name lsp-shard-${{ matrix.shard }}
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
         name: trx-lsp-shard-${{ matrix.shard }}
-        path: TestResults/*.trx
+        path: |
+          TestResults/*.trx
+          TestResults/coverage-*.json
         retention-days: 14
         if-no-files-found: warn
 
@@ -419,7 +459,7 @@ jobs:
     name: Test Compiler (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: ${{ (github.event_name == 'push' || inputs.coverage) && 40 || 25 }}
     env:
       # The numeric-literal twin (Sharpy.Compiler.Tests.Lexer.NumericLiteralTwinTests, #2300) FAILS
       # instead of skipping when no Python 3.12+ interpreter is found: a runner that lost the
@@ -478,13 +518,19 @@ jobs:
       run: |
         if [ -z "${COMPILER_SHARD_${{ matrix.shard }}:-}" ]; then echo "::error::COMPILER_SHARD_${{ matrix.shard }} is not defined in the workflow env"; exit 1; fi
         echo "filter: $COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}"
-        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
+        cov=(); if [ "$COVERAGE_ON" = "true" ]; then cov=(--collect "Code Coverage" --settings build_tools/coverage.runsettings); fi
+        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none "${cov[@]}"
+    - name: Reduce coverage
+      if: ${{ !cancelled() && env.COVERAGE_ON == 'true' }}
+      run: python3 build_tools/coverage_reduce.py --name compiler-shard-${{ matrix.shard }}
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
         name: trx-compiler-shard-${{ matrix.shard }}
-        path: TestResults/*.trx
+        path: |
+          TestResults/*.trx
+          TestResults/coverage-*.json
         retention-days: 14
         if-no-files-found: warn
 
@@ -909,6 +955,12 @@ jobs:
       CODE: ${{ needs.changes.outputs.code }}
 
     steps:
+    - name: Check out build_tools/ for the coverage merge
+      # FIRST: on a workspace that is not a repository, checkout empties it, which after the
+      # download below would wipe trx/.
+      uses: actions/checkout@v7
+      with:
+        sparse-checkout: build_tools
     - name: Download test results
       continue-on-error: true
       uses: actions/download-artifact@v8
@@ -1007,6 +1059,12 @@ jobs:
             print(f"::error::{p}")
         sys.exit(1 if problems else 0)
         PY
+    - name: Line coverage (coverage-on runs)
+      # After the counts step, which exits 1 on a missing trx: `!cancelled()` still runs this.
+      # The table goes to the run summary; `::error::` if a covered job has no coverage file, a file
+      # has 0 valid lines, or a coverage-off run carries one (build_tools/coverage_reduce.py).
+      if: ${{ !cancelled() }}
+      run: python3 build_tools/coverage_reduce.py --merge trx
     - name: Fail unless every needed job succeeded
       if: ${{ always() }}
       env:
