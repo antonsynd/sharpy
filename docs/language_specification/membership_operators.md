@@ -5,6 +5,7 @@
 | `in` | Membership test |
 | `not in` | Negated membership |
 
+<!-- spec-sweep: fragment -->
 ```python
 if item in collection:
     print("Found")

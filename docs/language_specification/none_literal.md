@@ -24,6 +24,7 @@ See [Optional Type](tagged_unions_optional.md) for details on `T?`.
 
 Bare `None` is untyped: it contributes no type to the best-common-type rule. In a slot-less context, this causes an arm-3 refusal:
 
+<!-- spec-sweep: error SPY0227 -->
 ```python
 x = None
 # error: cannot infer a type for 'x': 'None' names no type on its own, so 'x' has nothing to be.
@@ -45,6 +46,7 @@ a Sharpy optional's only constructors are `Some(v)` and `None()` (R-G, #1720).
 
 Under a slot, `None` is admitted through the store seam as usual:
 ```python
+c = True
 x: str | None = None          # OK
 xs: list[int | None] = [None, 1]  # OK
 a: str | None = None if c else "hello"  # OK

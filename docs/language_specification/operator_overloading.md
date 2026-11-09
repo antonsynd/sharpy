@@ -49,6 +49,7 @@ Dunder methods have compiler-enforced return types. The compiler validates that 
 
 **Compiler Enforcement:**
 
+<!-- spec-sweep: error SPY0321 -->
 ```python
 class MyNumber:
     value: int
@@ -152,6 +153,9 @@ class Point:
         if not isinstance(other, Point):
             return False
         return self.x == other.x and self.y == other.y
+
+    def __hash__(self) -> int:
+        return hash((self.x, self.y))
 
     def __lt__(self, other: Point) -> bool:
         return (self.x ** 2 + self.y ** 2) < (other.x ** 2 + other.y ** 2)

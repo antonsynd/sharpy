@@ -16,6 +16,11 @@ Strings support concatenation and repetition operators:
 | `>=` | Greater than or equal | `"abc" >= "abc"` | `True` |
 
 ```python
+def handle_error() -> None:
+    print("handled")
+
+log_message = "error: disk full"
+
 # String concatenation
 greeting = "Hello" + ", " + "World!"
 print(greeting)  # "Hello, World!"
@@ -40,6 +45,7 @@ if "error" in log_message:
 
 Unlike Python, Sharpy does not allow implicit string concatenation with non-string types:
 
+<!-- spec-sweep: error SPY0222 -->
 ```python
 # ✅ Valid
 "Count: " + str(42)

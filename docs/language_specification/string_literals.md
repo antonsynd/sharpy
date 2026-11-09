@@ -66,6 +66,7 @@ Python joins adjacent string literals at parse time — `"hello " "world"` is th
 `hello world`. **Sharpy refuses the form** (SPY0103, *"Expected end of statement, got String"*), in
 every position: statement, expression, and the docstring slot.
 
+<!-- spec-sweep: error SPY0103 -->
 ```python
 s: str = "hello " "world"       # ERROR SPY0103
 s: str = "hello " + "world"     # explicit join
@@ -77,6 +78,7 @@ This is a deliberate refusal, not an unimplemented feature (#1269). The cost of 
 the missing-comma footgun: a dropped comma in a list of strings silently concatenates two elements
 into one, and the list comes out short with no diagnostic anywhere.
 
+<!-- spec-sweep: error SPY0104 -->
 ```python
 xs = ["a", "b" "c"]     # Python: ['a', 'bc'] — two elements, silently
 ```

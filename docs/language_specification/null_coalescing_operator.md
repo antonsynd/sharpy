@@ -2,6 +2,7 @@
 
 The `??` operator provides a default value when the left operand is absent. It works with both `T?` (`Optional[T]`) and `T | None` (C# nullable):
 
+<!-- spec-sweep: fragment -->
 ```python
 # With T? (Optional)
 name: str? = get_name()
