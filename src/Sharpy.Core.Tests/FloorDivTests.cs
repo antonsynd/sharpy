@@ -69,7 +69,7 @@ public class FloorDiv_Tests
     {
         FluentActions.Invoking(() => FloorDiv(1.0, 0.0))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("float floor division by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class FloorDiv_Tests
     {
         FluentActions.Invoking(() => FloorDiv(1.0f, 0.0f))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("float floor division by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class ULongFloorDiv_Tests
         var act = () => FloorDiv(0UL, 0UL);
 
         act.Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer division or modulo by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -245,7 +245,7 @@ public class IntegerFloorDiv_Tests
         var act = () => FloorDiv(1, 0);
 
         act.Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer division or modulo by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -254,7 +254,7 @@ public class IntegerFloorDiv_Tests
         var act = () => FloorDiv(1L, 0L);
 
         act.Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer division or modulo by zero");
+            .WithMessage("division by zero");
     }
 
     // DELIBERATE CPython divergence, decided rather than inherited. CPython computes

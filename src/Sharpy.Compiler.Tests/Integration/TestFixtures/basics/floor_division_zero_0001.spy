@@ -1,6 +1,6 @@
 # Test floor division by zero raises ZeroDivisionError
-# Python: 10 // 0 -> ZeroDivisionError("integer division or modulo by zero")
-# Python: 10.0 // 0.0 -> ZeroDivisionError("float floor division by zero")
+# Python 3.14: 10 // 0 -> ZeroDivisionError("division by zero")
+# Python 3.14: 10.0 // 0.0 -> ZeroDivisionError("division by zero")
 
 def main():
     # Integer floor division by zero

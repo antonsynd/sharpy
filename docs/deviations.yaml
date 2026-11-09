@@ -2603,3 +2603,27 @@ deviations:
 
         def main() -> None:
             print(Square(3.0).area)       # 9.0
+
+  - id: exception-group-aggregate-exception-bridge
+    code: null
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`ExceptionGroup` subclasses `BaseExceptionGroup` and `Exception` (MRO `ExceptionGroup, BaseExceptionGroup, Exception, BaseException, object`), so `except BaseExceptionGroup` and `isinstance(eg, BaseExceptionGroup)` match every exception group."
+    sharpy_behavior: "`ExceptionGroup` is bridged to .NET (Axiom 1; spec table \"Exception Type Hierarchy\"): `ExceptionGroup : System.AggregateException : System.Exception`, with no `BaseExceptionGroup` layer. `except BaseExceptionGroup` is refused SPY0202 (type not found) and `isinstance(eg, BaseExceptionGroup)` SPY0200 (undefined identifier). `except Exception` catches a group, as in python, and .NET code (or Sharpy's `except AggregateException` after `from system import AggregateException`) catches it as an `AggregateException`. `ExceptionHierarchyPythonMroTests` pins the bridge set to `{ExceptionGroup}` (#2124 D15, #2478). Measured @ 587945668 (`sharpyc run`, python 3.13.18)."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: SPY0202
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise ExceptionGroup('errors', [ValueError('bad')])
+        except BaseExceptionGroup as eg:
+            print('caught as BaseExceptionGroup')   # printed
+      sharpy: |
+        def main():
+            errors: list[Exception] = [ValueError('bad')]
+            try:
+                raise ExceptionGroup('errors', errors)
+            except BaseExceptionGroup as eg:  # ERROR SPY0202: Type 'BaseExceptionGroup' not found
+                print('caught as BaseExceptionGroup')

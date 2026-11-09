@@ -1,5 +1,5 @@
-integer division or modulo by zero
-float divmod()
+division by zero
+division by zero
 100
 True
 (-3, 2)

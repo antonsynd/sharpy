@@ -1,0 +1,4 @@
+3.14
+# The CPython oracle minor: every actions/setup-python step reads this file (python-version-file).
+# Rule (R-LZ, #2497): the newest CPython minor whose first bugfix release (x.y.1) has shipped.
+# Bumped only at a /batch-issues call; a bump is a one-line change here, measured by that PR's CI.

@@ -1,6 +1,6 @@
-# divmod() by zero raises ZeroDivisionError with CPython's messages (#1158).
-# Python: divmod(10, 0)     -> ZeroDivisionError("integer division or modulo by zero")
-# Python: divmod(10.0, 0.0) -> ZeroDivisionError("float divmod()")
+# divmod() by zero raises ZeroDivisionError with CPython's message (#1158; 3.14 text, #2516).
+# Python 3.14: divmod(10, 0)     -> ZeroDivisionError("division by zero")
+# Python 3.14: divmod(10.0, 0.0) -> ZeroDivisionError("division by zero")
 # Python has no epsilon tolerance -- a tiny-but-nonzero divisor computes.
 def main() -> None:
     # Integer divmod by zero
@@ -10,7 +10,7 @@ def main() -> None:
     except ZeroDivisionError as e:
         print(str(e))
 
-    # Float divmod by zero carries a distinct CPython message
+    # Float divmod by zero (3.13 had a distinct "float divmod()" text; 3.14 unified it)
     try:
         print(divmod(10.0, 0.0))
         print("ERROR: should not reach here")

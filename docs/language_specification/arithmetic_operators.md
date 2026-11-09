@@ -187,8 +187,8 @@ A zero float remainder carries the **divisor's** sign, matching CPython's
 (C#'s native `%` throws `DivideByZeroException` for integers and silently yields
 `NaN` for floats, so both are lowered through the runtime helper):
 ```python
-7 % 0       # ZeroDivisionError: integer modulo by zero
-7.0 % 0.0   # ZeroDivisionError: float modulo
+7 % 0       # ZeroDivisionError: division by zero
+7.0 % 0.0   # ZeroDivisionError: division by zero
 ```
 
 Decimal `%` by zero raises **`InvalidOperation`**, not `ZeroDivisionError`. This
