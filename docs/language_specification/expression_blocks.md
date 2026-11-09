@@ -6,6 +6,7 @@ Expression blocks (`do:`) allow multiple statements to be grouped into a single 
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 result = do:
     statement1
@@ -39,6 +40,7 @@ The last line of the block must be an expression (not a statement), and its valu
 
 The fundamental rule for `do:` blocks is simple: **every possible code path must end with an expression that produces a value**. There is no early exit mechanism.
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Valid - both branches end with expressions
 result = do:
@@ -66,6 +68,7 @@ result = do:
 
 ## Basic Usage
 
+<!-- spec-sweep: fragment -->
 ```python
 # Simple computation
 result = do:
@@ -84,6 +87,7 @@ config = do:
 
 ## Conditional Initialization
 
+<!-- spec-sweep: fragment -->
 ```python
 # Complex conditional assignment
 status = do:
@@ -106,6 +110,7 @@ result = do:
 
 The type of a `do:` block is inferred from the final expression. All branches must produce compatible types:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Type is int
 x: int = do:
@@ -137,6 +142,7 @@ value = do:
 
 Variables declared in a `do:` block are local to that block:
 
+<!-- spec-sweep: fragment -->
 ```python
 result = do:
     temp = 42  # Local to this block
@@ -153,6 +159,7 @@ result = do:
 
 ## Nested Blocks
 
+<!-- spec-sweep: fragment -->
 ```python
 result = do:
     x = do:
@@ -172,6 +179,7 @@ result = do:
 
 All branches of exception handling must produce a value:
 
+<!-- spec-sweep: fragment -->
 ```python
 result = do:
     try:
@@ -186,6 +194,7 @@ result = do:
 ## Common Patterns
 
 **Complex Initialization:**
+<!-- spec-sweep: fragment -->
 ```python
 user = do:
     raw_data = fetch_user_data(id)
@@ -195,6 +204,7 @@ user = do:
 ```
 
 **Conditional Configuration:**
+<!-- spec-sweep: fragment -->
 ```python
 settings = do:
     base = default_settings()
@@ -213,6 +223,7 @@ settings = do:
 ```
 
 **With Match:**
+<!-- spec-sweep: fragment -->
 ```python
 description = do:
     category = classify(item)
@@ -229,6 +240,7 @@ description = do:
 
 The last item in every branch of a `do:` block must be an expression:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Valid - last item is expression
 x = do:
