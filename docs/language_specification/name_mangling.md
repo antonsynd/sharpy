@@ -133,6 +133,7 @@ Collisions are more likely with names that differ only in underscore placement:
 
 Identifiers already in `camelCase` form (start lowercase, contain uppercase letters, no underscores) are preserved as-is in both PascalCase and camelCase contexts:
 
+<!-- spec-sweep: output -->
 ```python
 def create_client() -> str:
     return "client"
@@ -150,6 +151,7 @@ def main() -> None:
 
 Similarly, `PascalCase` identifiers (start uppercase, no underscores) are preserved as-is:
 
+<!-- spec-sweep: output -->
 ```python
 def create_parser() -> str:
     return "parser"
@@ -264,6 +266,7 @@ def main():
 This holds at every declaration position — locals, constants, fields, parameters, methods,
 properties, events, module-level `def` and `const`, and all type-declaration forms:
 
+<!-- spec-sweep: output -->
 ```python
 class `event`[T]:         # emits: public class @event<T>
     value: T
@@ -297,6 +300,7 @@ class double:             # ERROR SPY0212: 'double' is a builtin type name
     v: int
 ```
 
+<!-- spec-sweep: output -->
 ```python
 class `double`:           # OK — a distinct symbol, fully usable including constructible
     v: int

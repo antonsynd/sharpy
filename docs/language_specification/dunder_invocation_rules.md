@@ -6,6 +6,7 @@ Dunder methods (double-underscore methods like `__add__`, `__eq__`) define *how*
 
 **Explicit dunder invocation by user code is a compile error:**
 
+<!-- spec-sweep: fragment -->
 ```python
 x = 5
 x.__eq__(3)         # ERROR: Cannot invoke dunder methods directly
@@ -21,6 +22,7 @@ obj.__str__()       # ERROR: Cannot invoke dunder methods directly
 
 Use operators for operator dunders:
 
+<!-- spec-sweep: fragment -->
 ```python
 x == y              # ✅ Correct — compiler uses C# operator == internally (derived from __eq__() if present)
 x + y               # ✅ Correct — compiler uses C# operator + internally (derived from __add__() if present)
@@ -31,6 +33,7 @@ x[0]                # ✅ Correct — compiler uses C# indexer method this[] int
 
 Use built-in functions for protocol dunders:
 
+<!-- spec-sweep: fragment -->
 ```python
 len(x)              # ✅ Correct — uses __len__ internally for relevant Sharpy and user-defined types, Count property otherwise
 ```
@@ -89,7 +92,14 @@ print(str(dog))  # Output: Animal(Buddy)
 
 Dunder methods can be overridden using `@override`:
 
+<!-- spec-sweep: output "Dog(Buddy)" -->
 ```python
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
 class Dog(Animal):
     def __init__(self, name: str):
         super().__init__(name)
@@ -141,6 +151,7 @@ For all other inherited dunders, `@override` remains required when the base clas
 
 Within a dunder method, you may call the base class implementation via `super()`:
 
+<!-- spec-sweep: fragment -->
 ```python
 class Child(Parent):
     @override
@@ -168,6 +179,9 @@ class Ordered:
             return False
         return self.value == other.value
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
     def __lt__(self, other: Ordered) -> bool:
         return self.value < other.value
 
@@ -190,6 +204,7 @@ Dunder calls on `self` or `super()` are **only** permitted:
 - Within a dunder method body
 - As immediate call expressions (cannot be captured or passed)
 
+<!-- spec-sweep: error SPY0429 -->
 ```python
 class Example:
     def __str__(self) -> str:
@@ -202,6 +217,9 @@ class Example:
 
     def __eq__(self, other: object) -> bool:
         return other.__eq__(self)       # ❌ ERROR: Not self or super()
+
+    def __hash__(self) -> int:
+        return 0
 ```
 
 ### Child Objects Use Built-in Functions
@@ -225,6 +243,9 @@ class Node:
             return False
         return self.value == other.value  # ✅ Use == operator
         # NOT: self.value.__eq__(other.value)  # ❌ Error
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 ```
 
 ### Summary Table

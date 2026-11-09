@@ -2,6 +2,7 @@
 
 ## Primary Expressions
 
+<!-- spec-sweep: fragment -->
 ```python
 # Literals
 42                  # Integer
@@ -21,6 +22,7 @@ my_variable
 
 ## Member Access
 
+<!-- spec-sweep: fragment -->
 ```python
 # Standard access
 obj.field
@@ -33,6 +35,7 @@ obj?.method()
 
 ## Index Access
 
+<!-- spec-sweep: fragment -->
 ```python
 arr[0]              # First element
 arr[-1]             # Last element
@@ -42,6 +45,7 @@ matrix[i, j]        # Tuple index (parsed as tuple expression)
 
 ## Function Calls
 
+<!-- spec-sweep: fragment -->
 ```python
 print("Hello")
 calculate_total(100, 0.08)
@@ -53,6 +57,7 @@ container = ListContainer[str]()
 
 ## Conditional Expression (Ternary)
 
+<!-- spec-sweep: fragment -->
 ```python
 result = x if x > 0 else -x         # Absolute value
 status = "even" if n % 2 == 0 else "odd"
@@ -107,6 +112,7 @@ falsy
 
 Expressions are evaluated left-to-right:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Left-to-right evaluation
 result = f1() + f2() * f3()

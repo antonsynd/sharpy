@@ -256,6 +256,7 @@ so Python code that spells the import compiles unchanged.
 | `@lru_cache(maxsize=None)`, `@cache` | unbounded, nothing is evicted |
 | `@lru_cache(maxsize=0)` | nothing is cached: every call runs the body |
 
+<!-- spec-sweep: output -->
 ```python
 from functools import lru_cache
 
@@ -515,6 +516,7 @@ class Service:
 
 Custom attributes are baked into the .NET assembly as metadata and can be retrieved via reflection:
 
+<!-- spec-sweep: output -->
 ```python
 from System import Attribute
 
@@ -553,6 +555,7 @@ This is equivalent to `@[obsolete("Use new_method instead")]` but uses the Pytho
 `@deprecated` on an `__init__` overload warns (SPY0466) at every construction that resolves to
 that overload — including the single-`__init__` case (#1536):
 
+<!-- spec-sweep: output -->
 ```python
 class Widget:
     value: int
@@ -575,6 +578,7 @@ constructed *type*, and `@must_use` on the class already draws SPY0480 for a dis
 construction through the type channel (verified by the
 `decorators/must_use_class_discarded_1536` fixture):
 
+<!-- spec-sweep: output -->
 ```python
 @must_use
 class Widget:

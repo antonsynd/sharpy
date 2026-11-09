@@ -19,6 +19,7 @@ The only place where `E` is not automatically made to be the
 base `Exception` type is in a throwing cast (`as!`), where
 it is `InvalidCastException`:
 
+<!-- spec-sweep: fragment -->
 ```python
 x = try my_dog as! Cat  # x is of type Result[Cat, InvalidCastException]
 
@@ -41,6 +42,9 @@ x: Result[int, ValueError] = try[ValueError] int("some string")
 **Uncaught exception types:** When using `try[E]` with a specific exception type, only exceptions of type `E` (or its subclasses) are caught. If the expression throws a different exception type, that exception propagates uncaught at runtime:
 
 ```python
+def some_func() -> int:
+    return 1
+
 # Only catches ValueError; TypeError propagates uncaught
 x = try[ValueError] some_func()
 

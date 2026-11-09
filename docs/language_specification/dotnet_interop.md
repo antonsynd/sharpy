@@ -20,6 +20,7 @@ content = File.read_all_text("data.txt")
 
 CLR type and namespace names bind verbatim from the reflected metadata. The Pythonic→PascalCase name mangler applies only to Sharpy-defined identifiers and member accesses — import targets use the exact spelling from `System.Type`. This holds for every spelling that denotes the type: an `as` alias binds the same type the un-aliased spelling binds and is emitted from the same reflected name (`from system import Guid as G` emits `System.Guid`, never the mangled `System.GUID`), and a bare CLR-only type name used as an annotation resolves through the well-known namespaces and is always emitted fully qualified.
 
+<!-- spec-sweep: output -->
 ```python
 from system import Guid          # System.Guid (not GUID)
 from system import Guid as G     # the alias binds System.Guid, not System.GUID
@@ -142,6 +143,7 @@ def main() -> None:
 
 A **function target type** at the reference site selects the method, so the reference runs:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     xs: list[int] = [1, 2, 3]
@@ -155,6 +157,7 @@ The `tuple` receiver is exempt: its `.item1` / `.Item1` element spellings are ty
 
 A Sharpy class may extend a .NET class. Overriding one of its `abstract` or `virtual` methods follows the same rule as overriding a Sharpy base method: the override **requires** `@override` (see [inheritance.md](inheritance.md) and [dunder_invocation_rules.md](dunder_invocation_rules.md)), whether the base came from a .NET namespace or from a Sharpy module. The base method is found by the snake_case name, so `compare` overrides `Comparer<T>.Compare`. The only methods exempt are `__str__`, `__eq__` and `__hash__`, which implicitly override `System.Object` members at any depth. Implementing a .NET interface is not an override.
 
+<!-- spec-sweep: output -->
 ```python
 import system.collections.generic as scg
 
@@ -199,6 +202,7 @@ Because the chain resolves to the enum's own type, assigning it into an unrelate
 `System.Linq.Enumerable`'s extension methods are available on any sequence, under their
 `snake_case` names. No import is needed — `using System.Linq;` is always emitted:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     numbers = [1, 2, 3, 4, 5]
@@ -221,6 +225,7 @@ def main() -> None:
 The type arguments are inferred from the receiver and the arguments, so the call has a Sharpy type
 and can be used wherever that type is expected — wrapped, annotated, or chained:
 
+<!-- spec-sweep: output -->
 ```python
 from system.collections.generic import List
 
@@ -241,6 +246,7 @@ method on the surface needs.
 Write the type arguments explicitly when inference cannot reach them — `cast` and `of_type` are the
 two whose result is determined by nothing else:
 
+<!-- spec-sweep: output -->
 ```python
 from system.collections.generic import List
 
@@ -283,6 +289,7 @@ single-overload call, and when an annotated destination is compatible with **non
 candidates' return types, the assignment is refused up front (naming the candidate set) rather than
 deferred to a C# error:
 
+<!-- spec-sweep: output -->
 ```python
 from system.collections.generic import List
 
@@ -303,6 +310,7 @@ A receiver that is not a sequence is a different case, and it is refused rather 
 overload of the name accepts it, so no argument list could make the call bind and deferring to
 codegen would only turn a type error into an internal error.
 
+<!-- spec-sweep: error SPY0203 -->
 ```python
 def main() -> None:
     n: int = 5
@@ -345,6 +353,7 @@ a value whose runtime form is a CLR sequence is bound to a Sharpy variable, retu
 `list[T]`, or passed to a parameter written `list[T]` in Sharpy source, it is converted into a real
 Sharpy collection. This is Python's `list(...)`, applied implicitly — including its copy semantics:
 
+<!-- spec-sweep: output -->
 ```python
 from system.collections.generic import List
 
@@ -364,6 +373,7 @@ from, exactly as `b = list(a)` in Python leaves `a` alone.
 `IDictionary<K, V>` or `IReadOnlyDictionary<K, V>` — materializes into a `dict[K, V]` exactly as a
 .NET sequence materializes into a `list[T]`:
 
+<!-- spec-sweep: output -->
 ```python
 from system.diagnostics import ProcessStartInfo
 
@@ -400,6 +410,7 @@ so it chains but has no list surface (`len(xs)` draws SPY0320). Write `list[T]` 
 materialization instead, and with it the loss of `then_by` — which is now reported rather than
 deferred to the C# compiler:
 
+<!-- spec-sweep: fragment -->
 ```python
     xs: list[int] = lst.order_by(lambda v: v)   # fine: a Sharpy list[int]
     xs.then_by(lambda v: -v)                    # error[SPY0203]: list[int] has no member 'then_by'
@@ -416,6 +427,7 @@ That rule is about the *type of a read*, and it does **not** make every `.keys` 
 the method itself and `c.keys()` is the sequence
 ([#1391](https://github.com/antonsynd/sharpy/issues/1391)):
 
+<!-- spec-sweep: output -->
 ```python
 from collections import Counter
 
@@ -434,6 +446,7 @@ view, so this is a documented divergence — see `docs/deviations.yaml`.
 happens where a *sequence expression* meets a Sharpy slot; naming a CLR collection and annotating it
 as a Sharpy one is a different request, and Sharpy will not silently copy for it:
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 from system.collections.generic import List
 
@@ -480,6 +493,7 @@ Sharpy reads the nullable reference type (NRT) annotations that .NET members dec
 
 The annotation is read at EVERY position of the declared type, not only the outermost one: a member declared `List<object?>` is `list[object | None]`, one declared `IDictionary<string, string?>` is `dict[str, str | None]`, and `string?[]` is `array[str | None]`. Because a generic argument position is invariant, that is also the spelling a caller has to write.
 
+<!-- spec-sweep: output -->
 ```python
 import yaml
 
@@ -492,6 +506,7 @@ def main() -> None:
 ```
 
 
+<!-- spec-sweep: output -->
 ```python
 import system.io
 
@@ -503,6 +518,7 @@ def main():
 
 Passing `None` to a parameter declared non-nullable is refused:
 
+<!-- spec-sweep: error SPY0229 -->
 ```python
 import system.io
 

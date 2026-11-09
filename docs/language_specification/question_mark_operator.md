@@ -7,6 +7,21 @@ failure (`Err`) or absence (`None`) — it short-circuits the enclosing function
 returning that failure/absence to the caller. This is analogous to Rust's `?`
 operator.
 
+The examples on this page call two helpers: `int_parse`, which returns `int !ValueError`, and
+`read_file`, which throws on failure.
+
+<!-- spec-sweep: prelude -->
+```python
+def int_parse(s: str) -> int !ValueError:
+    if s.isdigit():
+        return Ok(int(s))
+    return Err(ValueError(f"not an integer: {s}"))
+
+def read_file(path: str) -> str:
+    with open(path) as f:
+        return f.read()
+```
+
 ```python
 def parse_pair(a: str, b: str) -> tuple[int, int] !ValueError:
     x: int = int_parse(a)?   # unwrap, or return Err(...) from parse_pair
@@ -32,6 +47,7 @@ call site (the trailing `?`).
 `?` is a **postfix** operator written immediately after the expression it
 operates on:
 
+<!-- spec-sweep: fragment -->
 ```python
 value = compute()?
 value = obj.method()?
@@ -49,6 +65,7 @@ on any other type is a compile-time error (see [Restrictions](#restrictions)).
 operator. As a postfix operator it associates with the immediately-preceding
 primary expression:
 
+<!-- spec-sweep: fragment -->
 ```python
 compute()?        # (compute())?      — the call result is unwrapped
 a.b.c?            # ((a.b).c)?        — the whole member chain is unwrapped
@@ -59,6 +76,7 @@ x? + 1            # (x?) + 1          — x is unwrapped, then 1 is added
 Because it is consumed in the postfix loop alongside `.`, `[]`, and `()`, you can
 freely mix it into a chain:
 
+<!-- spec-sweep: fragment -->
 ```python
 config.load()?.value?     # load() unwrapped, then .value unwrapped
 ```
@@ -101,6 +119,7 @@ failure. The compiler enforces this:
 - **`?` on `Optional`** requires the enclosing function to return an
   `Optional[_]`. Otherwise the compiler reports `SPY0461`.
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ E1 (ValueError) assignable to E2 (Exception)
 def f(s: str) -> int !Exception:
@@ -137,6 +156,7 @@ This yields the following intuitive cases:
 | `x???y`    | 3   | yes       | 1                | 1             | early-return once, then `?? y` coalesce                      |
 | `x????y`   | 4   | yes       | 2                | 1             | early-return twice, then `?? y` coalesce                     |
 
+<!-- spec-sweep: fragment -->
 ```python
 # x?? — x is a doubly-wrapped value (e.g. Optional[Optional[int]]); unwrap twice,
 # early-returning at whichever level is empty.
@@ -198,6 +218,7 @@ rather than error propagation.
 would escape the lambda and target the enclosing function, which is not
 the intent:
 
+<!-- spec-sweep: error SPY0462 -->
 ```python
 def ok() -> Result[int, str]:
     return Ok(5)
@@ -228,6 +249,7 @@ Because `?` binds **tighter** than the prefix `try`/`maybe` keywords, parenthesi
 the conversion so that `?` applies to the produced `Result`/`Optional` rather than
 to the inner (un-converted) value:
 
+<!-- spec-sweep: fragment -->
 ```python
 def load(path: str) -> Config !IOError:
     # (try ...) wraps a throwing call into a Result; ? then propagates any Err upward.
@@ -243,6 +265,7 @@ def load(path: str) -> Config !IOError:
 expression with an `Unwrap()` call. For an operand of type `Result[T, E1]` inside
 a function returning `Result[R, E2]`:
 
+<!-- spec-sweep: fragment -->
 ```python
 value = compute()?
 ```
@@ -258,6 +281,7 @@ var value = __qm_0.Unwrap();
 
 For an operand of type `Optional[T]` inside a function returning `Optional[R]`:
 
+<!-- spec-sweep: fragment -->
 ```python
 value = compute()?
 ```
@@ -278,6 +302,7 @@ first, then the outer `?` operates on the already-unwrapped temporary.
 
 ### Chained parsing with early return
 
+<!-- spec-sweep: fragment -->
 ```python
 def parse_point(s: str) -> Point !ValueError:
     parts: list[str] = s.split(",")

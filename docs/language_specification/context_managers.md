@@ -175,6 +175,7 @@ When a `with` body's only exit is a `return`, `raise`, or `?` early return, the 
 suppresses the exception and falls through. For a simple manager, the code after the `with` is
 unreachable and must not contain a `return` path.
 
+<!-- spec-sweep: error SPY0266 -->
 ```python
 class Suppressor:
     def __enter__(self) -> Suppressor:
@@ -306,6 +307,7 @@ def main() -> None:
 A `yield` inside a `with` whose `__exit__` can suppress is refused. The C# iterator state machine
 cannot resume inside a `try/catch`, and the suppression edge makes the successor reachable:
 
+<!-- spec-sweep: error SPY0703 -->
 ```python
 class Suppressor:
     def __enter__(self) -> Suppressor:
@@ -358,6 +360,9 @@ class Resource:
     # No-arg form — cleanup only
     def __exit__(self):
         self.cleanup()
+
+    def cleanup(self):
+        pass
 ```
 
 ```python

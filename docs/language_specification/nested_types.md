@@ -57,6 +57,7 @@ nested **type alias** is referenced bare inside the host body and qualified,
 The following program declares a union, a delegate, and a type alias nested in a
 single class, then constructs and uses each from outside the host:
 
+<!-- spec-sweep: output -->
 ```python
 class Geometry:
     type Scalar = float
@@ -86,6 +87,7 @@ def main() -> None:
 
 Use dot notation to reference nested types in annotations:
 
+<!-- spec-sweep: fragment -->
 ```python
 node: LinkedList.Node = LinkedList.Node(42)
 ```
@@ -94,6 +96,7 @@ node: LinkedList.Node = LinkedList.Node(42)
 
 Nested type constructors use the qualified name:
 
+<!-- spec-sweep: fragment -->
 ```python
 item: Container.Item = Container.Item("widget")
 ```

@@ -4,6 +4,7 @@ The pipe operator `|>` enables left-to-right data transformation chains, improvi
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 value |> function
 value |> function(arg1, arg2)
@@ -29,6 +30,7 @@ numbers = [1, 2, 3] |> map(lambda x: x * 2) |> list()
 
 ## Pipeline Chains
 
+<!-- spec-sweep: fragment -->
 ```python
 # Data processing pipeline
 data = load_data()
@@ -63,6 +65,7 @@ result = "test" |> add_prefix  # ">>>: test"
 
 The pipe operator has low precedence, binding looser than most operators but tighter than assignment:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Arithmetic before pipe
 result = 5 + 3 |> str()  # Equivalent to: (5 + 3) |> str() = "8"
@@ -110,12 +113,14 @@ output = text |> str.strip() |> str.lower() |> parse_words()
 ```
 
 **Option/Result Chaining:**
+<!-- spec-sweep: fragment -->
 ```python
 # Chaining operations on Optional/Result types
 value = get_user(id) |> user.get_profile() |> profile.get_email()
 ```
 
 **Validation Chains:**
+<!-- spec-sweep: fragment -->
 ```python
 # Sequential validation
 user_data |> validate_email() |> validate_age() |> validate_address() |> save()
@@ -132,6 +137,7 @@ user_data |> validate_email() |> validate_age() |> validate_address() |> save()
 
 *Implementation: 🔄 Lowered - Compiler transformation to function call:*
 
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 result = value |> function(arg1, arg2)
@@ -142,6 +148,7 @@ var result = function(value, arg1, arg2);
 ```
 
 **With Method Calls:**
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 result = value |> obj.method(arg)
@@ -157,6 +164,7 @@ var result = obj.method(value, arg);
 - Cannot pipe to operators (use lambda or function wrapper)
 - Piped value always becomes first argument (use partial application to reorder)
 
+<!-- spec-sweep: fragment -->
 ```python
 # ❌ Cannot pipe to constructor
 result = data |> MyClass()  # ERROR
