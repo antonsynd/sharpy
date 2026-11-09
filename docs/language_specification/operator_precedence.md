@@ -29,6 +29,7 @@ Operators listed from highest to lowest precedence:
 ## Associativity Details
 
 **Right-associative operators:**
+<!-- spec-sweep: fragment -->
 ```python
 # Exponentiation chains right-to-left
 2 ** 3 ** 2    # = 2 ** (3 ** 2) = 2 ** 9 = 512
@@ -41,6 +42,7 @@ a if x else b if y else c    # = a if x else (b if y else c)
 
 Comparison operators are neither left nor right associative. Instead, they form **chains** that are evaluated as conjunctions:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Chained comparisons
 a < b < c      # Equivalent to: (a < b) and (b < c)
@@ -53,6 +55,7 @@ a < expensive() < c    # temp = expensive(); (a < temp) and (temp < c)
 ```
 
 **Note:** `is` and `in` operators participate in chaining:
+<!-- spec-sweep: fragment -->
 ```python
 a is b is c           # (a is b) and (b is c)
 a in b in c           # (a in b) and (b in c)
@@ -63,6 +66,7 @@ a < b in c            # (a < b) and (b in c)
 
 The postfix `?` operator is parsed at the same precedence level as member access, indexing, and calls. It binds to the immediately preceding expression:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ? binds tighter than any binary operator
 compute()? + 1      # (compute()?) + 1 — unwrap, then add
@@ -74,6 +78,7 @@ nested??            # ((nested)?)? — unwrap twice (e.g. Result[Result[T, E1], 
 
 When multiple consecutive `?` tokens appear, the parser uses the [N-count rule](question_mark_operator.md#interaction-with--null-coalescing) to distinguish early-return `?` from null-coalesce `??`:
 
+<!-- spec-sweep: fragment -->
 ```python
 x???default         # (x?) ?? default — one early-return, then coalesce
 x????default        # ((x?)?) ?? default — two early-returns, then coalesce
@@ -84,6 +89,7 @@ x ?? default        # x ?? default — just coalesce (no early-return)
 
 The pipe operator `|>` has lower precedence than arithmetic but higher than type coercion operators, enabling natural data flow:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Pipe captures the left-hand expression fully
 data |> filter(predicate) |> map(transform)  # Chains left-to-right
@@ -122,6 +128,7 @@ opt = maybe get_value() + default  # Parsed as: maybe (get_value() + default)
 Since `try` and `maybe` have lower precedence than the cast operators, `try` naturally wraps a
 throwing cast:
 
+<!-- spec-sweep: fragment -->
 ```python
 # try captures the entire cast expression (maybe binds at the same low precedence)
 result = try animal as! Dog    # Parsed as: try (animal as! Dog)
@@ -130,6 +137,7 @@ result = try animal as! Dog    # Parsed as: try (animal as! Dog)
 
 Use parentheses when you need different grouping:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Only wrap the function call, then add
 x = (try some_func(4)) + 5     # Must unwrap the Result before adding
@@ -143,6 +151,7 @@ In type annotation contexts, the `!E` (Result shorthand) and `| None` (C# nullab
 
 This is type-level precedence, not expression-level:
 
+<!-- spec-sweep: fragment -->
 ```python
 # !E binds tighter than | None
 int !ValueError | None  →  (int !ValueError) | None  →  Result[int, ValueError] | None

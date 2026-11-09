@@ -194,16 +194,7 @@ nullable_types.md::8696006ff7  # SPY0113 first #1952
 nullable_types.md::f11a34ec3b  # SPY0200 first #1952
 operator_overloading.md::215cca0d3c  # SPY0321 first #1952
 operator_overloading.md::b4f89480db  # SPY0455 first #1952
-operator_precedence.md::17d7b63395  # SPY0200 first #1952
-operator_precedence.md::3c3aa80d3e  # SPY0462 first #1952
-operator_precedence.md::3d1272a999  # SPY0200 first #1952
-operator_precedence.md::5cddb33eeb  # SPY0200 first #1952
 operator_precedence.md::6e254f0cc2  # SPY0103 first #1952
-operator_precedence.md::6f15036e80  # SPY0015 first #1952
-operator_precedence.md::742e989df5  # SPY0200 first #1952
-operator_precedence.md::96a81f8939  # SPY0200 first #1952
-operator_precedence.md::a7c0baf4de  # SPY0200 first #1952
-operator_precedence.md::dcb61c1e61  # SPY0462 first #1952
 parameter_modifiers.md::4579cd7cd3  # SPY0204 first #2145
 parameter_modifiers.md::b8922611be  # SPY0600 first #2144
 partial_application.md::2625b8a12d  # SPY0343 first #1952
