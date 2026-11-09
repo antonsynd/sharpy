@@ -122,14 +122,6 @@ identifiers.md::ba2deddbbf  # SPY0300 first #1952
 identity_operators.md::c5d42f1042  # SPY0349 first #1952
 if_statement.md::f89456acef  # SPY0200 first #1952
 indentation.md::f5c6531017  # SPY0012 first #1952
-inheritance.md::074e3da2a5  # SPY0285 first #1952
-inheritance.md::550cd441ca  # SPY0202 first #1952
-inheritance.md::5aa015c856  # SPY0287 first #1952
-inheritance.md::6097086372  # SPY0287 first #1952
-inheritance.md::acce7e5194  # SPY0284 first #1952
-inheritance.md::b2b2be02f6  # SPY0202 first #1952
-inheritance.md::e559bf67b4  # SPY0202 first #1952
-inheritance.md::ec29bea817  # SPY0204 first #1952
 interface_default_methods.md::5637229cf8  # SPY0240 first #1952
 interface_default_methods.md::c0bd2f17df  # SPY0248 first #1952
 interface_default_methods.md::f4bc136131  # SPY0248 first #1952

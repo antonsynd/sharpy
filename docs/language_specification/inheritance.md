@@ -5,6 +5,14 @@
 Sharpy supports single class inheritance only. A class can extend at most one base class but may implement multiple interfaces.
 
 ```python
+class Person:
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
 class Employee(Person):
     employee_id: str
 
@@ -18,6 +26,7 @@ class Employee(Person):
 
 **Multiple Class Inheritance is Not Supported:**
 
+<!-- spec-sweep: fragment -->
 ```python
 class A:
     pass
@@ -44,6 +53,7 @@ refused (the `no-subclassing-core-collections` deviation).
 
 ## Multiple Interface Implementation
 
+<!-- spec-sweep: fragment -->
 ```python
 class JSONEmployee(Employee, ISerializable, IComparable):
     def serialize(self) -> str:
@@ -81,6 +91,7 @@ This means:
 - The method must be called (parentheses required)
 
 **Valid forms:**
+<!-- spec-sweep: fragment -->
 ```python
 super().__init__(args)         # Constructor call
 super().method_name(args)      # Method call
@@ -88,6 +99,7 @@ super().__eq__(other)          # Dunder method call
 ```
 
 **Invalid forms (syntax/semantic errors):**
+<!-- spec-sweep: error SPY0287 -->
 ```python
 super()                        # ERROR: standalone super() not allowed
 super().field                  # ERROR: cannot access fields via super()
@@ -150,6 +162,7 @@ class Circle(Shape):
 
 Within a dunder method, `super()` can call the parent's dunder implementation. This includes calling the same dunder on the parent, or other dunders for cross-dunder synthesis:
 
+<!-- spec-sweep: fragment -->
 ```python
 class Child(Parent):
     @override
@@ -207,6 +220,7 @@ cast — selects the parent body and there is no self-recursion.
 
 In deep inheritance hierarchies, you cannot chain `super()` calls to access methods from ancestors further up the chain:
 
+<!-- spec-sweep: error SPY0287 -->
 ```python
 class A:
     @virtual
@@ -234,6 +248,7 @@ class C(B):
 
 `super()` is a compile-time error in any other context:
 
+<!-- spec-sweep: error SPY0285 -->
 ```python
 class Example:
     value: int
