@@ -362,6 +362,7 @@ When exactly one operand is an integer constant whose **value** fits the other
 operand's type, the constant converts to that type BEFORE promotion — the
 operator sees two operands of the same type:
 
+<!-- spec-sweep: output -->
 ```python
 b: uint32 = 5
 c: uint32 = b + 1     # OK: 1 converts to uint32, result is uint32

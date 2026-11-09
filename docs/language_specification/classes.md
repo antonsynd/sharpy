@@ -120,6 +120,7 @@ comprehension, generator, lambda, or walrus. Such an initializer is evaluated in
 when it hoists a local, is wrapped so the local has somewhere to live; a plain constant initializer
 is emitted unchanged.
 
+<!-- spec-sweep: output -->
 ```python
 class Grid:
     cells: list[int] = [n * n for n in range(4)]

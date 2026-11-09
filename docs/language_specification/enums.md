@@ -68,6 +68,7 @@ route (`print`, f-strings and `format()` pad the `str`, a list or dict element i
 rule covers every .NET enum reached through interop too: `str(DayOfWeek.Monday)` is
 `DayOfWeek.Monday` (Sharpy-only; Python has no such type).
 
+<!-- spec-sweep: output -->
 ```python
 enum Color:
     RED = 1

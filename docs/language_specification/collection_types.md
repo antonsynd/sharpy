@@ -170,6 +170,7 @@ def main() -> None:
 
 The same operands the other way round produce the same elements in a `frozenset`:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     s: set[int] = {1, 2}
@@ -226,6 +227,7 @@ Note the SPELLINGS: Sharpy uses `is_subset` / `is_superset` / `is_disjoint`, not
 Nothing is mutated in place, so the left operand may be a `frozenset` — the name is simply bound to
 the new frozenset the operator returned:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     s: set[int] = {1, 2}
@@ -269,6 +271,7 @@ equality operators take nullable operands, so a mixed `==` overload would make t
 `someSet == None` ambiguous between the two candidates. Converting one side states which comparison
 is meant, and both spellings hold:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     s: set[int] = {1}
@@ -489,6 +492,7 @@ def main():
 
 String and bytes slicing follows the same rules:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     s: str = "hello"
@@ -532,6 +536,7 @@ against the dict's key type parameter using assignability (not strict equality).
 | `d: dict[long, str]; d[1]` | `int` vs `long` | Accepted (int assignable to long) |
 | `o: dict[object, int]; o["k"]; o[2]` | any vs `object` | Accepted |
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     d: dict[long, str] = {}    # a `{1: "a"}` literal is a dict[int, str] — start empty
@@ -575,6 +580,7 @@ spelled `None()` — a value of the `Optional` union rather than a null, which l
 dictionary proper and never reaches the null-key path. Both spellings print `None`, and both
 behave as Python's.
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     o: dict[str?, int] = {None(): 1, Some("b"): 2}

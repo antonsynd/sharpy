@@ -109,6 +109,7 @@ name ??= "Default"
 
 To assign inside an expression, write the walrus form of the same store — `x := x ?? value`:
 
+<!-- spec-sweep: output -->
 ```python
 name: str | None = None
 result = (name := name ?? "Default")

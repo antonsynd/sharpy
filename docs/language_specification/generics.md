@@ -43,6 +43,7 @@ must be supplied. `Box[int].CAPACITY` reads the constant on the closed type
 `Box<int>`; the bare open reference `Box.CAPACITY` is rejected with SPY0339, the
 same rule that applies to using the reference as a value.
 
+<!-- spec-sweep: output -->
 ```python
 class Box[T]:
     const CAPACITY: int = 3
@@ -236,6 +237,7 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
 | `T: notnull` | `where T : notnull` |
 | `T: new()` | `where T : new()` |
 
+<!-- spec-sweep: output -->
 ```python
 class Counter:
     count: int

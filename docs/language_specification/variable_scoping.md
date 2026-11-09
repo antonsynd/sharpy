@@ -121,6 +121,7 @@ print(x)                # Prints "outer", 'x' was shadowed only
 
 Assignment to a name that already exists in an enclosing scope writes through to it — no `nonlocal` keyword needed:
 
+<!-- spec-sweep: output -->
 ```python
 x = 0
 for i in range(5):      # 'i' is block-scoped
@@ -563,6 +564,7 @@ def main():
 `let` always introduces a new variable, so a name can be redeclared in the same scope, with the same
 or a different type; the new variable shadows the old one for the rest of the scope:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     let x = 5               # Initial declaration
@@ -574,6 +576,7 @@ def main():
 Stage 1 also accepts the keywordless shadowing forms, which Stage 2 retires (#1974): an annotated
 declaration shadows, and `x: auto = e` is the deprecated spelling of `let x = e`:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     x: int = 5

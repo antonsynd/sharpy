@@ -57,6 +57,7 @@ nested **type alias** is referenced bare inside the host body and qualified,
 The following program declares a union, a delegate, and a type alias nested in a
 single class, then constructs and uses each from outside the host:
 
+<!-- spec-sweep: output -->
 ```python
 class Geometry:
     type Scalar = float

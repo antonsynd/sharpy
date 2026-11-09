@@ -6,6 +6,7 @@ Template strings (t-strings) provide structured string interpolation, producing 
 
 T-strings use the `t` prefix, analogous to f-strings:
 
+<!-- spec-sweep: output -->
 ```python
 name = "Alice"
 greeting = t"Hello {name}"

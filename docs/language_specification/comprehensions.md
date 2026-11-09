@@ -128,6 +128,7 @@ type is a same-kind collection and the produced element is assignable to its ele
 **expected** type is the comprehension's type. Spelling a value as a comprehension rather than a
 literal never changes what it is assignable to.
 
+<!-- spec-sweep: output -->
 ```python
 class Base:
     def kind(self) -> str:

@@ -60,6 +60,7 @@ def main() -> None:
 An empty spec is `str(x)`, except for a type that owns its spec (`def __format__`, or the CLR
 `IFormattable`): that type is asked for `""`, as Python calls `type(x).__format__(x, "")`:
 
+<!-- spec-sweep: output -->
 ```python
 class Money:
     cents: int
@@ -233,6 +234,7 @@ def main() -> None:
 
 To check whether a value is one of several types, use explicit `or`:
 
+<!-- spec-sweep: output -->
 ```python
 def describe(x: object) -> str:
     if isinstance(x, int) or isinstance(x, str):
@@ -395,6 +397,7 @@ print("".join(it))   # (empty — iterator exhausted)
 `Iterator[T]` spelling. This is the annotation to use when a binding holds the return value of
 any iterator-returning builtin:
 
+<!-- spec-sweep: output -->
 ```python
 r: Iterator[str] = reversed("abc")
 print("".join(r))   # cba

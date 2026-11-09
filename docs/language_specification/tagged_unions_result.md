@@ -150,6 +150,7 @@ extracting the contained value or error:
 | `map(f)` | `Result[U, E]` | Transforms the Ok value |
 | `map_err(f)` | `Result[T, F]` | Transforms the Err value |
 
+<!-- spec-sweep: output -->
 ```python
 r: int!str = Ok(42)
 print(r.is_ok)          # True

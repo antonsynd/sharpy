@@ -64,6 +64,7 @@ the keyword in backticks (see [identifiers.md](identifiers.md#literal-names-back
 or rename it. The escaped name is emitted verbatim — `` `type` `` is the C# name `type`, not
 `Type`.
 
+<!-- spec-sweep: output -->
 ```python
 class MoveData:
     `type`: int = 0             # `type: int = 0` is SPY0101: 'type' is a reserved word; write `type` in backticks to use it as a name, or rename it

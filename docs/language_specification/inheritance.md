@@ -191,6 +191,7 @@ lambda body, another operator's body), because it names no `base` keyword that C
 outside an instance method. See [Operator Overloading](operator_overloading.md) for how the
 operators themselves are declared.
 
+<!-- spec-sweep: output -->
 ```python
 class Base:
     v: int

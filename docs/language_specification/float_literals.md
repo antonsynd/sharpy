@@ -103,6 +103,7 @@ refused at compile time with SPY0210, the code an out-of-range integer literal d
 carried as an infinity. Python reads `1e400` as `inf`; Sharpy refuses it, because a silent infinity
 would flow on through arithmetic.
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     big = 1.7976931348623157e308          # float64's largest value

@@ -94,6 +94,7 @@ y: int | None = None
 A **reference**-typed operand compares against `None` directly — the comparison lowers to a null
 check, which is what the author meant:
 
+<!-- spec-sweep: output -->
 ```python
 s1: str = "a"
 print(s1 == None)        # False

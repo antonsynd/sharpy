@@ -54,6 +54,7 @@ match value:
 
 Used when you want to produce a value:
 
+<!-- spec-sweep: output -->
 ```python
 # In a return statement
 def categorize(n: int) -> str:
@@ -95,6 +96,7 @@ accepted in an arm. A raising arm contributes no type: the match expression's ty
 other arms, and a match expression whose every arm raises has no type and is refused (SPY0242) —
 use a match statement. `raise` is accepted only here, never as a general expression.
 
+<!-- spec-sweep: output -->
 ```python
 def parse(name: str) -> int:
     return match name:
@@ -115,6 +117,7 @@ def main():
 The parser determines whether `match` is an expression or statement based on syntactic context:
 
 **Expression contexts** (match produces a value):
+<!-- spec-sweep: output -->
 ```python
 def respond(flag: bool) -> str:
     # Return statement
@@ -140,6 +143,7 @@ def main():
 A match expression is **not** an expression context inside brackets — a call argument, a
 list/tuple/dict element, a subscript or a parenthesized operand. Bind it to a local first:
 
+<!-- spec-sweep: output -->
 ```python
 # f(match value:              # ERROR (SPY0102): A match expression cannot be written inside brackets: ...
 #     case 1: "a"             #   ... Bind it to a local first (v = match ...: with the arms on the

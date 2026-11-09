@@ -88,6 +88,7 @@ be stored, passed and returned like any other function-typed value. Its string f
 `str(f)`) is the underlying .NET delegate type name (for example ``System.Func`2[...]``), not
 Python's `<bound method ...>` text; that spelling is a .NET detail and is not portable output.
 
+<!-- spec-sweep: output -->
 ```spy
 class Accumulator:
     base: int
@@ -223,6 +224,7 @@ result = apply(5, lambda x: x * 2)  # 10
 
 **As return types:**
 
+<!-- spec-sweep: output -->
 ```python
 def make_multiplier(factor: int) -> (int) -> int:
     return lambda x: x * factor
@@ -306,6 +308,7 @@ class Box[T]:
         self.value = value
 ```
 
+<!-- spec-sweep: output -->
 ```python
 mb: (int) -> Box[int] = Box         # the BARE name; the target supplies T
 print(mb(3).value)                  # 3

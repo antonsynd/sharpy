@@ -36,6 +36,7 @@ bare, exactly as `Point3D` is used in `distance` above. From **outside** the hos
 it is referenced with the qualified spelling `Outer.Alias` — the same dot notation
 used for any nested type — in addition to the bare-inside form:
 
+<!-- spec-sweep: output -->
 ```python
 class Box:
     type Ints = list[int]

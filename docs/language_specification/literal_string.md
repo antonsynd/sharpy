@@ -188,6 +188,7 @@ LiteralString <: str
 
 This ensures that functions accepting `str` work with literal strings, but functions requiring `LiteralString` reject runtime-constructed strings. `LiteralString` can appear as the payload of `T?` and `T | None`:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     x: LiteralString? = Some("a")
@@ -201,6 +202,7 @@ A `LiteralString` value supports every operation a `str` does: operators (`==`, 
 `+`, `*`), comparison chains, `len`, indexing, slicing, iteration, `in`, truthiness (`if x:`),
 method calls (including `split`, which returns `list[str]`), f-strings, `str()`, and `sorted`.
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     x: LiteralString = "hello"

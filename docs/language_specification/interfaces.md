@@ -342,6 +342,7 @@ To keep an underscore spelling, backtick-escape the name. An escaped name is a l
 no access convention, so `` `_area` `` is a PUBLIC member spelled `_area`. The implementing class or
 struct declares it with the same escaped spelling, and every use is spelled the same way:
 
+<!-- spec-sweep: output -->
 ```python
 interface IShape:
     def `_area`(self) -> float: ...

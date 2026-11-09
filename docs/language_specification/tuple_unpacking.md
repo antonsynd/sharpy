@@ -6,6 +6,7 @@ Sharpy supports destructuring tuples and lists into individual variables across 
 
 Unpack a tuple into variables by matching the number of elements:
 
+<!-- spec-sweep: output -->
 ```python
 point: tuple[int, int] = (3, 7)
 x, y = point
@@ -176,6 +177,7 @@ def main() -> None:
 
 Targets can themselves be tuple patterns, enabling nested destructuring:
 
+<!-- spec-sweep: output -->
 ```python
 t: tuple[tuple[int, int], int] = ((1, 2), 3)
 (a, b), c = t
@@ -186,6 +188,7 @@ print(c)  # 3
 
 Nesting can be arbitrarily deep:
 
+<!-- spec-sweep: output -->
 ```python
 t: tuple[tuple[int, tuple[int, int]], int] = ((1, (2, 3)), 4)
 (a, (b, c)), d = t
@@ -203,6 +206,7 @@ The star rule holds at *every* depth: a star inside a nested target absorbs its 
 top-level star does, in all four positions. Two stars at the same depth are refused with Python's
 wording (SPY0356, `multiple starred expressions`):
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     a, (b, *c) = (1, (2, 3, 4))
@@ -240,6 +244,7 @@ a, (*b, *c) = (1, (2, 3, 4))   # error SPY0356: multiple starred expressions
 
 A starred expression collects remaining elements into a list:
 
+<!-- spec-sweep: output -->
 ```python
 items: list[int] = [1, 2, 3, 4, 5]
 
@@ -310,6 +315,7 @@ for (x, y), label in items:
 
 List, set, and dict comprehensions support tuple unpacking in their `for` clauses:
 
+<!-- spec-sweep: output -->
 ```python
 pairs: list[tuple[int, int]] = [(1, 2), (3, 4), (5, 6)]
 sums = [a + b for a, b in pairs]
@@ -384,6 +390,7 @@ element is a **store** into the target's declared slot. The element expression s
 declared type as its expected type, so constructor shorthands like `Some(v)` and `None()`
 can infer their type parameter from it:
 
+<!-- spec-sweep: output -->
 ```python
 class Box:
     v: int? = None()
@@ -397,6 +404,7 @@ def main() -> None:
 
 Similarly, bare `None` into a nullable target adopts the target's type:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     x: str | None = "hello"

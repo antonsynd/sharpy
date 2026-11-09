@@ -160,6 +160,7 @@ A `const` is class-level storage, not per-instance state, so it is **not an inst
 neither a constructor parameter nor a constructor assignment, and it does not take part in the
 ordering rule above. A `const` may therefore be declared before a field with no default:
 
+<!-- spec-sweep: output -->
 ```python
 struct Point:
     const DIMENSIONS: int = 2
@@ -187,6 +188,7 @@ a defaulted field: the synthesized constructor takes it as an optional parameter
 constructor parameter has a default, the explicit parameterless constructor applies every default
 -- `H()` never zero-initializes a defaulted member:
 
+<!-- spec-sweep: output -->
 ```python
 struct H:
     property x: int = 3
@@ -223,6 +225,7 @@ property, event, nested type) is refused (`SPY0415`, the same code as `@virtual`
 method); write `@private`, or use the `_name` convention. Access from outside the struct
 (`c._count`) is refused exactly as for a class member (`SPY0283`).
 
+<!-- spec-sweep: output -->
 ```python
 struct Counter:
     _count: int
@@ -335,6 +338,7 @@ For large structs or performance-critical code, use parameter modifiers to avoid
 
 Pass a struct by reference without allowing modifications:
 
+<!-- spec-sweep: output -->
 ```python
 struct LargeData:
     buffer: list[int]  # Assume this is large
@@ -421,6 +425,7 @@ def main() -> None:
 
 For best performance and safety, prefer **immutable structs**:
 
+<!-- spec-sweep: output -->
 ```python
 struct Vector2:
     x: float

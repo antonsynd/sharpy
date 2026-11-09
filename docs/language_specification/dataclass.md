@@ -109,6 +109,7 @@ public Bag(string label, Sharpy.List<int>? items = null)
 The per-instance value is assigned **before** `__post_init__` runs, so the hook observes the
 default (matching Python's `default_factory`-then-`__post_init__` ordering):
 
+<!-- spec-sweep: output -->
 ```python
 @dataclass
 class Box:

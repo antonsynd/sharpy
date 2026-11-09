@@ -66,6 +66,7 @@ An escaped name is an identifier at every site, including the sites where the ba
 soft keyword ([keywords.md](keywords.md#soft-keywords-context-dependent)): an escaped `` `_` `` in
 a call argument is the variable `_`, not a partial-application placeholder.
 
+<!-- spec-sweep: output -->
 ```python
 def f(a: int, b: int) -> int:
     return a * 10 + b
