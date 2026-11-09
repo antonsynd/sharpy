@@ -95,6 +95,7 @@ Unlike Python which distinguishes `BaseException` from `Exception`, Sharpy follo
 
 ## Try/Except/Finally
 
+<!-- spec-sweep: fragment -->
 ```python
 try:
     result = risky_operation()
@@ -135,6 +136,7 @@ def example() -> int:
 
 ## Raise Statement
 
+<!-- spec-sweep: fragment -->
 ```python
 # Raise exception
 raise ValueError("Invalid input")
@@ -232,6 +234,7 @@ except* TypeError as eg:
 - **`except*` requires an exception type** — bare `except*:` is not allowed (unlike bare `except:`)
 - **Cannot mix `except` and `except*`** — a `try` block must use either regular `except` handlers or `except*` handlers, not both
 
+<!-- spec-sweep: error SPY0138 -->
 ```python
 # ERROR: bare except* not allowed
 try:
@@ -258,6 +261,7 @@ Unlike Python, Sharpy refuses `return`, `break`, and `continue` inside a `finall
 C# forbids them as CS0157). A transfer out of `finally` would silently discard a pending exception
 or return value.
 
+<!-- spec-sweep: error SPY0702 -->
 ```python
 def f() -> int:
     try:
@@ -300,6 +304,7 @@ Unlike Python, Sharpy does not support `raise ... from ...` (exception chaining 
 
 To set an inner exception in Sharpy, pass it as a constructor argument:
 
+<!-- spec-sweep: fragment -->
 ```python
 except IOError as e:
     raise ConfigError("Failed to load config", e)  # inner exception via constructor
