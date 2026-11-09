@@ -130,11 +130,6 @@ method_overloading.md::1fd67b6c76  # SPY0200 first #1952
 method_overloading.md::43f8776c84  # SPY0200 first #1952
 method_overloading.md::88398db0ea  # SPY0244 first #1952
 method_overloading.md::e06f25c63f  # SPY0200 first #1952
-name_shadowing.md::09ded56250  # SPY0212 first #1952
-name_shadowing.md::539905f758  # SPY0492 first #1952
-name_shadowing.md::72bf3bfb98  # SPY0226 first #1952
-name_shadowing.md::7dc24ed80f  # SPY0300 first #1952
-name_shadowing.md::962d01007c  # SPY0200 first #1952
 name_shadowing.md::96ff2030c9  # SPY0240 first #1952
 named_tuples.md::4ff1f72827  # SPY0200 first #1952
 named_tuples.md::a065be765c  # SPY0118 first #1952
@@ -198,11 +193,6 @@ tagged_unions.md::38bf6cf4ff  # SPY0101 first #1952
 tagged_unions.md::8bf7689dc7  # SPY0212 first #1952
 tagged_unions.md::b808d27542  # SPY0101 first #1952
 tagged_unions.md::e0a36c312f  # SPY0102 first #1952
-tagged_unions_result.md::3faedfa51f  # SPY0204 first #1952
-tagged_unions_result.md::764ec6d20d  # SPY0200 first #1952
-tagged_unions_result.md::9c29dac8fc  # SPY0200 first #1952
-tagged_unions_result.md::9db8b7248c  # SPY0015 first #1952
-tagged_unions_result.md::a8397f7547  # SPY0212 first #1952
 tagged_unions_result.md::dff2bc3f02  # SPY0200 first #1952
 try_expressions.md::99379167f8  # SPY0103 first #1952
 try_expressions.md::9c806dbb93  # SPY0200 first #1952

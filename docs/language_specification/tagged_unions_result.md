@@ -6,6 +6,7 @@ The `Result[T, E]` type is a special tagged union provided by the Sharpy standar
 
 ## Definition
 
+<!-- spec-sweep: fragment -->
 ```python
 union Result[T, E]:
     case Ok(value: T)
@@ -18,6 +19,7 @@ The `Result` type is part of the standard library and provides special syntax an
 
 The `T !E` syntax is sugar for `Result[T, E]` in **return type annotations**:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Shorthand (in return type annotations)
 def parse(s: str) -> int !ValueError:
@@ -47,6 +49,7 @@ cache: dict[str, int !ValueError] = {}  # Use Result[int, ValueError] instead
 
 `!E` binds tighter than `| None`:
 
+<!-- spec-sweep: fragment -->
 ```python
 # !E binds tighter than | None
 int !ValueError | None  →  (int !ValueError) | None  →  Result[int, ValueError] | None
@@ -189,6 +192,7 @@ The standard library follows these conventions for when to use `Result` vs excep
 
 ### File Operations
 
+<!-- spec-sweep: fragment -->
 ```python
 def read_config(path: str) -> Config !str:
     if not file_exists(path):
@@ -263,6 +267,7 @@ def main() -> None:
 
 Clear the warning by using the value in any of the sanctioned ways:
 
+<!-- spec-sweep: fragment -->
 ```python
 value = parse("42")    # bind it
 parse("42")?           # propagate the error with ?
