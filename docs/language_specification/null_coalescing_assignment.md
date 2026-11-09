@@ -4,17 +4,20 @@ The null-coalescing assignment operator `??=` assigns a value to a variable only
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 variable ??= value
 ```
 
 For `T | None` (C# nullable), equivalent to:
+<!-- spec-sweep: fragment -->
 ```python
 if variable is None:
     variable = value
 ```
 
 For `T?` (Optional), equivalent to:
+<!-- spec-sweep: fragment -->
 ```python
 if variable.is_none:
     variable = Some(value)
@@ -61,6 +64,7 @@ The dictionary value type must be nullable or Optional (see [Type Requirements](
 A subscript `??=` on a *missing* key raises `KeyError` — the dictionary subscript operator reads the
 current value first, and a missing key is an error, not an absent value:
 
+<!-- spec-sweep: fragment -->
 ```python
 cache: dict[str, Data | None] = {}
 cache["timeout"] = None
@@ -119,6 +123,7 @@ when `x` already holds a value (it stores the value it already had).
 
 The variable must have an optional type (`T?`) or a nullable type (`T | None`):
 
+<!-- spec-sweep: error SPY0222 -->
 ```python
 # ✅ Valid - Optional type (T?)
 x: int? = None()
@@ -169,6 +174,7 @@ class Config:
 ```
 
 **Caching (key known to exist):**
+<!-- spec-sweep: fragment -->
 ```python
 class Repository:
     _data_cache: dict[int, Data | None] = {}
@@ -180,6 +186,7 @@ class Repository:
 ```
 
 **Lazy Loading:**
+<!-- spec-sweep: fragment -->
 ```python
 class HeavyResource:
     _connection: Connection | None = None
@@ -203,6 +210,9 @@ The right-hand side is only evaluated if the left-hand side is absent.
 When the value is already present, the store (setter, indexer write) is skipped entirely:
 
 ```python
+def expensive_computation() -> int:
+    return 1
+
 x: int | None = 42
 x ??= expensive_computation()  # expensive_computation() NOT called, setter NOT called
 
@@ -214,6 +224,7 @@ y ??= expensive_computation()  # expensive_computation() IS called, setter IS ca
 
 Can be chained for fallback chains:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Try multiple sources
 value: int | None = None
@@ -227,6 +238,7 @@ value ??= get_default()
 
 Maps directly to C# `??=` operator:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 cache: dict[str, Data] = {}
@@ -242,6 +254,7 @@ cache[key] ??= ComputeData(key);
 
 Like C#, the assignment is **not** atomic for reference types. For thread-safe initialization, use proper synchronization:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ❌ Not thread-safe
 _instance: MyService | None = None
@@ -268,6 +281,7 @@ x: int | None = None
 x ??= 5 + 3  # Equivalent to: x ??= (5 + 3)
 
 # Lower than null-coalescing operator ??
+y: int | None = None
 x: int | None = None
 x ??= y ?? 5  # Equivalent to: x ??= (y ?? 5)
 ```
@@ -305,6 +319,7 @@ to an already-empty slot is a no-op and likely a mistake.
 - Left side must be assignable (variable, field, property, or indexer)
 - Not atomic for concurrent access
 
+<!-- spec-sweep: error SPY0225 -->
 ```python
 # ❌ Cannot use with constants
 const DEFAULT: int | None = None
