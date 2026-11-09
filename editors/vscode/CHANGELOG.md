@@ -7,6 +7,18 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-09
+
+No extension-facing changes beyond a dependency bump (`@azure/msal-node`); version bumped with the toolchain.
+
+Toolchain-side:
+- Module and import naming is one rule at every consumer: a from-import binds the defining module's own declaration (a re-export resolves to its declaration before identities compare, so a type imported both directly and through a re-exporter is one import), a module variable, const or property reached through its module is spelled by its declaration's materialized name (SCREAMING_CASE properties, renamed defs, package `__init__` forwarders included), a module property is an export like every other module-level declaration, and module-level C# name collisions are keyed by name and generic arity across the class, union and property kinds (#2422, #2423, #2426).
+- Static initializers in class, struct and interface bodies are ordered: a forward read of a `@static` field, property, method or non-compile-time const sibling is refused with a message naming the position, nested receivers (`Outer.Inner.b`) resolve, and the temporary SPY0200 arm for a `@static` read from an initializer retires (#2384, #2425).
+- Type-body members are emitted in source order; a lone auto `set` half emits a synthesized backing field and a set-only property, an `@abstract` lone `set` half declares no storage, an explicit interface implementation claims no bare name, and SPY0407 runs on the module host (#2382, #2390).
+- Constructors: `self.<m> op= v` in `__init__` takes the augmented path, and an unannotated collection binding keeps its CLR identity, so the operators its annotated spelling accepts are no longer refused (#2439, #2449).
+- Core follows Python: the exception hierarchy mirrors CPython's MRO, the `OSError` family is re-rooted on Core with `IOError` as `OSError`, `str.encode` and `bytes.decode` raise Python's Unicode errors, `round()` follows `float.__round__` and `int.__round__`, `dict` keeps insertion order across a remove and an insert, and `date`, `time`, `datetime`, `numpy` and `requests` raise Python errors instead of CLR ones (#2124, #2440, #2461, #2477).
+- Performance: a warm no-change `--incremental` build is an up-to-date check (about 0.3 s on the stdlib project), the cache key covers compilation options and references, references load lazily, and element accessors inline with a fast bounds path (#2114).
+
 ## [0.23.0] - 2026-10-29
 
 ### Fixed
