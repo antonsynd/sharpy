@@ -2,6 +2,7 @@
 
 ## Match Statement
 
+<!-- spec-sweep: fragment -->
 ```python
 match value:
     case 0:
@@ -37,6 +38,7 @@ Sharpy supports both statement and expression forms of `match`, corresponding to
 
 Used when you need to execute statements for each case:
 
+<!-- spec-sweep: fragment -->
 ```python
 match value:
     case 1:
@@ -151,6 +153,7 @@ def main():
 ```
 
 **Statement contexts** (match is standalone):
+<!-- spec-sweep: fragment -->
 ```python
 # At statement level (not part of larger expression)
 match value:
@@ -410,6 +413,7 @@ than capturing the scrutinee. Rename the pattern variable if a capture was what 
 ## Tuple Patterns
 
 ```python
+point = (0, 5)
 match point:
     case (0, 0):
         print("Origin")
@@ -423,6 +427,7 @@ match point:
 
 ## Property Patterns
 
+<!-- spec-sweep: fragment -->
 ```python
 match shape:
     case Point(x=0, y=0):
@@ -437,6 +442,7 @@ match shape:
 
 Positional patterns match fields by declaration order (no `Deconstruct` method required):
 
+<!-- spec-sweep: fragment -->
 ```python
 match point:
     case Point(0, 0):              # Positional - matches x=0, y=0
@@ -453,6 +459,7 @@ match point:
 
 ## Type Patterns with Binding
 
+<!-- spec-sweep: fragment -->
 ```python
 match value:
     case int() as n:               # Type check and bind
@@ -494,7 +501,11 @@ for that family (`case Some(v):` / `case None():`, or `case Ok(v):` / `case Err(
 second spelling of the same match, and the Optional form was previously unsound (it reached code
 generation as a C# `CS8121`):
 
+<!-- spec-sweep: error SPY0498 -->
 ```python
+def get() -> str?:
+    return Some("a")
+
 x: str? = get()
 match x:
     case str():        # error[SPY0498] — use case Some(v): / case None():
@@ -727,6 +738,7 @@ a function, a fixed-arity tuple) is refused with SPY0241. The rule is the same f
 ### Basic Guard
 
 ```python
+value = 5
 match value:
     case x if x > 0:
         print(f"positive: {x}")
@@ -739,6 +751,7 @@ match value:
 ### Guards on Type Patterns
 
 ```python
+value: object = 5
 match value:
     case int() as n if n > 0:
         print(f"positive int: {n}")
@@ -763,6 +776,7 @@ Each alternative in the or-pattern can have its own guard condition. This maps t
 Guards make patterns conditional, so a guarded pattern is **not** considered exhaustive — even `case _ if condition:` does not cover all values. For exhaustive matching, include an unguarded wildcard or binding pattern:
 
 ```python
+value = 5
 match value:
     case _ if value > 0:
         print("positive")
@@ -799,6 +813,7 @@ arms after it (`case _:`, `case x:`) stay legal: they lower to C#'s `default:`, 
 compiler never marks unreachable, so the program compiles and the total arm runs. (Before this
 rule the total arm reached the C# compiler and failed with CS8120 behind SPY0908.)
 
+<!-- spec-sweep: error SPY0700 -->
 ```python
 # OK — the trailing wildcard is irrefutable
 def kind(x: int) -> str:
@@ -830,6 +845,7 @@ first leaves `case int():` behind it reachable — and the property form is one 
 positional one, so `case Box(a=1):` (a literal field) leaves a later `case Box(a=x):` reachable
 while `case Box(a=x):` (a binding field) subsumes a later `case Box(a=1):`.
 
+<!-- spec-sweep: error SPY0700 -->
 ```python
 # SPY0700 — `case 99:` is unreachable behind an arm that matches every int
 def kind(x: object) -> str:
@@ -899,6 +915,7 @@ def kind4(x: object) -> str:
             return "other"
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # OK — trailing capture
 match status:
@@ -950,6 +967,9 @@ enum Color:
     RED = 1
     GREEN = 2
     BLUE = 3
+
+color = Color.BLUE
+flag = True
 
 # ERROR: Non-exhaustive match (missing BLUE)
 match color:
