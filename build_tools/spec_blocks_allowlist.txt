@@ -114,16 +114,9 @@ generic_variance.md::7d44271b9b  # SPY0200 first #1952
 generic_variance.md::9cbfb172c2  # SPY0200 first #1952
 generic_variance.md::9cea195ec6  # SPY0220 first #1952
 generic_variance.md::a3cfba9433  # SPY0200 first #1952
-generics.md::03394fa55a  # SPY0200 first #1952
 generics.md::10412babcd  # SPY0413 first #1952
-generics.md::57aa9cb4ad  # SPY0237 first #1952
 generics.md::5b0f3da293  # SPY0338 first #1952
 generics.md::96da293483  # SPY0220 first #1952
-generics.md::994f362ebe  # SPY0204 first #1952
-generics.md::b51db6aa97  # SPY0200 first #1952
-generics.md::dc1e8f3cb8  # SPY0200 first #1952
-generics.md::df54475e88  # SPY0204 first #1952
-generics.md::fbd76fe402  # SPY0200 first #1952
 identifiers.md::6c22e23336  # SPY0023 first #1952
 identifiers.md::ba2deddbbf  # SPY0300 first #1952
 identity_operators.md::c5d42f1042  # SPY0349 first #1952

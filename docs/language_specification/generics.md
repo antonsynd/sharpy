@@ -64,6 +64,7 @@ constructed through the reference (`Box[int].Inner()` emits `new Box<int>.Inner(
 
 ## Generic Functions
 
+<!-- spec-sweep: prelude -->
 ```python
 def identity[T](value: T) -> T:
     return value
@@ -87,6 +88,7 @@ type-parameter list cannot declare one. Two kinds are affected, and both are ref
 C# makes neither generic (§15.11, §15.10). Declare the type parameter on the **type** instead, which
 is where these members can read it:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ❌ SPY0705 — a constructor cannot be generic
 class Box:
@@ -120,6 +122,9 @@ x = first(items)                # T inferred as int from list[int]
 
 **Explicit type arguments:**
 ```python
+def create_empty_list[T]() -> list[T]:
+    return []
+
 # Explicitly specify type parameter
 result = identity[int](42)      # T explicitly int
 name = identity[str]("hello")   # T explicitly str
@@ -141,7 +146,11 @@ result = convert("42", int.parse)  # T=str, U=int inferred
 ```
 
 **Partial type argument specification is not supported:**
+<!-- spec-sweep: error SPY0224 -->
 ```python
+def convert[T, U](value: T, converter: (T) -> U) -> U:
+    return converter(value)
+
 # ❌ Cannot specify only some type parameters
 result = convert[str](...)  # ERROR: must specify all or none
 ```
@@ -150,6 +159,7 @@ result = convert[str](...)  # ERROR: must specify all or none
 
 Unlike a bare function reference — which is a first-class value (see [function_types.md](function_types.md)) — a generic function reference *with explicit type arguments* (e.g. `identity[int]`) is not a value. It exists only as the callee of an immediate call. It cannot be assigned to a variable, passed as an argument, stored in a collection, or returned.
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Called immediately (the only legal use)
 result = identity[int](42)
@@ -168,6 +178,7 @@ To pass a specific instantiation around as a value, wrap it in a lambda (`lambda
 
 A parameter that reaches `T` through a wrapper binds `T` from the argument's *payload*. An argument that carries no payload — `None()`, a bare `None` — binds nothing: it is refused with the explicit-syntax steer rather than binding `T` to its own absence. A written type argument closes the slot, and the payload-less argument is then fine.
 
+<!-- spec-sweep: error SPY0237 -->
 ```python
 def f[T](x: T?) -> T:
     return x.unwrap()
@@ -286,6 +297,7 @@ For variance annotations on type parameters (`out T` for covariance, `in T` for 
 
 When combining `class` or `struct` with interface constraints, `class`/`struct` should come first:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Preferred: class/struct first
 def process[T: class & IDisposable](item: T): ...
