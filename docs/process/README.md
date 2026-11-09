@@ -14,8 +14,9 @@ Policy (owner, 2026-11-06):
   follows) and when `/verify-implementation` closes (the final state, with the verify record). Drafts
   and intermediate adequacy passes stay in the gitignored `.claude/plans/` scratch directory.
 - A generated one-page index per batching call (group → issues → tier → execution position → current
-  rulings with supersession chains resolved) is the intended companion; see
-  `docs/audits/health-check-2026-11-06.md` §9 for why.
+  rulings with supersession chains resolved) is `rounds/index.md`, written by
+  `python3 -m build_tools.process_index --write` and committed with the charter (CI runs `--check`);
+  see `docs/audits/health-check-2026-11-06.md` §9 for why.
 
 The predecessor charter (`rounds/remediation-round-2026-08-30-batching.md`, rulings R-A…R-AV) and the
 plans that predate this policy were committed as they stood on the owner's machine (owner, 2026-11-07,

@@ -23,6 +23,8 @@ on:
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'docs/stdlib/**'
       - 'docs/deviations.yaml'
+      # build_tools/process_index.py --check: the index is regenerated from the charter (W3.3).
+      - 'docs/process/rounds/**'
       - 'mkdocs.yml'
   # Every PR, whatever its base; see the note on the same trigger in dotnet10.yml.
   pull_request:
@@ -41,6 +43,8 @@ on:
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'docs/stdlib/**'
       - 'docs/deviations.yaml'
+      # build_tools/process_index.py --check: the index is regenerated from the charter (W3.3).
+      - 'docs/process/rounds/**'
       - 'mkdocs.yml'
   # The second half of the gate that .claude/scripts/ci-gate dispatches.
   workflow_dispatch:
@@ -164,6 +168,13 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
       run: |
         python -m build_tools.cpython_oracle ledger --check
+
+    - name: Verify the process index matches the charter
+      # docs/process/rounds/index.md is generated from the newest charter (handoff W3.3).
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python -m build_tools.process_index --check
 
     - name: Dual-execute ported CPython tests under python3 (ledger-enforced)
       env:
