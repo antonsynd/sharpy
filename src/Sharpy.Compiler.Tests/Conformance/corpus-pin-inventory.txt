@@ -168,22 +168,6 @@ Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | rows.Count.Should().
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | s_cells.GetValueOrDefault((spec.Name, twin)).Should().BeGreaterThan(0, $"the sweep judges ≥ 1 {spec.Name} cell on the {twin} twin"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | stringStatement.LineEnd.Should().Be(9, "the parser fact P47 works around (ledgered as #2295)"); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | .Should().HaveCount(7); | ×1 | fixed-input | in-test input of Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, Full)] = 1655, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, OnType)] = 1651, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, RangeLine)] = 1651, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, RangeWhole)] = 1655, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, OnType)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, RangeLine)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, OnType)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, RangeLine)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, OnType)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, RangeLine)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 32, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
@@ -196,22 +180,6 @@ Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStateme
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, Full)] = new[] { 0, 0, 0, 0, 0 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, OnType)] = new[] { 2, 2, 2, 2, 2 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, RangeLine)] = new[] { 2, 2, 2, 2, 2 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, RangeWhole)] = new[] { 0, 0, 0, 0, 0 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, Full)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, Full)] = new[] { 39, 6, 39, 39, 39 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, OnType)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, OnType)] = new[] { 45, 18, 45, 45, 45 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeLine)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeLine)] = new[] { 45, 18, 45, 45, 45 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeWhole)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeWhole)] = new[] { 39, 6, 39, 39, 39 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, OnType)] = 0, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, RangeLine)] = 0, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Comment] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Identity] = 9, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S1] = new[] { Full, RangeWhole, RangeStatement, RangeBlock, OnType }, | ×1 | non-integer | route/bucket/name table row
@@ -234,7 +202,7 @@ Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Where
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Where(h => Selects(h, 3, 4, n)).Should().ContainSingle().Which.Start.Should().Be(3); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | internal const int SampledStride = 8; | ×1 | tuning-constant | SampledStride
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | own.Truth.CleanTwin.Line.Should().Be(2); | ×1 | fixed-input | in-test input of PositiveControl_ParityExempt_OnlyALostRepairTheCleanTwinLosesToo
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are KnownLimitPin (#2274)"); | ×1 | drained-empty | allowlist asserted empty
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are census rows (#2274)"); | ×1 | drained-empty | allowlist asserted empty
 Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(comparisons.Count > 0, "Front-end parity sweep produced zero comparisons."); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered — corpus path is wrong."); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(projectStats.AttributedDiagnostics > 0, | ×1 | floor | lower bound
@@ -244,6 +212,7 @@ Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int Dop
 Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int PrefixStride = 1024; | ×1 | tuning-constant | PrefixStride
 Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int Repetitions = 4; | ×1 | tuning-constant | Repetitions
 Sharpy.Lsp.Tests/Conformance/code-action-shape-allowlist.txt | (integer column) | ×1 | in | count/digest columns: D3(ii) converts them to code-action-shape-stems.txt
+Sharpy.Lsp.Tests/Conformance/formatting-route-census.txt | (integer column) | ×1 | set-file | the per-stem cell count n of the D3(i) census rows
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["MathNet.Numerics"] = new[] { "numpy" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Microsoft.Data.Sqlite"] = new[] { "sqlite3" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Tomlyn"] = new[] { "toml" }, | ×1 | non-integer | route/bucket/name table row
