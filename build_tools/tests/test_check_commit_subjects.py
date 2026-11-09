@@ -169,3 +169,59 @@ def test_bad_range_exits_2(repo):
         check=False,
     )
     assert result.returncode == 2
+
+
+# ── The grandfather line (pre-gate history is not judged) ────────────────────
+
+
+def _run(repo, *args):
+    return subprocess.run(
+        [sys.executable, mod.__file__, *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_commits_reachable_from_the_grandfather_are_not_judged(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): " + "y" * 70)  # pre-gate, long
+    _commit(repo, "ci: the gate lands")
+    gate = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short, after the gate")
+    result = _run(repo, f"{base}..HEAD", "--grandfather", gate)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 subjects checked" in result.stdout
+    assert f"2 pre-gate, before {gate[:9]}, not judged" in result.stdout
+
+
+def test_without_the_grandfather_the_same_range_is_red(repo):
+    # The positive control for the exemption: the long pre-gate subject is an offence when the
+    # whole range is judged.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): " + "y" * 70)
+    _commit(repo, "ci: the gate lands")
+    _commit(repo, "fix(core): short, after the gate")
+    result = _run(repo, f"{base}..HEAD", "--grandfather", "none")
+    assert result.returncode == 1 and "81 chars" in result.stdout
+
+
+def test_a_long_subject_after_the_grandfather_is_still_an_offence(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "ci: the gate lands")
+    gate = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): " + "y" * 70)
+    result = _run(repo, f"{base}..HEAD", "--grandfather", gate)
+    assert result.returncode == 1 and "81 chars" in result.stdout
+
+
+def test_an_unknown_grandfather_sha_exempts_nothing(repo):
+    # A clone without the gate commit (another repository, a shallow clone) judges the whole range
+    # rather than failing; this is also what the default GATE_COMMIT does in this test repository.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): " + "y" * 70)
+    result = _run(repo, f"{base}..HEAD", "--grandfather", "0" * 40)
+    assert result.returncode == 1 and "81 chars" in result.stdout
+    default = _run(repo, f"{base}..HEAD")
+    assert default.returncode == 1 and "81 chars" in default.stdout
