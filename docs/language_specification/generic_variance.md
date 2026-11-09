@@ -39,6 +39,7 @@ animal = producer.get()  # Returns Dog, but typed as Animal
 
 ### Valid `out` Positions
 
+<!-- spec-sweep: fragment -->
 ```python
 interface ICovariant[out T]:
     # ✅ Valid: T in return position
@@ -81,7 +82,18 @@ because it is C#'s nullable annotation on `T` itself rather than a wrapper type.
 
 A type parameter marked `in` can only appear in input positions (parameters). This enables safe substitution with less derived types.
 
+<!-- spec-sweep: output "Handling: Rex" -->
 ```python
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
 interface IConsumer[in T]:
     """Consumes values of type T."""
     def accept(self, value: T): ...
@@ -107,6 +119,7 @@ Prints `Handling: Rex`.
 
 ### Valid `in` Positions
 
+<!-- spec-sweep: fragment -->
 ```python
 interface IContravariant[in T]:
     # ✅ Valid: T in parameter position
@@ -133,6 +146,7 @@ interface IContravariant[in T]:
 
 Without a variance annotation, a type parameter is invariant and can appear in any position, but generic types are not substitutable.
 
+<!-- spec-sweep: fragment -->
 ```python
 interface IMutable[T]:
     """Both produces and consumes T — must be invariant."""
@@ -198,6 +212,7 @@ Output:
 
 Each type parameter can have independent variance:
 
+<!-- spec-sweep: fragment -->
 ```python
 interface IConverter[in TInput, out TOutput]:
     """Converts input to output."""
@@ -214,6 +229,16 @@ converter: IConverter[Dog, Animal] = SomeConverter[Animal, Dog]()  # ✅ OK
 Delegates (function types) also support variance annotations:
 
 ```python
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
 # Covariant delegate — returns T
 delegate Producer[out T]() -> T
 
@@ -365,6 +390,7 @@ The compiler validates variance annotations by checking each usage of a variant 
 
 **Error examples:**
 
+<!-- spec-sweep: error SPY0418 -->
 ```python
 interface IBroken[out T]:
     def set(self, value: T): ...  
