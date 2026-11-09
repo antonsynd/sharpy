@@ -46,14 +46,6 @@ dotnet_interop.md::6b58ad628c  # SPY0220 first #1952
 dotnet_interop.md::f40f6f2627  # SPY0100 first #1952
 dstrings.md::6254375e12  # SPY0200 first #1952
 dstrings.md::777d957e37  # SPY0029 first #1952
-dunder_invocation_rules.md::22e861f0f4  # SPY0200 first #1952
-dunder_invocation_rules.md::45a5128f2d  # SPY0200 first #1952
-dunder_invocation_rules.md::4ac700ccc0  # SPY0455 first #1952
-dunder_invocation_rules.md::6aad201db6  # SPY0202 first #1952
-dunder_invocation_rules.md::c9cbb2c790  # SPY0200 first #1952
-dunder_invocation_rules.md::d1394b32be  # SPY0455 first #1952
-dunder_invocation_rules.md::e4dbd8682d  # SPY0202 first #1952
-dunder_invocation_rules.md::ed3984ba43  # SPY0203 first #1952
 dunder_methods_recommendations.md::40343514fa  # SPY0202 first #1952
 dunder_methods_recommendations.md::fb9d3eada0  # SPY0202 first #1952
 enums.md::4fdab687d0  # SPY0346 first #2073
