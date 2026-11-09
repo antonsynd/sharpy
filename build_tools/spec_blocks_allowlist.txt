@@ -2,9 +2,6 @@
 # Each entry: <relpath>::<sha1_10hex>  # SPYnnnn first-error-code
 # Ratchet: entries must trend to empty; stale entries fail.
 
-arithmetic_operators.md::5c91443b68  # SPY0348 first #1952
-arithmetic_operators.md::9bbc8b01f3  # SPY0222 first #1952
-arithmetic_operators.md::c2dc268aef  # SPY0348 first #1952
 assert_statement.md::6c60e8d2d2  # SPY0200 first #1952
 assert_statement.md::e99b2c6e04  # SPY0200 first #1952
 bitwise_operators.md::517ec87b73  # SPY0348 first #1952
@@ -15,9 +12,6 @@ classes.md::6319e581ce  # SPY0701 first #1952
 comprehensions.md::737d0c007b  # SPY0600 first #1952
 constructors.md::316927b79a  # SPY0224 first #1952
 constructors.md::d86be9af34  # SPY0224 first #1952
-context_managers.md::0a8135cdb6  # SPY0266 first #1952
-context_managers.md::2bee664e22  # SPY0703 first #1952
-context_managers.md::89c52d46c3  # SPY0203 first #1952
 conversion_operators.md::05ba3354c1  # SPY0200 first #1952
 conversion_operators.md::27582600e9  # SPY0200 first #1952
 del_statement.md::04eaecc17d  # SPY0144 first #1952
@@ -60,9 +54,6 @@ lambdas.md::0726bdc749  # SPY0203 first #1952
 lambdas.md::32e542e9aa  # SPY0203 first #1952
 lambdas.md::ecb81f76af  # SPY0343 first #1952
 lambdas.md::f9edad7cde  # SPY0220 first #1952
-lexer_implementation.md::071c8f7c95  # SPY0226 first #1952
-lexer_implementation.md::3bb2580b19  # SPY0200 first #1952
-lexer_implementation.md::43a941dd30  # SPY0200 first #1952
 literal_string.md::735f3e373e  # SPY0220 first #1952
 loop_else.md::87a4b024d1  # SPY0200 first #1952
 match_statement.md::99372e1dad  # SPY0104 first #1952

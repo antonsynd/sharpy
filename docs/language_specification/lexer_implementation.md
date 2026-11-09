@@ -148,6 +148,7 @@ Transitions:
 
 The lexer maintains an indentation stack to emit INDENT/DEDENT tokens:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Pseudocode implementation
 indent_stack = [0]  # Always starts with column 0
@@ -251,6 +252,7 @@ The lexer produces the following token categories:
 
 NEWLINEs inside brackets/parentheses are treated as whitespace, not line terminators:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Pseudocode
 bracket_depth = 0
@@ -300,6 +302,7 @@ The lexer should attempt to recover from errors to report multiple issues:
 4. **Invalid escape sequence**: Include literally, report warning, continue
 5. **Invalid numeric literal**: Tokenize what's valid, report error
 
+<!-- spec-sweep: fragment -->
 ```python
 # Example: invalid character recovery
 def handle_invalid_char(c):

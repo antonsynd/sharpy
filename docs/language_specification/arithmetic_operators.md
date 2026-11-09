@@ -236,6 +236,7 @@ never a silently wrong value, and never a leaked C# error (Roslyn folds
 constants in a checked context, so an unfolded overflowing tree would surface
 as CS0220):
 
+<!-- spec-sweep: error SPY0348 -->
 ```python
 print(3794 * 1973 * 948)    # ERROR (SPY0348): 7096312776 does not fit int
 print(3794L * 1973 * 948)   # OK: 7096312776 — a long operand makes the expression long
@@ -257,6 +258,7 @@ past 64 bits (SPY0328). Constant `+ - * <<` do not widen: they are checked at
 the expression's own width and error there (SPY0348). The contrast is sharpest
 between two values of similar size:
 
+<!-- spec-sweep: error SPY0348 -->
 ```python
 print(2 ** 40)              # OK: 1099511627776 — widened to long
 print(1099511 * 1000000)    # ERROR (SPY0348): 1099511000000 does not fit int
@@ -459,6 +461,7 @@ The augmented forms narrow back into the target by the same §12.21.4 rule, so
 
 *Note: Python itself has only `int`, `float` (equivalent to Sharpy's `int32` and `float64` which have aliases `int` and `float`), and `complex` as built-in numeric types. Sharpy's rules handle .NET's richer type system (`int8`, `int16`, `int64`, ..., `float32` vs `float64`, `decimal`) while maintaining Python-like simplicity.*
 
+<!-- spec-sweep: error SPY0222 -->
 ```python
 # Numeric promotion examples
 1 + 2           # int32 + int32 = int32
