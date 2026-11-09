@@ -50,6 +50,7 @@ Sharpy has a native `@dataclass` decorator. No import is needed.
 
 Example:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Python
 from dataclasses import dataclass
@@ -84,6 +85,7 @@ reusable, named narrowing — with **zero new type-system machinery**, using two
 Write a function that *returns the narrowed value or `None`* instead of a `bool` that *asserts* a type.
 This is the "parse, don't validate" idiom, and it is exactly what .NET's `as` operator does:
 
+<!-- spec-sweep: fragment -->
 ```python
 def as_circle(s: Shape) -> Circle | None:
     return s if isinstance(s, Circle) else None
@@ -130,6 +132,7 @@ The conversion form's only wart is hand-writing `s if isinstance(s, T) else None
 type test. The `as?` operator closes that gap — a small, lexical operator (not a
 type-system subsystem) that lowers to a checked cast and evaluates to `None` on failure:
 
+<!-- spec-sweep: fragment -->
 ```python
 c = shape as? Circle          # Circle? — None if shape is not a Circle
 ```

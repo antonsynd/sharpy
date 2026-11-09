@@ -16,6 +16,8 @@
 ## Async Functions
 
 ```python
+import asyncio
+
 async def fetch_data(url: str) -> str:
     await asyncio.sleep(1.0)
     return f"Data from {url}"
@@ -29,6 +31,7 @@ async def main():
 
 ## Concurrent Execution
 
+<!-- spec-sweep: fragment -->
 ```python
 async def fetch_all(urls: list[str]) -> list[str]:
     tasks = [fetch_data(url) for url in urls]
@@ -126,6 +129,9 @@ Functions using `yield` have special return type annotations:
 | `yield from` in `async def` | Auto-selects `foreach` or `await foreach` | ✅ Implemented (Sharpy extension) |
 
 ```python
+def sync_items() -> int:
+    yield 5
+
 # ✅ Synchronous generator
 def fibonacci(n: int) -> int:
     a, b = 0, 1
@@ -169,6 +175,7 @@ async def main():
 
 **Multiple context managers** are supported in a single `async with` statement, just like synchronous `with`:
 
+<!-- spec-sweep: fragment -->
 ```python
 async def main():
     async with ResourceA() as a, ResourceB() as b:

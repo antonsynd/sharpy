@@ -91,6 +91,7 @@ When a collection literal has no typed slot to direct it, the element type is de
 **`None` is untyped (R-AB):** a bare `None` in a slot-less literal triggers an arm-3 refusal. The
 steer offers both spellings of absence, because `xs: list[T?] = [None, 1]` is refused by R-G — a
 Sharpy optional is built with `None()`:
+<!-- spec-sweep: error SPY0227 -->
 ```python
 xs = [None, 1]
 # error: Cannot infer a type for list element: its operands have no best common type
@@ -246,6 +247,7 @@ its own type: `s` stays a `set[int]` and `g` stays a `frozenset[int]`.
 CPython compares a set and a frozenset by their elements, so `{1} == frozenset([1])` is `True`.
 Sharpy refuses the comparison in both directions:
 
+<!-- spec-sweep: error SPY0222 -->
 ```python
 def main() -> None:
     s: set[int] = {1}
@@ -422,6 +424,7 @@ SPY0602. A comma with no slice (`a[i, j]`) is not multi-axis: it is an ordinary 
 index is the tuple `(i, j)`, so it is refused by the receiver's index-type rule (SPY0220) unless
 the receiver accepts a tuple index (an `ndarray` does; `a[i, j]` reads one element).
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 xs: list[int] = [1, 2, 3]
 print(xs[0, 1])    # SPY0220: Index must be 'int', got 'tuple[int32, int32]'
@@ -430,6 +433,7 @@ print(xs[0:2, 1])  # SPY0602: Type 'list[int32]' does not support multi-axis sub
 
 ### Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 xs[start:stop]       # elements from start up to (not including) stop
 xs[start:stop:step]  # every step-th element
