@@ -5,6 +5,12 @@
 The `object` type (mapping to `System.Object`) is the universal base type for all Sharpy types. All primitives (`int`, `str`, `bool`, etc.) and all Sharpy-defined types are assignable to `object`:
 
 ```python
+class MyClass:
+    pass
+
+class SomeClass:
+    pass
+
 # object accepts any value
 x: object = 42
 x = "hello"

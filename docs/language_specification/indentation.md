@@ -21,6 +21,7 @@ The following rules govern how the lexer handles indentation in special cases:
 | **Tab characters** | Lexer error: "Tab characters are not permitted for indentation. Use 4 spaces per level." |
 | **Inconsistent indentation** | Lexer error: "Indentation must be a multiple of 4 spaces. Found N spaces." |
 
+<!-- spec-sweep: error SPY0012 -->
 ```python
 def example():
     x = 1           # 4 spaces - valid

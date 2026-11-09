@@ -35,6 +35,9 @@ def b() -> None:
 `@suppress` may also prefix an individual **expression statement or assignment** inside a body — *call-site* suppression, useful for silencing a single diagnostic without widening the scope to the whole enclosing function. This is the idiomatic way to opt out of the [must-use warning](tagged_unions_result.md#must-use-warning-spy0480) at one call site:
 
 ```python
+def risky() -> int!Exception:
+    return Ok(1)
+
 def main() -> None:
     @suppress("SPY0480")
     try risky()          # this one discard is intentional; the rest of main() still warns

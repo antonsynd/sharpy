@@ -6,6 +6,8 @@ added to execute if the loop completes without a break.
 An example with a `for`-loop is shown below.
 
 ```python
+items = [1, 2, 3]
+target = 4
 for item in items:
     if item == target:
         break

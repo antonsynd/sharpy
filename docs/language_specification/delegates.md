@@ -34,6 +34,16 @@ def apply[T, R](items: list[T], mapper: Mapper[T, R]) -> list[R]:
 Delegates support covariance (`out`) and contravariance (`in`) on type parameters, enabling safe substitution based on type hierarchies. See [Generic Variance](generic_variance.md) for details.
 
 ```python
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
 delegate Producer[out T]() -> T
 delegate Consumer[in T](value: T) -> None
 

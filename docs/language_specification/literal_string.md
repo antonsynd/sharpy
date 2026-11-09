@@ -6,6 +6,7 @@
 
 Annotate a parameter with `LiteralString` to require a string literal at the call site:
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 def safe_query(query: LiteralString) -> str:
     return f"executing: {query}"

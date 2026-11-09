@@ -43,6 +43,7 @@ rejected with **SPY0349**; it was a type test in earlier versions of Sharpy, whi
 diverged from CPython (`a is Dog` in CPython is an identity comparison against the class object,
 so it is `False`). Use `isinstance()` to test a value's type.
 
+<!-- spec-sweep: error SPY0349 -->
 ```python
 class Dog:
     name: str
