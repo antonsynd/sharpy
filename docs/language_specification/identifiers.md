@@ -23,6 +23,7 @@ digit      ::= '0'..'9'
 
 ## Examples
 
+<!-- spec-sweep: fragment -->
 ```python
 # Valid identifiers
 x
@@ -47,6 +48,7 @@ See [naming_conventions.md](naming_conventions.md) for naming conventions of var
 
 Any symbol in Sharpy can be surrounded with backticks `` ` `` to tell the compiler not to transform the name during resolution. This is equivalent to C#'s `@` prefix:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Prevents case transformation
 from foo_bar.`abc` import *

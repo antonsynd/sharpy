@@ -75,6 +75,7 @@ r: uint64 = a << n       # 10 — only the left operand carries the type
 A constant shift whose exact value does not fit the expression's own width is a compile error,
 **SPY0348** — the same rule constant `+`, `-` and `*` follow:
 
+<!-- spec-sweep: error SPY0348 -->
 ```python
 b: long = 1 << 62      # ERROR (SPY0348): 4611686018427387904 does not fit 'int'
 c: int  = 1 << 33      # ERROR (SPY0348): 8589934592 does not fit 'int'
@@ -88,6 +89,7 @@ A constant **negative** count is a compile error, **SPY0213**. CPython raises `V
 masks the count, so `1 << -1` would be `1 << 31` = `-2147483648`. Neither is what the author meant,
 and a constant is visible at compile time:
 
+<!-- spec-sweep: error SPY0213 -->
 ```python
 print(1 << -1)     # ERROR (SPY0213): shift count -1 is negative
 print(256 >> -1)   # ERROR (SPY0213)

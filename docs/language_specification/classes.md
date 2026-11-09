@@ -87,6 +87,7 @@ class Num(IComparable):
 
 - `__init__` return type is implicitly `None` and can be omitted or explicitly declared
 
+<!-- spec-sweep: fragment -->
 ```python
 class Person:
     name: str

@@ -42,6 +42,7 @@ def example(pos_only: int, /, normal: int, *, kw_only: int) -> int:
 
 ### Examples
 
+<!-- spec-sweep: error SPY0370 -->
 ```python
 # Positional-only parameters (before /)
 def set_position(x: int, y: int, /) -> None:
@@ -224,6 +225,7 @@ The boundary indices indicate:
 
 When Sharpy code imports a function from a compiled `.dll`:
 
+<!-- spec-sweep: fragment -->
 ```python
 # library.dll was compiled from Sharpy with:
 # def search(query: str, /, limit: int = 10, *, case_sensitive: bool = False) -> list[str]

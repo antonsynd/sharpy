@@ -1,5 +1,6 @@
 # Assert Statement
 
+<!-- spec-sweep: fragment -->
 ```python
 assert condition
 assert x > 0, "Value must be positive"
@@ -10,6 +11,7 @@ assert x > 0, "Value must be positive"
 `assert` is a **real runtime check**, matching Python. When `condition` is falsy the assert
 raises `AssertionError`; when a message is supplied it becomes the exception message:
 
+<!-- spec-sweep: fragment -->
 ```python
 assert x > 0, "Value must be positive"   # raises AssertionError("Value must be positive") when x <= 0
 assert cond                              # raises AssertionError() when cond is falsy
