@@ -14,6 +14,9 @@ type Bounds = tuple[min: int, max: int]
 ## Creating Named Tuples
 
 ```python
+type Point = tuple[x: float, y: float]
+type Bounds = tuple[min: int, max: int]
+
 # Using named fields
 pos: Point = (x=1.0, y=2.0)
 bounds: Bounds = (min=0, max=100)
@@ -24,6 +27,7 @@ p: Point = (1.0, 2.0)  # Fields are named based on type
 
 ## Accessing Fields
 
+<!-- spec-sweep: output -->
 ```python
 type Point = tuple[x: float, y: float]
 pos: Point = (x=1.0, y=2.0)
@@ -41,6 +45,7 @@ print(pos[1])  # 2.0
 
 Named tuples support standard tuple unpacking:
 
+<!-- spec-sweep: output -->
 ```python
 type Point = tuple[x: float, y: float]
 pos: Point = (x=3.0, y=4.0)
@@ -55,6 +60,7 @@ first, _ = pos  # Ignore second element
 
 ## Function Return Types
 
+<!-- spec-sweep: output -->
 ```python
 # Function returning named tuple
 def get_bounds() -> tuple[min: int, max: int]:
@@ -86,6 +92,7 @@ result = distance((x=0.0, y=0.0), (x=3.0, y=4.0))  # 5.0
 
 Named tuple types can be used inline without a type alias:
 
+<!-- spec-sweep: output -->
 ```python
 # Inline named tuple type
 def parse_config() -> tuple[host: str, port: int, ssl: bool]:
@@ -193,6 +200,7 @@ size: Size = pos  # ERROR - different field names
 
 ## Nested Named Tuples
 
+<!-- spec-sweep: output -->
 ```python
 type Point = tuple[x: float, y: float]
 type Line = tuple[start: Point, end: Point]
@@ -218,6 +226,9 @@ def load_config() -> Config:
 
 **Multiple Return Values:**
 ```python
+def get_timestamp() -> int64:
+    return 0
+
 def parse_header() -> tuple[status: int, message: str, timestamp: int64]:
     return (status=200, message="OK", timestamp=get_timestamp())
 ```
@@ -236,6 +247,7 @@ type RGB = tuple[r: uint8, g: uint8, b: uint8]
 - Cannot have default values (use structs for that)
 - Cannot add methods (use classes/structs for that)
 
+<!-- spec-sweep: error SPY0118 -->
 ```python
 # ❌ Cannot partially name fields
 type Mixed = tuple[x: int, int]  # ERROR

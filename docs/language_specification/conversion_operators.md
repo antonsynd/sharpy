@@ -35,6 +35,7 @@ class Celsius:
 
 Implicit conversions are applied automatically by the C# runtime when assigning a value of the source type to a variable of the target type.
 
+<!-- spec-sweep: fragment -->
 ```python
 @static
 def __implicit__(val: float) -> Celsius:
@@ -47,6 +48,7 @@ Emits: `public static implicit operator Celsius(double val) { ... }`
 
 Explicit conversions require an explicit cast (`as!`, or `as?` for a cast that yields `None` on failure):
 
+<!-- spec-sweep: fragment -->
 ```python
 temp: Celsius = Celsius(100.0)
 raw: float = temp as! float  # invokes __explicit__

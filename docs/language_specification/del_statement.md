@@ -8,6 +8,7 @@ Sharpy does not support the `del` statement (Axiom 1 — .NET has no name-unbind
 | `del name` | Not supported — .NET bindings cannot be unbound |
 | `del obj.attr` | Not supported — .NET properties cannot be deleted |
 
+<!-- spec-sweep: error SPY0144 -->
 ```python
 # All of these are refused at compile time:
 del x       # SPY0144: not supported

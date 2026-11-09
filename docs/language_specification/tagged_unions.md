@@ -8,6 +8,7 @@ Tagged unions (also called algebraic data types or sum types) allow defining typ
 
 Unlike simple enums, tagged unions allow cases to carry associated data:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Generic Result type (like Rust's Result)
 union Result[T, E]:
@@ -50,6 +51,7 @@ These types have special syntax and operators. See:
 
 Cases that carry no associated data can be defined with or without parentheses:
 
+<!-- spec-sweep: fragment -->
 ```python
 union Option[T]:
     case Some(value: T)
@@ -71,6 +73,7 @@ union LoadState:
 
 When pattern matching, unit cases also don't require parentheses:
 
+<!-- spec-sweep: fragment -->
 ```python
 match opt:
     case Option.Some(v): print(v)
@@ -290,6 +293,7 @@ match result:
 
 When matching on a tagged union value, the type name can be omitted from case patterns. The compiler infers the type from the match subject:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Both forms are equivalent:
 match result:
@@ -304,6 +308,7 @@ This makes pattern matching more concise, especially when the matched type is cl
 
 ## Methods on Tagged Unions
 
+<!-- spec-sweep: fragment -->
 ```python
 union Result[T, E]:
     case Ok(value: T)

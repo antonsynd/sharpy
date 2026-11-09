@@ -8,6 +8,7 @@ For the authoritative overload resolution rules (applicability and betterness, a
 
 Multiple `def` statements with the same name can appear at module level if they have different parameter signatures (arity or types). Unlike Python, which replaces previous definitions, Sharpy creates overloads — consistent with class method behavior.
 
+<!-- spec-sweep: prelude -->
 ```python
 def describe(x: int) -> str:
     return "int:" + str(x)
@@ -27,6 +28,7 @@ print(describe(42, True))     # "int(42, verbose=True)"
 
 Module-level overloads are importable across files:
 
+<!-- spec-sweep: fragment -->
 ```python
 # main.spy
 from lib import describe
@@ -42,6 +44,7 @@ print(describe("hello"))  # Resolves to describe(str) in lib
 
 Methods can be overloaded by parameter count (arity) or parameter types:
 
+<!-- spec-sweep: prelude -->
 ```python
 class Formatter:
     def format(self, value: int) -> str:
@@ -68,6 +71,7 @@ print(f.format(42, 10))    # "        42"
 
 Multiple `__init__` methods can be defined with different signatures. Constructor chaining is supported via `self.__init__()`:
 
+<!-- spec-sweep: prelude -->
 ```python
 class Point:
     x: int
@@ -105,6 +109,7 @@ p3 = Point(6)        # x=6, y=0, z=0
 
 Be cautious when combining overloads with default parameters, as this can create ambiguity:
 
+<!-- spec-sweep: prelude -->
 ```python
 class Logger:
     def log(self, msg: str) -> None:
@@ -188,6 +193,7 @@ print(h(Ok(1)))      # result
 print(h(Err("e")))   # result
 ```
 
+<!-- spec-sweep: error SPY0244 -->
 ```python
 def k(x: int) -> str:
     return "int"

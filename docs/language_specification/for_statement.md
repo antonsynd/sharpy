@@ -1,6 +1,8 @@
 # For Loop
 
 ```python
+names = ["Ann", "Bo"]
+
 # Iterate over collection
 for name in names:
     print(name)

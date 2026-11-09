@@ -2,6 +2,7 @@
 
 The walrus operator `:=` allows assignment within expressions:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Capture value in conditional
 if (match := pattern.search(text)) is not None:
@@ -85,6 +86,7 @@ None
 
 A fresh walrus whose value is a void call (a function that returns nothing) is always refused:
 
+<!-- spec-sweep: error SPY0227 -->
 ```python
 x = (q := print("hi"))  # error: produces no value
 ```
@@ -93,6 +95,7 @@ x = (q := print("hi"))  # error: produces no value
 
 The walrus operator always infers the type from the right-hand side expression. Type annotations are not supported with `:=` (matching Python 3.8+ behavior):
 
+<!-- spec-sweep: error SPY0104 -->
 ```python
 # ✅ Valid - type inferred from get_value()
 if (x := get_value()) > 0:
@@ -109,7 +112,13 @@ Since Sharpy has full static type information, the type of `get_value()` is know
 
 Variables assigned with `:=` inside a comprehension are **local to the comprehension** and do not leak to the outer scope:
 
+<!-- spec-sweep: error SPY0200 -->
 ```python
+def transform(x: int) -> int:
+    return x - 1
+
+data: list[int] = [1, 2, 3]
+
 # Walrus is useful within a comprehension to avoid recomputation
 results = [y * 2 for x in data if (y := transform(x)) > 0]
 # y is used within the comprehension - valid!
@@ -137,6 +146,14 @@ def f() -> None:
 **If you need a value after the comprehension:**
 
 ```python
+def get_items() -> list[int]:
+    return [1, 2, 3]
+
+def transform(x: int) -> int:
+    return x - 1
+
+data: list[int] = [1, 2, 3]
+
 # Assign before the comprehension
 items = get_items()  # Not: [(x := get_items()) ...]
 [x for x in items]
@@ -282,6 +299,7 @@ one 3
 A read on a path where the walrus may not have executed is SPY0600, mirroring Python's
 `NameError`:
 
+<!-- spec-sweep: error SPY0600 -->
 ```python
 def probe() -> int:
     return 3
@@ -293,6 +311,7 @@ def main() -> None:
 
 A ternary arm and a comparison-chain operand past the first link refuse the same way:
 
+<!-- spec-sweep: error SPY0600 -->
 ```python
 def f() -> int:
     return 3
@@ -304,6 +323,7 @@ def main() -> None:
     print(v, w)   # error SPY0600: Variable 'w' is used before being assigned
 ```
 
+<!-- spec-sweep: error SPY0600 -->
 ```python
 def f() -> int:
     return 3
@@ -340,9 +360,11 @@ else 1
 
 Following PEP 572, a walrus inside a comprehension's **iterable** expression is refused:
 
+<!-- spec-sweep: error SPY0704 -->
 ```python
-xs: list[int] = [1, 2, 3]
-r = [y for y in (t := xs)]   # error SPY0704: walrus operator not allowed in iterable
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    r = [y for y in (t := xs)]   # error SPY0704: walrus operator not allowed in iterable
 ```
 
 A walrus in the **element** or **condition** position of a comprehension is accepted, unless it reuses a name that already exists outside and that name is read after it (see above):
@@ -360,9 +382,11 @@ def main() -> None:
 
 Rebinding the iteration variable with a walrus in the element or condition is also refused:
 
+<!-- spec-sweep: error SPY0704 -->
 ```python
-xs: list[int] = [1, 2, 3]
-r = [i := 0 for i in xs]   # error SPY0704: walrus rebinds iteration variable 'i'
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    r = [i := 0 for i in xs]   # error SPY0704: walrus rebinds iteration variable 'i'
 ```
 
 ## Walrus in F-String Holes
@@ -388,6 +412,7 @@ need parentheses in holes: walrus, lambda, and slices.
 *Implementation*
 - *🔄 Lowered - Hoisted variable declaration with manufactured sinks:*
 
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 if (match := pattern.search(text)) is not None:

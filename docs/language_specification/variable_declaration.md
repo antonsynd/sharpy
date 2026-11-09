@@ -14,6 +14,7 @@ A local variable is declared with `let`; module-scope and class-scope values are
 
 `let` introduces a fresh, mutable, block-scoped local whose type is inferred from the initializer:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     let count = 0              # Inferred as int
@@ -25,6 +26,7 @@ def main() -> None:
 
 **Form 2: `let` with a Type Annotation**
 
+<!-- spec-sweep: output -->
 ```python
 class User:
     name: str = ""
@@ -49,6 +51,7 @@ In Stage 1 — the current language — the forms that predate `let` still decla
 bare `x = e` on a name that is not yet bound declares it inside a function. Stage 2 (#1974) makes
 `let` required for a new local, bare `=` write-through only, and module scope `const`-only:
 
+<!-- spec-sweep: output -->
 ```python
 # Module level (static fields) - explicit type REQUIRED in Stage 1
 counter: int = 0
@@ -68,6 +71,7 @@ Bare `=` never declares at module level: `count = 0` there is an executable stat
 `x: auto = e` is the Stage 1 spelling of `let x = e`. It is deprecated — write `let` — and is
 retired in Stage 2 (#1974):
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     count: auto = 0          # Deprecated: 'let count = 0'
