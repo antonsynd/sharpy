@@ -37,7 +37,7 @@ namespace Sharpy
             // tiny-but-nonzero divisor computes.
             if (y == 0.0)
             {
-                throw new ZeroDivisionError("float floor division by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             var raw = x % y;
@@ -113,7 +113,7 @@ namespace Sharpy
         {
             if (y == 0)
             {
-                throw new ZeroDivisionError("integer division or modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             if (x == int.MinValue && y == -1)
@@ -155,7 +155,7 @@ namespace Sharpy
         {
             if (y == 0)
             {
-                throw new ZeroDivisionError("integer division or modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             if (x == long.MinValue && y == -1L)
@@ -185,7 +185,7 @@ namespace Sharpy
         {
             if (y == 0.0f)
             {
-                throw new ZeroDivisionError("float floor division by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             var raw = x % y;
@@ -219,7 +219,7 @@ namespace Sharpy
         {
             if (y == 0UL)
             {
-                throw new ZeroDivisionError("integer division or modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             return x / y;

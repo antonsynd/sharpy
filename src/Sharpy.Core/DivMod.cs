@@ -22,7 +22,7 @@ namespace Sharpy
             // Guard before delegating so divmod's message wins over FloorMod's.
             if (y == 0)
             {
-                throw new ZeroDivisionError("integer division or modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             // Quotient from FloorDiv rather than a third copy of the algorithm (#1226): the two
@@ -54,7 +54,7 @@ namespace Sharpy
             // Guard before delegating so divmod's message wins over FloorMod's.
             if (y == 0)
             {
-                throw new ZeroDivisionError("integer division or modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             // See the int overload (#1226, #1302).
@@ -76,7 +76,7 @@ namespace Sharpy
         {
             if (y == 0UL)
             {
-                throw new ZeroDivisionError("integer division or modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             return (FloorDiv(x, y), FloorMod(x, y));
@@ -96,7 +96,7 @@ namespace Sharpy
             // The guard runs before delegating so divmod's message wins over FloorMod's.
             if (y == 0.0)
             {
-                throw new ZeroDivisionError("float divmod()");
+                throw new ZeroDivisionError("division by zero");
             }
 
             var remainder = FloorMod(x, y);
@@ -120,7 +120,7 @@ namespace Sharpy
         {
             if (y == 0.0f)
             {
-                throw new ZeroDivisionError("float divmod()");
+                throw new ZeroDivisionError("division by zero");
             }
 
             var remainder = FloorMod(x, y);
