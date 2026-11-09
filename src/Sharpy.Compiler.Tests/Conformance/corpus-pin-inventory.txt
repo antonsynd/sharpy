@@ -1,0 +1,257 @@
+# The closed inventory of integer pins in corpus-reading test code (CorpusPinInventoryTests; #2512 W3.5, plan-88736c D3(iv)).
+#
+# One row per (file, text): file | text | ×n | reason | evidence
+#   file     — path under src/ of a test file that reads the fixture corpus (or of a *.txt with an integer column)
+#   text     — the hit line, comment-stripped and trimmed ("(integer column)" for a *.txt); ×n — how many lines read so
+#   reason   — closed set. Checked per row: floor (a lower-bound assertion, or a field compared only as one),
+#              zero-guard (an assertion against 0), drained-empty (an equality assertion against 0), non-integer (no
+#              integer literal on the line), code-site-roster / spec-file-roster (every member reading it reaches a
+#              src/ or docs/language_specification/ root and no corpus enumerator), generator-roster (its file group
+#              reads no corpus enumerator), rate-tolerance (a RefusalCeilingPercent/SampledRangeLineCeilingPercent row),
+#              set-file (a plan-88736c D3 set file). Evidence only, reviewed by the lead in this file's diff at each
+#              gate: tuning-constant (evidence: the identifier), fixed-input (evidence: the named stems, or the member
+#              that reads no corpus). in: a count a new fixture can move, which plan-88736c D3 converts to a set file.
+# A new hit is red until its row lands; an edited literal re-keys its row (red twice: unlisted, and a row with no hit).
+Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(fixtures.Count > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(scannedUnits > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(snapshotFiles.Length > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(unresolved.Count > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Select(s => s.Source).Distinct().Should().HaveCount(4, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
+Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.Source.Contains("(...)")).Should().HaveCount(2, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
+Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.Source.Contains("): ...")).Should().HaveCount(1, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
+Sharpy.Compiler.Tests/CodeGen/GenerateExpressionReentryTests.cs | private const int MaxUncompilableFixtures = 19; | ×1 | in | fixture-stem count (D3 iii): plan-88736c D3 converts it to a set file
+Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | derivations.Should().Be(2); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | private const int ReaderCount = 15; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/CodeGen/ReparseEquivalenceConformanceTests.cs | const int cap = 25; | ×3 | tuning-constant | cap
+Sharpy.Compiler.Tests/CodeGen/SharpyNameStampTests.cs | Assert.True(sharpyModule > 0, "no [SharpyModule] in any snapshot — the attribute scan reads nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/SharpyNameStampTests.cs | Assert.True(snapshots.Length >= 100, $"only {snapshots.Length} snapshots under {FixturesRoot} — the scan is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/SharpyNameStampTests.cs | Assert.True(stamps.Count <= 1, $"{identifier}: {stamps.Count} [SharpyName] stamps"); | ×1 | fixed-input | per-identifier invariant (at most one stamp per identifier), not a corpus count
+Sharpy.Compiler.Tests/CodeGen/emitter-inspection-allowlist.txt | (integer column) | ×1 | code-site-roster | per-file occurrence column over src/Sharpy.Compiler sources
+Sharpy.Compiler.Tests/Conformance/ContextualKeywordEscapeSweepTests.cs | Assert.True(verdicts.Count > 0, "the sweep enumerates no cell"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/FormatterBlankLineSweepTests.cs | allowlist.Count(e => !e.IsPin).Should().Be(0, "the blank-line sweep has no per-stem rows"); | ×1 | drained-empty | allowlist asserted empty (P50)
+Sharpy.Compiler.Tests/Conformance/FormatterBlankLineSweepTests.cs | allowlist.Count(e => e.IsPin).Should().Be(0, "the P50 Phase 1 pins were drained by the Phase 2 fix"); | ×1 | drained-empty | pins drained (P50 Phase 2)
+Sharpy.Compiler.Tests/Conformance/FormatterBlankLineSweepTests.cs | runs.Should().ContainSingle().Which.Trivia.BlankLineCount.Should().Be(2); | ×1 | fixed-input | in-test source of its fact (no corpus enumerator in the member)
+Sharpy.Compiler.Tests/Conformance/FormatterBlankLineSweepTests.cs | verdicts.Values.Count(v => v.Refused).Should().Be(0, | ×1 | zero-guard | no refused verdict
+Sharpy.Compiler.Tests/Conformance/FormatterMeaningPreservationSweepTests.cs | counts.Total.Should().Be(13); | ×1 | fixed-input | in-test input of PositiveControl_InjectorRuns_AndO4SeesARemovedComment
+Sharpy.Compiler.Tests/Conformance/FormatterMeaningPreservationSweepTests.cs | identifiers.Should().BeGreaterThanOrEqualTo(1); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/FormatterMeaningPreservationSweepTests.cs | n.Should().BeGreaterThan(0, $"T2 leaves the contextual keyword '{value}' bare at its site: the corpus must contain one, else the skip set has a stale member"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/FormatterMeaningPreservationSweepTests.cs | rows.Count.Should().Be(0, "the formatter meaning-preservation allowlist is empty since P22b Phase 4 Task 3"); | ×1 | drained-empty | allowlist asserted empty
+Sharpy.Compiler.Tests/Conformance/FormatterMeaningPreservationSweepTests.cs | totals[(int)kind].Should().BeGreaterThanOrEqualTo(1, $"injection kind {kind} must fire somewhere in the corpus"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | FormatterTwins.EscapedNames(text).Count.Should().Be(18); | ×1 | fixed-input | in-test source of BacktickInjected_SnippetTwinParses (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | count.Should().Be(10); | ×1 | fixed-input | in-test source of BacktickInjected_EscapesACaseWildcard_AndLeavesNothingBare (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | count.Should().Be(18); | ×1 | fixed-input | in-test source of BacktickInjected_SnippetTwinParses (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | count.Should().Be(6); | ×1 | fixed-input | in-test source of BacktickInjected_WrapsEveryUnescapedIdentifierExceptTheContextualOnes (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | counts.Total.Should().Be(37); | ×1 | fixed-input | in-test source of CommentInjected_Snippet_InjectsAtEveryAnchorKind (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | counts.Total.Should().Be(47); | ×1 | fixed-input | in-test source of CommentInjected_Clauses_InjectsAtEveryClauseAndSkipsUnsafeLineEnds (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | counts.Total.Should().Be(8); | ×1 | fixed-input | in-test source of CommentInjected_CrlfSource_InjectsCrlfLineBreaks (synthetic counts)
+Sharpy.Compiler.Tests/Conformance/FormatterTwinsTests.cs | indentedLiteralLinesChecked.Should().BeGreaterThan(0, "the corpus holds literal-interior lines with leading whitespace"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationCorpus.cs | internal const int Cell1FuzzIteration = 18; | ×1 | tuning-constant | Cell1FuzzIteration
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationCorpus.cs | internal const int Cell1FuzzSeed = 2025; | ×1 | tuning-constant | Cell1FuzzSeed
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationCorpus.cs | internal const int RegularGeneratedTriggerCount = 8; | ×1 | tuning-constant | RegularGeneratedTriggerCount
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationCorpus.cs | internal const int SampleDrawStride = 6; | ×1 | tuning-constant | SampleDrawStride
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationCorpus.cs | internal const int SampleStride = 16; | ×1 | tuning-constant | SampleStride
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationSweepTests.cs | Assert.Equal(8, InProcessIsolationCorpus.ThreadSeeds.Distinct().Count()); | ×1 | tuning-constant | Assert
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationSweepTests.cs | Assert.InRange(before.Count, 4000 / InProcessIsolationCorpus.SampleStride / 2, 4000 / InProcessIsolationCorpus.SampleStride * 2); | ×1 | fixed-input | synthetic 4,000-name population sampled at SampleStride, not the corpus
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationSweepTests.cs | Assert.True(InProcessIsolationCorpus.Sample.Count > 100, $"hash-keyed sample has {InProcessIsolationCorpus.Sample.Count} programs"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationSweepTests.cs | Assert.True(inserted > 0, "positive control: some inserted name must join the sample, or the schedule half below proves nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/InProcessIsolationSweepTests.cs | Assert.True(lastTrigger >= 0, "the schedule carries no trigger"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/LetEmissionInvarianceTests.cs | internal const int ShardCount = 8; | ×1 | tuning-constant | ShardCount
+Sharpy.Compiler.Tests/Conformance/ProcessGlobalStateConformanceTests.cs | Assert.Equal(3, analysis.Sites.Count(s => IsDeferredToCallers(s, helpers))); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/Conformance/ProcessGlobalStateConformanceTests.cs | Assert.True(files.Count > 0, "control: the scan must read source files"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/ProcessGlobalStateConformanceTests.cs | Assert.True(sites.Count > 0, $"control: the scan must find {token} in {type} ({path})"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/ProcessGlobalStateConformanceTests.cs | private const int ExpectedSerialCollections = 8; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/Conformance/ProcessGlobalStateConformanceTests.cs | private const int ExpectedSerialMembers = 57; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/Conformance/PythonOracleSkipCensusTests.cs | Assert.Equal(3, callers); | ×1 | fixed-input | in-test control source Broken of Census_FiresOnEachForbiddenShape (no corpus enumerator in the member)
+Sharpy.Compiler.Tests/Conformance/PythonOracleSkipCensusTests.cs | Assert.True(files > 500, $"the census scanned only {files} test source files — the repository walk is broken."); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/PythonOracleSkipCensusTests.cs | private const int RequireOrSkipCallerFloor = 8; | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Conformance/TypeNameMessageSourceScanTests.cs | private const int ExpectedSanctionedCandidates = 9; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/Conformance/corpus-pin-inventory.txt | (integer column) | ×1 | fixed-input | this inventory's own text column: a hit line holding a bare integer token (refusals >= 4 * 17)
+Sharpy.Compiler.Tests/Conformance/deliberately-permissive-allowlist.txt | (integer column) | ×1 | code-site-roster | per-file count column over src/Sharpy.Compiler sources
+Sharpy.Compiler.Tests/Formatting/LineDiffTests.cs | LineDiff.DefaultMaxCells.Should().Be(4_000_000); | ×1 | tuning-constant | DefaultMaxCells
+Sharpy.Compiler.Tests/Formatting/LineDiffTests.cs | cases.Count.Should().BeGreaterThan(100, "the corpus is the meaning-preservation sweep's"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Formatting/LineDiffTests.cs | changed.Should().BeGreaterThan(0, "Format changes some fixture, else (i) is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Formatting/LineDiffTests.cs | multiHunk.Should().BeGreaterThan(0); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Infrastructure/FixtureShardTotalityTests.cs | private const int ExpectedShardClasses = 8; | ×1 | fixed-input | reflection over this assembly's FileBasedIntegrationTests shard classes (no fixture moves it)
+Sharpy.Compiler.Tests/Integration/DiagnosticSweepTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Integration/EntryFilePathMultiFileTests.cs | Assert.True(discovered > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Integration/FileBasedIntegrationTests.cs | internal const int ShardCount = 8; | ×1 | tuning-constant | ShardCount
+Sharpy.Compiler.Tests/Integration/FixtureRootsTests.cs | private const int CompilerCorpusFloor = 1_500; | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Integration/FixtureRootsTests.cs | private const int StdlibCorpusFloor = 100; | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LexerCorpusTwinTests.cs | private const int CleanFloor = 2_500; | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LexerCorpusTwinTests.cs | private const int FileFloor = 3_000; | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LexerPositionAllowlist.cs | allowlisted.Should().Be(2, "the row suppresses its subject token type in its own file only"); | ×1 | fixed-input | in-test input of TheRatchet_RefusesAnUncitedRow_SuppressesOnlyItsSubject_AndFailsWhenStale
+Sharpy.Compiler.Tests/Lexer/LexerPositionAllowlist.cs | malformed.Should().HaveCount(3); | ×1 | fixed-input | in-test input of TheRatchet_RefusesAnUncitedRow_SuppressesOnlyItsSubject_AndFailsWhenStale
+Sharpy.Compiler.Tests/Lexer/LexerPositionAllowlist.cs | malformed.Where(m => m.Contains("not '<corpus|roster>")).Should().HaveCount(2); | ×1 | fixed-input | in-test allowlist rows of its grammar fact
+Sharpy.Compiler.Tests/Lexer/LexerPositionAllowlist.cs | remaining.Should().HaveCount(6, "another FStringEnd in the same file, the same token with another Value, the same token " | ×1 | fixed-input | in-test input of TheRatchet_RefusesAnUncitedRow_SuppressesOnlyItsSubject_AndFailsWhenStale
+Sharpy.Compiler.Tests/Lexer/LexerPositionAllowlist.cs | rosterAllowlisted.Should().Be(1); | ×1 | fixed-input | in-test input of TheRatchet_RefusesAnUncitedRow_SuppressesOnlyItsSubject_AndFailsWhenStale
+Sharpy.Compiler.Tests/Lexer/LexerPositionAllowlist.cs | rosterStale.Should().HaveCount(2, "the row that matched nothing, and the rule R6 that fired nowhere"); | ×1 | fixed-input | in-test input of TheRatchet_RefusesAnUncitedRow_SuppressesOnlyItsSubject_AndFailsWhenStale
+Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.CleanFacts.cs | facts.FirstCodeTokenStart(0).Should().Be(0); | ×1 | fixed-input | in-test text of its fact (no corpus enumerator in the member)
+Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.Injection.cs | clean.Should().BeGreaterThan(3000, "the oracle's population is the fixture corpus"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.Injection.cs | private const int InjectionStride = 4; | ×1 | tuning-constant | InjectionStride
+Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.Shapes.cs | parents.Should().BeGreaterThanOrEqualTo(250, "the shapes' parents are a stride over the clean corpus"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.Shapes.cs | private const int ShapeStride = 1; | ×1 | tuning-constant | ShapeStride
+Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.cs | clean.Should().BeGreaterThan(100, "the corpus is the oracle's population"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LiteralStateTests.cs | clean.Should().BeGreaterThan(100, "the corpus is the compiler's fixture tree"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LiteralStateTests.cs | directionControls.Should().BeGreaterThan(100, "most fixtures hold no literal spanning lines"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lexer/LiteralStateTests.cs | limitTailsArmed.Should().BeGreaterThan(0, "the limit tails must reach arm (b) after a triple closer"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(13, augmented.Count); | ×1 | fixed-input | in-test input of AugmentedCollectionMutation_LowersToIrCollectionMutation_AndStaysTotal
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, CollectNodes<IrElidedNoneBody>(ir).Count); | ×1 | fixed-input | in-test input of NoneBodiedVoidLambda_LowersBodyToIrElidedNoneBody_AndStaysTotal
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalStoreWrap_LowersToStoreWrapAndWrappedElement_AndStaysTotal
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, unpacks.Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(3, lambdas.Count); | ×1 | fixed-input | in-test input of NoneBodiedVoidLambda_LowersBodyToIrElidedNoneBody_AndStaysTotal
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, walruses.Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
+Sharpy.Compiler.Tests/Parser/ContextualKeywordPredicateConformanceTests.cs | files.Length.Should().BeGreaterThan(8, "the scan must see the parser partials and the AST files, not an empty directory"); | ×2 | floor | lower bound
+Sharpy.Compiler.Tests/Parser/UnterminatedFinalLineParserTests.cs | module.Body.Should().HaveCount(2, "both functions must survive, not merely the diagnostic disappear"); | ×1 | fixed-input | in-test input of UnterminatedConst_YieldsAWholeTree_NotJustAnAbsentError
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.Equal(1, symbolFileWrites); | ×1 | fixed-input | in-test input of NoCompilerSourceWritesAParameterElementPastTheFreeze
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.Equal(15, MemberCollections(symbols[0]).Count()); | ×1 | fixed-input | reflection over one master symbol's member collections (no fixture moves it)
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.Equal(2, MemberCollections(symbols[1]).Count()); | ×1 | fixed-input | reflection over one master symbol's member collections (no fixture moves it)
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(_digests.Count >= 500, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(_ids.Count >= 50, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(baseline.InstanceKeyCount >= 50, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(checkedDefs >= 2, $"only {checkedDefs} builtin-named defs were checked"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(collections >= 500, $"only {collections} member collections of master symbols were enumerated"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(files.Count >= 100, $"the scan saw only {files.Count} compiler sources under {root}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(refusals >= 4 * 17, $"only {refusals} refused writes were attempted"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(steps >= 4 * programs.Count, $"the second pass ran only {steps} steps"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.True(symbols.Count >= 50, $"only {symbols.Count} master symbols were enumerated"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | private const int MaxDigestDepth = 4; | ×1 | tuning-constant | MaxDigestDepth
+Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | private const int MaxWalkDepth = 12; | ×1 | tuning-constant | MaxWalkDepth
+Sharpy.Compiler.Tests/Properties/Differential/DifferentialExecutionTests.cs | Assert.True(compared > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Differential/DifferentialExecutionTests.cs | Assert.True(programs.Count > 0, "Differential-exec corpus is empty — corpus construction is broken."); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Differential/DifferentialExecutionTests.cs | private const int FullPool = 0; | ×1 | tuning-constant | FullPool
+Sharpy.Compiler.Tests/Properties/Differential/DifferentialExecutionTests.cs | private const int FullPoolGeneratedTarget = 12; | ×1 | tuning-constant | FullPoolGeneratedTarget
+Sharpy.Compiler.Tests/Properties/Differential/DifferentialExecutionTests.cs | private const int SharpyExecTimeoutMs = 12_000; | ×1 | tuning-constant | SharpyExecTimeoutMs
+Sharpy.Compiler.Tests/Properties/Metamorphic/MetamorphicCorpusSweepTests.cs | Assert.True(fixtures.Count > 0, "Metamorphic corpus sweep enumerated zero fixtures."); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Metamorphic/MetamorphicCorpusSweepTests.cs | Assert.True(results.Count > 0, "Metamorphic corpus sweep enumerated zero cells."); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Metamorphic/MetamorphicCorpusSweepTests.cs | private const int ChangedLineLimit = 20; | ×1 | tuning-constant | ChangedLineLimit
+Sharpy.Compiler.Tests/Properties/Metamorphic/MetamorphicCorpusSweepTests.cs | private const int SourceExcerptLimit = 8000; | ×1 | tuning-constant | SourceExcerptLimit
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.InRange(passed, 1, total); // R4 | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True((double)diagnosed / tested > 0.25, ""); // R4 | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(admitted > 0, ""); | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(bannedTested > 0, "no planted spelling was read"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(diagnosed >= 1, ""); // R4 | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(insidePassed + outsideDiagnosed > 0, ""); // R4 | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(passed > 0, ""); | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(passed > 3, ""); // R4 | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(programs.Count > 0, ""); | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(tested > 0, "No injections were applicable"); | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | Assert.True(verdicts.Tested > 0, ""); | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | examined.Should().BeGreaterThan(0, "an applicability floor"); | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | examined.Should().BeGreaterThanOrEqualTo(10, "a floor"); // R4 | ×1 | fixed-input | a line of a raw-string probe source (in-test input of Scanner_FindsEachBannedSpelling_AndNoBenignLookAlike), not code
+Sharpy.Compiler.Tests/Properties/Semantic/PropertyOracleConformanceTests.cs | private const int MinimumUniverse = 20; | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | Assert.True(callsTested.Count > 0, "no Y-generated configuration was checked — the link is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | Assert.True(pairsTested > 0, "no spec file names a code — the universe or the pattern is broken"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | Assert.True(result.RowsTested > 0, "no Y-generated row was checked — the control is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedByDesign = 17; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedKnownRed = 5; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedN = 181; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedNoConstruct = 4; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedRows = 202; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedSpecFiles = 125; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYGenerated = 103; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYInjected = 90; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int RawSamples = 40; | ×1 | tuning-constant | RawSamples
+Sharpy.Lsp.Tests/Analysis/SemanticTokenCoverageTests.cs | Assert.True(spyFiles.Count > 0, "No .spy files found"); | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | Actions.Length.Should().Be(14); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | QuickFixCodes.Value.Should().HaveCount(4, "SPY0452, unused variable, naming convention, undefined variable @ 7f0502de3"); | ×1 | fixed-input | reflection over DiagnosticQuickFixProvider.FixFactories (no fixture moves it)
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | Volatile.Read(ref s_retainedDocuments).Should().Be(0, "every per-stem driver closes every document it opens"); | ×1 | zero-guard | asserted 0
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | [ShapeClass.Delete] = new[] { Edits, Offer, Parse, Diagnostics, CommentBucket, Line }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | [ShapeClass.Insert] = new[] { Edits, Offer, Parse, Diagnostics, LineBreak, CommentBucket }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | [ShapeClass.Move] = new[] { Edits, Offer, Parse, Diagnostics, CommentBucket, Line, Blank, LineBreak }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | [ShapeClass.Rewrite] = new[] { Edits, Offer, Parse, Diagnostics, LineBreak, CommentBucket }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | doc.EndLine(stringStatement).Should().Be(10); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | internal const int DiagnosticsStride = 8; | ×1 | tuning-constant | DiagnosticsStride
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | internal const int TwinStride = 8; | ×1 | tuning-constant | TwinStride
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | regions.Should().HaveCount(2); | ×1 | fixed-input | in-test input of Regions_InsertAndReplace_AreSeparateRegionsWithTheirNewLines
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | rows.Count.Should().Be(59, "P47 Phase 1 Task 3 populated 182 pins from one FULL run (132 cite #2232, 15 #2294, 35 #2296); Phase 2 Task 1 (one line table, the document's break) left 158 (106 #2232, 16 #2294, 36 #2296); Phase 2 Task 2 (wrap, extract method, inline, remove unused import move whole regions) left 140 (88 #2232, 16 #2294, 36 #2296); Phase 2 Task 3 (Organize Imports moves units) left 124 (72 #2232, 16 #2294, 36 #2296); Phase 2 Task 4 (convert forms re-spell headers, move bodies) left 109 (53 #2232, 16 #2294, 40 #2296); Phase 2 Task 5 (statement extents from tokens, never un-parse: the #2232 residue) left 55 (0 #2232, 16 #2294, 39 #2296); the P21h verify round (lane FIX-READS) added 1 under the reopened #2232 — inline-variable leaves an identity document unparsable when it inlines a module variable that a class-body read binds — 56 (1 #2232, 16 #2294, 39 #2296); the P82 tranche 1 re-pin (plan-eaaed2, one FULL run @ 17614da6b) measured every FULL pair and added the 3 crlf/cr/comment rows of that same #2232 cell, which regular mode never judges on those twins — 59 (4 #2232, 16 #2294, 39 #2296); a commit that changes the count says why"); | ×1 | in | allowlist row-count pin (D3 ii, deleted): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | s_cells.GetValueOrDefault((spec.Name, twin)).Should().BeGreaterThan(0, $"the sweep judges ≥ 1 {spec.Name} cell on the {twin} twin"); | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | stringStatement.LineEnd.Should().Be(9, "the parser fact P47 works around (ledgered as #2295)"); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | .Should().HaveCount(7); | ×1 | fixed-input | in-test input of Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, Full)] = 1655, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, OnType)] = 1651, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, RangeLine)] = 1651, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Comment, RangeWhole)] = 1655, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, OnType)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, RangeLine)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Cr, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, OnType)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, RangeLine)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Crlf, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, OnType)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, RangeLine)] = 481, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Identity, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 32, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Comment)] = 12, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Identity)] = 4, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Wide)] = 54, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Wide)] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, Full)] = new[] { 0, 0, 0, 0, 0 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, OnType)] = new[] { 2, 2, 2, 2, 2 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, RangeLine)] = new[] { 2, 2, 2, 2, 2 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6k, RangeWhole)] = new[] { 0, 0, 0, 0, 0 }, | ×2 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, Full)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, Full)] = new[] { 39, 6, 39, 39, 39 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, OnType)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, OnType)] = new[] { 45, 18, 45, 45, 45 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeLine)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeLine)] = new[] { 45, 18, 45, 45, 45 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeWhole)] = new[] { 13, 2, 13, 13, 13 }, | ×1 | in | KnownLimitPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(S6ok, RangeWhole)] = new[] { 39, 6, 39, 39, 39 }, | ×1 | in | KnownLimitCellsPin row (D3 i): plan-88736c D3 converts it to a set file
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, Full)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, OnType)] = 0, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, RangeLine)] = 0, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(Wide, RangeWhole)] = 485, | ×1 | in | S7ParityExemptPin entry: D3(i) converts it to formatting-route-census.txt
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Comment] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Identity] = 9, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S1] = new[] { Full, RangeWhole, RangeStatement, RangeBlock, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S2] = new[] { Cli, Full, RangeWhole, RangeStatement, RangeBlock, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S3] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S4] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S5] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6k] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6n] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6o] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6ok] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6r] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6x] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S7] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Wide] = 55, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d.Lines.Should().HaveCount(6); | ×1 | fixed-input | in-test input of PositiveControl_Whole_OnACrDocument_RangeWholeKeepsCr
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Should().HaveCount(2); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Where(h => Selects(h, 1, 2, n)).Should().ContainSingle().Which.Start.Should().Be(2); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Where(h => Selects(h, 3, 4, n)).Should().ContainSingle().Which.Start.Should().Be(3); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | internal const int SampledStride = 8; | ×1 | tuning-constant | SampledStride
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | own.Truth.CleanTwin.Line.Should().Be(2); | ×1 | fixed-input | in-test input of PositiveControl_ParityExempt_OnlyALostRepairTheCleanTwinLosesToo
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are KnownLimitPin (#2274)"); | ×1 | drained-empty | allowlist asserted empty
+Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(comparisons.Count > 0, "Front-end parity sweep produced zero comparisons."); | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered — corpus path is wrong."); | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(projectStats.AttributedDiagnostics > 0, | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(projectStats.NavigationCellCount("from") > 0, | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(projectStats.NavigationCellCount("member") > 0, | ×1 | floor | lower bound
+Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int Dop = 4; | ×1 | tuning-constant | Dop
+Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int PrefixStride = 1024; | ×1 | tuning-constant | PrefixStride
+Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int Repetitions = 4; | ×1 | tuning-constant | Repetitions
+Sharpy.Lsp.Tests/Conformance/code-action-shape-allowlist.txt | (integer column) | ×1 | in | count/digest columns: D3(ii) converts them to code-action-shape-stems.txt
+Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["MathNet.Numerics"] = new[] { "numpy" }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Microsoft.Data.Sqlite"] = new[] { "sqlite3" }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Tomlyn"] = new[] { "toml" }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["YamlDotNet"] = new[] { "yaml" }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Stdlib.Tests/Conformance/StdlibClrThrowScanTests.cs | Assert.True(counts.Count > 0 || Directory.Exists(root), "the Stdlib source root was not found"); | ×1 | floor | lower bound
+Sharpy.Stdlib.Tests/Conformance/StdlibFixtureShardTotalityTests.cs | private const int ExpectedShardClasses = 4; | ×1 | fixed-input | reflection over this assembly's Stdlib fixture shard classes (no fixture moves it)
+Sharpy.Stdlib.Tests/Conformance/StdlibModuleGlobalRosterTests.cs | Assert.True(census.Declared.Count >= 5, "control: the synthetic statics are scanned"); | ×1 | floor | lower bound
+Sharpy.Stdlib.Tests/Conformance/StdlibModuleGlobalRosterTests.cs | Assert.True(census.Files > 200, $"the scan must read the Stdlib sources; read {census.Files} file(s)"); | ×1 | floor | lower bound
+Sharpy.Stdlib.Tests/Conformance/StdlibModuleGlobalRosterTests.cs | private const int ExpectedWrittenGlobals = 10; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Stdlib.Tests/Integration/FileBasedIntegrationTests.cs | internal const int ShardCount = 4; | ×1 | tuning-constant | ShardCount
