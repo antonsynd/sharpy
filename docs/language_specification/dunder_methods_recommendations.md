@@ -50,6 +50,7 @@ p2 = Point(1, 2)
 print(p2 in points)  # Undefined behavior: p1 == p2 but hash(p1) != hash(p2)
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 2: Mutable fields in equality
 class MutablePoint:
@@ -72,6 +73,7 @@ print(points[p])  # KeyError: hash changed, can't find the key
 
 ### Cross-Module Edge Case
 
+<!-- spec-sweep: fragment -->
 ```python
 # module_a.spy
 class Base:
@@ -158,6 +160,7 @@ Python's reflected operators (`__radd__`, `__rsub__`, etc.) are a fallback mecha
 
 ### Problematic Scenarios
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 1: Both types define operators
 class Vector:
@@ -171,6 +174,7 @@ class Scalar:
 # In Sharpy: Vector() + Scalar() has TWO valid operator+ overloads - ambiguous?
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 2: Asymmetric operations
 class Matrix:
@@ -185,6 +189,7 @@ class Scalar:
 
 ### Cross-Module Edge Case
 
+<!-- spec-sweep: fragment -->
 ```python
 # module_a.spy - published library
 class Vector:
@@ -259,6 +264,7 @@ class User:
     # No __repr__ - how to get "User(id=42, name='Alice')" for debugging?
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario: String interpolation
 user = User(42, "Alice")
@@ -337,6 +343,7 @@ class MyList:
 # Sharpy: What does `if my_list:` do?
 ```
 
+<!-- spec-sweep: error SPY0320 -->
 ```python
 # Scenario 2: __bool__ returns non-bool in Python (error in Sharpy)
 class Weird:
@@ -482,6 +489,7 @@ Python's iterator protocol (`__iter__` returns iterator, `__next__` returns next
 
 ### Problematic Scenarios
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 1: Self-iterating class (common Python pattern)
 class Counter:
@@ -536,6 +544,7 @@ class NumbersIterator:
 
 ### Inheritance Edge Case
 
+<!-- spec-sweep: fragment -->
 ```python
 # base.spy
 class BaseIterable:
@@ -664,6 +673,7 @@ add_five = Adder(5)
 result = add_five(10)  # Python: 15. Sharpy: ???
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 2: Decorators that return callable objects
 class Memoize:
@@ -742,6 +752,7 @@ Python's context managers (`with` statement) have richer semantics than C#'s `ID
 
 ### Problematic Scenarios
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 1: Exception suppression
 class SuppressErrors:
@@ -760,6 +771,7 @@ with SuppressErrors():
 print("Continues normally")  # Should print
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 2: Return value from __enter__
 class Connection:
@@ -871,6 +883,7 @@ my_list = MyList([1, 2, 3, 4, 5])
 print(my_list[1:3])  # How does this work?
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 2: Multi-dimensional indexing
 class Matrix:
@@ -882,6 +895,7 @@ m = Matrix()
 print(m[1, 2])  # Python passes (1, 2) tuple to __getitem__
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 3: Negative indexing
 class MySequence:
@@ -960,6 +974,7 @@ The spec allows calling dunders on `self` within dunder methods for synthesis (e
 
 ### Problematic Scenarios
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 1: Valid cross-dunder call
 class Ordered:
@@ -991,6 +1006,9 @@ class Also_Bad:
 class Base:
     def __eq__(self, other: object) -> bool:
         return True
+
+    def __hash__(self) -> int:
+        return 0
 
 class Derived(Base):
     def __ne__(self, other: object) -> bool:
@@ -1056,6 +1074,7 @@ Several dunders synthesize interface implementations (`IEnumerable<T>`, `IEquata
 
 ### Problematic Scenarios
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 1: Surprise interface compliance
 class MyContainer:
@@ -1067,6 +1086,7 @@ class MyContainer:
 # Now valid: IEnumerable<int> x = MyContainer()  # Implicit upcast
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # Scenario 2: Conflicting inheritance
 from dotnet import SomeBaseClass  # Already implements IEnumerable<string>
@@ -1149,6 +1169,7 @@ Python's `functools.total_ordering` decorator synthesizes comparison operators f
 
 ### Problematic Scenarios
 
+<!-- spec-sweep: error SPY0222 -->
 ```python
 # Scenario 1: Partial comparison operators
 class Version:
@@ -1223,6 +1244,7 @@ This section consolidates complex interop scenarios that span multiple dunder me
 
 ### Scenario A: Sharpy Type Inherited in C#, Then Back to Sharpy
 
+<!-- spec-sweep: fragment -->
 ```python
 # sharpy_lib.spy (compiled to SharpyLib.dll)
 class SharpyBase:
@@ -1265,6 +1287,7 @@ public class CSharpMiddle : SharpyBase
 }
 ```
 
+<!-- spec-sweep: fragment -->
 ```python
 # sharpy_consumer.spy, references CSharpMiddle.dll
 from CSharpMiddle import CSharpMiddle
@@ -1300,6 +1323,7 @@ class SharpyFinal(CSharpMiddle):
 
 ### Scenario B: C# Code Using Sharpy Operators
 
+<!-- spec-sweep: fragment -->
 ```python
 # vectors.spy
 class Vector:
@@ -1333,6 +1357,7 @@ var scaled2 = 2.0 * v1;   // Uses operator*(double, Vector) from __rmul__
 
 ### Scenario C: Sharpy Iterator Consumed by LINQ
 
+<!-- spec-sweep: fragment -->
 ```python
 # iterable.spy
 class Fibonacci:
@@ -1366,6 +1391,7 @@ var firstFive = fib.Take(5).ToArray();
 
 ### Scenario D: Sharpy Context Manager with C# Exceptions
 
+<!-- spec-sweep: fragment -->
 ```python
 # transaction.spy
 class Transaction:
