@@ -56,7 +56,7 @@ public sealed class CorpusPinInventoryTests
     /// <summary>The hit forms, first match wins: (kind, pattern). <c>n</c> is the compared literal, <c>id</c> a field's name.</summary>
     internal static readonly (string Kind, Regex Pattern)[] HitPatterns =
     {
-        (Assertion, new Regex(@"Should\(\)\.(?<cmp>Be|HaveCount|BeLessThanOrEqualTo|BeGreaterThanOrEqualTo|BeLessThan|BeGreaterThan)\((?<n>[0-9_]+)[,)]", RegexOptions.Compiled)),
+        (Assertion, new Regex(@"Should\(\)\.(?<cmp>Be|HaveCount|BeLessThanOrEqualTo|BeGreaterThanOrEqualTo|BeLessThan|BeGreaterThan|HaveCountLessThanOrEqualTo|HaveCountGreaterThanOrEqualTo|HaveCountLessThan|HaveCountGreaterThan)\((?<n>[0-9_]+)[,)]", RegexOptions.Compiled)),
         (Assertion, new Regex(@"Assert\.(?<cmp>Equal|True)\((?<n>[0-9_]+),", RegexOptions.Compiled)),
         (Assertion, new Regex(@"Assert\.True\([^,;]*?\s(?<cmp>[<>]=?)\s*(?<n>[0-9_]+)", RegexOptions.Compiled)),
         (Assertion, new Regex(@"Assert\.(?<cmp>InRange)\(", RegexOptions.Compiled)),
@@ -537,6 +537,15 @@ public sealed class CorpusPinInventoryTests
 
         var doubled = Sweep(new[] { (ProbeFile, ProbeSource(ProbePin + "\n" + ProbePin)) });
         Compare(doubled, new[] { row }).Should().ContainSingle().Which.Should().Contain("an unlisted hit with the text of a listed one");
+
+        // Every FluentAssertions count comparator is a hit form, the HaveCount* bounds included: a ceiling spelled
+        // HaveCountLessThanOrEqualTo is the same count pin as BeLessThanOrEqualTo (plan-88736c verify-implementation).
+        foreach (var comparator in new[] { "HaveCountLessThanOrEqualTo", "HaveCountLessThan", "HaveCountGreaterThanOrEqualTo", "HaveCountGreaterThan" })
+        {
+            var bound = ProbeSource("    void B() { FixtureRoots.All.Should()." + comparator + "(" + "59, \"rows\"); }");
+            Sweep(new[] { (ProbeFile, bound) }).Hits.Should().ContainSingle(comparator + " is a count comparator")
+                .Which.Comparator.Should().Be(comparator);
+        }
 
         // The one comment-stripping rule: a corpus reader named only in a comment does not put the file in the sweep.
         var commentOnly = ProbeSource(ProbePin).Replace("var all = FixtureRoots.All;", "// FixtureRoots.All").Replace("all.Count", "0");
