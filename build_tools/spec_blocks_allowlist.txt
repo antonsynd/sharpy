@@ -20,10 +20,6 @@ collection_types.md::2fe1bd64e8  # SPY0200 first #1952
 collection_types.md::363f25a908  # SPY0220 first #1952
 collection_types.md::bfca40b395  # SPY0222 first #1952
 collection_types.md::dcd759e9af  # SPY0227 first #1952
-comparison_chaining.md::08964e816a  # SPY0200 first #1952
-comparison_chaining.md::7e6fd003f9  # SPY0200 first #1952
-comparison_chaining.md::c2f2eab4d7  # SPY0200 first #1952
-comparison_chaining.md::cf93712268  # SPY0200 first #1952
 comprehensions.md::737d0c007b  # SPY0600 first #1952
 constructors.md::316927b79a  # SPY0224 first #1952
 constructors.md::d86be9af34  # SPY0224 first #1952
@@ -82,9 +78,6 @@ maybe_expressions.md::151bf85f81  # SPY0103 first #1952
 membership_operators.md::748028e603  # SPY0200 first #1952
 membership_operators.md::b85e7711be  # SPY0202 first #1952
 name_shadowing.md::96ff2030c9  # SPY0240 first #1952
-named_tuples.md::4ff1f72827  # SPY0200 first #1952
-named_tuples.md::a065be765c  # SPY0118 first #1952
-named_tuples.md::bddbf551b5  # SPY0202 first #1952
 named_tuples.md::eed0d63b87  # SPY0104 first #1952
 nested_types.md::428a76b8db  # SPY0200 first #1952
 nested_types.md::8483aeaf95  # SPY0604 first #1952
@@ -98,10 +91,6 @@ null_coalescing_operator.md::d2af2404e9  # SPY0200 first #1952
 null_conditional_access.md::02175e8b22  # SPY0200 first #1952
 null_conditional_access.md::30fbfa21e1  # SPY0200 first #1952
 null_conditional_access.md::e0a6815520  # SPY0203 first #1952
-nullable_types.md::3e8cd9bc72  # SPY0200 first #1952
-nullable_types.md::41fb004112  # SPY0200 first #1952
-nullable_types.md::8696006ff7  # SPY0113 first #1952
-nullable_types.md::f11a34ec3b  # SPY0200 first #1952
 operator_overloading.md::215cca0d3c  # SPY0321 first #1952
 operator_overloading.md::b4f89480db  # SPY0455 first #1952
 operator_precedence.md::6e254f0cc2  # SPY0103 first #1952
@@ -119,10 +108,7 @@ primitive_types.md::412c2923ce  # SPY0346 first #1952
 program_entry_point.md::08fda2fe5d  # SPY0200 first #1952
 program_entry_point.md::3e9510358b  # SPY0200 first #1952
 program_entry_point.md::daa5d09e86  # SPY0200 first #1952
-properties_inheritance.md::7553d3f5f3  # SPY0203 first #1952
 properties_inheritance.md::7695a1ea67  # SPY0493 first #1952
-properties_inheritance.md::b20a3d0647  # SPY0202 first #1952
-properties_inheritance.md::c1a1869c3b  # SPY0240 first #1952
 question_mark_operator.md::716e261f41  # SPY0200 first #1952
 question_mark_operator.md::a44a96f4e4  # SPY0604 first #1952
 rejected_proposals.md::15f3c0e1e4  # SPY0100 first #1952

@@ -6,7 +6,14 @@ The `T | None` syntax marks a type as **C# nullable** for .NET interop. This is 
 
 ## Syntax
 
+<!-- spec-sweep: error SPY0229 -->
 ```python
+def dotnet_api() -> str | None:
+    return "value"
+
+def get_nullable_int() -> int | None:
+    return 1
+
 # C# nullable type annotations (T | None)
 raw: str | None = dotnet_api()
 result: int | None = get_nullable_int()
@@ -26,6 +33,7 @@ other: int = None            # ERROR: Cannot assign None to non-nullable type
 
 `T | None` is the **only** valid inline union syntax. It is semantically a nullability modifier (like C# `?`), not a general union constructor. Free unions like `int | str` are not supported.
 
+<!-- spec-sweep: error SPY0113 -->
 ```python
 # ✅ Valid - T | None for nullable
 x: int | None = None
@@ -41,6 +49,7 @@ x: int | str | None = 42 # ERROR: free unions not supported
 
 Use `T | None` when interfacing with .NET APIs that return or accept nullable values:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Calling .NET APIs that may return null
 raw: str | None = dotnet_method()
@@ -115,6 +124,9 @@ Crossing between the two is explicit in both directions: [`maybe`](maybe_express
 Use `maybe` to convert a `T | None` value into a safe `T?` (`Optional[T]`):
 
 ```python
+def dotnet_api() -> str | None:
+    return "value"
+
 raw: str | None = dotnet_api()   # C# nullable
 safe: str? = maybe raw            # Convert to Optional[str]
 ```

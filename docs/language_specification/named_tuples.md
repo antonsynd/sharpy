@@ -14,6 +14,9 @@ type Bounds = tuple[min: int, max: int]
 ## Creating Named Tuples
 
 ```python
+type Point = tuple[x: float, y: float]
+type Bounds = tuple[min: int, max: int]
+
 # Using named fields
 pos: Point = (x=1.0, y=2.0)
 bounds: Bounds = (min=0, max=100)
@@ -218,6 +221,9 @@ def load_config() -> Config:
 
 **Multiple Return Values:**
 ```python
+def get_timestamp() -> int64:
+    return 0
+
 def parse_header() -> tuple[status: int, message: str, timestamp: int64]:
     return (status=200, message="OK", timestamp=get_timestamp())
 ```
@@ -236,6 +242,7 @@ type RGB = tuple[r: uint8, g: uint8, b: uint8]
 - Cannot have default values (use structs for that)
 - Cannot add methods (use classes/structs for that)
 
+<!-- spec-sweep: error SPY0118 -->
 ```python
 # ❌ Cannot partially name fields
 type Mixed = tuple[x: int, int]  # ERROR
