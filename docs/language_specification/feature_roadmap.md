@@ -17,6 +17,7 @@ Allow try expressions to catch multiple exception types using union syntax, cons
 
 **Syntax:**
 ```python
+input_str = "42"
 x = try[ValueError | TypeError] int(input_str)
 # Result type: Result[int, Exception]
 # Catches ValueError OR TypeError; others propagate uncaught
@@ -78,6 +79,7 @@ robust_fetch("https://api.example.com", True)
 Decorator for per-instance immutable fields. Maps directly to C# `readonly` field modifier.
 
 **Syntax:**
+<!-- spec-sweep: error SPY0440 -->
 ```python
 class Config:
     @final
@@ -117,6 +119,8 @@ first = (1, 2)
 second = (3, 4)
 combined = (*first, *second)  # (1, 2, 3, 4)
 
+point_2d = (5, 6)
+z_value = 7
 coords = (*point_2d, z_value)  # Convert 2D to 3D
 ```
 

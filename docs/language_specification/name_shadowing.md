@@ -37,6 +37,7 @@ Where no such path exists, shadowing is refused rather than permitted.
 Keywords (`if`, `class`, `def`, `return`, `None`, …) cannot be used as identifiers. To name a
 symbol after one — usually for .NET interop — backtick-escape it:
 
+<!-- spec-sweep: fragment -->
 ```python
 def `class`(self) -> str: ...
 ```
@@ -49,6 +50,7 @@ throughout this document.
 A `class`/`struct`/`interface`/`enum`/`union`/`delegate` whose bare name is a builtin type is
 **refused**:
 
+<!-- spec-sweep: error SPY0212 -->
 ```python
 class int:      # SPY0212
     value: int
@@ -128,6 +130,7 @@ be advice to do what was already done.
 A `from M import *` that binds a name displacing a builtin does **not** fail at the import. The
 name becomes **ambiguous where it is used**:
 
+<!-- spec-sweep: error SPY0492 -->
 ```python
 from numpy import *          # fine on its own
 
@@ -143,6 +146,7 @@ refuse a file that never touches the colliding name — louder and less precise.
 
 Three ways to say which you meant:
 
+<!-- spec-sweep: fragment -->
 ```python
 import numpy                 # qualified
 print(numpy.sum(xs))
@@ -170,6 +174,7 @@ only the case where the reader genuinely cannot tell which one runs.
 A shadow declared in a module affects that module only. A plain `import` never carries it to a
 consumer:
 
+<!-- spec-sweep: fragment -->
 ```python
 # lib.spy
 def len(x: int) -> int:

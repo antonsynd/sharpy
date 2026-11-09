@@ -218,6 +218,7 @@ async def combined_async() -> int:
 
 Due to a C# iterator limitation, `yield` cannot appear inside `try`/`except`/`finally` blocks. C#'s iterator state machine does not support `yield return` within exception handling constructs:
 
+<!-- spec-sweep: error SPY0270 -->
 ```python
 def safe_items(items: list[int]) -> int:
     for item in items:
@@ -235,6 +236,9 @@ def safe_items(items: list[int]) -> int:
 **Workaround:** Collect results in a local variable within the try block, then yield after the block:
 
 ```python
+def process(item: int) -> int:
+    return item * 2
+
 def safe_items(items: list[int]) -> int:
     for item in items:
         value = 0
@@ -251,6 +255,7 @@ A `with` whose `__exit__` accepts exception parameters (`self` + 3) can suppress
 The emitter lowers this to a `try/catch` block, which cannot contain `yield return` in a C#
 iterator. A simple (1-parameter) `__exit__` uses `try/finally` and allows `yield`:
 
+<!-- spec-sweep: error SPY0703 -->
 ```python
 class Suppressor:
     def __enter__(self) -> Suppressor:
@@ -275,6 +280,7 @@ The `__next__` method is part of the *explicit* iterator protocol (manual state
 management). Combining it with `yield` (which generates a state machine
 automatically) is contradictory.
 
+<!-- spec-sweep: error SPY0268 -->
 ```python
 class Bad:
     def __next__(self) -> int:
@@ -286,6 +292,7 @@ class Bad:
 Generators produce values via `yield`. A `return` with a value has no
 well-defined meaning and is rejected:
 
+<!-- spec-sweep: error SPY0267 -->
 ```python
 def bad_gen() -> int:
     yield 1
@@ -299,6 +306,7 @@ Use a bare `return` for early termination instead.
 A class must choose one approach: either a generator-based `__iter__` (with
 `yield`) or an explicit iterator (with `__next__`). Defining both is an error:
 
+<!-- spec-sweep: error SPY0269 -->
 ```python
 class Bad:
     def __iter__(self) -> int:

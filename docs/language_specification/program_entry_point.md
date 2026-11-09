@@ -19,6 +19,7 @@ The `main()` function:
 
 Outside of `main()`, only declarations are allowed at module level:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Static fields (type annotation required)
 counter: int = 0
@@ -93,6 +94,7 @@ def utility() -> int:
 If you have existing code with top-level executable statements, wrap them in a `main()` function:
 
 **Before (no longer valid):**
+<!-- spec-sweep: fragment -->
 ```python
 x = 42
 print(x)
@@ -102,6 +104,9 @@ print(result)
 
 **After:**
 ```python
+def compute(x: int) -> int:
+    return x * 2
+
 def main():
     x = 42
     print(x)

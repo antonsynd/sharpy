@@ -3,6 +3,12 @@
 Sharpy performs type narrowing in conditional branches:
 
 ```python
+def get_optional_string() -> str?:
+    return Some("hello")
+
+def get_value() -> object:
+    return "world"
+
 value: str? = get_optional_string()
 
 if value is not None:
@@ -22,6 +28,7 @@ if isinstance(obj, str):
 The **body** of a branch guarded by `or` is not narrowed, because the operands can imply different
 types and there is no single narrowed type that holds:
 
+<!-- spec-sweep: fragment -->
 ```python
 if isinstance(x, int) or isinstance(x, str):
     # x is NOT narrowed here — it could be int or str
@@ -161,6 +168,7 @@ a nested `def`, or a function storing to a module-level name) is a store into th
 slot — the emitted C# local or field keeps its type across blocks and functions
 (see [Variable Scoping](variable_scoping.md), *Write-Through Assignment*):
 
+<!-- spec-sweep: error SPY0604 -->
 ```python
 def main() -> None:
     d: int? = Some(10)
@@ -187,7 +195,13 @@ def main() -> None:
 `isinstance` is a compile-time narrowing construct rather than an ordinary function. It must be
 called; referencing it as a value is an error ([SPY0337]).
 
+<!-- spec-sweep: error SPY0337 -->
 ```python
+class Circle:
+    radius: float = 1.0
+
+shape: object = Circle()
+
 if isinstance(shape, Circle):     # OK — narrows shape to Circle
     print(shape.radius)
 
@@ -201,6 +215,9 @@ Wrap it in a lambda to pass the test around; the lambda pins the type being test
 an ordinary narrowing call:
 
 ```python
+class Circle:
+    radius: float = 1.0
+
 is_circle = lambda v: isinstance(v, Circle)
 ```
 
@@ -222,6 +239,10 @@ In `A if cond else B`, the condition's **positive** narrowings apply inside `A` 
 `cond` is true) and its **negative** narrowings apply inside `B` (evaluated only when `cond` is false):
 
 ```python
+class Dog:
+    def bark(self) -> str:
+        return "Woof"
+
 def describe(x: int?) -> int:
     # In the true arm, `x` is narrowed from int? to int; in the false arm it stays int?.
     return x + 1 if x is not None else 0
@@ -240,6 +261,10 @@ The right operand of `and` sees the left operand's **positive** narrowings, beca
 is evaluated only when the left is truthy:
 
 ```python
+class Dog:
+    def can_bark(self) -> bool:
+        return True
+
 def is_positive(x: int?) -> bool:
     # `x` is narrowed to int on the right of `and`, so `x > 0` type-checks.
     return x is not None and x > 0

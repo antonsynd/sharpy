@@ -19,6 +19,7 @@ class Box[T = int]:
 
 When using the class, the type argument can be omitted to use the default:
 
+<!-- spec-sweep: fragment -->
 ```python
 b = Box[int](42)      # Explicit: T = int
 s = Box[str]("hello") # Explicit: T = str
@@ -28,6 +29,7 @@ s = Box[str]("hello") # Explicit: T = str
 
 Once one type parameter has a default, all subsequent parameters must also have defaults:
 
+<!-- spec-sweep: error SPY0395 -->
 ```python
 # OK: defaults at the end
 class Pair[K, V = str]:
@@ -89,6 +91,7 @@ class Extent[StartT, StopT = StartT, StepT = StopT]:
 Three references are refused, all under SPY0347, because a default is read where the declaration is
 instantiated and only the preceding parameters have values there:
 
+<!-- spec-sweep: error SPY0347 -->
 ```python
 # ERROR (SPY0347): V is declared after K
 class Pair[K = V, V = int]:
@@ -124,6 +127,7 @@ def echo_pair[K, V = K](a: K, b: V) -> V:
 
 Default types must satisfy any constraints on the type parameter. If a default type violates a constraint, the compiler emits SPY0396:
 
+<!-- spec-sweep: error SPY0396 -->
 ```python
 interface Ranked:
     def rank(self) -> int:
@@ -137,6 +141,7 @@ class Sorted[T: Ranked = int]:
 A default that **is** an earlier type parameter carries no concrete type to test, so what must
 satisfy the constraint is that parameter's own constraints:
 
+<!-- spec-sweep: error SPY0396 -->
 ```python
 interface Shape:
     def area(self) -> int:
@@ -205,6 +210,7 @@ class ChildOpen[K](Dup[K]):    # Dup[K, K] — K here is ChildOpen's own paramet
 Defaults fill from the **right**, so a base list may omit a defaulted tail but never a leading
 undefaulted parameter — the arity refusal survives for that case:
 
+<!-- spec-sweep: error SPY0224 -->
 ```python
 class Pair[T, U = str]:
     first: T
