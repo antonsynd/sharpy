@@ -10,6 +10,7 @@ The spread operator enables concise syntax for unpacking collections and objects
 
 Spread elements from one list into another:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Basic spreading
 first = [1, 2]
@@ -31,6 +32,7 @@ flat = [*nested[0], *nested[1], *nested[2]]  # [1, 2, 3, 4, 5, 6]
 
 Merge dictionaries with spread syntax:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Basic merging
 defaults = {"timeout": 30, "retry": True}
@@ -54,6 +56,12 @@ config = {
 Unpack positional arguments in function calls:
 
 ```python
+def some_function(*xs: int) -> int:
+    return len(xs)
+
+def add(a: int, b: int) -> int:
+    return a + b
+
 # Positional arguments
 args = [1, 2, 3]
 result = some_function(*args)
@@ -82,6 +90,8 @@ second: tuple[int, int] = (3, 4)
 combined = (*first, *second)  # tuple[int, int, int, int] — (1, 2, 3, 4)
 
 # Mixed with literals
+point_2d: tuple[int, int] = (5, 6)
+z_value = 7
 coords = (*point_2d, z_value)  # Convert 2D to 3D
 ```
 
@@ -99,6 +109,8 @@ set2 = {3, 4, 5}
 combined = {*set1, *set2}  # {1, 2, 3, 4, 5}
 
 # Add individual elements
+original_set = {1, 2}
+new_element = 3
 expanded = {*original_set, new_element}
 ```
 
@@ -127,6 +139,7 @@ updated = original.copy(age=31, email="newalice@example.com")
 
 Spread any iterable, not just lists:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Spread range
 numbers = [*range(5)]  # [0, 1, 2, 3, 4]
@@ -163,6 +176,7 @@ def sum_all(first: int, *rest: int) -> int:
 
 Spreading is type-checked at compile time:
 
+<!-- spec-sweep: error SPY0227 -->
 ```python
 # ✅ Compatible types
 int_list: list[int] = [1, 2, 3]
@@ -194,6 +208,7 @@ config = {**base, **{**overrides, "c": 3}}
 ## Common Patterns
 
 **Combining Collections:**
+<!-- spec-sweep: fragment -->
 ```python
 # Concatenate lists
 all_items = [*list1, *list2, *list3]
@@ -206,6 +221,7 @@ all_tags = {*required_tags, *optional_tags}
 ```
 
 **Function Argument Forwarding:**
+<!-- spec-sweep: fragment -->
 ```python
 # Positional argument forwarding (supported)
 def wrapper(*args: int):
@@ -229,6 +245,7 @@ updated_dict = {**original_dict, "b": 3}  # Override "b"
 ```
 
 **Building Complex Structures:**
+<!-- spec-sweep: fragment -->
 ```python
 # Build API request
 request_data = {
@@ -260,6 +277,7 @@ Where spreading is allowed:
 - Rest patterns must appear once in unpacking
 - Dict spreading requires mapping type
 
+<!-- spec-sweep: error SPY0101 -->
 ```python
 # ❌ Cannot spread in type annotations
 type MyList = list[*SomeType]  # ERROR
@@ -279,6 +297,7 @@ first, *, last = items  # ERROR: rest pattern needs name
 
 Spreading is lowered to appropriate C# constructs:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy - list spreading
 combined = [1, 2, *middle, 99, 100]
@@ -292,6 +311,7 @@ combined.Add(100);
 ```
 
 **Dict spreading:**
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 merged = {**defaults, **user_config, "override": True}
@@ -306,6 +326,7 @@ merged["override"] = true;
 ```
 
 **Function call spreading (positional):**
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 result = function(*args)
@@ -323,6 +344,7 @@ var result = function(args[0], args[1], args[2]);
 - Multiple spreads compound allocation costs
 - Consider preallocating for large collections
 
+<!-- spec-sweep: fragment -->
 ```python
 # Less efficient: multiple allocations
 result = [*list1, *list2, *list3, *list4]
