@@ -30,7 +30,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>drained-empty</c>, <c>non-integer</c>, <c>code-site-roster</c>, <c>spec-file-roster</c>, <c>generator-roster</c>,
 /// <c>rate-tolerance</c>, <c>set-file</c>. Unchecked, with evidence text the lead reviews in the inventory diff at each
 /// gate: <c>tuning-constant</c> (the identifier), <c>fixed-input</c> (the named stems, or the member that reads no
-/// corpus). <c>in</c> marks a corpus-moved count pin that plan-88736c D3 converts to a set file.</para>
+/// corpus). <c>in</c> marked a corpus-moved count pin while plan-88736c D3 converted them to set files; none may remain.</para>
 /// </summary>
 public sealed class CorpusPinInventoryTests
 {
@@ -499,6 +499,9 @@ public sealed class CorpusPinInventoryTests
 
         problems.Should().BeEmpty($"every integer pin in corpus-reading test code is a row of Conformance/{InventoryFileName} whose reason holds "
             + $"(actual rows: {Path.Combine(dumpDir, "actual-inventory.txt")})");
+        rows.Where(r => r.Reason == In).Select(r => r.ToString()).Should().BeEmpty(
+            "plan-88736c D3 converted every corpus-moved count pin to a set file: a count a new fixture can move is a set of named "
+            + "rows, never an integer (an `in` row is a pin to convert, not an exclusion)");
     }
 
     // ---- the guard's own controls, over a synthetic corpus ----

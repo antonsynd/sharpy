@@ -10,7 +10,7 @@
 #              reads no corpus enumerator), rate-tolerance (a RefusalCeilingPercent/SampledRangeLineCeilingPercent row),
 #              set-file (a plan-88736c D3 set file). Evidence only, reviewed by the lead in this file's diff at each
 #              gate: tuning-constant (evidence: the identifier), fixed-input (evidence: the named stems, or the member
-#              that reads no corpus). in: a count a new fixture can move, which plan-88736c D3 converts to a set file.
+#              that reads no corpus). in: a count a new fixture can move, which plan-88736c D3 converted to a set file: none may remain.
 # A new hit is red until its row lands; an edited literal re-keys its row (red twice: unlisted, and a row with no hit).
 Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(fixtures.Count > 0, | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(scannedUnits > 0, | ×1 | floor | lower bound
@@ -154,6 +154,7 @@ Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int RawSamples = 40; | ×1 | tuning-constant | RawSamples
 Sharpy.Lsp.Tests/Analysis/SemanticTokenCoverageTests.cs | Assert.True(spyFiles.Count > 0, "No .spy files found"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | Actions.Length.Should().Be(14); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | CompareStems(Identity, Set("a", "c"), Set("a", "b")).Should().HaveCount(2, "a fix plus a regression is two named rows"); | ×1 | fixed-input | in-test sets of CompareStems_NamesEveryDifference (no corpus enumerator in the member)
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | QuickFixCodes.Value.Should().HaveCount(4, "SPY0452, unused variable, naming convention, undefined variable @ 7f0502de3"); | ×1 | fixed-input | reflection over DiagnosticQuickFixProvider.FixFactories (no fixture moves it)
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | Volatile.Read(ref s_retainedDocuments).Should().Be(0, "every per-stem driver closes every document it opens"); | ×1 | zero-guard | asserted 0
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | [ShapeClass.Delete] = new[] { Edits, Offer, Parse, Diagnostics, CommentBucket, Line }, | ×1 | non-integer | route/bucket/name table row
@@ -164,7 +165,6 @@ Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | doc.EndLine(stringSt
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | internal const int DiagnosticsStride = 8; | ×1 | tuning-constant | DiagnosticsStride
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | internal const int TwinStride = 8; | ×1 | tuning-constant | TwinStride
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | regions.Should().HaveCount(2); | ×1 | fixed-input | in-test input of Regions_InsertAndReplace_AreSeparateRegionsWithTheirNewLines
-Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | rows.Count.Should().Be(59, "P47 Phase 1 Task 3 populated 182 pins from one FULL run (132 cite #2232, 15 #2294, 35 #2296); Phase 2 Task 1 (one line table, the document's break) left 158 (106 #2232, 16 #2294, 36 #2296); Phase 2 Task 2 (wrap, extract method, inline, remove unused import move whole regions) left 140 (88 #2232, 16 #2294, 36 #2296); Phase 2 Task 3 (Organize Imports moves units) left 124 (72 #2232, 16 #2294, 36 #2296); Phase 2 Task 4 (convert forms re-spell headers, move bodies) left 109 (53 #2232, 16 #2294, 40 #2296); Phase 2 Task 5 (statement extents from tokens, never un-parse: the #2232 residue) left 55 (0 #2232, 16 #2294, 39 #2296); the P21h verify round (lane FIX-READS) added 1 under the reopened #2232 — inline-variable leaves an identity document unparsable when it inlines a module variable that a class-body read binds — 56 (1 #2232, 16 #2294, 39 #2296); the P82 tranche 1 re-pin (plan-eaaed2, one FULL run @ 17614da6b) measured every FULL pair and added the 3 crlf/cr/comment rows of that same #2232 cell, which regular mode never judges on those twins — 59 (4 #2232, 16 #2294, 39 #2296); a commit that changes the count says why"); | ×1 | in | allowlist row-count pin (D3 ii, deleted): plan-88736c D3 converts it to a set file
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | s_cells.GetValueOrDefault((spec.Name, twin)).Should().BeGreaterThan(0, $"the sweep judges ≥ 1 {spec.Name} cell on the {twin} twin"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | stringStatement.LineEnd.Should().Be(9, "the parser fact P47 works around (ledgered as #2295)"); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | .Should().HaveCount(7); | ×1 | fixed-input | in-test input of Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows
@@ -211,7 +211,6 @@ Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs | Assert.True(projectStats.N
 Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int Dop = 4; | ×1 | tuning-constant | Dop
 Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int PrefixStride = 1024; | ×1 | tuning-constant | PrefixStride
 Sharpy.Lsp.Tests/Conformance/WarmInstanceParityTests.cs | internal const int Repetitions = 4; | ×1 | tuning-constant | Repetitions
-Sharpy.Lsp.Tests/Conformance/code-action-shape-allowlist.txt | (integer column) | ×1 | in | count/digest columns: D3(ii) converts them to code-action-shape-stems.txt
 Sharpy.Lsp.Tests/Conformance/formatting-route-census.txt | (integer column) | ×1 | set-file | the per-stem cell count n of the D3(i) census rows
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["MathNet.Numerics"] = new[] { "numpy" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Microsoft.Data.Sqlite"] = new[] { "sqlite3" }, | ×1 | non-integer | route/bucket/name table row
