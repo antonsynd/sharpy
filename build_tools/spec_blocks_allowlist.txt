@@ -265,16 +265,9 @@ tuple_unpacking.md::5d9a1fb03b  # SPY0356 first #1952
 tuple_unpacking.md::add0af13e5  # SPY0227 first #1952
 tuple_unpacking.md::b9bd0a0661  # SPY0239 first #1952
 tuple_unpacking.md::fa95de4f1b  # SPY0200 first #1952
-type_casting.md::1255fc721e  # SPY0200 first #1952
-type_casting.md::3d21645510  # SPY0200 first #1952
 type_casting.md::3f4a94e3a3  # SPY0227 first #1952
-type_casting.md::636c3eaba4  # SPY0200 first #1952
-type_casting.md::944a38bbe7  # SPY0200 first #1952
-type_casting.md::9e1d6ddec7  # SPY0200 first #1952
-type_casting.md::a780847174  # SPY0200 first #1952
 type_casting.md::c7a9a2b5a1  # SPY0200 first #1952
 type_casting.md::d66501c4a8  # SPY0220 first #1952
-type_casting.md::ea3874d27c  # SPY0200 first #1952
 type_hierarchy.md::90e8c7a6ca  # SPY0200 first #1952
 type_narrowing.md::20c955b9d7  # SPY0200 first #1952
 type_narrowing.md::4ade21f410  # SPY0200 first #1952

@@ -4,6 +4,7 @@ The `as!` and `as?` operators perform type casting, converting a value from one 
 runtime. The failure mode lives on the **operator**: `as!` throws on a failed cast, `as?` yields
 `None`. Because the operator owns the failure mode, the target type is always written **non-nullable**.
 
+<!-- spec-sweep: fragment -->
 ```python
 result = expression as! TargetType   # throwing
 result = expression as? TargetType   # safe (yields TargetType?)
@@ -25,6 +26,33 @@ adjacent to `as` (no intervening whitespace), so `x as ? T` and `x as ! T` are n
 
 ## Examples
 
+The examples on this page use this class hierarchy:
+
+<!-- spec-sweep: prelude -->
+```python
+class Animal:
+    name: str
+    age: int
+
+    def __init__(self, name: str = "Rex"):
+        self.name = name
+        self.age = 3
+
+class Dog(Animal):
+    def bark(self) -> str:
+        return "Woof"
+
+class Cat(Animal):
+    pass
+
+def get_animal() -> Animal:
+    return Dog()
+
+def use_dog(dog: Dog) -> None:
+    print(dog.name)
+```
+
+<!-- spec-sweep: fragment -->
 ```python
 # Reference type downcasting
 animal: Animal = get_animal()
@@ -158,6 +186,7 @@ upper `long` guard is a strict `< 2^63` rather than `<= long.MaxValue`.)
 The built-in conversion functions (`int()`, `str()`, `float()`, etc.) remain available and are
 equivalent to the throwing form `as!` for their respective types:
 
+<!-- spec-sweep: fragment -->
 ```python
 # These are equivalent
 x = int(value)
@@ -174,6 +203,7 @@ x = value as? int                # No equivalent with int()
 The conversion functions are retained for Pythonic familiarity, but `as!`/`as?` are the
 general-purpose casting mechanism that works with any type:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Only the cast operators work for arbitrary types
 dog = animal as? Dog
@@ -212,6 +242,7 @@ tighter than comparison and logical operators:
 
 This means:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Parentheses needed for member access on cast result
 name = (animal as! Dog).name
