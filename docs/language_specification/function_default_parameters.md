@@ -2,6 +2,7 @@
 
 Functions can specify default values for parameters. Parameters with defaults must come after required parameters.
 
+<!-- spec-sweep: fragment -->
 ```python
 def greet(name: str, greeting: str = "Hello") -> str:
     return f"{greeting}, {name}!"
@@ -45,6 +46,7 @@ The following are not compile-time constants:
 (`**`), and string repetition (`*`) operators lower to runtime helper calls (`FloorDiv`, `FloorMod`,
 `Math.Pow`, `Repeat`), not to C# constant operators. A default that uses one is refused:
 
+<!-- spec-sweep: error SPY0401 -->
 ```python
 # ❌ Call-lowered operators are not compile-time constants
 def f(x: int = 7 // 2) -> None: ...       # ERROR SPY0401: '//' lowers to a call
@@ -61,6 +63,7 @@ def ok3(x: str = "a" + "b") -> None: ...  # OK: string concatenation folds
 **Call initializers.** A `const` whose initializer is a function call (e.g. `max(...)`) is not a
 compile-time constant. Referencing it from a default is refused:
 
+<!-- spec-sweep: error SPY0401 -->
 ```python
 const FM: float = max(4.0, 1.0)   # legal declaration, but emits 'static readonly'
 
@@ -70,6 +73,7 @@ def f(t: float = FM) -> None: ... # ERROR SPY0401: 'FM' is not a compile-time co
 
 The same holds through a qualified spelling, and a plain (non-`const`) field is never a constant:
 
+<!-- spec-sweep: error SPY0401 -->
 ```python
 class Holder:
     const A: int = max(1, 4)      # legal declaration, emits 'static readonly'
@@ -86,6 +90,7 @@ def g(x: int = Holder.v) -> None: ... # ERROR SPY0401: 'v' is a field, not a con
 **Optional (`T?`) types.** An `Optional` is a struct with case constructors (`Some`/`None()`), not a
 C# primitive. A `const` of type `T?` is never a compile-time constant:
 
+<!-- spec-sweep: error SPY0401 -->
 ```python
 const O: int? = Some(1)
 
@@ -106,6 +111,7 @@ def g(o: int? = None()) -> None:
 
 ## Examples
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Valid default parameters
 def process(
