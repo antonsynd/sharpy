@@ -1710,27 +1710,33 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// the tranche's only corpus change); control: dev @ 8d0367e0a held the previous literals with those stems absent,
     /// and the merged tip measured exactly +2 on each of the four and nothing else; the tranche changed no
     /// lexer/parser/formatter/LSP code.
+    /// #2512 duplicate-fixture dedupe (plan-88736c D2, 2026-11-09): -1 on every twin's live routes (identity, crlf,
+    /// cr, wide full/range-whole) and -2 on the four comment pins — shrink, from deleted fixture stems, not a repair:
+    /// type_system/optional_bare_none_default_param (one fact on each of those 18 pins) and inheritance/super_outside_class
+    /// (one more on each comment pin), byte-equal duplicates of the kept type_system/optional_default_param and
+    /// errors/super_outside_class; measured by each stem's FMTROUTE-S7-PARITY lines with the 13 deleted stems restored,
+    /// and the census with them deleted; no lexer/parser/formatter/LSP change.
     internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
         new SCG.Dictionary<(string Twin, string Route), int>
         {
-            [(Identity, Full)] = 486,
-            [(Identity, RangeWhole)] = 486,
-            [(Identity, RangeLine)] = 482,
-            [(Identity, OnType)] = 482,
-            [(Comment, Full)] = 1657,
-            [(Comment, RangeWhole)] = 1657,
-            [(Comment, RangeLine)] = 1653,
-            [(Comment, OnType)] = 1653,
-            [(Crlf, Full)] = 486,
-            [(Crlf, RangeWhole)] = 486,
-            [(Crlf, RangeLine)] = 482,
-            [(Crlf, OnType)] = 482,
-            [(Cr, Full)] = 486,
-            [(Cr, RangeWhole)] = 486,
-            [(Cr, RangeLine)] = 482,
-            [(Cr, OnType)] = 482,
-            [(Wide, Full)] = 486,
-            [(Wide, RangeWhole)] = 486,
+            [(Identity, Full)] = 485,
+            [(Identity, RangeWhole)] = 485,
+            [(Identity, RangeLine)] = 481,
+            [(Identity, OnType)] = 481,
+            [(Comment, Full)] = 1655,
+            [(Comment, RangeWhole)] = 1655,
+            [(Comment, RangeLine)] = 1651,
+            [(Comment, OnType)] = 1651,
+            [(Crlf, Full)] = 485,
+            [(Crlf, RangeWhole)] = 485,
+            [(Crlf, RangeLine)] = 481,
+            [(Crlf, OnType)] = 481,
+            [(Cr, Full)] = 485,
+            [(Cr, RangeWhole)] = 485,
+            [(Cr, RangeLine)] = 481,
+            [(Cr, OnType)] = 481,
+            [(Wide, Full)] = 485,
+            [(Wide, RangeWhole)] = 485,
             [(Wide, RangeLine)] = 0,
             [(Wide, OnType)] = 0,
         };

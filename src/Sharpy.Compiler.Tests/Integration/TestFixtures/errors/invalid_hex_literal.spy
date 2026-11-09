@@ -1,2 +1,0 @@
-def main():
-    x: int = 0x
