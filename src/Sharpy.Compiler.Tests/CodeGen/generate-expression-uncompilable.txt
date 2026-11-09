@@ -1,0 +1,27 @@
+# The fixture stems GenerateExpressionReentryTests cannot sweep (#1334): they do not compile through its recording seam,
+# which registers neither the builtins module nor Sharpy.Stdlib (the fixture harness's extra references), so they
+# witness nothing about re-entry. A SET, never a count (#2512, plan-88736c D3(iii)): exact both ways.
+#
+# One row per stem: stem # diagnostic (the first error the seam reports; printed, not compared).
+# A new stem that does not compile here is red until it is fixed or its row lands saying why; a listed stem that
+# compiles now (or is gone) is red until its row is deleted (the drain).
+# Regenerate from a run: .claude/tmp/generate-expression-uncompilable/actual.txt.
+builtin_from_import_alias_1383 # SPY0300 Cannot find module 'builtins' (in builtin_from_import_alias_1383.spy)
+builtin_type_from_import_alias_1489 # SPY0300 Cannot find module 'builtins' (in builtin_type_from_import_alias_1489.spy)
+builtins/qualified_constructor_reference_pinned # SPY0300 Cannot find module 'builtins' (in qualified_constructor_reference_pinned.spy)
+builtins_from_import_resolves # SPY0300 Cannot find module 'builtins' (in builtins_from_import_resolves.spy)
+builtins_isinstance_qualified_1381 # SPY0300 Cannot find module 'builtins' (in builtins_isinstance_qualified_1381.spy)
+builtins_isinstance_tuple_qualified_1532 # SPY0300 Cannot find module 'builtins' (in builtins_isinstance_tuple_qualified_1532.spy)
+builtins_qualified_call # SPY0300 Cannot find module 'builtins' (in builtins_qualified_call.spy)
+builtins_qualified_construction # SPY0300 Cannot find module 'builtins' (in builtins_qualified_construction.spy)
+builtins_qualified_escapes_shadow # SPY0300 Cannot find module 'builtins' (in builtins_qualified_escapes_shadow.spy)
+builtins_qualified_type # SPY0300 Cannot find module 'builtins' (in builtins_qualified_type.spy)
+builtins_qualified_value_position_1463 # SPY0300 Cannot find module 'builtins' (in builtins_qualified_value_position_1463.spy)
+errors/builtin_type_from_import_alias_refused_1489 # SPY0300 Cannot find module 'builtins' (in builtin_type_from_import_alias_refused_1489.spy)
+from_builtins_import_str_no_warning_2359 # SPY0300 Cannot find module 'builtins' (in from_builtins_import_str_no_warning_2359.spy)
+import_alias_builtin_function_name_2359 # SPY0300 Cannot find module 'copy' (in import_alias_builtin_function_name_2359.spy)
+import_alias_escaped_builtin_type_name_2359 # SPY0300 Cannot find module 'copy' (in import_alias_escaped_builtin_type_name_2359.spy)
+imports/from_import_parenthesized # SPY0300 Cannot find module 'builtins' (in from_import_parenthesized.spy)
+module_property_builtin_name_2359 # SPY0300 Cannot find module 'builtins' (in module_property_builtin_name_2359.spy)
+optional_result/result_annotation_payload_forms # SPY0300 Cannot find module 'builtins' (in result_annotation_payload_forms.spy)
+type_alias_builtin_function_name_2359 # SPY0300 Cannot find module 'builtins' (in type_alias_builtin_function_name_2359.spy)

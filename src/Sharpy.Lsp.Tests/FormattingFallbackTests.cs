@@ -1397,7 +1397,7 @@ public sealed class FormattingFallbackTests : IDisposable
     /// width on no level it is dropped with its opener (SPY0013), the lexer loses the literal (<c>DroppedOpener</c>) and
     /// every route refuses (no edits @ ac3235c2a and now): the repair of the opener line is withheld and the literal's
     /// lines are untouched. In the route-parity sweep such a cell is exempt by clean-twin parity (lead ruling L7: with
-    /// <c>_ = 0</c> in place of <c>_ = $</c> the line is withheld too) and counted in <c>S7ParityExemptPin</c>.
+    /// <c>_ = 0</c> in place of <c>_ = $</c> the line is withheld too) and counted in <c>formatting-route-census.txt</c>.
     /// </summary>
     [Fact]
     public void L4_ARecoveryLineOpeningALiteral_IsWithheld_TheLiteralLinesUntouched()
