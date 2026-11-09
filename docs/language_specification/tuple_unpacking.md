@@ -15,6 +15,7 @@ print(y)  # 7
 
 The number of targets must match the number of tuple elements:
 
+<!-- spec-sweep: error SPY0239 -->
 ```python
 # ❌ ERROR: Cannot unpack 3 values into 2 variables
 a, b = (1, 2, 3)
@@ -70,7 +71,10 @@ def main() -> None:
 Augmented assignment onto a list display stays refused (Python `SyntaxError` for both tuple and
 list displays):
 
+<!-- spec-sweep: error SPY0225 -->
 ```python
+a = 0
+b = 0
 [a, b] += (1, 2)   # error SPY0225: augmented assignment onto a list display target
 ```
 
@@ -261,6 +265,7 @@ print(last)   # 5
 - The starred variable is always typed as `list[T]` where `T` is the element type of the source
 - Works with both lists and tuples as the source
 
+<!-- spec-sweep: error SPY0356 -->
 ```python
 # ❌ ERROR: Only one starred expression allowed
 *a, *b = items
@@ -348,6 +353,7 @@ A tuple's arity is part of its type — `tuple[int, str]` lowers to a .NET `Valu
 two fields. Python's `tuple(iterable)` produces a tuple as long as the iterable, which is a runtime
 property, so there is no type to give the result. The form is rejected (SPY0338):
 
+<!-- spec-sweep: error SPY0338 -->
 ```python
 xs: list[int] = [1, 2, 3]
 t = tuple(xs)   # ❌ ERROR SPY0338: variable-length tuple(iterable) is not supported
@@ -415,6 +421,7 @@ Refusals use the store seam's diagnostic codes: `SPY0604` (strict Optional const
 
 When unpacking creates a **fresh binding** (a new variable, not a re-assignment to an existing one), a `None` element is refused — it has no type on its own:
 
+<!-- spec-sweep: error SPY0227 -->
 ```python
 a, b = None, 1  # error: cannot infer a type for 'a': 'None' names no type on its own
 ```

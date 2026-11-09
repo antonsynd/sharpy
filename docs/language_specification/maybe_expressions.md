@@ -5,6 +5,9 @@ The `maybe` expression is the **bridge from .NET interop to safe Sharpy code**. 
 If the expression is `None`, the result is `None()` (empty Optional). Otherwise, the result is `Some(value)`.
 
 ```python
+def dotnet_api() -> str | None:
+    return "value"
+
 raw: str | None = dotnet_api()  # C# nullable
 safe: str? = maybe raw           # Convert to Optional[str]
 ```
@@ -13,6 +16,7 @@ safe: str? = maybe raw           # Convert to Optional[str]
 
 It is a type-checking error if the expression does not return a `T | None` type. The operand must be a C# nullable — not an `Optional[T]`:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ✅ Valid - converts C# nullable to Optional
 raw: str | None = dotnet_api()
@@ -38,6 +42,7 @@ w = maybe n                      # ERROR: n is int, not int | None
 
 The `maybe` expression is **idempotent**: applying it twice to an `Optional[T]` is a type error on the second application (same as the single-wrapping case above).
 
+<!-- spec-sweep: error SPY0243 -->
 ```python
 opt: str? = Some("hello")
 x = maybe opt                    # ERROR: opt is str?, not str | None
@@ -64,6 +69,7 @@ z = maybe foo() if cond else bar()  # Parsed as: (maybe foo()) if cond else bar(
 
 Use parentheses when you need to limit what `maybe` captures:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Only wrap the dict lookup, then use Optional methods
 x = (maybe d.get("key")).unwrap_or(0)
