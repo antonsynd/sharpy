@@ -2568,3 +2568,62 @@ deviations:
             print(1) if flag else print(2)   # SPY0603: expression statement of type 'None' must be a call; write the branch as an if statement
             lambda: 1                        # SPY0603: a lambda cannot be an expression statement; call it or bind it to a name
             math                             # SPY0603: a module reference cannot be an expression statement
+
+  - id: frozen-dataclass-init-assignment
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "`@dataclass(frozen=True)` installs a `__setattr__` that raises `FrozenInstanceError` on every attribute store, including a store inside a user-written `__init__`; a custom initializer has to go through `object.__setattr__(self, 'x', v)`."
+    sharpy_behavior: "A frozen field is emitted as an init-only C# property, which C# lets the constructor's own body set (dataclass.md: settable in an object initializer or directly in the constructor's body). So `self.<field> = v` and `self.<field> op= v` in an explicit `__init__` run; the same store in `__post_init__` or any other method is refused with SPY0706. Ruled D4 (a) 2026-11-08 (owner, remediation handoff): Axiom 1 — the init-accessor rule is the .NET one, and refusing the constructor store would make `frozen=True` with a custom `__init__` unusable. Measured @ be11fca77 (`sharpyc run`, python 3.13)."
+    spec_ref: docs/language_specification/dataclass.md
+    existing_diagnostic: SPY0706
+    planned_diagnostic: null
+    example:
+      python: |
+        from dataclasses import dataclass
+
+        @dataclass(frozen=True)
+        class Square:
+            side: float
+            area: float = 0.0
+            def __init__(self, side: float) -> None:
+                self.side = side          # FrozenInstanceError: cannot assign to field 'side'
+                self.area = side * side
+        print(Square(3.0).area)
+      sharpy: |
+        @dataclass(frozen=True)
+        class Square:
+            side: float
+            area: float = 0.0
+
+            def __init__(self, side: float) -> None:
+                self.side = side          # runs: the constructor body may set an init-only property
+                self.area = side * side
+
+        def main() -> None:
+            print(Square(3.0).area)       # 9.0
+
+  - id: exception-group-aggregate-exception-bridge
+    code: null
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`ExceptionGroup` subclasses `BaseExceptionGroup` and `Exception` (MRO `ExceptionGroup, BaseExceptionGroup, Exception, BaseException, object`), so `except BaseExceptionGroup` and `isinstance(eg, BaseExceptionGroup)` match every exception group."
+    sharpy_behavior: "`ExceptionGroup` is bridged to .NET (Axiom 1; spec table \"Exception Type Hierarchy\"): `ExceptionGroup : System.AggregateException : System.Exception`, with no `BaseExceptionGroup` layer. `except BaseExceptionGroup` is refused SPY0202 (type not found) and `isinstance(eg, BaseExceptionGroup)` SPY0200 (undefined identifier). `except Exception` catches a group, as in python, and .NET code (or Sharpy's `except AggregateException` after `from system import AggregateException`) catches it as an `AggregateException`. `ExceptionHierarchyPythonMroTests` pins the bridge set to `{ExceptionGroup}` (#2124 D15, #2478). Measured @ 587945668 (`sharpyc run`, python 3.13.18)."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: SPY0202
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise ExceptionGroup('errors', [ValueError('bad')])
+        except BaseExceptionGroup as eg:
+            print('caught as BaseExceptionGroup')   # printed
+      sharpy: |
+        def main():
+            errors: list[Exception] = [ValueError('bad')]
+            try:
+                raise ExceptionGroup('errors', errors)
+            except BaseExceptionGroup as eg:  # ERROR SPY0202: Type 'BaseExceptionGroup' not found
+                print('caught as BaseExceptionGroup')

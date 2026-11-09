@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Coverage for the measured CI runs (#2512, plan-88736c D1/D21): Microsoft.CodeCoverage, which
+  Microsoft.NET.Test.Sdk already brings, passed to `dotnet test` with this file as its settings
+  and "Code Coverage" as its collector (an XML comment cannot spell the two flags). Only on a
+  coverage-on run (COVERAGE_ON in .github/workflows/dotnet10.yml); never a threshold. build_tools/coverage_reduce.py reads the
+  cobertura it writes. The include lists the five product assemblies only, so a test assembly
+  (Sharpy.Stdlib.Tests measured 0.97 when instrumented) never inflates the number.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*[\\/]Sharpy\.Compiler\.dll$</ModulePath>
+                <ModulePath>.*[\\/]Sharpy\.Core\.dll$</ModulePath>
+                <ModulePath>.*[\\/]Sharpy\.Stdlib\.dll$</ModulePath>
+                <ModulePath>.*[\\/]Sharpy\.Lsp\.dll$</ModulePath>
+                <ModulePath>.*[\\/]sharpyc\.dll$</ModulePath>
+              </Include>
+            </ModulePaths>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

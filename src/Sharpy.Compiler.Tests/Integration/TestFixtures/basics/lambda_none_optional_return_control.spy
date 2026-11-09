@@ -1,0 +1,7 @@
+# A lambda whose body is None under a value-returning slot keeps its body (#1514,
+# P82 #2443): `g` returns `str | None`, so it emits `() => null`, not the empty
+# block a void delegate gets. Eliding it here would not compile (CS1643).
+
+def main() -> None:
+    g: () -> str | None = lambda: None
+    print(g() is None)

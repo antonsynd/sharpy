@@ -4,6 +4,7 @@ D-strings apply automatic indentation stripping to triple-quoted string literals
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 d"""
     hello
@@ -142,6 +143,7 @@ The closing-delimiter indentation is determined at compile time from the source.
 
 Emitted when a content line has less leading whitespace than the closing delimiter:
 
+<!-- spec-sweep: error SPY0029 -->
 ```python
 # Error: second line has only 2 spaces but closing delimiter has 4
 x = d"""

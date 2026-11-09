@@ -97,13 +97,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, ReceiverUnwrapLowering> _receiverUnwraps =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map an Assignment or WalrusExpression node to the OptionalType the emitter must wrap the
-    // stored value in. Recorded by the TypeChecker when a payload-typed value stores into a
-    // narrowed Optional slot (R-T payload rule, #1755 B) so the emitter prints
-    // Optional<T>.Some(value) at that site. Rule 2: the checker decides, the emitter prints.
-    private readonly ConcurrentDictionary<Node, OptionalType> _optionalStoreWraps =
-        new(ReferenceEqualityComparer.Instance);
-
     // Map a narrowed read (Identifier / MemberAccess / IndexAccess) that a store PASSED THROUGH as
     // its own declared wrapper (StoreVerdict.AcceptedNarrowedPassThrough, R-T) to that wrapper
     // type. Recording it removes the read's accessor and narrowed type — the emitter prints the
@@ -191,13 +184,6 @@ public class SemanticInfo : ISemanticQuery
     // checker ACCEPTED the spelling, so it exists exactly when the binding does. Read by the LSP's
     // navigation handlers; emits nothing.
     private readonly ConcurrentDictionary<MemberAccess, (ModuleSymbol Module, Symbol Member)> _moduleMemberResolutions =
-        new(ReferenceEqualityComparer.Instance);
-
-    // #1428: augmented assignment mutation lowering — when an augmented assignment matches the
-    // Classify table, the emitter emits a mutation call (e.g. xs.Extend(ys)) instead of the
-    // default rebind. Keyed on the Assignment node; value is the CLR method name on the
-    // Sharpy.Core collection.
-    private readonly ConcurrentDictionary<Assignment, string> _augmentedAssignMutations =
         new(ReferenceEqualityComparer.Instance);
 
     // #1519: default-interface dispatch — when a call dispatches to a default method on an
@@ -650,22 +636,10 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<ReturnStatement, ReturnLowering> _returnLowerings =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map lambda body expressions to an elision decision when the body is a NoneLiteral against
-    // a void delegate target (Action). Absent ⇒ normal body emission. Keyed by node identity
-    // (#1514, Critical Rule 2 pattern (b)).
-    private readonly ConcurrentDictionary<Expression, LambdaBodyLowering> _lambdaBodyLowerings =
-        new(ReferenceEqualityComparer.Instance);
-
     private readonly ConcurrentDictionary<ExpressionStatement, StatementLowering> _statementLowerings =
         new(ReferenceEqualityComparer.Instance);
 
     private readonly ConcurrentDictionary<Expression, SliceLowering> _sliceLowerings =
-        new(ReferenceEqualityComparer.Instance);
-
-    // Map match scrutinee expressions to a typed-null cast when the scrutinee is a bare NoneLiteral.
-    // Absent ⇒ normal scrutinee emission. Void-call scrutinees are REFUSED (SPY0275), not lowered.
-    // Keyed by node identity (#1526, Critical Rule 2 pattern (b)).
-    private readonly ConcurrentDictionary<Expression, MatchScrutineeLowering> _matchScrutineeLowerings =
         new(ReferenceEqualityComparer.Instance);
 
     // Track all reference locations for each symbol (for find-references and rename).
@@ -1026,16 +1000,6 @@ public class SemanticInfo : ISemanticQuery
         return _receiverUnwraps.TryGetValue(receiver, out var lowering) ? lowering : null;
     }
 
-    public void SetOptionalStoreWrap(Node storeNode, OptionalType wrapAs)
-    {
-        Put(_optionalStoreWraps, storeNode, wrapAs);
-    }
-
-    public OptionalType? GetOptionalStoreWrap(Node storeNode)
-    {
-        return _optionalStoreWraps.TryGetValue(storeNode, out var opt) ? opt : null;
-    }
-
     /// <summary>
     /// Records that a RemoveNone-narrowed <paramref name="read"/> was stored into a slot of its own
     /// declared wrapper type <paramref name="passedAs"/> and passes the wrapper through unchanged:
@@ -1195,25 +1159,6 @@ public class SemanticInfo : ISemanticQuery
     public MatchArmLowering? GetMatchArmLowering(Pattern armPattern)
     {
         return _matchArmLowerings.TryGetValue(armPattern, out var lowering) ? lowering : null;
-    }
-
-    /// <summary>
-    /// Records that this augmented assignment should lower to a mutation call instead of the default
-    /// rebind (#1428). Set by the TypeChecker when the assignment matches
-    /// <see cref="AugmentedCollectionAssignment.Classify"/>.
-    /// </summary>
-    public void SetAugmentedAssignMutation(Assignment node, string clrMethodName)
-    {
-        Put(_augmentedAssignMutations, node, clrMethodName);
-    }
-
-    /// <summary>
-    /// Gets the mutation method name for an augmented assignment, or <c>null</c> when the assignment
-    /// keeps the default rebind semantics (flag off, or not a classified shape).
-    /// </summary>
-    public string? GetAugmentedAssignMutation(Assignment node)
-    {
-        return _augmentedAssignMutations.TryGetValue(node, out var method) ? method : null;
     }
 
     /// <summary>
@@ -1817,9 +1762,6 @@ public class SemanticInfo : ISemanticQuery
     public ReturnLowering? GetReturnLowering(ReturnStatement ret) =>
         _returnLowerings.TryGetValue(ret, out var lowering) ? lowering : null;
 
-    public void SetLambdaBodyLowering(Expression body, LambdaBodyLowering lowering) =>
-        Put(_lambdaBodyLowerings, body, lowering);
-
     public void SetStatementLowering(ExpressionStatement stmt, StatementLowering lowering) =>
         Put(_statementLowerings, stmt, lowering);
 
@@ -1831,15 +1773,6 @@ public class SemanticInfo : ISemanticQuery
 
     public SliceLowering? GetSliceLowering(Expression expr) =>
         _sliceLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
-
-    public LambdaBodyLowering? GetLambdaBodyLowering(Expression body) =>
-        _lambdaBodyLowerings.TryGetValue(body, out var lowering) ? lowering : null;
-
-    public void SetMatchScrutineeLowering(Expression scrutinee, MatchScrutineeLowering lowering) =>
-        Put(_matchScrutineeLowerings, scrutinee, lowering);
-
-    public MatchScrutineeLowering? GetMatchScrutineeLowering(Expression scrutinee) =>
-        _matchScrutineeLowerings.TryGetValue(scrutinee, out var lowering) ? lowering : null;
 
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
@@ -2364,9 +2297,6 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._callTargets)
             MergeEntry(_callTargets, kvp, other);
 
-        foreach (var kvp in other._augmentedAssignMutations)
-            MergeEntry(_augmentedAssignMutations, kvp, other);
-
         foreach (var kvp in other._moduleAccessCrossingClassMembers)
             MergeEntry(_moduleAccessCrossingClassMembers, kvp, other);
 
@@ -2393,9 +2323,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._narrowedReadLowerings)
             MergeEntry(_narrowedReadLowerings, kvp, other);
-
-        foreach (var kvp in other._optionalStoreWraps)
-            MergeEntry(_optionalStoreWraps, kvp, other);
 
         foreach (var kvp in other._narrowedReadPassThroughs)
             MergeEntry(_narrowedReadPassThroughs, kvp, other);
@@ -2590,17 +2517,11 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._returnLowerings)
             MergeEntry(_returnLowerings, kvp, other);
 
-        foreach (var kvp in other._lambdaBodyLowerings)
-            MergeEntry(_lambdaBodyLowerings, kvp, other);
-
         foreach (var kvp in other._statementLowerings)
             MergeEntry(_statementLowerings, kvp, other);
 
         foreach (var kvp in other._sliceLowerings)
             MergeEntry(_sliceLowerings, kvp, other);
-
-        foreach (var kvp in other._matchScrutineeLowerings)
-            MergeEntry(_matchScrutineeLowerings, kvp, other);
 
         foreach (var kvp in other._interfaceCastLowerings)
             MergeEntry(_interfaceCastLowerings, kvp, other);
@@ -3381,14 +3302,6 @@ public enum ReturnLoweringKind
 
 public sealed record ReturnLowering(ReturnLoweringKind Kind);
 
-public enum LambdaBodyLoweringKind
-{
-    /// <summary>The lambda body is a NoneLiteral against a void delegate — emit an empty block body.</summary>
-    ElideNoneBody
-}
-
-public sealed record LambdaBodyLowering(LambdaBodyLoweringKind Kind);
-
 public enum StatementLoweringKind
 {
     PlainStatement,
@@ -3504,14 +3417,6 @@ public sealed record SliceLowering(
     SliceLoweringKind Kind,
     SemanticType? ResultType = null,
     int[]? TupleElementIndices = null);
-
-public enum MatchScrutineeLoweringKind
-{
-    /// <summary>The scrutinee is a bare NoneLiteral — cast to <c>(object?)null</c> for a valid switch.</summary>
-    CastToNullableObject
-}
-
-public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
 
 /// <summary>
 /// A per-match-arm lowering fact (P13 D5). <see cref="OmitUnreachableDiscard"/> marks a trailing

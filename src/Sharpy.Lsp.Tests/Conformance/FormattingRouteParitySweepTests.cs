@@ -221,7 +221,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <item><see cref="S6ok"/> — the <c>closeline-own-</c> documents of the three tails R-FV's walk cannot pair
     /// (<see cref="FormatterTwins.OwnQuoteTail.WalkCannotPair"/>: <c>bt</c>, <c>fspec</c>, <c>cmt</c>; lead ruling L2):
     /// they keep the fact set after the cure, a known limit of #2274 — their <c>factSpurious</c> cells are a pinned census
-    /// count (<see cref="KnownLimitPin"/>), never rows; their route buckets are judged.</item>
+    /// census row (<see cref="CensusFileName"/>), never allowlist rows; their route buckets are judged.</item>
     /// </list>
     /// The budget-stop positions (<see cref="FormatterTwins.BudgetStopLines"/>) keep the budget states: S6 when Q holds
     /// a literal spanning lines, S6n otherwise.
@@ -777,7 +777,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// #2279's: a misindented block header with its body below (P2.2-F3), a line continuing past its end (F4), the
     /// colon-less observer restriction (F5), a dropped literal opener (L4). A cell that moved the line, or whose first depth
     /// difference is another line, is never exempt; edits to other lines (the full fallback's comment lines) are judged by
-    /// the other buckets. Counted per (twin, route) and pinned (<see cref="S7ParityExemptPin"/>).
+    /// the other buckets. Counted per (twin, route, stem) as census rows (<see cref="CensusFileName"/>).
     /// </summary>
     internal static bool ParityExempt(LspFormattingDriver driver, SweepDocument d, CellRequest request, CellVerdict verdict, string? applied)
     {
@@ -1025,7 +1025,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         /// <summary>
         /// An <see cref="S6k"/> cell whose applied text changes a line that starts inside a literal in Q, or an
         /// <see cref="S6ok"/> cell whose fact is spurious: a known limit of #2274 (R-FQ; lead ruling L2), counted against
-        /// <see cref="KnownLimitPin"/> instead of failing its <see cref="KnownLimitBucket"/>.
+        /// a census row (<see cref="CensusFileName"/>) instead of failing its <see cref="KnownLimitBucket"/>.
         /// </summary>
         public bool KnownLimit { get; init; }
     }
@@ -1095,7 +1095,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             failures.Add((CommentLine, $"{request}: line {comment} is a comment-only line: D '{Clip(x[comment])}' vs T '{Clip(t[comment])}'"));
 
         // The comment re-pair (S6k) rewrites string content on a closer at column 0: a known limit no lexer fact can
-        // see (#2274, R-FQ) — a pinned census count (KnownLimitPin), not a failure, so the allowlist trends to empty
+        // see (#2274, R-FQ) — a census row (CensusFileName), not a failure, so the allowlist trends to empty
         // while the shape stays measured. Its other buckets are judged.
         var literal = truth.LiteralLines.Order().FirstOrDefault(l => x[l] != t[l], -1);
         var knownLimit = literal >= 0 && d.State == S6k;
@@ -1124,7 +1124,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>
     /// Adds <see cref="FactOracles"/> to <paramref name="failures"/>, except the bucket a known-limit state pins
     /// (<see cref="KnownLimitBucket"/>: an <see cref="S6ok"/> document's <c>factSpurious</c>, lead ruling L2), which is
-    /// returned as <see cref="CellVerdict.KnownLimit"/> instead — counted against <see cref="KnownLimitPin"/>.
+    /// returned as <see cref="CellVerdict.KnownLimit"/> instead — counted as a census row (<see cref="CensusFileName"/>).
     /// </summary>
     private static bool AddFactOracles(SCG.List<(string, string)> failures, SweepDocument d, CellRequest request)
     {
@@ -1402,6 +1402,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     private static readonly ConcurrentDictionary<string, int> s_stemsRun = new(StringComparer.Ordinal);
     private static readonly ConcurrentDictionary<(string Stem, string Twin), bool> s_declined = new();
 
+    /// <summary>The per-stem census facts (<see cref="CensusFileName"/>): cells per (measure, twin, route, stem).</summary>
+    private static readonly ConcurrentDictionary<(string Measure, string Twin, string Route, string Stem), int> s_census = new();
+
     /// <summary>Census tallies (<see cref="Tallies"/>): cells per (unparseable state, literal kind) and <c>ontype</c> cells per continuation shape.</summary>
     private static readonly ConcurrentDictionary<string, int> s_tallies = new(StringComparer.Ordinal);
     private static long s_sweepTicks;
@@ -1425,15 +1428,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 s_tallies.AddOrUpdate(ChangedTally(route, state, twin), group.Changed, (_, n) => n + group.Changed);
             if (group.KnownLimit > 0)
             {
-                // One per (stem, twin, route) — the unit an allowlist row had — and the cells beside it.
-                s_tallies.AddOrUpdate(KnownLimitTally(state, route, twin), 1, (_, n) => n + 1);
-                s_tallies.AddOrUpdate(KnownLimitCellsTally(state, route, twin), group.KnownLimit, (_, n) => n + group.KnownLimit);
+                // One census row per (stem, twin, route) — the unit an allowlist row had — holding its cells.
+                s_census.AddOrUpdate((KnownLimitMeasure(state), twin, route, stem), group.KnownLimit, (_, n) => n + group.KnownLimit);
                 _output.WriteLine($"FMTROUTE-KNOWN-LIMIT {stem} {twin} {route} {state} {KnownLimitBucket[state]} ({group.KnownLimit}/{group.Cells} cells, #2274)");
             }
 
             if (group.ParityExempt > 0)
             {
-                s_tallies.AddOrUpdate(ParityExemptTally(twin, route), group.ParityExempt, (_, n) => n + group.ParityExempt);
+                s_census.AddOrUpdate((ParityExemptMeasure, twin, route, stem), group.ParityExempt, (_, n) => n + group.ParityExempt);
                 _output.WriteLine($"FMTROUTE-S7-PARITY {stem} {twin} {route} {group.ParityExempt} (lead ruling L7)");
             }
             foreach (var (measure, n) in RangeMeasures(group))
@@ -1618,13 +1620,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     private static string ChangedTally(string route, string state, string twin) => $"changed {route} {state} {twin}";
 
-    private static string KnownLimitTally(string state, string route, string twin) => $"known-limit {state} {KnownLimitBucket[state]} {route} {twin}";
+    private static string KnownLimitMeasure(string state) => $"known-limit-{state}";
 
-    private static string KnownLimitCellsTally(string state, string route, string twin) => $"known-limit-cells {state} {KnownLimitBucket[state]} {route} {twin}";
+    private const string ParityExemptMeasure = "s7-parity-exempt";
 
-    private static string ParityExemptTally(string twin, string route) => $"s7-parity-exempt {twin} {route}";
-
-    /// <summary>The bucket each known-limit state counts against <see cref="KnownLimitPin"/> instead of failing it.</summary>
+    /// <summary>The bucket each known-limit state counts as a census row (<see cref="CensusFileName"/>) instead of failing it.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string> KnownLimitBucket = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
     {
         [S6k] = Literal,
@@ -1632,138 +1632,96 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     };
 
     /// <summary>
-    /// The clean-twin parity exemptions of <see cref="S7"/> (lead ruling L7, plan-f92797; <see cref="ParityExempt"/>): per
-    /// (twin, route), the <c>recovery-misindented</c> cells whose lost repair its clean twin loses too — pre-existing lost
-    /// repairs outside R-FU, posted on #2279 at close-out: a misindented block header with its body below (P2.2-F3), a line
-    /// continuing past its end — a bracket closed on a later line or a backslash (F4), the colon-less property-observer
-    /// restriction of P22e (F5), and a dropped literal opener (L4, which the parity rule subsumes: the recipe builds those
-    /// documents again). A PERMANENT known-limit pin, EXACT, measured in FULL mode at P22h Phase 2 Task 2 (@ ac3235c2a + the
-    /// task's diff; the comment twin splits statements across lines, hence its F4 surplus): a shrink is a
-    /// repair the clean twin gained, a growth a new pre-existing lost repair — change the literal in the same commit and
-    /// say which. P21e (plan-f8f73c, 2026-10-23): +7 on every non-zero pin — growth, all from P21e's 13 new fixture
-    /// stems (control @ c8d4babe1 with those fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the census
-    /// asserts the previous literals, identity full = 474, 16520/0). P21e verify round (2026-10-23): −1 on every
-    /// non-zero pin — a shrink, the one stem the owner's revert of D5b removed (errors/nested_def_redefined_match_arms;
-    /// measured @ 8fc618b22, every census asserting: identity full = 480). Call-29 chores band (2026-10-23): +2 on the
-    /// four comment pins only — growth, from the band's two new runnable fixture stems (strings/str_padding_fill_2347,
-    /// int_text_grammar_2357; control @ 9fd3f4200 with those two fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the
-    /// comment census asserts the previous literals, 3311/0). P21f (plan-43f241, 2026-10-25): +4 on every non-zero
-    /// identity/crlf/cr/wide pin and +10 on the four comment pins — growth, all from P21f's 18 new fixture stems (the
-    /// #2359/#2360/#2362 fixtures); control @ 4f254e771 with those fixtures removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1:
-    /// every census asserts the previous literals (identity full = 480). P21g (plan-cbdf79, 2026-10-27): +1 on every
-    /// non-zero pin — growth, from lane G's one new runnable fixture stem (interfaces/interface_property_split_accessors_2360);
-    /// control @ 091126d8c + lane G's diff with that fixture removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: every census
-    /// asserts the previous literals (identity full = 484), 16695/0. P21g verify round (2026-10-28): +1 on the four comment
-    /// pins only — growth, from the round's new fixture stem events/event_function_style_then_auto_2360; control
-    /// @ 21da3431f with that fixture removed, SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: every census asserts the previous
-    /// literals, 16710/0 (with it present: 16714/1, comment full = 1640). P21h D6 (2026-10-28): +1 on the four comment
-    /// pins only — corpus growth only: without unions/union_case_twice_2390 it measures 1640/1640/1636/1636; no
-    /// lexer/parser/formatter/LSP change (control @ 35783f923 + p2-seam's D6 diff in a worktree, that fixture removed:
-    /// 16788/0; with it present: 16792/1, comment full = 1641). P21h verify round (2026-10-29): +1 on the four comment
-    /// pins only — growth, from the round's new fixture stem properties/module_property_split_auto_halves_2382; control
-    /// @ 13747484f with only that fixture added (worktree): comment full/range-whole 1642, range-line/ontype 1638
-    /// (3350/1, the one red being this census at the previous literals); no lexer/parser/formatter/LSP change. P76
-    /// (plan-460cbf, 2026-11-04): +1 on the four comment pins only — growth, from the new fixture stem
-    /// collections/element_access_messages_2404; control @ 6f47aea81 with that fixture removed (worktree),
-    /// SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: the comment census asserts the previous literals, 3363/0; no
-    /// lexer/parser/formatter/LSP change (P76 is Core-only). P77a verify round (2026-11-05): +1 on the four comment pins
-    /// only — growth, from the new fixture stem interop/system_index_get_offset_2429; control: the gate 83482/0/9 @
-    /// 5f8a4c4e2 held the previous literals with that fixture absent; no lexer/parser/formatter/LSP change. #2440
-    /// (2026-11-06): +1 on the four comment pins only — growth, from the new fixture stem
-    /// collections/dict_remove_then_insert_order_2440; control @ ee9a007a1 (worktree),
-    /// SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1: with only that fixture added 16854/1, this census alone at the previous
-    /// literals; without it 16850/0; no lexer/parser/formatter/LSP change (#2440 is Core-only). #2449 (2026-11-06):
-    /// +2 on the four comment pins only — growth, +1 from each new fixture stem
-    /// collection_unannotated_binding_operators_2449 and collection_unannotated_binding_unmaterialized_refused_2449;
-    /// measured from the FMTROUTE-S7-PARITY lines of CI's lsp-shard-1 results (run 42286213411 @ 7f17f38b8 merged with
-    /// mainline), which sum to 1647/1647/1643/1643; control: mainline 8ea4cc162 green at the previous literals with those
-    /// stems absent; no lexer/parser/formatter/LSP change. The wide
-    /// twin runs no line route on these documents (<see cref="SkipsLineRoutesOnTheWideTwin"/>). S7
-    /// cells are never sampled; each twin's pins are asserted by its own census when its theory ran over every stem in
-    /// this process (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
+    /// The census set of the known limits and S7's clean-twin parity exemptions (#2512, plan-88736c D3(i)): one row per
+    /// (measure, twin, route, stem) with its cells, <c>measure twin route stem n # cite</c>, in
+    /// <c>Conformance/formatting-route-census.txt</c>. Measures: <c>s7-parity-exempt</c> — the <c>recovery-misindented</c>
+    /// cells whose lost repair the clean twin loses too (lead ruling L7, plan-f92797; <see cref="ParityExempt"/>), pre-existing
+    /// lost repairs outside R-FU posted on #2279 (a misindented block header with its body below, a line continuing past its
+    /// end, the colon-less property-observer restriction of P22e, a dropped literal opener); <c>known-limit-S6k</c> — the
+    /// comment re-pair's string-content edits (#2274, R-FQ); <c>known-limit-S6ok</c> — the unpairable own-quote tails'
+    /// spurious facts (lead ruling L2, #2274). Until #2512 these were three count tables re-pinned on every fixture that
+    /// touched them; a new fixture now adds or removes NAMED rows, and a repair (or a new known-limit cell) is a row diff.
+    /// S7, S6k and S6ok cells are never sampled (<see cref="IsSampledCell"/>), so the set is mode-independent; each twin's rows
+    /// are asserted by its own census when its theory ran over every stem in this process (<see cref="AssertTwinCensus"/>).
     /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<(string Twin, string Route), int> S7ParityExemptPin =
-        new SCG.Dictionary<(string Twin, string Route), int>
-        {
-            [(Identity, Full)] = 485,
-            [(Identity, RangeWhole)] = 485,
-            [(Identity, RangeLine)] = 481,
-            [(Identity, OnType)] = 481,
-            [(Comment, Full)] = 1647,
-            [(Comment, RangeWhole)] = 1647,
-            [(Comment, RangeLine)] = 1643,
-            [(Comment, OnType)] = 1643,
-            [(Crlf, Full)] = 485,
-            [(Crlf, RangeWhole)] = 485,
-            [(Crlf, RangeLine)] = 481,
-            [(Crlf, OnType)] = 481,
-            [(Cr, Full)] = 485,
-            [(Cr, RangeWhole)] = 485,
-            [(Cr, RangeLine)] = 481,
-            [(Cr, OnType)] = 481,
-            [(Wide, Full)] = 485,
-            [(Wide, RangeWhole)] = 485,
-            [(Wide, RangeLine)] = 0,
-            [(Wide, OnType)] = 0,
-        };
+    internal const string CensusFileName = "formatting-route-census.txt";
+
+    /// <summary>One census row: the cells of one (measure, twin, route, stem).</summary>
+    internal sealed record CensusRow(string Measure, string Twin, string Route, string Stem, int N, string Cite);
+
+    /// <summary>The cite each measure's rows carry.</summary>
+    internal static readonly SCG.IReadOnlyDictionary<string, string> CensusCites = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [ParityExemptMeasure] = "#2279",
+        [KnownLimitMeasure(S6k)] = "#2274",
+        [KnownLimitMeasure(S6ok)] = "#2274",
+    };
+
+    private static readonly Lazy<IReadOnlyList<CensusRow>> Census = new(() =>
+    {
+        var path = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Lsp.Tests", "Conformance", CensusFileName);
+        if (!File.Exists(path))
+            throw new InvalidOperationException($"Conformance/{CensusFileName} is missing. Its presence is what arms the census.");
+        return ParseCensus(File.ReadAllLines(path));
+    });
 
     /// <summary>
-    /// The known limit of #2274 (R-FQ, P22g Phase 1 Task 4): per route, the (stem, twin) pairs whose comment re-pair
-    /// (<see cref="S6k"/>) documents have a cell that rewrites string content — the 20 allowlist rows this pin replaced
-    /// (2 stems × 5 twins × {ontype, range-line}, <c>b"""</c>/<c>r"""</c> closers at column 0), measured in FULL mode
-    /// @ 926670989. EXACT, not a floor: a shrink is a fix (record the cell closed on #2274), a growth a new known-limit
-    /// cell (post it on #2274) — change the literal in the same commit and say which. S6k cells are never sampled, so
-    /// the sampled suite counts the same cells as FULL mode.
+    /// <c>measure twin route stem n # #issue [reason]</c>. Refused: an unknown measure or twin, a route the measure's state never
+    /// runs, an <c>n</c> that is not a positive integer, a cite other than the measure's, a duplicate (measure, twin, route, stem).
     /// </summary>
-    /// <para>Lead ruling L2 (plan-f92797) adds <see cref="S6ok"/>: per route, the (stem, twin) pairs whose
-    /// <c>closeline-own-</c> documents of the three tails R-FV's walk cannot pair have a spurious fact — measured in FULL
-    /// mode @ 20d7c582a + the L1-L3 follow-up (54 per route; 162 cells per route). Phase 3 must leave these counts UNCHANGED: a walk that "fixes" them loses the stray-closed twins.</para>
-    /// <para>Pinned PER TWIN (in <see cref="Twins"/> order) since the LSP suite runs the twins in separate CI shards, so
-    /// each twin's census asserts its own share where its theory ran (<see cref="Identity_Census_PinsHoldOverEveryStem"/>).
-    /// The split was measured in sampled mode @ acbec36c4 and sums to the totals above (S6k 2 × 5 = 10; S6ok 13 × 4 + 2 = 54).</para>
-    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route, string Twin), int> KnownLimitPin = ByTwin(
-        new SCG.Dictionary<(string State, string Route), int[]>
+    internal static IReadOnlyList<CensusRow> ParseCensus(IEnumerable<string> lines)
+    {
+        var rows = new SCG.List<CensusRow>();
+        var keys = new SCG.HashSet<(string, string, string, string)>();
+        foreach (var raw in lines)
         {
-            //                       identity, comment, wide, crlf, cr
-            [(S6k, Full)] = new[] { 0, 0, 0, 0, 0 },
-            [(S6k, RangeWhole)] = new[] { 0, 0, 0, 0, 0 },
-            [(S6k, RangeLine)] = new[] { 2, 2, 2, 2, 2 },
-            [(S6k, OnType)] = new[] { 2, 2, 2, 2, 2 },
-            [(S6ok, Full)] = new[] { 13, 2, 13, 13, 13 },
-            [(S6ok, RangeWhole)] = new[] { 13, 2, 13, 13, 13 },
-            [(S6ok, RangeLine)] = new[] { 13, 2, 13, 13, 13 },
-            [(S6ok, OnType)] = new[] { 13, 2, 13, 13, 13 },
-        });
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+            var split = line.IndexOf(" #", StringComparison.Ordinal);
+            var fields = (split < 0 ? line : line[..split]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var cite = split < 0 ? "" : line[(split + 2)..].Trim().Split(' ')[0];
+            string Refuse(string why) => $"Conformance/{CensusFileName}: '{line}' — {why}";
+            if (fields.Length != 5 || !CensusCites.ContainsKey(fields[0]) || !Twins.Contains(fields[1]))
+            {
+                throw new InvalidOperationException(Refuse($"must read `measure twin route stem n # #issue` with measure in "
+                    + $"{{{string.Join(", ", CensusCites.Keys)}}} and twin in {{{string.Join(", ", Twins)}}}."));
+            }
 
-    /// <summary>
-    /// The cells behind <see cref="KnownLimitPin"/>, pinned EXACTLY beside it: the pair count cannot see a tail move
-    /// between states when the remaining tails fail on the same (stem, twin) pairs, the cell count can (one S6ok tail
-    /// relabelled S6o leaves 54 pairs per route and drops 162 cells to 108). Measured with the pair counts. P22i Phase 1
-    /// (plan-ee5544) requests the line routes on comment-only lines too (<see cref="CommentTargets"/>): 36 more S6ok
-    /// <c>range-line</c> and <c>ontype</c> cells on the same 54 pairs (the spurious fact is the document's), 162 → 198.
-    /// Per twin like <see cref="KnownLimitPin"/> (S6ok: 39 × 4 + 6 = 162, 45 × 4 + 18 = 198).
-    /// </summary>
-    internal static readonly SCG.IReadOnlyDictionary<(string State, string Route, string Twin), int> KnownLimitCellsPin = ByTwin(
-        new SCG.Dictionary<(string State, string Route), int[]>
+            var state = fields[0] == ParityExemptMeasure ? S7 : fields[0]["known-limit-".Length..];
+            if (!RoutesByState[state].Contains(fields[2]))
+                throw new InvalidOperationException(Refuse($"{state} never runs route '{fields[2]}'."));
+            if (!int.TryParse(fields[4], out var n) || n < 1)
+                throw new InvalidOperationException(Refuse("n must be a positive integer (a stem with no cell has no row)."));
+            if (cite != CensusCites[fields[0]])
+                throw new InvalidOperationException(Refuse($"a {fields[0]} row cites {CensusCites[fields[0]]}."));
+            if (!keys.Add((fields[0], fields[1], fields[2], fields[3])))
+                throw new InvalidOperationException(Refuse("is listed twice."));
+            rows.Add(new CensusRow(fields[0], fields[1], fields[2], fields[3], n, cite));
+        }
+
+        return rows;
+    }
+
+    /// <summary>The set diff of one twin's census: every committed row the run lacks, every actual fact without a row, every changed n.</summary>
+    internal static SCG.List<string> CompareCensus(string twin, SCG.IReadOnlyDictionary<(string Measure, string Route, string Stem), int> actual,
+        IEnumerable<CensusRow> committed)
+    {
+        var problems = new SCG.List<string>();
+        var rows = committed.Where(r => r.Twin == twin).ToDictionary(r => (r.Measure, r.Route, r.Stem), r => r.N);
+        foreach (var key in rows.Keys.Union(actual.Keys).OrderBy(k => $"{k.Measure} {k.Route} {k.Stem}", StringComparer.Ordinal))
         {
-            //                       identity, comment, wide, crlf, cr
-            [(S6k, Full)] = new[] { 0, 0, 0, 0, 0 },
-            [(S6k, RangeWhole)] = new[] { 0, 0, 0, 0, 0 },
-            [(S6k, RangeLine)] = new[] { 2, 2, 2, 2, 2 },
-            [(S6k, OnType)] = new[] { 2, 2, 2, 2, 2 },
-            [(S6ok, Full)] = new[] { 39, 6, 39, 39, 39 },
-            [(S6ok, RangeWhole)] = new[] { 39, 6, 39, 39, 39 },
-            [(S6ok, RangeLine)] = new[] { 45, 18, 45, 45, 45 },
-            [(S6ok, OnType)] = new[] { 45, 18, 45, 45, 45 },
-        });
+            var row = $"{key.Measure} {twin} {key.Route} {key.Stem}";
+            if (!actual.TryGetValue(key, out var n))
+                problems.Add($"missing: `{row} {rows[key]}` has no fact now — a repair (or the stem is gone): delete the row and say which on {CensusCites[key.Measure]}");
+            else if (!rows.TryGetValue(key, out var pinned))
+                problems.Add($"extra: `{row} {n}` has no row — a new {key.Measure} fact: add the row and post it on {CensusCites[key.Measure]}");
+            else if (pinned != n)
+                problems.Add($"changed: `{row}` reads n={pinned}, the run counts {n} — a cell moved: change n and say which on {CensusCites[key.Measure]}");
+        }
 
-    /// <summary>A per-twin pin table: one value per twin, in <see cref="Twins"/> order, for each (state, route).</summary>
-    private static SCG.IReadOnlyDictionary<(string State, string Route, string Twin), int> ByTwin(
-        SCG.Dictionary<(string State, string Route), int[]> rows)
-        => rows.SelectMany(row => row.Value.Length == Twins.Length
-                ? Twins.Select((twin, i) => (Key: (row.Key.State, row.Key.Route, twin), Pin: row.Value[i]))
-                : throw new InvalidOperationException($"pin row {row.Key} has {row.Value.Length} values for {Twins.Length} twins"))
-            .ToDictionary(p => p.Key, p => p.Pin);
+        return problems;
+    }
 
     /// <summary>
     /// The allowlist ratchet for one (stem, twin): every failing (route, state, bucket) is listed; a listed
@@ -2332,7 +2290,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         UnparseableBucketsOf(repair, full, repair.Text).Should().NotContain(new[] { FactMissing, FactSpurious });
 
         // S6ok (lead ruling L2): a tail the walk cannot pair is its own state; a spurious fact there is a known-limit
-        // count (KnownLimitPin), never a failure — and only the fact bucket is exempt.
+        // census row (CensusFileName), never a failure — and only the fact bucket is exempt.
         var limit = docs.Should().ContainSingle(d => d.Truth != null && d.Truth.Shape == FormatterTwins.CloseLineOwnPrefix + "bt").Subject;
         limit.State.Should().Be(S6ok);
         var spurious = UnparseableOracles(limit.WithLexFacts(true, Array.Empty<int>()), full, limit.Text);
@@ -2689,14 +2647,14 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         // 240 S6r rows (the close-line rule reads the text the lexer gives up, R-FR): EMPTY again. P22h Phase 1
         // (plan-f92797) re-populated it from a FULL-mode run with the 216 S6o factSpurious rows (#2280: the six
         // closeline-own tails the walk pairs) its Phase 3 drains; its S7 cells (#2279) were a pinned count its Phase 2
-        // drained to none (S7 rides this ratchet with 0 rows; its clean-twin parity exemptions are S7ParityExemptPin) and its S6ok cells
-        // KnownLimitPin (lead rulings L1, L2) — 62,612 rows were committed first and replaced. P22h Phase 3 drained the
+        // drained to none (S7 rides this ratchet with 0 rows; its clean-twin parity exemptions are census rows, CensusFileName) and its S6ok cells
+        // known-limit census rows (lead rulings L1, L2) — 62,612 rows were committed first and replaced. P22h Phase 3 drained the
         // 216 S6o rows (arm (b) reads each quote's role from a walk of the given-up text, R-FV): EMPTY again. P22i
         // (plan-ee5544) added the comment bucket (R-GD, #2290) with a pinned count per (twin, route) while red — 1,472 to
         // 8,911 (stem, twin) pairs per key, never rows — and drained it to zero with the pin deleted: comment rides this
         // ratchet with 0 rows. The literal anchors it: changing the allowlist is a visible decision — change this count in
         // the same commit and say why.
-        rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are KnownLimitPin (#2274)");
+        rows.Count.Should().Be(0, "P22h Phase 3 drained the 216 S6o (#2280) rows (R-FV); S7 (#2279) and comment (#2290, P22i) hold no row and the S6k/S6ok cells are census rows (#2274)");
     }
 
     /// <summary>
@@ -2707,8 +2665,8 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// failure, so a shard filter that separates a census from its theory cannot disarm the pins.
     /// Each S3 route edits ≥ 1 document of the twin ("no edits" passes every S3-S5 oracle, so this keeps a route that
     /// always declines — a lexer flag that is always set — from passing unseen); the known limits of #2274
-    /// (<see cref="KnownLimitPin"/>, <see cref="KnownLimitCellsPin"/>) and S7's clean-twin parity exemptions
-    /// (<see cref="S7ParityExemptPin"/>) are EXACT; the refusal ceilings hold (<see cref="AssertRefusalCeilings"/>).
+    /// and S7's clean-twin parity exemptions are census rows, EXACT per stem (<see cref="CensusFileName"/>); the refusal
+    /// ceilings hold (<see cref="AssertRefusalCeilings"/>).
     /// </summary>
     [Fact]
     public void Identity_Census_PinsHoldOverEveryStem() => AssertTwinCensus(Identity);
@@ -2754,30 +2712,19 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 .BeGreaterThanOrEqualTo(1, $"some {route} cell must apply a text that differs from its S3 document on the {twin} twin");
         }
 
-        // The known limits of #2274 (R-FQ; lead ruling L2): the comment re-pair's string-content edits (S6k) and the
-        // unpairable own-quote tails' spurious facts (S6ok) are counted, never rows, and each count is pinned EXACTLY per
-        // twin. So are S7's clean-twin parity exemptions (L7).
-        foreach (var state in KnownLimitBucket.Keys)
-        {
-            _output.WriteLine($"FMTROUTE-CENSUS known-limit {twin} {state} {KnownLimitBucket[state]} "
-                + string.Join(" ", RoutesByState[state].Select(r => $"{r}={s_tallies.GetValueOrDefault(KnownLimitTally(state, r, twin))}"))
-                + " (cells: " + string.Join(" ", RoutesByState[state].Select(r => $"{r}={s_tallies.GetValueOrDefault(KnownLimitCellsTally(state, r, twin))}")) + ")");
-            foreach (var route in RoutesByState[state])
-            {
-                s_tallies.GetValueOrDefault(KnownLimitTally(state, route, twin)).Should().Be(KnownLimitPin[(state, route, twin)],
-                    $"the {state} {route} known-limit count of the {twin} twin is pinned (#2274, R-FQ): a shrink closes a cell on #2274, a growth posts one — change KnownLimitPin and say which");
-                s_tallies.GetValueOrDefault(KnownLimitCellsTally(state, route, twin)).Should().Be(KnownLimitCellsPin[(state, route, twin)],
-                    $"the {state} {route} known-limit cell count of the {twin} twin is pinned (#2274): a tail or a cell that moves in or out of {state} moves it — change KnownLimitCellsPin and say which");
-            }
-        }
-
-        foreach (var route in RoutesByState[S7])
-        {
-            var exempt = s_tallies.GetValueOrDefault(ParityExemptTally(twin, route));
-            _output.WriteLine($"FMTROUTE-CENSUS s7-parity-exempt {twin} {route}={exempt} pin={S7ParityExemptPin.GetValueOrDefault((twin, route))}");
-            exempt.Should().Be(S7ParityExemptPin.GetValueOrDefault((twin, route)),
-                $"S7 {twin} {route}'s clean-twin parity exemptions are pinned (S7ParityExemptPin, lead ruling L7): a shrink is a repair the clean twin gained, a growth a new pre-existing lost repair — change the pin and say which");
-        }
+        // The known limits of #2274 (R-FQ; lead ruling L2) and S7's clean-twin parity exemptions (L7) are per-stem census rows
+        // (CensusFileName): the twin's facts must equal its committed rows, each difference named.
+        var actual = s_census.Where(p => p.Key.Twin == twin).ToDictionary(p => (p.Key.Measure, p.Key.Route, p.Key.Stem), p => p.Value);
+        foreach (var group in actual.GroupBy(p => (p.Key.Measure, p.Key.Route)).OrderBy(g => $"{g.Key.Measure} {g.Key.Route}", StringComparer.Ordinal))
+            _output.WriteLine($"FMTROUTE-CENSUS {group.Key.Measure} {twin} {group.Key.Route} rows={group.Count()} n={group.Sum(p => p.Value)}");
+        var dumpDir = Path.Combine(FixtureRoots.RepositoryRoot, ".claude", "tmp", "formatting-route-census");
+        Directory.CreateDirectory(dumpDir);
+        var dump = Path.Combine(dumpDir, $"{twin}-actual.txt");
+        File.WriteAllLines(dump, actual.OrderBy(p => $"{p.Key.Measure} {p.Key.Route} {p.Key.Stem}", StringComparer.Ordinal)
+            .Select(p => $"{p.Key.Measure} {twin} {p.Key.Route} {p.Key.Stem} {p.Value} # {CensusCites[p.Key.Measure]}"));
+        var problems = CompareCensus(twin, actual, Census.Value);
+        problems.Should().BeEmpty($"the {twin} twin's known-limit and S7 parity facts must equal its rows in Conformance/{CensusFileName} "
+            + $"(actual rows: {dump})");
 
         AssertRefusalCeilings(twin);
     }
@@ -2822,7 +2769,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             [Identity] = 9,  // 12/138 (8.70%)
             [Comment] = 6,   // 2/34 (5.88%)
-            [Wide] = 54,     // 2484/4684 (53.03%) @ 17aba6fb6 (P50, owner ruling 2026-10-13)
+            // 2731/5031 (54.28%) @ ac9fe9170 + P85's fixtures (#2439) — was 54 (2484/4684, 53.03% @ 17aba6fb6, P50, owner ruling
+            // 2026-10-13); corpus growth only: the same compiler without the three stems measures 2542/4828 (52.65%), the one sampled-in
+            // stem class_with_init/init_augmented_store_2439 adds 203 cells with work and declines 189 (single lines inside a long
+            // __init__ body, refused by construction on this twin), and P85 changed no lexer/parser/formatter/LSP code.
+            [Wide] = 55,
         };
 
     /// <summary>

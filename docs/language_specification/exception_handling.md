@@ -10,27 +10,46 @@ Sharpy uses .NET's exception hierarchy directly:
 | `ValueError` | `Exception` | Invalid argument value |
 | `TypeError` | `Exception` | Type mismatch |
 | `RuntimeError` | `Exception` | General runtime error |
-| `NotImplementedError` | `Exception` | Not yet implemented |
+| `NotImplementedError` | `RuntimeError` | Not yet implemented |
 | `AttributeError` | `Exception` | Attribute not found |
 | `ArithmeticError` | `Exception` | Base for arithmetic errors |
 | `ZeroDivisionError` | `ArithmeticError` | Division by zero |
 | `OverflowError` | `ArithmeticError` | Numeric overflow |
 | `InvalidOperation` | `ArithmeticError` | Undefined arithmetic (decimal `%` by zero) |
 | `LookupError` | `Exception` | Base for key/index errors |
-| `IndexError` | `Exception` | Index out of bounds |
-| `KeyError` | `Exception` | Dict key not found |
-| `IOError` | `IOException` | I/O operation failed |
-| `OSError` | `IOError` | OS-level error (alias for IOError) |
-| `FileNotFoundError` | `FileNotFoundException` | File not found |
-| `FileExistsError` | `IOException` | File already exists |
-| `IsADirectoryError` | `IOException` | Expected file, got directory |
-| `PermissionError` | `UnauthorizedAccessException` | Permission denied |
+| `IndexError` | `LookupError` | Index out of bounds |
+| `KeyError` | `LookupError` | Dict key not found |
+| `OSError` | `IOException` | OS-level or I/O operation failed |
+| `IOError` | — | The same class as `OSError` (Python 3: `IOError is OSError`), not a subclass |
+| `FileNotFoundError` | `OSError` | File not found |
+| `FileExistsError` | `OSError` | File already exists |
+| `IsADirectoryError` | `OSError` | Expected file, got directory |
+| `PermissionError` | `OSError` | Permission denied |
 | `StopIteration` | `Exception` | Iterator exhausted |
-| `UnicodeEncodeError` | `Exception` | Unicode encoding failed |
+| `UnicodeError` | `ValueError` | Base for Unicode encoding/decoding errors |
+| `UnicodeEncodeError` | `UnicodeError` | Unicode encoding failed (`str.encode`, `errors="strict"`) |
+| `UnicodeDecodeError` | `UnicodeError` | Unicode decoding failed (`bytes.decode`, `errors="strict"`) |
 | `ArgumentError` | `Exception` | Generic argument error |
 | `SystemExit` | `Exception` | Program exit request |
+| `NameError` | `Exception` | Name not found |
+| `UnboundLocalError` | `NameError` | Local read before assignment |
+| `ExceptionGroup` | `AggregateException` | Group of exceptions (PEP 654) |
 | `JSONDecodeError` | `ValueError` | Invalid JSON (in `json` module) |
 | `StatisticsError` | `Exception` | Statistics computation error (in `statistics` module) |
+
+### `OSError`
+
+`FileNotFoundError`, `FileExistsError`, `IsADirectoryError` and `PermissionError`
+derive from `OSError`, matching CPython, so `except OSError` catches every one of
+them, whether user code raises it or a file/OS operation (`open()`, `os.mkdir`,
+...) reports it. `IOError` names the same class as `OSError`: `except IOError`
+and `except OSError` catch exactly the same exceptions, and `type(IOError("x")).__name__`
+is `"OSError"`.
+
+`OSError` derives from .NET's `System.IO.IOException`, so .NET code catching
+`IOException` sees `OSError` and all four subclasses. .NET code catching the more
+specific `System.IO.FileNotFoundException` or `System.UnauthorizedAccessException`
+does not see Sharpy's `FileNotFoundError` or `PermissionError`.
 
 ### `ArithmeticError`
 
@@ -76,6 +95,7 @@ Unlike Python which distinguishes `BaseException` from `Exception`, Sharpy follo
 
 ## Try/Except/Finally
 
+<!-- spec-sweep: fragment -->
 ```python
 try:
     result = risky_operation()
@@ -116,6 +136,7 @@ def example() -> int:
 
 ## Raise Statement
 
+<!-- spec-sweep: fragment -->
 ```python
 # Raise exception
 raise ValueError("Invalid input")
@@ -213,6 +234,7 @@ except* TypeError as eg:
 - **`except*` requires an exception type** — bare `except*:` is not allowed (unlike bare `except:`)
 - **Cannot mix `except` and `except*`** — a `try` block must use either regular `except` handlers or `except*` handlers, not both
 
+<!-- spec-sweep: error SPY0138 -->
 ```python
 # ERROR: bare except* not allowed
 try:
@@ -239,6 +261,7 @@ Unlike Python, Sharpy refuses `return`, `break`, and `continue` inside a `finall
 C# forbids them as CS0157). A transfer out of `finally` would silently discard a pending exception
 or return value.
 
+<!-- spec-sweep: error SPY0702 -->
 ```python
 def f() -> int:
     try:
@@ -281,6 +304,7 @@ Unlike Python, Sharpy does not support `raise ... from ...` (exception chaining 
 
 To set an inner exception in Sharpy, pass it as a constructor argument:
 
+<!-- spec-sweep: fragment -->
 ```python
 except IOError as e:
     raise ConfigError("Failed to load config", e)  # inner exception via constructor

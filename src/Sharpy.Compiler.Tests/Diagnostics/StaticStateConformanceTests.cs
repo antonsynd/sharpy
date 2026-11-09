@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -78,8 +79,6 @@ public class StaticStateConformanceTests
                 "Collection-type metadata table, initialized inline and read-only after.",
             [("Sharpy.Compiler.Diagnostics.DiagnosticExplanations", "_explanations")] =
                 "Diagnostic-code explanation table built once via BuildExplanations(), read-only after.",
-            [("Sharpy.Compiler.Discovery.CachedModuleDiscovery", "SharpyToClrNameMap")] =
-                "Sharpy→CLR name map, initialized inline and read-only after.",
             [("Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder", "ClrOperatorToDunder")] =
                 "CLR-operator→dunder map, initialized inline and read-only after.",
             [("Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder", "ExcludedObjectMethods")] =
@@ -198,6 +197,11 @@ public class StaticStateConformanceTests
                 "WeakReference to the context loaded for it: the context's contents are a function of the files " +
                 "its key names, so equal keys may share it; held weakly so it unloads when no registry uses it, " +
                 "and dead entries are pruned on every creation.",
+            [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_firstLoadedIdentity")] =
+                "Full path -> the identity (path + length + last-write time) of the file this process first loaded " +
+                "from it. Written once per path and never changed; it answers only whether the file now at the " +
+                "path is the one the runtime's per-path image holds, so a replaced reference loads from a copy " +
+                "named by its own identity (#2114's in-process cell).",
 
             // ---- The visibility seam's framework index (#2250, P54 Design Decision 1) ----
             [("Sharpy.Compiler.Discovery.AssemblyVisibility", "s_framework")] =
@@ -229,7 +233,10 @@ public class StaticStateConformanceTests
 
         foreach (var type in assembly.GetTypes())
         {
-            if (IsCompilerGenerated(type))
+            // Named exclusion (#2512): on a coverage-on run the collector injects its tracker type, 16
+            // mutable statics, into the instrumented compiler assembly. It is not shipped code; Sharpy
+            // types are never in its namespace, so a planted mutable static of ours is still red in both modes.
+            if (IsCompilerGenerated(type) || CoverageInstrumentation.IsInjected(type))
             {
                 continue;
             }
@@ -328,7 +335,8 @@ public class StaticStateConformanceTests
         // P54 Phase 2 task 1 (measured): the five name-keyed rows drained (-5) and the framework index Lazy
         // was rostered (+1): 15 ConcurrentDictionary + 3 Lazy = 18.
         // P54 Phase 2 task 2 (measured): + ReferenceLoadContext.s_shared = 19.
-        Assert.Equal(19, flaggedCaches.Count);
+        // #2114 in-process cell: + ReferenceLoadContext.s_firstLoadedIdentity = 20.
+        Assert.Equal(20, flaggedCaches.Count);
     }
 
     /// <summary>

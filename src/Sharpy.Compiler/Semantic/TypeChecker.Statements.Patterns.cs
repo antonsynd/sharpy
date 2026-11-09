@@ -43,8 +43,6 @@ internal partial class TypeChecker
 
         if (UnwrapParenthesized(scrutinee) is NoneLiteral)
         {
-            _semanticInfo.SetMatchScrutineeLowering(scrutinee,
-                new MatchScrutineeLowering(MatchScrutineeLoweringKind.CastToNullableObject));
             var lowered = new NullableType { UnderlyingType = SemanticType.Object };
             _semanticInfo.SetExpressionType(scrutinee, lowered);
             return lowered;
@@ -1721,8 +1719,8 @@ internal partial class TypeChecker
                             || IsAcceptedVerdict(ClassifyStore(
                                 StorePosition.TupleElement, valueElemNode, elementType, payloadType))))
                     {
-                        if (declaredSlot is OptionalType wrapOpt)
-                            _semanticInfo.SetOptionalStoreWrap(valueElemNode!, wrapOpt);
+                        // The payload type on the rebinding is the element-wrap fact: the lowering
+                        // pass derives IrOptionalWrappedElement from it (P82 #2443).
                         elementType = ClassifyStore(
                             StorePosition.TupleElement, valueElemNode, elementType, payloadType) switch
                         {

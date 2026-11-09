@@ -200,7 +200,7 @@ namespace Sharpy
         {
             if (chunkSize <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(chunkSize), "chunk_size must be > 0");
+                throw new ValueError("chunk_size must be > 0");
             }
             return IterContentImpl(chunkSize);
         }
@@ -259,17 +259,17 @@ namespace Sharpy
             }
             if (!_isStreaming)
             {
-                throw new InvalidOperationException(
+                throw new RuntimeError(
                     "Response was not opened in streaming mode; pass stream=true to enable iter_content/iter_lines.");
             }
             if (_content != null)
             {
-                throw new InvalidOperationException(
+                throw new RuntimeError(
                     "Cannot iterate response: body has already been read via .content or .text.");
             }
             if (_streamConsumed)
             {
-                throw new InvalidOperationException(
+                throw new RuntimeError(
                     "Response stream has already been consumed.");
             }
         }

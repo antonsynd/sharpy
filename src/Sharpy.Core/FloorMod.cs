@@ -23,7 +23,7 @@ namespace Sharpy
         {
             if (y == 0)
             {
-                throw new ZeroDivisionError("integer modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             // Division by -1 leaves no remainder for any dividend, so the answer is 0 by
@@ -60,7 +60,7 @@ namespace Sharpy
         {
             if (y == 0)
             {
-                throw new ZeroDivisionError("integer modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             // See the int overload: long.MinValue % -1 traps identically (#1302).
@@ -98,7 +98,7 @@ namespace Sharpy
             // silently yields NaN); a tiny-but-nonzero divisor does not raise.
             if (y == 0.0)
             {
-                throw new ZeroDivisionError("float modulo");
+                throw new ZeroDivisionError("division by zero");
             }
 
             var r = x % y;
@@ -135,7 +135,7 @@ namespace Sharpy
         {
             if (y == 0.0f)
             {
-                throw new ZeroDivisionError("float modulo");
+                throw new ZeroDivisionError("division by zero");
             }
 
             var r = x % y;
@@ -162,7 +162,7 @@ namespace Sharpy
         {
             if (y == 0UL)
             {
-                throw new ZeroDivisionError("integer modulo by zero");
+                throw new ZeroDivisionError("division by zero");
             }
 
             return x % y;

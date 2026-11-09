@@ -100,6 +100,10 @@ public record CompilerDiagnostic(
 public class DiagnosticBag
 {
     private readonly List<CompilerDiagnostic> _diagnostics = new();
+
+    // Every diagnostic Add received, provenance-stamped, before suppression, promotion, the error cap
+    // and dedup: what a build reported independently of its policy (#2468).
+    private readonly List<CompilerDiagnostic> _reported = new();
     private readonly object _lock = new();
     private readonly HashSet<string> _suppressedWarnings;
     private readonly bool _warningsAsErrors;
@@ -377,6 +381,11 @@ public class DiagnosticBag
         // so the value ultimately stored — and used for dedup — reflects the producing context.
         diagnostic = ApplyProvenanceStamp(diagnostic);
 
+        lock (_lock)
+        {
+            _reported.Add(diagnostic);
+        }
+
         // Apply suppression: skip warnings/hints whose code is in the suppressed set.
         // Hints share the same suppression mechanism as warnings.
         if ((diagnostic.IsWarning || diagnostic.IsHint)
@@ -602,6 +611,24 @@ public class DiagnosticBag
         }
     }
 
+    /// <summary>
+    /// Every diagnostic this bag was handed, in order, as reported: after the provenance stamp and
+    /// before this bag's suppression, warnings-as-errors promotion, error cap and dedup. Replayed
+    /// through a bag with another policy it yields what that policy makes of the same report, so the
+    /// whole-build up-to-date record stores it (#2468). A merged bag is itself policy-free, and
+    /// <see cref="Merge"/> goes through <see cref="Add"/>, so a project bag's list is the full report.
+    /// </summary>
+    internal IReadOnlyList<CompilerDiagnostic> Reported
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _reported.ToList();
+            }
+        }
+    }
+
     public bool HasErrors
     {
         get
@@ -683,6 +710,7 @@ public class DiagnosticBag
         lock (_lock)
         {
             _diagnostics.Clear();
+            _reported.Clear();
             _seenDiagnostics.Clear();
             _rootCauseIdentifiers.Clear();
             _errorCount = 0;
@@ -718,6 +746,9 @@ public class DiagnosticBag
                     _hintCount--;
                 removed++;
             }
+
+            // What the source itself silences (scoped @suppress) was never reported, under any policy.
+            _reported.RemoveAll(diagnostic => predicate(diagnostic));
 
             return removed;
         }

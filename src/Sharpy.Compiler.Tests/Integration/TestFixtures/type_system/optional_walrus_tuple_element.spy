@@ -1,0 +1,23 @@
+# A walrus rebinding a narrowed Optional[int] slot wraps its own store in Some(...)
+# (the own-site wrap), and a walrus written as a tuple element is the element's value,
+# not an element store: it is printed as its payload. Cell 4 is a walrus element of an
+# unpacking whose target is itself a narrowed Optional slot: both wraps apply.
+
+
+def main() -> None:
+    c: int? = Some(1)
+    p: int? = Some(2)
+    q: int? = Some(3)
+    if c is not None and p is not None and q is not None:
+        print((c := 42, 1))
+        t = (c := 43, 2)
+        print(t)
+        print(((c := 44), 3))
+        p, q = (c := 45, 4)
+        print(p, q, c)
+        if (c := 46) > 0:
+            print(c)
+        # Cell 6: wrapped elements whose own IR nodes carry facts (a folded power, an index access).
+        xs: list[int] = [7]
+        p, q = 2 ** 3, xs[-1]
+        print(p, q)

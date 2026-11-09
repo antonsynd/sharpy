@@ -70,16 +70,22 @@ C# 9.0 supports covariant return types for method overrides. Since properties ar
 
 ```python
 class Animal:
+    _friend: Animal
+
     @virtual
     property get friend(self) -> Animal:
         return self._friend
 
 class Dog(Animal):
+    _dog_friend: Dog
+
     @override
     property get friend(self) -> Dog:  # Valid - Dog is subtype of Animal
         return self._dog_friend
 
 class Cat(Animal):
+    _cat_friend: Cat
+
     @override
     property get friend(self) -> Cat:  # Valid - Cat is subtype of Animal
         return self._cat_friend
@@ -92,6 +98,8 @@ This allows subclasses to return more specific types without requiring unsafe ca
 Interfaces declare property requirements using the same syntax:
 
 ```python
+from datetime import datetime
+
 interface IIdentifiable:
     # Read-only property requirement (getter only)
     property get id: int
@@ -152,6 +160,7 @@ This matches C# interface property semantics where properties without a body are
 
 When a class needs to provide different behavior when accessed through an interface versus directly:
 
+<!-- spec-sweep: error SPY0203 -->
 ```python
 interface ISecret:
     property get value: str

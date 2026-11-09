@@ -54,8 +54,7 @@ internal partial class ProjectCompiler
             // The unit key: the source path below the pinned module root when the .spyproj sets
             // <SourceRoot>, so `project --emit-cs-to` mirrors module names; otherwise below the
             // project directory.
-            var relativePath = Path.GetRelativePath(config.SourceRoot ?? config.ProjectDirectory, sourceFile);
-            var csharpFileName = Path.ChangeExtension(relativePath, ".cs");
+            var csharpFileName = CSharpUnitKeyOf(config, sourceFile);
 
             // Include cached C# code for skipped files
             if (unit.Phase == CompilationPhase.Skipped)
@@ -210,12 +209,22 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
+    /// A unit's key in <see cref="ProjectCompilationResult.GeneratedCSharpFiles"/>: its source path below
+    /// the pinned module root when the <c>.spyproj</c> sets <c>&lt;SourceRoot&gt;</c>, else below the
+    /// project directory, with a <c>.cs</c> extension. Shared by code generation and the up-to-date
+    /// replay, which serves the cached C# under the keys a compile gives it (#2468).
+    /// </summary>
+    internal static string CSharpUnitKeyOf(ProjectConfig config, string sourceFile)
+        => Path.ChangeExtension(Path.GetRelativePath(config.SourceRoot ?? config.ProjectDirectory, sourceFile), ".cs");
+
+    /// <summary>
     /// Builds the middle-end lowering IR for the whole project (E2, #1056). Runs once per compile,
-    /// after <c>SemanticInfo.MergeFrom</c> and immediately before per-file code generation, over the
-    /// merged project-level <see cref="SemanticInfo"/> (Design Decision 2). The work is bracketed by
-    /// the <see cref="CompilerPhaseNames.Lowering"/> phase metric; the result is stored on the
-    /// project model and returned for the per-file <see cref="CodeGenContext"/>. In E2 Phase 1
-    /// nothing reads the IR, and the emitted C# is unchanged.
+    /// after <c>SemanticInfo.MergeFrom</c> and <c>Freeze()</c> and immediately before per-file code
+    /// generation, over the merged project-level <see cref="SemanticInfo"/> (Design Decision 2) and the
+    /// project's <see cref="SemanticBinding"/>, from which the pass reads declared slot types (P82 #2443).
+    /// The work is bracketed by the <see cref="CompilerPhaseNames.Lowering"/> phase metric; the result
+    /// is stored on the project model and returned for the per-file <see cref="CodeGenContext"/>, whose
+    /// emitter reads the migrated lowering decisions from the IR, not from <see cref="SemanticInfo"/>.
     /// </summary>
     private IrCompilation BuildLoweringIr(ProjectConfig config)
     {
@@ -231,7 +240,7 @@ internal partial class ProjectCompiler
                 .Select(unit => (unit.FilePath, unit.Ast!))
                 .ToList();
 
-            var ir = new LoweringPass().Lower(modules, SemanticInfo, SymbolTable);
+            var ir = new LoweringPass().Lower(modules, SemanticInfo, _projectModel.SemanticBinding, SymbolTable);
             ir = RunIrOptimizationPasses(ir);
             _projectModel.IrCompilation = ir;
             return ir;
@@ -314,9 +323,24 @@ internal partial class ProjectCompiler
         // Compilation-wide rather than per-file: CS5001 carries Location.None and belongs to no
         // file. The suppressed CS errors stay observable (debug log + AssemblyCompilationResult).
         var compilationAlreadyFailed = _diagnostics.HasErrors;
+        var entryTypeName = EntryTypeNameOf(_projectModel!);
+
+        // A warm build whose Phase 7 inputs all match the last successful build's, with that build's
+        // output files still on disk as it wrote them, would hand Roslyn the same compilation: leave
+        // the assembly as it is and replay what Phase 7 reported (#2114).
+        string? emissionKey = null;
+        if (_incrementalCache != null && !compilationAlreadyFailed)
+        {
+            emissionKey = IncrementalCompilationCache.EmissionKeyOf(config, generatedCSharp, entryTypeName);
+            if (_incrementalCache.UpToDateAssemblyDiagnostics(emissionKey, config) is { } replayed)
+            {
+                return ReplayUpToDateAssembly(config, generatedCSharp, replayed);
+            }
+        }
+
         var assemblyResult = assemblyCompiler.CompileToAssembly(
             generatedCSharp, generated.Trees, config, compilationAlreadyFailed,
-            entryTypeName: EntryTypeNameOf(_projectModel!));
+            entryTypeName: entryTypeName);
 
         // Add assembly metrics to project metrics
         if (assemblyResult.Metrics != null)
@@ -356,9 +380,14 @@ internal partial class ProjectCompiler
         // while the bag carries the refusal (#2028).
         var success = !_diagnostics.HasErrors;
 
-        // Save incremental compilation cache on success
+        // Save incremental compilation cache on success, with the assembly this build just wrote
         if (success && _incrementalCache != null)
         {
+            if (emissionKey != null && assemblyResult.OutputAssemblyPath != null)
+            {
+                _incrementalCache.RecordEmittedAssembly(emissionKey, config,
+                    assemblyResult.Diagnostics.GetAll().Select(CachedDiagnostic.From).ToList());
+            }
             SaveIncrementalCaches(config);
         }
 
@@ -369,6 +398,54 @@ internal partial class ProjectCompiler
             OutputAssemblyPath = success ? assemblyResult.OutputAssemblyPath : null,
             GeneratedCSharpFiles = generatedCSharp,
             SuppressedGeneratedCodeDiagnostics = assemblyResult.SuppressedGeneratedCodeDiagnostics,
+            Metrics = ProjectMetrics,
+            DependencyGraph = _dependencyGraph,
+            ProjectModel = _projectModel,
+            EffectiveFeatures = _features,
+            ImportResolver = _importResolverBacking,
+            UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
+                ?? (IReadOnlySet<string>)new HashSet<string>()
+        };
+    }
+
+    /// <summary>
+    /// Phase 7 for a build whose inputs match the last successful build's
+    /// (<see cref="IncrementalCompilationCache.UpToDateAssemblyDiagnostics"/>): the assembly on disk is
+    /// that build's and stays as it is, Roslyn does not run, and what that build's Phase 7 reported is
+    /// replayed through the project bag, which applies this build's warning policy (#1553). The
+    /// assembly-compilation metrics keep their rows, each with this build's cost: none of them ran.
+    /// </summary>
+    private ProjectCompilationResult ReplayUpToDateAssembly(
+        ProjectConfig config, Dictionary<string, string> generatedCSharp, IReadOnlyList<CachedDiagnostic> replayed)
+    {
+        _logger.LogInfo("Phase 7: Assembly up to date; IL emission skipped");
+
+        var metrics = new CompilationMetrics(projectName: config.RootNamespace, configuration: config.Configuration);
+        foreach (var phase in new[]
+        {
+            CompilerPhaseNames.CSharpParsing, CompilerPhaseNames.ReferenceResolution,
+            CompilerPhaseNames.RoslynCompilation, CompilerPhaseNames.IlEmission,
+        })
+        {
+            metrics.RecordExternalPhase(phase, TimeSpan.Zero);
+        }
+        ProjectMetrics.SetAssemblyMetrics(metrics);
+
+        var assemblyDiagnostics = new DiagnosticBag();
+        foreach (var cached in replayed)
+            assemblyDiagnostics.Add(cached.ToDiagnostic());
+        MergeWithPhase(_diagnostics, assemblyDiagnostics, CompilerPhase.Assembly);
+
+        var success = !_diagnostics.HasErrors;
+        if (success)
+            SaveIncrementalCaches(config);
+
+        return new ProjectCompilationResult
+        {
+            Success = success,
+            Diagnostics = _diagnostics,
+            OutputAssemblyPath = success ? config.OutputAssemblyPath : null,
+            GeneratedCSharpFiles = generatedCSharp,
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel,

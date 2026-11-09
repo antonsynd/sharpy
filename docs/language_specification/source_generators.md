@@ -19,6 +19,7 @@ Source generators sit between Sharpy's built-in `@dataclass` (compiler-recognize
 
 A source generator is invoked by applying its name as a bracket attribute (`@[...]`) on a class, struct, or function:
 
+<!-- spec-sweep: fragment -->
 ```python
 @[generate_equals]
 class Point:
@@ -78,6 +79,7 @@ def __eq__(self, other: object) -> bool:
 
 The `generate` method is **abstract** and must be overridden, with `@override` like any override of a base method (see [dotnet_interop.md](dotnet_interop.md#subclassing-net-types)):
 
+<!-- spec-sweep: fragment -->
 ```python
 @override
 def generate(self, context: GeneratorContext) -> GeneratorOutput
@@ -104,6 +106,7 @@ The compiler builds a `GeneratorContext` for each trigger and passes it to `gene
 
 Exactly one of `target_class` / `target_function` is non-`None`. Generators that want to apply to both must check explicitly:
 
+<!-- spec-sweep: fragment -->
 ```python
 @override
 def generate(self, context: GeneratorContext) -> GeneratorOutput:
@@ -180,6 +183,7 @@ def generate(self, context: GeneratorContext) -> GeneratorOutput:
 
 The `generate` method must return a `GeneratorOutput`:
 
+<!-- spec-sweep: fragment -->
 ```python
 class GeneratorOutput:
     source: str                                    # Sharpy source to inject
@@ -201,6 +205,7 @@ The `source` string must contain valid Sharpy source that will be parsed and mer
 
 Generators can attach diagnostics to their output:
 
+<!-- spec-sweep: fragment -->
 ```python
 from sharpy.generators import GeneratorDiagnostic, GeneratorDiagnosticSeverity
 
@@ -234,6 +239,7 @@ This staging is automatic — users do not configure it. During name resolution,
 
 Generator definitions and their use sites **must live in different files**:
 
+<!-- spec-sweep: fragment -->
 ```python
 # generators.spy — Stage 1
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
@@ -310,6 +316,7 @@ Cached output is stored in `obj/{Config}/.sharpy-symbols` (schema v13) and reuse
 
 ### Example 1: Generate `__eq__`
 
+<!-- spec-sweep: fragment -->
 ```python
 # generators.spy
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
@@ -348,6 +355,7 @@ def main() -> int:
 
 ### Example 2: Generator with Arguments
 
+<!-- spec-sweep: fragment -->
 ```python
 # generators.spy
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput

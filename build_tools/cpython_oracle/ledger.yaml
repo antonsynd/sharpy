@@ -261,6 +261,14 @@ deviations:
   spec_ref: docs/language_specification/enums.md
   existing_diagnostic: SPY0253
   planned_diagnostic: null
+- id: exception-group-aggregate-exception-bridge
+  category: types
+  audience: python
+  severity: error
+  code: null
+  spec_ref: docs/language_specification/exception_handling.md
+  existing_diagnostic: SPY0202
+  planned_diagnostic: null
 - id: explicit-type-annotations-required
   category: types
   audience: python
@@ -300,6 +308,14 @@ deviations:
   code: SPY0113
   spec_ref: docs/language_specification/tagged_unions.md
   existing_diagnostic: SPY0113
+  planned_diagnostic: null
+- id: frozen-dataclass-init-assignment
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/dataclass.md
+  existing_diagnostic: SPY0706
   planned_diagnostic: null
 - id: generator-multi-pass
   category: semantics

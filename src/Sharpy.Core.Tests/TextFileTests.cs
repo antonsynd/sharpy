@@ -212,7 +212,7 @@ namespace Sharpy.Core.Tests
         {
             var path = TempFile("writeonly.txt");
             using var f = Builtins.Open(path, "w");
-            Assert.Throws<IOError>(() => f.Read());
+            Assert.Throws<OSError>(() => f.Read());
         }
 
         [Fact]
@@ -220,7 +220,7 @@ namespace Sharpy.Core.Tests
         {
             WriteTestFile("readonly.txt", "content");
             using var f = Builtins.Open(TempFile("readonly.txt"));
-            Assert.Throws<IOError>(() => f.Write("data"));
+            Assert.Throws<OSError>(() => f.Write("data"));
         }
 
         [Fact]

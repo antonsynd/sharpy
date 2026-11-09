@@ -1,0 +1,3 @@
+SPY0331: the '@=' matrix-multiplication assignment requires experimental feature 'matmul' @23:9
+SPY0331: the 'defer' statement requires experimental feature 'defer' @31:9
+!count 2

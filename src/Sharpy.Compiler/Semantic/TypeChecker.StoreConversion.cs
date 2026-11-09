@@ -74,8 +74,8 @@ internal partial class TypeChecker
         /// #1767). Whole slot first (<c>T?</c> into <c>T?</c>, <c>T | None</c> into
         /// <c>T | None</c>), then the payload: the value-shape arms measure against the payload of
         /// an Optional slot too, because a bare payload IS the accepted form at this position
-        /// (null_coalescing_assignment.md §Optional) and the emitter wraps it from the recorded
-        /// <see cref="SemanticInfo.SetOptionalStoreWrap"/> fact.
+        /// (null_coalescing_assignment.md §Optional) and the emitter wraps it from the
+        /// <c>IrOptionalStoreWrap</c> node the lowering pass derives (P82 #2443).
         /// </summary>
         CoalesceAssign,
 

@@ -24,7 +24,7 @@ namespace Sharpy
 
             if (arrays.Length == 0)
             {
-                throw new ArgumentException("need at least one array to concatenate", nameof(arrays));
+                throw new ValueError("need at least one array to concatenate");
             }
 
             int ndim = arrays[0].Ndim;
@@ -42,9 +42,8 @@ namespace Sharpy
 
                 if (arr.Ndim != ndim)
                 {
-                    throw new ArgumentException(
-                        $"all input arrays must have the same number of dimensions, but array {i} has {arr.Ndim} != {ndim}",
-                        nameof(arrays));
+                    throw new ValueError(
+                        $"all the input arrays must have same number of dimensions, but the array at index 0 has {ndim} dimension(s) and the array at index {i} has {arr.Ndim} dimension(s)");
                 }
 
                 var shape = arr.Shape;
@@ -57,9 +56,8 @@ namespace Sharpy
 
                     if (shape[d] != arrays[0].Shape[d])
                     {
-                        throw new ArgumentException(
-                            $"all the input array dimensions except for the concatenation axis must match exactly, but along dimension {d} array {i} has size {shape[d]} != {arrays[0].Shape[d]}",
-                            nameof(arrays));
+                        throw new ValueError(
+                            $"all the input array dimensions except for the concatenation axis must match exactly, but along dimension {d}, the array at index 0 has size {arrays[0].Shape[d]} and the array at index {i} has size {shape[d]}");
                     }
                 }
 
@@ -102,7 +100,7 @@ namespace Sharpy
 
             if (arrays.Length == 0)
             {
-                throw new ArgumentException("need at least one array to stack", nameof(arrays));
+                throw new ValueError("need at least one array to stack");
             }
 
             int innerNdim = arrays[0].Ndim;
@@ -114,18 +112,14 @@ namespace Sharpy
             {
                 if (arrays[i].Ndim != innerNdim)
                 {
-                    throw new ArgumentException(
-                        $"all input arrays must have the same shape — array {i} has rank {arrays[i].Ndim}, expected {innerNdim}",
-                        nameof(arrays));
+                    throw new ValueError("all input arrays must have the same shape");
                 }
 
                 for (int d = 0; d < innerNdim; d++)
                 {
                     if (arrays[i].Shape[d] != arrays[0].Shape[d])
                     {
-                        throw new ArgumentException(
-                            $"all input arrays must have the same shape — array {i} has size {arrays[i].Shape[d]} at dim {d}, expected {arrays[0].Shape[d]}",
-                            nameof(arrays));
+                        throw new ValueError("all input arrays must have the same shape");
                     }
                 }
             }
@@ -167,7 +161,7 @@ namespace Sharpy
 
             if (arrays.Length == 0)
             {
-                throw new ArgumentException("need at least one array to stack", nameof(arrays));
+                throw new ValueError("need at least one array to concatenate");
             }
 
             // For 1-D inputs, hstack is concatenation along axis 0.
@@ -188,7 +182,7 @@ namespace Sharpy
 
             if (arrays.Length == 0)
             {
-                throw new ArgumentException("need at least one array to stack", nameof(arrays));
+                throw new ValueError("need at least one array to concatenate");
             }
 
             // Promote 1-D inputs to (1, n) so the concatenation along axis 0 makes sense.
@@ -392,11 +386,8 @@ namespace Sharpy
                 throw new ArgumentNullException(nameof(a));
             }
 
-            if (min > max)
-            {
-                throw new ArgumentException($"min ({min}) must not exceed max ({max})", nameof(min));
-            }
-
+            // numpy clips with minimum(maximum(a, min), max): min > max is not an error, every
+            // element becomes max (numpy 2.5.3: np.clip([1., 3., 7.], 5., 2.) -> [2., 2., 2.]) (#2461).
             var data = new double[a.Size];
             var iter = new BroadcastedIterator<double>(a, a.Shape);
             for (int i = 0; i < a.Size; i++)
@@ -406,7 +397,8 @@ namespace Sharpy
                 {
                     v = min;
                 }
-                else if (v > max)
+
+                if (v > max)
                 {
                     v = max;
                 }
@@ -425,9 +417,8 @@ namespace Sharpy
             int a = axis < 0 ? axis + rank : axis;
             if (a < 0 || a >= rank)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(axis),
-                    $"axis {axis} is out of bounds for array of dimension {rank}");
+                // numpy raises AxisError, a ValueError (and IndexError) subclass (#2461).
+                throw new ValueError($"axis {axis} is out of bounds for array of dimension {rank}");
             }
 
             return a;

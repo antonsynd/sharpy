@@ -189,6 +189,7 @@ extracting the contained value:
 | `unwrap_or_else(f)` | `T` | Returns the value or calls `f()` |
 | `map(f)` | `U?` | Transforms the contained value if present |
 
+<!-- spec-sweep: output -->
 ```python
 o: int? = Some(42)
 print(o.is_some)        # True
@@ -303,6 +304,7 @@ Two `T?` values compare with `==`/`!=` (`Optional` defines both); ordering (`<`,
 refused. Membership in a `list[int?]` or `set[int?]` and a `dict[int?, V]` key — written or
 read — use the same equality, so `d[None()]` reads the entry stored under `None()`:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     a: int? = Some(1)

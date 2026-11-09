@@ -166,7 +166,12 @@ smoke job. Local adds `MetamorphicCorpusInvarianceTests` (left out of CI on purp
 
 **The local gate is the fallback:** `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`,
 for when `/ci-gate` exits 3 (not started within 15 min, cancelled, unreachable, or no counts) or for
-what only local covers; say so in the report. Read `.claude/tmp/dotnet-serialized-*.log` rather than
+what only local covers; say so in the report. Local timings (moved from CLAUDE.md): a whole-solution
+run is ~30 min wall clock, `Sharpy.Compiler.Tests` ~27 of it at `maxParallelThreads` 2 (measured
+@ af6f30901). The `[Trait("Category","GapDiscovery")]` sweeps run by default and are ~18% of its test
+time; `Category!=GapDiscovery` saves a few minutes, but they are no longer the long pole. The console
+logger is part of the command: at default verbosity a green gate is silent for up to 1566 s
+@ 8a15ce512, inside 162 s of the wrapper's 1728 s stall watchdog (#2257; the wrapper's header). Read the log path the wrapper printed (`dotnet-serialized: log -> <path>`) rather than
 re-running. A log whose binaries predate the change is not a green. Mutation runs and single-test
 probes stay local, and so can a control for one failing test (§5).
 
@@ -177,8 +182,9 @@ project; Batch 10's own full-suite log was a stale-binary false green; the `Reso
 ICE lived only in Stdlib.Tests.
 
 *Check:* the commit that closes a phase cites a whole-solution run at its sha, by CI run id or local
-log. A later commit that changes only plans or docs may carry `[skip ci]` and cite the last code
-commit's run. Red = a close-out whose only evidence is a filtered run, a log older than the last
+log. A later commit that changes only plans or docs cites the last code commit's run; it must not
+carry `[skip ci]` when it is the tip of a pull request, because the marker also suppresses the
+required `subjects` check and the `dev` ruleset refuses the merge (#2520). Red = a close-out whose only evidence is a filtered run, a log older than the last
 build, or a sweep the change reaches that was not run.
 
 ## 7. Regenerate early; read the diff as findings

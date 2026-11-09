@@ -1,0 +1,248 @@
+# __init__ top-level augmented store (#2439): `self.<m> op= v` directly in `__init__` means
+# `self.<m> = self.<m> op v`, exactly as it does nested in a block or in a method body; before the
+# fix the constructor arm emitted `this.M = v`, dropping the read and the operator. Every host with
+# an explicit `__init__` (class, struct, @dataclass) runs, at the top level of `__init__`: the 12
+# scalar operators (`//=` and `%=` on a negative, so floor and truncation differ), str `+=`, the 7
+# in-place collection arms (an aliased list shows the mutation is in place), `??=` on an absent and
+# a present slot, and two event `+=` subscriptions then a `-=` (combine, not overwrite). The last
+# two hosts reach the same arm through its other entry routes: a `@suppress`-wrapped statement (a live
+# suppression: `self.k` reads a @static through the instance, SPY0459), and
+# a store ahead of `super().__init__()`. Expected values: python 3.13 on the python-spellable rows,
+# the nested-block twin and the specs (null_coalescing_assignment.md, events.md) on the rest.
+delegate Ping() -> None
+
+
+def on_ping() -> None:
+    print("ping")
+
+
+def on_pong() -> None:
+    print("pong")
+
+
+class C:
+    a0: int = 20
+    a1: int = 20
+    a2: int = 20
+    a3: float = 5.0
+    a4: int = -20
+    a5: int = -20
+    a6: int = 2
+    a7: int = 12
+    a8: int = 12
+    a9: int = 12
+    a10: int = 3
+    a11: int = 64
+    t: str = "ab"
+    b0: list[int] = [1]
+    b1: list[int] = [1, 2]
+    b2: set[int] = {1, 2}
+    b3: set[int] = {1, 2}
+    b4: set[int] = {1, 2}
+    b5: set[int] = {1, 2}
+    b6: dict[str, int] = {"k": 1}
+    al: list[int] = []
+    o: int | None = None
+    p: int | None = 3
+    event pinged: Ping
+
+    def __init__(self) -> None:
+        src: list[int] = [1]
+        self.a0 += 7
+        self.a1 -= 7
+        self.a2 *= 7
+        self.a3 /= 2.0
+        self.a4 //= 7
+        self.a5 %= 7
+        self.a6 **= 5
+        self.a7 &= 10
+        self.a8 |= 3
+        self.a9 ^= 5
+        self.a10 <<= 2
+        self.a11 >>= 3
+        self.t += "cd"
+        self.b0 += [2]
+        self.b1 *= 2
+        self.b2 |= {3}
+        self.b3 &= {2, 3}
+        self.b4 -= {2}
+        self.b5 ^= {2, 3}
+        self.b6 |= {"m": 2}
+        self.al = src
+        self.al += [2]
+        self.al *= 2
+        self.o ??= 5
+        self.p ??= 7
+        self.pinged += on_ping
+        self.pinged += on_pong
+        self.pinged?.invoke()
+        self.pinged -= on_ping
+        self.pinged?.invoke()
+        print(self.a0, self.a1, self.a2, self.a3, self.a4, self.a5, self.a6, self.a7, self.a8, self.a9, self.a10, self.a11)
+        print(self.t, self.b0, self.b1, sorted(self.b2), sorted(self.b3), sorted(self.b4), sorted(self.b5), self.b6)
+        print(src, self.al is src, self.o, self.p)
+
+
+struct S:
+    a0: int = 20
+    a1: int = 20
+    a2: int = 20
+    a3: float = 5.0
+    a4: int = -20
+    a5: int = -20
+    a6: int = 2
+    a7: int = 12
+    a8: int = 12
+    a9: int = 12
+    a10: int = 3
+    a11: int = 64
+    t: str = "ab"
+    b0: list[int] = [1]
+    b1: list[int] = [1, 2]
+    b2: set[int] = {1, 2}
+    b3: set[int] = {1, 2}
+    b4: set[int] = {1, 2}
+    b5: set[int] = {1, 2}
+    b6: dict[str, int] = {"k": 1}
+    al: list[int] = []
+    o: int | None = None
+    p: int | None = 3
+    event pinged: Ping
+
+    def __init__(self) -> None:
+        src: list[int] = [1]
+        self.a0 += 7
+        self.a1 -= 7
+        self.a2 *= 7
+        self.a3 /= 2.0
+        self.a4 //= 7
+        self.a5 %= 7
+        self.a6 **= 5
+        self.a7 &= 10
+        self.a8 |= 3
+        self.a9 ^= 5
+        self.a10 <<= 2
+        self.a11 >>= 3
+        self.t += "cd"
+        self.b0 += [2]
+        self.b1 *= 2
+        self.b2 |= {3}
+        self.b3 &= {2, 3}
+        self.b4 -= {2}
+        self.b5 ^= {2, 3}
+        self.b6 |= {"m": 2}
+        self.al = src
+        self.al += [2]
+        self.al *= 2
+        self.o ??= 5
+        self.p ??= 7
+        self.pinged += on_ping
+        self.pinged += on_pong
+        self.pinged?.invoke()
+        self.pinged -= on_ping
+        self.pinged?.invoke()
+        print(self.a0, self.a1, self.a2, self.a3, self.a4, self.a5, self.a6, self.a7, self.a8, self.a9, self.a10, self.a11)
+        print(self.t, self.b0, self.b1, sorted(self.b2), sorted(self.b3), sorted(self.b4), sorted(self.b5), self.b6)
+        print(src, self.al is src, self.o, self.p)
+
+
+@dataclass
+class D:
+    a0: int = 20
+    a1: int = 20
+    a2: int = 20
+    a3: float = 5.0
+    a4: int = -20
+    a5: int = -20
+    a6: int = 2
+    a7: int = 12
+    a8: int = 12
+    a9: int = 12
+    a10: int = 3
+    a11: int = 64
+    t: str = "ab"
+    b0: list[int] = [1]
+    b1: list[int] = [1, 2]
+    b2: set[int] = {1, 2}
+    b3: set[int] = {1, 2}
+    b4: set[int] = {1, 2}
+    b5: set[int] = {1, 2}
+    b6: dict[str, int] = {"k": 1}
+    al: list[int] = []
+    o: int | None = None
+    p: int | None = 3
+    event pinged: Ping
+
+    def __init__(self) -> None:
+        src: list[int] = [1]
+        self.a0 += 7
+        self.a1 -= 7
+        self.a2 *= 7
+        self.a3 /= 2.0
+        self.a4 //= 7
+        self.a5 %= 7
+        self.a6 **= 5
+        self.a7 &= 10
+        self.a8 |= 3
+        self.a9 ^= 5
+        self.a10 <<= 2
+        self.a11 >>= 3
+        self.t += "cd"
+        self.b0 += [2]
+        self.b1 *= 2
+        self.b2 |= {3}
+        self.b3 &= {2, 3}
+        self.b4 -= {2}
+        self.b5 ^= {2, 3}
+        self.b6 |= {"m": 2}
+        self.al = src
+        self.al += [2]
+        self.al *= 2
+        self.o ??= 5
+        self.p ??= 7
+        self.pinged += on_ping
+        self.pinged += on_pong
+        self.pinged?.invoke()
+        self.pinged -= on_ping
+        self.pinged?.invoke()
+        print(self.a0, self.a1, self.a2, self.a3, self.a4, self.a5, self.a6, self.a7, self.a8, self.a9, self.a10, self.a11)
+        print(self.t, self.b0, self.b1, sorted(self.b2), sorted(self.b3), sorted(self.b4), sorted(self.b5), self.b6)
+        print(src, self.al is src, self.o, self.p)
+
+
+class Quiet:
+    @static
+    k: int = 9
+    x: int = 3
+
+    def __init__(self) -> None:
+        @suppress("SPY0459")
+        self.x += self.k
+        print(self.x)
+
+
+class Base:
+    def __init__(self) -> None:
+        print("base")
+
+
+class Derived(Base):
+    n: int = 3
+
+    def __init__(self) -> None:
+        self.n += 9
+        super().__init__()
+        print(self.n)
+
+
+def main() -> None:
+    print("class")
+    C()
+    print("struct")
+    S()
+    print("dataclass")
+    D()
+    print("suppress")
+    Quiet()
+    print("before super")
+    Derived()

@@ -37,6 +37,7 @@ with `f += 1.0` stays refused.
 | `uint32` | `uint32` | Accepted — `//=`, `%=`, `**=` produce `int64` and narrow back |
 | `float32` | `1.0` | **Refused** (SPY0220) — the rule covers integer targets only |
 
+<!-- spec-sweep: output -->
 ```python
 x: int8 = 5
 y: int8 = 3
@@ -82,6 +83,7 @@ assigned to. Identifier, attribute (`b.n`, `self.n`), nested attribute
 (`o.inner.n`), index (`xs[0]`) and dict-value (`d[k]`) targets narrow
 identically:
 
+<!-- spec-sweep: output -->
 ```python
 class Box:
     n: int8 = 7

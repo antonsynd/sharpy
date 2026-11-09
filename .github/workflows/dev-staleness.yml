@@ -6,11 +6,14 @@
 # had been failing since mid-batch and nothing on dev ran it. This workflow runs just the
 # build and the two staleness gates (~a few minutes) on every dev push that could affect
 # generated artifacts. Content mirrors the "Verify .spy * staleness" steps in dotnet10.yml.
+#
+# It runs on mainline pushes too (#2458, W0.4): the spec-block and allowlist-issue-state gates
+# live only here, so before that they never ran where a release is cut from.
 name: Dev Staleness Gates
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "dev", "mainline" ]
     paths:
       - 'src/**'
       - 'Directory.Build.props'
@@ -28,6 +31,8 @@ on:
 jobs:
   staleness:
     runs-on: ubuntu-latest
+    # 5-10 min over the last 10 runs (42372231109 back to 41280192162).
+    timeout-minutes: 30
 
     permissions:
       contents: read
@@ -38,6 +43,14 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Restore the NuGet package cache
+      # Read-only; dotnet10.yml's `build` job saves it (#2458).
+      id: nuget
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
       run: dotnet restore sharpy.sln
     - name: Build compiler CLI
@@ -51,6 +64,7 @@ jobs:
 
   allowlist-issue-state:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     permissions:
       contents: read

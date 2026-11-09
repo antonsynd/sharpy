@@ -25,10 +25,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private BinaryOpLowering? GetIrBinaryOpLowering(Expression binaryOp)
     {
-        return _context.Ir.Index.TryGetValue(binaryOp, out var node)
-            && node is IrEqualityComparison equality
-            ? equality.Strategy
-            : null;
+        return IrNodeFor<IrEqualityComparison>(binaryOp)?.Strategy;
     }
 
     /// <summary>
@@ -122,8 +119,7 @@ internal partial class RoslynEmitter
                     // `y: long = 10 ** 18`. (E2 #1056: read from the IR, not SemanticInfo.)
                     // The literal's width is the folded constant's own recorded type — the same
                     // emitter the E3 fold uses, so there is one folded-literal spelling (#1623).
-                    if (_context.Ir.Index.TryGetValue(binOp, out var foldedNode)
-                        && foldedNode is IrConstant foldedConst)
+                    if (IrNodeFor<IrConstant>(binOp) is { } foldedConst)
                     {
                         return EmitFoldedConstant(foldedConst);
                     }

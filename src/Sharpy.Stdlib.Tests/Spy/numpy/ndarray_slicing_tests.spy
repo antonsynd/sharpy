@@ -12,7 +12,6 @@
 #   - Slice_Null_Throws (1): passes null to .Slice(); Axiom 3.
 
 import numpy as np
-from system import InvalidOperationException
 from unittest import assert_raises
 
 # -- Python-style single-axis slicing (NdArray.Slice via a[start:stop:step], #1608) --
@@ -101,7 +100,7 @@ def test_get_row_modifies_original():
 @test
 def test_get_row_not_2d_throws():
     arr = np.array([1.0, 2.0, 3.0])
-    with assert_raises(InvalidOperationException):
+    with assert_raises(ValueError):
         arr.GetRow(0)
 
 @test
@@ -136,7 +135,7 @@ def test_get_column_modifies_original():
 @test
 def test_get_column_not_2d_throws():
     arr = np.array([1.0, 2.0, 3.0])
-    with assert_raises(InvalidOperationException):
+    with assert_raises(ValueError):
         arr.GetColumn(0)
 
 @test

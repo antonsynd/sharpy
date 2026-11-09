@@ -57,7 +57,7 @@ namespace Sharpy
         /// <param name="data">Sequence of equal-length rows; the row count and the
         /// common row length determine the 2-D shape.</param>
         /// <returns>A new 2-D ndarray owning a copy of the flattened data.</returns>
-        /// <exception cref="ArgumentException">Rows have differing lengths.</exception>
+        /// <exception cref="ValueError">Rows have differing lengths.</exception>
         public static NdArray<T> Array<T>(
             System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<T>> data)
             where T : struct, IEquatable<T>
@@ -94,7 +94,9 @@ namespace Sharpy
             {
                 if (rows[i].Length != cols)
                 {
-                    throw new ArgumentException("All rows must have the same length.", nameof(data));
+                    throw new ValueError(
+                        "setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was ("
+                        + rows.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ",) + inhomogeneous part.");
                 }
             }
 
@@ -165,7 +167,7 @@ namespace Sharpy
         {
             if (n < 0)
             {
-                throw new ArgumentException("n must be non-negative", nameof(n));
+                throw new ValueError("negative dimensions are not allowed");
             }
 
             var data = new double[n * n];
@@ -205,7 +207,8 @@ namespace Sharpy
         {
             if (step == 0)
             {
-                throw new ArgumentException("step cannot be zero", nameof(step));
+                // numpy: np.arange(0., 5., 0.) raises ZeroDivisionError (#2461).
+                throw new ZeroDivisionError("float division by zero");
             }
 
             int count;
@@ -242,7 +245,7 @@ namespace Sharpy
         {
             if (num < 0)
             {
-                throw new ArgumentException("num must be non-negative", nameof(num));
+                throw new ValueError("Number of samples, " + num.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", must be non-negative.");
             }
 
             var data = new double[num];
@@ -307,7 +310,7 @@ namespace Sharpy
             {
                 if (shape[i] < 0)
                 {
-                    throw new ArgumentException($"shape dimension {i} is negative: {shape[i]}", nameof(shape));
+                    throw new ValueError("negative dimensions are not allowed");
                 }
 
                 size = checked(size * shape[i]);

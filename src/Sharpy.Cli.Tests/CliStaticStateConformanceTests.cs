@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Sharpy.TestInfrastructure;
 using Xunit;
 
 namespace Sharpy.Cli.Tests;
@@ -78,7 +79,10 @@ public class CliStaticStateConformanceTests
     {
         foreach (var type in assembly.GetTypes())
         {
-            if (IsCompilerGenerated(type))
+            // Named exclusion (#2512): on a coverage-on run the collector injects its tracker type, 16
+            // mutable statics, into the instrumented sharpyc. It is not shipped code; Sharpy types are
+            // never in its namespace, so a planted mutable static of ours is still red in both modes.
+            if (IsCompilerGenerated(type) || CoverageInstrumentation.IsInjected(type))
                 continue;
 
             foreach (var field in type.GetFields(

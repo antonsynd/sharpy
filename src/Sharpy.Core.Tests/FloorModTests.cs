@@ -68,7 +68,7 @@ public class FloorMod_Tests
     {
         FluentActions.Invoking(() => FloorMod(1, 0))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer modulo by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class FloorMod_Tests
     {
         FluentActions.Invoking(() => FloorMod(1L, 0L))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer modulo by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class FloorMod_Tests
     {
         FluentActions.Invoking(() => FloorMod(1.0, 0.0))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("float modulo");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class FloorMod_Tests
     {
         FluentActions.Invoking(() => FloorMod(1.0f, 0.0f))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("float modulo");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class FloorMod_Tests
     {
         FluentActions.Invoking(() => FloorMod(1UL, 0UL))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer modulo by zero");
+            .WithMessage("division by zero");
     }
 
     // #1186 — a zero remainder carries the DIVISOR's sign (CPython float_mod), where

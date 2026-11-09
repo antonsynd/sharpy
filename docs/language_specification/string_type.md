@@ -171,6 +171,7 @@ def main() -> None:
 
 When both a Sharpy extension method and a .NET method could apply, the Sharpy extension method takes precedence via the compiler's name mangling:
 
+<!-- spec-sweep: fragment -->
 ```python
 s.upper()    # Mangled to s.Upper() — calls Sharpy extension method
 ```

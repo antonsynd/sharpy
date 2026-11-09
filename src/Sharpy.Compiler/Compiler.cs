@@ -77,9 +77,32 @@ public class Compiler
             }
         }
 
-        // Load referenced assemblies
-        if (_options.References != null)
+        // The referenced assemblies load at the first compilation, not here (EnsureReferencesLoaded).
+    }
+
+    // Guards EnsureReferencesLoaded: a Compiler may serve more than one compilation.
+    private readonly object _referencesLock = new();
+    private bool _referencesLoaded;
+
+    /// <summary>
+    /// Loads the referenced assemblies into the module registry, once per <see cref="Compiler"/>. Called
+    /// at each compilation entry (<see cref="CompileProject(ProjectConfig, CancellationToken)"/> after its
+    /// up-to-date check, <see cref="Compile(string, string, CancellationToken)"/>,
+    /// <see cref="Analyze(string, string, CancellationToken, bool)"/>), not in the constructor: a warm
+    /// project build whose every input matches the last build's loads nothing (#2468). A reference
+    /// that fails to load records SPY0305/SPY0306 on the registry, which every entry surfaces.
+    /// </summary>
+    private void EnsureReferencesLoaded()
+    {
+        if (_moduleRegistry == null || _options.References == null)
+            return;
+
+        lock (_referencesLock)
         {
+            if (_referencesLoaded)
+                return;
+            _referencesLoaded = true;
+
             var discoveryStopwatch = Stopwatch.StartNew();
             foreach (var reference in _options.References)
             {
@@ -113,6 +136,19 @@ public class Compiler
         // single shared definition of the merge (also used by CompilerApi.AnalyzeProject), so the
         // compile and analyze paths can never diverge (#1109). MaxErrors comes from options only.
         var projectOptions = ProjectOptionsMerge.Merge(_options, projectConfig);
+
+        // A warm build whose every input is the last successful build's: replay that build's report
+        // under this build's policy and load nothing (#2468). Stamped like the full path below, so a
+        // reference load that ran anyway shows up as discovery time.
+        if (projectOptions.UpToDateCheck
+            && ProjectCompiler.TryReplayUpToDateBuild(projectConfig, projectOptions, _logger) is { } upToDate)
+        {
+            if (_discoveryTime > TimeSpan.Zero)
+                upToDate.Metrics?.SetDiscoveryTime(_discoveryTime);
+            return upToDate;
+        }
+
+        EnsureReferencesLoaded();
         _moduleRegistry?.BeginCompilation();
 
         // Resolve NuGet package references so their types are available during semantic analysis
@@ -133,7 +169,7 @@ public class Compiler
         }
 
         // A reference that resolves to no file (SPY0305) or cannot be loaded as given (SPY0306) is a
-        // registry error (the constructor's and the NuGet loads above; R-HI). Refuse here, BEFORE the project pipeline runs: on this route
+        // registry error (EnsureReferencesLoaded's and the NuGet loads above; R-HI). Refuse here, BEFORE the project pipeline runs: on this route
         // ProjectCompiler.Compile itself writes the assembly, so a merge after it would leave the
         // output on disk beside a failed result (#2223). Same shape as CompileAsSyntheticProject.
         var referenceErrors = _moduleRegistry?.ReferenceDiagnostics();
@@ -184,6 +220,7 @@ public class Compiler
         bool preserveTrivia = false)
     {
         _logger.LogInfo($"Starting analysis of {filePath}");
+        EnsureReferencesLoaded();
         _moduleRegistry?.BeginCompilation();
 
         var entryFilePath = File.Exists(filePath) ? Path.GetFullPath(filePath) : filePath;
@@ -193,7 +230,7 @@ public class Compiler
         var result = SyntheticProject.Analyze(config, _options, _logger, _moduleRegistry,
             _emitterFactory, cancellationToken);
 
-        // Reference-load failures are recorded on the shared module registry in the constructor,
+        // Reference-load failures are recorded on the shared module registry by EnsureReferencesLoaded,
         // before the pipeline runs; surface them so analyze callers see the same errors compile does.
         if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
             result.Analysis.Diagnostics.Merge(_moduleRegistry.Diagnostics);
@@ -213,7 +250,7 @@ public class Compiler
         var model = analysis.ProjectModel;
         var entryUnit = result.EntryUnit;
 
-        // Reference/stdlib discovery ran in the constructor before any per-file metrics existed;
+        // Reference/stdlib discovery ran at the compilation's start, before any per-file metrics existed;
         // record it as a first-class phase on the entry file's metrics (parity with MapProjectResult).
         if (entryUnit?.Metrics != null && _discoveryTime > TimeSpan.Zero
             && !entryUnit.Metrics.Phases.Any(p => p.Name == CompilerPhaseNames.ModuleDiscovery))
@@ -261,6 +298,7 @@ public class Compiler
     public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken)
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
+        EnsureReferencesLoaded();
         _moduleRegistry?.BeginCompilation();
 
         // The entry file's source is fed in-memory (see SyntheticProject.BuildConfig) keyed by
@@ -281,12 +319,12 @@ public class Compiler
         var emitAssembly = !string.IsNullOrEmpty(_options.OutputAssemblyPath);
         var projectResult = projectCompiler.Compile(config, cancellationToken, emitAssembly);
 
-        // Module discovery ran in the constructor (loading referenced assemblies/stdlib); surface
+        // Module discovery ran at the compilation's start (loading referenced assemblies/stdlib); surface
         // it on the reconstituted per-file metrics, matching the project path.
         if (_discoveryTime > TimeSpan.Zero)
             projectResult.Metrics?.SetDiscoveryTime(_discoveryTime);
 
-        // Reference-load failures are recorded on the shared module registry in the constructor,
+        // Reference-load failures are recorded on the shared module registry by EnsureReferencesLoaded,
         // before the project pipeline runs; surface them here so single-file callers still see
         // the "failed to load reference" error the legacy path reported.
         var registryHasErrors = false;
@@ -329,7 +367,7 @@ public class Compiler
             // single-file driver).
             entryUnit.Metrics.DiagnosticCount = projectResult.Diagnostics.GetAll().Count;
 
-            // Reference/stdlib discovery ran in the constructor before any per-file metrics existed;
+            // Reference/stdlib discovery ran at the compilation's start, before any per-file metrics existed;
             // record it as a first-class phase on the entry file's metrics.
             if (_discoveryTime > TimeSpan.Zero
                 && !entryUnit.Metrics.Phases.Any(p => p.Name == CompilerPhaseNames.ModuleDiscovery))
@@ -554,6 +592,15 @@ public class CompilerOptions
     /// are cached in the project's obj/ directory.
     /// </summary>
     public bool Incremental { get; set; }
+
+    /// <summary>
+    /// With <see cref="Incremental"/>, check before any work whether every input of the build is the
+    /// last successful build's (sources, facts, environment, outputs); when it is, replay that build's
+    /// diagnostics under this build's policy and return without loading a reference (#2468). Set by
+    /// <see cref="CompilerOptionsFactory.ForProject"/> for the CLI's <c>--incremental</c>; in-process
+    /// callers that set only <see cref="Incremental"/> exercise the per-unit cache instead.
+    /// </summary>
+    public bool UpToDateCheck { get; set; }
 
     /// <summary>
     /// Output type: "exe" or "library". Controls whether the compiler requires

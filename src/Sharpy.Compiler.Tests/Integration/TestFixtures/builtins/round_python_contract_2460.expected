@@ -1,0 +1,14 @@
+2.67
+10000000000.0
+100.0
+1.23456789
+2.0
+-0.0
+0 2 2 0
+inf nan 1e+300
+0 20 20 -20
+1099511628000
+ValueError: cannot convert float NaN to integer
+OverflowError: cannot convert float infinity to integer
+OverflowError: cannot convert float infinity to integer
+OverflowError: rounded value too large to represent

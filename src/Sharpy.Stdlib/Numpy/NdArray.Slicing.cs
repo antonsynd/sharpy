@@ -27,7 +27,7 @@ namespace Sharpy
         {
             if (step.HasValue && step.Value == 0)
             {
-                throw new ArgumentException("slice step cannot be zero", nameof(step));
+                throw new ValueError("slice step cannot be zero");
             }
 
             Start = start;
@@ -259,13 +259,13 @@ namespace Sharpy
         /// Python semantics.
         /// </summary>
         /// <param name="i">Row index. Negative values count from the end.</param>
-        /// <exception cref="InvalidOperationException">Thrown when this array is not 2-dimensional.</exception>
+        /// <exception cref="ValueError">Thrown when this array is not 2-dimensional.</exception>
         /// <exception cref="IndexError">Thrown when <paramref name="i"/> is out of range.</exception>
         public NdArray<T> GetRow(int i)
         {
             if (_shape.Length != 2)
             {
-                throw new InvalidOperationException(
+                throw new ValueError(
                     $"GetRow requires a 2-D array, but this array is {_shape.Length}-D");
             }
 
@@ -287,13 +287,13 @@ namespace Sharpy
         /// Python semantics.
         /// </summary>
         /// <param name="j">Column index. Negative values count from the end.</param>
-        /// <exception cref="InvalidOperationException">Thrown when this array is not 2-dimensional.</exception>
+        /// <exception cref="ValueError">Thrown when this array is not 2-dimensional.</exception>
         /// <exception cref="IndexError">Thrown when <paramref name="j"/> is out of range.</exception>
         public NdArray<T> GetColumn(int j)
         {
             if (_shape.Length != 2)
             {
-                throw new InvalidOperationException(
+                throw new ValueError(
                     $"GetColumn requires a 2-D array, but this array is {_shape.Length}-D");
             }
 

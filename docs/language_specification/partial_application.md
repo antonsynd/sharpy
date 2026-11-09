@@ -6,6 +6,7 @@ Partial application creates new functions by fixing some arguments of an existin
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 # Using _ as placeholder for arguments to be supplied later
 partially_applied = function(arg1, _, arg3)
@@ -33,6 +34,7 @@ The underscore `_` serves two different purposes in Sharpy:
 
 **Key disambiguation scenarios:**
 
+<!-- spec-sweep: fragment -->
 ```python
 # Partial application - _ in call arguments
 f(_)                    # Partial: creates lambda taking 1 arg
@@ -99,6 +101,7 @@ name = format_j_smith("Q")  # "John Q Smith"
 
 Haskell-style operator sections using `_` for partial application of operators:
 
+<!-- spec-sweep: fragment -->
 ```python
 # One-placeholder sections (one argument fixed, one placeholder)
 doubler = (_ * 2)        # Multiply by 2
@@ -129,6 +132,7 @@ total = reduce((_ + _), [1, 2, 3, 4])  # 10
 
 Partial application is syntactic sugar for lambda expressions:
 
+<!-- spec-sweep: fragment -->
 ```python
 # These are equivalent:
 add_five = add(5, _)
@@ -173,6 +177,7 @@ ten_divided_by(2.0)  # 5.0 (10.0 / 2.0)
 
 Partial application works well with collection methods:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Create specialized mappers
 items = [1, 2, 3, 4, 5]
@@ -190,6 +195,7 @@ items.filter((_ % 2 == 0))   # [2, 4]
 
 Partial application works with both static and instance methods:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Instance method
 names = ["alice", "bob", "charlie"]
@@ -219,7 +225,7 @@ result = times_two_three(4)  # 24 (2 * 3 * 4)
 **Configuration Functions:**
 ```python
 def fetch_url(url: str, timeout: int, retry: bool) -> str:
-    # ... implementation
+    ...  # implementation
 
 # Create configured versions
 quick_fetch = fetch_url(_, 5, False)
@@ -242,6 +248,7 @@ validate_percentage(150) # False
 ```
 
 **Functional Pipelines:**
+<!-- spec-sweep: fragment -->
 ```python
 # Combine partial application with pipe operator
 result = data
@@ -277,6 +284,7 @@ mixed = f(_, y=_)           # (__placeholder_0, y) => f(__placeholder_0, y=y)
 - Cannot mix `_` with `*args` or `**kwargs`
 - Placeholders must be in valid argument positions
 
+<!-- spec-sweep: error SPY0131 -->
 ```python
 # ❌ Cannot use with *args
 func(_, *rest)  # ERROR
@@ -293,6 +301,9 @@ Partial application is lowered to lambda expressions:
 
 ```python
 # Sharpy
+def add(a: int, b: int) -> int:
+    return a + b
+
 add_five = add(5, _)
 result = add_five(3)
 ```
@@ -333,6 +344,11 @@ Func<int, int, int> mixed = (__placeholder_0, y) => F(__placeholder_0, y: y);
 Partial application creates a closure (lambda), which has a small runtime cost:
 
 ```python
+def operation(a: int, b: int) -> int:
+    return a * b
+
+value = 7
+
 # Each call creates a new closure
 for i in range(1000):
     func = operation(i, _)  # Creates 1000 closures

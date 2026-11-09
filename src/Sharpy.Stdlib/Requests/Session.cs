@@ -113,7 +113,7 @@ namespace Sharpy
             {
                 if (value < 1)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(value), "max_redirects must be >= 1");
+                    throw new ValueError("max_redirects must be >= 1");
                 }
                 _maxRedirects = value;
                 try

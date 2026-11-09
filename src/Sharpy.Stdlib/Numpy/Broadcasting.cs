@@ -19,7 +19,7 @@ namespace Sharpy
         /// <param name="shapeA">First input shape.</param>
         /// <param name="shapeB">Second input shape.</param>
         /// <returns>The broadcast shape — a new array.</returns>
-        /// <exception cref="ArgumentException">Thrown when the shapes are not broadcastable.</exception>
+        /// <exception cref="ValueError">Thrown when the shapes are not broadcastable.</exception>
         internal static int[] BroadcastShapes(int[] shapeA, int[] shapeB)
         {
             if (shapeA == null)
@@ -55,8 +55,9 @@ namespace Sharpy
                 }
                 else
                 {
-                    throw new ArgumentException(
-                        $"shapes {FormatShape(shapeA)} and {FormatShape(shapeB)} are not broadcastable");
+                    // numpy's own text, trailing space included (#2461).
+                    throw new ValueError(
+                        $"operands could not be broadcast together with shapes {FormatShape(shapeA)} {FormatShape(shapeB)} ");
                 }
 
                 result[rank - 1 - i] = dim;
@@ -111,15 +112,16 @@ namespace Sharpy
                 }
                 else
                 {
-                    throw new ArgumentException(
-                        $"source shape {FormatShape(sourceShape)} not broadcastable to {FormatShape(targetShape)}");
+                    throw new ValueError(
+                        $"operands could not be broadcast together with remapped shapes [original->remapped]: {FormatShape(sourceShape)}  and requested shape {FormatShape(targetShape)}");
                 }
             }
 
             return strides;
         }
 
-        private static string FormatShape(int[] shape)
+        /// <summary>numpy's shape spelling in its error text: <c>(3,)</c>, <c>(2,3)</c> (no spaces).</summary>
+        internal static string FormatShape(int[] shape)
         {
             var sb = new StringBuilder();
             sb.Append('(');
@@ -127,7 +129,7 @@ namespace Sharpy
             {
                 if (i > 0)
                 {
-                    sb.Append(", ");
+                    sb.Append(',');
                 }
 
                 sb.Append(shape[i]);

@@ -29,6 +29,8 @@ internal static class ProjectOptionsMerge
     ///   <item><c>Features</c> is the option set with the project's <c>&lt;Features&gt;</c> enabled on top.</item>
     ///   <item><c>MaxErrors</c> comes straight from the options — it has no project-side counterpart.</item>
     ///   <item><c>Incremental</c> comes from the options unless <paramref name="incremental"/> overrides it.</item>
+    ///   <item><c>UpToDateCheck</c> is the options' flag, and only where the merged <c>Incremental</c> is on:
+    ///   the check reads the incremental cache (#2468).</item>
     /// </list>
     /// Names are already validated at each boundary (CLI arg parsing and project load), so the
     /// feature union is a pure merge with no re-validation.
@@ -63,9 +65,11 @@ internal static class ProjectOptionsMerge
             features = features.Enable(config.Features);
         }
 
+        var effectiveIncremental = incremental ?? options.Incremental;
         return new ProjectCompilerOptions(
             warningsAsErrors, suppressed, options.MaxErrors,
-            incremental ?? options.Incremental, features, sharedBuiltins);
+            effectiveIncremental, features, sharedBuiltins,
+            UpToDateCheck: effectiveIncremental && options.UpToDateCheck);
     }
 }
 
@@ -77,7 +81,7 @@ internal static class ProjectOptionsMerge
 internal readonly record struct ProjectCompilerOptions(
     bool WarningsAsErrors, HashSet<string>? SuppressedWarnings, int MaxErrors,
     bool Incremental, FeatureFlags? Features,
-    Semantic.Registry.BuiltinRegistry? SharedBuiltinRegistry = null)
+    Semantic.Registry.BuiltinRegistry? SharedBuiltinRegistry = null, bool UpToDateCheck = false)
 {
     /// <summary>
     /// The all-defaults set, for callers with no options of their own (tests and tools that just

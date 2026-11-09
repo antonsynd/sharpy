@@ -23,6 +23,7 @@ This mirrors the [property](properties.md) distinction between auto-properties a
 
 Auto-events generate a backing delegate field and accessors automatically. The event type must be a named delegate type (`EventHandler`, `EventHandler[T]`, `Action[T]`, or a custom delegate):
 
+<!-- spec-sweep: fragment -->
 ```python
 class Button:
     # Standard .NET event pattern
@@ -68,6 +69,7 @@ class SecureButton:
 
 Compare side-by-side with property syntax:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Property with custom logic
 property get name(self) -> str:
@@ -99,15 +101,22 @@ class Bus:
     # ✅ Valid - `listener` denotes the incoming handler
     event add on_ping(self, listener: EventHandler):
         self._handlers.append(listener)
+
+    event remove on_ping(self, listener: EventHandler):
+        self._handlers.remove(listener)
 ```
 
 A variadic leaves that shape and is refused with **SPY0496** — an accessor has no argument list to
 vary, and subscribing several handlers is what calling `+=` more than once is for:
 
+<!-- spec-sweep: error SPY0496 -->
 ```python
 class Broken:
     # ❌ Invalid
     event add on_ping(self, *handlers: EventHandler):
+        pass
+
+    event remove on_ping(self, handler: EventHandler):
         pass
 ```
 
@@ -133,7 +142,7 @@ public event EventHandler OnClick
 For events without custom data:
 
 ```python
-from system import EventHandler
+from system import EventHandler, EventArgs
 
 class Timer:
     event on_tick: EventHandler
@@ -170,6 +179,8 @@ class Downloader:
 For non-standard signatures, declare a [delegate](delegates.md) and use it as the event type:
 
 ```python
+from datetime import datetime
+
 delegate DataReceivedHandler(sender: object, data: bytes, timestamp: datetime) -> None
 
 class DataStream:
@@ -180,6 +191,7 @@ class DataStream:
 
 ### Using `+=` Operator
 
+<!-- spec-sweep: fragment -->
 ```python
 def handle_click(sender: object, e: EventArgs):
     print("Button clicked!")
@@ -190,12 +202,14 @@ button.on_click += handle_click
 
 ### Using Lambda Expressions
 
+<!-- spec-sweep: fragment -->
 ```python
 button.on_click += lambda sender, e: print("Clicked!")
 ```
 
 ### Using Method References
 
+<!-- spec-sweep: fragment -->
 ```python
 class ClickCounter:
     _count: int = 0
@@ -212,12 +226,14 @@ button.on_click += counter.handle_click
 
 Use `-=` to remove a handler:
 
+<!-- spec-sweep: fragment -->
 ```python
 button.on_click -= handle_click
 ```
 
 **Important:** Lambda expressions cannot be unsubscribed (no reference equality):
 
+<!-- spec-sweep: fragment -->
 ```python
 # ❌ This won't work — different lambda instance
 button.on_click += lambda s, e: print("A")
@@ -235,6 +251,7 @@ button.on_click -= handler  # Works
 
 Always use null-conditional to handle the case of no subscribers:
 
+<!-- spec-sweep: fragment -->
 ```python
 class Publisher:
     event on_change: EventHandler[ChangeEventArgs]
@@ -248,6 +265,7 @@ class Publisher:
 
 The null-conditional invoke pattern maps to C#'s `?.Invoke()`, which atomically checks for null and invokes. This prevents race conditions where a subscriber could unsubscribe between a null check and the invocation:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ❌ Not thread-safe — explicit null check
 if self.on_change is not None:
@@ -281,6 +299,7 @@ Events support the same decorators as other class members. Decorator placement f
 
 ### Virtual Events
 
+<!-- spec-sweep: fragment -->
 ```python
 class BaseControl:
     @virtual
@@ -289,6 +308,7 @@ class BaseControl:
 
 ### Overriding with Custom Accessors
 
+<!-- spec-sweep: fragment -->
 ```python
 class CustomControl(BaseControl):
     @override
@@ -332,6 +352,8 @@ class Application:
 
 ```python
 class SecurePublisher:
+    _handlers: list[EventHandler] = []
+
     # Public subscribe/unsubscribe (default)
     event on_update: EventHandler
 
@@ -385,6 +407,7 @@ struct Counter:
 
 ### Subscribing to C# Events
 
+<!-- spec-sweep: fragment -->
 ```python
 from system.windows.forms import Button as WinButton
 
@@ -406,6 +429,7 @@ publisher.OnChange += (s, e) => Console.WriteLine("Changed!");
 
 ### Auto-events
 
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 class Publisher:
@@ -460,6 +484,7 @@ public class CustomPublisher
 
 ### Event subscription emission
 
+<!-- spec-sweep: fragment -->
 ```python
 # Sharpy
 obj.on_change += my_handler
@@ -489,6 +514,7 @@ obj.OnChange -= myHandler;
 4. **Event handlers should not throw exceptions** — unhandled exceptions propagate to caller
 5. **Events are declared only in a class, struct or interface body.** An event declared anywhere else is an error (SPY0708). That includes an auto-event or an `event add`/`event remove` accessor in a function body, in a block, or at module level. An event is a member of its host, and there is no module-level event.
 
+<!-- spec-sweep: fragment -->
 ```python
 class Foo:
     event on_bar: EventHandler
@@ -537,6 +563,7 @@ def main() -> None:
 
 **Decorator placement:**
 
+<!-- spec-sweep: fragment -->
 ```python
 @virtual
 event on_paint: EventHandler[PaintEventArgs]

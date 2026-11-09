@@ -694,32 +694,15 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Encode the string using the specified encoding and return as bytes.
-        /// Python: <c>str.encode(encoding='utf-8')</c>
+        /// Encode the string using the specified encoding and return as bytes. An unencodable
+        /// character raises <see cref="UnicodeEncodeError"/> under <c>errors="strict"</c>, becomes
+        /// <c>?</c> under <c>"replace"</c> and is dropped under <c>"ignore"</c>; any other handler name
+        /// raises <see cref="LookupError"/> when an error occurs (#2477).
+        /// Python: <c>str.encode(encoding='utf-8', errors='strict')</c>
         /// </summary>
-        public static Bytes Encode(this string s, string encoding = "utf-8")
+        public static Bytes Encode(this string s, string encoding = "utf-8", string errors = "strict")
         {
-#pragma warning disable CA1307
-            switch (encoding.ToLowerInvariant().Replace("-", "").Replace("_", ""))
-#pragma warning restore CA1307
-            {
-                case "utf8":
-                    return new Bytes(Encoding.UTF8.GetBytes(s));
-                case "ascii":
-                    return new Bytes(Encoding.ASCII.GetBytes(s));
-                case "utf16":
-                case "utf16le":
-                    return new Bytes(Encoding.Unicode.GetBytes(s));
-                case "utf16be":
-                    return new Bytes(Encoding.BigEndianUnicode.GetBytes(s));
-                case "utf32":
-                    return new Bytes(Encoding.UTF32.GetBytes(s));
-                case "latin1":
-                case "iso88591":
-                    return new Bytes(Encoding.GetEncoding("iso-8859-1").GetBytes(s));
-                default:
-                    throw new LookupError("unknown encoding: " + encoding);
-            }
+            return UnicodeCodec.Encode(s, encoding, errors);
         }
 
         // ----------------------------------------------------------------

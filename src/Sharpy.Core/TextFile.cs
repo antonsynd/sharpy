@@ -32,13 +32,12 @@ namespace Sharpy
             switch (mode)
             {
                 case "r":
+                    // Directory first: File.Exists is false for a directory, and python reports
+                    // IsADirectoryError there, not FileNotFoundError (#2124).
+                    EnsureNotDirectory(path);
                     if (!File.Exists(path))
                     {
                         throw new FileNotFoundError("No such file or directory: '" + path + "'");
-                    }
-                    if (Directory.Exists(path))
-                    {
-                        throw new IsADirectoryError("Is a directory: '" + path + "'");
                     }
                     _reader = new StreamReader(path, encoding);
                     break;
@@ -86,7 +85,7 @@ namespace Sharpy
             EnsureOpen();
             if (!IsReadMode)
             {
-                throw new IOError("not readable");
+                throw new OSError("not readable");
             }
         }
 
@@ -95,7 +94,7 @@ namespace Sharpy
             EnsureOpen();
             if (IsReadMode)
             {
-                throw new IOError("not writable");
+                throw new OSError("not writable");
             }
         }
 

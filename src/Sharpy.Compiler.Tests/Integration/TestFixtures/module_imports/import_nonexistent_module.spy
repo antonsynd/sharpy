@@ -1,4 +1,0 @@
-import nonexistent_module
-
-def main():
-    pass

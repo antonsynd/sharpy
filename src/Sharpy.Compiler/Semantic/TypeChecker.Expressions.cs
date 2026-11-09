@@ -984,8 +984,8 @@ internal partial class TypeChecker
                     && (IsAssignable(valueType, payloadType)
                         || IsAcceptedVerdict(ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, payloadType))))
                 {
-                    if (boundExisting is OptionalType wrapOpt)
-                        _semanticInfo.SetOptionalStoreWrap(walrus, wrapOpt);
+                    // The payload binding type is the walrus-wrap fact: the lowering pass derives
+                    // IrOptionalWalrusStore from it (P82 #2443).
                     bindingType = ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, payloadType) switch
                     {
                         StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,

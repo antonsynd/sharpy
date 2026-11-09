@@ -57,7 +57,7 @@ using System;
 
 ## Verification
 
-All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from the log path the wrapper prints (`dotnet-serialized: log -> <path>`) instead of re-running.
 
 ```bash
 # Verify generated C# compiles as 9.0

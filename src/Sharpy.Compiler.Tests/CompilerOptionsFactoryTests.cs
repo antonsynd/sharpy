@@ -107,6 +107,8 @@ public class CompilerOptionsFactoryTests
             SuppressedWarnings = mergedSuppressed,
             MaxErrors = 3,
             Incremental = true,
+            // The CLI's --incremental is the whole-build up-to-date check too (#2468).
+            UpToDateCheck = true,
             Features = FeatureFlags.None.Enable("defer")
         };
 
@@ -143,6 +145,7 @@ public class CompilerOptionsFactoryTests
             WarningsAsErrors = true,
             SuppressedWarnings = new HashSet<string>(config.SuppressedWarnings),
             Incremental = true,
+            UpToDateCheck = true,
             Features = FeatureFlags.None.Enable("matmul")
         };
 

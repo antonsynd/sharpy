@@ -169,6 +169,7 @@ As in Python (PEP 328), the imported names may be wrapped in parentheses. Only t
 span several lines and end with a trailing comma; comments may sit between the names, and `as`
 aliases work as usual. `sharpyc format` keeps the parentheses.
 
+<!-- spec-sweep: output -->
 ```python
 from math import (
     sqrt,

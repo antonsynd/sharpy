@@ -202,10 +202,7 @@ internal partial class RoslynEmitter
         if (_context.Ir.OptimizedComprehensions.TryGetValue(comprehension, out var optimized))
             return optimized;
 
-        return _context.Ir.Index.TryGetValue(comprehension, out var node)
-            && node is IrLoweredLoop loop
-            ? loop
-            : null;
+        return IrNodeFor<IrLoweredLoop>(comprehension);
     }
 
     /// <summary>
@@ -221,9 +218,7 @@ internal partial class RoslynEmitter
     /// <c>ComprehensionFusionPassTests</c>.
     /// </remarks>
     private IrLoweredGenerator? GetIrLoweredGenerator(Expression genExpr)
-        => _context.Ir.Index.TryGetValue(genExpr, out var node) && node is IrLoweredGenerator generator
-            ? generator
-            : null;
+        => IrNodeFor<IrLoweredGenerator>(genExpr);
 
     /// <summary>
     /// Builds the constructor capacity argument for a product-of-counts presized comprehension (E3
@@ -361,18 +356,12 @@ internal partial class RoslynEmitter
     {
         var tempName = GenerateTempVarName("comp");
 
-        // Determine K, V from the semantic type of the spread value (dict[K,V])
-        var spreadSemanticType = GetExpressionSemanticType(dictSpreadComp.Spread);
-        TypeSyntax kTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        TypeSyntax vTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-
-        if (spreadSemanticType is GenericType gDictType
-            && gDictType.Name == BuiltinNames.Dict
-            && gDictType.TypeArguments.Count >= 2)
-        {
-            kTypeSyntax = _typeMapper.MapSemanticType(gDictType.TypeArguments[0]);
-            vTypeSyntax = _typeMapper.MapSemanticType(gDictType.TypeArguments[1]);
-        }
+        // Determine K, V from the semantic type of the spread value (dict[K,V]); an Unknown argument
+        // maps to object on its own.
+        var spreadArguments = _typeMapper.MapBuiltinTypeArguments(
+            GetExpressionSemanticType(dictSpreadComp.Spread), BuiltinNames.Dict, arity: 2, requireKnownArguments: false);
+        var kTypeSyntax = spreadArguments?[0] ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        var vTypeSyntax = spreadArguments?[1] ?? PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, kTypeSyntax, vTypeSyntax);
 

@@ -90,6 +90,7 @@ same block, an enclosing block, the enclosing function, or the module — is a n
 shadows the old one for the rest of its block; it never assigns the old one. `let` is only allowed
 inside a function body (see [Module-Level Declaration Rules](#module-level-declaration-rules)).
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     let count = 0                  # Inferred as int
@@ -104,6 +105,7 @@ def main() -> None:
 under a name that is already in use; bare `=` of that name inside the block would instead assign
 the outer variable:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     let x = 5
@@ -122,6 +124,7 @@ one), exactly as before `let` existed. Stage 2 (#1974) makes `let` required for 
 makes bare `=` write-through only. The keywordless forms are shown below because Stage 1 code
 still uses them:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     count: int = 0         # Annotated declaration (Stage 1)
@@ -134,6 +137,7 @@ def main() -> None:
 **`auto` (deprecated; use `let`).** `x: auto = e` is the Stage 1 spelling of `let x = e`; `auto`
 is retired in Stage 2 (#1974):
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     count: auto = 0          # Deprecated: write 'let count = 0'
@@ -220,6 +224,7 @@ timestamp: int = get_current_time()
 Inside functions (including `main()`), `let` declares with type inference (and, in Stage 1, so
 does bare `=` on a new name):
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     let x = 42              # ✅ OK - inferred as int
@@ -272,6 +277,7 @@ Sharpy has two declaration keywords: `let` for a fresh, mutable, block-scoped lo
 an assign-once binding. There is no mutability axis — `var`, `val` and `let mut` are not Sharpy
 syntax:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     let x = 5              # Fresh binding, type inferred
@@ -293,6 +299,7 @@ def main() -> None:
 Constants are declared with `const` and are assign-once. The initializer may be any expression: a
 compile-time constant lowers to C# `const`, anything else to `static readonly`:
 
+<!-- spec-sweep: output -->
 ```python
 # Module-level constants
 const PI: float = 3.14159

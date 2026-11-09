@@ -374,7 +374,7 @@ namespace Sharpy
             {
                 if (shape[i] < 0)
                 {
-                    throw new ArgumentException($"shape dimension {i} is negative: {shape[i]}", nameof(shape));
+                    throw new ValueError("negative dimensions are not allowed");
                 }
 
                 size = checked(size * shape[i]);

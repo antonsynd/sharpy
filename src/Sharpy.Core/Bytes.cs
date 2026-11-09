@@ -172,30 +172,16 @@ namespace Sharpy
             return result.ToString();
         }
 
-        /// <summary>Decode the bytes to a string using the specified encoding.</summary>
-        public string Decode(string encoding = "utf-8")
+        /// <summary>
+        /// Decode the bytes to a string using the specified encoding. An undecodable byte run raises
+        /// <see cref="UnicodeDecodeError"/> under <c>errors="strict"</c>, becomes U+FFFD under
+        /// <c>"replace"</c> and is dropped under <c>"ignore"</c>; any other handler name raises
+        /// <see cref="LookupError"/> when an error occurs (#2477).
+        /// Python: <c>bytes.decode(encoding='utf-8', errors='strict')</c>
+        /// </summary>
+        public string Decode(string encoding = "utf-8", string errors = "strict")
         {
-#pragma warning disable CA1307
-            switch (encoding.ToLowerInvariant().Replace("-", ""))
-#pragma warning restore CA1307
-            {
-                case "utf8":
-                    return Encoding.UTF8.GetString(_data);
-                case "ascii":
-                    return Encoding.ASCII.GetString(_data);
-                case "latin1":
-                case "iso88591":
-                    return Encoding.GetEncoding("iso-8859-1").GetString(_data);
-                case "utf16":
-                case "utf16le":
-                    return Encoding.Unicode.GetString(_data);
-                case "utf16be":
-                    return Encoding.BigEndianUnicode.GetString(_data);
-                case "utf32":
-                    return Encoding.UTF32.GetString(_data);
-                default:
-                    throw new ValueError("unknown encoding: " + encoding);
-            }
+            return UnicodeCodec.Decode(this, _data, encoding, errors);
         }
 
         #region ISized

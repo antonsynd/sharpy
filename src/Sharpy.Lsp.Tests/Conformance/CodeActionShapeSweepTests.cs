@@ -86,25 +86,27 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// source is a test error (<see cref="SweepText.UniformBreak"/>), not a verdict.</item>
 /// </list></para>
 ///
-/// <para><b>Sweeps and pins.</b> One fact per twin sweeps every stem of the corpus (<see cref="SweepCorpus"/>, shared with the
-/// formatting route sweep) and aggregates the FAILING STEMS per pin key (action, twin, bucket, cite — the cite is the
-/// cell's cause by contract clause, <see cref="CiteOf"/>). <c>Conformance/code-action-shape-allowlist.txt</c> pins each key
-/// as <c>action twin bucket fullCount fullDigest regularCount regularDigest # #issue reason</c>, the digest being the first
-/// 16 hex characters of SHA-256 over the sorted, <c>\n</c>-joined stems (the <c>KnownLimitPin</c> precedent of the formatting
-/// sweep: a long-lived red class is a pinned count, not a per-stem row). A key's count AND digest must equal its pin
-/// (<see cref="ComparePins"/>): a new failing stem, a fixed one, or a fix swapped for a regression is red; an unpinned
-/// failing key is red; a pinned key that holds everywhere is red until its row is deleted (drain on fix). On a mismatch the
-/// actual stem lists go to <c>.claude/tmp/code-action-sweep/</c> (the path is in the message) and up to 20 stems inline.</para>
+/// <para><b>Sweeps and the stem set.</b> One fact per twin sweeps every stem of the corpus (<see cref="SweepCorpus"/>, shared
+/// with the formatting route sweep) and aggregates the FAILING STEMS per key (action, twin, bucket, cite — the cite is the
+/// cell's cause by contract clause, <see cref="CiteOf"/>). The failing stems regular mode judges are a committed SET
+/// (#2512, plan-88736c D3(ii)): <c>Conformance/code-action-shape-stems.txt</c> holds one <c>action twin bucket stem # #issue</c>
+/// row per failing (key, stem), and <c>Conformance/code-action-shape-allowlist.txt</c> one <c>action twin bucket # #issue
+/// reason</c> cite row per key (<see cref="ReadPins"/>: a key with stems needs its cite row, a cite row needs stems). The
+/// run's stems must equal the committed ones (<see cref="CompareStems"/>): a new failing stem is red naming it, a committed
+/// stem that holds now is red naming it, and a key whose every stem holds is red naming the key — drain its rows and its cite
+/// row. The actual rows go to <c>.claude/tmp/code-action-sweep/&lt;twin&gt;-actual-stems.txt</c> (the path is in the message).
+/// Until #2512 each key was a pinned (count, digest) pair for FULL and regular mode; a new fixture moved a count.</para>
 ///
-/// <para><b>Budget and the two pairs.</b> Regular mode runs <c>identity</c> on every stem and the other three twins on the
+/// <para><b>Budget and the two modes.</b> Regular mode runs <c>identity</c> on every stem and the other three twins on the
 /// stems whose <see cref="SweepCorpus.StableBucket"/> under <see cref="TwinStride"/> is 0, and judges <c>diagnostics</c> (one
 /// extra semantic analysis per cell) on the cells whose bucket under <see cref="DiagnosticsStride"/> is 0. The sample is
-/// deterministic, so each pin carries a second pair: the failing stems regular mode judges. A FULL run records for every
-/// failing cell whether regular mode judges it (its stem runs in regular mode, and a <c>diagnostics</c> cell is sampled), so
-/// one FULL run measures both pairs and checks both; regular mode checks the regular pair, and is red on a regression in a
-/// sampled stem. <c>SHARPY_CODEACTION_SWEEP_FULL=1</c> runs everything and writes every failing cell and the measured pin
-/// rows to <c>.claude/tmp/code-action-sweep/</c> (how the allowlist is populated). Stems run in parallel within a twin
-/// (<c>SHARPY_CODEACTION_SWEEP_DOP</c>, default min(4, processors)); the driver retains no document after a twin.</para>
+/// deterministic, so the set is what regular mode judges. A FULL run (<c>SHARPY_CODEACTION_SWEEP_FULL=1</c>) runs everything,
+/// records for every failing cell whether regular mode judges it (its stem runs in regular mode, and a <c>diagnostics</c> cell
+/// is sampled), and asserts that its REGULAR PROJECTION equals the committed set — the P54 mode-independence control (a
+/// verdict must not depend on what else the shared instance analysed). FULL ∖ regular is a report, never a pin: FULL mode
+/// writes every failing cell and the FULL-only (key, stem) rows to <c>.claude/tmp/code-action-sweep/</c>. Stems run in
+/// parallel within a twin (<c>SHARPY_CODEACTION_SWEEP_DOP</c>, default min(4, processors)); the driver retains no document
+/// after a twin.</para>
 /// </summary>
 [TestCaseOrderer("Sharpy.Lsp.Tests.Conformance.CodeActionShapeSweepOrderer", "Sharpy.Lsp.Tests")]
 public sealed class CodeActionShapeSweepTests : IDisposable
@@ -1773,6 +1775,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     // ================================================================
 
     private const string AllowlistFileName = "code-action-shape-allowlist.txt";
+    private const string StemsFileName = "code-action-shape-stems.txt";
     private const string FullModeVariable = "SHARPY_CODEACTION_SWEEP_FULL";
 
     /// <summary>Regular mode runs the <c>crlf</c>/<c>cr</c>/<c>comment</c> twins on the stems whose <see cref="SweepCorpus.StableBucket"/> under this stride is 0.</summary>
@@ -1799,8 +1802,8 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     /// spelling of a builtin parameter type and SPY0220 on the IFormattable fixtures moved with what the instance
     /// analysed before). P54 froze the master registries and gave every def its own symbol, so a verdict is a function
     /// of its document alone on a shared instance too: independent of the parallelism, of the order stems run in and
-    /// of which stems a mode samples. The pins in code-action-shape-allowlist.txt are byte-identical (count and
-    /// digest) under the shared instance in regular and FULL mode — this sweep is the direction control for P54.
+    /// of which stems a mode samples. The committed stem set is what a FULL run's regular projection measures under the
+    /// shared instance — this sweep is the direction control for P54.
     /// The handler's analyses and the <c>diagnostics</c> oracle share the instance in the fixed request order.
     /// </summary>
     private static (CompilerApi Api, LspCodeActionDriver Driver) Isolated()
@@ -1890,9 +1893,9 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     private static readonly ConcurrentDictionary<string, SCG.Dictionary<string, SCG.HashSet<string>>> s_identityOffers = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Sweeps every stem of <paramref name="twin"/> that runs in this mode, aggregates the failing stems per pin key, and
-    /// compares them with the pinned (count, digest) pairs — the FULL pair and the regular pair in FULL mode, the regular
-    /// pair in regular mode (<see cref="ComparePins"/>).
+    /// Sweeps every stem of <paramref name="twin"/> that runs in this mode, aggregates the failing stems per key, and
+    /// compares the stems regular mode judges (in FULL mode: the run's regular projection) with the committed set
+    /// (<see cref="CompareStems"/>).
     /// </summary>
     private void SweepTwin(string twin)
     {
@@ -1941,93 +1944,69 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         foreach (var (key, set) in actualFull)
             s_failingStems[(twin, key)] = set.Count;
 
-        var rows = Allowlist.Value.Where(r => r.Twin == twin).ToList();
-        var problems = new SCG.List<string>();
-        var mismatched = new SCG.Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+        var committed = Pins.Value.Stems.Where(r => r.Twin == twin)
+            .GroupBy(r => new PinKey(r.Action, r.Bucket, r.Cite))
+            .ToDictionary(g => g.Key, g => new SortedSet<string>(g.Select(r => r.Stem), StringComparer.Ordinal));
         var dumpDir = Path.Combine(FixtureRoots.RepositoryRoot, ".claude", "tmp", "code-action-sweep");
         Directory.CreateDirectory(dumpDir);
+        var actualPath = Path.Combine(dumpDir, $"{twin}-actual-stems.txt");
+        File.WriteAllLines(actualPath, StemRows(twin, actualRegular));
         if (full)
         {
-            problems.AddRange(ComparePins(twin, "full", actualFull, rows, r => (r.FullCount, r.FullDigest), mismatched));
             File.WriteAllLines(Path.Combine(dumpDir, $"{twin}-cells.txt"), cellLines.OrderBy(l => l, StringComparer.Ordinal));
-            File.WriteAllLines(Path.Combine(dumpDir, $"{twin}-actual-pins.txt"), ActualPinRows(twin, actualFull, actualRegular, rows));
+            File.WriteAllLines(Path.Combine(dumpDir, $"{twin}-full-only.txt"), FullOnlyRows(twin, actualFull, actualRegular));
         }
 
-        problems.AddRange(ComparePins(twin, "regular", actualRegular, rows, r => (r.RegularCount, r.RegularDigest), mismatched));
-        var stemFile = Path.Combine(dumpDir, $"{twin}-{(full ? "full" : "regular")}-mismatched-stems.txt");
-        File.WriteAllLines(stemFile, mismatched.SelectMany(m => new[] { $"## {m.Key} ({m.Value.Count} failing stems)" }.Concat(m.Value)));
-
+        var problems = CompareStems(twin, actualRegular, committed);
         _output.WriteLine($"CODEACTION-TWIN {twin} mode={(full ? "full" : "regular")} stems={stems.Length} requests={requests} "
-            + $"seconds={clock.Elapsed.TotalSeconds:F1} keys={actualFull.Count} problems={problems.Count}");
+            + $"seconds={clock.Elapsed.TotalSeconds:F1} keys={actualFull.Count} regular-keys={actualRegular.Count} problems={problems.Count}");
         if (problems.Count > 0)
         {
-            Assert.Fail($"{twin} twin: every code action must keep the source shape; the failing stems must equal the pins in "
-                + $"Conformance/{AllowlistFileName}. Actual stem lists of the mismatched keys: {stemFile}"
-                + (full ? $"; actual pin rows: {Path.Combine(dumpDir, $"{twin}-actual-pins.txt")}" : "")
-                + "\n  " + string.Join("\n  ", problems));
+            Assert.Fail($"{twin} twin: every code action must keep the source shape; the failing stems regular mode judges"
+                + (full ? " (this FULL run's regular projection)" : "") + $" must equal the rows of Conformance/{StemsFileName}. "
+                + $"Actual rows: {actualPath}. {problems.Count} problem(s):\n  " + string.Join("\n  ", problems.Take(60))
+                + (problems.Count > 60 ? "\n  …" : ""));
         }
     }
 
     /// <summary>
-    /// The pin ratchet of one twin and one pair (FULL or regular): every key with failing stems must be pinned, and its
-    /// (count, digest) must equal the pin; a pinned key whose stems now all pass reads (0, "-") and mismatches — drain:
-    /// delete the row (FULL) or zero its regular pair. A mismatched key's actual stems go to <paramref name="mismatched"/>.
+    /// The set diff of one twin: per key, every failing stem without a row (extra) and every committed stem that holds now
+    /// (missing); a committed key none of whose stems fails any more is named once — the drain signal.
     /// </summary>
-    internal static SCG.List<string> ComparePins(string twin, string pair, SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> actual,
-        SCG.IReadOnlyList<Row> rows, Func<Row, (int Count, string Digest)> expectedOf, SCG.IDictionary<string, SortedSet<string>> mismatched)
+    internal static SCG.List<string> CompareStems(string twin, SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> actual,
+        SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> committed)
     {
         var problems = new SCG.List<string>();
-        var pinned = rows.ToDictionary(r => new PinKey(r.Action, r.Bucket, r.Cite), r => expectedOf(r));
-        foreach (var key in actual.Keys.Union(pinned.Keys).OrderBy(k => k.ToString(), StringComparer.Ordinal))
+        foreach (var key in actual.Keys.Union(committed.Keys).OrderBy(k => k.ToString(), StringComparer.Ordinal))
         {
-            var stems = actual.TryGetValue(key, out var set) ? set : new SortedSet<string>(StringComparer.Ordinal);
-            var (count, digest) = (stems.Count, Digest(stems));
-            if (!pinned.TryGetValue(key, out var expected))
+            var failing = actual.TryGetValue(key, out var a) ? a : new SortedSet<string>(StringComparer.Ordinal);
+            var rows = committed.TryGetValue(key, out var c) ? c : new SortedSet<string>(StringComparer.Ordinal);
+            var k = $"{key.Action} {twin} {key.Bucket} {key.Cite}";
+            foreach (var stem in failing.Where(stem => !rows.Contains(stem)))
+                problems.Add($"extra: {k}: {stem} fails and has no row — add `{key.Action} {twin} {key.Bucket} {stem} # {key.Cite}`" + (rows.Count == 0 ? " and the key's cite row" : ""));
+            if (failing.Count == 0 && rows.Count > 0)
             {
-                if (count == 0)
-                    continue;
-                problems.Add($"{pair}: {twin} {key} fails on {count} stem(s) and has no pin row (digest {digest}): {Sample(stems)}");
-            }
-            else if (expected.Count != count || !string.Equals(expected.Digest, digest, StringComparison.Ordinal))
-            {
-                problems.Add($"{pair}: {twin} {key} pinned count={expected.Count} digest={expected.Digest}, actual count={count} digest={digest}"
-                    + (count == 0 ? " — every stem holds now: drain the pin" : $": {Sample(stems)}"));
-            }
-            else
-            {
+                problems.Add($"drain: every stem of {k} holds now: drain its rows and cite row ({rows.Count} stem(s): {string.Join(" ", rows.Take(5))}{(rows.Count > 5 ? " …" : "")})");
                 continue;
             }
 
-            mismatched[$"{pair} {twin} {key}"] = stems;
+            foreach (var stem in rows.Where(stem => !failing.Contains(stem)))
+                problems.Add($"missing: {k}: {stem} holds now — delete its row `{key.Action} {twin} {key.Bucket} {stem} # {key.Cite}`");
         }
 
         return problems;
-
-        static string Sample(SortedSet<string> stems) => string.Join(" ", stems.Take(20)) + (stems.Count > 20 ? " …" : "");
     }
 
-    /// <summary>First 16 hex characters of SHA-256 over the sorted, <c>\n</c>-joined stems; <c>-</c> for none.</summary>
-    internal static string Digest(SCG.IEnumerable<string> stems)
-    {
-        var sorted = stems.OrderBy(s => s, StringComparer.Ordinal).ToArray();
-        if (sorted.Length == 0)
-            return "-";
-        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join("\n", sorted)));
-        return Convert.ToHexString(hash)[..16].ToLowerInvariant();
-    }
+    /// <summary>The <c>action twin bucket stem # cite</c> rows of a stem set.</summary>
+    private static SCG.IEnumerable<string> StemRows(string twin, SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> stems)
+        => stems.OrderBy(p => p.Key.ToString(), StringComparer.Ordinal)
+            .SelectMany(p => p.Value.Select(stem => $"{p.Key.Action} {twin} {p.Key.Bucket} {stem} # {p.Key.Cite}"));
 
-    /// <summary>The allowlist rows the FULL run measured for <paramref name="twin"/> (keeping an existing row's reason).</summary>
-    private static SCG.IEnumerable<string> ActualPinRows(string twin, SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> full,
-        SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> regular, SCG.IReadOnlyList<Row> rows)
-    {
-        var reasons = rows.ToDictionary(r => new PinKey(r.Action, r.Bucket, r.Cite), r => r.Reason);
-        foreach (var (key, stems) in full.OrderBy(p => p.Key.ToString(), StringComparer.Ordinal))
-        {
-            var sampled = regular.TryGetValue(key, out var r) ? r : new SortedSet<string>(StringComparer.Ordinal);
-            var reason = reasons.TryGetValue(key, out var kept) ? kept : "TODO reason";
-            yield return $"{key.Action} {twin} {key.Bucket} {stems.Count} {Digest(stems)} {sampled.Count} {Digest(sampled)} # {key.Cite} {reason}";
-        }
-    }
+    /// <summary>The FULL ∖ regular report of a FULL run: the failing (key, stem) pairs regular mode does not judge.</summary>
+    private static SCG.IEnumerable<string> FullOnlyRows(string twin, SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> full,
+        SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> regular)
+        => StemRows(twin, full.ToDictionary(p => p.Key, p => new SortedSet<string>(
+            p.Value.Where(stem => !(regular.TryGetValue(p.Key, out var r) && r.Contains(stem))), StringComparer.Ordinal)));
 
     /// <summary>The identity twin's offered action set per request key for <paramref name="stem"/>.</summary>
     private static SCG.Dictionary<string, SCG.HashSet<string>> IdentityOffers(string stem)
@@ -2166,132 +2145,178 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     // Allowlist (pins)
     // ================================================================
 
-    /// <summary>One pin: the failing stems of (action, twin, bucket, cite), as a count and a digest, for FULL and regular mode.</summary>
-    internal sealed record Row(string Action, string Twin, string Bucket, int FullCount, string FullDigest, int RegularCount, string RegularDigest, string Cite, string Reason);
+    /// <summary>A cite row: the key (action, twin, bucket, cite) and why its stems fail.</summary>
+    internal sealed record CiteRow(string Action, string Twin, string Bucket, string Cite, string Reason);
 
-    private static readonly Lazy<IReadOnlyList<Row>> Allowlist = new(ReadAllowlist);
+    /// <summary>A stem row: one failing stem of a key, as regular mode judges it.</summary>
+    internal sealed record StemRow(string Action, string Twin, string Bucket, string Stem, string Cite);
 
-    private static readonly System.Text.RegularExpressions.Regex DigestShape = new("^[0-9a-f]{16}$");
+    /// <summary>The committed set: the cite rows and the stem rows, total against each other.</summary>
+    internal sealed record PinSet(IReadOnlyList<CiteRow> Cites, IReadOnlyList<StemRow> Stems);
 
-    /// <summary>
-    /// <c>action twin bucket fullCount fullDigest regularCount regularDigest # #issue reason</c>. Refused: an unknown action,
-    /// twin or bucket; a bucket the action's shape class never runs; an <c>offer</c> pin off the offer twins; a cite
-    /// outside <see cref="Cites"/> or none; a malformed count or digest (16 lowercase hex characters, or <c>-</c> exactly
-    /// when the count is 0); a FULL count of 0 (a drained pin is deleted); a regular count above the FULL count; a
-    /// duplicate (action, twin, bucket, cite).
-    /// </summary>
-    internal static IReadOnlyList<Row> ParseAllowlist(IEnumerable<string> lines)
+    private static readonly Lazy<PinSet> Pins = new(ReadPins);
+
+    private static string KeyOf(string action, string twin, string bucket, string cite) => $"{action} {twin} {bucket} {cite}";
+
+    /// <summary>Splits <c>fields # #issue reason</c>, refusing an unknown action, twin or bucket, a bucket the action's shape never judges, an <c>offer</c> key off the offer twins, and a cite outside <see cref="Cites"/>.</summary>
+    private static (string[] Fields, string Cite, string Reason) SplitRow(string file, string line, int arity, string grammar)
     {
-        var rows = new SCG.List<Row>();
+        var split = line.IndexOf(" #", StringComparison.Ordinal);
+        var fields = (split < 0 ? line : line[..split]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var tail = split < 0 ? "" : line[(split + 2)..].Trim();
+        var citeMatch = System.Text.RegularExpressions.Regex.Match(tail, @"^(#\d+)\b\s*(.*)$");
+        string Refuse(string why) => $"Conformance/{file}: '{line}' — {why}";
+        if (fields.Length == 7)
+        {
+            throw new InvalidOperationException(Refuse("a count/digest row (fullCount fullDigest regularCount regularDigest) is refused since "
+                + $"#2512 (plan-88736c D3(ii)): a key's stems are rows of Conformance/{StemsFileName}, and FULL-only keys are records on their tracker."));
+        }
+
+        var spec = fields.Length == arity ? Actions.FirstOrDefault(a => a.Name == fields[0]) : null;
+        if (fields.Length != arity || spec is null || !Twins.Contains(fields[1]) || !Buckets.Contains(fields[2]))
+        {
+            throw new InvalidOperationException(Refuse($"must read `{grammar}` with action in {{{string.Join(", ", Actions.Select(a => a.Name))}}}, "
+                + $"twin in {{{string.Join(", ", Twins)}}} and bucket in {{{string.Join(", ", Buckets)}}}."));
+        }
+
+        if (!BucketsOf[spec.Shape].Contains(fields[2]))
+            throw new InvalidOperationException(Refuse($"{spec.Name} is a {spec.Shape} action, which {fields[2]} never judges."));
+        if (fields[2] == Offer && !OfferTwins.Contains(fields[1]))
+            throw new InvalidOperationException(Refuse($"offer is judged on {string.Join("/", OfferTwins)} only."));
+        if (!citeMatch.Success || !Cites.Contains(citeMatch.Groups[1].Value))
+            throw new InvalidOperationException(Refuse($"must cite one of {string.Join(", ", Cites)} first (# #N reason)."));
+        return (fields, citeMatch.Groups[1].Value, citeMatch.Groups[2].Value);
+    }
+
+    /// <summary><c>action twin bucket # #issue reason</c>, one per key; refused as <see cref="SplitRow"/> says, and a duplicate key.</summary>
+    internal static IReadOnlyList<CiteRow> ParseAllowlist(IEnumerable<string> lines)
+    {
+        var rows = new SCG.List<CiteRow>();
         var keys = new SCG.HashSet<string>(StringComparer.Ordinal);
         foreach (var raw in lines)
         {
             var line = raw.Trim();
             if (line.Length == 0 || line.StartsWith('#'))
                 continue;
-            var split = line.IndexOf(" #", StringComparison.Ordinal);
-            var fields = (split < 0 ? line : line[..split]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var tail = split < 0 ? "" : line[(split + 2)..].Trim();
-            var citeMatch = System.Text.RegularExpressions.Regex.Match(tail, @"^(#\d+)\b\s*(.*)$");
-            string Refuse(string why) => $"Conformance/{AllowlistFileName}: '{line}' — {why}";
-            var spec = fields.Length == 7 ? Actions.FirstOrDefault(a => a.Name == fields[0]) : null;
-            if (fields.Length != 7 || spec is null || !Twins.Contains(fields[1]) || !Buckets.Contains(fields[2]))
-            {
-                throw new InvalidOperationException(Refuse("must read `action twin bucket fullCount fullDigest regularCount regularDigest # #issue reason` "
-                    + $"with action in {{{string.Join(", ", Actions.Select(a => a.Name))}}}, twin in {{{string.Join(", ", Twins)}}} "
-                    + $"and bucket in {{{string.Join(", ", Buckets)}}}."));
-            }
-
-            if (!BucketsOf[spec.Shape].Contains(fields[2]))
-                throw new InvalidOperationException(Refuse($"{spec.Name} is a {spec.Shape} action, which {fields[2]} never judges."));
-            if (fields[2] == Offer && !OfferTwins.Contains(fields[1]))
-                throw new InvalidOperationException(Refuse($"offer is judged on {string.Join("/", OfferTwins)} only."));
-            if (!citeMatch.Success || !Cites.Contains(citeMatch.Groups[1].Value))
-                throw new InvalidOperationException(Refuse($"must cite one of {string.Join(", ", Cites)} first (# #N reason)."));
-            if (!int.TryParse(fields[3], out var fullCount) || !int.TryParse(fields[5], out var regularCount) || fullCount < 0 || regularCount < 0)
-                throw new InvalidOperationException(Refuse("counts must be non-negative integers."));
-            foreach (var (count, digest) in new[] { (fullCount, fields[4]), (regularCount, fields[6]) })
-            {
-                if (count == 0 ? digest != "-" : !DigestShape.IsMatch(digest))
-                    throw new InvalidOperationException(Refuse($"digest '{digest}' is malformed for count {count} (16 lowercase hex, or - for 0)."));
-            }
-
-            if (fullCount == 0)
-                throw new InvalidOperationException(Refuse("a FULL count of 0 is a drained pin: delete the row."));
-            if (regularCount > fullCount)
-                throw new InvalidOperationException(Refuse("the regular count cannot exceed the FULL count (regular mode judges a subset)."));
-            var cite = citeMatch.Groups[1].Value;
-            if (!keys.Add($"{fields[0]} {fields[1]} {fields[2]} {cite}"))
-                throw new InvalidOperationException(Refuse("is listed twice."));
-            rows.Add(new Row(fields[0], fields[1], fields[2], fullCount, fields[4], regularCount, fields[6], cite, citeMatch.Groups[2].Value));
+            var (fields, cite, reason) = SplitRow(AllowlistFileName, line, 3, "action twin bucket # #issue reason");
+            if (!keys.Add(KeyOf(fields[0], fields[1], fields[2], cite)))
+                throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' — is listed twice.");
+            rows.Add(new CiteRow(fields[0], fields[1], fields[2], cite, reason));
         }
 
         return rows;
     }
 
-    private static IReadOnlyList<Row> ReadAllowlist()
+    /// <summary><c>action twin bucket stem # #issue</c>, one per failing (key, stem); refused as <see cref="SplitRow"/> says, and a duplicate row.</summary>
+    internal static IReadOnlyList<StemRow> ParseStems(IEnumerable<string> lines)
     {
-        var path = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Lsp.Tests", "Conformance", AllowlistFileName);
-        if (!File.Exists(path))
-            throw new InvalidOperationException($"Conformance/{AllowlistFileName} is missing. Its presence is what arms the ratchet.");
-        return ParseAllowlist(File.ReadAllLines(path));
+        var rows = new SCG.List<StemRow>();
+        var keys = new SCG.HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+            var (fields, cite, _) = SplitRow(StemsFileName, line, 4, "action twin bucket stem # #issue");
+            if (!keys.Add(KeyOf(fields[0], fields[1], fields[2], cite) + " " + fields[3]))
+                throw new InvalidOperationException($"Conformance/{StemsFileName}: '{line}' — is listed twice.");
+            rows.Add(new StemRow(fields[0], fields[1], fields[2], fields[3], cite));
+        }
+
+        return rows;
     }
 
-    private static readonly string D1 = Digest(new[] { "a/b" });
+    /// <summary>Totality of the two files: a key with stems needs its cite row; a cite row needs stems (no stemless cite row).</summary>
+    internal static PinSet Total(IReadOnlyList<CiteRow> cites, IReadOnlyList<StemRow> stems)
+    {
+        var citeKeys = cites.Select(r => KeyOf(r.Action, r.Twin, r.Bucket, r.Cite)).ToHashSet(StringComparer.Ordinal);
+        var stemKeys = stems.Select(r => KeyOf(r.Action, r.Twin, r.Bucket, r.Cite)).ToHashSet(StringComparer.Ordinal);
+        foreach (var key in stemKeys.Where(k => !citeKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal))
+            throw new InvalidOperationException($"key {key} has stems but no cite row: add `{key.Insert(key.LastIndexOf(' '), " #")} reason` to Conformance/{AllowlistFileName}.");
+        foreach (var key in citeKeys.Where(k => !stemKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException($"Conformance/{AllowlistFileName}: the cite row of {key} has no stems in Conformance/{StemsFileName}: "
+                + "a stemless cite row is refused — a drained key loses its cite row; a FULL-only key is a record on its tracker.");
+        }
+
+        return new PinSet(cites, stems);
+    }
+
+    private static PinSet ReadPins()
+    {
+        string[] Read(string file)
+        {
+            var path = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Lsp.Tests", "Conformance", file);
+            if (!File.Exists(path))
+                throw new InvalidOperationException($"Conformance/{file} is missing. Its presence is what arms the set.");
+            return File.ReadAllLines(path);
+        }
+
+        return Total(ParseAllowlist(Read(AllowlistFileName)), ParseStems(Read(StemsFileName)));
+    }
 
     [Fact]
     public void Allowlist_Grammar_RefusesMalformedRows()
     {
-        ParseAllowlist(new[] { $"wrap-try identity line 1 {D1} 1 {D1} # #2232 nested body flattened" }).Should().ContainSingle()
-            .Which.Should().Be(new Row("wrap-try", Identity, Line, 1, D1, 1, D1, ShapeIssue, "nested body flattened"));
-        ParseAllowlist(new[] { $"wrap-try identity line 1 {D1} 0 - # #2232" }).Should().ContainSingle();
+        ParseAllowlist(new[] { "wrap-try identity line # #2232 nested body flattened" }).Should().ContainSingle()
+            .Which.Should().Be(new CiteRow("wrap-try", Identity, Line, ShapeIssue, "nested body flattened"));
+        ParseStems(new[] { "wrap-try identity line a/b # #2232" }).Should().ContainSingle()
+            .Which.Should().Be(new StemRow("wrap-try", Identity, Line, "a/b", ShapeIssue));
         foreach (var bad in new[]
                  {
-                     $"wrap-try identity line 1 {D1} 1 {D1}",                   // no cite
-                     $"wrap-try identity line 1 {D1} 1 {D1} # no issue",        // cite without #N
-                     $"wrap-try identity line 1 {D1} 1 {D1} # #1234",           // a cite outside the three
-                     $"wrap-try wide line 1 {D1} 1 {D1} # #2232",               // unknown twin
-                     $"frobnicate identity line 1 {D1} 1 {D1} # #2232",         // unknown action
-                     $"wrap-try identity depth 1 {D1} 1 {D1} # #2232",          // unknown bucket
-                     $"rename identity line 1 {D1} 1 {D1} # #2232",             // Rewrite never judges line
-                     $"wrap-try identity offer 1 {D1} 1 {D1} # #2232",          // offer off the offer twins
-                     $"wrap-try identity line 1 {D1[..15]} 1 {D1} # #2232",     // digest too short
-                     $"wrap-try identity line 1 {D1.ToUpperInvariant()} 1 {D1} # #2232", // digest not lowercase
-                     $"wrap-try identity line 1 - 1 {D1} # #2232",              // - with a non-zero count
-                     $"wrap-try identity line 0 - 0 - # #2232",                 // drained pin
-                     $"wrap-try identity line 1 {D1} 2 {D1} # #2232",           // regular above FULL
-                     $"wrap-try identity line x {D1} 1 {D1} # #2232",           // count not a number
+                     "wrap-try identity line",                     // no cite
+                     "wrap-try identity line # no issue",          // cite without #N
+                     "wrap-try identity line # #1234",             // a cite outside the three
+                     "wrap-try wide line # #2232",                 // unknown twin
+                     "frobnicate identity line # #2232",           // unknown action
+                     "wrap-try identity depth # #2232",            // unknown bucket
+                     "rename identity line # #2232",               // Rewrite never judges line
+                     "wrap-try identity offer # #2232",            // offer off the offer twins
+                     "wrap-try identity line a/b # #2232",         // a stem in a cite row
                  })
         {
             FluentActions.Invoking(() => ParseAllowlist(new[] { bad })).Should().Throw<InvalidOperationException>(bad);
         }
 
-        FluentActions.Invoking(() => ParseAllowlist(new[] { $"wrap-try cr line 1 {D1} 1 {D1} # #2232", $"wrap-try cr line 1 {D1} 1 {D1} # #2232 again" }))
+        FluentActions.Invoking(() => ParseAllowlist(new[] { "wrap-try identity line 1 0123456789abcdef 1 0123456789abcdef # #2232 r" }))
+            .Should().Throw<InvalidOperationException>().WithMessage("*count/digest row*");
+        FluentActions.Invoking(() => ParseStems(new[] { "wrap-try identity line 1 0123456789abcdef 1 0123456789abcdef # #2232" }))
+            .Should().Throw<InvalidOperationException>().WithMessage("*count/digest row*");
+        FluentActions.Invoking(() => ParseStems(new[] { "wrap-try identity line # #2232" })).Should().Throw<InvalidOperationException>();
+        FluentActions.Invoking(() => ParseAllowlist(new[] { "wrap-try cr line # #2232", "wrap-try cr line # #2232 again" }))
+            .Should().Throw<InvalidOperationException>().WithMessage("*twice*");
+        FluentActions.Invoking(() => ParseStems(new[] { "wrap-try cr line a/b # #2232", "wrap-try cr line a/b # #2232" }))
             .Should().Throw<InvalidOperationException>().WithMessage("*twice*");
     }
 
-    /// <summary>The pin ratchet: a matching pin holds; an unpinned key, a changed count, a swapped stem (same count) and a drained key all fail.</summary>
+    /// <summary>Totality: stems need their key's cite row; a cite row needs stems.</summary>
     [Fact]
-    public void ComparePins_CountAndDigestMustBothMatch()
+    public void Pins_Totality_RefusesStemsWithoutCiteAndStemlessCite()
+    {
+        var cite = ParseAllowlist(new[] { "wrap-try identity line # #2232 r" });
+        var stems = ParseStems(new[] { "wrap-try identity line a/b # #2232" });
+        Total(cite, stems).Stems.Should().ContainSingle();
+        FluentActions.Invoking(() => Total(Array.Empty<CiteRow>(), stems)).Should().Throw<InvalidOperationException>()
+            .WithMessage("key wrap-try identity line #2232 has stems but no cite row*");
+        FluentActions.Invoking(() => Total(cite, Array.Empty<StemRow>())).Should().Throw<InvalidOperationException>()
+            .WithMessage("*stemless cite row is refused*");
+    }
+
+    /// <summary>The set diff: equal holds; an unlisted failing stem, a committed stem that holds, and a key that holds everywhere are each named.</summary>
+    [Fact]
+    public void CompareStems_NamesEveryDifference()
     {
         var key = new PinKey("wrap-try", Line, ShapeIssue);
-        SCG.Dictionary<PinKey, SortedSet<string>> Actual(params string[] stems)
-            => new() { [key] = new SortedSet<string>(stems, StringComparer.Ordinal) };
-        var pin = new Row("wrap-try", Identity, Line, 2, Digest(new[] { "a", "b" }), 2, Digest(new[] { "a", "b" }), ShapeIssue, "");
-        var sink = new SCG.Dictionary<string, SortedSet<string>>();
+        SCG.Dictionary<PinKey, SortedSet<string>> Set(params string[] stems)
+            => stems.Length == 0 ? new() : new() { [key] = new SortedSet<string>(stems, StringComparer.Ordinal) };
 
-        ComparePins(Identity, "full", Actual("b", "a"), new[] { pin }, r => (r.FullCount, r.FullDigest), sink).Should().BeEmpty();
-        ComparePins(Identity, "full", Actual("a", "b"), Array.Empty<Row>(), r => (r.FullCount, r.FullDigest), sink)
-            .Should().ContainSingle().Which.Should().Contain("no pin row");
-        ComparePins(Identity, "full", Actual("a", "b", "c"), new[] { pin }, r => (r.FullCount, r.FullDigest), sink)
-            .Should().ContainSingle().Which.Should().Contain("actual count=3");
-        ComparePins(Identity, "full", Actual("a", "c"), new[] { pin }, r => (r.FullCount, r.FullDigest), sink)
-            .Should().ContainSingle().Which.Should().Contain("actual count=2", "a fix plus a regression keeps the count and moves the digest");
-        ComparePins(Identity, "full", new SCG.Dictionary<PinKey, SortedSet<string>>(), new[] { pin }, r => (r.FullCount, r.FullDigest), sink)
-            .Should().ContainSingle().Which.Should().Contain("drain the pin");
-        sink.Should().ContainKey($"full {Identity} {key}").WhoseValue.Should().BeEmpty();
-        Digest(Array.Empty<string>()).Should().Be("-");
-        Digest(new[] { "b", "a" }).Should().Be(Digest(new[] { "a", "b" })).And.MatchRegex("^[0-9a-f]{16}$");
+        CompareStems(Identity, Set("a", "b"), Set("b", "a")).Should().BeEmpty();
+        CompareStems(Identity, Set("a", "b", "c"), Set("a", "b")).Should().ContainSingle().Which.Should().StartWith("extra: wrap-try identity line #2232: c fails");
+        CompareStems(Identity, Set("a"), Set("a", "b")).Should().ContainSingle().Which.Should().StartWith("missing: wrap-try identity line #2232: b holds now");
+        CompareStems(Identity, Set("a", "c"), Set("a", "b")).Should().HaveCount(2, "a fix plus a regression is two named rows");
+        CompareStems(Identity, Set(), Set("a", "b")).Should().ContainSingle()
+            .Which.Should().StartWith("drain: every stem of wrap-try identity line #2232 holds now: drain its rows and cite row");
+        CompareStems(Identity, Set("a"), Set()).Should().ContainSingle().Which.Should().Contain("and the key's cite row");
     }
 
     // ================================================================
@@ -2301,9 +2326,9 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     /// <summary>
     /// <c>CODEACTION-CENSUS</c> lines: the corpus, mode and strides; per twin the stems run, requests, requests per stem,
     /// wall time and unparseable twin documents; judged cells per (action, twin) and failing stems per (action, twin,
-    /// bucket, cite); offers on requests an action does not own; the pins per cite and the pinned failing-stem totals
-    /// per cite. Floors (when every twin's sweep ran in this process): ≥ 1 judged cell per (Move action, twin). The pin
-    /// count is anchored.
+    /// bucket, cite); offers on requests an action does not own; the committed keys and stem rows per cite, and the keys per
+    /// bucket. Floors (when every twin's sweep ran in this process): ≥ 1 judged cell per (Move action, twin). The committed
+    /// set is totality-checked by <see cref="ReadPins"/>, not counted.
     /// </summary>
     [Fact]
     public void Census_CellsPerActionTwinAndBucket_AreStated()
@@ -2334,15 +2359,12 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             _output.WriteLine($"CODEACTION-CENSUS unowned-offers {spec.Name}={s_unownedOffers.GetValueOrDefault(spec.Name)}");
         }
 
-        var rows = Allowlist.Value;
+        var pins = Pins.Value;
         foreach (var cite in Cites)
-        {
-            var pins = rows.Where(r => r.Cite == cite).ToList();
-            _output.WriteLine($"CODEACTION-CENSUS pins {cite}={pins.Count} pinned-failing-stems full={pins.Sum(r => r.FullCount)} regular={pins.Sum(r => r.RegularCount)}");
-        }
+            _output.WriteLine($"CODEACTION-CENSUS keys {cite}={pins.Cites.Count(r => r.Cite == cite)} stem-rows={pins.Stems.Count(r => r.Cite == cite)}");
 
         foreach (var bucket in Buckets)
-            _output.WriteLine($"CODEACTION-CENSUS pins bucket {bucket}={rows.Count(r => r.Bucket == bucket)}");
+            _output.WriteLine($"CODEACTION-CENSUS keys bucket {bucket}={pins.Cites.Count(r => r.Bucket == bucket)}");
 
         var everyTwinRan = Twins.All(t => s_stemsRun.ContainsKey(t));
         if (everyTwinRan)
@@ -2358,7 +2380,6 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             _output.WriteLine("CODEACTION-CENSUS floors skipped: not every twin's sweep ran in this process");
         }
 
-        rows.Count.Should().Be(56, "P47 Phase 1 Task 3 populated 182 pins from one FULL run (132 cite #2232, 15 #2294, 35 #2296); Phase 2 Task 1 (one line table, the document's break) left 158 (106 #2232, 16 #2294, 36 #2296); Phase 2 Task 2 (wrap, extract method, inline, remove unused import move whole regions) left 140 (88 #2232, 16 #2294, 36 #2296); Phase 2 Task 3 (Organize Imports moves units) left 124 (72 #2232, 16 #2294, 36 #2296); Phase 2 Task 4 (convert forms re-spell headers, move bodies) left 109 (53 #2232, 16 #2294, 40 #2296); Phase 2 Task 5 (statement extents from tokens, never un-parse: the #2232 residue) left 55 (0 #2232, 16 #2294, 39 #2296); the P21h verify round (lane FIX-READS) added 1 under the reopened #2232 — inline-variable leaves an identity document unparsable when it inlines a module variable that a class-body read binds — 56 (1 #2232, 16 #2294, 39 #2296); a commit that changes the count says why");
     }
 }
 

@@ -76,7 +76,7 @@ Always use the serialized wrapper — NEVER unwrapped `dotnet` build/test (paral
 .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Stdlib" --no-build
 ```
 
-Read test output from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+Read test output from the log path the wrapper prints (`dotnet-serialized: log -> <path>`) instead of re-running.
 
 ## Boundaries
 

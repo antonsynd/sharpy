@@ -78,9 +78,19 @@ namespace Sharpy
             {
                 return new TextFile(path, mode, enc);
             }
-            catch (UnauthorizedAccessException ex) when (!(ex is PermissionError))
+            // .NET's I/O failures are not OSError subclasses; translate each to the python class
+            // so `except OSError` sees every failure open() reports (#2124).
+            catch (UnauthorizedAccessException ex)
             {
                 throw new PermissionError("Permission denied: '" + path + "'", ex);
+            }
+            catch (System.IO.IOException ex) when (ex is System.IO.FileNotFoundException || ex is System.IO.DirectoryNotFoundException)
+            {
+                throw new FileNotFoundError("No such file or directory: '" + path + "'", ex);
+            }
+            catch (System.IO.IOException ex) when (!(ex is OSError))
+            {
+                throw new OSError(ex.Message + ": '" + path + "'", ex);
             }
         }
     }

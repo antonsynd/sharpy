@@ -197,11 +197,13 @@ public class BytesTests
     }
 
     [Fact]
-    public void Decode_UnknownEncoding_ThrowsValueError()
+    public void Decode_UnknownEncoding_ThrowsLookupError()
     {
+        // python3: b'\x01'.decode('unknown-encoding') raises LookupError (not a ValueError), the
+        // exception str.encode already raised; Decode shares its codec lookup since #2477.
         var b = new Bytes(new byte[] { 1 });
         var act = () => b.Decode("unknown-encoding");
-        act.Should().Throw<ValueError>();
+        act.Should().Throw<LookupError>().WithMessage("unknown encoding: unknown-encoding");
     }
 
     #endregion

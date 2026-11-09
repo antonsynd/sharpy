@@ -33,7 +33,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v7
       with:
-        python-version: '3.12'
+        python-version-file: .python-version
 
     - name: Run C# benchmarks
       run: |
@@ -67,7 +67,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v7
       with:
-        python-version: '3.12'
+        python-version-file: .python-version
 
     - name: Download C# results
       uses: actions/download-artifact@v8
@@ -85,6 +85,7 @@ jobs:
       run: |
         python3 - <<'SCRIPT'
         import json
+        import platform
         from datetime import datetime, timezone
 
         with open("benchmarks/cross-language/results/latest.json") as f:
@@ -115,7 +116,7 @@ jobs:
         lines = [
             f"# Cross-Language Benchmark Results ({now})",
             "",
-            f"**Runner:** `ubuntu-latest` | **Python:** 3.12 | **.NET:** 10.0 | "
+            f"**Runner:** `ubuntu-latest` | **Python:** {platform.python_version()} | **.NET:** 10.0 | "
             f"**Runs:** 10 (median) + warmup | **Stats:** mean, median, stdev, p90, p99",
             "",
             "## Execution Time (runtime only)",

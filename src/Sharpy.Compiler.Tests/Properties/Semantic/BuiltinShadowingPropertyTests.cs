@@ -19,7 +19,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Collection("PropertySerial")]
 public class BuiltinShadowingPropertyTests : IntegrationTestBase
 {
-    public BuiltinShadowingPropertyTests(ITestOutputHelper output) : base(output) { }
+    public BuiltinShadowingPropertyTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     // Builtin function names that compile to a PascalCase identifier distinct from the
     // default `test.spy` module class (`Test`), so shadowing is exercised without a

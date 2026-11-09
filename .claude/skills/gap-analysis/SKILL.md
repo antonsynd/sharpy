@@ -14,20 +14,14 @@ Run all gap discovery tests (fuzz, coverage, diagnostic sweep) and present a uni
 - Presents a unified summary: crash count, anomaly count, coverage metrics
 - Shows last 80 lines on failure + points to full log
 
-**Log location:** `.claude/tmp/last-gap-analysis.log`
+**Log location:** each wrapper call's own log, whose path it prints (`dotnet-serialized: log -> <path>`). Below, `RUN <args>` means `.claude/scripts/dotnet-serialized <args> | sed -n 's/^dotnet-serialized: log -> //p'; echo "exit=${PIPESTATUS[0]}"`, which prints that path (`<log>`) and the exit code.
 
 ## Steps
 
-1. Run `mkdir -p .claude/tmp` to ensure log directory exists
-2. Clear the old log with `rm -f .claude/tmp/last-gap-analysis.log`
-3. Build first: `.claude/scripts/dotnet-serialized build sharpy.sln > .claude/tmp/last-gap-analysis.log 2>&1`
-   - If build fails: Print "=== BUILD FAILED (last 80 lines) ===" then `tail -80 .claude/tmp/last-gap-analysis.log`, then echo "=== Full log: .claude/tmp/last-gap-analysis.log ===". Stop.
-   - (Raw `dotnet build`/`dotnet test` are blocked by the serialization hook — always use the wrapper here.)
-4. Run: `.claude/scripts/dotnet-serialized test --filter "Category=GapDiscovery" --no-build >> .claude/tmp/last-gap-analysis.log 2>&1`
-5. Check exit code:
-   - Exit 0: Print "=== GAP ANALYSIS PASSED ===" then `tail -100 .claude/tmp/last-gap-analysis.log`
-   - Exit non-zero: Print "=== GAP ANALYSIS FAILED (last 80 lines) ===" then `tail -80 .claude/tmp/last-gap-analysis.log`
-6. Read and summarize any JSON reports in `.claude/tmp/`:
+1. Build first: `RUN build sharpy.sln`. If it fails, print "=== BUILD FAILED (last 80 lines) ===" then `tail -80 <log>` and "=== Full log: <log> ===". Stop.
+2. Run: `RUN test --filter "Category=GapDiscovery" --no-build --logger "console;verbosity=normal"` — the console logger is required: the wrapper's stall watchdog reads a silent green run as a hang (#2257).
+3. Exit 0: print "=== GAP ANALYSIS PASSED ===" then `tail -100 <log>`. Non-zero: print "=== GAP ANALYSIS FAILED (last 80 lines) ===" then `tail -80 <log>`.
+4. Read and summarize any JSON reports in `.claude/tmp/`:
    - `hover-fuzz-report.json` — crash count, null symbol/type count, unknown type count, coverage %
    - `completion-fuzz-report.json` — crash count, null/unknown receiver count, missing member count, coverage %
    - `diagnostic-sweep-report.json` — pass/fail/crash counts, unexpected diagnostics, advisory warnings
@@ -39,5 +33,5 @@ Run all gap discovery tests (fuzz, coverage, diagnostic sweep) and present a uni
    - `differential-exec-report.json` — Sharpy-compiled stdout vs `python3` over the shared subset: matches, subset-skips, divergences (the ratchet, `src/Sharpy.Compiler.Tests/Conformance/differential-exec-allowlist.txt`; entries are either an issue reference or `DESIGNED` citing `docs/deviations.yaml`). Requires `python3` on PATH — the test soft-skips without it, so a missing report here means the oracle didn't run, not that it passed.
 
    Ratchet triage (all sweeps): a non-allowlisted failure is either fixed now or filed as an issue and allowlisted citing that issue ("drain on fix"). Allowlists must trend to empty — an empty allowlist is the class contract (#1143–#1146) fully enforced. Never add an entry without an issue reference.
-7. Present a unified summary table with all metrics
-8. Echo "Full log: .claude/tmp/last-gap-analysis.log"
+5. Present a unified summary table with all metrics
+6. Echo "Full log: <log>"

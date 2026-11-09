@@ -173,9 +173,8 @@ namespace Sharpy
             int a = axis < 0 ? axis + ndim : axis;
             if (a < 0 || a >= ndim)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(axis),
-                    $"axis {axis} is out of bounds for array of dimension {ndim}");
+                // numpy raises AxisError, a ValueError (and IndexError) subclass (#2461).
+                throw new ValueError($"axis {axis} is out of bounds for array of dimension {ndim}");
             }
 
             return a;

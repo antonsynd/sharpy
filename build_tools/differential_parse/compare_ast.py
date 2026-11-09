@@ -25,7 +25,8 @@ Batch protocol (the C# harness spawns one ``python3`` per batch, not per sample)
 ``--batch <file>`` reads the JSONL from a file instead of stdin. With no input
 the module is import-only (used by the pytest coverage in build_tools/tests).
 
-Deterministic and dependency-free; pinned to CPython 3.12 by the caller.
+Deterministic and dependency-free; the caller pins the CPython minor
+(CI reads the repo-root ``.python-version``).
 """
 from __future__ import annotations
 

@@ -369,9 +369,10 @@ sketch, and what is deliberately deferred. The acceptance test throughout was by
 C#: the `FileBasedIntegrationTests` `.expected.cs` snapshot corpus stayed identical across every
 migration commit, and the full `Sharpy.Compiler.Tests` suite (~11,460 tests) stayed green.
 
-### Facts migrated (7) and the dictionary ledger
+### Facts migrated (10) and the dictionary ledger
 
-Seven node/marker facts had their **code-generation consumers** moved onto the IR:
+Ten node/marker facts had their **code-generation consumers** moved onto the IR: seven in E2 and three
+in P82 tranche 1 ([below](#p82-tranche-1-2026-11-08-2443)):
 
 | Fact | IR carrier | Dict disposition |
 |------|-----------|------------------|
@@ -382,9 +383,13 @@ Seven node/marker facts had their **code-generation consumers** moved onto the I
 | `_resolvedClrMemberNames` | `IrMemberAccess.ResolvedClrMemberName` | retained transport |
 | `_foldedIntegerConstants` | `IrConstant` | **physically deleted** |
 | `_generatorFunctions` | `IrCompilation.IsGenerator` (side-lookup) | retained transport |
+| `_augmentedAssignMutations` | `IrCollectionMutation.ClrMethodName` | **physically deleted** (P82, a7346ea97) |
+| `_lambdaBodyLowerings` | `IrElidedNoneBody` (on the lambda body) | **physically deleted** (P82, 88e147aec) |
+| `_optionalStoreWraps` | `IrOptionalStoreWrap` / `IrOptionalWrappedElement` / `IrOptionalWalrusStore` `.WrapAs` | **physically deleted** (P82, b67ca2ded) |
 
-**Physically deleted dicts: 1** (`_foldedIntegerConstants` — a pure computation the lowering pass
-re-derives via `IntegerConstantEvaluator`, so nothing else needs it). **Retained transports: 6** (the
+**Physically deleted dicts: 4.** In E2, `_foldedIntegerConstants` — a pure computation the lowering pass
+re-derives via `IntegerConstantEvaluator`, so nothing else needs it. In P82 tranche 1, the three tables
+above, which the pass re-derives from the AST kind plus recorded type facts. **Retained transports: 6** (the
 five Phase-2 facts above plus `_generatorFunctions`). "Retained transport" means the CodeGen-facing
 accessor was deleted or renamed with a `ForIr` suffix (a `grep` of `CodeGen/` for the old accessor
 returns zero), but the dictionary and its `MergeFrom` line stay because a **non-codegen** reader still
@@ -441,12 +446,18 @@ naming authority in the middle-end), a deliberate post-E2 question.
 
 ### Null-IR codegen paths
 
-The IR is built once per project in the main compile path. The REPL, the source-generator sub-pipeline,
-and the direct-emitter unit tests construct a `CodeGenContext` **without** an IR. For the migrated
-structural transforms the emitter therefore reads the decision from the IR **when present** and
-otherwise recomputes it via the shared `LoweringPass` helpers (the same single source of truth the
-lowering pass uses), so those paths stay byte-identical too. Giving every codegen entry point an IR is
-future work.
+Every production codegen entry point has an IR (measured @ f5c64af34): `CodeGenContext.Ir` is
+`required` (`CodeGenContext.cs:141`); the main compile path lowers once per project; the REPL compiles
+through `ProjectCompiler` (`ReplSession.cs:403-406`, #1087), so it gets the same IR; the source-generator
+sub-pipeline lowers its own (`ProjectCompiler.Generators.cs:134`). Only direct-emitter unit tests build a
+`CodeGenContext` over `IrCompilation.Empty`. For them the migrated structural transforms keep a
+recompute fallback — the emitter reads the decision from the IR **when present** and otherwise
+recomputes it via the shared `LoweringPass` helpers (`RoslynEmitter.Expressions.Comprehensions.cs`,
+`GetIrLoweredLoop`'s callers) — so output is the same either way. The P82 facts (tranches 1–2) have no
+recompute fallback: over `IrCompilation.Empty`, `IrNodeFor<TIr>` misses the index and returns `null`, so
+the fact reads as absent, as a missing `SemanticInfo` entry did before. Because the recompute makes the
+absent path output-identical for `IrLoweredLoop` / `IrLoweredGenerator`, their wrapped-element
+look-through is pinned with constructed IR (`IrWrappedElementLookThroughTests`, P82 tranche 2).
 
 ### The `IrIndex` scaffolding and its exit criterion
 
@@ -465,6 +476,9 @@ the AST, so the index remains.
 | pre-E2 baseline | **22,241** |
 | post-Phase-2 | **22,456** (+215) |
 | post-Phase-3 (this workstream) | **22,457** |
+| P82 tranche 1 base (48c6afb3e) | **26,987** |
+| after P82 tranche 1 (8572f61c8) | **26,997** (+10) |
+| after P82 tranche 2 (f5c64af34) | **26,966** (−31) |
 
 #1056's "emitter LOC decreases" done-when is **not met**: the final count exceeds the baseline. The
 cause is structural, not a shortfall of effort. Phase 2 **added** ~11 `GetIr*` reader helpers to the
@@ -474,7 +488,88 @@ transforms removed (`SingleForClause`, `IsSizedComprehensionSource`, and the inl
 (stateful emission stays emitter-side) — the emitter cannot shrink: it still performs all the mechanical
 emission, and now also reads the IR. The genuine decrease path is the **thin-translator** end state
 (IR-owned name allocation, emitter switching on IR nodes), which is deliberately post-E2. Recorded here
-rather than forced: no deletions were made to fake the number.
+rather than forced: no deletions were made to fake the number. P82 tranche 1 does not meet it either:
+its 12 reads replace the 12 `SemanticInfo` getter calls one for one, and the `IrNodeFor<TIr>` helper
+(19 lines with its doc comment) outweighs what routing the 7 older typed reads through it saves
+(+58/−48 over 6 emitter files, `git diff --stat 48c6afb3e 8572f61c8`).
+
+### P82 tranche 1 (2026-11-08, #2443)
+
+Three node-keyed lowering tables moved onto IR nodes and were deleted with their setters, getters
+and `MergeFrom` stanzas (plan-eaaed2, owner ruling D2). Unlike the E2 facts, none is kept as a
+transport: the checker no longer writes them, and the lowering pass derives each from the AST kind
+plus recorded type facts. Stdout is unchanged except for two ruled walrus cells: `print((c := 42, 1))`
+with `c` a narrowed `int?` now prints Python's `(42, 1)`, and `t = (c := 43, 2)` now compiles instead of
+failing with SPY0908.
+
+| Table | Carrier node | Emitter consumer | Deleted @ |
+|-------|--------------|------------------|-----------|
+| `_augmentedAssignMutations` | `IrCollectionMutation.ClrMethodName` (statement) | `RoslynEmitter.Statements.Assignments.cs` ×3 | a7346ea97 |
+| `_lambdaBodyLowerings` | `IrElidedNoneBody` (expression, keyed on the lambda body) | `RoslynEmitter.Expressions.Access.Calls.cs` ×3 (untyped, typed, hoisted lambda) | 88e147aec |
+| `_optionalStoreWraps` | `IrOptionalStoreWrap.WrapAs` (assignment: `=`, `+=`, `??=`, element `??=`) | `RoslynEmitter.Statements.Assignments.cs` ×4 | b67ca2ded |
+| | `IrOptionalWrappedElement.WrapAs` (unpacking tuple element) | `RoslynEmitter.Expressions.Literals.cs` ×1 | b67ca2ded |
+| | `IrOptionalWalrusStore.WrapAs` (walrus into a narrowed Optional) | `RoslynEmitter.Expressions.Literals.cs` ×1 (new read site) | b67ca2ded |
+
+- **Index read precedent: `IrNodeFor<TIr>(Node)`** (`RoslynEmitter.Expressions.Access.cs`) is the only
+  emitter read of `IrCompilation.Index`; an index miss returns `null`. The 12 tranche reads and the 7
+  older typed-node reads (index access, member access ×2, equality, folded constant, comprehension,
+  generator) all go through it. An `IrOptionalWrappedElement` holds the element's own lowered node as its
+  single child, so `IrNodeFor` looks through the wrap to a child of the requested kind and the wrap hides
+  no fact. `optional_walrus_tuple_element` cell 6 (`p, q = 2 ** 3, xs[-1]`: an `IrConstant` and an
+  `IrIndexAccess` under the wrap) pins this behaviour (8572f61c8).
+- **`SemanticBinding` is a pass input, not a table.** `LoweringPass.Lower(modules, SemanticInfo,
+  SemanticBinding, SymbolTable)` reads a variable's declared slot the way the checker's
+  `DeclaredBindingType` does (`GetVariableType` of the root binding, else the symbol's type). It is
+  passed by all three callers: `ProjectCompiler.CodeGen.cs`, `ProjectCompiler.Generators.cs` and
+  `EmitterTestPipeline.cs`.
+- **Counts @ 8572f61c8 vs base 48c6afb3e:**
+  - side tables 88 → 85: the `SideTableCount_IsPinnedAtOrBelowTheE2Ratchet` pin, and the
+    `ConcurrentDictionary` fields of `SemanticInfo`;
+  - checker `_semanticInfo.Set\w*Lowering(` 72 → 71;
+  - emitter reads `Get(AugmentedAssignMutation|LambdaBodyLowering|OptionalStoreWrap)\(` 12 → 0;
+  - typed IR reads of the five kinds 0 → 12;
+  - `.expected.cs` snapshots 166 → 170.
+
+### P82 tranche 2 (2026-11-08, #2443)
+
+One more node-keyed lowering table moved onto the IR and was deleted with its setter, getter,
+`MergeFrom` stanza, record and enum; six name-keyed `SemanticType` compares became `TypeSyntaxMapper`
+hand-offs; the inspection allowlist's two hand-listed kinds were closed against compiler enumerations
+(plan-1faae3). Output is byte-identical: every `.expected.cs`, the spy-sourced stdlib C#, the spy-test C#
+and the stdlib docs regenerate with no diff.
+
+| Moved | Carrier | Emitter consumer | Commit |
+|-------|---------|------------------|--------|
+| `_matchScrutineeLowerings` (`match None:` → `switch ((object?)null)`, #1526) | `IrTypedNullScrutinee` (expression, keyed on the scrutinee as written, `Parenthesized` included); built by `LowerStatement` / `LowerExpression` when `AstHelper.UnwrapParenthesized(scrutinee) is NoneLiteral` | `RoslynEmitter.Patterns.cs` ×2 (statement, expression) | 010773247 |
+| list / dict / set literal element types, dict-spread comprehension `K, V` | `TypeSyntaxMapper.MapBuiltinTypeArguments(type, builtinName, arity, requireKnownArguments)` | `RoslynEmitter.Expressions.Literals.cs` ×3, `RoslynEmitter.Expressions.Comprehensions.cs` ×1 | 4b8f36e89 |
+| unsuffixed float literal's `f` / `m` | `TypeSyntaxMapper.RealLiteralSuffix(type)` | `RoslynEmitter.Expressions.cs` ×1 | 4b8f36e89 |
+
+- **Inspection kinds closed** (`EmitterCarrierOnlyConformanceTests`, 111eac007). `type-name-compare`
+  (new): a name compare on a receiver the syntax binds to an inspection-denied type —
+  `r.Name` / `r?.Name` under `==`, `!=`, `is` or a `switch` (`name-compare`), or a `T { Name: … }`
+  subpattern (`name-subpattern`); `TypeSyntaxMapper.cs` exempt. `type-read`: every public
+  `SemanticInfo` / `SemanticBinding` method returning a `SemanticType` or an `IEnumerable<T>` of one,
+  by reflection, plus the emitter's `GetExpressionSemanticType` (was a two-name literal).
+- **Look-through roster** (`IrWrappedElementLookThroughTests`, f5c64af34): every `IrExpression` kind
+  the emitter reads with `IrNodeFor<T>` has a pin row that goes red when the wrapped-element
+  look-through is removed — by output (`IrConstant`, `IrOptionalWalrusStore`, `IrEqualityComparison`,
+  `IrIndexAccess`) or by constructed IR (`IrLoweredLoop`, `IrLoweredGenerator`, `IrMemberAccess`) — or is
+  excluded with its reason (`IrElidedNoneBody`, `IrTypedNullScrutinee`); a totality test closes the table
+  against reflection and the read census.
+- **Not taken** (plan-1faae3 D1): `_narrowedExpressionTypes` (a type fact with production readers:
+  `GetEffectiveType`, `MustUseValidator`, LSP); `_moduleLayouts` / `_fromImportBoundNames` (non-CodeGen
+  readers and project-level writers, no deletion reachable); `_operatorLowerings` / `_typeTestLowerings`
+  (non-emitter reads of a type fact inside the lowering); the array-bridge compare
+  (`RoslynEmitter.Expressions.Access.Calls.cs`, an argument-conversion decision: stays as
+  `type-name-compare` rows).
+- **Counts @ f5c64af34 vs base be11fca77:**
+  - side tables 85 → 84 (`SideTableCount_IsPinnedAtOrBelowTheE2Ratchet`); `SemanticInfo` setter floor
+    89 → 88;
+  - checker `_semanticInfo.Set\w*Lowering(` 71 → 70; emitter `GetMatchScrutineeLowering(` 2 → 0;
+    `IrNodeFor<IrTypedNullScrutinee>` 0 → 2;
+  - inspection allowlist 166 → 188 rows: type-name 131 → 130 (407 → 398 sites), type-name-compare
+    0 → 8 (20 seeded → 14 sites), type-read 17 → 32 (72 → 99 sites), name-lookup 15, declaration-line 3;
+  - `.expected.cs` snapshots 170 → 173.
 
 ### Not done in E2 (post-E2 follow-ups)
 

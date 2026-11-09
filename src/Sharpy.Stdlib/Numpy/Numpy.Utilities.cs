@@ -104,7 +104,7 @@ namespace Sharpy
 
             if (a.Ndim != 1)
             {
-                throw new ArgumentException($"a must be 1-D, got {a.Ndim}-D", nameof(a));
+                throw new ValueError("object too deep for desired array");
             }
 
             var aFlat = new double[a.Size];

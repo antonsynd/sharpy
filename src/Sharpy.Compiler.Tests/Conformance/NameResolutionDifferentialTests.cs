@@ -148,7 +148,7 @@ public partial class NameResolutionDifferentialTests
     internal const string StrideEnv = "NAME_RES_DIFF_LIMIT";
 
     /// <summary>D3's budget: the pool's size, with the 13-minute wall as its other half.</summary>
-    private const int CellBudget = 8900;
+    private const int CellBudget = 8945;
 
     /// <summary>Edit-loop only: a JSON file of Sharpy arm results keyed by source hash. A run that reads it prints the
     /// CACHED banner and is never a gate: a cached verdict cannot see a compiler change.</summary>
@@ -532,6 +532,10 @@ public partial class NameResolutionDifferentialTests
         switch (verdict)
         {
             case VerdictClass.Ice:
+                // An augmented `//=`/`**=` through a type-name receiver on a @static property records no
+                // operator lowering (#2503's class, every position) — not the nested-initializer SPY0909 route.
+                if (run.AllCodes.Contains("SPY0909") && IsAugmentedStaticPropertyStore(cell))
+                    return "#2503";
                 if (run.AllCodes.Contains("SPY0909"))
                     return "#2398";
                 return run.CsCode switch
@@ -622,6 +626,10 @@ public partial class NameResolutionDifferentialTests
             return false;
         return cell.AxisCell == null || cell.AxisCell.Split(" × ").TakeLast(2).All(k => k.EndsWith("ComputedConst", StringComparison.Ordinal));
     }
+
+    private static bool IsAugmentedStaticPropertyStore(NameCell cell) =>
+        cell.Id.StartsWith("store/attribute/augmented/", StringComparison.Ordinal)
+        && cell.Id.Contains("/TypeName/StaticProperty/", StringComparison.Ordinal);
 
     private static bool IsAttributeStore(NameCell cell) => cell.AxisCell?.StartsWith("attribute-store:", StringComparison.Ordinal) == true;
 

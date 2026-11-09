@@ -18,6 +18,7 @@ public class GenericTypePropertyTests : IntegrationTestBase
 
     public GenericTypePropertyTests(ITestOutputHelper output) : base(output)
     {
+        MuteCompilePath = true;
         _output = Output;
     }
 

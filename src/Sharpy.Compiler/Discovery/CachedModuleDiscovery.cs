@@ -425,8 +425,14 @@ internal class CachedModuleDiscovery
     /// Explicit mapping from Sharpy type names to CLR type names in the discovery index.
     /// Eliminates case-insensitive matching by making the naming contract explicit.
     /// Only types whose Sharpy name differs from the CLR name need entries here.
+    /// <para>
+    /// An entry whose Sharpy name names no type of its own is an identity, not a spelling: the
+    /// name resolves to the very symbol the CLR name does. <c>IOError</c> is python 3's
+    /// <c>OSError</c> (<c>IOError is OSError</c>), so it maps to <c>Sharpy.OSError</c> and
+    /// <see cref="Semantic.Registry.BuiltinRegistry"/> binds it to that symbol (#2124).
+    /// </para>
     /// </summary>
-    private static readonly Dictionary<string, string> SharpyToClrNameMap = new()
+    internal static readonly IReadOnlyDictionary<string, string> SharpyToClrNameMap = new Dictionary<string, string>
     {
         ["bytes"] = "Bytes",
         ["list"] = "List",
@@ -437,6 +443,7 @@ internal class CachedModuleDiscovery
         ["str"] = "Str",
         ["tuple"] = "ValueTuple",
         ["complex"] = "Complex",
+        ["IOError"] = "OSError",
     };
 
     /// <summary>

@@ -1122,12 +1122,15 @@ internal partial class RoslynEmitter
     private TypeSyntax QualifyExceptionTypeName(Identifier typeId)
     {
         var csharpName = NameCasing.ResolveType(typeId.Name, typeId.IsNameBacktickEscaped);
-        if (_context.LookupSymbol(typeId.Name) is Semantic.TypeSymbol ts
-            && _typeMapper.QualifySameFileTypeName(ts, csharpName) is { } qualified)
+        var ts = _context.LookupSymbol(typeId.Name) as Semantic.TypeSymbol;
+        if (ts != null && _typeMapper.QualifySameFileTypeName(ts, csharpName) is { } qualified)
         {
             return ParseQualifiedTypeName(qualified);
         }
-        return IdentifierName(NameMangler.Transform(typeId.Name, NameContext.Type));
+        // Spelled by the symbol the name resolves to, not by the written name: `IOError` resolves
+        // to the `OSError` symbol (python 3's `IOError is OSError`) and no C# type is named
+        // IOError (#2124).
+        return IdentifierName(NameMangler.Transform(ts?.Name ?? typeId.Name, NameContext.Type));
     }
 
     private List<StatementSyntax> GenerateAssertThrowsStatements(

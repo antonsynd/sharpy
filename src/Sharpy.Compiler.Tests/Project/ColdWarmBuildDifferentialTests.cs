@@ -1464,10 +1464,10 @@ def main() -> None:
     /// rebuilt library.
     ///
     /// <para>The rebuilt-library cell itself (#2114's exact sequence) is
-    /// <c>Sharpy.Cli.Tests.E2E.IncrementalOptionsKeyE2ETests</c>: in THIS process, once one compile has
-    /// loaded the library, a later cold compile still binds the old exports after the file is
-    /// replaced (#2114's process-lifetime cell), so warm ≡ cold cannot be measured here for it. A
-    /// removed reference needs no second load, so it measures the key in process.</para>
+    /// <c>Sharpy.Cli.Tests.E2E.IncrementalOptionsKeyE2ETests</c>, as spawned processes; the same
+    /// library replaced inside one process is
+    /// <see cref="ALibraryReplacedByRename_IsReboundByTheNextColdCompileInTheSameProcess"/>. A removed
+    /// reference needs no second load, so it measures the key in process.</para>
     ///
     /// <para>Positive controls: the consumer builds against the library; restoring the reference
     /// builds again, and an unchanged build after that is served from the cache.</para>
@@ -1701,6 +1701,225 @@ def main() -> None:
             afterFacts.Should().Be(before,
                 $"[{axis}] is replay-time policy (#1553), so it must not discard the cache");
         }
+    }
+
+    /// <summary>
+    /// Records the info-level lines a compile writes, so a test can see which Phase 7 ran.
+    /// </summary>
+    private sealed class InfoCapturingLogger : ICompilerLogger
+    {
+        public List<string> InfoMessages { get; } = new();
+
+        public void LogInfo(string message) => InfoMessages.Add(message);
+        public bool IsEnabled(CompilerLogLevel level)
+            => level is CompilerLogLevel.Error or CompilerLogLevel.Warning or CompilerLogLevel.Info;
+
+        public void LogDebug(string message) { }
+        public void LogError(string message, int line, int column) { }
+        public void LogWarning(string message, int line, int column) { }
+        public void LogTokenRead(string tokenType, int line, int column, string value) { }
+        public void LogIndentChange(int oldLevel, int newLevel) { }
+        public void LogParseEnter(string rule, int tokenPosition) { }
+        public void LogParseExit(string rule, bool success) { }
+        public void LogTrace(string message) { }
+        public void LogMetrics(string metricsOutput) { }
+    }
+
+    private const string EmissionSkipped = "Phase 7: Assembly up to date; IL emission skipped";
+
+    private static (ProjectCompilationResult Result, InfoCapturingLogger Log, TimeSpan Elapsed) BuildLogged(
+        ProjectConfig config)
+    {
+        var log = new InfoCapturingLogger();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var result = new Compiler(new CompilerOptions { Incremental = true }, log).CompileProject(config);
+        return (result, log, clock.Elapsed);
+    }
+
+    private static string AssemblyPhases(ProjectCompilationResult result)
+        => string.Join(",", result.Metrics?.AssemblyMetrics?.Phases.Select(p => p.Name) ?? Enumerable.Empty<string>());
+
+    /// <summary>
+    /// The emission half of warm ≡ cold (#2114): a warm build whose Phase 7 inputs are all unchanged
+    /// (every source, so every unit's C#; the facts; the output files as the last build wrote them)
+    /// does not run Roslyn. It leaves the assembly the cold build wrote, byte for byte, and replays
+    /// what Phase 7 reported, so its diagnostics and its assembly-metrics rows are the cold build's.
+    ///
+    /// <para>The observable that emission did NOT run is threefold: the Phase 7 log line, the output
+    /// file's write time (unchanged: a Roslyn emit rewrites the file, and its MVID is fresh per emit,
+    /// so the bytes move too), and every assembly-metrics row reading zero. The wall-clock bound on
+    /// the warm build is secondary and deliberately loose (60 s, an order of magnitude over the
+    /// slowest CI shard's in-process compile of this two-file specimen): it catches a hang, not a
+    /// regression — the three observables carry the guard.</para>
+    ///
+    /// <para>The legs after the no-change build are the skip's negative controls: a source edit and
+    /// a deleted output each emit again, and the edited assembly carries the edit (a skip keyed on
+    /// less than the C# would leave the stale assembly in place and still report success).</para>
+    /// </summary>
+    [Fact]
+    public void WarmNoChangeBuild_LeavesTheColdAssemblyAndReplaysPhase7()
+    {
+        var lib = Write("emit_skip", "lib.spy", LibSource);
+        var main = Write("emit_skip", "main.spy", MainSource);
+        var config = Config("emit_skip", lib, main);
+
+        var (cold, coldLog, _) = BuildLogged(config);
+        cold.Success.Should().BeTrue("the specimen must compile. Diagnostics:\n" + Diagnostics(cold));
+        coldLog.InfoMessages.Should().NotContain(EmissionSkipped, "a cold build has nothing to skip to");
+        var assemblyPath = cold.OutputAssemblyPath!;
+        var coldBytes = File.ReadAllBytes(assemblyPath);
+        var coldWriteTime = File.GetLastWriteTimeUtc(assemblyPath);
+        Diagnostics(cold).Should().Contain("Warning",
+            "non-vacuity: the replayed diagnostics must carry something to compare");
+
+        var (warm, warmLog, warmElapsed) = BuildLogged(config);
+        warm.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(warm));
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "positive control: the no-change build is served from the cache");
+
+        // (b) emission did not run.
+        warmLog.InfoMessages.Should().Contain(EmissionSkipped,
+            "with no Phase 7 input changed, the warm build must not run Roslyn emit");
+        File.GetLastWriteTimeUtc(assemblyPath).Should().Be(coldWriteTime,
+            "a skipped Phase 7 leaves the assembly file as the cold build wrote it");
+        warm.Metrics!.AssemblyMetrics!.TotalDuration.Should().Be(TimeSpan.Zero,
+            "every assembly-compilation row reports this build's cost, and none of them ran");
+        warmElapsed.Should().BeLessThan(TimeSpan.FromSeconds(60), "a hang bound only (see the summary)");
+
+        // (a) the warm build's observable result is the cold build's.
+        warm.OutputAssemblyPath.Should().Be(assemblyPath);
+        File.ReadAllBytes(assemblyPath).Should().Equal(coldBytes,
+            "the warm build's output assembly is byte-identical to the cold build's");
+        Diagnostics(warm).Should().Be(Diagnostics(cold),
+            "the warm build reports what the cold build reported, Phase 7 included");
+        AssemblyPhases(warm).Should().Be(AssemblyPhases(cold),
+            "the assembly-metrics rows are the cold build's rows");
+        Generated(warm).Should().BeEquivalentTo(Generated(cold));
+
+        // A source edit emits again, and the new assembly carries the edit.
+        const string marker = "edited after the warm build";
+        File.WriteAllText(main, MainSource + $"    print(\"{marker}\")\n");
+        var (edited, editedLog, _) = BuildLogged(config);
+        edited.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(edited));
+        editedLog.InfoMessages.Should().NotContain(EmissionSkipped,
+            "a changed source changes the C# handed to Roslyn, so Phase 7 must run");
+        var editedBytes = File.ReadAllBytes(assemblyPath);
+        ContainsSequence(editedBytes, System.Text.Encoding.Unicode.GetBytes(marker)).Should().BeTrue(
+            "the rebuilt assembly carries the edited string literal; a stale assembly does not");
+        ContainsSequence(coldBytes, System.Text.Encoding.Unicode.GetBytes(marker)).Should().BeFalse(
+            "positive control: the cold assembly never carried the marker");
+
+        // A deleted output emits again even though no input changed.
+        File.Delete(assemblyPath);
+        var (afterDelete, deleteLog, _) = BuildLogged(config);
+        afterDelete.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(afterDelete));
+        deleteLog.InfoMessages.Should().NotContain(EmissionSkipped,
+            "the recorded output is gone, so leaving it as it is would leave nothing");
+        File.Exists(assemblyPath).Should().BeTrue();
+
+        // And with everything unchanged again, the skip is back.
+        var (again, againLog, _) = BuildLogged(config);
+        again.Success.Should().BeTrue();
+        againLog.InfoMessages.Should().Contain(EmissionSkipped,
+            "the rebuilt assembly is recorded, so the next no-change build skips again");
+    }
+
+    /// <summary>
+    /// #2114's in-process cell: one process compiles a consumer against library v1, the library is
+    /// rebuilt and replaced by rename (same path, a new file, a new write time), and a COLD compile in
+    /// the same process must bind v2 — refusing the removed export (SPY0301), as a fresh process does
+    /// (<c>Sharpy.Cli.Tests IncrementalOptionsKeyE2ETests</c>) — not v1's exports, which got past
+    /// analysis and failed only at the emitted C# (SPY0908 CS0117). Positive controls: the consumer
+    /// builds against v1, and a fresh compile in this process against a v2 at a path never loaded
+    /// before refuses the import the same way.
+    /// </summary>
+    [Fact]
+    public void ALibraryReplacedByRename_IsReboundByTheNextColdCompileInTheSameProcess()
+    {
+        const string area = "rebuilt_reference";
+        const string v1 = "def f() -> int:\n    return 1\n\n\ndef h() -> int:\n    return 2\n";
+        const string v2 = "def h() -> str:\n    return \"two\"\n";
+
+        string BuildLib(string version, string source)
+        {
+            var libDir = Path.Combine(_tempDir, area, "lib_" + version);
+            var file = Write(Path.Combine(area, "lib_" + version), "coldwarm_rebuilt_m5.spy", source);
+            var built = BuildCacheless(new ProjectConfig
+            {
+                ProjectFilePath = Path.Combine(libDir, "lib.spyproj"),
+                ProjectDirectory = libDir,
+                RootNamespace = "ColdWarmRebuiltLib",
+                AssemblyName = "ColdWarmRebuiltLib",
+                OutputType = "library",
+                SourceFiles = new List<string> { file },
+                Configuration = "Debug",
+            });
+            built.Success.Should().BeTrue($"library {version} builds. Diagnostics:\n" + Diagnostics(built));
+            return built.OutputAssemblyPath!;
+        }
+
+        var main = Write(Path.Combine(area, "app"), "main.spy",
+            "from coldwarm_rebuilt_m5 import f, h\n\n\ndef main() -> None:\n    print(f())\n    print(h())\n");
+
+        ProjectCompilationResult BuildApp(string libPath)
+        {
+            var appDir = Path.Combine(_tempDir, area, "app");
+            var config = new ProjectConfig
+            {
+                ProjectFilePath = Path.Combine(appDir, "app.spyproj"),
+                ProjectDirectory = appDir,
+                RootNamespace = "ColdWarmRebuiltApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string> { main },
+                References = new List<string> { libPath },
+                Configuration = "Debug",
+            };
+            var defaults = DefaultReferences.Resolve();
+            DefaultReferences.ApplyTo(config, defaults);
+            var options = CompilerOptionsFactory.ForProject(
+                config, defaultReferences: defaults, incremental: false, features: FeatureFlags.None);
+            return new Compiler(options, NullLogger.Instance).CompileProject(config);
+        }
+
+        static IReadOnlyList<string> Codes(ProjectCompilationResult r)
+            => r.Diagnostics.GetAll().Select(d => d.Code ?? "").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+
+        var libPath = BuildLib("v1", v1);
+        var first = BuildApp(libPath);
+        first.Success.Should().BeTrue("control: the consumer builds against v1. Diagnostics:\n" + Diagnostics(first));
+
+        // v2 is built (not loaded) and replaces v1 by rename, at v1's path.
+        var builtV2 = BuildLib("v2", v2);
+        var staged = Path.Combine(_tempDir, area, "staged.dll");
+        File.Copy(builtV2, staged);
+        File.SetLastWriteTimeUtc(staged, DateTime.UtcNow.AddMinutes(1));
+        File.Move(staged, libPath, overwrite: true);
+
+        var cold = BuildApp(libPath);
+        _output.WriteLine("cold after rename:\n" + Diagnostics(cold));
+        cold.Success.Should().BeFalse("v2 has no `f`");
+        Codes(cold).Should().Contain("SPY0301",
+            "a cold compile after the rename binds the library now at the path, so it refuses the removed "
+            + "export — as a fresh process does (before: v1's exports bound, SPY0908 CS0117 at the emitted C#)")
+            .And.NotContain("SPY0908");
+
+        // v2 at a path this process never loaded reports the same: what a fresh process reports. Before
+        // the fix this was SPY0908 too — the overload index built from v1's image had been filed under
+        // v2's content hash — so it also guards that the index is built from the bytes it is keyed by.
+        var fresh = BuildApp(builtV2);
+        _output.WriteLine("fresh path:\n" + Diagnostics(fresh));
+        Codes(fresh).Should().Equal(Codes(cold));
+    }
+
+    private static bool ContainsSequence(byte[] haystack, byte[] needle)
+    {
+        for (var i = 0; i + needle.Length <= haystack.Length; i++)
+        {
+            if (haystack.AsSpan(i, needle.Length).SequenceEqual(needle))
+                return true;
+        }
+        return false;
     }
 
     private sealed class ProjectConfigDraft

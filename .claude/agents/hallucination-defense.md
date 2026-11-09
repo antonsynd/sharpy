@@ -24,7 +24,7 @@ Invoke this agent when claims are made that could lead to bugs if incorrect:
 
 ### 1. .NET API
 Create a minimal test program to verify behavior:
-All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from the log path the wrapper prints (`dotnet-serialized: log -> <path>`) instead of re-running.
 
 ```bash
 # Write a quick C# program (in the session scratchpad) and run it

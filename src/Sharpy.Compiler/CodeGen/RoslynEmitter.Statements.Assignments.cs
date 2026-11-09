@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -78,15 +79,14 @@ internal partial class RoslynEmitter
         // target routes (identifier, index, member) funnel through. Every other operator
         // evaluates its value unconditionally and keeps the flat hoist.
         //
-        // The sink is pushed only when one of those three routes will CONSUME it: a recorded
-        // in-place mutation takes an earlier branch that never reaches
-        // GenerateNullCoalesceAssignStatement, and captured statements nobody places are silently
-        // dropped statements (Rule 2). So the condition here and the three call sites below name
-        // exactly the same programs.
+        // The sink is pushed only when one of those three routes will CONSUME it (captured
+        // statements nobody places are silently dropped statements, Rule 2). A `??=` is never an
+        // in-place collection mutation (AugmentedCollectionAssignment.Classify has no `??=` arm),
+        // so every `??=` reaches GenerateNullCoalesceAssignStatement and the condition here and the
+        // three call sites below name exactly the same programs.
         ExpressionSyntax value = null!;
         var coalesceValueEvals = new List<StatementSyntax>();
-        if (assign.Operator == AssignmentOperator.NullCoalesceAssign
-            && _context.SemanticInfo?.GetAugmentedAssignMutation(assign) == null)
+        if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
         {
             coalesceValueEvals = WithEvaluationSink(() => value = GenerateExpression(assign.Value));
         }
@@ -137,7 +137,7 @@ internal partial class RoslynEmitter
                         value = ApplyOptionalDelegateConversion(assign.Value, value, declaredVarSym.Type);
 
                     // R-T: a payload store into a narrowed Optional wraps the value.
-                    if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
+                    if (IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } wrapOpt)
                         value = WrapInOptionalSome(value, wrapOpt);
 
                     // A store to a runtime-checked local sets its assigned-flag inline (#1839).
@@ -174,11 +174,11 @@ internal partial class RoslynEmitter
                 var varName = AccessorParamSlotName(name)
                     ?? GetMangledVariableName(name, isNewDeclaration: false);
 
-                // #1428: if the TypeChecker materialized an in-place mutation for this assignment,
+                // #1428: if the lowering IR carries an in-place mutation for this assignment,
                 // emit a method call instead of the read-modify-write rebind. The receiver is a
                 // READ of the target, so the narrowed-read accessor applies: x on a narrowed
                 // Optional<list[int]> mutates as x.Unwrap().Extend(...).
-                var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
+                var mutationMethod = IrNodeFor<IrCollectionMutation>(assign)?.ClrMethodName;
                 if (mutationMethod != null)
                 {
                     return ExpressionStatement(
@@ -218,7 +218,7 @@ internal partial class RoslynEmitter
                 // R-T: a narrowed Optional augmented result re-wraps.
                 // ??= handles its own wrapping via OptionalCoalesceBothOptional.
                 if (assign.Operator != AssignmentOperator.NullCoalesceAssign
-                    && _context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } augWrapOpt)
+                    && IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } augWrapOpt)
                     augmentedValue = WrapInOptionalSome(augmentedValue, augWrapOpt);
 
                 return ExpressionStatement(
@@ -232,7 +232,7 @@ internal partial class RoslynEmitter
         // Handle index assignment: arr[0] = value
         if (assign.Target is IndexAccess indexAccess)
         {
-            var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
+            var mutationMethod = IrNodeFor<IrCollectionMutation>(assign)?.ClrMethodName;
             if (mutationMethod != null)
             {
                 // Receiver and index are sibling operands of one subscript: order them left-to-right
@@ -334,7 +334,7 @@ internal partial class RoslynEmitter
         // Handle member assignment: obj.field = value
         if (assign.Target is MemberAccess memberAccess)
         {
-            var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
+            var mutationMethod = IrNodeFor<IrCollectionMutation>(assign)?.ClrMethodName;
             if (mutationMethod != null)
             {
                 var receiver = GenerateMemberAccess(memberAccess);
@@ -933,7 +933,7 @@ internal partial class RoslynEmitter
     /// the float32/decimal literal re-typing and the conditional branch casts are already applied
     /// by the time <paramref name="right"/> reaches here — <c>GenerateExpression(assign.Value)</c>
     /// reads them per node, exactly as the plain-store path does — and the Optional wrap is the
-    /// plain store's <c>WrapInOptionalSome</c> from the same <c>SetOptionalStoreWrap</c> fact.
+    /// plain store's <c>WrapInOptionalSome</c> from the same <see cref="IrOptionalStoreWrap"/> node.
     /// Rule 2: nothing here asks what the slot is or whether the value fits; an absent wrap fact
     /// means the checker admitted the RHS as the whole slot (<c>x ??= Some(v)</c>, <c>x ??= o</c>).
     /// <paramref name="left"/> is the raw slot: the checker types a <c>??=</c> target by its
@@ -947,7 +947,7 @@ internal partial class RoslynEmitter
                 == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
             // A payload RHS into an Optional slot wraps: x ??= 42 → x.IsSome ? x : Optional<int>.Some(42).
-            if (_context.SemanticInfo?.GetOptionalStoreWrap(assignNode) is { } coalWrapOpt)
+            if (IrNodeFor<IrOptionalStoreWrap>(assignNode)?.WrapAs is { } coalWrapOpt)
                 right = WrapInOptionalSome(right, coalWrapOpt);
 
             return Conditional(
@@ -994,7 +994,7 @@ internal partial class RoslynEmitter
             == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
             // A payload RHS into an Optional slot wraps: x ??= 42 → Some(42).
-            if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
+            if (IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } wrapOpt)
                 value = WrapInOptionalSome(value, wrapOpt);
 
             // if (!target.IsSome) { <rhs evals>; target = value; }

@@ -1,4 +1,6 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Model;
@@ -51,32 +53,7 @@ internal partial class ProjectCompiler
                 }
 
                 // Capture per-file diagnostics for warm-build replay (#1553)
-                var cachedDiagnostics = unit.Diagnostics.GetAll()
-                    .Select(d => new CachedDiagnostic
-                    {
-                        Code = d.Code,
-                        Message = d.Message,
-                        Severity = d.Severity.ToString(),
-                        Line = d.Line,
-                        Column = d.Column,
-                        FilePath = d.FilePath,
-                        Phase = d.Phase.ToString(),
-                        SpanStart = d.Span?.Start,
-                        SpanLength = d.Span?.Length,
-                        Data = d.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty),
-                        RelatedLocations = d.RelatedLocations?
-                            .Select(rl => new CachedRelatedLocation
-                            {
-                                Message = rl.Message,
-                                Line = rl.Line,
-                                Column = rl.Column,
-                                FilePath = rl.FilePath,
-                                SpanStart = rl.Span?.Start,
-                                SpanLength = rl.Span?.Length
-                            })
-                            .ToList()
-                    })
-                    .ToList();
+                var cachedDiagnostics = unit.Diagnostics.GetAll().Select(CachedDiagnostic.From).ToList();
 
                 _incrementalCache.SaveFileCache(
                     sourceFile,
@@ -93,6 +70,10 @@ internal partial class ProjectCompiler
             }
         }
 
+        // The whole-build record: written on every successful save, so it is never older than the
+        // hashes and file entries beside it (#2468).
+        _incrementalCache.RecordLastBuild(config, _diagnostics.Reported);
+
         // Persist caches to disk
         _incrementalCache.SaveAllCaches();
 
@@ -100,6 +81,49 @@ internal partial class ProjectCompiler
         {
             _logger.LogInfo($"Saved incremental cache for {savedCount} file(s)");
         }
+    }
+
+    /// <summary>
+    /// The whole-build up-to-date check (#2468): when every input of this build is the last successful
+    /// build's (<see cref="IncrementalCompilationCache.UpToDateBuildDiagnostics"/>), the result of
+    /// replaying that build — its policy-free report through this build's project sink, every source
+    /// served from the cache, its C# under the keys a compile gives it, and the output it left in place.
+    /// Null when the build has to run. Nothing here loads a reference or reads a symbol.
+    /// </summary>
+    internal static ProjectCompilationResult? TryReplayUpToDateBuild(
+        ProjectConfig config, ProjectCompilerOptions options, ICompilerLogger logger)
+    {
+        var cache = new IncrementalCompilationCache(config, logger, options.Features);
+        if (cache.UpToDateBuildDiagnostics(config) is not { } replayed)
+            return null;
+
+        logger.LogInfo($"Up to date: every input of {config.RootNamespace} is the last build's; nothing compiled");
+
+        var diagnostics = ProjectSinkOf(options.WarningsAsErrors,
+            options.SuppressedWarnings ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase), options.MaxErrors);
+        foreach (var cached in replayed)
+            diagnostics.Add(cached.ToDiagnostic());
+
+        var metrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
+        metrics.MarkUpToDate();
+        var generated = new Dictionary<string, string>();
+        foreach (var sourceFile in config.SourceFiles.OrderBy(f => f, StringComparer.Ordinal))
+        {
+            metrics.AddSkippedFile(sourceFile);
+            if (cache.GetFileCache(sourceFile)?.GeneratedCSharp is { Length: > 0 } csharp)
+                generated[CSharpUnitKeyOf(config, sourceFile)] = csharp;
+        }
+
+        var success = !diagnostics.HasErrors;
+        return new ProjectCompilationResult
+        {
+            Success = success,
+            Diagnostics = diagnostics,
+            OutputAssemblyPath = success ? config.OutputAssemblyPath : null,
+            GeneratedCSharpFiles = generated,
+            Metrics = metrics,
+            EffectiveFeatures = options.Features ?? FeatureFlags.None,
+        };
     }
 
     /// <summary>

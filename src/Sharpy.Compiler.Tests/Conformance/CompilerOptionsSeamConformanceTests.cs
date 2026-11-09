@@ -133,6 +133,11 @@ public class CompilerOptionsSeamConformanceTests
             + "ProjectOptionsMerge.Merge with incremental:false, and project mode gets the flag as "
             + "ProjectCompilerOptions.Incremental from the same merge.",
 
+        ["UpToDateCheck"] =
+            "The whole-build up-to-date check reads a real project's obj/ cache, like Incremental: "
+            + "ProjectOptionsMerge.Merge turns it on only where the merged Incremental is on, and "
+            + "SyntheticProject.Analyze passes incremental:false (#2468).",
+
         ["Features"] =
             "ProjectConfig.Features is the .spyproj's own <Features> list, which the merge widens "
             + "the options with; the synthetic config has no independent list to contribute, so the "
@@ -154,6 +159,10 @@ public class CompilerOptionsSeamConformanceTests
     {
         ["Incremental"] =
             "ForLsp never enables it — in-editor analysis emits no assembly and has no obj/ cache.",
+
+        ["UpToDateCheck"] =
+            "ForLsp never enables it — set only by ForProject with incremental, for the CLI's project "
+            + "builds; in-editor analysis has no obj/ cache (#2468).",
 
         ["Namespace"] =
             "ForLsp never sets it; the namespace override exists for `emit csharp --namespace`.",

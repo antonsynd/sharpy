@@ -26,7 +26,6 @@
 
 import numpy as np
 import math
-from system import ArgumentException, InvalidOperationException, ArgumentOutOfRangeException
 from unittest import assert_raises
 
 # -- elementwise math vs known values --
@@ -169,7 +168,7 @@ def test_median_even_count_averages_two_middle_elements():
 @test
 def test_min_empty_array_throws():
     a = np.zeros(0)
-    with assert_raises(InvalidOperationException):
+    with assert_raises(ValueError):
         np.min(a)
 
 # -- reductions (along axis); 2-D built via reshape --
@@ -225,5 +224,5 @@ def test_sum_along_axis_negative_axis_wraps_to_trailing():
 @test
 def test_sum_along_axis_out_of_range_throws():
     a = np.zeros(6).reshape(2, 3)
-    with assert_raises(ArgumentOutOfRangeException):
+    with assert_raises(ValueError):
         np.sum(a, 5)

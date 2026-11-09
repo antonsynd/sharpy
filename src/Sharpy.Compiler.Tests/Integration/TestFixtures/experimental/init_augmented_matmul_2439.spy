@@ -1,0 +1,35 @@
+# __init__ top-level augmented store, gated forms (#2439): `self.v @= w` directly in `__init__`
+# means `self.v = self.v @ w`, and a `self.x += 9` after a `defer:` block reaches the same
+# constructor arm through the scope guard's threaded statement generator. Before the fix each
+# was emitted as `this.M = v` (4, and 9). Expected: python 3.13 (`@` via __matmul__; the defer
+# twin is try/finally).
+class Vec:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __matmul__(self, other: Vec) -> Vec:
+        return Vec(self.x * other.x + 1)
+
+
+class Holder:
+    v: Vec = Vec(3)
+
+    def __init__(self) -> None:
+        self.v @= Vec(4)
+        print(self.v.x)
+
+
+class Guarded:
+    x: int = 3
+
+    def __init__(self) -> None:
+        defer:
+            print("d")
+        self.x += 9
+
+
+def main() -> None:
+    Holder()
+    print(Guarded().x)

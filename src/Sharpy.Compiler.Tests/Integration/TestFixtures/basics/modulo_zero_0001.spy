@@ -1,7 +1,7 @@
 # Modulo by zero raises ZeroDivisionError, matching Python (C#'s native % throws
 # DivideByZeroException for ints and silently yields NaN for floats). (#1153)
-# Python: 10 % 0    -> ZeroDivisionError("integer modulo by zero")
-# Python: 10.0 % 0.0 -> ZeroDivisionError("float modulo")
+# Python 3.14: 10 % 0    -> ZeroDivisionError("division by zero")
+# Python 3.14: 10.0 % 0.0 -> ZeroDivisionError("division by zero")
 def main() -> None:
     # Integer modulo by zero
     try:

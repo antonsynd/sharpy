@@ -2,10 +2,9 @@
 #
 # 20 expanded cases. Ported: 20. Omitted: 0.
 #
-# Sharpy.Date -> datetime.date. Invalid-date construction throws
-# System.ArgumentOutOfRangeException (imported via `from system import ...`).
+# Sharpy.Date -> datetime.date. Invalid-date construction raises ValueError, as
+# CPython does (#2461).
 
-from system import ArgumentOutOfRangeException
 from unittest import assert_raises
 
 import datetime
@@ -137,7 +136,7 @@ def test_date_leap_year_feb29_is_valid():
     assert d.day == 29
 
 @test
-def test_date_non_leap_year_feb29_throws_argument_out_of_range():
+def test_date_non_leap_year_feb29_raises_value_error():
     # 2023 is not a leap year
-    with assert_raises(ArgumentOutOfRangeException):
+    with assert_raises(ValueError):
         datetime.date(2023, 2, 29)

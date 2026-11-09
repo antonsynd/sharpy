@@ -524,6 +524,17 @@ public class ProjectCompilationMetrics
     public TimeSpan DiscoveryTime => _discoveryTime;
 
     /// <summary>
+    /// True when the build was the whole-build up-to-date replay: every input was the last successful
+    /// build's, so nothing compiled and that build's report was replayed (#2468).
+    /// </summary>
+    public bool UpToDate { get; private set; }
+
+    /// <summary>
+    /// Marks this build as the whole-build up-to-date replay (<see cref="UpToDate"/>).
+    /// </summary>
+    internal void MarkUpToDate() => UpToDate = true;
+
+    /// <summary>
     /// Get metrics for all files
     /// </summary>
     public IReadOnlyList<CompilationMetrics> FileMetrics => _fileMetrics.AsReadOnly();
@@ -649,6 +660,8 @@ public class ProjectCompilationMetrics
         sb.AppendLine(CultureInfo.InvariantCulture, $"Configuration: {_configuration}");
         sb.AppendLine(FormattableString.Invariant($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC"));
         sb.AppendLine(FormattableString.Invariant($"Files Compiled: {TotalFiles}"));
+        if (UpToDate)
+            sb.AppendLine("Up to date: yes (every input is the last build's; nothing compiled)");
         sb.AppendLine();
 
         if (_discoveryTime > TimeSpan.Zero)
@@ -704,6 +717,7 @@ public class ProjectCompilationMetrics
             project_name = _projectName,
             configuration = _configuration,
             total_files = TotalFiles,
+            up_to_date = UpToDate,
             total_duration_ms = TotalDuration.TotalMilliseconds,
             total_memory_delta_bytes = TotalMemoryDelta,
             total_allocated_bytes = TotalAllocatedBytes,

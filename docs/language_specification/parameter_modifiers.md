@@ -24,6 +24,7 @@ def function_name(param: ref T, param: out T, param: in T) -> ReturnType:
 
 The `ref` modifier passes a variable by reference, allowing the callee to both read and modify the caller's variable.
 
+<!-- spec-sweep: output -->
 ```python
 def swap(a: ref int, b: ref int):
     """Swap two values in place."""
@@ -75,6 +76,7 @@ type comes from the parameter, and `out let name: T` declares one with an explic
 `let`, both are always a new variable. `out name: T` also declares inline, and a plain `out name`
 passes a variable that already exists:
 
+<!-- spec-sweep: output -->
 ```python
 def try_parse(s: str, result: out int) -> bool:
     result = int(s) if s.isdigit() else 0

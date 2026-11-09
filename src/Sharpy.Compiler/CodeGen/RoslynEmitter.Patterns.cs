@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
@@ -29,8 +30,9 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateMatch(MatchStatement matchStmt)
     {
         var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
-        if (_context.SemanticInfo?.GetMatchScrutineeLowering(matchStmt.Scrutinee) is
-            { Kind: MatchScrutineeLoweringKind.CastToNullableObject })
+        // A `match None` scrutinee is cast to a typed null (#1526): the lowering IR carries the cast
+        // (P82 #2443, IrTypedNullScrutinee).
+        if (IrNodeFor<IrTypedNullScrutinee>(matchStmt.Scrutinee) != null)
         {
             scrutineeExpr = Cast(
                 NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
@@ -1033,8 +1035,9 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateMatchExpression(MatchExpression matchExpr)
     {
         var scrutineeExpr = GenerateExpression(matchExpr.Scrutinee);
-        if (_context.SemanticInfo?.GetMatchScrutineeLowering(matchExpr.Scrutinee) is
-            { Kind: MatchScrutineeLoweringKind.CastToNullableObject })
+        // A `match None` scrutinee is cast to a typed null (#1526): the lowering IR carries the cast
+        // (P82 #2443, IrTypedNullScrutinee).
+        if (IrNodeFor<IrTypedNullScrutinee>(matchExpr.Scrutinee) != null)
         {
             scrutineeExpr = Cast(
                 NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),

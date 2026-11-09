@@ -28,8 +28,8 @@ hash determinism, no user site) with a per-program wall-clock timeout and an
 output cap so a runaway loop or a firehose ``print`` cannot wedge the batch.
 
 With no input the module is import-only (used by the pytest coverage in
-``build_tools/tests``). Deterministic and dependency-free; pinned to CPython 3.12
-by the caller.
+``build_tools/tests``). Deterministic and dependency-free; the caller pins the CPython
+minor (CI reads the repo-root ``.python-version``).
 """
 from __future__ import annotations
 

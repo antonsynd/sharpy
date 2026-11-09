@@ -103,7 +103,7 @@ public class GenerateExpressionReentryTests
         var stopwatch = Stopwatch.StartNew();
         var offenders = new ConcurrentBag<string>();
         var splicers = new ConcurrentBag<string>();
-        var uncompilable = new ConcurrentBag<string>();
+        var uncompilable = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
 
         Parallel.ForEach(
             fixtures,
@@ -128,7 +128,7 @@ public class GenerateExpressionReentryTests
                 }
                 catch (Exception ex)
                 {
-                    uncompilable.Add($"{fixture.TestName}: threw {ex.GetType().Name}: {ex.Message}");
+                    uncompilable[fixture.TestName] = $"threw {ex.GetType().Name}: {ex.Message}";
                     return;
                 }
 
@@ -137,7 +137,8 @@ public class GenerateExpressionReentryTests
                 // count going UP is what would matter, which is why it is in the output.
                 if (!result.Success)
                 {
-                    uncompilable.Add(fixture.TestName);
+                    var error = result.Diagnostics.GetErrors().FirstOrDefault();
+                    uncompilable[fixture.TestName] = error is null ? "no error diagnostic" : $"{error.Code} {error.Message}";
                     return;
                 }
 
@@ -172,74 +173,63 @@ public class GenerateExpressionReentryTests
             + "generation happened exactly once and the duplication is downstream of it.");
 
         // A fixture that does not compile through this seam is SKIPPED, and a skipped fixture
-        // witnesses nothing. That was reported and never asserted, which is the same defect as
-        // #1432 (a property suite whose samples were all rejected by the front end reported
-        // "0/0 emitted" and passed): the corpus guard above catches an EMPTY corpus, but not one
-        // where every fixture was silently dropped. ITestOutputHelper output is invisible on a
-        // passing test, so nobody would see the count climb. Ratcheted instead — if a change
-        // makes more fixtures uncompilable through this seam, that is either a real regression
-        // or a deliberate move that should lower this number in the same commit.
-        uncompilable.Count.Should().BeLessThanOrEqualTo(MaxUncompilableFixtures,
-            $"fixtures skipped by this sweep are not swept; the baseline is "
-            + $"{MaxUncompilableFixtures} and these did not compile:\n  "
-            + string.Join("\n  ", uncompilable.OrderBy(u => u, StringComparer.Ordinal).Take(20)));
+        // witnesses nothing (#1432: a property suite whose samples were all rejected by the front end
+        // reported "0/0 emitted" and passed). The skipped stems are a committed SET, never a count
+        // (#2512, plan-88736c D3(iii)): a new stem that does not compile here is red naming it, and a
+        // listed stem that compiles now (or is gone) is a stale row to delete — the drain.
+        AssertUncompilableSet(uncompilable);
     }
 
+    private const string UncompilableFileName = "generate-expression-uncompilable.txt";
+
     /// <summary>
-    /// How many fixtures may fail to compile through the recording seam, which lacks the fixture
-    /// harness's extra references. Measured at <c>8c09a923f</c>: <b>6 of 1,824</b>, and all six are
-    /// the same shape — <c>builtins/qualified_constructor_reference_pinned</c>,
-    /// <c>builtins_from_import_resolves</c>, <c>builtins_qualified_call</c>,
-    /// <c>builtins_qualified_construction</c>, <c>builtins_qualified_escapes_shadow</c>,
-    /// <c>builtins_qualified_type</c>. They reference the <c>builtins</c> module, which this seam
-    /// does not register, so they cannot compile here and have nothing to say about re-entry.
-    ///
-    /// <para>Raised to <b>7</b> for <c>builtin_from_import_alias_1383</c>, which is the seventh of
-    /// exactly that shape: it spells <c>from builtins import len as blen</c>, the same import this
-    /// seam cannot resolve for <c>builtins_from_import_resolves</c> already in the list. Nothing
-    /// about re-entry changed — the sweep still reports 0 re-entries — and the fixture is swept by
-    /// the file-based harness, which does register the module.</para>
-    ///
-    /// <para>Raised to <b>8</b> for <c>builtins_isinstance_qualified_1381</c>, the eighth of the
-    /// same shape: it spells <c>import builtins</c> + <c>builtins.isinstance(...)</c>, the module
-    /// reference this seam does not register. Nothing about re-entry changed — the sweep still
-    /// reports 0 re-entries — and the fixture is swept by the file-based harness plus the
-    /// metamorphic and differential sweeps, which do register the module.</para>
-    ///
-    /// <para>Raised to <b>9</b> for <c>builtins_qualified_value_position_1463</c>, the ninth of the
-    /// same shape: it spells <c>import builtins</c> + <c>builtins.int</c> in value position. The
-    /// seam does not register the builtins module.</para>
-    ///
-    /// <para>Raised to <b>11</b> for the #1527 alias transparency fixtures:
-    /// <c>builtin_type_from_import_alias_1489</c> and
-    /// <c>type_alias_call_transparency_1527</c> — same <c>from builtins import</c> shape.</para>
-    ///
-    /// <para>Raised to <b>12</b> for <c>builtins_isinstance_tuple_qualified_1532</c>, the twelfth
-    /// of the same shape: <c>import builtins</c> + <c>builtins.isinstance(x, (int, str))</c>, the
-    /// qualified structural-tuple parity fixture added by the plan-930411 verification round.
-    /// Nothing about re-entry changed — the sweep still reports 0 re-entries — and the fixture is
-    /// swept by the file-based harness, which does register the module.</para>
-    ///
-    /// <para>Raised to <b>14</b> for the #1613 wave: <c>events/event_spec_downloader_1613</c>
-    /// (EventHandler Invoke substitution bug — fixture pins the error) and
-    /// <c>interop/clr_import_action_int_1613</c> (Action[int] annotation). Both fail at semantic
-    /// time, not re-entry.</para>
-    ///
-    /// <para>Lower this whenever the real number drops; never raise it without saying why in the
-    /// same commit. A rise means either a regression or a deliberate scope change, and both are
-    /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
+    /// The stems that do not compile through the recording seam, which registers neither the <c>builtins</c>
+    /// module nor Sharpy.Stdlib (the fixture harness's extra references): <c>stem # diagnostic</c> rows in
+    /// <c>CodeGen/generate-expression-uncompilable.txt</c>, keyed on the stem (the diagnostic is the row's
+    /// cite, printed, not compared). Exact both ways; the actual set is printed whole and written to
+    /// <c>.claude/tmp/generate-expression-uncompilable/actual.txt</c>.
     /// </summary>
-    // +1: interop/clr_overload_string_compare_1843 (CLR interop, no builtins import in the sweep)
-    // +1: logical/coalesce_nullable_control_1819 (?? operator needs nullable resolution)
-    // -1: optional_result/result_annotation_payload_forms fixed by Phase 6's spec rewrite
-    // +4 → 19 for P21f's #2359 fixtures (from_builtins_import_str_no_warning_2359,
-    // import_alias_builtin_function_name_2359, import_alias_escaped_builtin_type_name_2359,
-    // module_property_builtin_name_2359, type_alias_builtin_function_name_2359): every one fails here with
-    // SPY0300 "Cannot find module 'builtins'" or "'copy'" — this seam registers neither the builtins module
-    // nor Sharpy.Stdlib — exactly as the 14 older entries do (all 19 measured SPY0300 @ c7c7f4d53 + the P21f
-    // verify-round fixes). The 14 older entries are pre-P21f fixtures P21f did not change, so the base held 14
-    // against a ratchet of 15 (derived, not measured at the base): five new names move the ratchet by four.
-    private const int MaxUncompilableFixtures = 19;
+    private void AssertUncompilableSet(IReadOnlyDictionary<string, string> uncompilable)
+    {
+        var actual = uncompilable.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key} # {p.Value.ReplaceLineEndings(" ")}").ToList();
+        foreach (var row in actual)
+            _output.WriteLine($"  uncompilable {row}");
+        var dumpDir = Path.Combine(FixtureRoots.RepositoryRoot, ".claude", "tmp", "generate-expression-uncompilable");
+        Directory.CreateDirectory(dumpDir);
+        File.WriteAllLines(Path.Combine(dumpDir, "actual.txt"), actual);
+
+        var listed = ReadUncompilableSet();
+        var problems = uncompilable.Keys.Where(stem => !listed.Contains(stem)).OrderBy(s => s, StringComparer.Ordinal)
+            .Select(stem => $"{stem} does not compile through this seam ({uncompilable[stem]}) and has no row: a new skipped stem is "
+                + "unswept — fix it, or add its row saying why")
+            .Concat(listed.Where(stem => !uncompilable.ContainsKey(stem)).OrderBy(s => s, StringComparer.Ordinal)
+                .Select(stem => $"{stem} is listed and compiles through this seam now (or is gone): delete its row"))
+            .ToList();
+        problems.Should().BeEmpty($"the stems this sweep skips must equal CodeGen/{UncompilableFileName} "
+            + $"(actual: {Path.Combine(dumpDir, "actual.txt")})");
+    }
+
+    private static IReadOnlySet<string> ReadUncompilableSet()
+    {
+        var path = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler.Tests", "CodeGen", UncompilableFileName);
+        if (!File.Exists(path))
+            throw new InvalidOperationException($"CodeGen/{UncompilableFileName} is missing. Its presence is what arms the set.");
+        var stems = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+            var split = line.IndexOf(" # ", StringComparison.Ordinal);
+            var stem = split < 0 ? "" : line[..split].Trim();
+            if (stem.Length == 0 || stem.Contains(' ') || line[(split + 3)..].Trim().Length == 0)
+                throw new InvalidOperationException($"CodeGen/{UncompilableFileName}: '{line}' must read `stem # diagnostic`.");
+            if (!stems.Add(stem))
+                throw new InvalidOperationException($"CodeGen/{UncompilableFileName}: '{stem}' is listed twice.");
+        }
+
+        return stems;
+    }
 
     // ----------------------------------------------------------------------------------------- //
 

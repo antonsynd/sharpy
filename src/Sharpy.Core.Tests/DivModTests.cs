@@ -44,7 +44,7 @@ public class Divmod_Tests
         // When/Then (Python: divmod(10, 0) -> ZeroDivisionError)
         FluentActions.Invoking(() => Divmod(10, 0))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer division or modulo by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
@@ -53,26 +53,26 @@ public class Divmod_Tests
         // When/Then
         FluentActions.Invoking(() => Divmod(10L, 0L))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("integer division or modulo by zero");
+            .WithMessage("division by zero");
     }
 
     [Fact]
-    public void Divmod_DoubleZeroDivisor_ThrowsZeroDivisionErrorWithFloatDivmodMessage()
+    public void Divmod_DoubleZeroDivisor_ThrowsZeroDivisionErrorWithDivisionByZeroMessage()
     {
-        // When/Then (Python: divmod(10.0, 0.0) -> ZeroDivisionError("float divmod()"))
-        // The message is divmod's own, not the "float modulo" of the delegated FloorMod.
+        // When/Then (CPython 3.14: divmod(10.0, 0.0) -> ZeroDivisionError("division by zero");
+        // 3.13 said "float divmod()". #2516)
         FluentActions.Invoking(() => Divmod(10.0, 0.0))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("float divmod()");
+            .WithMessage("division by zero");
     }
 
     [Fact]
-    public void Divmod_FloatZeroDivisor_ThrowsZeroDivisionErrorWithFloatDivmodMessage()
+    public void Divmod_FloatZeroDivisor_ThrowsZeroDivisionErrorWithDivisionByZeroMessage()
     {
         // When/Then
         FluentActions.Invoking(() => Divmod(10.0f, 0.0f))
             .Should().Throw<ZeroDivisionError>()
-            .WithMessage("float divmod()");
+            .WithMessage("division by zero");
     }
 
     [Theory]

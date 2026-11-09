@@ -1537,9 +1537,10 @@ def main() -> None:
     {
         // Recorded ≠ applied — and EXECUTING is not enough for this fact: Sharpy.Optional<T> still
         // carries the implicit T→Optional<T> operator, so a bare `d = 5;` compiles and prints 6 with
-        // the OptionalStoreWrap fact unread. Mutation (b) of plan-757fbb Phase 1 (drop the
-        // GetOptionalStoreWrap read in GenerateAssignment's plain-store path) left every executing
-        // cell of this class green (measured @ 852bf488b + this change: 1123/0). The fact's applied
+        // the store-wrap fact unread. Mutation (b) of plan-757fbb Phase 1 (drop the store-wrap
+        // read in GenerateAssignment's plain-store path, now the IrOptionalStoreWrap read, P82
+        // #2443) left every executing cell of this class green (measured @ 852bf488b + this
+        // change: 1123/0). The fact's applied
         // form is the emitted construction, so this cell reads the generated C# for both the plain
         // payload store and its augmented twin.
         var result = CompileAndExecute(@"
@@ -1558,7 +1559,7 @@ def main() -> None:
         result.StandardOutput.Trim().Split('\n').Should().Equal(new[] { "6", "15" });
         result.GeneratedCSharp.Should().NotBeNull();
         result.GeneratedCSharp!.Should().Contain("d = Optional<int>.Some(5);",
-            "the plain payload store re-wraps through the recorded OptionalStoreWrap fact");
+            "the plain payload store re-wraps through the IrOptionalStoreWrap node");
         result.GeneratedCSharp.Should().Contain("x = Optional<int>.Some(x.Unwrap() + 5);",
             "the augmented store re-wraps through the same fact");
         result.GeneratedCSharp.Should().NotContain("d = 5;",
@@ -2095,10 +2096,11 @@ def main() -> None:
     [Fact]
     public void MultiFile_OptionalStoreWrapAndPassThroughFacts_SurviveMergeFrom()
     {
-        // The wrap fact (SetOptionalStoreWrap) and the pass-through record are node-keyed
-        // SemanticInfo dictionaries; a dictionary missing from MergeFrom is silently dropped in
-        // the per-file → project merge code generation reads from (CLAUDE.md Rule 2). Recorded ≠
-        // applied: the program runs and prints.
+        // The pass-through record is a node-keyed SemanticInfo dictionary; a dictionary missing
+        // from MergeFrom is silently dropped in the per-file → project merge code generation reads
+        // from (CLAUDE.md Rule 2). The wrap fact (IrOptionalStoreWrap, P82 #2443) is derived by the
+        // lowering pass from the merged facts, so this cell pins that its inputs survive the merge.
+        // Recorded ≠ applied: the program runs and prints.
         using var helper = new ProjectCompilationHelper(Output);
         helper.WithRootNamespace("StoreSeamMerge");
         helper.AddSourceFile("lib.spy",

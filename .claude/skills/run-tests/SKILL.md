@@ -17,22 +17,11 @@ This is the local edit loop. The whole-solution commit gate is `/ci-gate` by def
 - On success: Shows "TESTS PASSED" + last 20 lines (summary)
 - On failure: Shows "TESTS FAILED" + last 80 lines + points to full log
 
-**Log location:** `.claude/tmp/last-test-run.log`
-
-**To investigate failures deeper:**
-```
-/head -200 .claude/tmp/last-test-run.log
-/grep "Exception" .claude/tmp/last-test-run.log
-```
+**Log location:** each wrapper call's own `.claude/tmp/dotnet-serialized-<time>-<pid>.log`, whose path the wrapper prints (`dotnet-serialized: log -> <path>`); concurrent runs never share one. Below, `RUN <args>` means `.claude/scripts/dotnet-serialized <args> | sed -n 's/^dotnet-serialized: log -> //p'; echo "exit=${PIPESTATUS[0]}"`, which prints that path (`<log>`) and the exit code.
 
 ## Steps
 
-1. Run `mkdir -p .claude/tmp` to ensure log directory exists
-2. Clear the old log with `rm -f .claude/tmp/last-test-run.log`
-3. Build first: `.claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q >> .claude/tmp/last-test-run.log 2>&1`. If build fails, print "=== BUILD FAILED — cannot run tests ===" then `tail -30 .claude/tmp/last-test-run.log` and stop.
-4. If `$ARGUMENTS` is non-empty, run: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~$ARGUMENTS&Category!=Benchmark" --no-build --logger "console;verbosity=normal" >> .claude/tmp/last-test-run.log 2>&1`
-5. Otherwise run: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --no-build --logger "console;verbosity=normal" >> .claude/tmp/last-test-run.log 2>&1`
-6. Check exit code:
-   - Exit 0: Print "=== TESTS PASSED ===" then `tail -20 .claude/tmp/last-test-run.log`
-   - Exit non-zero: Print "=== TESTS FAILED (last 80 lines) ===" then `tail -80 .claude/tmp/last-test-run.log`, then echo "Full log: .claude/tmp/last-test-run.log"
-7. Return the actual exit code from dotnet test
+1. Build first: `RUN build sharpy.sln --nologo -v q`. If it fails, print "=== BUILD FAILED — cannot run tests ===" then `tail -30 <log>` and stop.
+2. If `$ARGUMENTS` is non-empty: `RUN test --filter "FullyQualifiedName~$ARGUMENTS&Category!=Benchmark" --no-build --logger "console;verbosity=normal"`; otherwise `RUN test --filter "Category!=Benchmark" --no-build --logger "console;verbosity=normal"`.
+3. Exit 0: print "=== TESTS PASSED ===" then `tail -20 <log>`. Non-zero: print "=== TESTS FAILED (last 80 lines) ===" then `tail -80 <log>`, then "Full log: <log>" (`grep -n "Exception\|Failed" <log>` to dig deeper).
+4. Return the actual exit code from dotnet test

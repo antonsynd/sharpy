@@ -136,8 +136,14 @@ internal partial class RoslynEmitter
             if (stmt is DecoratedStatement decorated)
                 stmt = decorated.Statement;
 
-            // Convert self.field = value to this.Field = value (capitalized)
+            // Convert self.field = value to this.Field = value (capitalized). Plain `=` only: an
+            // augmented `self.<m> op= v` means `self.<m> = self.<m> op v` and falls through to
+            // GenerateBodyStatements → GenerateAssignment's member arm, the path a nested block and a
+            // method body take (operator, in-place collection mutator, `??=`, event subscription).
+            // Intercepting every operator here emitted `this.M = v`, dropping the read and the
+            // operator (#2439).
             if (stmt is Assignment assign &&
+                assign.Operator == AssignmentOperator.Assign &&
                 assign.Target is MemberAccess memberAccess &&
                 memberAccess.Object is Identifier id &&
                 string.Equals(id.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))

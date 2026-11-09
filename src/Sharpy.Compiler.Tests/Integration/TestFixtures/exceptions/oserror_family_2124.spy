@@ -1,0 +1,78 @@
+# The OSError family is python's (#2124 D15): FileNotFoundError, FileExistsError,
+# IsADirectoryError and PermissionError are OSError subclasses, and IOError IS OSError.
+# Cells 1-6 raise in user code; cells 7 and 10 come from open() at the file boundary,
+# on a path under a missing root directory and on the current directory. Each handler
+# chain ends in `except Exception`, the control that names a miss. Cell 8 (os.mkdir)
+# needs the stdlib: Sharpy.Stdlib.Tests' stdlib_os_oserror_2124. Cell 9, a permission
+# failure, depends on running as root and stays out.
+
+def main():
+    try:
+        raise FileNotFoundError('x')
+    except OSError:
+        print('1 FileNotFoundError caught as OSError')
+    except Exception:
+        print('1 FileNotFoundError missed OSError')
+
+    try:
+        raise PermissionError('x')
+    except OSError:
+        print('2 PermissionError caught as OSError')
+    except Exception:
+        print('2 PermissionError missed OSError')
+
+    try:
+        raise IOError('x')
+    except OSError:
+        print('3 IOError caught as OSError')
+    except Exception:
+        print('3 IOError missed OSError')
+
+    try:
+        raise OSError('x')
+    except IOError:
+        print('4 OSError caught as IOError')
+    except Exception:
+        print('4 OSError missed IOError')
+
+    try:
+        raise FileNotFoundError('x')
+    except IOError:
+        print('5 FileNotFoundError caught as IOError')
+    except Exception:
+        print('5 FileNotFoundError missed IOError')
+
+    try:
+        raise FileExistsError('x')
+    except OSError as e:
+        print(f'5b FileExistsError caught as OSError: {type(e).__name__}')
+    except Exception:
+        print('5b FileExistsError missed OSError')
+
+    try:
+        raise IsADirectoryError('x')
+    except OSError as e:
+        print(f'5c IsADirectoryError caught as OSError: {type(e).__name__}')
+    except Exception:
+        print('5c IsADirectoryError missed OSError')
+
+    e1 = IOError('x')
+    print(f'6 {type(e1).__name__} {isinstance(e1, OSError)}')
+    e2: IOError = OSError('y')
+    print(f'6 {type(e2).__name__}')
+
+    try:
+        f = open('/sharpy-2124-no-such-dir/missing.txt')
+        print('7 no error')
+    except OSError as e:
+        print(f'7 open(missing) caught as OSError: {type(e).__name__}')
+    except Exception as e:
+        print(f'7 open(missing) missed OSError: {type(e).__name__}')
+
+    try:
+        f = open('.')
+        print('10 no error')
+    except OSError as e:
+        print(f'10 open(dir) caught as OSError: {type(e).__name__}')
+    except Exception as e:
+        print(f'10 open(dir) missed OSError: {type(e).__name__}')

@@ -68,4 +68,4 @@ python -m build_tools stdlib generate --force
 bash build_tools/regenerate_spy_stdlib.sh --check   # spy-sourced only
 ```
 
-Read output from `.claude/tmp/dotnet-serialized-latest.log`. Finally, update the module count/list in `CLAUDE.md` (Architecture table + Sharpy.Stdlib section).
+Read output from the log path each wrapper call prints (`dotnet-serialized: log -> <path>`). Finally, update the module count/list in `CLAUDE.md` (Architecture table + Sharpy.Stdlib section).

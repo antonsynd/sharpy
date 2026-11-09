@@ -3,7 +3,8 @@ using System;
 namespace Sharpy
 {
     /// <summary>
-    /// Raised when a mapping (dictionary) key is not found.
+    /// Raised when a mapping (dictionary) key is not found. A <see cref="LookupError"/> subclass,
+    /// as in CPython (#2124).
     /// </summary>
     /// <remarks>
     /// Python's <c>KeyError</c> carries the missing key itself. Its <c>__str__</c> is the key's
@@ -14,7 +15,7 @@ namespace Sharpy
     /// <see cref="Message"/> and <see cref="IRepr.Repr"/> render it, so <c>str(e)</c>, <c>print(e)</c>,
     /// an f-string hole, <c>repr(e)</c> and the unhandled-exception line agree.
     /// </remarks>
-    public class KeyError : Exception, IRepr
+    public class KeyError : LookupError, IRepr
     {
         private readonly object? _key;
         private readonly bool _hasKey;

@@ -1,0 +1,21 @@
+# os.mkdir on an existing directory raises FileExistsError, an OSError subclass, so
+# `except OSError` catches it, as in python (#2124 D15, cell 8). The current directory
+# exists wherever the fixture runs; `except Exception` is the control that names a miss.
+import os
+
+def main():
+    try:
+        os.mkdir('.')
+        print('8 no error')
+    except OSError as e:
+        print(f'8 mkdir(existing) caught as OSError: {type(e).__name__}')
+    except Exception as e:
+        print(f'8 mkdir(existing) missed OSError: {type(e).__name__}')
+
+    try:
+        os.mkdir('.')
+        print('8 no error')
+    except IOError as e:
+        print(f'8 mkdir(existing) caught as IOError: {type(e).__name__}')
+    except Exception as e:
+        print(f'8 mkdir(existing) missed IOError: {type(e).__name__}')
