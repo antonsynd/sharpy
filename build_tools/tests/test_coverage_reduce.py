@@ -19,8 +19,12 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import yaml
+
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "build_tools" / "coverage_reduce.py"
+DOTNET_YML = REPO / ".github" / "workflows" / "dotnet10.yml"
+PREDICATE = "(github.event_name == 'push' || inputs.coverage)"
 
 # .claude/scripts/ci-gate's two parsers: no coverage line may read as either.
 GATE_COUNTS = re.compile(
@@ -241,3 +245,71 @@ class TestMerge:
         for line in output.stdout.splitlines():
             assert not GATE_COUNTS.search(line) and not GATE_FAILED.search(line), line
 
+
+def workflow() -> dict:
+    return yaml.safe_load(DOTNET_YML.read_text())
+
+
+def steps(job: str) -> List[dict]:
+    return workflow()["jobs"][job]["steps"]
+
+
+class TestWorkflowSurface:
+    def test_one_predicate_in_env_and_every_covered_timeout(self) -> None:
+        wf = workflow()
+        assert wf["env"]["COVERAGE_ON"] == "${{ " + PREDICATE + " }}"
+        limits = {"test-fast": (20, 15), "lsp": (30, 20), "compiler": (40, 25)}
+        for job, (on, off) in limits.items():
+            assert (
+                wf["jobs"][job]["timeout-minutes"]
+                == f"${{{{ {PREDICATE} && {on} || {off} }}}}"
+            ), job
+
+    def test_the_dispatch_input_is_a_boolean_defaulting_off(self) -> None:
+        # PyYAML reads the `on:` key as True.
+        coverage = workflow()[True]["workflow_dispatch"]["inputs"]["coverage"]
+        assert coverage["type"] == "boolean" and coverage["default"] is False
+
+    def test_every_covered_test_step_collects_reduces_and_uploads(self) -> None:
+        for job, names in {
+            "test-fast": ["cli", "core", "stdlib"],
+            "lsp": ["lsp-shard-${{ matrix.shard }}"],
+            "compiler": ["compiler-shard-${{ matrix.shard }}"],
+        }.items():
+            runs = [s.get("run", "") for s in steps(job)]
+            tests = [r for r in runs if '--logger "trx;LogFileName=' in r]
+            assert len(tests) == len(names), job
+            for r in tests:
+                assert (
+                    '"${cov[@]}"' in r
+                    and 'cov=(--collect "Code Coverage" --settings build_tools/coverage.runsettings)'
+                    in r
+                ), job
+            for name in names:
+                assert (
+                    f"python3 build_tools/coverage_reduce.py --name {name}" in runs
+                ), (job, name)
+            upload = next(
+                s
+                for s in steps(job)
+                if s.get("uses", "").startswith("actions/upload-artifact")
+            )
+            assert "TestResults/coverage-*.json" in upload["with"]["path"], job
+
+    def test_ci_summary_checks_out_first_and_merges_after_the_counts(self) -> None:
+        summary = steps("ci-summary")
+        first = summary[0]
+        assert (
+            first["uses"].startswith("actions/checkout")
+            and first["with"]["sparse-checkout"] == "build_tools"
+        )
+        counts = next(
+            i for i, s in enumerate(summary) if "python3 - <<'PY'" in s.get("run", "")
+        )
+        merge = next(
+            i
+            for i, s in enumerate(summary)
+            if "coverage_reduce.py --merge trx" in s.get("run", "")
+        )
+        assert merge > counts
+        assert summary[merge]["if"] == "${{ !cancelled() }}"
