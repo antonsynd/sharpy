@@ -254,13 +254,6 @@ type_casting.md::c7a9a2b5a1  # SPY0200 first #1952
 type_casting.md::d66501c4a8  # SPY0220 first #1952
 type_hierarchy.md::90e8c7a6ca  # SPY0200 first #1952
 type_narrowing.md::20c955b9d7  # SPY0200 first #1952
-type_narrowing.md::4ade21f410  # SPY0200 first #1952
-type_narrowing.md::52e0a231a8  # SPY0200 first #1952
-type_narrowing.md::883875ad98  # SPY0604 first #1952
-type_narrowing.md::a78b664da3  # SPY0104 first #1952
-type_narrowing.md::a7d4f86ece  # SPY0200 first #1952
-type_narrowing.md::b7ba34e2f9  # SPY0200 first #1952
-type_narrowing.md::d1709c8501  # SPY0200 first #1952
 type_parameter_defaults.md::476c32243e  # SPY0200 first #1952
 type_parameter_defaults.md::c1a6ffc658  # SPY0347 first #1952
 type_parameter_defaults.md::d87bf8c027  # SPY0395 first #1952
