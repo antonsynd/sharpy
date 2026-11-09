@@ -182,8 +182,9 @@ project; Batch 10's own full-suite log was a stale-binary false green; the `Reso
 ICE lived only in Stdlib.Tests.
 
 *Check:* the commit that closes a phase cites a whole-solution run at its sha, by CI run id or local
-log. A later commit that changes only plans or docs may carry `[skip ci]` and cite the last code
-commit's run. Red = a close-out whose only evidence is a filtered run, a log older than the last
+log. A later commit that changes only plans or docs cites the last code commit's run; it must not
+carry `[skip ci]` when it is the tip of a pull request, because the marker also suppresses the
+required `subjects` check and the `dev` ruleset refuses the merge (#2520). Red = a close-out whose only evidence is a filtered run, a log older than the last
 build, or a sweep the change reaches that was not run.
 
 ## 7. Regenerate early; read the diff as findings

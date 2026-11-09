@@ -26,6 +26,8 @@ Run in parallel:
 
 If the branch is `main` or `mainline`, **warn the user** that they're about to push directly to the main branch and confirm before proceeding.
 
+If the branch is `dev`, **stop**: `dev` accepts only pull requests (the branch ruleset applied 2026-11-08 under W3.4 / D5 refuses direct pushes and requires the `subjects` check). Promotion to `dev` is a PR: push the lane branch (`claude/<lane>`), open a PR into `dev`, run `/ci-gate` on its run, and merge on green. Local `dev` is advanced with `git pull origin dev` after the merge, never by a push.
+
 ### 1.1. Commit-subject length gate
 
 CI's `Commit Subjects` workflow (W3.4 / D5) fails a PR or a `dev`/`mainline` push whose non-merge, non-revert commit subjects exceed 72 characters. Run the same check on the outgoing commits before pushing:
@@ -102,7 +104,7 @@ Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — t
 git push -u origin <current-branch>
 ```
 
-If the push fails due to diverged history, **do not force push**. Instead, report the error and suggest `git pull --rebase` or ask the user how to proceed.
+If the push fails due to diverged history, **do not force push**. Instead, report the error and suggest `git pull --rebase` or ask the user how to proceed. A `GH013: Repository rule violations` refusal on `dev` is the PR-only ruleset, not a transient: move the commits to a lane branch (`git branch claude/<lane>` then open the PR) rather than retrying.
 
 ### 3. Close issues (if requested)
 
