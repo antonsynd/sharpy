@@ -41,7 +41,7 @@
 #         string aborting mid-line) — cite issue 2271 (closed: no S6 row may be added; a failure is a finding)
 #   S6n   the budget spent above a Q holding NO multi-line literal (the cure's direction control)   — cite issue 2273
 #   S6k   the stray triple re-paired into a comment (a known limit of any lexer fact)               — cite issue 2274
-#         its literal-bucket cells are a pinned census count (KnownLimitPin), never rows
+#         its literal-bucket cells are known-limit-S6k rows of formatting-route-census.txt, never rows here
 #   S6r   the short-string re-pair whose orphan line aborts right after the closer (repair-SPY00NN) — cite issue 2275
 #   S6x   a closer line that aborts and drops no quote, no stray (closeline-SPY00NN): nothing is lost, the direction
 #         control of issue 2275 — cite issue 2275; any S6x row is a finding, never a row
@@ -51,7 +51,7 @@
 #         repair-own-NAME for all nine tails, the same tail after a re-paired closer followed by the orphan's closing
 #         quote (a literal IS lost: a factMissing row there is a finding, never a row) — cite issue 2280
 #   S6ok  closeline-own-NAME for the three tails the walk cannot pair (bt, fspec, cmt; lead ruling L2): a known limit
-#         — cite issue 2274; their factSpurious cells are a pinned census count (KnownLimitPin), never rows
+#         — cite issue 2274; their factSpurious cells are known-limit-S6ok rows of formatting-route-census.txt, never rows here
 # S7 (P22h, FormatterTwins.ContinuationShapes) injects a line as the first body line of the parent's first block: an
 # unclosed bracket (bracket-eof, bracket-string, bracket-backtick, bracket-dropped) or an erroring line (recovery, and
 # recovery-misindented with the line after it 2 spaces deeper); judged by depth against the parent's layout, its line
@@ -60,7 +60,7 @@
 # recovery-header-2/-4/-6/-tab (lead ruling L8) inject `if _($):` at the opener's width with the line after it 2, 4, 6
 # spaces or a tab deeper, and are judged by moved instead of depth.
 # An S7 row cites issue 2279. A recovery-misindented cell whose lost repair the CLEAN twin (the erroring line made
-# `_ = 0`) loses too is exempt from depth and counted in the pinned census count S7ParityExemptPin (lead ruling L7: a
+# `_ = 0`) loses too is exempt from depth and recorded as an s7-parity-exempt row of formatting-route-census.txt (lead ruling L7: a
 # pre-existing lost repair, not issue 2279's); S7 loses no literal, so an S7 factSpurious or factMissing cell is a finding
 # On every unparseable document (S3-S7; not S6k; S6ok factSpurious is pinned), the lexer's literal-loss fact itself:
 #   factMissing  Lexer.LiteralStateUnknown is false while a line that starts inside a literal in Q does not in D

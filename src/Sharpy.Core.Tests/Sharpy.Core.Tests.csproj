@@ -26,7 +26,7 @@
 
     <!-- Optional: Fluent assertions for better readability -->
     <PackageReference Include="FluentAssertions" Version="8.11.0" />
-    <PackageReference Include="CsCheck" Version="5.0.0" />
+    <PackageReference Include="CsCheck" Version="5.0.1" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />

@@ -19,6 +19,8 @@ Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | A
 Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Select(s => s.Source).Distinct().Should().HaveCount(4, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
 Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.Source.Contains("(...)")).Should().HaveCount(2, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
 Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.Source.Contains("): ...")).Should().HaveCount(1, | ×1 | fixed-input | in-test input of EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp
+Sharpy.Compiler.Tests/CodeGen/GenerateExpressionReentryTests.cs | fixtures.Should().HaveCountGreaterThan(1_000, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | ScannedSources().Should().HaveCountGreaterThan(20, "the scan reads the CodeGen directory and the CLI commands"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | derivations.Should().Be(2); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
 Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | private const int ReaderCount = 15; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
 Sharpy.Compiler.Tests/CodeGen/ReparseEquivalenceConformanceTests.cs | const int cap = 25; | ×3 | tuning-constant | cap
