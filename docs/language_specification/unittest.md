@@ -203,6 +203,8 @@ For test classes with shared setup/teardown, inherit from `unittest.TestCase`:
 from unittest import TestCase
 
 class TestCalculator(TestCase):
+    value: int
+
     def setup(self):
         self.value = 0
 
@@ -309,6 +311,8 @@ pytest, which matches against `str(exc)` — equivalent to `.Message` for standa
 (note that .NET's `Exception.ToString()`, by contrast, includes the type name and stack trace):
 
 ```python
+from unittest import assert_raises
+
 @test
 def test_match():
     with assert_raises(ValueError, "bad.*input"):
@@ -569,6 +573,7 @@ An `async def` `@test.fixture` emits a fixture class implementing xUnit's
 `Xunit.IAsyncLifetime` instead of `System.IDisposable`. Setup (including `await`s) moves into
 `InitializeAsync`; teardown after the `yield` runs in `DisposeAsync`:
 
+<!-- spec-sweep: fragment -->
 ```python
 @test.fixture
 async def db() -> Connection:
