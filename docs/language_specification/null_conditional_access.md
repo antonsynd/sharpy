@@ -6,6 +6,7 @@ an absent value instead of continuing with the evaluation.
 
 It works with both `T?` (`Optional[T]`) and `T | None` (C# nullable):
 
+<!-- spec-sweep: fragment -->
 ```python
 # With T | None (C# nullable)
 result = obj?.method()       # Returns None if obj is None
@@ -24,6 +25,7 @@ The return type depends on the operand type:
 - `x?.foo` where `x: T | None` → returns `U | None` (C# nullable)
 - `x?.foo` where `x: T?` → returns `U?` (Optional)
 
+<!-- spec-sweep: fragment -->
 ```python
 # C# nullable propagates C# nullable
 raw: str | None = dotnet_api()
@@ -70,6 +72,7 @@ is the member's own type, unchanged.
 ```python
 class Inner:
     label: str?
+    value: int = 0
     def __init__(self, label: str?):
         self.label = label
     def get_label(self) -> str?:

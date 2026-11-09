@@ -13,6 +13,7 @@
 
 Sharpy uses indentation to denote code blocks (like Python):
 
+<!-- spec-sweep: fragment -->
 ```python
 if condition:
     statement1  # 4 spaces indentation
@@ -27,6 +28,7 @@ else:
 
 **Logical line:** A statement (may span multiple physical lines)
 
+<!-- spec-sweep: fragment -->
 ```python
 # Single logical line
 x = 42
@@ -70,6 +72,9 @@ Newlines are significant in Sharpy and terminate statements:
    recorded deviation (`semicolon-statement-separator` in `docs/deviations.yaml`, R-IO).
 
 ```python
+value1 = 1
+value2 = 2
+
 # Newline terminates statement
 x = 42
 y = 10

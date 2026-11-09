@@ -86,6 +86,7 @@ def main() -> None:
 
 Use dot notation to reference nested types in annotations:
 
+<!-- spec-sweep: fragment -->
 ```python
 node: LinkedList.Node = LinkedList.Node(42)
 ```
@@ -94,6 +95,7 @@ node: LinkedList.Node = LinkedList.Node(42)
 
 Nested type constructors use the qualified name:
 
+<!-- spec-sweep: fragment -->
 ```python
 item: Container.Item = Container.Item("widget")
 ```

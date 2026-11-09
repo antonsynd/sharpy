@@ -6,6 +6,7 @@ Features that were considered during Sharpy's design and explicitly rejected. Do
 
 **Proposed:** Block expressions that group multiple statements into a single expression, with the last value as the result. Inspired by Rust's everything-is-an-expression philosophy.
 
+<!-- spec-sweep: fragment -->
 ```python
 result = do:
     x = compute()
@@ -37,6 +38,7 @@ result = compute_result()
 
 **Proposed:** A `@dynamic_kwargs` decorator (Phase 11) that would enable `**kwargs` dictionary spreading in function calls, allowing patterns like:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Proposed syntax (rejected)
 @dynamic_kwargs
