@@ -59,17 +59,13 @@ jobs:
     permissions:
       contents: read
 
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
     steps:
     - uses: actions/checkout@v7
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v7
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version-file: .python-version
 
     - name: Install dependencies
       run: |
@@ -126,10 +122,10 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    - name: Set up Python 3.12
+    - name: Set up Python
       uses: actions/setup-python@v7
       with:
-        python-version: "3.12"
+        python-version-file: .python-version
 
     - name: Install ruff
       run: python -m pip install "ruff==0.16.9"
@@ -144,7 +140,7 @@ jobs:
   # Dual-execution oracle (#1030): the ported CPython tests under
   # src/Sharpy.Stdlib.Tests/Spy/cpython/ must also pass under stock python3,
   # proving they are a faithful oracle. Pure stdlib — no pip install, no dotnet.
-  # The Python 3.12 setup here is shared with Phase 9 (grammar-fuzz differential).
+  # The Python setup here is shared with Phase 9 (grammar-fuzz differential).
   dual-execute-oracle:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -155,10 +151,10 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    - name: Set up Python 3.12
+    - name: Set up Python
       uses: actions/setup-python@v7
       with:
-        python-version: "3.12"
+        python-version-file: .python-version
 
     - name: Install PyYAML for the divergence ledger
       run: python -m pip install --upgrade pip pyyaml

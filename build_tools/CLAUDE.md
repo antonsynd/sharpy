@@ -44,4 +44,4 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 
 ## CI
 
-`.github/workflows/python-build-tools.yml` — Python 3.12, runs `pytest build_tools/tests/ -v` on pushes to `mainline` and PRs.
+`.github/workflows/python-build-tools.yml` — the Python minor in the repo-root `.python-version`, runs `pytest build_tools/tests/ -v` on pushes to `mainline` and PRs.

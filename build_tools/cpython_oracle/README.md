@@ -104,7 +104,8 @@ change. A port that is *not* valid Python is a porting defect, not a shim gap.
 
 Shim + runner tests live in `build_tools/tests/test_cpython_oracle_shim.py`. CI
 runs the dual-execution as the `dual-execute-oracle` job in
-`.github/workflows/python-build-tools.yml` (Python 3.12, no dotnet).
+`.github/workflows/python-build-tools.yml` (the CI interpreter is the minor in the
+repo-root `.python-version`; no dotnet).
 
 ## Divergence ledger
 
