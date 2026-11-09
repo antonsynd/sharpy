@@ -105,6 +105,9 @@ class BlockResult:
     classification: str
     compile_result: Optional[CompileResult] = None
     wrapped: bool = False
+    # The exact source that compiled when wrapped (whole-block or hoisted wrap); an output block is
+    # RUN in this shape.
+    wrapped_source: Optional[str] = None
     red: bool = False
     red_reason: str = ""
     run_result: Optional[RunResult] = None
@@ -283,6 +286,26 @@ def compile_one(sharpyc: str, source: str) -> CompileResult:
         os.unlink(tmp)
 
 
+def build_one(sharpyc: str, source: str) -> bool:
+    """`sharpyc build --no-deps` the source into a scratch directory: True when the generated C#
+    compiles (no SPY0908), without running the program."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        src = os.path.join(tmpdir, "block.spy")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(source)
+        try:
+            proc = subprocess.run(
+                sharpyc.split()
+                + ["build", "--no-deps", "-o", os.path.join(tmpdir, "block.dll"), src],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            return False
+        return proc.returncode == 0
+
+
 def run_one(sharpyc: str, source: str) -> RunResult:
     """`sharpyc run` the source; the program's stdout is what follows the run banner and the one
     blank line printed after it (RunCommand)."""
@@ -325,6 +348,57 @@ def wrap_in_main(source: str) -> str:
     return f"def main() -> None:\n{indented}\n"
 
 
+# A zero-indent line that continues the previous top-level statement rather than starting one.
+_CONTINUATION = re.compile(r"^(else|elif|except|finally)\b")
+# A top-level variable declaration or binding (`name: T`, `name: T = v`, `name = v`, `a, b = …`):
+# moved into main() with the statements, so a local the example declares stays a local.
+_VARIABLE_DECL = re.compile(r"^[A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*\s*(:|=(?!=))")
+
+
+def hoist_wrap_in_main(source: str, statement_lines: List[int]) -> Optional[str]:
+    """The fallback wrap (#1952): keep module-level type, function and import declarations at
+    module level and move the top-level statements the compiler reported as SPY0340
+    (``statement_lines``, 1-based within ``source``), plus every top-level variable declaration,
+    into a synthesized ``def main()``, in source order. A top-level statement spans its zero-indent
+    line plus every indented, blank or comment line after it (and a zero-indent
+    ``else``/``elif``/``except``/``finally``); decorators belong to the statement they precede.
+    Returns None when no reported line falls in a statement."""
+    lines = source.splitlines()
+    starts = [
+        i
+        for i, line in enumerate(lines)
+        if line.strip()
+        and not line[0].isspace()
+        and not line.startswith("#")
+        and not _CONTINUATION.match(line)
+    ]
+    spans: List[Tuple[int, int]] = []
+    pending: Optional[int] = None
+    for n, start in enumerate(starts):
+        end = starts[n + 1] if n + 1 < len(starts) else len(lines)
+        if lines[start].startswith("@"):
+            pending = start if pending is None else pending
+            continue
+        spans.append((start if pending is None else pending, end))
+        pending = None
+    if pending is not None:
+        spans.append((pending, len(lines)))
+    wrapped = {
+        span
+        for span in spans
+        if any(span[0] <= line - 1 < span[1] for line in statement_lines)
+    }
+    if not wrapped:
+        return None
+    wrapped |= {span for span in spans if _VARIABLE_DECL.match(lines[span[0]])}
+    module = lines[: spans[0][0]] if spans else []
+    body: List[str] = []
+    for span in spans:
+        (body if span in wrapped else module).extend(lines[span[0] : span[1]])
+    indented = "\n".join("    " + line if line.strip() else line for line in body)
+    return "\n".join(module) + f"\n\ndef main() -> None:\n{indented}\n"
+
+
 def load_allowlist(path: str) -> Dict[str, str]:
     entries = {}
     if not os.path.exists(path):
@@ -365,9 +439,37 @@ def _compile_block(args: Tuple[str, Block]) -> BlockResult:
         and block.output_error is None
         and br.classification in ("compiled_as_is", "compiled_wrapped")
     ):
-        body = wrap_in_main(block.text) if br.wrapped else block.text
+        body = (br.wrapped_source or wrap_in_main(block.text)) if br.wrapped else block.text
         br.run_result = run_one(sharpyc, _with_prelude(block.prelude, body))
     return br
+
+
+def _try_hoisted_wrap(
+    sharpyc: str, block: Block, diags: List[dict]
+) -> Optional[BlockResult]:
+    """The whole-block wrap failed: retry with only the SPY0340 statements wrapped (#1952). The
+    hoisted form must also BUILD (``build_one``), not just pass ``emit diagnostics``, so this path
+    cannot add an emit-only false green (a SPY0908 that only a C# compile shows)."""
+    offset = len(block.prelude.splitlines()) + 1 if block.prelude else 0
+    statement_lines = [
+        d.get("line", 0) - offset
+        for d in diags
+        if d.get("severity") == "error" and d.get("code") == "SPY0340"
+    ]
+    hoisted = hoist_wrap_in_main(block.text, statement_lines)
+    if hoisted is None:
+        return None
+    source = _with_prelude(block.prelude, hoisted)
+    hoisted_result = compile_one(sharpyc, source)
+    if not hoisted_result.success or not build_one(sharpyc, source):
+        return None
+    return BlockResult(
+        block=block,
+        classification="compiled_wrapped",
+        compile_result=hoisted_result,
+        wrapped=True,
+        wrapped_source=hoisted,
+    )
 
 
 def _compile_block_only(args: Tuple[str, Block]) -> BlockResult:
@@ -394,16 +496,19 @@ def _compile_block_only(args: Tuple[str, Block]) -> BlockResult:
             all_spy0340 = False
 
         if all_spy0340:
-            wrapped_result = compile_one(
-                sharpyc, _with_prelude(block.prelude, wrap_in_main(block.text))
-            )
+            whole = wrap_in_main(block.text)
+            wrapped_result = compile_one(sharpyc, _with_prelude(block.prelude, whole))
             if wrapped_result.success:
                 return BlockResult(
                     block=block,
                     classification="compiled_wrapped",
                     compile_result=wrapped_result,
                     wrapped=True,
+                    wrapped_source=whole,
                 )
+            hoisted_br = _try_hoisted_wrap(sharpyc, block, diags)
+            if hoisted_br is not None:
+                return hoisted_br
             result = wrapped_result
 
     return BlockResult(block=block, classification="failing", compile_result=result)

@@ -27,6 +27,7 @@ from spec_blocks import (
     save_allowlist,
     seed_output_candidates,
     wrap_in_main,
+    hoist_wrap_in_main,
     _compile_block,
 )
 
@@ -213,6 +214,58 @@ def test_block_compiles_wrapped():
         br = _compile_block(("sharpyc", block))
     assert br.classification == "compiled_wrapped"
     assert br.wrapped is True
+
+
+_DECL_AND_STATEMENTS = "class P:\n    x: int\n\n@dataclass\ndef f() -> int:\n    return 1\n\np = P()\nif f() > 0:\n    print(p)\nelse:\n    pass\n"
+
+
+def test_hoist_wrap_keeps_declarations_and_wraps_statements():
+    # SPY0340 at lines 8 and 9: the class and the decorated def stay at module level; the
+    # assignment and the whole if/else statement move into main(), in order.
+    hoisted = hoist_wrap_in_main(_DECL_AND_STATEMENTS, [8, 9])
+    module, main = hoisted.split("def main() -> None:\n")
+    assert "class P:\n    x: int" in module and "@dataclass\ndef f() -> int:" in module
+    assert "p = P()" not in module and "if f()" not in module
+    assert main == "    p = P()\n    if f() > 0:\n        print(p)\n    else:\n        pass\n"
+    assert hoist_wrap_in_main(_DECL_AND_STATEMENTS, [99]) is None
+
+
+def test_hoist_wrap_moves_variable_declarations_into_main():
+    # `value: int` is not SPY0340, but it must stay a LOCAL of main(), never a module global.
+    source = "def f(r: out int) -> bool:\n    r = 1\n    return True\n\nvalue: int\nif f(out value):\n    print(value)\n"
+    module, main = hoist_wrap_in_main(source, [6]).split("def main() -> None:\n")
+    assert "value: int" not in module and "def f(" in module
+    assert main.startswith("    value: int\n    if f(out value):")
+
+
+def _stub_compiler_hoist_only(sharpyc, source):
+    # Compiles only when the class stays at module level and the statements are in main().
+    if source.startswith("class P:") and "def main() -> None:\n    p = P()" in source:
+        return CompileResult(success=True)
+    if "def main() -> None:" in source:
+        return _stub_compiler_fail("SPY0708")(sharpyc, source)
+    diags = [
+        {"severity": "error", "code": "SPY0340", "line": n, "column": 1, "message": "top"}
+        for n in (8, 9)
+    ]
+    return CompileResult(success=False, first_error_code="SPY0340", stdout=json.dumps(diags))
+
+
+def test_block_compiles_hoisted_only_when_it_also_builds():
+    block = _make_block("a.md", _DECL_AND_STATEMENTS)
+    with patch("spec_blocks.compile_one", _stub_compiler_hoist_only), patch(
+        "spec_blocks.build_one", lambda sharpyc, source: True
+    ):
+        br = _compile_block(("sharpyc", block))
+    assert br.classification == "compiled_wrapped" and br.wrapped is True
+    assert br.wrapped_source.startswith("class P:")
+    # The hoisted form passes emit diagnostics but its C# does not build (a SPY0908): failing.
+    with patch("spec_blocks.compile_one", _stub_compiler_hoist_only), patch(
+        "spec_blocks.build_one", lambda sharpyc, source: False
+    ):
+        br = _compile_block(("sharpyc", block))
+    assert br.classification == "failing"
+    assert br.compile_result.first_error_code == "SPY0708"
 
 
 def test_block_fragment_marker():
