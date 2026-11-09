@@ -89,12 +89,6 @@ function_variadic_arguments.md::17c2cd6add  # SPY0354 first #1952
 function_variadic_arguments.md::dd9c3284b0  # SPY0909 first #1952
 function_variadic_arguments.md::f5dcda38ed  # SPY0354 first #1952
 function_variadic_arguments.md::fee07323b6  # SPY0227 first #1952
-generators.md::09c9ffb3b3  # SPY0270 first #1952
-generators.md::18b67c23de  # SPY0703 first #1952
-generators.md::204d0f6970  # SPY0267 first #1952
-generators.md::7d6e6e8495  # SPY0269 first #1952
-generators.md::a3403b2cf9  # SPY0268 first #1952
-generators.md::b061850082  # SPY0200 first #1952
 generic_variance.md::9cbfb172c2  # SPY0200 first #1952
 generics.md::10412babcd  # SPY0413 first #1952
 generics.md::5b0f3da293  # SPY0338 first #1952
@@ -124,12 +118,6 @@ maybe_expressions.md::92e427272c  # SPY0200 first #1952
 maybe_expressions.md::9ac026d8f1  # SPY0243 first #1952
 membership_operators.md::748028e603  # SPY0200 first #1952
 membership_operators.md::b85e7711be  # SPY0202 first #1952
-method_overloading.md::0416246112  # SPY0200 first #1952
-method_overloading.md::1981c7a183  # SPY0300 first #1952
-method_overloading.md::1fd67b6c76  # SPY0200 first #1952
-method_overloading.md::43f8776c84  # SPY0200 first #1952
-method_overloading.md::88398db0ea  # SPY0244 first #1952
-method_overloading.md::e06f25c63f  # SPY0200 first #1952
 name_shadowing.md::96ff2030c9  # SPY0240 first #1952
 named_tuples.md::4ff1f72827  # SPY0200 first #1952
 named_tuples.md::a065be765c  # SPY0118 first #1952
