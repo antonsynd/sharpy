@@ -1,8 +1,0 @@
-def greet() -> str:
-    return "hello"
-
-def greet() -> str:
-    return "world"
-
-def main():
-    print(greet())
