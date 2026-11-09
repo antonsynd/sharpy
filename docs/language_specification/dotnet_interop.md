@@ -303,6 +303,7 @@ A receiver that is not a sequence is a different case, and it is refused rather 
 overload of the name accepts it, so no argument list could make the call bind and deferring to
 codegen would only turn a type error into an internal error.
 
+<!-- spec-sweep: error SPY0203 -->
 ```python
 def main() -> None:
     n: int = 5
@@ -400,6 +401,7 @@ so it chains but has no list surface (`len(xs)` draws SPY0320). Write `list[T]` 
 materialization instead, and with it the loss of `then_by` — which is now reported rather than
 deferred to the C# compiler:
 
+<!-- spec-sweep: fragment -->
 ```python
     xs: list[int] = lst.order_by(lambda v: v)   # fine: a Sharpy list[int]
     xs.then_by(lambda v: -v)                    # error[SPY0203]: list[int] has no member 'then_by'
@@ -434,6 +436,7 @@ view, so this is a documented divergence — see `docs/deviations.yaml`.
 happens where a *sequence expression* meets a Sharpy slot; naming a CLR collection and annotating it
 as a Sharpy one is a different request, and Sharpy will not silently copy for it:
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 from system.collections.generic import List
 
@@ -503,6 +506,7 @@ def main():
 
 Passing `None` to a parameter declared non-nullable is refused:
 
+<!-- spec-sweep: error SPY0229 -->
 ```python
 import system.io
 

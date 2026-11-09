@@ -31,6 +31,7 @@ For complete details on default parameters, including the compile-time constant 
 
 Sharpy supports calling functions with named arguments, allowing callers to specify parameter values by name rather than position:
 
+<!-- spec-sweep: error SPY0109 -->
 ```python
 def create_user(name: str, age: int, active: bool = True) -> User:
     pass
@@ -88,6 +89,7 @@ For complete details, see [Flexible Arguments](flexible_arguments.md).
 
 ### Quick Example
 
+<!-- spec-sweep: error SPY0370 -->
 ```python
 def search(query: str, /, limit: int = 10, *, case_sensitive: bool = False) -> list[str]:
     pass
@@ -151,6 +153,7 @@ f(3.14)  # Calls f(float) - exact match
 
 If no single overload is better than all others, the call is ambiguous:
 
+<!-- spec-sweep: error SPY0353 -->
 ```python
 def f(x: int, y: float): ...
 def f(x: float, y: int): ...
@@ -159,6 +162,7 @@ f(1, 2)  # ERROR (SPY0353): Ambiguous - neither candidate is better at both posi
 ```
 
 **Resolution:** Use explicit type conversions to disambiguate:
+<!-- spec-sweep: fragment -->
 ```python
 f(1, 2.0)         # Calls f(int, float)
 f(1.0, 2)         # Calls f(float, int)
@@ -202,6 +206,7 @@ This allows named arguments to disambiguate between overloads that have the same
 
 When a method is overridden with different parameter names, the compiler uses the *static type* of the receiver to determine valid parameter names:
 
+<!-- spec-sweep: error SPY0234 -->
 ```python
 class Animal:
     def eat(self, food_type: str = "grub") -> None:

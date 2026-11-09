@@ -24,11 +24,7 @@ comparison_chaining.md::08964e816a  # SPY0200 first #1952
 comparison_chaining.md::7e6fd003f9  # SPY0200 first #1952
 comparison_chaining.md::c2f2eab4d7  # SPY0200 first #1952
 comparison_chaining.md::cf93712268  # SPY0200 first #1952
-comprehensions.md::2041e830f2  # SPY0200 first #1952
-comprehensions.md::2fe87b121c  # SPY0340 first #1952
 comprehensions.md::737d0c007b  # SPY0600 first #1952
-comprehensions.md::c4e725cc7d  # SPY0200 first #1952
-comprehensions.md::d10071c64a  # SPY0200 first #1952
 constructors.md::316927b79a  # SPY0224 first #1952
 constructors.md::d86be9af34  # SPY0224 first #1952
 context_managers.md::0a8135cdb6  # SPY0266 first #1952
@@ -39,11 +35,7 @@ conversion_operators.md::27582600e9  # SPY0200 first #1952
 del_statement.md::04eaecc17d  # SPY0144 first #1952
 delegates.md::a1f18583a7  # SPY0200 first #1952
 diagnostic_suppression.md::25d8e69770  # SPY0200 first #1952
-dotnet_interop.md::0331a89ed9  # SPY0203 first #1952
-dotnet_interop.md::22026be236  # SPY0229 first #1952
 dotnet_interop.md::54faee6a05  # SPY0200 first #1952
-dotnet_interop.md::6b58ad628c  # SPY0220 first #1952
-dotnet_interop.md::f40f6f2627  # SPY0100 first #1952
 dstrings.md::6254375e12  # SPY0200 first #1952
 dstrings.md::777d957e37  # SPY0029 first #1952
 dunder_methods_recommendations.md::40343514fa  # SPY0202 first #1952
@@ -58,11 +50,6 @@ feature_roadmap.md::efebf56c1b  # SPY0202 first #1952
 flexible_arguments.md::49aed5aea1  # SPY0300 first #1952
 flexible_arguments.md::b47620477b  # SPY0370 first #1952
 for_statement.md::dd90c145b2  # SPY0200 first #1952
-function_parameters.md::0a8c05815b  # SPY0370 first #1952
-function_parameters.md::36e82869ac  # SPY0234 first #1952
-function_parameters.md::4903c78545  # SPY0200 first #1952
-function_parameters.md::61cf31491b  # SPY0353 first #1952
-function_parameters.md::679a768603  # SPY0109 first #1952
 function_types.md::24acd11b25  # SPY0104 first #1977
 function_types.md::e891fe1fdc  # SPY0104 first #1977
 function_variadic_arguments.md::17c2cd6add  # SPY0354 first #1952

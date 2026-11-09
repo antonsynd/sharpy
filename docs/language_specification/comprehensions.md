@@ -36,6 +36,7 @@ matrix = [[i * j for j in range(3)] for i in range(3)]
 The filter (`if` clause) is applied **before** the transformation, matching Python semantics exactly:
 
 ```python
+items = [3, -1, 2]
 [x * 2 for x in items if x > 0]
 # Equivalent to:
 # result = []
@@ -154,7 +155,10 @@ resolved target; see [Overload Resolution](overload_resolution.md#argument-types
 
 Variables declared in comprehensions are scoped to that comprehension and do not leak into the enclosing scope:
 
+<!-- spec-sweep: error SPY0200 -->
 ```python
+pairs = [("Ann", 31), ("Bo", 27)]
+
 # Variables don't leak
 squares = [i ** 2 for i in range(10)]
 print(i)  # ERROR: 'i' does not exist in this scope
@@ -168,7 +172,13 @@ print(name)  # ERROR: 'name' does not exist in this scope
 
 Variables assigned using the walrus operator (`:=`) inside a comprehension are also comprehension-local. They do not leak to the containing scope:
 
+<!-- spec-sweep: error SPY0200 -->
 ```python
+def expensive(x: int) -> int:
+    return x - 1
+
+items = [1, 2, 3]
+
 # Walrus useful within comprehension to avoid recomputation
 results = [y * 2 for x in items if (y := expensive(x)) > 0]
 # y is local to the comprehension - used in both filter and transform
@@ -184,10 +194,12 @@ Following PEP 572, a walrus in a comprehension's **iterable** is refused — the
 evaluates once before the loop begins, so a walrus there would bind in the wrong scope.
 Rebinding the iteration variable with a walrus in the element or condition is also refused:
 
+<!-- spec-sweep: error SPY0704 -->
 ```python
-xs: list[int] = [1, 2, 3]
-r = [y for y in (t := xs)]    # error SPY0704: walrus in iterable
-r = [i := 0 for i in xs]      # error SPY0704: walrus rebinds 'i'
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    r = [y for y in (t := xs)]    # error SPY0704: walrus in iterable
+    r = [i := 0 for i in xs]      # error SPY0704: walrus rebinds 'i'
 ```
 
 A walrus in the **element** or **condition** position is accepted — it is local to the
