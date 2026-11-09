@@ -320,15 +320,4 @@ unittest.md::9f701ad433  # SPY0200 first #1952
 unittest.md::b2994e6e1a  # SPY0200 first #1952
 unittest.md::ca895c8300  # SPY0203 first #1952
 variable_scoping.md::d7d337bec9  # SPY0200 first #2144
-walrus_operator.md::10c0b894cd  # SPY0100 first #1952
-walrus_operator.md::23d4574ab6  # SPY0340 first #1952
-walrus_operator.md::246ab314ee  # SPY0600 first #1952
-walrus_operator.md::2656b095d4  # SPY0200 first #1952
 walrus_operator.md::32d55cec42  # SPY0600 first #1952
-walrus_operator.md::364adc6e38  # SPY0600 first #1952
-walrus_operator.md::43ce9d895b  # SPY0340 first #1952
-walrus_operator.md::87669ec6a8  # SPY0227 first #1952
-walrus_operator.md::add4a25f0a  # SPY0200 first #1952
-walrus_operator.md::b524be2683  # SPY0100 first #1952
-walrus_operator.md::c1b78ea690  # SPY0104 first #1952
-walrus_operator.md::c4301a89be  # SPY0600 first #1952
