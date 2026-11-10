@@ -14,10 +14,10 @@ Parse `$ARGUMENTS` for:
 1. **Plan path** — the first argument (a file path ending in `.md`)
 2. **--exclude flag** — optional, comma-separated list of section names to skip
 
-The plan to implement is the committed copy `/verify-plan` wrote to `docs/process/plans/<plan-id>.md` (policy: `docs/process/README.md`); the gitignored draft in `.claude/plans/` is read only when no committed copy exists, and Pre-Implementation §2 then commits it first. If `$ARGUMENTS` is empty, do **not** pick silently — list the three newest in each and ask which to implement:
+The plan to implement is the file of record `docs/process/plans/<plan-id>.md` (policy: `docs/process/README.md` › The stage trail). Every stage commits there, so presence is not a verdict: the file's first line is a `/verify-plan` stamp or the `<!-- DRAFT, not verified` marker `/create-plan` writes, and Pre-Implementation §2 reads it. The gitignored working copy in `.claude/plans/` is read only when no committed copy exists, and §2 then commits it first. If `$ARGUMENTS` is empty, do **not** pick silently — list the three newest in each and ask which to implement:
 ```bash
-ls -t docs/process/plans/*.md 2>/dev/null | head -3    # committed, verified plans — read these first
-ls -t .claude/plans/*.md 2>/dev/null | head -3         # drafts (gitignored) — only when the plan has no committed copy
+ls -t docs/process/plans/*.md 2>/dev/null | head -3    # files of record — implement one whose line 1 is a PASS / CONVERGED stamp
+ls -t .claude/plans/*.md 2>/dev/null | head -3         # working copies (gitignored) — only when the plan has no committed copy
 ```
 
 ## Pre-Implementation Checklist
@@ -32,7 +32,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
 - Read the `## Scope` block's **Tier** line (contract §12). `tier: light` → the stamp must read `Verified by /verify-plan --adequacy (Adequacy-only …)` with result `PASS` or `CONVERGED` (contract §12 Convergence: the Verification Summary's `### Deferred findings` rows are the first commit, resolved in code; `Adequacy: CELL` on a bug-fix plan still asks the owner once, as below); absent → "This light plan has no adequacy pass. Run `/verify-plan <path>` (it runs `--adequacy` for a light plan) first." `NEEDS REVISION` → stop, as for a full plan. Then run `python3 build_tools/check_plan_refs.py <plan> --issues` (outside the sandbox, `gh`) yourself and **refuse on a red report** until it is clean — the light pass corrects nothing inline, so references may have drifted since. Record the tier in the Implementation Summary header; the final `/verify-implementation` runs its light auditor set. No `Tier` line (plans created before 2026-10-28) → `full`.
 - **Promotion in flight** (§12): if an implementer hits a decision the charter and plan did not rule, or the fix moves into `Semantic/`, `Lowering/` or `CodeGen/` on a light plan — STOP that lane, write the question into the plan's `## Design Decisions` with lettered options and the door type, ask the owner, and record the answer as `tier: full (<letter>, promoted at /implement-plan: <reason>)`. Never demote.
 - For a `full` plan, look for `<!-- Verified by /verify-plan` at the top:
-- If **absent**: warn the user "This plan has not been verified. Consider running `/verify-plan` first." Ask whether to proceed or stop.
+- If **absent**: warn the user "This plan has not been verified. Consider running `/verify-plan` first." Ask whether to proceed or stop. A first line reading `<!-- DRAFT, not verified` is this case stated by the file itself: `/create-plan` committed the draft for the trail, and no pass has stamped it.
 - If **NEEDS REVISION**: stop — "This plan was flagged as needing revision. Please address the issues in the Verification Summary before implementing."
 - If **CONVERGED** (contract §12 Convergence): proceed as for PASS, with one exception — `Adequacy: CELL` on a bug-fix plan still needs the owner's word: show the `### Deferred findings` rows and ask once ("converged with CELL — say `override` to implement, or revise"); proceed only on the override and record the owner's words in the plan's `## Revision log`. The `### Deferred findings` rows are Phase 1's first task (a light plan's first commit): each is resolved in code — a map or exclusion entry, an assertion's source expression, a test's census constant — with the assertion or mutation the row names, and the commit body names the row it closes; the plan's design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) are not edited beyond one `## Revision log` line (`deferred findings resolved in code @ <sha>`) — the Implementation Checklist and override records this skill writes are not design sections. Record `<Adequacy> (converged)` in the Implementation Summary header.
 - If **PASS** or **PASS WITH CORRECTIONS**: read the `<!-- Adequacy: CLASS | CELL | N/A -->` line:
@@ -41,7 +41,9 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
   - Stamp without an Adequacy line (verified before 2026-08-26) → treat as `N/A` for feature plans, and as `CELL` for bug-fix plans unless the plan already has a Defect Class section.
 - Read the `<!-- Scope:` stamp line and the plan's `## Scope` block (contract §11). `MULTI-GROUP` without `override: <owner's words>`, an output/layout-changing phase sharing a gate, or a residue group whose generator is not Phase 1 → **refuse**: "This plan bundles more than one group (or skips its generator). Split it per the charter, or say `override` to implement it knowingly." Record an override in the plan file. Plans stamped before 2026-09-27 have no Scope line: derive it from the plan's groups and apply the same rule. A light plan's `Adequacy-only` stamp carries the same `Adequacy:` and `Scope:` lines, so this step is identical at both tiers.
 
-- **Committed copy** — implement from `docs/process/plans/<plan-id>.md`. If the stamped plan exists only as a draft in `.claude/plans/` (a `/verify-plan` that ran before 2026-11-06, or one that skipped its commit step), `cp` it there and commit it by explicit pathspec (`process(plan): <plan-id> — <title> verified <result> @ <sha>`) before any other step, and use that path everywhere below. The committed plan is tracked, so every edit this skill makes to it — the `## Implementation Checklist`, an override record, a `## Revision log` line — is committed in the lead's own slices; an uncommitted plan edit is an unclaimed working-tree delta at the next wave check.
+- **Committed copy** — implement from `docs/process/plans/<plan-id>.md`. If the stamped plan exists only as a working copy in `.claude/plans/` (a `/verify-plan` that ran before 2026-11-06, or one that skipped its commit step), `cp` it there and commit it by explicit pathspec (`process(plan): <plan-id> — verified <result> @ <sha>`) on the lane below before any other step, and use that path everywhere below. The committed plan is tracked, so every edit this skill makes to it — the `## Implementation Checklist`, an override record, a `## Revision log` line — is committed in the lead's own slices; an uncommitted plan edit is an unclaimed working-tree delta at the next wave check.
+
+- **Lane branch** — `dev` refuses direct pushes, so the implementation lands through a pull request (`docs/process/README.md` › The stage trail). Before the first commit, `git fetch origin dev` and `git switch -c claude/<group> origin/dev` (a slice name when the plan lands in tranches: `claude/p82-tranche2`). A lane that already exists with an open pull request → `git switch` to it and continue; one whose pull request has merged → `git switch -C claude/<group> origin/dev`, never new commits on merged history. If the stamped plan is not on `origin/dev` yet (its `claude/<group>-plan` pull request is still open), cut the lane from that branch's tip instead and say so in the report: the implementation's pull request then carries the plan commit too.
 
 ### 3. Report git status
 - Run `git status --short`. If there are uncommitted changes, REPORT them to the user and ask whether to proceed — do **not** stash, restore, or clean; the tree may hold a peer's work.
@@ -193,13 +195,18 @@ After final verification:
 
 1. If a team exists: shut down teammates via `SendMessage` (`type: "shutdown_request"`) and delete the team via `TeamDelete`; otherwise confirm every background agent has reported
 2. Mark the plan's Implementation Checklist complete (or list what was deferred and why) and commit the plan file by explicit pathspec (`process(plan): <plan-id> — implementation checklist closed @ <sha>`); `/verify-implementation` appends its verify record to this same committed file
-3. Present a summary report to the user:
+3. **Open the pull request** (`docs/process/README.md` › The stage trail). `/push` the lane, then open the pull request into `dev` unless the lane already has an open one (the push updates it):
+   - **Title:** `<type>(<area>): <group> — <what the plan cures>`, at most 72 characters.
+   - **Body:** the plan path and its stamp line; the Issues to Close rows with their close criteria, written `Refs #N` and never `Closes #N` (`/verify-implementation` closes issues, on evidence — contract §8); the gate `passed/failed/skipped @ <sha> (measured)` with its CI run id against the baseline; the guards' mutation outcomes; what was deferred; the next step `/verify-implementation docs/process/plans/<plan-id>.md`.
+   - **Only on a read gate.** The pull request is opened after Final Verification, when every red at the tip is attributed by a control run. It is never a way to reach CI (contract §6: `/ci-gate` dispatches at the pushed commit, and a do-not-merge pull request has been merged by accident before). A tip with an unattributed red gets no pull request: the pushed lane is the trail, and the report names the red that blocks it.
+   - Merging is the owner's. A session that stops before Final Verification still pushes the lane, so the commits outlive the container.
+4. Present a summary report to the user:
 
 ```markdown
 ## Implementation Summary
 
 **Plan:** [plan file path] · **Adequacy:** [CLASS / CELL (override) / N/A — suffixed `(converged)` on a CONVERGED stamp]
-**Branch:** [current branch] · **Scope:** [base sha]..[HEAD sha] · **Commits:** [count]
+**Branch:** [lane branch] · **Pull request:** [URL, or "none: <the red that blocks it>"] · **Scope:** [base sha]..[HEAD sha] · **Commits:** [count]
 
 ### What Was Done
 - (each completed task with commit hash)
