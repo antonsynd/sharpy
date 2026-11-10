@@ -21,7 +21,7 @@ not Python; plain Python will not compile.
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) — any 10.x version
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) — any 10.x version (.NET 11 alone is not enough: programs target `net10.0`)
   (there is no `global.json` pin). `sharpyc run` executes programs via
   `dotnet`, so the SDK must be on `PATH`.
 

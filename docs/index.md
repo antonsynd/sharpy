@@ -88,6 +88,8 @@ sharpyc emit csharp hello.spy
     | `project` with `<PackageReference>` items (`dotnet restore`) | the .NET 10 SDK |
 
     Without it these refuse with SPY0913 before compiling anything (`sharpyc explain SPY0913`).
+    .NET 11 (released 2026-11-10) does not stand in for it: compiled programs target `net10.0`, and
+    a `net11.0` target is tracked in [#2548](https://github.com/antonsynd/sharpy/issues/2548).
     The `dotnet tool install` channel always has the SDK.
 
 ## Features
