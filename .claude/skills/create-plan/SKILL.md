@@ -6,7 +6,7 @@ argument-hint: "<issue numbers or description> [--light | --full]"
 
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
 
-Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the task list, phases and commit messages below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Saves the plan as a **draft** in `.claude/plans/` (repo-local, gitignored); `/verify-plan` copies a passing plan to `docs/process/plans/<plan-id>.md` and commits it, and that committed copy is what `/implement-plan` and `/verify-implementation` read (policy: `docs/process/README.md`).
+Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the task list, phases and commit messages below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Writes the plan as a working copy in `.claude/plans/` (repo-local, gitignored), then commits it as a **draft** to `docs/process/plans/<plan-id>.md` under a DRAFT marker and opens a pull request into `dev` (§3.1); `/verify-plan` commits its stamped pass over that file at every result, and the committed copy is what `/implement-plan` and `/verify-implementation` read (policy: `docs/process/README.md` › The stage trail).
 
 **Usage:**
 - `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan at the charter's tier
@@ -22,10 +22,10 @@ Parse `$ARGUMENTS`:
 - If it looks like a description, use it as the planning goal
 - If empty, ask the user what they want to plan. If they want to extend or re-plan an existing plan, list the three newest drafts and the three newest committed plans and ask which one — never silently pick one:
   ```bash
-  ls -t .claude/plans/*.md 2>/dev/null | head -3          # drafts (gitignored) — a NEEDS REVISION plan is revised here
-  ls -t docs/process/plans/*.md 2>/dev/null | head -3     # committed, verified plans — this skill does not edit them
+  ls -t docs/process/plans/*.md 2>/dev/null | head -3     # files of record — the first line of each is the DRAFT marker or a /verify-plan stamp
+  ls -t .claude/plans/*.md 2>/dev/null | head -3          # working copies (gitignored) — this container's only
   ```
-  A revision edits the draft in `.claude/plans/`; the committed copy under `docs/process/plans/` changes only when a `/verify-plan` pass stamps the revision PASS or CONVERGED and commits it. Re-planning an already-committed plan starts by copying it back to `.claude/plans/` as the draft.
+  A revision edits the working copy in `.claude/plans/` and ends by committing it over the file of record under `docs/process/plans/` (§3.1). When the working copy is missing (a new container), copy the file of record back to `.claude/plans/` first; when both exist and differ beyond the DRAFT marker, ask which is current (`docs/process/README.md` › The stage trail).
 - Before revising the plan the user picked, read its stamp (contract §12 Convergence). **`CONVERGED`** → do not revise: say the next step is `/implement-plan <path>` (the `### Deferred findings` rows are its first task) and stop. **`NEEDS REVISION`** → revise only what the Verification Summary names, and write the `## Revision log` line as `@ <sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): …` so the next verifier can apply the Convergence rule (the stamp is deleted; the log line is the only carrier of the dimension). A finding that asks for a roster is answered by naming the compiler enumeration, the map and its totality assertion with its mutation — never by copying a census count into the plan: the count is the test's literal constant (as `ScopeKindRosterTests` keeps its own) and goes stale at the next commit.
 
 ## Scope check (before any research)
@@ -76,7 +76,7 @@ Any `dotnet` command you run while researching goes through `.claude/scripts/dot
 
 ### 3. Generate the plan
 
-Write a plan file to `.claude/plans/` with a random name (use `openssl rand -hex 3` for a short hex suffix, e.g., `plan-a1b2c3.md`; the stem is the plan-id, and `/verify-plan` commits the passing plan as `docs/process/plans/plan-a1b2c3.md`). Do not commit the draft.
+Write a plan file to `.claude/plans/` with a random name (use `openssl rand -hex 3` for a short hex suffix, e.g., `plan-a1b2c3.md`; the stem is the plan-id, and the plan's file of record is `docs/process/plans/plan-a1b2c3.md`). §3.1 commits the draft there once it is written.
 
 The plan must follow this structure. `## Defect Class` and `## Adversarial Review` are **mandatory when any input is a bug, ICE, or regression issue**; omit them (with the line "Defect Class: N/A — feature work") only for pure feature work.
 
@@ -185,10 +185,32 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - GitHub issues referenced and mapped to closing tasks, each with its close criterion
 - No hard-coded model names or commit trailers — implementers use the trailer the harness provides
 
+### 3.1. Commit the draft and open the pull request
+
+A draft is committed development history from the moment it is written (owner, 2026-11-10; `docs/process/README.md` › The stage trail): the gitignored working copy does not survive its container, and the next session needs something to verify or revise. Run `python3 build_tools/check_plan_refs.py .claude/plans/<plan-id>.md` first and fix what it flags, then:
+
+```bash
+git fetch origin dev
+git switch -c claude/<group>-plan origin/dev     # e.g. claude/p33-plan; the lane exists with an open PR → `git switch` to it;
+                                                 # its PR has merged → `git switch -C claude/<group>-plan origin/dev`
+mkdir -p docs/process/plans
+{ echo '<!-- DRAFT, not verified: written by /create-plan on YYYY-MM-DD @ <sha>; no /verify-plan pass has stamped this text. -->'
+  echo
+  cat .claude/plans/<plan-id>.md
+} > docs/process/plans/<plan-id>.md
+git add docs/process/plans/<plan-id>.md           # explicit pathspec, never -A or .
+git diff --cached --stat                          # exactly this one file
+git commit -m "process(plan): <plan-id> (<group>) draft"
+```
+
+The DRAFT marker lives only in the committed copy; the working copy never carries it, so `/verify-plan` can stamp the working copy's first line. A **revision** commits the same way — the revising session has already deleted the stale stamp and Verification Summary (`/verify-plan` Output §5), so the marker is written again — with the subject `process(plan): <plan-id> (<group>) revised after pass <n>`.
+
+Then `/push` and open the pull request into `dev` unless the lane already has an open one (the push updates it): title = the commit subject; body = the group and tier, the issues, the scope line, the `check_plan_refs.py` result, and the next step `/verify-plan docs/process/plans/<plan-id>.md`. Never commit the charter, another plan or any other file alongside. Merging is the owner's.
+
 ### 4. Report
 
 Tell the user:
-- The draft's path (`.claude/plans/<plan-id>.md`) — `/verify-plan` commits the passing copy to `docs/process/plans/`
+- The committed path (`docs/process/plans/<plan-id>.md`), its commit and the pull request's URL; the working copy stays at `.claude/plans/<plan-id>.md`
 - A brief summary of phases and task count
 - For bug/ICE inputs: the class, the matrix size, and the standing harness named (or the phase that adds one)
 - The scope line: group, **tier with its letter and its source (charter / derived / override)**, alone?, gates, generator (existing / built first / not required), and the trackers named

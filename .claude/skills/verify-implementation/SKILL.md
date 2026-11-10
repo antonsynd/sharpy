@@ -13,10 +13,10 @@ Verify that a plan has been fully and correctly implemented. Reads the plan, der
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-The plan is the committed copy at `docs/process/plans/<plan-id>.md` (written by `/verify-plan`, updated by `/implement-plan`; policy: `docs/process/README.md`); the gitignored draft in `.claude/plans/` is read only when no committed copy exists, and the close step (§Cleanup and Report) then creates one. If `$ARGUMENTS` is empty, list the three newest in each and **ask** which one — never pick silently:
+The plan is the file of record at `docs/process/plans/<plan-id>.md` (committed by every stage: `/create-plan`, `/verify-plan`, `/implement-plan`; policy: `docs/process/README.md` › The stage trail); the gitignored working copy in `.claude/plans/` is read only when no committed copy exists, and the close step (§Cleanup and Report) then creates one. If `$ARGUMENTS` is empty, list the three newest in each and **ask** which one — never pick silently:
 ```bash
-ls -t docs/process/plans/*.md 2>/dev/null | head -3    # committed, verified plans — read these first
-ls -t .claude/plans/*.md 2>/dev/null | head -3         # drafts (gitignored) — only when the plan has no committed copy
+ls -t docs/process/plans/*.md 2>/dev/null | head -3    # files of record — verify one that carries a stamp and a closed implementation checklist
+ls -t .claude/plans/*.md 2>/dev/null | head -3         # working copies (gitignored) — only when the plan has no committed copy
 ```
 
 Read the plan file completely before proceeding.
@@ -54,6 +54,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 
 - **Base sha** = the parent of the plan's first implementation commit. Read it from the plan's implementation commit table/checklist, or from `git log` on the commit messages that reference the plan. If neither identifies it unambiguously, **ask the user** — do not guess.
 - Record `BASE=<sha>` and `HEAD=<sha>`; every `git diff`/`git log` below uses `$BASE..HEAD`.
+- **Lane branch** (`docs/process/README.md` › The stage trail): `dev` refuses direct pushes, so the remediation commits and the verify record land through a pull request. If the implementation's pull request is still open, stay on its lane: this stage's commits go to that branch, the pull request carries them, and its CI run at `$FINAL` is the gate. If it has merged (HEAD is on `dev`), `git fetch origin dev` and `git switch -c claude/<group>-verify origin/dev` before the first remediation commit or the record commit.
 
 ### 3. Establish the baseline @ HEAD
 
@@ -432,14 +433,15 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
 3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (after the Verification Summary; verbatim, every count `@ sha`), then commit that one file by explicit pathspec — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit: the close is the plan's final state of record (`docs/process/README.md`). If the plan was read from `.claude/plans/` (no committed copy), `cp` it to `docs/process/plans/<plan-id>.md` first and commit it in the same commit. Never commit another plan or the charter alongside.
-4. Present the verification report:
+4. **Open the pull request** (`docs/process/README.md` › The stage trail). `/push` the lane, then open the pull request into `dev` unless the lane already has an open one (the implementation's, still unmerged: the push updates it, and the record commit is its new tip). Title = the record commit's subject; body = the report's header lines, the class-status table, the issues closed with the evidence each close cites, the unresolved items, and the gate `passed/failed/skipped @ $FINAL (measured)` with its CI run id. A round with no remediation commits still opens it: the record is the plan's final state and reaches `dev` only through a pull request. The record commit is the tip, so it never carries `[skip ci]` (contract §6). Merging is the owner's.
+5. Present the verification report:
 
 ```markdown
 ## Implementation Verification Report
 
 **Plan:** [plan file path] (stamp: PASS / PASS WITH CORRECTIONS / NEEDS REVISION / CONVERGED / none; Adequacy: CLASS / CELL / N/A)
 **Tier:** [light — Agents 2, 3, 4; completeness by the lead / full — Agents 1–4] (contract §12)
-**Branch:** [current branch]
+**Branch:** [lane branch] · **Pull request:** [URL]
 **Scope:** `$BASE..$FINAL` (base = parent of first implementation commit; N implementation commits, M remediation commits)
 **Verified on:** YYYY-MM-DD
 
