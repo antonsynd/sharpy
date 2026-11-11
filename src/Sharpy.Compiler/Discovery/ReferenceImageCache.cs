@@ -15,31 +15,36 @@ namespace Sharpy.Compiler.Discovery;
 /// macOS, <c>%LOCALAPPDATA%</c> on Windows). Never a shared, predictable path such as
 /// <c>/tmp/&lt;name&gt;</c>, where another local user could create the directory first and plant the
 /// file the compiler then loads. On Unix the root and its <c>sharpy/</c> parent are refused when either
-/// is a symbolic link, when a pre-existing one grants any access to group or others (it is refused, not
-/// narrowed: running as root, a chmod would succeed on another user's directory and adopt it), when the
-/// data directory above them is writable by group or others, or when a pre-existing root holds anything
-/// but well-formed entries; a directory created here is created owner-only (700). .NET offers no owner
-/// check without platform interop, so a pre-existing 700 directory owned by ANOTHER user inside a data
-/// directory only that user can write (a root process pointed at another user's data home) is the one
-/// arrangement not refused. A refused or unusable root sends the copy to a private temporary directory
-/// (<see cref="Directory.CreateTempSubdirectory"/>: an unpredictable name, mode 700 on Unix), one per
-/// content per process, deleted at process exit, and reported once through the caller's notice.</para>
+/// is a symbolic link or a pre-existing one grants any access to group or others (refused, not
+/// narrowed: running as root, a chmod would succeed on another user's directory and adopt it); the data
+/// directory above them is refused when others (not the group: private-group distributions leave a 775
+/// <c>~/.local/share</c>) can write it; a pre-existing root is refused when it holds a visible file or
+/// directory that is not a cache entry (dotfiles such as <c>.DS_Store</c> or an editor's swap file are
+/// ignored). A directory created here is created owner-only (700). .NET offers no owner check without
+/// platform interop, so a pre-existing 700 <c>sharpy/</c> owned by ANOTHER user who can write the data
+/// directory (a group member, or a root process pointed at another user's data home) is not refused;
+/// for a non-root compiler such a directory is unwritable and falls back. A refused or unusable root
+/// sends the copy to a private temporary directory (<see cref="Directory.CreateTempSubdirectory"/>: an
+/// unpredictable name, mode 700 on Unix), one per content per process, written by rename, deleted at
+/// process exit, and announced once per process (<see cref="TakeFallbackNotice"/>) with what was
+/// refused and how to repair it.</para>
 ///
 /// <para><b>What.</b> An entry is <c>&lt;root&gt;/&lt;sha256 of the content&gt;/&lt;file name&gt;</c>:
 /// the directory names the bytes, and the file keeps the reference's name so dependency probing finds
 /// it. A file found there is loaded only after its content hashes to its directory's name; a mismatch
 /// is deleted and copied again. Nothing is trusted by name.</para>
 ///
-/// <para><b>Bounded, without taking a live user's file.</b> Each publish deletes the entries nobody
-/// published, reused or read for <see cref="StaleAfterDays"/> days — the newest of the entry's and its
+/// <para><b>Bounded, without taking a live user's file.</b> Each publish deletes the staging files older
+/// than <see cref="StagingStaleAfterDays"/> day and the entries nobody published, reused or read for
+/// <see cref="StaleAfterDays"/> days — the newest of the entry's and its
 /// file's write and access times — re-reading those times immediately before each delete, and never
 /// an entry this process has published (it may have it loaded). Each publish also refreshes every
 /// entry this process holds, so a long-lived host that keeps publishing keeps its entries fresh. What
 /// remains: a process that published an entry and then published nothing for <see cref="StaleAfterDays"/>
 /// days, on a file system that does not update access times on reads of a mapped file, can lose that
 /// entry's file to another process's prune. On Unix its mapped image stays valid; what is lost is the
-/// file at <c>Assembly.Location</c>, so identities that would hash it fall back to the image's module
-/// version id (<see cref="Caching.AssemblyIdentity"/>), and a load that finds the file gone publishes it
+/// file at <c>Assembly.Location</c>; the overload index is keyed by the image's module version id, not
+/// that file (<see cref="Caching.AssemblyIdentity"/>), and a load that finds the file gone publishes it
 /// again (<see cref="ReferenceLoadContext"/>). On Windows a mapped file cannot be deleted and the prune
 /// skips it. Publishing happens only when a reference changed under a live process, so neither a build
 /// that is up to date nor one whose references are unchanged lists the directory.</para>
@@ -50,7 +55,13 @@ internal static class ReferenceImageCache
     /// <summary>Entries neither published, reused nor read for this many days are pruned.</summary>
     internal const int StaleAfterDays = 14;
 
+    /// <summary>Staging files (an interrupted publish) older than this many days are pruned.</summary>
+    internal const int StagingStaleAfterDays = 1;
+
     private const string StagingPrefix = ".staging-";
+
+    // s_fallbackNotice's state once the notice was handed out.
+    private const string NoticeDelivered = "";
 
     private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
 
@@ -58,7 +69,6 @@ internal static class ReferenceImageCache
         UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
         | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
 
-    private const UnixFileMode GroupOrOtherWrite = UnixFileMode.GroupWrite | UnixFileMode.OtherWrite;
 
     private static readonly Regex EntryName = new("^[0-9a-f]{64}$", RegexOptions.CultureInvariant);
 
@@ -74,8 +84,14 @@ internal static class ReferenceImageCache
     /// </summary>
     private static readonly ConcurrentDictionary<string, byte> s_heldEntries = new(StringComparer.Ordinal);
 
-    /// <summary>How many private fallback copies this process holds.</summary>
-    internal static int PrivateImageCount => s_privateImages.Count;
+    /// <summary>
+    /// The fallback notice: null until the first fallback, then its text until
+    /// <see cref="TakeFallbackNotice"/> hands it out, then <see cref="NoticeDelivered"/> for good.
+    /// </summary>
+    private static string? s_fallbackNotice;
+
+    /// <summary>True once this process has fallen back to a private copy (and so raised the notice).</summary>
+    internal static bool FallbackNoticeRaised => Volatile.Read(ref s_fallbackNotice) != null;
 
     /// <summary>A root used in place of the per-user one by the current async flow (tests only).</summary>
     private static readonly AsyncLocal<string?> s_rootOverride = new();
@@ -117,10 +133,10 @@ internal static class ReferenceImageCache
     /// <summary>
     /// A path holding exactly the bytes now at <paramref name="sourcePath"/>, under
     /// <paramref name="root"/> (the per-user root when null), to load in place of the source path.
-    /// Falls back to a private temporary directory when the root cannot be used, telling
-    /// <paramref name="notice"/> the first time this process does.
+    /// Falls back to a private temporary directory when the root cannot be used; the first fallback of
+    /// the process raises the notice <see cref="TakeFallbackNotice"/> hands out.
     /// </summary>
-    internal static string Publish(string sourcePath, string? root = null, Action<string>? notice = null)
+    internal static string Publish(string sourcePath, string? root = null)
     {
         root ??= s_rootOverride.Value ?? DefaultRoot();
         string? refusal = "no per-user data directory";
@@ -138,7 +154,8 @@ internal static class ReferenceImageCache
             }
         }
 
-        return PublishPrivate(sourcePath, root, refusal, notice);
+        RaiseFallbackNotice(root, refusal);
+        return PublishPrivate(sourcePath);
     }
 
     private static string PublishUnder(string root, string sourcePath)
@@ -197,31 +214,62 @@ internal static class ReferenceImageCache
 
     /// <summary>
     /// A copy in a directory this process created for that content alone: unpredictable, owner-only
-    /// on Unix, not shared, reused for the same bytes, and deleted at process exit.
+    /// on Unix, not shared with other processes, reused for the same bytes, and deleted at process exit.
+    /// The file is written beside its final name and renamed into place, so another thread never hashes
+    /// or loads a half-written file, and a mapped copy is never rewritten in place.
     /// </summary>
-    private static string PublishPrivate(string sourcePath, string? root, string? refusal, Action<string>? notice)
+    private static string PublishPrivate(string sourcePath)
     {
         var bytes = File.ReadAllBytes(sourcePath);
         var hash = FileContentIdentity.Sha256Of(bytes);
-        var name = Path.GetFileName(sourcePath);
-        var created = false;
-        var directory = s_privateImages.GetOrAdd(hash, _ =>
+        if (!s_privateImages.TryGetValue(hash, out var directory))
         {
-            created = true;
-            return Directory.CreateTempSubdirectory("sharpy-reference-image-").FullName;
-        });
+            var created = Directory.CreateTempSubdirectory("sharpy-reference-image-").FullName;
+            directory = s_privateImages.GetOrAdd(hash, created);
+            if (!string.Equals(directory, created, StringComparison.Ordinal))
+                TryDeleteDirectory(created);
+        }
 
-        var copy = Path.Combine(directory, name);
-        if (!File.Exists(copy) || !string.Equals(FileContentIdentity.Sha256Of(copy), hash, StringComparison.Ordinal))
-            File.WriteAllBytes(copy, bytes);
+        var copy = Path.Combine(directory, Path.GetFileName(sourcePath));
+        if (File.Exists(copy) && string.Equals(FileContentIdentity.Sha256Of(copy), hash, StringComparison.Ordinal))
+            return copy;
 
-        if (created && s_privateImages.Count == 1)
+        var staging = Path.Combine(directory, StagingPrefix + Guid.NewGuid().ToString("N"));
+        File.WriteAllBytes(staging, bytes);
+        try
         {
-            notice?.Invoke(
-                $"Reference image cache '{root ?? "(none)"}' is not usable ({refusal}); replaced references "
-                + "are copied to private temporary directories for this process instead.");
+            File.Move(staging, copy, overwrite: true);
+        }
+        finally
+        {
+            TryDelete(staging);
         }
         return copy;
+    }
+
+    /// <summary>Records the fallback notice the first time this process falls back.</summary>
+    private static void RaiseFallbackNotice(string? root, string? refusal)
+    {
+        var text = root == null
+            ? "No per-user data directory for the reference image cache; replaced references are copied to "
+              + "private temporary directories for this process."
+            : $"Reference image cache '{root}' not used: {refusal}. Replaced references are copied to private "
+              + "temporary directories for this process instead.";
+        Interlocked.CompareExchange(ref s_fallbackNotice, text, null);
+    }
+
+    /// <summary>
+    /// The fallback notice, exactly once per process: its text the first time it is asked for after a
+    /// fallback, null before any fallback and on every later ask.
+    /// </summary>
+    internal static string? TakeFallbackNotice()
+    {
+        var pending = Volatile.Read(ref s_fallbackNotice);
+        if (pending == null || ReferenceEquals(pending, NoticeDelivered))
+            return null;
+        return ReferenceEquals(Interlocked.CompareExchange(ref s_fallbackNotice, NoticeDelivered, pending), pending)
+            ? pending
+            : null;
     }
 
     private static void DeletePrivateImages()
@@ -239,9 +287,22 @@ internal static class ReferenceImageCache
         }
     }
 
+    private static void TryDeleteDirectory(string directory)
+    {
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // An empty temporary directory left behind is harmless.
+        }
+    }
+
     /// <summary>
-    /// Why <paramref name="root"/> may not hold copies the compiler loads, or null when it may (after
-    /// creating what is missing, owner-only). Windows relies on the per-user profile's ACL.
+    /// Why <paramref name="root"/> may not hold copies the compiler loads, and how to repair it, or null
+    /// when it may (after creating what is missing, owner-only). Windows relies on the per-user profile's
+    /// ACL.
     /// </summary>
     internal static string? TrustRefusal(string root)
     {
@@ -257,39 +318,36 @@ internal static class ReferenceImageCache
         if (parent == null || dataHome == null)
             return $"'{full}' has no parent directory";
 
-        if (Directory.Exists(dataHome))
-        {
-            if ((File.GetUnixFileMode(dataHome) & GroupOrOtherWrite) != 0)
-                return $"'{dataHome}' is writable by group or others";
-        }
+        if (Directory.Exists(dataHome) && (File.GetUnixFileMode(dataHome) & UnixFileMode.OtherWrite) != 0)
+            return $"'{dataHome}' is writable by every user (repair: chmod o-w '{dataHome}')";
 
         foreach (var directory in new[] { parent, full })
         {
             var info = new DirectoryInfo(directory);
             if (info.LinkTarget != null)
-                return $"'{directory}' is a symbolic link";
+                return $"'{directory}' is a symbolic link (repair: remove the link; it is recreated as a directory)";
             if (info.Exists)
             {
                 if ((File.GetUnixFileMode(directory) & GroupOrOtherAccess) != 0)
-                    return $"'{directory}' grants access to group or others";
+                    return $"'{directory}' grants access to group or others (repair, if it is yours: chmod 700 '{directory}')";
             }
             else
             {
                 CreateOwnerOnly(directory);
                 if (new DirectoryInfo(directory).LinkTarget != null)
-                    return $"'{directory}' is a symbolic link";
+                    return $"'{directory}' is a symbolic link (repair: remove the link; it is recreated as a directory)";
             }
         }
 
-        foreach (var entry in SourceGlob.EnumerateArtifactDirectories(full))
+        // Dotfiles (.DS_Store, an editor's swap file, staging files) are not judged; anything visible must
+        // be an entry directory.
+        foreach (var item in SourceGlob.EnumerateArtifactDirectories(full).Concat(SourceGlob.EnumerateArtifacts(full, "*")))
         {
-            if (!EntryName.IsMatch(Path.GetFileName(entry)))
-                return $"'{full}' holds '{Path.GetFileName(entry)}', which is not a cache entry";
-        }
-        foreach (var file in SourceGlob.EnumerateArtifacts(full, "*"))
-        {
-            if (!Path.GetFileName(file).StartsWith(StagingPrefix, StringComparison.Ordinal))
-                return $"'{full}' holds '{Path.GetFileName(file)}', which is not a cache entry";
+            var name = Path.GetFileName(item);
+            if (name.StartsWith('.'))
+                continue;
+            if (!Directory.Exists(item) || !EntryName.IsMatch(name))
+                return $"'{full}' holds '{name}', which is not a cache entry (repair: remove it, or remove '{full}')";
         }
 
         return null;
@@ -339,20 +397,22 @@ internal static class ReferenceImageCache
     private static DateTime Max(DateTime a, DateTime b) => a > b ? a : b;
 
     /// <summary>
-    /// Deletes every entry under <paramref name="root"/> (an entry directory or a leftover staging file)
-    /// unused for more than <see cref="StaleAfterDays"/> days before <paramref name="nowUtc"/>
+    /// Deletes every entry directory under <paramref name="root"/> unused for more than
+    /// <see cref="StaleAfterDays"/> days, and every staging file older than
+    /// <see cref="StagingStaleAfterDays"/> day, before <paramref name="nowUtc"/>
     /// (<see cref="LastUsedUtc"/>, read again immediately before the delete), except
     /// <paramref name="keep"/> and every entry this process holds. A delete that fails — the file is
     /// mapped on Windows, or another process removed it first — is ignored.
     /// </summary>
     internal static void Prune(string root, string keep, DateTime? nowUtc = null)
     {
-        var cutoff = (nowUtc ?? DateTime.UtcNow).AddDays(-StaleAfterDays);
+        var now = nowUtc ?? DateTime.UtcNow;
         var keepFull = Path.GetFullPath(keep);
         List<string> entries;
         try
         {
             entries = SourceGlob.EnumerateArtifactDirectories(root)
+                .Where(directory => EntryName.IsMatch(Path.GetFileName(directory)))
                 .Concat(SourceGlob.EnumerateArtifacts(root, StagingPrefix + "*"))
                 .ToList();
         }
@@ -368,7 +428,7 @@ internal static class ReferenceImageCache
                 return false;
             try
             {
-                return LastUsedUtc(entry) < cutoff;
+                return LastUsedUtc(entry) < CutoffFor(entry, now);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -381,7 +441,7 @@ internal static class ReferenceImageCache
             try
             {
                 // Read again just before deleting: a publish, reuse or read since the scan keeps it.
-                if (LastUsedUtc(entry) >= cutoff)
+                if (LastUsedUtc(entry) >= CutoffFor(entry, now))
                     continue;
                 if (Directory.Exists(entry))
                     Directory.Delete(entry, recursive: true);
@@ -394,6 +454,12 @@ internal static class ReferenceImageCache
             }
         }
     }
+
+    /// <summary>A staging file is stale after a day, an entry after <see cref="StaleAfterDays"/>.</summary>
+    private static DateTime CutoffFor(string entry, DateTime now)
+        => now.AddDays(-(Path.GetFileName(entry).StartsWith(StagingPrefix, StringComparison.Ordinal)
+            ? StagingStaleAfterDays
+            : StaleAfterDays));
 
     private static void TryDelete(string path)
     {

@@ -5,36 +5,38 @@ using System.Security.Cryptography;
 namespace Sharpy.Compiler.Shared;
 
 /// <summary>
-/// The identity of an input file for every key that decides whether something already computed from
-/// it may be reused: the incremental cache's facts, the reference load contexts' share key and
-/// first-load check, and the Roslyn metadata-reference cache (#2114). One definition: full path,
+/// The identity of an input file for the incremental cache's up-to-date keys (#2114): full path,
 /// size, write time and the SHA-256 of the content. Size and write time alone are not identity — a
 /// file replaced by other bytes of the same size with its write time preserved (<c>cp -p</c>,
-/// <c>rsync -t</c>, a restored build cache) would be taken for the old one.
+/// <c>rsync -t</c>, a restored build cache) would be taken for the old one. Also the compiler's one
+/// file hasher (<see cref="Sha256Of(string)"/>).
 ///
-/// <para><b>One scope per build.</b> An instance memoises each path's identity for the build that
-/// created it, so a file is hashed once per build however many keys read it, and every key of the
-/// build agrees on what the file was. An instance is never reused across builds: a memo that outlives
-/// a build would answer a later build from size and write time alone, which is the hole.</para>
+/// <para><b>Memo.</b> An instance memoises each path's identity for its owner's lifetime — one
+/// incremental-cache instance, i.e. one check within one build — so a file read by several of that
+/// instance's keys is hashed once. Never held by anything that outlives a build: a memo that did would
+/// answer a later build from size and write time alone, which is the hole.</para>
 ///
-/// <para><b>Unreadable.</b> A file that exists but whose content cannot be read keeps its disk identity
-/// and carries <see cref="UnreadableMarker"/>; an identity with the marker proves nothing, so a key
-/// holding one is never taken as unchanged (<see cref="IsUnreadable"/>).</para>
+/// <para><b>Unreadable.</b> A file whose content (or description) cannot be read keeps its disk identity
+/// and ends with <see cref="UnreadableMarker"/>; an identity that ends so proves nothing, so a key
+/// holding one is never taken as unchanged (<see cref="IsUnreadable"/>, which reads each identity's
+/// suffix, not a substring, so a path that merely contains the marker's text is not unreadable).</para>
 ///
-/// <para><b>The runtime's own files.</b> A file in the running runtime's directory is identified by
-/// its disk identity alone (<see cref="IsRuntimeFile"/>): the runtime's exact version fixes its bytes,
-/// and hashing the shared framework on every compile would cost tens of milliseconds for nothing.</para>
+/// <para><b>The runtime's own files.</b> A file whose directory is exactly the running runtime's (the
+/// directory CoreLib was loaded from) is identified by its disk identity alone
+/// (<see cref="IsRuntimeFile"/>): the runtime's exact version fixes its bytes. In a self-contained
+/// publish that directory is also <c>sharpyc</c>'s own, so a user assembly placed beside
+/// <c>sharpyc</c> there is identified by disk identity only.</para>
 /// </summary>
 [ThreadSafe]
 internal sealed class FileContentIdentity
 {
-    /// <summary>Appended to an identity whose content could not be read.</summary>
-    internal const string UnreadableMarker = ":unreadable";
+    /// <summary>The suffix of an identity whose content could not be read.</summary>
+    internal const string UnreadableMarker = ":sha256=unreadable";
 
     private readonly ConcurrentDictionary<string, string> _memo = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// The identity of <paramref name="path"/> for this build (computed on first ask, then memoised).
+    /// The identity of <paramref name="path"/> (computed on first ask, then memoised by this instance).
     /// </summary>
     public string Of(string path)
     {
@@ -105,12 +107,25 @@ internal sealed class FileContentIdentity
     /// <summary>The SHA-256 of <paramref name="bytes"/>, lower-case hex, as <see cref="Sha256Of(string)"/> spells it.</summary>
     public static string Sha256Of(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 
-    /// <summary>True when an identity (or a key holding identities) carries an unreadable file.</summary>
-    public static bool IsUnreadable(string? identityOrKey)
-        => identityOrKey != null && identityOrKey.Contains(UnreadableMarker, StringComparison.Ordinal);
+    /// <summary>
+    /// True when a key holds an identity whose content could not be read: one of its lines (a
+    /// <c>key=identity</c> line, or a bare identity) ends with <see cref="UnreadableMarker"/>.
+    /// </summary>
+    public static bool IsUnreadable(string? key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return false;
+        foreach (var line in key.Split('\n'))
+        {
+            if (line.EndsWith(UnreadableMarker, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>
-    /// True for a file in the running runtime's directory (the directory CoreLib was loaded from).
+    /// True for a file whose directory is exactly the running runtime's (the directory CoreLib was
+    /// loaded from; an ordinal comparison of the full parent path).
     /// </summary>
     public static bool IsRuntimeFile(string path)
     {

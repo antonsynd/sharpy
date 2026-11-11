@@ -209,7 +209,10 @@ internal class IncrementalCompilationCache
     /// </summary>
     private UpToDateRecord? _lastBuild;
 
-    /// <summary>This build's file identities (<see cref="FileContentIdentity"/>), shared with its other keys.</summary>
+    /// <summary>
+    /// File identities for this cache instance's own keys (<see cref="FileContentIdentity"/>): one hash
+    /// per file per instance, never shared with another instance, a registry or a later build.
+    /// </summary>
     private readonly FileContentIdentity _identities;
 
     /// <summary>
@@ -246,10 +249,10 @@ internal class IncrementalCompilationCache
     /// means the project's own <c>&lt;Features&gt;</c> only, for callers that have no option layer.
     /// </param>
     public IncrementalCompilationCache(ProjectConfig projectConfig, ICompilerLogger? logger = null,
-        FeatureFlags? features = null, FileContentIdentity? identities = null)
+        FeatureFlags? features = null)
     {
         _logger = logger ?? NullLogger.Instance;
-        _identities = identities ?? new FileContentIdentity();
+        _identities = new FileContentIdentity();
 
         // Store cache in obj/{Configuration}/.sharpy-cache
         var objDir = Path.Combine(projectConfig.ProjectDirectory, "obj", projectConfig.Configuration);

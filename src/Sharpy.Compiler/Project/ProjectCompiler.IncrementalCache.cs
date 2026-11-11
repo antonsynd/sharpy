@@ -91,10 +91,9 @@ internal partial class ProjectCompiler
     /// Null when the build has to run. Nothing here loads a reference or reads a symbol.
     /// </summary>
     internal static ProjectCompilationResult? TryReplayUpToDateBuild(
-        ProjectConfig config, ProjectCompilerOptions options, ICompilerLogger logger,
-        FileContentIdentity? identities = null)
+        ProjectConfig config, ProjectCompilerOptions options, ICompilerLogger logger)
     {
-        var cache = new IncrementalCompilationCache(config, logger, options.Features, identities);
+        var cache = new IncrementalCompilationCache(config, logger, options.Features);
         if (cache.UpToDateBuildDiagnostics(config) is not { } replayed)
             return null;
 

@@ -312,7 +312,7 @@ internal partial class ProjectCompiler
     {
         _logger.LogInfo("Phase 7: Assembly Compilation");
         var generatedCSharp = generated.Sources;
-        var assemblyCompiler = new AssemblyCompiler(_logger, _moduleRegistry?.FileIdentities);
+        var assemblyCompiler = new AssemblyCompiler(_logger);
 
         // #1387: read the bag BEFORE the assembly diagnostics are merged in. Any error already
         // here — semantic or codegen, and SPY0520 module-class collision is a codegen one — means
@@ -331,7 +331,7 @@ internal partial class ProjectCompiler
         string? emissionKey = null;
         if (_incrementalCache != null && !compilationAlreadyFailed)
         {
-            emissionKey = IncrementalCompilationCache.EmissionKeyOf(config, generatedCSharp, entryTypeName, _moduleRegistry?.FileIdentities);
+            emissionKey = IncrementalCompilationCache.EmissionKeyOf(config, generatedCSharp, entryTypeName);
             if (_incrementalCache.UpToDateAssemblyDiagnostics(emissionKey, config) is { } replayed)
             {
                 return ReplayUpToDateAssembly(config, generatedCSharp, replayed);

@@ -68,6 +68,10 @@ public class StaticStateConformanceTests
                 "[ThreadStatic] re-entrancy guard for recursive interface expansion; lazily " +
                 "created and cleared per traversal, thread-local so it cannot leak across compiles.",
 
+            [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_fallbackNotice")] =
+                "One-way state of the once-per-process fallback notice: null -> its text -> delivered, moved only " +
+                "by Interlocked.CompareExchange. It decides whether a warning is logged, never a compile output.",
+
             // ---- Init-once lookup tables (populated at declaration / static ctor, then only
             //      read — effectively immutable; listed so any NEW static collection is a
             //      conscious review, per #1036). ----
@@ -139,11 +143,8 @@ public class StaticStateConformanceTests
         {
             // ---- Content-addressed (D2 warm-compile caches, #1049) ----
             [("Sharpy.Compiler.AssemblyCompiler", "s_referenceCache")] =
-                "MetadataReference keyed by the file's identity: a project or package reference by its content " +
-                "identity (path + length + last-write time + SHA-256, FileContentIdentity), so other bytes of the " +
-                "same size and time get a new key (#2114); the process's own files (trusted platform assemblies, " +
-                "Sharpy.Core, netstandard) by path + length + last-write time. A pure function of the bytes the " +
-                "key names. Append-only.",
+                "MetadataReference keyed by (assembly path, last-write time UTC): a pure function of the file's " +
+                "bytes; a changed assembly gets a new mtime and thus a new key. Append-only.",
             [("Sharpy.Compiler.Discovery.Caching.OverloadIndexCache", "s_inMemoryIndices")] =
                 "Deserialized OverloadIndex keyed by the cache-file path, which embeds the content-addressed " +
                 "AssemblyIdentity key (name-version-hash); a hit is re-validated against the identity. ClearAll " +
@@ -195,18 +196,17 @@ public class StaticStateConformanceTests
 
             // ---- The per-reference-set load contexts (#2250, P54 Design Decision 2) ----
             [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_shared")] =
-                "Reference-set key (the reference file's content identity — path + length + last-write time + " +
-                "SHA-256, FileContentIdentity — the module version ids of the images loaded before it, the module " +
-                "paths) -> " +
+                "Reference-set key (each reference file's full path + length + last-write time, the earlier " +
+                "references' identities, the module paths — AssemblyCompiler.s_referenceCache's convention) -> " +
                 "WeakReference to the context loaded for it: the context's contents are a function of the files " +
                 "its key names, so equal keys may share it; held weakly so it unloads when no registry uses it, " +
                 "and dead entries are pruned on every creation.",
             [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_firstLoadedIdentity")] =
-                "Full path -> the content identity (path + length + last-write time + SHA-256, FileContentIdentity) " +
-                "of the file this process first loaded from it. Written once per path and never changed; it answers " +
-                "only whether the file now at the path is the one the runtime's per-path image holds, so a replaced " +
-                "reference loads from a verified copy of its current bytes, held under its content hash in " +
-                "ReferenceImageCache (#2114's in-process cell).",
+                "Full path -> the identity (path + length + last-write time) of the file this process first loaded " +
+                "from it. Written once per path and never changed; it answers only whether the file now at the " +
+                "path is the one the runtime's per-path image holds, so a replaced reference loads from a verified " +
+                "copy of its current bytes, held under their SHA-256 in ReferenceImageCache (#2114's in-process " +
+                "cell). A replacement of the same length and write time is not seen here (#2114, open).",
             [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_privateImages")] =
                 "Content hash -> the private temporary directory holding this process's fallback copy of those " +
                 "bytes (used only when the per-user cache is refused). The value holds exactly the bytes its key " +

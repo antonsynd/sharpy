@@ -218,8 +218,7 @@ public class ReferenceImageCacheTests : IDisposable
         var modeBefore = Directory.Exists(Root) ? File.GetUnixFileMode(Root) : (UnixFileMode?)null;
         ReferenceImageCache.TrustRefusal(Root).Should().NotBeNull($"[{arrangement}] the root is refused");
 
-        var notices = new List<string>();
-        var published = ReferenceImageCache.Publish(Source("Untrusted" + arrangement.Replace("_", ""), arrangement), Root, notices.Add);
+        var published = ReferenceImageCache.Publish(Source("Untrusted" + arrangement.Replace("_", ""), arrangement), Root);
 
         IsUnder(published, Root).Should().BeFalse($"[{arrangement}] nothing is published under a refused root");
         Path.GetFileName(Path.GetDirectoryName(published)!).Should().StartWith("sharpy-reference-image-");
@@ -229,27 +228,75 @@ public class ReferenceImageCacheTests : IDisposable
     }
 
     /// <summary>
+    /// What is refused is only what can be abused: a dotfile in the root (<c>.DS_Store</c>, an editor's
+    /// swap file) and a data directory only the user's group can write (a 775 <c>~/.local/share</c> under
+    /// umask 002 on private-group distributions) do not refuse the cache. Positive controls: the
+    /// untrusted-root theory above (a visible foreign file, a data directory every user can write).
+    /// </summary>
+    [SkippableFact]
+    public void ADotfileInTheRoot_AndAGroupWritableDataHome_AreNotRefused()
+    {
+        Skip.If(OperatingSystem.IsWindows(), "Unix modes; Windows relies on the per-user profile ACL");
+        if (OperatingSystem.IsWindows())
+            return;
+
+        // CreateDirectory(path, mode) applies the mode to the leaf only, so each level is created on its own.
+        Directory.CreateDirectory(Path.GetDirectoryName(Root)!, OwnerOnly);
+        Directory.CreateDirectory(Root, OwnerOnly);
+        File.WriteAllText(Path.Combine(Root, ".DS_Store"), "finder");
+        File.WriteAllText(Path.Combine(Root, ".swp"), "editor");
+        File.SetUnixFileMode(_tempDir, (UnixFileMode)Convert.ToInt32("775", 8));
+
+        ReferenceImageCache.TrustRefusal(Root).Should().BeNull();
+        IsUnder(ReferenceImageCache.Publish(Source("TolerantProbe", "tolerant"), Root), Root).Should().BeTrue();
+        File.Exists(Path.Combine(Root, ".DS_Store")).Should().BeTrue("a dotfile is neither judged nor pruned");
+    }
+
+    /// <summary>
     /// The private fallback keeps one copy per content for the process (a repeated publish reuses it
-    /// rather than leaking another temporary directory), and tells the caller about the fallback only
-    /// on the process's first fallback copy.
+    /// rather than leaking another temporary directory), and its notice is handed out at most once per
+    /// process, after which every ask answers null.
     /// </summary>
     [Fact]
-    public void TheFallback_ReusesOneCopyPerContent_AndIsReportedOnce()
+    public void TheFallback_ReusesOneCopyPerContent_AndItsNoticeIsHandedOutOnce()
     {
         var unusable = Path.Combine(_tempDir, "not-a-directory");
         File.WriteAllText(unusable, "occupied");
         var source = Source("FallbackProbe", "fallback");
-        var firstFallbackOfProcess = ReferenceImageCache.PrivateImageCount == 0;
 
-        var notices = new List<string>();
-        var first = ReferenceImageCache.Publish(source, unusable, notices.Add);
-        var again = ReferenceImageCache.Publish(source, unusable, notices.Add);
+        var first = ReferenceImageCache.Publish(source, unusable);
+        var again = ReferenceImageCache.Publish(source, unusable);
 
-        _output.WriteLine(string.Join("\n", notices));
         first.Should().NotStartWith(unusable);
         again.Should().Be(first, "the same content reuses its private copy");
         LoadedMarker(first).Should().Be("fallback");
-        notices.Should().HaveCount(firstFallbackOfProcess ? 1 : 0, "the fallback is reported once per process");
+        Directory.EnumerateFiles(Path.GetDirectoryName(first)!).Should().ContainSingle("no staging file is left");
+
+        ReferenceImageCache.FallbackNoticeRaised.Should().BeTrue("a fallback raises the notice");
+        var notices = new[] { ReferenceImageCache.TakeFallbackNotice(), ReferenceImageCache.TakeFallbackNotice() };
+        _output.WriteLine(string.Join("\n", notices.Where(n => n != null)));
+        notices[1].Should().BeNull("the notice is handed out once");
+        if (notices[0] is { } text)
+            text.Should().Contain("not used").And.Contain("Replaced references are copied");
+    }
+
+    /// <summary>
+    /// Concurrent fallback publishes of one content all get the same complete copy: the file is renamed
+    /// into place, so no thread hashes or loads a half-written one.
+    /// </summary>
+    [Fact]
+    public void ConcurrentFallbackPublishes_AllSeeOneCompleteCopy()
+    {
+        var unusable = Path.Combine(_tempDir, "not-a-directory");
+        File.WriteAllText(unusable, "occupied");
+        var source = Source("ConcurrentProbe", "concurrent");
+        var expected = File.ReadAllBytes(source);
+
+        var paths = Enumerable.Range(0, 16).AsParallel().WithDegreeOfParallelism(8)
+            .Select(_ => ReferenceImageCache.Publish(source, unusable)).ToList();
+
+        paths.Distinct().Should().ContainSingle();
+        File.ReadAllBytes(paths[0]).Should().Equal(expected);
     }
 
     /// <summary>
@@ -289,15 +336,22 @@ public class ReferenceImageCacheTests : IDisposable
         var fresh = Entry(new string('b', 64), now.AddDays(-(ReferenceImageCache.StaleAfterDays - 1)));
         var recentlyRead = Entry(new string('c', 64), old, accessTime: now.AddDays(-1));
         var keep = Entry(new string('d', 64), old);
-        var staging = Path.Combine(Root, ".staging-leftover");
-        File.WriteAllText(staging, "partial");
-        File.SetLastWriteTimeUtc(staging, old);
-        File.SetLastAccessTimeUtc(staging, old);
+        string Staging(string name, DateTime time)
+        {
+            var path = Path.Combine(Root, ".staging-" + name);
+            File.WriteAllText(path, "partial");
+            File.SetLastWriteTimeUtc(path, time);
+            File.SetLastAccessTimeUtc(path, time);
+            return path;
+        }
+        var staging = Staging("two-days", now.AddDays(-2));
+        var activeStaging = Staging("an-hour", now.AddHours(-1));
 
         ReferenceImageCache.Prune(Root, keep, now);
 
         Directory.Exists(stale).Should().BeFalse("an entry unused past the limit is pruned");
-        File.Exists(staging).Should().BeFalse("a leftover staging file is pruned like an entry");
+        File.Exists(staging).Should().BeFalse("a staging file older than a day is an interrupted publish");
+        File.Exists(activeStaging).Should().BeTrue("a recent staging file may be a publish in progress");
         Directory.Exists(fresh).Should().BeTrue("an entry inside the limit stays");
         Directory.Exists(recentlyRead).Should().BeTrue("an entry read inside the limit stays");
         Directory.Exists(keep).Should().BeTrue("the entry about to be loaded is never pruned");
@@ -305,28 +359,33 @@ public class ReferenceImageCacheTests : IDisposable
     }
 
     /// <summary>
-    /// An assembly whose file is gone (a cached copy pruned while mapped) keeps a content identity of
-    /// its own — the image's module version id — instead of an empty hash, which made the overload index
-    /// key <c>{name}-{version}-no-hash</c> and collided across builds.
+    /// The overload index's identity of an assembly is the LOADED image's (its module version id), not
+    /// the file now at its location: a file replaced after the load would file the old image's index
+    /// under the new bytes (#2114), and a file gone (a cache copy pruned while mapped) gave an empty hash
+    /// and the colliding key <c>{name}-{version}-no-hash</c>.
     /// </summary>
     [Fact]
-    public void AnAssemblyWhoseFileIsGone_IsIdentifiedByItsImage()
+    public void TheIndexIdentity_IsTheLoadedImage_NotTheFileNowAtItsLocation()
     {
-        var path = Source("GoneProbe", "gone");
-        var copy = Path.Combine(_tempDir, "gone-copy", "GoneProbe.dll");
+        var v1 = Source("ImageProbe", "one");
+        var v2 = EmitMarkerAssembly(Path.Combine(_tempDir, "v2"), "ImageProbe", "two");
+        var copy = Path.Combine(_tempDir, "image-copy", "ImageProbe.dll");
         Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
-        File.Copy(path, copy);
-        var context = new AssemblyLoadContext("refimage-gone-" + Guid.NewGuid().ToString("N"), isCollectible: true);
+        File.Copy(v1, copy);
+        var context = new AssemblyLoadContext("refimage-image-" + Guid.NewGuid().ToString("N"), isCollectible: true);
         try
         {
             var assembly = context.LoadFromAssemblyPath(copy);
-            AssemblyIdentity.FromAssembly(assembly).ContentHash.Should().Be(FileContentIdentity.Sha256Of(copy),
-                "control: while the file is there, its content hash");
+            var loaded = assembly.ManifestModule.ModuleVersionId.ToString("N");
+            AssemblyIdentity.FromAssembly(assembly).ContentHash.Should().Be(loaded);
+
+            File.Move(v2, copy, overwrite: true);
+            AssemblyIdentity.FromAssembly(assembly).ContentHash.Should().Be(loaded,
+                "replaced after the load: still the loaded image, not the new file");
 
             File.Delete(copy);
             var identity = AssemblyIdentity.FromAssembly(assembly);
-
-            identity.ContentHash.Should().Be("mvid" + assembly.ManifestModule.ModuleVersionId.ToString("N"));
+            identity.ContentHash.Should().Be(loaded, "gone: still the loaded image");
             identity.ToCacheKey().Should().NotContain("no-hash");
         }
         finally

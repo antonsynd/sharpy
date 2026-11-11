@@ -161,24 +161,6 @@ internal class ModuleRegistry
         }
     }
 
-    // The current compilation's file-identity scope (FileContentIdentity): one per build, so a file
-    // is hashed once per build and never answered from an earlier build's memo.
-    private FileContentIdentity _fileIdentities = new();
-
-    /// <summary>The current compilation's file-identity scope.</summary>
-    internal FileContentIdentity FileIdentities => _fileIdentities;
-
-    /// <summary>
-    /// Starts a new file-identity scope for the compilation about to run and returns it. Called by each
-    /// <see cref="Compiler"/> entry before anything reads a file's identity.
-    /// </summary>
-    internal FileContentIdentity BeginFileIdentityScope()
-    {
-        var scope = new FileContentIdentity();
-        _fileIdentities = scope;
-        return scope;
-    }
-
     /// <summary>
     /// The registry's copy of the non-framework reference at <paramref name="fullPath"/>: an assembly
     /// one of its contexts already loaded from that file (as a dependency of an earlier reference), else
@@ -198,9 +180,12 @@ internal class ModuleRegistry
             }
 
             var context = ReferenceLoadContext.GetOrLoad(
-                fullPath, Visibility.OwnAssemblies, GetModulePaths().ToList(), _fileIdentities,
-                notice: message => _logger.LogWarning(message, 0, 0));
+                fullPath, Visibility.OwnAssemblies, GetModulePaths().ToList());
             _loadContexts.Add(context);
+
+            // The image cache's one notice per process (its per-user root was refused), if pending.
+            if (ReferenceImageCache.TakeFallbackNotice() is { } notice)
+                _logger.LogWarning(notice, 0, 0);
             return context.Reference;
         }
     }

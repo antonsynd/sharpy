@@ -30,7 +30,7 @@ internal class AssemblyIdentity
         {
             Name = assemblyName.Name ?? "Unknown",
             Version = assemblyName.Version?.ToString() ?? "1.0.0",
-            ContentHash = ContentHashOf(assembly, location),
+            ContentHash = ImageIdentityOf(assembly),
             FilePath = location,
             CompilerVersion = Shared.CompilerIdentity.Version
         };
@@ -50,27 +50,14 @@ internal class AssemblyIdentity
     }
 
     /// <summary>
-    /// The SHA-256 of the file the assembly was loaded from; when there is no such file to read (an
-    /// in-memory load, or a cached copy deleted after it was mapped), the image's module version id,
-    /// which names the loaded bytes and survives the file. Never empty: an empty hash made the cache
-    /// key <c>{name}-{version}-no-hash</c>, shared by every build of that name and version.
+    /// The identity of the LOADED image: its module version id, as 32 hex digits. Not a hash of the
+    /// file now at <see cref="Assembly.Location"/>: that file can have been replaced since the load (an
+    /// index built from the old image would be filed under the new file's hash, #2114) or deleted (a
+    /// pruned cache copy; the hash was empty and the key <c>{name}-{version}-no-hash</c> collided across
+    /// builds). The MVID names the bytes the runtime mapped, survives the file, and costs no read.
     /// </summary>
-    private static string ContentHashOf(Assembly assembly, string location)
-    {
-        if (!string.IsNullOrEmpty(location) && File.Exists(location))
-        {
-            try
-            {
-                return Shared.FileContentIdentity.Sha256Of(location);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // Unreadable: fall through to the image's own identity.
-            }
-        }
-
-        return "mvid" + assembly.ManifestModule.ModuleVersionId.ToString("N");
-    }
+    private static string ImageIdentityOf(Assembly assembly)
+        => assembly.ManifestModule.ModuleVersionId.ToString("N");
 
     public override bool Equals(object? obj)
     {
