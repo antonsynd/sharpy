@@ -82,32 +82,12 @@ else
     row "Open issues; SPY0908" "skipped (--no-network)" "—"
 fi
 
-# 3. Allowlists --------------------------------------------------------------------------------------
-# Rows are non-blank, non-comment lines of every tracked *allowlist*.txt. Harnesses that landed with a
-# charter plan that seeds rows on purpose are listed separately: their growth is the plan, not drift.
-SEED_PLAN_FILES='name-resolution-differential-allowlist.txt'   # P77b (#2433), plan-3eba57
-git ls-files '*allowlist*.txt' > "$SCRATCH/files.txt"
-TOTAL=0; SEEDED=0
-: > "$SCRATCH/cites.txt"
-while IFS= read -r f; do
-    n=$(grep -cvE '^[[:space:]]*(#|$)' "$f" || true)
-    TOTAL=$((TOTAL + n))
-    case "$(basename "$f")" in *$SEED_PLAN_FILES*) SEEDED=$((SEEDED + n)) ;; esac
-    grep -vE '^[[:space:]]*(#|$)' "$f" | grep -oE '#[0-9]+' >> "$SCRATCH/cites.txt" || true
-done < "$SCRATCH/files.txt"
-FILES=$(wc -l < "$SCRATCH/files.txt")
-NONEMPTY=$(while IFS= read -r f; do grep -qvE '^[[:space:]]*(#|$)' "$f" && echo "$f"; done < "$SCRATCH/files.txt" | wc -l)
-CITED=$(sort -u "$SCRATCH/cites.txt" | wc -l)
-row "Allowlist rows: total / outside seed-plan harnesses" "$TOTAL / $((TOTAL - SEEDED))" \
-    "$FILES files ($NONEMPTY non-empty); seed-plan harnesses: $SEED_PLAN_FILES ($SEEDED rows)"
-row "Distinct issues cited by allowlist rows" "$CITED" \
-    'rows citing a closed issue must be 0: `build_tools/check_allowlist_issue_state.sh`'
-
-# 4. SemanticInfo dictionary fields ------------------------------------------------------------------
-PIN=$(grep -oE 'MaximumSideTableFieldCount = [0-9]+' src/Sharpy.Compiler.Tests/Semantic/SemanticInfoMergeConformanceTests.cs | grep -oE '[0-9]+$')
-FIELDS=$(grep -cE '^\s*private readonly (Concurrent)?Dictionary<' src/Sharpy.Compiler/Semantic/SemanticInfo.cs || true)
-row "SemanticInfo dictionary fields (pin ≤ / counted)" "${PIN:-?} / $FIELDS" \
-    "pin in SemanticInfoMergeConformanceTests; private readonly dictionary fields in SemanticInfo.cs (85 node-keyed + 3 symbol-keyed at 70608d421)"
+# 3–4. Allowlists, SemanticInfo dictionary fields ------------------------------------------------
+# One definition, shared with the ratchet `build_tools/scorecard_metrics.py --check` (seed-plan
+# harnesses, the row and cite rules, the dictionary-field regex all live there).
+python3 build_tools/scorecard_metrics.py --row allowlists
+python3 build_tools/scorecard_metrics.py --row cites
+python3 build_tools/scorecard_metrics.py --row semanticinfo
 
 # 5. Test LOC ÷ compiler LOC -------------------------------------------------------------------------
 TLOC=$(git ls-files 'src/Sharpy.Compiler.Tests/*.cs' | xargs cat | wc -l)
@@ -115,12 +95,8 @@ PLOC=$(git ls-files 'src/Sharpy.Compiler/*.cs' | xargs cat | wc -l)
 row "Test LOC ÷ compiler LOC" "$(awk -v t="$TLOC" -v p="$PLOC" 'BEGIN{printf "%.2f", t/p}') ($TLOC ÷ $PLOC)" \
     'Sharpy.Compiler.Tests `*.cs` ÷ Sharpy.Compiler `*.cs`, tracked files (the audit'"'"'s 1.75 definition)'
 
-# 6. Procedure bytes ---------------------------------------------------------------------------------
-PROC_FILES="CLAUDE.md .claude/skills/create-plan/SKILL.md .claude/skills/verify-plan/SKILL.md .claude/skills/implement-plan/SKILL.md .claude/skills/verify-implementation/SKILL.md .claude/skills/commit/SKILL.md .claude/skills/push/SKILL.md .claude/skills/ci-gate/SKILL.md"
-PROC=0
-for f in $PROC_FILES; do [ -f "$f" ] && PROC=$((PROC + $(wc -c < "$f"))); done
-row "Procedure bytes per light group; CLAUDE.md" "$PROC; $(wc -c < CLAUDE.md)" \
-    "CLAUDE.md + create-plan, verify-plan, implement-plan, verify-implementation, commit, push, ci-gate skills"
+# 6. Procedure bytes (shared with the ratchet, as above) -------------------------------------------
+python3 build_tools/scorecard_metrics.py --row procedure
 
 # 7–8. Commits since base: mix and gate citations --------------------------------------------------
 git log --no-merges --format='%s' "$BASE..HEAD" > "$SCRATCH/subjects.txt"
