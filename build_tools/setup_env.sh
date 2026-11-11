@@ -22,7 +22,7 @@
 #   --no-dotnet11         skip the .NET 11 SDK.
 #   --with-docs           also install mkdocs-material (docs site).
 #   --no-auto-builder     skip sharpy_auto_builder (LangGraph); most build_tools tests then fail to import.
-#   --profile             source .venv/sharpy-env.sh from the first line of ~/.bashrc (or ~/.zshrc).
+#   --profile             source .venv/sharpy-env.sh from the first line of ~/.bashrc (and ~/.zshrc under zsh).
 #   --build               build sharpy.sln and run the README hello-world smoke test.
 #
 # Afterwards: `source .venv/sharpy-env.sh`
@@ -202,19 +202,32 @@ export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
 . "$VENV/bin/activate"
 SH
 if ((PROFILE)); then
-  rc="$HOME/.bashrc"; [[ "${SHELL:-}" == */zsh ]] && rc="$HOME/.zshrc"
-  # FIRST line, not appended: a stock ~/.bashrc returns at `[ -z "$PS1" ] && return` (or
-  # `case $- in *i*) ;; *) return;; esac`), so an appended line never runs in the non-interactive
-  # shells that agents, cloud sessions and `bash -lc` use; they then get the system python3 with
-  # no pytest and no dotnet on PATH.
+  # FIRST line of ~/.bashrc, not appended: a stock ~/.bashrc returns at `[ -z "$PS1" ] && return`
+  # (or `case $- in *i*) ;; *) return;; esac`), so an appended line never runs in the
+  # non-interactive bash that agents, cloud sessions and `bash -lc` use; they then get the system
+  # python3 with no pytest and no dotnet on PATH. ~/.bashrc is written whatever $SHELL is, because
+  # those shells are bash; a zsh user also gets ~/.zshrc (read by interactive zsh only).
   line="[ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"  # Sharpy"
-  if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]]; then
-    log "$rc already sources $ENV_FILE"
-  else
-    rest="$(grep -vxF "$line" "$rc" 2>/dev/null || true)"
-    printf '%s\n%s\n' "$line" "$rest" > "$rc"
+  ours='sharpy-env\.sh".*# Sharpy'   # this line for any checkout: the last one set up wins
+  rcs=("$HOME/.bashrc"); [[ "${SHELL:-}" == */zsh ]] && rcs+=("$HOME/.zshrc")
+  for rc in "${rcs[@]}"; do
+    [[ ! -e "$rc" || -r "$rc" ]] || die "$rc exists but is not readable; not rewriting it"
+    if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]] && (( $(grep -ac "$ours" "$rc") == 1 )); then
+      log "$rc already sources $ENV_FILE"
+      continue
+    fi
+    # Build the new file beside the old one, then copy it over: a failed read or a full disk leaves
+    # the rc as it was, and `cat >` keeps a symlinked rc and its mode. -a: without it grep treats
+    # an rc with a NUL or a non-UTF-8 byte as binary and prints none of its lines.
+    tmp="$rc.sharpy.$$"
+    printf '%s\n' "$line" > "$tmp"
+    if [[ -e "$rc" ]]; then
+      grep -av "$ours" "$rc" >> "$tmp" || { [[ $? -eq 1 ]] || die "could not read $rc; left unchanged"; }
+    fi
+    cat "$tmp" > "$rc"
+    rm -f "$tmp"
     log "added $ENV_FILE as the first line of $rc"
-  fi
+  done
 fi
 
 # 7. optional build + smoke --------------------------------------------------------------
