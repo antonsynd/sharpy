@@ -59,8 +59,8 @@ source "$(dirname "$0")/dotnet-lock-env.sh"
 TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-4500}"  # 75 minutes
 
 # Stall watchdog (#1481). A holder whose child is ALIVE but has stopped producing output is
-# wedged, not working, and the lock's own correctness keeps it that way: is_lock_stale fails
-# closed on a live child, so nobody can reclaim. On 2026-08-12 one such holder held this lock
+# wedged, not working, and the lock's own correctness keeps it that way: the lock is held for as
+# long as the child lives, so nobody can take it. On 2026-08-12 one such holder held this lock
 # 2h26m and every queued agent died at the waiter timeout above.
 #
 # Progress is judged by the tee log's MTIME, not by wall clock: a wall-clock cap tight enough to
@@ -91,25 +91,82 @@ LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
 LOG_POINTER_FILE="${LOG_DIR}/dotnet-serialized-latest.path"
 LOG_RETENTION_MINUTES=10080  # 7 days
 
-# A pidless (or empty-pid) lock directory older than this is abandoned: its owner died between
-# the mkdir and the pid write, which takes microseconds. Judged by the directory's own mtime, so
-# the verdict belongs to THAT directory; a one-second re-check let a peer that looked at one
-# directory delete the next owner's (#2458).
-PIDLESS_GRACE_SECONDS=5
+# THE LOCK (#2458). One flock(2) on $LOCK_FILE, taken on fd 9 and held for the wrapper's whole
+# run. The kernel grants it to one process at a time and drops it when the holder exits or dies,
+# so there is no stale lock to judge, no takeover path, and no window between "acquired" and
+# "recorded". It replaced a mkdir lock whose takeover and release removed the lock directory by
+# NAME: two waiters could each judge a lock abandoned and each delete-and-recreate it, and two
+# runs were admitted 0.06-2.8 ms apart on CI (three times in two days).
+#
+# The files in $LOCK_DIR (pid, child, log, cwd, started) are diagnostics, written only while
+# holding the flock. They outlive a holder that dies, which is how the next holder learns about
+# an orphaned dotnet child (see wait_out_previous_holder).
+#
+# fd 9 is closed for every process the wrapper starts: dotnet, tee and the watchdog. dotnet
+# leaves build servers (MSBuild nodes, VBCSCompiler) running for minutes after a build, and any
+# of them holding fd 9 would hold the lock with them. A dotnet child orphaned by a killed wrapper
+# is kept serialized by the recorded child pid instead.
 
-# Remove the lock only while it is OWNER's, and make it vanish in one step. `rm -rf` on the
-# live path deletes the pid file before the directory, and a waiter that looked in between read
-# the half-deleted lock as abandoned (#2458); renaming it away first leaves no such state.
-release_lock() {
-    local owner="$1" trash
-    [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$owner" ] || return 0
-    trash="${LOCK_DIR}.released.$$.${RANDOM}"
-    mv "$LOCK_DIR" "$trash" 2>/dev/null || return 0
-    rm -rf "$trash" 2>/dev/null
+# Choose the first flock tool that WORKS here, not the first that exists: macOS has no flock(1),
+# and its /usr/bin/python3 can be the Command Line Tools stub. Each candidate takes a
+# non-blocking lock on a private probe file. DOTNET_SERIALIZED_LOCKERS narrows the candidates so
+# the harness can run the fallbacks on a machine that has flock(1).
+pick_locker() {
+    local probe="${LOCK_FILE}.probe.$$" candidate
+    LOCKER=""
+    for candidate in ${DOTNET_SERIALIZED_LOCKERS:-flock python3 perl}; do
+        command -v "$candidate" >/dev/null 2>&1 || continue
+        case "$candidate" in
+            flock)
+                ( exec 8>"$probe" && flock -n 8 ) 2>/dev/null ;;
+            python3)
+                python3 -c 'import fcntl; fcntl.flock(8, fcntl.LOCK_EX | fcntl.LOCK_NB)' \
+                    8>"$probe" 2>/dev/null ;;
+            perl)
+                perl -MFcntl=:flock -e \
+                    'open(my $f, ">&=", 8) or exit 1; flock($f, LOCK_EX | LOCK_NB) or exit 1' \
+                    8>"$probe" 2>/dev/null ;;
+            *) false ;;
+        esac && { LOCKER="$candidate"; break; }
+    done
+    rm -f "$probe"
+    [ -n "$LOCKER" ]
 }
 
-cleanup() {
-    release_lock "$$"
+# Block until fd 9 is exclusively locked, at most $1 seconds. 0 locked, 1 timed out, other: error.
+# The interpreters lock the INHERITED fd: the lock belongs to the open file this shell shares, so
+# it outlives the helper process and lasts until this shell (and nothing else) closes fd 9.
+lock_fd9() {
+    local seconds="$1"
+    [ "$seconds" -ge 1 ] 2>/dev/null || seconds=1
+    case "$LOCKER" in
+        flock)
+            flock -x -w "$seconds" 9
+            ;;
+        python3)
+            python3 -c '
+import fcntl, signal, sys
+def timed_out(*_):
+    sys.exit(1)
+signal.signal(signal.SIGALRM, timed_out)
+signal.alarm(int(sys.argv[1]))
+try:
+    fcntl.flock(9, fcntl.LOCK_EX)
+except OSError:
+    sys.exit(2)
+' "$seconds"
+            ;;
+        perl)
+            perl -MFcntl=:flock -e '
+open(my $f, ">&=", 9) or exit 2;
+$SIG{ALRM} = sub { exit 1 };
+alarm($ARGV[0]);
+flock($f, LOCK_EX) or exit 2;
+exit 0;
+' "$seconds"
+            ;;
+        *) return 2 ;;
+    esac
 }
 
 bump_generation() {
@@ -119,169 +176,101 @@ bump_generation() {
     echo $((gen + 1)) > "$GENERATION_FILE"
 }
 
-# A lock is stale only when NOTHING it protects is still running, and the owner SHELL is a
-# poor proxy for that: kill an agent — or let it hit a usage limit — and its dotnet/testhost
-# children are reparented to init and keep consuming their 5-10 GB while the shell that
-# started them is gone. Judging staleness by the shell alone therefore FAILS OPEN in exactly
-# the case the lock exists for: the next wrapper read "owner PID gone", removed the lock, and
-# admitted a SECOND concurrent run. Reproduced 2026-08-12 in an isolated harness (fake HOME,
-# fake dotnet), with 13 orphaned dotnet processes (PPID 1) on the machine at the time. So the
-# dotnet process records its own PID below, and a live child keeps the lock alive.
+lock_timeout() {
+    echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
+    echo "Lock owner PID: $(cat "$LOCK_PID_FILE" 2>/dev/null || echo unknown)" >&2
+    echo "Run: .claude/scripts/dotnet-serialized --holder-status" >&2
+    echo "Then REPORT to the lead. Do not kill a holder you did not start." >&2
+    exit 124
+}
+
+# Runs holding the flock, before this holder writes anything. Diagnostics left in $LOCK_DIR
+# belong to a holder that is gone without releasing: killed (a caller's timeout, a usage limit).
+# Its shell is dead, but its dotnet/testhost children are reparented to init and keep their
+# 5-10 GB, so the lock is still owed to them: wait while the recorded child lives (#1508,
+# 58c82ffa5), reaping it only by the stall rule in reap_orphan. A recorded owner that is alive
+# yet does not hold the flock is a wrapper from before the flock (rollout), so wait on it too.
 #
 # KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
-# the full TIMEOUT. Bounded by that timeout rather than by correctness.
-#
-# The probability is UNMEASURED, and deliberately so: measuring it means forcing PID wraparound
-# on a shared development machine, which would disrupt every other agent's live run to quantify
-# a hazard whose mitigation (the TIMEOUT bound above) is already in place and does not depend on
-# the number. Declined by the 2026-08-13 INFRA batch (#1481) — recorded here rather than left as
-# an unattributed "unmeasured", so the next reader knows a person decided this and why, instead
-# of assuming nobody looked.
-is_lock_stale() {
-    local child_file="$LOCK_CHILD_FILE"
-    if [ -f "$child_file" ]; then
-        local child_pid
-        child_pid=$(cat "$child_file" 2>/dev/null)
-        if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
-            return 1
-        fi
-    fi
-
-    local lock_pid
-    lock_pid=$(cat "$LOCK_PID_FILE" 2>/dev/null)
-    if [ -z "$lock_pid" ]; then
-        # A lock directory with no pid (or, from an older wrapper's `echo >`, an empty one) is
-        # usually one taken MICROSECONDS ago, not an abandoned one: mkdir is the atomic acquire
-        # and the owner writes its pid immediately after. Treating that as stale is a
-        # thundering-herd bug, because every peer that just lost the mkdir race checks at
-        # exactly the moment the winner has not written yet. Measured 2026-08-12 with 8
-        # concurrent wrappers: FOUR ran at once. So it is abandoned only once THIS directory has
-        # gone unchanged for PIDLESS_GRACE_SECONDS. (Its absence reads as live: the caller's
-        # mkdir retries.)
-        local made
-        made=$(file_mtime "$LOCK_DIR")
-        case "$made" in ''|*[!0-9]*) return 1 ;; esac
-        [ $(( $(date +%s) - made )) -ge "$PIDLESS_GRACE_SECONDS" ] && return 0
-        return 1
-    fi
-    if ! kill -0 "$lock_pid" 2>/dev/null; then
-        return 0
-    fi
-    return 1
-}
-
-# Take an exclusive flock(2) on fd 9. The kernel drops it when the last fd on the open file goes,
-# including when its holder dies, so unlike a mkdir lock it can never be left stale. flock(1) is
-# util-linux; macOS has none, so fall back to an interpreter locking the INHERITED fd: the lock
-# belongs to the shared open file and outlives the helper process until this shell closes fd 9.
-lock_fd9() {
-    if command -v flock >/dev/null 2>&1; then
-        flock -x 9
-    elif command -v python3 >/dev/null 2>&1; then
-        python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
-    elif command -v perl >/dev/null 2>&1; then
-        perl -MFcntl=:flock -e 'open(my $f, ">&=", 9) or exit 1; flock($f, LOCK_EX) or exit 1'
-    else
-        return 1
-    fi
-}
-
-# Remove a lock judged abandoned. Every waiter judges, so removal must be serialized and must hit
-# the directory that was judged: two waiters that both read "owner dead" used to both `rm -rf`
-# and `mkdir`, and the second rm deleted the first one's NEW lock, admitting both (#2458). Under
-# the reclaim mutex the verdict is re-read and the lock renamed away before deletion; no other
-# path removes a lock its caller does not own, so between that verdict and the rename nothing
-# else can replace the directory. Returns 0 removed, 1 not stale (or already gone), 2 cannot
-# (no mutex, or the path is not writable from a sandboxed shell).
-reclaim_stale_lock() {
-    local rc=1 trash
-    { exec 9>>"$RECLAIM_LOCK_FILE"; } 2>/dev/null || return 2
-    if ! lock_fd9; then
-        exec 9>&-
-        return 2
-    fi
-    if [ -d "$LOCK_DIR" ] && is_lock_stale; then
-        trash="${LOCK_DIR}.reclaimed.$$.${RANDOM}"
-        if mv "$LOCK_DIR" "$trash" 2>/dev/null; then
-            rm -rf "$trash" 2>/dev/null
-            rc=0
-        elif [ -d "$LOCK_DIR" ]; then
-            rc=2
-        fi
-    fi
-    exec 9>&-
-    return $rc
-}
-
-acquire_lock() {
-    # The pid recorded in the lock is the pid of whatever will HOLD it — this wrapper normally,
-    # but bench_ab under --acquire-lock. Recording the short-lived wrapper's pid for a held lock
-    # would leave one whose owner is already gone, which is the fail-open this file just fixed.
-    #
-    # That is only the OWNER pid. The dotnet child is recorded separately: by the `bash -c` line
-    # below for this wrapper's own runs, and by the --record-child verb above for a caller that
-    # holds the lock and invokes dotnet itself. is_lock_stale consults the child first, so a
-    # holder that records neither is protected only for as long as its own process lives.
-    local owner_pid="${1:-$$}"
-    local waited=0
-    local nodir_failures=0
-    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
-        if [ ! -d "$LOCK_DIR" ]; then
-            # mkdir failed yet nothing holds the lock: this shell cannot write the
-            # lock path at all (sandboxed caller). Spinning would loop forever —
-            # fail fast instead. Allow a couple of retries for the race where the
-            # owner released between our mkdir and this check.
-            nodir_failures=$((nodir_failures + 1))
-            if [ "$nodir_failures" -ge 3 ]; then
-                echo "ERROR: cannot create $LOCK_DIR though no one holds it." >&2
-                echo "This shell cannot write the lock path — it is sandboxed." >&2
-                echo "Re-run this exact command with the sandbox disabled" >&2
-                echo "(dangerouslyDisableSandbox: true). Do NOT fall back to raw" >&2
-                echo "dotnet build/test: unserialized concurrent runs OOM the machine." >&2
-                exit 125
+# the full TIMEOUT. Bounded by that timeout rather than by correctness. The probability is
+# UNMEASURED, and deliberately so: measuring it means forcing PID wraparound on a shared
+# development machine. Declined by the 2026-08-13 INFRA batch (#1481).
+wait_out_previous_holder() {
+    local deadline="$1" child owner announced=0
+    while :; do
+        child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+        owner=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+        case "$child" in ''|*[!0-9]*) child="" ;; esac
+        case "$owner" in ''|*[!0-9]*) owner="" ;; esac
+        if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
+            reap_orphan && continue
+        elif [ -n "$owner" ] && [ "$owner" != "$$" ] && kill -0 "$owner" 2>/dev/null; then
+            :
+        else
+            if [ -d "$LOCK_DIR" ] && [ -n "$owner$child" ]; then
+                echo "WARNING: discarding stale dotnet lock files of dead holder PID ${owner:-unknown}." >&2
             fi
-            sleep 1
-            continue
+            return 0
         fi
-        nodir_failures=0
-        reap_orphan
-        if is_lock_stale; then
-            reclaim_stale_lock
-            case $? in
-                0)
-                    echo "WARNING: Removed stale dotnet lock (owner PID gone)." >&2
-                    continue
-                    ;;
-                2)
-                    # Could not remove it. A sandboxed shell can neither signal-probe
-                    # (kill -0 is denied, so a LIVE owner reads as gone) nor remove the
-                    # lock — treat it as live and wait politely instead of hot-spinning.
-                    sleep 2
-                    waited=$((waited + 2))
-                    continue
-                    ;;
-            esac
-            # 1: a peer reclaimed it first, or it came back live; wait like any waiter.
+        if [ "$announced" -eq 0 ]; then
+            echo "Waiting for the previous holder's dotnet (PID ${child:-$owner}) to exit." >&2
+            announced=1
         fi
-        if [ "$waited" -ge "$TIMEOUT" ]; then
-            echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
-            echo "Lock owner PID: $(cat "$LOCK_PID_FILE" 2>/dev/null || echo unknown)" >&2
-            echo "Run: .claude/scripts/dotnet-serialized --holder-status" >&2
-            echo "Then REPORT to the lead. Do not kill a holder you did not start." >&2
-            exit 124
-        fi
+        [ "$(date +%s)" -lt "$deadline" ] || lock_timeout
         sleep 2
-        waited=$((waited + 2))
     done
-    # Written aside and renamed in, so a reader never sees the pid file present but empty.
-    echo "$owner_pid" > "$LOCK_DIR/pid.$$" && mv -f "$LOCK_DIR/pid.$$" "$LOCK_PID_FILE"
+}
+
+# Take the lock for OWNER_PID (this wrapper, or a --acquire-lock holder) and publish the
+# diagnostics. Exits 124 on timeout and 125 when the lock cannot be taken at all.
+acquire_lock() {
+    local owner_pid="${1:-$$}" deadline rc
+    deadline=$(( $(date +%s) + TIMEOUT ))
+    if ! { exec 9>>"$LOCK_FILE"; } 2>/dev/null; then
+        echo "ERROR: cannot open $LOCK_FILE for writing." >&2
+        echo "This shell cannot write the lock path — it is sandboxed." >&2
+        echo "Re-run this exact command with the sandbox disabled" >&2
+        echo "(dangerouslyDisableSandbox: true). Do NOT fall back to raw" >&2
+        echo "dotnet build/test: unserialized concurrent runs OOM the machine." >&2
+        exit 125
+    fi
+    if ! pick_locker; then
+        echo "ERROR: no working flock tool: none of flock(1), python3 (fcntl) or perl" >&2
+        echo "could lock a file here, so dotnet cannot be serialized. Install util-linux's" >&2
+        echo "flock or a python3. Do NOT fall back to raw dotnet build/test." >&2
+        exit 125
+    fi
+    lock_fd9 "$TIMEOUT"
+    rc=$?
+    case "$rc" in
+        0) ;;
+        1) lock_timeout ;;
+        *)
+            echo "ERROR: $LOCKER failed to lock $LOCK_FILE (exit $rc)." >&2
+            exit 125
+            ;;
+    esac
+    wait_out_previous_holder "$deadline"
+    rm -rf "$LOCK_DIR"
+    mkdir -p "$LOCK_DIR"
+    echo "$owner_pid" > "$LOCK_PID_FILE"
     pwd -P > "$LOCK_CWD_FILE"
     date +%s > "$LOCK_STARTED_FILE"
     bump_generation
-    if [ "$owner_pid" = "$$" ]; then
-        trap cleanup EXIT
-    fi
 }
+
+# Remove the diagnostics if they are OWNER's; the caller still holds the flock (a release closes
+# fd 9 after this). Files naming someone else are left alone.
+clear_diagnostics() {
+    [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$1" ] && rm -rf "$LOCK_DIR"
+    return 0
+}
+
+cleanup() {
+    clear_diagnostics "$$"
+    exec 9>&-
+}
+
 
 WATCHDOG_MARKER="$LOCK_DIR/watchdog-killed"
 
@@ -382,12 +371,13 @@ watchdog_report() {
 
 # Orphan reaper (#2458). A holder killed mid-run (a caller's timeout, a usage limit) leaves its
 # dotnet child reparented to init, and its watchdog exits with it (#2076), so nothing judges that
-# child again: is_lock_stale keeps the lock on the live child and every waiter sat out TIMEOUT.
-# A waiter therefore applies the watchdog's own test on the dead holder's behalf, and kills the
+# child again: wait_out_previous_holder keeps the lock on the live child and every waiter sat out
+# TIMEOUT. The next holder therefore applies the watchdog's own test on the dead holder's
+# behalf, and kills the
 # child only when ALL hold: the child is alive and is a dotnet process (a recycled pid is not),
 # the holder pid is dead (a live holder's own watchdog judges its run), and the holder's
 # published log exists and has been silent past STALL_SECONDS (a lock-only holder publishes
-# none, so is never reaped). Returns 0 when it killed; the caller then re-judges staleness.
+# none, so is never reaped). Returns 0 when it killed; the caller then looks again.
 reap_orphan() {
     local child owner log last quiet
     child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
@@ -445,23 +435,47 @@ case "${1:-}" in
             exit 2
         fi
         acquire_lock "$holder"
+        # This wrapper exits now, so a keeper process inherits fd 9 and holds the flock for
+        # HOLDER: until --release-lock stops it, or within a second of HOLDER dying. Its sleep
+        # must not inherit fd 9, or a keeper killed mid-sleep would leave the lock held.
+        (
+            while kill -0 "$holder" 2>/dev/null; do
+                sleep 1 9>&-
+            done
+        ) </dev/null >/dev/null 2>&1 &
+        echo $! > "$LOCK_DIR/keeper"
         exit 0
         ;;
     --release-lock)
         holder="${2:-}"
         current=$(cat "$LOCK_PID_FILE" 2>/dev/null)
-        if [ -n "$current" ] && [ -n "$holder" ] && [ "$current" != "$holder" ]; then
+        if [ -z "$holder" ]; then
+            echo "ERROR: --release-lock needs the HOLDER_PID that took the lock." >&2
+            exit 2
+        fi
+        if [ -n "$current" ] && [ "$current" != "$holder" ]; then
             echo "ERROR: refusing to release a lock owned by $current (asked by $holder)." >&2
             exit 2
         fi
-        release_lock "${holder:-$current}"
+        [ -n "$current" ] || exit 0  # already released
+        keeper=$(cat "$LOCK_DIR/keeper" 2>/dev/null)
+        # Diagnostics first, while the keeper still holds the flock: nobody else can have
+        # written them yet. Then end the keeper and wait for its fd to close.
+        rm -rf "$LOCK_DIR"
+        case "$keeper" in
+            ''|*[!0-9]*) ;;
+            *)
+                kill "$keeper" 2>/dev/null
+                while kill -0 "$keeper" 2>/dev/null; do sleep 0.05; done
+                ;;
+        esac
         exit 0
         ;;
     --record-child)
         # A holder that invokes dotnet ITSELF (bench_ab under --acquire-lock) still has to put
-        # its child where is_lock_stale looks, or the hold is only as good as the holder's own
-        # pid — and SIGKILL bench_ab mid-arm and the orphaned benchmark keeps its 5-10 GB while
-        # the lock reads stale and a peer is admitted beside it (#1508). This verb rather than
+        # its child where the next holder looks (wait_out_previous_holder), or the hold is only as
+        # good as the holder's own pid — and SIGKILL bench_ab mid-arm and the orphaned benchmark
+        # keeps its 5-10 GB while a peer is admitted beside it (#1508). This verb rather than
         # letting callers write $LOCK_CHILD_FILE themselves: the lock-dir layout stays knowledge
         # of this one file, and the ownership check below cannot then be skipped by a caller.
         holder="${2:-}"
@@ -478,8 +492,8 @@ case "${1:-}" in
         fi
         if ! kill -0 "$child" 2>/dev/null; then
             echo "ERROR: --record-child needs a LIVE child pid; $child is not running." >&2
-            echo "Recording a dead child is worse than recording none: is_lock_stale consults" >&2
-            echo "the child FIRST, so a dead pointer can only ever read 'stale'." >&2
+            echo "Recording a dead child is worse than recording none: it would replace the" >&2
+            echo "pointer to whatever is still running under this lock." >&2
             exit 2
         fi
         echo "$child" > "$LOCK_CHILD_FILE"
@@ -495,6 +509,12 @@ case "${1:-}" in
         if [ ! -d "$LOCK_DIR" ]; then
             echo "No lock held."
             exit 0
+        fi
+        # Probe the flock itself; the files alone outlive a holder that was killed.
+        if { exec 9>>"$LOCK_FILE"; } 2>/dev/null && pick_locker && [ "$LOCKER" = flock ] \
+            && flock -n 9; then
+            echo "lock:    FREE (the files below are left over from a holder that died)"
+            exec 9>&-
         fi
         echo "pid:     $(cat "$LOCK_PID_FILE" 2>/dev/null || echo '(none)')"
         echo "child:   $(cat "$LOCK_CHILD_FILE" 2>/dev/null || echo '(none)')"
@@ -541,25 +561,28 @@ echo "$LOG_FILE" > "${LOG_POINTER_FILE}.$$" && mv -f "${LOG_POINTER_FILE}.$$" "$
 echo "dotnet-serialized: log -> $LOG_FILE"
 
 acquire_lock
+trap cleanup EXIT
 
 # Re-stamp after the queue wait: the watchdog judges progress by this file's mtime.
 : > "$LOG_FILE"
 echo "$LOG_FILE" > "$LOCK_LOG_FILE"
 
-# Record the dotnet process's OWN pid where is_lock_stale can find it (see there): `bash -c`
+# Record the dotnet process's OWN pid where the next holder looks if this wrapper dies (see
+# wait_out_previous_holder): `bash -c`
 # starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
 # the pid. Written by the child rather than the parent because /bin/bash here is 3.2, which has
 # no $BASHPID. ${PIPESTATUS[0]} is still dotnet's own exit code — the exec'd shell IS dotnet.
-watchdog "$$" >/dev/null 2>&1 &
+# None of these inherits fd 9 (see THE LOCK).
+watchdog "$$" >/dev/null 2>&1 9>&- &
 WATCHDOG_PID=$!
 
-bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" 2>&1 | tee "$LOG_FILE"
+bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" 2>&1 9>&- | tee "$LOG_FILE" 9>&-
 EXIT_CODE=${PIPESTATUS[0]}
 
 kill "$WATCHDOG_PID" 2>/dev/null
 wait "$WATCHDOG_PID" 2>/dev/null
 
-# Read the marker BEFORE cleanup, which rm -rf's the directory it lives in.
+# Read the marker BEFORE cleanup, which removes the directory it lives in.
 WATCHDOG_KILL_INFO=""
 if [ -f "$WATCHDOG_MARKER" ]; then
     WATCHDOG_KILL_INFO=$(cat "$WATCHDOG_MARKER" 2>/dev/null)

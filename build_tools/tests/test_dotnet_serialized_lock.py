@@ -43,6 +43,7 @@ from __future__ import annotations
 import itertools
 import os
 import re
+import shutil
 import signal
 import subprocess
 import time
@@ -292,145 +293,157 @@ def log_mtime(path: Path) -> float:
 # --------------------------------------------------------------------------------------
 
 
-class TestMutualExclusion:
-    def test_eight_concurrent_wrappers_never_overlap(self, rig: Rig):
-        """
-        The 2026-08-12 measurement, made permanent.
+LOCKERS = ["flock", "python3", "perl"]
 
-        Eight concurrent wrappers were run against the pre-fix script and **FOUR** executed at
-        once: every peer that lost the ``mkdir`` race checked staleness at the instant the winner
-        had made the directory but not yet written its pid, read "no pid file ⇒ abandoned", and
-        admitted itself. They are synchronised on that microsecond window, which is why the herd
-        was four wide rather than one unlucky peer. Each concurrent ``dotnet test`` costs 5-10 GB,
-        so four is an OOM.
 
-        This probe needs peers to collide inside a microseconds-wide window, so it reds only
-        rarely: it went red three times on CI in 2026-11 (#2458), when a release's ``rm -rf``
-        exposed a half-deleted lock and the waiters that saw it removed the next lock by name. The
-        deterministic pins are the pidless/empty-pid probes and
-        :meth:`test_a_dead_owners_lock_is_reclaimed_by_exactly_one_of_many_waiters`. This probe
-        is kept as the incident-SHAPED cell: it is the only one that would catch a
-        mutual-exclusion break the narrow probes do not model.
-        """
-        events = rig.root / "events.txt"
-        rig.fake_dotnet(
-            f'start=$(python3 -c "import time;print(repr(time.time()))")\n'
-            f"sleep 0.5\n"
-            f'stop=$(python3 -c "import time;print(repr(time.time()))")\n'
-            f'echo "RAN $start $stop" >> "{events}"\n'
-            f'echo "Total: 1"\n'
+def _overlaps(events: Path) -> list:
+    intervals = sorted(
+        (float(start), float(stop))
+        for _, start, stop in (
+            line.split() for line in events.read_text(encoding="utf-8").splitlines()
         )
+    )
+    return intervals, [(a, b) for a, b in zip(intervals, intervals[1:]) if b[0] < a[1]]
+
+
+def _timing_stub(rig: Rig, events: Path, seconds: str) -> None:
+    rig.fake_dotnet(
+        f'start=$(python3 -c "import time;print(repr(time.time()))")\n'
+        f"sleep {seconds}\n"
+        f'stop=$(python3 -c "import time;print(repr(time.time()))")\n'
+        f'echo "RAN $start $stop" >> "{events}"\n'
+        f'echo "Total: 1"\n'
+    )
+
+
+class _HeldFlock:
+    """This test process holds the wrapper's flock, as a live holder would."""
+
+    def __init__(self, rig: Rig) -> None:
+        import fcntl
+
+        path = rig.home / ".claude" / "locks" / "dotnet.flock"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._fcntl = fcntl
+        self._fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+        fcntl.flock(self._fd, fcntl.LOCK_EX)
+
+    def release(self) -> None:
+        if self._fd is not None:
+            self._fcntl.flock(self._fd, self._fcntl.LOCK_UN)
+            os.close(self._fd)
+            self._fd = None
+
+
+class TestMutualExclusion:
+    """
+    The contract: at most one dotnet runs at a time (#2458). The lock is an ``flock(2)`` held by
+    the wrapper for its whole run, so these probes check the contract and the lock's edges, not
+    a particular staleness rule. The mkdir lock it replaced admitted two runs 0.06-2.8 ms apart
+    on CI three times in two days (and, on ubuntu-26.04 runners, two per waiter tick).
+    """
+
+    @pytest.mark.parametrize("locker", LOCKERS)
+    def test_eight_concurrent_wrappers_never_overlap(self, rig: Rig, locker: str):
+        """
+        The 2026-08-12 measurement, made permanent: eight concurrent wrappers, each running a
+        0.5 s fake dotnet, must run one at a time. Run once per flock tool, because macOS has no
+        flock(1) and takes the python3 or perl path, which a Linux CI would otherwise never run.
+        """
+        if shutil.which(locker) is None:
+            pytest.skip(f"{locker} is not installed here")
+        events = rig.root / "events.txt"
+        _timing_stub(rig, events, "0.5")
 
         procs = [
-            rig.spawn("test", f"--peer{i}", DOTNET_SERIALIZED_TIMEOUT="120")
+            rig.spawn(
+                "test",
+                f"--peer{i}",
+                DOTNET_SERIALIZED_TIMEOUT="120",
+                DOTNET_SERIALIZED_LOCKERS=locker,
+            )
             for i in range(8)
         ]
-        for proc in procs:
-            proc.communicate(timeout=180)
+        stderrs = [proc.communicate(timeout=180)[1] for proc in procs]
 
-        assert all(p.returncode == 0 for p in procs), [p.returncode for p in procs]
-
-        intervals = []
-        for line in events.read_text(encoding="utf-8").splitlines():
-            _, start, stop = line.split()
-            intervals.append((float(start), float(stop)))
+        assert all(p.returncode == 0 for p in procs), (
+            [p.returncode for p in procs],
+            stderrs,
+        )
+        intervals, overlaps = _overlaps(events)
         assert len(intervals) == 8, f"expected 8 runs, saw {len(intervals)}"
-
-        intervals.sort()
-        overlaps = [
-            (intervals[i], intervals[i + 1])
-            for i in range(len(intervals) - 1)
-            if intervals[i + 1][0] < intervals[i][1]
-        ]
         assert not overlaps, f"concurrent dotnet runs admitted: {overlaps}"
 
-    def test_a_pidless_lock_dir_is_reclaimed_only_after_the_re_check(self, rig: Rig):
+    def test_a_held_lock_blocks_a_peer_until_it_is_released(self, rig: Rig):
+        """Positive control for the probe above: the flock really is what queues a peer."""
+        rig.fake_dotnet('echo "Total: 1"')
+        held = _HeldFlock(rig)
+        try:
+            proc = rig.spawn("test", DOTNET_SERIALIZED_TIMEOUT="60")
+            time.sleep(2)
+            assert proc.poll() is None, "a peer ran while the lock was held"
+        finally:
+            held.release()
+        out, err = proc.communicate(timeout=60)
+        assert proc.returncode == 0, err
+        assert "Total: 1" in out
+
+    def test_a_waiter_gives_up_at_its_timeout_with_124(self, rig: Rig):
+        rig.fake_dotnet('echo "Total: 1"')
+        held = _HeldFlock(rig)
+        try:
+            started = time.time()
+            result = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="2")
+            waited = time.time() - started
+        finally:
+            held.release()
+        assert result.returncode == 124, result.stderr
+        assert "Timed out waiting for dotnet lock" in result.stderr
+        assert 1.5 <= waited < 20, f"waited {waited:.1f}s on a 2 s timeout"
+
+    def test_leftover_files_of_a_dead_holder_do_not_block(self, rig: Rig):
         """
-        An abandoned lock dir with no pid file must be reclaimed (a crash between ``mkdir`` and
-        the pid write leaves exactly this, and refusing forever would wedge the fleet).
+        A holder killed without releasing leaves its diagnostics behind. With no live child they
+        name nothing that still runs, so the next wrapper discards them at once instead of
+        judging them for a grace period.
         """
         rig.lock_dir.mkdir(parents=True)
+        (rig.lock_dir / "pid").write_text(f"{dead_pid()}\n", encoding="utf-8")
+        (rig.lock_dir / "child").write_text(f"{dead_pid()}\n", encoding="utf-8")
         rig.fake_dotnet('echo "Total: 1"')
 
+        started = time.time()
         result = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="30")
 
         assert result.returncode == 0, result.stderr
-        assert "Total: 1" in result.stdout
-        assert "stale dotnet lock" in result.stderr
+        assert "stale dotnet lock files" in result.stderr
+        assert time.time() - started < 10
 
-    def test_a_pidless_dir_that_gains_a_live_pid_within_the_beat_is_not_stolen(
-        self, rig: Rig
-    ):
+    def test_files_naming_a_live_owner_without_the_flock_still_block(self, rig: Rig):
         """
-        The positive control for the probe above, and the half that actually pins the herd fix
-        (58c82ffa5's companion): the window is microseconds wide, so a directory that acquires a
-        LIVE pid before the re-check is a peer mid-acquisition, not an abandoned lock. Without
-        the re-check this reads as stale and a second dotnet is admitted.
-
-        Mutation-tested: removing the pidless grace (the ``sleep 1`` re-read before #2458; the
-        directory's age since) makes this probe RED — the wrapper reclaims the directory
-        immediately and runs, exiting 0 instead of timing out at 124. Reverted.
+        A live owner recorded in the files but not holding the flock is a wrapper from before
+        the flock, still running during the rollout. Queue behind it rather than beside it.
         """
+        owner = rig.spawn_sleeper()
         rig.lock_dir.mkdir(parents=True)
+        (rig.lock_dir / "pid").write_text(f"{owner.pid}\n", encoding="utf-8")
         rig.fake_dotnet('echo "Total: 1"')
 
-        proc = rig.spawn("test", DOTNET_SERIALIZED_TIMEOUT="4")
-        # Land the pid inside the wrapper's one-second re-check beat. The mkdir is not
-        # redundant: a wrapper that has ALREADY stolen the lock has rm -rf'd this directory,
-        # and the failure that matters is then the exit code below, not an errno from the
-        # probe's own setup.
-        time.sleep(0.3)
-        rig.lock_dir.mkdir(parents=True, exist_ok=True)
-        (rig.lock_dir / "pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        result = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="3")
 
-        _, stderr = proc.communicate(timeout=60)
+        assert result.returncode == 124, result.stderr
+        assert rig.lock_pid() == owner.pid
 
-        assert proc.returncode == 124, (
-            f"lock was stolen from a live peer (exit {proc.returncode})"
-        )
-        assert "Timed out waiting for dotnet lock" in stderr
-
-    def test_an_empty_pid_file_in_a_fresh_dir_is_not_stolen(self, rig: Rig):
+    def test_a_dead_owners_lock_is_taken_by_exactly_one_of_many_waiters(self, rig: Rig):
         """
-        A peer mid-acquisition can show a pid file that exists but is still empty (an
-        ``echo pid > file`` between its truncate and its write). Reading that as "abandoned"
-        skipped the pidless re-check altogether and reclaimed a live peer's lock at once (#2458).
-        """
-        rig.lock_dir.mkdir(parents=True)
-        (rig.lock_dir / "pid").write_text("", encoding="utf-8")
-        rig.fake_dotnet('echo "Total: 1"')
-
-        proc = rig.spawn("test", DOTNET_SERIALIZED_TIMEOUT="4")
-        time.sleep(0.5)
-        rig.lock_dir.mkdir(parents=True, exist_ok=True)
-        (rig.lock_dir / "pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
-
-        _, stderr = proc.communicate(timeout=60)
-
-        assert proc.returncode == 124, (
-            f"lock was stolen from a live peer (exit {proc.returncode})"
-        )
-        assert "Timed out waiting for dotnet lock" in stderr
-
-    def test_a_dead_owners_lock_is_reclaimed_by_exactly_one_of_many_waiters(
-        self, rig: Rig
-    ):
-        """
-        The takeover herd (#2458): eight waiters that all find the same dead-owner lock all
-        judge it stale at once. When each removed it by name and then ``mkdir``-ed, a late
-        ``rm -rf`` deleted an early winner's NEW lock and both ran. Removal is serialized and
-        renames the judged directory away, so exactly one reclaims and the rest queue.
+        The takeover herd (#2458): eight waiters that all find the same dead holder's files.
+        Under the mkdir lock each removed the lock by name and re-created it, and a late removal
+        deleted an early winner's new lock, so two ran. Exactly one may discard the files.
         """
         rig.lock_dir.mkdir(parents=True)
         (rig.lock_dir / "pid").write_text(f"{dead_pid()}\n", encoding="utf-8")
         events = rig.root / "events.txt"
-        rig.fake_dotnet(
-            f'start=$(python3 -c "import time;print(repr(time.time()))")\n'
-            f"sleep 0.3\n"
-            f'stop=$(python3 -c "import time;print(repr(time.time()))")\n'
-            f'echo "RAN $start $stop" >> "{events}"\n'
-            f'echo "Total: 1"\n'
-        )
+        _timing_stub(rig, events, "0.3")
 
         procs = [
             rig.spawn("test", f"--peer{i}", DOTNET_SERIALIZED_TIMEOUT="120")
@@ -439,22 +452,36 @@ class TestMutualExclusion:
         stderrs = [proc.communicate(timeout=180)[1] for proc in procs]
 
         assert all(p.returncode == 0 for p in procs), [p.returncode for p in procs]
-        intervals = sorted(
-            (float(start), float(stop))
-            for _, start, stop in (
-                line.split() for line in events.read_text(encoding="utf-8").splitlines()
-            )
-        )
+        intervals, overlaps = _overlaps(events)
         assert len(intervals) == 8, f"expected 8 runs, saw {len(intervals)}"
-        overlaps = [(a, b) for a, b in zip(intervals, intervals[1:]) if b[0] < a[1]]
         assert not overlaps, f"concurrent dotnet runs admitted: {overlaps}"
-        # Positive control: the stale-lock path is what ran, and only once.
-        assert sum("stale dotnet lock" in err for err in stderrs) == 1, stderrs
+        assert sum("stale dotnet lock files" in err for err in stderrs) == 1, stderrs
 
-    def test_a_holder_never_releases_a_lock_it_no_longer_owns(self, rig: Rig):
+    def test_a_dotnet_grandchild_does_not_keep_the_lock(self, rig: Rig):
         """
-        Release removes the lock only while its pid is still this wrapper's. An unconditional
-        ``rm -rf`` on exit deleted whatever lock sat at the path, a later owner's included.
+        dotnet leaves build servers (MSBuild nodes, VBCSCompiler) running for minutes after a
+        build. If they inherited the lock's fd they would hold the lock with them and every
+        peer would wait out its TIMEOUT behind a finished build.
+        """
+        rig.fake_dotnet(
+            "(sleep 60 </dev/null >/dev/null 2>&1 &)\n"
+            'if ( : >&9 ) 2>/dev/null; then echo "FD9-INHERITED"; fi\n'
+            'echo "Total: 1"\n'
+        )
+
+        first = rig.run("test")
+        second = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="5")
+
+        assert first.returncode == 0, first.stderr
+        assert "FD9-INHERITED" not in first.stdout
+        assert second.returncode == 0, (
+            f"a finished run's grandchild kept the lock (exit {second.returncode})"
+        )
+
+    def test_a_holder_never_removes_files_it_no_longer_owns(self, rig: Rig):
+        """
+        Release removes the diagnostics only while they are this wrapper's. An unconditional
+        ``rm -rf`` on exit deleted whatever sat at the path, a later owner's included.
         """
         other = rig.spawn_sleeper()
         rig.fake_dotnet(
@@ -464,7 +491,7 @@ class TestMutualExclusion:
         result = rig.run("test")
 
         assert result.returncode == 0, result.stderr
-        assert rig.lock_pid() == other.pid, "the wrapper released a lock it did not own"
+        assert rig.lock_pid() == other.pid, "the wrapper removed files it did not own"
 
 
 class TestOrphanedChild:
@@ -477,8 +504,8 @@ class TestOrphanedChild:
         SECOND concurrent run beside the orphan.
 
         Mutation-tested twice, because the two halves of the fix fail differently:
-        removing the child-liveness branch from ``is_lock_stale`` (literal pre-58c82ffa5
-        behavior) reds this at the steal — "lock stolen from an orphaned child (exit 0)";
+        removing the child-liveness branch (now in ``wait_out_previous_holder``; literal
+        pre-58c82ffa5 behavior) reds this at the steal — "lock stolen from an orphaned child (exit 0)";
         stubbing out the ``$LOCK_DIR/child`` write instead reds it at the recording step.
         Both reverted.
 
@@ -635,11 +662,48 @@ class TestLockOnlyVerbs:
         assert right.returncode == 0
         assert not rig.lock_dir.exists()
 
+    def test_release_lock_requires_a_holder(self, rig: Rig):
+        """With no holder named, a release could only guess whose lock it was ending."""
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        try:
+            result = rig.run("--release-lock")
+            assert result.returncode == 2
+            assert rig.lock_pid() == os.getpid()
+        finally:
+            rig.run("--release-lock", str(os.getpid()))
+
+    def test_acquire_lock_holds_until_released(self, rig: Rig):
+        """The wrapper exits at once; the lock must outlive it until --release-lock."""
+        rig.fake_dotnet('echo "Total: 1"')
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        try:
+            queued = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="2")
+            assert queued.returncode == 124, queued.stderr
+        finally:
+            assert rig.run("--release-lock", str(os.getpid())).returncode == 0
+        admitted = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="10")
+        assert admitted.returncode == 0, admitted.stderr
+
+    def test_acquire_lock_is_freed_when_its_holder_dies(self, rig: Rig):
+        """A holder SIGKILLed without releasing must not wedge every peer for TIMEOUT."""
+        rig.fake_dotnet('echo "Total: 1"')
+        holder = rig.spawn_sleeper()
+        assert rig.run("--acquire-lock", str(holder.pid)).returncode == 0
+        queued = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="2")
+        assert queued.returncode == 124, "positive control: the lock was held"
+
+        holder.kill()
+        holder.wait(timeout=30)
+        admitted = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="10")
+
+        assert admitted.returncode == 0, admitted.stderr
+        assert "stale dotnet lock files" in admitted.stderr
+
     def test_lock_generation_is_monotonic_across_acquisitions(self, rig: Rig):
         """
         #1420's interruption detector reads this before and after a round. It lives OUTSIDE the
-        lock dir because ``cleanup`` rm -rf's that directory on every release, so a counter
-        inside it resets and can never be monotonic.
+        lock dir because every release removes that directory, so a counter inside it resets and
+        can never be monotonic.
         """
         before = int(rig.run("--lock-generation").stdout.strip())
         rig.fake_dotnet('echo "Total: 1"')
@@ -694,8 +758,8 @@ class TestRecordChild:
 
     def test_refuses_a_dead_child(self, rig: Rig):
         """
-        Recording a dead child is worse than recording nothing: ``is_lock_stale`` consults the
-        child FIRST, so a dead one is a pointer that can only ever read "stale".
+        Recording a dead child is worse than recording nothing: it replaces the pointer to
+        whatever is still running under the lock, so the next holder would not wait for it.
         """
         assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
         try:
@@ -728,7 +792,7 @@ class TestRecordChild:
         Mutation-tested: dropping the ``echo "$child" > $LOCK_DIR/child`` line from the verb
         while leaving its validation intact makes this RED at the recording assertion (no child
         pointer is ever written). Reverted. The complementary mutation — writing the pointer but
-        having ``is_lock_stale`` ignore it — is the one recorded on
+        having the next holder ignore it — is the one recorded on
         :meth:`TestOrphanedChild.test_an_orphaned_dotnet_child_keeps_the_lock`, and that one
         reds at the steal itself; together they cover both halves of the mechanism.
         """
@@ -894,7 +958,7 @@ class TestStallWatchdog:
     The hung-holder watchdog (#1481).
 
     On 2026-08-12 a holder wedged the lock for **2h26m**: the driver process was still alive
-    after its run had printed a summary, so ``is_lock_stale`` correctly refused to reclaim
+    after its run had printed a summary, so the lock correctly stayed held
     (a live child is exactly what the lock protects) and every queued agent died at the
     45-minute waiter timeout. The wrapper judges progress by the tee log's mtime rather than by
     wall clock, because a cap tight enough to catch the hang would kill honest 17-minute runs.
@@ -1458,5 +1522,5 @@ class TestHolderIdentity:
 
         assert result.returncode == 0, f"run failed: {result.stderr}"
         assert not rig.lock_dir.exists(), (
-            "lock dir should be gone after release (cleanup rm -rf's it)"
+            "lock dir should be gone after release (cleanup removes it)"
         )
