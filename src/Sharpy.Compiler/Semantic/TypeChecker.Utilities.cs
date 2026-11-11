@@ -2551,6 +2551,11 @@ internal partial class TypeChecker
                         currentType);
                 }
 
+                // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
+                // __init__ is not in Constructors: its shape is unknown here, so keep the refusal below
+                // rather than assume the parameterless constructor.
+                if (currentType.ClrType == null && _moduleDataclassNames.Contains(currentType.Name))
+                    break;
                 currentType = GetBaseType(currentType);
             }
 
@@ -2766,7 +2771,9 @@ internal partial class TypeChecker
     private void ValidateConstructorInitializerPosition(FunctionDef constructor)
     {
         var index = AstHelper.FindConstructorInitializerIndex(constructor.Body);
-        if (index <= 0
+        // A chaining call earlier in the body (nested, so not the hoisted one) already refused this call
+        // as a repeat (SPY0292 "only once") or a conflict (SPY0351): one diagnostic at the call is enough.
+        if (index <= 0 || _hoistedInitializerCallRepeated
             || !AstHelper.TryGetConstructorInitializerCall(constructor.Body[index], out var call, out var chainsToBase))
             return;
 
@@ -2775,7 +2782,9 @@ internal partial class TypeChecker
         var ahead = index == 1 ? "the statement" : $"the {index} statements";
         AddError(
             $"{callText} must be the first statement in the constructor: it runs as the constructor "
-            + $"initializer '{initializer}', before {ahead} written ahead of it; move the call first",
+            + $"initializer '{initializer}', before {ahead} written ahead of it; move the call first. If an "
+            + "argument needs a value computed ahead of the call, compute it inside the argument expression "
+            + "(or in a @static helper)",
             call.LineStart, call.ColumnStart,
             code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
             span: call.Span);

@@ -261,6 +261,7 @@ internal partial class TypeChecker
         var previousSuperInitCalled = _superInitCalled;
         var previousSelfInitCalled = _selfInitCalled;
         var previousHoistedInitializerCall = _hoistedInitializerCall;
+        var previousHoistedInitializerCallRepeated = _hoistedInitializerCallRepeated;
 
         _currentMethodName = functionDef.Name;
         _currentMethodSymbol = functionSymbol;
@@ -272,6 +273,7 @@ internal partial class TypeChecker
         _superInitCalled = false;
         _selfInitCalled = false;
         _hoistedInitializerCall = null;
+        _hoistedInitializerCallRepeated = false;
         if (_currentClass != null && functionDef.Name == DunderNames.Init)
         {
             var hoistedIndex = AstHelper.FindConstructorInitializerIndex(functionDef.Body);
@@ -366,6 +368,7 @@ internal partial class TypeChecker
         _superInitCalled = previousSuperInitCalled;
         _selfInitCalled = previousSelfInitCalled;
         _hoistedInitializerCall = previousHoistedInitializerCall;
+        _hoistedInitializerCallRepeated = previousHoistedInitializerCallRepeated;
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = previousFunctionReturnType;

@@ -5996,7 +5996,17 @@ internal partial class TypeChecker
             // or a repeated one was already refused by ValidateSuperContextRules; one inside an
             // expression (a lambda, a conditional expression, an assignment's value) has no base call
             // to become.
-            if (_currentMethodName == DunderNames.Init && _controlFlowDepth == 0 && !_superInitCalled
+            if (ReferenceEquals(call, _hoistedInitializerCall) && (_superInitCalled || _selfInitCalled))
+                _hoistedInitializerCallRepeated = true;
+
+            if (_currentMethodName == DunderNames.Init && _selfInitCalled)
+            {
+                AddError("Cannot use both super().__init__() and self.__init__() in the same constructor",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
+                    span: call.Span);
+            }
+            else if (_currentMethodName == DunderNames.Init && _controlFlowDepth == 0 && !_superInitCalled
                 && _currentClass != null && GetBaseType(_currentClass) != null
                 && !ReferenceEquals(call, _hoistedInitializerCall))
             {
@@ -6029,6 +6039,9 @@ internal partial class TypeChecker
             selfInitMa.Object is Identifier { Name: "self" } &&
             selfInitMa.Member == DunderNames.Init)
         {
+            if (ReferenceEquals(call, _hoistedInitializerCall) && (_superInitCalled || _selfInitCalled))
+                _hoistedInitializerCallRepeated = true;
+
             if (_currentMethodName != DunderNames.Init)
             {
                 AddError("self.__init__() can only be called inside a constructor (__init__)",

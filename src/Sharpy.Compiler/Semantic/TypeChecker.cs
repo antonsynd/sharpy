@@ -278,6 +278,11 @@ internal partial class TypeChecker
     // top-level chaining statement of the constructor being checked (AstHelper authority). Any other
     // super().__init__()/self.__init__() call in that constructor has nothing to call (#2507).
     private FunctionCall? _hoistedInitializerCall;
+    // The hoisted call followed another chaining call and was refused at the call already (#2507).
+    private bool _hoistedInitializerCallRepeated;
+    // Names of the module's top-level @dataclass classes, read from the AST before any class is checked:
+    // a subclass checked before its dataclass base must not assume an implicit constructor (#2508).
+    private HashSet<string> _moduleDataclassNames = new(StringComparer.Ordinal);
 
     // Symbols of range(...)-loop induction variables currently in scope that are provably >= 0
     // (single-arg range, or non-negative-literal start with positive step) AND not reassigned in
@@ -661,6 +666,11 @@ internal partial class TypeChecker
 
         // Propagate SemanticBinding to sub-services
         _genericInference.SemanticBinding = SemanticBinding;
+
+        _moduleDataclassNames = module.Body.OfType<ClassDef>()
+            .Where(c => DataclassSynthesis.ReadOptions(c) != null)
+            .Select(c => c.Name)
+            .ToHashSet(StringComparer.Ordinal);
 
         // Pre-pass: resolve return types and parameter types for all module-level functions
         // so that forward references from class methods have resolved type information.

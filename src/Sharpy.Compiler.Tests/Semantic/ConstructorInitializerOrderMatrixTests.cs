@@ -148,7 +148,7 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
     [SkippableFact]
     public void StatementAfterChainingCall_RunsAsCPython()
     {
-        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
         var cells = RunCells().ToList();
         Assert.Equal(Hosts.Length * Statements.Length, cells.Count);
 
@@ -425,7 +425,94 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeFalse();
-        result.RawDiagnostics.Should().Contain(d => d.IsError && d.Line == 6, result.FailureSummary());
+        result.RawDiagnostics.Should().ContainSingle(d => d.IsError, result.FailureSummary())
+            .Which.Should().Match<CompilerDiagnostic>(d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount && d.Line == 6);
         result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+    }
+
+    private const string BothChainsHost =
+        "class B:\n    def __init__(self):\n        print(\"base\")\n\nclass C(B):\n"
+        + "    def __init__(self, a: int, b: int):\n        print(\"two\")\n    def __init__(self, a: int):\n";
+
+    // Both chaining calls in one constructor are a conflict (SPY0351) in either order, reported at the
+    // second call: neither is "part of an expression", and the position rule adds nothing.
+    [Theory]
+    [InlineData("self.__init__(a, 0)", "super().__init__()")]
+    [InlineData("super().__init__()", "self.__init__(a, 0)")]
+    public void SuperAndSelfChainingCalls_AreAConflictInEitherOrder(string first, string second)
+    {
+        var source = BothChainsHost + $"        {first}\n        {second}\n\ndef main():\n    C(4)\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        result.RawDiagnostics.Where(d => d.IsError).Should().ContainSingle(source)
+            .Which.Should().Match<CompilerDiagnostic>(d =>
+                d.Code == DiagnosticCodes.Semantic.ConflictingConstructorInitializers && d.Line == 10 && d.Column == 9);
+    }
+
+    [Fact]
+    public void ChainingCallAfterTheSameCallUnderControlFlow_IsReportedOnce()
+    {
+        // The nested call is refused (control flow); the top-level one is refused once, as a repeat, and
+        // not a second time by the position rule at the same spot.
+        var source = SuperHost + "        if a > 0:\n            super().__init__()\n        super().__init__()\n\n"
+            + "def main():\n    C(4)\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        var refusals = result.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Semantic.ConstructorInitializerNotFirst).ToList();
+        refusals.Should().HaveCount(2, source);
+        refusals.Should().ContainSingle(d => d.Line == 8).Which.Message.Should().Contain("not inside control flow");
+        refusals.Should().ContainSingle(d => d.Line == 9).Which.Message.Should().Contain("only be called once");
+    }
+
+    [Fact]
+    public void ComputedArgumentAheadOfTheCall_IsSteeredToComputeItInPlace()
+    {
+        // The common Python shape `n = len(items); super().__init__(n)`: "move the call first" alone would
+        // leave `n` undefined, so the diagnostic says where the computation goes.
+        const string source = """
+            class B:
+                size: int
+                def __init__(self, size: int):
+                    self.size = size
+
+            class C(B):
+                def __init__(self, items: list[int]):
+                    n = len(items)
+                    super().__init__(n)
+
+            def main():
+                print(C([1, 2]).size)
+            """;
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().ContainSingle(d => d.Code == DiagnosticCodes.Semantic.ConstructorInitializerNotFirst)
+            .Which.Message.Should().Contain("compute it inside the argument expression (or in a @static helper)");
+    }
+
+    // A subclass written BEFORE its @dataclass base: the base is checked later, so its synthesized __init__
+    // is not known while the subclass is checked, and the implicit-constructor resolution (#2508) must not
+    // assume one. Pinned control: the same clean refusal as before #2508 (SPY0203), never SPY0908 or an
+    // invented arity. (CPython runs the defaults case, prints `F 1`, and raises TypeError for a missing
+    // required field.)
+    [Theory]
+    [InlineData("a: int", "")]
+    [InlineData("a: int", "5")]
+    [InlineData("a: int = 1", "")]
+    public void SuperInitOnALaterDataclassBase_KeepsTheCleanRefusal(string field, string args)
+    {
+        var source = $"class F(DC):\n    def __init__(self):\n        super().__init__({args})\n        print(\"F\", self.a)\n\n"
+            + $"@dataclass\nclass DC:\n    {field}\n\ndef main():\n    F()\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        result.RawDiagnostics.Where(d => d.IsError).Should().ContainSingle(source)
+            .Which.Should().Match<CompilerDiagnostic>(d => d.Code == DiagnosticCodes.Semantic.UndefinedMember && d.Line == 3);
     }
 }

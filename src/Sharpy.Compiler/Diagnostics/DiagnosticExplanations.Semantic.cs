@@ -638,10 +638,16 @@ public static partial class DiagnosticExplanations
             + "first statement of the constructor (a docstring may precede it), written once, as a statement of "
             + "its own: not inside control flow and not inside an expression (a lambda, a conditional "
             + "expression, an assignment). The rule and the code are the same for super().__init__(...) and "
-            + "self.__init__(...).",
-            "class Base:\n    x: int = 20\n    def __init__(self, a: int):\n        self.x += a\n\n"
-            + "class Child(Base):\n    def __init__(self, a: int):\n        self.x = 5\n        super().__init__(a)  # a statement precedes the call",
-            "Move the chaining call first:\nclass Child(Base):\n    def __init__(self, a: int):\n        super().__init__(a)\n        self.x = 5");
+            + "self.__init__(...). Moving the call first keeps the program's meaning when the statements ahead "
+            + "of it do not touch what the chained constructor reads or writes; when they do (both write the same "
+            + "field, say), the write that wins changes, so decide which one you mean. If an argument needs a value "
+            + "computed ahead of the call, compute it inside the argument expression (or in a @static helper).",
+            "class Base:\n    size: int\n    def __init__(self, size: int):\n        self.size = size\n\n"
+            + "class Child(Base):\n    label: str\n    def __init__(self, items: list[int], label: str):\n"
+            + "        self.label = label\n        n = len(items)\n        super().__init__(n)  # two statements precede the call",
+            "Move the call first and compute its argument in place:\nclass Child(Base):\n    label: str\n"
+            + "    def __init__(self, items: list[int], label: str):\n        super().__init__(len(items))\n"
+            + "        self.label = label");
 
         Add(dict, DiagnosticCodes.Semantic.CircularInheritance, "Circular inheritance detected", "Semantic",
             "A class or interface inherits from itself through its inheritance chain, creating a cycle. " +
