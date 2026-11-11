@@ -139,45 +139,6 @@ gzip.open(wb)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.Unau
 gzip.open(wb)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
 gzip.open(wb)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
 gzip.open(wb)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-os.chdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.chdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.listdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.listdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.makedirs[File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
-os.makedirs[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-os.mkdir[File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
-os.mkdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.path.getsize[EmptyDir] python=ok sharpy=OS FileNotFoundError # #2476
-os.path.getsize[NonEmptyDir] python=ok sharpy=OS FileNotFoundError # #2476
-os.path.getsize[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.remove[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-os.remove[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-os.remove[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[EmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[EmptyDir,File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[EmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-os.rename[EmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[EmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[File,EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[File,File] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[File,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-os.rename[File,NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[File,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-os.rename[Missing,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[NonEmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[NonEmptyDir,File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[NonEmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-os.rename[NonEmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[NonEmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-os.rename[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rename[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rmdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.rmdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-os.stat[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
 shutil.copy2[EmptyDir,EmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
 shutil.copy2[EmptyDir,File] python=OS IsADirectoryError sharpy=OS OSError # #2476
 shutil.copy2[EmptyDir,MissingParent] python=OS IsADirectoryError sharpy=OS OSError # #2476
