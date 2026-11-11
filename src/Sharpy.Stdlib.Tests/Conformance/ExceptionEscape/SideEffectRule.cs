@@ -5,21 +5,39 @@ using System.Runtime.CompilerServices;
 
 namespace Sharpy.Stdlib.Tests.Conformance.ExceptionEscape;
 
+/// <summary>What the IL walk from one member found.</summary>
+internal sealed record Reach(string? SideEffect, string? Unfollowable, string? ReadsClock);
+
 /// <summary>
-/// The exclusion rule of the exception-escape sweep, stated once and applied to every member: a member is
-/// NOT invoked when its IL — followed transitively through every method declared in a <c>Sharpy*</c> assembly
-/// that it calls, constructs or takes a delegate to, async and iterator state machines included — reaches a
-/// method declared on a <see cref="IsSideEffectTarget">side-effect target</see>: the file system, the console,
-/// processes, the network, sleeping or waiting, or process exit. BCL methods are leaves: the walk never descends
-/// into them, so a clock read (<c>DateTime.Now</c>) or a pure <c>System.IO.Path</c> string helper is not an
-/// exclusion. Abstract and interface methods have no body; the walk cannot see their overrides (a stated
-/// limit: a Sharpy override reached only through a virtual call is not followed).
+/// The exclusion rule of the exception-escape sweep, stated once and applied to every member. From the member's IL
+/// the walk follows, transitively, every method declared in a <c>Sharpy*</c> assembly that is called, constructed or
+/// taken as a delegate (<c>call</c>, <c>callvirt</c>, <c>newobj</c>, <c>ldftn</c>, <c>ldvirtftn</c>), async and
+/// iterator state machines, the static constructor of every Sharpy type whose field or member it touches, and — for
+/// a dispatched call (a Sharpy interface, abstract or virtual method, or a closed BCL interface method) — every Sharpy
+/// implementation the receiver can be at run time: one declared on (a base of) a Core type, a type of the swept
+/// module (the sweep passes only those, and BCL values, as arguments), or a type the walk saw constructed. BCL methods
+/// are leaves. Three facts come back (<see cref="Reach"/>):
+/// <list type="bullet">
+/// <item><b>Side effect</b>: a BCL method on the file system, console, processes, network, sleeping or waiting, or
+/// process exit (<see cref="IsSideEffectTarget"/>). The member is NOT invoked.</item>
+/// <item><b>Unfollowable</b>: a shape the walk cannot see through — a P/Invoke or runtime-implemented extern, a
+/// <c>callvirt</c> through an open generic BCL interface (its Sharpy implementations cannot be enumerated), a delegate
+/// <c>Invoke</c> in a method that created no delegate itself (a delegate parameter), reflection invocation, or a
+/// token that does not resolve. The member is NOT invoked either: the rule cannot vouch for it.</item>
+/// <item><b>Reads the clock</b>: the clock or the host time zone (<see cref="IsClockTarget"/>). The member IS
+/// invoked, but what it returns never joins the sweep's instance pool, so the pool is the same on every machine,
+/// time zone and time of day.</item>
+/// </list>
+/// A stated limit: a BCL class's virtual method (<c>object.ToString</c>) is a leaf, although a Sharpy override may
+/// answer it.
 /// </summary>
 internal static class SideEffectRule
 {
     private static readonly Dictionary<short, OpCode> OneByte = new();
     private static readonly Dictionary<short, OpCode> TwoByte = new();
-    private static readonly Dictionary<MethodBase, string?> Memo = new();
+    private static readonly Dictionary<(MethodBase, string), Reach> Memo = new();
+    private static readonly Dictionary<MethodBase, Node> Nodes = new();
+    private static readonly Dictionary<MethodBase, SCG.List<MethodBase>> Implementations = new();
     private static readonly object Gate = new();
 
     /// <summary>In-memory <c>System.IO</c> types: no file, console or device behind them.</summary>
@@ -30,6 +48,15 @@ internal static class SideEffectRule
         "System.IO.Path", "System.IO.SeekOrigin", "System.IO.IOException", "System.IO.EndOfStreamException",
         "System.IO.InvalidDataException", "System.IO.UnmanagedMemoryStream",
     };
+
+    private sealed class Node
+    {
+        public SCG.List<MethodBase> Next { get; } = new();
+        public SCG.List<string> Shapes { get; } = new();
+        public SCG.List<MethodBase> Leaves { get; } = new();
+        public SCG.List<MethodBase> Dispatch { get; } = new();
+        public SCG.List<Type> Constructs { get; } = new();
+    }
 
     static SideEffectRule()
     {
@@ -44,21 +71,77 @@ internal static class SideEffectRule
     }
 
     /// <summary>
-    /// The BCL method that makes <paramref name="method"/> a side-effecting member, as
-    /// <c>Declaring.Type::Name</c>, or null when the walk reaches none.
+    /// The facts the walk from <paramref name="method"/> (a member's body) finds, when the sweep's arguments come from
+    /// <paramref name="scope"/> (the swept module's types).
     /// </summary>
-    public static string? SideEffectReached(MethodBase method)
+    public static Reach Walk(MethodBase method, IReadOnlyCollection<Type> scope)
     {
         lock (Gate)
         {
-            if (Memo.TryGetValue(method, out var known))
+            var scopeKey = string.Join(",", scope.Select(t => t.FullName).OrderBy(n => n, StringComparer.Ordinal));
+            if (Memo.TryGetValue((method, scopeKey), out var known))
                 return known;
-            // A negative is memoized only for a root walk: inside a walk a cycle cuts the search short.
-            var hit = Walk(method, new HashSet<MethodBase>());
-            Memo[method] = hit;
-            return hit;
+            string? sideEffect = null, unfollowable = null, clock = null;
+            var receivers = new HashSet<Type>(scope);
+            var dispatched = new SCG.List<MethodBase>();
+            var seen = new HashSet<MethodBase> { method };
+            var queue = new Queue<MethodBase>();
+            void Visit(MethodBase next)
+            {
+                if (seen.Add(next))
+                    queue.Enqueue(next);
+            }
+            void Dispatch(MethodBase callee, IEnumerable<Type> types)
+            {
+                foreach (var impl in ImplementationsOf(callee))
+                {
+                    var owner = impl.DeclaringType!;
+                    if (owner.Assembly == CoreAssembly || types.Any(owner.IsAssignableFrom))
+                        Visit(impl);
+                }
+            }
+
+            queue.Enqueue(method);
+            while (queue.Count > 0)
+            {
+                var node = NodeOf(queue.Dequeue());
+                unfollowable ??= node.Shapes.FirstOrDefault();
+                foreach (var leaf in node.Leaves)
+                {
+                    if (sideEffect is null && IsSideEffectTarget(leaf))
+                        sideEffect = Name(leaf);
+                    if (clock is null && IsClockTarget(leaf))
+                        clock = Name(leaf);
+                }
+                foreach (var next in node.Next)
+                    Visit(next);
+                foreach (var type in node.Constructs)
+                {
+                    // A newly constructed receiver type: the dispatches already seen may now land on it.
+                    if (receivers.Add(type))
+                    {
+                        foreach (var callee in dispatched)
+                            Dispatch(callee, new[] { type });
+                    }
+                }
+                foreach (var callee in node.Dispatch)
+                {
+                    dispatched.Add(callee);
+                    Dispatch(callee, receivers);
+                }
+            }
+            var reach = new Reach(sideEffect, unfollowable, clock);
+            Memo[(method, scopeKey)] = reach;
+            return reach;
         }
     }
+
+    private static readonly Assembly CoreAssembly = typeof(KeyError).Assembly;
+
+    /// <summary>The side effect <paramref name="method"/> reaches, or null (the positive controls' view).</summary>
+    public static string? SideEffectReached(MethodBase method) => Walk(method, Array.Empty<Type>()).SideEffect;
+
+    private static string Name(MethodBase m) => $"{m.DeclaringType?.FullName}::{m.Name}";
 
     /// <summary>The target list: a BCL method on one of these is a side effect the sweep must not trigger.</summary>
     internal static bool IsSideEffectTarget(MethodBase target)
@@ -85,62 +168,75 @@ internal static class SideEffectRule
         return false;
     }
 
-    private static string? Walk(MethodBase method, HashSet<MethodBase> seen)
+    /// <summary>The clock and host-time-zone reads: a member reaching one returns machine- and time-dependent values.</summary>
+    internal static bool IsClockTarget(MethodBase target)
     {
-        if (!seen.Add(method))
-            return null;
-        if (Memo.TryGetValue(method, out var known))
-            return known;
-
-        string? hit = null;
-        foreach (var callee in Callees(method))
+        var full = target.DeclaringType?.FullName ?? "";
+        return full switch
         {
-            if (IsSideEffectTarget(callee))
-            {
-                hit = $"{callee.DeclaringType!.FullName}::{callee.Name}";
-                break;
-            }
-            if (IsSharpyAssembly(callee.DeclaringType?.Assembly))
-            {
-                hit = Walk(callee, seen);
-                if (hit is not null)
-                    break;
-            }
-        }
+            "System.DateTime" => target.Name is "get_Now" or "get_UtcNow" or "get_Today" or "ToLocalTime" or "ToUniversalTime",
+            "System.DateTimeOffset" => target.Name is "get_Now" or "get_UtcNow" or "ToLocalTime",
+            "System.TimeZoneInfo" or "System.Diagnostics.Stopwatch" => true,
+            "System.Environment" => target.Name.StartsWith("get_TickCount", StringComparison.Ordinal),
+            "System.Guid" => target.Name == "NewGuid",
+            "System.Random" => target.Name is ".ctor" or "get_Shared",
+            _ => false,
+        };
+    }
 
-        if (hit is not null)
-            Memo[method] = hit;
-        return hit;
+    /// <summary>The reflection entry points that call code the walk cannot name.</summary>
+    private static bool IsReflectionInvoke(MethodBase target)
+    {
+        var type = target.DeclaringType;
+        if (type is null)
+            return false;
+        if (type == typeof(Activator))
+            return target.Name.StartsWith("CreateInstance", StringComparison.Ordinal);
+        if (typeof(Delegate).IsAssignableFrom(type) && target.Name == "DynamicInvoke")
+            return true;
+        if (type.Namespace == "System.Reflection" || type == typeof(Type))
+            return target.Name is "Invoke" or "InvokeMember" or "CreateInstance";
+        return false;
     }
 
     internal static bool IsSharpyAssembly(Assembly? assembly)
         => assembly?.GetName().Name?.StartsWith("Sharpy", StringComparison.Ordinal) == true;
 
-    private static IEnumerable<MethodBase> Callees(MethodBase method)
+    private static Node NodeOf(MethodBase method)
     {
-        var stateMachine = method.GetCustomAttribute<StateMachineAttribute>();
-        if (stateMachine is not null)
+        if (Nodes.TryGetValue(method, out var cached))
+            return cached;
+        var node = new Node();
+        Nodes[method] = node;
+
+        if ((method.Attributes & MethodAttributes.PinvokeImpl) != 0
+            || (method.MethodImplementationFlags & (MethodImplAttributes.InternalCall | MethodImplAttributes.Runtime)) != 0)
         {
-            var moveNext = stateMachine.StateMachineType.GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (moveNext is not null)
-                yield return moveNext;
+            node.Shapes.Add($"extern {Name(method)}: no IL to follow");
+            return node;
         }
 
-        MethodBody? body;
+        AddTypeInitializer(node, method.DeclaringType);
+        var stateMachine = method.GetCustomAttribute<StateMachineAttribute>();
+        if (stateMachine?.StateMachineType.GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is { } moveNext)
+            node.Next.Add(moveNext);
+
+        byte[]? il;
         try
         {
-            body = method.GetMethodBody();
+            il = method.GetMethodBody()?.GetILAsByteArray();
         }
         catch (Exception e) when (e is InvalidOperationException or NotSupportedException)
         {
-            yield break;
+            il = null;
         }
-        var il = body?.GetILAsByteArray();
         if (il is null)
-            yield break;
+            return node;
 
         var typeArgs = method.DeclaringType is { IsGenericType: true } dt ? dt.GetGenericArguments() : null;
         var methodArgs = method is MethodInfo { IsGenericMethod: true } mi ? mi.GetGenericArguments() : null;
+        bool createsDelegate = false;
+        var invokes = new SCG.List<MethodBase>();
         int pc = 0;
         while (pc < il.Length)
         {
@@ -158,21 +254,126 @@ internal static class SideEffectRule
 
             if (op.OperandType == OperandType.InlineMethod)
             {
-                var token = BitConverter.ToInt32(il, pc);
                 MethodBase? callee = null;
                 try
                 {
-                    callee = method.Module.ResolveMethod(token, typeArgs, methodArgs);
+                    callee = method.Module.ResolveMethod(BitConverter.ToInt32(il, pc), typeArgs, methodArgs);
                 }
                 catch (Exception e) when (e is ArgumentException or BadImageFormatException or TypeLoadException or MissingMethodException)
                 {
+                    node.Shapes.Add($"unresolvable method token in {Name(method)}");
                 }
                 if (callee is not null)
-                    yield return callee;
+                {
+                    if (op == OpCodes.Ldftn || op == OpCodes.Ldvirtftn)
+                        createsDelegate = true;
+                    Classify(node, callee, op, invokes);
+                }
+            }
+            else if (op.OperandType == OperandType.InlineField)
+            {
+                try
+                {
+                    AddTypeInitializer(node, method.Module.ResolveField(BitConverter.ToInt32(il, pc), typeArgs, methodArgs)?.DeclaringType);
+                }
+                catch (Exception e) when (e is ArgumentException or BadImageFormatException or TypeLoadException or MissingFieldException)
+                {
+                    node.Shapes.Add($"unresolvable field token in {Name(method)}");
+                }
             }
 
             pc += OperandSize(op, il, pc);
         }
+
+        if (!createsDelegate)
+        {
+            foreach (var invoke in invokes)
+                node.Shapes.Add($"delegate invoke {Name(invoke)} in {Name(method)}: the delegate comes from outside, so its target is unknown");
+        }
+        return node;
+    }
+
+    private static void Classify(Node node, MethodBase callee, OpCode op, SCG.List<MethodBase> invokes)
+    {
+        var declaring = callee.DeclaringType;
+        if (declaring is not null && typeof(Delegate).IsAssignableFrom(declaring) && callee.Name == "Invoke")
+        {
+            invokes.Add(callee);
+            return;
+        }
+        if (IsReflectionInvoke(callee))
+        {
+            node.Shapes.Add($"reflection {Name(callee)}: the invoked member is chosen at run time");
+            return;
+        }
+        if (!IsSharpyAssembly(declaring?.Assembly))
+        {
+            node.Leaves.Add(callee);
+            if (op == OpCodes.Callvirt && declaring is { IsInterface: true })
+            {
+                // A BCL interface: its BCL implementations are leaves like any BCL method; its Sharpy ones are followed.
+                if (declaring.ContainsGenericParameters)
+                    node.Shapes.Add($"interface dispatch {Name(callee)}: an open generic BCL interface, whose implementations cannot be enumerated");
+                else
+                    node.Dispatch.Add(callee);
+            }
+            return;
+        }
+        node.Next.Add(callee);
+        AddTypeInitializer(node, declaring);
+        if (op == OpCodes.Newobj && declaring is not null)
+            node.Constructs.Add(declaring);
+        if (callee.IsAbstract || (callee.IsVirtual && !callee.IsFinal && op == OpCodes.Callvirt))
+            node.Dispatch.Add(callee);
+    }
+
+    private static void AddTypeInitializer(Node node, Type? type)
+    {
+        if (type is not null && IsSharpyAssembly(type.Assembly) && type.TypeInitializer is { } cctor)
+            node.Next.Add(cctor);
+    }
+
+    /// <summary>The Sharpy implementations of an interface, abstract or virtual Sharpy method.</summary>
+    private static SCG.List<MethodBase> ImplementationsOf(MethodBase method)
+    {
+        if (Implementations.TryGetValue(method, out var known))
+            return known;
+        var found = new SCG.List<MethodBase>();
+        Implementations[method] = found;
+        var declaring = method.DeclaringType!;
+        if (declaring.ContainsGenericParameters)
+            return found;
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies().Where(a => IsSharpyAssembly(a) && !a.IsDynamic))
+        {
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException e)
+            {
+                types = e.Types.Where(t => t is not null).ToArray()!;
+            }
+            foreach (var type in types)
+            {
+                if (type == declaring || type.IsInterface || type.IsGenericTypeDefinition || !declaring.IsAssignableFrom(type))
+                    continue;
+                if (declaring.IsInterface)
+                {
+                    var map = type.GetInterfaceMap(declaring);
+                    int index = Array.IndexOf(map.InterfaceMethods, method);
+                    if (index >= 0 && map.TargetMethods[index].DeclaringType == type)
+                        found.Add(map.TargetMethods[index]);
+                }
+                else if (method is MethodInfo mi)
+                {
+                    var baseDefinition = mi.GetBaseDefinition();
+                    found.AddRange(type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                        .Where(m => m.GetBaseDefinition() == baseDefinition));
+                }
+            }
+        }
+        return found;
     }
 
     private static int OperandSize(OpCode op, byte[] il, int pc) => op.OperandType switch

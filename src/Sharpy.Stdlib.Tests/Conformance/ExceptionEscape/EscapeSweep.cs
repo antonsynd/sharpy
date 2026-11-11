@@ -5,7 +5,7 @@ using System.Reflection;
 namespace Sharpy.Stdlib.Tests.Conformance.ExceptionEscape;
 
 /// <summary>One swept member: what it can be called with, or why it is not called.</summary>
-internal sealed record SweptMember(string Key, MethodBase Method, Type DeclaringType);
+internal sealed record SweptMember(string Key, MethodBase Method, Type DeclaringType, bool ReadsClock);
 
 /// <summary>A CLR exception that escaped a member, with the first arguments that produced it.</summary>
 internal sealed record Leak(string Key, string Example);
@@ -14,11 +14,20 @@ internal sealed record Leak(string Key, string Example);
 internal sealed class SweepResult
 {
     public SortedSet<string> Swept { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Every member the reflection over the module's types enumerated, swept or not.</summary>
+    public SortedSet<string> Enumerated { get; } = new(StringComparer.Ordinal);
     public SortedDictionary<string, string> Excluded { get; } = new(StringComparer.Ordinal);
     public SortedDictionary<string, string> Unswept { get; } = new(StringComparer.Ordinal);
     public SortedDictionary<string, Leak> Leaks { get; } = new(StringComparer.Ordinal);
     public SortedSet<string> Accepted { get; } = new(StringComparer.Ordinal);
     public SCG.List<string> HarnessErrors { get; } = new();
+
+    /// <summary>Members over <c>CartesianCap</c> combinations: how many combinations were never tried.</summary>
+    public SortedDictionary<string, double> Untried { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Members that read the clock or host time zone: called, but nothing they return is pooled.</summary>
+    public SortedDictionary<string, string> ClockReaders { get; } = new(StringComparer.Ordinal);
     public long Invocations { get; set; }
     public TimeSpan Elapsed { get; set; }
 }
@@ -28,12 +37,14 @@ internal sealed class SweepResult
 /// arguments (<see cref="BoundaryArguments"/>), and every exception that escapes is classified by
 /// <see cref="AcceptedExceptions"/>: a Python exception (accepted) or a bare CLR one (a leak, keyed
 /// <c>prefix:Type.Member(ParamTypes):Exception.FullName</c>). Members the <see cref="SideEffectRule"/> marks are
-/// excluded, never invoked.
+/// excluded, never invoked. A returned iterator is drained (up to <see cref="IterationCap"/> items), so an exception
+/// raised on its first <c>MoveNext</c> is an escape of the member that returned it.
 /// </summary>
 internal static class EscapeSweep
 {
-    private const int CartesianCap = 4096;
+    internal const int CartesianCap = 4096;
     private const int Rounds = 3;
+    private const int IterationCap = 256;
 
     /// <summary>The types a Stdlib module exposes: its <c>[SharpyModule]</c> class and every <c>[SharpyModuleType]</c> type.</summary>
     public static IReadOnlyList<Type> ModuleTypes(Assembly assembly, string module)
@@ -58,20 +69,30 @@ internal static class EscapeSweep
                 result.Unswept[$"{prefix}:{type.Name}"] = "generic type definition: no type argument generator";
                 continue;
             }
+            // Reading a static field runs the type's static constructor, so it is judged by the rule first.
+            var initializer = type.TypeInitializer is { } cctor ? SideEffectRule.Walk(cctor, types) : null;
+            if (initializer is { SideEffect: not null } or { Unfollowable: not null })
+            {
+                result.Excluded[$"{prefix}:{type.Name}..cctor"] = initializer.SideEffect ?? "cannot follow: " + initializer.Unfollowable;
+                continue;
+            }
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
             {
                 if (field.GetValue(null) is { } value && SideEffectRule.IsSharpyAssembly(value.GetType().Assembly))
                     pool.Add(value);
             }
-            foreach (var method in Members(type))
+            foreach (var (method, body) in Members(type))
             {
                 var key = $"{prefix}:{type.Name}.{Display(method)}";
-                var sideEffect = SideEffectRule.SideEffectReached(method);
-                if (sideEffect is not null)
+                result.Enumerated.Add(key);
+                var reach = SideEffectRule.Walk(body, types);
+                if (reach.SideEffect is not null || reach.Unfollowable is not null)
                 {
-                    result.Excluded[key] = sideEffect;
+                    result.Excluded[key] = reach.SideEffect ?? "cannot follow: " + reach.Unfollowable;
                     continue;
                 }
+                if (reach.ReadsClock is not null)
+                    result.ClockReaders[key] = reach.ReadsClock;
                 if (method is MethodInfo { IsGenericMethodDefinition: true })
                 {
                     result.Unswept[key] = "generic method: no type argument generator";
@@ -82,7 +103,7 @@ internal static class EscapeSweep
                     result.Unswept[key] = "ref, out or pointer parameter";
                     continue;
                 }
-                members.Add(new SweptMember(key, method, type));
+                members.Add(new SweptMember(key, method, type, reach.ReadsClock is not null));
             }
         }
 
@@ -113,20 +134,24 @@ internal static class EscapeSweep
         return result;
     }
 
-    /// <summary>Public constructors, public declared methods (accessors and operators included) and the methods of Sharpy interfaces and <see cref="IFormattable"/> the type implements explicitly.</summary>
-    private static IEnumerable<MethodBase> Members(Type type)
+    /// <summary>
+    /// Public constructors, public declared methods (accessors and operators included) and the methods of Sharpy
+    /// interfaces and <see cref="IFormattable"/> the type implements explicitly: the method invoked, and the body
+    /// the side-effect rule walks (for an explicit implementation, the implementing method).
+    /// </summary>
+    private static IEnumerable<(MethodBase Invoke, MethodBase Body)> Members(Type type)
     {
         if (!type.IsAbstract && !type.IsInterface)
         {
             foreach (var ctor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
-                yield return ctor;
+                yield return (ctor, ctor);
         }
         if (type.IsInterface)
             yield break;
         foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                      .Where(m => !m.IsAbstract)
                      .OrderBy(m => m.ToString(), StringComparer.Ordinal))
-            yield return method;
+            yield return (method, method);
         foreach (var iface in type.GetInterfaces().OrderBy(i => i.FullName, StringComparer.Ordinal))
         {
             if (!(SideEffectRule.IsSharpyAssembly(iface.Assembly) || iface == typeof(IFormattable)))
@@ -135,7 +160,7 @@ internal static class EscapeSweep
             for (int i = 0; i < map.TargetMethods.Length; i++)
             {
                 if (!map.TargetMethods[i].IsPublic && map.TargetMethods[i].DeclaringType == type)
-                    yield return map.InterfaceMethods[i];
+                    yield return (map.InterfaceMethods[i], map.TargetMethods[i]);
             }
         }
     }
@@ -188,9 +213,9 @@ internal static class EscapeSweep
     /// </summary>
     private static IEnumerable<object?[]> Combinations(SweptMember member, IReadOnlyList<object?>[] candidates, InstancePool pool, SweepResult result)
     {
-        long product = 1;
+        double product = 1;
         foreach (var c in candidates)
-            product = Math.Min(product * c.Count, CartesianCap + 1);
+            product *= c.Count;
         if (product <= CartesianCap)
         {
             var index = new int[candidates.Length];
@@ -217,6 +242,8 @@ internal static class EscapeSweep
                     accepted[i].Add(value);
             }
         }
+        double tried = candidates.Sum(c => c.Count) + 2;
+        result.Untried[member.Key] = Math.Max(result.Untried.GetValueOrDefault(member.Key), product - tried);
         yield return accepted.Select((a, i) => Extreme(a, nominal[i], least: true)).ToArray();
         yield return accepted.Select((a, i) => Extreme(a, nominal[i], least: false)).ToArray();
     }
@@ -252,17 +279,7 @@ internal static class EscapeSweep
         }
         catch (TargetInvocationException tie) when (tie.InnerException is { } inner)
         {
-            var type = inner.GetType();
-            if (AcceptedExceptions.IsPythonException(type))
-            {
-                result.Accepted.Add(type.Name);
-            }
-            else
-            {
-                var key = member.Key + ":" + type.FullName;
-                if (!result.Leaks.ContainsKey(key))
-                    result.Leaks[key] = new Leak(key, Render(member, args) + " -> " + inner.Message);
-            }
+            Record(member.Key, inner, member, args, result);
             return false;
         }
         catch (Exception e) when (e is ArgumentException or TargetParameterCountException or MemberAccessException or TargetException)
@@ -271,9 +288,40 @@ internal static class EscapeSweep
             return false;
         }
 
-        if (value is not null && SideEffectRule.IsSharpyAssembly(value.GetType().Assembly) && value is not Exception)
+        if (value is System.Collections.IEnumerable sequence and not string)
+        {
+            try
+            {
+                int n = 0;
+                foreach (var _ in sequence)
+                {
+                    if (++n >= IterationCap)
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                Record(member.Key + "#iterate", e, member, args, result);
+                return false;
+            }
+        }
+
+        if (!member.ReadsClock && value is not null && SideEffectRule.IsSharpyAssembly(value.GetType().Assembly) && value is not Exception)
             pool.Add(value);
         return true;
+    }
+
+    private static void Record(string memberKey, Exception escaped, SweptMember member, object?[] args, SweepResult result)
+    {
+        var type = escaped.GetType();
+        if (AcceptedExceptions.IsPythonException(type))
+        {
+            result.Accepted.Add(type.Name);
+            return;
+        }
+        var key = memberKey + ":" + type.FullName;
+        if (!result.Leaks.ContainsKey(key))
+            result.Leaks[key] = new Leak(key, Render(member, args) + " -> " + escaped.Message);
     }
 
     private static string Render(SweptMember member, object?[] args)

@@ -27,16 +27,22 @@ namespace Sharpy.Stdlib.Tests.Conformance.ExceptionEscape;
 public class StdlibExceptionEscapeSweepTests
 {
     /// <summary>
-    /// The swept modules. Off the roster for now: the filesystem and process modules (<c>os</c>, <c>pathlib</c>,
-    /// <c>shutil</c>, <c>io</c>) whose OSError translation is P33's lane (#2476, #2556).
+    /// The swept modules, each with the members the side-effect rule may exclude there — reviewed, by key. A module
+    /// whose reachable IL holds a side effect or a shape the rule cannot follow (an extern, a BCL-interface dispatch,
+    /// a delegate parameter's invoke, reflection) excludes those members; enabling it is red until each exclusion is
+    /// read and pinned here, so the rule's blind spots are never silently inherited. Off the roster for now: the
+    /// filesystem and process modules (<c>os</c>, <c>pathlib</c>, <c>shutil</c>, <c>io</c>), P33's lane (#2476, #2556).
     /// </summary>
-    public static readonly string[] Roster = { "datetime" };
+    public static readonly IReadOnlyDictionary<string, string[]> Roster = new Dictionary<string, string[]>(StringComparer.Ordinal)
+    {
+        ["datetime"] = Array.Empty<string>(),
+    };
 
     private static readonly Regex AllowlistRow = new(
         @"^(?<key>(?<module>[a-z_0-9]+):\S+:\S+) # #(?<issue>\d+) (?<reason>\S.*)$", RegexOptions.Compiled);
 
     private static readonly Lazy<Dictionary<string, SweepResult>> Results = new(() =>
-        Roster.ToDictionary(m => m, m => EscapeSweep.Run(m, EscapeSweep.ModuleTypes(typeof(Date).Assembly, m)), StringComparer.Ordinal));
+        Roster.Keys.ToDictionary(m => m, m => EscapeSweep.Run(m, EscapeSweep.ModuleTypes(typeof(Date).Assembly, m)), StringComparer.Ordinal));
 
     private readonly ITestOutputHelper _output;
 
@@ -57,6 +63,12 @@ public class StdlibExceptionEscapeSweepTests
                 found[key] = leak;
                 _output.WriteLine("  leak " + key + "  e.g. " + leak.Example);
             }
+            foreach (var (key, reason) in result.Excluded)
+                _output.WriteLine("  excluded " + key + ": " + reason);
+            foreach (var (key, clock) in result.ClockReaders)
+                _output.WriteLine("  reads the clock (results not pooled) " + key + ": " + clock);
+            foreach (var (key, untried) in result.Untried)
+                _output.WriteLine($"  over the {EscapeSweep.CartesianCap}-combination cap: {key}: {untried:G6} combinations not tried");
             Assert.True(result.HarnessErrors.Count == 0,
                 $"{module}: the sweep passed arguments its own members cannot take:\n  " + string.Join("\n  ", result.HarnessErrors.Take(20)));
         }
@@ -84,15 +96,49 @@ public class StdlibExceptionEscapeSweepTests
     }
 
     /// <summary>
-    /// The skip path is not what ran: datetime has no side-effecting member, so the rule excludes nothing there, and the
-    /// members the known leaks live on were called.
+    /// Each roster module excludes exactly its pinned members: a new exclusion (a side effect, or a shape the rule
+    /// cannot follow) is red with the reason, and so is a pinned one that no longer happens.
     /// </summary>
     [Fact]
-    public void Datetime_IsSweptWhole_AndTheLeakProneMembersWereCalled()
+    public void EveryRosterModulesExclusionsArePinned()
+    {
+        foreach (var (module, result) in Results.Value)
+        {
+            var pinned = new HashSet<string>(Roster[module], StringComparer.Ordinal);
+            var unpinned = result.Excluded.Where(kv => !pinned.Contains(kv.Key)).Select(kv => kv.Key + "\n      " + kv.Value).ToList();
+            var stale = pinned.Where(k => !result.Excluded.ContainsKey(k)).ToList();
+            Assert.True(unpinned.Count == 0 && stale.Count == 0,
+                $"{module}: the side-effect rule's exclusions disagree with the roster's pinned list.\n"
+                + "An exclusion means the rule found a side effect or a shape it cannot follow; read the reason, then pin the key\n"
+                + "in Roster (or change the module so the rule can vouch for it).\nUnpinned:\n  " + string.Join("\n  ", unpinned)
+                + "\nPinned but not excluded:\n  " + string.Join("\n  ", stale));
+        }
+    }
+
+    /// <summary>
+    /// Determinism: the members that read the clock or the host time zone are known, called, and kept out of the pool, so
+    /// the instances the sweep combines do not depend on the machine, its time zone or the time of day.
+    /// </summary>
+    [Fact]
+    public void Datetime_ClockReadersAreCalledButNotPooled()
     {
         var result = Results.Value["datetime"];
-        Assert.Empty(result.Excluded);
-        Assert.True(result.Swept.Count >= 60, $"only {result.Swept.Count} datetime members swept");
+        foreach (var member in new[] { "datetime:Date.Today()", "datetime:DateTime.Now()", "datetime:DateTime.Utcnow()" })
+        {
+            Assert.Contains(member, result.ClockReaders.Keys);
+            Assert.Contains(member, result.Swept);
+        }
+    }
+
+    /// <summary>The members the known leaks lived on were called (the skip path is not what ran).</summary>
+    [Fact]
+    public void Datetime_TheLeakProneMembersWereCalled()
+    {
+        var result = Results.Value["datetime"];
+        // Every member the reflection enumerated was called, unless the rule excluded it or no generator fed it.
+        var expected = result.Enumerated.Except(result.Excluded.Keys).Except(result.Unswept.Keys).ToList();
+        Assert.NotEmpty(result.Enumerated);
+        Assert.Equal(expected, result.Swept);
         foreach (var member in new[]
                  {
                      "datetime:Date.op_Addition(Date,Timedelta)", "datetime:Date.op_Subtraction(Date,Timedelta)",
@@ -126,6 +172,32 @@ public class StdlibExceptionEscapeSweepTests
         Assert.Contains("control:EscapeControlModule.Checked(Int32)", result.Swept);
         Assert.Empty(result.HarnessErrors);
         Assert.Empty(result.Unswept);
+        Assert.Contains("control:EscapeControlModule.Lazily(Int32)#iterate:System.InvalidOperationException", result.Leaks.Keys);
+    }
+
+    /// <summary>
+    /// Positive control: each shape the rule cannot follow excludes its member, with the shape named, and a static
+    /// constructor with I/O is judged before its fields are read.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_UnfollowableShapesExcludeTheirMember()
+    {
+        var result = EscapeSweep.Run("shapes", new[] { typeof(EscapeShapeModule), typeof(EscapeIoStatics) });
+        string Reason(string key)
+        {
+            Assert.True(result.Excluded.TryGetValue(key, out var reason), $"{key} was not excluded; excluded: {string.Join(", ", result.Excluded.Keys)}");
+            return reason!;
+        }
+
+        Assert.Contains("extern", Reason("shapes:EscapeShapeModule.CallsExtern(Int32)"), StringComparison.Ordinal);
+        Assert.Contains("interface dispatch", Reason("shapes:EscapeShapeModule.CountsItems(IEnumerable<T>)"), StringComparison.Ordinal);
+        Assert.Contains("delegate invoke", Reason("shapes:EscapeShapeModule.CallsDelegate(Func<Int32>)"), StringComparison.Ordinal);
+        Assert.Contains("reflection", Reason("shapes:EscapeShapeModule.Reflects(String)"), StringComparison.Ordinal);
+        Assert.Contains("System.IO.File", Reason("shapes:EscapeShapeModule.ReadsAnIoStatic()"), StringComparison.Ordinal);
+        Assert.Contains("System.IO.File", Reason("shapes:EscapeIoStatics..cctor"), StringComparison.Ordinal);
+        Assert.Contains("System.IO.File", Reason("shapes:EscapeShapeModule.CallsAnIoImplementation(Int32)"), StringComparison.Ordinal);
+        Assert.Contains("shapes:EscapeShapeModule.UsesItsOwnLambda(Int32)", result.Swept);
+        Assert.Empty(result.Leaks);
     }
 
     /// <summary>Positive control: the accepted set is Core's hierarchy, and a CLR type is never in it.</summary>
@@ -157,7 +229,7 @@ public class StdlibExceptionEscapeSweepTests
                 continue;
             var m = AllowlistRow.Match(line);
             Assert.True(m.Success, $"malformed row (want `module:Type.Member(Params):Exception.FullName # #N reason`): {line}");
-            Assert.True(Roster.Contains(m.Groups["module"].Value), $"row for a module not on the roster: {line}");
+            Assert.True(Roster.ContainsKey(m.Groups["module"].Value), $"row for a module not on the roster: {line}");
             Assert.False(rows.ContainsKey(m.Groups["key"].Value), $"duplicate row: {line}");
             rows[m.Groups["key"].Value] = m.Groups["issue"].Value;
         }
@@ -185,6 +257,62 @@ public static class EscapeControlModule
     public static void Prints(string s) => Console.WriteLine(s);
 
     private static string Helper(string path) => File.ReadAllText(path);
+
+    public static IEnumerable<int> Lazily(int n)
+    {
+        if (n > -10)
+            throw new InvalidOperationException("raised on the first MoveNext");
+        yield return n;
+    }
+}
+
+/// <summary>A synthetic module for the unfollowable-shape control: one member per shape.</summary>
+public static class EscapeShapeModule
+{
+    [System.Runtime.InteropServices.DllImport("sharpy-no-such-library")]
+    private static extern int Missing(int x);
+
+    public static int CallsExtern(int x) => Missing(x);
+
+    public static int CountsItems<T>(IEnumerable<T> items)
+    {
+        int n = 0;
+        foreach (var _ in items)
+            n++;
+        return n;
+    }
+
+    public static int CallsDelegate(Func<int> f) => f();
+
+    public static object? Reflects(string name) => typeof(EscapeShapeModule).GetMethod(name)?.Invoke(null, null);
+
+    public static int ReadsAnIoStatic() => EscapeIoStatics.Text.Length;
+
+    public static int CallsAnIoImplementation(int n) => ((IEscapeProbe)new EscapeIoProbe()).Probe(n);
+
+    public static int UsesItsOwnLambda(int n)
+    {
+        Func<int, int> twice = x => x * 2;
+        return twice(n);
+    }
+}
+
+/// <summary>A type whose static constructor does I/O: reading its field must be judged first.</summary>
+public static class EscapeIoStatics
+{
+    public static readonly string Text = File.ReadAllText("/sharpy-no-such-file");
+}
+
+/// <summary>A Sharpy interface whose only implementation does I/O: the walk follows the implementation.</summary>
+public interface IEscapeProbe
+{
+    int Probe(int n);
+}
+
+/// <summary>The I/O implementation of <see cref="IEscapeProbe"/>.</summary>
+public sealed class EscapeIoProbe : IEscapeProbe
+{
+    public int Probe(int n) => File.ReadAllText("/sharpy-no-such-file").Length + n;
 }
 
 /// <summary>A receiver type for the positive control: its instances come from <see cref="EscapeControlModule.Make"/>.</summary>
