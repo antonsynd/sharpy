@@ -37,7 +37,7 @@ Every PR runs both workflows when its diff reaches their paths. Pass the `.NET 1
 ## Avoiding wasted runs
 
 - A push to a PR cancels that PR's run in progress, so a superseded commit costs little. Dispatched and `mainline` runs are never cancelled.
-- A commit that changes only plans or docs still re-runs the PR's full suite, because the path filter reads the whole PR diff. **Do not put `[skip ci]` in it when it is the PR's tip:** the marker also suppresses the required `Commit Subjects` check, and the `dev` ruleset then refuses the merge (`405 Repository rule violations … Required status check "subjects" is expected`, #2520 @ c49243db4). The gate cites the last code commit's run; the re-run at the plan-record tip is the price of a mergeable PR. A plan-record commit that is not the tip (a later code commit follows it) may still carry the marker. And never quote the marker literally in a commit message that talks about it: GitHub matches the string anywhere in the message, subject or body, so that commit is skipped too (two commits on 2026-11-09 were). Write "the skip-ci marker" instead.
+- A plan or docs commit still re-runs the PR's full suite (the path filter reads the whole PR diff). **Never put the skip-ci marker on a PR's tip:** it also suppresses the required `Commit Subjects` check, and the `dev` ruleset then refuses the merge (#2520). The gate cites the last code commit's run. Never quote the marker literally in any commit message: GitHub matches it anywhere in the message.
 
 ## Control runs
 
