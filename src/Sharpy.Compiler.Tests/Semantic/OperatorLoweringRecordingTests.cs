@@ -537,6 +537,19 @@ def main() -> None:
         // Mixed integer / float: the float operand makes it the guarded float division, or native over a literal.
         yield return new object?[] { "a: int = 7\n    f: float = 2.0", "a / f", OperatorLoweringKind.GuardedTrueDivision };
         yield return new object?[] { "a: int = 7", "a / 2.0", null };
+        // A const divisor answers from its folded value: known non-zero keeps the native operator, zero is guarded.
+        yield return new object?[] { "const S: float = 4.0\n    a: float = 7.0", "a / S", null };
+        yield return new object?[] { "const Z: float = 0.0\n    a: float = 7.0", "a / Z", OperatorLoweringKind.GuardedTrueDivision };
+        yield return new object?[] { "const Z: float = -0.0\n    a: float = 7.0", "a / Z", OperatorLoweringKind.GuardedTrueDivision };
+        yield return new object?[] { "const F: float32 = 4.0f\n    a: float32 = 7.0f", "a / F", null };
+        yield return new object?[] { "const D: decimal = 4m\n    a: decimal = 7m", "a / D", null };
+        yield return new object?[] { "const D: decimal = 0m\n    a: decimal = 7m", "a / D", OperatorLoweringKind.GuardedTrueDivision };
+        yield return new object?[] { "const N: int = 4\n    a: int = 7", "a / N", OperatorLoweringKind.TrueDivisionCastLeft };
+        yield return new object?[] { "const N: int = 0\n    a: int = 7", "a / N", OperatorLoweringKind.GuardedTrueDivisionCastLeft };
+        yield return new object?[] { "const N: int = 2\n    a: int = 7", "a / (N - 2)", OperatorLoweringKind.GuardedTrueDivisionCastLeft };
+        yield return new object?[] { "const S: float = 4.0\n    const T: float = S\n    a: float = 7.0", "a / T", null };
+        // An unsuffixed literal tiny for float32 but not for float64 divides in float64: non-zero, native.
+        yield return new object?[] { "a: float32 = 7.0f", "a / 1e-46", null };
     }
 
     [Theory]

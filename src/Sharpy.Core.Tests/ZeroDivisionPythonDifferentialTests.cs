@@ -27,7 +27,7 @@ namespace Sharpy.Core.Tests;
 /// <c>int</c> deviation (<c>2 ** -1</c> is <c>0</c>).</item>
 /// <item><see cref="Complex"/> <c>/</c>: dividend × divisor including every signed zero; raise-or-not.</item>
 /// </list>
-/// Skips when no python3 ≥ 3.12 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c>, which fails.
+/// Skips when no python3 ≥ 3.15 (the `.python-version` pin; 3.13 words the float message differently) answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c>, which fails.
 /// </summary>
 public class ZeroDivisionPythonDifferentialTests
 {
@@ -185,7 +185,7 @@ public class ZeroDivisionPythonDifferentialTests
 
     private static Dictionary<int, string> AskPython(IReadOnlyList<Cell> cells)
     {
-        var python = PythonInterpreter.RequireOrSkip(12);
+        var python = PythonInterpreter.RequireOrSkip(minMinor: 15);
         var script = Path.Combine(Path.GetTempPath(), $"sharpy-zero-division-{Guid.NewGuid():N}.py");
         File.WriteAllText(script, OracleScript);
         try

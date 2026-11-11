@@ -505,7 +505,7 @@ internal partial class TypeChecker
 
             // Record operator lowering for augmented assignments (#1623).
             if (assignment.Operator == AssignmentOperator.SlashAssign
-                && ClassifyTrueDivision(targetType, valueType, resultType, assignment.Value) is { } divisionKind)
+                && ClassifyTrueDivision(targetType, valueType, resultType, assignment.Value, ConstantLookup) is { } divisionKind)
             {
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(divisionKind));
             }
@@ -2527,6 +2527,22 @@ internal partial class TypeChecker
             || (varDecl.IsConst && SymbolTable.ClassifyScope(scopeName) == SymbolTable.ScopeKind.Module);
     }
 
+    /// <summary>
+    /// Resolves a constant NAME to its folded value for <see cref="TrueDivisionRules"/>: the const symbol the
+    /// name denotes in the current scope (same backtick rule as the integer fold), or null.
+    /// </summary>
+    private TrueDivisionRules.ConstantLookup ConstantLookup => new(
+        id => LookupFoldedConst(id)?.ConstantValue,
+        id => LookupFoldedConst(id)?.FloatConstantValue);
+
+    private VariableSymbol? LookupFoldedConst(Identifier id)
+    {
+        var sym = _symbolTable.Lookup(id.Name);
+        if (sym != null && id.IsNameBacktickEscaped != sym.IsNameBacktickEscaped)
+            return null;
+        return sym as VariableSymbol is { IsConstant: true } vs ? vs : null;
+    }
+
     private void TryFoldConstantValue(
         VariableSymbol symbol, SemanticType declaredType, Expression? initializer)
     {
@@ -2534,6 +2550,13 @@ internal partial class TypeChecker
             return;
 
         var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType);
+        if (Registry.PrimitiveCatalog.IsFloatingPoint(declaredType) || Registry.PrimitiveCatalog.IsDecimal(declaredType))
+        {
+            // The `/` divisor rule reads a float/decimal const's value (#2517).
+            symbol.FloatConstantValue = TrueDivisionRules.FoldFloatConstant(initializer, ConstantLookup);
+            return;
+        }
+
         if (info?.Kind is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
                 or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
             return;

@@ -275,6 +275,14 @@ public record VariableSymbol : Symbol
     public System.Numerics.BigInteger? ConstantValue { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
+    /// The folded value of a float32/float64/decimal <c>const</c> whose initializer is a literal or another
+    /// folded const (<see cref="TrueDivisionRules.FoldFloatConstant"/>), as a <see cref="double"/>. Null
+    /// otherwise. Read by the <c>/</c> divisor rule (#2517): a const divisor known non-zero keeps the native
+    /// operator, so <c>1.0 / SCALE</c> stays a C# constant expression.
+    /// </summary>
+    public double? FloatConstantValue { get; internal set { ThrowIfFrozen(); field = value; } }
+
+    /// <summary>
     /// The compile-time-constant fact for a <c>const</c> symbol that arrived from ANOTHER module —
     /// an in-project <c>.spy</c> import (<c>ModuleLoader</c> computes it from the exporting
     /// declaration) or a warm incremental build (<c>SymbolSerializer</c> round-trips it). For a

@@ -23,7 +23,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// exponent (the spec's truncating <c>int ** int</c> deviation); <c>decimal</c> mixed with a float type (refused,
 /// SPY0222); an augmented store whose result type is not the target's (refused, SPY0220).</para>
 /// <para>Values are chosen so every non-raising result prints the same text in both languages (<c>3 / 4</c> is
-/// <c>0.75</c> as float, float32 and decimal). Skips when no python3 ≥ 3.12 answers, except under
+/// <c>0.75</c> as float, float32 and decimal). Skips when no python3 ≥ 3.15 (the `.python-version` pin; 3.13 words the float message differently) answers, except under
 /// <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI), which fails.</para>
 /// </remarks>
 public class ZeroDivisionDifferentialTests : IntegrationTestBase
@@ -221,10 +221,92 @@ public class ZeroDivisionDifferentialTests : IntegrationTestBase
         return byId;
     }
 
+    /// <summary>
+    /// A <c>const</c> divisor: a const known non-zero keeps the native <c>/</c>, so the division stays a C#
+    /// constant in every constant position (a parameter default, a dependent const); a const that is zero
+    /// raises at runtime. Generated per divisor kind; python runs the same program (consts as plain names).
+    /// </summary>
+    [SkippableFact]
+    public void ConstNameDivisor_NonZeroStaysConstant_ZeroRaises_MatchesCPython()
+    {
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
+        var sharpy = new StringBuilder();
+        var python = new StringBuilder(PythonPrelude);
+        var calls = new List<string>();
+        var cells = 0;
+        foreach (var k in Kinds)
+        {
+            var name = TypeName(k).ToUpperInvariant();
+            var four = Lit(k, 4);
+            var zero = Lit(k, 0);
+            var three = Lit(Kind.Int, 3);
+            var result = TypeName(DivisionResult(Kind.Int, k));
+            sharpy.Append("const C_").Append(name).Append(": ").Append(TypeName(k)).Append(" = ").Append(four.Sharpy).Append('\n');
+            sharpy.Append("const Z_").Append(name).Append(": ").Append(TypeName(k)).Append(" = ").Append(zero.Sharpy).Append('\n');
+            sharpy.Append("const DEP_").Append(name).Append(": ").Append(result).Append(" = 3 / C_").Append(name).Append('\n');
+            python.Append("C_").Append(name).Append(" = ").Append(four.Python).Append('\n');
+            python.Append("Z_").Append(name).Append(" = ").Append(zero.Python).Append('\n');
+            python.Append("DEP_").Append(name).Append(" = 3 / C_").Append(name).Append('\n');
+            foreach (var (sb, typed) in new[] { (sharpy, true), (python, false) })
+            {
+                sb.Append("def default_").Append(name).Append("(x").Append(typed ? ": " + result : "")
+                    .Append(" = ").Append(three.Sharpy).Append(" / C_").Append(name).Append(')').Append(typed ? " -> " + result : "").Append(":\n    return x\n\n");
+                sb.Append("def raise_").Append(name).Append("():\n    try:\n        print(\"").Append(name).Append(" zero\", 3 / Z_").Append(name)
+                    .Append(")\n    except ZeroDivisionError as e:\n        print(\"").Append(name).Append(" zero ZeroDivisionError\", ")
+                    .Append(typed ? "e" : "msg(e)").Append(")\n\n");
+            }
+            calls.Add("    print(\"" + name + " default\", default_" + name + "())");
+            calls.Add("    print(\"" + name + " dependent\", DEP_" + name + ")");
+            calls.Add("    raise_" + name + "()");
+            cells += 3;
+        }
+        var main = "def main():\n" + string.Join("\n", calls) + "\n";
+        var sharpySource = sharpy + "\n" + main;
+        var pythonSource = python + "\n" + main + "\nmain()\n";
+
+        var py = oracle.RunBatch(new[] { new PyRequest(0, pythonSource) });
+        Assert.True(py.TryGetValue(0, out var pyResult) && pyResult.Ok,
+            "python3 did not run the const-divisor matrix: " + (pyResult?.Stderr ?? "no verdict"));
+        var run = CompileAndExecute(sharpySource, "zero_division_const_matrix.spy", executionTimeoutMs: 60_000);
+        Assert.True(RanToCompletion(run), JudgeRun(run, sharpySource, "Sharpy const-divisor matrix") ?? "timed out");
+
+        var expected = pyResult!.Stdout.Replace("\r", "", StringComparison.Ordinal).TrimEnd();
+        var actual = run.StandardOutput.Replace("\r", "", StringComparison.Ordinal).TrimEnd();
+        Assert.Equal(cells, expected.Split('\n').Length);
+        Assert.Contains("ZeroDivisionError division by zero", expected, StringComparison.Ordinal);
+        Assert.Equal(expected, actual);
+    }
+
+    /// <summary>
+    /// A const whose initializer divides by a non-zero const is a C# constant, so it reads as a <c>case</c>
+    /// constant (Sharpy's const-name value pattern; python has no twin, a bare name there captures).
+    /// </summary>
+    [Fact]
+    public void ConstNameDivisor_DependentConstAsMatchCase_StaysConstant()
+    {
+        var source = "const S: float = 4.0\nconst Q: float = 1.0 / S\n\ndef main():\n    v: float = 0.25\n"
+            + "    match v:\n        case Q:\n            print(\"hit\")\n        case _:\n            print(\"miss\")\n";
+        var run = CompileAndExecute(source, "zero_division_const_case.spy");
+        Assert.True(RanToCompletion(run), JudgeRun(run, source, "const-divisor match case") ?? "timed out");
+        Assert.Equal("hit", run.StandardOutput.Trim());
+    }
+
+    /// <summary>
+    /// Positive control for the const rule: a parameter default dividing by a const that IS zero is not a
+    /// constant expression (CPython raises at definition time), so it is refused, never folded to inf.
+    /// </summary>
+    [Fact]
+    public void ConstNameDivisor_ZeroInParameterDefault_IsRefused()
+    {
+        var source = "const ZERO: float = 0.0\n\ndef f(x: float = 1.0 / ZERO) -> float:\n    return x\n\ndef main():\n    print(f())\n";
+        var run = CompileAndExecute(source, "zero_division_const_default.spy");
+        Assert.Contains(run.RawDiagnostics, d => d.IsError && d.Code == "SPY0401");
+    }
+
     [SkippableFact]
     public void DivisionAndPowerByZero_OperatorTypeSpellingMatrix_MatchesCPython()
     {
-        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
         var cells = GenerateCells();
 
         var pythonSource = ProgramFor(cells, c => c.Python, PythonPrelude) + "\nmain()\n";

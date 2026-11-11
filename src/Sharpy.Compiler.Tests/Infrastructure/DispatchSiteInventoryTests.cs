@@ -230,9 +230,9 @@ public class DispatchSiteInventoryTests
         // line, which the sweep's commentMoved oracle (O4b) reports on every decorated fixture.
         ["Pretty/UnparseVisitor.cs::UnparseVisitor.DecoratorsOf"] = "refusal-net:FormatterMeaningPreservationSweepTests",
         ["Semantic/IntegerConstantEvaluator.cs::IntegerConstantEvaluator.TryGetConstantInteger"] = "refusal-net:IntegerConstantEvaluatorTests",
-        // The `/` divisor-spelling switch (#2517): every arm (literal, negative literal, name, zero) is a
-        // cell of the generated divisor axis there.
-        ["Semantic/TrueDivisionRules.cs::TrueDivisionRules.IsNonZeroLiteralDivisor"] = "refusal-net:OperatorLoweringRecordingTests",
+        // The `/` divisor-evaluation switch (#2517): every arm (literal, signed literal, underflowing literal,
+        // const name, zero) is a cell of the generated divisor axis there.
+        ["Semantic/TrueDivisionRules.cs::TrueDivisionRules.TryEvaluate"] = "refusal-net:OperatorLoweringRecordingTests",
         // New emitter sites found by typed census
         // (GenerateDictSpreadComprehension / GenerateImperativeComprehension: comprehension-clause family, see guarded-by rows)
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.BindComprehensionLoopTarget"] = "refusal-net:FileBasedIntegrationTests",

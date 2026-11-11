@@ -255,7 +255,7 @@ internal partial class TypeChecker
         // Record operator lowering tags so the emitter never re-derives these decisions (#1623).
         // `/` (#2517): ONE classifier shared with the augmented `/=` site.
         if (binOp.Operator == BinaryOperator.Divide
-            && ClassifyTrueDivision(leftType, rightType, resultType, binOp.Right) is { } divisionKind)
+            && ClassifyTrueDivision(leftType, rightType, resultType, binOp.Right, ConstantLookup) is { } divisionKind)
         {
             _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(divisionKind));
         }
@@ -632,7 +632,8 @@ internal partial class TypeChecker
     /// <see cref="OperatorLoweringKind.GuardedTrueDivision"/> (<c>TrueDiv(x, y)</c>; C# overload
     /// resolution picks the float64, float32 or decimal overload from the promoted operand types,
     /// matching the inferred result type);</item>
-    /// <item>a divisor that is a non-zero literal (<see cref="TrueDivisionRules.IsNonZeroLiteralDivisor"/>) cannot trap,
+    /// <item>a divisor that is a constant known non-zero — a literal or a folded const name
+    /// (<see cref="TrueDivisionRules.IsNonZeroConstantDivisor"/>) — cannot trap,
     /// so the pair keeps the native operator — <see cref="OperatorLoweringKind.TrueDivisionCastLeft"/>
     /// for integers, no record otherwise. That keeps <c>1 / 4</c> and <c>2.0 / 8.0</c> C# constant
     /// expressions (a <c>Final</c> constant, a parameter default) exactly as before;</item>
@@ -641,7 +642,8 @@ internal partial class TypeChecker
     /// </list>
     /// </summary>
     private static OperatorLoweringKind? ClassifyTrueDivision(
-        SemanticType leftType, SemanticType rightType, SemanticType resultType, Expression divisor)
+        SemanticType leftType, SemanticType rightType, SemanticType resultType, Expression divisor,
+        TrueDivisionRules.ConstantLookup lookup)
     {
         if (leftType is UserDefinedType or GenericType || rightType is UserDefinedType or GenericType)
             return null;
@@ -652,7 +654,7 @@ internal partial class TypeChecker
         {
             if (resultType != SemanticType.Double)
                 return null;
-            return TrueDivisionRules.IsNonZeroLiteralDivisor(divisor)
+            return TrueDivisionRules.IsNonZeroConstantDivisor(divisor, lookup)
                 ? OperatorLoweringKind.TrueDivisionCastLeft
                 : OperatorLoweringKind.GuardedTrueDivisionCastLeft;
         }
@@ -660,7 +662,7 @@ internal partial class TypeChecker
         if (!IsTrueDivisionNumeric(leftType) || !IsTrueDivisionNumeric(rightType))
             return null;
 
-        return TrueDivisionRules.IsNonZeroLiteralDivisor(divisor) ? null : OperatorLoweringKind.GuardedTrueDivision;
+        return TrueDivisionRules.IsNonZeroConstantDivisor(divisor, lookup) ? null : OperatorLoweringKind.GuardedTrueDivision;
     }
 
     private static bool IsTrueDivisionNumeric(SemanticType type)

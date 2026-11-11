@@ -665,14 +665,16 @@ internal sealed class ConstEligibility
     /// and folds/conditionals over those using operators that are native regardless of operand type.
     /// <c>*</c> (str repeat), ordering comparisons (ordinal string compare), <c>//</c>, <c>%</c> and
     /// <c>**</c> are excluded because their lowering depends on operand types this route cannot see,
-    /// and <c>/</c> is admitted only over a non-zero literal divisor (any other divisor is guarded, #2517);
+    /// and <c>/</c> is admitted only over a divisor that is a constant known non-zero — a literal or an
+    /// already-exported folded const (<paramref name="valueLookup"/>); any other divisor is guarded, #2517;
     /// an integer const answers from its folded value instead, which is exact.
     /// </summary>
     internal static bool IsExportedConstCompileTime(
         SemanticType declaredType,
         Expression? initializer,
         BigInteger? foldedValue,
-        Func<Identifier, bool> constResolver)
+        Func<Identifier, bool> constResolver,
+        TrueDivisionRules.ConstantLookup? valueLookup = null)
     {
         if (initializer == null)
             return false;
@@ -684,17 +686,20 @@ internal sealed class ConstEligibility
             return foldedValue != null;
 
         var kind = Validation.ConstantDefaultClassifier.Classify(
-            initializer, constResolver, IsOperandTypeIndependentNativeOperator);
+            initializer, constResolver, node => IsOperandTypeIndependentNativeOperator(node, valueLookup));
         return Validation.ConstantDefaultClassifier.IsAdmitted(
             kind, Validation.AdmissionTable.ConstInitializer);
     }
 
-    private static bool IsOperandTypeIndependentNativeOperator(Expression node) => node switch
+    private static bool IsOperandTypeIndependentNativeOperator(Expression node)
+        => IsOperandTypeIndependentNativeOperator(node, lookup: null);
+
+    private static bool IsOperandTypeIndependentNativeOperator(Expression node, TrueDivisionRules.ConstantLookup? lookup) => node switch
     {
-        // `/` is native only over a non-zero literal divisor — the checker's rule, read from the same
-        // predicate (#2517); any other divisor routes through the guarded Builtins.TrueDiv.
+        // `/` is native only over a divisor that is a constant known non-zero — the checker's rule, read
+        // from the same predicate (#2517); any other divisor routes through the guarded Builtins.TrueDiv.
         BinaryOp binary => binary.Operator == BinaryOperator.Divide
-            ? TrueDivisionRules.IsNonZeroLiteralDivisor(binary.Right)
+            ? TrueDivisionRules.IsNonZeroConstantDivisor(binary.Right, lookup)
             : binary.Operator is BinaryOperator.Add or BinaryOperator.Subtract
             or BinaryOperator.Equal or BinaryOperator.NotEqual
             or BinaryOperator.And or BinaryOperator.Or
