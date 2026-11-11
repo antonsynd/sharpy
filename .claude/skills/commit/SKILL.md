@@ -35,7 +35,7 @@ If `$ARGUMENTS` is non-empty, use it as the commit message body.
 If `$ARGUMENTS` is empty, analyze the staged diff and generate a message:
 - Use the commit style from the `git log` output (this repo uses conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `chore:`, `docs:`)
 - Focus on the **why**, not the **what**
-- Keep the first line at most 72 characters. This is a gate, not advice (W3.4 / D5, 2026-11-07): CI's `Commit Subjects` workflow runs `bash build_tools/check_commit_subjects.sh` over every PR and every `dev`/`mainline` push; merge and `Revert "…"` subjects are exempt. Put the issue reference (`refs #N`, `(#N)`) in the body when the subject is tight.
+- Keep the first line at most 72 characters: CI's `Commit Subjects` workflow (`build_tools/check_commit_subjects.sh`) gates every PR; merge and `Revert "…"` subjects are exempt. Put `refs #N` in the body when the subject is tight.
 - Add a body paragraph if the change is non-trivial
 
 ### 4. Create the commit
@@ -60,4 +60,4 @@ Run `git status` after the commit to confirm success. Report the commit hash.
 - **Never** amend a previous commit unless the user explicitly asks
 - If a pre-commit hook fails, fix the issue and create a **new** commit (do not use `--amend`)
 - If there are no changes to commit, say so and stop
-- The PostToolUse hook `.claude/hooks/format-on-save.sh` whitespace-formats each edited `.cs` against its own project (best-effort: `--no-restore`, capped at 8 s, skipped when `dotnet` is busy or absent), plus `build_tools/*.py` and `editors/vscode/*.ts`. It is not a gate — before pushing `.cs` changes, `/push` runs `dotnet format whitespace sharpy.sln --verify-no-changes` solution-wide (the CI step); run `/format` if it reports files
+- The PostToolUse hook `.claude/hooks/format-on-save.sh` formats each edited `.cs`, `build_tools/*.py` and `editors/vscode/*.ts` best-effort; it is not a gate — `/push` runs the solution-wide whitespace check

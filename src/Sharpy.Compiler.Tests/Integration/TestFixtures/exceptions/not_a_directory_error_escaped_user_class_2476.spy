@@ -1,0 +1,19 @@
+# Positive control for not_a_directory_error_user_class_2476 (P33 D2, #2476): SPY0212's own
+# escape, a backtick-escaped `NotADirectoryError`, is a user type that compiles, raises and is
+# caught, before D2 added the builtin and after. The user class derives from Exception, not
+# OSError, so `except OSError` does not catch it (cell 2) - it is not the builtin.
+class `NotADirectoryError`(Exception):
+    pass
+
+def main():
+    try:
+        raise `NotADirectoryError`('x')
+    except `NotADirectoryError` as e:
+        print(f'1 caught user class: {e}')
+
+    try:
+        raise `NotADirectoryError`('y')
+    except OSError:
+        print('2 user class caught as OSError')
+    except Exception:
+        print('2 user class missed OSError')

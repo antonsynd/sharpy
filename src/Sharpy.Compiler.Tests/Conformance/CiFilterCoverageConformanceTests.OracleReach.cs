@@ -3,7 +3,6 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Sharpy.TestInfrastructure.Integration;
 using Sharpy.TestInfrastructure.Oracles;
-using Xunit;
 
 namespace Sharpy.Compiler.Tests.Conformance;
 
@@ -53,11 +52,7 @@ public partial class CiFilterCoverageConformanceTests
                 AddCallEdges(method, callers, targetsOfToken);
         }
 
-        var seeds = typeof(PythonInterpreter).GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m => m.ReturnType == typeof(PythonInterpreter))
-            .ToList();
-        Assert.Contains(seeds, m => m.Name == nameof(PythonInterpreter.RequireOrSkip));
-        Assert.Contains(seeds, m => m.Name == nameof(PythonInterpreter.TryLocate));
+        var seeds = PythonOracleSeeds();
 
         var reached = new HashSet<(Module, int)>();
         var work = new Queue<MethodBase>(seeds);
