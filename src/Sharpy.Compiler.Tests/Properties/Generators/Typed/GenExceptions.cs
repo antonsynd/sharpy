@@ -222,6 +222,8 @@ internal static class GenExceptions
         };
     }
 
+    // Each handler prints its binding, so the program draws no unused-variable warning and a
+    // mutation of the handler list is judged on its own diagnostics alone.
     private static Module BuildHierarchyModule()
     {
         var tryStmt = new TryStatement
@@ -248,7 +250,8 @@ internal static class GenExceptions
                             {
                                 Function = new Identifier { Name = "print" },
                                 Arguments = ImmutableArray.Create<Expression>(
-                                    new StringLiteral { Value = "value error" })
+                                    new StringLiteral { Value = "value error" },
+                                    new Identifier { Name = "e" })
                             }
                         })
                 },
@@ -263,7 +266,8 @@ internal static class GenExceptions
                             {
                                 Function = new Identifier { Name = "print" },
                                 Arguments = ImmutableArray.Create<Expression>(
-                                    new StringLiteral { Value = "base exception" })
+                                    new StringLiteral { Value = "base exception" },
+                                    new Identifier { Name = "e" })
                             }
                         })
                 })

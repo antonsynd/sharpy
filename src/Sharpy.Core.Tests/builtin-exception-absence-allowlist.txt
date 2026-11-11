@@ -1,0 +1,54 @@
+# Builtin-exception absence allowlist (ratchet ledger) for PythonBuiltinExceptionPresenceTests.
+#
+# Each row is a name in python-builtin-exceptions.txt (python 3.15's builtin exception classes) that Sharpy.Core
+# does not define and exception_handling.md does not rule. An absent name without a row is red; a row whose name
+# now exists is red too (stale: delete it with the type). Adding a builtin reserves its spelling (a user class of
+# that name becomes SPY0212), so each addition is an owner ruling, made on the cited issue.
+#
+# Row: `<Name> # #N <reason>`
+
+# The OSError family's remainder named by #2554 (each needs the owner's per-name ruling there).
+TimeoutError # #2554 OSError subclass; a fixture declares a user TimeoutError that would be refused
+ConnectionError # #2554 OSError subclass; CLR full-name collision with the requests module's Sharpy.ConnectionError
+BrokenPipeError # #2554 ConnectionError subclass; waits on ConnectionError
+ConnectionAbortedError # #2554 ConnectionError subclass; waits on ConnectionError
+ConnectionRefusedError # #2554 ConnectionError subclass; waits on ConnectionError
+ConnectionResetError # #2554 ConnectionError subclass; waits on ConnectionError
+EnvironmentError # #2554 an alias of OSError in python, not a class: a rung question
+
+# The class issue for the remaining absent builtins (#2573).
+BaseExceptionGroup # #2573 ExceptionGroup's base in python; Sharpy's ExceptionGroup sits on AggregateException
+BlockingIOError # #2573 OSError subclass outside #2554's list
+ChildProcessError # #2573 OSError subclass outside #2554's list
+InterruptedError # #2573 OSError subclass outside #2554's list
+ProcessLookupError # #2573 OSError subclass outside #2554's list
+BufferError # #2573 absent
+EOFError # #2573 absent; python's input() raises it at end of input
+FloatingPointError # #2573 ArithmeticError subclass; absent
+GeneratorExit # #2573 absent
+ImportCycleError # #2573 new in python 3.15 (ImportError subclass); absent
+ImportError # #2573 absent
+ModuleNotFoundError # #2573 ImportError subclass; absent
+IndentationError # #2573 SyntaxError subclass; absent
+KeyboardInterrupt # #2573 absent
+MemoryError # #2573 absent
+PythonFinalizationError # #2573 RuntimeError subclass; absent
+RecursionError # #2573 RuntimeError subclass; absent
+ReferenceError # #2573 absent
+StopAsyncIteration # #2573 absent
+SyntaxError # #2573 absent
+SystemError # #2573 absent
+TabError # #2573 IndentationError subclass; absent
+UnicodeTranslateError # #2573 UnicodeError subclass; absent
+Warning # #2573 the warning category root; the whole category tree below is absent
+BytesWarning # #2573 Warning subclass; absent
+DeprecationWarning # #2573 Warning subclass; absent
+EncodingWarning # #2573 Warning subclass; absent
+FutureWarning # #2573 Warning subclass; absent
+ImportWarning # #2573 Warning subclass; absent
+PendingDeprecationWarning # #2573 Warning subclass; absent
+ResourceWarning # #2573 Warning subclass; absent
+RuntimeWarning # #2573 Warning subclass; absent
+SyntaxWarning # #2573 Warning subclass; absent
+UnicodeWarning # #2573 Warning subclass; absent
+UserWarning # #2573 Warning subclass; absent

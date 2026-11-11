@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Numerics;
 namespace Sharpy
 {
     /// <summary>
@@ -94,8 +95,7 @@ namespace Sharpy
         /// <summary>Parse a date from ISO 8601 format string.</summary>
         public static Date Fromisoformat(string date_string)
         {
-            var dt = System.DateTime.ParseExact(date_string, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            return new Date(dt);
+            return DatetimeIso.ParseDate(date_string);
         }
 
         /// <summary>Format the date using Python strftime format codes.</summary>
@@ -109,13 +109,25 @@ namespace Sharpy
         /// <summary>Add a timedelta to the date.</summary>
         public static Date operator +(Date date, Timedelta delta)
         {
-            return new Date(date._date.AddTicks(delta.InternalTimeSpan.Ticks).Date);
+            return date.AddDays(delta.Days);
         }
 
         /// <summary>Subtract a timedelta from the date.</summary>
         public static Date operator -(Date date, Timedelta delta)
         {
-            return new Date(date._date.AddTicks(-delta.InternalTimeSpan.Ticks).Date);
+            return date.AddDays(-(long)delta.Days);
+        }
+
+        /// <summary>
+        /// Python's <c>date ± timedelta</c>: the date moves by whole days only (<c>delta.days</c>, floored, so
+        /// <c>date - timedelta(hours=1)</c> is the same date), and <see cref="OverflowError"/> past year 1..9999.
+        /// </summary>
+        private Date AddDays(long days)
+        {
+            long ordinal = Toordinal() + days;
+            if (ordinal < 1 || ordinal > DatetimeArgs.MaxOrdinal)
+                throw new OverflowError("date value out of range");
+            return new Date(new System.DateTime((ordinal - 1) * TimeSpan.TicksPerDay));
         }
 
         /// <summary>Return the timedelta between two dates.</summary>
@@ -421,13 +433,13 @@ namespace Sharpy
         /// <summary>Return the current local datetime.</summary>
         public static DateTime Now()
         {
-            return new DateTime(System.DateTime.Now);
+            return new DateTime(DatetimeArgs.ToMicroseconds(System.DateTime.Now));
         }
 
         /// <summary>Return the current UTC datetime.</summary>
         public static DateTime Utcnow()
         {
-            return new DateTime(System.DateTime.UtcNow);
+            return new DateTime(DatetimeArgs.ToMicroseconds(System.DateTime.UtcNow));
         }
 
         /// <summary>Combine a date and a time to create a datetime.</summary>
@@ -482,23 +494,21 @@ namespace Sharpy
         public double Timestamp()
         {
             var epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            System.DateTime utcTime;
             if (_tzinfo is not null)
             {
-                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
+                // Tick arithmetic, not a System.DateTime: an aware datetime.min east of UTC has a timestamp
+                // although its UTC instant is before year 1.
+                long utcTicks = _dateTime.Ticks - _tzinfo.Utcoffset(this).InternalTimeSpan.Ticks;
+                return (utcTicks - epoch.Ticks) / (double)TimeSpan.TicksPerSecond;
             }
-            else
-            {
-                utcTime = System.DateTime.SpecifyKind(_dateTime, DateTimeKind.Local).ToUniversalTime();
-            }
+            var utcTime = System.DateTime.SpecifyKind(_dateTime, DateTimeKind.Local).ToUniversalTime();
             return (utcTime - epoch).TotalSeconds;
         }
 
         /// <summary>Parse a datetime from ISO 8601 format string.</summary>
         public static DateTime Fromisoformat(string date_string)
         {
-            var dt = System.DateTime.Parse(date_string, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-            return new DateTime(dt);
+            return DatetimeIso.ParseDateTime(date_string);
         }
 
         /// <summary>Format the datetime using Python strftime format codes.</summary>
@@ -521,7 +531,7 @@ namespace Sharpy
             System.DateTime utcTime;
             if (_tzinfo is not null)
             {
-                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
+                utcTime = DatetimeArgs.Shift(_dateTime, -_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
             }
             else
             {
@@ -529,7 +539,7 @@ namespace Sharpy
             }
             var utcDt = new DateTime(utcTime, Timezone.Utc);
             var targetOffset = tz.Utcoffset(utcDt);
-            var targetTime = utcTime.AddTicks(targetOffset.InternalTimeSpan.Ticks);
+            var targetTime = DatetimeArgs.Shift(utcTime, targetOffset.InternalTimeSpan.Ticks);
             return new DateTime(targetTime, tz);
         }
 
@@ -538,37 +548,60 @@ namespace Sharpy
         /// <summary>Add a timedelta to a datetime.</summary>
         public static DateTime operator +(DateTime dt, Timedelta delta)
         {
-            return new DateTime(dt._dateTime.AddTicks(delta.InternalTimeSpan.Ticks), dt._tzinfo);
+            return new DateTime(DatetimeArgs.Shift(dt._dateTime, delta.InternalTimeSpan.Ticks), dt._tzinfo);
         }
 
         /// <summary>Subtract a timedelta from a datetime.</summary>
         public static DateTime operator -(DateTime dt, Timedelta delta)
         {
-            return new DateTime(dt._dateTime.AddTicks(-delta.InternalTimeSpan.Ticks), dt._tzinfo);
+            return new DateTime(DatetimeArgs.Shift(dt._dateTime, -delta.InternalTimeSpan.Ticks), dt._tzinfo);
         }
 
         /// <summary>Return the difference between two datetimes as a timedelta.</summary>
         public static Timedelta operator -(DateTime left, DateTime right)
         {
-            return new Timedelta(left._dateTime.Subtract(right._dateTime));
+            if ((left._tzinfo is null) != (right._tzinfo is null))
+                throw new TypeError("can't subtract offset-naive and offset-aware datetimes");
+            if (SameClock(left, right))
+                return new Timedelta(left._dateTime.Subtract(right._dateTime));
+            return new Timedelta(new TimeSpan(left.UtcTicks - right.UtcTicks));
         }
 
         // --- Comparison ---
 
-        /// <summary>Compare this datetime to another.</summary>
+        /// <summary>
+        /// Python's rule: two naive datetimes, or two sharing one tzinfo object, compare their fields; two aware ones
+        /// with different tzinfo compare their UTC instants.
+        /// </summary>
+        private static bool SameClock(DateTime left, DateTime right)
+            => left._tzinfo is null || ReferenceEquals(left._tzinfo, right._tzinfo);
+
+        private const int AwareHashSalt = 0x5BD1E995;
+
+        /// <summary>The UTC instant of an aware datetime, in ticks (may lie outside year 1..9999).</summary>
+        private long UtcTicks => _dateTime.Ticks - _tzinfo!.Utcoffset(this).InternalTimeSpan.Ticks;
+
+        /// <summary>
+        /// Compare this datetime to another: python's <c>&lt;</c>. A naive and an aware datetime do not order
+        /// (<see cref="TypeError"/>).
+        /// </summary>
         public int CompareTo(DateTime? other)
         {
             if (other is null)
                 return 1;
-            return _dateTime.CompareTo(other._dateTime);
+            if ((_tzinfo is null) != (other._tzinfo is null))
+                throw new TypeError("can't compare offset-naive and offset-aware datetimes");
+            return SameClock(this, other) ? _dateTime.CompareTo(other._dateTime) : UtcTicks.CompareTo(other.UtcTicks);
         }
 
-        /// <summary>Return whether this datetime equals another.</summary>
+        /// <summary>Return whether this datetime equals another: a naive one never equals an aware one.</summary>
         public bool Equals(DateTime? other)
         {
             if (other is null)
                 return false;
-            return _dateTime == other._dateTime;
+            if ((_tzinfo is null) != (other._tzinfo is null))
+                return false;
+            return SameClock(this, other) ? _dateTime == other._dateTime : UtcTicks == other.UtcTicks;
         }
 
         /// <summary>Return whether this datetime equals the given object.</summary>
@@ -577,10 +610,11 @@ namespace Sharpy
             return Equals(obj as DateTime);
         }
 
-        /// <summary>Return a hash code for this datetime.</summary>
+        /// <summary>Return a hash code for this datetime: an aware one hashes its UTC instant, as python does.</summary>
         public override int GetHashCode()
         {
-            return _dateTime.GetHashCode();
+            // An aware value never equals a naive one, so it hashes apart from the naive value of the same ticks.
+            return _tzinfo is null ? _dateTime.GetHashCode() : UtcTicks.GetHashCode() ^ AwareHashSalt;
         }
 
         /// <summary>Return whether two datetimes are equal.</summary>
@@ -633,19 +667,30 @@ namespace Sharpy
         /// <summary>Create a timedelta from the given time components.</summary>
         public Timedelta(int days = 0, int seconds = 0, int microseconds = 0, int milliseconds = 0, int minutes = 0, int hours = 0, int weeks = 0)
         {
-            // Build TimeSpan from ticks for proper microsecond precision
-            long ticks = 0;
-            checked
+            long ticks;
+            try
             {
-                ticks += (days + weeks * 7L) * TimeSpan.TicksPerDay;
-                ticks += hours * TimeSpan.TicksPerHour;
-                ticks += minutes * TimeSpan.TicksPerMinute;
-                ticks += seconds * TimeSpan.TicksPerSecond;
-                ticks += milliseconds * TimeSpan.TicksPerMillisecond;
-                ticks += microseconds * 10L; // 10 ticks = 1 microsecond
+                checked
+                {
+                    ticks = (days + weeks * 7L) * TimeSpan.TicksPerDay
+                        + hours * TimeSpan.TicksPerHour
+                        + minutes * TimeSpan.TicksPerMinute
+                        + seconds * TimeSpan.TicksPerSecond
+                        + milliseconds * TimeSpan.TicksPerMillisecond
+                        + microseconds * 10L; // 10 ticks = 1 microsecond
+                }
             }
-
-            _timeSpan = new TimeSpan(ticks);
+            catch (OverflowException)
+            {
+                // A partial sum left long; the exact total may still be in range (days=-n, hours=24n).
+                ticks = DatetimeArgs.ExactTicks(((BigInteger)days + (BigInteger)weeks * 7) * TimeSpan.TicksPerDay
+                    + (BigInteger)hours * TimeSpan.TicksPerHour
+                    + (BigInteger)minutes * TimeSpan.TicksPerMinute
+                    + (BigInteger)seconds * TimeSpan.TicksPerSecond
+                    + (BigInteger)milliseconds * TimeSpan.TicksPerMillisecond
+                    + (BigInteger)microseconds * 10);
+            }
+            _timeSpan = DatetimeArgs.TimedeltaSpan(ticks);
         }
 
         internal Timedelta(TimeSpan timeSpan)
@@ -655,18 +700,53 @@ namespace Sharpy
 
         internal TimeSpan InternalTimeSpan => _timeSpan;
 
-        /// <summary>The days component of the time interval.</summary>
-        public int Days => _timeSpan.Days;
+        /// <summary>Python's <c>timedelta.days</c>: floored, so <c>timedelta(hours=-1).days</c> is -1.</summary>
+        public int Days
+        {
+            get
+            {
+                Normalize(out long days, out _, out _);
+                return (int)days;
+            }
+        }
+
         /// <summary>
-        /// Gets the remaining seconds after extracting days (0-86399).
-        /// This matches Python's <c>timedelta.seconds</c> property.
+        /// Python's <c>timedelta.seconds</c>: the seconds after the floored days (0-86399).
         /// For the total number of seconds, use <see cref="TotalSeconds"/>.
         /// </summary>
-        public int Seconds => (int)((_timeSpan.Ticks % TimeSpan.TicksPerDay) / TimeSpan.TicksPerSecond);
-        /// <summary>The microseconds component of the time interval.</summary>
-        public int Microseconds => (int)((_timeSpan.Ticks % TimeSpan.TicksPerSecond) / 10);
-        /// <summary>The total number of seconds represented by this timedelta.</summary>
-        public double TotalSeconds => _timeSpan.TotalSeconds;
+        public int Seconds
+        {
+            get
+            {
+                Normalize(out _, out long seconds, out _);
+                return (int)seconds;
+            }
+        }
+
+        /// <summary>Python's <c>timedelta.microseconds</c>: the microseconds after the seconds (0-999999).</summary>
+        public int Microseconds
+        {
+            get
+            {
+                Normalize(out _, out _, out long microseconds);
+                return (int)microseconds;
+            }
+        }
+
+        /// <summary>Python's <c>total_seconds()</c>: the exact microsecond count over 10**6, correctly rounded.</summary>
+        public double TotalSeconds
+        {
+            get
+            {
+                long microseconds = _timeSpan.Ticks / 10;
+                const long Exact = 1L << 53;
+                // Below 2**53 both operands are exact doubles and IEEE division rounds once. Above, the decimal
+                // quotient is exact (a scale shift) and parsing its text rounds once.
+                return microseconds > -Exact && microseconds < Exact
+                    ? microseconds / 1e6
+                    : double.Parse(((decimal)microseconds / 1_000_000m).ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+            }
+        }
 
         /// <summary>
         /// Python's <c>str(timedelta)</c>: <c>[D day[s], ]H:MM:SS[.ffffff]</c> over the normalized
@@ -717,7 +797,9 @@ namespace Sharpy
         {
             long totalMicroseconds = FloorDiv(_timeSpan.Ticks, 10);
             days = FloorDiv(totalMicroseconds, 86_400_000_000L);
-            long rem = totalMicroseconds - days * 86_400_000_000L;
+            long rem = totalMicroseconds % 86_400_000_000L;
+            if (rem < 0)
+                rem += 86_400_000_000L;
             seconds = rem / 1_000_000L;
             microseconds = rem % 1_000_000L;
         }
@@ -727,7 +809,7 @@ namespace Sharpy
         /// <summary>Return the absolute value of the timedelta.</summary>
         public Timedelta Abs()
         {
-            return new Timedelta(_timeSpan.Duration());
+            return new Timedelta(DatetimeArgs.TimedeltaSpan(Math.Abs(_timeSpan.Ticks)));
         }
 
         // --- Arithmetic ---
@@ -735,37 +817,71 @@ namespace Sharpy
         /// <summary>Add two timedeltas.</summary>
         public static Timedelta operator +(Timedelta left, Timedelta right)
         {
-            return new Timedelta(left._timeSpan + right._timeSpan);
+            long l = left._timeSpan.Ticks, r = right._timeSpan.Ticks;
+            if (r > 0 ? l > long.MaxValue - r : l < -long.MaxValue - r)
+                throw DatetimeArgs.TimedeltaOverflow((BigInteger)l + r);
+            return new Timedelta(new TimeSpan(l + r));
         }
 
         /// <summary>Subtract one timedelta from another.</summary>
         public static Timedelta operator -(Timedelta left, Timedelta right)
         {
-            return new Timedelta(left._timeSpan - right._timeSpan);
+            long l = left._timeSpan.Ticks, r = right._timeSpan.Ticks;
+            if (r < 0 ? l > long.MaxValue + r : l < -long.MaxValue + r)
+                throw DatetimeArgs.TimedeltaOverflow((BigInteger)l - r);
+            return new Timedelta(new TimeSpan(l - r));
         }
 
         /// <summary>Negate a timedelta.</summary>
         public static Timedelta operator -(Timedelta td)
         {
-            return new Timedelta(-td._timeSpan);
+            // Every timedelta lies within +-long.MaxValue ticks (TimedeltaSpan), so the negation is exact.
+            return new Timedelta(new TimeSpan(-td._timeSpan.Ticks));
         }
 
         /// <summary>Multiply a timedelta by an integer.</summary>
         public static Timedelta operator *(Timedelta td, int n)
         {
-            return new Timedelta(new TimeSpan(td._timeSpan.Ticks * n));
+            return Multiply(td, n);
         }
 
         /// <summary>Multiply an integer by a timedelta.</summary>
         public static Timedelta operator *(int n, Timedelta td)
         {
-            return new Timedelta(new TimeSpan(n * td._timeSpan.Ticks));
+            return Multiply(td, n);
+        }
+
+        private static Timedelta Multiply(Timedelta td, int n)
+        {
+            long ticks;
+            try
+            {
+                ticks = checked(td._timeSpan.Ticks * n);
+            }
+            catch (OverflowException)
+            {
+                throw DatetimeArgs.TimedeltaOverflow((BigInteger)td._timeSpan.Ticks * n);
+            }
+            return new Timedelta(DatetimeArgs.TimedeltaSpan(ticks));
         }
 
         /// <summary>Divide a timedelta by an integer.</summary>
         public static Timedelta operator /(Timedelta td, int n)
         {
-            return new Timedelta(new TimeSpan(td._timeSpan.Ticks / n));
+            if (n == 0)
+                throw new ZeroDivisionError("division by zero");
+            // Python rounds the quotient to the nearest microsecond, ties to even.
+            long microseconds = td._timeSpan.Ticks / 10;
+            long q = microseconds / n, r = microseconds % n;
+            if (r != 0 && ((r < 0) != (n < 0)))
+            {
+                q--;
+                r += n;
+            }
+            long twice = 2 * r;
+            if (n > 0 ? twice > n || (twice == n && (q & 1) == 1) : twice < n || (twice == n && (q & 1) == 1))
+                q++;
+            return new Timedelta(new TimeSpan(q * 10));
         }
 
         // --- Comparison ---
@@ -852,6 +968,11 @@ namespace Sharpy
         /// <summary>Create a timezone with the given UTC offset and optional name.</summary>
         public Timezone(Timedelta offset, string? name = null)
         {
+            if (Math.Abs(offset.InternalTimeSpan.Ticks) >= TimeSpan.TicksPerDay)
+            {
+                throw new ValueError("offset must be a timedelta strictly between -timedelta(hours=24) and "
+                    + "timedelta(hours=24), not " + Builtins.Repr(offset));
+            }
             _offset = offset;
             _name = name;
         }
@@ -992,7 +1113,7 @@ namespace Sharpy
     {
         internal const int MinYear = 1;
         internal const int MaxYear = 9999;
-        private const int MaxOrdinal = 3652059; // date(9999, 12, 31).toordinal()
+        internal const int MaxOrdinal = 3652059; // date(9999, 12, 31).toordinal()
 
         internal static void CheckDate(int year, int month, int day)
         {
@@ -1014,6 +1135,66 @@ namespace Sharpy
                 throw new ValueError("second must be in 0..59");
             if (microsecond < 0 || microsecond > 999999)
                 throw new ValueError("microsecond must be in 0..999999");
+        }
+
+        /// <summary>
+        /// <paramref name="value"/> moved by <paramref name="ticks"/>; python's <see cref="OverflowError"/>
+        /// <c>date value out of range</c> when the result leaves year 1..9999, where <c>System.DateTime</c>
+        /// would throw <c>ArgumentOutOfRangeException</c>. <paramref name="ticks"/> is a timedelta's or an
+        /// offset's, so its magnitude is at most <c>long.MaxValue</c> and its negation is exact.
+        /// </summary>
+        internal static System.DateTime Shift(System.DateTime value, long ticks)
+        {
+            long v = value.Ticks;
+            if (ticks > 0 ? v > MaxTicks - ticks : v < -ticks)
+                throw new OverflowError("date value out of range");
+            return new System.DateTime(v + ticks, value.Kind);
+        }
+
+        private static readonly long MaxTicks = System.DateTime.MaxValue.Ticks;
+
+        /// <summary>A clock reading at python's resolution: whole microseconds.</summary>
+        internal static System.DateTime ToMicroseconds(System.DateTime value)
+            => new System.DateTime(value.Ticks - value.Ticks % 10, value.Kind);
+
+        /// <summary>
+        /// A timedelta of <paramref name="ticks"/>. Every <c>long</c> but <c>long.MinValue</c> is representable;
+        /// that one is refused so that negation and <c>abs</c> stay exact.
+        /// </summary>
+        internal static TimeSpan TimedeltaSpan(long ticks)
+        {
+            if (ticks == long.MinValue)
+                throw TimedeltaOverflow(ticks);
+            return new TimeSpan(ticks);
+        }
+
+        /// <summary>An exact tick total that fits <c>long</c>, or the timedelta overflow it is.</summary>
+        internal static long ExactTicks(BigInteger ticks)
+        {
+            if (ticks > long.MaxValue || ticks <= long.MinValue)
+                throw TimedeltaOverflow(ticks);
+            return (long)ticks;
+        }
+
+        /// <summary>
+        /// The <see cref="OverflowError"/> for a timedelta of <paramref name="ticks"/> that Sharpy cannot hold.
+        /// Past python's own bound (999999999 days) it is python's message. Inside python's range but past
+        /// Sharpy's — a timedelta is a <c>TimeSpan</c>, about 1.07% of python's range — the message says so
+        /// (deviation <c>timedelta-range-timespan</c>, #2109).
+        /// </summary>
+        internal static OverflowError TimedeltaOverflow(BigInteger ticks)
+        {
+            var microseconds = BigInteger.DivRem(ticks, 10, out var subMicro);
+            if (subMicro.Sign < 0)
+                microseconds -= 1;
+            var days = BigInteger.DivRem(microseconds, 86_400_000_000L, out var rem);
+            if (rem.Sign < 0)
+                days -= 1;
+            var text = days.ToString(CultureInfo.InvariantCulture);
+            if (BigInteger.Abs(days) > 999_999_999)
+                return new OverflowError("days=" + text + "; must have magnitude <= 999999999");
+            return new OverflowError("days=" + text + "; outside the range Sharpy can represent: a timedelta's magnitude "
+                + "is at most 10675199 days, 2:48:05.477580 (python allows 999999999 days)");
         }
 
         internal static void CheckOrdinal(int ordinal)

@@ -191,6 +191,9 @@ public class DispatchSiteInventoryTests
         // #1938: the struct constructor roster ranges over the two roster-bearing member kinds
         // (instance field, defaulted auto-property); every other statement is not a roster member.
         ["CodeGen/RoslynEmitter.ClassMembers.Constructors.cs::RoslynEmitter.StructConstructorRoster"] = "refusal-net:StructHostMemberMatrixTests",
+        // The SPY0488 message names the covered handler by shape (bare, tuple, one type); each arm's
+        // text is asserted by the hand cells (#2363).
+        ["Semantic/Validation/ExceptHandlerOrderValidator.cs::ExceptHandlerOrderValidator.DescribeHandler"] = "refusal-net:ExceptHandlerReachabilityTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
@@ -257,6 +260,9 @@ public class DispatchSiteInventoryTests
         ["Lowering/LoweringPass.cs::LoweringPass.MarkWrappedTupleElements"] = "refusal-net:FileBasedIntegrationTests",
         // __qualname__ scopes (#2057): only class/struct/interface/enum/function statements open one.
         ["Lowering/LoweringPass.cs::LoweringPass.LowerStatement"] = "documented-by-design:Lowering/LoweringPass.cs:LowerStatement",
+        // #2443: decorators are not child nodes; the switch names every decorated statement type so
+        // their arguments lower (the emitter's required IR reads reach bracket-attribute arguments).
+        ["Lowering/LoweringPass.cs::LoweringPass.DecoratorsOf"] = "guarded-by:DecoratorCoverageTests",
         ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.TryFoldExpression"] = "refusal-net:FileBasedIntegrationTests",
         // Parser internals
         ["Parser/Parser.cs::Parser.DelSteerFor"] = "refusal-net:FileBasedIntegrationTests",

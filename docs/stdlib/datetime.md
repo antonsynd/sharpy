@@ -174,10 +174,10 @@ Represents the difference between two dates or times.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `days` | `int` | The days component of the time interval. |
-| `seconds` | `int` | Gets the remaining seconds after extracting days (0-86399). This matches Python's \`timedelta.seconds\` property. For the total number of seconds, use \`total_seconds\`. |
-| `microseconds` | `int` | The microseconds component of the time interval. |
-| `total_seconds` | `float` | The total number of seconds represented by this timedelta. |
+| `days` | `int` | Python's \`timedelta.days\`: floored, so \`timedelta(hours=-1).days\` is -1. |
+| `seconds` | `int` | Python's \`timedelta.seconds\`: the seconds after the floored days (0-86399). For the total number of seconds, use \`total_seconds\`. |
+| `microseconds` | `int` | Python's \`timedelta.microseconds\`: the microseconds after the seconds (0-999999). |
+| `total_seconds` | `float` | Python's \`total_seconds()\`: the exact microsecond count over 10**6, correctly rounded. |
 
 ### `__str__() -> str`
 

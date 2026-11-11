@@ -262,11 +262,10 @@ internal static partial class ErrorInjector
             : null;
 
     /// <summary>A <c>try</c> whose handlers go subclass → base reordered base → subclass: the subclass
-    /// handler is unreachable, Sharpy accepts it and Roslyn refuses it.</summary>
+    /// handler is unreachable, python never runs it — exactly one SPY0488 warning and no error (#2363).</summary>
     public static InjectionResult? InjectHandlerOrderBaseFirst(Module module) =>
         MutationLanes.HandlerOrderBaseFirst(module) is { } mutated
-            ? new InjectionResult(mutated, null, new KnownRedRefusal("#2363",
-                "analyses clean; run is SPY0908 CS0160 — handler reachability is left to Roslyn"))
+            ? new InjectionResult(mutated, "SPY0488", Severity: CompilerDiagnosticSeverity.Warning)
             : null;
 
     /// <summary>A <c>@dataclass</c> constructed with an argument its field type refuses: the synthesized

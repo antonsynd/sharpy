@@ -19,13 +19,16 @@ internal partial class RoslynEmitter
 {
     /// <summary>
     /// Reads the equality lowering strategy for a <c>==</c>/<c>!=</c> operation from the lowering IR
-    /// (E2 #1056, migrates <c>_binaryOpLowerings</c>). Returns <c>null</c> when the node has no
-    /// <see cref="IrEqualityComparison"/> (the node is not an equality comparison), which callers
-    /// treat the same as the default native operator.
+    /// (E2 #1056, migrates <c>_binaryOpLowerings</c>). An <c>==</c>/<c>!=</c> always lowers to an
+    /// <see cref="IrEqualityComparison"/>, so its node is required
+    /// (<see cref="RequiredIrNodeFor{TIr}"/>); any other operator has none and returns <c>null</c>,
+    /// which callers treat the same as the default native operator.
     /// </summary>
-    private BinaryOpLowering? GetIrBinaryOpLowering(Expression binaryOp)
+    private BinaryOpLowering? GetIrBinaryOpLowering(BinaryOp binaryOp)
     {
-        return IrNodeFor<IrEqualityComparison>(binaryOp)?.Strategy;
+        return binaryOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
+            ? RequiredIrNodeFor<IrEqualityComparison>(binaryOp)?.Strategy
+            : null;
     }
 
     /// <summary>

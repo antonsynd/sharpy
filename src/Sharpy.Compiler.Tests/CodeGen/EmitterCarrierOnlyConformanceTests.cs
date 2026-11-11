@@ -63,11 +63,11 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// CodeGen whatever the closure says, because <c>SemanticInfo</c>'s and <c>CodeGenInfo</c>'s
 /// signatures would otherwise re-admit them. The emitter may hand a <c>SemanticType</c> to
 /// <c>TypeSyntaxMapper</c> but may not inspect one outside it (#2443 contract item 1), so
-/// <see cref="InspectionExemptFile"/> is exempt from the <c>type-name</c> and
-/// <c>type-name-compare</c> kinds. Every site that
+/// <see cref="InspectionExemptFile"/> is exempt from the drain census of the <c>type-name</c> and
+/// <c>type-name-compare</c> kinds, but its mentions are pinned rows like any other. Every site that
 /// still inspects is a row of <c>CodeGen/emitter-inspection-allowlist.txt</c>, five kinds
 /// (<see cref="InspectionKinds"/>), counted per (file, kind, name) and ratcheted both ways by
-/// <see cref="CodeGenInspectionSites_MatchTheAllowlist"/>; the file drains to empty.
+/// <see cref="CodeGenInspectionSites_MatchTheAllowlist"/>; the file drains to the mapper's pins.
 /// </para>
 ///
 /// <para>
@@ -128,8 +128,10 @@ public class EmitterCarrierOnlyConformanceTests
     /// The one CodeGen file allowed to name the inspection-denied hierarchies (#2443 contract
     /// item 1: the emitter may pass a <c>SemanticType</c> to <c>TypeSyntaxMapper</c> but may not
     /// inspect one outside it). Exempt from the <c>type-name</c> and <c>type-name-compare</c>
-    /// kinds only; its per-kind mention counts are printed (<c>CARRIER-INSPECTION-EXEMPT</c>), not
-    /// ratcheted.
+    /// kinds' drain census only (<c>CARRIER-INSPECTION-CENSUS</c>); its per-kind mention counts are
+    /// printed (<c>CARRIER-INSPECTION-EXEMPT</c>) AND pinned as allowlist rows, ratcheted both ways,
+    /// so moving a compare into this file is red rather than a drain
+    /// (<see cref="ExemptMapperMentions_ArePinnedBothWays"/>).
     /// </summary>
     internal const string InspectionExemptFile = "TypeSyntaxMapper.cs";
 
@@ -611,25 +613,58 @@ public class EmitterCarrierOnlyConformanceTests
                 + $"mentions={exempt.Count(s => s.Kind == kind)}");
         }
 
-        var measured = sites
+        // The exempt mapper's mentions are ratcheted too (pinned, not draining): the exemption keeps
+        // them out of the drain census above, never out of the count, so a compare MOVED into
+        // TypeSyntaxMapper.cs raises its pinned row instead of vanishing from the allowlist.
+        var measured = sites.Concat(exempt)
             .GroupBy(s => (s.File, s.Kind, s.Name))
             .ToDictionary(g => g.Key, g => g.ToList());
         var rows = LoadInspectionAllowlist(out var problems);
+        problems.AddRange(CompareWithAllowlist(measured, rows, file => File.Exists(Path.Combine(directory, file))));
 
+        problems.Should().BeEmpty(
+            "every remaining CodeGen inspection of a SemanticType/Symbol is a counted row of "
+            + $"{InspectionAllowlistFileName} citing its class issue, and the file drains both ways.\n"
+            + string.Join("\n", problems)
+            + "\n\nMeasured rows (counts only — keep each row's note):\n"
+            + string.Join("\n", measured
+                .OrderBy(kv => kv.Key.File, StringComparer.Ordinal)
+                .ThenBy(kv => Array.IndexOf(InspectionKinds, kv.Key.Kind))
+                .ThenBy(kv => kv.Key.Name, StringComparer.Ordinal)
+                .Select(kv => $"{kv.Key.File} | {kv.Key.Kind} | {kv.Key.Name} | {kv.Value.Count} | cite=#2443 |")));
+    }
+
+    /// <summary>
+    /// The allowlist ratchet, both ways, over measured sites keyed (file, kind, name): more sites
+    /// than a row's count is a NEW inspection, fewer is STALE, a site key without a row and a row
+    /// naming a missing file are problems. <see cref="InspectionExemptFile"/>'s rows go through the
+    /// same comparison: they are pinned at today's count rather than draining.
+    /// </summary>
+    private static List<string> CompareWithAllowlist(
+        IReadOnlyDictionary<(string File, string Kind, string Name), List<InspectionSite>> measured,
+        IReadOnlyList<InspectionRow> rows,
+        Func<string, bool> fileExists)
+    {
+        var problems = new List<string>();
         foreach (var row in rows)
         {
-            if (!File.Exists(Path.Combine(directory, row.File)))
+            if (!fileExists(row.File))
             {
                 problems.Add($"line {row.LineNumber}: {row.File} no longer exists in CodeGen/ — delete the row");
                 continue;
             }
 
             var actual = measured.TryGetValue((row.File, row.Kind, row.Name), out var found) ? found.Count : 0;
+            var exempt = IsInspectionExempt(row.File, row.Kind);
             if (actual > row.Count)
             {
                 problems.Add(
                     $"line {row.LineNumber}: {row.File} | {row.Kind} | {row.Name} allows {row.Count} but "
-                    + $"{actual} sites exist — a NEW inspection; read a materialized fact instead "
+                    + $"{actual} sites exist — "
+                    + (exempt
+                        ? "the exempt mapper's pinned count rose: an inspection moved INTO TypeSyntaxMapper.cs "
+                          + "is still an inspection; materialize the fact, or raise the pin with an owner ruling "
+                        : "a NEW inspection; read a materialized fact instead ")
                     + $"({row.Cite}):\n    " + string.Join("\n    ", found!));
             }
             else if (actual < row.Count)
@@ -653,16 +688,54 @@ public class EmitterCarrierOnlyConformanceTests
             }
         }
 
-        problems.Should().BeEmpty(
-            "every remaining CodeGen inspection of a SemanticType/Symbol is a counted row of "
-            + $"{InspectionAllowlistFileName} citing its class issue, and the file drains both ways.\n"
-            + string.Join("\n", problems)
-            + "\n\nMeasured rows (counts only — keep each row's note):\n"
-            + string.Join("\n", measured
-                .OrderBy(kv => kv.Key.File, StringComparer.Ordinal)
-                .ThenBy(kv => Array.IndexOf(InspectionKinds, kv.Key.Kind))
-                .ThenBy(kv => kv.Key.Name, StringComparer.Ordinal)
-                .Select(kv => $"{kv.Key.File} | {kv.Key.Kind} | {kv.Key.Name} | {kv.Value.Count} | cite=#2443 |")));
+        return problems;
+    }
+
+    /// <summary>
+    /// The exempt mapper's pin, executable: a <c>type-name-compare</c> site the real scanner finds in
+    /// <see cref="InspectionExemptFile"/> is out of the drain census but inside the ratchet — at its
+    /// pinned count it passes, one more fails as a rise, one fewer as stale, and with no row it
+    /// fails as unlisted. The same compare's count moving from an emitter file into the mapper (how
+    /// tranche 2 lowered <c>type-name-compare</c> 20 → 14) is therefore red, not a drain.
+    /// </summary>
+    [Fact]
+    public void ExemptMapperMentions_ArePinnedBothWays()
+    {
+        var universe = SemanticUniverse();
+        var hierarchy = InspectionDeniedNames(universe);
+        var segments = NamespaceSegments(universe);
+
+        const string oneCompare =
+            "class M { bool F(SemanticType t) => t is GenericType g && g.Name != \"list\"; }";
+        const string twoCompares =
+            "class M { bool F(SemanticType t) => t is GenericType g && g.Name != \"list\" && g.Name != \"dict\"; }";
+
+        Dictionary<(string File, string Kind, string Name), List<InspectionSite>> Measure(string source)
+            => ScanInspectionSites(InspectionExemptFile, source, hierarchy, segments)
+                .Where(s => s.Kind == KindTypeNameCompare)
+                .GroupBy(s => (s.File, s.Kind, s.Name))
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+        var pinnedAtOne = new List<InspectionRow>
+        {
+            new(1, InspectionExemptFile, KindTypeNameCompare, ShapeNameCompare, 1, "cite=#2443", "pinned"),
+        };
+        var exists = (string _) => true;
+
+        var atPin = Measure(oneCompare);
+        atPin.Values.SelectMany(v => v).Should().ContainSingle()
+            .Which.Should().Match<InspectionSite>(s => IsInspectionExempt(s.File, s.Kind),
+                "the mapper's compare is exempt from the drain census");
+        CompareWithAllowlist(atPin, pinnedAtOne, exists).Should().BeEmpty("the measured count equals the pin");
+
+        CompareWithAllowlist(Measure(twoCompares), pinnedAtOne, exists).Should().ContainSingle()
+            .Which.Should().Contain("pinned count rose", "a compare moved into the mapper raises its pin");
+
+        CompareWithAllowlist(Measure("class M { }"), pinnedAtOne, exists).Should().ContainSingle()
+            .Which.Should().Contain("STALE", "the pin drains both ways");
+
+        CompareWithAllowlist(atPin, new List<InspectionRow>(), exists).Should().ContainSingle()
+            .Which.Should().Contain("without a row", "an exempt mention with no row is unlisted, not ignored");
     }
 
     /// <summary>

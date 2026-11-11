@@ -851,6 +851,22 @@ public static partial class DiagnosticExplanations
 
         // SPY0487 removed (#1634) — was never emitted
 
+        Add(dict, DiagnosticCodes.Validation.UnreachableArm,
+            "Unreachable except handler",
+            "Validation",
+            "An 'except' handler can never run because an earlier handler of the same 'try' already " +
+            "catches every exception type it names: handlers are tried in order and the first match " +
+            "wins, so an 'except LookupError:' before an 'except KeyError:' takes every KeyError. " +
+            "Python accepts this and never runs the later handler; Sharpy does the same and leaves " +
+            "the unreachable handler out of the compiled program. One type of a tuple handler that an " +
+            "earlier handler catches is left out the same way, without a warning, when the tuple's " +
+            "other types are still reachable. One case differs from Python: Sharpy has no " +
+            "BaseException, so 'except Exception:' also catches SystemExit, and a later bare " +
+            "'except:' never runs in Sharpy although Python still runs it for SystemExit; the warning " +
+            "says so. A later handler that names SystemExit is refused instead (SPY0709).",
+            "try:\n    load()\nexcept LookupError:\n    print(\"lookup\")\nexcept KeyError:      # warning: never runs\n    print(\"key\")",
+            "Put the more specific handler first, or delete the unreachable one:\n  try:\n      load()\n  except KeyError:\n      print(\"key\")\n  except LookupError:\n      print(\"lookup\")");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,
@@ -1120,6 +1136,20 @@ public static partial class DiagnosticExplanations
             "Drop the underscore (`def area(self) -> float: ...`), or backtick-escape the name to keep " +
             "the spelling as a public member (`def `_area`(self) -> float: ...`, implemented as " +
             "`def `_area`(self) -> float:` in the class).");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException,
+            "SystemExit handler after 'except Exception:'", "Validation",
+            "Python roots SystemExit at BaseException, not Exception, so 'except Exception:' does not " +
+            "catch it there and a later 'except SystemExit:' (or a tuple handler naming SystemExit) " +
+            "runs. Sharpy has no BaseException: every exception, SystemExit included, derives from " +
+            "Exception, so the 'except Exception:' handler catches it first and the SystemExit " +
+            "handler could never run. It was written to run, so it is refused rather than silently " +
+            "left out (#2363; docs/deviations.yaml except-exception-catches-systemexit). A handler " +
+            "naming only SystemExit can be moved before 'except Exception:'. A tuple that also names " +
+            "other types must not be moved whole, or those types would leave the 'Exception' handler: " +
+            "handle SystemExit in a handler of its own before 'except Exception:' instead.",
+            "try:\n    run()\nexcept Exception:\n    print(\"failed\")\nexcept SystemExit:   # SPY0709\n    print(\"exit\")",
+            "Move the SystemExit handler before 'except Exception:'; it then runs as in Python:\n  try:\n      run()\n  except SystemExit:\n      print(\"exit\")\n  except Exception:\n      print(\"failed\")");
 
         Add(dict, DiagnosticCodes.ValidationOverflow.DeclarationOutsideDeclaringPosition,
             "Declaration outside a declaring position", "Validation",

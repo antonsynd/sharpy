@@ -125,3 +125,31 @@ internal sealed record IrOptionalStoreWrap(
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;
 }
+
+/// <summary>
+/// A lowered <c>try</c> some of whose <c>except</c> handlers, or some of whose tuple-handler types, an
+/// earlier handler already catches (#2363). Python tries handlers in order and never runs the covered
+/// part; C# refuses a catch for a type after a catch for its base (CS0160). The pass builds this node
+/// from <c>ExceptHandlerReachability</c> (the classifier the SPY0488 warning reads) only when something
+/// is covered; any other <c>try</c> stays an <see cref="IrOpaqueStatement"/>. The emitter reads
+/// <see cref="Handlers"/> and leaves the covered catches out.
+/// </summary>
+/// <param name="Handlers">One plan per handler, aligned with <c>TryStatement.Handlers</c>.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered children, in <c>GetChildNodes</c> order (totality).</param>
+internal sealed record IrPrunedTry(
+    ImmutableArray<IrHandlerPlan> Handlers,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrStatement(Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
+/// What the emitter emits for one <c>except</c> handler of an <see cref="IrPrunedTry"/>.
+/// </summary>
+/// <param name="Emitted">False when an earlier handler covers every type the handler names.</param>
+/// <param name="EmittedTypes">One flag per exception type the handler names, in source order (the
+/// elements of a tuple spelling, or its one type); empty for a bare <c>except:</c>.</param>
+internal sealed record IrHandlerPlan(bool Emitted, ImmutableArray<bool> EmittedTypes);

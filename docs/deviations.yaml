@@ -577,6 +577,26 @@ deviations:
         len("😀")        # 2  (UTF-16 code units)
         "😀"[0]          # high-surrogate code unit '\uD83D'
 
+  - id: timedelta-range-timespan
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`timedelta` holds any magnitude up to 999999999 days (`timedelta.max` is `999999999 days, 23:59:59.999999`); `OverflowError` only past that."
+    sharpy_behavior: "A `timedelta` is a .NET `TimeSpan` (Axiom 1): its magnitude is at most 10675199 days, 2:48:05.477580, about 1.07% of Python's range. Construction or arithmetic whose result lies between the two limits raises `OverflowError` (`days=N; outside the range Sharpy can represent: ...`) where Python returns a value; past Python's own limit both raise `OverflowError` with Python's text. Ruling on #2109 (batching 2026-09-30): the overflow is a Python-named `OverflowError` with this row, never a raw `System.OverflowException`."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from datetime import timedelta
+        print(timedelta(days=11000000))      # 11000000 days, 0:00:00
+        print(timedelta(days=10675199, hours=3))   # 10675199 days, 3:00:00
+      sharpy: |
+        from datetime import timedelta
+        print(timedelta(days=11000000))      # OverflowError: days=11000000; outside the range Sharpy can represent ...
+        print(timedelta(days=10675199, hours=3))   # OverflowError: days=10675199; outside the range Sharpy can represent ...
+
   - id: format-spec-non-bmp-code-units
     code: null
     category: stdlib
@@ -2705,3 +2725,30 @@ deviations:
                 raise ExceptionGroup('errors', errors)
             except BaseExceptionGroup as eg:  # ERROR SPY0202: Type 'BaseExceptionGroup' not found
                 print('caught as BaseExceptionGroup')
+
+  - id: except-exception-catches-systemexit
+    code: SPY0709
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "`SystemExit`, `KeyboardInterrupt` and `GeneratorExit` derive from `BaseException`, not `Exception`, so `except Exception:` does not catch them: a later `except SystemExit:` (or a bare `except:`) after `except Exception:` runs for them."
+    sharpy_behavior: "There is no `BaseException` (exception_handling.md \"No BaseException\"): `SystemExit` derives from `System.Exception` (Core marks it `[PythonBaseException]`; `KeyboardInterrupt` and `GeneratorExit` are not defined). `except Exception:` therefore catches it, so a later handler that names `SystemExit` (alone or in a tuple) could never run: it is refused SPY0709. A handler naming only `SystemExit` is told to move before `except Exception:`, where it runs as in python; a tuple that also names other types is told to handle `SystemExit` in a handler of its own first, since moving the whole tuple would take its other types away from the `Exception` handler. A later bare `except:` is left out with a SPY0488 warning that says python would still run it for `SystemExit` (#2363)."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: SPY0709
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise SystemExit(2)
+        except Exception:
+            print('exc')
+        except SystemExit:
+            print('exit')   # printed
+      sharpy: |
+        def main():
+            try:
+                raise SystemExit(2)
+            except Exception:
+                print('exc')
+            except SystemExit:  # ERROR SPY0709: move this handler before the 'Exception' handler
+                print('exit')

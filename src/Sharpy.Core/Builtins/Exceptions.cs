@@ -372,8 +372,10 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Raised to signal program exit (e.g., after --help).
+    /// Raised to signal program exit (e.g., after --help). CPython roots it at <c>BaseException</c>;
+    /// here it is a <see cref="System.Exception"/> (no BaseException), which the marker records.
     /// </summary>
+    [PythonBaseException]
     public class SystemExit : Exception
     {
         /// <summary>The exit code.</summary>

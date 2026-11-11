@@ -37,8 +37,8 @@ internal partial class RoslynEmitter
         // reads its IrLoweredLoop (#1774). The generator is the one comprehension form the lowering
         // pass produced a node for that nothing read, and a produced-but-unread IR node is a fact
         // with no consumer: an IR pass that rewrote the clauses would have been silently discarded.
-        // Falls back to the AST when the node was not lowered (the error path), exactly as
-        // GetIrLoweredLoop's callers do, so output is unchanged.
+        // The node is required; the AST fallback serves only a unit context over
+        // IrCompilation.Empty, exactly as GetIrLoweredLoop's callers do.
         var clauses = GetIrLoweredGenerator(genExpr)?.Clauses ?? genExpr.Clauses;
         var chain = GenerateGeneratorLinqChain(clauses, genExpr.Element, 0);
         var elementType = MapComprehensionTypeArgument(
@@ -190,9 +190,10 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Reads the lowered comprehension node for <paramref name="comprehension"/> from the lowering IR
-    /// (E2 #1056, migrates the comprehension transform). Returns <c>null</c> when the node was not
-    /// lowered as a comprehension (an error case); callers then recompute the decisions via the
-    /// shared <see cref="LoweringPass"/> helpers so output is unchanged.
+    /// (E2 #1056, migrates the comprehension transform). Every list/set/dict comprehension lowers to
+    /// one, so the node is required (<see cref="RequiredIrNodeFor{TIr}"/>); <c>null</c> only in a
+    /// unit context over <c>IrCompilation.Empty</c>, where callers recompute the decisions via the
+    /// shared <see cref="LoweringPass"/> helpers.
     /// </summary>
     private IrLoweredLoop? GetIrLoweredLoop(Expression comprehension)
     {
@@ -202,13 +203,14 @@ internal partial class RoslynEmitter
         if (_context.Ir.OptimizedComprehensions.TryGetValue(comprehension, out var optimized))
             return optimized;
 
-        return IrNodeFor<IrLoweredLoop>(comprehension);
+        return RequiredIrNodeFor<IrLoweredLoop>(comprehension);
     }
 
     /// <summary>
     /// Reads the lowered generator-expression node for <paramref name="genExpr"/> from the lowering
-    /// IR. Returns <c>null</c> when the node was not lowered as a generator (an error case); the
-    /// caller then reads the clauses off the AST so output is unchanged.
+    /// IR. Every generator expression lowers to one, so the node is required
+    /// (<see cref="RequiredIrNodeFor{TIr}"/>); <c>null</c> only in a unit context over
+    /// <c>IrCompilation.Empty</c>, where the caller reads the clauses off the AST.
     /// </summary>
     /// <remarks>
     /// There is no optimized-copy lookup beside this one: <c>opt_comprehension_fusion</c> matches
@@ -218,7 +220,7 @@ internal partial class RoslynEmitter
     /// <c>ComprehensionFusionPassTests</c>.
     /// </remarks>
     private IrLoweredGenerator? GetIrLoweredGenerator(Expression genExpr)
-        => IrNodeFor<IrLoweredGenerator>(genExpr);
+        => RequiredIrNodeFor<IrLoweredGenerator>(genExpr);
 
     /// <summary>
     /// Builds the constructor capacity argument for a product-of-counts presized comprehension (E3
@@ -501,9 +503,9 @@ internal partial class RoslynEmitter
         Expression? valueExpr,
         string collectionKind)
     {
-        // Emission decisions: read from the lowered IR node when present, else recompute (null-IR
-        // codegen paths — REPL, source generators, direct-emitter unit tests). Both yield the same
-        // values, so emitted C# is byte-identical.
+        // Emission decisions: read from the lowered IR node (required on every pipeline path, the
+        // REPL and source generators included), else recompute for a direct-emitter unit context
+        // over IrCompilation.Empty. Both yield the same values, so emitted C# is byte-identical.
         var loop = GetIrLoweredLoop(comprehension);
         var resultType = loop != null ? loop.Type : GetExpressionSemanticType(comprehension);
         var elementIsSpread = loop != null ? loop.ElementIsSpread : element is SpreadElement;
