@@ -494,6 +494,234 @@ class TestMutualExclusion:
         assert rig.lock_pid() == other.pid, "the wrapper removed files it did not own"
 
 
+#: A frozen copy of the wrapper from before the flock (dev @ fd876b842): it takes the lock with
+#: `mkdir $LOCK_DIR`. Copies of it keep running in worktrees that have not rebased, so the new
+#: wrapper must exclude them too.
+PRE_FLOCK_WRAPPER = (
+    Path(__file__).resolve().parent
+    / "fixtures"
+    / "pre_flock_wrapper"
+    / "dotnet-serialized"
+)
+
+
+class TestMixedFleet:
+    """
+    New (flock) and pre-flock (mkdir) wrappers on one machine during the rollout (#2458). The new
+    wrapper owns ``$LOCK_DIR`` the way an old one does: it never deletes and re-creates it by
+    name, renames an abandoned one aside, creates it exclusively, and gives a pidless directory
+    one beat to gain its pid (an old wrapper between its ``mkdir`` and its pid write).
+    """
+
+    def _spawn(self, rig: Rig, old: bool, tag: str) -> subprocess.Popen:
+        wrapper = PRE_FLOCK_WRAPPER if old else WRAPPER
+        return rig.popen(
+            [str(wrapper), "test", tag],
+            env=rig.env(DOTNET_SERIALIZED_TIMEOUT="120"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+    @pytest.mark.parametrize("old_first", [True, False], ids=["old-first", "new-first"])
+    def test_old_and_new_wrappers_never_overlap(self, rig: Rig, old_first: bool):
+        events = rig.root / "events.txt"
+        _timing_stub(rig, events, "0.3")
+        procs = []
+        for round_ in range(4):
+            # Each round: one of each kind, the first a beat ahead, then a second pair in the
+            # other order, so every handover between kinds happens in both directions.
+            for old in (old_first, not old_first, not old_first, old_first):
+                procs.append(
+                    self._spawn(rig, old, f"--r{round_}-{'old' if old else 'new'}")
+                )
+                time.sleep(0.05)
+        stderrs = [p.communicate(timeout=300)[1] for p in procs]
+
+        assert all(p.returncode == 0 for p in procs), (
+            [p.returncode for p in procs],
+            stderrs,
+        )
+        intervals, overlaps = _overlaps(events)
+        assert len(intervals) == len(procs)
+        assert not overlaps, f"old and new wrappers ran together: {overlaps}"
+
+    def test_a_pidless_dir_that_gains_a_live_pid_within_the_beat_is_not_taken(
+        self, rig: Rig
+    ):
+        """An old wrapper between ``mkdir`` and its pid write must not be moved aside."""
+        rig.lock_dir.mkdir(parents=True)
+        owner = rig.spawn_sleeper()
+        rig.fake_dotnet('echo "Total: 1"')
+
+        proc = rig.spawn("test", DOTNET_SERIALIZED_TIMEOUT="4")
+        time.sleep(0.4)  # inside the one-second beat
+        (rig.lock_dir / "pid").write_text(f"{owner.pid}\n", encoding="utf-8")
+        _, stderr = proc.communicate(timeout=60)
+
+        assert proc.returncode == 124, (
+            f"took a live old wrapper's lock (exit {proc.returncode})"
+        )
+        assert rig.lock_pid() == owner.pid
+
+    def test_a_dir_that_stays_pidless_is_taken_after_the_beat(self, rig: Rig):
+        """Positive control for the probe above: an abandoned pidless directory does not wedge."""
+        rig.lock_dir.mkdir(parents=True)
+        rig.fake_dotnet('echo "Total: 1"')
+
+        started = time.time()
+        result = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="30")
+
+        assert result.returncode == 0, result.stderr
+        assert 1 <= time.time() - started < 15
+
+    def test_losing_the_create_to_an_old_wrapper_means_waiting(self, rig: Rig):
+        """
+        Window (b): an old wrapper's ``mkdir`` lands between the new wrapper's verdict "free"
+        and its own create. The race is microseconds wide, so a ``mkdir`` shim opens it by hand:
+        on the first create of ``$LOCK_DIR`` it makes the directory itself with a live owner's
+        pid, exactly as the old wrapper would, then reports what the real tool reports — EEXIST
+        for an exclusive create, success for ``mkdir -p``. The new wrapper must then wait, not
+        run. ``DOTNET_SERIALIZED_MKDIR_TOOL=mkdir`` routes the create through the binary (the fallback where
+        neither python3 nor perl runs), which is the path the shim can reach.
+        """
+        owner = rig.spawn_sleeper()
+        real_mkdir = shutil.which("mkdir")
+        marker = rig.root / "raced"
+        shim = rig.bin / "mkdir"
+        shim.write_text(
+            "#!/bin/sh\n"
+            'for a; do target="$a"; done\n'
+            f'if [ "$target" = "{rig.lock_dir}" ] && [ ! -e "{marker}" ]; then\n'
+            f'  : > "{marker}"\n'
+            f'  "{real_mkdir}" "$target"\n'
+            f'  echo {owner.pid} > "$target/pid"\n'
+            '  case " $* " in *" -p "*) exit 0 ;; esac\n'
+            '  echo "mkdir: cannot create directory: File exists" >&2\n'
+            "  exit 1\n"
+            "fi\n"
+            f'exec "{real_mkdir}" "$@"\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+        rig.fake_dotnet('echo "Total: 1"')
+
+        result = rig.run(
+            "test", DOTNET_SERIALIZED_TIMEOUT="4", DOTNET_SERIALIZED_MKDIR_TOOL="mkdir"
+        )
+
+        assert marker.exists(), "positive control: the shim's race never ran"
+        assert result.returncode == 124, (
+            f"ran beside an old wrapper that won the create (exit {result.returncode})"
+        )
+        assert rig.lock_pid() == owner.pid
+
+    def test_release_without_a_holder_leaves_a_pidless_dir_alone(self, rig: Rig):
+        """
+        A pidless directory may be an old wrapper between ``mkdir`` and its pid write. An
+        anonymous ``--release-lock`` matched "no pid" to "no holder" and removed it.
+        """
+        rig.lock_dir.mkdir(parents=True)
+
+        result = rig.run("--release-lock")
+
+        assert result.returncode == 2
+        assert rig.lock_dir.exists()
+
+
+class TestSignalledHolder:
+    """
+    A caller's timeout sends SIGTERM to the wrapper. Bash defers a signal trap while a FOREGROUND
+    pipeline runs but runs the EXIT trap at once, so the old foreground ``dotnet | tee`` released
+    the lock while dotnet kept running, and the next waiter started a second dotnet.
+    """
+
+    def test_sigterm_ends_dotnet_before_the_lock_is_released(self, rig: Rig):
+        events = rig.root / "events.txt"
+        started = rig.root / "first_started"
+        now = 'python3 -c "import time;print(repr(time.time()))"'
+        # The first run behaves like `dotnet test` on SIGTERM: it takes a moment to wind down.
+        rig.fake_dotnet(
+            'case " $* " in\n'
+            '  *" --first "*)\n'
+            f"    start=$({now})\n"
+            f'    trap \'sleep 1; echo "RAN $start $({now})" >> "{events}"; exit 0\' TERM\n'
+            f'    : > "{started}"\n'
+            # Unsignalled, it runs 5 s and still records itself, so an overlap stays visible.
+            "    sleep 5 &\n"
+            "    wait\n"
+            f'    echo "RAN $start $({now})" >> "{events}"\n'
+            "    ;;\n"
+            "  *)\n"
+            f"    start=$({now}); sleep 0.2\n"
+            f'    echo "RAN $start $({now})" >> "{events}"\n'
+            '    echo "Total: 1" ;;\n'
+            "esac\n"
+        )
+        first = rig.spawn("test", "--first", DOTNET_SERIALIZED_TIMEOUT="60")
+        wait_for(started.exists, what="the first fake dotnet to start")
+        peer = rig.spawn("test", "--second", DOTNET_SERIALIZED_TIMEOUT="60")
+        time.sleep(0.5)
+
+        first.send_signal(signal.SIGTERM)
+        first.communicate(timeout=60)
+        peer_out, peer_err = peer.communicate(timeout=60)
+
+        intervals, overlaps = _overlaps(events)
+        assert not overlaps, (
+            f"a peer ran beside a SIGTERMed holder's dotnet: {overlaps}"
+        )
+        # The caller asked the build to stop: dotnet is ended at once (its TERM handler ran and
+        # recorded its run) and the wrapper exits as a signalled run, 128 + 15.
+        assert len(intervals) == 2, intervals
+        assert first.returncode == 143, first.returncode
+        assert peer.returncode == 0, peer_err
+
+
+class TestHolderStatusLiveness:
+    def test_a_lock_only_hold_is_reported_held_not_free(self, rig: Rig):
+        """bench_ab's hold keeps no flock; calling it FREE invites someone to clear it."""
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        try:
+            out = rig.run("--holder-status").stdout
+            assert "lock:    HELD" in out, out
+            assert "FREE" not in out
+        finally:
+            rig.run("--release-lock", str(os.getpid()))
+
+    def test_a_dead_holders_files_are_reported_free(self, rig: Rig):
+        rig.lock_dir.mkdir(parents=True)
+        (rig.lock_dir / "pid").write_text(f"{dead_pid()}\n", encoding="utf-8")
+        out = rig.run("--holder-status").stdout
+        assert "lock:    FREE" in out, out
+
+    @pytest.mark.parametrize("locker", ["python3", "perl"])
+    def test_the_status_line_appears_without_flock_1(self, rig: Rig, locker: str):
+        if shutil.which(locker) is None:
+            pytest.skip(f"{locker} is not installed here")
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        try:
+            out = rig.run("--holder-status", DOTNET_SERIALIZED_LOCKERS=locker).stdout
+            assert "lock:    HELD" in out, out
+        finally:
+            rig.run("--release-lock", str(os.getpid()))
+
+
+class TestCannotLock:
+    def test_an_unopenable_lock_file_exits_125(self, rig: Rig):
+        (rig.home / ".claude" / "locks" / "dotnet.flock").mkdir(parents=True)
+        rig.fake_dotnet('echo "Total: 1"')
+        result = rig.run("test")
+        assert result.returncode == 125, result.stderr
+        assert "cannot open" in result.stderr
+
+    def test_no_working_flock_tool_exits_125(self, rig: Rig):
+        rig.fake_dotnet('echo "Total: 1"')
+        result = rig.run("test", DOTNET_SERIALIZED_LOCKERS="no-such-tool")
+        assert result.returncode == 125, result.stderr
+        assert "no working flock tool" in result.stderr
+
+
 class TestOrphanedChild:
     def test_an_orphaned_dotnet_child_keeps_the_lock(self, rig: Rig):
         """
@@ -780,6 +1008,30 @@ class TestRecordChild:
         finally:
             victim.kill()
             victim.wait()
+
+    def test_a_release_with_a_live_recorded_child_keeps_the_lock(self, rig: Rig):
+        """
+        bench_ab releases in a ``finally``, so an exception between arms can release while its
+        recorded benchmark still runs. The files stay, and a peer waits on that child.
+        """
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        benchmark = rig.spawn_sleeper()
+        assert (
+            rig.run("--record-child", str(os.getpid()), str(benchmark.pid)).returncode
+            == 0
+        )
+        assert rig.run("--release-lock", str(os.getpid())).returncode == 0
+        rig.fake_dotnet('echo "Total: 1"')
+
+        queued = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="3")
+        assert queued.returncode == 124, (
+            "a peer ran beside a released holder's live child"
+        )
+
+        benchmark.kill()
+        benchmark.wait(timeout=30)
+        admitted = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="10")
+        assert admitted.returncode == 0, admitted.stderr
 
     def test_a_recorded_child_survives_a_sigkilled_holder(self, rig: Rig):
         """

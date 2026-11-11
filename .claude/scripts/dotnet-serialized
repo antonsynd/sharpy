@@ -94,9 +94,16 @@ LOG_RETENTION_MINUTES=10080  # 7 days
 # THE LOCK (#2458). One flock(2) on $LOCK_FILE, taken on fd 9 and held for the wrapper's whole
 # run. The kernel grants it to one process at a time and drops it when the holder exits or dies,
 # so there is no stale lock to judge, no takeover path, and no window between "acquired" and
-# "recorded". It replaced a mkdir lock whose takeover and release removed the lock directory by
-# NAME: two waiters could each judge a lock abandoned and each delete-and-recreate it, and two
-# runs were admitted 0.06-2.8 ms apart on CI (three times in two days).
+# "recorded". It replaced `while ! mkdir $LOCK_DIR`, which admitted two runs at once on CI: on
+# the ubuntu-26.04 runner the mkdir BINARY (uutils coreutils 0.10.0) reports success to several
+# processes creating one directory together (build_tools/tests/test_lock_platform_assumptions.py).
+#
+# How each way the wrapper can end keeps exclusion while its dotnet runs:
+#   * normal end, watchdog kill: dotnet has exited before the release.
+#   * SIGTERM, SIGINT, SIGHUP (a caller's timeout): on_signal ends dotnet's tree first.
+#   * SIGKILL: nothing in the wrapper runs; the next holder waits on the recorded child.
+# Wrappers from before the flock (still in worktrees not yet rebased) take $LOCK_DIR itself as
+# their lock, so this wrapper also owns that directory their way: see take_lock_dir.
 #
 # The files in $LOCK_DIR (pid, child, log, cwd, started) are written only while holding the
 # flock. For a wrapper run they are diagnostics, plus one duty: they outlive a holder that dies,
@@ -171,6 +178,16 @@ exit 0;
     esac
 }
 
+# Try to lock fd 9 without waiting: 0 locked (the lock was free), non-zero otherwise.
+try_lock_fd9() {
+    case "$LOCKER" in
+        flock) flock -n 9 ;;
+        python3) python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2>/dev/null ;;
+        perl) perl -MFcntl=:flock -e 'open(my $f, ">&=", 9) or exit 1; flock($f, LOCK_EX | LOCK_NB) or exit 1' ;;
+        *) return 2 ;;
+    esac
+}
+
 bump_generation() {
     local gen
     gen=$(cat "$GENERATION_FILE" 2>/dev/null)
@@ -186,43 +203,101 @@ lock_timeout() {
     exit 124
 }
 
-# Runs holding the flock, before this holder writes anything. Diagnostics left in $LOCK_DIR
-# belong to a holder that is gone without releasing: killed (a caller's timeout, a usage limit).
-# Its shell is dead, but its dotnet/testhost children are reparented to init and keep their
-# 5-10 GB, so the lock is still owed to them: wait while the recorded child lives (#1508,
-# 58c82ffa5), reaping it only by the stall rule in reap_orphan. Wait too while the recorded
-# owner lives: a --acquire-lock holder (bench_ab) holds the lock through its pid file across the
-# two arms of a round, and a wrapper from before the flock (rollout) through its directory.
+# Runs holding the flock. Files left in $LOCK_DIR mean one of three things, and only the last is
+# free to take:
+#
+#   * A holder that died without releasing (a caller's timeout, a usage limit): its shell is dead
+#     but its dotnet/testhost children are reparented to init and keep their 5-10 GB, so the lock
+#     is still owed to them. Wait while the recorded child lives (#1508, 58c82ffa5), reaping it
+#     only by the stall rule in reap_orphan.
+#   * A live recorded owner: a --acquire-lock holder (bench_ab) holds the lock through its pid file
+#     across the two arms of a round, and a wrapper from before the flock (the rollout) holds its
+#     mkdir lock this way. Wait.
+#   * Nothing alive. A directory with NO pid may be an old wrapper between its `mkdir` and its pid
+#     write, so it is judged again after a one-second beat; still pidless then, it is abandoned.
+#
+# Returns with JUDGED_OWNER set to the pid file's content at the verdict (empty if none), which
+# take_lock_dir uses to check that it moved aside the directory it judged.
 #
 # KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
 # the full TIMEOUT. Bounded by that timeout rather than by correctness. The probability is
 # UNMEASURED, and deliberately so: measuring it means forcing PID wraparound on a shared
 # development machine. Declined by the 2026-08-13 INFRA batch (#1481).
 wait_out_previous_holder() {
-    local deadline="$1" child owner announced=0
+    local deadline="$1" child owner announced=0 pidless_seen=0
     while :; do
         child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
         owner=$(cat "$LOCK_PID_FILE" 2>/dev/null)
         case "$child" in ''|*[!0-9]*) child="" ;; esac
         case "$owner" in ''|*[!0-9]*) owner="" ;; esac
+        [ "$(date +%s)" -lt "$deadline" ] || lock_timeout
         if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
-            [ "$(date +%s)" -lt "$deadline" ] || lock_timeout
             reap_orphan && continue
         elif [ -n "$owner" ] && [ "$owner" != "$$" ] && kill -0 "$owner" 2>/dev/null; then
             :
+        elif [ -d "$LOCK_DIR" ] && [ -z "$owner" ] && [ "$pidless_seen" -eq 0 ]; then
+            pidless_seen=1
+            sleep 1
+            continue
         else
-            if [ -d "$LOCK_DIR" ] && [ -n "$owner$child" ]; then
-                echo "WARNING: discarding stale dotnet lock files of dead holder PID ${owner:-unknown}." >&2
-            fi
+            JUDGED_OWNER="$owner"
             return 0
         fi
+        pidless_seen=0
         if [ "$announced" -eq 0 ]; then
             echo "Waiting for the previous holder's dotnet (PID ${child:-$owner}) to exit." >&2
             announced=1
         fi
-        [ "$(date +%s)" -lt "$deadline" ] || lock_timeout
         sleep 2
     done
+}
+
+# Create a directory, failing if it exists. On the ubuntu-26.04 runner the `mkdir` BINARY (uutils
+# coreutils 0.10.0) reports success to several processes creating the same directory at once
+# (#2458; build_tools/tests/test_lock_platform_assumptions.py), while the mkdir(2) syscall is
+# exclusive. So call the syscall through python3 or perl, and fall back to the binary only where
+# neither runs (it is exclusive in GNU and BSD coreutils).
+exclusive_mkdir() {
+    # DOTNET_SERIALIZED_MKDIR_TOOL forces a tool, so the harness can reach the binary fallback.
+    [ -n "${MKDIR_TOOL:-}" ] || MKDIR_TOOL="${DOTNET_SERIALIZED_MKDIR_TOOL:-}"
+    if [ -z "${MKDIR_TOOL:-}" ]; then
+        if python3 -c 'import os' >/dev/null 2>&1; then
+            MKDIR_TOOL=python3
+        elif perl -e 1 >/dev/null 2>&1; then
+            MKDIR_TOOL=perl
+        else
+            MKDIR_TOOL=mkdir
+        fi
+    fi
+    case "$MKDIR_TOOL" in
+        python3) python3 -c 'import os, sys; os.mkdir(sys.argv[1])' "$1" 2>/dev/null ;;
+        perl) perl -e 'mkdir($ARGV[0]) or exit 1' "$1" 2>/dev/null ;;
+        *) mkdir "$1" 2>/dev/null ;;
+    esac
+}
+
+# Make $LOCK_DIR this holder's, without ever deleting or re-creating it by name: wrappers from
+# before the flock still treat the directory itself as the lock. A judged-abandoned directory is
+# renamed aside, then the directory is created EXCLUSIVELY; losing that create to an old wrapper's
+# `mkdir` means it holds the lock now, so the caller waits again. Returns 1 to say "wait again".
+take_lock_dir() {
+    local aside="${LOCK_DIR}.stale.$$.${RANDOM}" moved
+    if [ -d "$LOCK_DIR" ]; then
+        mv "$LOCK_DIR" "$aside" 2>/dev/null || return 1
+        moved=$(cat "$aside/pid" 2>/dev/null)
+        if [ "$moved" != "$JUDGED_OWNER" ]; then
+            # An old wrapper replaced the judged directory between the verdict and the rename.
+            # Put its directory back (rename(2) refuses a non-empty target) and wait again.
+            python3 -c 'import os, sys; os.rename(sys.argv[1], sys.argv[2])' "$aside" "$LOCK_DIR" 2>/dev/null \
+                || { [ ! -e "$LOCK_DIR" ] && mv "$aside" "$LOCK_DIR" 2>/dev/null; }
+            return 1
+        fi
+        if [ -n "$JUDGED_OWNER" ] || [ -e "$aside/child" ]; then
+            echo "WARNING: discarding stale dotnet lock files of dead holder PID ${JUDGED_OWNER:-unknown}." >&2
+        fi
+        rm -rf "$aside"
+    fi
+    exclusive_mkdir "$LOCK_DIR"
 }
 
 # Take the lock for OWNER_PID (this wrapper, or a --acquire-lock holder) and publish the
@@ -254,22 +329,34 @@ acquire_lock() {
             exit 125
             ;;
     esac
-    wait_out_previous_holder "$deadline"
-    rm -rf "$LOCK_DIR"
-    mkdir -p "$LOCK_DIR"
-    echo "$owner_pid" > "$LOCK_PID_FILE"
+    while :; do
+        wait_out_previous_holder "$deadline"
+        take_lock_dir && break
+        sleep 1
+    done
+    # Written aside and renamed in, so an old wrapper never reads a present-but-empty pid file
+    # (it judged that abandoned at once).
+    echo "$owner_pid" > "$LOCK_DIR/pid.$$" && mv -f "$LOCK_DIR/pid.$$" "$LOCK_PID_FILE"
     pwd -P > "$LOCK_CWD_FILE"
     date +%s > "$LOCK_STARTED_FILE"
     bump_generation
 }
 
-# Remove the files if they are OWNER's; files naming someone else are left alone. Renamed away
-# first, so they vanish in one step: --release-lock runs WITHOUT the flock (the next wrapper may
-# be holding it while it waits for this holder), and a half-deleted directory read as "released"
+# Remove the files if they are OWNER's; files naming someone else are left alone. While the
+# recorded dotnet child still runs only the pid file goes: the next holder waits on the child. Renamed away first,
+# so they vanish in one step: --release-lock runs WITHOUT the flock (the next wrapper may be
+# holding it while it waits for this holder), and a half-deleted directory read as "released"
 # would let that wrapper write its own files while this rm was still deleting.
 clear_diagnostics() {
-    local trash="${LOCK_DIR}.released.$$"
+    local trash="${LOCK_DIR}.released.$$" child
     [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$1" ] || return 0
+    child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+    case "$child" in
+        ''|*[!0-9]*) ;;
+        # The owner lets go; the live child keeps the lock (the pid file goes, or a live owner
+        # that has released would hold it after the child too).
+        *) kill -0 "$child" 2>/dev/null && { rm -f "$LOCK_PID_FILE"; return 0; } ;;
+    esac
     mv "$LOCK_DIR" "$trash" 2>/dev/null && rm -rf "$trash"
     return 0
 }
@@ -502,12 +589,26 @@ case "${1:-}" in
             echo "No lock held."
             exit 0
         fi
-        # Probe the flock itself; the files alone outlive a holder that was killed.
-        if { exec 9>>"$LOCK_FILE"; } 2>/dev/null && pick_locker && [ "$LOCKER" = flock ] \
-            && flock -n 9; then
+        # The files alone do not say whether anything still holds the lock: probe the flock,
+        # then the recorded owner and child, which hold it when the flock is free (see
+        # wait_out_previous_holder).
+        _owner=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+        _child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+        _files_live=0
+        for _pid in "$_owner" "$_child"; do
+            case "$_pid" in ''|*[!0-9]*) ;; *) kill -0 "$_pid" 2>/dev/null && _files_live=1 ;; esac
+        done
+        if ! { { exec 9>>"$LOCK_FILE"; } 2>/dev/null && pick_locker; }; then
+            echo "lock:    UNKNOWN (no working flock tool to probe it)"
+        elif ! try_lock_fd9; then
+            echo "lock:    HELD (a wrapper holds the flock)"
+        elif [ "$_files_live" -eq 1 ]; then
+            echo "lock:    HELD (by the live owner or child below: a --acquire-lock holder, a"
+            echo "         wrapper from before the flock, or a killed wrapper's dotnet)"
+        else
             echo "lock:    FREE (the files below are left over from a holder that died)"
-            exec 9>&-
         fi
+        exec 9>&-
         echo "pid:     $(cat "$LOCK_PID_FILE" 2>/dev/null || echo '(none)')"
         echo "child:   $(cat "$LOCK_CHILD_FILE" 2>/dev/null || echo '(none)')"
         echo "cwd:     $(cat "$LOCK_CWD_FILE" 2>/dev/null || echo '(none)')"
@@ -560,16 +661,59 @@ trap cleanup EXIT
 echo "$LOG_FILE" > "$LOCK_LOG_FILE"
 
 # Record the dotnet process's OWN pid where the next holder looks if this wrapper dies (see
-# wait_out_previous_holder): `bash -c`
-# starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
-# the pid. Written by the child rather than the parent because /bin/bash here is 3.2, which has
-# no $BASHPID. ${PIPESTATUS[0]} is still dotnet's own exit code — the exec'd shell IS dotnet.
-# None of these inherits fd 9 (see THE LOCK).
+# wait_out_previous_holder): `bash -c` starts a shell whose $$ is its own, and `exec` then
+# replaces that shell with dotnet, keeping the pid. Written by the child rather than the parent
+# because /bin/bash here is 3.2, which has no $BASHPID. None of these inherits fd 9 (see THE LOCK).
 watchdog "$$" >/dev/null 2>&1 9>&- &
 WATCHDOG_PID=$!
 
-bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" 2>&1 9>&- | tee "$LOG_FILE" 9>&-
-EXIT_CODE=${PIPESTATUS[0]}
+# dotnet runs in the BACKGROUND, teeing through a FIFO, and the wrapper `wait`s for it. A trap
+# set for a signal does not run while bash waits for a FOREGROUND command, only once it ends, so
+# with dotnet in a foreground pipeline a caller's timeout (SIGTERM) ran the EXIT trap, released
+# the lock and left dotnet running, and the next waiter started a second one. `wait` returns at
+# once on a trapped signal, so on_signal can end dotnet's tree FIRST and only then release.
+# `wait PID` also returns dotnet's own exit code, as ${PIPESTATUS[0]} did.
+alive() {
+    local state
+    state=$(ps -o stat= -p "$1" 2>/dev/null)
+    [ -n "$state" ] && [ "${state#Z}" = "$state" ]
+}
+
+on_signal() {
+    trap - TERM INT HUP
+    local waited=0
+    kill_tree "$DOTNET_PID" -TERM
+    while alive "$DOTNET_PID" && [ "$waited" -lt "$((WATCHDOG_GRACE * 5))" ]; do
+        sleep 0.2
+        waited=$((waited + 1))
+    done
+    kill_tree "$DOTNET_PID" -KILL
+    wait "$DOTNET_PID" 2>/dev/null
+    kill "$WATCHDOG_PID" "$TEE_PID" 2>/dev/null
+    rm -f "$FIFO"
+    exit "$1"  # the EXIT trap releases the lock
+}
+
+FIFO="${LOG_FILE}.fifo"
+rm -f "$FIFO"
+mkfifo "$FIFO"
+tee "$LOG_FILE" < "$FIFO" 9>&- &
+TEE_PID=$!
+DOTNET_PID=""
+trap 'on_signal 143' TERM
+trap 'on_signal 130' INT
+trap 'on_signal 129' HUP
+# A background command's stdin defaults to /dev/null; keep the caller's.
+exec 3<&0
+bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" \
+    > "$FIFO" 2>&1 <&3 3<&- 9>&- &
+DOTNET_PID=$!
+exec 3<&-
+wait "$DOTNET_PID"
+EXIT_CODE=$?
+wait "$TEE_PID" 2>/dev/null
+trap - TERM INT HUP
+rm -f "$FIFO"
 
 kill "$WATCHDOG_PID" 2>/dev/null
 wait "$WATCHDOG_PID" 2>/dev/null
