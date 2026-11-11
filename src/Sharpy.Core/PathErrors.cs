@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Sharpy
 {
@@ -123,6 +124,12 @@ namespace Sharpy
             {
                 throw Create(refusal, RenameSubject(src, dst), null);
             }
+            if (SameEntry(src, dst))
+            {
+                // rename(2) of an entry onto itself succeeds and changes nothing; the empty-directory
+                // delete below would otherwise remove the source itself.
+                return;
+            }
             try
             {
                 if (Directory.Exists(src))
@@ -166,6 +173,7 @@ namespace Sharpy
             IsADirectory,
             Exists,
             NotEmpty,
+            InvalidArgument,
         }
 
         /// <summary>
@@ -237,6 +245,21 @@ namespace Sharpy
             {
                 return verdict;
             }
+            // The relation of the two paths, read after both parents resolve and before the kinds:
+            // an existing entry onto itself succeeds (rename(2) is a no-op), and a directory onto a
+            // path inside itself is EINVAL whatever the destination's kind (python3 3.13.18: plain
+            // OSError errno 22 for `ne` onto `ne/sub`, `ne/file` and a missing `ne/x`).
+            if (Directory.Exists(src) || File.Exists(src))
+            {
+                if (SameEntry(src, dst))
+                {
+                    return Verdict.Ok;
+                }
+                if (Directory.Exists(src) && IsInside(src, dst))
+                {
+                    return Verdict.InvalidArgument;
+                }
+            }
             if (Directory.Exists(src))
             {
                 if (File.Exists(dst))
@@ -290,6 +313,27 @@ namespace Sharpy
             }
             return File.Exists(path) ? AFile : Missing;
         }
+
+        /// <summary>
+        /// The comparison two spellings of one entry agree under: ordinal on Linux (the reference host,
+        /// D4), case-insensitive elsewhere — on a case-insensitive file system <c>D</c> and <c>d</c> are
+        /// one directory, and treating them as two would let <see cref="Rename"/> delete it.
+        /// </summary>
+        private static readonly StringComparison EntryComparison =
+            RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+        /// <summary>The absolute spelling of <paramref name="path"/> with any trailing separator removed (the root kept).</summary>
+        private static string Normal(string path)
+        {
+            var full = System.IO.Path.GetFullPath(path);
+            var trimmed = full.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+            return trimmed.Length == 0 ? full : trimmed;
+        }
+
+        private static bool SameEntry(string a, string b) => string.Equals(Normal(a), Normal(b), EntryComparison);
+
+        private static bool IsInside(string directory, string path) =>
+            Normal(path).StartsWith(Normal(directory) + System.IO.Path.DirectorySeparatorChar, EntryComparison);
 
         private static bool IsEmptyDirectory(string path) => !Directory.EnumerateFileSystemEntries(path).Any();
 
@@ -358,6 +402,10 @@ namespace Sharpy
                     return inner == null
                         ? new FileExistsError("File exists: " + subject)
                         : new FileExistsError("File exists: " + subject, inner);
+                case Verdict.InvalidArgument:
+                    return inner == null
+                        ? new OSError("Invalid argument: " + subject)
+                        : new OSError("Invalid argument: " + subject, inner);
                 case Verdict.NotEmpty:
                     return inner == null
                         ? new OSError("Directory not empty: " + subject)
