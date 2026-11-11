@@ -27,6 +27,7 @@ Usage:
     python3 build_tools/spy_none_default_audit.py          # print the audit matrix
     python3 build_tools/spy_none_default_audit.py --check  # exit 1 on any ratchet violation
 """
+
 from __future__ import annotations
 
 import argparse
@@ -283,10 +284,40 @@ def _describe_default(value) -> str:
     return repr(value)
 
 
+_CLINIC_HEADER = re.compile(r"([A-Za-z_]\w*)\(.*?\)\n--\n\n", re.DOTALL)
+
+
+def _signature(cpython_callable) -> inspect.Signature:
+    """`inspect.signature`, following a C alias to the method its signature belongs to.
+
+    Argument Clinic stores a C method's signature as a `name(...)\\n--\\n\\n` header on its
+    docstring, and `__text_signature__` is exposed only when `name` is the method's own name.
+    An alias that shares its canonical method's docstring therefore has no signature: in
+    CPython 3.15 `re.Pattern.match` is an alias whose docstring header is
+    `prefixmatch($self, /, string, pos=0, endpos=sys.maxsize)`. The header names the canonical
+    method on the same class, which carries the signature.
+    """
+    try:
+        return inspect.signature(cpython_callable)
+    except ValueError:
+        owner = getattr(cpython_callable, "__objclass__", None)
+        m = _CLINIC_HEADER.match(getattr(cpython_callable, "__doc__", None) or "")
+        if owner is None or m is None or m.group(1) == cpython_callable.__name__:
+            raise
+        canonical = getattr(owner, m.group(1), None)
+        # Same docstring once the header is split off: an alias, not a different method.
+        if (
+            canonical is None
+            or canonical.__doc__ != cpython_callable.__doc__[m.end() :]
+        ):
+            raise
+        return inspect.signature(canonical)
+
+
 def classify(cell: SpyParam, cpython_callable) -> Verdict:
     """Compare one spy None-default parameter with the CPython callable that owns it."""
     try:
-        sig = inspect.signature(cpython_callable)
+        sig = _signature(cpython_callable)
     except (TypeError, ValueError) as ex:
         return Verdict(cell, "skip", f"uninspectable: {ex}")
     p = sig.parameters.get(cell.param)
