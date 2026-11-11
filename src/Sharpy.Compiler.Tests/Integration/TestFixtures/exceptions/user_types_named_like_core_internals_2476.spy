@@ -1,0 +1,22 @@
+# plan-638e8b D1.4 (#2476): the path-state classifier's names reserve nothing. Its requirement enum
+# (`PathRequirement`) and stamp attribute are INTERNAL to Sharpy.Core and its public face is a static
+# class (`PathErrors`); a public Core enum would be a bare builtin in every program (SPY0212 on a user
+# class of the same name), a public static class is not. So a program may declare both spellings.
+
+class PathRequirement:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class PathErrors(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+def main():
+    r = PathRequirement("needs-dir")
+    print(f"user PathRequirement: {r.name}")
+    try:
+        raise PathErrors("boom")
+    except PathErrors as e:
+        print(f"caught user PathErrors: {e}")
