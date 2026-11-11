@@ -1,0 +1,69 @@
+name: Relevant changes
+description: >-
+  Says whether the triggering change touches a path in `paths`. A workflow whose pull_request
+  trigger has no path filter (so that its Gate job always reports, and can be a required check)
+  calls this from its first job and runs its heavy jobs only when `relevant` is 'true'.
+  build_tools/tests/test_workflow_relevance.py checks every file a workflow reads against its list.
+
+inputs:
+  paths:
+    description: >-
+      One GitHub filter pattern per line (`*`, `**`, `?`; a leading `!` excludes, and excludes come
+      last). Blank lines and lines starting with `#` are ignored.
+    required: true
+
+outputs:
+  relevant:
+    description: "'true' when a changed file matches `paths`, or when the range is unknown; else 'false'."
+    value: ${{ steps.decide.outputs.relevant }}
+
+runs:
+  using: composite
+  steps:
+    - id: decide
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        EVENT: ${{ github.event_name }}
+        BEFORE: ${{ github.event.before }}
+      # The caller checks out with fetch-depth 2. A pull_request checkout is the merge commit: its
+      # first parent is the base, so HEAD^1..HEAD is exactly the PR's diff. A push compares against
+      # the event's `before`. Fails safe: an unknown range (a dispatch, a new branch's all-zero
+      # `before`, a force-push whose `before` is gone) or an empty file list counts as relevant.
+      # --no-renames lists both sides of a rename, so a file moved out of a listed path counts.
+      run: |
+        set -uo pipefail
+        spec=()
+        while IFS= read -r p; do
+          p="${p#"${p%%[![:space:]]*}"}"; p="${p%"${p##*[![:space:]]}"}"
+          case "$p" in
+            ''|'#'*) ;;
+            '!'*) spec+=(":(glob,exclude)${p#!}") ;;
+            *) spec+=(":(glob)$p") ;;
+          esac
+        done <<< "$PATHS"
+        if [ "${#spec[@]}" -eq 0 ]; then echo "::error::relevant-changes: no paths given"; exit 1; fi
+        base=""
+        if [ "$EVENT" = "pull_request" ]; then
+          base=$(git rev-parse -q --verify HEAD^1 || true)
+        elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+          git fetch --no-tags --depth=1 origin "$BEFORE" && base="$BEFORE"
+        fi
+        all=""
+        [ -n "$base" ] && all=$(git diff --no-renames --name-only "$base" HEAD || true)
+        printf 'changed files (%s..HEAD):\n%s\n' "${base:-?}" "${all:-<unknown>}"
+        if [ -z "$all" ]; then
+          echo "relevant=true" >> "$GITHUB_OUTPUT"
+          echo "unknown or empty range: counted as relevant"
+          exit 0
+        fi
+        if ! hits=$(git diff --no-renames --name-only "$base" HEAD -- "${spec[@]}"); then
+          echo "::error::git diff with the path list failed"; exit 1
+        fi
+        if [ -n "$hits" ]; then
+          echo "relevant=true" >> "$GITHUB_OUTPUT"
+          printf 'relevant files:\n%s\n' "$hits"
+        else
+          echo "relevant=false" >> "$GITHUB_OUTPUT"
+          echo "no changed file matches the path list: the jobs it guards are skipped"
+        fi

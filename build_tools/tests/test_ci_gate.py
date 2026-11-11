@@ -640,8 +640,10 @@ class TestGateTriggers:
     def test_pull_requests_run_for_every_base(self, workflow: Path) -> None:
         assert "branches" not in event_block(workflow, "pull_request")
 
-    def test_pull_requests_keep_their_path_filter(self, workflow: Path) -> None:
-        assert "paths:" in event_block(workflow, "pull_request")
+    def test_pull_requests_start_whatever_they_touch(self, workflow: Path) -> None:
+        # The workflow's `changes` job makes the path decision, so its Gate job always reports
+        # (test_workflow_relevance.py).
+        assert "paths" not in event_block(workflow, "pull_request")
 
     def test_a_manual_dispatch_is_available(self, workflow: Path) -> None:
         assert "workflow_dispatch" in on_block(workflow)
@@ -670,5 +672,9 @@ def test_the_python_job_gives_pytest_a_built_compiler() -> None:
 
 def test_a_workflow_change_runs_this_harness() -> None:
     # Without this, editing ci-summary would not run the contract test above.
-    for event in ("push", "pull_request"):
-        assert "'.github/workflows/dotnet10.yml'" in event_block(PYTHON_YML, event)
+    from build_tools.tests.test_workflow_relevance import load, matches, relevant_paths
+
+    workflow = load(PYTHON_YML)
+    listed = relevant_paths(workflow)
+    assert listed and matches(".github/workflows/dotnet10.yml", listed)
+    assert matches(".github/workflows/dotnet10.yml", workflow[True]["push"]["paths"])
