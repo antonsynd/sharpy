@@ -63,11 +63,20 @@ internal partial class RoslynEmitter
         // the constructor initializer (: base(...) / : this(...)). The classification is the shared
         // AstHelper authority the checker also uses: grouping is transparent (#1147, #1170, #1197),
         // and the checker refuses any statement ahead of the call (it would run after the hoisted
-        // initializer), so for an accepted program the call is the body's first statement.
+        // initializer, SPY0292), so for an accepted program the call is the body's first statement.
+        // Reaching a later index means the checker let a reordering through: fail loudly rather than
+        // emit statements that run after the initializer they were written before.
         ConstructorInitializerSyntax? constructorInitializer = null;
         int initializerCallIndex = Shared.AstHelper.FindConstructorInitializerIndex(func.Body);
+        if (initializerCallIndex > 0)
+        {
+            throw new InternalCompilerErrorException("RoslynEmitter",
+                $"constructor chaining call at body index {initializerCallIndex} reached the emitter; "
+                + "the checker refuses a statement ahead of it (SPY0292, #2507)",
+                func.Body[initializerCallIndex]);
+        }
 
-        if (initializerCallIndex >= 0
+        if (initializerCallIndex == 0
             && Shared.AstHelper.TryGetConstructorInitializerCall(
                 func.Body[initializerCallIndex], out var initCall, out var chainsToBase))
         {
@@ -83,13 +92,8 @@ internal partial class RoslynEmitter
                 ArgumentList(SeparatedList(initArgs)));
         }
 
-        var bodyStartIndex = 0;
-
-        if (initializerCallIndex == 0)
-        {
-            // The initializer call is the first statement: skip it in the body.
-            bodyStartIndex = 1;
-        }
+        // The initializer call, when present, is the first statement: skip it in the body.
+        var bodyStartIndex = initializerCallIndex == 0 ? 1 : 0;
 
         // Generate constructor body.
         // In Python __init__, assignments like self.name = name set instance fields;
@@ -173,12 +177,7 @@ internal partial class RoslynEmitter
 
         var constructorBody = new List<Statement>();
         for (int i = bodyStartIndex; i < func.Body.Length; i++)
-        {
-            // Skip the initializer call — it was already converted to : base(...) or : this(...)
-            if (i == initializerCallIndex)
-                continue;
             constructorBody.Add(func.Body[i]);
-        }
 
         var bodyStatements = GenerateSuite(constructorBody, GenerateConstructorBodyStatement);
 

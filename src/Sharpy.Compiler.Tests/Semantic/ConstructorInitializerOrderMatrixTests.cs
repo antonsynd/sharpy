@@ -1,7 +1,9 @@
 using System.Text;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Tests.Properties.Differential;
 using Sharpy.TestInfrastructure.Integration;
+using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -17,7 +19,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// argument {independent, a local computed ahead of it}.
 /// <para>Refusal cells put the statement ahead of the call and assert exactly one SPY0292 at the
 /// call's position. Run cells put the same statement after the call and compare stdout with
-/// CPython's.</para>
+/// CPython's, run at test time through <see cref="PythonBatchOracle"/> (skipped, never passed,
+/// without a python).</para>
 /// </summary>
 public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
 {
@@ -35,22 +38,6 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
         ("pass", new[] { "pass" }),
     };
 
-    // CPython 3.15.2, the same program with the statement AFTER the call (the chained constructor
-    // prints its own line first, then these): `python3.15` over the source BuildSource renders with
-    // `struct` read as `class` and the two-argument overload renamed to a helper the chain calls,
-    // since Python has neither structs nor overloads.
-    private static readonly Dictionary<string, string> PythonTailAfterCall = new()
-    {
-        ["print"] = "pre\n28\n",
-        ["local"] = "28\n",
-        ["store"] = "6\n",
-        ["augstore"] = "82\n",
-        ["call"] = "note 1\n28\n",
-        ["block"] = "10\n",
-        ["raise"] = "caught\n",
-        ["pass"] = "28\n",
-    };
-
     private static readonly (string Call, string Host)[] Hosts =
     {
         ("super", "class"),
@@ -58,24 +45,30 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
         ("self", "struct"),
     };
 
-    /// <summary>The program, and the 1-based line of the chaining call.</summary>
+    /// <summary>
+    /// The program, and the 1-based line of the chaining call. With <paramref name="python"/> it is the
+    /// CPython twin of the same program: Python has no structs and no overloads, so a struct host is a
+    /// class and the two-argument constructor overload is a helper the chain calls; it also calls main.
+    /// </summary>
     private static (string Source, int CallLine) BuildSource(
-        string call, string host, string[] statement, bool callFirst, bool dependentArgument)
+        string call, string host, string[] statement, bool callFirst, bool dependentArgument, bool python = false)
     {
         var lines = new List<string> { "def note(v: int) -> None:", "    print(\"note\", v)", "" };
+        var keyword = python ? "class" : host;
         if (call == "super")
         {
             lines.AddRange(new[]
             {
                 "class B:", "    x: int = 20", "", "    def __init__(self, a: int):",
-                "        print(\"base\", a)", "        self.x += a", "", $"{host} C(B):",
+                "        print(\"base\", a)", "        self.x += a", "", $"{keyword} C(B):",
             });
         }
         else
         {
             lines.AddRange(new[]
             {
-                $"{host} C:", "    x: int = 20", "", "    def __init__(self, a: int, b: int):",
+                $"{keyword} C:", "    x: int = 20", "",
+                python ? "    def _init2(self, a: int, b: int):" : "    def __init__(self, a: int, b: int):",
                 "        print(\"chained\", a)", "        self.x += a", "",
             });
         }
@@ -85,7 +78,9 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
         if (dependentArgument)
             body.Add("t: int = a + 1");
         var argument = dependentArgument ? "t" : "7";
-        var callText = call == "super" ? $"super().__init__({argument})" : $"self.__init__({argument}, 0)";
+        var callText = call == "super"
+            ? $"super().__init__({argument})"
+            : python ? $"self._init2({argument}, 0)" : $"self.__init__({argument}, 0)";
         if (!callFirst)
             body.AddRange(statement);
         var callIndex = lines.Count + body.Count;
@@ -99,6 +94,8 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
             "", "def main():", "    try:", "        c = C(4)", "        print(c.x)",
             "    except ValueError:", "        print(\"caught\")", "",
         });
+        if (python)
+            lines.Add("main()");
         return (string.Join("\n", lines), callIndex + 1);
     }
 
@@ -117,11 +114,11 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
         }
     }
 
-    public static IEnumerable<object[]> RunCells()
+    private static IEnumerable<(string Call, string Host, string Statement)> RunCells()
     {
         foreach (var (call, host) in Hosts)
             foreach (var (name, _) in Statements)
-                yield return new object[] { call, host, name };
+                yield return (call, host, name);
     }
 
     private static string[] StatementLines(string name) =>
@@ -148,17 +145,35 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
         result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, source);
     }
 
-    [Theory]
-    [MemberData(nameof(RunCells))]
-    public void StatementAfterChainingCall_RunsAsCPython(string call, string host, string statement)
+    [SkippableFact]
+    public void StatementAfterChainingCall_RunsAsCPython()
     {
-        var (source, _) = BuildSource(call, host, StatementLines(statement), callFirst: true, dependentArgument: false);
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        var cells = RunCells().ToList();
+        Assert.Equal(Hosts.Length * Statements.Length, cells.Count);
 
-        var result = CompileAndExecute(source);
+        var python = oracle.RunBatch(cells
+            .Select((c, i) => new PyRequest(i, BuildSource(c.Call, c.Host, StatementLines(c.Statement),
+                callFirst: true, dependentArgument: false, python: true).Source))
+            .ToList());
 
-        result.Success.Should().BeTrue(result.FailureSummary() + "\n" + source);
-        var head = call == "super" ? "base 7\n" : "chained 7\n";
-        result.StandardOutput.ReplaceLineEndings("\n").Should().Be(head + PythonTailAfterCall[statement], source);
+        var divergences = new List<string>();
+        for (int i = 0; i < cells.Count; i++)
+        {
+            var (call, host, statement) = cells[i];
+            var label = $"{call}/{host}/{statement}";
+            Assert.True(python.TryGetValue(i, out var py) && py.Ok,
+                $"python3 did not run {label}: {py?.Stderr ?? "no verdict"}");
+            var (source, _) = BuildSource(call, host, StatementLines(statement), callFirst: true, dependentArgument: false);
+            var result = CompileAndExecute(source);
+            var actual = result.Success ? result.StandardOutput.ReplaceLineEndings("\n") : "<" + result.FailureSummary() + ">";
+            var expected = py!.Stdout.ReplaceLineEndings("\n");
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+                divergences.Add($"  {label}: python {expected.Replace("\n", "|")}, sharpy {actual.Replace("\n", "|")}");
+        }
+
+        Assert.True(divergences.Count == 0,
+            $"{divergences.Count} of {cells.Count} run cells diverge from CPython:\n" + string.Join("\n", divergences));
     }
 
     [Fact]
@@ -246,25 +261,33 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
             .Which.Line.Should().Be(10);
     }
 
-    [Theory]
-    [InlineData("if a > 0:\n            self.__init__(a, 0)", 7, "not inside control flow")]
-    [InlineData("self.__init__(a, 0)\n        self.__init__(a, 1)", 7, "only be called once")]
-    public void SelfInitNotHoisted_IsRefused(string body, int line, string message)
-    {
-        // Only the first top-level self.__init__() becomes `: this(...)`; one under control flow or a
-        // second one had no constructor to call (was SPY0908, CS1061 'Constructor').
-        var source = $$"""
-            class C:
-                x: int = 20
-                def __init__(self, a: int, b: int):
-                    self.x += a
-                def __init__(self, a: int):
-                    {{body}}
-                    self.x += 1
+    private const string SuperHost =
+        "class B:\n    def __init__(self):\n        print(\"base\")\n\nclass C(B):\n    def __init__(self, a: int):\n";
 
-            def main():
-                print(C(4).x)
-            """;
+    private const string SelfHost =
+        "class C:\n    x: int = 0\n    def __init__(self, a: int, b: int):\n        self.x = a\n    def __init__(self, a: int):\n";
+
+    // A chaining call that is not the hoisted top-level statement has no constructor initializer to
+    // become: under control flow, repeated, or inside an expression. One rule, one code (SPY0292),
+    // for super().__init__() and self.__init__() alike. The self forms were SPY0908 (CS1061
+    // 'Constructor'), the super expression forms SPY0501, the super control-flow and repeat forms SPY0287.
+    [Theory]
+    [InlineData("super", "if a > 0:\n            CALL", 8, "not inside control flow")]
+    [InlineData("super", "CALL\n        CALL", 8, "only be called once")]
+    [InlineData("super", "f = lambda: CALL\n        f()", 7, "part of an expression")]
+    [InlineData("super", "y = CALL", 7, "part of an expression")]
+    [InlineData("super", "CALL if a > 0 else print(\"no\")", 7, "part of an expression")]
+    [InlineData("self", "if a > 0:\n            CALL", 7, "not inside control flow")]
+    [InlineData("self", "CALL\n        CALL", 7, "only be called once")]
+    [InlineData("self", "f = lambda: CALL\n        f()", 6, "part of an expression")]
+    [InlineData("self", "y = CALL", 6, "part of an expression")]
+    [InlineData("self", "CALL if a > 0 else print(\"no\")", 6, "part of an expression")]
+    public void ChainingCallThatIsNotHoisted_IsRefusedWithOneCode(string call, string body, int line, string message)
+    {
+        var callText = call == "super" ? "super().__init__()" : "self.__init__(a, 0)";
+        var source = (call == "super" ? SuperHost : SelfHost)
+            + "        " + body.Replace("CALL", callText, StringComparison.Ordinal) + "\n\n"
+            + "def main():\n    C(4)\n";
 
         var result = CompileAndExecute(source);
 
@@ -273,33 +296,98 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
             .ContainSingle(d => d.Code == DiagnosticCodes.Semantic.ConstructorInitializerNotFirst, source).Which;
         refusal.Line.Should().Be(line, source);
         refusal.Message.Should().Contain(message);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.InvalidSuperUsage, source);
         result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.CodeGen.UnsupportedFeature, source);
     }
 
     [Fact]
-    public void SuperInitInsideControlFlow_KeepsItsExistingRefusal()
+    public void DecoratedChainingCall_IsHoistedLikeAnUndecoratedOne()
     {
-        // Positive control: the existing control-flow arm still owns this cell (SPY0287), and the new
-        // position rule does not add a second diagnostic for it.
-        const string source = """
-            class B:
-                def __init__(self):
-                    pass
+        // `@suppress` is compile-time only: the call under it is the constructor's chaining call
+        // (it was SPY0501). CPython has no statement decorators; the undecorated twin prints base, C.
+        var source = SuperHost + "        @suppress(\"SPY0451\")\n        super().__init__()\n        print(\"C\")\n\n"
+            + "def main():\n    C(4)\n";
 
-            class C(B):
-                def __init__(self, a: int):
-                    if a > 0:
-                        super().__init__()
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(result.FailureSummary() + "\n" + source);
+        result.StandardOutput.ReplaceLineEndings("\n").Should().Be("base\nC\n");
+    }
+
+    [Fact]
+    public void DecoratedChainingCall_IsPositionChecked()
+    {
+        var source = SuperHost + "        print(\"pre\")\n        @suppress(\"SPY0451\")\n        super().__init__()\n\n"
+            + "def main():\n    C(4)\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        result.RawDiagnostics.Should()
+            .ContainSingle(d => d.Code == DiagnosticCodes.Semantic.ConstructorInitializerNotFirst, source)
+            .Which.Line.Should().Be(9);
+    }
+
+    [Fact]
+    public void SuperInitOnInterfaceOnlyBase_KeepsTheNoParentRefusal()
+    {
+        // Positive control for #2508: an interface is not a base class, so there is no constructor to
+        // chain to (SPY0285), and the implicit-constructor resolution does not apply.
+        const string source = """
+            interface I:
+                def f(self) -> int: ...
+
+            class C(I):
+                def __init__(self):
+                    super().__init__()
+                def f(self) -> int:
+                    return 1
 
             def main():
-                C(1)
+                print(C().f())
             """;
 
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeFalse();
-        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.InvalidSuperUsage);
-        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.ConstructorInitializerNotFirst);
+        result.RawDiagnostics.Should().ContainSingle(d => d.IsError)
+            .Which.Code.Should().Be(DiagnosticCodes.Semantic.SuperNoParent);
+    }
+
+    // A dataclass base carries its synthesized __init__, so super().__init__(...) binds it and its
+    // arguments are validated against the dataclass's fields. CPython 3.15.2: `F 1`, `F 5`, `F 6`;
+    // with a required field and no argument it raises TypeError (missing 'a'), refused here at compile
+    // time (SPY0224); a str for an int field is SPY0220.
+    [Theory]
+    [InlineData("a: int = 1", "", "F 1\n")]
+    [InlineData("a: int = 1", "5", "F 5\n")]
+    [InlineData("a: int = 1", "a=6", "F 6\n")]
+    [InlineData("a: int", "3", "F 3\n")]
+    public void SuperInitOnDataclassBase_BindsTheSynthesizedConstructor(string field, string args, string expected)
+    {
+        var source = $"@dataclass\nclass DC:\n    {field}\n\nclass F(DC):\n    def __init__(self):\n"
+            + $"        super().__init__({args})\n        print(\"F\", self.a)\n\ndef main():\n    F()\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(result.FailureSummary() + "\n" + source);
+        result.StandardOutput.ReplaceLineEndings("\n").Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a: int", "", "SPY0224")]
+    [InlineData("a: int = 1", "\"x\"", "SPY0220")]
+    public void SuperInitOnDataclassBase_ValidatesArguments(string field, string args, string code)
+    {
+        var source = $"@dataclass\nclass DC:\n    {field}\n\nclass F(DC):\n    def __init__(self):\n"
+            + $"        super().__init__({args})\n        print(\"F\", self.a)\n\ndef main():\n    F()\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        result.RawDiagnostics.Should().Contain(d => d.Code == code && d.Line == 7, result.FailureSummary());
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
     }
 
     // #2508: a base with no declared __init__ has the implicit parameterless constructor (Python's

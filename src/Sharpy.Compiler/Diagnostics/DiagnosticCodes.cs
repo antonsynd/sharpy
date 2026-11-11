@@ -383,7 +383,7 @@ public static class DiagnosticCodes
         // TODO(#237): SPY0289 reserved for future use
         public const string InstanceFieldViaTypeName = "SPY0290";   // Active
         public const string MaybeOnUnconstrainedTypeParameter = "SPY0291"; // Active
-        public const string ConstructorInitializerNotFirst = "SPY0292"; // Active — a statement ahead of super().__init__/self.__init__, or a self.__init__ that is not the first statement (#2507)
+        public const string ConstructorInitializerNotFirst = "SPY0292"; // Active — a super().__init__/self.__init__ chaining call that is not the first top-level statement: a statement ahead of it, control flow, a repeat, an expression (#2507)
         // SPY0293-SPY0299: Reserved for future class/inheritance diagnostics
 
         #endregion

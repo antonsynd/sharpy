@@ -260,6 +260,7 @@ internal partial class TypeChecker
         var previousControlFlowDepth = _controlFlowDepth;
         var previousSuperInitCalled = _superInitCalled;
         var previousSelfInitCalled = _selfInitCalled;
+        var previousHoistedInitializerCall = _hoistedInitializerCall;
 
         _currentMethodName = functionDef.Name;
         _currentMethodSymbol = functionSymbol;
@@ -270,6 +271,14 @@ internal partial class TypeChecker
         _controlFlowDepth = 0;
         _superInitCalled = false;
         _selfInitCalled = false;
+        _hoistedInitializerCall = null;
+        if (_currentClass != null && functionDef.Name == DunderNames.Init)
+        {
+            var hoistedIndex = AstHelper.FindConstructorInitializerIndex(functionDef.Body);
+            if (hoistedIndex >= 0
+                && AstHelper.TryGetConstructorInitializerCall(functionDef.Body[hoistedIndex], out var hoisted, out var _))
+                _hoistedInitializerCall = hoisted;
+        }
 
         // Validate override requirements and abstract method constraints
         ValidateOverrideRequirements(functionDef);
@@ -356,6 +365,7 @@ internal partial class TypeChecker
         _controlFlowDepth = previousControlFlowDepth;
         _superInitCalled = previousSuperInitCalled;
         _selfInitCalled = previousSelfInitCalled;
+        _hoistedInitializerCall = previousHoistedInitializerCall;
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = previousFunctionReturnType;

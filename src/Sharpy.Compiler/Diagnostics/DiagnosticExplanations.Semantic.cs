@@ -635,8 +635,10 @@ public static partial class DiagnosticExplanations
             "A constructor's chaining call, super().__init__(...) or self.__init__(...), runs as the C# "
             + "constructor initializer (': base(...)' / ': this(...)'), before every statement of the body. "
             + "A statement written ahead of the call would therefore run after it, so the call must be the "
-            + "first statement of the constructor (a docstring may precede it), written once, and not inside "
-            + "control flow.",
+            + "first statement of the constructor (a docstring may precede it), written once, as a statement of "
+            + "its own: not inside control flow and not inside an expression (a lambda, a conditional "
+            + "expression, an assignment). The rule and the code are the same for super().__init__(...) and "
+            + "self.__init__(...).",
             "class Base:\n    x: int = 20\n    def __init__(self, a: int):\n        self.x += a\n\n"
             + "class Child(Base):\n    def __init__(self, a: int):\n        self.x = 5\n        super().__init__(a)  # a statement precedes the call",
             "Move the chaining call first:\nclass Child(Base):\n    def __init__(self, a: int):\n        super().__init__(a)\n        self.x = 5");

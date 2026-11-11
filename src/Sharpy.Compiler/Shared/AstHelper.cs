@@ -336,6 +336,11 @@ internal static class AstHelper
     public static bool TryGetConstructorInitializerCall(
         Statement stmt, [MaybeNullWhen(false)] out FunctionCall call, out bool chainsToBase)
     {
+        // A statement decorator (`@suppress(...)`, #1024) is compile-time only: the call under it is
+        // the same chaining call, hoisted and position-checked like an undecorated one.
+        if (stmt is DecoratedStatement decorated)
+            stmt = decorated.Statement;
+
         if (stmt is ExpressionStatement es
             && UnwrapParenthesized(es.Expression) is FunctionCall initCall
             && UnwrapParenthesized(initCall.Function) is MemberAccess { Member: DunderNames.Init } ma)

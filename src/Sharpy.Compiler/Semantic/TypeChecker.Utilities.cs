@@ -2551,10 +2551,6 @@ internal partial class TypeChecker
                         currentType);
                 }
 
-                // A dataclass's constructor is synthesized from its fields, not declared, so its
-                // shape is not known here: keep the refusal below rather than guess an arity.
-                if (currentType.IsDataclass)
-                    break;
                 currentType = GetBaseType(currentType);
             }
 
@@ -2701,18 +2697,20 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.InvalidSuperUsage,
                     span: memberAccess.Span);
             }
+            // The placement of a chaining call is one rule for super().__init__() and
+            // self.__init__(): SPY0292 (ahead of it, under control flow, repeated, in an expression).
             else if (_controlFlowDepth > 0)
             {
                 AddError("super().__init__() must be the first statement in the constructor, not inside control flow",
                     superExpr.LineStart, superExpr.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
                     span: superExpr.Span);
             }
             else if (_superInitCalled)
             {
                 AddError("super().__init__() can only be called once",
                     superExpr.LineStart, superExpr.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
                     span: superExpr.Span);
             }
             return;

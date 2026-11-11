@@ -5992,6 +5992,17 @@ internal partial class TypeChecker
         // (do this after CheckExpression so the validation doesn't see it as already called)
         if (callee is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
         {
+            // Only the hoisted top-level statement becomes `: base(...)`. A call under control flow
+            // or a repeated one was already refused by ValidateSuperContextRules; one inside an
+            // expression (a lambda, a conditional expression, an assignment's value) has no base call
+            // to become.
+            if (_currentMethodName == DunderNames.Init && _controlFlowDepth == 0 && !_superInitCalled
+                && _currentClass != null && GetBaseType(_currentClass) != null
+                && !ReferenceEquals(call, _hoistedInitializerCall))
+            {
+                ReportChainingCallInExpression(call, "super().__init__(...)");
+            }
+
             _superInitCalled = true;
 
             // Validate keyword-argument names against the base constructor overloads so an
@@ -6048,6 +6059,10 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
                     span: call.Span);
             }
+            else if (!ReferenceEquals(call, _hoistedInitializerCall))
+            {
+                ReportChainingCallInExpression(call, "self.__init__(...)");
+            }
             else if (_currentClass != null)
             {
                 // Context is valid — validate keyword-argument names against this class's own
@@ -6066,6 +6081,21 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// A chaining call that is not the constructor's hoisted top-level statement — it sits inside an
+    /// expression — has no constructor initializer to become, so it is refused (SPY0292) rather than
+    /// reaching the emitter as a member call that does not exist.
+    /// </summary>
+    private void ReportChainingCallInExpression(FunctionCall call, string callText)
+    {
+        AddError($"{callText} must be a statement of its own, the first in the constructor: it runs as the "
+            + "constructor initializer and cannot be part of an expression (a lambda, a conditional expression, "
+            + "an assignment)",
+            call.LineStart, call.ColumnStart,
+            code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
+            span: call.Span);
     }
 
     /// <summary>

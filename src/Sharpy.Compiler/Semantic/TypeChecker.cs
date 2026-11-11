@@ -274,6 +274,10 @@ internal partial class TypeChecker
     private bool AtNonDeclaringPosition => _currentFunctionReturnType != null || _controlFlowDepth > 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
     private bool _selfInitCalled = false;   // Track if self.__init__() was called
+    // The constructor chaining call the emitter hoists to `: base(...)`/`: this(...)` — the first
+    // top-level chaining statement of the constructor being checked (AstHelper authority). Any other
+    // super().__init__()/self.__init__() call in that constructor has nothing to call (#2507).
+    private FunctionCall? _hoistedInitializerCall;
 
     // Symbols of range(...)-loop induction variables currently in scope that are provably >= 0
     // (single-arg range, or non-negative-literal start with positive step) AND not reassigned in
