@@ -16,10 +16,15 @@ on:
       - '.python-version'
       - 'docs/process/**'
       - 'src/**/*allowlist*.txt'
-      - 'src/Sharpy.Compiler/Semantic/SemanticInfo.cs'
+      - 'src/Sharpy.Compiler/**'
+      - 'src/Sharpy.Cli/**'
+      - 'src/Sharpy.Lsp/**'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
+      - 'Directory.Build.props'
+      - '.editorconfig'
+      - 'docs/language_specification/**'
       - 'docs/stdlib/**'
       - 'docs/deviations.yaml'
       - 'mkdocs.yml'
@@ -60,11 +65,17 @@ jobs:
         docs/process/**
         # Gap-discovery allowlists, read by build_tools/tests/ checks.
         src/**/*allowlist*.txt
-        # The SemanticInfo scorecard ratchet in build_tools/tests/ reads it.
-        src/Sharpy.Compiler/Semantic/SemanticInfo.cs
+        # The test job builds src/Sharpy.Cli (and what it references) for the compiler smoke
+        # tests, and build_tools/tests/ checks read compiler sources (SemanticInfo.cs, Lexer/).
+        src/Sharpy.Compiler/**
+        src/Sharpy.Cli/**
+        src/Sharpy.Lsp/**
         src/Sharpy.Core/**
         src/Sharpy.Stdlib/**
         src/Sharpy.Stdlib.Tests/Spy/cpython/**
+        Directory.Build.props
+        .editorconfig
+        docs/language_specification/**
         docs/stdlib/**
         docs/deviations.yaml
         mkdocs.yml
@@ -95,16 +106,10 @@ jobs:
     steps:
     - uses: actions/checkout@v7
       with:
-        # Full history: a build_tools/tests/ check diffs against the base branch's merge base.
+        # Full history, and every branch as origin/<name> (so origin/<base> on a PR; run
+        # 42946009826 fetched +refs/heads/*:refs/remotes/origin/*): a build_tools/tests/ check
+        # diffs against the merge base with the PR's base branch.
         fetch-depth: 0
-
-    - name: Fetch the PR's base branch as origin/<base>
-      # fetch-depth 0 already maps every branch to origin/*; this names the base explicitly so a
-      # check that diffs against the merge base with origin/<base> never depends on that default.
-      if: ${{ github.base_ref != '' }}
-      env:
-        BASE: ${{ github.base_ref }}
-      run: git fetch --no-tags origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"
 
     - name: Set up Python
       uses: actions/setup-python@v7

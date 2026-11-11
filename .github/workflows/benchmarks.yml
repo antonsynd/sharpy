@@ -11,7 +11,11 @@ on:
     paths:
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Compiler.Benchmarks/**'
-      # The allocation gate and its interpreter (build_tools/tests/test_workflow_relevance.py).
+      # What the benchmark build references and reads, the allocation gate and its interpreter
+      # (build_tools/tests/test_workflow_relevance.py).
+      - 'src/Sharpy.Core/**'
+      - 'Directory.Build.props'
+      - '.editorconfig'
       - 'build_tools/allocation_gate.py'
       - '.python-version'
   pull_request:
@@ -19,7 +23,11 @@ on:
     paths:
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Compiler.Benchmarks/**'
-      # The allocation gate and its interpreter (build_tools/tests/test_workflow_relevance.py).
+      # What the benchmark build references and reads, the allocation gate and its interpreter
+      # (build_tools/tests/test_workflow_relevance.py).
+      - 'src/Sharpy.Core/**'
+      - 'Directory.Build.props'
+      - '.editorconfig'
       - 'build_tools/allocation_gate.py'
       - '.python-version'
   workflow_dispatch:  # Allow manual trigger

@@ -11,11 +11,15 @@ So ``dotnet10.yml`` and ``python-build-tools.yml`` start on every PR and make th
 inside, in a ``changes`` job whose ``RELEVANT_PATHS`` env lists the paths; their ``gate`` job
 always runs and is the check the ``dev`` ruleset requires. This file pins:
 
-* **Coverage.** For every workflow under ``.github/workflows/``, each repo file it reads in a way
-  we can see mechanically (a ``python-version-file:``, a local action, a script or file named by
-  path under ``build_tools/``, ``.claude/scripts/`` or ``.claude/hooks/`` in a ``run:``, a
-  ``python -m build_tools...`` module) is matched by its ``RELEVANT_PATHS`` and by every
-  ``paths`` filter on its ``push``/``pull_request`` triggers.
+* **Coverage.** For every workflow under ``.github/workflows/``, each repo file it reads is
+  matched by its ``RELEVANT_PATHS`` and by every ``paths`` filter on its ``push``/``pull_request``
+  triggers. A missed file is worse than no gate: the required check reports green over a change
+  whose tests never ran, so the reads are collected wide. Mechanically: ``python-version-file:``,
+  local actions, files a ``run:`` names under ``build_tools/``, ``.claude/scripts/`` or
+  ``.claude/hooks/`` (``./`` accepted), ``python -m build_tools...`` modules, and every project a
+  ``dotnet`` command builds with the settings files above it; then, to a fixed point, the scripts
+  a shell script hands off to (``$SCRIPT_DIR/x.sh``, ``$REPO_ROOT/...``) and the repo modules a
+  python file imports. What only the tests' own code opens is listed in ``RUNTIME_READS``.
 * **The gates.** Each gate workflow's pull_request trigger has no path filter, its push ``paths``
   equal ``RELEVANT_PATHS``, every other job hangs off ``changes``, and the Gate job has its exact
   name, ``if: always()``, and ``needs`` every other job. Its script is run over fake ``needs``.
@@ -26,6 +30,7 @@ always runs and is the check the ``dev`` ruleset requires. This file pins:
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import re
@@ -45,12 +50,74 @@ GATES = {
     "python-build-tools.yml": "Gate (Python build tools)",
 }
 
-# A path a `run:` names under one of these roots is a file the workflow reads.
+# A path a `run:` or a script names under one of these roots is a file it reads; `./` is accepted.
 READ_PATH = re.compile(
-    r"(?<![\w./-])((?:build_tools|\.claude/scripts|\.claude/hooks)/[\w./-]*[\w-])"
+    r"(?<![\w./$}-])(?:\./)?((?:build_tools|\.claude/scripts|\.claude/hooks)/[\w./-]*[\w-])"
 )
-# `python -m build_tools.cpython_oracle ...` reads build_tools/cpython_oracle/.
+# `python -m build_tools.cpython_oracle ...` runs build_tools/cpython_oracle/__main__.py.
 READ_MODULE = re.compile(r"\bpython3?\s+-m\s+(build_tools(?:\.\w+)*)")
+# `dotnet build src/Sharpy.Cli`, `dotnet run --project X`, `dotnet test "$1"` (unresolvable, skipped).
+DOTNET_COMMAND = re.compile(
+    r"\bdotnet\s+(build|test|publish|pack|run|restore|format)\b([^\n;&|]*)"
+)
+# Shell variables a script sets to a directory: `X="$(cd "$(dirname "$0")/.." && pwd)"`,
+# `X="$(cd "$SCRIPT_DIR/.." && pwd)"`, `X="$(git rev-parse --show-toplevel)"`.
+DIR_ASSIGN = re.compile(
+    r"^\s*(?:readonly\s+|local\s+)?([A-Za-z_]\w*)=\"?\$\((?:"
+    r"cd\s+\"?\$\(dirname\s+\"?\$\{?(?:0|BASH_SOURCE\[0\])\}?\"?\)(/[\w./-]*)?\"?\s*&&\s*pwd"
+    r"|cd\s+\"?\$\{?([A-Za-z_]\w*)\}?(/[\w./-]*)?\"?\s*&&\s*pwd"
+    r"|git\s+rev-parse\s+--show-toplevel)\)",
+    re.M,
+)
+# These every dotnet command reads from the repo root down to the project, when they exist.
+DOTNET_SETTINGS = (
+    ".editorconfig",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "Directory.Packages.props",
+    "global.json",
+    "nuget.config",
+    "NuGet.Config",
+)
+
+# Files the suites read at run time that no step names, so no scanner can find them: the .NET
+# tests and build_tools/tests/ open them by a path built in code. Each entry is checked like a
+# scanned read, so the knowledge lives in one checked place. Add a row when a test starts reading
+# a new repo file outside its own project.
+RUNTIME_READS: Dict[str, Dict[str, str]] = {
+    "dotnet10.yml": {
+        # CorpusPinInventoryTests, TypedGeneratorRosterTests (Compiler), ExceptionHierarchyPythonMroTests (Core).
+        "docs/language_specification": "spec roster and spec text",
+        # NameResolutionDifferentialTests.Classifier.
+        "docs/deviations.yaml": "deviation ids",
+        # StdlibDocFieldNameBindingTests (Stdlib).
+        "docs/stdlib": "generated stdlib docs",
+        # FormatterDocEditorExamplesTests (Lsp).
+        "docs/tooling/formatter.md": "formatter doc examples",
+        # The python oracles the Compiler tests spawn (DifferentialExecution, CPythonDifferentialParse,
+        # NumericLiteralTwin).
+        "build_tools/differential_exec/run_programs.py": "execution oracle",
+        "build_tools/differential_parse/compare_ast.py": "parse oracle",
+        "build_tools/differential_lex/number_oracle.py": "lexer oracle",
+        # build_tools/smoke_hello.sh runs the README's hello world.
+        "README.md": "hello world",
+    },
+    "python-build-tools.yml": {
+        # SemanticInfo scorecard ratchet (#2562); test_stryker_triage.py reads Lexer/;
+        # test_generate_stdlib_docs.py reads BuiltinRegistry.cs and the rest of the compiler.
+        "src/Sharpy.Compiler/Semantic/SemanticInfo.cs": "scorecard ratchet",
+        "src/Sharpy.Compiler/Lexer": "stryker triage",
+        "src/Sharpy.Compiler": "stdlib docs generator",
+        # test_spec_blocks.py and the generator read the spec (primitive_types.md among others).
+        "docs/language_specification": "spec blocks",
+        "docs/deviations.yaml": "cpython oracle ledger",
+        "docs/stdlib": "generated stdlib docs check",
+        "docs/process/rounds": "process index",
+        "src/Sharpy.Stdlib.Tests/Spy/cpython": "dual-execution oracle",
+        ".claude/scripts/dotnet-serialized": "lock harness",
+        ".claude/scripts/ci-gate": "ci-gate harness",
+    },
+}
 
 
 # --- GitHub filter patterns ---------------------------------------------------------------------
@@ -130,8 +197,200 @@ def steps_of(doc: dict) -> Iterator[dict]:
     yield from (doc.get("runs") or {}).get("steps") or []
 
 
+def uncommented(text: str) -> str:
+    """Comment lines (shell or python) name files they do not read."""
+    return "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("#")
+    )
+
+
+def rel(path: Path) -> Optional[str]:
+    """``path`` relative to the repo, or None when it is outside it or does not exist."""
+    try:
+        resolved = path.resolve()
+        return str(resolved.relative_to(REPO)) if resolved.exists() else None
+    except ValueError:
+        return None
+
+
+def module_file(module: str) -> Optional[str]:
+    """The file ``import module`` loads, for a module inside the repo."""
+    base = REPO / module.replace(".", "/")
+    for candidate in (base.with_suffix(".py"), base / "__init__.py"):
+        if candidate.is_file():
+            return rel(candidate)
+    return None
+
+
+def package_inits(path: str) -> List[str]:
+    """Importing ``a.b.c`` runs ``a/__init__.py`` and ``a/b/__init__.py`` first."""
+    parts = Path(path).parts[:-1]
+    out = []
+    for i in range(1, len(parts) + 1):
+        init = REPO.joinpath(*parts[:i], "__init__.py")
+        if init.is_file():
+            out.append(rel(init) or "")
+    return [p for p in out if p]
+
+
+def python_reads(path: str) -> Dict[str, str]:
+    """Repo-local modules a python file imports: absolute (``build_tools.x``), relative
+    (``from .x import``) and script-style sibling imports (``import spec_blocks`` beside it)."""
+    found: Dict[str, str] = {}
+    try:
+        tree = ast.parse((REPO / path).read_text())
+    except (SyntaxError, UnicodeDecodeError):
+        return found
+    here = Path(path).parent
+    package = ".".join(here.parts)
+    for node in ast.walk(tree):
+        names: List[str] = []
+        if isinstance(node, ast.Import):
+            names = [a.name for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                parts = package.split(".")
+                anchor = ".".join(parts[: len(parts) - node.level + 1])
+                stem = f"{anchor}.{node.module}" if node.module else anchor
+            else:
+                stem = node.module or ""
+            names = [stem] + [f"{stem}.{a.name}" for a in node.names]
+        for name in names:
+            for candidate in (name, f"{package}.{name}" if package else name):
+                target = module_file(candidate)
+                if target and target != path:
+                    found[target] = f"imported by {path}"
+                    for init in package_inits(target):
+                        found.setdefault(init, f"package of {target}")
+    return found
+
+
+def shell_reads(path: str) -> Dict[str, str]:
+    """Repo files a shell script names: under build_tools/ or .claude/, or below a variable it
+    sets to its own directory (``SCRIPT_DIR``) or to the repo root (``REPO_ROOT``)."""
+    text = uncommented((REPO / path).read_text(errors="replace"))
+    here = (REPO / path).parent
+    dirs: Dict[str, Path] = {}
+    for m in DIR_ASSIGN.finditer(text):
+        var, script_rel, base_var, base_rel = m.groups()
+        if m.group(0).rstrip(")").endswith("--show-toplevel"):
+            dirs[var] = REPO
+        elif base_var:
+            if base_var in dirs:
+                dirs[var] = (dirs[base_var] / (base_rel or "").lstrip("/")).resolve()
+        else:
+            dirs[var] = (here / (script_rel or "").lstrip("/")).resolve()
+    # A script also names scratch paths (a test harness's fixtures), so only files that exist count.
+    found = {
+        m.group(1): f"named in {path}"
+        for m in READ_PATH.finditer(text)
+        if (REPO / m.group(1)).exists()
+    }
+    for var, base in dirs.items():
+        for m in re.finditer(rf"\$\{{?{var}\}}?/([\w./-]*[\w-])", text):
+            target = rel(base / m.group(1))
+            if target:
+                found[target] = f"${var}/ in {path}"
+    return found
+
+
+def script_kind(path: str) -> Optional[str]:
+    """ "python", "shell" or None (not a script)."""
+    file = REPO / path
+    if not file.is_file():
+        return None
+    if file.suffix in (".sh", ".py"):
+        return "python" if file.suffix == ".py" else "shell"
+    try:
+        first = file.read_bytes()[:200].split(b"\n", 1)[0]
+    except OSError:
+        return None
+    if not first.startswith(b"#!"):
+        return None
+    return "python" if b"python" in first else "shell"
+
+
+def project_reads(project: str) -> Dict[str, str]:
+    """A dotnet command on ``project`` (a .sln, a .csproj or a directory holding one) reads every
+    project it references, transitively, and the settings files above each."""
+    found: Dict[str, str] = {}
+    start = REPO / project
+    queue: List[Path] = []
+    if start.suffix == ".sln" and start.is_file():
+        found[project] = "solution"
+        for m in re.finditer(r'"([^"]+\.csproj)"', start.read_text()):
+            queue.append(start.parent / m.group(1).replace("\\", "/"))
+    elif start.is_dir():
+        queue += sorted(start.glob("*.csproj"))
+    elif start.is_file():
+        queue.append(start)
+    seen: Set[Path] = set()
+    while queue:
+        csproj = queue.pop().resolve()
+        if csproj in seen or not csproj.is_file():
+            continue
+        seen.add(csproj)
+        directory = rel(csproj.parent)
+        if directory:
+            found[directory] = f"project {rel(csproj)}"
+        for m in re.finditer(
+            r'<ProjectReference\s+Include="([^"]+)"', csproj.read_text()
+        ):
+            queue.append(csproj.parent / m.group(1).replace("\\", "/"))
+        for folder in [csproj.parent, *csproj.parent.parents]:
+            for name in DOTNET_SETTINGS:
+                setting = rel(folder / name)
+                if setting:
+                    found.setdefault(setting, f"settings for {rel(csproj)}")
+            if folder == REPO:
+                break
+    return found
+
+
+def run_reads(run: str) -> Dict[str, str]:
+    found: Dict[str, str] = {}
+    run = uncommented(run)
+    for m in READ_PATH.finditer(run):
+        found[m.group(1).rstrip(".")] = "run:"
+    for m in READ_MODULE.finditer(run):
+        module = m.group(1).replace(".", "/")
+        # `-m package` runs the package's __main__.py (after its __init__.py).
+        path = f"{module}/__main__.py" if (REPO / module).is_dir() else f"{module}.py"
+        found[path] = "python -m"
+        for init in package_inits(path):
+            found.setdefault(init, f"package of {path}")
+    for m in DOTNET_COMMAND.finditer(run):
+        verb, rest = m.groups()
+        args = [a.strip("\"'") for a in rest.split()]
+        if "--project" in args and args.index("--project") + 1 < len(args):
+            target: Optional[str] = args[args.index("--project") + 1]
+        else:
+            target = next((a for a in args if not a.startswith("-")), None)
+            if (
+                target
+                and verb == "format"
+                and target in ("whitespace", "style", "analyzers")
+            ):
+                target = next(
+                    (
+                        a
+                        for a in args[args.index(target) + 1 :]
+                        if not a.startswith("-")
+                    ),
+                    None,
+                )
+        if target is None:
+            # No project named: the command finds the solution in the working directory.
+            target = "sharpy.sln"
+        if "$" in target or not (REPO / target).exists():
+            continue
+        found.update(project_reads(target))
+    return found
+
+
 def reads(doc: dict, seen: Optional[Set[str]] = None) -> Dict[str, str]:
-    """Repo-relative paths ``doc`` (a workflow or a composite action) reads, each with how."""
+    """Repo-relative paths ``doc`` (a workflow or a composite action) reads, each with how: what
+    its steps name, followed to a fixed point through the scripts and python modules they run."""
     seen = set() if seen is None else seen
     found: Dict[str, str] = {}
     for step in steps_of(doc):
@@ -153,22 +412,40 @@ def reads(doc: dict, seen: Optional[Set[str]] = None) -> Dict[str, str]:
         with_ = step.get("with") or {}
         if "python-version-file" in with_:
             found[str(with_["python-version-file"])] = "python-version-file"
-        # Comment lines (shell or inline python) name files they do not read.
-        run = "\n".join(
-            line
-            for line in (step.get("run") or "").splitlines()
-            if not line.lstrip().startswith("#")
-        )
-        for m in READ_PATH.finditer(run):
-            found[m.group(1).rstrip(".")] = "run:"
-        for m in READ_MODULE.finditer(run):
-            module = m.group(1).replace(".", "/")
-            # `-m package` runs the package's __main__.py.
-            path = (
-                f"{module}/__main__.py" if (REPO / module).is_dir() else f"{module}.py"
+        found.update(run_reads(step.get("run") or ""))
+    return follow(found)
+
+
+def follow(found: Dict[str, str]) -> Dict[str, str]:
+    """Adds what each script in ``found`` hands off to, until nothing new appears."""
+    found = dict(found)
+    done: Set[str] = set()
+    while True:
+        todo = [p for p in found if p not in done and script_kind(p)]
+        if not todo:
+            return found
+        for path in todo:
+            done.add(path)
+            more = (
+                python_reads(path)
+                if script_kind(path) == "python"
+                else shell_reads(path)
             )
-            found[path] = "python -m"
-    return found
+            for target, how in more.items():
+                found.setdefault(target, how)
+
+
+def runtime_reads(name: str) -> Dict[str, str]:
+    """RUNTIME_READS for ``name``, with what those files import, plus (for the Python suite) every
+    allowlist under src/, which the severity check (#2560) reads."""
+    found = {
+        path: f"read at run time: {why}"
+        for path, why in RUNTIME_READS.get(name, {}).items()
+    }
+    if name == "python-build-tools.yml":
+        for allowlist in sorted((REPO / "src").rglob("*allowlist*.txt")):
+            found[rel(allowlist) or ""] = "read at run time: allowlist severity check"
+    return follow(found)
 
 
 def coverage_problems(name: str, workflow: dict) -> List[str]:
@@ -187,6 +464,8 @@ def coverage_problems(name: str, workflow: dict) -> List[str]:
             )
 
     found = reads(workflow)
+    for path, how in runtime_reads(name).items():
+        found.setdefault(path, how)
     if listed is not None:
         found[f".github/workflows/{name}"] = "the workflow itself"
     problems = []
@@ -324,9 +603,10 @@ def test_python_suite_runs_on_the_files_its_checks_read() -> None:
         *allowlists,
     ]:
         assert matches(read, listed), read
+    # fetch-depth 0 fetches +refs/heads/*:refs/remotes/origin/*, so origin/<base> exists on a PR
+    # (run 42946009826 logged `dev -> origin/dev`): the allowlist check diffs against it.
     test = workflow["jobs"]["test"]["steps"]
     assert test[0]["with"]["fetch-depth"] == 0
-    assert any("refs/remotes/origin/$BASE" in (step.get("run") or "") for step in test)
 
 
 def test_the_scanner_reads_what_the_gate_workflows_read() -> None:
@@ -339,6 +619,14 @@ def test_the_scanner_reads_what_the_gate_workflows_read() -> None:
         "build_tools/check_spy_staleness.sh",
         "build_tools/smoke_hello.sh",
         ".github/actions/relevant-changes/action.yml",
+        # Handed off by the staleness checks: `exec bash "$SCRIPT_DIR/regenerate_spy_stdlib.sh"`.
+        "build_tools/regenerate_spy_stdlib.sh",
+        "build_tools/regenerate_spy_tests.sh",
+        # `dotnet build` (the solution) and its settings.
+        "sharpy.sln",
+        "src/Sharpy.Compiler",
+        ".editorconfig",
+        "Directory.Build.props",
     ):
         assert read in dotnet, read
     for read in (
@@ -349,8 +637,45 @@ def test_the_scanner_reads_what_the_gate_workflows_read() -> None:
         "build_tools/cpython_oracle/dual_run.py",
         "build_tools/__main__.py",
         ".github/actions/relevant-changes/action.yml",
+        # `dotnet build src/Sharpy.Cli` and the projects it references.
+        "src/Sharpy.Cli",
+        "src/Sharpy.Lsp",
+        "src/Sharpy.Compiler",
+        ".editorconfig",
     ):
         assert read in python, read
+    # docs.yml's `python -m build_tools` reaches clean_fixture_bins.py through cli.py's imports.
+    docs = reads(load(WORKFLOWS / "docs.yml"))
+    assert "build_tools/cli.py" in docs and "build_tools/clean_fixture_bins.py" in docs
+
+
+def test_the_scanner_follows_hand_offs_to_a_fixed_point() -> None:
+    # A shell script hands off to python through `exec python3 "$SCRIPT_DIR/spec_blocks.py"`.
+    found = follow({"build_tools/check_spec_blocks.sh": "run:"})
+    assert found["build_tools/spec_blocks.py"].endswith("check_spec_blocks.sh")
+    # ./build_tools/cli.py -> build_tools.shared.backends -> its __init__ -> .base: three hops,
+    # so one level of following is not enough.
+    python = reads(
+        {"jobs": {"j": {"steps": [{"run": "python ./build_tools/cli.py --help"}]}}}
+    )
+    assert python["build_tools/cli.py"] == "run:"
+    assert (
+        python["build_tools/shared/backends/base.py"]
+        == "imported by build_tools/shared/backends/__init__.py"
+    )
+
+
+@pytest.mark.parametrize(
+    "entry", ["build_tools/regenerate_spy_stdlib.sh", "docs/language_specification/**"]
+)
+def test_dropping_a_handed_off_or_runtime_read_from_the_dotnet_list_is_red(
+    entry: str,
+) -> None:
+    workflow = mutated("dotnet10.yml")
+    drop_listed(workflow, entry)
+    stem = entry.rstrip("/*")
+    problems = coverage_problems("dotnet10.yml", workflow)
+    assert any(stem in p and "RELEVANT_PATHS" in p for p in problems), problems
 
 
 def mutated(name: str) -> dict:
@@ -381,7 +706,10 @@ def test_a_trigger_filter_missing_a_script_is_red() -> None:
     }
     problems = coverage_problems("x.yml", workflow)
     assert problems == [
-        "x.yml: reads build_tools/check_spy_staleness.sh (run:) but on.push.paths does not cover it"
+        "x.yml: reads build_tools/check_spy_staleness.sh (run:) but on.push.paths does not cover it",
+        # The script it runs hands off with `exec bash "$SCRIPT_DIR/regenerate_spy_stdlib.sh"`.
+        "x.yml: reads build_tools/regenerate_spy_stdlib.sh ($SCRIPT_DIR/ in "
+        "build_tools/check_spy_staleness.sh) but on.push.paths does not cover it",
     ]
 
 
@@ -550,13 +878,20 @@ def scratch(tmp_path: Path) -> Path:
     return repo
 
 
-def decide(repo: Path, paths: str, event: str = "pull_request") -> str:
+def decide(
+    repo: Path,
+    paths: str,
+    event: str = "pull_request",
+    exclude: str = "",
+    output: str = "relevant",
+) -> str:
     out = repo.parent / "out.txt"
     out.write_text("")
     env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
         "GITHUB_OUTPUT": str(out),
         "PATHS": paths,
+        "EXCLUDE": exclude,
         "EVENT": event,
         "BEFORE": "",
     }
@@ -570,7 +905,9 @@ def decide(repo: Path, paths: str, event: str = "pull_request") -> str:
     )
     assert r.returncode == 0, r.stdout + r.stderr
     values = dict(line.split("=", 1) for line in out.read_text().splitlines())
-    return values["relevant"]
+    if not exclude:
+        assert "relevant-excluding" not in values
+    return values[output]
 
 
 def change(repo: Path, *edits: str) -> None:
@@ -603,6 +940,20 @@ def test_action_excludes_readme_for_the_code_output(scratch: Path) -> None:
     change(scratch, "README.md")
     assert decide(scratch, LIST) == "true"
     assert decide(scratch, LIST + "!README.md") == "false"
+    # The same two answers from one call, as dotnet10.yml's `changes` asks for them.
+    assert decide(scratch, LIST, exclude="README.md") == "true"
+    assert (
+        decide(scratch, LIST, exclude="README.md", output="relevant-excluding")
+        == "false"
+    )
+
+
+def test_action_excluding_still_sees_other_files(scratch: Path) -> None:
+    change(scratch, "README.md", "src/a.cs")
+    assert (
+        decide(scratch, LIST, exclude="README.md", output="relevant-excluding")
+        == "true"
+    )
 
 
 def test_action_sees_a_file_moved_out_of_the_list(scratch: Path) -> None:
@@ -619,6 +970,16 @@ def test_action_matches_nested_globs(scratch: Path) -> None:
 def test_action_fails_safe_on_an_unknown_range(scratch: Path) -> None:
     change(scratch, "docs/a.md")
     assert decide(scratch, LIST, event="workflow_dispatch") == "true"
+    assert (
+        decide(
+            scratch,
+            LIST,
+            event="workflow_dispatch",
+            exclude="README.md",
+            output="relevant-excluding",
+        )
+        == "true"
+    )
 
 
 def pathspecs(patterns: List[str]) -> List[str]:

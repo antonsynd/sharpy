@@ -11,11 +11,20 @@ inputs:
       One GitHub filter pattern per line (`*`, `**`, `?`; a leading `!` excludes, and excludes come
       last). Blank lines and lines starting with `#` are ignored.
     required: true
+  exclude:
+    description: >-
+      Optional patterns, in the same syntax without the `!`, for a second answer from the same
+      range: `relevant-excluding` is `relevant` with these paths left out.
+    required: false
+    default: ''
 
 outputs:
   relevant:
     description: "'true' when a changed file matches `paths`, or when the range is unknown; else 'false'."
     value: ${{ steps.decide.outputs.relevant }}
+  relevant-excluding:
+    description: "As `relevant`, over `paths` minus `exclude`; set only when `exclude` is given."
+    value: ${{ steps.decide.outputs.relevant-excluding }}
 
 runs:
   using: composite
@@ -24,25 +33,32 @@ runs:
       shell: bash
       env:
         PATHS: ${{ inputs.paths }}
+        EXCLUDE: ${{ inputs.exclude }}
         EVENT: ${{ github.event_name }}
         BEFORE: ${{ github.event.before }}
       # The caller checks out with fetch-depth 2. A pull_request checkout is the merge commit: its
       # first parent is the base, so HEAD^1..HEAD is exactly the PR's diff. A push compares against
-      # the event's `before`. Fails safe: an unknown range (a dispatch, a new branch's all-zero
-      # `before`, a force-push whose `before` is gone) or an empty file list counts as relevant.
-      # --no-renames lists both sides of a rename, so a file moved out of a listed path counts.
+      # the event's `before` (one fetch, shared by both answers). Fails safe: an unknown range (a
+      # dispatch, a new branch's all-zero `before`, a force-push whose `before` is gone) or an empty
+      # file list counts as relevant. --no-renames lists both sides of a rename, so a file moved out
+      # of a listed path counts.
       run: |
         set -uo pipefail
-        spec=()
-        while IFS= read -r p; do
-          p="${p#"${p%%[![:space:]]*}"}"; p="${p%"${p##*[![:space:]]}"}"
-          case "$p" in
-            ''|'#'*) ;;
-            '!'*) spec+=(":(glob,exclude)${p#!}") ;;
-            *) spec+=(":(glob)$p") ;;
-          esac
-        done <<< "$PATHS"
+        specs() {
+          while IFS= read -r p; do
+            p="${p#"${p%%[![:space:]]*}"}"; p="${p%"${p##*[![:space:]]}"}"
+            case "$p" in
+              ''|'#'*) ;;
+              '!'*) printf '%s\n' ":(glob,exclude)${p#!}" ;;
+              *) printf '%s%s\n' "$2" "$p" ;;
+            esac
+          done <<< "$1"
+        }
+        mapfile -t spec < <(specs "$PATHS" ":(glob)")
+        mapfile -t extra < <(specs "$EXCLUDE" ":(glob,exclude)")
         if [ "${#spec[@]}" -eq 0 ]; then echo "::error::relevant-changes: no paths given"; exit 1; fi
+        outputs=(relevant)
+        [ "${#extra[@]}" -gt 0 ] && outputs+=(relevant-excluding)
         base=""
         if [ "$EVENT" = "pull_request" ]; then
           base=$(git rev-parse -q --verify HEAD^1 || true)
@@ -53,17 +69,22 @@ runs:
         [ -n "$base" ] && all=$(git diff --no-renames --name-only "$base" HEAD || true)
         printf 'changed files (%s..HEAD):\n%s\n' "${base:-?}" "${all:-<unknown>}"
         if [ -z "$all" ]; then
-          echo "relevant=true" >> "$GITHUB_OUTPUT"
+          for name in "${outputs[@]}"; do echo "$name=true" >> "$GITHUB_OUTPUT"; done
           echo "unknown or empty range: counted as relevant"
           exit 0
         fi
-        if ! hits=$(git diff --no-renames --name-only "$base" HEAD -- "${spec[@]}"); then
-          echo "::error::git diff with the path list failed"; exit 1
-        fi
-        if [ -n "$hits" ]; then
-          echo "relevant=true" >> "$GITHUB_OUTPUT"
-          printf 'relevant files:\n%s\n' "$hits"
-        else
-          echo "relevant=false" >> "$GITHUB_OUTPUT"
-          echo "no changed file matches the path list: the jobs it guards are skipped"
-        fi
+        answer() {
+          local name=$1 hits; shift
+          if ! hits=$(git diff --no-renames --name-only "$base" HEAD -- "$@"); then
+            echo "::error::git diff with the path list failed"; exit 1
+          fi
+          if [ -n "$hits" ]; then
+            echo "$name=true" >> "$GITHUB_OUTPUT"
+            printf '%s: true, from\n%s\n' "$name" "$hits"
+          else
+            echo "$name=false" >> "$GITHUB_OUTPUT"
+            echo "$name: false, no changed file matches"
+          fi
+        }
+        answer relevant "${spec[@]}"
+        if [ "${#extra[@]}" -gt 0 ]; then answer relevant-excluding "${spec[@]}" "${extra[@]}"; fi
