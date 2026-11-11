@@ -300,7 +300,12 @@ def test_inet_pton_ntop_ipv6_round_trips():
 
 @test
 def test_socket_ipv6_can_create():
-    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    s: socket.socket
+    try:
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    except socket.error:
+        # Hosts without an IPv6 stack (some CI runners) raise OSError, as CPython does.
+        return
     assert s.Family == socket.AF_INET6
     s.close()
 
