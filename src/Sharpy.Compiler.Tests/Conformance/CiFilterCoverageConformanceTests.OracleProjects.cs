@@ -18,6 +18,7 @@ public partial class CiFilterCoverageConformanceTests
     private static readonly string[] OracleProjectFloor =
     {
         "Sharpy.Core.Tests",
+        "Sharpy.Stdlib.Tests",
     };
 
     /// <summary>The python oracle's entry points: every public static member of <see cref="PythonInterpreter"/> that
