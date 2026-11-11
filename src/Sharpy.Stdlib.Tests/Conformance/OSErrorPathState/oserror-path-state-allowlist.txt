@@ -12,32 +12,3 @@
 #
 # DO NOT DELETE THIS FILE: the differential throws if it is missing rather than passing silently.
 
-ConfigParser.write_to_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-ConfigParser.write_to_file[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-ConfigParser.write_to_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-ConfigParser.write_to_file[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-toml.dump_file(sort_keys)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-toml.dump_file(sort_keys)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-toml.dump_file(sort_keys)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-toml.dump_file(sort_keys)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-toml.dump_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-toml.dump_file[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-toml.dump_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-toml.dump_file[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-toml.load_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-toml.load_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-toml.load_file[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-xml.ElementTree.parse[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-xml.ElementTree.parse[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-xml.ElementTree.parse[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
-xml.ElementTree.parse[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-xml.ElementTree.parse[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-xml.ElementTree.write[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-xml.ElementTree.write[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-xml.ElementTree.write[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-xml.ElementTree.write[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-xml.parse[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-xml.parse[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-xml.parse[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
-xml.parse[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-xml.parse[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
