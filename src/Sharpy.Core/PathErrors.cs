@@ -33,7 +33,9 @@ namespace Sharpy
     /// <c>PathErrors.rename(src, dst)</c>.</para>
     /// <para><b>Stated limits.</b> The state is read with <see cref="File.Exists"/> and
     /// <see cref="Directory.Exists"/>, which follow symbolic links and answer false on a path the
-    /// process may not search; permission bits, symbolic links and path spelling are axes G1 excludes
+    /// process may not search — except the two final entries of <see cref="Rename"/>, read as
+    /// <c>lstat(2)</c> reads them, because that door moves and replaces entries and following a link
+    /// there destroys what python leaves; permission bits, symbolic links and path spelling are axes G1 excludes
     /// (plan-638e8b C2). Messages carry python's strerror text without the <c>[Errno N]</c> prefix
     /// (message text is DEVIATION by default).</para>
     /// </remarks>
@@ -113,9 +115,21 @@ namespace Sharpy
         /// Rename <paramref name="src"/> to <paramref name="dst"/> as POSIX <c>rename(2)</c> does
         /// (<c>os.rename</c>, <c>os.replace</c>): python's verdict is a function of the PAIR of states
         /// (D1 predicate 2), and python's successes succeed — an existing file is replaced, and so is an
-        /// empty directory, which is removed first because neither target has a directory overwrite
-        /// (D1 predicate 3; that sequence is not atomic where <c>rename(2)</c> is).
+        /// empty directory (D1 predicate 3).
         /// </summary>
+        /// <remarks>
+        /// The two final entries are read as <c>lstat(2)</c> reads them: a symbolic link is a
+        /// non-directory entry, whatever it points at, and the move renames the link itself. The move
+        /// is <see cref="Directory.Move"/>, which is <c>rename(2)</c> for files, directories and links
+        /// alike, with no copy fallback — so a move across file systems refuses (EXDEV, plain
+        /// <see cref="OSError"/>) as python's does, and <c>shutil.move</c>'s own copy fallback answers
+        /// it. A regular file replaces a regular file in one <c>rename(2)</c> once it is on the
+        /// destination's file system (<see cref="ReplaceFile"/>); any other existing destination — an
+        /// empty directory, a symbolic link — has no overwrite on either target, so it is first renamed
+        /// aside within its own directory and is restored if the move refuses
+        /// (<see cref="ReplaceByMovingAside"/>). Either way a refused rename leaves both entries as they
+        /// were. Stated limit: the sequence is not atomic where <c>rename(2)</c> is.
+        /// </remarks>
         [PathRequirement(PathRequirement.Rename)]
         public static void Rename(string src, string dst)
         {
@@ -126,34 +140,23 @@ namespace Sharpy
             }
             if (SameEntry(src, dst))
             {
-                // rename(2) of an entry onto itself succeeds and changes nothing; the empty-directory
-                // delete below would otherwise remove the source itself.
+                // rename(2) of an entry onto itself succeeds and changes nothing; moving the
+                // destination aside below would otherwise move the source itself.
                 return;
             }
             try
             {
-                if (Directory.Exists(src))
+                if (EntryKindOf(dst) == Entry.Missing)
                 {
-                    if (Directory.Exists(dst))
-                    {
-                        Directory.Delete(dst);
-                    }
                     Directory.Move(src, dst);
+                }
+                else if (IsRegularFile(src) && IsRegularFile(dst))
+                {
+                    ReplaceFile(src, dst);
                 }
                 else
                 {
-#if NET10_0_OR_GREATER
-                    File.Move(src, dst, true);
-#else
-                    if (File.Exists(dst))
-                    {
-                        File.Replace(src, dst, null);
-                    }
-                    else
-                    {
-                        File.Move(src, dst);
-                    }
-#endif
+                    ReplaceByMovingAside(src, dst);
                 }
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
@@ -249,30 +252,154 @@ namespace Sharpy
             // an existing entry onto itself succeeds (rename(2) is a no-op), and a directory onto a
             // path inside itself is EINVAL whatever the destination's kind (python3 3.13.18: plain
             // OSError errno 22 for `ne` onto `ne/sub`, `ne/file` and a missing `ne/x`).
-            if (Directory.Exists(src) || File.Exists(src))
+            // The kinds are the final entries' own, as lstat(2) reads them: a symbolic link is a
+            // non-directory (python3 3.13.18: a directory onto a link to a directory is
+            // NotADirectoryError, a link to a directory onto a directory IsADirectoryError).
+            var source = EntryKindOf(src);
+            var destination = EntryKindOf(dst);
+            if (source != Entry.Missing)
             {
                 if (SameEntry(src, dst))
                 {
                     return Verdict.Ok;
                 }
-                if (Directory.Exists(src) && IsInside(src, dst))
+                if (source == Entry.Directory && IsInside(src, dst))
                 {
                     return Verdict.InvalidArgument;
                 }
             }
-            if (Directory.Exists(src))
+            if (source == Entry.Directory)
             {
-                if (File.Exists(dst))
+                if (destination == Entry.NonDirectory)
                 {
                     return Verdict.NotADirectory;
                 }
-                return Directory.Exists(dst) && !IsEmptyDirectory(dst) ? Verdict.NotEmpty : Verdict.Ok;
+                return destination == Entry.Directory && !IsEmptyDirectory(dst) ? Verdict.NotEmpty : Verdict.Ok;
             }
-            if (!File.Exists(src))
+            if (source == Entry.Missing)
             {
                 return Verdict.NotFound;
             }
-            return Directory.Exists(dst) ? Verdict.IsADirectory : Verdict.Ok;
+            return destination == Entry.Directory ? Verdict.IsADirectory : Verdict.Ok;
+        }
+
+        /// <summary>A final path entry as <c>lstat(2)</c> sees it.</summary>
+        private enum Entry
+        {
+            Missing,
+            NonDirectory,
+            Directory,
+        }
+
+        /// <summary>
+        /// The kind of the entry <paramref name="path"/> names, its final component not followed: a
+        /// symbolic link (dangling or not) is <see cref="Entry.NonDirectory"/>. Ancestors are followed,
+        /// as the kernel resolves them.
+        /// </summary>
+        private static Entry EntryKindOf(string path)
+        {
+            FileAttributes attributes;
+            try
+            {
+                attributes = File.GetAttributes(path);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException)
+            {
+                return Entry.Missing;
+            }
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                return Entry.NonDirectory;
+            }
+            return (attributes & FileAttributes.Directory) != 0 ? Entry.Directory : Entry.NonDirectory;
+        }
+
+        /// <summary>
+        /// A regular file onto a regular file. The source is first renamed beside the destination — a
+        /// plain <c>rename(2)</c>, so a move across file systems refuses here with nothing changed — and
+        /// then replaces it in one <c>rename(2)</c> on the destination's file system. Hard links to one
+        /// file: <c>rename(2)</c> succeeds and changes nothing, which leaves the temporary name, so it is
+        /// renamed back (python keeps both names). Stated limit, netstandard2.1 target only:
+        /// <see cref="File.Replace(string, string, string)"/> refuses that same-file pair.
+        /// </summary>
+        private static void ReplaceFile(string src, string dst)
+        {
+            var moved = AsideName(dst);
+            Directory.Move(src, moved);
+            try
+            {
+#if NET10_0_OR_GREATER
+                File.Move(moved, dst, true);
+#else
+                File.Replace(moved, dst, null);
+#endif
+            }
+            catch
+            {
+                Directory.Move(moved, src);
+                throw;
+            }
+            if (EntryKindOf(moved) != Entry.Missing)
+            {
+                Directory.Move(moved, src);
+            }
+        }
+
+        /// <summary>
+        /// The destination (a symbolic link, or an empty directory under a directory) is renamed aside
+        /// within its own directory, the source is renamed into its place, and only then is the aside
+        /// entry removed; a refused move renames the destination back, so both entries stay.
+        /// </summary>
+        private static void ReplaceByMovingAside(string src, string dst)
+        {
+            var aside = AsideName(dst);
+            Directory.Move(dst, aside);
+            try
+            {
+                Directory.Move(src, dst);
+            }
+            catch
+            {
+                Directory.Move(aside, dst);
+                throw;
+            }
+            // The classification admitted only a non-directory or an empty directory here.
+            if (EntryKindOf(aside) == Entry.Directory)
+            {
+                Directory.Delete(aside);
+            }
+            else
+            {
+                File.Delete(aside);
+            }
+        }
+
+        /// <summary>True when <paramref name="path"/> names a regular file: neither a directory nor a symbolic link.</summary>
+        private static bool IsRegularFile(string path)
+        {
+            try
+            {
+                return (File.GetAttributes(path) & (FileAttributes.Directory | FileAttributes.ReparsePoint)) == 0;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>A name beside <paramref name="path"/>, in its directory (so on its file system), that names no entry.</summary>
+        private static string AsideName(string path)
+        {
+            var full = Normal(path);
+            var directory = System.IO.Path.GetDirectoryName(full) ?? full;
+            var name = System.IO.Path.GetFileName(full);
+            string aside;
+            do
+            {
+                aside = System.IO.Path.Combine(directory, "." + name + ".sharpy-rename-" + Guid.NewGuid().ToString("N"));
+            }
+            while (EntryKindOf(aside) != Entry.Missing);
+            return aside;
         }
 
         /// <summary>
