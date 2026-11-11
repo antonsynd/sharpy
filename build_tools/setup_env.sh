@@ -83,7 +83,10 @@ install_sdk() {
   else
     fetch_installer
     log "installing the .NET $2 SDK into $1"
-    bash "$INSTALLER" --channel "$2.0" --install-dir "$1" --no-path
+    # Name the primary feed so the installer does not retry ci.dot.net first (blocked by a
+    # network allowlist that lists only builds.dotnet.microsoft.com: ~30 s of backoff per SDK).
+    bash "$INSTALLER" --channel "$2.0" --install-dir "$1" --no-path \
+      --azure-feed https://builds.dotnet.microsoft.com/dotnet
   fi
 }
 
