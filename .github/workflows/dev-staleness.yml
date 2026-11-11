@@ -26,6 +26,7 @@ on:
       - 'build_tools/allowlist_issue_state.py'
       - 'docs/language_specification/**'
       - 'build_tools/spec_blocks*'
+      - 'build_tools/check_spec_blocks.sh'
       - '.github/workflows/dev-staleness.yml'
 
 jobs:

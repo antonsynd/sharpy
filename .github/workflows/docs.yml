@@ -7,6 +7,11 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'build_tools/generate_stdlib_docs.py'
+      # `python -m build_tools stdlib generate` and its interpreter
+      # (build_tools/tests/test_workflow_relevance.py).
+      - 'build_tools/__main__.py'
+      - 'build_tools/cli.py'
+      - '.python-version'
       - 'src/Sharpy.Playground/**'
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Core/**'

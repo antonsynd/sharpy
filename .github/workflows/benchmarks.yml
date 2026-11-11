@@ -11,11 +11,17 @@ on:
     paths:
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Compiler.Benchmarks/**'
+      # The allocation gate and its interpreter (build_tools/tests/test_workflow_relevance.py).
+      - 'build_tools/allocation_gate.py'
+      - '.python-version'
   pull_request:
     branches: [ "mainline" ]
     paths:
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Compiler.Benchmarks/**'
+      # The allocation gate and its interpreter (build_tools/tests/test_workflow_relevance.py).
+      - 'build_tools/allocation_gate.py'
+      - '.python-version'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
