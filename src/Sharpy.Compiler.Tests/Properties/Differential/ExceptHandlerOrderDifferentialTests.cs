@@ -5,6 +5,9 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.TestInfrastructure.Integration;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
@@ -20,12 +23,22 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <para><b>Generated, never listed.</b> The pairs are every (base, derived) of Core's exception
 /// hierarchy, enumerated by reflection over the <c>Sharpy.Core</c> assembly (the row set of
 /// <c>ExceptionHierarchyPythonMroTests</c>) plus <c>Exception</c> itself, kept where python has a
-/// builtin of the same name, not an alias (<c>IOError is OSError</c>), that <c>T("x")</c> constructs.
+/// builtin of the same name, not an alias (<c>IOError is OSError</c>), that constructs from the one
+/// argument Core's constructor takes (<c>T("x")</c>, or <c>T(2)</c> for <c>SystemExit</c>).
 /// Each pair is crossed with clause order {base first, derived first} × raised instance {derived,
 /// base} × spelling of the second clause {<c>except T:</c>, <c>except T as e:</c>,
 /// <c>except (T, U):</c> with a <c>U</c> unrelated to the derived type}: 12 cells per pair, one <c>try</c>
 /// each, in ONE program compiled and run once under Sharpy and once under python3 (one
 /// <see cref="PythonBatchOracle"/> batch, after one probe batch that settles the builtin set).</para>
+/// <para><b>One generated deviation.</b> Sharpy has no <c>BaseException</c>: a type Core marks
+/// <c>[PythonBaseException]</c> (<c>SystemExit</c>) is caught by <c>except Exception:</c>, so in the
+/// base-first order Sharpy prints <c>first</c> where python prints <c>second</c>
+/// (<c>docs/deviations.yaml</c> except-exception-catches-systemexit); that handler's SPY0488 says so.</para>
+/// <para>Generic exception types have no python spelling (<c>except Box[int]:</c> is a TypeError
+/// there), so <see cref="ExceptHandlerOrder_GenericHierarchy_RunsFirstMatchWins"/> crosses them with
+/// their own expected verdict: the first clause whose type the raised instance is an instance of.</para>
+/// <para>Both facts also assert the validator's warned handlers are exactly the handlers the lowering
+/// leaves out (<see cref="AssertWarnedEqualsPruned"/>): the warning and the omission are one verdict.</para>
 /// <para>Skips when no python3 ≥ 3.12 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
 /// </summary>
 public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
@@ -46,11 +59,12 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         NAMES = __NAMES__
         ok = []
         for name in NAMES:
+            name, arg = name
             cls = getattr(builtins, name, None)
             if not (isinstance(cls, type) and issubclass(cls, BaseException) and cls.__name__ == name):
                 continue
             try:
-                cls("x")
+                cls(eval(arg))
             except Exception:
                 continue
             ok.append(name)
@@ -65,25 +79,49 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
 
     /// <param name="UnrelatedCaughtByBase">The tuple's extra type is a subclass of <paramref name="Base"/> (only
     /// when the base is <c>Exception</c>, which every other type derives from).</param>
-    private sealed record Pair(string Base, string Derived, string Unrelated, bool UnrelatedCaughtByBase);
+    /// <param name="DerivedIsPythonBaseException">Core marks the derived type <c>[PythonBaseException]</c>
+    /// (python roots it at <c>BaseException</c>).</param>
+    private sealed record Pair(string Base, string Derived, string Unrelated, bool UnrelatedCaughtByBase,
+        string BaseArgument, string DerivedArgument, bool DerivedIsPythonBaseException);
 
     private sealed record Cell(int Id, Pair Pair, Order Order, Raised Raised, Spelling Spelling)
     {
         public string First => Order == Order.BaseFirst ? Pair.Base : Pair.Derived;
         public string Second => Order == Order.BaseFirst ? Pair.Derived : Pair.Base;
 
-        /// <summary>The second clause is dead in python: the first clause's type covers every type it names.</summary>
+        /// <summary>The second clause is dead in Sharpy: the first clause's type covers every type it names.</summary>
         public bool SecondIsDead => Order == Order.BaseFirst && (Spelling != Spelling.Tuple || Pair.UnrelatedCaughtByBase);
+
+        /// <summary>The generated deviation: Sharpy's <c>Exception</c> catches a python-<c>BaseException</c> type.</summary>
+        public bool IsBaseExceptionDeviation =>
+            Order == Order.BaseFirst && Raised == Raised.Derived && Pair.DerivedIsPythonBaseException;
     }
 
-    /// <summary>Every public, concrete, non-generic Core exception type with a one-argument constructor a <c>str</c> fits, plus <c>System.Exception</c>.</summary>
+    /// <summary>Every public, concrete, non-generic Core exception type with a one-argument constructor
+    /// (<see cref="ArgumentFor"/>), plus <c>System.Exception</c>.</summary>
     private static IReadOnlyList<ClrType> CandidateTypes() =>
         typeof(SharpyRT::Sharpy.KeyError).Assembly.GetExportedTypes()
             .Where(t => typeof(Exception).IsAssignableFrom(t) && !t.IsAbstract && !t.IsGenericTypeDefinition
-                && t.GetConstructors().Any(c => c.GetParameters() is [var only] && only.ParameterType.IsAssignableFrom(typeof(string))))
+                && ArgumentFor(t) != null)
             .Append(typeof(Exception))
             .OrderBy(t => t.FullName, StringComparer.Ordinal)
             .ToArray();
+
+    /// <summary>The source literal both languages construct the type from: a <c>str</c> when a
+    /// one-argument constructor takes one, else an <c>int</c> (<c>SystemExit(code)</c>); null when neither.</summary>
+    private static string? ArgumentFor(ClrType type)
+    {
+        var single = type.GetConstructors().Where(c => c.GetParameters().Length == 1)
+            .Select(c => c.GetParameters()[0].ParameterType).ToList();
+        if (single.Any(p => p.IsAssignableFrom(typeof(string))))
+            return "\"x\"";
+        if (single.Any(p => p == typeof(int)))
+            return "2";
+        return null;
+    }
+
+    private static bool IsPythonBaseException(ClrType type) =>
+        type.IsDefined(typeof(SharpyRT::Sharpy.PythonBaseExceptionAttribute), inherit: true);
 
     private static string SharpyName(ClrType type) => type.Name;
 
@@ -109,7 +147,8 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
                 if (unrelated != null)
                 {
                     pairs.Add(new Pair(SharpyName(baseType), SharpyName(derived), unrelated,
-                        baseType.IsAssignableFrom(byName[unrelated])));
+                        baseType.IsAssignableFrom(byName[unrelated]), ArgumentFor(baseType)!, ArgumentFor(derived)!,
+                        IsPythonBaseException(derived)));
                 }
             }
         }
@@ -147,7 +186,9 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
             foreach (var c in group)
             {
                 var id = c.Id.ToString(CultureInfo.InvariantCulture);
-                var raised = c.Raised == Raised.Derived ? c.Pair.Derived : c.Pair.Base;
+                var raised = c.Raised == Raised.Derived
+                    ? c.Pair.Derived + "(" + c.Pair.DerivedArgument + ")"
+                    : c.Pair.Base + "(" + c.Pair.BaseArgument + ")";
                 var second = c.Spelling switch
                 {
                     Spelling.Plain => c.Second,
@@ -158,7 +199,7 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
                 // left out) a divergent LINE rather than the end of the run.
                 sb.Append("    try:\n");
                 sb.Append("        try:\n");
-                sb.Append("            raise ").Append(raised).Append("(\"x\")\n");
+                sb.Append("            raise ").Append(raised).Append('\n');
                 sb.Append("        except ").Append(c.First).Append(":\n");
                 sb.Append("            print(").Append(id).Append(", \"first\")\n");
                 sb.Append("        except ").Append(second).Append(":\n");
@@ -188,9 +229,10 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         return byId;
     }
 
-    private static HashSet<string> ProbePythonBuiltins(PythonBatchOracle oracle, IEnumerable<string> names)
+    private static HashSet<string> ProbePythonBuiltins(PythonBatchOracle oracle, IEnumerable<(string Name, string Argument)> names)
     {
-        var script = ProbeScript.Replace("__NAMES__", JsonSerializer.Serialize(names.ToArray()), StringComparison.Ordinal);
+        var pairs = names.Select(n => new[] { n.Name, n.Argument }).ToArray();
+        var script = ProbeScript.Replace("__NAMES__", JsonSerializer.Serialize(pairs), StringComparison.Ordinal);
         var verdicts = oracle.RunBatch(new[] { new PyRequest(0, script) });
         Assert.True(verdicts.TryGetValue(0, out var probe) && probe.Ok,
             "python3 did not run the builtin-exception probe: " + (probe?.Stderr ?? "no verdict"));
@@ -203,7 +245,7 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
 
         var types = CandidateTypes();
-        var builtins = ProbePythonBuiltins(oracle, types.Select(SharpyName).Concat(UnrelatedCandidates).Distinct());
+        var builtins = ProbePythonBuiltins(oracle, types.Select(t => (SharpyName(t), ArgumentFor(t)!)));
         var pairs = GeneratePairs(types, builtins);
         var cells = GenerateCells(pairs);
         Output.WriteLine($"{types.Count} candidate types, {builtins.Count} python builtins, {pairs.Count} pairs, {cells.Count} cells");
@@ -213,6 +255,7 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         Assert.Contains(pairs, p => p.Base == "LookupError" && p.Derived == "KeyError");
         Assert.Contains(pairs, p => p.Base == "OSError" && p.Derived == "FileNotFoundError");
         Assert.Contains(pairs, p => p.Base == "Exception" && p.Derived == "ValueError");
+        Assert.Contains(pairs, p => p.Base == "Exception" && p.DerivedIsPythonBaseException);
 
         var source = ProgramFor(cells);
 
@@ -230,11 +273,12 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         foreach (var cell in cells)
         {
             var python = pythonById[cell.Id];
+            var expected = cell.IsBaseExceptionDeviation ? "first" : python;
             var actual = sharpyById.TryGetValue(cell.Id, out var s) ? s : "<no line>";
-            if (!string.Equals(python, actual, StringComparison.Ordinal))
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
             {
                 divergences.Add($"  {cell.Pair.Base}/{cell.Pair.Derived} {cell.Order} raise {cell.Raised} "
-                    + $"second={cell.Spelling}: python {python}, sharpy {actual}");
+                    + $"second={cell.Spelling}: python {python}, expected {expected}, sharpy {actual}");
             }
         }
         Assert.True(divergences.Count == 0,
@@ -244,10 +288,128 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         Assert.Contains(cells, c => c.SecondIsDead && pythonById[c.Id] == "first");
         Assert.Contains(cells, c => pythonById[c.Id] == "second");
         Assert.DoesNotContain(cells, c => pythonById[c.Id] == "escaped");
+        // The deviation is real in python (it runs the second clause) and generated, not listed.
+        Assert.Contains(cells, c => c.IsBaseExceptionDeviation && pythonById[c.Id] == "second");
 
         // Exactly one SPY0488 per dead second clause, and none for a live or a partly covered one.
         var deadClauses = cells.Count(c => c.SecondIsDead);
-        var warned = run.RawDiagnostics.Count(d => d.Code == DiagnosticCodes.Validation.UnreachableArm);
-        Assert.Equal(deadClauses, warned);
+        var warned = run.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Validation.UnreachableArm).ToList();
+        Assert.Equal(deadClauses, warned.Count);
+
+        // A handler dead only because Sharpy has no BaseException says so, and only it does.
+        var pythonWouldRun = cells.Count(c => c.SecondIsDead && c.Pair.DerivedIsPythonBaseException);
+        Assert.True(pythonWouldRun > 0, "no SystemExit-after-Exception clause was generated");
+        Assert.Equal(pythonWouldRun, warned.Count(d => d.Message.Contains("never runs in Sharpy", StringComparison.Ordinal)));
+
+        AssertWarnedEqualsPruned(source);
     }
+
+    // ---- generic exception types: no python spelling, their own expected verdict -------------------
+
+    /// <summary>The declared generic hierarchy: each type's Sharpy spelling and its supertypes (itself included).</summary>
+    private static readonly (string Name, string[] IsA)[] GenericTypes =
+    {
+        ("AppError", new[] { "AppError" }),
+        ("Box[int]", new[] { "Box[int]", "AppError" }),
+        ("Box[str]", new[] { "Box[str]", "AppError" }),
+        ("SubBox[int]", new[] { "SubBox[int]", "Box[int]", "AppError" }),
+    };
+
+    private const string GenericPrelude =
+        "class AppError(Exception):\n    pass\n\n"
+        + "class Box[T](AppError):\n    pass\n\n"
+        + "class SubBox[T](Box[T]):\n    pass\n\n";
+
+    /// <summary>
+    /// Every ordered pair of distinct types of a generic exception hierarchy (a generic class under a
+    /// non-generic base, two closed instantiations of one definition, a generic subclass of a generic
+    /// base) × raised {first type, second type}: 24 cells. The expected line is the first clause whose
+    /// type the raised instance is an instance of; a second clause whose type is an instance of the
+    /// first's is warned (SPY0488) and left out, never SPY0908 CS0160.
+    /// </summary>
+    [Fact]
+    public void ExceptHandlerOrder_GenericHierarchy_RunsFirstMatchWins()
+    {
+        var cells = new List<(int Id, int First, int Second, int Raised)>();
+        for (var first = 0; first < GenericTypes.Length; first++)
+            for (var second = 0; second < GenericTypes.Length; second++)
+                if (first != second)
+                    foreach (var raised in new[] { first, second })
+                        cells.Add((cells.Count, first, second, raised));
+
+        var sb = new StringBuilder(GenericPrelude).Append("def main() -> None:\n");
+        foreach (var (id, first, second, raised) in cells)
+        {
+            sb.Append("    try:\n        raise ").Append(GenericTypes[raised].Name).Append("(\"x\")\n");
+            sb.Append("    except ").Append(GenericTypes[first].Name).Append(":\n        print(").Append(id).Append(", \"first\")\n");
+            sb.Append("    except ").Append(GenericTypes[second].Name).Append(":\n        print(").Append(id).Append(", \"second\")\n");
+        }
+        var source = sb.ToString();
+
+        bool IsA(int instance, int type) => GenericTypes[instance].IsA.Contains(GenericTypes[type].Name);
+
+        var run = CompileAndExecute(source, "except_order_generic.spy");
+        Assert.True(RanToCompletion(run), JudgeRun(run, source, "Sharpy generic handler-order matrix") ?? "timed out");
+        var byId = ParseLines(run.StandardOutput);
+
+        var wrong = new List<string>();
+        foreach (var c in cells)
+        {
+            var expected = IsA(c.Raised, c.First) ? "first" : "second";
+            var actual = byId.TryGetValue(c.Id, out var a) ? a : "<no line>";
+            if (actual != expected)
+            {
+                wrong.Add($"  except {GenericTypes[c.First].Name} / except {GenericTypes[c.Second].Name}, raise "
+                    + $"{GenericTypes[c.Raised].Name}: expected {expected}, sharpy {actual}");
+            }
+        }
+        Assert.True(wrong.Count == 0, $"{wrong.Count} of {cells.Count} generic cells wrong:\n" + string.Join("\n", wrong));
+
+        // Second clauses an instance of the first: (AppError, Box[int]), (AppError, Box[str]),
+        // (AppError, SubBox[int]), (Box[int], SubBox[int]), each raised two ways.
+        var dead = cells.Count(c => IsA(c.Second, c.First));
+        Assert.Equal(8, dead);
+        Assert.Equal(dead, run.RawDiagnostics.Count(d => d.Code == DiagnosticCodes.Validation.UnreachableArm));
+
+        AssertWarnedEqualsPruned(source);
+    }
+
+    /// <summary>
+    /// The validator's SPY0488 handlers and the lowering's left-out handlers are the same set, located
+    /// by the handler's exception-type position (or the <c>except</c> keyword for a bare handler).
+    /// </summary>
+    private void AssertWarnedEqualsPruned(string source)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Test").AddSourceFile("main.spy", source).CreateProjectFile();
+        var result = helper.Compile();
+        Assert.True(result.Success, "the matrix compiles as a project:\n"
+            + string.Join("\n", result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}")));
+
+        var warned = result.Diagnostics.GetAll()
+            .Where(d => d.Code == DiagnosticCodes.Validation.UnreachableArm)
+            .Select(d => (d.Line ?? 0, d.Column ?? 0))
+            .OrderBy(p => p).ToList();
+
+        var ir = result.ProjectModel!.IrCompilation!;
+        var pruned = new List<(int, int)>();
+        foreach (var (node, irNode) in ir.Index)
+        {
+            if (node is not TryStatement tryStmt || irNode is not IrPrunedTry prunedTry)
+                continue;
+            for (var i = 0; i < tryStmt.Handlers.Length; i++)
+            {
+                if (prunedTry.Handlers[i].Emitted)
+                    continue;
+                var handler = tryStmt.Handlers[i];
+                pruned.Add((handler.ExceptionType?.LineStart ?? handler.LineStart,
+                    handler.ExceptionType?.ColumnStart ?? handler.ColumnStart));
+            }
+        }
+        pruned.Sort();
+
+        Assert.NotEmpty(warned);
+        Assert.Equal(warned, pruned);
+    }
+
 }

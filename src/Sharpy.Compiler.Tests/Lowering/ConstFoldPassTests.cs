@@ -151,6 +151,28 @@ public class ConstFoldPassTests
         CompileCSharp(source, fold: false).Should().Contain("Optional<int>.Some(2 + 3)", "the fold is the flag's doing");
     }
 
+    /// <summary>
+    /// #2363: a try whose covered handlers are left out is a typed IR node (<c>IrPrunedTry</c>), and the
+    /// shared rewriter descends into it as it did into the opaque try, so the fold reaches the try body
+    /// and a surviving handler's body; the covered handler is still left out.
+    /// </summary>
+    [Fact]
+    public void Enabled_FoldsInsidePrunedTry_BodyAndSurvivingHandler()
+    {
+        const string source = "def f() -> int:\n    x: int = 0\n    try:\n        x = 2 + 3\n"
+            + "    except LookupError:\n        x = 7 + 11\n    except KeyError:\n        x = 9\n    return x\n";
+
+        var cs = CompileCSharp(source, fold: true);
+
+        cs.Should().NotContain("2 + 3", "the pruned try's body is reached by the fold pass");
+        cs.Should().NotContain("7 + 11", "the surviving handler's body is reached by the fold pass");
+        cs.Should().Contain("18", "the surviving handler's value folds");
+        cs.Should().NotContain("KeyError", "the covered handler is still left out");
+        var unfolded = CompileCSharp(source, fold: false);
+        unfolded.Should().Contain("2 + 3", "the fold is the flag's doing");
+        unfolded.Should().Contain("7 + 11", "the fold is the flag's doing");
+    }
+
     [Fact]
     public void NonFiniteDoubleResult_StaysUnfolded()
     {

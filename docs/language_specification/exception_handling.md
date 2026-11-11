@@ -141,7 +141,13 @@ Handlers are tried in source order and the first one whose type matches runs, as
 handler whose every exception type an earlier handler (one without a `when` filter) already catches
 can never run: it is accepted, warned as **SPY0488**, and left out of the compiled program. A type
 of a tuple handler that an earlier handler already catches is left out the same way; the handler's
-other types still catch.
+other types still catch. So is a tuple element that an earlier element of the same tuple already
+catches (`except (LookupError, KeyError):` catches as `except LookupError:` does), without a warning.
+
+Because there is [no `BaseException`](#no-baseexception), `except Exception:` also catches
+`SystemExit`, and everything a later bare `except:` would. A later `except SystemExit:` or bare
+`except:` therefore never runs in Sharpy although CPython runs it; it is left out with a SPY0488
+warning that says so. Put the `SystemExit` handler first to keep CPython's behaviour.
 
 <!-- spec-sweep: output -->
 ```python

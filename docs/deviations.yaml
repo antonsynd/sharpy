@@ -2705,3 +2705,30 @@ deviations:
                 raise ExceptionGroup('errors', errors)
             except BaseExceptionGroup as eg:  # ERROR SPY0202: Type 'BaseExceptionGroup' not found
                 print('caught as BaseExceptionGroup')
+
+  - id: except-exception-catches-systemexit
+    code: SPY0488
+    category: semantics
+    audience: python
+    severity: warning
+    python_behavior: "`SystemExit`, `KeyboardInterrupt` and `GeneratorExit` derive from `BaseException`, not `Exception`, so `except Exception:` does not catch them: a later `except SystemExit:` (or a bare `except:`) after `except Exception:` runs for them."
+    sharpy_behavior: "There is no `BaseException` (exception_handling.md \"No BaseException\"): `SystemExit` derives from `System.Exception` (Core marks it `[PythonBaseException]`; `KeyboardInterrupt` and `GeneratorExit` are not defined). `except Exception:` therefore catches it, and a later `except SystemExit:` or bare `except:` can never run: it is left out of the compiled program with a SPY0488 warning that names the divergence (C# refuses the catch, CS0160). Put `except SystemExit:` before `except Exception:` to keep python's behavior (#2363)."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: SPY0488
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise SystemExit(2)
+        except Exception:
+            print('exc')
+        except SystemExit:
+            print('exit')   # printed
+      sharpy: |
+        def main():
+            try:
+                raise SystemExit(2)
+            except Exception:
+                print('exc')    # printed
+            except SystemExit:  # WARNING SPY0488: never runs in Sharpy (no BaseException)
+                print('exit')

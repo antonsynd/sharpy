@@ -37,6 +37,12 @@ public class ExceptHandlerReachabilityTests : IntegrationTestBase
             "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except Exception:\n        print(\"exc\")\n"
             + "    except:\n        print(\"bare\")\n",
             "exc", 1 },
+        // python3.15 prints "exit": SystemExit is a BaseException there; Sharpy has no BaseException
+        // (docs/deviations.yaml except-exception-catches-systemexit), and the warning says so.
+        new object[] { "systemexit_after_exception",
+            "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except Exception:\n        print(\"exc\")\n"
+            + "    except SystemExit:\n        print(\"exit\")\n",
+            "exc", 1 },
         new object[] { "bare_last_reachable",
             "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except ValueError:\n        print(\"value\")\n"
             + "    except:\n        print(\"bare\")\n",
@@ -92,6 +98,11 @@ public class ExceptHandlerReachabilityTests : IntegrationTestBase
         Assert.True(RanToCompletion(run), JudgeRun(run, source, name) ?? "timed out");
         Assert.Equal(expected, run.StandardOutput.Trim().Replace("\r\n", "\n"));
         Assert.Equal(warnings, run.RawDiagnostics.Count(d => d.Code == DiagnosticCodes.Validation.UnreachableArm));
+
+        // The two cells CPython would run differently (no BaseException in Sharpy) say so; no other does.
+        var pythonWouldRun = name is "systemexit_after_exception" or "bare_after_exception";
+        Assert.Equal(pythonWouldRun ? warnings : 0, run.RawDiagnostics.Count(d =>
+            d.Code == DiagnosticCodes.Validation.UnreachableArm && d.Message.Contains("never runs in Sharpy", StringComparison.Ordinal)));
     }
 
     /// <summary>

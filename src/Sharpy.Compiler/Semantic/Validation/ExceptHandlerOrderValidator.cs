@@ -28,17 +28,31 @@ internal sealed class ExceptHandlerOrderValidator : SemanticValidatorBase
 
                 var handler = tryStmt.Handlers[i];
                 var caughtBy = verdicts[i].CaughtBy?.GetDisplayName() ?? "Exception";
-                var what = handler.ExceptionType switch
-                {
-                    null => "this bare 'except:'",
-                    { } annotation when ExceptHandlerReachability.ElementsOf(annotation).Length > 1
-                        => "every type of this handler",
-                    { } annotation => $"'{context.SemanticInfo.GetTypeTestLowering(annotation)?.TestType.GetDisplayName() ?? annotation.Name}'",
-                };
+                var annotation = handler.ExceptionType;
+                string what;
+                if (annotation == null)
+                    what = "this bare 'except:'";
+                else if (ExceptHandlerReachability.ElementsOf(annotation).Length > 1)
+                    what = "every type of this handler";
+                else
+                    what = $"'{context.SemanticInfo.GetTypeTestLowering(annotation)?.TestType.GetDisplayName() ?? annotation.Name}'";
+
+                // Sharpy has no BaseException: an `except Exception:` handler catches what CPython
+                // leaves to a later `except SystemExit:` or bare `except:`. Say so rather than call
+                // the handler dead in CPython too.
+                var message = verdicts[i].PythonWouldRunIt
+                    ? $"This except handler never runs in Sharpy: an earlier handler catches '{caughtBy}', which covers "
+                      + $"{what} because Sharpy has no BaseException (CPython would run this handler for "
+                      + (annotation == null ? "SystemExit, KeyboardInterrupt and GeneratorExit" : what)
+                      + "). It is left out. "
+                      + (annotation == null
+                          ? "Put an 'except SystemExit:' handler before that handler to handle an exit"
+                          : "Move it before that handler to run it")
+                    : $"This except handler is unreachable: an earlier handler catches '{caughtBy}', which "
+                      + $"covers {what}, so it never runs and is left out. Move it before that handler, or delete it";
                 AddWarning(
                     context,
-                    $"This except handler is unreachable: an earlier handler catches '{caughtBy}', which "
-                    + $"covers {what}, so it never runs and is left out. Move it before that handler, or delete it",
+                    message,
                     handler.ExceptionType?.LineStart ?? handler.LineStart,
                     handler.ExceptionType?.ColumnStart ?? handler.ColumnStart,
                     code: DiagnosticCodes.Validation.UnreachableArm,

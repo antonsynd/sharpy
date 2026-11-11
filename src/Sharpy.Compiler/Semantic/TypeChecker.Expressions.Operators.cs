@@ -2344,7 +2344,7 @@ internal partial class TypeChecker
     /// was itself rejected as not-an-Exception — found by running that message's own example.
     /// </para>
     /// </summary>
-    private static bool IsExceptionSubtype(SemanticType type, TypeSymbol exceptionSymbol)
+    internal static bool IsExceptionSubtype(SemanticType type, TypeSymbol exceptionSymbol)
     {
         var symbol = type switch
         {

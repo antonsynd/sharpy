@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
@@ -15,10 +16,15 @@ namespace Sharpy.Compiler.Semantic;
 /// elements of <c>except (A, B):</c>, or the one type of <c>except A:</c>. Empty for a bare
 /// <c>except:</c>. A type is unreachable when an earlier handler, or an earlier element of the same
 /// tuple, already catches it.</param>
+/// <param name="PythonWouldRunIt">The handler is unreachable only because Sharpy has no
+/// <c>BaseException</c>: the covering handler is <c>except Exception:</c> and the handler is a bare
+/// <c>except:</c> or names a type CPython roots at <c>BaseException</c> (<c>SystemExit</c>), so CPython
+/// would run it. The warning says so instead of calling the handler dead in python too.</param>
 internal sealed record ExceptHandlerVerdict(
     bool IsUnreachable,
     SemanticType? CaughtBy,
-    ImmutableArray<bool> TypeReachable)
+    ImmutableArray<bool> TypeReachable,
+    bool PythonWouldRunIt = false)
 {
     /// <summary>Whether anything of this handler is left out of the emitted <c>catch</c> list.</summary>
     public bool PrunesAnything => IsUnreachable || TypeReachable.Any(reachable => !reachable);
@@ -35,10 +41,19 @@ internal sealed record ExceptHandlerVerdict(
 /// </summary>
 /// <remarks>
 /// <para><b>Coverage</b> is subclass-or-same over the recorded exception types, judged on their
-/// symbols (<see cref="TypeHierarchyService"/>), i.e. on the EMITTED hierarchy — the one C# judges
-/// CS0160 on and the one Core mirrors from python (#2124). A generic exception type is covered only
-/// by the identical closed type. A type the checker recorded nothing for neither covers nor is
-/// covered.</para>
+/// symbols, i.e. on the EMITTED hierarchy — the one C# judges CS0160 on and the one Core mirrors
+/// from python (#2124). A closed generic type is judged on its definition against a non-generic
+/// catcher (<c>TypeChecker.IsExceptionSubtype</c>'s rule), and against a generic catcher on the
+/// instantiated base chain (<see cref="GenericInstantiationWalker.EnumerateBaseChain"/>), so
+/// <c>except Box[int]:</c> covers <c>except SubBox[int]:</c> but not <c>except Box[str]:</c>. A type
+/// the checker recorded nothing for neither covers nor is covered.</para>
+/// <para>The one input besides the handler list is the <c>TypeTestLowering</c> the checker recorded
+/// for each handler type; <c>SemanticInfo.MergeFrom</c> copies it verbatim (a conflicting value
+/// throws), so the per-file validator and the post-merge lowering read the same facts.</para>
+/// <para>Sharpy has no <c>BaseException</c> (exception_handling.md): <c>except Exception:</c> catches
+/// <c>SystemExit</c> and everything a bare <c>except:</c> would, so those handlers after it are
+/// unreachable in Sharpy though CPython runs them; <see cref="ExceptHandlerVerdict.PythonWouldRunIt"/>
+/// marks them (deviation <c>except-exception-catches-systemexit</c>).</para>
 /// <para>A handler with a <c>when</c> filter covers nothing (it can decline), but it can itself be
 /// covered. A bare <c>except:</c> catches every exception; it is covered once an earlier unfiltered
 /// handler catches <see cref="System.Exception"/>, the root every raisable type derives from (there is
@@ -72,8 +87,10 @@ internal static class ExceptHandlerReachability
         {
             if (handler.ExceptionType == null)
             {
-                // Bare `except:` — it catches everything, so it is covered only by a catch-all.
-                verdicts.Add(new ExceptHandlerVerdict(catchesAll != null, catchesAll, ImmutableArray<bool>.Empty));
+                // Bare `except:` — it catches everything, so it is covered only by a catch-all, which
+                // in CPython leaves it the BaseException-only types.
+                verdicts.Add(new ExceptHandlerVerdict(catchesAll != null, catchesAll, ImmutableArray<bool>.Empty,
+                    PythonWouldRunIt: catchesAll != null));
                 continue;
             }
 
@@ -81,6 +98,7 @@ internal static class ExceptHandlerReachability
             var reachable = ImmutableArray.CreateBuilder<bool>(elements.Length);
             var withinHandler = new List<SemanticType>();
             var allCoveredByEarlierHandlers = true;
+            var pythonWouldRunIt = false;
             SemanticType? firstCover = null;
 
             foreach (var element in elements)
@@ -90,7 +108,11 @@ internal static class ExceptHandlerReachability
                 if (cover == null)
                     allCoveredByEarlierHandlers = false;
                 else
+                {
                     firstCover ??= cover;
+                    if (IsExceptionRoot(cover) && IsPythonBaseExceptionType(type!))
+                        pythonWouldRunIt = true;
+                }
 
                 var dead = cover != null || (type != null && FindCover(type, withinHandler) != null);
                 reachable.Add(!dead);
@@ -100,7 +122,8 @@ internal static class ExceptHandlerReachability
 
             var isUnreachable = elements.Length > 0 && allCoveredByEarlierHandlers;
             verdicts.Add(new ExceptHandlerVerdict(
-                isUnreachable, isUnreachable ? firstCover : null, reachable.MoveToImmutable()));
+                isUnreachable, isUnreachable ? firstCover : null, reachable.MoveToImmutable(),
+                PythonWouldRunIt: isUnreachable && pythonWouldRunIt));
 
             if (handler.Filter == null && !isUnreachable)
             {
@@ -148,16 +171,54 @@ internal static class ExceptHandlerReachability
 
     /// <summary>
     /// Whether a handler for <paramref name="catcher"/> catches every <paramref name="type"/>: the
-    /// same type or a subclass of it, by symbol identity and the symbol base chain.
+    /// same type or a subclass of it. A non-generic catcher is judged on the type's definition by
+    /// <see cref="TypeChecker.IsExceptionSubtype"/>, the checker's own derivation rule; a generic
+    /// catcher is matched against the type itself and its instantiated base chain.
     /// </summary>
     private static bool Covers(SemanticType catcher, SemanticType type)
     {
-        if (catcher is UserDefinedType { Symbol: { } catcherSymbol } && type is UserDefinedType { Symbol: { } typeSymbol })
+        if (catcher is UserDefinedType { Symbol: { } catcherSymbol })
+            return TypeChecker.IsExceptionSubtype(type, catcherSymbol);
+
+        if (catcher is not GenericType { GenericDefinition: { } catcherDefinition } genericCatcher)
+            return false;
+        if (catcher.Equals(type))
+            return true;
+
+        var (definition, arguments) = type switch
         {
-            return TypeHierarchyService.IsSameType(typeSymbol, catcherSymbol)
-                || TypeHierarchyService.InheritsFrom(typeSymbol, catcherSymbol);
+            GenericType { GenericDefinition: { } d } g => (d, (IReadOnlyList<SemanticType>)g.TypeArguments),
+            UserDefinedType { Symbol: { } s } => (s, Array.Empty<SemanticType>()),
+            _ => (null, Array.Empty<SemanticType>()),
+        };
+        if (definition == null)
+            return false;
+
+        foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(definition, arguments))
+        {
+            if (TypeHierarchyService.IsSameType(ancestor.Definition, catcherDefinition)
+                && ancestor.TypeArguments.SequenceEqual(genericCatcher.TypeArguments))
+                return true;
         }
-        return catcher is GenericType && catcher.Equals(type);
+        return false;
+    }
+
+    /// <summary>Whether CPython roots the type at <c>BaseException</c>: it, or a base, carries Core's marker.</summary>
+    private static bool IsPythonBaseExceptionType(SemanticType type)
+    {
+        var symbol = type switch
+        {
+            UserDefinedType { Symbol: { } s } => s,
+            GenericType { GenericDefinition: { } d } => d,
+            _ => null,
+        };
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+        for (var current = symbol; current != null && visited.Add(current); current = current.BaseType)
+        {
+            if (current.ClrType is { } clrType && ClrTypeHelper.IsPythonBaseExceptionType(clrType))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>The root every raisable type derives from: the CLR <see cref="System.Exception"/>.</summary>
