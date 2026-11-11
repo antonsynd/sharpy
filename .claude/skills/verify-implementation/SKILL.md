@@ -71,7 +71,7 @@ Build a **completeness checklist** — every deliverable, each with the evidence
 
 ## Team Formation
 
-**Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (they lack `SendMessage`/task tools in their `.claude/agents/` definitions).
+**Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (no `SendMessage`/task tools).
 
 **Models.** `verification-expert` and `net-axiom-guardian` are defined with `model: haiku`, which is right for "run this filter and report counts" and wrong for a refutation brief. Spawn **Agents 2, 3, and 4 with `model: "opus"`** explicitly. Agent 1 may run on its definition's default.
 
@@ -377,7 +377,7 @@ After all fixes are committed (`FINAL=<sha>`):
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome
 8. `git diff --stat $BASE..$FINAL` — matches the declared scope; no unclaimed working-tree delta (`git status`)
-9. The PR body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since; absent or stale is a finding (nothing enforces it mechanically)
+9. The PR body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since; absent or stale is a finding; stale after a code fix: run `/implement-plan` › Cleanup and Report step 4 on `$FINAL`, then re-check (not a remediation loop).
 
 If a step fails, loop back to remediation. Maximum 3 remediation loops — after that, report the residue as unresolved with its evidence. A failing step invalidates its dependents, not its siblings: complete every independent step and label suspect readings.
 
