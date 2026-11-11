@@ -458,6 +458,50 @@ class TestRunSelection:
         assert "NOTHING TO GATE" in result.stdout
         assert "GREEN" not in result.stdout
 
+    def irrelevant(self, rig: Rig, gate: Optional[str] = "success") -> None:
+        # `changes` found nothing the workflow tests: ci-summary is skipped, so it has no log.
+        rig.state["jobs"] = [
+            {"name": "build", "databaseId": 1, "conclusion": "skipped"},
+            {"name": "CI summary", "databaseId": 2, "conclusion": "skipped"},
+        ]
+        if gate is not None:
+            rig.state["jobs"].append(
+                {"name": "Gate (.NET 10)", "databaseId": 3, "conclusion": gate}
+            )
+        rig.state["log"] = ""
+
+    def test_an_irrelevant_run_has_nothing_to_gate(self, rig: Rig) -> None:
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        self.irrelevant(rig)
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 4, result.stdout
+        assert "NOTHING TO GATE" in result.stdout and "GREEN" not in result.stdout
+        # A skipped job has no log: reading one would retry into no verdict.
+        assert not any("--log" in call for call in rig.calls())
+
+    def test_an_irrelevant_run_with_a_red_gate_is_red(self, rig: Rig) -> None:
+        rig.state["runs"][str(DOTNET)] = pr_run("failure")
+        self.irrelevant(rig, gate="failure")
+        assert rig.gate("--run", str(DOTNET)).returncode == 1
+
+    def test_an_irrelevant_run_with_a_red_python_run_is_red(self, rig: Rig) -> None:
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        rig.state["runs"][str(PYTHON)] = run_record("failure")
+        rig.state["old_ids"] = {"python-build-tools.yml": [PYTHON]}
+        rig.state["titles"] = {str(PYTHON): "this PR"}
+        self.irrelevant(rig)
+        assert rig.gate("--run", str(DOTNET)).returncode == 1
+
+    def test_a_skipped_summary_without_a_green_gate_is_no_verdict(
+        self, rig: Rig
+    ) -> None:
+        # A run from before the Gate job existed, or one whose gate did not succeed.
+        rig.state["runs"][str(DOTNET)] = pr_run()
+        self.irrelevant(rig, gate=None)
+        result = rig.gate("--run", str(DOTNET))
+        assert result.returncode == 3, result.stdout
+        assert "NOTHING TO GATE" not in result.stdout
+
     def test_a_red_readme_only_run_is_still_red(self, rig: Rig) -> None:
         # The windows job still runs on a README-only change, and it can fail.
         rig.state["runs"][str(DOTNET)] = pr_run("failure")
@@ -640,8 +684,10 @@ class TestGateTriggers:
     def test_pull_requests_run_for_every_base(self, workflow: Path) -> None:
         assert "branches" not in event_block(workflow, "pull_request")
 
-    def test_pull_requests_keep_their_path_filter(self, workflow: Path) -> None:
-        assert "paths:" in event_block(workflow, "pull_request")
+    def test_pull_requests_start_whatever_they_touch(self, workflow: Path) -> None:
+        # The workflow's `changes` job makes the path decision, so its Gate job always reports
+        # (test_workflow_relevance.py).
+        assert "paths" not in event_block(workflow, "pull_request")
 
     def test_a_manual_dispatch_is_available(self, workflow: Path) -> None:
         assert "workflow_dispatch" in on_block(workflow)
@@ -670,5 +716,9 @@ def test_the_python_job_gives_pytest_a_built_compiler() -> None:
 
 def test_a_workflow_change_runs_this_harness() -> None:
     # Without this, editing ci-summary would not run the contract test above.
-    for event in ("push", "pull_request"):
-        assert "'.github/workflows/dotnet10.yml'" in event_block(PYTHON_YML, event)
+    from build_tools.tests.test_workflow_relevance import load, matches, relevant_paths
+
+    workflow = load(PYTHON_YML)
+    listed = relevant_paths(workflow)
+    assert listed and matches(".github/workflows/dotnet10.yml", listed)
+    assert matches(".github/workflows/dotnet10.yml", workflow[True]["push"]["paths"])
