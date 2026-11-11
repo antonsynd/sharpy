@@ -257,7 +257,7 @@ public class StdlibExceptionEscapeSweepTests
         bool instrumented = CoverageInstrumentation.IsInstrumented(typeof(KeyError).Assembly)
             || CoverageInstrumentation.IsInstrumented(typeof(Date).Assembly);
         _output.WriteLine($"instrumented={instrumented}; bodies whose collector probe the walk did not follow: {probed.Count}");
-        Assert.True(instrumented == (probed.Count > 0),
+        Assert.True(instrumented == probed.Any(),
             $"coverage detector says instrumented={instrumented}, but the walk skipped a reference to a " +
             $"{CoverageInstrumentation.InjectedNamespacePrefix}.* type in {probed.Count} bodies: the detector and the IL " +
             "disagree, so the see-through cannot be trusted:\n  " + string.Join("\n  ", probed.Take(20)));
