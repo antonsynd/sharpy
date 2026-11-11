@@ -704,6 +704,29 @@ class TestPidFileContent:
         assert proc.returncode == 0, err
         assert "Total: 1" in out
 
+    @pytest.mark.parametrize("stdin", ["open", "closed"])
+    def test_stderr_still_reaches_the_caller_after_dotnet_starts(
+        self, rig: Rig, stdin: str
+    ):
+        """
+        The stdin fallback must not silence the wrapper: ``exec 3<&0 2>/dev/null`` sent its own
+        stderr to /dev/null for the rest of the run, so later reports (here the zero-results
+        guard, which runs after dotnet) vanished.
+        """
+        rig.fake_dotnet("exit 0")
+        prefix = "exec 0<&-; " if stdin == "closed" else ""
+        proc = rig.popen(
+            ["sh", "-c", prefix + 'exec "$0" test', str(WRAPPER)],
+            env=rig.env(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        _, err = proc.communicate(timeout=60)
+
+        assert proc.returncode == 3
+        assert "produced NO test results" in err, err
+
 
 class TestSignalledHolder:
     """
