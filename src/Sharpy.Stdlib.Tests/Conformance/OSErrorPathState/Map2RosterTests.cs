@@ -20,9 +20,11 @@ namespace Sharpy.Stdlib.Tests.Conformance.OSErrorPathState;
 /// requirement (<see cref="PathRequirementAttribute"/>), and every <see cref="PathRequirement"/> member has
 /// its doors: a check door and a translate door, or the pair door — read by reflection, no list.</item>
 /// <item><b>R1</b> — every <see cref="PathRequirement"/> member (by <c>Enum.GetValues</c>) is declared by
-/// ≥ 1 probe or excluded with a reason. R2 (every (entry point, requirement) pair the stamped doors reach
-/// has a probe) lands with D1's Stdlib callers (W3-F): it reads the stamps by reflection and the reach
-/// from <see cref="DoorScan"/>, and is not stubbed here.</item>
+/// ≥ 1 probe or excluded with a reason (an asks-no-door probe declares none).</item>
+/// <item><b>R2</b> — every (entry point, requirement) pair the stamped doors reach over the bound call
+/// graph (<see cref="RequirementReach"/>) is declared by a probe or excluded as a pair in the closed form;
+/// no probe declares a requirement its entry point does not reach; an asks-no-door probe's entry point
+/// reaches no stamp.</item>
 /// </list>
 /// </summary>
 public class Map2RosterTests
@@ -149,7 +151,7 @@ public class Map2RosterTests
     [Fact]
     public void R1_EveryRequirement_IsDeclaredByAProbe_OrExcluded()
     {
-        var declared = ProbeRoster.Probes.Select(p => p.Requirement).ToHashSet();
+        var declared = ProbeRoster.Probes.SelectMany(p => p.Declared).ToHashSet(); // an asks-no-door probe declares none
         var problems = new System.Collections.Generic.List<string>();
         foreach (var requirement in Enum.GetValues<PathRequirement>())
         {
@@ -219,6 +221,73 @@ public class Map2RosterTests
         Assert.True(problems.Count == 0, "R0:\n  " + string.Join("\n  ", problems));
     }
 
+    /// <summary>
+    /// R2's per-pair exclusions, in the closed form only (<c>unreachable with a user path: &lt;why the edge
+    /// cannot fire&gt;</c>): an (entry point, requirement) pair the over-approximating reach finds but no
+    /// user path can select. Probing the pair is preferred; a row here is held to the reach both ways.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<(string Entry, PathRequirement Requirement), string> PairExclusions =
+        new Dictionary<(string, PathRequirement), string>
+        {
+            [("Sharpy.Builtins.Open(string)", PathRequirement.NeedsFileToWrite)] = ProbeRoster.Unreachable
+                + "Open(string) → Open(string, string) → Open(string, string, string) → PathErrors.CheckNeedsFileToWrite; "
+                + "Open(string) has no mode parameter and passes the literal \"r\", which never selects the write arm",
+            [("Sharpy.Builtins.Open(string)", PathRequirement.CreatesExclusively)] = ProbeRoster.Unreachable
+                + "Open(string) → Open(string, string) → Open(string, string, string) → PathErrors.CheckCreatesExclusively; "
+                + "Open(string) has no mode parameter and passes the literal \"r\", which never selects the exclusive-create arm",
+            [("Sharpy.TarFile.Extract(string, string)", PathRequirement.NeedsFileToRead)] = ProbeRoster.Unreachable
+                + "TarFile.Extract → TarFile.OpenReadStream() → PathErrors.TranslateNeedsFileToRead(ex, _name); the door's path is "
+                + "the archive's own receiver path (the constructor's position, probed at tarfile.open), never the probed `path`",
+            [("Sharpy.TarFile.Extractall(string, Sharpy.List<Sharpy.TarInfo>)", PathRequirement.NeedsFileToRead)] = ProbeRoster.Unreachable
+                + "TarFile.Extractall → TarFile.OpenReadStream() → PathErrors.TranslateNeedsFileToRead(ex, _name); the door's path is "
+                + "the archive's own receiver path (the constructor's position, probed at tarfile.open), never the probed `path`",
+        };
+
+    /// <summary>
+    /// R2 (plan-638e8b C2 axis 4): the bound scan lists every reference to a <see cref="PathErrors"/> door
+    /// outside <c>PathErrors.cs</c>, reads the door's requirement from its stamp and attributes it to the
+    /// entry points that reach it (<see cref="RequirementReach"/>); every (entry point, requirement) pair
+    /// has a probe declaring it, and no probe declares a requirement its entry point does not reach. An
+    /// entry point excluded as a whole (T3) carries no pairs.
+    /// </summary>
+    [Fact]
+    public void R2_EveryReachedRequirement_IsProbed_AndEveryProbedRequirementIsReached()
+    {
+        var reach = RequirementReach.Of(Census);
+        var entries = Census.EntryPoints;
+        var excluded = AllExclusions();
+        var declared = ProbeRoster.Probes.SelectMany(p => p.Declared.Select(r => (p.Entry, Requirement: r))).ToHashSet();
+        var reached = entries.Keys.Where(k => !excluded.ContainsKey(k))
+            .SelectMany(k => reach.TryGetValue(k, out var set) ? set.Keys.Select(r => (Entry: k, Requirement: r)) : Enumerable.Empty<(string Entry, PathRequirement Requirement)>())
+            .ToHashSet();
+
+        var problems = new System.Collections.Generic.List<string>();
+        foreach (var pair in reached.Where(p => !declared.Contains(p) && !PairExclusions.ContainsKey(p)))
+            problems.Add($"({pair.Entry}, {pair.Requirement}): reached via {reach[pair.Entry][pair.Requirement]} but no probe declares it");
+        foreach (var pair in declared.Where(p => entries.ContainsKey(p.Entry) && !reached.Contains(p)))
+            problems.Add($"({pair.Entry}, {pair.Requirement}): a probe declares it but the entry point reaches only "
+                         + $"[{string.Join(", ", reach.TryGetValue(pair.Entry, out var set) ? set.Keys : Enumerable.Empty<PathRequirement>())}]");
+        // An asks-no-door probe, both ways: its entry point reaches no stamped door at all.
+        foreach (var probe in ProbeRoster.Probes.Where(p => p.Requirement == null))
+        {
+            if (reach.TryGetValue(probe.Entry, out var set) && set.Count > 0)
+                problems.Add($"probe {probe.Id} declares that {probe.Entry} asks no door (`{probe.NoDoor}`), but it reaches "
+                             + string.Join("; ", set.Select(kv => $"{kv.Key} via {kv.Value}")));
+        }
+        foreach (var (pair, why) in PairExclusions)
+        {
+            if (!why.StartsWith(ProbeRoster.Unreachable, StringComparison.Ordinal))
+                problems.Add($"({pair.Entry}, {pair.Requirement}): a pair exclusion reads `{ProbeRoster.Unreachable}<why>`");
+            if (!reached.Contains(pair))
+                problems.Add($"({pair.Entry}, {pair.Requirement}): a stale pair exclusion (the pair is not reached)");
+            if (declared.Contains(pair))
+                problems.Add($"({pair.Entry}, {pair.Requirement}): probed and excluded");
+        }
+
+        Assert.True(reached.Count >= Enum.GetValues<PathRequirement>().Length, $"R2 must read the reach; found {reached.Count} pair(s)");
+        Assert.True(problems.Count == 0, "R2:\n  " + string.Join("\n  ", problems.OrderBy(s => s, StringComparer.Ordinal)));
+    }
+
     [Fact]
     public void ProbeRows_AreWellFormed()
     {
@@ -229,6 +298,12 @@ public class Map2RosterTests
         {
             if (p.Id.Contains(' ', StringComparison.Ordinal))
                 problems.Add($"probe id `{p.Id}` has a space (it keys allowlist rows)");
+            if ((p.Requirement == null) != !string.IsNullOrWhiteSpace(p.NoDoor))
+                problems.Add($"{p.Id}: a probe declares a requirement, or asks no door with a reason — exactly one");
+            if (p.Requirement == null && p.Also is { Length: > 0 })
+                problems.Add($"{p.Id}: an asks-no-door probe declares no further requirement");
+            if (p.Requirement is { } r && p.Also != null && (p.Also.Contains(r) || p.Also.Distinct().Count() != p.Also.Length))
+                problems.Add($"{p.Id}: a requirement declared twice");
             if (!ProbeRoster.Headers.ContainsKey(p.Module))
                 problems.Add($"{p.Id}: module {p.Module} has no header");
             foreach (var template in new[] { p.Sharpy, p.Python })

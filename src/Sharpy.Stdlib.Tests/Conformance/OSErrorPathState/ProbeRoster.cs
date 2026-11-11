@@ -7,10 +7,21 @@ namespace Sharpy.Stdlib.Tests.Conformance.OSErrorPathState;
 /// <c>@0</c>, <c>@1</c> (one per path POSITION, named in <see cref="Placeholders"/>), plus the fixture
 /// tokens <c>@auxtar</c> (a valid tar holding <c>m.txt</c>), <c>@auxzip</c> (a valid zip holding
 /// <c>m.txt</c>) and <c>@auxout</c> (a writable path that does not exist yet), and the requirement the
-/// probe's fixed non-path arguments select.
+/// probe's fixed non-path arguments select (R1, R2). <see cref="Also"/> names further requirements the
+/// SAME cells exercise (a two-path operation's destination, a fallback step), so an (entry point,
+/// requirement) pair R2 finds reached is declared without a duplicate template. A null
+/// <see cref="Requirement"/> declares that the entry point asks NO <see cref="PathErrors"/> door —
+/// <see cref="NoDoor"/> says why (python answers with a value, or an exempt class) — and R2 holds it in
+/// both directions: such an entry point that reaches a stamped door is red.
 /// </summary>
 internal sealed record Probe(
-    string Id, string Entry, string Module, PathRequirement Requirement, string[] Placeholders, string Sharpy, string Python);
+    string Id, string Entry, string Module, PathRequirement? Requirement, string[] Placeholders, string Sharpy, string Python,
+    PathRequirement[]? Also = null, string? NoDoor = null)
+{
+    /// <summary>Every requirement this probe declares (none for an asks-no-door probe).</summary>
+    public IEnumerable<PathRequirement> Declared
+        => Requirement is { } r ? new[] { r }.Concat(Also ?? Array.Empty<PathRequirement>()) : Array.Empty<PathRequirement>();
+}
 
 /// <summary>
 /// Map 2 of G1 (plan-638e8b C2 axes 2 and 4): entry point → probes, the entry points' path positions,
@@ -72,6 +83,17 @@ internal static class ProbeRoster
     private static Probe P(string id, string entry, string module, PathRequirement requirement, string[] placeholders, string sharpy, string? python = null)
         => new(id, entry, module, requirement, placeholders, sharpy, python ?? sharpy);
 
+    /// <summary>A probe whose cells also exercise <paramref name="also"/> (R2 finds the entry point reaching them).</summary>
+    private static Probe PA(string id, string entry, string module, PathRequirement requirement, PathRequirement[] also, string[] placeholders, string sharpy, string? python = null)
+        => new(id, entry, module, requirement, placeholders, sharpy, python ?? sharpy, also);
+
+    /// <summary>A probe of an entry point that asks no <see cref="PathErrors"/> door, with the reason (R2 holds it both ways).</summary>
+    private static Probe N(string id, string entry, string module, string noDoor, string[] placeholders, string sharpy, string? python = null)
+        => new(id, entry, module, null, placeholders, sharpy, python ?? sharpy, null, noDoor);
+
+    private const string Globbing = "python's glob answers an empty list on a missing or unreadable directory; nothing is raised, so no door is asked";
+    private const string Predicate = "python answers with a bool on every path state; nothing is raised, so no door is asked";
+
     private static readonly string[] Path0 = { "path" };
     private static readonly string[] Self = { PathPositions.Receiver };
 
@@ -87,6 +109,9 @@ internal static class ProbeRoster
         P("open(a)", Open2, "builtins", PathRequirement.NeedsFileToWrite, Path0, "open(@0, \"a\").close()"),
         P("open(x)", Open2, "builtins", PathRequirement.CreatesExclusively, Path0, "open(@0, \"x\").close()"),
         P("open(r,encoding)", Open3, "builtins", PathRequirement.NeedsFileToRead, Path0, "open(@0, \"r\", encoding=\"utf-8\").close()"),
+        P("open(r2)", Open2, "builtins", PathRequirement.NeedsFileToRead, Path0, "open(@0, \"r\").close()"),
+        P("open(w,encoding)", Open3, "builtins", PathRequirement.NeedsFileToWrite, Path0, "open(@0, \"w\", encoding=\"utf-8\").close()"),
+        P("open(x,encoding)", Open3, "builtins", PathRequirement.CreatesExclusively, Path0, "open(@0, \"x\", encoding=\"utf-8\").close()"),
 
         // ---- os ----
         P("os.remove", Os + "Remove(string)", "os", PathRequirement.RemovesFile, Path0, "os.remove(@0)"),
@@ -97,24 +122,24 @@ internal static class ProbeRoster
         P("os.listdir", Os + "Listdir(string)", "os", PathRequirement.NeedsDir, Path0, "os.listdir(@0)"),
         P("os.chdir", Os + "Chdir(string)", "os", PathRequirement.NeedsDir, Path0, "os.chdir(@0)"),
         P("os.stat", Os + "Stat(string)", "os", PathRequirement.NeedsAny, Path0, "os.stat(@0)"),
-        P("os.walk", Os + "Walk(string)", "os", PathRequirement.NeedsDir, new[] { "top" }, "list(os.walk(@0))"),
-        P("os.path_exists", Os + "PathExists(string)", "os", PathRequirement.NeedsAny, Path0, "os.path_exists(@0)", "os.path.exists(@0)"),
+        N("os.walk", Os + "Walk(string)", "os", "python's os.walk swallows a listing error (onerror=None) and yields nothing; no door is asked", new[] { "top" }, "list(os.walk(@0))"),
+        N("os.path_exists", Os + "PathExists(string)", "os", Predicate, Path0, "os.path_exists(@0)", "os.path.exists(@0)"),
 
         // ---- os.path ----
-        P("os.path.exists", OsPath + "Exists(string)", "os.path", PathRequirement.NeedsAny, Path0, "os.path.exists(@0)"),
-        P("os.path.isfile", OsPath + "Isfile(string)", "os.path", PathRequirement.NeedsAny, Path0, "os.path.isfile(@0)"),
-        P("os.path.isdir", OsPath + "Isdir(string)", "os.path", PathRequirement.NeedsAny, Path0, "os.path.isdir(@0)"),
+        N("os.path.exists", OsPath + "Exists(string)", "os.path", Predicate, Path0, "os.path.exists(@0)"),
+        N("os.path.isfile", OsPath + "Isfile(string)", "os.path", Predicate, Path0, "os.path.isfile(@0)"),
+        N("os.path.isdir", OsPath + "Isdir(string)", "os.path", Predicate, Path0, "os.path.isdir(@0)"),
         P("os.path.getsize", OsPath + "Getsize(string)", "os.path", PathRequirement.NeedsAny, Path0, "os.path.getsize(@0)"),
 
         // ---- pathlib (the receiver is the path: the probe builds the instance from it) ----
-        P("Path.exists", "Sharpy.Path.Exists()", "pathlib", PathRequirement.NeedsAny, Self, "Path(@0).exists()"),
-        P("Path.is_dir", "Sharpy.Path.IsDir()", "pathlib", PathRequirement.NeedsAny, Self, "Path(@0).is_dir()"),
-        P("Path.is_file", "Sharpy.Path.IsFile()", "pathlib", PathRequirement.NeedsAny, Self, "Path(@0).is_file()"),
-        P("Path.is_symlink", "Sharpy.Path.IsSymlink()", "pathlib", PathRequirement.NeedsAny, Self, "Path(@0).is_symlink()"),
+        N("Path.exists", "Sharpy.Path.Exists()", "pathlib", Predicate, Self, "Path(@0).exists()"),
+        N("Path.is_dir", "Sharpy.Path.IsDir()", "pathlib", Predicate, Self, "Path(@0).is_dir()"),
+        N("Path.is_file", "Sharpy.Path.IsFile()", "pathlib", Predicate, Self, "Path(@0).is_file()"),
+        N("Path.is_symlink", "Sharpy.Path.IsSymlink()", "pathlib", Predicate, Self, "Path(@0).is_symlink()"),
         P("Path.stat", "Sharpy.Path.Stat()", "pathlib", PathRequirement.NeedsAny, Self, "Path(@0).stat()"),
         P("Path.iterdir", "Sharpy.Path.Iterdir()", "pathlib", PathRequirement.NeedsDir, Self, "list(Path(@0).iterdir())"),
-        P("Path.glob", "Sharpy.Path.Glob(string)", "pathlib", PathRequirement.NeedsDir, Self, "list(Path(@0).glob(\"*\"))"),
-        P("Path.rglob", "Sharpy.Path.Rglob(string)", "pathlib", PathRequirement.NeedsDir, Self, "list(Path(@0).rglob(\"*\"))"),
+        N("Path.glob", "Sharpy.Path.Glob(string)", "pathlib", Globbing, Self, "list(Path(@0).glob(\"*\"))"),
+        N("Path.rglob", "Sharpy.Path.Rglob(string)", "pathlib", Globbing, Self, "list(Path(@0).rglob(\"*\"))"),
         P("Path.mkdir", "Sharpy.Path.Mkdir(bool, bool)", "pathlib", PathRequirement.CreatesDir, Self, "Path(@0).mkdir()"),
         P("Path.read_bytes", "Sharpy.Path.ReadBytes()", "pathlib", PathRequirement.NeedsFileToRead, Self, "Path(@0).read_bytes()"),
         P("Path.read_text", "Sharpy.Path.ReadText(string)", "pathlib", PathRequirement.NeedsFileToRead, Self, "Path(@0).read_text()"),
@@ -122,50 +147,61 @@ internal static class ProbeRoster
         P("Path.replace", "Sharpy.Path.Replace(string)", "pathlib", PathRequirement.Rename, new[] { PathPositions.Receiver, "target" }, "Path(@0).replace(@1)"),
         P("Path.rmdir", "Sharpy.Path.Rmdir()", "pathlib", PathRequirement.RemovesDir, Self, "Path(@0).rmdir()"),
         P("Path.touch", "Sharpy.Path.Touch(bool)", "pathlib", PathRequirement.NeedsFileToWrite, Self, "Path(@0).touch()"),
+        P("Path.touch(exist_ok=False)", "Sharpy.Path.Touch(bool)", "pathlib", PathRequirement.CreatesExclusively, Self, "Path(@0).touch(exist_ok=False)"),
         P("Path.unlink", "Sharpy.Path.Unlink(bool)", "pathlib", PathRequirement.RemovesFile, Self, "Path(@0).unlink()"),
         P("Path.write_bytes", "Sharpy.Path.WriteBytes(byte[])", "pathlib", PathRequirement.NeedsFileToWrite, Self, "Path(@0).write_bytes(b\"x\")"),
         P("Path.write_text", "Sharpy.Path.WriteText(string, string)", "pathlib", PathRequirement.NeedsFileToWrite, Self, "Path(@0).write_text(\"x\")"),
 
         // ---- shutil ----
-        P("shutil.copy", Shutil + "Copy(string, string)", "shutil", PathRequirement.NeedsFileToRead, new[] { "src", "dst" }, "shutil.copy(@0, @1)"),
-        P("shutil.copy2", Shutil + "Copy2(string, string)", "shutil", PathRequirement.NeedsFileToRead, new[] { "src", "dst" }, "shutil.copy2(@0, @1)"),
-        P("shutil.copytree", Shutil + "Copytree(string, string)", "shutil", PathRequirement.CreatesDir, new[] { "src", "dst" }, "shutil.copytree(@0, @1)"),
-        P("shutil.move", Shutil + "Move(string, string)", "shutil", PathRequirement.Rename, new[] { "src", "dst" }, "shutil.move(@0, @1)"),
-        P("shutil.rmtree", Shutil + "Rmtree(string)", "shutil", PathRequirement.RemovesDir, Path0, "shutil.rmtree(@0)"),
+        // CPython's shutil runs single-path steps (D1.2): the src step reads, the dst step writes, a tree
+        // walk lists and creates, move's fallback copies and unlinks — the same 36 cells exercise each.
+        PA("shutil.copy", Shutil + "Copy(string, string)", "shutil", PathRequirement.NeedsFileToRead,
+            new[] { PathRequirement.NeedsFileToWrite }, new[] { "src", "dst" }, "shutil.copy(@0, @1)"),
+        PA("shutil.copy2", Shutil + "Copy2(string, string)", "shutil", PathRequirement.NeedsFileToRead,
+            new[] { PathRequirement.NeedsFileToWrite, PathRequirement.NeedsAny }, new[] { "src", "dst" }, "shutil.copy2(@0, @1)"),
+        PA("shutil.copytree", Shutil + "Copytree(string, string)", "shutil", PathRequirement.CreatesDir,
+            new[] { PathRequirement.NeedsDir, PathRequirement.NeedsFileToRead, PathRequirement.NeedsFileToWrite, PathRequirement.NeedsAny },
+            new[] { "src", "dst" }, "shutil.copytree(@0, @1)"),
+        PA("shutil.move", Shutil + "Move(string, string)", "shutil", PathRequirement.Rename,
+            new[] { PathRequirement.NeedsDir, PathRequirement.CreatesDir, PathRequirement.NeedsFileToRead, PathRequirement.NeedsFileToWrite, PathRequirement.NeedsAny, PathRequirement.RemovesFile },
+            new[] { "src", "dst" }, "shutil.move(@0, @1)"),
+        P("shutil.rmtree", Shutil + "Rmtree(string)", "shutil", PathRequirement.NeedsDir, Path0, "shutil.rmtree(@0)"),
         P("shutil.disk_usage", Shutil + "DiskUsage(string)", "shutil", PathRequirement.NeedsAny, Path0, "shutil.disk_usage(@0)"),
-        P("shutil.which", Shutil + "Which(string)", "shutil", PathRequirement.NeedsAny, new[] { "name" }, "shutil.which(@0)"),
+        N("shutil.which", Shutil + "Which(string)", "shutil", "python's shutil.which answers None for a name it cannot run; nothing is raised", new[] { "name" }, "shutil.which(@0)"),
 
         // ---- glob ----
-        P("glob.glob", "Sharpy.GlobModule.Glob(string)", "glob", PathRequirement.NeedsDir, new[] { "pattern" }, "glob.glob(@0)"),
-        P("glob.iglob", "Sharpy.GlobModule.Iglob(string)", "glob", PathRequirement.NeedsDir, new[] { "pattern" }, "list(glob.iglob(@0))"),
+        N("glob.glob", "Sharpy.GlobModule.Glob(string)", "glob", Globbing, new[] { "pattern" }, "glob.glob(@0)"),
+        N("glob.iglob", "Sharpy.GlobModule.Iglob(string)", "glob", Globbing, new[] { "pattern" }, "list(glob.iglob(@0))"),
 
         // ---- gzip ----
         P("gzip.open(rb)", "Sharpy.GzipModule.Open(string, string, int)", "gzip", PathRequirement.NeedsFileToRead, new[] { "filename" }, "gzip.open(@0).read()"),
         P("gzip.open(wb)", "Sharpy.GzipModule.Open(string, string, int)", "gzip", PathRequirement.NeedsFileToWrite, new[] { "filename" }, "gzip.open(@0, \"wb\").close()"),
         P("gzip.GzipFile", "Sharpy.GzipFile.GzipFile(string, string, int, System.IO.Stream)", "gzip", PathRequirement.NeedsFileToRead, new[] { "filename" }, "gzip.GzipFile(@0).read()"),
+        P("gzip.GzipFile(wb)", "Sharpy.GzipFile.GzipFile(string, string, int, System.IO.Stream)", "gzip", PathRequirement.NeedsFileToWrite, new[] { "filename" }, "gzip.GzipFile(@0, \"wb\").close()"),
 
         // ---- tarfile ----
         P("tarfile.open(r)", "Sharpy.TarfileModule.Open(string, string)", "tarfile", PathRequirement.NeedsFileToRead, new[] { "name" }, "tarfile.open(@0).close()"),
         P("tarfile.open(w)", "Sharpy.TarfileModule.Open(string, string)", "tarfile", PathRequirement.NeedsFileToWrite, new[] { "name" }, "tarfile.open(@0, \"w\").close()"),
-        P("tarfile.is_tarfile", "Sharpy.TarfileModule.IsTarfile(string)", "tarfile", PathRequirement.NeedsAny, new[] { "name" }, "tarfile.is_tarfile(@0)"),
+        P("tarfile.is_tarfile", "Sharpy.TarfileModule.IsTarfile(string)", "tarfile", PathRequirement.NeedsFileToRead, new[] { "name" }, "tarfile.is_tarfile(@0)"),
         P("TarFile.getnames", "Sharpy.TarFile.Getnames()", "tarfile", PathRequirement.NeedsFileToRead, Self, "tarfile.open(@0).getnames()"),
         P("TarFile.getmembers", "Sharpy.TarFile.Getmembers()", "tarfile", PathRequirement.NeedsFileToRead, Self, "tarfile.open(@0).getmembers()"),
         P("TarFile.getmember", "Sharpy.TarFile.Getmember(string)", "tarfile", PathRequirement.NeedsFileToRead, Self, "tarfile.open(@0).getmember(\"m.txt\")"),
         P("TarFile.extractfile", "Sharpy.TarFile.Extractfile(string)", "tarfile", PathRequirement.NeedsFileToRead, Self, "tarfile.open(@0).extractfile(\"m.txt\")"),
         P("TarFile.add", "Sharpy.TarFile.Add(string, string, bool)", "tarfile", PathRequirement.NeedsAny, new[] { "name" }, "tarfile.open(@auxout, \"w\").add(@0)"),
-        P("TarFile.extract", "Sharpy.TarFile.Extract(string, string)", "tarfile", PathRequirement.NeedsDir, Path0, "tarfile.open(@auxtar).extract(\"m.txt\", @0)"),
-        P("TarFile.extractall", "Sharpy.TarFile.Extractall(string, Sharpy.List<Sharpy.TarInfo>)", "tarfile", PathRequirement.NeedsDir, Path0, "tarfile.open(@auxtar).extractall(@0)"),
+        // Extraction: the destination is created as a directory, then each member is written below it.
+        PA("TarFile.extract", "Sharpy.TarFile.Extract(string, string)", "tarfile", PathRequirement.CreatesDir, new[] { PathRequirement.NeedsFileToWrite, PathRequirement.CreatesExclusively }, Path0, "tarfile.open(@auxtar).extract(\"m.txt\", @0)"),
+        PA("TarFile.extractall", "Sharpy.TarFile.Extractall(string, Sharpy.List<Sharpy.TarInfo>)", "tarfile", PathRequirement.CreatesDir, new[] { PathRequirement.NeedsFileToWrite, PathRequirement.CreatesExclusively }, Path0, "tarfile.open(@auxtar).extractall(@0)"),
 
         // ---- zipfile ----
         P("zipfile.ZipFile(r)", "Sharpy.ZipFileArchive.ZipFileArchive(string, string, int, bool)", "zipfile", PathRequirement.NeedsFileToRead, new[] { "file" }, "zipfile.ZipFile(@0).close()"),
         P("zipfile.ZipFile(w)", "Sharpy.ZipFileArchive.ZipFileArchive(string, string, int, bool)", "zipfile", PathRequirement.NeedsFileToWrite, new[] { "file" }, "zipfile.ZipFile(@0, \"w\").close()"),
-        P("zipfile.is_zipfile", "Sharpy.ZipfileModule.IsZipfile(string)", "zipfile", PathRequirement.NeedsAny, new[] { "filename" }, "zipfile.is_zipfile(@0)"),
-        P("ZipFile.extract", "Sharpy.ZipFileArchive.Extract(string, string)", "zipfile", PathRequirement.NeedsDir, Path0, "zipfile.ZipFile(@auxzip).extract(\"m.txt\", @0)"),
-        P("ZipFile.extractall", "Sharpy.ZipFileArchive.Extractall(string, Sharpy.List<string>)", "zipfile", PathRequirement.NeedsDir, Path0, "zipfile.ZipFile(@auxzip).extractall(@0)"),
-        P("ZipFile.write", "Sharpy.ZipFileArchive.Write(string, string, int?)", "zipfile", PathRequirement.NeedsFileToRead, new[] { "filename" }, "zipfile.ZipFile(@auxout, \"w\").write(@0)"),
+        N("zipfile.is_zipfile", "Sharpy.ZipfileModule.IsZipfile(string)", "zipfile", "python's zipfile.is_zipfile answers False when the file cannot be opened (an OSError is caught); no door is asked", new[] { "filename" }, "zipfile.is_zipfile(@0)"),
+        PA("ZipFile.extract", "Sharpy.ZipFileArchive.Extract(string, string)", "zipfile", PathRequirement.CreatesDir, new[] { PathRequirement.NeedsFileToWrite }, Path0, "zipfile.ZipFile(@auxzip).extract(\"m.txt\", @0)"),
+        PA("ZipFile.extractall", "Sharpy.ZipFileArchive.Extractall(string, Sharpy.List<string>)", "zipfile", PathRequirement.CreatesDir, new[] { PathRequirement.NeedsFileToWrite }, Path0, "zipfile.ZipFile(@auxzip).extractall(@0)"),
+        PA("ZipFile.write", "Sharpy.ZipFileArchive.Write(string, string, int?)", "zipfile", PathRequirement.NeedsFileToRead, new[] { PathRequirement.NeedsAny }, new[] { "filename" }, "zipfile.ZipFile(@auxout, \"w\").write(@0)"),
 
         // ---- sqlite3 ----
-        P("sqlite3.connect", "Sharpy.Sqlite3.Connect(string)", "sqlite3", PathRequirement.NeedsFileToWrite, new[] { "database" }, "sqlite3.connect(@0).close()"),
+        N("sqlite3.connect", "Sharpy.Sqlite3.Connect(string)", "sqlite3", "python raises sqlite3.OperationalError, outside the OSError family (an exemption row); no door is asked", new[] { "database" }, "sqlite3.connect(@0).close()"),
 
         // ---- xml (python: xml.etree.ElementTree) ----
         P("xml.parse", "Sharpy.Xml.Parse(string)", "xml", PathRequirement.NeedsFileToRead, new[] { "source" }, "xml.parse(@0)"),
@@ -178,7 +214,7 @@ internal static class ProbeRoster
         P("toml.dump_file(sort_keys)", "Sharpy.Toml.DumpFile(object, string, bool)", "toml", PathRequirement.NeedsFileToWrite, Path0, "d: dict[str, object] = {\"a\": 1}\ntoml.dump_file(d, @0, True)", "open(@0, \"w\").write(\"a = 1\\n\")"),
 
         // ---- configparser ----
-        P("ConfigParser.read", "Sharpy.ConfigParser.Read(string)", "configparser", PathRequirement.NeedsFileToRead, new[] { "filename" }, "configparser.ConfigParser().read(@0)"),
+        N("ConfigParser.read", "Sharpy.ConfigParser.Read(string)", "configparser", "python's ConfigParser.read skips a file it cannot open and returns the list it read; no door is asked", new[] { "filename" }, "configparser.ConfigParser().read(@0)"),
         P("ConfigParser.write_to_file", "Sharpy.ConfigParser.WriteToFile(string, bool)", "configparser", PathRequirement.NeedsFileToWrite, new[] { "filename" },
             "configparser.ConfigParser().write_to_file(@0)", "configparser.ConfigParser().write(open(@0, \"w\"))"),
 

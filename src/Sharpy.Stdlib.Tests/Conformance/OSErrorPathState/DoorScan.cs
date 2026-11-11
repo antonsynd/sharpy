@@ -238,6 +238,8 @@ internal static class DoorScan
                 EdgesOf(ctor).UnionWith(initializers);
         }
 
+        result.Edges = edges;
+
         // ---- Classification of external references ----
         var doorRefs = new Dictionary<ISymbol, System.Collections.Generic.List<ExternalReference>>(SymbolEqualityComparer.Default);
         foreach (var reference in result.External)
@@ -631,6 +633,13 @@ internal sealed class DoorScanResult
     public HashSet<string> SeenNamespaceRows { get; } = new(StringComparer.Ordinal);
     public HashSet<string> SeenTypeRows { get; } = new(StringComparer.Ordinal);
     public HashSet<string> SeenMemberRows { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The bound call graph over the scanned sources: owning member → the source members it references
+    /// (overrides and implementations of a virtual or interface target included; every constructor →
+    /// its type's instance initializers). R2 propagates PathErrors stamps over it.
+    /// </summary>
+    public IReadOnlyDictionary<ISymbol, HashSet<ISymbol>> Edges { get; set; } = new Dictionary<ISymbol, HashSet<ISymbol>>(SymbolEqualityComparer.Default);
 
     /// <summary>Every source member (any accessibility) reaching a door → witness chain.</summary>
     public SortedDictionary<string, string> Reaching { get; } = new(StringComparer.Ordinal);
