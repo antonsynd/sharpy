@@ -41,7 +41,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// their own expected verdict: the first clause whose type the raised instance is an instance of.</para>
 /// <para>Both facts also assert the validator's warned handlers are exactly the handlers the lowering
 /// leaves out (<see cref="AssertWarnedEqualsPruned"/>): the warning and the omission are one verdict.</para>
-/// <para>Skips when no python3 ≥ 3.12 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
+/// <para>Skips when no python3 ≥ 3.15 (the .python-version pin) answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
 /// </summary>
 public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
 {

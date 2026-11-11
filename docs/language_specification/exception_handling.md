@@ -146,8 +146,11 @@ catches (`except (LookupError, KeyError):` catches as `except LookupError:` does
 
 Because there is [no `BaseException`](#no-baseexception), `except Exception:` also catches
 `SystemExit`, which CPython leaves to a later handler. A later handler that names `SystemExit`
-(alone or in a tuple) could never run, though CPython runs it, so it is refused as **SPY0709**;
-moving it before `except Exception:` keeps CPython's behaviour. A later bare `except:` never runs in
+(alone or in a tuple) could never run, though CPython runs it, so it is refused as **SPY0709**.
+A handler naming only `SystemExit` keeps CPython's behaviour when moved before `except Exception:`. A
+tuple that also names other types must not be moved whole (its other types would leave the
+`Exception` handler): handle `SystemExit` in a handler of its own before `except Exception:` and keep
+the rest where it was. A later bare `except:` never runs in
 Sharpy either; it is left out with a SPY0488 warning that says CPython would still run it for
 `SystemExit` (unless an earlier handler already catches `SystemExit`).
 

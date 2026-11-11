@@ -33,28 +33,23 @@ internal sealed class ExceptHandlerOrderValidator : SemanticValidatorBase
             for (var i = 0; i < verdicts.Length; i++)
             {
                 var verdict = verdicts[i];
+                var handler = tryStmt.Handlers[i];
+
+                // Checked before the reachability skip: a SystemExit element that only `except Exception:`
+                // covers is left out even when the handler's other elements keep it reachable.
+                if (!verdict.PythonLiveTypes.IsEmpty && handler.ExceptionType is { } named)
+                {
+                    ReportPythonLive(context, named, verdict);
+                    continue;
+                }
+
                 if (!verdict.IsUnreachable)
                     continue;
 
-                var handler = tryStmt.Handlers[i];
                 var caughtBy = verdict.CaughtBy?.GetDisplayName() ?? "Exception";
                 var line = handler.ExceptionType?.LineStart ?? handler.LineStart;
                 var column = handler.ExceptionType?.ColumnStart ?? handler.ColumnStart;
                 var span = handler.ExceptionType?.Span ?? handler.Span;
-
-                if (!verdict.PythonLiveTypes.IsEmpty)
-                {
-                    var live = string.Join(", ", verdict.PythonLiveTypes.Select(t => $"'{t.GetDisplayName()}'"));
-                    AddError(
-                        context,
-                        $"This except handler can never run in Sharpy: the earlier handler for '{caughtBy}' catches "
-                        + $"{live} too, because Sharpy has no BaseException; CPython would run this handler for "
-                        + $"{live}. Move this handler before the '{caughtBy}' handler",
-                        line, column,
-                        code: DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException,
-                        span: span);
-                    continue;
-                }
 
                 var what = DescribeHandler(handler.ExceptionType, verdict);
                 var message = verdict.BareStillRunsInPython
@@ -67,6 +62,30 @@ internal sealed class ExceptHandlerOrderValidator : SemanticValidatorBase
                     code: DiagnosticCodes.Validation.UnreachableArm, span: span);
             }
         }
+    }
+
+    /// <summary>
+    /// SPY0709 on the first BaseException-rooted element, naming its cover (the <c>Exception</c> root).
+    /// A handler naming only such types is told to move; one with other types is told to handle
+    /// <c>SystemExit</c> in a handler of its own, because moving it would also take the other types
+    /// away from the <c>Exception</c> handler.
+    /// </summary>
+    private void ReportPythonLive(SemanticContext context, TypeAnnotation annotation, ExceptHandlerVerdict verdict)
+    {
+        var element = ExceptHandlerReachability.ElementsOf(annotation)[verdict.PythonLiveElement];
+        var cover = verdict.PythonLiveCover?.GetDisplayName() ?? "Exception";
+        var live = string.Join(", ", verdict.PythonLiveTypes.Select(t => $"'{t.GetDisplayName()}'"));
+        var steer = verdict.NamesOnlyPythonLiveTypes
+            ? $"Move this handler before the '{cover}' handler"
+            : $"Handle {live} in a handler of its own before the '{cover}' handler; moving this whole handler "
+              + $"would also take its other types away from the '{cover}' handler";
+        AddError(
+            context,
+            $"This except handler can never run in Sharpy for {live}: the earlier handler for '{cover}' catches "
+            + $"{live} too, because Sharpy has no BaseException; CPython would run this handler for {live}. {steer}",
+            element.LineStart, element.ColumnStart,
+            code: DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException,
+            span: element.Span);
     }
 
     /// <summary>

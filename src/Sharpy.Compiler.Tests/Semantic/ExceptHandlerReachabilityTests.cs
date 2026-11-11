@@ -1,4 +1,9 @@
+extern alias SharpyRT;
+
+using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Tests.Integration;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -139,31 +144,107 @@ public class ExceptHandlerReachabilityTests : StdlibAwareIntegrationTestBase
 
     /// <summary>
     /// A handler that NAMES a type CPython roots at BaseException, after <c>except Exception:</c>, is
-    /// refused (SPY0709): CPython runs it (python3.15.2 prints "tuple" / "one-tuple"), Sharpy cannot.
-    /// The message names only the BaseException-rooted types. Verified by direction: the same handlers
-    /// moved first run and print what CPython prints.
+    /// refused (SPY0709) on that element: CPython runs it, Sharpy cannot. The message names only the
+    /// BaseException-rooted types and the handler that covers them. A handler naming only such types is
+    /// told to move, and moved first it runs as CPython does; a tuple with other types is told to handle
+    /// SystemExit on its own (see <see cref="MixedTuple_AdvisedSplit_RunsAsCPythonRunsTheOriginal"/>).
     /// </summary>
     [Theory]
-    [InlineData("except SystemExit:", "'SystemExit'", "exit")]
-    [InlineData("except (ValueError, SystemExit):", "for 'SystemExit'. Move", "exit")]
-    [InlineData("except (SystemExit,):", "for 'SystemExit'. Move", "exit")]
-    public void NamedBaseExceptionHandlerAfterException_IsRefused_AndRunsWhenMovedFirst(string header, string fragment, string moved)
+    [InlineData("except SystemExit:", "Move this handler before the 'Exception' handler", 12)]
+    [InlineData("except (SystemExit,):", "Move this handler before the 'Exception' handler", 13)]
+    [InlineData("except (ValueError, SystemExit):", "Handle 'SystemExit' in a handler of its own before the 'Exception' handler", 25)]
+    public void NamedBaseExceptionHandlerAfterException_IsRefused(string header, string steer, int column)
     {
         var refused = "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except Exception:\n        print(\"exc\")\n"
             + "    " + header + "\n        print(\"exit\")\n";
         var run = CompileAndExecute(refused, "systemexit_after_exception.spy");
         Assert.False(run.Success);
         var error = Assert.Single(run.RawDiagnostics, d => d.Code == DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException);
-        Assert.Contains(fragment, error.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("ValueError", error.Message, StringComparison.Ordinal);
+        Assert.Contains(steer, error.Message, StringComparison.Ordinal);
+        Assert.Contains("CPython would run this handler for 'SystemExit'", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("'ValueError'", error.Message, StringComparison.Ordinal);
         Assert.Equal(6, error.Line);
+        Assert.Equal(column, error.Column);
         Assert.DoesNotContain(run.RawDiagnostics, d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
 
+        if (!steer.StartsWith("Move", StringComparison.Ordinal))
+            return;
         var reordered = "def main() -> None:\n    try:\n        raise SystemExit(2)\n    " + header + "\n        print(\"exit\")\n"
             + "    except Exception:\n        print(\"exc\")\n";
         var movedRun = CompileAndExecute(reordered, "systemexit_moved_first.spy");
         Assert.True(RanToCompletion(movedRun), JudgeRun(movedRun, reordered, "SystemExit handler moved first") ?? "timed out");
-        Assert.Equal(moved, movedRun.StandardOutput.Trim());
+        Assert.Equal("exit", movedRun.StandardOutput.Trim());
+    }
+
+    /// <summary>
+    /// The mixed-tuple advice, followed: python3.15.2 runs the ORIGINAL <c>except Exception:</c> /
+    /// <c>except (ValueError, SystemExit):</c> as "exc" for ValueError and "tuple" for SystemExit, and the
+    /// advised split (SystemExit first, the tuple's ValueError left after Exception) prints the same in
+    /// Sharpy. Moving the whole tuple first would print "tuple" twice.
+    /// </summary>
+    [Fact]
+    public void MixedTuple_AdvisedSplit_RunsAsCPythonRunsTheOriginal()
+    {
+        const string source = "def main() -> None:\n    for i in range(2):\n        try:\n            if i == 0:\n"
+            + "                raise ValueError(\"v\")\n            raise SystemExit(2)\n        except SystemExit:\n"
+            + "            print(\"tuple\")\n        except Exception:\n            print(\"exc\")\n"
+            + "        except ValueError:\n            print(\"tuple\")\n";
+        var run = CompileAndExecute(source, "mixed_tuple_split.spy");
+        Assert.True(RanToCompletion(run), JudgeRun(run, source, "advised split") ?? "timed out");
+        Assert.Equal("exc\ntuple", run.StandardOutput.Trim().Replace("\r\n", "\n"));
+        Assert.Single(run.RawDiagnostics, d => d.Code == DiagnosticCodes.Validation.UnreachableArm);
+    }
+
+    /// <summary>
+    /// SPY0709 names the handler that covers the SystemExit element (<c>Exception</c>), not the cover of
+    /// the tuple's first element: <c>except ValueError:</c> / <c>except Exception:</c> /
+    /// <c>except (ValueError, SystemExit):</c>.
+    /// </summary>
+    [Fact]
+    public void BaseExceptionRefusal_NamesTheSystemExitElementsCover()
+    {
+        const string source = "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except ValueError:\n        print(\"v\")\n"
+            + "    except Exception:\n        print(\"exc\")\n    except (ValueError, SystemExit):\n        print(\"tuple\")\n";
+        var run = CompileAndExecute(source, "systemexit_cover_named.spy");
+        var error = Assert.Single(run.RawDiagnostics, d => d.Code == DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException);
+        Assert.Contains("the earlier handler for 'Exception' catches 'SystemExit'", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("handler for 'ValueError'", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The verdict marks a SystemExit element that only <c>except Exception:</c> covers even when the
+    /// handler as a whole stays reachable (another element has no recorded type), so the validator, which
+    /// tests <c>PythonLiveTypes</c> before its reachability skip, refuses it instead of the lowering
+    /// silently dropping it. No source spelling leaves an element unrecorded, so the facts are built here.
+    /// </summary>
+    [Fact]
+    public void Verdict_MarksAPythonLiveElement_OfAReachableHandler()
+    {
+        var exceptionSymbol = new TypeSymbol { Name = "Exception", Kind = SymbolKind.Type, TypeKind = TypeKind.Class, ClrType = typeof(System.Exception) };
+        var exitSymbol = new TypeSymbol { Name = "SystemExit", Kind = SymbolKind.Type, TypeKind = TypeKind.Class, ClrType = typeof(SharpyRT::Sharpy.SystemExit) };
+        var exceptionAnnotation = new TypeAnnotation { Name = "Exception" };
+        var exitElement = new TypeAnnotation { Name = "SystemExit" };
+        var unrecorded = new TypeAnnotation { Name = "Unrecorded" };
+        var tuple = new TypeAnnotation { Name = "tuple", TypeArguments = ImmutableArray.Create(exitElement, unrecorded) };
+        var tryStmt = new TryStatement
+        {
+            Handlers = ImmutableArray.Create(
+                new ExceptHandler { ExceptionType = exceptionAnnotation },
+                new ExceptHandler { ExceptionType = tuple }),
+        };
+        var info = new SemanticInfo();
+        info.SetTypeTestLowering(exceptionAnnotation, new TypeTestLowering(TypeTestLoweringKind.ClosedType,
+            new UserDefinedType { Name = "Exception", Symbol = exceptionSymbol }));
+        info.SetTypeTestLowering(exitElement, new TypeTestLowering(TypeTestLoweringKind.ClosedType,
+            new UserDefinedType { Name = "SystemExit", Symbol = exitSymbol }));
+
+        var verdict = ExceptHandlerReachability.Classify(tryStmt, info)[1];
+
+        Assert.False(verdict.IsUnreachable);
+        Assert.Equal(new[] { false, true }, verdict.TypeReachable);
+        Assert.Equal("SystemExit", Assert.Single(verdict.PythonLiveTypes).GetDisplayName());
+        Assert.Equal(0, verdict.PythonLiveElement);
+        Assert.False(verdict.NamesOnlyPythonLiveTypes);
     }
 
     /// <summary>

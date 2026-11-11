@@ -1144,7 +1144,10 @@ public static partial class DiagnosticExplanations
             "runs. Sharpy has no BaseException: every exception, SystemExit included, derives from " +
             "Exception, so the 'except Exception:' handler catches it first and the SystemExit " +
             "handler could never run. It was written to run, so it is refused rather than silently " +
-            "left out (#2363; docs/deviations.yaml except-exception-catches-systemexit).",
+            "left out (#2363; docs/deviations.yaml except-exception-catches-systemexit). A handler " +
+            "naming only SystemExit can be moved before 'except Exception:'. A tuple that also names " +
+            "other types must not be moved whole, or those types would leave the 'Exception' handler: " +
+            "handle SystemExit in a handler of its own before 'except Exception:' instead.",
             "try:\n    run()\nexcept Exception:\n    print(\"failed\")\nexcept SystemExit:   # SPY0709\n    print(\"exit\")",
             "Move the SystemExit handler before 'except Exception:'; it then runs as in Python:\n  try:\n      run()\n  except SystemExit:\n      print(\"exit\")\n  except Exception:\n      print(\"failed\")");
 

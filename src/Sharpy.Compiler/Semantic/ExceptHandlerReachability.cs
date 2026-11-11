@@ -24,14 +24,24 @@ namespace Sharpy.Compiler.Semantic;
 /// <param name="BareStillRunsInPython">A bare <c>except:</c> covered by <c>except Exception:</c> while no
 /// earlier handler names a <c>BaseException</c>-rooted type: CPython would still run it for
 /// <c>SystemExit</c>.</param>
+/// <param name="PythonLiveElement">The index of the first of <paramref name="PythonLiveTypes"/> among the
+/// handler's elements (the diagnostic is reported on it); -1 when there is none.</param>
+/// <param name="PythonLiveCover">The earlier handler's type that covers that element: the
+/// <see cref="System.Exception"/> root, which is not necessarily the cover of the first element.</param>
 internal sealed record ExceptHandlerVerdict(
     bool IsUnreachable,
     SemanticType? CaughtBy,
     ImmutableArray<bool> TypeReachable,
     ImmutableArray<SemanticType?> ElementTypes,
     ImmutableArray<SemanticType> PythonLiveTypes,
-    bool BareStillRunsInPython = false)
+    bool BareStillRunsInPython = false,
+    int PythonLiveElement = -1,
+    SemanticType? PythonLiveCover = null)
 {
+    /// <summary>Every type the handler names is BaseException-rooted in CPython: moving the whole
+    /// handler before <c>except Exception:</c> changes nothing else.</summary>
+    public bool NamesOnlyPythonLiveTypes => !PythonLiveTypes.IsEmpty && PythonLiveTypes.Length == ElementTypes.Length;
+
     /// <summary>Whether anything of this handler is left out of the emitted <c>catch</c> list.</summary>
     public bool PrunesAnything => IsUnreachable || TypeReachable.Any(reachable => !reachable);
 }
@@ -111,6 +121,8 @@ internal static class ExceptHandlerReachability
             var withinHandler = new List<SemanticType>();
             var allCoveredByEarlierHandlers = true;
             SemanticType? firstCover = null;
+            var liveElement = -1;
+            SemanticType? liveCover = null;
 
             foreach (var element in elements)
             {
@@ -123,7 +135,14 @@ internal static class ExceptHandlerReachability
                 {
                     firstCover ??= cover;
                     if (IsExceptionRoot(cover) && IsPythonBaseExceptionType(type!))
+                    {
+                        if (liveElement < 0)
+                        {
+                            liveElement = elementTypes.Count - 1;
+                            liveCover = cover;
+                        }
                         pythonLive.Add(type!);
+                    }
                 }
 
                 var dead = cover != null || (type != null && FindCover(type, withinHandler) != null);
@@ -135,7 +154,8 @@ internal static class ExceptHandlerReachability
             var isUnreachable = elements.Length > 0 && allCoveredByEarlierHandlers;
             verdicts.Add(new ExceptHandlerVerdict(
                 isUnreachable, isUnreachable ? firstCover : null, reachable.MoveToImmutable(),
-                elementTypes.MoveToImmutable(), pythonLive.ToImmutable()));
+                elementTypes.MoveToImmutable(), pythonLive.ToImmutable(),
+                PythonLiveElement: liveElement, PythonLiveCover: liveCover));
 
             if (handler.Filter == null && !isUnreachable)
             {
