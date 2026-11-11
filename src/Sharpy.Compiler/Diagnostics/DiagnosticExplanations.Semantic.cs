@@ -631,6 +631,16 @@ public static partial class DiagnosticExplanations
             "class Sub(Base):\n    def foo(self):\n        x = super  # not called as a function",
             "Call super() as a function:\nclass Sub(Base):\n    def foo(self):\n        super().foo()");
 
+        Add(dict, DiagnosticCodes.Semantic.ConstructorInitializerNotFirst, "Constructor chaining call is not the first statement", "Semantic",
+            "A constructor's chaining call, super().__init__(...) or self.__init__(...), runs as the C# "
+            + "constructor initializer (': base(...)' / ': this(...)'), before every statement of the body. "
+            + "A statement written ahead of the call would therefore run after it, so the call must be the "
+            + "first statement of the constructor (a docstring may precede it), written once, and not inside "
+            + "control flow.",
+            "class Base:\n    x: int = 20\n    def __init__(self, a: int):\n        self.x += a\n\n"
+            + "class Child(Base):\n    def __init__(self, a: int):\n        self.x = 5\n        super().__init__(a)  # a statement precedes the call",
+            "Move the chaining call first:\nclass Child(Base):\n    def __init__(self, a: int):\n        super().__init__(a)\n        self.x = 5");
+
         Add(dict, DiagnosticCodes.Semantic.CircularInheritance, "Circular inheritance detected", "Semantic",
             "A class or interface inherits from itself through its inheritance chain, creating a cycle. " +
             "For example, class A extends B and class B extends A, or interface IA extends IB and IB extends IA.",

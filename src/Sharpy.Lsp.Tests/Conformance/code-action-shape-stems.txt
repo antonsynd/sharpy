@@ -1732,6 +1732,7 @@ wrap-try identity diagnostics classes/class_inheritance # #2296
 wrap-try identity diagnostics classes/class_instance_methods # #2296
 wrap-try identity diagnostics classes/class_with_loop_0049 # #2296
 wrap-try identity diagnostics classes/constructor_chaining_0027 # #2296
+wrap-try identity diagnostics classes/constructor_chaining_0073 # #2296
 wrap-try identity diagnostics classes/constructor_chaining_not_in_init # #2296
 wrap-try identity diagnostics classes/dunder_bool_0025 # #2296
 wrap-try identity diagnostics classes/dunder_bool_override_inheritance # #2296
@@ -2288,6 +2289,7 @@ wrap-try crlf diagnostics builtins/builtin_aggregation_0018 # #2296
 wrap-try crlf diagnostics builtins/map_multi_unannotated # #2296
 wrap-try crlf diagnostics builtins/min_max_mixed_signedness_promoted # #2296
 wrap-try crlf diagnostics builtins/min_max_mixed_signedness_refused # #2296
+wrap-try crlf diagnostics class_with_init/init_augmented_store_2439 # #2296
 wrap-try crlf diagnostics classes/abstract_bodyless_0001 # #2296
 wrap-try crlf diagnostics classes/dunder_len_override_inheritance # #2296
 wrap-try crlf diagnostics classes/dunder_len_truthiness # #2296

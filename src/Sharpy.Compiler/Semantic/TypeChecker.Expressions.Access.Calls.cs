@@ -6032,6 +6032,22 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
                     span: call.Span);
             }
+            // Only a top-level self.__init__() is hoisted to `: this(...)`; one under control flow,
+            // or a second one, has no constructor to call and is refused, as super().__init__() is.
+            else if (_controlFlowDepth > 0)
+            {
+                AddError("self.__init__(...) must be the first statement in the constructor, not inside control flow",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
+                    span: call.Span);
+            }
+            else if (_selfInitCalled)
+            {
+                AddError("self.__init__(...) can only be called once, as the first statement in the constructor",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
+                    span: call.Span);
+            }
             else if (_currentClass != null)
             {
                 // Context is valid — validate keyword-argument names against this class's own
@@ -6044,6 +6060,9 @@ internal partial class TypeChecker
                 if (selfInit != null)
                     CheckDeprecatedUsage(selfInit, call);
             }
+
+            if (_currentMethodName == DunderNames.Init)
+                _selfInitCalled = true;
         }
 
         return null;

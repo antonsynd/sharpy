@@ -42,7 +42,7 @@ class Point:
 
 **Rules for Constructor Chaining:**
 
-- `self.__init__(...)` must be the **first statement** in the constructor body
+- `self.__init__(...)`, like `super().__init__(...)`, must be the **first statement** in the constructor body (a docstring may precede it). The call runs as C#'s constructor initializer, before every statement of the body, so a statement written ahead of it is refused (SPY0292: move the call first), as is a `self.__init__(...)` inside control flow
 - Only one `self.__init__()` call is allowed per constructor
 - The compiler detects this pattern and transforms it to C#'s `: this(...)` syntax
 - After the chained constructor returns, execution continues with the rest of the body (if any)

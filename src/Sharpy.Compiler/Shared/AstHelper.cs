@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Shared;
 
@@ -318,6 +319,60 @@ internal static class AstHelper
 
         docString = null;
         return false;
+    }
+
+    /// <summary>
+    /// The single constructor-initializer classification authority: decides whether a constructor
+    /// body statement is a chaining call — <c>super().__init__(…)</c> or <c>self.__init__(…)</c> as an
+    /// expression statement — which the emitter hoists into the C# constructor initializer
+    /// (<c>: base(…)</c> / <c>: this(…)</c>). Grouping is transparent on both the statement's
+    /// expression and the callee (#1147, #1170, #1197): <c>(super().__init__())</c> and
+    /// <c>(self.__init__)(x)</c> are the same chaining calls.
+    ///
+    /// <para>The checker refuses a statement written ahead of the call (it would run after the
+    /// hoisted initializer) and the emitter hoists the call, both through this one predicate, so
+    /// what is refused and what is hoisted cannot drift apart.</para>
+    /// </summary>
+    public static bool TryGetConstructorInitializerCall(
+        Statement stmt, [MaybeNullWhen(false)] out FunctionCall call, out bool chainsToBase)
+    {
+        if (stmt is ExpressionStatement es
+            && UnwrapParenthesized(es.Expression) is FunctionCall initCall
+            && UnwrapParenthesized(initCall.Function) is MemberAccess { Member: DunderNames.Init } ma)
+        {
+            if (ma.Object is SuperExpression)
+            {
+                call = initCall;
+                chainsToBase = true;
+                return true;
+            }
+
+            if (ma.Object is Identifier { Name: PythonNames.Self })
+            {
+                call = initCall;
+                chainsToBase = false;
+                return true;
+            }
+        }
+
+        call = null;
+        chainsToBase = false;
+        return false;
+    }
+
+    /// <summary>
+    /// The index of the first top-level statement of a constructor body that
+    /// <see cref="TryGetConstructorInitializerCall"/> classifies as a chaining call, or -1.
+    /// </summary>
+    public static int FindConstructorInitializerIndex(ImmutableArray<Statement> body)
+    {
+        for (int i = 0; i < body.Length; i++)
+        {
+            if (TryGetConstructorInitializerCall(body[i], out _, out _))
+                return i;
+        }
+
+        return -1;
     }
 
     /// <summary>

@@ -59,65 +59,36 @@ internal partial class RoslynEmitter
             var baseName = ParameterCSharpName(param);
         }
 
-        // Find super().__init__() or self.__init__() anywhere in the body and convert to
-        // constructor initializer (: base(...) or : this(...))
+        // Find the first top-level super().__init__() / self.__init__() statement and convert it to
+        // the constructor initializer (: base(...) / : this(...)). The classification is the shared
+        // AstHelper authority the checker also uses: grouping is transparent (#1147, #1170, #1197),
+        // and the checker refuses any statement ahead of the call (it would run after the hoisted
+        // initializer), so for an accepted program the call is the body's first statement.
         ConstructorInitializerSyntax? constructorInitializer = null;
-        int initializerCallIndex = -1;
+        int initializerCallIndex = Shared.AstHelper.FindConstructorInitializerIndex(func.Body);
 
-        for (int i = 0; i < func.Body.Length; i++)
+        if (initializerCallIndex >= 0
+            && Shared.AstHelper.TryGetConstructorInitializerCall(
+                func.Body[initializerCallIndex], out var initCall, out var chainsToBase))
         {
-            // Matched against the canonical (paren-stripped) callee, as GenerateCall does (#1147,
-            // #1170): `(self.__init__)(x)` is the same initializer call as `self.__init__(x)`, and
-            // missing it here would emit a `self.Constructor(...)` member invocation instead. The
-            // statement's own expression is stripped for the same reason (#1197): `(super().__init__())`
-            // is the same initializer call, and missing it here reports SPY0501 from the fallback arm
-            // in GenerateCall — an accepted program rejected purely for a redundant grouping.
-            if (func.Body[i] is ExpressionStatement es &&
-                Shared.AstHelper.UnwrapParenthesized(es.Expression) is FunctionCall initCall &&
-                Shared.AstHelper.UnwrapParenthesized(initCall.Function) is MemberAccess ma &&
-                ma.Member == DunderNames.Init)
-            {
-                if (ma.Object is SuperExpression)
-                {
-                    initializerCallIndex = i;
-                    // Route through the regular call-argument pipeline so keyword arguments
-                    // (FunctionCall.KeywordArguments) reach the base constructor instead of
-                    // being silently dropped (#906). Resolve the target constructor symbol when
-                    // available for correct reordering; otherwise the pipeline falls back to
-                    // positional + C# named arguments so nothing is lost.
-                    var baseArgs = GenerateReorderedCallArguments(
-                        initCall, _context.SemanticInfo?.GetCallTarget(initCall));
-                    constructorInitializer = ConstructorInitializer(
-                        SyntaxKind.BaseConstructorInitializer,
-                        ArgumentList(SeparatedList(baseArgs)));
-                    break;
-                }
-
-                if (ma.Object is Identifier { Name: PythonNames.Self })
-                {
-                    initializerCallIndex = i;
-                    var thisArgs = GenerateReorderedCallArguments(
-                        initCall, _context.SemanticInfo?.GetCallTarget(initCall));
-                    constructorInitializer = ConstructorInitializer(
-                        SyntaxKind.ThisConstructorInitializer,
-                        ArgumentList(SeparatedList(thisArgs)));
-                    break;
-                }
-            }
+            // Route through the regular call-argument pipeline so keyword arguments
+            // (FunctionCall.KeywordArguments) reach the chained constructor instead of being
+            // silently dropped (#906). Resolve the target constructor symbol when available for
+            // correct reordering; otherwise the pipeline falls back to positional + C# named
+            // arguments so nothing is lost.
+            var initArgs = GenerateReorderedCallArguments(
+                initCall, _context.SemanticInfo?.GetCallTarget(initCall));
+            constructorInitializer = ConstructorInitializer(
+                chainsToBase ? SyntaxKind.BaseConstructorInitializer : SyntaxKind.ThisConstructorInitializer,
+                ArgumentList(SeparatedList(initArgs)));
         }
 
         var bodyStartIndex = 0;
 
-        if (initializerCallIndex >= 0)
+        if (initializerCallIndex == 0)
         {
-            if (initializerCallIndex == 0)
-            {
-                // Simple case: initializer call is the first statement, skip it
-                bodyStartIndex = 1;
-            }
-            // else: initializer call is not the first statement.
-            // We still emit the initializer and skip the call during body generation.
-            // Statements before the call are emitted as regular constructor body.
+            // The initializer call is the first statement: skip it in the body.
+            bodyStartIndex = 1;
         }
 
         // Generate constructor body.

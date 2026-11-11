@@ -273,6 +273,7 @@ internal partial class TypeChecker
     /// </summary>
     private bool AtNonDeclaringPosition => _currentFunctionReturnType != null || _controlFlowDepth > 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
+    private bool _selfInitCalled = false;   // Track if self.__init__() was called
 
     // Symbols of range(...)-loop induction variables currently in scope that are provably >= 0
     // (single-arg range, or non-negative-literal start with positive step) AND not reassigned in

@@ -259,6 +259,7 @@ internal partial class TypeChecker
         var previousMethodIsDunder = _currentMethodIsDunder;
         var previousControlFlowDepth = _controlFlowDepth;
         var previousSuperInitCalled = _superInitCalled;
+        var previousSelfInitCalled = _selfInitCalled;
 
         _currentMethodName = functionDef.Name;
         _currentMethodSymbol = functionSymbol;
@@ -268,6 +269,7 @@ internal partial class TypeChecker
         _currentMethodIsDunder = IsDunderMethod(functionDef.Name);
         _controlFlowDepth = 0;
         _superInitCalled = false;
+        _selfInitCalled = false;
 
         // Validate override requirements and abstract method constraints
         ValidateOverrideRequirements(functionDef);
@@ -328,6 +330,9 @@ internal partial class TypeChecker
             }
         }
 
+        if (_currentClass != null && functionDef.Name == DunderNames.Init)
+            ValidateConstructorInitializerPosition(functionDef);
+
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
 
@@ -350,6 +355,7 @@ internal partial class TypeChecker
         _currentFunctionIsAsync = previousIsAsync;
         _controlFlowDepth = previousControlFlowDepth;
         _superInitCalled = previousSuperInitCalled;
+        _selfInitCalled = previousSelfInitCalled;
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = previousFunctionReturnType;

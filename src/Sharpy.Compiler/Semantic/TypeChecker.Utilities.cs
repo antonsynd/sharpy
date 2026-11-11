@@ -2550,7 +2550,24 @@ internal partial class TypeChecker
                         FunctionType.FromParameters(parentCtor.Parameters, SemanticType.Void, skipLeading: 1),
                         currentType);
                 }
+
+                // A dataclass's constructor is synthesized from its fields, not declared, so its
+                // shape is not known here: keep the refusal below rather than guess an arity.
+                if (currentType.IsDataclass)
+                    break;
                 currentType = GetBaseType(currentType);
+            }
+
+            // No source class up the chain declares __init__: every one has the implicit
+            // parameterless constructor (Python's object.__init__), which the emitted `: base()`
+            // already chains to (#2508).
+            if (currentType == null)
+            {
+                return new FunctionType
+                {
+                    ParameterTypes = new List<SemanticType>(),
+                    ReturnType = SemanticType.Void
+                };
             }
         }
 
@@ -2738,6 +2755,32 @@ internal partial class TypeChecker
             superExpr.LineStart, superExpr.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidSuperUsage,
             span: superExpr.Span);
+    }
+
+    /// <summary>
+    /// A constructor's chaining call — <c>super().__init__(…)</c> or <c>self.__init__(…)</c> — is
+    /// hoisted into the C# constructor initializer (<c>: base(…)</c> / <c>: this(…)</c>), which runs
+    /// before any statement of the body. A statement written ahead of the call would therefore run
+    /// after it, against source order, so it is refused at the call with the steer to move the call
+    /// first. The call is located by the same <see cref="AstHelper.FindConstructorInitializerIndex"/>
+    /// the emitter hoists by. A docstring is not a body statement (the parser lifts it out).
+    /// </summary>
+    private void ValidateConstructorInitializerPosition(FunctionDef constructor)
+    {
+        var index = AstHelper.FindConstructorInitializerIndex(constructor.Body);
+        if (index <= 0
+            || !AstHelper.TryGetConstructorInitializerCall(constructor.Body[index], out var call, out var chainsToBase))
+            return;
+
+        var callText = chainsToBase ? "super().__init__(...)" : "self.__init__(...)";
+        var initializer = chainsToBase ? ": base(...)" : ": this(...)";
+        var ahead = index == 1 ? "the statement" : $"the {index} statements";
+        AddError(
+            $"{callText} must be the first statement in the constructor: it runs as the constructor "
+            + $"initializer '{initializer}', before {ahead} written ahead of it; move the call first",
+            call.LineStart, call.ColumnStart,
+            code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
+            span: call.Span);
     }
 
     /// <summary>
