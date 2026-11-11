@@ -1,0 +1,2 @@
+user PathRequirement: needs-dir
+caught user PathErrors: boom

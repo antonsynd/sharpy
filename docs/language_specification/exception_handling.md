@@ -24,6 +24,7 @@ Sharpy uses .NET's exception hierarchy directly:
 | `FileNotFoundError` | `OSError` | File not found |
 | `FileExistsError` | `OSError` | File already exists |
 | `IsADirectoryError` | `OSError` | Expected file, got directory |
+| `NotADirectoryError` | `OSError` | Expected directory, got file (also: a path component is a file) |
 | `PermissionError` | `OSError` | Permission denied |
 | `StopIteration` | `Exception` | Iterator exhausted |
 | `UnicodeError` | `ValueError` | Base for Unicode encoding/decoding errors |
@@ -39,15 +40,15 @@ Sharpy uses .NET's exception hierarchy directly:
 
 ### `OSError`
 
-`FileNotFoundError`, `FileExistsError`, `IsADirectoryError` and `PermissionError`
-derive from `OSError`, matching CPython, so `except OSError` catches every one of
-them, whether user code raises it or a file/OS operation (`open()`, `os.mkdir`,
-...) reports it. `IOError` names the same class as `OSError`: `except IOError`
+`FileNotFoundError`, `FileExistsError`, `IsADirectoryError`, `NotADirectoryError`
+and `PermissionError` derive from `OSError`, matching CPython, so `except OSError`
+catches every one of them, whether user code raises it or a file/OS operation
+(`open()`, `os.mkdir`, ...) reports it. `IOError` names the same class as `OSError`: `except IOError`
 and `except OSError` catch exactly the same exceptions, and `type(IOError("x")).__name__`
 is `"OSError"`.
 
 `OSError` derives from .NET's `System.IO.IOException`, so .NET code catching
-`IOException` sees `OSError` and all four subclasses. .NET code catching the more
+`IOException` sees `OSError` and all five subclasses. .NET code catching the more
 specific `System.IO.FileNotFoundException` or `System.UnauthorizedAccessException`
 does not see Sharpy's `FileNotFoundError` or `PermissionError`.
 

@@ -69,8 +69,13 @@ def _check_timeout(timeout: float | None) -> None:
     if value < 0.0:
         raise ValueError("Timeout value out of range")
 
-class error(Exception):
-    """Base exception for socket-related errors. Corresponds to Python's socket.error."""
+class error(OSError):
+    """Base exception for socket-related errors. Corresponds to Python's socket.error.
+
+    Derives from OSError, so `except OSError` catches every socket exception. Python's
+    socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
+    socket-error-timeout-distinct-classes).
+    """
 
     errno: int
 

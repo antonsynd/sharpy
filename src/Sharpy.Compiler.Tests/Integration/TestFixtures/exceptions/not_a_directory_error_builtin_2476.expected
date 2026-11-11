@@ -1,0 +1,6 @@
+1 caught as NotADirectoryError: NotADirectoryError
+2 caught as OSError: NotADirectoryError
+3 caught as IOError: NotADirectoryError
+4 sibling IsADirectoryError missed, OSError caught: NotADirectoryError
+5 OSError missed NotADirectoryError: OSError
+6 True False z
