@@ -199,9 +199,10 @@ namespace Sharpy.OsPathModule
         /// </summary>
         public static long Getsize(string path)
         {
-            if (!global::System.IO.File.Exists(path))
+            global::Sharpy.PathErrors.CheckNeedsAny(path);
+            if (global::System.IO.Directory.Exists(path))
             {
-                throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
+                return 0;
             }
 
             global::System.IO.FileInfo info = new global::System.IO.FileInfo(path);

@@ -20,21 +20,8 @@ namespace Sharpy.ShutilModule
         /// </summary>
         public static string Copy(string src, string dst)
         {
-            if (!global::System.IO.File.Exists(src))
-            {
-                throw new global::Sharpy.OSError("No such file: '" + src + "'");
-            }
-
             string destPath = global::Sharpy.ShutilModule.ShutilModuleModule._ResolveDestination(src, dst);
-            try
-            {
-                global::System.IO.File.Copy(src, destPath, true);
-            }
-            catch (global::System.Exception)
-            {
-                throw new global::Sharpy.OSError("Failed to copy '" + src + "' to '" + dst + "'");
-            }
-
+            global::Sharpy.ShutilModule.ShutilModuleModule._Copyfile(src, destPath);
             return destPath;
         }
 
@@ -43,21 +30,16 @@ namespace Sharpy.ShutilModule
         /// </summary>
         public static string Copy2(string src, string dst)
         {
-            if (!global::System.IO.File.Exists(src))
-            {
-                throw new global::Sharpy.OSError("No such file: '" + src + "'");
-            }
-
             string destPath = global::Sharpy.ShutilModule.ShutilModuleModule._ResolveDestination(src, dst);
+            global::Sharpy.ShutilModule.ShutilModuleModule._Copyfile(src, destPath);
             try
             {
-                global::System.IO.File.Copy(src, destPath, true);
                 global::System.IO.File.SetLastWriteTimeUtc(destPath, global::System.IO.File.GetLastWriteTimeUtc(src));
                 global::System.IO.File.SetCreationTimeUtc(destPath, global::System.IO.File.GetCreationTimeUtc(src));
             }
-            catch (global::System.Exception)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.OSError("Failed to copy2 '" + src + "' to '" + dst + "'");
+                throw global::Sharpy.PathErrors.TranslateNeedsAny(e, destPath);
             }
 
             return destPath;
@@ -68,18 +50,35 @@ namespace Sharpy.ShutilModule
         /// </summary>
         public static string Copytree(string src, string dst)
         {
-            if (!global::System.IO.Directory.Exists(src))
+            Sharpy.List<string> entries = new Sharpy.List<string>()
             {
-                throw new global::Sharpy.OSError("No such directory: '" + src + "'");
-            }
-
+            };
             try
             {
-                global::Sharpy.ShutilModule.ShutilModuleModule._CopyDirectoryRecursive(src, dst);
+                foreach (var __loopVar_0 in global::System.IO.Directory.GetFileSystemEntries(src))
+                {
+                    var entry = __loopVar_0;
+                    entries.Append(entry);
+                }
             }
-            catch (global::System.Exception)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.OSError("Failed to copytree '" + src + "' to '" + dst + "'");
+                throw global::Sharpy.PathErrors.TranslateNeedsDir(e, src);
+            }
+
+            global::Sharpy.ShutilModule.ShutilModuleModule._Makedirs(dst);
+            foreach (var __loopVar_1 in entries)
+            {
+                var srcName = __loopVar_1;
+                string dstName = global::System.IO.Path.Combine(dst, global::System.IO.Path.GetFileName(srcName));
+                if (global::System.IO.Directory.Exists(srcName))
+                {
+                    global::Sharpy.ShutilModule.ShutilModuleModule.Copytree(srcName, dstName);
+                }
+                else
+                {
+                    global::Sharpy.ShutilModule.ShutilModuleModule.Copy2(srcName, dstName);
+                }
             }
 
             return dst;
@@ -90,18 +89,13 @@ namespace Sharpy.ShutilModule
         /// </summary>
         public static void Rmtree(string path)
         {
-            if (!global::System.IO.Directory.Exists(path))
-            {
-                throw new global::Sharpy.OSError("No such directory: '" + path + "'");
-            }
-
             try
             {
                 global::System.IO.Directory.Delete(path, true);
             }
-            catch (global::System.Exception)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.OSError("Failed to remove directory tree '" + path + "'");
+                throw global::Sharpy.PathErrors.TranslateNeedsDir(e, path);
             }
         }
 
@@ -110,29 +104,36 @@ namespace Sharpy.ShutilModule
         /// </summary>
         public static string Move(string src, string dst)
         {
-            if (global::System.IO.File.Exists(src))
+            string realDst = dst;
+            if (global::System.IO.Directory.Exists(dst))
             {
-                string destPath = global::Sharpy.ShutilModule.ShutilModuleModule._ResolveDestination(src, dst);
-                try
-                {
-                    global::System.IO.File.Move(src, destPath);
-                }
-                catch (global::System.IO.IOException)
-                {
-                    global::System.IO.File.Copy(src, destPath, true);
-                    global::System.IO.File.Delete(src);
-                }
-
-                return destPath;
+                realDst = global::System.IO.Path.Combine(dst, global::Sharpy.ShutilModule.ShutilModuleModule._Basename(src));
             }
 
-            if (global::System.IO.Directory.Exists(src))
+            try
             {
-                global::System.IO.Directory.Move(src, dst);
-                return dst;
+                global::Sharpy.PathErrors.Rename(src, realDst);
+            }
+            catch (global::Sharpy.OSError)
+            {
+                if (global::System.IO.Directory.Exists(src))
+                {
+                    if (global::Sharpy.ShutilModule.ShutilModuleModule._Destinsrc(src, dst))
+                    {
+                        throw;
+                    }
+
+                    global::Sharpy.ShutilModule.ShutilModuleModule.Copytree(src, realDst);
+                    global::Sharpy.ShutilModule.ShutilModuleModule.Rmtree(src);
+                }
+                else
+                {
+                    global::Sharpy.ShutilModule.ShutilModuleModule.Copy2(src, realDst);
+                    global::Sharpy.ShutilModule.ShutilModuleModule._Unlink(src);
+                }
             }
 
-            throw new global::Sharpy.OSError("No such file or directory: '" + src + "'");
+            return realDst;
         }
 
         /// <summary>
@@ -194,17 +195,17 @@ namespace Sharpy.ShutilModule
                 }
             }
 
-            foreach (var __loopVar_0 in global::Sharpy.StringExtensions.Split(pathEnv, global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString())))
+            foreach (var __loopVar_2 in global::Sharpy.StringExtensions.Split(pathEnv, global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString())))
             {
-                var dirPath = __loopVar_0;
+                var dirPath = __loopVar_2;
                 if (dirPath == "")
                 {
                     continue;
                 }
 
-                foreach (var __loopVar_1 in extensions)
+                foreach (var __loopVar_3 in extensions)
                 {
-                    var ext = __loopVar_1;
+                    var ext = __loopVar_3;
                     string candidate = global::System.IO.Path.Combine(dirPath, name + ext);
                     if (global::System.IO.File.Exists(candidate))
                     {
@@ -221,11 +222,18 @@ namespace Sharpy.ShutilModule
         /// </summary>
         public static global::System.ValueTuple<long, long, long> DiskUsage(string path)
         {
-            global::System.IO.DriveInfo drive = new global::System.IO.DriveInfo(path);
-            long total = drive.TotalSize;
-            long free = drive.AvailableFreeSpace;
-            long used = total - free;
-            return (total, used, free);
+            try
+            {
+                global::System.IO.DriveInfo drive = new global::System.IO.DriveInfo(path);
+                long total = drive.TotalSize;
+                long free = drive.AvailableFreeSpace;
+                long used = total - free;
+                return (total, used, free);
+            }
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateNeedsAny(e, path);
+            }
         }
 
         /// <summary>
@@ -242,24 +250,109 @@ namespace Sharpy.ShutilModule
         }
 
         /// <summary>
-        /// Recursively copy a directory tree from src to dst.
+        /// CPython's copyfile steps: open src to read, then dst to write, then copy the bytes.
         /// </summary>
-        internal static void _CopyDirectoryRecursive(string src, string dst)
+        internal static void _Copyfile(string src, string dst)
         {
-            global::System.IO.Directory.CreateDirectory(dst);
-            foreach (var __loopVar_2 in global::System.IO.Directory.GetFiles(src))
+            global::Sharpy.PathErrors.CheckNeedsFileToRead(src);
+            global::Sharpy.PathErrors.CheckNeedsFileToWrite(dst);
+            try
             {
-                var filePath = __loopVar_2;
-                string destFile = global::System.IO.Path.Combine(dst, global::System.IO.Path.GetFileName(filePath));
-                global::System.IO.File.Copy(filePath, destFile, true);
+                global::System.IO.File.Copy(src, dst, true);
+            }
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateNeedsFileToWrite(e, dst);
+            }
+        }
+
+        /// <summary>
+        /// CPython's os.makedirs(path) steps: create a missing parent chain, then mkdir the leaf.
+        /// </summary>
+        internal static void _Makedirs(string path)
+        {
+            string name = global::Sharpy.ShutilModule.ShutilModuleModule._StripTrailingSeparators(path);
+            string? head = global::System.IO.Path.GetDirectoryName(name);
+            if (head is not null)
+            {
+                if (head!.Length > 0 && !global::System.IO.File.Exists(head!) && !global::System.IO.Directory.Exists(head!))
+                {
+                    global::Sharpy.ShutilModule.ShutilModuleModule._Makedirs(head!);
+                    if (global::System.IO.Path.GetFileName(name) == ".")
+                    {
+                        return;
+                    }
+                }
             }
 
-            foreach (var __loopVar_3 in global::System.IO.Directory.GetDirectories(src))
+            global::Sharpy.PathErrors.CheckCreatesDir(name);
+            try
             {
-                var dirPath = __loopVar_3;
-                string destDir = global::System.IO.Path.Combine(dst, global::System.IO.Path.GetFileName(dirPath));
-                global::Sharpy.ShutilModule.ShutilModuleModule._CopyDirectoryRecursive(dirPath, destDir);
+                global::System.IO.Directory.CreateDirectory(name);
             }
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateCreatesDir(e, name);
+            }
+        }
+
+        /// <summary>
+        /// os.unlink(path).
+        /// </summary>
+        internal static void _Unlink(string path)
+        {
+            global::Sharpy.PathErrors.CheckRemovesFile(path);
+            try
+            {
+                global::System.IO.File.Delete(path);
+            }
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateRemovesFile(e, path);
+            }
+        }
+
+        /// <summary>
+        /// The path without trailing separators (python's path.split skips an empty tail); a root stays itself.
+        /// </summary>
+        internal static string _StripTrailingSeparators(string path)
+        {
+            string stripped = path.TrimEnd(global::System.IO.Path.DirectorySeparatorChar, global::System.IO.Path.AltDirectorySeparatorChar);
+            if (stripped.Length == 0)
+            {
+                return path;
+            }
+
+            return stripped;
+        }
+
+        /// <summary>
+        /// CPython's shutil._basename: the last component, ignoring trailing separators.
+        /// </summary>
+        internal static string _Basename(string path)
+        {
+            return global::System.IO.Path.GetFileName(global::Sharpy.ShutilModule.ShutilModuleModule._StripTrailingSeparators(path));
+        }
+
+        /// <summary>
+        /// CPython's shutil._destinsrc: whether dst lies inside the directory src.
+        /// </summary>
+        internal static bool _Destinsrc(string src, string dst)
+        {
+            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
+            string fullSrc = global::System.IO.Path.GetFullPath(src);
+            string fullDst = global::System.IO.Path.GetFullPath(dst);
+            if (!fullSrc.EndsWith(sep))
+            {
+                fullSrc = fullSrc + sep;
+            }
+
+            if (!fullDst.EndsWith(sep))
+            {
+                fullDst = fullDst + sep;
+            }
+
+            return fullDst.StartsWith(fullSrc);
         }
     }
 }

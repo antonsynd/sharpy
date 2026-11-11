@@ -21,6 +21,11 @@ import tarfile
 
 ### `tarfile.is_tarfile(name: str) -> bool`
 
+Return whether the file is a tar archive (optionally gzip-compressed).
+
+!!! note
+    A file that cannot be opened raises its `OSError`; content that is not a tar archive is `False`.
+
 ## TarError
 
 Base exception for tarfile errors.
