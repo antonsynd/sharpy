@@ -20,7 +20,7 @@ Run `gh` with `dangerouslyDisableSandbox: true` (sandbox TLS):
 gh issue view <number> --json title,body,state,labels
 ```
 
-Report already-closed issues as "already closed".
+Skip issues that are already closed; report them as "already closed".
 
 ### 3. Verify implementation
 
@@ -37,7 +37,7 @@ For each open issue, verify the fix exists in the codebase:
    git log --oneline -20 --grep="<keyword>"
    ```
 4. Use Grep/Glob to spot-check that the described change actually exists in the codebase (e.g., if the issue says "add validator X", confirm the validator file exists)
-5. A `class-tracker` issue: every row of its cell table needs a `status` of `fixed` plus a sha, backticked test or `PR #N`; `moved #N` (an open issue; file it first) or `control`; a cell first posted in a comment goes in a `status`-column table there, and a later row with the same key supersedes. Fill the column, then `python3 build_tools/check_class_closure.py <number>` must exit 0 (CI re-checks closures from 2026-11-12). File class issues with the `status` column.
+5. A `class-tracker` issue: every row of every cell table (body or comment) needs a `status` of `fixed` plus a sha, backticked test name or `PR #N`; `moved #N` (an open issue; file it first) or `control`. A later comment restating a row's key supersedes it. Fill the column, then `python3 build_tools/check_class_closure.py <number>` must exit 0; on close a workflow re-runs it and comments the gaps. Closing as duplicate or not planned skips the check. File class issues with the `status` column.
 
 Categorize: **VERIFIED** (found, tests pass), **PARTIAL** (gaps remain), **NOT FOUND**.
 

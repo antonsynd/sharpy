@@ -31,7 +31,10 @@ Header (every comment):
 ## Cell comment (a cell posted on its tracker; a cell issue closes as folded)
 
 ```
-<header> **Cell:** <axis values> — <program, ≤5 lines> → observed `<…>` @ <sha>; expected `<…>` (<python3 | spec §>). Lane <lane>, reach <program|probe>. Found by <round / lane / prober>.
+<header>
+
+<Cells header + separator, below>
+| <axis values> | <program, ≤5 lines> | `<…>` @ <sha> | `<…>` (<python3 \| spec §>) | <lane> | <program\|probe> | <round / lane / prober> | |
 ```
 
 ## Closure comments (`gh issue close N --reason <r> --comment "…"`)
