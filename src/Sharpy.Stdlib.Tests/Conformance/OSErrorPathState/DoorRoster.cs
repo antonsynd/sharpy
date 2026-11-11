@@ -263,7 +263,6 @@ internal static class DoorRoster
         .Path("System.IO.File.GetAttributes(string)", "path")
         .Path("System.IO.File.GetCreationTimeUtc(string)", "path")
         .Path("System.IO.File.GetLastWriteTimeUtc(string)", "path")
-        .Path("System.IO.File.Move(string, string)", "sourceFileName", "destFileName")
         .Path("System.IO.File.Move(string, string, bool)", "sourceFileName", "destFileName")
         .Path("System.IO.File.OpenRead(string)", "path")
         .Path("System.IO.File.ReadAllBytes(string)", "path")
