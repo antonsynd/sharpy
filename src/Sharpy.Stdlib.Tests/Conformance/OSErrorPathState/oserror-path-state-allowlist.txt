@@ -16,58 +16,6 @@ ConfigParser.write_to_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class
 ConfigParser.write_to_file[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
 ConfigParser.write_to_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
 ConfigParser.write_to_file[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-TarFile.add[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.extract[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-TarFile.extract[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-TarFile.extractall[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-TarFile.extractall[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-TarFile.extractfile[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.extractfile[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.extractfile[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getmember[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getmember[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getmember[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getmembers[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getmembers[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getmembers[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getnames[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getnames[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-TarFile.getnames[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-ZipFile.extract[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-ZipFile.extract[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-ZipFile.extractall[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
-ZipFile.extractall[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-ZipFile.write[EmptyDir] python=ok sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-ZipFile.write[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-ZipFile.write[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
-ZipFile.write[NonEmptyDir] python=ok sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-ZipFile.write[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-gzip.GzipFile[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-gzip.GzipFile[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-gzip.GzipFile[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
-gzip.GzipFile[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-gzip.GzipFile[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-gzip.open(rb)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-gzip.open(rb)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-gzip.open(rb)[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
-gzip.open(rb)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-gzip.open(rb)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-gzip.open(wb)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-gzip.open(wb)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-gzip.open(wb)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-gzip.open(wb)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-tarfile.is_tarfile[EmptyDir] python=OS IsADirectoryError sharpy=ok # #2476
-tarfile.is_tarfile[MissingParent] python=OS FileNotFoundError sharpy=ok # #2476
-tarfile.is_tarfile[Missing] python=OS FileNotFoundError sharpy=ok # #2476
-tarfile.is_tarfile[NonEmptyDir] python=OS IsADirectoryError sharpy=ok # #2476
-tarfile.is_tarfile[ParentIsFile] python=OS NotADirectoryError sharpy=ok # #2476
-tarfile.open(r)[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-tarfile.open(r)[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
-tarfile.open(r)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-tarfile.open(w)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-tarfile.open(w)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-tarfile.open(w)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-tarfile.open(w)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
 toml.dump_file(sort_keys)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
 toml.dump_file(sort_keys)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
 toml.dump_file(sort_keys)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
@@ -93,12 +41,3 @@ xml.parse[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.
 xml.parse[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
 xml.parse[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
 xml.parse[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-zipfile.ZipFile(r)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-zipfile.ZipFile(r)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-zipfile.ZipFile(r)[Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
-zipfile.ZipFile(r)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-zipfile.ZipFile(r)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-zipfile.ZipFile(w)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-zipfile.ZipFile(w)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-zipfile.ZipFile(w)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
-zipfile.ZipFile(w)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476

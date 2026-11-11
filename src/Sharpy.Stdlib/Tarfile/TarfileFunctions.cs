@@ -33,50 +33,59 @@ namespace Sharpy
                 throw new ValueError("mode '" + mode + "' is not valid");
             }
 
-            if (autoDetect && File.Exists(name))
+            if (autoDetect)
             {
-                try
+                // python opens the archive first (`open(name, "rb")`); its refusal is the classifier's.
+                using var fs = OpenForRead(name);
+                byte[] magic = new byte[2];
+                if (fs.Read(magic, 0, 2) == 2 && magic[0] == 0x1f && magic[1] == 0x8b)
                 {
-                    using var fs = new FileStream(name, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    byte[] magic = new byte[2];
-                    if (fs.Read(magic, 0, 2) == 2 && magic[0] == 0x1f && magic[1] == 0x8b)
-                    {
-                        return new TarFile(name, "r:gz");
-                    }
-                }
-                catch
-                {
-                    // Fall through to plain tar
+                    return new TarFile(name, "r:gz");
                 }
             }
 
             return new TarFile(name, mode);
         }
 
+        /// <summary>Return whether the file is a tar archive (optionally gzip-compressed).</summary>
+        /// <remarks>A file that cannot be opened raises its <c>OSError</c>; content that is not a tar archive is <c>False</c>.</remarks>
         public static bool IsTarfile(string name)
         {
-            if (!File.Exists(name))
-                return false;
+            // python's is_tarfile: an OSError opening the file propagates; only content decides False.
+            using Stream stream = OpenForRead(name);
+            if (HoldsTarEntry(stream))
+            {
+                return true;
+            }
+            stream.Position = 0;
+            using var gzStream = new GZipStream(stream, CompressionMode.Decompress, leaveOpen: true);
+            return HoldsTarEntry(gzStream);
+        }
 
+        private static FileStream OpenForRead(string name)
+        {
+            PathErrors.CheckNeedsFileToRead(name);
             try
             {
-                using var stream = new FileStream(name, FileMode.Open, FileAccess.Read, FileShare.Read);
-                using var reader = new TarReader(stream, leaveOpen: false);
+                return new FileStream(name, FileMode.Open, FileAccess.Read, FileShare.Read);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, name);
+            }
+        }
+
+        /// <summary>Whether an already-open stream starts with a tar entry; any content failure is "no" (file CONTENT state, not path state).</summary>
+        private static bool HoldsTarEntry(Stream stream)
+        {
+            try
+            {
+                using var reader = new TarReader(stream, leaveOpen: true);
                 return reader.GetNextEntry() != null;
             }
-            catch
+            catch (Exception)
             {
-                try
-                {
-                    using var stream = new FileStream(name, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    using var gzStream = new GZipStream(stream, CompressionMode.Decompress);
-                    using var reader = new TarReader(gzStream, leaveOpen: false);
-                    return reader.GetNextEntry() != null;
-                }
-                catch
-                {
-                    return false;
-                }
+                return false;
             }
         }
     }
