@@ -133,7 +133,7 @@ Tier: light (override "Keep light") · Adequacy: CLASS (converged) · base sha `
 - [x] W1-B (fb7d452c, 2d1b21c1) — D2 `NotADirectoryError` + spec row/prose + A4 + A6 (D2 by direction) — core-library-expert — blocked by none
 - [x] W1-C (c76df807) — D3 socket bases + regen + A3 C3 theory (resolves deferred finding 2) + fixture + deviation row + socket docs — stdlib-expert — blocked by none
 - [x] W1-D (39ca2f07, a8ddabf1, e34243d6; A7 floor 42fcad55) — G1 RED with its allowlist (T1–T5, R1, scan theory (g), exemption roster, oracle) + `PathRequirement` declaration + A6 D1.4 fixture + Stdlib.Tests in A7's floor — test-expert — blocked by none
-- [ ] W2-E — D1 `PathErrors` (check / translate / pair door) + R0 + Core.Tests translate theory + `open()` as first caller — core-library-expert — blocked by W1-D
+- [x] W2-E (c960e97b, 0d7be764, 94cfc5dc; lead re-ran NotFound arm → plain OSError: 2 failed, restored 42/0/0) — D1 `PathErrors` (check / translate / pair door) + R0 + Core.Tests translate theory + `open()` as first caller — core-library-expert — blocked by W1-D
 - [ ] W3-F — every Stdlib site (handwritten C# + spy) calls the helper; regen; R2; G1 allowlist drained to 0 — stdlib-expert — blocked by W2-E
 - [ ] W3-G — A2 bound scan (raise / catch rosters, synthetic positive control, mutation (h)) — test-expert — blocked by W3-F
 - [ ] FINAL — whole-solution gate (`/ci-gate`), sweeps, staleness gates, A5 docs check, ledger filing, format — lead + verification-expert — blocked by all
