@@ -125,6 +125,19 @@ Class-level; the implementer sequences the work. Order constraint only: G1 lands
 - Ledger cells found while planning, for the lead to file or place (no implementer runs `gh issue create`): `import os` alone then `os.path.join(a, b)` is refused SPY0224 "expects 4 arguments but got 2" @ 2c803eb32, while `import os.path` runs it (false-refusal · program; python accepts both); `from os import path` is SPY0301; `EnvironmentError` is SPY0200 (probe); the `ConnectionError` family and `TimeoutError` are absent from Core (D2); a compiled library exports no module-level `type` alias (D3's removal path). Added by the revision, read not run: `xml`'s `ParseError` derives from `Exception` (`src/Sharpy.Stdlib/Xml/ParseError.cs:11`; python: `SyntaxError`) and `threading.BrokenBarrierError` from `Exception` (`src/Sharpy.Stdlib/Threading/Barrier.cs:8`; python: `RuntimeError`) — Stdlib exception bases outside C3's `OSError` rule; the macOS `unlink`-on-a-directory verdict (D4); path-state cells of `subprocess` are P56's surface (#2266) when python's outcome is in the `OSError` family and G1 finds them red. Added by the second revision, run @ e63084630: `shutil.Error` and `shutil.SameFileError` are absent from Stdlib, and the two measured cells of the excluded relation axis diverge (`shutil.copy(f, f)` → plain `OSError`; `shutil.move(d, d/x)` leaks `System.IO.IOException` past `except OSError`); `except statistics.StatisticsError` is SPY0202 while the bare `StatisticsError` catches (the type carries no `[SharpyModuleType]`); the python oracle was not required for `ExceptionHierarchyPythonMroTests` in CI — A7 drains it, recorded so the lead does not file it.
 
 
+## Implementation Checklist
+
+Tier: light (override "Keep light") · Adequacy: CLASS (converged) · base sha `a6691fe2` (dev tip at implementation start; the plan was verified @ 09367ede and no `src/` change landed between). Names fixed by the lead for D1: public static class `PathErrors` (Core), internal enum `PathRequirement`, internal stamp `PathRequirementAttribute`.
+
+- [ ] W1-A — A7 widened + D4 `test-fast` edit (resolves deferred finding 1) — test-expert — blocked by none
+- [ ] W1-B — D2 `NotADirectoryError` + spec row/prose + A4 + A6 (D2 by direction) — core-library-expert — blocked by none
+- [ ] W1-C — D3 socket bases + regen + A3 C3 theory (resolves deferred finding 2) + fixture + deviation row + socket docs — stdlib-expert — blocked by none
+- [ ] W1-D — G1 RED with its allowlist (T1–T5, R1, scan theory (g), exemption roster, oracle) + `PathRequirement` declaration + A6 D1.4 fixture + Stdlib.Tests in A7's floor — test-expert — blocked by none
+- [ ] W2-E — D1 `PathErrors` (check / translate / pair door) + R0 + Core.Tests translate theory + `open()` as first caller — core-library-expert — blocked by W1-D
+- [ ] W3-F — every Stdlib site (handwritten C# + spy) calls the helper; regen; R2; G1 allowlist drained to 0 — stdlib-expert — blocked by W2-E
+- [ ] W3-G — A2 bound scan (raise / catch rosters, synthetic positive control, mutation (h)) — test-expert — blocked by W3-F
+- [ ] FINAL — whole-solution gate (`/ci-gate`), sweeps, staleness gates, A5 docs check, ledger filing, format — lead + verification-expert — blocked by all
+
 ## Revision log
 
 - @ 2c803eb32 — revised before the first `/verify-plan` pass on two owner rulings of 2026-11-09: the generator is confirmed as required first with the tier kept light; #2130 is split out (its `CodeGen/` seam is §12 c), removing the `except*` contract, its design decision, its generator and its acceptance bullet. Decisions and acceptance bullets renumbered.
