@@ -1,3 +1,10 @@
+// Portions of this file are a C# port of _PyUnicode_InsertThousandsGrouping, in CPython's C
+// implementation (Objects/): only the private method InsertThousandsGrouping below.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C#; handles only a uniform group size (no locale grouping string);
+// builds a .NET string from right to left instead of writing into a preallocated Unicode buffer.
+
 using System;
 using System.Globalization;
 using BigInteger = System.Numerics.BigInteger;

@@ -13,6 +13,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Standard library for the Sharpy programming language. Provides json, os, re, math, and 60+ modules with Pythonic APIs on .NET.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Ships code ported from CPython (THIRD-PARTY-NOTICES.txt), so the PSF licence joins the expression -->
+    <PackageLicenseExpression>(Apache-2.0 OR MIT) AND PSF-2.0</PackageLicenseExpression>
     <!-- CS1574/CS1580: XML doc cref resolution issues for generic/dunder methods -->
     <!-- CS1591: missing XML docs — suppressed for simple data types -->
     <NoWarn>CS1574;CS1580;CS1591</NoWarn>

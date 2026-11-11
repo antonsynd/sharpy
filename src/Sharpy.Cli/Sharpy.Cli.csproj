@@ -12,6 +12,8 @@
     <ToolCommandName>sharpyc</ToolCommandName>
     <Description>Sharpy compiler — a statically-typed Pythonic language for .NET. Compile .spy files to C# and run them on the CLR.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Ships code ported from CPython (THIRD-PARTY-NOTICES.txt), so the PSF licence joins the expression -->
+    <PackageLicenseExpression>(Apache-2.0 OR MIT) AND PSF-2.0</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
