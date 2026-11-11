@@ -19,12 +19,7 @@ In the nine-dimension pass this skill reads the plan, extracts every verifiable 
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-If `$ARGUMENTS` is empty, never pick one silently: list the three newest files of record and the three newest working copies and ask which to verify.
-```bash
-ls -t docs/process/plans/*.md 2>/dev/null | head -3    # files of record — a DRAFT marker on line 1 means no pass has stamped it
-ls -t .claude/plans/*.md 2>/dev/null | head -3         # working copies (gitignored) — this container's only
-```
-The pass edits the working copy `.claude/plans/<plan-id>.md` and commits it over the file of record `docs/process/plans/<plan-id>.md` (Output §4; `docs/process/README.md` › The stage trail). Given a path under `docs/process/plans/`, or when the working copy is missing (a new container), copy the file of record to `.claude/plans/` first and drop its `<!-- DRAFT … -->` marker line. When both exist and differ beyond that marker, stop and ask which is current. A file of record that already carries a stamp is a re-verification: the new stamp and summary replace the old ones.
+If `$ARGUMENTS` is empty, list the three newest plans (`ls -t docs/process/plans/*.md | head -3`) and ask which — never pick silently. The pass edits the working copy `.claude/plans/<plan-id>.md` and commits it over the file of record (Output §4; working-copy rules: `docs/process/README.md` › The stage trail). A plan that already carries a stamp is a re-verification: the new stamp and summary replace the old ones.
 
 Read the plan file completely before proceeding. Record `git rev-parse --short HEAD` — every check below is made against that sha, and the stamp names it (line numbers drift; a sha does not).
 
@@ -113,7 +108,7 @@ Applies whenever any input to the plan is a bug, ICE, or regression issue. Grade
   - every such map has a totality assertion in the harness (every source value mapped or named in an `excluded…` list with its reason; every roster value the image of ≥ 1 source value; every generated cell's axis values are roster values) and that assertion has its mutation in Dimension 7;
   - the verdict is a RULE keyed on axis-value classes, never a per-cell table;
   - the plan names the excluded axes and the reason each cannot be generated.
-  A cell you find by hand on such a plan is evidence that one ROSTER is open — the finding is "axis X is a hand list; close it against enumeration Y", written once, never "add cell Z". Do not probe sibling cells of an axis that is already roster-closed: the harness's first run is where those cells are discovered, and its allowlist ratchet is where they are pinned (contract §11 — hand matrices found the next axis six rounds running; the eighth pass on plan-ed89b6 found the eighth value of one hand-listed axis before the roster was asked for). A generator plan whose every axis is roster-closed is **CLASS** even when you can name a cell it will generate red. A roster whose source is a compiler enumeration read by reflection (`Enum.GetValues`, a subclass or property scan, a call-site census) is graded by the EXISTENCE of its totality assertion (no default arm; every source value mapped or excluded with a reason; every roster value the image of a source value) and that assertion's Dimension 7 mutation — never by re-counting the source: a count the plan carries is a measurement the test re-takes, and a miscount or an unmapped member is a `### Deferred findings` row under CONVERGED, not a NEEDS REVISION (contract §12 Convergence).
+  A cell you find by hand on such a plan is evidence that one ROSTER is open — the finding is "axis X is a hand list; close it against enumeration Y", written once, never "add cell Z". Do not probe sibling cells of an axis that is already roster-closed: the harness's first run is where those cells are discovered, and its allowlist ratchet is where they are pinned (contract §11). A generator plan whose every axis is roster-closed is **CLASS** even when you can name a cell it will generate red. A roster whose source is a compiler enumeration read by reflection (`Enum.GetValues`, a subclass or property scan, a call-site census) is graded by the EXISTENCE of its totality assertion (no default arm; every source value mapped or excluded with a reason; every roster value the image of a source value) and that assertion's Dimension 7 mutation — never by re-counting the source: a count the plan carries is a measurement the test re-takes, and a miscount or an unmapped member is a `### Deferred findings` row under CONVERGED, not a NEEDS REVISION (contract §12 Convergence).
 - **Meta-class + standard cure** — from the table in `verification-contract.md` §1 (SPY0908-as-net, silent wrong behavior, qualified/bare divergence, position missing a shared check, warm ≠ cold, vacuous instrument); the cure is a seam, sweep, or harness — not N patches
 - **Standing harness** — the `gap-discovery-contracts.md` harness that should have caught it and which allowlist entries the fix drains, or "none; Phase N adds one"
 - **Owner rulings** — cited by issue-comment link; the plan does not re-ask a ruled question
@@ -228,31 +223,19 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 
 For each error, edit the plan text directly. Mark corrections `[CORRECTED: reason]`; mark drafted sections `[ADDED: adequacy]`; mark added steps `[ADDED: missing step]` so the author can review every change.
 
-Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan with its pull request's URL (§4).
+Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
 
-### 4. Commit the stamped plan and open the pull request
+### 4. Commit the stamped plan
 
-Every pass is committed, whatever its result (owner, 2026-11-10; `docs/process/README.md` › The stage trail). A NEEDS REVISION summary that exists only in the gitignored working copy is lost with its container, and the revising session — a fresh context, often a new container — then has nothing to read. Once the stamp, the Verification Summary and (nine-dimension pass) every inline correction from §3 are in the working copy, copy it over the file of record and commit it on the plan's lane:
+Every pass is committed, whatever its result: a NEEDS REVISION summary left in the gitignored working copy is lost with its container. Copy the working copy over `docs/process/plans/<plan-id>.md` and commit that one file on the plan's branch (`docs/process/README.md` › The stage trail: `claude/<group>-plan` with its pull request for a `full` plan; `claude/<group>`, no pull request yet, for a `light` one), then `/push`. In a fresh container, `git fetch origin && git switch <branch>` first; if a `full` plan's plan PR already merged, cut `claude/<group>-plan` again from `origin/dev` with a new PR; a plan held only as a working copy is committed here for the first time.
 
 ```bash
-git fetch origin dev
-git switch claude/<group>-plan       # the lane /create-plan opened, while its PR is open;
-                                     # merged or absent → `git switch -C claude/<group>-plan origin/dev`
-mkdir -p docs/process/plans
-cp .claude/plans/<plan-id>.md docs/process/plans/<plan-id>.md   # replaces the DRAFT copy: the stamp is now line 1
-git add docs/process/plans/<plan-id>.md                            # explicit pathspec, never -A or .
-git diff --cached --stat                                           # exactly this one file
-git commit -m "process(plan): <plan-id> — verified <result> @ <sha>"   # the plan's title goes in the body: the subject gate is 72 characters
+git add docs/process/plans/<plan-id>.md     # explicit pathspec; `git diff --cached --stat` shows this one file
+git commit -m "process(plan): <plan-id> — verified <result> @ <sha>"
 ```
 
-The committed copy carries the stamp and the Verification Summary, and the summary's `**Plan file:**` line names the committed path. Commit only this plan — never the charter, another draft or any other file — with the trailer the harness provides.
+The routing line names the committed path: `/implement-plan docs/process/plans/<plan-id>.md` on PASS, PASS WITH CORRECTIONS or CONVERGED; `/create-plan revise docs/process/plans/<plan-id>.md` on NEEDS REVISION.
 
-Then `/push` and open the pull request into `dev` unless the lane already has an open one (the push updates it): title = the commit subject; body = the result and adequacy verdict, the findings that changed a decision (on NEEDS REVISION: every finding the revision must answer, by dimension), the unchecked claims that need the owner's word, and the next step. The routing line to the user names the committed path and the pull request: `/implement-plan docs/process/plans/<plan-id>.md` on PASS, PASS WITH CORRECTIONS or CONVERGED; `/create-plan revise docs/process/plans/<plan-id>.md` in a fresh context (§5) on NEEDS REVISION. Merging is the owner's.
+### 5. After NEEDS REVISION or CONVERGED
 
-A committed NEEDS REVISION copy is a record, not a plan to implement: `/implement-plan` reads the stamp and refuses it. The revision overwrites the file through `/create-plan` §3.1; the pass's findings stay in git history and on the pull request.
-
-### 5. After NEEDS REVISION — how the revision begins
-
-There is no revision skill; the revision is plan-author work and runs as `/create-plan revise docs/process/plans/<plan-id>.md` (its **Revising a plan** section; `/create-plan` with no argument still lists the newest plans and asks), on the same model that writes plans, in a **fresh context** — the next `/verify-plan` must be a fresh read, so the verifier that stamped NEEDS REVISION does not also revise unless the user says so explicitly (then the user runs the re-verify from a new session). When summarizing a NEEDS REVISION result, end with that one-line routing — the full command with the committed path — so the user does not have to ask. The revising session: (1) deletes the stale stamp and `## Verification Summary` (the next pass writes fresh ones; a left-over stamp is read by `/implement-plan` as the current verdict), (2) keeps a one-line `## Revision log` entry naming the pass's sha, its result and dimension as `(NEEDS REVISION, Dimension N)` — the next verifier reads the dimension from this line to apply the Convergence rule, since the stamp is gone — and the decisions it changed, (3) re-runs `python3 build_tools/check_plan_refs.py <plan>`, (4) commits the revised draft over the file of record and pushes its lane (`/create-plan` §3.1) before handing back. The revising session starts from the committed copy when its container has no working copy. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED.
-
-When the result is **CONVERGED** there is no revision: the routing line reads `/implement-plan docs/process/plans/<plan-id>.md` (committed in §4) — the `### Deferred findings` rows are its first task, resolved in code, and a revising session started anyway must not edit the plan's design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) beyond one `## Revision log` line (contract §12 Convergence: a design section revised after a CONVERGED stamp is a red; the Implementation Checklist and override records `/implement-plan` writes are not design sections).
+The revision is `/create-plan revise <path>` (its **Revising a plan** section) in a **fresh context**: the verifier that stamped NEEDS REVISION does not revise unless the user says so, and the next pass must be a fresh read. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED. On **CONVERGED** there is no revision: the `### Deferred findings` rows are `/implement-plan`'s first task, resolved in code, and the design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) are not edited beyond one `## Revision log` line (contract §12 Convergence).

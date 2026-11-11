@@ -101,11 +101,19 @@ public partial class CiFilterCoverageConformanceTests
     }
 
     /// <summary>
-    /// A skipped oracle guards nothing and leaves its job green, so every step that selects a class reaching the python
-    /// oracle (<see cref="ScanPythonOracleClasses"/>) must resolve <see cref="PythonInterpreter.RequireEnvironmentVariable"/>
-    /// to 1 from the workflow, job or step env. The three sweep classes are pinned, so a scan that misses a direct caller
-    /// is red, and so are two classes it must not name: one reads a repo file through <see cref="PythonInterpreter"/> and
-    /// one calls the other gate, <c>TestPreconditions.RequireOrSkip</c>.
+    /// A skipped oracle guards nothing and leaves its job green, so every step that runs a python oracle test must resolve
+    /// <see cref="PythonInterpreter.RequireEnvironmentVariable"/> to 1 from the workflow, job or step env, and its job must
+    /// set up the pinned interpreter first (an <c>actions/setup-python</c> step reading <c>.python-version</c>, R-LZ #2497):
+    /// a required oracle on the runner image's python is a verdict at an unpinned minor. Two judged sets, one rule:
+    /// <list type="bullet">
+    /// <item>a Compiler.Tests step is judged when its filter selects a class reaching the oracle
+    /// (<see cref="ScanPythonOracleClasses"/>, this assembly's call graph). The three sweep classes are pinned, so a scan
+    /// that misses a direct caller is red, and so are two classes it must not name: one reads a repo file through
+    /// <see cref="PythonInterpreter"/> and one calls the other gate, <c>TestPreconditions.RequireOrSkip</c>;</item>
+    /// <item>another test project's assembly is not loaded here, so it is judged per project: when its sources call a
+    /// <see cref="PythonInterpreter"/> seed (<see cref="ScanPythonOracleProjects"/>), every step that runs
+    /// <c>dotnet test</c> on it is judged. <see cref="OracleProjectFloor"/> names the projects that must be found.</item>
+    /// </list>
     /// </summary>
     [Fact]
     public void EveryPythonOracleTest_RunsWithTheOracleRequired()
@@ -132,22 +140,39 @@ public partial class CiFilterCoverageConformanceTests
             if (selected.Count == 0)
                 continue;
             judged++;
-            if (step.Env.GetValueOrDefault(PythonInterpreter.RequireEnvironmentVariable) != "1")
-                wrong.Add($"  {step.Name}: selects {string.Join(", ", selected)}");
+            wrong.AddRange(OracleNotRequiredBy(step).Select(rule => $"  {step.Name}: selects {string.Join(", ", selected)}; {rule}"));
         }
 
         Assert.True(judged >= MinimumOracleSteps,
             $"Judged {judged} steps, expected at least {MinimumOracleSteps}: the filters select no python oracle test.");
+
+        var (projectSteps, unrun) = OracleProjectSteps();
+        Assert.True(unrun.Count == 0,
+            "A source root calls a python oracle seed but no workflow step runs it, so no step can be judged for it:\n"
+            + string.Join("\n", unrun.Select(u => $"  {u}")));
+        foreach (var (project, step) in projectSteps)
+            wrong.AddRange(OracleNotRequiredBy(step).Select(rule => $"  {step.Name}: runs {project}, whose sources call a python oracle seed; {rule}"));
+
         Assert.True(wrong.Count == 0,
-            $"{wrong.Count} step(s) run a python oracle test without {PythonInterpreter.RequireEnvironmentVariable}=1, so it skips green:\n"
+            $"{wrong.Count} way(s) a step runs a python oracle test that can skip green or answer at an unpinned minor:\n"
             + string.Join("\n", wrong));
+    }
+
+    /// <summary>What a step running a python oracle test lacks: the required flag, or the pinned interpreter.</summary>
+    private static IEnumerable<string> OracleNotRequiredBy(ResolvedStep step)
+    {
+        if (step.Env.GetValueOrDefault(PythonInterpreter.RequireEnvironmentVariable) != "1")
+            yield return $"{PythonInterpreter.RequireEnvironmentVariable} is not 1 in its env, so the oracle skips green";
+        if (!step.Arming.PinnedPython)
+            yield return "no earlier step of its job is actions/setup-python with python-version-file: .python-version, so the oracle is the runner image's python";
     }
 
     /// <summary>
     /// "CI runs the sweep with python present or fails" has a second half the two facts above do not read: a step that
     /// selects the sweep can still be unable to fail its job. So every step that selects a sweep or a python-oracle class,
-    /// and the job around it, is judged by <see cref="StepDisarmedBy"/>. The floors are literals, so a parser that stopped
-    /// reading <c>if:</c> or <c>run:</c> is red rather than a smaller check.
+    /// every step running another test project whose sources call a python oracle seed, and the job around each, is judged
+    /// by <see cref="StepDisarmedBy"/>. The floors are literals, so a parser that stopped reading <c>if:</c> or
+    /// <c>run:</c> is red rather than a smaller check.
     /// </summary>
     [Fact]
     public void EverySweepOrOracleStep_CanFailItsJob()
@@ -160,10 +185,13 @@ public partial class CiFilterCoverageConformanceTests
                 || oracleClasses.Any(c => t.Fqn.StartsWith(c + ".", StringComparison.Ordinal)))
             .Where(t => !IsExempt(t))
             .ToList();
-        var judged = steps.Where(s => guarded.Any(t => EvaluateFilter(s.Filter, t))).ToList();
+        var compilerJudged = steps.Where(s => guarded.Any(t => EvaluateFilter(s.Filter, t))).ToList();
 
-        Assert.True(judged.Count >= MinimumJudgedSteps,
-            $"Judged {judged.Count} steps, expected at least {MinimumJudgedSteps}: {string.Join("; ", judged.Select(s => s.Name))}.");
+        Assert.True(compilerJudged.Count >= MinimumJudgedSteps,
+            $"Judged {compilerJudged.Count} Compiler.Tests steps, expected at least {MinimumJudgedSteps}: {string.Join("; ", compilerJudged.Select(s => s.Name))}.");
+        var (projectSteps, _) = OracleProjectSteps();
+        var judged = compilerJudged.Concat(projectSteps.Select(p => p.Step)).ToList();
+
         var conditioned = judged.Count(s => s.Arming.StepIf != null);
         Assert.True(conditioned >= MinimumConditionedSteps,
             $"Read an if: on {conditioned} judged steps, expected at least {MinimumConditionedSteps}: the parser stopped reading if:.");
@@ -368,15 +396,16 @@ public partial class CiFilterCoverageConformanceTests
             .ToList();
     }
 
-    /// <summary>One <c>dotnet test</c> of this assembly as CI runs it: a step per matrix value, its filter resolved to a
-    /// literal, the env the step sees (workflow, then job, then step), and what decides whether it can fail its job.</summary>
+    /// <summary>One <c>dotnet test</c> as CI runs it: a step per matrix value, its filter (resolved to a literal for this
+    /// assembly), the env the step sees (workflow, then job, then step), and what decides whether it can fail its job.</summary>
     private sealed record ResolvedStep(string Name, string Filter, IReadOnlyDictionary<string, string> Env, StepArming Arming);
 
     /// <summary>The step's <c>run:</c> and the test command's line in it, its and its job's <c>if:</c> and
-    /// <c>continue-on-error:</c>, and the <c>run:</c> of every step in the job.</summary>
+    /// <c>continue-on-error:</c>, the <c>run:</c> of every step in the job, and whether an earlier step of the job is an
+    /// <c>actions/setup-python</c> reading <c>.python-version</c>.</summary>
     private sealed record StepArming(
         string Run, string TestCommand, string? StepIf, string? StepContinueOnError,
-        string? JobIf, string? JobContinueOnError, IReadOnlyList<string> JobRuns);
+        string? JobIf, string? JobContinueOnError, IReadOnlyList<string> JobRuns, bool PinnedPython);
 
     private enum FilterOp { Equals, NotEquals, Contains, NotContains }
 
@@ -565,8 +594,18 @@ public partial class CiFilterCoverageConformanceTests
     // parser GitHub's runner uses — so escaped-newline scalars join exactly as Actions joins them.
     // Any reference that cannot be resolved to a literal throws.
 
-    private static readonly Regex CompilerTestCommand =
-        new(@"^[^\S\n]*dotnet\s+test\s+\S*Sharpy\.Compiler\.Tests\S*(\s.*)?$", RegexOptions.Multiline);
+    private const string CompilerTestProject = "Sharpy.Compiler.Tests";
+
+    /// <summary>Every <c>dotnet test</c> line of a <c>run:</c>; group 1 is what follows the verb.</summary>
+    private static readonly Regex TestCommand =
+        new(@"^[^\S\n]*dotnet\s+test\b(.*)$", RegexOptions.Multiline);
+
+    /// <summary>The test project a <c>dotnet test</c> line names (its first operand, read as a path), or
+    /// <see cref="WholeSolution"/> when it names none.</summary>
+    private static readonly Regex ProjectOperand = new(@"^\s+(?<path>[A-Za-z0-9_./-]+?)(?:\.csproj)?/?(?:\s|$)");
+
+    /// <summary>A <c>dotnet test</c> with no project operand runs every test project of the solution.</summary>
+    private const string WholeSolution = "(solution)";
 
     private static readonly Regex FilterArgument = new(@"--filter\s+""([^""]+)""");
 
@@ -575,13 +614,25 @@ public partial class CiFilterCoverageConformanceTests
     private static readonly Regex ShellVariable = new(@"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))");
 
     private static List<ResolvedStep> ExtractCompilerTestSteps(string yaml)
+        => ExtractTestSteps(yaml).Where(s => s.Project == CompilerTestProject).Select(s => s.Step).ToList();
+
+    /// <summary>One <c>dotnet test</c> of one test project as CI runs it.</summary>
+    private sealed record ProjectStep(string Project, ResolvedStep Step);
+
+    /// <summary>
+    /// Every <c>dotnet test</c> the workflow runs, one per matrix value, with the project it names. A Compiler.Tests line
+    /// must carry exactly one quoted <c>--filter</c>, resolved to a literal; another project's filter is kept raw, since
+    /// only the Compiler.Tests filters are evaluated against a reflected assembly. A project operand this reader cannot
+    /// spell (a shell expansion, a quote) throws rather than drop the step.
+    /// </summary>
+    private static List<ProjectStep> ExtractTestSteps(string yaml)
     {
         var stream = new YamlStream();
         stream.Load(new StringReader(yaml));
         var root = (YamlMappingNode)stream.Documents[0].RootNode;
         var workflowEnv = ReadEnv(root);
 
-        var resolved = new List<ResolvedStep>();
+        var resolved = new List<ProjectStep>();
         foreach (var (jobKey, jobNode) in Child<YamlMappingNode>(root, "jobs")!.Children)
         {
             var job = (YamlMappingNode)jobNode;
@@ -595,26 +646,28 @@ public partial class CiFilterCoverageConformanceTests
                 .OfType<string>()
                 .ToList();
 
-            foreach (var stepNode in steps.Children)
+            for (var index = 0; index < steps.Children.Count; index++)
             {
-                var step = (YamlMappingNode)stepNode;
+                var step = (YamlMappingNode)steps.Children[index];
                 if (Child<YamlScalarNode>(step, "run")?.Value is not { } run)
                     continue;
                 var stepEnv = Merge(jobEnv, ReadEnv(step));
+                var pinnedPython = steps.Children.Take(index).Any(earlier => IsPinnedSetupPython((YamlMappingNode)earlier));
 
-                foreach (Match command in CompilerTestCommand.Matches(run))
+                foreach (Match command in TestCommand.Matches(run))
                 {
                     var line = command.Value;
                     // `--list-tests` enumerates without running anything (the shard-partition job):
                     // counting it as coverage would make the guard vacuous.
                     if (line.Contains("--list-tests", StringComparison.Ordinal))
                         continue;
+                    var project = TestedProject(command.Groups[1].Value, line);
                     var filterArgs = FilterArgument.Matches(line);
-                    if (filterArgs.Count != 1)
+                    if (project == CompilerTestProject && filterArgs.Count != 1)
                         throw new InvalidOperationException(
                             $"Compiler.Tests command without exactly one quoted --filter: '{line.Trim()}'. " +
                             $"Update the evaluator in {nameof(CiFilterCoverageConformanceTests)}.");
-                    var raw = filterArgs[0].Groups[1].Value;
+                    var raw = filterArgs.Count == 1 ? filterArgs[0].Groups[1].Value : "";
                     var stepName = Child<YamlScalarNode>(step, "name")?.Value ?? "(unnamed)";
                     foreach (var matrix in combinations)
                     {
@@ -623,8 +676,9 @@ public partial class CiFilterCoverageConformanceTests
                             run, line,
                             Child<YamlScalarNode>(step, "if")?.Value, Child<YamlScalarNode>(step, "continue-on-error")?.Value,
                             Child<YamlScalarNode>(job, "if")?.Value, Child<YamlScalarNode>(job, "continue-on-error")?.Value,
-                            jobRuns);
-                        resolved.Add(new ResolvedStep(label, ResolveFilter(raw, matrix, stepEnv), stepEnv, arming));
+                            jobRuns, pinnedPython);
+                        var filter = project == CompilerTestProject ? ResolveFilter(raw, matrix, stepEnv) : raw;
+                        resolved.Add(new ProjectStep(project, new ResolvedStep(label, filter, stepEnv, arming)));
                     }
                 }
             }
@@ -632,6 +686,26 @@ public partial class CiFilterCoverageConformanceTests
 
         return resolved;
     }
+
+    /// <summary>The project named by the operand after <c>dotnet test</c>: the last path segment, <c>.csproj</c> dropped.
+    /// </summary>
+    private static string TestedProject(string afterVerb, string line)
+    {
+        if (afterVerb.Trim().Length == 0 || afterVerb.TrimStart().StartsWith('-'))
+            return WholeSolution;
+        var operand = ProjectOperand.Match(afterVerb);
+        if (!operand.Success)
+            throw new InvalidOperationException(
+                $"Unreadable project operand in '{line.Trim()}'. Update the evaluator in {nameof(CiFilterCoverageConformanceTests)}.");
+        return operand.Groups["path"].Value.Split('/')[^1];
+    }
+
+    /// <summary>An <c>actions/setup-python</c> step reading the repository's pinned minor (R-LZ, #2497).</summary>
+    private static bool IsPinnedSetupPython(YamlMappingNode step)
+        => Child<YamlScalarNode>(step, "uses")?.Value is { } uses
+            && uses.StartsWith("actions/setup-python@", StringComparison.Ordinal)
+            && Child<YamlMappingNode>(step, "with") is { } with
+            && Child<YamlScalarNode>(with, "python-version-file")?.Value == ".python-version";
 
     private static string ResolveFilter(
         string raw, IReadOnlyDictionary<string, string> matrix, IReadOnlyDictionary<string, string> env)

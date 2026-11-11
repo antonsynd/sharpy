@@ -1,0 +1,34 @@
+# G1 Map 2 exclusions in the form `out of contract: #<open issue>` (plan-638e8b C2 axis 1, #2476).
+#
+# An entry point whose path-state cells belong to ANOTHER class's tracker: G1 does not probe it, the
+# cell lives on that tracker and does not hold #2476 open. Each row is the census's member key of the
+# entry point, then ` # out of contract: #N <reason>`. This file is the single source of these
+# exclusions (ProbeRoster.Exclusions holds the `unreachable with a user path` form); it is a tracked
+# *allowlist*.txt, so build_tools/check_allowlist_issue_state.sh turns a row red when its issue closes.
+# Map2RosterTests: every row is an entry point the census still finds (T4) and no row is also probed.
+#
+# #2553: requests' files= paths are read inside the library and a failure is Err(RequestException),
+# a module with no python3 oracle (third-party, absent from CPython) — the failure channel is unruled.
+Sharpy.Requests.Delete(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Requests.Get(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Requests.Head(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Requests.Options(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Requests.Patch(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Requests.Post(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Requests.Put(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool, bool?, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Delete(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Get(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Head(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Options(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Patch(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Post(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+Sharpy.Session.Put(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+
+# #2266 (P56, subprocess state): plan-638e8b's ledger places subprocess's path-state cells on P56's surface
+# when python's outcome is in the OSError family and G1 finds them red. Measured @ 263de278 (python3 3.13.18,
+# Linux): cwd= Missing/MissingParent/File/ParentIsFile raise plain OSError where python raises
+# FileNotFoundError / NotADirectoryError, on all four entry points (16 cells) — ledger rows for the lead.
+Sharpy.SubprocessModule.Run(Sharpy.List<string>, bool, bool, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int, int, int) # out of contract: #2266 subprocess cwd= path state is P56's surface
+Sharpy.SubprocessModule.CheckCall(Sharpy.List<string>, double?, string, Sharpy.Dict<string, string>, bool) # out of contract: #2266 subprocess cwd= path state is P56's surface
+Sharpy.SubprocessModule.CheckOutput(Sharpy.List<string>, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int) # out of contract: #2266 subprocess cwd= path state is P56's surface
+Sharpy.Popen.Popen(Sharpy.List<string>, int, int, int, bool, string, Sharpy.Dict<string, string>) # out of contract: #2266 subprocess cwd= path state is P56's surface

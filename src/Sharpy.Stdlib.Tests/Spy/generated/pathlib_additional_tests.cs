@@ -409,47 +409,38 @@ namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
         }
 
         [Xunit.FactAttribute]
-        public void TestGlobNonexistentDirThrowsFileNotFoundError()
+        public void TestGlobNonexistentDirYieldsNothing()
         {
             string tmpPath = _tmpPathFixture.Value;
-#line (215, 5) - (218, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
-            bool __raised_9 = false;
+#line (216, 5) - (216, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+            Sharpy.List<string> names = new Sharpy.List<string>()
 #line hidden
-            try
             {
-#line (216, 9) - (216, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
-                Sharpy.List<string> names = new Sharpy.List<string>()
+            };
+#line (217, 5) - (218, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+            foreach (var __loopVar_8 in new global::Sharpy.Path(tmpPath + "/no_such_glob_dir").Glob("*"))
 #line hidden
-                {
-                };
-#line (217, 9) - (218, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
-                foreach (var __loopVar_8 in new global::Sharpy.Path(tmpPath + "/no_such_glob_dir").Glob("*"))
-#line hidden
-                {
-                    var p = __loopVar_8;
-#line (218, 13) - (218, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
-                    names.Append(p.Name);
-#line hidden
-                }
-            }
-            catch (FileNotFoundError)
             {
-                __raised_9 = true;
+                var p = __loopVar_8;
+#line (218, 9) - (218, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+                names.Append(p.Name);
+#line hidden
             }
 
-            if (!__raised_9)
-                throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
+#line (219, 5) - (219, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+            Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(names));
+#line hidden
         }
 
         [Xunit.FactAttribute]
         public void TestRelativeToNormalizesBeforeComparing()
         {
             string tmpPath = _tmpPathFixture.Value;
-#line (225, 5) - (225, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (226, 5) - (226, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             var child = new global::Sharpy.Path(tmpPath + "/sub");
-#line (226, 5) - (226, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (227, 5) - (227, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             var relative = child.RelativeTo(tmpPath);
-#line (227, 5) - (227, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (228, 5) - (228, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.Equal("sub", global::Sharpy.Builtins.Str(relative));
 #line hidden
         }
@@ -457,7 +448,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
         [Xunit.FactAttribute]
         public void TestMatchQuestionMarkWildcardMatchesSingleChar()
         {
-#line (234, 5) - (234, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (235, 5) - (235, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.True(new global::Sharpy.Path("/a/b/fil?.txt").Match("fil?.txt"));
 #line hidden
         }
@@ -465,7 +456,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
         [Xunit.FactAttribute]
         public void TestMatchNoMatchReturnsFalse()
         {
-#line (239, 5) - (239, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (240, 5) - (240, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.False(new global::Sharpy.Path("/a/b/file.txt").Match("*.py"));
 #line hidden
         }
@@ -474,26 +465,26 @@ namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
         public void TestRglobEmptyDirYieldsNothing()
         {
             string tmpPath = _tmpPathFixture.Value;
-#line (246, 5) - (246, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
-            var d = tmpPath + "/rglob_empty";
 #line (247, 5) - (247, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+            var d = tmpPath + "/rglob_empty";
+#line (248, 5) - (248, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             os.Makedirs(d, existOk: true);
-#line (248, 5) - (248, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (249, 5) - (249, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Sharpy.List<string> matches = new Sharpy.List<string>()
 #line hidden
             {
             };
-#line (249, 5) - (250, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
-            foreach (var __loopVar_10 in new global::Sharpy.Path(d).Rglob("*.txt"))
+#line (250, 5) - (251, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+            foreach (var __loopVar_9 in new global::Sharpy.Path(d).Rglob("*.txt"))
 #line hidden
             {
-                var p = __loopVar_10;
-#line (250, 9) - (250, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+                var p = __loopVar_9;
+#line (251, 9) - (251, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 matches.Append(p.Name);
 #line hidden
             }
 
-#line (251, 5) - (251, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (252, 5) - (252, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(matches));
 #line hidden
         }
@@ -501,9 +492,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
         [Xunit.FactAttribute]
         public void TestCwdIsDirectory()
         {
-#line (258, 5) - (258, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (259, 5) - (259, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             var cwd = global::Sharpy.Path.Cwd();
-#line (259, 5) - (259, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (260, 5) - (260, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.True(cwd.IsDir());
 #line hidden
         }
@@ -511,11 +502,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
         [Xunit.FactAttribute]
         public void TestHomeIsAbsoluteDir()
         {
-#line (264, 5) - (264, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (265, 5) - (265, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             var home = global::Sharpy.Path.Home();
-#line (265, 5) - (265, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (266, 5) - (266, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.True(home.IsAbsolute);
-#line (266, 5) - (266, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (267, 5) - (267, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
             Xunit.Assert.True(home.IsDir());
 #line hidden
         }

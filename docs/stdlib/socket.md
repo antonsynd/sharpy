@@ -98,6 +98,9 @@ Resolve a hostname to a list of address info tuples, similar to Python's
 ## error
 
 Base exception for socket-related errors. Corresponds to Python's socket.error.
+Derives from OSError, so `except OSError` catches every socket exception. Python's
+socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
+socket-error-timeout-distinct-classes).
 
 ### `from_socket_exception(ex: SocketException) -> error`
 

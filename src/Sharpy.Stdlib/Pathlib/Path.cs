@@ -177,25 +177,59 @@ namespace Sharpy
         /// </example>
         public string ReadText(string encoding = "utf-8")
         {
-            return File.ReadAllText(_path, GetEncoding(encoding));
+            PathErrors.CheckNeedsFileToRead(_path);
+            var enc = GetEncoding(encoding);
+            try
+            {
+                return File.ReadAllText(_path, enc);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, _path);
+            }
         }
 
         /// <summary>Write text to the file.</summary>
         public void WriteText(string data, string encoding = "utf-8")
         {
-            File.WriteAllText(_path, data, GetEncoding(encoding));
+            PathErrors.CheckNeedsFileToWrite(_path);
+            var enc = GetEncoding(encoding);
+            try
+            {
+                File.WriteAllText(_path, data, enc);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToWrite(ex, _path);
+            }
         }
 
         /// <summary>Read the file as bytes.</summary>
         public byte[] ReadBytes()
         {
-            return File.ReadAllBytes(_path);
+            PathErrors.CheckNeedsFileToRead(_path);
+            try
+            {
+                return File.ReadAllBytes(_path);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, _path);
+            }
         }
 
         /// <summary>Write bytes to the file.</summary>
         public void WriteBytes(byte[] data)
         {
-            File.WriteAllBytes(_path, data);
+            PathErrors.CheckNeedsFileToWrite(_path);
+            try
+            {
+                File.WriteAllBytes(_path, data);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToWrite(ex, _path);
+            }
         }
 
         // ===== Directory Operations =====
@@ -203,58 +237,77 @@ namespace Sharpy
         /// <summary>Create the directory. Optionally create parents.</summary>
         public void Mkdir(bool parents = false, bool exist_ok = false)
         {
-            if (Directory.Exists(_path))
-            {
-                if (!exist_ok)
-                {
-                    throw new FileExistsError("File exists: '" + _path + "'");
-                }
-                return;
-            }
+            // python's order: `parents` creates a MISSING parent first (python retries after the
+            // FileNotFoundError of os.mkdir; a parent that is a file is os.mkdir's own
+            // NotADirectoryError, so it is not created), and `exist_ok` accepts an existing directory
+            // only. Every refusal is the classifier's (plan-638e8b D1).
             if (parents)
             {
+                var parent = System.IO.Path.GetDirectoryName(
+                    _path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+                if (!string.IsNullOrEmpty(parent) && !Directory.Exists(parent) && !File.Exists(parent))
+                {
+                    new Path(parent!).Mkdir(parents: true, exist_ok: true);
+                }
+            }
+            if (exist_ok && Directory.Exists(_path))
+            {
+                return;
+            }
+            PathErrors.CheckCreatesDir(_path);
+            try
+            {
                 Directory.CreateDirectory(_path);
             }
-            else
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
-                var parent = System.IO.Path.GetDirectoryName(_path);
-                if (!string.IsNullOrEmpty(parent) && !Directory.Exists(parent))
-                {
-                    throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-                }
-                Directory.CreateDirectory(_path);
+                throw PathErrors.TranslateCreatesDir(ex, _path);
             }
         }
 
         /// <summary>Remove the directory (must be empty).</summary>
         public void Rmdir()
         {
-            if (!Directory.Exists(_path))
+            PathErrors.CheckRemovesDir(_path);
+            try
             {
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                Directory.Delete(_path, false);
             }
-            Directory.Delete(_path, false);
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateRemovesDir(ex, _path);
+            }
         }
 
         /// <summary>Iterate over the directory entries.</summary>
         public IEnumerable<Path> Iterdir()
         {
-            if (!Directory.Exists(_path))
+            // The entries are read when called, as python 3.13's iterdir does.
+            PathErrors.CheckNeedsDir(_path);
+            string[] entries;
+            try
             {
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                entries = Directory.GetFileSystemEntries(_path);
             }
-            foreach (var entry in Directory.GetFileSystemEntries(_path))
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
-                yield return new Path(entry);
+                throw PathErrors.TranslateNeedsDir(ex, _path);
             }
+            var result = new System.Collections.Generic.List<Path>(entries.Length);
+            foreach (var entry in entries)
+            {
+                result.Add(new Path(entry));
+            }
+            return result;
         }
 
         /// <summary>Glob for matching paths relative to this directory.</summary>
+        /// <remarks>A path that is not a directory matches nothing; no error is raised.</remarks>
         public IEnumerable<Path> Glob(string pattern)
         {
             if (!Directory.Exists(_path))
             {
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                yield break;
             }
             foreach (var entry in Directory.GetFileSystemEntries(_path, pattern))
             {
@@ -267,43 +320,39 @@ namespace Sharpy
         /// <summary>Rename the file or directory.</summary>
         public Path Rename(string target)
         {
-            if (File.Exists(_path))
-            {
-                File.Move(_path, target);
-            }
-            else if (Directory.Exists(_path))
-            {
-                Directory.Move(_path, target);
-            }
-            else
-            {
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-            }
+            // POSIX rename(2), as python's os.rename: the pair door classifies and performs it (plan-638e8b D1).
+            PathErrors.Rename(_path, target);
             return new Path(target);
         }
 
         /// <summary>Remove the file.</summary>
         public void Unlink(bool missing_ok = false)
         {
-            if (!File.Exists(_path))
+            try
             {
-                if (!missing_ok)
-                {
-                    throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-                }
+                PathErrors.CheckRemovesFile(_path);
+            }
+            catch (FileNotFoundError) when (missing_ok)
+            {
+                // python: `except FileNotFoundError: if not missing_ok: raise` — the absence missing_ok accepts.
                 return;
             }
-            File.Delete(_path);
+            try
+            {
+                File.Delete(_path);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateRemovesFile(ex, _path);
+            }
         }
 
         /// <summary>Rename, replacing the target if it exists.</summary>
         public Path Replace(string target)
         {
-            if (File.Exists(target))
-            {
-                File.Delete(target);
-            }
-            return Rename(target);
+            // POSIX rename(2), as python's os.replace: the pair door classifies and performs it (plan-638e8b D1).
+            PathErrors.Rename(_path, target);
+            return new Path(target);
         }
 
         // ===== Navigation =====
@@ -416,31 +465,65 @@ namespace Sharpy
         /// <param name="existOk">If false, raise FileExistsError when the file already exists.</param>
         public void Touch(bool existOk = true)
         {
-            if (File.Exists(_path))
+            // python's order: with exist_ok an existing file or directory only has its timestamp
+            // updated; otherwise the file is created (O_CREAT, plus O_EXCL without exist_ok).
+            // Every refusal is the classifier's (plan-638e8b D1).
+            if (existOk)
             {
-                if (!existOk)
+                try
                 {
-                    throw new FileExistsError("File exists: '" + _path + "'");
+                    if (File.Exists(_path))
+                    {
+                        File.SetLastWriteTimeUtc(_path, System.DateTime.UtcNow);
+                        return;
+                    }
+                    if (Directory.Exists(_path))
+                    {
+                        new DirectoryInfo(_path).LastWriteTimeUtc = System.DateTime.UtcNow;
+                        return;
+                    }
                 }
-                File.SetLastWriteTimeUtc(_path, System.DateTime.UtcNow);
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    throw PathErrors.TranslateNeedsFileToWrite(ex, _path);
+                }
+                PathErrors.CheckNeedsFileToWrite(_path);
             }
             else
             {
-                // Ensure parent directory exists
-                var dir = System.IO.Path.GetDirectoryName(_path);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                {
-                    throw new FileNotFoundError("No such file or directory: '" + _path + "'");
-                }
+                PathErrors.CheckCreatesExclusively(_path);
+            }
+            try
+            {
                 File.Create(_path).Dispose();
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                if (existOk)
+                {
+                    throw PathErrors.TranslateNeedsFileToWrite(ex, _path);
+                }
+                throw PathErrors.TranslateCreatesExclusively(ex, _path);
             }
         }
 
         /// <summary>Return file or directory stats.</summary>
         public StatResult Stat()
         {
-            if (File.Exists(_path))
+            PathErrors.CheckNeedsAny(_path);
+            try
             {
+                if (Directory.Exists(_path))
+                {
+                    var dirInfo = new DirectoryInfo(_path);
+                    return new StatResult(
+                        stSize: 0,
+                        stMtime: new DateTimeOffset(dirInfo.LastWriteTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(dirInfo.LastWriteTimeUtc).Millisecond / 1000.0,
+                        stCtime: new DateTimeOffset(dirInfo.CreationTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(dirInfo.CreationTimeUtc).Millisecond / 1000.0,
+                        stAtime: new DateTimeOffset(dirInfo.LastAccessTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(dirInfo.LastAccessTimeUtc).Millisecond / 1000.0,
+                        stMode: (int)dirInfo.Attributes
+                    );
+                }
                 var info = new FileInfo(_path);
                 return new StatResult(
                     stSize: info.Length,
@@ -450,18 +533,10 @@ namespace Sharpy
                     stMode: (int)info.Attributes
                 );
             }
-            if (Directory.Exists(_path))
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
-                var info = new DirectoryInfo(_path);
-                return new StatResult(
-                    stSize: 0,
-                    stMtime: new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastWriteTimeUtc).Millisecond / 1000.0,
-                    stCtime: new DateTimeOffset(info.CreationTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.CreationTimeUtc).Millisecond / 1000.0,
-                    stAtime: new DateTimeOffset(info.LastAccessTimeUtc).ToUnixTimeSeconds() + (double)new DateTimeOffset(info.LastAccessTimeUtc).Millisecond / 1000.0,
-                    stMode: (int)info.Attributes
-                );
+                throw PathErrors.TranslateNeedsAny(ex, _path);
             }
-            throw new FileNotFoundError("No such file or directory: '" + _path + "'");
         }
 
         /// <summary>Whether the path is a symbolic link.</summary>
@@ -481,11 +556,12 @@ namespace Sharpy
         // ===== Recursive Glob =====
 
         /// <summary>Recursively glob for matching paths relative to this directory.</summary>
+        /// <remarks>A path that is not a directory matches nothing; no error is raised.</remarks>
         public IEnumerable<Path> Rglob(string pattern)
         {
             if (!Directory.Exists(_path))
             {
-                throw new FileNotFoundError("No such file or directory: '" + _path + "'");
+                yield break;
             }
             foreach (var entry in Directory.EnumerateFileSystemEntries(_path, pattern, SearchOption.AllDirectories))
             {

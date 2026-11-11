@@ -167,16 +167,37 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// python's <c>builtins.open(filename, mode)</c>: "rb" reads a file, "wb" and "ab" write one;
+        /// every refusal is the classifier's (plan-638e8b D1).
+        /// </summary>
         private static FileStream OpenFileStream(string filename, string mode)
         {
             switch (mode)
             {
                 case "rb":
-                    return new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    PathErrors.CheckNeedsFileToRead(filename);
+                    try
+                    {
+                        return new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        throw PathErrors.TranslateNeedsFileToRead(ex, filename);
+                    }
                 case "wb":
-                    return new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
                 case "ab":
-                    return new FileStream(filename, FileMode.Append, FileAccess.Write, FileShare.None);
+                    PathErrors.CheckNeedsFileToWrite(filename);
+                    try
+                    {
+                        return mode == "wb"
+                            ? new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None)
+                            : new FileStream(filename, FileMode.Append, FileAccess.Write, FileShare.None);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        throw PathErrors.TranslateNeedsFileToWrite(ex, filename);
+                    }
                 default:
                     throw new ValueError("Invalid mode: '" + mode + "'");
             }

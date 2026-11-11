@@ -29,46 +29,26 @@ namespace Sharpy
             Name = path;
             Mode = mode;
 
+            // open() has asked PathErrors (plan-638e8b D1) before this runs and translates whatever
+            // .NET still throws here, so the constructor spells no OSError subclass itself.
             switch (mode)
             {
                 case "r":
-                    // Directory first: File.Exists is false for a directory, and python reports
-                    // IsADirectoryError there, not FileNotFoundError (#2124).
-                    EnsureNotDirectory(path);
-                    if (!File.Exists(path))
-                    {
-                        throw new FileNotFoundError("No such file or directory: '" + path + "'");
-                    }
                     _reader = new StreamReader(path, encoding);
                     break;
                 case "w":
-                    EnsureNotDirectory(path);
                     _writer = new StreamWriter(path, false, encoding);
                     break;
                 case "a":
-                    EnsureNotDirectory(path);
                     _writer = new StreamWriter(path, true, encoding);
                     break;
                 case "x":
-                    if (File.Exists(path))
-                    {
-                        throw new FileExistsError("File exists: '" + path + "'");
-                    }
-                    EnsureNotDirectory(path);
                     // FileMode.CreateNew ensures atomicity
                     var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
                     _writer = new StreamWriter(stream, encoding);
                     break;
                 default:
                     throw new ValueError("invalid mode: '" + mode + "'");
-            }
-        }
-
-        private static void EnsureNotDirectory(string path)
-        {
-            if (Directory.Exists(path))
-            {
-                throw new IsADirectoryError("Is a directory: '" + path + "'");
             }
         }
 

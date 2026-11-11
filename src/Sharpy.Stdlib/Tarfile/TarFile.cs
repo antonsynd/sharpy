@@ -35,14 +35,20 @@ namespace Sharpy
 
             if (baseMode == "r")
             {
-                if (!File.Exists(name))
-                {
-                    throw new FileNotFoundError("No such file: '" + name + "'");
-                }
+                // python opens the archive here (`open(name, "rb")`); its refusal is the classifier's.
+                PathErrors.CheckNeedsFileToRead(name);
             }
             else if (baseMode == "w")
             {
-                _baseStream = new FileStream(name, FileMode.Create, FileAccess.Write, FileShare.None);
+                PathErrors.CheckNeedsFileToWrite(name);
+                try
+                {
+                    _baseStream = new FileStream(name, FileMode.Create, FileAccess.Write, FileShare.None);
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    throw PathErrors.TranslateNeedsFileToWrite(ex, name);
+                }
                 Stream writeStream = WrapCompressionStream(_baseStream, _compression);
                 _writer = new TarWriter(writeStream, leaveOpen: false);
             }
@@ -132,7 +138,6 @@ namespace Sharpy
             EnsureNotDisposed();
             EnsureReadMode();
             string targetDir = path ?? ".";
-            Directory.CreateDirectory(targetDir);
 
             var allowedNames = members != null
                 ? new System.Collections.Generic.HashSet<string>()
@@ -155,14 +160,8 @@ namespace Sharpy
                 {
                     continue;
                 }
-                try
-                {
-                    ExtractEntry(entry, targetDir);
-                }
-                catch (Exception ex) when (ex is not ExtractError and not ValueError)
-                {
-                    throw new ExtractError("failed to extract '" + entry.Name + "': " + ex.Message, ex);
-                }
+                // python's default errorlevel (1) raises a member's OSError as it is.
+                ExtractEntry(entry, targetDir);
             }
         }
 
@@ -171,7 +170,6 @@ namespace Sharpy
             EnsureNotDisposed();
             EnsureReadMode();
             string targetDir = path ?? ".";
-            Directory.CreateDirectory(targetDir);
 
             using var stream = OpenReadStream();
             using var reader = new TarReader(stream, leaveOpen: false);
@@ -193,28 +191,33 @@ namespace Sharpy
             EnsureWriteMode();
             string archiveName = arcname ?? name;
 
-            if (Directory.Exists(name))
+            // python stats the member first (`os.lstat(name)`); its refusal is the classifier's.
+            PathErrors.CheckNeedsAny(name);
+            try
             {
-                if (recursive)
+                if (Directory.Exists(name))
                 {
-                    foreach (string file in Directory.GetFiles(name, "*", SearchOption.AllDirectories))
+                    if (recursive)
                     {
-                        string relativePath = SysPath.GetRelativePath(name, file);
-                        string entryName = string.IsNullOrEmpty(archiveName)
-                            ? relativePath
-                            : SysPath.Combine(archiveName, relativePath);
-                        entryName = entryName.Replace('\\', '/');
-                        _writer!.WriteEntry(file, entryName);
+                        foreach (string file in Directory.GetFiles(name, "*", SearchOption.AllDirectories))
+                        {
+                            string relativePath = SysPath.GetRelativePath(name, file);
+                            string entryName = string.IsNullOrEmpty(archiveName)
+                                ? relativePath
+                                : SysPath.Combine(archiveName, relativePath);
+                            entryName = entryName.Replace('\\', '/');
+                            _writer!.WriteEntry(file, entryName);
+                        }
                     }
                 }
+                else
+                {
+                    _writer!.WriteEntry(name, archiveName);
+                }
             }
-            else if (File.Exists(name))
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
-                _writer!.WriteEntry(name, archiveName);
-            }
-            else
-            {
-                throw new FileNotFoundError("No such file or directory: '" + name + "'");
+                throw PathErrors.TranslateNeedsAny(ex, name);
             }
         }
 
@@ -273,7 +276,15 @@ namespace Sharpy
 
         private Stream OpenReadStream()
         {
-            var fileStream = new FileStream(_name, FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileStream fileStream;
+            try
+            {
+                fileStream = new FileStream(_name, FileMode.Open, FileAccess.Read, FileShare.Read);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, _name);
+            }
             return WrapDecompressionStream(fileStream, _compression);
         }
 
@@ -292,23 +303,67 @@ namespace Sharpy
                 throw new ValueError("Tar entry would extract outside target directory: '" + entryPath + "'");
             }
 
+            // python's _extract_member: the upper directories are made only when missing, then the
+            // member is created; every refusal is the classifier's (plan-638e8b D1).
+            fullPath = fullPath.TrimEnd(SysPath.DirectorySeparatorChar, SysPath.AltDirectorySeparatorChar);
+            MakeUpperDirs(SysPath.GetDirectoryName(fullPath));
+
             if (entry.EntryType == TarEntryType.Directory)
             {
-                Directory.CreateDirectory(fullPath);
+                // python's makedir: os.mkdir, an existing directory accepted.
+                if (!Directory.Exists(fullPath))
+                {
+                    PathErrors.CheckCreatesDir(fullPath);
+                    try
+                    {
+                        Directory.CreateDirectory(fullPath);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        throw PathErrors.TranslateCreatesDir(ex, fullPath);
+                    }
+                }
             }
             else if (entry.EntryType == TarEntryType.RegularFile || entry.EntryType == TarEntryType.V7RegularFile)
             {
-                string? dir = SysPath.GetDirectoryName(fullPath);
-                if (dir != null)
-                    Directory.CreateDirectory(dir);
-                entry.ExtractToFile(fullPath, overwrite: true);
+                // python's makefile: open(targetpath, "wb").
+                PathErrors.CheckNeedsFileToWrite(fullPath);
+                try
+                {
+                    entry.ExtractToFile(fullPath, overwrite: true);
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    throw PathErrors.TranslateNeedsFileToWrite(ex, fullPath);
+                }
             }
             else if (entry.EntryType == TarEntryType.SymbolicLink && entry.LinkName != null)
             {
-                string? dir = SysPath.GetDirectoryName(fullPath);
-                if (dir != null)
-                    Directory.CreateDirectory(dir);
-                File.CreateSymbolicLink(fullPath, entry.LinkName);
+                try
+                {
+                    File.CreateSymbolicLink(fullPath, entry.LinkName);
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    throw PathErrors.TranslateCreatesExclusively(ex, fullPath);
+                }
+            }
+        }
+
+        /// <summary>python's <c>if upperdirs and not os.path.exists(upperdirs): os.makedirs(upperdirs)</c>.</summary>
+        private static void MakeUpperDirs(string? upperDirs)
+        {
+            if (string.IsNullOrEmpty(upperDirs) || Directory.Exists(upperDirs) || File.Exists(upperDirs))
+            {
+                return;
+            }
+            try
+            {
+                Directory.CreateDirectory(upperDirs!);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateCreatesDir(ex, upperDirs!);
             }
         }
 
