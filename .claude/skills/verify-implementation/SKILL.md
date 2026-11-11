@@ -109,7 +109,7 @@ For EVERY item in the completeness checklist:
 Tells of an unfinished close (check each explicitly and report which you ran):
 - A new file with NO CALLERS: `grep -rc <symbol> src/<consumer project>` = 0 outside its own file.
 - A promised spec section that greps to nothing.
-- An allowlist entry (Conformance/*-allowlist*.txt and siblings) that the fix should have drained
+- An allowlist entry (Conformance/*-allowlist*.txt and siblings) or stage-0 known-red entry that the fix should have drained
   but is still present — cite the entry and the issue it names.
 - An "Issues to Close" row whose close criterion has no executing evidence at $HEAD.
 

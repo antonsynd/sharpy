@@ -39,7 +39,7 @@ A revision is plan-author work on an existing file of record. It runs in a **fre
    | stamp, result **PASS** / **PASS WITH CORRECTIONS** | A revision discards that verdict. Say so and ask before editing anything. |
 
 3. **Owner-only questions first, in one batch.** An Unchecked Claim that needs the owner's word, a `worked` → refused change (contract §3), a tier or scope change and an unruled door are asked once, each with its options and a recommendation, before the design is rewritten around them. Each answer is recorded in the plan as the owner's words with the date (`## Scope` `override:` for a tier or scope answer; the Defect Class `Owner rulings` row for the rest), lettered at the next `/batch-issues`.
-4. **Answer each finding at its class, by rewriting the text it names.** Replace, never append: no answer paragraph, pass history or superseded decision beside its replacement. Net body growth per revision ≤ +3 KB. Re-measure what the pass measured before building on it (`run`, at a named sha). A finding that asks for a roster is answered by naming the compiler enumeration, the map and its totality assertion with its mutation — never by adding the cell the verifier found, and never by copying a census count into the plan: the count is the test's literal constant (as `ScopeKindRosterTests` keeps its own) and goes stale at the next commit. A finding the revision declines keeps its reason in the revision-log line, not dropped.
+4. **Answer each finding at its class, by rewriting the text it names.** Replace, never append: no answer paragraph, pass history or superseded decision beside its replacement. Net body growth per revision ≤ +3 KB. Re-measure what the pass measured before building on it (`run`, at a named sha). A finding against a generator's enumeration, map or totality assertion is answered by rewriting the stage-0 test (a new commit; contract §11) and updating the counts the plan cites — never by adding the cell the verifier found to the plan. A finding the revision declines keeps its reason in the revision-log line, not dropped.
 5. **Reset the record.** Delete the stale stamp lines and the whole `## Verification Summary` (a left-over stamp is read by `/implement-plan` as the current verdict). Append ONE `## Revision log` line: `@ <the pass's sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): <the decisions changed>`. The stamp is gone, so this line is the only carrier of the dimension the next verifier needs for the Convergence rule. A revised draft that had no pass writes `@ <sha> — revised before the first pass: …`.
 6. **Check, commit, report.** `check_plan_refs.py`, then §3.1 with the subject `process(plan): <plan-id> (<group>) revised after pass <n>`, then the Report (§4) plus each finding and how it was answered, the body bytes before → after, the owner's answers, what was re-measured, and the next step `/verify-plan <path>` **in a fresh context**.
 
@@ -122,10 +122,10 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - **Violated contract:** <one sentence — what is supposed to be uniform across which axis>
 - **Meta-class:** <from the standard-cure table, verification-contract.md §1> → **standard cure:** <seam / sweep / harness>
 - **Known member cells:** #NNN … (the issues)
-- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. When the plan IS the generator, this is NOT a cell list: name each axis as the image of a compiler enumeration (an enum, a switch's arms, a roster test's census) under an explicit map, the totality assertion that keeps the map closed (and its mutation), the excluded axes with reasons, and the verdict as a RULE keyed on axis-value classes; hand-measured cells go in one "measured at base" table as the red floor, never as matrix rows — a cell a later reader finds by hand means a roster is open, and the revision closes the roster, never adds the cell>
+- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. With a stage-0 generator: no cell list; the Generator row cites the test>
 - **Lane / reach:** <lane · program|probe>; **fidelity-scope row:** <COMPARED row | promoted by R-xx>
 - **Standing harness that should have caught it:** <name> — or "none; Phase N adds one"
-- **Generator:** <existing differential/generative harness the cells join | REQUIRED FIRST — the matrix has ≥2 axes × ≥3 values or the group is a residue (P11b, P14c): Phase 1 builds the generator and its allowlist ratchet and the fix drains it | not required: <the axis a generator cannot enumerate>>
+- **Generator:** <existing harness the cells join | REQUIRED FIRST (≥2 axes × ≥3 values, or a residue: P11b, P14c) — stage 0 `<test file>` `<type>` @ <sha>: <n> cases, <k> known-red; excluded axes with reasons; this plan turns <which> green by D<n> | not required: <the axis a generator cannot enumerate>>
 - **Owner rulings:** <issue-comment links; authoritative, do not re-ask>
 
 ## Adversarial Review (pre-mortem)
@@ -168,7 +168,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Testing Strategy
 
-- <Generator first (contract §11): the differential/generative harness over the matrix and its allowlist, or the axis it cannot enumerate and the hand matrix that covers only that axis>
+- <Generator: the stage-0 test, or the axis it cannot enumerate and the hand matrix for that axis only>
 - <New test fixtures needed (.spy + .expected/.error)> — for every negative fixture, the positive control that must keep passing
 - <Edge cases to cover — cells outside the issues' repro lists; change axis when the spellings you vary all agree>
 - <Outputs that discriminate — an example that prints the same thing with the bug present proves nothing>
@@ -192,7 +192,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
 - A plan with a second non-chore group, or an output/layout-changing phase sharing a gate, is not a plan (contract §11) — split it
-- A residue group or a ≥2-axis × ≥3-value matrix without a generator-first phase is not a plan (contract §11); and a generator plan whose axes are hand LISTS rather than rosters closed against a compiler enumeration is a hand matrix wearing a generator
+- A residue group or a ≥2-axis × ≥3-value matrix without its stage-0 commit is not a plan (contract §11): before the first verify pass, commit on the plan's branch only the test machinery (cases enumerated from compiler enumerations, never hand lists; case → expected map; totality assertion with its mutation), green, with the known-red list and its issue cites inside the test file. The plan cites it and never restates the matrix
 - The plan names the class trackers it posts cells to and never instructs an implementer to `gh issue create` (contract §10)
 - A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
@@ -212,7 +212,7 @@ git add docs/process/plans/<plan-id>.md           # explicit pathspec; `git diff
 git commit -m "process(plan): <plan-id> (<group>) draft"
 ```
 
-Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's.
+Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's. A generator group's stage-0 commit (contract §11) lands on this branch before the first `/verify-plan`; it changes code, so the plan pull request then merges only after the independent review (README item 6).
 
 ### 4. Report
 

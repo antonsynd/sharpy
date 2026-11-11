@@ -299,8 +299,18 @@ A plan implements **one non-chore group** of the charter and lands on **one gate
 ride along only when they touch no seam the group touches. A group that changes printed output or
 emitted layout (snapshot churn) is always alone. A plan whose Defect Class matrix has two or more
 axes with three or more values each, or whose group is a **residue** of an earlier group (a second
-suffix: P11b, P14c), builds a **generative or differential harness** over the matrix as its FIRST
-task and uses its allowlist as the ratchet; a hand-written matrix test is allowed only for the axis
+suffix: P11b, P14c), builds a **generative or differential harness** over the matrix FIRST, as
+**stage 0**: a commit on the plan's branch, before the plan's first verify pass, that adds only test
+machinery — the enumeration of cases (each axis the image of a compiler enumeration, or a closed
+literal set), the map from case to expected result, and the totality assertion, with its mutation in
+the commit body (§2). It changes no product code and lands green: every case passes today or is
+known-red with an issue cite, and the known-red list lives inside the test file (not an allowlist
+file) as the ratchet: a known-red case that passes fails the test until its entry is deleted. The
+plan cites the test file and type, gives its counts at the stage-0 sha (cases, known-red), and
+states only decisions: which known-red cases it turns green, and how. It never restates the matrix.
+`/verify-plan` grades the enumeration and the totality assertion by reading the code and running
+the stated mutation; a design it rejects is answered by rewriting the stage-0 test.
+`/implement-plan` drains the known-red list. A hand-written matrix test is allowed only for the axis
 the generator cannot enumerate, and the plan says which axis that is.
 
 *Why:* plan-0ca7b7 bundled six groups (42 tasks, four gates); its planning, implementation and
@@ -313,7 +323,7 @@ from 2026-09-03 to 09-26.
 *Check:* `/verify-plan` Dimension 9 grades scope and convergence; `/implement-plan` refuses a
 multi-group plan without an explicit override; every round report states `filed / closed` and the
 open count per lane. Red = a second non-chore group in a plan, an output- or layout-changing phase
-sharing a gate, or a residue group without a generator task.
+sharing a gate, or a residue group without its stage-0 commit.
 
 ## 12. The verification tier is a charter fact; execution evidence is never skipped, plan-reading is
 
@@ -334,8 +344,8 @@ the independent review of `/implement-plan` › Cleanup and Report step 4.
 A group is **full** when any one holds, and the charter row names the letter:
 (a) a decision is still open at planning time, or the group's surface is DEVIATION-by-default
 without a promotion ruling — the plan is where the door gets written up for the owner;
-(b) `Generator: REQUIRED FIRST` (a ≥2-axis × ≥3-value matrix or a residue group) — the harness
-design is what `/verify-plan` Dimension 7 mutation-tests before anyone builds on it;
+(b) `Generator: REQUIRED FIRST` (a ≥2-axis × ≥3-value matrix or a residue group) — the stage-0
+harness (§11) is what `/verify-plan` mutation-tests before anyone builds on it;
 (c) the cure seam is under `Semantic/`, `Lowering/` or `CodeGen/`, or the group is `alone`
 (printed-output or emitted-layout change) — the full blast radius;
 (d) the group is the residue of a group that already passed a verify round and escaped
