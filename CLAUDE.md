@@ -42,7 +42,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 3. **Immutable AST**: annotations go in `SemanticInfo`.
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax.
 5. **C# 9.0 minimum for Sharpy.Core**: Core/Stdlib also target `netstandard2.1` (no global usings, file-scoped namespaces, record structs); net10.0-only code goes under `#if NET10_0_OR_GREATER`.
-6. **Verify Python behavior first** (`python3 -c` or `/verify-python`). The oracle is the `.python-version` minor (3.15, #2537); say which minor you ran.
+6. **Verify Python behavior first** (`python3 -c` or `/verify-python`). The oracle is CPython 3.15 (`.python-version`, #2537): never an older minor by choice; say which you ran.
 7. **The spec is authoritative**: read `docs/language_specification/` first; change the implementation, never the spec.
 8. **TODO/BUG/FIXME need an issue**, created first: `// TODO(#123): ...`.
 9. **Warnings are errors** (`Directory.Build.props`).
